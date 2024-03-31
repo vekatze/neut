@@ -1,0 +1,56 @@
+import {
+- IntMap {insert, intmap}
+- core.control {loop}
+- core.int.text {parse-int}
+- core.intmap {lookup}
+- core.random {random}
+}
+
+define make-big-dict(size: int): intmap(int) {
+  loop(size, IntMap.empty(), function (acc, _) {
+    let key = random(1000000) in
+    let val = random(1000000) in
+    insert(key, val, acc)
+  })
+}
+
+define random-lookup-sum(count: int, d: &intmap(int)): unit {
+  let rsum =
+    loop(count, 0, function (acc, _) {
+      let key = random(1000000) in
+      let val on key =
+        match lookup(*key, d) {
+        - Fail(_) =>
+          0
+        - Pass(v) =>
+          *v
+        }
+      in
+      let _ = key in
+      add-int(acc, val)
+    })
+  in
+  print-int(rsum)
+}
+
+define main(): unit {
+  let args = get-argv() in
+  match args {
+  - [_, size-str] =>
+    let _ on size-str =
+      match parse-int(size-str) {
+      - Pass(size) =>
+        let big-dict = make-big-dict(size) in
+        let _ on big-dict = random-lookup-sum(size, big-dict) in
+        let _ = big-dict in
+        Unit
+      - Fail(_) =>
+        printf("couldn't parse `{}` as an integer\n", [*size-str])
+      }
+    in
+    let _ = size-str in
+    Unit
+  - _ =>
+    print("usage: intmap-nt SIZE\n")
+  }
+}

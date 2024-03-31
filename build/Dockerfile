@@ -1,4 +1,4 @@
-FROM debian:bookworm
+FROM debian:12.5
 
 WORKDIR /app/
 
@@ -47,3 +47,14 @@ RUN cp /app/build/package.template.yaml /app/package.yaml
 COPY stack.yaml /app/
 
 RUN stack build --only-dependencies
+
+RUN apt-get update && \
+  apt-get install --no-install-recommends -y \
+  hyperfine \
+  libcairo2-dev \
+  libpixman-1-dev \
+  libsdl-pango-dev \
+  npm \
+  pkg-config \
+  zsh && \
+  rm -rf /var/lib/apt/lists/*

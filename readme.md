@@ -21,6 +21,6 @@ I believe the last one is particularly interesting, as it means Neut found memor
 - The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
   - That is, the usual one in functional programming, but a bit generalized
 
-## Further Reading
+## Documentation
 
 Please see: https://vekatze.github.io/neut/

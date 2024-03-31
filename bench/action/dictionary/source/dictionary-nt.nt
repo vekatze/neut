@@ -1,0 +1,60 @@
+import {
+- Dict {dict, insert}
+- core.control {loop}
+- core.int
+- core.int.text {parse-int}
+- core.random {random}
+}
+
+constant intdict: Dict.trope(int) {
+  Dict.from-loset(core.int.as-loset)
+}
+
+define make-big-dict(size: int): dict(int, int) {
+  loop(size, Dict.empty(), function (acc, _) {
+    let key = random(1000000) in
+    let val = random(1000000) in
+    intdict::insert(key, val, acc)
+  })
+}
+
+define random-lookup-sum(count: int, d: &dict(int, int)): unit {
+  let rsum =
+    loop(count, 0, function (acc, _) {
+      let key = random(1000000) in
+      let val on key =
+        match intdict::lookup(key, d) {
+        - Fail(_) =>
+          0
+        - Pass(v) =>
+          *v
+        }
+      in
+      let _ = key in
+      add-int(acc, val)
+    })
+  in
+  print-int(rsum)
+}
+
+define main(): unit {
+  let args = get-argv() in
+  match args {
+  - [_, size-str] =>
+    let _ on size-str =
+      match parse-int(size-str) {
+      - Pass(size) =>
+        let big-dict = make-big-dict(size) in
+        let _ on big-dict = random-lookup-sum(size, big-dict) in
+        let _ = big-dict in
+        Unit
+      - Fail(_) =>
+        printf("couldn't parse `{}` as an integer\n", [*size-str])
+      }
+    in
+    let _ = size-str in
+    Unit
+  - _ =>
+    print("usage: dict-nt SIZE\n")
+  }
+}

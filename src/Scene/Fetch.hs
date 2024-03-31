@@ -186,6 +186,7 @@ makeDependencyEns m alias dep = do
   let digest = M.dependencyDigest dep
   let mirrorList = M.dependencyMirrorList dep
   let enablePreset = M.dependencyPresetEnabled dep
+  let preset = if enablePreset then [(keyEnablePreset, E.inject $ m :< E.Bool enablePreset)] else []
   m
     :< E.Dictionary
       []
@@ -199,13 +200,14 @@ makeDependencyEns m alias dep = do
                       m
                         :< E.Dictionary
                           []
-                          [ (keyDigest, E.inject $ m :< E.String (MD.reify digest)),
-                            ( keyMirror,
-                              E.inject $
-                                m :< E.List [] (map (\(ModuleURL mirror) -> (m :< E.String mirror, [])) mirrorList)
-                            ),
-                            (keyEnablePreset, E.inject $ m :< E.Bool enablePreset)
-                          ]
+                          ( [ (keyDigest, E.inject $ m :< E.String (MD.reify digest)),
+                              ( keyMirror,
+                                E.inject $
+                                  m :< E.List [] (map (\(ModuleURL mirror) -> (m :< E.String mirror, [])) mirrorList)
+                              )
+                            ]
+                              ++ preset
+                          )
                   )
                 ]
         )

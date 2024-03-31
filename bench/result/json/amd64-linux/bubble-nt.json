@@ -1,0 +1,234 @@
+{
+  "results": [
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 5000",
+      "mean": 0.030019742686666667,
+      "stddev": 0.00047184730148675663,
+      "median": 0.03000975402,
+      "user": 0.028510006666666667,
+      "system": 0.0,
+      "min": 0.02955296902,
+      "max": 0.030496505020000002,
+      "times": [
+        0.03000975402,
+        0.030496505020000002,
+        0.02955296902
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "5000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 10000",
+      "mean": 0.11215796502000001,
+      "stddev": 0.0029923044398738894,
+      "median": 0.11166652502,
+      "user": 0.10753300666666665,
+      "system": 0.003276,
+      "min": 0.10944180202,
+      "max": 0.11536556802,
+      "times": [
+        0.11166652502,
+        0.10944180202,
+        0.11536556802
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "10000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 15000",
+      "mean": 0.27496646702000005,
+      "stddev": 0.0015589636736168758,
+      "median": 0.27474927002000005,
+      "user": 0.2695996733333333,
+      "system": 0.0032819999999999998,
+      "min": 0.27352749102,
+      "max": 0.27662264002000003,
+      "times": [
+        0.27352749102,
+        0.27662264002000003,
+        0.27474927002000005
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "15000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 20000",
+      "mean": 0.54085244402,
+      "stddev": 0.010718500732742633,
+      "median": 0.53602594602,
+      "user": 0.5361236733333333,
+      "system": 0.003349666666666666,
+      "min": 0.53339579202,
+      "max": 0.55313559402,
+      "times": [
+        0.53339579202,
+        0.53602594602,
+        0.55313559402
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "20000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 25000",
+      "mean": 0.9244400136866666,
+      "stddev": 0.004995349738900454,
+      "median": 0.92431723702,
+      "user": 0.9140613399999999,
+      "system": 0.009964333333333334,
+      "min": 0.91950718402,
+      "max": 0.9294956200200001,
+      "times": [
+        0.92431723702,
+        0.9294956200200001,
+        0.91950718402
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "25000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 30000",
+      "mean": 1.5240458316866665,
+      "stddev": 0.020544750784676467,
+      "median": 1.5290586590200002,
+      "user": 1.5168353399999999,
+      "system": 0.0070083333333333326,
+      "min": 1.50145857002,
+      "max": 1.54162026602,
+      "times": [
+        1.5290586590200002,
+        1.54162026602,
+        1.50145857002
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "30000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 35000",
+      "mean": 2.2257851486866667,
+      "stddev": 0.03591863731163539,
+      "median": 2.22785437302,
+      "user": 2.2180583400000002,
+      "system": 0.006661999999999999,
+      "min": 2.18887662902,
+      "max": 2.2606244440200003,
+      "times": [
+        2.18887662902,
+        2.2606244440200003,
+        2.22785437302
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "35000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 40000",
+      "mean": 3.1207202216866663,
+      "stddev": 0.0442691326608611,
+      "median": 3.10327604302,
+      "user": 3.1059656733333334,
+      "system": 0.013337333333333333,
+      "min": 3.08783063502,
+      "max": 3.17105398702,
+      "times": [
+        3.10327604302,
+        3.17105398702,
+        3.08783063502
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "40000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 45000",
+      "mean": 4.220373038353333,
+      "stddev": 0.04989921481015328,
+      "median": 4.2182112290200005,
+      "user": 4.212236006666666,
+      "system": 0.006677666666666666,
+      "min": 4.17158986202,
+      "max": 4.27131802402,
+      "times": [
+        4.27131802402,
+        4.17158986202,
+        4.2182112290200005
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "45000"
+      }
+    },
+    {
+      "command": "/home/vekatze/code/priv/bench/script/../action/bubble/bin/bubble-nt 50000",
+      "mean": 5.370431979686667,
+      "stddev": 0.07666812991850391,
+      "median": 5.33145412302,
+      "user": 5.358975673333333,
+      "system": 0.009996999999999999,
+      "min": 5.32108380202,
+      "max": 5.45875801402,
+      "times": [
+        5.45875801402,
+        5.33145412302,
+        5.32108380202
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0
+      ],
+      "parameters": {
+        "SIZE": "50000"
+      }
+    }
+  ]
+}

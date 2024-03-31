@@ -2,6 +2,7 @@ module Context.External
   ( run,
     runOrFail,
     ensureExecutables,
+    getClang,
   )
 where
 
@@ -13,8 +14,10 @@ import Control.Monad.IO.Unlift
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Entity.Const (envVarClang)
 import Entity.Error
 import System.Directory
+import System.Environment (lookupEnv)
 import System.Exit
 import System.Process
 
@@ -47,11 +50,21 @@ runOrFail procName optionList = do
                       <> "):\n"
                       <> errStr
 
+getClang :: IO String
+getClang = do
+  mClang <- lookupEnv envVarClang
+  case mClang of
+    Just clang -> do
+      return clang
+    Nothing -> do
+      return "clang"
+
 ensureExecutables :: App ()
-ensureExecutables =
+ensureExecutables = do
+  clang <- liftIO getClang
   mapM_
     ensureExecutable
-    [ "clang",
+    [ clang,
       "curl",
       "tar",
       "zstd"

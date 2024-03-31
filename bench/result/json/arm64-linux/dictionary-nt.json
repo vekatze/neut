@@ -1,0 +1,61 @@
+{
+  "results": [
+    {
+      "command": "/app/bench/script/../action/dictionary/bin/dictionary-nt 333333",
+      "mean": 0.92250302786,
+      "stddev": null,
+      "median": 0.92250302786,
+      "user": 0.67466128,
+      "system": 0.24732492,
+      "min": 0.92250302786,
+      "max": 0.92250302786,
+      "times": [
+        0.92250302786
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "333333"
+      }
+    },
+    {
+      "command": "/app/bench/script/../action/dictionary/bin/dictionary-nt 666666",
+      "mean": 1.92834911186,
+      "stddev": null,
+      "median": 1.92834911186,
+      "user": 1.3873132799999999,
+      "system": 0.5406619199999999,
+      "min": 1.92834911186,
+      "max": 1.92834911186,
+      "times": [
+        1.92834911186
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "666666"
+      }
+    },
+    {
+      "command": "/app/bench/script/../action/dictionary/bin/dictionary-nt 999999",
+      "mean": 2.89077048686,
+      "stddev": null,
+      "median": 2.89077048686,
+      "user": 2.10393128,
+      "system": 0.78613992,
+      "min": 2.89077048686,
+      "max": 2.89077048686,
+      "times": [
+        2.89077048686
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "999999"
+      }
+    }
+  ]
+}

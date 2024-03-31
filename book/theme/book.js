@@ -22,6 +22,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "bind",
         "by",
         "case",
+        "constant",
         "data",
         "declare",
         "default",
@@ -29,7 +30,11 @@ hljs.registerLanguage("neut", function (hljs) {
         "detach",
         "else",
         "else-if",
+        "exact",
         "export",
+        "external",
+        "foreign",
+        "function",
         "if",
         "import",
         "in",
@@ -40,18 +45,23 @@ hljs.registerLanguage("neut", function (hljs) {
         "let?",
         "match",
         "mu",
+        "nominal",
         "of",
         "on",
         "resource",
         "struct",
         "switch",
+        "tie",
+        "try",
+        "use",
         "via",
+        "when",
         "with",
       ].join(" "),
     },
     contains: [
       { className: "type",
-        begin: "tau|&|:<|flow|[A-Z][a-z0-9A-Z-]*",
+        begin: "tau|&|:<|flow|\\b[A-Z][a-z0-9A-Z-]*",
       },
       {
         className: "string",
@@ -64,9 +74,12 @@ hljs.registerLanguage("neut", function (hljs) {
         className: "hole-suffix",
         begin: /\/[0-9]+/,
       },
+      { className: "warning",
+        begin: "admit",
+      },
       {
         className: "builtin",
-        begin: "<=|->|=>|\\*|:|this|&|-(?=\\s)|tuple|magic",
+        begin: "<=|->|=>|\\*|:|this|&|\\b-(?=\\s)|=|tuple|magic|assert",
       },
       hljs.COMMENT(
         "//", // begin
@@ -81,9 +94,16 @@ hljs.registerLanguage("ens", function (hljs) {
     keywords: {
       $pattern: /[\w-:=<>]+/,
       keyword: [
-          "target",
-          "dependency",
-          "antecedent",
+        "antecedent",
+        "archive",
+        "build",
+        "dependency",
+        "foreign",
+        "inline-limit",
+        "prefix",
+        "preset",
+        "source",
+        "target",
       ].join(" "),
     },
     contains: [
@@ -109,6 +129,44 @@ hljs.registerLanguage("ens", function (hljs) {
   };
 });
 
+hljs.registerLanguage("llvm", function (hljs) {
+  return {
+    keywords: {
+      $pattern: /[\w-:=<>]+/,
+      keyword: [
+        "define",
+        "declare",
+        "private",
+        "constant",
+      ].join(" "),
+    },
+    contains: [
+      { className: "type",
+        begin: "\\bptr\\b|i64|i8|float|double|x86_fp80|fp128|ppc_fp128",
+      },
+      {
+        className: "string",
+        scope: "string",
+        begin: '"',
+        end: '"',
+        contains: [hljs.BACKSLASH_ESCAPE],
+      },
+      {
+        className: "hole-suffix",
+        begin: /\/[0-9]+/,
+      },
+      {
+        className: "builtin",
+        begin: "unnamed_addr|add|ptrtoint|inttoptr|getelementptr|call|store|load|null|fastcc",
+      },
+      hljs.COMMENT(
+        ";", // begin
+        "$" // end
+      ),
+    ],
+  };
+});
+
 (function codeSnippets() {
   // Syntax highlighting Configuration
   hljs.configure({
@@ -117,10 +175,10 @@ hljs.registerLanguage("ens", function (hljs) {
   });
 
   let code_nodes = Array.from(document.querySelectorAll("code"))
-    // Don't highlight `inline code` blocks in headers.
-    .filter(function (node) {
-      return !node.parentElement.classList.contains("header");
-    });
+  // Don't highlight `inline code` blocks in headers.
+      .filter(function (node) {
+        return !node.parentElement.classList.contains("header");
+      });
 
   code_nodes.forEach(function (block) {
     hljs.highlightBlock(block);
@@ -130,27 +188,27 @@ hljs.registerLanguage("ens", function (hljs) {
 (function chapterNavigation() {
   document.addEventListener("keydown", function (e) {
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {
-        return;
+      return;
     }
     if (window.search && window.search.hasFocus()) {
       return;
     }
 
     switch (e.key) {
-      case "ArrowRight":
-        e.preventDefault();
-        var nextButton = document.querySelector(".nav.next");
-        if (nextButton) {
-          window.location.href = nextButton.href;
-        }
-        break;
-      case "ArrowLeft":
-        e.preventDefault();
-        var previousButton = document.querySelector(".nav.previous");
-        if (previousButton) {
-          window.location.href = previousButton.href;
-        }
-        break;
+    case "ArrowRight":
+      e.preventDefault();
+      var nextButton = document.querySelector(".nav.next");
+      if (nextButton) {
+        window.location.href = nextButton.href;
+      }
+      break;
+    case "ArrowLeft":
+      e.preventDefault();
+      var previousButton = document.querySelector(".nav.previous");
+      if (previousButton) {
+        window.location.href = previousButton.href;
+      }
+      break;
     }
   });
 })();

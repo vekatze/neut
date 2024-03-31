@@ -15,7 +15,7 @@
   --bg: #222222;
   --fg: #eeeeee;
 
-  --mid-blue: #78c8f0;
+  --light-blue: #78c8f0;
   --dark-blue: #042f45;
 
   --light-green: #b4f0a8;
@@ -25,9 +25,12 @@
   --dark-magenta: #3a0445;
 
   --light-orange: #f0c0a8;
+  --mid-orange: #f0a078;
   --dark-orange: #451a04;
 
-  --gray: #888888;
+  --gray-light: #dddddd;
+  --gray: #999999;
+  --gray-deep: #555555;
   --tsuki: #075175;
   --nibi: #538aa6;
   --sumi: #032536;
@@ -75,16 +78,19 @@ a {
   color: var(--links);
   background-color: var(--dark-blue);
   text-decoration: none;
+  border-bottom: 1px dotted var(--light-blue);
 }
 
 a:hover {
   color: var(--light-green);
   background-color: var(--dark-green);
+  border-bottom: 1px dotted var(--light-green);
 }
 
 a:active {
   color: var(--light-orange);
   background-color: var(--dark-orange);
+  border-bottom: 1px dotted var(--light-orange);
 }
 
 code {
@@ -117,6 +123,12 @@ ol li {
   overflow-x: auto;
 }
 
+article h1 a,
+article h2 a {
+  display: inline-block;
+  width: 100%;
+}
+
 /* Don't change font size in headers. */
 h1 code,
 h2 code,
@@ -135,6 +147,14 @@ h4,
 h5 {
   margin-top: 2em;
 }
+
+/* h3 a, */
+/* h4 a, */
+/* h5 a { */
+/*   color: var(--light-magenta); */
+/*   background: var(--dark-magenta); */
+/*   font-weight: normal; */
+/* } */
 
 .header + .header h3,
 .header + .header h4,
@@ -206,7 +226,7 @@ table td {
   padding: 3px 20px;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  border: 1px var(--mid-blue) solid;
+  border: 1px var(--light-blue) dotted;
 }
 table thead {
   background: var(--tsuki);
@@ -215,11 +235,11 @@ table thead td {
   border: none;
 }
 table thead th {
-  border: 1px var(--mid-blue) solid;
+  border: 1px var(--light-blue) dotted;
   padding: 3px 20px;
 }
 table thead tr {
-  border: 1px var(--mid-blue) solid;
+  border: 1px var(--light-blue) dotted;
 }
 table tbody tr {
   background: var(--sumi);
@@ -229,14 +249,14 @@ blockquote {
   margin: 20px 0;
   padding: 0rem 1rem;
   background: var(--sumi);
-  border: 1px solid var(--mid-blue);
+  border: 1px dotted var(--light-blue);
   font-style: italic;
 }
 
 kbd {
-  background-color: var(--mid-blue);
+  background-color: var(--light-blue);
   border-radius: 4px;
-  border: solid 1px var(--theme-popup-border);
+  border: dotted 1px var(--theme-popup-border);
   box-shadow: inset 0 -1px 0 var(--theme-hover);
   display: inline-block;
   font-size: var(--code-font-size);
@@ -288,7 +308,7 @@ em {
 
 #content-box #sidebar {
   flex: 0 0 var(--sidebar-width);
-  border-right: 1px solid var(--mid-blue);
+  border-right: 1px dotted var(--light-blue);
 }
 
 #content-box #content {
@@ -307,22 +327,22 @@ em {
   }
 
   #content h3 {
-    font-size: 120%;
+    font-size: 100%;
     position: relative;
   }
 }
 @media (min-width: 900px) {
   #content h1 {
-    font-size: 210%;
+    font-size: 300%;
     position: relative;
   }
   #content h2 {
-    font-size: 150%;
+    font-size: 167%;
     position: relative;
   }
 
   #content h3 {
-    font-size: 120%;
+    font-size: 110%;
     position: relative;
   }
 }
@@ -331,22 +351,24 @@ em {
   #content h1:before {
     position: absolute;
     left: -3rem;
-    content: "#";
-    color: var(--gray);
+    /* content: "#"; */
+    /* color: var(--gray-light); */
+    color: var(--gray-deep);
   }
 
   #content h2:before {
     position: absolute;
     left: -4rem;
-    content: "##";
-    color: var(--gray);
+    /* content: "##"; */
+    /* color: var(--gray); */
+    color: var(--gray-deep);
   }
 
   #content h3:before {
     position: absolute;
-    left: -5rem;
-    content: "###";
-    color: var(--gray);
+    left: -4rem;
+    /* content: "###"; */
+    color: var(--gray-deep);
   }
 }
 
@@ -375,9 +397,9 @@ em {
   display: flex;
   flex: 0 1 var(--menu-bar-height);
   background-color: var(--bg);
-  border-bottom-color: var(--mid-blue);
+  border-bottom-color: var(--light-blue);
   border-bottom-width: 1px;
-  border-bottom-style: solid;
+  border-bottom-style: dotted;
 }
 
 .headline {
@@ -409,7 +431,7 @@ em {
 }
 
 .hljs {
-  border: 1px solid var(--mid-blue);
+  border: 1px dotted var(--light-blue);
   background: var(--sumi);
 }
 
@@ -419,7 +441,7 @@ em {
   display: inline;
   padding: 0.1em 0.2em;
   margin: 0 0.3em;
-  border: 1px dotted var(--mid-blue);
+  border: 1px dotted var(--light-blue);
 }
 
 :not(pre):not(a) > .hljs {
@@ -449,10 +471,10 @@ pre > .buttons button {
   font-size: 14px;
   font-family: var(--main-font);
 
-  border-style: solid;
+  border-style: dotted;
   border-width: 1px;
-  border-color: var(--mid-blue);
-  color: var(--mid-blue);
+  border-color: var(--light-blue);
+  color: var(--light-blue);
   background-color: var(--dark-blue);
 }
 pre > .buttons button:hover {
@@ -467,8 +489,13 @@ pre > code {
 .info-block {
   margin: 20px 0;
   padding: 0rem 1rem;
-  background: var(--sumi);
-  border: 1px solid var(--mid-blue);
+  background: var(--dark-magenta);
+  border: 1px dotted var(--light-magenta);
+}
+
+div.info-block p:before {
+  content: "💡";
+  padding-right: 1rem;
 }
 
 #footer-wrapper {
@@ -481,7 +508,7 @@ pre > code {
 }
 
 #footer-nav {
-  border-top: 1px solid var(--gray);
+  border-top: 1px dotted var(--gray);
   padding-top: 40px;
 }
 

@@ -1,0 +1,74 @@
+import {
+- core.int.text {parse-int}
+- core.random {random}
+}
+
+foreign {
+- arc4random_uniform(int): int
+}
+
+data int-list {
+- My-Nil
+- My-Cons(int, int-list)
+}
+
+nominal {
+- _insert(v: int, xs: int-list): int-list
+}
+
+define _swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
+  if cond {
+    My-Cons(x, _insert(v, xs))
+  } else {
+    My-Cons(v, My-Cons(x, xs))
+  }
+}
+
+define _insert(v: int, xs: int-list): int-list {
+  match xs {
+  - My-Nil =>
+    My-Cons(v, My-Nil)
+  - My-Cons(y, ys) =>
+    _swap-gt(gt-int(v, y), v, y, ys)
+  }
+}
+
+define sort(xs: int-list, acc: int-list): int-list {
+  match xs {
+  - My-Nil =>
+    acc
+  - My-Cons(y, ys) =>
+    sort(ys, _insert(y, acc))
+  }
+}
+
+define rand-list(len: int, acc: int-list): int-list {
+  if eq-int(len, 0) {
+    acc
+  } else {
+    let val = random(10000) in
+    rand-list(sub-int(len, 1), My-Cons(val, acc))
+  }
+}
+
+define main(): unit {
+  let args = get-argv() in
+  match args {
+  - [_, size-str] =>
+    let _ on size-str =
+      match parse-int(size-str) {
+      - Pass(size) =>
+        let some-list = rand-list(size, My-Nil) in
+        let some-list = sort(some-list, My-Nil) in
+        let _ = some-list in
+        Unit
+      - Fail(_) =>
+        printf("couldn't parse `{}` as an integer\n", [*size-str])
+      }
+    in
+    let _ = size-str in
+    Unit
+  - _ =>
+    print("usage: bubble-nt SIZE\n")
+  }
+}

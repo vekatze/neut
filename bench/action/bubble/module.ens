@@ -1,0 +1,15 @@
+{
+  target {
+    bubble-nt "bubble-nt.nt"
+    bubble-slow "bubble-slow.nt"
+  }
+  dependency {
+    core {
+      digest "ub3MUXVac9F1rebIhl_Crm2_GJ7PzCAekgp8aYH3-mo"
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-38.tar.zst"
+      ]
+      enable-preset true
+    }
+  }
+}
