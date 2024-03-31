@@ -103,11 +103,6 @@ tau
   Γ ⊢ tau: tau
 ```
 
-### Notes
-
-- For any `x: tau`, `x` can be copied/discarded for free since `x` is lowered to an immediate.
-- `tau` is used in combination with the inference rule of variables.
-
 ## Local Variables
 
 ### Example
@@ -119,9 +114,9 @@ define sample(): unit {
   let foo = x in
   let 'bar = foo in
   let buz' = 'bar in
-  let theSpreadingWideMyNarrowHandsToGatherParadise = αβγ in
   let _h-e-l-l-o = buz' in
   let αβγ = _h-e-l-l-o in
+  let theSpreadingWideMyNarrowHandsToGatherParadise = αβγ in
   let 冥きより冥き道にぞ入りぬべきはるかに照らせ山の端の月 = Unit in
   let _ = Unit in
 
@@ -146,7 +141,7 @@ The name of a local variable must satisfy the following conditions:
 
 ### Semantics
 
-If the content of a variable `x` is an immediate value, `x` is compiled into the name of a register that stores the immediate. Otherwise, `x` is compiled into a pointer to the content.
+If the content of a variable `x` is an immediate value, `x` is compiled into the name of a register that stores the immediate. Otherwise, `x` is compiled into the name of a register that stores a pointer to the content.
 
 ### Type
 
@@ -158,8 +153,8 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 
 ### Notes
 
-- Variables in Neut are immutable. You'll need `core.cell` to achieve mutability.
 - The compiler reports unused variables. You can use the name `_` to suppress those.
+- Variables in Neut are immutable. You'll need `core.cell` to achieve mutability.
 
 ## Top-Level Variables
 
@@ -313,7 +308,7 @@ let x: t = e1 in e2
 
 ### Semantics
 
-`let x = e1 in e2` defines binds the result of `e1` to the variable `x`. This variable can then be used in `e2`.
+`let x = e1 in e2` binds the result of `e1` to the variable `x`. This `x` can then be used in `e2`.
 
 ### Type
 
@@ -470,7 +465,7 @@ And a text like `"hello": &text` is compiled into `ptr @"text-hello"`.
 // this is equivalent to `(_: int) -> bool`:
 (int) -> bool
 
-// use `a`
+// use a type variable
 (a: tau, x: a) -> a
 
 // make the first argument implicit
@@ -742,7 +737,7 @@ define use-id(): unit {
 
 ## `e of {x1 = e1, ..., xn = en}`
 
-`e of {x1 = e1, ..., xn = en}` is an alternative notation of function application. Other languages would call this a feature of "keyword arguments".
+`e of {x1 = e1, ..., xn = en}` is an alternative notation of function application. Other languages would call this feature keyword arguments.
 
 ### Example
 
@@ -803,13 +798,35 @@ constant some-config {
 }
 ```
 
+If the argument is a variable that has the same name as the parameter, you can use a shorthand notation:
+
+```neut
+define use-foo(): unit {
+  let x = 10 in
+  let y = True in
+  let some-path = "/path/to/file"
+  // 🌟
+  foo of {
+  - x // a shorthand for `x = x`
+  - y
+  - some-path
+  }
+}
+
+define use-foo(): unit {
+  let x = 10 in
+  let y = True in
+  let some-path = "/path/to/file"
+  // 🌟
+  foo of {x, y, some-path}
+}
+```
+
 ## `exact e`
 
 Given a function `e`, `exact e` supplies all the implicit variables of `e` by inserting holes.
 
 ### Example
-
-Suppose we have the following function:
 
 ```neut
 define id<a>(x: a): a {
@@ -836,7 +853,7 @@ define use-id() {
 }
 ```
 
-This is because the type of `id` is `<a>(x: a) -> a`.
+This is because the type of `id` is `<a>(x: a) -> a`, not `(x: ?M) -> ?M`.
 
 ### Syntax
 
@@ -932,7 +949,7 @@ define create-nat(): my-nat {
 
 ### Syntax
 
-The same as that of top-level variables.
+The same as that of top-level variables, except that constructors must be capitalized.
 
 ### Semantics
 
@@ -1003,8 +1020,7 @@ define bar(n: my-nat): int {
     100
   - Succ(Succ(m)) => // ← a nested pattern
     200
-
-- Succ(m) =>
+  - Succ(m) =>
     foo(m)
   }
 }
@@ -1213,7 +1229,7 @@ An example of the application of the typing rule of `case`:
 
 ## `&a`
 
-Given a type `a: tau`, the `&a` is the type of noema over `a`.
+Given a type `a: tau`, the `&a` is the type of noemata over `a`.
 
 ### Example
 
@@ -1314,7 +1330,7 @@ cont
 
 ### Note
 
-As you can see from the definition of `let-on`, a noema (noetic value) always has its source value. We'll call it the hyle of a noema.
+As you can see from the definition of `let-on`, a noema always has its source value. We'll call it the hyle of a noema.
 
 A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if `let-on` can return a noema:
 
@@ -1563,7 +1579,7 @@ It also `free`s the 3-word + 1-byte tuple that represents a control flow after g
 
 ## `new-channel`
 
-You can create a channel using `new-channel`, and send/receive values using those channels.
+You can create channels using `new-channel` and send/receive values using those channels.
 
 ### Example
 
@@ -1637,6 +1653,8 @@ The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used t
 - `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
 
 Also, `channel(a)` can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type `cell(a)` is there to represent such a channel:
+
+Below is an example of using the type `cell`:
 
 ```neut
 define sample(): int {
@@ -1756,13 +1774,11 @@ A "lowtype" is one of the following:
 - `float16`, `float32`, `float64`
 - `pointer`
 
-Except for `cast`, the result type of `magic` is unspecified, so you must supply type annotations if necessary.
-
-You can also use `int` and `float` as a lowtype. This is a platform-dependent lowtype. If the target architecture is 64-bit, `int` is interpreted as `int64`.
+You can also use `int` and `float` as a lowtype. These are platform-dependent lowtypes. If the target architecture is 64-bit, `int` is interpreted as `int64`.
 
 ### Semantics
 
-`magic cast (a, b, e)` casts the term `e` from the type `a` to `b`. This is just a trick against the type checker and does nothing at runtime.
+`magic cast (a, b, e)` casts the term `e` from the type `a` to `b`. `cast` does nothing at runtime.
 
 `magic store(lowtype, value, address)` stores a value `value` to `address`. This is the same as `store` [in LLVM](https://llvm.org/docs/LangRef.html#store-instruction).
 
@@ -1902,7 +1918,7 @@ The configuration value `default` is equal to any configuration values.
 
 ### Note
 
-- `introspect` is resolved at compile-time.
+- The branching of an `introspect` is resolved at compile-time.
 
 ## `admit`
 
@@ -1924,7 +1940,7 @@ admit
 
 ### Sematics
 
-Evaluating `admit` will exit the program, displaying a message like the below:
+Evaluating `admit` will exit the program, displaying a message like the following:
 
 ```text
 admit: /path/to/file.nt:1:2
@@ -2020,9 +2036,13 @@ _
 Γ ⊢ e[tmp := _]: a
 ```
 
+### Note
+
+Please do not confuse a hole with the `_` in `let _ = e1 in e2`.
+
 ## `use e {x1, ..., xn} in cont`
 
-You can use `use e {x1, ..., xn} in cont` as a shorthand to destruct an ADT that has only one constructor.
+You can use `use e {x1, ..., xn} in cont` as a shorthand to destructure an ADT that has only one constructor.
 
 ### Example
 
@@ -2460,7 +2480,7 @@ define make-int-list(): list(int) {
 
 ↓
 
-Cons(e1, Cons(..., Cons(en, Nil)))
+Cons(e1, Cons(..., Cons(en, Nil)...))
 ```
 
 ### Type
@@ -2504,11 +2524,14 @@ define test(): except(&text, int) {
 ### Syntax
 
 ```neut
-with {
+with f {
   e
 }
 
 bind x = e1 in
+e2
+
+bind x: t = e1 in
 e2
 ```
 
@@ -2630,7 +2653,3 @@ The semantics of `{e}` is the same as `e`.
 ----------
 Γ ⊢ {e}: a
 ```
-
-### Note
-
-- Parentheses in Neut are used only for function-related syntactic constructs.
