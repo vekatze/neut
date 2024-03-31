@@ -6,13 +6,11 @@ Its key features include:
 
 <ul class="star-list">
   <li>Full λ-calculus support</li>
-  <li>Static memory management</li>
+  <li>Predecitable automatic memory management</li>
   <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
 </ul>
 
-I believe the last one is particularly interesting, as it seems to mean that Neut is leveraging memory predictability which resides _in_ the usual λ-calculus.
-
-Practically, these mean that you now have a functional programming language without GC. The language doesn't need lifetime annotations, too.
+Neut doesn't use GCs or regions. Instead, it takes a _type-directed approach_ to handle resources.
 
 ## How Does it Look?
 
@@ -45,28 +43,30 @@ define noisy-length(a: tau, xs: my-list(a)): int {
 
 ## Static Memory Management — But How?
 
-_Neut translates a type into a function_ that knows how to copy/discard the values of the type. By using those functions, every variable is copied/discarded so that it is used exactly once.
+_Neut translates a type into a function_ that can discard/copy the values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.
 
-For example, if a variable is used twice, a translation like the below will happen:
+For example, if a variable is used twice, a translation like the following will happen:
 
 ```neut
+// (before)
 let xs: list(a) = [value-1, value-2] in
 some-func(xs, xs) // `xs` is used twice
 
 // ↓
 
+// (after)
 let xs: list(a) = [value-1, value-2] in
-let (xs1, xs2) = copy-list-a(xs) in // now `xs` is used exactly once
+let (xs1, xs2) = copy-list-a(xs) in  // `xs` is used once
 some-func(xs1, xs2)
 ```
 
 If you need more, see [How to Execute Types](./how-to-execute-types.md).
 
-You may wonder: _"\_So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./static-memory-management.md). As written there, those redundant copyings can be avoided via something like borrowing in Rust. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
+You may wonder: _"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./static-memory-management.md). As written there, those redundant copyings can be avoided via something like "borrowing" in Rust. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't discarded/copied, and to utilize it like a reference in the great ST monad.
 
 ## How Fast is This?
 
-[Not so bad](./benchmarks.md).
+[Please see the benchmarks](./benchmarks.md).
 
 ## List of Other Basic Characteristics?
 
@@ -81,9 +81,9 @@ You may wonder: _"\_So we need to, for example, copy the whole list just to get 
 
 ## Anything Else?
 
-You might also find Neut's module system interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. This topic is covered in the [tutorial](./hello-external-world.md).
+You might also find Neut's module system interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of the language, it still might be of interest. This topic is covered in the [tutorial](./hello-external-world.md).
 
-Also, Neut includes an LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment.md) for more.
+Also, Neut includes an LSP server, which provides things like code completion, error reporting on save, etc. See [Lovely LSP Showcase](./lovely-lsp-showcase.md) to see it in action.
 
 ---
 
