@@ -16,6 +16,7 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
+import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
@@ -186,7 +187,7 @@ makeDependencyEns m alias dep = do
   let digest = M.dependencyDigest dep
   let mirrorList = M.dependencyMirrorList dep
   let enablePreset = M.dependencyPresetEnabled dep
-  let preset = if enablePreset then [(keyEnablePreset, E.inject $ m :< E.Bool enablePreset)] else []
+  let preset = if enablePreset then Just (keyEnablePreset, E.inject $ m :< E.Bool enablePreset) else Nothing
   m
     :< E.Dictionary
       []
@@ -206,7 +207,7 @@ makeDependencyEns m alias dep = do
                                   m :< E.List [] (map (\(ModuleURL mirror) -> (m :< E.String mirror, [])) mirrorList)
                               )
                             ]
-                              ++ preset
+                              ++ maybeToList preset
                           )
                   )
                 ]

@@ -1,7 +1,3 @@
 define main(): unit {
   print("Hello, world!\n")
 }
-
-define zen(): unit {
-  print("this is zen. I can test local functions.\n")
-}
