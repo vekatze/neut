@@ -23,20 +23,10 @@ HAS_ZSTD=0
 
 ESC=$(printf '\033')
 
-BOLD="${ESC}[1m%s${ESC}[m"
 RED="${ESC}[1;31m%s${ESC}[m"
 MAGENTA="${ESC}[1;35m%s${ESC}[m"
 BLUE="${ESC}[1;34m%s${ESC}[m"
 CYAN="${ESC}[1;36m%s${ESC}[m"
-GREEN="${ESC}[1;32m%s${ESC}[m"
-YELLOW="${ESC}[1;33m%s${ESC}[m"
-
-THIN_RED="${ESC}[31m%s${ESC}[m"
-THIN_MAGENTA="${ESC}[35m%s${ESC}[m"
-THIN_BLUE="${ESC}[34m%s${ESC}[m"
-THIN_CYAN="${ESC}[36m%s${ESC}[m"
-THIN_GREEN="${ESC}[32m%s${ESC}[m"
-THIN_YELLOW="${ESC}[33m%s${ESC}[m"
 
 clangs=(
   "clang"
