@@ -114,7 +114,7 @@ toDoc term =
     _ :< Magic c magic ->
       case magic of
         Cast c1 from to e -> do
-          let args = SE.fromListWithComment SE.Paren [from, to, e]
+          let args = SE.fromListWithComment SE.Paren SE.Comma [from, to, e]
           D.join
             [ attachComment (c ++ c1) $ D.text "magic cast",
               SE.decode $ toDoc <$> args
@@ -125,6 +125,7 @@ toDoc term =
               SE.decode $
                 SE.fromListWithComment
                   SE.Paren
+                  SE.Comma
                   [ RT.mapEL RLT.decode lt,
                     RT.mapEL toDoc value,
                     RT.mapEL toDoc pointer
@@ -136,6 +137,7 @@ toDoc term =
               SE.decode $
                 SE.fromListWithComment
                   SE.Paren
+                  SE.Comma
                   [ RT.mapEL RLT.decode lt,
                     RT.mapEL toDoc pointer
                   ]
@@ -160,6 +162,7 @@ toDoc term =
               SE.decode $
                 SE.fromListWithComment
                   SE.Paren
+                  SE.Comma
                   [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
                     RT.mapEL RLT.decode lt
                   ]

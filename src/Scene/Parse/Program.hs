@@ -39,7 +39,7 @@ parseImport = do
     [ do
         c1 <- P.keyword "import"
         m <- P.getCurrentHint
-        (importItems, loc, c) <- P.seriesBrace' $ do
+        (importItems, loc, c) <- P.seriesBraceList' $ do
           mImportItem <- P.getCurrentHint
           locator <- P.symbol
           (lls, c) <- parseLocalLocatorList'
@@ -64,7 +64,7 @@ parseLocalLocatorList' :: P.Parser (SE.Series (Hint, LL.LocalLocator), C)
 parseLocalLocatorList' = do
   choice
     [ P.seriesBrace parseLocalLocator,
-      return (SE.emptySeries SE.Brace, [])
+      return (SE.emptySeries SE.Brace SE.Comma, [])
     ]
 
 parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)
@@ -76,7 +76,7 @@ parseLocalLocator = do
 parseForeign :: P.Parser (RawStmt, C)
 parseForeign = do
   c1 <- P.keyword "foreign"
-  (val, c) <- P.seriesBrace parseForeignItem
+  (val, c) <- P.seriesBraceList parseForeignItem
   return (RawStmtForeign c1 val, c)
 
 parseForeignItem :: P.Parser (RawForeignItem, C)
@@ -113,14 +113,14 @@ parseData = do
   m <- P.getCurrentHint
   (dataName, c2) <- P.baseName
   dataArgsOrNone <- parseDataArgs
-  (consSeries, loc, c) <- P.seriesBrace' parseDefineDataClause
+  (consSeries, loc, c) <- P.seriesBraceList' parseDefineDataClause
   return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries loc, c)
 
 parseNominal :: P.Parser (RawStmt, C)
 parseNominal = do
   c1 <- P.keyword "nominal"
   m <- P.getCurrentHint
-  (geists, c) <- P.seriesBrace $ do
+  (geists, c) <- P.seriesBraceList $ do
     (geist, c) <- parseGeist return
     loc <- P.getCurrentLoc
     return ((geist, loc), c)
@@ -140,7 +140,7 @@ parseDefineDataClause = do
   unless (isConsName (BN.reify consName')) $ do
     lift $ Throw.raiseError m "the name of a constructor must be capitalized"
   (consArgsOrNone, loc, c) <- parseConsArgs
-  let consArgs = fromMaybe SE.emptySeriesP consArgsOrNone
+  let consArgs = fromMaybe SE.emptySeriesPC consArgsOrNone
   let isConstLike = isNothing consArgsOrNone
   return ((m, consName, isConstLike, consArgs, loc), c)
 

@@ -338,6 +338,7 @@ discern nenv term =
                 (SE.fromList'' [e1'])
                 ( SE.fromList
                     SE.Brace
+                    SE.Hyphen
                     [ ( SE.fromList'' [(m2', RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
                         [],
                         m2' :< RT.piElim exceptFailVar [m2' :< RT.Var (Var err)],
@@ -467,7 +468,7 @@ discern nenv term =
           discern nenv body
     _ :< RT.Projection e (mProj, proj) loc -> do
       t <- Gensym.newPreHole (blur mProj)
-      let args = (SE.fromList SE.Brace [(mProj, proj, [], [], t)], [])
+      let args = (SE.fromList SE.Brace SE.Comma [(mProj, proj, [], [], t)], [])
       let var = mProj :< RT.Var (Var proj)
       discern nenv $ mProj :< RT.Use [] e [] args [] var loc
     _ :< RT.Brace _ (e, _) ->
@@ -531,7 +532,7 @@ getContinuationModifier pat endLoc =
                 []
                 isNoetic
                 (SE.fromList'' [mCont :< RT.Var (Var tmp)])
-                (SE.fromList SE.Brace [(SE.fromList'' [pat], [], cont, endLoc)])
+                (SE.fromList SE.Brace SE.Hyphen [(SE.fromList'' [pat], [], cont, endLoc)])
         )
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
@@ -547,7 +548,7 @@ bind loc endLoc (m, x, c1, c2, t) e cont =
       []
       (m, RP.Var (Var x), c1, c2, t)
       []
-      (SE.emptySeries' Nothing)
+      (SE.emptySeries' Nothing SE.Comma)
       []
       e
       []
@@ -611,6 +612,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           (SE.fromList'' [ifCond])
           ( SE.fromList
               SE.Brace
+              SE.Hyphen
               [ ( SE.fromList'' [(blur m, RP.Var true)],
                   [],
                   ifBody,
@@ -633,6 +635,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           (SE.fromList'' [ifCond])
           ( SE.fromList
               SE.Brace
+              SE.Hyphen
               [ (SE.fromList'' [(blur m, RP.Var true)], [], ifBody, fakeLoc),
                 (SE.fromList'' [(blur m, RP.Var false)], [], cont, fakeLoc)
               ]

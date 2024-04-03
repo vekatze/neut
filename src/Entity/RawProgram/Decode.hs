@@ -167,8 +167,10 @@ decStmt stmt =
                 trailingComment,
                 prefix = Nothing,
                 container = Just SE.Brace,
+                separator = SE.Comma,
                 hasTrailingComma = True
               }
+      -- let resourcePair = SE.pushComment c3 $ SE.fromListWithComment SE.Brace SE.Hyphen [discarder, copier]
       RT.attachComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
