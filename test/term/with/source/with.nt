@@ -4,10 +4,12 @@ define nop(): unit {
 
 define except-bind<e, a, b>(x: except(e, a), k: (a) -> except(e, b)): except(e, b) {
   match x {
-  - Fail(err) =>
-    Fail(err)
-  - Pass(value) =>
-    k(value)
+    Fail(err) => {
+      Fail(err)
+    },
+    Pass(value) => {
+      k(value)
+    },
   }
 }
 

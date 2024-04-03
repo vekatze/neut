@@ -1,14 +1,14 @@
 import {
-- core.bool {False, True, bool}
-- core.except {Pass, none}
-- core.text
-- core.text.io {print, print-int}
-- core.unit {unit}
+  core.bool {False, True, bool},
+  core.except {Pass, none},
+  core.text,
+  core.text.io {print, print-int},
+  core.unit {unit},
 }
 
 data stack(a) {
-- Nil
-- Cons(a, stack(a))
+  Nil,
+  Cons(a, stack(a)),
 }
 
 define empty(a: tau): stack(a) {
@@ -17,59 +17,51 @@ define empty(a: tau): stack(a) {
 
 define is-empty(a: tau, xs: &stack(a)): bool {
   case xs {
-  - Nil =>
-    True
-  - Cons(_, _) =>
-    False
+    Nil => True,
+    Cons(_, _) => False,
   }
 }
 
 define head(a: tau, xs: &stack(a)): ?&a {
   case xs {
-  - Nil =>
-    none()
-  - Cons(a, _) =>
-    Pass(a)
+    Nil => none(),
+    Cons(a, _) => Pass(a),
   }
 }
 
 define tail(a: tau, xs: &stack(a)): ?&stack(a) {
   case xs {
-  - Nil =>
-    none()
-  - Cons(_, rest) =>
-    Pass(rest)
+    Nil => none(),
+    Cons(_, rest) => Pass(rest),
   }
 }
 
 define update(a: tau, xs: stack(a), index: int, value: a): stack(a) {
   match xs {
-  - Nil =>
-    Nil
-  - Cons(y, ys) =>
-    if eq-int(index, 0) {
-      Cons(value, ys)
-    } else {
-      Cons(y, update(a, ys, sub-int(index, 1), value))
-    }
+    Nil => {
+      Nil
+    },
+    Cons(y, ys) => {
+      if eq-int(index, 0) {
+        Cons(value, ys)
+      } else {
+        Cons(y, update(a, ys, sub-int(index, 1), value))
+      }
+    },
   }
 }
 
 define suffixes(a: tau, xs: stack(a)): stack(stack(a)) {
   match xs {
-  - Nil =>
-    Nil
-  - Cons(_, ys) =>
-    Cons(xs, suffixes(a, ys))
+    Nil => Nil,
+    Cons(_, ys) => Cons(xs, suffixes(a, ys)),
   }
 }
 
 define suffixes-noetic(a: tau, xs: &stack(a)): stack(&stack(a)) {
   case xs {
-  - Nil =>
-    Nil
-  - Cons(_, ys) =>
-    Cons(xs, suffixes-noetic(a, ys))
+    Nil => Nil,
+    Cons(_, ys) => Cons(xs, suffixes-noetic(a, ys)),
   }
 }
 

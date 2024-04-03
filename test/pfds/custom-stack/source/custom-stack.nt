@@ -1,15 +1,15 @@
 import {
-- core.bool {False, True, bool}
-- core.except {Fail, Pass, none}
-- core.pair {Pair, pair}
-- core.text
-- core.text.io {print, print-int}
-- core.unit {unit}
+  core.bool {False, True, bool},
+  core.except {Fail, Pass, none},
+  core.pair {Pair, pair},
+  core.text,
+  core.text.io {print, print-int},
+  core.unit {unit},
 }
 
 data custom-stack(a) {
-- Nil
-- Cons(pair(a, a), custom-stack(a))
+  Nil,
+  Cons(pair(a, a), custom-stack(a)),
 }
 
 define empty(a: tau): custom-stack(a) {
@@ -18,28 +18,34 @@ define empty(a: tau): custom-stack(a) {
 
 define is-empty(a: tau, xs: &custom-stack(a)): bool {
   case xs {
-  - Nil =>
-    True
-  - Cons(_, _) =>
-    False
+    Nil => {
+      True
+    },
+    Cons(_, _) => {
+      False
+    },
   }
 }
 
 define head(a: tau, xs: &custom-stack(a)): ?&pair(a, a) {
   case xs {
-  - Nil =>
-    none()
-  - Cons(a, _) =>
-    Pass(a)
+    Nil => {
+      none()
+    },
+    Cons(a, _) => {
+      Pass(a)
+    },
   }
 }
 
 define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
-  - Nil =>
-    none()
-  - Cons(_, rest) =>
-    Pass(rest)
+    Nil => {
+      none()
+    },
+    Cons(_, rest) => {
+      Pass(rest)
+    },
   }
 }
 
@@ -62,11 +68,13 @@ define main(): unit {
     let _ = tail(_, zs) in
     let _ = tail(_, zs) in
     match h {
-    - Fail(_) =>
-      1
-    - Pass(pair) =>
-      tie Pair(_, right) = pair in
-      {*right}()
+      Fail(_) => {
+        1
+      },
+      Pass(pair) => {
+        tie Pair(_, right) = pair in
+        {*right}()
+      },
     }
   in
   let _ = zs in

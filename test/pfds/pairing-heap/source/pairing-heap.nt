@@ -1,36 +1,43 @@
 data heap(a) {
-- Leaf
-- Node(a, list(heap(a)))
+  Leaf,
+  Node(a, list(heap(a))),
 }
 
 data order {
-- LT
-- EQ
-- GT
+  LT,
+  EQ,
+  GT,
 }
 
 define find-min(a: tau, h: &heap(a)): ?a {
   case h {
-  - Leaf =>
-    none()
-  - Node(v, _) =>
-    Pass(*v)
+    Leaf => {
+      none()
+    },
+    Node(v, _) => {
+      Pass(*v)
+    },
   }
 }
 
 define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
-  - Leaf, h2 =>
-    h2
-  - h1, Leaf =>
-    h1
-  - Node(x1, hs1), Node(x2, hs2) =>
-    match cmp(x1, x2) {
-    - LT =>
-      Node(x1, Cons(Node(x2, hs2), hs1))
-    - _ =>
-      Node(x2, Cons(Node(x1, hs1), hs2))
-    }
+    Leaf, h2 => {
+      h2
+    },
+    h1, Leaf => {
+      h1
+    },
+    Node(x1, hs1), Node(x2, hs2) => {
+      match cmp(x1, x2) {
+        LT => {
+          Node(x1, Cons(Node(x2, hs2), hs1))
+        },
+        _ => {
+          Node(x2, Cons(Node(x1, hs1), hs2))
+        },
+      }
+    },
   }
 }
 
@@ -40,21 +47,26 @@ define insert(a: tau, cmp: (a, a) -> order, x: a, h: heap(a)): heap(a) {
 
 define merge-pairs(a: tau, cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
   match hs {
-  - Nil =>
-    Leaf
-  - Cons(h, Nil) =>
-    h
-  - Cons(h1, Cons(h2, rest)) =>
-    merge(_, cmp, merge(_, cmp, h1, h2), merge-pairs(_, cmp, rest))
+    Nil => {
+      Leaf
+    },
+    Cons(h, Nil) => {
+      h
+    },
+    Cons(h1, Cons(h2, rest)) => {
+      merge(_, cmp, merge(_, cmp, h1, h2), merge-pairs(_, cmp, rest))
+    },
   }
 }
 
 define delete-min(a: tau, cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   match h {
-  - Leaf =>
-    none()
-  - Node(_, hs) =>
-    Pass(merge-pairs(_, cmp, hs))
+    Leaf => {
+      none()
+    },
+    Node(_, hs) => {
+      Pass(merge-pairs(_, cmp, hs))
+    },
   }
 }
 
@@ -76,10 +88,8 @@ define main(): unit {
   let h = insert(_, compare-int, 2, h) in
   let maybe-min on h =
     match find-min(_, h) {
-    - Fail(_) =>
-      10
-    - Pass(min) =>
-      min
+      Fail(_) => 10,
+      Pass(min) => min,
     }
   in
   let _ = h in

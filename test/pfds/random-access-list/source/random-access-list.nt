@@ -1,25 +1,23 @@
 // random access list via numerical representation
 // (complete binary tree + dense representation)
 data tree(a) {
-- Leaf(a)
-- Node(int, tree(a), tree(a))
+  Leaf(a),
+  Node(int, tree(a), tree(a)),
 }
 
 data digit(a) {
-- DigitZero
-- DigitOne(tree(a))
+  DigitZero,
+  DigitOne(tree(a)),
 }
 
 data R-list(a) {
-- New(list(digit(a)))
+  New(list(digit(a))),
 }
 
 define size(a: tau, t: &tree(a)): int {
   case t {
-  - Leaf(_) =>
-    1
-  - Node(w, _, _) =>
-    *w
+    Leaf(_) => 1,
+    Node(w, _, _) => *w,
   }
 }
 
@@ -31,13 +29,16 @@ define join(a: tau, t1: tree(a), t2: tree(a)): tree(a) {
 
 define cons-tree(a: tau, t: tree(a), ts: R-list(a)): R-list(a) {
   match ts {
-  - New([]) =>
-    New([DigitOne(t)])
-  - New(Cons(DigitZero, rest)) =>
-    New(Cons(DigitOne(t), rest))
-  - New(Cons(DigitOne(t0), rest)) =>
-    let New(ts-new) = cons-tree(a, join(_, t, t0), New(rest)) in
-    New(Cons(DigitZero, ts-new))
+    New([]) => {
+      New([DigitOne(t)])
+    },
+    New(Cons(DigitZero, rest)) => {
+      New(Cons(DigitOne(t), rest))
+    },
+    New(Cons(DigitOne(t0), rest)) => {
+      let New(ts-new) = cons-tree(a, join(_, t, t0), New(rest)) in
+      New(Cons(DigitZero, ts-new))
+    },
   }
 }
 
@@ -48,58 +49,67 @@ define cons(a: tau, x: a, ts: R-list(a)): R-list(a) {
 define uncons-tree(a: tau, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   let New(xs) = ts in
   match xs {
-  - Nil =>
-    none()
-  - Cons(DigitOne(y), Nil) =>
-    Pass(Pair(y, New([])))
-  - Cons(DigitOne(y), rest) =>
-    Pass(Pair(y, New(Cons(DigitZero, rest))))
-  - Cons(DigitZero, rest) =>
-    match uncons-tree(_, New(rest)) {
-    - Fail(_) =>
+    Nil => {
       none()
-    - Pass(Pair(new-tree, New(new-ts))) =>
-      match new-tree {
-      - Leaf(_) =>
-        none()
-      - Node(_, t1, t2) =>
-        Pass(Pair(t1, New(Cons(DigitOne(t2), new-ts))))
+    },
+    Cons(DigitOne(y), Nil) => {
+      Pass(Pair(y, New([])))
+    },
+    Cons(DigitOne(y), rest) => {
+      Pass(Pair(y, New(Cons(DigitZero, rest))))
+    },
+    Cons(DigitZero, rest) => {
+      match uncons-tree(_, New(rest)) {
+        Fail(_) => {
+          none()
+        },
+        Pass(Pair(new-tree, New(new-ts))) => {
+          match new-tree {
+            Leaf(_) => none(),
+            Node(_, t1, t2) => Pass(Pair(t1, New(Cons(DigitOne(t2), new-ts)))),
+          }
+        },
       }
-    }
+    },
   }
 }
 
 define lookup-tree(a: tau, i: int, t: &tree(a)): ?a {
   case t {
-  - Leaf(v) =>
-    if eq-int(i, 0) {
-      Pass(*v)
-    } else {
-      none()
-    }
-  - Node(w, t1, t2) =>
-    let w-div-2 = div-int(*w, 2) in
-    if lt-int(i, w-div-2) {
-      lookup-tree(a, i, t1)
-    } else {
-      lookup-tree(a, sub-int(i, w-div-2), t2)
-    }
+    Leaf(v) => {
+      if eq-int(i, 0) {
+        Pass(*v)
+      } else {
+        none()
+      }
+    },
+    Node(w, t1, t2) => {
+      let w-div-2 = div-int(*w, 2) in
+      if lt-int(i, w-div-2) {
+        lookup-tree(a, i, t1)
+      } else {
+        lookup-tree(a, sub-int(i, w-div-2), t2)
+      }
+    },
   }
 }
 
 define lookup-list(a: tau, i: int, xs: &list(digit(a))): ?a {
   case xs {
-  - [] =>
-    none()
-  - Cons(DigitZero, rest) =>
-    lookup-list(_, i, rest)
-  - Cons(DigitOne(t), rest) =>
-    let s = size(_, t) in
-    if lt-int(i, s) {
-      lookup-tree(_, i, t)
-    } else {
-      lookup-list(_, sub-int(i, s), rest)
-    }
+    [] => {
+      none()
+    },
+    Cons(DigitZero, rest) => {
+      lookup-list(_, i, rest)
+    },
+    Cons(DigitOne(t), rest) => {
+      let s = size(_, t) in
+      if lt-int(i, s) {
+        lookup-tree(_, i, t)
+      } else {
+        lookup-list(_, sub-int(i, s), rest)
+      }
+    },
   }
 }
 
@@ -110,46 +120,49 @@ define lookup(a: tau, i: int, xs: &R-list(a)): ?a {
 
 define update-tree(a: tau, i: int, x: a, t: tree(a)): tree(a) {
   match t {
-  - Leaf(v) =>
-    if eq-int(i, 0) {
-      Leaf(x)
-    } else {
-      Leaf(v)
-    }
-  - Node(w, t1, t2) =>
-    let w-div-2 = div-int(w, 2) in
-    if lt-int(i, w-div-2) {
-      Node(w, update-tree(_, i, x, t1), t2)
-    } else {
-      Node(w, t1, update-tree(_, sub-int(i, w-div-2), x, t2))
-    }
+    Leaf(v) => {
+      if eq-int(i, 0) {
+        Leaf(x)
+      } else {
+        Leaf(v)
+      }
+    },
+    Node(w, t1, t2) => {
+      let w-div-2 = div-int(w, 2) in
+      if lt-int(i, w-div-2) {
+        Node(w, update-tree(_, i, x, t1), t2)
+      } else {
+        Node(w, t1, update-tree(_, sub-int(i, w-div-2), x, t2))
+      }
+    },
   }
 }
 
 define update(a: tau, i: int, x: a, xs: R-list(a)): R-list(a) {
   match xs {
-  - New([]) =>
-    New([])
-  - New(Cons(DigitZero, ts)) =>
-    let New(new-xs) = update(_, i, x, New(ts)) in
-    New(Cons(DigitZero, new-xs))
-  - New(Cons(DigitOne(t), ts)) =>
-    let s on t = size(_, t) in
-    if lt-int(i, s) {
-      New(Cons(DigitOne(update-tree(_, i, x, t)), ts))
-    } else {
-      let New(new-xs) = update(_, sub-int(i, s), x, New(ts)) in
-      New(Cons(DigitOne(t), new-xs))
-    }
+    New([]) => {
+      New([])
+    },
+    New(Cons(DigitZero, ts)) => {
+      let New(new-xs) = update(_, i, x, New(ts)) in
+      New(Cons(DigitZero, new-xs))
+    },
+    New(Cons(DigitOne(t), ts)) => {
+      let s on t = size(_, t) in
+      if lt-int(i, s) {
+        New(Cons(DigitOne(update-tree(_, i, x, t)), ts))
+      } else {
+        let New(new-xs) = update(_, sub-int(i, s), x, New(ts)) in
+        New(Cons(DigitOne(t), new-xs))
+      }
+    },
   }
 }
 
 define find-and-get(i: int, xs: &R-list(int)): int {
   match lookup(_, i, xs) {
-  - Fail(_) =>
-    0
-  - Pass(v) =>
-    v
+    Fail(_) => 0,
+    Pass(v) => v,
   }
 }
 

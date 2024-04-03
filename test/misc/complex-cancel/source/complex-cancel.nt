@@ -1,52 +1,54 @@
 data joker {
-- JLeft(joker)
-- JRight(int)
+  JLeft(joker),
+  JRight(int),
 }
 
 // cancel: x ~> {}
 define test(x: joker): joker {
   match x {
-  - JLeft(v1) =>
-    // the `free(x)` inserted here is cancelled by ((A) + (B)) * (C)
-    match v1 {
-    - JLeft(v2) =>
-      match v2 {
-      - JLeft(v3) =>
-        // (A)
-        JLeft(v3)
-      - JRight(_) =>
-        // (B)
-        JRight(10)
+    JLeft(v1) => {
+      // the `free(x)` inserted here is cancelled by ((A) + (B)) * (C)
+      match v1 {
+        JLeft(v2) => {
+          match v2 {
+            JLeft(v3) => // (A)
+            JLeft(v3),
+            JRight(_) => // (B)
+            JRight(10),
+          }
+        },
+        JRight(_) => // (C)
+        JRight(10),
       }
-    - JRight(_) =>
-      // (C)
-      JRight(10)
-    }
-  - JRight(_) =>
-    JRight(3)
+    },
+    JRight(_) => JRight(3),
   }
 }
 
 define test2(x: joker): int {
   match x {
-  - JLeft(v1) =>
-    // the `free(x)` inserted here isn't cancelled
-    match v1 {
-    - JLeft(v2) =>
-      match v2 {
-      - JLeft(v3) =>
-        let _ = JLeft(v3) in
-        1
-      - JRight(_) =>
-        1
-        // !
+    JLeft(v1) => {
+      // the `free(x)` inserted here isn't cancelled
+      match v1 {
+        JLeft(v2) => {
+          match v2 {
+            JLeft(v3) => {
+              let _ = JLeft(v3) in
+              1
+            },
+            JRight(_) => {
+              1
+            },
+            // !
+          }
+        },
+        JRight(_) => {
+          let _ = JRight(10) in
+          1
+        },
       }
-    - JRight(_) =>
-      let _ = JRight(10) in
-      1
-    }
-  - JRight(_) =>
-    3
+    },
+    JRight(_) => 3,
   }
 }
 

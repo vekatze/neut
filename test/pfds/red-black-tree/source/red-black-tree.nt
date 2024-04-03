@@ -1,51 +1,55 @@
 data color {
-- Red
-- Black
+  Red,
+  Black,
 }
 
 data tree(a) {
-- Leaf
+  Leaf,
   // Black
-- Node(color, tree(a), a, tree(a))
+  Node(color, tree(a), a, tree(a)),
 }
 
 // Invariant 1. No Red Node has a Red child.
 // Invariant 2. Every path from the root to an empty Node contains the same number of Black Nodes.
 data order {
-- LT
-- EQ
-- GT
+  LT,
+  EQ,
+  GT,
 }
 
 define member(a: tau, cmp: (a, a) -> order, x: a, t: &tree(a)): bool {
   case t {
-  - Leaf =>
-    False
-  - Node(_, t1, v, t2) =>
-    match cmp(x, *v) {
-    - LT =>
-      member(a, cmp, x, t1)
-    - EQ =>
-      True
-    - GT =>
-      member(a, cmp, x, t2)
-    }
+    Leaf => {
+      False
+    },
+    Node(_, t1, v, t2) => {
+      match cmp(x, *v) {
+        LT => member(a, cmp, x, t1),
+        EQ => True,
+        GT => member(a, cmp, x, t2),
+      }
+    },
   }
 }
 
 // detect and repair each Red-Red violation
 define balance(a: tau, c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   match c, t1, t2 {
-  - Black, Node(Red, Node(Red, l11, v11, r11), x1, t12), t2 =>
-    Node(Red, Node(Black, l11, v11, r11), x1, Node(Black, t12, v, t2))
-  - Black, Node(Red, t11, x1, Node(Red, l12, v12, r12)), t2 =>
-    Node(Red, Node(Black, t11, x1, l12), v12, Node(Black, r12, v, t2))
-  - Black, t1, Node(Red, Node(Red, l21, v21, r21), x2, t22) =>
-    Node(Red, Node(Black, t1, v, l21), v21, Node(Black, r21, x2, t22))
-  - Black, t1, Node(Red, t21, x2, Node(Red, l22, v22, r22)) =>
-    Node(Red, Node(Black, t1, v, t21), x2, Node(Black, l22, v22, r22))
-  - c, t1, t2 =>
-    Node(c, t1, v, t2)
+    Black, Node(Red, Node(Red, l11, v11, r11), x1, t12), t2 => {
+      Node(Red, Node(Black, l11, v11, r11), x1, Node(Black, t12, v, t2))
+    },
+    Black, Node(Red, t11, x1, Node(Red, l12, v12, r12)), t2 => {
+      Node(Red, Node(Black, t11, x1, l12), v12, Node(Black, r12, v, t2))
+    },
+    Black, t1, Node(Red, Node(Red, l21, v21, r21), x2, t22) => {
+      Node(Red, Node(Black, t1, v, l21), v21, Node(Black, r21, x2, t22))
+    },
+    Black, t1, Node(Red, t21, x2, Node(Red, l22, v22, r22)) => {
+      Node(Red, Node(Black, t1, v, t21), x2, Node(Black, l22, v22, r22))
+    },
+    c, t1, t2 => {
+      Node(c, t1, v, t2)
+    },
   }
 }
 
@@ -53,26 +57,33 @@ define insert(a: tau, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
   let helper =
     define self(t: tree(a)): tree(a) {
       match t {
-      - Leaf =>
-        Node(Red, Leaf, x, Leaf)
-      - Node(c, left, y, right) =>
-        match cmp(x, y) {
-        - LT =>
-          balance(a, c, self(left), y, right)
-        - EQ =>
-          Node(c, left, y, right)
-        - GT =>
-          balance(a, c, left, y, self(right))
-        }
+        Leaf => {
+          Node(Red, Leaf, x, Leaf)
+        },
+        Node(c, left, y, right) => {
+          match cmp(x, y) {
+            LT => {
+              balance(a, c, self(left), y, right)
+            },
+            EQ => {
+              Node(c, left, y, right)
+            },
+            GT => {
+              balance(a, c, left, y, self(right))
+            },
+          }
+        },
       }
     }
   in
   match helper(t) {
-  - Leaf =>
-    Leaf
+    Leaf => {
+      Leaf
+    },
     // shouldn't occur
-  - Node(_, left, v, right) =>
-    Node(Black, left, v, right)
+    Node(_, left, v, right) => {
+      Node(Black, left, v, right)
+    },
   }
 }
 
@@ -89,44 +100,84 @@ define compare-int(x: () -> int, y: () -> int): order {
 define main(): unit {
   let t: tree(() -> int) = Leaf in
   let t =
-    insert(_, compare-int, function () {
-      3
-    }, t)
+    insert(
+      _,
+      compare-int,
+      function () {
+        3
+      },
+      t,
+    )
   in
   let t =
-    insert(_, compare-int, function () {
-      4
-    }, t)
+    insert(
+      _,
+      compare-int,
+      function () {
+        4
+      },
+      t,
+    )
   in
   let t =
-    insert(_, compare-int, function () {
-      2
-    }, t)
+    insert(
+      _,
+      compare-int,
+      function () {
+        2
+      },
+      t,
+    )
   in
   let t =
-    insert(_, compare-int, function () {
-      9
-    }, t)
+    insert(
+      _,
+      compare-int,
+      function () {
+        9
+      },
+      t,
+    )
   in
   let t =
-    insert(_, compare-int, function () {
-      100
-    }, t)
+    insert(
+      _,
+      compare-int,
+      function () {
+        100
+      },
+      t,
+    )
   in
   let t =
-    insert(_, compare-int, function () {
-      8
-    }, t)
+    insert(
+      _,
+      compare-int,
+      function () {
+        8
+      },
+      t,
+    )
   in
   let t =
-    insert(_, compare-int, function () {
-      1
-    }, t)
+    insert(
+      _,
+      compare-int,
+      function () {
+        1
+      },
+      t,
+    )
   in
   let b on t =
-    member(_, compare-int, function () {
-      5
-    }, t)
+    member(
+      _,
+      compare-int,
+      function () {
+        5
+      },
+      t,
+    )
   in
   let _ = t in
   let result: int =

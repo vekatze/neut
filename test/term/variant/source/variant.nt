@@ -1,6 +1,6 @@
 data nat {
-- Zero
-- Succ(nat)
+  Zero,
+  Succ(nat),
 }
 
 data empty {}
@@ -66,34 +66,39 @@ define relevant-except(): unit {
 }
 
 data term(a) {
-- Var(a)
-- Abs(a, term(a))
-- App(term(a), term(a))
+  Var(a),
+  Abs(a, term(a)),
+  App(term(a), term(a)),
 }
 
 define local-completeness(a: tau, t: term(a)): term(a) {
   match t {
-  - Var(v) =>
-    Var(v)
-  - Abs(x, t1) =>
-    Abs(x, t1)
-  - App(t1, t2) =>
-    App(t1, t2)
+    Var(v) => {
+      Var(v)
+    },
+    Abs(x, t1) => {
+      Abs(x, t1)
+    },
+    App(t1, t2) => {
+      App(t1, t2)
+    },
   }
 }
 
 define nested-match(a: tau, t: term(a)): term(a) {
   match t {
-  - App(Abs(_, t'), _) =>
-    t'
-  - t =>
-    t
+    App(Abs(_, t'), _) => {
+      t'
+    },
+    t => {
+      t
+    },
   }
 }
 
 data my-enum {
-- Foo
-- Bar
+  Foo,
+  Bar,
 }
 
 define using-if(): int {
@@ -124,43 +129,51 @@ define using-if(): int {
 define nested-enum-match(t: term(my-enum)): my-enum {
   let val =
     match t {
-    - App(Abs(x, t'), Var(e)) =>
-      let _ = Var(e) in
-      let _ = t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = x in
-      x
-    - App(Abs(x, _), App(Var(_), App(_, App(_, _)))) =>
-      let _ = x in
-      x
-    - App(Abs(x, _), App(App(_, App(_, _)), Var(_))) =>
-      x
-    - App(App(Abs(_, _), Var(_)), App(App(Abs(y, _), App(_, _)), Var(_))) =>
-      y
-    - App(App(Abs(x, _), Var(_)), App(App(_, App(_, _)), Var(_))) =>
-      x
-    - t =>
-      let _ = t in
-      let _ = t in
-      let _ = t in
-      Foo
+      App(Abs(x, t'), Var(e)) => {
+        let _ = Var(e) in
+        let _ = t' in
+        let _ = x in
+        let _ = Var(e) in
+        let _ = t' in
+        let _ = x in
+        let _ = Var(e) in
+        let _ = t' in
+        let _ = x in
+        let _ = Var(e) in
+        let _ = x in
+        let _ = Var(e) in
+        let _ = x in
+        x
+      },
+      App(Abs(x, _), App(Var(_), App(_, App(_, _)))) => {
+        let _ = x in
+        x
+      },
+      App(Abs(x, _), App(App(_, App(_, _)), Var(_))) => {
+        x
+      },
+      App(App(Abs(_, _), Var(_)), App(App(Abs(y, _), App(_, _)), Var(_))) => {
+        y
+      },
+      App(App(Abs(x, _), Var(_)), App(App(_, App(_, _)), Var(_))) => {
+        x
+      },
+      t => {
+        let _ = t in
+        let _ = t in
+        let _ = t in
+        Foo
+      },
     }
   in
   match val {
-  - Foo =>
-    let _ = val in
-    Bar
-  - Bar =>
-    Foo
+    Foo => {
+      let _ = val in
+      Bar
+    },
+    Bar => {
+      Foo
+    },
   }
 }
 
@@ -182,60 +195,70 @@ define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
     }
   in
   match t {
-  - Var(x) =>
-    let _ = f in
-    match t {
-    - Var(y) =>
-      let _ = g in
-      let _ = x in
-      Var(y)
-    - Abs(_, t) =>
-      t
-    - _ =>
-      t
-    }
-  - Abs(_, t) =>
-    match t {
-    - App(_, e2) =>
-      e2
-    - _ =>
-      let _ = t in
-      let _ = t in
-      t
-    }
-  - App(t1, _) =>
-    let _ = g in
-    let k =
-      if False {
-        h
-      } else {
-        function () {
-          Var("pohe")
-        }
+    Var(x) => {
+      let _ = f in
+      match t {
+        Var(y) => {
+          let _ = g in
+          let _ = x in
+          Var(y)
+        },
+        Abs(_, t) => {
+          t
+        },
+        _ => {
+          t
+        },
       }
-    in
-    let _ = k in
-    let _ = k in
-    let _ = k in
-    t1
+    },
+    Abs(_, t) => {
+      match t {
+        App(_, e2) => {
+          e2
+        },
+        _ => {
+          let _ = t in
+          let _ = t in
+          t
+        },
+      }
+    },
+    App(t1, _) => {
+      let _ = g in
+      let k =
+        if False {
+          h
+        } else {
+          function () {
+            Var("pohe")
+          }
+        }
+      in
+      let _ = k in
+      let _ = k in
+      let _ = k in
+      t1
+    },
   }
 }
 
 data monoid(a) {
-- Monoid of {
-  - m-empty: a
-  - m-op: (a, a) -> a
-  }
+  Monoid of {
+    m-empty: a,
+    m-op: (a, a) -> a,
+  },
 }
 
 define list-monoid(a: tau): monoid(list(a)) {
   Monoid of {
-  - m-op =
-    function (xs, ys) {
-      core.list.append(xs, ys)
-    }
-  - m-empty =
-    []
+    m-op = {
+      function (xs, ys) {
+        core.list.append(xs, ys)
+      }
+    },
+    m-empty = {
+      []
+    },
   }
 }
 

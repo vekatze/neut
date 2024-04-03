@@ -1,43 +1,39 @@
 data nat {
-- Zero
-- Succ(nat)
+  Zero,
+  Succ(nat),
 }
 
 define interpret(n: nat): int {
   match n {
-  - Zero =>
-    0
-  - Succ(m) =>
-    add-int(1, interpret(m))
+    Zero => 0,
+    Succ(m) => add-int(1, interpret(m)),
   }
 }
 
 define add-nat(x: nat, y: nat): nat {
   match x {
-  - Zero =>
-    y
-  - Succ(m) =>
-    add-nat(m, Succ(y))
+    Zero => y,
+    Succ(m) => add-nat(m, Succ(y)),
   }
 }
 
 define mul-nat(x: nat, y: nat): nat {
   match x {
-  - Zero =>
-    Zero
-  - Succ(m) =>
-    add-nat(mul-nat(m, y), y)
+    Zero => Zero,
+    Succ(m) => add-nat(mul-nat(m, y), y),
   }
 }
 
 define fold(a: tau, fs: list((a) -> a), x: a): a {
   match fs {
-  - Nil =>
-    x
-  - Cons(f, rest) =>
-    let _ = rest in
-    let _ = rest in
-    f(fold(a, rest, x))
+    Nil => {
+      x
+    },
+    Cons(f, rest) => {
+      let _ = rest in
+      let _ = rest in
+      f(fold(a, rest, x))
+    },
   }
 }
 

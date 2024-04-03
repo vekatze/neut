@@ -1,5 +1,5 @@
 import {
-- V
+  V,
 }
 
 define identity(a: tau, x: a): a {

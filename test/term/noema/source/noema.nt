@@ -18,10 +18,12 @@ define test-syntax(): unit {
     let _ = xs-copy in
     let _ = xs-copy in
     case xs {
-    - Nil =>
-      length(xs)
-    - Cons(_, ys) =>
-      length(ys)
+      Nil => {
+        length(xs)
+      },
+      Cons(_, ys) => {
+        length(ys)
+      },
     }
   in
   let _ = xs in
@@ -40,63 +42,71 @@ define test-syntax(): unit {
 }
 
 data term(a) {
-- Var(a)
-- Abs(a, term(a))
-- App(term(a), term(a))
+  Var(a),
+  Abs(a, term(a)),
+  App(term(a), term(a)),
 }
 
 data my-enum {
-- Foo
-- Bar
+  Foo,
+  Bar,
 }
 
 define nested-enum-match(t: &term(my-enum)): term(my-enum) {
   let val =
     case t {
-    - App(Abs(x, t'), Var(e)) =>
-      let _ = Var(e) in
-      let t' = *t' in
-      let _ = t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = x in
-      Bar
-    - App(Abs(x, _), App(Var(_), App(_, App(w, _)))) =>
-      let foo = *w in
-      let _ = foo in
-      let _ = foo in
-      let _ = foo in
-      let _ = foo in
-      let _ = x in
-      Foo
-    - App(Abs(_, _), App(App(_, App(_, _)), Var(_))) =>
-      Bar
-    - App(App(Abs(_, _), Var(_)), App(App(Abs(_, _), App(_, _)), Var(_))) =>
-      Foo
-    - App(App(Abs(_, _), Var(_)), App(App(_, App(_, _)), Var(_))) =>
-      Bar
-    - t =>
-      let t = *t in
-      let _ = t in
-      let _ = t in
-      let _ = t in
-      Foo
+      App(Abs(x, t'), Var(e)) => {
+        let _ = Var(e) in
+        let t' = *t' in
+        let _ = t' in
+        let _ = x in
+        let _ = Var(e) in
+        let _ = t' in
+        let _ = x in
+        let _ = Var(e) in
+        let _ = t' in
+        let _ = x in
+        let _ = Var(e) in
+        let _ = x in
+        let _ = Var(e) in
+        let _ = x in
+        Bar
+      },
+      App(Abs(x, _), App(Var(_), App(_, App(w, _)))) => {
+        let foo = *w in
+        let _ = foo in
+        let _ = foo in
+        let _ = foo in
+        let _ = foo in
+        let _ = x in
+        Foo
+      },
+      App(Abs(_, _), App(App(_, App(_, _)), Var(_))) => {
+        Bar
+      },
+      App(App(Abs(_, _), Var(_)), App(App(Abs(_, _), App(_, _)), Var(_))) => {
+        Foo
+      },
+      App(App(Abs(_, _), Var(_)), App(App(_, App(_, _)), Var(_))) => {
+        Bar
+      },
+      t => {
+        let t = *t in
+        let _ = t in
+        let _ = t in
+        let _ = t in
+        Foo
+      },
     }
   in
   match val {
-  - Foo =>
-    let _ = val in
-    *t
-  - Bar =>
-    *t
+    Foo => {
+      let _ = val in
+      *t
+    },
+    Bar => {
+      *t
+    },
   }
 }
 
@@ -118,52 +128,60 @@ define unbalanced-freevars-in-branches(a: tau, t: &term(a)): term(a) {
     }
   in
   case t {
-  - Var(x) =>
-    let _ = f in
-    case t {
-    - Var(_) =>
-      let _ = g in
-      let _ = x in
-      *t
-    - Abs(_, t) =>
-      let val = *t in
-      let _ = val in
-      let _ = val in
-      let _ = val in
-      let _ = val in
-      val
-    - _ =>
-      *t
-    }
-  - Abs(_, t) =>
-    case t {
-    - App(_, e2) =>
-      *e2
-    - _ =>
-      let _ = t in
-      let _ = t in
-      *t
-    }
-  - App(t1, _) =>
-    let _ = g in
-    let k =
-      if False {
-        h
-      } else {
-        function () {
-          Var("pohe")
-        }
+    Var(x) => {
+      let _ = f in
+      case t {
+        Var(_) => {
+          let _ = g in
+          let _ = x in
+          *t
+        },
+        Abs(_, t) => {
+          let val = *t in
+          let _ = val in
+          let _ = val in
+          let _ = val in
+          let _ = val in
+          val
+        },
+        _ => {
+          *t
+        },
       }
-    in
-    let _ = k in
-    let _ = k in
-    let _ = k in
-    *t1
+    },
+    Abs(_, t) => {
+      case t {
+        App(_, e2) => {
+          *e2
+        },
+        _ => {
+          let _ = t in
+          let _ = t in
+          *t
+        },
+      }
+    },
+    App(t1, _) => {
+      let _ = g in
+      let k =
+        if False {
+          h
+        } else {
+          function () {
+            Var("pohe")
+          }
+        }
+      in
+      let _ = k in
+      let _ = k in
+      let _ = k in
+      *t1
+    },
   }
 }
 
 data ctx {
-- Ctx(counter: cell(int))
+  Ctx(counter: cell(int)),
 }
 
 define with-ctx(c: &ctx): unit {

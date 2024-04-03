@@ -1,5 +1,5 @@
 foreign {
-- add_const(int): int
+  add_const(int): int,
 }
 
 define main(): unit {

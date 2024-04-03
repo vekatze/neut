@@ -1,52 +1,41 @@
 data nat {
-- Zero
-- Succ(nat)
+  Zero,
+  Succ(nat),
 }
 
 define add-nat(x: nat, y: nat): nat {
   match x {
-  - Zero =>
-    y
-  - Succ(m) =>
-    add-nat(m, Succ(y))
+    Zero => y,
+    Succ(m) => add-nat(m, Succ(y)),
   }
 }
 
 define mul-nat(x: nat, y: nat): nat {
   match x {
-  - Zero =>
-    Zero
-  - Succ(m) =>
-    add-nat(mul-nat(m, y), y)
+    Zero => Zero,
+    Succ(m) => add-nat(mul-nat(m, y), y),
   }
 }
 
 define eq-nat(n1: nat, n2: nat): bool {
   match n1, n2 {
-  - Zero, Zero =>
-    True
-  - Succ(m1), Succ(m2) =>
-    eq-nat(m1, m2)
-  - _, _ =>
-    False
+    Zero, Zero => True,
+    Succ(m1), Succ(m2) => eq-nat(m1, m2),
+    _, _ => False,
   }
 }
 
 define fact(n: nat): nat {
   match n {
-  - Zero =>
-    Succ(Zero)
-  - Succ(m) =>
-    mul-nat(n, fact(m))
+    Zero => Succ(Zero),
+    Succ(m) => mul-nat(n, fact(m)),
   }
 }
 
 define interpret(n: nat): int {
   match n {
-  - Zero =>
-    0
-  - Succ(m) =>
-    add-int(1, interpret(m))
+    Zero => 0,
+    Succ(m) => add-int(1, interpret(m)),
   }
 }
 
