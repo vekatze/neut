@@ -156,7 +156,7 @@ rawTermKeyValuePair = do
   choice
     [ do
         c2 <- delimiter "="
-        (value, c) <- rawExpr
+        (value, c) <- rawTerm
         return ((m, key, c1, c2, value), c),
       do
         return ((m, key, c1, [], m :< RT.Var (Var key)), [])
@@ -631,15 +631,7 @@ rawTermAssert = do
 keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
 keyValueArgs p = do
   c1 <- keyword "of"
-  choice
-    [ try $ do
-        (kvs, c) <- series (Just ("of", c1)) SE.Brace SE.Hyphen p
-        if SE.isEmpty kvs
-          then failure Nothing (S.fromList [asLabel "bullet list"])
-          else return (kvs, c),
-      do
-        series (Just ("of", c1)) SE.Brace SE.Comma p
-    ]
+  series (Just ("of", c1)) SE.Brace SE.Comma p
 
 foldPiElim ::
   Hint ->

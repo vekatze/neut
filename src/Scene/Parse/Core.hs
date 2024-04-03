@@ -329,7 +329,7 @@ seqOrList p =
         seriesParen p,
       do
         c1 <- keyword "of"
-        series (Just ("of", c1)) SE.Brace SE.Hyphen p
+        series (Just ("of", c1)) SE.Brace SE.Comma p
     ]
 
 seqOrList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
@@ -339,7 +339,7 @@ seqOrList' p =
         seriesParen' p,
       do
         c1 <- keyword "of"
-        series' (Just ("of", c1)) SE.Brace SE.Hyphen p
+        series' (Just ("of", c1)) SE.Brace SE.Comma p
     ]
 
 var :: Parser ((Hint, T.Text), C)

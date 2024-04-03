@@ -392,9 +392,7 @@ isMultiLine docList =
 decPiElimKey :: SE.Series (Hint, Key, C, C, RawTerm) -> D.Doc
 decPiElimKey kvs = do
   let kvs' = fmap decPiElimKeyItem kvs
-  if isMultiLine $ map (\(_, _, _, d) -> d) $ SE.extract kvs'
-    then SE.decode $ fmap decPiElimKeyMulti kvs'
-    else SE.decode $ fmap decPiElimKeySingle kvs'
+  SE.decode $ fmap decPiElimKeyItem' kvs'
 
 type Rhymed =
   Bool
@@ -408,25 +406,14 @@ decPiElimKeyItem (_, k, c1, c2, e) =
     _ ->
       (k, c1 ++ c2, False, toDoc e)
 
-decPiElimKeySingle :: (Key, C, Rhymed, D.Doc) -> D.Doc
-decPiElimKeySingle (k, c, b, d) = do
+decPiElimKeyItem' :: (Key, C, Rhymed, D.Doc) -> D.Doc
+decPiElimKeyItem' (k, c, b, d) = do
   if b
     then D.text k
     else
       PI.arrange
         [ PI.horizontal $ D.text k,
           PI.horizontal $ D.text "=",
-          PI.inject $ attachComment c d
-        ]
-
-decPiElimKeyMulti :: (Key, C, Rhymed, D.Doc) -> D.Doc
-decPiElimKeyMulti (k, c, b, d) = do
-  if b
-    then D.text k
-    else
-      PI.arrange
-        [ PI.horizontal $ D.text k,
-          PI.vertical $ D.text "=",
           PI.inject $ attachComment c d
         ]
 

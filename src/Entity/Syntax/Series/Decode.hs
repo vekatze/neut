@@ -35,11 +35,12 @@ decode series = do
               PI.inject $ D.text close
             ]
         Comma -> do
+          let layout = if hasTrailingComma series then PI.nest else PI.idOrNest
           let arranger = if hasTrailingComma series then PI.arrangeVertical else PI.arrange
           PI.arrange
             [ PI.inject prefix',
               PI.inject $ D.text open,
-              PI.idOrNest $ arranger $ intercalate sep (elems series) (hasTrailingComma series) (trailingComment series),
+              layout $ arranger $ intercalate sep (elems series) (hasTrailingComma series) (trailingComment series),
               PI.inject $ D.text close
             ]
 
@@ -64,7 +65,7 @@ commaSeq elems hasTrailingComma trailingComment =
             PI.inject $ D.text ",",
             PI.inject $ C.asSuffix trailingComment
           ]
-        else [PI.inject d, PI.inject $ C.asSuffix trailingComment]
+        else [PI.appendCommaIfVertical d, PI.inject $ C.asSuffix trailingComment]
     d : rest -> do
       [PI.inject d, PI.delimiterLeftAligned $ D.text ","] ++ commaSeq rest hasTrailingComma trailingComment
 
