@@ -478,7 +478,7 @@ rawTermPatternRow patternSize = do
               <> T.pack (show patternSize)
               <> "`"
       cArrow <- delimiter "=>"
-      (body, c) <- rawTerm
+      (body, c) <- rawExpr
       loc <- getCurrentLoc
       return ((patternList, cArrow, body, loc), c)
 

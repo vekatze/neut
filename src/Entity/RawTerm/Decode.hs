@@ -432,7 +432,8 @@ decodeDoubleArrowClause (dom, c, cod) = do
   PI.arrange
     [ PI.horizontal dom,
       PI.horizontal $ D.text "=>",
-      decodeClauseBody c cod
+      PI.inject D.line,
+      PI.inject $ attachComment c $ toDoc cod
     ]
 
 decodeClauseBody :: C -> RawTerm -> PI.Piece

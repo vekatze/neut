@@ -33,7 +33,7 @@ import Entity.C (C)
 
 data Separator
   = Comma
-  | Hyphen
+  | Bar
 
 data Container
   = Paren
@@ -164,8 +164,8 @@ getSeparator sep =
   case sep of
     Comma ->
       ","
-    Hyphen ->
-      "-"
+    Bar ->
+      "|"
 
 extract :: Series a -> [a]
 extract series =

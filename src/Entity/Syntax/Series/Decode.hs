@@ -27,7 +27,7 @@ decode series = do
     (Just k, _) -> do
       let (open, close) = getContainerPair k
       case sep of
-        Hyphen ->
+        Bar ->
           PI.arrange
             [ PI.inject prefix',
               PI.inject $ D.text open,
@@ -50,11 +50,12 @@ intercalate sep elems hasTrailingComma trailingComment = do
     Comma -> do
       let elems' = map (uncurry attachComment) elems
       commaSeq elems' hasTrailingComma trailingComment
-    Hyphen ->
+    Bar ->
       [PI.inject $ D.join [listSeq elems trailingComment, D.line]]
 
 commaSeq :: [D.Doc] -> Bool -> C -> [PI.Piece]
-commaSeq elems hasTrailingComma trailingComment =
+commaSeq elems hasTrailingComma trailingComment = do
+  let separator = getSeparator Comma
   case elems of
     [] ->
       [PI.inject $ C.decode trailingComment]
@@ -62,12 +63,12 @@ commaSeq elems hasTrailingComma trailingComment =
       if hasTrailingComma
         then
           [ PI.inject d,
-            PI.inject $ D.text ",",
+            PI.inject $ D.text separator,
             PI.inject $ C.asSuffix trailingComment
           ]
         else [PI.appendCommaIfVertical d, PI.inject $ C.asSuffix trailingComment]
     d : rest -> do
-      [PI.inject d, PI.delimiterLeftAligned $ D.text ","] ++ commaSeq rest hasTrailingComma trailingComment
+      [PI.inject d, PI.delimiterLeftAligned $ D.text separator] ++ commaSeq rest hasTrailingComma trailingComment
 
 listSeq :: [(C, D.Doc)] -> C -> D.Doc
 listSeq elems trail =
@@ -98,13 +99,14 @@ decodePrefix series =
 
 decodeListItem :: (C, D.Doc) -> D.Doc
 decodeListItem (c, d) = do
+  let separator = getSeparator Bar
   if null c
-    then D.join [D.line, D.text "- ", D.nest D.indent d]
+    then D.join [D.line, D.text separator, D.text " ", D.nest D.indent d]
     else
       D.join
         [ D.nest D.indent $ D.join [D.line, C.decode c],
           D.line,
-          D.join [D.text "- ", D.nest D.indent d]
+          D.join [D.text separator, D.text " ", D.nest D.indent d]
         ]
 
 decodeHorizontallyIfPossible :: Series D.Doc -> D.Doc

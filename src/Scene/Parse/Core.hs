@@ -220,7 +220,7 @@ _series leadingComment sep p = do
           do
             return ([], False, leadingComment)
         ]
-    SE.Hyphen -> do
+    SE.Bar -> do
       choice
         [ do
             cHyphen <- delimiter $ SE.getSeparator sep
@@ -320,11 +320,11 @@ seriesAngle =
 
 seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBraceList =
-  series Nothing SE.Brace SE.Comma
+  series Nothing SE.Brace SE.Bar
 
 seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBraceList' =
-  series' Nothing SE.Brace SE.Comma
+  series' Nothing SE.Brace SE.Bar
 
 seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
 seqOrList p =
@@ -359,7 +359,7 @@ var = do
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char
 nonSymbolCharSet =
-  S.fromList "=() \"\n\t:;,<>[]{}/*"
+  S.fromList "=() \"\n\t:;,<>[]{}/*|"
 
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char
