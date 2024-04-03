@@ -20,7 +20,7 @@ decode series = do
     (Nothing, _) ->
       PI.arrange
         [ PI.inject prefix',
-          PI.inject $ PI.arrange $ intercalate sep (elems series) (trailingComment series)
+          PI.inject $ PI.arrange $ intercalate sep (elems series) (hasTrailingComma series) (trailingComment series)
         ]
     (Just Angle, True) ->
       D.Nil
@@ -31,35 +31,42 @@ decode series = do
           PI.arrange
             [ PI.inject prefix',
               PI.inject $ D.text open,
-              PI.inject $ PI.arrange $ intercalate sep (elems series) (trailingComment series),
+              PI.inject $ PI.arrange $ intercalate sep (elems series) False (trailingComment series),
               PI.inject $ D.text close
             ]
         Comma -> do
+          let arranger = if hasTrailingComma series then PI.arrangeVertical else PI.arrange
           PI.arrange
             [ PI.inject prefix',
               PI.inject $ D.text open,
-              PI.idOrNest $ PI.arrange $ intercalate sep (elems series) (trailingComment series),
+              PI.idOrNest $ arranger $ intercalate sep (elems series) (hasTrailingComma series) (trailingComment series),
               PI.inject $ D.text close
             ]
 
-intercalate :: Separator -> [(C, D.Doc)] -> C -> [PI.Piece]
-intercalate sep elems trailingComment = do
+intercalate :: Separator -> [(C, D.Doc)] -> Bool -> C -> [PI.Piece]
+intercalate sep elems hasTrailingComma trailingComment = do
   case sep of
     Comma -> do
       let elems' = map (uncurry attachComment) elems
-      commaSeq elems' trailingComment
+      commaSeq elems' hasTrailingComma trailingComment
     Hyphen ->
       [PI.inject $ D.join [listSeq elems trailingComment, D.line]]
 
-commaSeq :: [D.Doc] -> C -> [PI.Piece]
-commaSeq elems trail =
+commaSeq :: [D.Doc] -> Bool -> C -> [PI.Piece]
+commaSeq elems hasTrailingComma trailingComment =
   case elems of
     [] ->
-      [PI.inject $ C.decode trail]
+      [PI.inject $ C.decode trailingComment]
     [d] -> do
-      [PI.inject d, PI.inject $ C.asSuffix trail]
+      if hasTrailingComma
+        then
+          [ PI.inject d,
+            PI.inject $ D.text ",",
+            PI.inject $ C.asSuffix trailingComment
+          ]
+        else [PI.inject d, PI.inject $ C.asSuffix trailingComment]
     d : rest -> do
-      [PI.inject d, PI.delimiterLeftAligned $ D.text ","] ++ commaSeq rest trail
+      [PI.inject d, PI.delimiterLeftAligned $ D.text ","] ++ commaSeq rest hasTrailingComma trailingComment
 
 listSeq :: [(C, D.Doc)] -> C -> D.Doc
 listSeq elems trail =
@@ -119,7 +126,7 @@ decodeHorizontallyIfPossible series = do
 
 isHorizontalSeries :: Series D.Doc -> Bool
 isHorizontalSeries series = do
-  null (trailingComment series) && isHorizontalSeries' (elems series)
+  null (trailingComment series) && isHorizontalSeries' (elems series) && not (hasTrailingComma series)
 
 -- [single, ..., single, multi, .., multi] <=> True
 isHorizontalSeries' :: [(C, D.Doc)] -> Bool

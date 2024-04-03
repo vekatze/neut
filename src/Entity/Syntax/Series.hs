@@ -49,7 +49,8 @@ data Series a = Series
     trailingComment :: C,
     prefix :: Prefix,
     container :: Maybe Container,
-    separator :: Separator
+    separator :: Separator,
+    hasTrailingComma :: Bool
   }
 
 instance Functor Series where
@@ -58,11 +59,18 @@ instance Functor Series where
 
 emptySeries :: Container -> Separator -> Series a
 emptySeries container separator =
-  Series {elems = [], trailingComment = [], prefix = Nothing, separator, container = Just container}
+  Series
+    { elems = [],
+      trailingComment = [],
+      prefix = Nothing,
+      separator,
+      container = Just container,
+      hasTrailingComma = False
+    }
 
 emptySeries' :: Maybe Container -> Separator -> Series a
 emptySeries' container separator =
-  Series {elems = [], trailingComment = [], prefix = Nothing, separator, container}
+  Series {elems = [], trailingComment = [], prefix = Nothing, separator, container, hasTrailingComma = False}
 
 -- pc: paren comma
 emptySeriesPC :: Series a
@@ -71,7 +79,14 @@ emptySeriesPC =
 
 fromList :: Container -> Separator -> [a] -> Series a
 fromList container separator xs =
-  Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator, container = Just container}
+  Series
+    { elems = map ([],) xs,
+      trailingComment = [],
+      prefix = Nothing,
+      separator,
+      container = Just container,
+      hasTrailingComma = False
+    }
 
 fromList' :: [a] -> Series a
 fromList' =
@@ -79,12 +94,26 @@ fromList' =
 
 fromList'' :: [a] -> Series a
 fromList'' xs =
-  Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator = Comma, container = Nothing}
+  Series
+    { elems = map ([],) xs,
+      trailingComment = [],
+      prefix = Nothing,
+      separator = Comma,
+      container = Nothing,
+      hasTrailingComma = False
+    }
 
 fromListWithComment :: Container -> Separator -> [(C, (a, C))] -> Series a
 fromListWithComment container separator xs = do
   let (xs', trailingComment) = _assoc xs []
-  Series {elems = xs', trailingComment, prefix = Nothing, separator, container = Just container}
+  Series
+    { elems = xs',
+      trailingComment,
+      prefix = Nothing,
+      separator,
+      container = Just container,
+      hasTrailingComma = False
+    }
 
 pushComment :: C -> Series a -> Series a
 pushComment c series =
@@ -96,9 +125,16 @@ pushComment c series =
 
 assoc :: Series (a, C) -> Series a
 assoc series = do
-  let Series {elems, trailingComment, separator, container} = series
+  let Series {elems, trailingComment, separator, container, hasTrailingComma} = series
   let (elems', trailingComment') = _assoc elems trailingComment
-  Series {elems = elems', trailingComment = trailingComment', prefix = Nothing, separator, container}
+  Series
+    { elems = elems',
+      trailingComment = trailingComment',
+      prefix = Nothing,
+      separator,
+      container,
+      hasTrailingComma
+    }
 
 _assoc :: [(C, (a, C))] -> C -> ([(C, a)], C)
 _assoc es c =
@@ -157,7 +193,8 @@ appendLeftBiased series1 series2 = do
       trailingComment = trailingComment series1 ++ trailingComment series2,
       prefix = prefix series1,
       container = container series1,
-      separator = separator series1
+      separator = separator series1,
+      hasTrailingComma = hasTrailingComma series1 || hasTrailingComma series2
     }
 
 catMaybes :: Series (Maybe a) -> Series a

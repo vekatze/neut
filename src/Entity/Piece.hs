@@ -1,6 +1,7 @@
 module Entity.Piece
   ( Piece (..),
     arrange,
+    arrangeVertical,
     container,
     parameter,
     beforeBareSeries,
@@ -28,6 +29,10 @@ arrange docList = do
   if D.isMulti $ map content docList
     then D.join $ map _applyMulti $ _removeNil docList
     else D.join $ map _applySingle $ _removeNil docList
+
+arrangeVertical :: [Piece] -> D.Doc
+arrangeVertical docList = do
+  D.join $ map _applyMulti $ _removeNil docList
 
 _removeNil :: [Piece] -> [Piece]
 _removeNil docList =
