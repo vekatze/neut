@@ -465,19 +465,22 @@ rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
 rawTermPatternRow patternSize = do
   m <- getCurrentHint
   patternList <- bareSeries Nothing SE.Comma rawTermPattern
-  let len = length $ SE.extract patternList
-  unless (len == patternSize) $ do
-    lift $
-      Throw.raiseError m $
-        "the size of the pattern row `"
-          <> T.pack (show len)
-          <> "` doesn't match with its input size `"
-          <> T.pack (show patternSize)
-          <> "`"
-  cArrow <- delimiter "=>"
-  (body, c) <- rawExpr
-  loc <- getCurrentLoc
-  return ((patternList, cArrow, body, loc), c)
+  if SE.isEmpty patternList
+    then failure Nothing (S.fromList [asLabel "list of patterns"])
+    else do
+      let len = length $ SE.extract patternList
+      unless (len == patternSize) $ do
+        lift $
+          Throw.raiseError m $
+            "the size of the pattern row `"
+              <> T.pack (show len)
+              <> "` doesn't match with its input size `"
+              <> T.pack (show patternSize)
+              <> "`"
+      cArrow <- delimiter "=>"
+      (body, c) <- rawTerm
+      loc <- getCurrentLoc
+      return ((patternList, cArrow, body, loc), c)
 
 rawTermPattern :: Parser ((Hint, RP.RawPattern), C)
 rawTermPattern = do

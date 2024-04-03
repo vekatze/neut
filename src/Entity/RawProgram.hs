@@ -47,9 +47,9 @@ data RawStmt
       C
       Hint
       (BN.BaseName, C)
+      (C, RT.RawTerm)
+      (C, RT.RawTerm)
       C
-      (C, (RT.RawTerm, C))
-      (C, (RT.RawTerm, C))
   | RawStmtNominal C Hint (SE.Series (RT.TopGeist, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
 

@@ -236,7 +236,7 @@ toDoc term =
           PI.inject $ D.text proj
         ]
     _ :< Brace c1 (e, c2) -> do
-      SE.decode $ toDoc <$> SE.fromListWithComment SE.Brace SE.Comma [(c1, (e, c2))]
+      decodeBrace False c1 e c2
 
 decodeDef :: T.Text -> C -> RawDef RawIdent -> D.Doc
 decodeDef keyword c def = do
@@ -397,16 +397,16 @@ decPiElimKey kvs = do
 type Rhymed =
   Bool
 
-decPiElimKeyItem :: (Hint, Key, C, C, RawTerm) -> (Key, C, Rhymed, D.Doc)
+decPiElimKeyItem :: (Hint, Key, C, C, RawTerm) -> (Key, C, Rhymed, RawTerm)
 decPiElimKeyItem (_, k, c1, c2, e) =
   case e of
     _ :< Var (N.Var k')
       | k == k' ->
-          (k, c1 ++ c2, True, toDoc e)
+          (k, c1 ++ c2, True, e)
     _ ->
-      (k, c1 ++ c2, False, toDoc e)
+      (k, c1 ++ c2, False, e)
 
-decPiElimKeyItem' :: (Key, C, Rhymed, D.Doc) -> D.Doc
+decPiElimKeyItem' :: (Key, C, Rhymed, RawTerm) -> D.Doc
 decPiElimKeyItem' (k, c, b, d) = do
   if b
     then D.text k
@@ -414,7 +414,7 @@ decPiElimKeyItem' (k, c, b, d) = do
       PI.arrange
         [ PI.horizontal $ D.text k,
           PI.horizontal $ D.text "=",
-          PI.inject $ attachComment c d
+          decodeClauseBody c d
         ]
 
 decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> D.Doc
@@ -430,11 +430,21 @@ decodePatternRow (patArgs, c, body, _) = do
 decodeDoubleArrowClause :: (D.Doc, C, RawTerm) -> D.Doc
 decodeDoubleArrowClause (dom, c, cod) = do
   PI.arrange
-    [ PI.inject dom,
-      PI.inject $ D.text " =>",
-      PI.inject D.line,
-      PI.inject $ attachComment c $ toDoc cod
+    [ PI.horizontal dom,
+      PI.horizontal $ D.text "=>",
+      decodeClauseBody c cod
     ]
+
+decodeClauseBody :: C -> RawTerm -> PI.Piece
+decodeClauseBody c e = do
+  case e of
+    _ :< RT.Brace c1 (inner, c2) -> do
+      PI.inject $ attachComment c $ decodeBrace True c1 inner c2
+    _ -> do
+      let baseDoc = toDoc e
+      if D.isMulti [baseDoc]
+        then PI.inject $ decodeBrace' True c baseDoc []
+        else PI.inject $ attachComment c $ toDoc e
 
 decodePattern :: RP.RawPattern -> D.Doc
 decodePattern pat = do
@@ -469,3 +479,16 @@ decodePatternKeyValue (k, (_, c, v)) = do
 attachComment :: C -> D.Doc -> D.Doc
 attachComment c doc =
   D.join [C.asPrefix c, doc]
+
+decodeBrace :: Bool -> C -> RawTerm -> C -> D.Doc
+decodeBrace forceVertical c1 e c2 = do
+  decodeBrace' forceVertical c1 (toDoc e) c2
+
+decodeBrace' :: Bool -> C -> D.Doc -> C -> D.Doc
+decodeBrace' forceVertical c1 d c2 = do
+  let layout = if forceVertical then PI.nest else PI.idOrNest
+  PI.arrange
+    [ PI.inject $ D.text "{",
+      layout $ D.join [attachComment c1 d, C.asSuffix c2],
+      PI.inject $ D.text "}"
+    ]

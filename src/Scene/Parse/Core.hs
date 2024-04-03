@@ -316,11 +316,11 @@ seriesAngle =
 
 seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBraceList =
-  series Nothing SE.Brace SE.Hyphen
+  series Nothing SE.Brace SE.Comma
 
 seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBraceList' =
-  series' Nothing SE.Brace SE.Hyphen
+  series' Nothing SE.Brace SE.Comma
 
 seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
 seqOrList p =

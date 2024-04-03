@@ -8,6 +8,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
+import Data.Set qualified as S
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.ExternalName qualified as EN
@@ -20,6 +21,7 @@ import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
+import Scene.Parse.Core (asLabel)
 import Scene.Parse.Core qualified as P
 import Scene.Parse.RawTerm
 import Text.Megaparsec
@@ -165,13 +167,12 @@ parseResource = do
   c1 <- P.keyword "resource"
   m <- P.getCurrentHint
   (name, c2) <- P.baseName
-  (c3, ((discarder, copier), c4)) <- P.betweenBrace $ do
-    cDiscarder <- P.delimiter "-"
-    discarder <- rawExpr
-    cCopier <- P.delimiter "-"
-    copier <- rawExpr
-    return ((cDiscarder, discarder), (cCopier, copier))
-  return (RawStmtDefineResource c1 m (name, c2) c3 discarder copier, c4)
+  (handlers, c) <- P.seriesBrace rawExpr
+  case SE.elems handlers of
+    [discarder, copier] -> do
+      return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
+    _ ->
+      failure Nothing (S.fromList [asLabel "discarder and copier"])
 
 parseConstant :: P.Parser (RawStmt, C)
 parseConstant = do

@@ -112,11 +112,11 @@ discernStmt stmt = do
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       stmtList <- defineData m dd args (SE.extract consInfo) loc
       discernStmtList stmtList
-    RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) -> do
+    RawStmtDefineResource _ m (name, _) (_, discarder) (_, copier) _ -> do
       let dd = nameLifter name
       registerTopLevelName nameLifter stmt
       t' <- discern empty $ m :< RT.Tau
-      e' <- discern empty $ m :< RT.Resource [] discarder copier
+      e' <- discern empty $ m :< RT.Resource [] (discarder, []) (copier, [])
       Tag.insertGlobalVar m dd True m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineConst m dd t' e']
