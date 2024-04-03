@@ -39,7 +39,7 @@ parseImport = do
     [ do
         c1 <- P.keyword "import"
         m <- P.getCurrentHint
-        (importItems, loc, c) <- P.seriesBraceList' $ do
+        (importItems, loc, c) <- P.seriesBrace' $ do
           mImportItem <- P.getCurrentHint
           locator <- P.symbol
           (lls, c) <- parseLocalLocatorList'
@@ -76,7 +76,7 @@ parseLocalLocator = do
 parseForeign :: P.Parser (RawStmt, C)
 parseForeign = do
   c1 <- P.keyword "foreign"
-  (val, c) <- P.seriesBraceList parseForeignItem
+  (val, c) <- P.seriesBrace parseForeignItem
   return (RawStmtForeign c1 val, c)
 
 parseForeignItem :: P.Parser (RawForeignItem, C)
@@ -120,7 +120,7 @@ parseNominal :: P.Parser (RawStmt, C)
 parseNominal = do
   c1 <- P.keyword "nominal"
   m <- P.getCurrentHint
-  (geists, c) <- P.seriesBraceList $ do
+  (geists, c) <- P.seriesBrace $ do
     (geist, c) <- parseGeist return
     loc <- P.getCurrentLoc
     return ((geist, loc), c)

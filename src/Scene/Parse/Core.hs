@@ -306,6 +306,10 @@ seriesBrace :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBrace =
   series Nothing SE.Brace SE.Comma
 
+seriesBrace' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seriesBrace' =
+  series' Nothing SE.Brace SE.Comma
+
 seriesBracket :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBracket =
   series Nothing SE.Bracket SE.Comma
