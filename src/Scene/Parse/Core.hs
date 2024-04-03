@@ -198,24 +198,6 @@ betweenBrace' p = do
   c2 <- delimiter "}"
   return (c1, (v, loc, c2))
 
-sepList :: Parser c -> Parser c -> Parser a -> Parser [(c, a)]
-sepList first sep f = do
-  c <- first
-  mv <- optional f
-  case mv of
-    Nothing ->
-      return []
-    Just v -> do
-      rest <- many $ do
-        c' <- sep
-        v' <- f
-        return (c', v')
-      return $ (c, v) : rest
-
-commaList :: Parser C -> Parser a -> Parser [(C, a)]
-commaList first f = do
-  sepList first (delimiter ",") f
-
 _series :: C -> SE.Separator -> Parser (a, C) -> Parser ([(C, a)], C)
 _series leadingComment sep p = do
   case sep of
