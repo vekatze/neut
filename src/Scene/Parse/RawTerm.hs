@@ -177,9 +177,9 @@ rawTermLet mLet = do
     choice
       [ do
           c <- keyword "on"
-          vs <- bareSeries Nothing SE.Comma rawTermNoeticVar
+          vs <- bareSeries Nothing rawTermNoeticVar
           return $ SE.pushComment c vs,
-        return $ SE.emptySeries' Nothing SE.Comma
+        return $ SE.emptySeries' Nothing
       ]
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
@@ -283,7 +283,7 @@ parseGeist nameLifter = do
       [ do
           expDomArgList <- seqOrList preBinder
           return (False, expDomArgList),
-        return (True, (SE.emptySeries SE.Paren SE.Comma, []))
+        return (True, (SE.emptySeries SE.Paren, []))
       ]
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
@@ -294,7 +294,7 @@ parseImplicitArgs :: Parser (SE.Series (RawBinder RT.RawTerm), C)
 parseImplicitArgs =
   choice
     [ parseImplicitArgs',
-      return (SE.emptySeries SE.Angle SE.Comma, [])
+      return (SE.emptySeries SE.Angle, [])
     ]
 
 parseImplicitArgs' :: Parser (SE.Series (RawBinder RT.RawTerm), C)
@@ -457,14 +457,14 @@ rawTermMatch = do
           c1 <- keyword "match"
           return (c1, False)
       ]
-  es <- bareSeries Nothing SE.Comma rawTerm
-  (patternRowList, c) <- seriesBraceList $ rawTermPatternRow (length $ SE.extract es)
+  es <- bareSeries Nothing rawTerm
+  (patternRowList, c) <- seriesBrace $ rawTermPatternRow (length $ SE.extract es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
 rawTermPatternRow patternSize = do
   m <- getCurrentHint
-  patternList <- bareSeries Nothing SE.Comma rawTermPattern
+  patternList <- bareSeries Nothing rawTermPattern
   if SE.isEmpty patternList
     then failure Nothing (S.fromList [asLabel "list of patterns"])
     else do
@@ -634,7 +634,7 @@ rawTermAssert = do
 keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
 keyValueArgs p = do
   c1 <- keyword "of"
-  series (Just ("of", c1)) SE.Brace SE.Comma p
+  series (Just ("of", c1)) SE.Brace p
 
 foldPiElim ::
   Hint ->
@@ -692,7 +692,7 @@ rawTermIntrospect = do
   m <- getCurrentHint
   c1 <- keyword "introspect"
   (key, c2) <- symbol
-  (clauseList, c) <- seriesBraceList rawTermIntrospectiveClause
+  (clauseList, c) <- seriesBrace rawTermIntrospectiveClause
   return (m :< RT.Introspect c1 key c2 clauseList, c)
 
 rawTermIntrospectiveClause :: Parser ((Maybe T.Text, C, RT.RawTerm), C)

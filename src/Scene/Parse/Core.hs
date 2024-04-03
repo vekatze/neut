@@ -201,59 +201,46 @@ betweenBrace' p = do
 
 type HasTrailingComma = Bool
 
-_series :: C -> SE.Separator -> Parser (a, C) -> Parser ([(C, a)], HasTrailingComma, C)
-_series leadingComment sep p = do
-  case sep of
-    SE.Comma -> do
-      choice
-        [ do
-            (v, c) <- p
-            choice
-              [ do
-                  cComma <- delimiter $ SE.getSeparator sep
-                  (vs, b, trailingComment) <- _series (c ++ cComma) sep p
-                  let b' = null vs
-                  return ((leadingComment, v) : vs, b || b', trailingComment),
-                do
-                  return ([(leadingComment, v)], False, c)
-              ],
-          do
-            return ([], False, leadingComment)
-        ]
-    SE.Hyphen -> do
-      choice
-        [ do
-            cHyphen <- delimiter $ SE.getSeparator sep
-            (v, c) <- p
-            (vs, False, trailingComment) <- _series c sep p
-            return ((leadingComment ++ cHyphen, v) : vs, False, trailingComment),
-          do
-            return ([], False, leadingComment)
-        ]
+_series :: C -> Parser (a, C) -> Parser ([(C, a)], HasTrailingComma, C)
+_series leadingComment p = do
+  choice
+    [ do
+        (v, c) <- p
+        choice
+          [ do
+              cComma <- delimiter ","
+              (vs, b, trailingComment) <- _series (c ++ cComma) p
+              let b' = null vs
+              return ((leadingComment, v) : vs, b || b', trailingComment),
+            do
+              return ([(leadingComment, v)], False, c)
+          ],
+      do
+        return ([], False, leadingComment)
+    ]
 
-series :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
-series prefix container sep p = do
+series :: SE.Prefix -> SE.Container -> Parser (a, C) -> Parser (SE.Series a, C)
+series prefix container p = do
   let (open, close) = SE.getContainerPair container
   c1 <- delimiter open
-  (vs, hasTrailingComma, trail) <- _series c1 sep p
+  (vs, hasTrailingComma, trail) <- _series c1 p
   c2 <- delimiter close
   return
     ( SE.Series
         { elems = vs,
           trailingComment = trail,
           prefix = prefix,
-          separator = sep,
           container = Just container,
           hasTrailingComma
         },
       c2
     )
 
-series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, Loc, C)
-series' prefix container sep p = do
+series' :: SE.Prefix -> SE.Container -> Parser (a, C) -> Parser (SE.Series a, Loc, C)
+series' prefix container p = do
   let (opener, closer) = getParserPair container
   c1 <- opener
-  (vs, hasTrailingComma, trail) <- _series c1 sep p
+  (vs, hasTrailingComma, trail) <- _series c1 p
   loc <- getCurrentLoc
   c2 <- closer
   return
@@ -261,7 +248,6 @@ series' prefix container sep p = do
         { elems = vs,
           trailingComment = trail,
           prefix = prefix,
-          separator = sep,
           container = Just container,
           hasTrailingComma
         },
@@ -269,15 +255,14 @@ series' prefix container sep p = do
       c2
     )
 
-bareSeries :: SE.Prefix -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a)
-bareSeries prefix sep p = do
-  (vs, hasTrailingComma, trail) <- _series [] sep p
+bareSeries :: SE.Prefix -> Parser (a, C) -> Parser (SE.Series a)
+bareSeries prefix p = do
+  (vs, hasTrailingComma, trail) <- _series [] p
   return $
     SE.Series
       { elems = vs,
         trailingComment = trail,
         prefix = prefix,
-        separator = sep,
         container = Nothing,
         hasTrailingComma
       }
@@ -296,31 +281,27 @@ getParserPair container =
 
 seriesParen :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesParen =
-  series Nothing SE.Paren SE.Comma
+  series Nothing SE.Paren
 
 seriesParen' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesParen' =
-  series' Nothing SE.Paren SE.Comma
+  series' Nothing SE.Paren
 
 seriesBrace :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBrace =
-  series Nothing SE.Brace SE.Comma
+  series Nothing SE.Brace
+
+seriesBrace' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seriesBrace' =
+  series' Nothing SE.Brace
 
 seriesBracket :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBracket =
-  series Nothing SE.Bracket SE.Comma
+  series Nothing SE.Bracket
 
 seriesAngle :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesAngle =
-  series Nothing SE.Angle SE.Comma
-
-seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
-seriesBraceList =
-  series Nothing SE.Brace SE.Comma
-
-seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
-seriesBraceList' =
-  series' Nothing SE.Brace SE.Comma
+  series Nothing SE.Angle
 
 seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
 seqOrList p =
@@ -329,7 +310,7 @@ seqOrList p =
         seriesParen p,
       do
         c1 <- keyword "of"
-        series (Just ("of", c1)) SE.Brace SE.Comma p
+        series (Just ("of", c1)) SE.Brace p
     ]
 
 seqOrList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
@@ -339,7 +320,7 @@ seqOrList' p =
         seriesParen' p,
       do
         c1 <- keyword "of"
-        series' (Just ("of", c1)) SE.Brace SE.Comma p
+        series' (Just ("of", c1)) SE.Brace p
     ]
 
 var :: Parser ((Hint, T.Text), C)

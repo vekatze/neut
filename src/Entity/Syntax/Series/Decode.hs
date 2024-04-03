@@ -13,45 +13,31 @@ import Entity.Syntax.Series
 decode :: Series D.Doc -> D.Doc
 decode series = do
   let prefix' = decodePrefix series
-  let sep = separator series
   case (container series, null (elems series)) of
     (Nothing, True) ->
       D.Nil
     (Nothing, _) ->
       PI.arrange
         [ PI.inject prefix',
-          PI.inject $ PI.arrange $ intercalate sep (elems series) (hasTrailingComma series) (trailingComment series)
+          PI.inject $ PI.arrange $ intercalate (elems series) (hasTrailingComma series) (trailingComment series)
         ]
     (Just Angle, True) ->
       D.Nil
     (Just k, _) -> do
       let (open, close) = getContainerPair k
-      case sep of
-        Hyphen ->
-          PI.arrange
-            [ PI.inject prefix',
-              PI.inject $ D.text open,
-              PI.inject $ PI.arrange $ intercalate sep (elems series) False (trailingComment series),
-              PI.inject $ D.text close
-            ]
-        Comma -> do
-          let layout = if hasTrailingComma series then PI.nest else PI.idOrNest
-          let arranger = if hasTrailingComma series then PI.arrangeVertical else PI.arrange
-          PI.arrange
-            [ PI.inject prefix',
-              PI.inject $ D.text open,
-              layout $ arranger $ intercalate sep (elems series) (hasTrailingComma series) (trailingComment series),
-              PI.inject $ D.text close
-            ]
+      let layout = if hasTrailingComma series then PI.nest else PI.idOrNest
+      let arranger = if hasTrailingComma series then PI.arrangeVertical else PI.arrange
+      PI.arrange
+        [ PI.inject prefix',
+          PI.inject $ D.text open,
+          layout $ arranger $ intercalate (elems series) (hasTrailingComma series) (trailingComment series),
+          PI.inject $ D.text close
+        ]
 
-intercalate :: Separator -> [(C, D.Doc)] -> Bool -> C -> [PI.Piece]
-intercalate sep elems hasTrailingComma trailingComment = do
-  case sep of
-    Comma -> do
-      let elems' = map (uncurry attachComment) elems
-      commaSeq elems' hasTrailingComma trailingComment
-    Hyphen ->
-      [PI.inject $ D.join [listSeq elems trailingComment, D.line]]
+intercalate :: [(C, D.Doc)] -> Bool -> C -> [PI.Piece]
+intercalate elems hasTrailingComma trailingComment = do
+  let elems' = map (uncurry attachComment) elems
+  commaSeq elems' hasTrailingComma trailingComment
 
 commaSeq :: [D.Doc] -> Bool -> C -> [PI.Piece]
 commaSeq elems hasTrailingComma trailingComment =
@@ -68,16 +54,6 @@ commaSeq elems hasTrailingComma trailingComment =
         else [PI.appendCommaIfVertical d, PI.inject $ C.asSuffix trailingComment]
     d : rest -> do
       [PI.inject d, PI.delimiterLeftAligned $ D.text ","] ++ commaSeq rest hasTrailingComma trailingComment
-
-listSeq :: [(C, D.Doc)] -> C -> D.Doc
-listSeq elems trail =
-  case elems of
-    [] ->
-      if null trail
-        then D.Nil
-        else D.nest D.indent $ D.join [D.line, C.decode trail]
-    (c, d) : rest -> do
-      D.join [decodeListItem (c, d), listSeq rest trail]
 
 decodePrefix :: Series a -> D.Doc
 decodePrefix series =
@@ -96,32 +72,19 @@ decodePrefix series =
               D.line
             ]
 
-decodeListItem :: (C, D.Doc) -> D.Doc
-decodeListItem (c, d) = do
-  if null c
-    then D.join [D.line, D.text "- ", D.nest D.indent d]
-    else
-      D.join
-        [ D.nest D.indent $ D.join [D.line, C.decode c],
-          D.line,
-          D.join [D.text "- ", D.nest D.indent d]
-        ]
-
 decodeHorizontallyIfPossible :: Series D.Doc -> D.Doc
 decodeHorizontallyIfPossible series = do
-  case separator series of
-    Comma
-      | Just k <- container series,
-        isHorizontalSeries series -> do
-          let prefix' = decodePrefix series
-          let (open, close) = getContainerPair k
-          let elems' = map snd $ elems series
-          PI.arrange
-            [ PI.inject prefix',
-              PI.inject $ D.text open,
-              PI.inject $ PI.arrange $ commaSeqHorizontal elems',
-              PI.inject $ D.text close
-            ]
+  case container series of
+    Just k | isHorizontalSeries series -> do
+      let prefix' = decodePrefix series
+      let (open, close) = getContainerPair k
+      let elems' = map snd $ elems series
+      PI.arrange
+        [ PI.inject prefix',
+          PI.inject $ D.text open,
+          PI.inject $ PI.arrange $ commaSeqHorizontal elems',
+          PI.inject $ D.text close
+        ]
     _ ->
       decode series
 
