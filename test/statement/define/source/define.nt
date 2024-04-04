@@ -34,7 +34,7 @@ define ♥️a🌟あ🌕α$-$`~!?@#%^&+|\_(): tau {
 }
 
 nominal {
-  is-odd(x: int): int,
+- is-odd(x: int): int
 }
 
 define is-even(x: int): int {

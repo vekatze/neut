@@ -1,13 +1,16 @@
 data nat {
-  Zero,
-  Succ(nat),
+- Zero
+- Succ(nat)
 }
 
 define nil-cons-cons(xs: nat): int {
   match xs {
-    Zero => 1,
-    Succ(Succ(_)) => 2,
-    Succ(_) => 3,
+  - Zero =>
+    1
+  - Succ(Succ(_)) =>
+    2
+  - Succ(_) =>
+    3
   }
 }
 

@@ -1,21 +1,21 @@
 import {
-  core.external {free, malloc},
-  core.memory {load-int, store-int},
+- core.external {free, malloc}
+- core.memory {load-int, store-int}
 }
 
 resource noisy-boxed-int {
-  function (v: int) {
+- function (v: int) {
     print("discarded.\n");
     free(v);
     0
-  },
-  function (v: int) {
+  }
+- function (v: int) {
     print("copied.\n");
     let orig-value = load-int(v) in
     let new-ptr = malloc(1) in
     magic store(int, orig-value, new-ptr);
     new-ptr
-  },
+  }
 }
 
 // provide a way to introduce new boxed integer

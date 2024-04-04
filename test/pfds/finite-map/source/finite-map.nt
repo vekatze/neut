@@ -1,59 +1,58 @@
 data order {
-  LT,
-  EQ,
-  GT,
+- LT
+- EQ
+- GT
 }
 
 data finite-map(a, b) {
-  Leaf,
-  Node(finite-map(a, b), a, b, finite-map(a, b)),
+- Leaf
+- Node(finite-map(a, b), a, b, finite-map(a, b))
 }
 
 data finite-map-signature(a, b) {
-  Finite-Map of {
-    empty: finite-map(a, b),
-    insert: (a, b, finite-map(a, b)) -> finite-map(a, b),
-    lookup: (a, &finite-map(a, b)) -> ?b,
-  },
+- Finite-Map of {
+  - empty: finite-map(a, b)
+  - insert: (a, b, finite-map(a, b)) -> finite-map(a, b)
+  - lookup: (a, &finite-map(a, b)) -> ?b
+  }
 }
 
 define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-signature(a, b) {
   Finite-Map of {
-    empty = {
-      Leaf
-    },
-    insert = {
-      define insert(key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
-        match haystack {
-          Leaf => {
-            Node(Leaf, key, value, Leaf)
-          },
-          Node(left, k, v, right) => {
-            match compare(key, k) {
-              LT => Node(insert(key, value, left), k, v, right),
-              EQ => Node(left, k, value, right),
-              GT => Node(left, k, v, insert(key, value, right)),
-            }
-          },
+  - empty =
+    Leaf
+  - insert =
+    define insert(key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
+      match haystack {
+      - Leaf =>
+        Node(Leaf, key, value, Leaf)
+      - Node(left, k, v, right) =>
+        match compare(key, k) {
+        - LT =>
+          Node(insert(key, value, left), k, v, right)
+        - EQ =>
+          Node(left, k, value, right)
+        - GT =>
+          Node(left, k, v, insert(key, value, right))
         }
       }
-    },
-    lookup = {
-      define lookup(key: a, haystack: &finite-map(a, b)): ?b {
-        case haystack {
-          Leaf => {
-            none()
-          },
-          Node(left, k, v, right) => {
-            match compare(key, *k) {
-              LT => lookup(key, left),
-              EQ => Pass(*v),
-              GT => lookup(key, right),
-            }
-          },
+    }
+  - lookup =
+    define lookup(key: a, haystack: &finite-map(a, b)): ?b {
+      case haystack {
+      - Leaf =>
+        none()
+      - Node(left, k, v, right) =>
+        match compare(key, *k) {
+        - LT =>
+          lookup(key, left)
+        - EQ =>
+          Pass(*v)
+        - GT =>
+          lookup(key, right)
         }
       }
-    },
+    }
   }
 }
 
@@ -78,13 +77,15 @@ define main(): unit {
   let _ = mymap in
   let result on mymap =
     match lookup(2, mymap) {
-      Fail(_) => 1,
-      Pass(xs) => {
-        match xs {
-          Nil => 10,
-          Cons(_, _) => 20,
-        }
-      },
+    - Fail(_) =>
+      1
+    - Pass(xs) =>
+      match xs {
+      - Nil =>
+        10
+      - Cons(_, _) =>
+        20
+      }
     }
   in
   let _ = mymap in

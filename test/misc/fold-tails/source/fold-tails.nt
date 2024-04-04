@@ -1,54 +1,68 @@
 data nat {
-  Zero,
-  Succ(nat),
+- Zero
+- Succ(nat)
 }
 
 define add-nat(x: nat, y: nat): nat {
   match x {
-    Zero => y,
-    Succ(m) => add-nat(m, Succ(y)),
+  - Zero =>
+    y
+  - Succ(m) =>
+    add-nat(m, Succ(y))
   }
 }
 
 define mul-nat(x: nat, y: nat): nat {
   match x {
-    Zero => Zero,
-    Succ(m) => add-nat(mul-nat(m, y), y),
+  - Zero =>
+    Zero
+  - Succ(m) =>
+    add-nat(mul-nat(m, y), y)
   }
 }
 
 define interpret(n: nat): int {
   match n {
-    Zero => 0,
-    Succ(m) => add-int(1, interpret(m)),
+  - Zero =>
+    0
+  - Succ(m) =>
+    add-int(1, interpret(m))
   }
 }
 
 define gen(n: nat): list(nat) {
   match n {
-    Zero => Nil,
-    Succ(m) => Cons(n, gen(m)),
+  - Zero =>
+    Nil
+  - Succ(m) =>
+    Cons(n, gen(m))
   }
 }
 
 define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a {
   match xs {
-    Nil => acc,
-    Cons(y, ys) => f(y, fold-r(a, b, f, acc, ys)),
+  - Nil =>
+    acc
+  - Cons(y, ys) =>
+    f(y, fold-r(a, b, f, acc, ys))
   }
 }
 
 define tails(a: tau, xs: list(a)): list(list(a)) {
   match xs {
-    Nil => Cons(Nil, Nil),
-    Cons(_, xs) => Cons(xs, tails(a, xs)),
+  - Nil =>
+    Cons(Nil, Nil)
+  - Cons(_, xs) =>
+    Cons(xs, tails(a, xs))
   }
 }
 
 define head(xs: list(nat)): nat {
   match xs {
-    Nil => Zero,
-    Cons(y, _) => y,
+  - Nil =>
+    Zero
+  - Cons(y, _) =>
+    y
   }
 }
 
@@ -69,12 +83,9 @@ define main(): unit {
   let _ = yss in
   let zs =
     // [26, ..., 1]
-    map(
-      function (l) {
-        head(l)
-      },
-      yss,
-    )
+    map(function (l) {
+      head(l)
+    }, yss)
   in
   let _ = zs in
   let _ = zs in
@@ -83,15 +94,9 @@ define main(): unit {
   let _ = zs in
   let result-nat =
     // 26 + ... + 1 = 351
-    fold-r(
-      nat,
-      nat,
-      function (a, b) {
-        add-nat(a, b)
-      },
-      Zero,
-      zs,
-    )
+    fold-r(nat, nat, function (a, b) {
+      add-nat(a, b)
+    }, Zero, zs)
   in
   let _ = result-nat in
   let _ = result-nat in
