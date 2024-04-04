@@ -1,19 +1,19 @@
 import {
-- core.int.text {parse-int}
-- core.random {random}
+  core.int.text {parse-int},
+  core.random {random},
 }
 
 foreign {
-- arc4random_uniform(int): int
+  arc4random_uniform(int): int,
 }
 
 data int-list {
-- My-Nil
-- My-Cons(int, int-list)
+| My-Nil
+| My-Cons(int, int-list)
 }
 
 nominal {
-- _insert(v: int, xs: int-list): int-list
+  _insert(v: int, xs: int-list): int-list,
 }
 
 define _swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
@@ -26,18 +26,18 @@ define _swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
 
 define _insert(v: int, xs: int-list): int-list {
   match xs {
-  - My-Nil =>
+  | My-Nil =>
     My-Cons(v, My-Nil)
-  - My-Cons(y, ys) =>
+  | My-Cons(y, ys) =>
     _swap-gt(gt-int(v, y), v, y, ys)
   }
 }
 
 define sort(xs: int-list, acc: int-list): int-list {
   match xs {
-  - My-Nil =>
+  | My-Nil =>
     acc
-  - My-Cons(y, ys) =>
+  | My-Cons(y, ys) =>
     sort(ys, _insert(y, acc))
   }
 }
@@ -54,21 +54,21 @@ define rand-list(len: int, acc: int-list): int-list {
 define main(): unit {
   let args = get-argv() in
   match args {
-  - [_, size-str] =>
+  | [_, size-str] =>
     let _ on size-str =
       match parse-int(size-str) {
-      - Pass(size) =>
+      | Pass(size) =>
         let some-list = rand-list(size, My-Nil) in
         let some-list = sort(some-list, My-Nil) in
         let _ = some-list in
         Unit
-      - Fail(_) =>
+      | Fail(_) =>
         printf("couldn't parse `{}` as an integer\n", [*size-str])
       }
     in
     let _ = size-str in
     Unit
-  - _ =>
+  | _ =>
     print("usage: bubble-nt SIZE\n")
   }
 }
