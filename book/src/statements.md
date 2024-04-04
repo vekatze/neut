@@ -17,11 +17,11 @@
 
 ```neut
 import {
-- this.foo
-- this.item.bar {some-func, other-func}
-- sample.buz
-- Qux
-- ZZ
+  Qux,
+  ZZ,
+  sample.buz,
+  this.foo,
+  this.item.bar {some-func, other-func},
 }
 ```
 
@@ -43,7 +43,7 @@ You can specify names in `{}`. The names specified here can be used without qual
 
 ```neut
 import {
-- this.item.bar {some-func}
+  this.item.bar {some-func},
 }
 
 define yo(): unit {
@@ -55,7 +55,7 @@ Unlisted names must be qualified:
 
 ```neut
 import {
-- this.item.bar
+  this.item.bar,
 }
 
 define yo(): unit {
@@ -83,7 +83,7 @@ Then, the code
 
 ```neut
 import {
-- this.item.bar
+  this.item.bar,
 }
 
 define use-some-func(): unit {
@@ -95,7 +95,7 @@ can be rewritten into:
 
 ```neut
 import {
-- Qux
+  Qux,
 }
 
 define use-some-func(): unit {
@@ -239,23 +239,21 @@ define use-constant(): int {
 
 ```neut
 data nat {
-- Zero
-- Succ(nat)
+| Zero
+| Succ(nat)
 }
 
 data list(a) {
-- Nil
-- Cons(a, list(a))
+| Nil
+| Cons(a, list(a))
 }
 
 data config {
-- Config of {
-  - count: int
-  - foo-path: &text
-  - colorize: bool
-  }
-  // the above is equivalent to:
-  //   Config(count: int, foo-path: &text, colorize: bool)
+| Config(
+    count: int,
+    foo-path: &text,
+    colorize: bool,
+  )
 }
 ```
 
@@ -265,9 +263,9 @@ You can use the content of an ADT value by using `match` or `case`:
 define length<a>(xs: list(a)): int {
   // destruct ADT values using `match`
   match xs {
-  - Nil =>
+  | Nil =>
     0
-  - Cons(_, ys) =>
+  | Cons(_, ys) =>
     add-int(1, length(ys))
   }
 }
@@ -275,9 +273,9 @@ define length<a>(xs: list(a)): int {
 define length-noetic<a>(xs: &list(a)): int {
   // read noetic ADT values using `case`
   case xs {
-  - Nil =>
+  | Nil =>
     0
-  - Cons(_, ys) =>
+  | Cons(_, ys) =>
     add-int(1, length-noetic(ys))
   }
 }
@@ -295,12 +293,12 @@ define use-config(c: config) {
 
 ```neut
 resource my-new-type {
-- function (value: int) {
+  function (value: int) {
     // .. discard the value ..
-  }
-- function (value: int) {
+  },
+  function (value: int) {
     // .. create a new clone of the value and return it as int ..
-  }
+  },
 }
 ```
 
@@ -315,18 +313,18 @@ For example, the following is a definition of a "boxed" integer type with some n
 ```neut
 resource boxed-int {
   // discarder
-- function (v: int) {
+  function (v: int) {
     print("discarded!\n");
     free(v);
     0
-  }
+  },
   // copier
-- function (v: int) {
+  function (v: int) {
     let orig-value = load-int(v) in
     let new-ptr = malloc(1) in
     magic store(int, orig-value, new-ptr);
     new-ptr
-  }
+  },
 }
 
 // provide a way to introduce new boxed integer
@@ -349,7 +347,7 @@ You can find an example usage of `resource` in the `int8-array.nt` in the [core 
 
 ```neut
 nominal {
-- is-odd(x: int): int
+  is-odd(x: int): int,
 }
 ```
 
@@ -357,7 +355,7 @@ An entry of `nominal` is the same form as found in `define`. Nominal definitions
 
 ```neut
 nominal {
-- is-odd(x: int): int // nominal definition of `is-odd`
+  is-odd(x: int): int, // nominal definition of `is-odd`
 }
 
 // given a non-negative integer `x`, returns true if `x` is even.
@@ -388,7 +386,7 @@ If a nominal definition isn't followed by a real definition, the compiler report
 
 ```neut
 foreign {
-- add_const(int): int
+  add_const(int): int,
 }
 ```
 
@@ -408,7 +406,7 @@ You compile this file with `clang -c` to produce an object file and put it into 
 
 ```neut
 foreign {
-- add_const(int): int
+  add_const(int): int,
 }
 
 define main(): unit {
@@ -434,7 +432,7 @@ Thus, the next is a valid use of `foreign`:
 
 ```neut
 foreign {
-- llvm.sin.f64(float): float
+  llvm.sin.f64(float): float,
 }
 
 define sin(x: float): float {
@@ -446,19 +444,19 @@ Syscall wrapper functions and library functions are also available:
 
 ```neut
 foreign {
-- write(int, pointer, int): int // write(2)
-- exit(int): void // exit(3)
-- pthread_exit(pointer): void // pthread_exit(3)
+  write(int, pointer, int): int, // write(2)
+  exit(int): void, // exit(3)
+  pthread_exit(pointer): void, // pthread_exit(3)
 }
 ```
 
 In foreign entries, you can use `int`, `int1`, ..., `int64` `float`, `float16`, `float32`, `float64`, `void`, and `pointer` as types.
 
-When declaring the interface of a variadic function, declare only the non-variadic part:
+When declaring a variadic function, declare only the non-variadic part:
 
 ```neut
 foreign {
-- printf(pointer): void
+  printf(pointer): void,
 }
 ```
 

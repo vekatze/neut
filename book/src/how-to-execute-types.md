@@ -15,7 +15,7 @@ Here, we'll see how a type is translated into a function that discards/copies th
 
 ```neut
 data item {
-- New(int, int)
+| New(int, int)
 }
 ```
 
@@ -182,8 +182,8 @@ ADTs like the below also have resource exponentials, of course:
 
 ```neut
 data list(a) {
-- Nil
-- Cons(a, list(a))
+| Nil
+| Cons(a, list(a))
 }
 ```
 

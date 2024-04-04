@@ -108,17 +108,17 @@ Thanks to its static nature, memory allocation in Neut can sometimes be optimize
 
 ```neut
 data int-list {
-- Nil
-- Cons(int, int-list)
+| Nil
+| Cons(int, int-list)
 }
 
 // [1, 5, 9] => [2, 6, 10]
 define increment(xs: int-list): int-list {
   match xs {
-  - Nil =>
+  | Nil =>
     Nil
   // ↓ the `Cons` clause
-  - Cons(x, rest) =>
+  | Cons(x, rest) =>
     Cons(add-int(x, 1), increment(rest))
   }
 }
@@ -148,9 +148,9 @@ This optimization "penetrates" branching. For example, consider the following:
 // (an `insert` function in bubble sort)
 define insert(v: int, xs: int-list): int-list {
   match xs {
-  - Nil =>
+  | Nil =>
     // ...
-  - Cons(y, ys) =>           // (X)
+  | Cons(y, ys) =>           // (X)
     if gt-int(v, y) {
       Cons(y, insert(v, ys)) // (Y)
     } else {
@@ -167,9 +167,9 @@ On the other hand, consider rewriting the code above into something like the fol
 ```neut
 define foo(v: int, xs: int-list): int-list {
   match xs {
-  - Nil =>
+  | Nil =>
     // ...
-  - Cons(y, ys) =>         // (X')
+  | Cons(y, ys) =>         // (X')
     if gt-int(v, y) {
       Nil                  // (Y')
     } else {
@@ -193,7 +193,7 @@ Let's see how the name of a module alias is resolved. Here, the name of a module
 
 ```neut
 import {
-- core.text.io
+  core.text.io,
 }
 
 define use-external-module-function(): text {
@@ -241,7 +241,7 @@ Let's see how `this` is resolved. Here, `this` is a component of a global variab
 
 ```neut
 import {
-- this.path.to.file
+  this.path.to.file,
 }
 
 define use-my-function(): text {

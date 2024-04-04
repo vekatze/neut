@@ -191,8 +191,8 @@ The syntax sugar `of` can be used to rewrite the above `use-my-func` into the be
 define use-my-func(): int {
   // 🌟
   my-func of {
-  - x = 10
-  - y = 20
+    x = 10,
+    y = 20,
   }
 }
 ```
@@ -206,10 +206,10 @@ You can use the statement `data` to define ADTs:
 ```neut
 // 🌟
 data my-nat {
-- My-Zero
-- My-Succ(my-nat)
+| My-Zero
+| My-Succ(my-nat)
 }
-// Haskell Equivalent:
+// In Haskell:
 //   data my-nat
 //     = My-Zero
 //     | My-Succ my-nat
@@ -219,10 +219,10 @@ data my-nat {
 
 // 🌟
 data my-list(a) {
-- My-Nil
-- My-Cons(a, my-list(a))
+| My-Nil
+| My-Cons(a, my-list(a))
 }
-// Haskell Equivalent:
+// In Haskell:
 //   data my-list a
 //     = My-Nil
 //     | My-Cons a (my-list a)
@@ -233,19 +233,19 @@ Arguments in constructors can optionally have explicit names:
 ```neut
 data config {
   // 🌟
-- Config(count: int, cond: bool)
+| Config(count: int, cond: bool)
 }
 ```
 
-The syntax sugar `of` can also be used to rewrite the above definition of `config` into:
+You may want to write this vertically using a trailing comma:
 
 ```neut
 data config {
   // 🌟
-- Config of {
-  - count: int
-  - cond: bool
-  }
+| Config(
+    count: int,
+    cond: bool,
+  )
 }
 ```
 
@@ -262,8 +262,8 @@ define make-my-list(): my-list(int) {
 define make-config(): term {
   // 🌟
   Config of {
-  - count = 10
-  - cond = True
+    count = 10,
+    cond = True,
   }
 }
 ```
@@ -276,9 +276,9 @@ You can use `match` to destructure ADT values:
 define sum(xs: my-list(int)): int {
   // 🌟
   match xs {
-  - My-Nil =>
+  | My-Nil =>
     0
-  - My-Cons(y, ys) =>
+  | My-Cons(y, ys) =>
     add-int(y, sum(ys))
   }
 }
@@ -289,24 +289,24 @@ Nested matching is also possible:
 ```neut
 define foo(xs: my-list(int)): int {
   match xs {
-  - My-Nil =>
+  | My-Nil =>
     0
     // 🌟
-  - My-Cons(y, My-Cons(z, My-Nil)) =>
+  | My-Cons(y, My-Cons(z, My-Nil)) =>
     1
-  - My-Cons(_, _) =>
+  | My-Cons(_, _) =>
     2
   }
 }
 ```
 
-The core library defines `bool` with the following definition:
+Incidentally, the core library defines `bool` as follows:
 
 ```neut
 // 🌟
 data bool {
-- False
-- True
+| False
+| True
 }
 ```
 

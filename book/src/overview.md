@@ -14,7 +14,7 @@ Neut doesn't use GCs or regions. Instead, it takes a _type-directed approach_ to
 
 ## How Does it Look?
 
-Like the below:
+Like below:
 
 ```neut
 // the obligated hello world
@@ -24,16 +24,16 @@ define hello(): unit {
 
 // algebraic data types (tau = the type of types)
 data my-list(a: tau) {
-- Nil
-- Cons(a, my-list(a))
+| Nil
+| Cons(a, my-list(a))
 }
 
 // a recursive function with pattern matching
 define noisy-length(a: tau, xs: my-list(a)): int {
   match xs {
-  - Nil =>
+  | Nil =>
     0
-  - Cons(_, ys) =>
+  | Cons(_, ys) =>
     let my-message = "hey\n" in
     print(my-message);
     add-int(1, noisy-length(a, ys))
