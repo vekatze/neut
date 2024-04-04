@@ -81,10 +81,10 @@ emptySeries' container separator =
       hasOptionalSeparator = False
     }
 
-singleton :: Maybe Container -> Separator -> (a, C) -> Series a
-singleton container separator (v, c) =
+singleton :: Maybe Container -> Separator -> C -> (a, C) -> Series a
+singleton container separator leadingComment (v, c) =
   Series
-    { elems = [([], v)],
+    { elems = [(leadingComment, v)],
       trailingComment = c,
       prefix = Nothing,
       separator,
@@ -127,7 +127,7 @@ fromList'' xs =
       hasOptionalSeparator = False
     }
 
-fromListWithComment :: Container -> Separator -> [(C, (a, C))] -> Series a
+fromListWithComment :: Maybe Container -> Separator -> [(C, (a, C))] -> Series a
 fromListWithComment container separator xs = do
   let (xs', trailingComment) = _assoc xs []
   Series
@@ -135,7 +135,7 @@ fromListWithComment container separator xs = do
       trailingComment,
       prefix = Nothing,
       separator,
-      container = Just container,
+      container = container,
       hasOptionalSeparator = False
     }
 

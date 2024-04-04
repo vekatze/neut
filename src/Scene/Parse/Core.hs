@@ -16,7 +16,6 @@ import Entity.Error qualified as E
 import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
 import Entity.Syntax.Block
-import Entity.Syntax.Series (Series (hasOptionalSeparator))
 import Entity.Syntax.Series qualified as SE
 import Path
 import Text.Megaparsec
@@ -209,52 +208,56 @@ _series container separator leadingComment p = do
 
 _seriesAnd :: Maybe SE.Container -> C -> Parser (a, C) -> Parser (SE.Series a)
 _seriesAnd container leadingComment p = do
-  let comma = SE.Comma
-  se <- _seriesElems container comma leadingComment p
-  choice
-    [ do
-        cComma <- delimiter $ SE.getSeparator comma
-        return $ se {hasOptionalSeparator = True, SE.trailingComment = SE.trailingComment se ++ cComma},
-      do
-        return se
-    ]
+  _seriesSepTrail False container SE.Comma leadingComment p
 
 _seriesOr :: Maybe SE.Container -> C -> Parser (a, C) -> Parser (SE.Series a)
 _seriesOr container leadingComment p = do
-  let bar = SE.Bar
+  _seriesSepLead container SE.Bar leadingComment p
+
+_seriesSepTrail :: Bool -> Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepTrail afterComma container separator leadingComment p = do
   choice
-    [ do
-        cBar <- delimiter $ SE.getSeparator bar
-        se <- _seriesElems container bar (leadingComment ++ cBar) p
-        return $ se {hasOptionalSeparator = True},
-      do
-        _seriesElems container bar leadingComment p
+    [ _seriesSepTrail1 container separator leadingComment p,
+      return (SE.emptySeries container separator) {SE.hasOptionalSeparator = afterComma}
     ]
 
-_seriesElems :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
-_seriesElems container separator leadingComment p = do
+_seriesSepTrail1 :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepTrail1 container separator leadingComment p = do
+  (v, c) <- p
   choice
     [ do
-        (v, c) <- p
-        rest <- _seriesElems' container separator c p
+        cSep <- delimiter $ SE.getSeparator separator
+        rest <- _seriesSepTrail True container separator (c ++ cSep) p
         return $ SE.cons (leadingComment, v) rest,
       do
-        return (SE.emptySeries container separator) {SE.trailingComment = leadingComment}
+        return $ SE.singleton container separator leadingComment (v, c)
     ]
 
-_seriesElems' :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
-_seriesElems' container separator leadingComment p = do
+_seriesSepLead :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepLead container separator leadingComment p = do
   choice
     [ do
-        (cSep, (v, c)) <- try $ do
-          cSep <- delimiter $ SE.getSeparator separator
-          vc <- p
-          return (cSep, vc)
-        rest <- _seriesElems' container separator c p
-        return $ SE.cons (leadingComment ++ cSep, v) rest,
-      do
-        return (SE.emptySeries container separator) {SE.trailingComment = leadingComment}
+        cSep <- delimiter $ SE.getSeparator separator
+        se <- _seriesSepBy1 container separator (cSep ++ leadingComment) p
+        return se {SE.hasOptionalSeparator = True},
+      _seriesSepBy container separator leadingComment p
     ]
+
+_seriesSepBy :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepBy container separator leadingComment p = do
+  choice
+    [ _seriesSepBy1 container separator leadingComment p,
+      return $ SE.pushComment leadingComment $ SE.emptySeries container separator
+    ]
+
+_seriesSepBy1 :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepBy1 container separator leadingComment p = do
+  v <- p
+  elems <- many $ do
+    cSep <- delimiter $ SE.getSeparator separator
+    val <- p
+    return (cSep, val)
+  return $ SE.fromListWithComment container separator $ (leadingComment, v) : elems
 
 series :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
 series prefix container separator p = do
