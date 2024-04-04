@@ -203,24 +203,24 @@ _series :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (S
 _series container separator leadingComment p = do
   case separator of
     SE.Comma -> do
-      _seriesComma container leadingComment p
+      _seriesAnd container leadingComment p
     SE.Bar -> do
-      _seriesBar container leadingComment p
+      _seriesOr container leadingComment p
 
-_seriesComma :: Maybe SE.Container -> C -> Parser (a, C) -> Parser (SE.Series a)
-_seriesComma container leadingComment p = do
+_seriesAnd :: Maybe SE.Container -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesAnd container leadingComment p = do
   let comma = SE.Comma
   se <- _seriesElems container comma leadingComment p
   choice
     [ do
-        cBar <- delimiter $ SE.getSeparator comma
-        return $ se {hasOptionalSeparator = True, SE.trailingComment = SE.trailingComment se ++ cBar},
+        cComma <- delimiter $ SE.getSeparator comma
+        return $ se {hasOptionalSeparator = True, SE.trailingComment = SE.trailingComment se ++ cComma},
       do
         return se
     ]
 
-_seriesBar :: Maybe SE.Container -> C -> Parser (a, C) -> Parser (SE.Series a)
-_seriesBar container leadingComment p = do
+_seriesOr :: Maybe SE.Container -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesOr container leadingComment p = do
   let bar = SE.Bar
   choice
     [ do
@@ -236,16 +236,24 @@ _seriesElems container separator leadingComment p = do
   choice
     [ do
         (v, c) <- p
-        choice
-          [ do
-              cSep <- delimiter $ SE.getSeparator separator
-              elems <- _seriesElems container separator (c ++ cSep) p
-              return $ SE.cons (leadingComment, v) elems,
-            do
-              return $ SE.singleton container separator (v, c)
-          ],
+        rest <- _seriesElems' container separator c p
+        return $ SE.cons (leadingComment, v) rest,
       do
-        return $ SE.emptySeries container separator
+        return (SE.emptySeries container separator) {SE.trailingComment = leadingComment}
+    ]
+
+_seriesElems' :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesElems' container separator leadingComment p = do
+  choice
+    [ do
+        (cSep, (v, c)) <- try $ do
+          cSep <- delimiter $ SE.getSeparator separator
+          vc <- p
+          return (cSep, vc)
+        rest <- _seriesElems' container separator c p
+        return $ SE.cons (leadingComment ++ cSep, v) rest,
+      do
+        return (SE.emptySeries container separator) {SE.trailingComment = leadingComment}
     ]
 
 series :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
