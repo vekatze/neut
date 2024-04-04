@@ -326,26 +326,6 @@ seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBraceList' =
   series' Nothing SE.Brace SE.Bar
 
-seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
-seqOrList p =
-  choice
-    [ do
-        seriesParen p,
-      do
-        c1 <- keyword "of"
-        series (Just ("of", c1)) SE.Brace SE.Comma p
-    ]
-
-seqOrList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
-seqOrList' p =
-  choice
-    [ do
-        seriesParen' p,
-      do
-        c1 <- keyword "of"
-        series' (Just ("of", c1)) SE.Brace SE.Comma p
-    ]
-
 var :: Parser ((Hint, T.Text), C)
 var = do
   m <- getCurrentHint

@@ -259,18 +259,21 @@ rawTermHole = do
 
 parseDef :: (BN.BaseName -> App a) -> Parser (RT.RawDef a, C)
 parseDef nameLifter = do
-  (topGeist, c1) <- parseGeist nameLifter
+  (geist, c1) <- parseGeist nameLifter
   (c2, ((e, c3), loc, c)) <- betweenBrace' rawExpr
-  return
-    ( RT.RawDef
-        { geist = topGeist,
-          leadingComment = c1 ++ c2,
-          body = e,
-          trailingComment = c3,
-          endLoc = loc
-        },
-      c
-    )
+  if RT.isConstLike geist
+    then lift $ Throw.raiseError (RT.loc geist) "the argument list is missing"
+    else
+      return
+        ( RT.RawDef
+            { geist,
+              leadingComment = c1 ++ c2,
+              body = e,
+              trailingComment = c3,
+              endLoc = loc
+            },
+          c
+        )
 
 parseGeist :: (BN.BaseName -> App a) -> Parser (RT.RawGeist a, C)
 parseGeist nameLifter = do
@@ -281,7 +284,7 @@ parseGeist nameLifter = do
   (isConstLike, expArgs@(expSeries, _)) <- do
     choice
       [ do
-          expDomArgList <- seqOrList preBinder
+          expDomArgList <- seriesParen preBinder
           return (False, expDomArgList),
         return (True, (SE.emptySeries SE.Paren SE.Comma, []))
       ]

@@ -129,7 +129,7 @@ parseNominal = do
 parseDataArgs :: P.Parser (Maybe (RT.Args RT.RawTerm))
 parseDataArgs = do
   choice
-    [ Just <$> try (P.seqOrList preBinder),
+    [ Just <$> try (P.seriesParen preBinder),
       return Nothing
     ]
 
@@ -148,7 +148,7 @@ parseConsArgs :: P.Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
 parseConsArgs = do
   choice
     [ do
-        (series, loc, c) <- P.seqOrList' parseDefineDataClauseArg
+        (series, loc, c) <- P.seriesParen' parseDefineDataClauseArg
         return (Just series, loc, c),
       do
         loc <- P.getCurrentLoc
