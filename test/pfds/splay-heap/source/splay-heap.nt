@@ -1,49 +1,49 @@
 data heap(a) {
-- Leaf
-- Node(heap(a), a, heap(a))
+| Leaf
+| Node(heap(a), a, heap(a))
 }
 
 data order {
-- LT
-- EQ
-- GT
+| LT
+| EQ
+| GT
 }
 
 define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
   match t {
-  - Leaf =>
+  | Leaf =>
     Pair(Leaf, Leaf)
-  - Node(left, v, right) =>
+  | Node(left, v, right) =>
     match cmp(v, pivot) {
-    - LT =>
+    | LT =>
       // go right
       match right {
-      - Leaf =>
+      | Leaf =>
         Pair(Node(left, v, Leaf), Leaf)
-      - Node(right-left, w, right-right) =>
+      | Node(right-left, w, right-right) =>
         match cmp(w, pivot) {
-        - LT =>
+        | LT =>
           // go right
           let Pair(right-right-small, right-right-big) = split(_, cmp, pivot, right-right) in
           Pair(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
-        - _ =>
+        | _ =>
           // go left
           let Pair(right-left-small, right-left-big) = split(_, cmp, pivot, right-left) in
           Pair(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
         }
       }
-    - _ =>
+    | _ =>
       // go left
       match left {
-      - Leaf =>
+      | Leaf =>
         Pair(Leaf, Node(Leaf, v, right))
-      - Node(left-left, w, left-right) =>
+      | Node(left-left, w, left-right) =>
         match cmp(w, pivot) {
-        - LT =>
+        | LT =>
           // go right
           let Pair(left-right-small, left-right-big) = split(_, cmp, pivot, left-right) in
           Pair(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
-        - _ =>
+        | _ =>
           // go left
           let Pair(left-left-small, left-left-big) = split(_, cmp, pivot, left-left) in
           Pair(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
@@ -60,24 +60,24 @@ define insert(a: tau, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
 
 define find-min(a: tau, t: &heap(a)): ?a {
   case t {
-  - Leaf =>
+  | Leaf =>
     none()
-  - Node(Leaf, x, _) =>
+  | Node(Leaf, x, _) =>
     Pass(*x)
-  - Node(left, _, _) =>
+  | Node(left, _, _) =>
     find-min(a, left)
   }
 }
 
 define delete-min(a: tau, t: heap(a)): ?heap(a) {
   match t {
-  - Leaf =>
+  | Leaf =>
     none()
-  - Node(Leaf, _, right) =>
+  | Node(Leaf, _, right) =>
     Pass(right)
-  - Node(Node(Leaf, _, t12), y, t2) =>
+  | Node(Node(Leaf, _, t12), y, t2) =>
     Pass(Node(t12, y, t2))
-  - Node(Node(t11, x, t12), y, t2) =>
+  | Node(Node(t11, x, t12), y, t2) =>
     try t11 = delete-min(a, t11) in
     Pass(Node(t11, x, Node(t12, y, t2)))
   }
@@ -85,9 +85,9 @@ define delete-min(a: tau, t: heap(a)): ?heap(a) {
 
 define sum(xs: &list(int)): int {
   case xs {
-  - [] =>
+  | [] =>
     0
-  - Cons(y, ys) =>
+  | Cons(y, ys) =>
     add-int(*y, sum(ys))
   }
 }
@@ -114,34 +114,34 @@ define main(): unit {
   // v1 = 3
   let v1 on h =
     match find-min(_, h) {
-    - Pass(xs) =>
+    | Pass(xs) =>
       let v on xs = sum(xs) in
       // xs = [1, 2]
       let _ = xs in
       v
       // v = 3
-    - Fail(_) =>
+    | Fail(_) =>
       4
     }
   in
   let mh = delete-min(_, h) in
   let result =
     match mh {
-    - Fail(_) =>
+    | Fail(_) =>
       3
-    - Pass(h) =>
+    | Pass(h) =>
       let h = insert(_, compare-int-list, [4, 8], h) in
       let h = insert(_, compare-int-list, [1, 1], h) in
       // v2 = 2
       let v2 on h =
         match find-min(_, h) {
-        - Pass(xs) =>
+        | Pass(xs) =>
           let v on xs = sum(xs) in
           // xs = [1, 1]
           let _ = xs in
           v
           // v = 2
-        - Fail(_) =>
+        | Fail(_) =>
           4
         }
       in

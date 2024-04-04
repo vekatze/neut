@@ -1,6 +1,6 @@
 data tree(a) {
   // the list is in decreasing order of rank
-- Node(int, a, list(tree(a)))
+| Node(int, a, list(tree(a)))
 }
 
 inline heap(a: tau): tau {
@@ -9,18 +9,18 @@ inline heap(a: tau): tau {
 }
 
 data order {
-- LT
-- EQ
-- GT
+| LT
+| EQ
+| GT
 }
 
 define join(a: tau, cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
   match t1, t2 {
-  - Node(r1, x1, children1), Node(r2, x2, children2) =>
+  | Node(r1, x1, children1), Node(r2, x2, children2) =>
     match cmp(x1, x2) {
-    - LT =>
+    | LT =>
       Node(add-int(r1, 1), x1, Cons(Node(r2, x2, children2), children1))
-    - _ =>
+    | _ =>
       Node(add-int(r1, 1), x2, Cons(Node(r1, x1, children1), children2))
     }
   }
@@ -28,16 +28,16 @@ define join(a: tau, cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
 
 define rank(a: tau, t: &tree(a)): int {
   case t {
-  - Node(r, _, _) =>
+  | Node(r, _, _) =>
     *r
   }
 }
 
 define insert-tree(a: tau, cmp: (a, a) -> order, t: tree(a), h: heap(a)): heap(a) {
   match h {
-  - Nil =>
+  | Nil =>
     [t]
-  - Cons(t1, rest) =>
+  | Cons(t1, rest) =>
     let r on t = rank(a, t) in
     let r1 on t1 = rank(a, t1) in
     if lt-int(r, r1) {
@@ -54,11 +54,11 @@ define insert(a: tau, cmp: (a, a) -> order, value: a, h: heap(a)): heap(a) {
 
 define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
-  - Nil, h2 =>
+  | Nil, h2 =>
     h2
-  - h1, Nil =>
+  | h1, Nil =>
     h1
-  - Cons(t1, ts1), Cons(t2, ts2) =>
+  | Cons(t1, ts1), Cons(t2, ts2) =>
     let r1 on t1 = rank(a, t1) in
     let r2 on t2 = rank(a, t2) in
     if lt-int(r1, r2) {
@@ -73,7 +73,7 @@ define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
 
 define root(a: tau, t: &tree(a)): a {
   case t {
-  - Node(_, v, _) =>
+  | Node(_, v, _) =>
     *v
   }
 }
@@ -82,23 +82,23 @@ define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
   let helper =
     define self(cand: a, h: &heap(a)): a {
       case h {
-      - Nil =>
+      | Nil =>
         cand
-      - Cons(t, ts) =>
+      | Cons(t, ts) =>
         let root-head = root(a, t) in
         match cmp(root-head, cand) {
-        - LT =>
+        | LT =>
           self(root-head, ts)
-        - _ =>
+        | _ =>
           self(cand, ts)
         }
       }
     }
   in
   case h {
-  - Nil =>
+  | Nil =>
     none()
-  - Cons(t, ts) =>
+  | Cons(t, ts) =>
     let r = root(a, t) in
     Pass(helper(r, ts))
   }
@@ -106,11 +106,11 @@ define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
 
 define remove-min-tree(a: tau, cmp: (a, a) -> order, h: heap(a)): ?pair(tree(a), heap(a)) {
   match h {
-  - Nil =>
+  | Nil =>
     none()
-  - Cons(t, Nil) =>
+  | Cons(t, Nil) =>
     Pass(Pair(t, Nil))
-  - Cons(t, ts) =>
+  | Cons(t, ts) =>
     try Pair(cand, ts-adjusted) = remove-min-tree(a, cmp, ts) in
     let c on t, cand =
       let root-head = root(a, t) in
@@ -118,9 +118,9 @@ define remove-min-tree(a: tau, cmp: (a, a) -> order, h: heap(a)): ?pair(tree(a),
       cmp(root-head, root-cand)
     in
     match c {
-    - LT =>
+    | LT =>
       Pass(Pair(t, Cons(cand, ts-adjusted)))
-    - _ =>
+    | _ =>
       Pass(Pair(cand, Cons(t, ts-adjusted)))
     }
   }
@@ -153,9 +153,9 @@ define main(): unit {
   let h = merge(int, compare-int, h, h) in
   let maybe-min on h =
     match find-min(int, compare-int, h) {
-    - Fail(_) =>
+    | Fail(_) =>
       10
-    - Pass(min) =>
+    | Pass(min) =>
       min
     }
   in

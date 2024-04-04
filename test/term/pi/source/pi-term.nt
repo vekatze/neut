@@ -80,7 +80,7 @@ define test-syntax(): unit {
         let _ = tau in
         (tau, tau) -> tau
       },
-      _: {(tau) -> tau}
+      _: {(tau) -> tau},
     )
     {
       x
@@ -101,7 +101,7 @@ define test-syntax(): unit {
         function () {
           tau
         }
-      }()
+      }(),
     )
   in
   Unit

@@ -1,4 +1,9 @@
-define foo(FOO: bool, a: tau, 🌟🌟🌟: tau, 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int): tau {
+define foo(
+  FOO: bool,
+  a: tau,
+  🌟🌟🌟: tau,
+  竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int,
+): tau {
   let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね in
   if FOO {
     (a) -> 🌟🌟🌟
@@ -15,68 +20,65 @@ define bar(a: tau, some-value: a): unit {
 define test-syntax(): unit {
   let _ =
     foo of {
-    - a = int
-    - FOO = True
-    - 🌟🌟🌟 = list(null)
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
-      {
+      a = int,
+      FOO = True,
+      🌟🌟🌟 = list(null),
+      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
         let x = 10 in
         let y = 20 in
         add-int(x, y)
-      }
+      },
     }
   in
   let _ =
     foo of {
-    - a = int
-    - 🌟🌟🌟 = list(null)
-    - FOO = False
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
-      {
+      a = int,
+      🌟🌟🌟 = list(null),
+      FOO = False,
+      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
         let x = 10 in
         let y = 20 in
         add-int(x, y)
-      }
+      },
     }
   in
   let _ =
     foo of {
-    - 🌟🌟🌟 = list(null)
-    - a =
-      foo of {
-      - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
-        {
-          let x = 10 in
-          let y = 20 in
-          add-int(x, y)
+      🌟🌟🌟 = list(null),
+      a = {
+        foo of {
+          竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
+            let x = 10 in
+            let y = 20 in
+            add-int(x, y)
+          },
+          a = int,
+          🌟🌟🌟 = list(null),
+          FOO = True,
         }
-      - a = int
-      - 🌟🌟🌟 = list(null)
-      - FOO = True
-      }
-    - FOO = False
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
-      {
+      },
+      FOO = False,
+      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
         let x = 10 in
         let y = 20 in
         add-int(x, y)
-      }
+      },
     }
   in
   let _ =
     // hole-notation + keyword arguments
     bar of {
-    - a = _
-    - some-value = tau
+      a = _,
+      some-value = tau,
     }
   in
   Unit
 }
 
-define def-func-using-of of {
-- arg-1: int
-- arg-2: tau
-}: tau {
+define def-func-using-of(
+  arg-1: int,
+  arg-2: tau,
+): tau {
   let _ = arg-1 in
   arg-2
 }

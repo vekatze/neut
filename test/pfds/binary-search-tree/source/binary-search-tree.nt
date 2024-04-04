@@ -1,54 +1,55 @@
 data order {
-- LT
-- EQ
-- GT
+| LT
+| EQ
+| GT
 }
 
 data set(a) {
-- Leaf
-- Node(set(a), a, set(a))
+| Leaf
+| Node(set(a), a, set(a))
 }
 
 data set-signature(a) {
-- Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
+| Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
 }
 
 define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
   Set of {
-  - empty =
-    Leaf
-  - insert =
-    define insert(new-value: a, haystack: set(a)): set(a) {
-      match haystack {
-      - Leaf =>
-        Node(Leaf, new-value, Leaf)
-      - Node(left, x, right) =>
-        match compare(new-value, x) {
-        - LT =>
-          Node(insert(new-value, left), x, right)
-        - EQ =>
-          Node(left, x, right)
-        - GT =>
-          Node(left, x, insert(new-value, right))
+    empty = Leaf,
+    insert = {
+      define insert(new-value: a, haystack: set(a)): set(a) {
+        match haystack {
+        | Leaf =>
+          Node(Leaf, new-value, Leaf)
+        | Node(left, x, right) =>
+          match compare(new-value, x) {
+          | LT =>
+            Node(insert(new-value, left), x, right)
+          | EQ =>
+            Node(left, x, right)
+          | GT =>
+            Node(left, x, insert(new-value, right))
+          }
         }
       }
-    }
-  - member =
-    define member(needle: a, haystack: &set(a)): _ {
-      case haystack {
-      - Leaf =>
-        False
-      - Node(left, x, right) =>
-        match compare(needle, *x) {
-        - LT =>
-          member(needle, left)
-        - EQ =>
-          True
-        - GT =>
-          member(needle, right)
+    },
+    member = {
+      define member(needle: a, haystack: &set(a)): _ {
+        case haystack {
+        | Leaf =>
+          False
+        | Node(left, x, right) =>
+          match compare(needle, *x) {
+          | LT =>
+            member(needle, left)
+          | EQ =>
+            True
+          | GT =>
+            member(needle, right)
+          }
         }
       }
-    }
+    },
   }
 }
 
@@ -65,7 +66,7 @@ define compare-int(x: int, y: int): order {
 define main(): unit {
   let int-set-signature = make-set-signature(int, compare-int) in
   match int-set-signature {
-  - Set of {insert, member, empty} =>
+  | Set of {insert, member, empty} =>
     let my-set = insert(10, empty) in
     let my-set = insert(20, my-set) in
     let my-set = insert(20, my-set) in

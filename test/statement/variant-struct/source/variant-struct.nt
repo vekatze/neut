@@ -1,64 +1,65 @@
-data my-null {}
+data my-null {
+}
 
 data data-Z-cons-Z {
-- FooZZ
-- BarZZ
+| FooZZ
+| BarZZ
 }
 
 data data-Z-cons-0 {
-- FooZ0()
-- BarZ0()
+| FooZ0()
+| BarZ0()
 }
 
 data data-Z-cons-1 {
-- FooZ1(int)
-- BarZ1(bool)
+| FooZ1(int)
+| BarZ1(bool)
 }
 
 data data-0-cons-Z() {
-- Foo0Z
-- Bar0Z
+| Foo0Z
+| Bar0Z
 }
 
 data data-0-cons-0() {
-- Foo00()
-- Bar00()
+| Foo00()
+| Bar00()
 }
 
 data data-0-cons-1() {
-- Foo01(int)
-- Bar01(bool)
+| Foo01(int)
+| Bar01(bool)
 }
 
 data data-1-cons-Z(_: tau) {
-- Foo1Z
-- Bar1Z
+| Foo1Z
+| Bar1Z
 }
 
 data data-1-cons-0(_: tau) {
-- Foo10()
-- Bar10()
+| Foo10()
+| Bar10()
 }
 
 data data-1-cons-1(_: tau) {
-- Foo11(int)
-- Bar11(bool)
+| Foo11(int)
+| Bar11(bool)
 }
 
 data simple(a: tau) {
-- New(a)
+| New(a)
 }
 
 data empty {
-- Empty()
+| Empty()
 }
 
 data config {
-- Config(counter: int, path: &text, func: (int) -> int)
+| Config(counter: int, path: &text, func: (int) -> int)
 }
 
 data top {
-- Top(a: tau, x: a)
+| Top(a: tau, x: a)
 }
 
 define yo(x: top): unit {
@@ -67,15 +68,15 @@ define yo(x: top): unit {
 }
 
 nominal {
-- bar: tau
+  bar: tau,
 }
 
 data foo {
-- Foo(bar)
+| Foo(bar)
 }
 
 data bar {
-- Bar(foo)
+| Bar(foo)
 }
 
 define buz(c: &config): &text {

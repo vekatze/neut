@@ -1,5 +1,5 @@
 import {
-- Ext
+  Ext,
 }
 
 define test-syntax(): unit {
@@ -54,9 +54,9 @@ define detach-send(x: int, ch: &channel(int)): flow(unit) {
 
 define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(flow(unit)) {
   match xs {
-  - Nil =>
+  | Nil =>
     acc
-  - Cons(y, rest) =>
+  | Cons(y, rest) =>
     let fl = detach-send(y, ch) in
     send-all(rest, ch, Cons(fl, acc))
   }
@@ -64,9 +64,9 @@ define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(f
 
 define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
   match xs {
-  - Nil =>
+  | Nil =>
     Unit
-  - Cons(fl, rest) =>
+  | Cons(fl, rest) =>
     let _ = attach {fl} in
     let _ = receive(ch) in
     receive-one-by-one(rest, ch)
@@ -77,9 +77,9 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
   let wait-all =
     define wait-all(ys: list(flow(unit))): _ {
       match ys {
-      - Nil =>
+      | Nil =>
         Unit
-      - Cons(z, zs) =>
+      | Cons(z, zs) =>
         let _ = attach {z} in
         wait-all(zs)
       }

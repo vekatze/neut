@@ -1,25 +1,25 @@
 data order {
-- LT
-- EQ
-- GT
+| LT
+| EQ
+| GT
 }
 
 // leftist heap
 data heap(a) {
-- Leaf
+| Leaf
   // int stands for the rank of the Node
-- Node(int, a, heap(a), heap(a))
+| Node(int, a, heap(a), heap(a))
 }
 
 data heap-signature(a) {
-- Heap of {
-  - empty: heap(a)
-  - is-empty: (&heap(a)) -> bool
-  - insert: (a, heap(a)) -> heap(a)
-  - merge: (heap(a), heap(a)) -> heap(a)
-  - find-min: (&heap(a)) -> ?a
-  - delete-min: (heap(a)) -> ?heap(a)
-  }
+| Heap(
+    empty: heap(a),
+    is-empty: (&heap(a)) -> bool,
+    insert: (a, heap(a)) -> heap(a),
+    merge: (heap(a), heap(a)) -> heap(a),
+    find-min: (&heap(a)) -> ?a,
+    delete-min: (heap(a)) -> ?heap(a),
+  )
 }
 
 define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) {
@@ -27,9 +27,9 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
     let rank =
       function (h: &heap(a)) {
         case h {
-        - Leaf =>
+        | Leaf =>
           0
-        - Node(r, _, _, _) =>
+        | Node(r, _, _, _) =>
           *r
         }
       }
@@ -47,55 +47,58 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
     in
     define merge(h1: heap(a), h2: heap(a)): heap(a) {
       match h1, h2 {
-      - h1, Leaf =>
+      | h1, Leaf =>
         h1
-      - Leaf, h2 =>
+      | Leaf, h2 =>
         h2
-      - Node(rank1, value1, left1, right1), Node(rank2, value2, left2, right2) =>
+      | Node(rank1, value1, left1, right1), Node(rank2, value2, left2, right2) =>
         match compare(value1, value2) {
-        - LT =>
+        | LT =>
           make-Node(value1, left1, merge(right1, Node(rank2, value2, left2, right2)))
-        - _ =>
+        | _ =>
           make-Node(value2, left2, merge(Node(rank1, value1, left1, right1), right2))
         }
       }
     }
   in
   Heap of {
-  - empty =
-    Leaf
-  - is-empty =
-    function (h: &heap(a)) {
-      case h {
-      - Leaf =>
-        True
-      - Node(_, _, _, _) =>
-        False
+    empty = Leaf,
+    is-empty = {
+      function (h: &heap(a)) {
+        case h {
+        | Leaf =>
+          True
+        | Node(_, _, _, _) =>
+          False
+        }
       }
-    }
-  - insert =
-    function (x: a, h: heap(a)) {
-      merge(Node(1, x, Leaf, Leaf), h)
-    }
-  - merge
-  - find-min =
-    function (h: &heap(a)) {
-      case h {
-      - Leaf =>
-        none()
-      - Node(_, value, _, _) =>
-        Pass(*value)
+    },
+    insert = {
+      function (x: a, h: heap(a)) {
+        merge(Node(1, x, Leaf, Leaf), h)
       }
-    }
-  - delete-min =
-    function (h: heap(a)) {
-      match h {
-      - Leaf =>
-        none()
-      - Node(_, _, left, right) =>
-        Pass(merge(left, right))
+    },
+    merge,
+    find-min = {
+      function (h: &heap(a)) {
+        case h {
+        | Leaf =>
+          none()
+        | Node(_, value, _, _) =>
+          Pass(*value)
+        }
       }
-    }
+    },
+    delete-min = {
+      function (h: heap(a)) {
+        match h {
+        | Leaf =>
+          none()
+        | Node(_, _, left, right) =>
+          Pass(merge(left, right))
+        }
+      }
+    },
   }
 }
 
@@ -121,15 +124,15 @@ define main(): unit {
   let h = insert(3, h) in
   let mh = delete-min(h) in
   match mh {
-  - Fail(_) =>
+  | Fail(_) =>
     print-int(100)
-  - Pass(h) =>
+  | Pass(h) =>
     let h = insert(9, h) in
     let min on h =
       match find-min(h) {
-      - Fail(_) =>
+      | Fail(_) =>
         print-int(100)
-      - Pass(value) =>
+      | Pass(value) =>
         print-int(value)
       }
     in
