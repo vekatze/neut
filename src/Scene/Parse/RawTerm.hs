@@ -286,7 +286,7 @@ parseGeist nameLifter = do
       [ do
           expDomArgList <- seriesParen preBinder
           return (False, expDomArgList),
-        return (True, (SE.emptySeries SE.Paren SE.Comma, []))
+        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []))
       ]
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
@@ -297,7 +297,7 @@ parseImplicitArgs :: Parser (SE.Series (RawBinder RT.RawTerm), C)
 parseImplicitArgs =
   choice
     [ parseImplicitArgs',
-      return (SE.emptySeries SE.Angle SE.Comma, [])
+      return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
     ]
 
 parseImplicitArgs' :: Parser (SE.Series (RawBinder RT.RawTerm), C)

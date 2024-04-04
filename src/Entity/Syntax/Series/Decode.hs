@@ -20,7 +20,7 @@ decode series = do
     (Nothing, _) ->
       PI.arrange
         [ PI.inject prefix',
-          PI.inject $ PI.arrange $ intercalate sep (elems series) (hasTrailingComma series) (trailingComment series)
+          PI.inject $ PI.arrange $ intercalate sep (elems series) (hasOptionalSeparator series) (trailingComment series)
         ]
     (Just Angle, True) ->
       D.Nil
@@ -35,12 +35,12 @@ decode series = do
               PI.inject $ D.text close
             ]
         Comma -> do
-          let layout = if hasTrailingComma series then PI.nest else PI.idOrNest
-          let arranger = if hasTrailingComma series then PI.arrangeVertical else PI.arrange
+          let layout = if hasOptionalSeparator series then PI.nest else PI.idOrNest
+          let arranger = if hasOptionalSeparator series then PI.arrangeVertical else PI.arrange
           PI.arrange
             [ PI.inject prefix',
               PI.inject $ D.text open,
-              layout $ arranger $ intercalate sep (elems series) (hasTrailingComma series) (trailingComment series),
+              layout $ arranger $ intercalate sep (elems series) (hasOptionalSeparator series) (trailingComment series),
               PI.inject $ D.text close
             ]
 
@@ -129,7 +129,7 @@ decodeHorizontallyIfPossible series = do
 
 isHorizontalSeries :: Series D.Doc -> Bool
 isHorizontalSeries series = do
-  null (trailingComment series) && isHorizontalSeries' (elems series) && not (hasTrailingComma series)
+  null (trailingComment series) && isHorizontalSeries' (elems series) && not (hasOptionalSeparator series)
 
 -- [single, ..., single, multi, .., multi] <=> True
 isHorizontalSeries' :: [(C, D.Doc)] -> Bool

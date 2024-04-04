@@ -11,6 +11,8 @@ module Entity.Syntax.Series
     fromList'',
     fromListWithComment,
     pushComment,
+    singleton,
+    cons,
     assoc,
     getContainerPair,
     getSeparator,
@@ -50,32 +52,54 @@ data Series a = Series
     prefix :: Prefix,
     container :: Maybe Container,
     separator :: Separator,
-    hasTrailingComma :: Bool
+    hasOptionalSeparator :: Bool
   }
 
 instance Functor Series where
   fmap f series =
     series {elems = map (second f) (elems series)}
 
-emptySeries :: Container -> Separator -> Series a
+emptySeries :: Maybe Container -> Separator -> Series a
 emptySeries container separator =
   Series
     { elems = [],
       trailingComment = [],
       prefix = Nothing,
       separator,
-      container = Just container,
-      hasTrailingComma = False
+      container = container,
+      hasOptionalSeparator = False
     }
 
 emptySeries' :: Maybe Container -> Separator -> Series a
 emptySeries' container separator =
-  Series {elems = [], trailingComment = [], prefix = Nothing, separator, container, hasTrailingComma = False}
+  Series
+    { elems = [],
+      trailingComment = [],
+      prefix = Nothing,
+      separator,
+      container,
+      hasOptionalSeparator = False
+    }
+
+singleton :: Maybe Container -> Separator -> (a, C) -> Series a
+singleton container separator (v, c) =
+  Series
+    { elems = [([], v)],
+      trailingComment = c,
+      prefix = Nothing,
+      separator,
+      container = container,
+      hasOptionalSeparator = False
+    }
+
+cons :: (C, a) -> Series a -> Series a
+cons x xs =
+  xs {elems = x : elems xs}
 
 -- pc: paren comma
 emptySeriesPC :: Series a
 emptySeriesPC =
-  emptySeries Paren Comma
+  emptySeries (Just Paren) Comma
 
 fromList :: Container -> Separator -> [a] -> Series a
 fromList container separator xs =
@@ -85,7 +109,7 @@ fromList container separator xs =
       prefix = Nothing,
       separator,
       container = Just container,
-      hasTrailingComma = False
+      hasOptionalSeparator = False
     }
 
 fromList' :: [a] -> Series a
@@ -100,7 +124,7 @@ fromList'' xs =
       prefix = Nothing,
       separator = Comma,
       container = Nothing,
-      hasTrailingComma = False
+      hasOptionalSeparator = False
     }
 
 fromListWithComment :: Container -> Separator -> [(C, (a, C))] -> Series a
@@ -112,7 +136,7 @@ fromListWithComment container separator xs = do
       prefix = Nothing,
       separator,
       container = Just container,
-      hasTrailingComma = False
+      hasOptionalSeparator = False
     }
 
 pushComment :: C -> Series a -> Series a
@@ -125,7 +149,7 @@ pushComment c series =
 
 assoc :: Series (a, C) -> Series a
 assoc series = do
-  let Series {elems, trailingComment, separator, container, hasTrailingComma} = series
+  let Series {elems, trailingComment, separator, container, hasOptionalSeparator} = series
   let (elems', trailingComment') = _assoc elems trailingComment
   Series
     { elems = elems',
@@ -133,7 +157,7 @@ assoc series = do
       prefix = Nothing,
       separator,
       container,
-      hasTrailingComma
+      hasOptionalSeparator
     }
 
 _assoc :: [(C, (a, C))] -> C -> ([(C, a)], C)
@@ -194,7 +218,7 @@ appendLeftBiased series1 series2 = do
       prefix = prefix series1,
       container = container series1,
       separator = separator series1,
-      hasTrailingComma = hasTrailingComma series1 || hasTrailingComma series2
+      hasOptionalSeparator = hasOptionalSeparator series1 || hasOptionalSeparator series2
     }
 
 catMaybes :: Series (Maybe a) -> Series a

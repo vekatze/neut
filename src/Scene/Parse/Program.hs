@@ -64,7 +64,7 @@ parseLocalLocatorList' :: P.Parser (SE.Series (Hint, LL.LocalLocator), C)
 parseLocalLocatorList' = do
   choice
     [ P.seriesBrace parseLocalLocator,
-      return (SE.emptySeries SE.Brace SE.Comma, [])
+      return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
 
 parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)

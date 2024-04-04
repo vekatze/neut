@@ -17,7 +17,7 @@ import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
 import Entity.StmtKind qualified as SK
-import Entity.Syntax.Series (Series (hasTrailingComma))
+import Entity.Syntax.Series (Series (hasOptionalSeparator))
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 import Entity.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
@@ -168,7 +168,7 @@ decStmt stmt =
                 prefix = Nothing,
                 container = Just SE.Brace,
                 separator = SE.Comma,
-                hasTrailingComma = True
+                hasOptionalSeparator = True
               }
       -- let resourcePair = SE.pushComment c3 $ SE.fromListWithComment SE.Brace SE.Hyphen [discarder, copier]
       RT.attachComment (c1 ++ c2) $
