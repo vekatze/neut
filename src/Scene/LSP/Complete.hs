@@ -180,11 +180,11 @@ constructEditText :: Cand -> T.Text
 constructEditText cand =
   case cand of
     FullyQualified gl _ ->
-      "- " <> gl
+      "  " <> gl <> ","
     Prefixed prefix _ ->
-      "- " <> prefix
+      "  " <> prefix <> ","
     Bare gl ll -> do
-      "- " <> gl <> " {" <> ll <> "}"
+      "  " <> gl <> " {" <> ll <> "}" <> ","
 
 inImportBlock :: T.Text -> T.Text
 inImportBlock text =
