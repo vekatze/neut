@@ -16,7 +16,7 @@ The LSP server currently has the following features:
 
 ### Lint
 
-![check](./image/screencasts/check.gif "lint")
+![lint](./image/screencasts/lint.gif "lint")
 
 ### Completion (+ automatic import)
 
