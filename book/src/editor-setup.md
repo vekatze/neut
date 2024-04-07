@@ -22,4 +22,4 @@ TBD
 
 <https://github.com/vekatze/vscode-neut>
 
-You can install `vscode-neut` for syntax highlighting, automatic indentation, and LSP support. This package is available on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=vekatze.vscode-neut).
+You can install `vscode-neut` for syntax highlighting, automatic indentation, and LSP support. This extension is available on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=vekatze.vscode-neut).
