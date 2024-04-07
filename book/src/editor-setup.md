@@ -14,28 +14,12 @@ You can install it using, for example, [straight.el](https://github.com/radian-s
   (:host github :repo "vekatze/neut-mode"))
 ```
 
-### lsp-mode
-
-To enable `lsp-mode`, you can do the following:
-
-```text
-M-x neut-mode-setup-lsp-mode
-M-x lsp
-```
-
-### eglot
-
-To enable `eglot`, you can do the following:
-
-```text
-M-x neut-mode-setup-eglot
-M-x eglot
-```
-
 ## Vim
 
 TBD
 
 ## Visual Studio Code
 
-TBD
+<https://github.com/vekatze/vscode-neut>
+
+You can install `vscode-neut` for syntax highlighting, automatic indentation, and LSP support. This package is available on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=vekatze.vscode-neut).
