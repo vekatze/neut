@@ -1,6 +1,6 @@
 import {
-- Keyword
-- Term
+  Keyword,
+  Term,
 }
 
 define test-syntax(): unit {

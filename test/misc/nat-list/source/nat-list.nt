@@ -1,22 +1,22 @@
 data nat {
-- Zero
-- Succ(nat)
+| Zero
+| Succ(nat)
 }
 
 define interpret(n: nat): int {
   match n {
-  - Zero =>
+  | Zero =>
     0
-  - Succ(m) =>
+  | Succ(m) =>
     add-int(1, interpret(m))
   }
 }
 
 define nat-list-sum(xs: list(nat)): int {
   match xs {
-  - Nil =>
+  | Nil =>
     0
-  - Cons(y, ys) =>
+  | Cons(y, ys) =>
     add-int(interpret(y), nat-list-sum(ys))
   }
 }

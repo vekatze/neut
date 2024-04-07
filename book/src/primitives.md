@@ -49,27 +49,27 @@ The [preset](./modules.md#preset) of the core library (something like Prelude in
 data void {}
 
 data unit {
-- Unit
+| Unit
 }
 
 data bool {
-- False
-- True
+| False
+| True
 }
 
 data list(a) {
-- Nil
-- Cons(a, list(a))
+| Nil
+| Cons(a, list(a))
 }
 
 // you can also write `?a` instead of `except(unit, a)`
 data except(a, b) {
-- Fail(a)
-- Pass(b)
+| Fail(a)
+| Pass(b)
 }
 
 data pair(a, b) {
-- Pair(left: a, right: b)
+| Pair(left: a, right: b)
 }
 ```
 

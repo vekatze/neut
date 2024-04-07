@@ -156,7 +156,7 @@ rawTermKeyValuePair = do
   choice
     [ do
         c2 <- delimiter "="
-        (value, c) <- rawExpr
+        (value, c) <- rawTerm
         return ((m, key, c1, c2, value), c),
       do
         return ((m, key, c1, [], m :< RT.Var (Var key)), [])
@@ -259,18 +259,21 @@ rawTermHole = do
 
 parseDef :: (BN.BaseName -> App a) -> Parser (RT.RawDef a, C)
 parseDef nameLifter = do
-  (topGeist, c1) <- parseGeist nameLifter
+  (geist, c1) <- parseGeist nameLifter
   (c2, ((e, c3), loc, c)) <- betweenBrace' rawExpr
-  return
-    ( RT.RawDef
-        { geist = topGeist,
-          leadingComment = c1 ++ c2,
-          body = e,
-          trailingComment = c3,
-          endLoc = loc
-        },
-      c
-    )
+  if RT.isConstLike geist
+    then lift $ Throw.raiseError (RT.loc geist) "the argument list is missing"
+    else
+      return
+        ( RT.RawDef
+            { geist,
+              leadingComment = c1 ++ c2,
+              body = e,
+              trailingComment = c3,
+              endLoc = loc
+            },
+          c
+        )
 
 parseGeist :: (BN.BaseName -> App a) -> Parser (RT.RawGeist a, C)
 parseGeist nameLifter = do
@@ -281,9 +284,9 @@ parseGeist nameLifter = do
   (isConstLike, expArgs@(expSeries, _)) <- do
     choice
       [ do
-          expDomArgList <- seqOrList preBinder
+          expDomArgList <- seriesParen preBinder
           return (False, expDomArgList),
-        return (True, (SE.emptySeries SE.Paren SE.Comma, []))
+        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []))
       ]
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
@@ -294,7 +297,7 @@ parseImplicitArgs :: Parser (SE.Series (RawBinder RT.RawTerm), C)
 parseImplicitArgs =
   choice
     [ parseImplicitArgs',
-      return (SE.emptySeries SE.Angle SE.Comma, [])
+      return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
     ]
 
 parseImplicitArgs' :: Parser (SE.Series (RawBinder RT.RawTerm), C)
@@ -465,19 +468,22 @@ rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
 rawTermPatternRow patternSize = do
   m <- getCurrentHint
   patternList <- bareSeries Nothing SE.Comma rawTermPattern
-  let len = length $ SE.extract patternList
-  unless (len == patternSize) $ do
-    lift $
-      Throw.raiseError m $
-        "the size of the pattern row `"
-          <> T.pack (show len)
-          <> "` doesn't match with its input size `"
-          <> T.pack (show patternSize)
-          <> "`"
-  cArrow <- delimiter "=>"
-  (body, c) <- rawExpr
-  loc <- getCurrentLoc
-  return ((patternList, cArrow, body, loc), c)
+  if SE.isEmpty patternList
+    then failure Nothing (S.fromList [asLabel "list of patterns"])
+    else do
+      let len = length $ SE.extract patternList
+      unless (len == patternSize) $ do
+        lift $
+          Throw.raiseError m $
+            "the size of the pattern row `"
+              <> T.pack (show len)
+              <> "` doesn't match with its input size `"
+              <> T.pack (show patternSize)
+              <> "`"
+      cArrow <- delimiter "=>"
+      (body, c) <- rawExpr
+      loc <- getCurrentLoc
+      return ((patternList, cArrow, body, loc), c)
 
 rawTermPattern :: Parser ((Hint, RP.RawPattern), C)
 rawTermPattern = do
@@ -631,15 +637,7 @@ rawTermAssert = do
 keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
 keyValueArgs p = do
   c1 <- keyword "of"
-  choice
-    [ try $ do
-        (kvs, c) <- series (Just ("of", c1)) SE.Brace SE.Hyphen p
-        if SE.isEmpty kvs
-          then failure Nothing (S.fromList [asLabel "bullet list"])
-          else return (kvs, c),
-      do
-        series (Just ("of", c1)) SE.Brace SE.Comma p
-    ]
+  series (Just ("of", c1)) SE.Brace SE.Comma p
 
 foldPiElim ::
   Hint ->

@@ -198,99 +198,88 @@ betweenBrace' p = do
   c2 <- delimiter "}"
   return (c1, (v, loc, c2))
 
-sepList :: Parser c -> Parser c -> Parser a -> Parser [(c, a)]
-sepList first sep f = do
-  c <- first
-  mv <- optional f
-  case mv of
-    Nothing ->
-      return []
-    Just v -> do
-      rest <- many $ do
-        c' <- sep
-        v' <- f
-        return (c', v')
-      return $ (c, v) : rest
-
-commaList :: Parser C -> Parser a -> Parser [(C, a)]
-commaList first f = do
-  sepList first (delimiter ",") f
-
-_series :: C -> SE.Separator -> Parser (a, C) -> Parser ([(C, a)], C)
-_series leadingComment sep p = do
-  case sep of
+_series :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_series container separator leadingComment p = do
+  case separator of
     SE.Comma -> do
-      mv <- optional p
-      case mv of
-        Nothing ->
-          return ([], leadingComment)
-        Just (v, c) -> do
-          choice
-            [ do
-                cComma <- delimiter $ SE.getSeparator sep
-                (vs, trailingComment') <- _series (c ++ cComma) sep p
-                return ((leadingComment, v) : vs, trailingComment'),
-              do
-                return ([(leadingComment, v)], c)
-            ]
-    SE.Hyphen -> do
-      choice
-        [ do
-            cHyphen <- delimiter $ SE.getSeparator sep
-            (v, c) <- p
-            (vs, trailingComment) <- _series c sep p
-            return ((leadingComment ++ cHyphen, v) : vs, trailingComment),
-          do
-            return ([], leadingComment)
-        ]
+      _seriesAnd container leadingComment p
+    SE.Bar -> do
+      _seriesOr container leadingComment p
+
+_seriesAnd :: Maybe SE.Container -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesAnd container leadingComment p = do
+  _seriesSepTrail False container SE.Comma leadingComment p
+
+_seriesOr :: Maybe SE.Container -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesOr container leadingComment p = do
+  _seriesSepLead container SE.Bar leadingComment p
+
+_seriesSepTrail :: Bool -> Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepTrail afterComma container separator leadingComment p = do
+  choice
+    [ _seriesSepTrail1 container separator leadingComment p,
+      return (SE.emptySeries container separator) {SE.hasOptionalSeparator = afterComma}
+    ]
+
+_seriesSepTrail1 :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepTrail1 container separator leadingComment p = do
+  (v, c) <- p
+  choice
+    [ do
+        cSep <- delimiter $ SE.getSeparator separator
+        rest <- _seriesSepTrail True container separator (c ++ cSep) p
+        return $ SE.cons (leadingComment, v) rest,
+      do
+        return $ SE.singleton container separator leadingComment (v, c)
+    ]
+
+_seriesSepLead :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepLead container separator leadingComment p = do
+  choice
+    [ do
+        cSep <- delimiter $ SE.getSeparator separator
+        se <- _seriesSepBy1 container separator (cSep ++ leadingComment) p
+        return se {SE.hasOptionalSeparator = True},
+      _seriesSepBy container separator leadingComment p
+    ]
+
+_seriesSepBy :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepBy container separator leadingComment p = do
+  choice
+    [ _seriesSepBy1 container separator leadingComment p,
+      return $ SE.pushComment leadingComment $ SE.emptySeries container separator
+    ]
+
+_seriesSepBy1 :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
+_seriesSepBy1 container separator leadingComment p = do
+  v <- p
+  elems <- many $ do
+    cSep <- delimiter $ SE.getSeparator separator
+    val <- p
+    return (cSep, val)
+  return $ SE.fromListWithComment container separator $ (leadingComment, v) : elems
 
 series :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
-series prefix container sep p = do
+series prefix container separator p = do
   let (open, close) = SE.getContainerPair container
   c1 <- delimiter open
-  (vs, trail) <- _series c1 sep p
+  se <- _series (Just container) separator c1 p
   c2 <- delimiter close
-  return
-    ( SE.Series
-        { elems = vs,
-          trailingComment = trail,
-          prefix = prefix,
-          separator = sep,
-          container = Just container
-        },
-      c2
-    )
+  return (se {SE.prefix = prefix}, c2)
 
 series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, Loc, C)
-series' prefix container sep p = do
+series' prefix container separator p = do
   let (opener, closer) = getParserPair container
   c1 <- opener
-  (vs, trail) <- _series c1 sep p
+  se <- _series (Just container) separator c1 p
   loc <- getCurrentLoc
   c2 <- closer
-  return
-    ( SE.Series
-        { elems = vs,
-          trailingComment = trail,
-          prefix = prefix,
-          separator = sep,
-          container = Just container
-        },
-      loc,
-      c2
-    )
+  return (se {SE.prefix = prefix}, loc, c2)
 
 bareSeries :: SE.Prefix -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a)
-bareSeries prefix sep p = do
-  (vs, trail) <- _series [] sep p
-  return $
-    SE.Series
-      { elems = vs,
-        trailingComment = trail,
-        prefix = prefix,
-        separator = sep,
-        container = Nothing
-      }
+bareSeries prefix separator p = do
+  se <- _series Nothing separator [] p
+  return se {SE.prefix = prefix}
 
 getParserPair :: SE.Container -> (Parser C, Parser C)
 getParserPair container =
@@ -316,6 +305,10 @@ seriesBrace :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBrace =
   series Nothing SE.Brace SE.Comma
 
+seriesBrace' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seriesBrace' =
+  series' Nothing SE.Brace SE.Comma
+
 seriesBracket :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBracket =
   series Nothing SE.Bracket SE.Comma
@@ -326,31 +319,11 @@ seriesAngle =
 
 seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBraceList =
-  series Nothing SE.Brace SE.Hyphen
+  series Nothing SE.Brace SE.Bar
 
 seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBraceList' =
-  series' Nothing SE.Brace SE.Hyphen
-
-seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
-seqOrList p =
-  choice
-    [ do
-        seriesParen p,
-      do
-        c1 <- keyword "of"
-        series (Just ("of", c1)) SE.Brace SE.Hyphen p
-    ]
-
-seqOrList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
-seqOrList' p =
-  choice
-    [ do
-        seriesParen' p,
-      do
-        c1 <- keyword "of"
-        series' (Just ("of", c1)) SE.Brace SE.Hyphen p
-    ]
+  series' Nothing SE.Brace SE.Bar
 
 var :: Parser ((Hint, T.Text), C)
 var = do
@@ -365,7 +338,7 @@ var = do
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char
 nonSymbolCharSet =
-  S.fromList "=() \"\n\t:;,<>[]{}/*"
+  S.fromList "=() \"\n\t:;,<>[]{}/*|"
 
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char

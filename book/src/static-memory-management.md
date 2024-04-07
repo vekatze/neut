@@ -85,9 +85,9 @@ Now, suppose we defined a function `length` as follows:
 ```neut
 define length(xs: list(int)): int {
   match xs {
-  - Nil =>
+  | Nil =>
     0
-  - Cons(_, ys) =>
+  | Cons(_, ys) =>
     add-int(1, length(ys))
   }
 }
@@ -104,7 +104,7 @@ define use-length(xs: list(int)): unit {
 
 Note that the variable `xs` is used twice. Therefore, in this example, the content of `xs` is copied _just to calculate its length_. This is a disaster. The end of the world. Every wish is crushed into pieces.
 
-Luckily, there is a loophole to overcome this situation.
+Luckily, there is a loophole for this situation.
 
 ## The Solution: Noema Type
 
@@ -122,9 +122,9 @@ Let's see how it works. We first redefine `length`. If the type `t` is an ADT ty
 ```neut
 define length(xs: &list(int)): int {
   case xs {
-  - Nil =>
+  | Nil =>
     0
-  - Cons(_, ys) =>
+  | Cons(_, ys) =>
     add-int(1, length(ys))
   }
 }
@@ -199,16 +199,16 @@ Let's see another aspect of Neut's memory management. The compiler can sometimes
 
 ```neut
 data int-list {
-- Nil
-- Cons(int, int-list)
+| Nil
+| Cons(int, int-list)
 }
 
 // [1, 5, 9] => [2, 6, 10]
 define increment(xs: int-list): int-list {
   match xs {
-  - Nil =>
+  | Nil =>
     Nil
-  - Cons(x, rest) => // ← "the `Cons` clause"
+  | Cons(x, rest) => // ← "the `Cons` clause"
     let foo = add-int(x, 1) in
     let bar = increment(rest) in
     Cons(foo, bar)
@@ -247,12 +247,12 @@ This benchmark executes the following `sort` function:
 
 ```neut
 data int-list {
-- My-Nil
-- My-Cons(int, int-list)
+| My-Nil
+| My-Cons(int, int-list)
 }
 
 nominal {
-- _insert(v: int, xs: int-list): int-list
+  _insert(v: int, xs: int-list): int-list,
 }
 
 // 🌟
@@ -266,18 +266,18 @@ inline _swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
 
 define _insert(v: int, xs: int-list): int-list {
   match xs {
-  - My-Nil =>
+  | My-Nil =>
     My-Cons(v, My-Nil)
-  - My-Cons(y, ys) =>
+  | My-Cons(y, ys) =>
     _swap-gt(gt-int(v, y), v, y, ys)
   }
 }
 
 define sort(xs: int-list, acc: int-list): int-list {
   match xs {
-  - My-Nil =>
+  | My-Nil =>
     acc
-  - My-Cons(y, ys) =>
+  | My-Cons(y, ys) =>
     sort(ys, _insert(y, acc))
   }
 }

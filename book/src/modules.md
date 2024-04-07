@@ -172,8 +172,8 @@ Each field in `prefix` specifies an alias of the specified source file. For exam
 
 ```neut
 import {
-- this.foo
-- this.item.bar {some-func}
+  this.foo,
+  this.item.bar {some-func},
 }
 ```
 
@@ -181,8 +181,8 @@ can be rewritten into the following:
 
 ```neut
 import {
-- Foo
-- Bar {some-func}
+  Foo,
+  Bar {some-func},
 }
 ```
 
@@ -290,8 +290,8 @@ As an example, suppose a file in `MMM` contains an `import` like the below:
 
 ```neut
 import {
-- sample.foo {my-func, other-func}
-- sample.item.bar {hoge, pohe}
+  sample.foo {my-func, other-func},
+  sample.item.bar {hoge, pohe},
 }
 
 define buz() {

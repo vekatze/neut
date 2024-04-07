@@ -152,7 +152,7 @@ lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm
 lam loc m varList e =
   m
     :< PiIntro
-      (SE.emptySeries SE.Angle SE.Comma, [])
+      (SE.emptySeries (Just SE.Angle) SE.Comma, [])
       (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, [])
       []
       ([], (e, []))

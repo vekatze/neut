@@ -120,9 +120,9 @@ The value passed here can be obtained from source files by using `introspect`:
 ```neut
 define foo(): unit {
   introspect build-mode {
-  - release =>
+  | release =>
     // ..
-  - develop =>
+  | develop =>
     // ..
   }
 }

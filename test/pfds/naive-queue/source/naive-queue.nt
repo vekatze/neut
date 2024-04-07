@@ -1,5 +1,5 @@
 data queue(a) {
-- Queue(list(a), list(a))
+| Queue(list(a), list(a))
 }
 
 define empty(a: tau): queue(a) {
@@ -8,27 +8,27 @@ define empty(a: tau): queue(a) {
 
 define head(a: tau, q: &queue(a)): ?a {
   case q {
-  - Queue(Cons(x, _), _) =>
+  | Queue(Cons(x, _), _) =>
     Pass(*x)
-  - _ =>
+  | _ =>
     none()
   }
 }
 
 define sanitize(a: tau, q: queue(a)): queue(a) {
   match q {
-  - Queue([], ys) =>
+  | Queue([], ys) =>
     Queue(reverse(ys), [])
-  - q =>
+  | q =>
     q
   }
 }
 
 define tail(a: tau, q: queue(a)): ?queue(a) {
   match q {
-  - Queue(Cons(_, rest), ys) =>
+  | Queue(Cons(_, rest), ys) =>
     Pass(sanitize(_, Queue(rest, ys)))
-  - _ =>
+  | _ =>
     none()
   }
 }
@@ -40,9 +40,9 @@ define snoc(a: tau, v: a, q: queue(a)): queue(a) {
 
 define sum(xs: &list(int)): int {
   case xs {
-  - Nil =>
+  | Nil =>
     0
-  - Cons(v, rest) =>
+  | Cons(v, rest) =>
     add-int(*v, sum(rest))
   }
 }
@@ -55,30 +55,30 @@ define main(): unit {
   // v1 == 2
   let v1 on q =
     match head(_, q) {
-    - Pass(xs1) =>
+    | Pass(xs1) =>
       let v1 on xs1 = sum(xs1) in
       let _ = xs1 in
       v1
-    - Fail(_) =>
+    | Fail(_) =>
       4
     }
   in
   let mq = tail(_, q) in
   let result =
     match mq {
-    - Fail(_) =>
+    | Fail(_) =>
       1
-    - Pass(q) =>
+    | Pass(q) =>
       let q = snoc(_, [3], q) in
       let q = snoc(_, [8], q) in
       // v2 = 5
       let v2 on q =
         match head(_, q) {
-        - Pass(xs) =>
+        | Pass(xs) =>
           let v on xs = sum(xs) in
           let _ = xs in
           v
-        - Fail(_) =>
+        | Fail(_) =>
           4
         }
       in

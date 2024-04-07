@@ -1,38 +1,38 @@
 data item1 {
-- Item1(list(int))
+| Item1(list(int))
 }
 
 data item2(a) {
-- Item2(a)
+| Item2(a)
 }
 
 data item3(a, b) {
-- Item3((a) -> b)
+| Item3((a) -> b)
 }
 
 data item4(a, b) {
-- Item4(pair(a, b))
+| Item4(pair(a, b))
 }
 
 define trace-list<a>(xs: list(a)): list(a) {
   match xs {
-  - Nil =>
+  | Nil =>
     Nil
-  - Cons(y, ys) =>
+  | Cons(y, ys) =>
     Cons(y, trace-list(ys))
   }
 }
 
 define use-item1(x: item1): list(int) {
   match x {
-  - Item1(value) =>
+  | Item1(value) =>
     trace-list(value)
   }
 }
 
 define use-item1-noetic(x: &item1): list(int) {
   case x {
-  - Item1(value) =>
+  | Item1(value) =>
     trace-list(*value)
   }
 }
@@ -53,14 +53,14 @@ define test-item1(): unit {
 
 define use-item2(a: tau, x: item2(a)): a {
   match x {
-  - Item2(value) =>
+  | Item2(value) =>
     value
   }
 }
 
 define use-item2-noetic(a: tau, x: &item2(a)): &a {
   case x {
-  - Item2(value) =>
+  | Item2(value) =>
     value
   }
 }
@@ -81,14 +81,14 @@ define test-item2(): unit {
 
 define use-item3(a: tau, b: tau, f: item3(a, b), x: a): b {
   match f {
-  - Item3(func) =>
+  | Item3(func) =>
     func(x)
   }
 }
 
 define use-item3-noetic(a: tau, b: tau, f: &item3(a, b), x: a): b {
   case f {
-  - Item3(func) =>
+  | Item3(func) =>
     {*func}(x)
   }
 }
@@ -113,14 +113,14 @@ define test-item3(): unit {
 
 define use-item4(x: item4(int, list(int))): list(int) {
   match x {
-  - Item4(Pair(v, xs)) =>
+  | Item4(Pair(v, xs)) =>
     trace-list(Cons(v, xs))
   }
 }
 
 define use-item4-noetic(x: &item4(int, list(int))): list(int) {
   case x {
-  - Item4(Pair(v, xs)) =>
+  | Item4(Pair(v, xs)) =>
     trace-list(Cons(*v, *xs))
   }
 }

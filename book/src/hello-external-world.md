@@ -107,7 +107,7 @@ Here, the `unit` is an ADT that contains only one value `Unit`. The explicit def
 
 ```neut
 data unit {
-- Unit
+| Unit
 }
 
 // The Haskell equivalent of the above is (ignoring variable naming conventions):
@@ -270,7 +270,7 @@ These dependencies can then be used in your code:
 // new-item.nt
 
 import {
-- some-name.sample {my-add}
+  some-name.sample {my-add},
 }
 
 define main(): unit {
@@ -283,7 +283,7 @@ Let's focus on `import`. This statement specifies the files we want to use in de
 `import` consists of lines like the one below:
 
 ```neut
-- some-name.sample {my-add}
+some-name.sample {my-add}
 ```
 
 The first component of such a line (`some-name`) is our alias of the dependency.
@@ -298,7 +298,7 @@ Suppose you didn't write `{my-add}`. In this case, you can use the fully-qualifi
 // new-item.nt
 
 import {
-- some-name.sample // removed `{my-add}`
+  some-name.sample, // removed `{my-add}`
 }
 
 define main(): unit {
@@ -313,7 +313,7 @@ Suppose the dependency `some-name` contained a file `source/entity/item.nt`. In 
 
 ```neut
 import {
-- some-name.entity.item
+  some-name.entity.item,
 }
 ```
 
@@ -339,7 +339,7 @@ This file can then be used from `new-item/source/new-item.nt` as follows:
 // new-item.nt
 
 import {
-- this.foo.greet {yo}
+  this.foo.greet {yo},
 }
 
 define main(): unit {
@@ -353,8 +353,8 @@ That is, the name of the current module is always `this`.
 
 ```neut
 import {
-- this.foo.greet {yo}
-- some-name.entity.item {add}
+  this.foo.greet {yo},
+  some-name.entity.item {add},
 }
 ```
 
@@ -366,7 +366,7 @@ We can also use so-called qualified imports as in Haskell. Let's remember the ex
 // new-item.nt
 
 import {
-- some-name.sample // removed `{my-add}`
+  some-name.sample, // removed `{my-add}`
 }
 
 define main(): unit {
@@ -397,7 +397,7 @@ We can now rewrite the `new-item.nt` as follows:
 // new-item.nt
 
 import {
-- S // == some-name.sample
+  S, // == some-name.sample
 }
 
 define main(): unit {

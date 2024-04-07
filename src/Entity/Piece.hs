@@ -1,6 +1,7 @@
 module Entity.Piece
   ( Piece (..),
     arrange,
+    arrangeVertical,
     container,
     parameter,
     beforeBareSeries,
@@ -10,7 +11,9 @@ module Entity.Piece
     clauseDelimiter,
     horizontal,
     vertical,
+    nest,
     idOrNest,
+    appendCommaIfVertical,
     inject,
   )
 where
@@ -29,6 +32,10 @@ arrange docList = do
     then D.join $ map _applyMulti $ _removeNil docList
     else D.join $ map _applySingle $ _removeNil docList
 
+arrangeVertical :: [Piece] -> D.Doc
+arrangeVertical docList = do
+  D.join $ map _applyMulti $ _removeNil docList
+
 _removeNil :: [Piece] -> [Piece]
 _removeNil docList =
   case docList of
@@ -45,6 +52,14 @@ container doc =
     { content = doc,
       singleModifier = id,
       multiModifier = _appendNewLine
+    }
+
+nest :: D.Doc -> Piece
+nest doc =
+  Piece
+    { content = doc,
+      singleModifier = \d -> D.join [D.nest D.indent $ D.join [D.line, d], D.line],
+      multiModifier = \d -> D.join [D.nest D.indent $ D.join [D.line, d], D.line]
     }
 
 idOrNest :: D.Doc -> Piece
@@ -117,6 +132,14 @@ vertical doc =
     { content = doc,
       singleModifier = _appendNewLine,
       multiModifier = _appendNewLine
+    }
+
+appendCommaIfVertical :: D.Doc -> Piece
+appendCommaIfVertical doc =
+  Piece
+    { content = doc,
+      singleModifier = id,
+      multiModifier = \d -> D.join [d, D.text ","]
     }
 
 inject :: D.Doc -> Piece

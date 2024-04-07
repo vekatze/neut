@@ -136,7 +136,7 @@ define sample(): unit {
 
 The name of a local variable must satisfy the following conditions:
 
-- It doesn't contain any of `=() "\n\t:;,<>[]{}/*`
+- It doesn't contain any of `=() "\n\t:;,<>[]{}/*|`
 - It doesn't start with `A, B, .., Z` (the upper case alphabets)
 
 ### Semantics
@@ -162,8 +162,8 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 
 ```neut
 import {
-- core.bool {bool}
-- B
+  core.bool {bool},
+  B,
 }
 
 define sample(): unit {
@@ -179,7 +179,7 @@ define sample(): unit {
 
 The name of a top-level variable is a (possibly) dot-separated symbols, where each symbol must satisfy the following conditions:
 
-- It doesn't contain any of `=() "\n\t:;,<>[]{}/*`
+- It doesn't contain any of `=() "\n\t:;,<>[]{}/*|`
 
 ### Semantics
 
@@ -278,11 +278,11 @@ define use-let(): unit {
 
 ```
 
-`let` can be used to destruct an ADT value:
+`let` can be used to destructure an ADT value:
 
 ```neut
 data item {
-- Item(int, bool)
+| Item(int, bool)
 }
 
 define use-item(x: item): unit {
@@ -331,7 +331,7 @@ cont
 ↓
 
 match x {
-- pat =>
+| pat =>
   cont
 }
 ```
@@ -445,7 +445,7 @@ And a text like `"hello": &text` is compiled into `ptr @"text-hello"`.
 ```neut
 (Γ is a context)  (t is a text literal)
 ---------------------------------------
-         Γ |- t: &text
+         Γ ⊢ t: &text
 ```
 
 ### Note
@@ -737,7 +737,7 @@ define use-id(): unit {
 
 ## `e of {x1 = e1, ..., xn = en}`
 
-`e of {x1 = e1, ..., xn = en}` is an alternative notation of function application. Other languages would call this feature keyword arguments.
+`e of {x1 = e1, ..., xn = en}` is an alternative notation of function application.
 
 ### Example
 
@@ -749,9 +749,9 @@ define foo(x: int, y: bool, some-path: &text): unit {
 define use-foo(): unit {
   // 🌟
   foo of {
-  - x = 10
-  - y = True
-  - some-path = "/path/to/file"
+    x = 10,
+    y = True,
+    some-path = "/path/to/file",
   }
 }
 ```
@@ -760,12 +760,6 @@ define use-foo(): unit {
 
 ```neut
 e of {x1 = e1, ..., xn = en}
-
-e of {
-- x1 = e1
-- ...
-- xn = en
-}
 ```
 
 ### Semantics
@@ -782,18 +776,18 @@ This notation might be useful when used in combination with ADTs:
 
 ```neut
 data config {
-- Config of {
-  - count: int
-  - path: &text
-  - colorize: bool
-  }
+| Config(
+    count: int,
+    path: &text,
+    colorize: bool,
+  )
 }
 
 constant some-config {
   Config of {
-  - count = 10
-  - path = "/path/to/file"
-  - colorize = True
+    count = 10,
+    colorize = True,
+    path = "/path/to/file", // you can reorder arguments
   }
 }
 ```
@@ -801,18 +795,6 @@ constant some-config {
 If the argument is a variable that has the same name as the parameter, you can use a shorthand notation:
 
 ```neut
-define use-foo(): unit {
-  let x = 10 in
-  let y = True in
-  let some-path = "/path/to/file"
-  // 🌟
-  foo of {
-  - x // a shorthand for `x = x`
-  - y
-  - some-path
-  }
-}
-
 define use-foo(): unit {
   let x = 10 in
   let y = True in
@@ -899,8 +881,8 @@ After defining an ADT using the statement `data`, you can use the ADT.
 
 ```neut
 data my-nat {
-- Zero
-- Succ(my-nat)
+| Zero
+| Succ(my-nat)
 }
 
 define use-nat-type(): tau {
@@ -937,8 +919,8 @@ After defining an ADT using the statement `data`, you can use the constructors t
 
 ```neut
 data my-nat {
-- Zero
-- Succ(my-nat)
+| Zero
+| Succ(my-nat)
 }
 
 define create-nat(): my-nat {
@@ -961,11 +943,11 @@ If a constructor `c` is nullary, the type of `c` is the ADT type. For example, c
 
 ```neut
 data some-adt {
-- c1
+| c1
 }
 
 data other-adt(a: tau) {
-- c2
+| c2
 }
 ```
 
@@ -978,11 +960,11 @@ If a constructor `c` isn't nullary, the type of `c` is the function type that ta
 
 ```neut
 data some-adt {
-- c1(foo: int)
+| c1(foo: int)
 }
 
 data other-adt(a: tau) {
-- c2(bar: bool, buz: other-adt(a))
+| c2(bar: bool, buz: other-adt(a))
 }
 ```
 
@@ -999,16 +981,16 @@ You can use `match` to destructure ADT values.
 
 ```neut
 data my-nat {
-- Zero
-- Succ(my-nat)
+| Zero
+| Succ(my-nat)
 }
 
 define foo(n: my-nat): int {
   // 🌟
   match n {
-  - Zero =>
+  | Zero =>
     100
-  - Succ(m) =>
+  | Succ(m) =>
     foo(m)
   }
 }
@@ -1016,11 +998,11 @@ define foo(n: my-nat): int {
 define bar(n: my-nat): int {
   // 🌟 (You can use nested patterns)
   match n {
-  - Zero =>
+  | Zero =>
     100
-  - Succ(Succ(m)) => // ← a nested pattern
+  | Succ(Succ(m)) => // ← a nested pattern
     200
-  - Succ(m) =>
+  | Succ(m) =>
     foo(m)
   }
 }
@@ -1028,11 +1010,11 @@ define bar(n: my-nat): int {
 define eq-nat(n1: my-nat, n2: my-nat): bool {
   // 🌟 (`match` can handle multiple values)
   match n1, n2 {
-  - Zero, Zero =>
+  | Zero, Zero =>
     True
-  - Succ(m1), Succ(m2) =>
+  | Succ(m1), Succ(m2) =>
     eq-nat(m1, m2)
-  - _, _ =>
+  | _, _ =>
     False
   }
 }
@@ -1044,10 +1026,10 @@ define eq-nat(n1: my-nat, n2: my-nat): bool {
 
 ```neut
 match e1, ..., en {
-- pattern-1 =>
+| pattern-1 =>
   body-1
-- ...
-- pattern-m =>
+  ...
+| pattern-m =>
   body-m
 }
 ```
@@ -1060,8 +1042,8 @@ For example, let's see how `my-nat` in the following code is used in `match`:
 
 ```neut
 data my-nat {
-- Zero
-- Succ(my-nat)
+| Zero
+| Succ(my-nat)
 }
 ```
 
@@ -1080,9 +1062,9 @@ When evaluating `match`, the computer inspects the first element of the "tuple" 
 define foo(n: my-nat): int {
   // 🌟 (inspects the first element of `n` here)
   match n {
-  - Zero =>
+  | Zero =>
     100
-  - Succ(m) =>
+  | Succ(m) =>
     foo(m)
   }
 }
@@ -1111,9 +1093,9 @@ If the first element is `1`, which means that we found an ADT value of `Succ`, t
 (the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
 ------------------------------------------------------------------------------
 Γ ⊢ match e1, ..., en {
-    - pat-1 => body-1
+    | pat-1 => body-1
     ...
-    - pat-m => body-m
+    | pat-m => body-m
     }: b
 ```
 
@@ -1136,8 +1118,8 @@ An example of the application of the typing rule of `match`:
 (the sequence Zero, Succ(m) is a exhaustinve matching against n)
 ------------------------------------------------------------------------------
 Γ ⊢ match n {
-    - Zero => 100
-    - Succ(m) => foo(m)
+    | Zero => 100
+    | Succ(m) => foo(m)
     }: int
 ```
 
@@ -1149,15 +1131,15 @@ You can use `case` to inspect noetic ADT values.
 
 ```neut
 data my-nat {
-- Zero
-- Succ(my-nat)
+| Zero
+| Succ(my-nat)
 }
 
 define foo-noetic(n: &my-nat): int {
   case n {
-  - Zero =>
+  | Zero =>
     100
-  - Succ(m) =>
+  | Succ(m) =>
     // the type of foo-noetic is `(&my-nat) -> int`
     foo-noetic(m)
   }
@@ -1168,10 +1150,10 @@ define foo-noetic(n: &my-nat): int {
 
 ```neut
 case e1, ..., en {
-- pattern-1 =>
+| pattern-1 =>
   body-1
-- ...
-- pattern-m =>
+  ...
+| pattern-m =>
   body-m
 }
 ```
@@ -1199,9 +1181,9 @@ The semantics of `case` is the same as `match`, except that `case` doesn't consu
 (the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
 ------------------------------------------------------------------------------
 Γ ⊢ case e1, ..., en {
-    - pat-1 => body-1
+    | pat-1 => body-1
     ...
-    - pat-m => body-m
+    | pat-m => body-m
     }: b
 ```
 
@@ -1222,8 +1204,8 @@ An example of the application of the typing rule of `case`:
 (the sequence Zero, Succ(m) is a exhaustinve matching against n)
 ------------------------------------------------------------------------------
 Γ ⊢ case n {
-    - Zero => 100
-    - Succ(m) => foo-noetic(m)
+    | Zero => 100
+    | Succ(m) => foo-noetic(m)
     }: int
 ```
 
@@ -1235,16 +1217,16 @@ Given a type `a: tau`, the `&a` is the type of noemata over `a`.
 
 ```neut
 data my-nat {
-- Zero
-- Succ(my-nat)
+| Zero
+| Succ(my-nat)
 }
 
                      // 🌟
 define foo-noetic(n: &my-nat): int {
   case n {
-  - Zero =>
+  | Zero =>
     100
-  - Succ(m) =>
+  | Succ(m) =>
     foo-noetic(m)
   }
 }
@@ -1340,9 +1322,9 @@ let result on xs = xs in // **CAUTION** the result of let-on is a noema
 let _ = xs in    // ← Since the variable `_` isn't used,
                  // the hyle of `result`, namely `xs: list(int)`, is discarded here
 match result {   // ... and thus using `result` here is a use-after-free!
-- Nil =>
+| Nil =>
   print("hey")
-- Cons(y, ys) =>
+| Cons(y, ys) =>
   print("yo")
 }
 ```
@@ -1361,17 +1343,17 @@ Here, a "dubious" ADT is something like the below:
 ```neut
 // the type `joker-x` is dubious since it contains a noetic argument
 data joker-x {
-- HideX(&list(int))
+| HideX(&list(int))
 }
 
 // the type `joker-y` is dubious since it contains a functional argument
 data joker-y {
-- HideY(int -> bool)
+| HideY(int -> bool)
 }
 
 // the type `joker-z` is dubious since it contains a dubious ADT argument
 data joker-z {
-- HideZ(joker-y)
+| HideZ(joker-y)
 }
 ```
 
@@ -1381,7 +1363,7 @@ Indeed, if we were to allow returning these dubious ADTs, we could exploit them 
 let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
 let _ = xs in                   // `xs` is discarded here
 match result {
-- HideX(xs) =>
+| HideX(xs) =>
   *xs                           // CRASH: use-after-free!
 }
 ```
@@ -1397,9 +1379,9 @@ You can use `*e` to create a non-noetic value from a noetic value.
 ```neut
 define clone-list<a>(xs: &list(a)): list(a) {
   case xs {
-  - Nil =>
+  | Nil =>
     Nil
-  - Cons(y, ys) =>
+  | Cons(y, ys) =>
     Cons(*y, clone-list(ys))
   }
 }
@@ -1850,18 +1832,18 @@ You can use `introspect key {..}` to introspect the compiler's configuration.
 ```neut
 define arch-dependent-constant(): int {
   introspect target-arch {
-  - arm64 =>
+  | arm64 =>
     1
-  - amd64 =>
+  | amd64 =>
     2
   }
 }
 
 define os-dependent-constant(): int {
   introspect target-os {
-  - linux =>
+  | linux =>
     1
-  - default =>
+  | default =>
     // `2` is returned if target-os != linux
     2
   }
@@ -1872,10 +1854,10 @@ define os-dependent-constant(): int {
 
 ```neut
 introspect key {
-- value-1 =>
+| value-1 =>
   e1
-...
-- value-n =>
+  ...
+| value-n =>
   en
 }
 ```
@@ -1892,7 +1874,7 @@ You can also use `default` as a configuration value to represent a fallback case
 
 ### Semantics
 
-Firstly, `introspect key {- v1 => e1 ... - vn => en}` looks up the configuration value `v` of the compiler by `key`. Then it reads the configuration values `v1`, ..., `vn` in this order to find `vk` that is equal to the `v`. If such a `vk` is found, `introspect` executes the corresponding clause `ek`. If no such `vk` is found, `introspect` will report a compilation error.
+Firstly, `introspect key {v1 => e1 | ... | vn => en}` looks up the configuration value `v` of the compiler by `key`. Then it reads the configuration values `v1`, ..., `vn` in this order to find `vk` that is equal to the `v`. If such a `vk` is found, `introspect` executes the corresponding clause `ek`. If no such `vk` is found, `introspect` will report a compilation error.
 
 The configuration value `default` is equal to any configuration values.
 
@@ -1910,9 +1892,9 @@ The configuration value `default` is equal to any configuration values.
 Γ ⊢ en: a
 ------------------------------------------
 Γ ⊢ introspect key {
-    - v1 => e1
-    ...
-    - vn => en
+    | v1 => e1
+      ...
+    | vn => en
     }: a
 ```
 
@@ -2048,10 +2030,10 @@ You can use `use e {x1, ..., xn} in cont` as a shorthand to destructure an ADT t
 
 ```neut
 data config {
-- Config of {
-  - path: &text
-  - count: int
-  }
+| Config(
+    path: &text,
+    count: int,
+  )
 }
 
 define use-config(c: config): unit {
@@ -2101,10 +2083,10 @@ You can use `e::x` to extract a value from an ADT value.
 
 ```neut
 data config {
-- Config of {
-  - path: &text
-  - count: int
-  }
+| Config(
+    path: &text,
+    count: int,
+  )
 }
 
 define use-config(c: config): unit {
@@ -2146,18 +2128,18 @@ One possible use of `::` is to select a function from a record of functions:
 
 // declare a record of functions (like signatures in OCaml)
 data trope(k) {
-- Trope of {
-  - insert: <v>(k, v, dict(k, v)) -> dict(k, v)
-  - lookup: <v>(&k, &dict(k, v)) -> ?&v
-  - delete: <v>(k, dict(k, v)) -> dict(k, v)
-  }
+| Trope(
+    insert: <v>(k, v, dict(k, v)) -> dict(k, v),
+    lookup: <v>(&k, &dict(k, v)) -> ?&v,
+    delete: <v>(k, dict(k, v)) -> dict(k, v),
+  )
 }
 
 // foo.nt ----------------------------------
 
 import {
-- Dict
-- ...
+  Dict,
+  ...
 }
 
 // create a record of functions
@@ -2222,15 +2204,15 @@ if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
 ↓
 
 match b1 {
-- True => e1
-- False =>
+| True => e1
+| False =>
   match b2 {
-  - True => e2
-  - False =>
+  | True => e2
+  | False =>
     ...
     match b_{n-1} {
-    - True => e_{n-1}
-    - False => en
+    | True => e_{n-1}
+    | False => en
     }
   }
 }
@@ -2351,9 +2333,9 @@ e2
 
 ```neut
 match e1 {
-- Fail(err) =>
+| Fail(err) =>
   Fail(err)
-- Pass(x) =>
+| Pass(x) =>
   e2
 }
 ```
@@ -2368,8 +2350,8 @@ The definition of `except` is as follows:
 
 ```neut
 data except(a, b) {
-- Fail(a)
-- Pass(b)
+| Fail(a)
+| Pass(b)
 }
 ```
 
@@ -2381,10 +2363,10 @@ You can use `tie` as a "noetic" `let`.
 
 ```neut
 data config {
-- Config of {
-  - foo: int
-  - bar: bool
-  }
+| Config(
+    foo: int,
+    bar: bool,
+  )
 }
 
 define use-noetic-config(c: &config): int {
@@ -2406,7 +2388,7 @@ e2
 
 ```neut
 case e1 {
-- x =>
+| x =>
   e2
 }
 ```
@@ -2497,9 +2479,9 @@ You can use `with` / `bind` as "do-notations" in other languages.
 // define a monadic bind
 define except-bind<e, a, b>(x: except(e, a), k: (a) -> except(e, b)): except(e, b) {
   match x {
-  - Fail(err) =>
+  | Fail(err) =>
     Fail(err)
-  - Pass(value) =>
+  | Pass(value) =>
     k(value)
   }
 }

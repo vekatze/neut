@@ -112,11 +112,11 @@ discernStmt stmt = do
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       stmtList <- defineData m dd args (SE.extract consInfo) loc
       discernStmtList stmtList
-    RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) -> do
+    RawStmtDefineResource _ m (name, _) (_, discarder) (_, copier) _ -> do
       let dd = nameLifter name
       registerTopLevelName nameLifter stmt
       t' <- discern empty $ m :< RT.Tau
-      e' <- discern empty $ m :< RT.Resource [] discarder copier
+      e' <- discern empty $ m :< RT.Resource [] (discarder, []) (copier, [])
       Tag.insertGlobalVar m dd True m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineConst m dd t' e']
@@ -338,7 +338,7 @@ discern nenv term =
                 (SE.fromList'' [e1'])
                 ( SE.fromList
                     SE.Brace
-                    SE.Hyphen
+                    SE.Bar
                     [ ( SE.fromList'' [(m2', RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
                         [],
                         m2' :< RT.piElim exceptFailVar [m2' :< RT.Var (Var err)],
@@ -532,7 +532,7 @@ getContinuationModifier pat endLoc =
                 []
                 isNoetic
                 (SE.fromList'' [mCont :< RT.Var (Var tmp)])
-                (SE.fromList SE.Brace SE.Hyphen [(SE.fromList'' [pat], [], cont, endLoc)])
+                (SE.fromList SE.Brace SE.Bar [(SE.fromList'' [pat], [], cont, endLoc)])
         )
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
@@ -612,7 +612,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           (SE.fromList'' [ifCond])
           ( SE.fromList
               SE.Brace
-              SE.Hyphen
+              SE.Bar
               [ ( SE.fromList'' [(blur m, RP.Var true)],
                   [],
                   ifBody,
@@ -635,7 +635,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           (SE.fromList'' [ifCond])
           ( SE.fromList
               SE.Brace
-              SE.Hyphen
+              SE.Bar
               [ (SE.fromList'' [(blur m, RP.Var true)], [], ifBody, fakeLoc),
                 (SE.fromList'' [(blur m, RP.Var false)], [], cont, fakeLoc)
               ]

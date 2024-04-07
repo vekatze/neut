@@ -17,6 +17,7 @@ import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
 import Entity.StmtKind qualified as SK
+import Entity.Syntax.Series (Series (hasOptionalSeparator))
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 import Entity.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
@@ -159,13 +160,22 @@ decStmt stmt =
             D.text " ",
             SE.decode $ fmap decConsInfo consInfo
           ]
-    RawStmtDefineResource c1 _ (name, c2) c3 discarder copier -> do
-      let resourcePair = SE.pushComment c3 $ SE.fromListWithComment SE.Brace SE.Hyphen [discarder, copier]
+    RawStmtDefineResource c1 _ (name, c2) discarder copier trailingComment -> do
+      let series =
+            SE.Series
+              { elems = [discarder, copier],
+                trailingComment,
+                prefix = Nothing,
+                container = Just SE.Brace,
+                separator = SE.Comma,
+                hasOptionalSeparator = True
+              }
+      -- let resourcePair = SE.pushComment c3 $ SE.fromListWithComment SE.Brace SE.Hyphen [discarder, copier]
       RT.attachComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
             PI.horizontal $ D.text (BN.reify name),
-            PI.inject $ SE.decode $ fmap RT.toDoc resourcePair
+            PI.inject $ SE.decode $ fmap RT.toDoc series
           ]
     RawStmtNominal c _ geistList -> do
       RT.attachComment c $

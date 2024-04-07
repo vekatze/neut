@@ -11,6 +11,8 @@ module Entity.Syntax.Series
     fromList'',
     fromListWithComment,
     pushComment,
+    singleton,
+    cons,
     assoc,
     getContainerPair,
     getSeparator,
@@ -33,7 +35,7 @@ import Entity.C (C)
 
 data Separator
   = Comma
-  | Hyphen
+  | Bar
 
 data Container
   = Paren
@@ -49,29 +51,66 @@ data Series a = Series
     trailingComment :: C,
     prefix :: Prefix,
     container :: Maybe Container,
-    separator :: Separator
+    separator :: Separator,
+    hasOptionalSeparator :: Bool
   }
 
 instance Functor Series where
   fmap f series =
     series {elems = map (second f) (elems series)}
 
-emptySeries :: Container -> Separator -> Series a
+emptySeries :: Maybe Container -> Separator -> Series a
 emptySeries container separator =
-  Series {elems = [], trailingComment = [], prefix = Nothing, separator, container = Just container}
+  Series
+    { elems = [],
+      trailingComment = [],
+      prefix = Nothing,
+      separator,
+      container = container,
+      hasOptionalSeparator = False
+    }
 
 emptySeries' :: Maybe Container -> Separator -> Series a
 emptySeries' container separator =
-  Series {elems = [], trailingComment = [], prefix = Nothing, separator, container}
+  Series
+    { elems = [],
+      trailingComment = [],
+      prefix = Nothing,
+      separator,
+      container,
+      hasOptionalSeparator = False
+    }
+
+singleton :: Maybe Container -> Separator -> C -> (a, C) -> Series a
+singleton container separator leadingComment (v, c) =
+  Series
+    { elems = [(leadingComment, v)],
+      trailingComment = c,
+      prefix = Nothing,
+      separator,
+      container = container,
+      hasOptionalSeparator = False
+    }
+
+cons :: (C, a) -> Series a -> Series a
+cons x xs =
+  xs {elems = x : elems xs}
 
 -- pc: paren comma
 emptySeriesPC :: Series a
 emptySeriesPC =
-  emptySeries Paren Comma
+  emptySeries (Just Paren) Comma
 
 fromList :: Container -> Separator -> [a] -> Series a
 fromList container separator xs =
-  Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator, container = Just container}
+  Series
+    { elems = map ([],) xs,
+      trailingComment = [],
+      prefix = Nothing,
+      separator,
+      container = Just container,
+      hasOptionalSeparator = False
+    }
 
 fromList' :: [a] -> Series a
 fromList' =
@@ -79,12 +118,26 @@ fromList' =
 
 fromList'' :: [a] -> Series a
 fromList'' xs =
-  Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator = Comma, container = Nothing}
+  Series
+    { elems = map ([],) xs,
+      trailingComment = [],
+      prefix = Nothing,
+      separator = Comma,
+      container = Nothing,
+      hasOptionalSeparator = False
+    }
 
-fromListWithComment :: Container -> Separator -> [(C, (a, C))] -> Series a
+fromListWithComment :: Maybe Container -> Separator -> [(C, (a, C))] -> Series a
 fromListWithComment container separator xs = do
   let (xs', trailingComment) = _assoc xs []
-  Series {elems = xs', trailingComment, prefix = Nothing, separator, container = Just container}
+  Series
+    { elems = xs',
+      trailingComment,
+      prefix = Nothing,
+      separator,
+      container = container,
+      hasOptionalSeparator = False
+    }
 
 pushComment :: C -> Series a -> Series a
 pushComment c series =
@@ -96,9 +149,16 @@ pushComment c series =
 
 assoc :: Series (a, C) -> Series a
 assoc series = do
-  let Series {elems, trailingComment, separator, container} = series
+  let Series {elems, trailingComment, separator, container, hasOptionalSeparator} = series
   let (elems', trailingComment') = _assoc elems trailingComment
-  Series {elems = elems', trailingComment = trailingComment', prefix = Nothing, separator, container}
+  Series
+    { elems = elems',
+      trailingComment = trailingComment',
+      prefix = Nothing,
+      separator,
+      container,
+      hasOptionalSeparator
+    }
 
 _assoc :: [(C, (a, C))] -> C -> ([(C, a)], C)
 _assoc es c =
@@ -128,8 +188,8 @@ getSeparator sep =
   case sep of
     Comma ->
       ","
-    Hyphen ->
-      "-"
+    Bar ->
+      "|"
 
 extract :: Series a -> [a]
 extract series =
@@ -157,7 +217,8 @@ appendLeftBiased series1 series2 = do
       trailingComment = trailingComment series1 ++ trailingComment series2,
       prefix = prefix series1,
       container = container series1,
-      separator = separator series1
+      separator = separator series1,
+      hasOptionalSeparator = hasOptionalSeparator series1 || hasOptionalSeparator series2
     }
 
 catMaybes :: Series (Maybe a) -> Series a

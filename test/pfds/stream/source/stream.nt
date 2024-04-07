@@ -1,27 +1,27 @@
 import {
-- core.bool
-- core.unit {Unit, unit}
+  core.bool,
+  core.unit {Unit, unit},
 }
 
 nominal {
-- stream(a: tau): tau
+  stream(a: tau): tau,
 }
 
 data stream-cell(a) {
-- Nil
-- Cons(a, stream(a))
+| Nil
+| Cons(a, stream(a))
 }
 
 data stream(a) {
-- Stream(() -> stream-cell(a))
+| Stream(() -> stream-cell(a))
 }
 
 define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
   let Stream(k) = xs in
   match k() {
-  - Nil =>
+  | Nil =>
     ys
-  - Cons(x1, rest) =>
+  | Cons(x1, rest) =>
     Stream(function () {
       Cons(x1, append(a, rest, ys))
     })
@@ -36,11 +36,11 @@ define take(a: tau, n: int, xs: stream(a)): stream(a) {
   } else {
     let Stream(k) = xs in
     match k() {
-    - Nil =>
+    | Nil =>
       Stream(function () {
         Nil
       })
-    - Cons(x, rest) =>
+    | Cons(x, rest) =>
       Stream(function () {
         Cons(x, take(a, sub-int(n, 1), rest))
       })

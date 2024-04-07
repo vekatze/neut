@@ -1,19 +1,19 @@
 data expr() {
-- Num(int)
-- Add(expr(), expr())
-- Sub(expr(), expr())
-- Mul(expr(), expr())
+| Num(int)
+| Add(expr(), expr())
+| Sub(expr(), expr())
+| Mul(expr(), expr())
 }
 
 define interpret(e: expr()): int {
   match e {
-  - Add(e1, e2) =>
+  | Add(e1, e2) =>
     add-int(interpret(e1), interpret(e2))
-  - Num(x) =>
+  | Num(x) =>
     x
-  - Sub(e1, e2) =>
+  | Sub(e1, e2) =>
     sub-int(interpret(e1), interpret(e2))
-  - Mul(e1, e2) =>
+  | Mul(e1, e2) =>
     mul-int(interpret(e1), interpret(e2))
   }
 }

@@ -8,6 +8,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
+import Data.Set qualified as S
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.ExternalName qualified as EN
@@ -20,6 +21,7 @@ import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
+import Scene.Parse.Core (asLabel)
 import Scene.Parse.Core qualified as P
 import Scene.Parse.RawTerm
 import Text.Megaparsec
@@ -37,7 +39,7 @@ parseImport = do
     [ do
         c1 <- P.keyword "import"
         m <- P.getCurrentHint
-        (importItems, loc, c) <- P.seriesBraceList' $ do
+        (importItems, loc, c) <- P.seriesBrace' $ do
           mImportItem <- P.getCurrentHint
           locator <- P.symbol
           (lls, c) <- parseLocalLocatorList'
@@ -62,7 +64,7 @@ parseLocalLocatorList' :: P.Parser (SE.Series (Hint, LL.LocalLocator), C)
 parseLocalLocatorList' = do
   choice
     [ P.seriesBrace parseLocalLocator,
-      return (SE.emptySeries SE.Brace SE.Comma, [])
+      return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
 
 parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)
@@ -74,7 +76,7 @@ parseLocalLocator = do
 parseForeign :: P.Parser (RawStmt, C)
 parseForeign = do
   c1 <- P.keyword "foreign"
-  (val, c) <- P.seriesBraceList parseForeignItem
+  (val, c) <- P.seriesBrace parseForeignItem
   return (RawStmtForeign c1 val, c)
 
 parseForeignItem :: P.Parser (RawForeignItem, C)
@@ -118,7 +120,7 @@ parseNominal :: P.Parser (RawStmt, C)
 parseNominal = do
   c1 <- P.keyword "nominal"
   m <- P.getCurrentHint
-  (geists, c) <- P.seriesBraceList $ do
+  (geists, c) <- P.seriesBrace $ do
     (geist, c) <- parseGeist return
     loc <- P.getCurrentLoc
     return ((geist, loc), c)
@@ -127,7 +129,7 @@ parseNominal = do
 parseDataArgs :: P.Parser (Maybe (RT.Args RT.RawTerm))
 parseDataArgs = do
   choice
-    [ Just <$> try (P.seqOrList preBinder),
+    [ Just <$> try (P.seriesParen preBinder),
       return Nothing
     ]
 
@@ -146,7 +148,7 @@ parseConsArgs :: P.Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
 parseConsArgs = do
   choice
     [ do
-        (series, loc, c) <- P.seqOrList' parseDefineDataClauseArg
+        (series, loc, c) <- P.seriesParen' parseDefineDataClauseArg
         return (Just series, loc, c),
       do
         loc <- P.getCurrentLoc
@@ -165,13 +167,12 @@ parseResource = do
   c1 <- P.keyword "resource"
   m <- P.getCurrentHint
   (name, c2) <- P.baseName
-  (c3, ((discarder, copier), c4)) <- P.betweenBrace $ do
-    cDiscarder <- P.delimiter "-"
-    discarder <- rawExpr
-    cCopier <- P.delimiter "-"
-    copier <- rawExpr
-    return ((cDiscarder, discarder), (cCopier, copier))
-  return (RawStmtDefineResource c1 m (name, c2) c3 discarder copier, c4)
+  (handlers, c) <- P.seriesBrace rawExpr
+  case SE.elems handlers of
+    [discarder, copier] -> do
+      return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
+    _ ->
+      failure Nothing (S.fromList [asLabel "discarder and copier"])
 
 parseConstant :: P.Parser (RawStmt, C)
 parseConstant = do
