@@ -44,7 +44,7 @@ remarkToDignostic (mLoc, _, level, msg) = do
   FP.FilePos path (line, col) <- mLoc
   let pos = Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ col - 1}
   let range = Range {_start = pos, _end = pos}
-  let uri = toNormalizedUri $ Uri $ T.pack $ toFilePath path
+  let uri = toNormalizedUri $ filePathToUri $ toFilePath path
   return
     ( uri,
       Diagnostic
@@ -89,8 +89,8 @@ updateCol' sourceLines diags =
           diag' : updateCol' ((currentLineNumber, currentLine) : sourceLines') rest
 
 uriToPath :: NormalizedUri -> Maybe (Path Abs File)
-uriToPath (NormalizedUri _ pathText) = do
-  parseAbsFile $ T.unpack pathText
+uriToPath uri = do
+  uriToFilePath (fromNormalizedUri uri) >>= parseAbsFile
 
 levelToSeverity :: RemarkLevel -> DiagnosticSeverity
 levelToSeverity level =
