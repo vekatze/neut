@@ -14,7 +14,9 @@ build-image-arm64-linux:
     @docker build . -f build/Dockerfile --platform linux/arm64 -t {{image-arm64}}
 
 build-compilers:
-    @just _build-compilers-in-parallel amd64-linux arm64-linux arm64-darwin
+    @just build-compiler-amd64-linux
+    @just build-compiler-arm64-linux
+    @just build-compiler-arm64-darwin
 
 build-compiler-amd64-linux:
     @just _run-amd64-linux "just _generate-package-yaml && stack install neut --allow-different-user --local-bin-path ./bin/tmp-amd64-linux"
@@ -48,7 +50,9 @@ bench-linux platform: # platform \in {amd64-linux, arm64-linux}
     @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts {{platform}}"
 
 test:
-    @just _test-in-parallel amd64-linux arm64-linux arm64-darwin
+    @just test-amd64-linux
+    @just test-arm64-linux
+    @just test-arm64-darwin
 
 test-amd64-linux:
     @just _run-amd64-linux "NEUT=/app/bin/neut-amd64-linux TARGET_ARCH=amd64 /app/test/test-linux.sh /app/test/term /app/test/statement /app/test/pfds /app/test/misc"
