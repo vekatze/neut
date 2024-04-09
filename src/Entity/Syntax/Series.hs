@@ -20,6 +20,7 @@ module Entity.Syntax.Series
     isEmpty,
     containsNoComment,
     sortSeriesBy,
+    nubSeriesBy,
     appendLeftBiased,
     catMaybes,
     compressEither,
@@ -28,7 +29,7 @@ module Entity.Syntax.Series
 where
 
 import Data.Bifunctor
-import Data.List (sortBy)
+import Data.List (nubBy, sortBy)
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import Entity.C (C)
@@ -209,6 +210,11 @@ sortSeriesBy :: (a -> a -> Ordering) -> Series a -> Series a
 sortSeriesBy cmp series = do
   let cmp' (_, x) (_, y) = cmp x y
   series {elems = sortBy cmp' $ elems series}
+
+nubSeriesBy :: (a -> a -> Bool) -> Series a -> Series a
+nubSeriesBy cmp series = do
+  let cmp' (_, x) (_, y) = cmp x y
+  series {elems = nubBy cmp' $ elems series}
 
 appendLeftBiased :: Series a -> Series a -> Series a
 appendLeftBiased series1 series2 = do

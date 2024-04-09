@@ -98,7 +98,7 @@ filterLocalLocator names (m, ll) =
 sortImport :: SE.Series RawImportItem -> SE.Series RawImportItem
 sortImport series = do
   let series' = SE.sortSeriesBy compareImportItem series
-  sortLocalLocators <$> series' {SE.elems = mergeAdjacentImport (SE.elems series')}
+  nubLocalLocators . sortLocalLocators <$> series' {SE.elems = mergeAdjacentImport (SE.elems series')}
 
 mergeAdjacentImport :: [(C, RawImportItem)] -> [(C, RawImportItem)]
 mergeAdjacentImport importList = do
@@ -120,6 +120,11 @@ sortLocalLocators :: RawImportItem -> RawImportItem
 sortLocalLocators (RawImportItem m locator localLocators) = do
   let cmp (_, x) (_, y) = compare x y
   RawImportItem m locator $ SE.sortSeriesBy cmp localLocators
+
+nubLocalLocators :: RawImportItem -> RawImportItem
+nubLocalLocators (RawImportItem m locator localLocators) = do
+  let eq (_, x) (_, y) = x == y
+  RawImportItem m locator $ SE.nubSeriesBy eq localLocators
 
 decImportItem :: RawImportItem -> (D.Doc, C)
 decImportItem (RawImportItem _ (item, c) args) = do
