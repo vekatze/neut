@@ -56,12 +56,16 @@ decImport :: ImportInfo -> Maybe RawImport -> Maybe D.Doc
 decImport importInfo importOrNone = do
   (RawImport c _ importItemList _) <- importOrNone
   let importItemList' = SE.compressEither $ fmap (filterImport importInfo) importItemList
-  return $
-    RT.attachComment c $
-      D.join
-        [ D.text "import ",
-          SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
-        ]
+  let importItemList'' = SE.assoc $ decImportItem <$> sortImport importItemList'
+  if SE.isEmpty importItemList''
+    then Nothing
+    else do
+      return $
+        RT.attachComment c $
+          D.join
+            [ D.text "import ",
+              SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
+            ]
 
 filterImport :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterImport importInfo = do
