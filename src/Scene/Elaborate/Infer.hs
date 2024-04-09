@@ -5,6 +5,7 @@ import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
+import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -423,9 +424,10 @@ ensureArityCorrectness function expected found = do
   when (expected /= found) $ do
     case function of
       m :< WT.VarGlobal _ name -> do
+        name' <- Locator.getReadableDD name
         Throw.raiseError m $
           "the function `"
-            <> DD.reify name
+            <> name'
             <> "` expects "
             <> T.pack (show expected)
             <> " arguments, but found "

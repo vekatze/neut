@@ -72,7 +72,8 @@ resolveVarOrErr m name = do
       UnusedLocalLocator.delete localLocator
       return $ Right globalVar
     _ -> do
-      let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
+      foundNameList' <- mapM (Locator.getReadableDD . fst) foundNameList
+      let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
 resolveLocator ::

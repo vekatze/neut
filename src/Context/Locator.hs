@@ -11,6 +11,7 @@ module Context.Locator
     getNameLifter,
     getMainDefiniteDescriptionByTarget,
     checkIfEntryPointIsNecessary,
+    getReadableDD,
   )
 where
 
@@ -32,6 +33,7 @@ import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Module qualified as Module
 import Entity.ModuleID qualified as MID
+import Entity.Source qualified as DD
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
@@ -191,3 +193,8 @@ checkIfEntryPointIsNecessary target source = do
       isMainFile source
     Target.Zen path -> do
       return $ Source.sourceFilePath source == path
+
+getReadableDD :: DD.DefiniteDescription -> App T.Text
+getReadableDD dd = do
+  mainModule <- getMainModule
+  return $ DD.getReadableDD mainModule dd

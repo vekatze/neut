@@ -800,9 +800,10 @@ discernPattern (m, pat) = do
         Var x
           | isConsName x -> do
               (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m $ Var x
+              consDD' <- Locator.getReadableDD consDD
               unless isConstLike $
                 Throw.raiseError m $
-                  "the constructor `" <> DD.reify consDD <> "` can't be used as a constant"
+                  "the constructor `" <> consDD' <> "` can't be used as a constant"
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
           | otherwise -> do
               x' <- Gensym.newIdentFromText x
@@ -821,9 +822,10 @@ discernPattern (m, pat) = do
                         args = []
                       }
               return ((m, PAT.Cons consInfo), [])
-            _ ->
-              Throw.raiseCritical m $
-                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
+            _ -> do
+              dd' <- Locator.getReadableDD dd
+              Throw.raiseError m $
+                "the symbol `" <> dd' <> "` isn't defined as a constuctor"
     RP.Cons cons _ mArgs -> do
       (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m cons
       when isConstLike $
