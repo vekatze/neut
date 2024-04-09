@@ -80,6 +80,8 @@ handlers =
         return (),
       notificationHandler SMethod_TextDocumentWillSave $ \_ -> do
         return (),
+      notificationHandler SMethod_SetTrace $ \_ -> do
+        return (),
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
