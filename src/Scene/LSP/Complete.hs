@@ -152,7 +152,8 @@ interpretCand importSummaryOrNone cand =
       if isAlreadyImported summary cand
         then Nothing
         else do
-          let edit = constructEditText cand <> "\n"
+          let prefix = if null summary then "\n" else ""
+          let edit = prefix <> constructEditText cand <> "\n"
           let pos = locToPosition loc
           Just [TextEdit {_range = Range {_start = pos, _end = pos}, _newText = edit}]
 

@@ -56,12 +56,16 @@ decImport :: ImportInfo -> Maybe RawImport -> Maybe D.Doc
 decImport importInfo importOrNone = do
   (RawImport c _ importItemList _) <- importOrNone
   let importItemList' = SE.compressEither $ fmap (filterImport importInfo) importItemList
-  return $
-    RT.attachComment c $
-      D.join
-        [ D.text "import ",
-          SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
-        ]
+  let importItemList'' = SE.assoc $ decImportItem <$> sortImport importItemList'
+  if SE.isEmpty importItemList''
+    then Nothing
+    else do
+      return $
+        RT.attachComment c $
+          D.join
+            [ D.text "import ",
+              SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
+            ]
 
 filterImport :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterImport importInfo = do
@@ -98,7 +102,7 @@ filterLocalLocator names (m, ll) =
 sortImport :: SE.Series RawImportItem -> SE.Series RawImportItem
 sortImport series = do
   let series' = SE.sortSeriesBy compareImportItem series
-  sortLocalLocators <$> series' {SE.elems = mergeAdjacentImport (SE.elems series')}
+  nubLocalLocators . sortLocalLocators <$> series' {SE.elems = mergeAdjacentImport (SE.elems series')}
 
 mergeAdjacentImport :: [(C, RawImportItem)] -> [(C, RawImportItem)]
 mergeAdjacentImport importList = do
@@ -120,6 +124,11 @@ sortLocalLocators :: RawImportItem -> RawImportItem
 sortLocalLocators (RawImportItem m locator localLocators) = do
   let cmp (_, x) (_, y) = compare x y
   RawImportItem m locator $ SE.sortSeriesBy cmp localLocators
+
+nubLocalLocators :: RawImportItem -> RawImportItem
+nubLocalLocators (RawImportItem m locator localLocators) = do
+  let eq (_, x) (_, y) = x == y
+  RawImportItem m locator $ SE.nubSeriesBy eq localLocators
 
 decImportItem :: RawImportItem -> (D.Doc, C)
 decImportItem (RawImportItem _ (item, c) args) = do
