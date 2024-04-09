@@ -6,6 +6,7 @@ where
 
 import Context.App
 import Context.Gensym qualified as Gensym
+import Context.Locator qualified as Locator
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
@@ -15,7 +16,6 @@ import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
-import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident
 import Entity.Noema qualified as N
@@ -132,10 +132,11 @@ ensurePatternSanity (m, pat) =
       return ()
     PAT.Cons consInfo -> do
       let argNum = length (PAT.args consInfo)
-      when (argNum /= AN.reify (PAT.consArgNum consInfo)) $
+      when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
+        consDD' <- Locator.getReadableDD $ PAT.consDD consInfo
         Throw.raiseError m $
           "the constructor `"
-            <> DD.reify (PAT.consDD consInfo)
+            <> consDD'
             <> "` expects "
             <> T.pack (show (AN.reify (PAT.consArgNum consInfo)))
             <> " arguments, but found "

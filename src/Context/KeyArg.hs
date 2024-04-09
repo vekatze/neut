@@ -8,6 +8,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -28,29 +29,33 @@ insert m funcName isConstLike argNum keys = do
     Just (isConstLike', (argNum', keys'))
       | isConstLike,
         not isConstLike' -> do
+          funcName' <- Locator.getReadableDD funcName
           Throw.raiseError m $
             "`"
-              <> DD.reify funcName
+              <> funcName'
               <> "` is declared as a function, but defined as a constant-like term."
       | not isConstLike,
         isConstLike' -> do
+          funcName' <- Locator.getReadableDD funcName
           Throw.raiseError m $
             "`"
-              <> DD.reify funcName
+              <> funcName'
               <> "` is declared as a constant-like term, but defined as a function."
-      | argNum /= argNum' ->
+      | argNum /= argNum' -> do
+          funcName' <- Locator.getReadableDD funcName
           Throw.raiseError m $
             "the arity of `"
-              <> DD.reify funcName
+              <> funcName'
               <> "` is declared as "
               <> T.pack (show $ AN.reify argNum')
               <> ", but defined as "
               <> T.pack (show $ AN.reify argNum)
               <> "."
       | not $ eqKeys keys keys' -> do
+          funcName' <- Locator.getReadableDD funcName
           Throw.raiseError m $
             "the explicit key sequence of `"
-              <> DD.reify funcName
+              <> funcName'
               <> "` is declared as `"
               <> showKeys keys'
               <> "`, but defined as `"
@@ -110,7 +115,8 @@ lookup m dataName = do
     Just (_, value) ->
       return value
     Nothing -> do
-      Throw.raiseError m $ "no such function is defined: " <> DD.reify dataName
+      dataName' <- Locator.getReadableDD dataName
+      Throw.raiseError m $ "no such function is defined: " <> dataName'
 
 lookupMaybe :: DD.DefiniteDescription -> App (Maybe (IsConstLike, [Key]))
 lookupMaybe dataName = do

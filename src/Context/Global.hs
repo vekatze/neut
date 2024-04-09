@@ -170,8 +170,9 @@ lookup' m name = do
   case mgn of
     Just gn ->
       return gn
-    Nothing ->
-      Throw.raiseError m $ "no such top-level name is defined: " <> DD.reify name
+    Nothing -> do
+      name' <- Locator.getReadableDD name
+      Throw.raiseError m $ "no such top-level name is defined: " <> name'
 
 initialize :: App ()
 initialize = do
@@ -183,14 +184,16 @@ ensureDefFreshness m name = do
   gmap <- readRef' geistMap
   topNameMap <- readRef' nameMap
   case (Map.lookup name gmap, Map.member name topNameMap) of
-    (Just _, False) ->
-      Throw.raiseCritical m $ "`" <> DD.reify name <> "` is defined nominally but not registered in the top name map"
+    (Just _, False) -> do
+      name' <- Locator.getReadableDD name
+      Throw.raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
     (Just (mGeist, isConstLike), True) -> do
       removeFromGeistMap name
       removeFromDefNameMap name
       Tag.insertGlobalVar mGeist name isConstLike m
-    (Nothing, True) ->
-      Throw.raiseError m $ "`" <> DD.reify name <> "` is already defined"
+    (Nothing, True) -> do
+      name' <- Locator.getReadableDD name
+      Throw.raiseError m $ "`" <> name' <> "` is already defined"
     (Nothing, False) ->
       return ()
 
@@ -198,7 +201,8 @@ ensureGeistFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
 ensureGeistFreshness m name = do
   gmap <- readRef' geistMap
   when (Map.member name gmap) $ do
-    Throw.raiseError m $ "`" <> DD.reify name <> "` is already defined"
+    name' <- Locator.getReadableDD name
+    Throw.raiseError m $ "`" <> name' <> "` is already defined"
 
 reportMissingDefinitions :: App ()
 reportMissingDefinitions = do
