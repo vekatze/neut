@@ -63,7 +63,8 @@
 }
 
 .hljs-keyword,
-.hljs-selector-tag {
+.hljs-selector-tag,
+.hljs-name {
   color: var(--light-blue);
   background-color: var(--dark-blue);
 }
