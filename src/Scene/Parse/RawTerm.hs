@@ -144,11 +144,10 @@ rawTermPi = do
 rawTermPiIntro :: Parser (RT.RawTerm, C)
 rawTermPiIntro = do
   m <- getCurrentHint
-  keyword "function"
-  impArgs <- parseImplicitArgs
-  expArgs <- seriesParen preBinder
-  (c1, ((e, c2), loc, c)) <- betweenBrace' rawExpr
-  return (m :< RT.PiIntro impArgs expArgs [] (c1, (e, c2)) loc, c)
+  c0 <- keyword "function"
+  (defInfo, c) <- parseDef $ do
+    return ((), [])
+  return (m :< RT.PiIntro c0 defInfo, c)
 
 rawTermKeyValuePair :: Parser ((Hint, Key, C, C, RT.RawTerm), C)
 rawTermKeyValuePair = do
@@ -257,9 +256,9 @@ rawTermHole = do
   h <- lift $ Gensym.newPreHole m
   return (h, c)
 
-parseDef :: (BN.BaseName -> App a) -> Parser (RT.RawDef a, C)
-parseDef nameLifter = do
-  (geist, c1) <- parseGeist nameLifter
+parseDef :: Parser (a, C) -> Parser (RT.RawDef a, C)
+parseDef nameParser = do
+  (geist, c1) <- parseGeist nameParser
   (c2, ((e, c3), loc, c)) <- betweenBrace' rawExpr
   if RT.isConstLike geist
     then lift $ Throw.raiseError (RT.loc geist) "the argument list is missing"
@@ -275,11 +274,10 @@ parseDef nameLifter = do
           c
         )
 
-parseGeist :: (BN.BaseName -> App a) -> Parser (RT.RawGeist a, C)
-parseGeist nameLifter = do
+parseGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseGeist nameParser = do
   loc <- getCurrentHint
-  (name, c1) <- baseName
-  name' <- lift $ nameLifter name
+  (name', c1) <- nameParser
   impArgs <- parseImplicitArgs
   (isConstLike, expArgs@(expSeries, _)) <- do
     choice
@@ -331,7 +329,10 @@ rawTermDefine :: Parser (RT.RawTerm, C)
 rawTermDefine = do
   m <- getCurrentHint
   c0 <- keyword "define"
-  (defInfo, c) <- parseDef adjustHoleVar
+  (defInfo, c) <- parseDef $ do
+    (name, c1) <- baseName
+    name' <- lift $ adjustHoleVar name
+    return (name', c1)
   return (m :< RT.PiIntroFix c0 defInfo, c)
 
 adjustHoleVar :: BN.BaseName -> App T.Text

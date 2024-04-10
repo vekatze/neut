@@ -1,6 +1,7 @@
 module Entity.RawTerm.Decode
   ( pp,
     toDoc,
+    nameToDoc,
     typeAnnot,
     decodeArgs,
     decodeArgs',
@@ -51,18 +52,10 @@ toDoc term =
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
         ]
-    _ :< PiIntro (impArgs, c1) (expArgs, c2) c3 body _ -> do
-      let body' = decodeBlock $ RT.mapEL toDoc body
-      D.join
-        [ PI.arrange
-            [ PI.horizontal $ D.text "function",
-              PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
-              PI.delimiterLeftAligned $ attachComment (c1 ++ c2) $ SE.decode $ fmap piIntroArgToDoc expArgs
-            ],
-          PI.arrange [PI.inject $ attachComment c3 body']
-        ]
+    _ :< PiIntro c def -> do
+      decodeDef (const D.Nil) "function" c def
     _ :< PiIntroFix c def -> do
-      decodeDef "define" c def
+      decodeDef (nameToDoc . N.Var) "define" c def
     _ :< PiElim e c args -> do
       PI.arrange
         [ PI.inject $ toDoc e,
@@ -238,13 +231,13 @@ toDoc term =
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
 
-decodeDef :: T.Text -> C -> RawDef RawIdent -> D.Doc
-decodeDef keyword c def = do
+decodeDef :: (a -> D.Doc) -> T.Text -> C -> RawDef a -> D.Doc
+decodeDef nameDecoder keyword c def = do
   attachComment c $
     D.join
       [ D.text keyword,
         D.text " ",
-        decGeist $ RT.geist def,
+        decGeist nameDecoder $ RT.geist def,
         decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
 
@@ -344,15 +337,31 @@ paramToDoc' (_, x, c1, c2, t) = do
       PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
     ]
 
-decGeist :: RT.RawGeist RawIdent -> D.Doc
-decGeist (RT.RawGeist {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expArgs, c2), cod = (c3, cod)}) =
-  PI.arrange
-    [ PI.inject $ attachComment c0 $ nameToDoc (N.Var name),
-      PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
-      PI.inject $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
-      PI.horizontal $ attachComment c2 $ D.text ":",
-      PI.horizontal $ attachComment c3 $ toDoc cod
-    ]
+decGeist :: (a -> D.Doc) -> RT.RawGeist a -> D.Doc
+decGeist
+  nameDecoder
+  ( RT.RawGeist
+      { name = (name, c0),
+        impArgs = (impArgs, c1),
+        expArgs = (expArgs, c2),
+        cod = (c3, cod)
+      }
+    ) =
+    case cod of
+      _ :< RT.Hole {} ->
+        PI.arrange
+          [ PI.inject $ attachComment c0 $ nameDecoder name,
+            PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
+            PI.horizontal $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs
+          ]
+      _ ->
+        PI.arrange
+          [ PI.inject $ attachComment c0 $ nameDecoder name,
+            PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
+            PI.inject $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
+            PI.horizontal $ attachComment c2 $ D.text ":",
+            PI.horizontal $ attachComment c3 $ toDoc cod
+          ]
 
 letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
 letArgToDoc (m, x, c1, c2, t) = do

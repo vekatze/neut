@@ -442,13 +442,15 @@ clarifyLambda ::
   App C.Comp
 clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
   case lamKind of
-    LK.Fix (_, recFuncName, _) -> do
+    LK.Fix (_, recFuncName, codType) -> do
       liftedName <- Locator.attachCurrentLocator $ BN.muName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
-      lamAttr <- AttrL.normal <$> Gensym.newCount
+      lamAttr <- do
+        c <- Gensym.newCount
+        return $ AttrL.normal c codType
       let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered liftedName
       unless isAlreadyRegistered $ do
@@ -456,7 +458,7 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
         (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
         Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody')
       clarifyTerm tenv lamApp
-    LK.Normal -> do
+    LK.Normal _ -> do
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
       returnClosure tenv identity O.Clear fvs mxts e'
 

@@ -253,12 +253,15 @@ discern nenv term =
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro impArgs expArgs _ (_, (e, _)) endLoc -> do
+    m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- Gensym.newCount
-      (impArgs', nenv') <- discernBinder nenv (RT.extractArgs impArgs) endLoc
-      (expArgs', nenv'') <- discernBinder nenv' (RT.extractArgs expArgs) endLoc
-      e' <- discern nenv'' e
-      return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
+      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let expArgs = RT.extractArgs $ RT.expArgs geist
+      (impArgs', nenv') <- discernBinder nenv impArgs endLoc
+      (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
+      codType' <- discern nenv'' $ snd $ RT.cod geist
+      body' <- discern nenv'' body
+      return $ m :< WT.PiIntro (AttrL.normal lamID codType') impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
@@ -423,7 +426,8 @@ discern nenv term =
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
       detachVar <- locatorToVarGlobal m coreThreadDetach
-      discern nenv $ m :< RT.piElim detachVar [t, RT.lam fakeLoc m [] e]
+      cod <- Gensym.newPreHole (blur m)
+      discern nenv $ m :< RT.piElim detachVar [t, RT.lam fakeLoc m [] cod e]
     m :< RT.Attach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
       attachVar <- locatorToVarGlobal m coreThreadAttach
@@ -436,11 +440,12 @@ discern nenv term =
       assert <- locatorToVarGlobal m coreSystemAssert
       textType <- locatorToVarGlobal m coreText
       let fullMessage = T.pack (Hint.toString m) <> "\nassertion failure: " <> message <> "\n"
+      cod <- Gensym.newPreHole (blur m)
       discern nenv $
         m
           :< RT.piElim
             assert
-            [mText :< RT.StaticText textType fullMessage, RT.lam fakeLoc mCond [] e]
+            [mText :< RT.StaticText textType fullMessage, RT.lam fakeLoc mCond [] cod e]
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
@@ -454,7 +459,8 @@ discern nenv term =
           case letKind of
             RT.Bind -> do
               (x, modifier) <- getContinuationModifier (mPat, pat) endLoc
-              discern nenv $ m :< RT.piElim binder [e1', RT.lam loc m [((mPat, x, c2, c3, t), c)] (modifier False e2')]
+              cod <- Gensym.newPreHole (blur m)
+              discern nenv $ m :< RT.piElim binder [e1', RT.lam loc m [((mPat, x, c2, c3, t), c)] cod (modifier False e2')]
             _ -> do
               discern nenv $ mLet :< RT.Let letKind c1 mxt c mys c4 e1' c5 loc c6 e2' endLoc
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do

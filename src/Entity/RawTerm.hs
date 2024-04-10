@@ -44,7 +44,6 @@ import Entity.RawIdent
 import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.Remark
-import Entity.Syntax.Block
 import Entity.Syntax.Series qualified as SE
 
 type RawTerm = Cofree RawTermF Hint
@@ -53,7 +52,7 @@ data RawTermF a
   = Tau
   | Var Name
   | Pi (Args a) (Args a) C a Loc
-  | PiIntro (Args a) (Args a) C (Block a) Loc
+  | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
   | PiElim a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
@@ -138,6 +137,9 @@ instance Functor RawDef where
 type DefInfo =
   RawDef RawIdent
 
+type FuncInfo =
+  RawDef ()
+
 type TopGeist =
   RawGeist BN.BaseName
 
@@ -148,15 +150,27 @@ piElim :: a -> [a] -> RawTermF a
 piElim e es =
   PiElim e [] (SE.fromList' es)
 
-lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm
-lam loc m varList e =
+lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm -> RawTerm
+lam loc m varList codType e =
   m
     :< PiIntro
-      (SE.emptySeries (Just SE.Angle) SE.Comma, [])
-      (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, [])
       []
-      ([], (e, []))
-      loc
+      ( RawDef
+          { geist =
+              RawGeist
+                { loc = m,
+                  name = ((), []),
+                  isConstLike = False,
+                  impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
+                  expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),
+                  cod = ([], codType)
+                },
+            leadingComment = [],
+            body = e,
+            trailingComment = [],
+            endLoc = loc
+          }
+      )
 
 data LetKind
   = Plain

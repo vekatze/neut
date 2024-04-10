@@ -27,18 +27,19 @@ eq (_ :< term1) (_ :< term2)
       let b1 = eqBinder (impArgs1 ++ expArgs1) (impArgs2 ++ expArgs2)
       let b2 = eq cod1 cod2
       b1 && b2
-  | WT.PiIntro kind1 impArgs1 expArgs1 cod1 <- term1,
-    WT.PiIntro kind2 impArgs2 expArgs2 cod2 <- term2,
+  | WT.PiIntro kind1 impArgs1 expArgs1 body1 <- term1,
+    WT.PiIntro kind2 impArgs2 expArgs2 body2 <- term2,
     length impArgs1 == length impArgs2,
     length expArgs1 == length expArgs2 =
       case (kind1, kind2) of
-        (AttrL.Attr {lamKind = LK.Normal}, AttrL.Attr {lamKind = LK.Normal}) -> do
+        (AttrL.Attr {lamKind = LK.Normal codType1}, AttrL.Attr {lamKind = LK.Normal codType2}) -> do
           let b1 = eqBinder (impArgs1 ++ expArgs1) (impArgs2 ++ expArgs2)
-          let b2 = eq cod1 cod2
-          b1 && b2
+          let b2 = eq body1 body2
+          let b3 = eq codType1 codType2
+          b1 && b2 && b3
         (AttrL.Attr {lamKind = LK.Fix mxt1}, AttrL.Attr {lamKind = LK.Fix mxt2}) -> do
           let b1 = eqBinder (impArgs1 ++ expArgs1 ++ [mxt1]) (impArgs2 ++ expArgs2 ++ [mxt2])
-          let b2 = eq cod1 cod2
+          let b2 = eq body1 body2
           b1 && b2
         _ ->
           False

@@ -100,7 +100,7 @@ inline' axis term =
       es' <- mapM (inline' axis) es
       let Axis {dmap} = axis
       case e' of
-        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal}) impArgs expArgs body)
+        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal _}) impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
               if all TM.isValue es'

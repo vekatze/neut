@@ -93,7 +93,7 @@ reduce' ax term =
       e' <- reduce' ax e
       es' <- mapM (reduce' ax) es
       case e' of
-        (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal} impArgs expArgs body)
+        (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal _} impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
               detectPossibleInfiniteLoop ax

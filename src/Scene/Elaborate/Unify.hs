@@ -169,13 +169,15 @@ simplify ax susList constraintList =
                   yt2 <- asWeakBinder m2 e2
                   cs' <- simplifyBinder orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
                   simplify ax susList $ cs' ++ cs
-              | AttrL.Attr {lamKind = LK.Normal} <- kind1,
-                AttrL.Attr {lamKind = LK.Normal} <- kind2,
+              | AttrL.Attr {lamKind = LK.Normal codType1} <- kind1,
+                AttrL.Attr {lamKind = LK.Normal codType2} <- kind2,
                 length impArgs1 == length impArgs2,
                 length expArgs1 == length expArgs2 -> do
+                  cod1 <- asWeakBinder m1 codType1
                   xt1 <- asWeakBinder m1 e1
+                  cod2 <- asWeakBinder m2 codType2
                   xt2 <- asWeakBinder m2 e2
-                  cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
+                  cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
                   simplify ax susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,

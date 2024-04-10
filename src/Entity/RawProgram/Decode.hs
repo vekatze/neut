@@ -10,6 +10,7 @@ import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
+import Entity.Name qualified as N
 import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
 import Entity.RawLowType.Decode qualified as RLT
@@ -149,9 +150,9 @@ decStmt stmt =
     RawStmtDefine c stmtKind def -> do
       case stmtKind of
         SK.Normal O.Clear ->
-          RT.decodeDef "inline" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         _ ->
-          RT.decodeDef "define" c (fmap BN.reify def)
+          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
     RawStmtDefineConst c1 _ (name, c2) cod body -> do
       let constClause = RT.mapKeywordClause RT.toDoc (cod, body)
       RT.attachComment (c1 ++ c2) $

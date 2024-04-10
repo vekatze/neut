@@ -151,10 +151,10 @@ insertStmt stmt = do
 insertWeakStmt :: WeakStmt -> App ()
 insertWeakStmt stmt = do
   case stmt of
-    WeakStmtDefine _ stmtKind m f impArgs expArgs _ e -> do
-      WeakDefinition.insert (toOpacity stmtKind) m f impArgs expArgs e
-    WeakStmtDefineConst m dd _ v -> do
-      WeakDefinition.insert O.Clear m dd [] [] v
+    WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
+      WeakDefinition.insert (toOpacity stmtKind) m f impArgs expArgs codType e
+    WeakStmtDefineConst m dd codType v -> do
+      WeakDefinition.insert O.Clear m dd [] [] codType v
     WeakStmtNominal {} -> do
       return ()
     WeakStmtForeign {} ->
@@ -331,8 +331,9 @@ elaborateWeakBinder (m, x, t) = do
 elaborateLamAttr :: AttrL.Attr WT.WeakTerm -> App (AttrL.Attr TM.Term)
 elaborateLamAttr (AttrL.Attr {lamKind, identity}) =
   case lamKind of
-    LK.Normal ->
-      return $ AttrL.Attr {lamKind = LK.Normal, identity}
+    LK.Normal codType -> do
+      codType' <- elaborate' codType
+      return $ AttrL.Attr {lamKind = LK.Normal codType', identity}
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ AttrL.Attr {lamKind = LK.Fix xt', identity}

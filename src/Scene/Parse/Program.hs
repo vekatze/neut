@@ -104,7 +104,7 @@ parseDefine' opacity = do
         P.keyword "define"
       O.Clear ->
         P.keyword "inline"
-  (def, c) <- parseDef return
+  (def, c) <- parseDef P.baseName
   return (RawStmtDefine c1 (SK.Normal opacity) def, c)
 
 parseData :: P.Parser (RawStmt, C)
@@ -121,7 +121,7 @@ parseNominal = do
   c1 <- P.keyword "nominal"
   m <- P.getCurrentHint
   (geists, c) <- P.seriesBrace $ do
-    (geist, c) <- parseGeist return
+    (geist, c) <- parseGeist P.baseName
     loc <- P.getCurrentLoc
     return ((geist, loc), c)
   return (RawStmtNominal c1 m geists, c)

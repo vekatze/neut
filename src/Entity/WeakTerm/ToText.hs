@@ -44,11 +44,13 @@ toText term =
             <> toText codType
             <> " "
             <> inBrace (toText e)
-        AttrL.Attr {lamKind = LK.Normal} -> do
+        AttrL.Attr {lamKind = LK.Normal codType} -> do
           "function "
             <> showImpArgs impArgs
             <> inParen (showDomArgList expArgs)
             <> inBrace (toText e)
+            <> ": "
+            <> toText codType
     _ :< WT.PiElim e es -> do
       case e of
         _ :< WT.VarGlobal attr _
