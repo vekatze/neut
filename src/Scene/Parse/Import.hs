@@ -59,13 +59,13 @@ interpretImport m currentSource importOrNone = do
       return $ presetImportList ++ importList
 
 interpretImportItem ::
-  Bool ->
+  AI.MustUpdateTag ->
   Module ->
   Hint ->
   LocatorText ->
   [(Hint, LL.LocalLocator)] ->
   App [(Source.Source, [AI.AliasInfo])]
-interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList = do
+interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList = do
   baseNameList <- Throw.liftEither $ BN.bySplit m locatorText
   case baseNameList of
     [] ->
@@ -73,9 +73,9 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
     [baseName]
       | Just (moduleAlias, sourceLocator) <- Map.lookup baseName (modulePrefixMap currentModule) -> do
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
-          source <- getSource m sgl locatorText
+          source <- getSource mustUpdateTag m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
-          return [(source, [AI.Use sgl localLocatorList, AI.Prefix m gla sgl])]
+          return [(source, [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl])]
       | otherwise ->
           Throw.raiseError m $ "no such prefix is defined: " <> BN.reify baseName
     aliasText : locator ->
@@ -85,18 +85,19 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
         Just sourceLocator -> do
           let moduleAlias = ModuleAlias aliasText
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
-          when shouldUpdateTag $ do
+          when mustUpdateTag $ do
             UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
-          source <- getSource m sgl locatorText
-          return [(source, [AI.Use sgl localLocatorList])]
+          source <- getSource mustUpdateTag m sgl locatorText
+          return [(source, [AI.Use mustUpdateTag sgl localLocatorList])]
 
-getSource :: Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
-getSource m sgl locatorText = do
+getSource :: AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
+getSource mustUpdateTag m sgl locatorText = do
   nextModule <- Module.getModule m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
-  Tag.insertFileLoc m (T.length locatorText) (newSourceHint nextPath)
+  when mustUpdateTag $
+    Tag.insertFileLoc m (T.length locatorText) (newSourceHint nextPath)
   return $
     Source.Source
       { Source.sourceModule = nextModule,
