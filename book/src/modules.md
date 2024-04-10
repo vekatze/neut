@@ -52,7 +52,7 @@ The names in `target` can be specified when running `neut build`. For example, g
 
 The names of targets are also used as the names of executables. For example, if you run `neut build --install ./bin/`, two binaries named `foo` and `bar` will be created under the directory `./bin/`.
 
-`target` must have at least one field.
+The field `target` can be omitted. The default value of `target` is `{}`
 
 ## `dependency`
 
