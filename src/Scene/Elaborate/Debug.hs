@@ -22,7 +22,7 @@ viewStmt :: WeakStmt -> App ()
 viewStmt stmt = do
   case stmt of
     WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
-      let attr = AttrL.Attr {lamKind = LK.Normal, identity = 0}
+      let attr = AttrL.Attr {lamKind = LK.Normal codType, identity = 0}
       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
     _ ->
       return ()

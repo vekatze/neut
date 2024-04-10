@@ -5,7 +5,7 @@ import Entity.Binder
 import GHC.Generics
 
 data LamKindF a
-  = Normal
+  = Normal a
   | Fix (BinderF a)
   deriving (Show, Generic)
 

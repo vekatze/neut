@@ -155,11 +155,13 @@ infer varEnv term =
           insConstraintEnv codType' tBody
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e'
           return (term', piType)
-        _ -> do
+        LK.Normal codType -> do
           (impArgs', varEnv') <- inferBinder' varEnv impArgs
           (expArgs', varEnv'') <- inferBinder' varEnv' expArgs
+          codType' <- inferType varEnv'' codType
           (e', t') <- infer varEnv'' e
-          let term' = m :< WT.PiIntro attr impArgs' expArgs' e'
+          insConstraintEnv codType' t'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal codType'}) impArgs' expArgs' e'
           return (term', m :< WT.Pi impArgs' expArgs' t')
     m :< WT.PiElim e es -> do
       etl <- infer varEnv e
@@ -169,13 +171,14 @@ infer varEnv term =
       (e', t) <- infer varEnv e
       t' <- resolveType t
       case t' of
-        _ :< WT.Pi impArgs expArgs _ -> do
+        _ :< WT.Pi impArgs expArgs codType -> do
           holes <- mapM (const $ newHole m varEnv) impArgs
           let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impArgs) (map Right holes)
           (expArgs', _) <- Subst.subst' sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
+          codType' <- Subst.subst sub codType
           lamID <- Gensym.newCount
-          infer varEnv $ m :< WT.PiIntro (AttrL.normal lamID) [] expArgs' (m :< WT.PiElim e' expArgs'')
+          infer varEnv $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim e' expArgs'')
         _ ->
           Throw.raiseError m $ "expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do

@@ -36,12 +36,13 @@ insert ::
   [BinderF WeakTerm] ->
   [BinderF WeakTerm] ->
   WeakTerm ->
+  WeakTerm ->
   App ()
-insert opacity m name impArgs expArgs e =
+insert opacity m name impArgs expArgs codType e =
   when (opacity == O.Clear) $ do
     i <- Gensym.newCount
     modifyRef' weakDefMap $
-      Map.insert name (m :< WT.PiIntro (AttrL.normal i) impArgs expArgs e)
+      Map.insert name (m :< WT.PiIntro (AttrL.normal i codType) impArgs expArgs e)
 
 read :: App DefMap
 read =

@@ -97,8 +97,8 @@ weakenBinder (m, x, t) =
 weakenAttr :: AttrL.Attr TM.Term -> AttrL.Attr WT.WeakTerm
 weakenAttr AttrL.Attr {lamKind, identity} =
   case lamKind of
-    LK.Normal ->
-      AttrL.normal identity
+    LK.Normal codType ->
+      AttrL.normal identity (weaken codType)
     LK.Fix xt ->
       AttrL.Attr {lamKind = LK.Fix (weakenBinder xt), identity}
 

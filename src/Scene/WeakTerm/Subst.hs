@@ -52,11 +52,12 @@ subst sub term =
               e' <- subst sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< WT.PiIntro fixAttr impArgs' expArgs' e')
-            LK.Normal -> do
+            LK.Normal codType -> do
               (impArgs', sub') <- subst' sub impArgs
               (expArgs', sub'') <- subst' sub' expArgs
+              codType' <- subst sub'' codType
               e' <- subst sub'' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal, identity = newLamID}
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = newLamID}
               return (m :< WT.PiIntro lamAttr impArgs' expArgs' e')
     m :< WT.PiElim e es -> do
       e' <- subst sub e

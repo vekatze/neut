@@ -150,8 +150,8 @@ piElim :: a -> [a] -> RawTermF a
 piElim e es =
   PiElim e [] (SE.fromList' es)
 
-lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm
-lam loc m varList e =
+lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm -> RawTerm
+lam loc m varList codType e =
   m
     :< PiIntro
       []
@@ -163,7 +163,7 @@ lam loc m varList e =
                   isConstLike = False,
                   impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
                   expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),
-                  cod = undefined
+                  cod = ([], codType)
                 },
             leadingComment = [],
             body = e,

@@ -72,8 +72,8 @@ extendBinder (m, x, t) =
 extendAttr :: AttrL.Attr (Cofree TM.TermF ()) -> AttrL.Attr TM.Term
 extendAttr AttrL.Attr {lamKind, identity} =
   case lamKind of
-    LK.Normal ->
-      AttrL.normal identity
+    LK.Normal codType ->
+      AttrL.normal identity (extend codType)
     LK.Fix xt ->
       AttrL.Attr {lamKind = LK.Fix (extendBinder xt), identity}
 

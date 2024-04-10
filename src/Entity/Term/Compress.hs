@@ -67,8 +67,8 @@ compressBinder (m, x, t) =
 compressAttr :: AttrL.Attr TM.Term -> AttrL.Attr (Cofree TM.TermF ())
 compressAttr (AttrL.Attr {lamKind, identity}) =
   case lamKind of
-    LK.Normal ->
-      AttrL.normal identity
+    LK.Normal codType ->
+      AttrL.normal identity (compress codType)
     LK.Fix xt ->
       AttrL.Attr {lamKind = LK.Fix (compressBinder xt), identity}
 

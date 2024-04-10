@@ -20,9 +20,9 @@ data Attr a = Attr
 
 instance (Binary a) => Binary (Attr a)
 
-normal :: ID -> Attr a
-normal i =
-  Attr {lamKind = Normal, identity = i}
+normal :: ID -> a -> Attr a
+normal i codType =
+  Attr {lamKind = Normal codType, identity = i}
 
 fromAttr :: Attr a -> Maybe (BinderF a)
 fromAttr (Attr {lamKind}) =
