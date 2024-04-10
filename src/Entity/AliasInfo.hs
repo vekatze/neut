@@ -1,5 +1,6 @@
 module Entity.AliasInfo
   ( AliasInfo (..),
+    MustUpdateTag,
     SourceAliasMap,
     getRawAlias,
   )
@@ -16,10 +17,12 @@ import Path
 
 data AliasInfo
   = Prefix Hint GLA.GlobalLocatorAlias SGL.StrictGlobalLocator
-  | Use SGL.StrictGlobalLocator [(Hint, LL.LocalLocator)]
+  | Use MustUpdateTag SGL.StrictGlobalLocator [(Hint, LL.LocalLocator)]
   deriving (Show)
 
 type SourceAliasMap = Map.HashMap (Path Abs File) [AliasInfo]
+
+type MustUpdateTag = Bool
 
 getRawAlias :: AliasInfo -> Maybe T.Text
 getRawAlias aliasInfo =

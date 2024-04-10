@@ -116,8 +116,8 @@ activateAliasInfo topNameMap aliasInfo =
   case aliasInfo of
     Prefix m from to ->
       registerGlobalLocatorAlias m from to
-    Use strictGlobalLocator localLocatorList ->
-      Locator.activateSpecifiedNames topNameMap strictGlobalLocator localLocatorList
+    Use shouldUpdateTag strictGlobalLocator localLocatorList ->
+      Locator.activateSpecifiedNames topNameMap shouldUpdateTag strictGlobalLocator localLocatorList
 
 initializeAliasMap :: App ()
 initializeAliasMap = do

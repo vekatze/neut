@@ -26,6 +26,7 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
+import Entity.AliasInfo (MustUpdateTag)
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalName qualified as GN
@@ -33,7 +34,6 @@ import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Module qualified as Module
 import Entity.ModuleID qualified as MID
-import Entity.Source qualified as DD
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
@@ -57,15 +57,16 @@ initialize = do
   writeRef' activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
   writeRef' activeDefiniteDescriptionList Map.empty
 
-activateSpecifiedNames :: TopNameMap -> SGL.StrictGlobalLocator -> [(Hint, LL.LocalLocator)] -> App ()
-activateSpecifiedNames topNameMap sgl lls = do
+activateSpecifiedNames :: TopNameMap -> MustUpdateTag -> SGL.StrictGlobalLocator -> [(Hint, LL.LocalLocator)] -> App ()
+activateSpecifiedNames topNameMap mustUpdateTag sgl lls = do
   forM_ lls $ \(m, ll) -> do
     let dd = DD.new sgl ll
     case Map.lookup dd topNameMap of
       Nothing ->
         Throw.raiseError m $ "the name `" <> LL.reify ll <> "` isn't defined in the module"
       Just (mDef, gn) -> do
-        Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
+        when mustUpdateTag $
+          Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
         aenv <- readRef' activeDefiniteDescriptionList
         case Map.lookup ll aenv of
           Just existingDD
