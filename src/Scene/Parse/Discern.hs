@@ -253,12 +253,14 @@ discern nenv term =
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro impArgs expArgs _ (_, (e, _)) endLoc -> do
+    m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- Gensym.newCount
-      (impArgs', nenv') <- discernBinder nenv (RT.extractArgs impArgs) endLoc
-      (expArgs', nenv'') <- discernBinder nenv' (RT.extractArgs expArgs) endLoc
-      e' <- discern nenv'' e
-      return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
+      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let expArgs = RT.extractArgs $ RT.expArgs geist
+      (impArgs', nenv') <- discernBinder nenv impArgs endLoc
+      (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
+      body' <- discern nenv'' body
+      return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
