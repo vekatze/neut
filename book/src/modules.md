@@ -52,7 +52,7 @@ The names in `target` can be specified when running `neut build`. For example, g
 
 The names of targets are also used as the names of executables. For example, if you run `neut build --install ./bin/`, two binaries named `foo` and `bar` will be created under the directory `./bin/`.
 
-`target` must have at least one field.
+The field `target` is optional. The default value of `target` is `{}`
 
 ## `dependency`
 
@@ -108,7 +108,7 @@ The field `mirror` specifies a list of URLs from which the compiler can fetch th
 
 The optional field `enable-preset` specifies whether to import `preset`s automatically, as in "prelude" in other languages. This field should only be used (and set to be true) with the core library. For more information, see the explanation of `preset` in this section.
 
-The field `dependency` can be omitted. The default value of `dependency` is `{}`.
+The field `dependency` is optional. The default value of `dependency` is `{}`.
 
 ## `archive`
 
@@ -122,7 +122,7 @@ The field `archive` defines the path of the directory into which the subcommand 
 }
 ```
 
-The field `archive` can be omitted. The default value of `archive` is `./archive/`.
+The field `archive` is optional. The default value of `archive` is `./archive/`.
 
 ## `build`
 
@@ -136,7 +136,7 @@ The field `build` defines the path of the directory to store object files, execu
 }
 ```
 
-The field `build` can be omitted. The default value of `build` is `./build/`.
+The field `build` is optional. The default value of `build` is `./build/`.
 
 ## `source`
 
@@ -150,7 +150,7 @@ The field `source` defines the path of the directory to store source files. It s
 }
 ```
 
-The field `source` can be omitted. The default value of `source` is `./source/`.
+The field `source` is optional. The default value of `source` is `./source/`.
 
 ## `prefix`
 
@@ -188,7 +188,7 @@ import {
 
 The prefixes specified in a `module.ens` of a module can be used only in the module.
 
-The field `prefix` can be omitted. The default value of `prefix` is `{}`
+The field `prefix` is optional. The default value of `prefix` is `{}`
 
 ## `foreign`
 
@@ -235,7 +235,7 @@ The "object files" here are expected to be something that can be generated using
 clang -c -o ffi/arm64-darwin/foo.o path/to/foo.c
 ```
 
-The field `foreign` can be omitted. The default value of `foreign` is `[]`.
+The field `foreign` is optional. The default value of `foreign` is `[]`.
 
 <div class="info-block">
 
@@ -311,7 +311,7 @@ define buz() {
 
 The field `preset` is expected to be used as a way to realize "preludes" in other languages.
 
-The field `preset` can be omitted. The default value of `preset` is `{}`.
+The field `preset` is optional. The default value of `preset` is `{}`.
 
 ## `antecedent`
 
@@ -331,7 +331,7 @@ The field `antecedent` defines the list of older compatible versions. This field
 
 This information is used to select the newest compatible version of the module. For more information, see the explanation on `neut archive` in [Commands](./commands.md).
 
-The field `antecedent` can be omitted. The default value of `antecedent` is `[]`.
+The field `antecedent` is optional. The default value of `antecedent` is `[]`.
 
 <div class="info-block">
 
@@ -363,4 +363,4 @@ The `inline-limit` specifies a limit here. If the limit is exceeded, the compile
 error: exceeded max recursion depth of 1000 during (..)
 ```
 
-The field `inline-limit` can be omitted. The default value of `inline-limit` is `100000`.
+The field `inline-limit` is optional. The default value of `inline-limit` is `100000`.

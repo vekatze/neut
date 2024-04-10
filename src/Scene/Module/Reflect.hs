@@ -58,7 +58,7 @@ getModule m moduleID locatorText = do
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   (_, (ens, _)) <- Ens.fromFilePath moduleFilePath
-  (_, _, targetEns) <- liftEither $ E.access keyTarget ens >>= E.toDictionary . E.strip
+  (_, _, targetEns) <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary . E.strip
   target <- mapM (interpretRelFilePath . E.strip) $ Map.fromList targetEns
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary . E.strip
   dependency <- interpretDependencyDict dependencyEns
