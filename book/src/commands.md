@@ -408,6 +408,12 @@ When the option `--in-place` is set, `format-source` performs in-place update.
 
 `neut format-ens path/to/source/file.ens` formats specified ens file and outputs the result to stdout.
 
+You can also pass `-` to receive input from stdin:
+
+```sh
+cat module.ens | neut format-ens -
+```
+
 ### `--in-place`
 
 When the option `--in-place` is set, `format-source` performs in-place update.
