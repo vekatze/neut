@@ -41,5 +41,5 @@ You can check if the compiler is installed correctly by running `neut version`:
 
 ```sh
 neut version
-#=> 0.8.0
+#=> X.Y.Z
 ```
