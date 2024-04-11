@@ -17,7 +17,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
-import Entity.C
 import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
 import Entity.Ens qualified as E
 import Entity.Error
@@ -29,6 +28,7 @@ import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
+import Entity.Syntax.Series qualified as SE
 import Path
 import Path.IO
 import Scene.Ens.Reflect qualified as Ens
@@ -58,26 +58,26 @@ getModule m moduleID locatorText = do
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   (_, (ens, _)) <- Ens.fromFilePath moduleFilePath
-  (_, _, targetEns) <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary . E.strip
-  target <- mapM (interpretRelFilePath . E.strip) $ Map.fromList targetEns
-  dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary . E.strip
+  (_, targetEns) <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
+  target <- mapM interpretRelFilePath $ Map.fromList $ SE.extract targetEns
+  dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
-  (_, _, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList . E.strip
-  extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentsEns
-  (_, _, antecedentsEns) <- liftEither $ E.access' keyAntecedent E.emptyList ens >>= E.toList . E.strip
-  antecedents <- mapM (interpretAntecedent . fst) antecedentsEns
+  (_, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
+  extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) $ SE.extract extraContentsEns
+  (_, antecedentsEns) <- liftEither $ E.access' keyAntecedent E.emptyList ens >>= E.toList
+  antecedents <- mapM interpretAntecedent $ SE.extract antecedentsEns
   archiveDirEns <- liftEither $ E.access' keyArchive (E.ensPath archiveRelDir) ens
-  archiveDir <- interpretDirPath $ E.strip archiveDirEns
+  archiveDir <- interpretDirPath archiveDirEns
   buildDirEns <- liftEither $ E.access' keyBuild (E.ensPath buildRelDir) ens
-  buildDir <- interpretDirPath $ E.strip buildDirEns
+  buildDir <- interpretDirPath buildDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
-  sourceDir <- interpretDirPath $ E.strip sourceDirEns
-  (_, _, foreignDirListEns) <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList . E.strip
-  foreignDirList <- mapM (interpretDirPath . fst) foreignDirListEns
-  (mPrefix, _, prefixEns) <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary . E.strip
+  sourceDir <- interpretDirPath sourceDirEns
+  (_, foreignDirListEns) <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
+  foreignDirList <- mapM interpretDirPath $ SE.extract foreignDirListEns
+  (mPrefix, prefixEns) <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary
   prefixMap <- liftEither $ interpretPrefixMap mPrefix prefixEns
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
-  (mPreset, _, presetEns) <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary . E.strip
+  (mPreset, presetEns) <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary
   presetMap <- liftEither $ interpretPresetMap mPreset presetEns
   return
     Module
@@ -117,27 +117,27 @@ fromCurrentPath = do
 
 interpretPrefixMap ::
   H.Hint ->
-  [(T.Text, (C, (E.Ens, C)))] ->
+  SE.Series (T.Text, E.Ens) ->
   Either Error (Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator))
 interpretPrefixMap m ens = do
-  kvs' <- forM ens $ \(k, (_, (v, _))) -> do
+  kvs' <- forM ens $ \(k, v) -> do
     k' <- BN.reflect m k
     unless (isCapitalized k') $ do
       Left $ newError m $ "prefixes must be capitalized, but found: " <> BN.reify k'
     v' <- E.toString v >>= uncurry GL.reflectLocator
     return (k', v')
-  return $ Map.fromList kvs'
+  return $ Map.fromList $ SE.extract kvs'
 
 interpretPresetMap ::
   H.Hint ->
-  [(T.Text, (C, (E.Ens, C)))] ->
+  SE.Series (T.Text, E.Ens) ->
   Either Error (Map.HashMap LocatorName [BN.BaseName])
 interpretPresetMap _ ens = do
-  let (ks, cvcs) = unzip ens
-  vs' <- forM (map (fst . snd) cvcs) $ \v -> do
-    (_, _, presetList) <- E.toList v
-    mapM (E.toString . fst >=> uncurry BN.reflect) presetList
-  return $ Map.fromList $ zip ks vs'
+  kvs <- forM (SE.extract ens) $ \(k, v) -> do
+    (_, presetSeries) <- E.toList v
+    v' <- mapM (E.toString >=> uncurry BN.reflect) $ SE.extract presetSeries
+    return (k, v')
+  return $ Map.fromList kvs
 
 interpretRelFilePath :: E.Ens -> App SL.SourceLocator
 interpretRelFilePath ens = do
@@ -149,10 +149,10 @@ interpretRelFilePath ens = do
       raiseError m $ "invalid file path: " <> pathString
 
 interpretDependencyDict ::
-  (H.Hint, C, [(T.Text, (C, (E.Ens, C)))]) ->
+  (H.Hint, SE.Series (T.Text, E.Ens)) ->
   App (Map.HashMap ModuleAlias Dependency)
-interpretDependencyDict (m, _, dep) = do
-  items <- forM dep $ \(k, (_, (ens, _))) -> do
+interpretDependencyDict (m, dep) = do
+  items <- forM dep $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
     when (BN.isCapitalized k') $ do
       raiseError m $ "module aliases can't be capitalized, but found: " <> BN.reify k'
@@ -161,10 +161,10 @@ interpretDependencyDict (m, _, dep) = do
         "the reserved name `"
           <> BN.reify k'
           <> "` cannot be used as an alias of a module"
-    (_, _, urlEnsList) <- liftEither $ E.access keyMirror ens >>= E.toList . E.strip
-    urlList <- liftEither $ mapM (E.toString . fst >=> return . snd) urlEnsList
-    (_, digest) <- liftEither $ E.access keyDigest ens >>= E.toString . E.strip
-    (_, enablePreset) <- liftEither $ E.access' keyEnablePreset (E.Bool False) ens >>= E.toBool . E.strip
+    (_, urlEnsSeries) <- liftEither $ E.access keyMirror ens >>= E.toList
+    urlList <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract urlEnsSeries
+    (_, digest) <- liftEither $ E.access keyDigest ens >>= E.toString
+    (_, enablePreset) <- liftEither $ E.access' keyEnablePreset (E.Bool False) ens >>= E.toBool
     let mirrorList = map ModuleURL urlList
     let digest' = ModuleDigest digest
     return
@@ -175,10 +175,10 @@ interpretDependencyDict (m, _, dep) = do
             dependencyPresetEnabled = enablePreset
           }
       )
-  return $ Map.fromList items
+  return $ Map.fromList $ SE.extract items
 
-interpretExtraPath :: Path Abs Dir -> (E.Ens, a) -> App (SomePath Rel)
-interpretExtraPath moduleRootDir (entity, _) = do
+interpretExtraPath :: Path Abs Dir -> E.Ens -> App (SomePath Rel)
+interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- liftEither $ E.toString entity
   if T.last itemPathText == '/'
     then do
@@ -200,9 +200,9 @@ interpretDirPath ens = do
   (_, pathText) <- liftEither $ E.toString ens
   parseRelDir $ T.unpack pathText
 
-interpretInlineLimit :: Either Error (C, (E.Ens, C)) -> Maybe Int
+interpretInlineLimit :: Either Error E.Ens -> Maybe Int
 interpretInlineLimit errOrEns = do
-  (_, (ens, _)) <- rightToMaybe errOrEns
+  ens <- rightToMaybe errOrEns
   rightToMaybe $ E.toInt ens
 
 ensureExistence ::

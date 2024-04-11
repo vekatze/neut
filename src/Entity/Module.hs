@@ -12,7 +12,6 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.Ens qualified as E
-import Entity.Ens.Reify qualified as Ens
 import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint (Hint, internalHint)
@@ -21,6 +20,7 @@ import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
+import Entity.Syntax.Series qualified as SE
 import Entity.Target qualified as Target
 import Path
 import System.FilePath qualified as FP
@@ -175,113 +175,106 @@ _m :: Hint
 _m =
   internalHint
 
-ppModule :: Module -> T.Text
-ppModule someModule = do
-  Ens.pp ([], (toDefaultEns someModule, []))
-
 toDefaultEns :: Module -> E.Ens
 toDefaultEns someModule =
-  _m
-    :< E.Dictionary
-      []
-      ( catMaybes
-          [ getSourceDirInfo someModule,
-            getBuildDirInfo someModule,
-            getArchiveDirInfo someModule,
-            return $ getTargetInfo someModule,
-            getExtraContentInfo someModule,
-            getForeignInfo someModule,
-            getAntecedentInfo someModule,
-            getDependencyInfo someModule,
-            getPrefixMapInfo someModule,
-            getInlineLimitInfo someModule,
-            getPresetMapInfo someModule
-          ]
-      )
+  E.dictFromList _m $
+    catMaybes
+      [ return $ getTargetInfo someModule,
+        getSourceDirInfo someModule,
+        getBuildDirInfo someModule,
+        getArchiveDirInfo someModule,
+        getExtraContentInfo someModule,
+        getForeignInfo someModule,
+        getAntecedentInfo someModule,
+        getDependencyInfo someModule,
+        getPrefixMapInfo someModule,
+        getInlineLimitInfo someModule,
+        getPresetMapInfo someModule
+      ]
 
-getArchiveDirInfo :: Module -> Maybe (T.Text, E.FullEns)
+getArchiveDirInfo :: Module -> Maybe (T.Text, E.Ens)
 getArchiveDirInfo someModule = do
   let dir = moduleArchiveDir someModule
   if dir == archiveRelDir
     then Nothing
-    else return (keyArchive, E.inject $ _m :< E.ensPath dir)
+    else return (keyArchive, _m :< E.ensPath dir)
 
-getSourceDirInfo :: Module -> Maybe (T.Text, E.FullEns)
+getSourceDirInfo :: Module -> Maybe (T.Text, E.Ens)
 getSourceDirInfo someModule = do
   let dir = moduleSourceDir someModule
   if dir == sourceRelDir
     then Nothing
-    else return (keySource, E.inject $ _m :< E.ensPath dir)
+    else return (keySource, _m :< E.ensPath dir)
 
-getBuildDirInfo :: Module -> Maybe (T.Text, E.FullEns)
+getBuildDirInfo :: Module -> Maybe (T.Text, E.Ens)
 getBuildDirInfo someModule = do
   let dir = moduleBuildDir someModule
   if dir == buildRelDir
     then Nothing
-    else return (keyBuild, E.inject $ _m :< E.ensPath dir)
+    else return (keyBuild, _m :< E.ensPath dir)
 
-getTargetInfo :: Module -> (T.Text, E.FullEns)
+getTargetInfo :: Module -> (T.Text, E.Ens)
 getTargetInfo someModule = do
-  let targetDict = Map.map (\x -> E.inject $ _m :< E.String (SL.getRelPathText x)) $ moduleTarget someModule
-  (keyTarget, E.inject $ _m :< E.Dictionary [] (Map.toList targetDict))
+  let targetDict = Map.map (\x -> _m :< E.String (SL.getRelPathText x)) $ moduleTarget someModule
+  (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))
 
-getDependencyInfo :: Module -> Maybe (T.Text, E.FullEns)
+getDependencyInfo :: Module -> Maybe (T.Text, E.Ens)
 getDependencyInfo someModule = do
   let dependency = flip Map.map (moduleDependency someModule) $ \dep -> do
         let urlList = dependencyMirrorList dep
         let ModuleDigest digest = dependencyDigest dep
-        let urlEnsList = map (\(ModuleURL url) -> (_m :< E.String url, [])) urlList
-        let digestEns = E.inject $ _m :< E.String digest
-        let mirrorEns = E.inject $ _m :< E.List [] urlEnsList
-        E.inject $ _m :< E.Dictionary [] [(keyDigest, digestEns), (keyMirror, mirrorEns)]
+        let urlEnsList = map (\(ModuleURL url) -> _m :< E.String url) urlList
+        let digestEns = _m :< E.String digest
+        let mirrorEns = _m :< E.List (seriesFromList urlEnsList)
+        E.dictFromListVertical _m [(keyDigest, digestEns), (keyMirror, mirrorEns)]
   let dependency' = Map.mapKeys (\(MA.ModuleAlias key) -> BN.reify key) dependency
   if Map.null dependency'
     then Nothing
-    else return (keyDependency, E.inject $ _m :< E.Dictionary [] (Map.toList dependency'))
+    else return (keyDependency, E.dictFromListVertical _m (Map.toList dependency'))
 
-getExtraContentInfo :: Module -> Maybe (T.Text, E.FullEns)
+getExtraContentInfo :: Module -> Maybe (T.Text, E.Ens)
 getExtraContentInfo someModule = do
-  let extraContentList = map (\x -> (_m :< E.String (ppExtraContent x), [])) $ moduleExtraContents someModule
+  let extraContentList = map (\x -> _m :< E.String (ppExtraContent x)) $ moduleExtraContents someModule
   if null extraContentList
     then Nothing
-    else return (keyExtraContent, E.inject $ _m :< E.List [] extraContentList)
+    else return (keyExtraContent, _m :< E.List (seriesFromList extraContentList))
 
-getAntecedentInfo :: Module -> Maybe (T.Text, E.FullEns)
+getAntecedentInfo :: Module -> Maybe (T.Text, E.Ens)
 getAntecedentInfo someModule = do
-  let antecedentList = map (\x -> (_m :< E.String (ppAntecedent x), [])) $ moduleAntecedents someModule
+  let antecedentList = map (\x -> _m :< E.String (ppAntecedent x)) $ moduleAntecedents someModule
   if null antecedentList
     then Nothing
-    else return (keyAntecedent, E.inject $ _m :< E.List [] antecedentList)
+    else return (keyAntecedent, _m :< E.List (seriesFromList antecedentList))
 
-getForeignInfo :: Module -> Maybe (T.Text, E.FullEns)
+getForeignInfo :: Module -> Maybe (T.Text, E.Ens)
 getForeignInfo someModule = do
-  let foreignList = map (\x -> (_m :< E.String (ppDirPath x), [])) $ moduleForeignDirList someModule
+  let foreignList = map (\x -> _m :< E.String (ppDirPath x)) $ moduleForeignDirList someModule
   if null foreignList
     then Nothing
-    else return (keyForeign, E.inject $ _m :< E.List [] foreignList)
+    else return (keyForeign, _m :< E.List (seriesFromList foreignList))
 
-getPrefixMapInfo :: Module -> Maybe (T.Text, E.FullEns)
+getPrefixMapInfo :: Module -> Maybe (T.Text, E.Ens)
 getPrefixMapInfo someModule = do
   if Map.null (modulePrefixMap someModule)
     then Nothing
     else do
       let prefixMapDict = flip Map.map (modulePrefixMap someModule) $ \(alias, locator) ->
-            E.inject $ _m :< E.String (GL.reify (GL.GlobalLocator alias locator))
+            _m :< E.String (GL.reify (GL.GlobalLocator alias locator))
       let prefixMapDict' = Map.mapKeys BN.reify prefixMapDict
-      return (keyPrefix, E.inject $ _m :< E.Dictionary [] (Map.toList prefixMapDict'))
+      return (keyPrefix, E.dictFromList _m (Map.toList prefixMapDict'))
 
-getPresetMapInfo :: Module -> Maybe (T.Text, E.FullEns)
+getPresetMapInfo :: Module -> Maybe (T.Text, E.Ens)
 getPresetMapInfo someModule = do
   if Map.null (modulePresetMap someModule)
     then Nothing
     else do
-      let f bns = E.inject $ _m :< E.List [] (map (\bn -> (_m :< E.String (BN.reify bn), [])) $ sort bns)
-      return (keyPreset, E.inject $ _m :< E.Dictionary [] (Map.toList (Map.map f (modulePresetMap someModule))))
+      let f bns = _m :< E.List (seriesFromList $ map (\bn -> _m :< E.String (BN.reify bn)) $ sort bns)
+      return (keyPreset, E.dictFromList _m (Map.toList (Map.map f (modulePresetMap someModule))))
 
-getInlineLimitInfo :: Module -> Maybe (T.Text, E.FullEns)
+getInlineLimitInfo :: Module -> Maybe (T.Text, E.Ens)
 getInlineLimitInfo someModule = do
   limit <- moduleInlineLimit someModule
-  return (keyInlineLimit, E.inject $ _m :< E.Int limit)
+  return (keyInlineLimit, _m :< E.Int limit)
 
 ppAntecedent :: ModuleDigest -> T.Text
 ppAntecedent (ModuleDigest digest) =
@@ -322,12 +315,13 @@ stylize ens = do
   if not $ E.hasKey keyDependency ens
     then return ens
     else do
-      (m, c, depDict) <- E.access keyDependency ens >>= E.toDictionary . E.strip
-      depDict' <- forM depDict $ \(k, (c1, (dep, c2))) -> do
-        (mDep, cList, mirrorList) <- E.access keyMirror dep >>= E.toList . E.strip
-        dep' <- E.put keyMirror (mDep :< E.List cList (E.nubEnsList mirrorList)) dep
-        return (k, (c1, (dep', c2)))
-      E.put keyDependency (m :< E.Dictionary c depDict') ens
+      (m, depDict) <- E.access keyDependency ens >>= E.toDictionary
+      depDict' <- forM depDict $ \(k, dep) -> do
+        (mDep, mirrorList) <- E.access keyMirror dep >>= E.toList
+        let mirrorList' = SE.nubSeriesBy (\e1 e2 -> E.EqEns e1 == E.EqEns e2) mirrorList
+        dep' <- E.put keyMirror (mDep :< E.List mirrorList') dep
+        return (k, dep')
+      E.put keyDependency (m :< E.Dictionary depDict') ens
 
 getReadableModuleID :: Module -> MID.ModuleID -> Maybe T.Text
 getReadableModuleID baseModule mid =
@@ -358,3 +352,7 @@ getRelPathFromSourceDir :: (MonadThrow m) => Module -> Path Abs File -> m (Path 
 getRelPathFromSourceDir baseModule path = do
   let sourceDir = getSourceDir baseModule
   stripProperPrefix sourceDir path
+
+seriesFromList :: [a] -> SE.Series a
+seriesFromList =
+  SE.fromList SE.Bracket SE.Comma

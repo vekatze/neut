@@ -22,18 +22,21 @@ module Entity.Ens
     merge,
     nubEnsList,
     inject,
+    dictFromList,
+    dictFromListVertical,
   )
 where
 
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Bifunctor
-import Data.List (nubBy)
+import Data.List (find, nubBy)
 import Data.Text qualified as T
 import Entity.C
 import Entity.EnsType qualified as ET
 import Entity.Error
 import Entity.Hint
+import Entity.Syntax.Series qualified as SE
 import Path
 
 data EnsF a
@@ -41,8 +44,8 @@ data EnsF a
   | Float Double
   | Bool Bool
   | String T.Text
-  | List C [(a, C)]
-  | Dictionary C [(T.Text, (C, (a, C)))]
+  | List (SE.Series a)
+  | Dictionary (SE.Series (T.Text, a))
 
 type Ens = Cofree EnsF Hint
 
@@ -63,41 +66,45 @@ instance Eq (EqEns Hint) where
         x1 == x2
       (_ :< String x1, _ :< String x2) ->
         x1 == x2
-      (_ :< List c1 xs1, _ :< List c2 xs2) ->
-        map (first EqEns) xs1 == map (first EqEns) xs2 && c1 == c2
-      (_ :< Dictionary c1 kvs1, _ :< Dictionary c2 kvs2) -> do
-        let (ks1, vs1) = unzip kvs1
-        let (ks2, vs2) = unzip kvs2
-        ks1 == ks2 && map (second $ first EqEns) vs1 == map (second $ first EqEns) vs2 && c1 == c2
+      (_ :< List xs1, _ :< List xs2) -> do
+        let b1 = map (second EqEns) (SE.elems xs1) == map (second EqEns) (SE.elems xs2)
+        let b2 = SE.trailingComment xs1 == SE.trailingComment xs2
+        let b3 = SE.prefix xs1 == SE.prefix xs2
+        b1 && b2 && b3
+      (_ :< Dictionary kvs1, _ :< Dictionary kvs2) -> do
+        let kvs1' = fmap (second EqEns) kvs1
+        let kvs2' = fmap (second EqEns) kvs2
+        kvs1' == kvs2'
       _ ->
         False
 
 hasKey :: T.Text -> Ens -> Bool
 hasKey k ens =
   case ens of
-    _ :< Dictionary _ kvs
-      | Just _ <- lookup k kvs ->
+    _ :< Dictionary kvsEns
+      | kvs <- SE.extract kvsEns,
+        Just _ <- lookup k kvs ->
           True
     _ ->
       False
 
-access :: T.Text -> Ens -> Either Error (C, (Ens, C))
+access :: T.Text -> Ens -> Either Error Ens
 access k ens@(m :< _) = do
-  (_, _, dictionary) <- toDictionary ens
-  case lookup k dictionary of
+  (_, dictionary) <- toDictionary ens
+  case lookup k (SE.extract dictionary) of
     Just v ->
       return v
     Nothing ->
       raiseKeyNotFoundError m k
 
-access' :: T.Text -> EnsF Ens -> Ens -> Either Error (C, (Ens, C))
+access' :: T.Text -> EnsF Ens -> Ens -> Either Error Ens
 access' k defaultValue ens@(m :< _) = do
-  (_, _, dictionary) <- toDictionary ens
-  case lookup k dictionary of
+  (_, dictionary) <- toDictionary ens
+  case lookup k (SE.extract dictionary) of
     Just v ->
       return v
     Nothing ->
-      return ([], (m :< defaultValue, []))
+      return $ m :< defaultValue
 
 strip :: (C, (Ens, C)) -> Ens
 strip (_, (ens, _)) =
@@ -105,12 +112,8 @@ strip (_, (ens, _)) =
 
 put :: T.Text -> Ens -> Ens -> Either Error Ens
 put k v ens = do
-  (m, c, dict) <- toDictionary ens
-  case lookup k dict of
-    Just (c1, (_, c2)) ->
-      return $ m :< Dictionary c (replace k (c1, (v, c2)) dict)
-    Nothing ->
-      return $ m :< Dictionary c (dict ++ [(k, ([], (v, [])))])
+  (m, dict) <- toDictionary ens
+  return $ m :< Dictionary (SE.replace k v dict)
 
 conservativeUpdate :: [T.Text] -> Ens -> Ens -> Either Error Ens
 conservativeUpdate keyPath value ens = do
@@ -118,25 +121,14 @@ conservativeUpdate keyPath value ens = do
     [] ->
       return value
     k : rest -> do
-      (m, c, dictionary) <- toDictionary ens
-      dictionary' <- forM dictionary $ \(kd, (c1, (vd, c2))) -> do
+      (m, dictionary) <- toDictionary ens
+      dictionary' <- forM dictionary $ \(kd, vd) -> do
         if k == kd
           then do
             vd' <- conservativeUpdate rest value vd
-            return (kd, (c1, (vd', c2)))
-          else return (kd, (c1, (vd, c2)))
-      return $ m :< Dictionary c dictionary'
-
-replace :: (Eq a) => a -> b -> [(a, b)] -> [(a, b)]
-replace k v kvs =
-  case kvs of
-    [] ->
-      []
-    (k', v') : rest
-      | k == k' ->
-          (k', v) : replace k v rest
-      | otherwise ->
-          (k', v') : replace k v rest
+            return (kd, vd')
+          else return (kd, vd)
+      return $ m :< Dictionary dictionary'
 
 ensPath :: Path a b -> EnsF (Cofree EnsF c)
 ensPath path =
@@ -144,11 +136,11 @@ ensPath path =
 
 emptyDict :: EnsF Ens
 emptyDict =
-  Dictionary [] []
+  Dictionary (SE.emptySeries (Just SE.Brace) SE.Comma)
 
 emptyList :: EnsF Ens
 emptyList =
-  List [] []
+  List (SE.emptySeries (Just SE.Bracket) SE.Comma)
 
 toInt :: Ens -> Either Error Int
 toInt ens@(m :< _) =
@@ -182,19 +174,19 @@ toString ens@(m :< _) =
     _ ->
       raiseTypeError m ET.String (typeOf ens)
 
-toDictionary :: Ens -> Either Error (Hint, C, [(T.Text, (C, (Ens, C)))])
+toDictionary :: Ens -> Either Error (Hint, SE.Series (T.Text, Ens))
 toDictionary ens@(m :< _) =
   case ens of
-    _ :< Dictionary c kvs ->
-      return (m, c, kvs)
+    _ :< Dictionary kvs ->
+      return (m, kvs)
     _ ->
       raiseTypeError m ET.Dictionary (typeOf ens)
 
-toList :: Ens -> Either Error (Hint, C, [(Ens, C)])
+toList :: Ens -> Either Error (Hint, SE.Series Ens)
 toList ens@(m :< _) =
   case ens of
-    _ :< List c e ->
-      return (m, c, e)
+    _ :< List e ->
+      return (m, e)
     _ ->
       raiseTypeError m ET.List (typeOf ens)
 
@@ -244,19 +236,21 @@ merge ens1 ens2 =
       return $ m :< Bool x1
     (m :< String x1, _ :< String _) ->
       return $ m :< String x1
-    (m :< List c1 xs1, _ :< List c2 xs2) -> do
-      return $ m :< List (c1 ++ c2) (xs1 ++ xs2)
-    (m :< Dictionary c1 kvs1, _ :< Dictionary c2 kvs2) -> do
-      kvs1' <- forM kvs1 $ \(k1, (cLead1, (v1, cTrail1))) -> do
-        case lookup k1 kvs2 of
-          Just (cLead2, (v2, cTrail2)) -> do
+    (m :< List xs1, _ :< List xs2) -> do
+      return $ m :< List (SE.appendLeftBiased xs1 xs2)
+    (m :< Dictionary s1, _ :< Dictionary s2) -> do
+      let kvs1 = SE.elems s1
+      let kvs2 = SE.elems s2
+      kvs1' <- forM kvs1 $ \(c1, (k1, v1)) -> do
+        case find (\(_, (k, _)) -> k1 == k) kvs2 of
+          Just (c2, (_, v2)) -> do
             v1' <- merge v1 v2
-            return (k1, (cLead1 ++ cLead2, (v1', cTrail1 ++ cTrail2)))
+            return (c1 ++ c2, (k1, v1'))
           Nothing ->
-            return (k1, (cLead1, (v1, cTrail1)))
-      let ks1 = map fst kvs1'
-      let kvs2' = filter (\(k, _) -> k `notElem` ks1) kvs2
-      return $ m :< Dictionary (c1 ++ c2) (kvs1' ++ kvs2')
+            return (c1, (k1, v1))
+      let ks1 = map (fst . snd) kvs1'
+      let kvs2' = filter (\(_, (k, _)) -> k `notElem` ks1) kvs2
+      return $ m :< Dictionary (s1 {SE.elems = kvs1' ++ kvs2'})
     (m :< _, _) ->
       raiseTypeError m (typeOf ens1) (typeOf ens2)
 
@@ -267,3 +261,11 @@ nubEnsList ensList = do
 inject :: Ens -> FullEns
 inject ens =
   ([], (ens, []))
+
+dictFromList :: a -> [(T.Text, Cofree EnsF a)] -> Cofree EnsF a
+dictFromList m xs = do
+  m :< Dictionary (SE.fromList SE.Brace SE.Comma xs)
+
+dictFromListVertical :: a -> [(T.Text, Cofree EnsF a)] -> Cofree EnsF a
+dictFromListVertical m xs = do
+  m :< Dictionary ((SE.fromList SE.Brace SE.Comma xs) {SE.hasOptionalSeparator = True})

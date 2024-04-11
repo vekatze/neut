@@ -49,9 +49,9 @@ Some subcommands share command line options. The list of them is as follows:
 {
   // ..
   target {
-    foo "foo.nt"
-    bar "item/bar.nt"
-  }
+    foo "foo.nt",
+    bar "item/bar.nt",
+  },
   // ..
 }
 ```
@@ -266,12 +266,12 @@ This digest information inside `module.ens` of `2-2.tar.zst` should appear like 
 
 ```ens
 {
-  target {..}
-  dependency {..}
+  target {..},
+  dependency {..},
   antecedent [
-    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag" // ← digest of 2-0.tar.zst
-    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA" // ← digest of 2-1.tar.zst
-  ]
+    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag", // ← digest of 2-0.tar.zst
+    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA", // ← digest of 2-1.tar.zst
+  ],
 }
 ```
 
@@ -365,18 +365,18 @@ After executing `neut get`, the information of the new module is saved to `modul
 {
   target {
     // ..
-  }
+  },
   dependency {
     // ..
     // 🌟 (something like this is added automatically)
     some-name {
-      digest "xNmQu6It81lGBy1sKvk5_jE4Qt8w8KgkVgGj0RBbbrk"
+      digest "xNmQu6It81lGBy1sKvk5_jE4Qt8w8KgkVgGj0RBbbrk",
       mirror [
-        "https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst"
-      ]
-    }
+        "https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst",
+      ],
+    },
     // ..
-  }
+  },
 }
 ```
 
@@ -407,6 +407,12 @@ When the option `--in-place` is set, `format-source` performs in-place update.
 ## `neut format-ens`
 
 `neut format-ens path/to/source/file.ens` formats specified ens file and outputs the result to stdout.
+
+You can also pass `-` to receive input from stdin:
+
+```sh
+cat module.ens | neut format-ens -
+```
 
 ### `--in-place`
 

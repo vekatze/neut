@@ -1,17 +1,17 @@
 {
   dependency {
     core {
-      digest "XXYmbxyTkrvXKmzyY7ekHfFjmS-N5NAyWdn28KbpMHs"
+      digest "HSW2cTzCesxgnB27FzeTb6DmvIA7Rfmhw6zIdWazKlo",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-40.tar.zst"
-      ]
-      enable-preset true
-    }
-  }
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-41.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
   prefix {
-    Ext "core.external"
-  }
+    Ext "core.external",
+  },
   target {
-    flow "flow.nt"
-  }
+    flow "flow.nt",
+  },
 }

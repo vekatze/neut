@@ -1,18 +1,18 @@
 {
   dependency {
     core {
-      digest "XXYmbxyTkrvXKmzyY7ekHfFjmS-N5NAyWdn28KbpMHs"
+      digest "HSW2cTzCesxgnB27FzeTb6DmvIA7Rfmhw6zIdWazKlo",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-40.tar.zst"
-      ]
-      enable-preset true
-    }
-  }
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-41.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
   prefix {
-    Keyword "this.pi-keyword"
-    Term "this.pi-term"
-  }
+    Keyword "this.pi-keyword",
+    Term "this.pi-term",
+  },
   target {
-    pi "pi.nt"
-  }
+    pi "pi.nt",
+  },
 }

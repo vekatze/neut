@@ -4,8 +4,8 @@ data color {
 }
 
 data tree(a) {
-| Leaf
   // Black
+| Leaf
 | Node(color, tree(a), a, tree(a))
 }
 
@@ -69,8 +69,8 @@ define insert(a: tau, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
   in
   match helper(t) {
   | Leaf =>
-    Leaf
     // shouldn't occur
+    Leaf
   | Node(_, left, v, right) =>
     Node(Black, left, v, right)
   }

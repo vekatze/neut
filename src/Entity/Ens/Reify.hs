@@ -6,6 +6,7 @@ import Data.Text qualified as T
 import Entity.C
 import Entity.Doc qualified as D
 import Entity.Ens
+import Entity.Syntax.Series.Decode qualified as SE
 
 pp :: FullEns -> T.Text
 pp (leadingComments, (ens, trailingComments)) = do
@@ -27,38 +28,15 @@ toDoc ens =
         else D.text "false"
     _ :< String x ->
       D.text $ T.pack (show x)
-    _ :< List c xs -> do
-      if null xs && null c
-        then D.text "[]"
-        else do
-          let header = [D.text "["]
-          let body = map (D.nest D.indent) (listItemsToDocs c xs)
-          let footer = [D.line, D.text "]"]
-          D.join $ header ++ body ++ footer
-    _ :< Dictionary c dict -> do
-      if null dict && null c
-        then D.text "{}"
-        else do
-          let header = [D.text "{"]
-          let body = map (D.nest D.indent) (dictItemsToDocs c dict)
-          let footer = [D.line, D.text "}"]
-          D.join $ header ++ body ++ footer
+    _ :< List xs -> do
+      let xs' = fmap toDoc xs
+      SE.decode xs'
+    _ :< Dictionary dict -> do
+      SE.decode $ fmap dictItemToDoc dict
 
-listItemsToDocs :: C -> [(Ens, C)] -> [D.Doc]
-listItemsToDocs c xcs =
-  case xcs of
-    [] ->
-      commentToDoc c
-    (x, c') : rest -> do
-      commentToDoc c ++ [D.line, toDoc x] ++ listItemsToDocs c' rest
-
-dictItemsToDocs :: C -> [(T.Text, (C, (Ens, C)))] -> [D.Doc]
-dictItemsToDocs c kvcs =
-  case kvcs of
-    [] ->
-      commentToDoc c
-    (k, (cLead, (v, cTrail))) : rest -> do
-      commentToDoc (c ++ cLead) ++ [D.line, D.text k, D.text " ", toDoc v] ++ dictItemsToDocs cTrail rest
+dictItemToDoc :: (T.Text, Ens) -> D.Doc
+dictItemToDoc (k, v) =
+  D.join [D.text k, D.text " ", toDoc v]
 
 commentToDoc :: C -> [D.Doc]
 commentToDoc c = do

@@ -73,8 +73,8 @@ A prefix entry in `import` must be defined in the `prefix` of the current module
 {
   // ..
   prefix {
-    Qux "this.item.bar"
-  }
+    Qux "this.item.bar",
+  },
   // ..
 }
 ```

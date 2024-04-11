@@ -16,6 +16,7 @@ import Entity.Module
 import Entity.ModuleDigest (ModuleDigest (..))
 import Entity.ModuleDigest qualified as MD
 import Entity.PackageVersion qualified as PV
+import Entity.Syntax.Series qualified as SE
 import Path
 import Scene.Ens.Reflect qualified as Ens
 import Scene.Module.GetExistingVersions
@@ -47,12 +48,5 @@ getDigest targetModule ver = do
 
 makeAntecedentEns :: Hint -> [ModuleDigest] -> E.Ens
 makeAntecedentEns m antecedentList = do
-  m
-    :< E.Dictionary
-      []
-      [ ( keyAntecedent,
-          E.inject $
-            m
-              :< E.List [] (map (\(ModuleDigest digest) -> (m :< E.String digest, [])) antecedentList)
-        )
-      ]
+  let antecedentList' = map (\(ModuleDigest digest) -> m :< E.String digest) antecedentList
+  E.dictFromList m [(keyAntecedent, m :< E.List (SE.fromList SE.Bracket SE.Comma antecedentList'))]
