@@ -61,10 +61,8 @@ parseString m = do
 
 parseList :: Hint -> Parser (E.Ens, C)
 parseList m = do
-  c1 <- delimiter "["
-  vs <- many parseEns
-  c2 <- delimiter "]"
-  return (m :< E.List c1 vs, c2)
+  (ensSeries, c) <- seriesBracket parseEns
+  return (m :< E.List ensSeries, c)
 
 parseDictionary :: Hint -> Parser (E.Ens, C)
 parseDictionary m = do

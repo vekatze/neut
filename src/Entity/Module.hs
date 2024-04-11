@@ -12,7 +12,6 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.Ens qualified as E
-import Entity.Ens.Reify qualified as Ens
 import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint (Hint, internalHint)
@@ -21,6 +20,7 @@ import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
+import Entity.Syntax.Series qualified as SE
 import Entity.Target qualified as Target
 import Path
 import System.FilePath qualified as FP
@@ -175,10 +175,6 @@ _m :: Hint
 _m =
   internalHint
 
-ppModule :: Module -> T.Text
-ppModule someModule = do
-  Ens.pp ([], (toDefaultEns someModule, []))
-
 toDefaultEns :: Module -> E.Ens
 toDefaultEns someModule =
   _m
@@ -230,9 +226,9 @@ getDependencyInfo someModule = do
   let dependency = flip Map.map (moduleDependency someModule) $ \dep -> do
         let urlList = dependencyMirrorList dep
         let ModuleDigest digest = dependencyDigest dep
-        let urlEnsList = map (\(ModuleURL url) -> (_m :< E.String url, [])) urlList
+        let urlEnsList = map (\(ModuleURL url) -> _m :< E.String url) urlList
         let digestEns = E.inject $ _m :< E.String digest
-        let mirrorEns = E.inject $ _m :< E.List [] urlEnsList
+        let mirrorEns = E.inject $ _m :< E.List (seriesFromList urlEnsList)
         E.inject $ _m :< E.Dictionary [] [(keyDigest, digestEns), (keyMirror, mirrorEns)]
   let dependency' = Map.mapKeys (\(MA.ModuleAlias key) -> BN.reify key) dependency
   if Map.null dependency'
@@ -241,24 +237,24 @@ getDependencyInfo someModule = do
 
 getExtraContentInfo :: Module -> Maybe (T.Text, E.FullEns)
 getExtraContentInfo someModule = do
-  let extraContentList = map (\x -> (_m :< E.String (ppExtraContent x), [])) $ moduleExtraContents someModule
+  let extraContentList = map (\x -> _m :< E.String (ppExtraContent x)) $ moduleExtraContents someModule
   if null extraContentList
     then Nothing
-    else return (keyExtraContent, E.inject $ _m :< E.List [] extraContentList)
+    else return (keyExtraContent, E.inject $ _m :< E.List (seriesFromList extraContentList))
 
 getAntecedentInfo :: Module -> Maybe (T.Text, E.FullEns)
 getAntecedentInfo someModule = do
-  let antecedentList = map (\x -> (_m :< E.String (ppAntecedent x), [])) $ moduleAntecedents someModule
+  let antecedentList = map (\x -> _m :< E.String (ppAntecedent x)) $ moduleAntecedents someModule
   if null antecedentList
     then Nothing
-    else return (keyAntecedent, E.inject $ _m :< E.List [] antecedentList)
+    else return (keyAntecedent, E.inject $ _m :< E.List (seriesFromList antecedentList))
 
 getForeignInfo :: Module -> Maybe (T.Text, E.FullEns)
 getForeignInfo someModule = do
-  let foreignList = map (\x -> (_m :< E.String (ppDirPath x), [])) $ moduleForeignDirList someModule
+  let foreignList = map (\x -> _m :< E.String (ppDirPath x)) $ moduleForeignDirList someModule
   if null foreignList
     then Nothing
-    else return (keyForeign, E.inject $ _m :< E.List [] foreignList)
+    else return (keyForeign, E.inject $ _m :< E.List (seriesFromList foreignList))
 
 getPrefixMapInfo :: Module -> Maybe (T.Text, E.FullEns)
 getPrefixMapInfo someModule = do
@@ -275,7 +271,7 @@ getPresetMapInfo someModule = do
   if Map.null (modulePresetMap someModule)
     then Nothing
     else do
-      let f bns = E.inject $ _m :< E.List [] (map (\bn -> (_m :< E.String (BN.reify bn), [])) $ sort bns)
+      let f bns = E.inject $ _m :< E.List (seriesFromList $ map (\bn -> _m :< E.String (BN.reify bn)) $ sort bns)
       return (keyPreset, E.inject $ _m :< E.Dictionary [] (Map.toList (Map.map f (modulePresetMap someModule))))
 
 getInlineLimitInfo :: Module -> Maybe (T.Text, E.FullEns)
@@ -324,8 +320,9 @@ stylize ens = do
     else do
       (m, c, depDict) <- E.access keyDependency ens >>= E.toDictionary . E.strip
       depDict' <- forM depDict $ \(k, (c1, (dep, c2))) -> do
-        (mDep, cList, mirrorList) <- E.access keyMirror dep >>= E.toList . E.strip
-        dep' <- E.put keyMirror (mDep :< E.List cList (E.nubEnsList mirrorList)) dep
+        (mDep, mirrorList) <- E.access keyMirror dep >>= E.toList . E.strip
+        let mirrorList' = SE.nubSeriesBy (\e1 e2 -> E.EqEns e1 == E.EqEns e2) mirrorList
+        dep' <- E.put keyMirror (mDep :< E.List mirrorList') dep
         return (k, (c1, (dep', c2)))
       E.put keyDependency (m :< E.Dictionary c depDict') ens
 
@@ -358,3 +355,7 @@ getRelPathFromSourceDir :: (MonadThrow m) => Module -> Path Abs File -> m (Path 
 getRelPathFromSourceDir baseModule path = do
   let sourceDir = getSourceDir baseModule
   stripProperPrefix sourceDir path
+
+seriesFromList :: [a] -> SE.Series a
+seriesFromList =
+  SE.fromList SE.Bracket SE.Comma

@@ -34,6 +34,7 @@ import Entity.C
 import Entity.EnsType qualified as ET
 import Entity.Error
 import Entity.Hint
+import Entity.Syntax.Series qualified as SE
 import Path
 
 data EnsF a
@@ -41,7 +42,7 @@ data EnsF a
   | Float Double
   | Bool Bool
   | String T.Text
-  | List C [(a, C)]
+  | List (SE.Series a)
   | Dictionary C [(T.Text, (C, (a, C)))]
 
 type Ens = Cofree EnsF Hint
@@ -63,8 +64,11 @@ instance Eq (EqEns Hint) where
         x1 == x2
       (_ :< String x1, _ :< String x2) ->
         x1 == x2
-      (_ :< List c1 xs1, _ :< List c2 xs2) ->
-        map (first EqEns) xs1 == map (first EqEns) xs2 && c1 == c2
+      (_ :< List xs1, _ :< List xs2) -> do
+        let b1 = map (second EqEns) (SE.elems xs1) == map (second EqEns) (SE.elems xs2)
+        let b2 = SE.trailingComment xs1 == SE.trailingComment xs2
+        let b3 = SE.prefix xs1 == SE.prefix xs2
+        b1 && b2 && b3
       (_ :< Dictionary c1 kvs1, _ :< Dictionary c2 kvs2) -> do
         let (ks1, vs1) = unzip kvs1
         let (ks2, vs2) = unzip kvs2
@@ -148,7 +152,7 @@ emptyDict =
 
 emptyList :: EnsF Ens
 emptyList =
-  List [] []
+  List (SE.emptySeries (Just SE.Bracket) SE.Comma)
 
 toInt :: Ens -> Either Error Int
 toInt ens@(m :< _) =
@@ -190,11 +194,11 @@ toDictionary ens@(m :< _) =
     _ ->
       raiseTypeError m ET.Dictionary (typeOf ens)
 
-toList :: Ens -> Either Error (Hint, C, [(Ens, C)])
+toList :: Ens -> Either Error (Hint, SE.Series Ens)
 toList ens@(m :< _) =
   case ens of
-    _ :< List c e ->
-      return (m, c, e)
+    _ :< List e ->
+      return (m, e)
     _ ->
       raiseTypeError m ET.List (typeOf ens)
 
@@ -244,8 +248,8 @@ merge ens1 ens2 =
       return $ m :< Bool x1
     (m :< String x1, _ :< String _) ->
       return $ m :< String x1
-    (m :< List c1 xs1, _ :< List c2 xs2) -> do
-      return $ m :< List (c1 ++ c2) (xs1 ++ xs2)
+    (m :< List xs1, _ :< List xs2) -> do
+      return $ m :< List (SE.appendLeftBiased xs1 xs2)
     (m :< Dictionary c1 kvs1, _ :< Dictionary c2 kvs2) -> do
       kvs1' <- forM kvs1 $ \(k1, (cLead1, (v1, cTrail1))) -> do
         case lookup k1 kvs2 of
