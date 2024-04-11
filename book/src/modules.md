@@ -25,10 +25,10 @@ The field `target` defines the entry points of a module. It should look like the
 {
   // ..
   target {
-    TARGET-1 "path/to/source/file-1.nt"
+    TARGET-1 "path/to/source/file-1.nt",
     // ..
-    TARGET-N "path/to/source/file-n.nt"
-  }
+    TARGET-N "path/to/source/file-n.nt",
+  },
   // ..
 }
 ```
@@ -39,9 +39,9 @@ Suppose that your module has the following `target` in `module.ens`:
 {
   // ..
   target {
-    foo "foo.nt"
-    bar "item/whatever.nt"
-  }
+    foo "foo.nt",
+    bar "item/whatever.nt",
+  },
   // ..
 }
 ```
@@ -63,17 +63,17 @@ The field `dependency` defines the dependencies of a module. It should look like
   // ..
   dependency {
     foo {
-      digest "(base64url-encoded sha256 checksum)"
+      digest "(base64url-encoded sha256 checksum)",
       mirror [
-        "URL-1"
+        "URL-1",
         // ..
-        "URL-N"
-      ]
-      enable-preset <true | false> // ← optional field
-    }
+        "URL-N",
+      ],
+      enable-preset <true | false>, // ← optional field
+    },
     // ..
-    bar { .. }
-  }
+    bar { .. },
+  },
   // ..
 }
 ```
@@ -85,20 +85,20 @@ An example of `dependency`:
   // ..
   dependency {
     core {
-      digest "ub3MUXVac9F1rebIhl_Crm2_GJ7PzCAekgp8aYH3-mo"
+      digest "ub3MUXVac9F1rebIhl_Crm2_GJ7PzCAekgp8aYH3-mo",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-38.tar.zst"
-      ]
-      enable-preset true
-    }
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-38.tar.zst",
+      ],
+      enable-preset true,
+    },
     some-package {
-      digest "F_ST8PtL9dLCDWVZ4GpuS7sviUU0_-TUz2s6iw-86KU"
+      digest "F_ST8PtL9dLCDWVZ4GpuS7sviUU0_-TUz2s6iw-86KU",
       mirror [
-        "https://example.com/foobarbuz/packages/22-3.tar.zst"
-      ]
-    }
-  }
-  // ..
+        "https://example.com/foobarbuz/packages/22-3.tar.zst",
+      ],
+    },
+  },
+    // ..
 }
 ```
 
@@ -117,7 +117,7 @@ The field `archive` defines the path of the directory into which the subcommand 
 ```ens
 {
   // ..
-  archive "my-archive"
+  archive "my-archive",
   // ..
 }
 ```
@@ -131,7 +131,7 @@ The field `build` defines the path of the directory to store object files, execu
 ```ens
 {
   // ..
-  build ".build"
+  build ".build",
   // ..
 }
 ```
@@ -145,7 +145,7 @@ The field `source` defines the path of the directory to store source files. It s
 ```ens
 {
   // ..
-  source "."
+  source ".",
   // ..
 }
 ```
@@ -160,10 +160,10 @@ The field `prefix` defines the aliases of source files. It should look like the 
 {
   // ..
   prefix {
-    Foo "this.foo"
+    Foo "this.foo",
     // ..
-    Bar "this.item.bar"
-  }
+    Bar "this.item.bar",
+  },
   // ..
 }
 ```
@@ -198,10 +198,10 @@ The field `foreign` defines a list of directories that contains platform-depende
 {
   // ..
   foreign [
-    "./ffi/"
+    "./ffi/",
     // ..
-    "./some-directory/"
-  ]
+    "./some-directory/",
+  ],
   // ..
 }
 ```
@@ -251,9 +251,9 @@ The field `preset` defines the list of names that must be imported implicitly wh
 {
   // ..
   preset {
-    foo ["my-func" "other-func"]
-    item.bar ["hoge" "pohe"]
-  }
+    foo ["my-func", "other-func"],
+    item.bar ["hoge", "pohe"],
+  },
   // ..
 }
 ```
@@ -274,12 +274,12 @@ Suppose we released a module that contains the definition of `preset` as in the 
   // ..
   dependency {
     sample {
-      digest "BASE64_URL_ENCODED_SHA256_CHECKSUM"
-      mirror ["SOME_URL"]
-      enable-preset true
-    }
+      digest "BASE64_URL_ENCODED_SHA256_CHECKSUM",
+      mirror ["SOME_URL"],
+      enable-preset true,
+    },
     // ..
-  }
+  },
   // ..
 }
 ```
@@ -321,10 +321,10 @@ The field `antecedent` defines the list of older compatible versions. This field
 {
   // ..
   antecedent [
-    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag"
+    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag",
     // ..
-    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
-  ]
+    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA",
+  ],
   // ..
 }
 ```
@@ -346,7 +346,7 @@ The field `inline-limit` defines the limit on recursion performed during compila
 ```ens
 {
   // ..
-  inline-limit 1000000
+  inline-limit 1000000,
   // ..
 }
 ```

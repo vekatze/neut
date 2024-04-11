@@ -5,6 +5,7 @@
 - [On Executing Types](./basis.md#on-executing-types)
 - [Allocation Canceling](./basis.md#allocation-canceling)
 - [Name Resolution](./basis.md#name-resolution)
+- [Leading Bars and Trailing Commas](./basis.html#leading-bars-and-trailing-commas)
 - [Compiler Configuration](./basis.md#compiler-configuration)
 - [Other Basic Facts](./basis.md#other-basic-facts)
 
@@ -274,6 +275,20 @@ jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
 
 Thus, the resulting assembly file contains symbols like the above.
 
+## Trailing Commas and Leading Bars
+
+### Comma-Separated Sequences (And-Sequences)
+
+Every comma-separated sequence like `a, b, c` can have a trailing comma like `a, b, c,`.
+
+If a comma-separated sequence has a trailing comma, the sequence is formatted vertically by the built-in formatter.
+
+### Bar-Separated Sequences (Or-Sequences)
+
+Every bar-separated sequence like `a | b | c` can have a leading bar like `| a | b | c`.
+
+If a bar-separated sequence has a leading bar, the sequence is formatted vertically by the built-in formatter.
+
 ## Compiler Configuration
 
 The behavior of the compiler can be adjusted using the following environment variables:
@@ -296,8 +311,8 @@ The default values are as follows:
 
 ## Other Basic Facts
 
-- call-by-value
-- impure
-- the type of `main` must be `() -> unit`
+- Neut is call-by-value
+- Neut is impure
+- The type of `main` must be `() -> unit`
 - A module named `core` is treated specially (treated as the "prelude" library)
   - Syntactic constructs like `[1, 2, 3]` depends on functions in `core`

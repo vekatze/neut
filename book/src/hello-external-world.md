@@ -65,17 +65,17 @@ The content of `module.ens` should be something like the below:
 ```ens
 {
   target {
-    sample "sample.nt"
-  }
+    sample "sample.nt",
+  },
   dependency {
     core {
-      digest "(base64url-encoded checksum)"
+      digest "(base64url-encoded checksum)",
       mirror [
-        "https://github.com/.../X-Y-Z.tar.zst"
-      ]
-      enable-preset true
-    }
-  }
+        "https://github.com/.../X-Y-Z.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
 }
 ```
 
@@ -241,18 +241,18 @@ The information of the newly-added module is saved to `module.ens`:
 ```ens
 {
   target {
-    new-item "new-item.nt"
-  }
+    new-item "new-item.nt",
+  },
   dependency {
-    core { .. }
+    core { .. },
     // ↓ HERE
     some-name {
-      digest ".."
+      digest "..",
       mirror [
-        "https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1.tar.zst"
-      ]
-    }
-  }
+        "https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1.tar.zst",
+      ],
+    },
+  },
 }
 ```
 
@@ -379,13 +379,13 @@ We'll rewrite this example into a "prefixed" form. Firstly, edit the `module.ens
 
 ```ens
 {
-  prefix {                 //
-    S "some-name.sample"   // ← alias: S -> some-name.sample
-  }                        //
+  prefix {                  //
+    S "some-name.sample",   // ← alias: S -> some-name.sample
+  },                        //
   target {
-    new-item "new-item.nt"
-  }
-  dependency {..}
+    new-item "new-item.nt",
+  },
+  dependency {..},
 }
 ```
 
