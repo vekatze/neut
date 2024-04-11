@@ -13,6 +13,9 @@ module Entity.Syntax.Series
     pushComment,
     singleton,
     cons,
+    replace,
+    nubElemsBy,
+    joinC,
     assoc,
     getContainerPair,
     getSeparator,
@@ -31,18 +34,21 @@ where
 import Data.Bifunctor
 import Data.List (nubBy, sortBy)
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.C (C)
 
 data Separator
   = Comma
   | Bar
+  deriving (Eq)
 
 data Container
   = Paren
   | Brace
   | Bracket
   | Angle
+  deriving (Eq)
 
 type Prefix =
   Maybe (T.Text, C)
@@ -55,10 +61,30 @@ data Series a = Series
     separator :: Separator,
     hasOptionalSeparator :: Bool
   }
+  deriving (Eq)
 
 instance Functor Series where
   fmap f series =
     series {elems = map (second f) (elems series)}
+
+instance Foldable Series where
+  foldMap f xs =
+    case uncons xs of
+      Nothing ->
+        mempty
+      Just ((c, v), rest) -> do
+        f v <> foldMap f (pushComment c rest)
+
+instance Traversable Series where
+  traverse f xs = do
+    ys <-
+      traverse
+        ( \(c, x) -> do
+            y <- f x
+            pure (c, y)
+        )
+        (elems xs)
+    pure xs {elems = ys}
 
 emptySeries :: Maybe Container -> Separator -> Series a
 emptySeries container separator =
@@ -92,6 +118,25 @@ singleton container separator leadingComment (v, c) =
       container = container,
       hasOptionalSeparator = False
     }
+
+replace :: (Eq a) => a -> b -> Series (a, b) -> Series (a, b)
+replace k v kvs =
+  case uncons kvs of
+    Nothing ->
+      kvs
+    Just ((c, (k', v')), rest)
+      | k == k' ->
+          cons (c, (k', v)) (replace k v rest)
+      | otherwise ->
+          cons (c, (k', v')) (replace k v rest)
+
+uncons :: Series a -> Maybe ((C, a), Series a)
+uncons xs =
+  case elems xs of
+    [] ->
+      Nothing
+    cv : rest ->
+      Just (cv, xs {elems = rest})
 
 cons :: (C, a) -> Series a -> Series a
 cons x xs =
@@ -172,6 +217,10 @@ _assoc es c =
       let (_assoced, c') = _assoc ((c12 ++ c21, (e2, c22)) : rest) c
       ((c11, e1) : _assoced, c')
 
+joinC :: Series (C, a) -> Series a
+joinC xs =
+  xs {elems = map (\(c1, (c2, v)) -> (c1 ++ c2, v)) $ elems xs}
+
 getContainerPair :: Container -> (T.Text, T.Text)
 getContainerPair container =
   case container of
@@ -215,6 +264,17 @@ nubSeriesBy :: (a -> a -> Bool) -> Series a -> Series a
 nubSeriesBy cmp series = do
   let cmp' (_, x) (_, y) = cmp x y
   series {elems = nubBy cmp' $ elems series}
+
+nubElemsBy :: (Ord b) => S.Set b -> (a -> b) -> Series a -> Series a
+nubElemsBy found f xs = do
+  case uncons xs of
+    Nothing ->
+      xs
+    Just ((c', y), ys) -> do
+      let key = f y
+      if S.member key found
+        then pushComment c' $ nubElemsBy (S.insert key found) f ys
+        else cons (c', y) (nubElemsBy found f ys)
 
 appendLeftBiased :: Series a -> Series a -> Series a
 appendLeftBiased series1 series2 = do

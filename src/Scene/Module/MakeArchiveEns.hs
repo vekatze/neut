@@ -49,7 +49,4 @@ getDigest targetModule ver = do
 makeAntecedentEns :: Hint -> [ModuleDigest] -> E.Ens
 makeAntecedentEns m antecedentList = do
   let antecedentList' = map (\(ModuleDigest digest) -> m :< E.String digest) antecedentList
-  m
-    :< E.Dictionary
-      []
-      [(keyAntecedent, E.inject $ m :< E.List (SE.fromList SE.Bracket SE.Comma antecedentList'))]
+  E.dictFromList m [(keyAntecedent, m :< E.List (SE.fromList SE.Bracket SE.Comma antecedentList'))]

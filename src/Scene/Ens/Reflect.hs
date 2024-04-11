@@ -14,6 +14,7 @@ import Data.Text qualified as T
 import Entity.C
 import Entity.Ens qualified as E
 import Entity.Hint
+import Entity.Syntax.Series qualified as SE
 import Path
 import Scene.Parse.Core
 import Text.Megaparsec hiding (parse)
@@ -66,25 +67,24 @@ parseList m = do
 
 parseDictionary :: Hint -> Parser (E.Ens, C)
 parseDictionary m = do
-  c1 <- delimiter "{"
-  (ms, kvs) <- unzip <$> many parseKeyValuePair
-  c2 <- delimiter "}"
-  lift $ ensureKeyLinearity (zip ms (map fst kvs)) S.empty
-  return (m :< E.Dictionary c1 kvs, c2)
+  (kvs, c) <- seriesBrace parseKeyValuePair
+  let kvs' = SE.joinC kvs
+  lift $ ensureKeyLinearity (SE.extract kvs') S.empty
+  return (m :< E.Dictionary (fmap snd kvs'), c)
 
-parseKeyValuePair :: Parser (Hint, (T.Text, (C, (E.Ens, C))))
+parseKeyValuePair :: Parser ((C, (Hint, (T.Text, E.Ens))), C)
 parseKeyValuePair = do
   m <- getCurrentHint
   (k, cLead) <- symbol
   (v, cTrail) <- parseEns
-  return (m, (k, (cLead, (v, cTrail))))
+  return ((cLead, (m, (k, v))), cTrail)
 
-ensureKeyLinearity :: [(Hint, T.Text)] -> S.Set T.Text -> App ()
+ensureKeyLinearity :: [(Hint, (T.Text, a))] -> S.Set T.Text -> App ()
 ensureKeyLinearity mks foundKeySet =
   case mks of
     [] ->
       return ()
-    (m, k) : rest
+    (m, (k, _)) : rest
       | S.member k foundKeySet ->
           Throw.raiseError m $ "found a duplicated key: `" <> k <> "`"
       | otherwise ->

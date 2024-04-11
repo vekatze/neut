@@ -21,6 +21,7 @@ import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
 import Entity.Ens qualified as E
+import Entity.Ens qualified as SE
 import Entity.Error (Error (MakeError))
 import Entity.Hint
 import Entity.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
@@ -189,30 +190,25 @@ makeDependencyEns m alias dep = do
   let digest = M.dependencyDigest dep
   let mirrorList = M.dependencyMirrorList dep
   let enablePreset = M.dependencyPresetEnabled dep
-  let preset = if enablePreset then Just (keyEnablePreset, E.inject $ m :< E.Bool enablePreset) else Nothing
+  let preset = if enablePreset then Just (keyEnablePreset, m :< E.Bool enablePreset) else Nothing
   let mirrorList' = SE.fromList SE.Bracket SE.Comma $ map (\(ModuleURL mirror) -> m :< E.String mirror) mirrorList
-  m
-    :< E.Dictionary
-      []
-      [ ( keyDependency,
-          E.inject $
-            m
-              :< E.Dictionary
-                []
-                [ ( BN.reify $ extract alias,
-                    E.inject $
-                      m
-                        :< E.Dictionary
-                          []
-                          ( [ (keyDigest, E.inject $ m :< E.String (MD.reify digest)),
-                              (keyMirror, E.inject $ m :< E.List (mirrorList' {hasOptionalSeparator = True}))
-                            ]
-                              ++ maybeToList preset
-                          )
-                  )
-                ]
-        )
-      ]
+  SE.dictFromList
+    m
+    [ ( keyDependency,
+        SE.dictFromList
+          m
+          [ ( BN.reify $ extract alias,
+              SE.dictFromList
+                m
+                ( [ (keyDigest, m :< E.String (MD.reify digest)),
+                    (keyMirror, m :< E.List (mirrorList' {hasOptionalSeparator = True}))
+                  ]
+                    ++ maybeToList preset
+                )
+            )
+          ]
+      )
+    ]
 
 updateDependencyInModuleFile :: Path Abs File -> ModuleAlias -> M.Dependency -> App ()
 updateDependencyInModuleFile mainModuleFileLoc alias dep = do
@@ -227,10 +223,9 @@ makeDependencyEns' m dep = do
   let mirrorList = M.dependencyMirrorList dep
   let enablePreset = M.dependencyPresetEnabled dep
   let mirrorList' = SE.fromList SE.Bracket SE.Comma $ map (\(ModuleURL mirror) -> m :< E.String mirror) mirrorList
-  m
-    :< E.Dictionary
-      []
-      [ (keyDigest, E.inject $ m :< E.String (MD.reify digest)),
-        (keyMirror, E.inject $ m :< E.List (mirrorList' {hasOptionalSeparator = True})),
-        (keyEnablePreset, E.inject $ m :< E.Bool enablePreset)
-      ]
+  SE.dictFromList
+    m
+    [ (keyDigest, m :< E.String (MD.reify digest)),
+      (keyMirror, m :< E.List (mirrorList' {hasOptionalSeparator = True})),
+      (keyEnablePreset, m :< E.Bool enablePreset)
+    ]

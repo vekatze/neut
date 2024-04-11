@@ -202,15 +202,14 @@ getBuildSignature baseModule = do
           Nothing ->
             return Nothing
           Just shiftedModule ->
-            return $ Just (MA.reify alias, E.inject $ _m :< E.String (MID.reify $ moduleID shiftedModule))
+            return $ Just (MA.reify alias, _m :< E.String (MID.reify $ moduleID shiftedModule))
       let ens =
-            _m
-              :< E.Dictionary
-                []
-                [ ("build-mode", E.inject $ _m :< E.String (BM.reify buildMode)),
-                  ("extra-clang-option", E.inject $ _m :< E.String (T.pack optString)),
-                  ("compatible-shift", E.inject $ _m :< E.Dictionary [] depList')
-                ]
+            E.dictFromList
+              _m
+              [ ("build-mode", _m :< E.String (BM.reify buildMode)),
+                ("extra-clang-option", _m :< E.String (T.pack optString)),
+                ("compatible-shift", E.dictFromList _m depList')
+              ]
       let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
       modifyRef' buildSignatureMap $ Map.insert (moduleID baseModule) sig
       return sig

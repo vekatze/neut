@@ -31,22 +31,12 @@ toDoc ens =
     _ :< List xs -> do
       let xs' = fmap toDoc xs
       SE.decode xs'
-    _ :< Dictionary c dict -> do
-      if null dict && null c
-        then D.text "{}"
-        else do
-          let header = [D.text "{"]
-          let body = map (D.nest D.indent) (dictItemsToDocs c dict)
-          let footer = [D.line, D.text "}"]
-          D.join $ header ++ body ++ footer
+    _ :< Dictionary dict -> do
+      SE.decode $ fmap dictItemToDoc dict
 
-dictItemsToDocs :: C -> [(T.Text, (C, (Ens, C)))] -> [D.Doc]
-dictItemsToDocs c kvcs =
-  case kvcs of
-    [] ->
-      commentToDoc c
-    (k, (cLead, (v, cTrail))) : rest -> do
-      commentToDoc (c ++ cLead) ++ [D.line, D.text k, D.text " ", toDoc v] ++ dictItemsToDocs cTrail rest
+dictItemToDoc :: (T.Text, Ens) -> D.Doc
+dictItemToDoc (k, v) =
+  D.join [D.text k, D.text " ", toDoc v]
 
 commentToDoc :: C -> [D.Doc]
 commentToDoc c = do
