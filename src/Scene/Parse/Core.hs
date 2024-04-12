@@ -218,7 +218,11 @@ _seriesSepTrail :: Bool -> Maybe SE.Container -> SE.Separator -> C -> Parser (a,
 _seriesSepTrail afterComma container separator leadingComment p = do
   choice
     [ _seriesSepTrail1 container separator leadingComment p,
-      return (SE.emptySeries container separator) {SE.hasOptionalSeparator = afterComma}
+      return
+        (SE.emptySeries container separator)
+          { SE.hasOptionalSeparator = afterComma,
+            SE.trailingComment = leadingComment
+          }
     ]
 
 _seriesSepTrail1 :: Maybe SE.Container -> SE.Separator -> C -> Parser (a, C) -> Parser (SE.Series a)
@@ -238,7 +242,7 @@ _seriesSepLead container separator leadingComment p = do
   choice
     [ do
         cSep <- delimiter $ SE.getSeparator separator
-        se <- _seriesSepBy1 container separator (cSep ++ leadingComment) p
+        se <- _seriesSepBy1 container separator (leadingComment ++ cSep) p
         return se {SE.hasOptionalSeparator = True},
       _seriesSepBy container separator leadingComment p
     ]

@@ -81,7 +81,7 @@ toDoc term =
             [ PI.beforeBareSeries $ if isNoetic then D.text "case" else D.text "match",
               PI.bareSeries $ attachComment c $ SE.decode $ fmap toDoc es
             ],
-          SE.decode $ fmap decodePatternRow patternRowList
+          SE.decode' $ fmap decodePatternRow patternRowList
         ]
     _ :< Noema t ->
       D.join [D.text "&", toDoc t]
@@ -218,7 +218,7 @@ toDoc term =
       PI.arrange
         [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "introspect",
           PI.horizontal $ D.text key,
-          PI.inject $ SE.decode $ fmap decodeIntrospectClause clauseList
+          PI.inject $ SE.decode' $ fmap decodeIntrospectClause clauseList
         ]
     _ :< With withClause -> do
       decodeKeywordClause "with" $ mapKeywordClause toDoc withClause
@@ -426,24 +426,19 @@ decPiElimKeyItem' (k, c, b, d) = do
           decodeClauseBody c d
         ]
 
-decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> D.Doc
+decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> (D.Doc, T.Text, D.Doc)
 decodeIntrospectClause (mKey, c, body) = do
   let key = D.text $ fromMaybe "default" mKey
   decodeDoubleArrowClause (key, c, body)
 
-decodePatternRow :: RP.RawPatternRow RawTerm -> D.Doc
+decodePatternRow :: RP.RawPatternRow RawTerm -> (D.Doc, T.Text, D.Doc)
 decodePatternRow (patArgs, c, body, _) = do
   let patArgs' = SE.decode $ fmap (decodePattern . snd) patArgs
   decodeDoubleArrowClause (patArgs', c, body)
 
-decodeDoubleArrowClause :: (D.Doc, C, RawTerm) -> D.Doc
+decodeDoubleArrowClause :: (D.Doc, C, RawTerm) -> (D.Doc, T.Text, D.Doc)
 decodeDoubleArrowClause (dom, c, cod) = do
-  PI.arrange
-    [ PI.horizontal dom,
-      PI.horizontal $ D.text "=>",
-      PI.inject D.line,
-      PI.inject $ attachComment c $ toDoc cod
-    ]
+  (PI.arrange [PI.container dom], "=>", attachComment c $ toDoc cod)
 
 decodeClauseBody :: C -> RawTerm -> PI.Piece
 decodeClauseBody c e = do
