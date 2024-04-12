@@ -27,6 +27,7 @@ module Entity.Syntax.Series
     appendLeftBiased,
     catMaybes,
     compressEither,
+    hasComment,
     Entity.Syntax.Series.filter,
   )
 where
@@ -320,3 +321,8 @@ distributeMaybe (a, mb) =
       Just (a, b)
     Nothing ->
       Nothing
+
+hasComment :: Series a -> Bool
+hasComment series = do
+  let c = concatMap fst $ elems series
+  not $ null $ trailingComment series ++ c

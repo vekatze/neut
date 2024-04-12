@@ -11,7 +11,9 @@ module Entity.Piece
     clauseDelimiter,
     horizontal,
     vertical,
+    delimiterBar,
     nest,
+    block,
     idOrNest,
     appendCommaIfVertical,
     inject,
@@ -60,6 +62,14 @@ nest doc =
     { content = doc,
       singleModifier = \d -> D.join [D.nest D.indent $ D.join [D.line, d], D.line],
       multiModifier = \d -> D.join [D.nest D.indent $ D.join [D.line, d], D.line]
+    }
+
+block :: D.Doc -> Piece
+block doc =
+  Piece
+    { content = doc,
+      singleModifier = \d -> D.join [D.line, d, D.line],
+      multiModifier = \d -> D.join [D.line, d, D.line]
     }
 
 idOrNest :: D.Doc -> Piece
@@ -116,6 +126,14 @@ delimiterLeftAligned doc =
     { content = doc,
       singleModifier = _appendSpace,
       multiModifier = _appendNewLine
+    }
+
+delimiterBar :: D.Doc -> Piece
+delimiterBar doc =
+  Piece
+    { content = doc,
+      singleModifier = _wrapBySpace,
+      multiModifier = \d -> D.join [D.line, d, D.text " "]
     }
 
 horizontal :: D.Doc -> Piece
