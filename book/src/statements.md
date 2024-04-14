@@ -25,6 +25,8 @@ import {
 }
 ```
 
+`import` can only be at the top of a file.
+
 ### Regular Entry
 
 A regular entry in `import` is something like the following:
