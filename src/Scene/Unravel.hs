@@ -272,9 +272,9 @@ parseSourceHeader currentSource = do
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
   fileContent <- Parse.readTextFile path
-  (_, (importOrNone, _)) <- ParseCore.parseFile False parseImport path fileContent
+  (_, importList) <- ParseCore.parseFile False parseImport path fileContent
   let m = newSourceHint path
-  interpretImport m currentSource importOrNone
+  interpretImport m currentSource importList
 
 getAntecedentArrow :: Module -> [(MID.ModuleID, Module)]
 getAntecedentArrow baseModule = do

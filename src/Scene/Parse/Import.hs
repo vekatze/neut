@@ -17,6 +17,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI
 import Entity.BaseName qualified as BN
+import Entity.C
 import Entity.Const
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
@@ -44,19 +45,19 @@ activateImport m sourceInfoList = do
     forM_ aliasInfoList $ \aliasInfo ->
       Alias.activateAliasInfo namesInSource aliasInfo
 
-interpretImport :: Hint -> Source.Source -> Maybe RawImport -> App [(Source.Source, [AI.AliasInfo])]
-interpretImport m currentSource importOrNone = do
+interpretImport :: Hint -> Source.Source -> [(RawImport, C)] -> App [(Source.Source, [AI.AliasInfo])]
+interpretImport m currentSource importList = do
   presetImportList <- interpretPreset m (Source.sourceModule currentSource)
-  case importOrNone of
-    Nothing ->
-      return presetImportList
-    Just rawImport@(RawImport _ _ importItemList _) -> do
-      RawImportSummary.set rawImport
-      importList <- fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
+  let (importList'@((RawImport _ _ importItemList _)), _) = mergeImportList m importList
+  if SE.isEmpty importItemList
+    then return presetImportList
+    else do
+      RawImportSummary.set importList'
+      importItemList' <- fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
         let RawImportItem mItem (locatorText, _) localLocatorList = rawImportItem
         let localLocatorList' = SE.extract localLocatorList
         interpretImportItem True (Source.sourceModule currentSource) mItem locatorText localLocatorList'
-      return $ presetImportList ++ importList
+      return $ presetImportList ++ importItemList'
 
 interpretImportItem ::
   AI.MustUpdateTag ->
