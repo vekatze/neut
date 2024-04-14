@@ -6,12 +6,29 @@
 
 `neut-mode` is an Emacs major mode for Neut. The mode provides syntax highlighting and automatic indentation. It also provides a way to use the LSP server via `lsp-mode` and `eglot`.
 
-You can install it using, for example, [straight.el](https://github.com/radian-software/straight.el) as follows:
+`neut-mode` is available on [Melpa](https://melpa.org/#/neut-mode). You can install the package by:
+
+```text
+M-x package-install RET neut-mode RET
+```
+
+Below is an example configuration:
 
 ```lisp
 (use-package neut-mode
-  :straight
-  (:host github :repo "vekatze/neut-mode"))
+  :init
+  (defun my/neut-initialize ()
+    (interactive)
+    (when (featurep 'lsp-mode)
+      (setq-local lsp-before-save-edits t)
+      (lsp)))
+  (defun my/neut-compile ()
+    (interactive)
+    (compile (concat "neut zen " (buffer-file-name))))
+  (add-hook 'neut-mode-hook 'my/neut-initialize)
+  :bind
+  (:map neut-mode-map
+        ("C-c C-c" . 'my/neut-compile)))
 ```
 
 ## Neovim
