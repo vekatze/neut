@@ -5,6 +5,8 @@ module Entity.RawProgram
     RawImport (..),
     RawImportItem (..),
     compareImportItem,
+    isImportEmpty,
+    mergeImportList,
     RawForeignItem (..),
   )
 where
@@ -23,7 +25,7 @@ import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 
 data RawProgram
-  = RawProgram Hint (Maybe RawImport) C [(RawStmt, C)]
+  = RawProgram Hint [(RawImport, C)] [(RawStmt, C)]
 
 data RawStmt
   = RawStmtDefine
@@ -70,3 +72,22 @@ compareImportItem item1 item2 = do
 
 data RawForeignItem
   = RawForeignItem Hint EN.ExternalName C (SE.Series RLT.RawLowType) C C RLT.RawLowType
+
+isImportEmpty :: RawImport -> Bool
+isImportEmpty rawImport =
+  case rawImport of
+    RawImport [] _ series _
+      | SE.isEmpty series ->
+          True
+    _ ->
+      False
+
+mergeImportList :: Hint -> [(RawImport, C)] -> (RawImport, C)
+mergeImportList headHint importList =
+  case importList of
+    [] -> do
+      let beginningOfFile = (1, 1)
+      (RawImport [] headHint (SE.emptySeries (Just SE.Brace) SE.Comma) beginningOfFile, [])
+    (RawImport c1 m importItems loc, c) : rest -> do
+      let (RawImport c1' _ importItems' _, c') = mergeImportList headHint rest
+      (RawImport (c1 ++ c1') m (SE.appendLeftBiased importItems importItems') loc, c ++ c')

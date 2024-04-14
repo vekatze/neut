@@ -31,8 +31,9 @@ data ImportInfo = ImportInfo
   }
 
 pp :: ImportInfo -> (C, RawProgram) -> T.Text
-pp importInfo (c1, RawProgram _ importOrNone c2 stmtList) = do
-  let importOrNone' = decImport importInfo importOrNone
+pp importInfo (c1, RawProgram m importList stmtList) = do
+  let (importList', c2) = mergeImportList m importList
+  let importOrNone' = decImport importInfo importList'
   let stmtList' = map (first (Just . decStmt)) stmtList
   let program' = (importOrNone', c2) : stmtList'
   D.layout $ decTopDocList c1 program'
@@ -53,20 +54,23 @@ decTopDocList c docList =
     (Just doc, c') : rest -> do
       RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
-decImport :: ImportInfo -> Maybe RawImport -> Maybe D.Doc
-decImport importInfo importOrNone = do
-  (RawImport c _ importItemList _) <- importOrNone
-  let importItemList' = SE.compressEither $ fmap (filterImport importInfo) importItemList
-  let importItemList'' = SE.assoc $ decImportItem <$> sortImport importItemList'
-  if SE.isEmpty importItemList''
+decImport :: ImportInfo -> RawImport -> Maybe D.Doc
+decImport importInfo importStmt = do
+  if isImportEmpty importStmt
     then Nothing
     else do
-      return $
-        RT.attachComment c $
-          D.join
-            [ D.text "import ",
-              SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
-            ]
+      let (RawImport c _ importItemList _) = importStmt
+      let importItemList' = SE.compressEither $ fmap (filterImport importInfo) importItemList
+      let importItemList'' = SE.assoc $ decImportItem <$> sortImport importItemList'
+      if SE.isEmpty importItemList''
+        then Nothing
+        else do
+          return $
+            RT.attachComment c $
+              D.join
+                [ D.text "import ",
+                  SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
+                ]
 
 filterImport :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterImport importInfo = do

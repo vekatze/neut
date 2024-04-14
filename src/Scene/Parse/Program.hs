@@ -29,24 +29,24 @@ import Text.Megaparsec
 parseProgram :: P.Parser RawProgram
 parseProgram = do
   m <- P.getCurrentHint
-  (importBlockOrNone, c1) <- parseImport
+  importList <- parseImport
   stmtList <- many parseStmt
-  return $ RawProgram m importBlockOrNone c1 stmtList
+  return $ RawProgram m importList stmtList
 
-parseImport :: P.Parser (Maybe RawImport, C)
-parseImport = do
-  choice
-    [ do
-        c1 <- P.keyword "import"
-        m <- P.getCurrentHint
-        (importItems, loc, c) <- P.seriesBrace' $ do
-          mImportItem <- P.getCurrentHint
-          locator <- P.symbol
-          (lls, c) <- parseLocalLocatorList'
-          return (RawImportItem mImportItem locator lls, c)
-        return (Just $ RawImport c1 m importItems loc, c),
-      return (Nothing, [])
-    ]
+parseImport :: P.Parser [(RawImport, C)]
+parseImport =
+  many parseSingleImport
+
+parseSingleImport :: P.Parser (RawImport, C)
+parseSingleImport = do
+  c1 <- P.keyword "import"
+  m <- P.getCurrentHint
+  (importItems, loc, c) <- P.seriesBrace' $ do
+    mImportItem <- P.getCurrentHint
+    locator <- P.symbol
+    (lls, c) <- parseLocalLocatorList'
+    return (RawImportItem mImportItem locator lls, c)
+  return (RawImport c1 m importItems loc, c)
 
 parseStmt :: P.Parser (RawStmt, C)
 parseStmt = do
