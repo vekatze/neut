@@ -1,0 +1,29 @@
+import {
+  core.int.text {show},
+}
+
+define loop(f: (int) -> ?int): unit {
+  let k =
+    define self(count: int): unit {
+      let value-or-none = f(count) in
+      match value-or-none {
+      | Fail(_) =>
+        Unit
+      | Pass(value) =>
+        printf("{}\n", [show(value)]);
+        self(sub-int(count, 1))
+      }
+    }
+  in
+  k(5)
+}
+
+define main(): unit {
+  loop(function (x) {
+    if eq-int(x, 0) {
+      Fail(Unit)
+    } else {
+      Pass(sub-int(x, 1))
+    }
+  })
+}
