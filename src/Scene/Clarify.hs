@@ -456,7 +456,8 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
       unless isAlreadyRegistered $ do
         liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
         (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
-        Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody')
+        liftedBody'' <- linearize liftedArgs liftedBody'
+        Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody'')
       clarifyTerm tenv lamApp
     LK.Normal _ -> do
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
