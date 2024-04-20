@@ -1,0 +1,14 @@
+{
+  target {
+    loop-and-resource "loop-and-resource.nt",
+  },
+  dependency {
+    core {
+      digest "HSW2cTzCesxgnB27FzeTb6DmvIA7Rfmhw6zIdWazKlo",
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-41.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
+}
