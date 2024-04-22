@@ -506,6 +506,9 @@ discernMagic nenv m magic =
       lt' <- discernRawLowType m lt
       pointer' <- discern nenv pointer
       return $ M.Load lt' pointer'
+    RT.Alloca _ (_, (lt, _)) (_, (num, _)) -> do
+      lt' <- discernRawLowType m lt
+      return $ M.Alloca lt' num
     RT.External _ funcName _ args varArgsOrNone -> do
       (domList, cod) <- Decl.lookupDeclEnv m (DN.Ext funcName)
       args' <- mapM (discern nenv) $ SE.extract args

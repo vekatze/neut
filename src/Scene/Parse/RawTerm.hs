@@ -350,6 +350,7 @@ rawTermMagic = do
     [ rawTermMagicCast m c,
       rawTermMagicStore m c,
       rawTermMagicLoad m c,
+      rawTermMagicAlloca m c,
       rawTermMagicExternal m c,
       rawTermMagicGlobal m c
     ]
@@ -387,6 +388,14 @@ rawTermMagicLoad m c = do
     c3 <- delimiter ","
     pointer <- rawExpr
     return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, lt) (c3, pointer))
+
+rawTermMagicAlloca :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicAlloca m c = do
+  rawTermMagicBase "alloca" $ do
+    lt <- lowType
+    c3 <- delimiter ","
+    (num, c4) <- integer
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, lt) (c3, (num, c4)))
 
 rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicExternal m c0 = do

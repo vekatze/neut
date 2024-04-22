@@ -135,6 +135,17 @@ toDoc term =
                     RT.mapEL toDoc pointer
                   ]
             ]
+        Alloca c1 lt num -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic alloca",
+              SE.decode $
+                SE.fromListWithComment
+                  (Just SE.Paren)
+                  SE.Comma
+                  [ RT.mapEL RLT.decode lt,
+                    RT.mapEL (D.text . T.pack . show) num
+                  ]
+            ]
         External c1 funcName c2 args varArgsOrNone -> do
           let args' = SE.decode $ fmap toDoc args
           case varArgsOrNone of
