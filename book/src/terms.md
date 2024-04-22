@@ -1717,7 +1717,10 @@ constant stdin: descriptor {
 }
 
 define malloc-then-free(): unit {
-  // allocate memory region
+  // allocate memory region (stack)
+  let ptr = magic alloca(int64, 2) in // allocates (64 / 8) * 2 = 16 byte
+
+  // allocate memory region (heap)
   let size: int = 10 in
   let ptr: int = magic external malloc(size) in // 🌟 external
 
@@ -1745,6 +1748,8 @@ magic store(lowtype, stored-value, address)
 
 magic load(lowtype, address)
 
+magic alloca(lowtype, num-of-elems)
+
 magic external func-name(e1, ..., en)
 
 magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
@@ -1765,6 +1770,8 @@ You can also use `int` and `float` as a lowtype. These are platform-dependent lo
 `magic store(lowtype, value, address)` stores a value `value` to `address`. This is the same as `store` [in LLVM](https://llvm.org/docs/LangRef.html#store-instruction).
 
 `magic load(lowtype, address)` loads a value from `address`. This is the same as `load` [in LLVM](https://llvm.org/docs/LangRef.html#load-instruction).
+
+`magic alloca(lowtype, num-of-elems)` allocates memory region on the stack frame. This is the same as `alloca` [in LLVM](https://llvm.org/docs/LangRef.html#alloca-instruction).
 
 `magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 

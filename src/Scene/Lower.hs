@@ -238,6 +238,8 @@ lowerCompPrimitive codeOp =
           castedPointer <- lowerValueLetCast pointer LT.Pointer
           result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
+        M.Alloca lt num -> do
+          reflect $ LC.StackAlloc lt num
         M.External domList cod name args varArgAndTypeList -> do
           alreadyRegistered <- lift $ Decl.member (DN.Ext name)
           unless alreadyRegistered $ do

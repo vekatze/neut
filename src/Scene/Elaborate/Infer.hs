@@ -244,18 +244,22 @@ infer varEnv term =
             WPV.StaticText t text -> do
               t' <- inferType [] t
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.Noema t')
-    m :< WT.Magic der -> do
-      case der of
+    m :< WT.Magic magic -> do
+      case magic of
         M.Cast from to value -> do
           from' <- inferType varEnv from
           to'@(_ :< toInner) <- inferType varEnv to
           (value', t) <- infer varEnv value
           insConstraintEnv from' t
           return (m :< WT.Magic (M.Cast from' to' value'), m :< toInner)
+        M.Alloca {} -> do
+          magic' <- mapM (infer varEnv >=> return . fst) magic
+          intType <- getIntType m
+          return (m :< WT.Magic magic', intType)
         _ -> do
-          der' <- mapM (infer varEnv >=> return . fst) der
+          magic' <- mapM (infer varEnv >=> return . fst) magic
           resultType <- newHole m varEnv
-          return (m :< WT.Magic der', resultType)
+          return (m :< WT.Magic magic', resultType)
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer varEnv e
       case annot of
