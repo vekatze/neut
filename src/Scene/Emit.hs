@@ -110,9 +110,11 @@ emitDeclarations declEnv = do
 
 emitDefinitions :: LC.Def -> App [Builder]
 emitDefinitions (name, (args, body)) = do
-  let args' = map (emitValue . LC.VarLocal) args
-  body' <- LowComp.reduce IntMap.empty body
-  emitDefinition "ptr" (DD.toBuilder name) args' body'
+  args' <- mapM Gensym.newIdentFromIdent args
+  let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
+  body' <- LowComp.reduce sub body
+  let args'' = map (emitValue . LC.VarLocal) args'
+  emitDefinition "ptr" (DD.toBuilder name) args'' body'
 
 emitMain :: LC.DefContent -> App [Builder]
 emitMain (args, body) = do
