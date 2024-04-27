@@ -217,18 +217,23 @@ inlineCase ::
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
 inlineCase axis decisionCase = do
-  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
-  dataTerms' <- mapM (inline' axis) dataTerms
-  dataTypes' <- mapM (inline' axis) dataTypes
-  let (ms, xs, ts) = unzip3 $ DT.consArgs decisionCase
-  ts' <- mapM (inline' axis) ts
-  cont' <- inlineDecisionTree axis $ DT.cont decisionCase
-  return $
-    decisionCase
-      { DT.dataArgs = zip dataTerms' dataTypes',
-        DT.consArgs = zip3 ms xs ts',
-        DT.cont = cont'
-      }
+  case decisionCase of
+    DT.LiteralIntCase mPat i cont -> do
+      cont' <- inlineDecisionTree axis cont
+      return $ DT.LiteralIntCase mPat i cont'
+    DT.ConsCase {..} -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM (inline' axis) dataTerms
+      dataTypes' <- mapM (inline' axis) dataTypes
+      let (ms, xs, ts) = unzip3 consArgs
+      ts' <- mapM (inline' axis) ts
+      cont' <- inlineDecisionTree axis cont
+      return $
+        decisionCase
+          { DT.dataArgs = zip dataTerms' dataTypes',
+            DT.consArgs = zip3 ms xs ts',
+            DT.cont = cont'
+          }
 
 findClause ::
   Discriminant ->

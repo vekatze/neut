@@ -222,19 +222,24 @@ reduceCase ::
   Axis ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
-reduceCase ax decisionCase = do
-  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
-  dataTerms' <- mapM (reduce' ax) dataTerms
-  dataTypes' <- mapM (reduce' ax) dataTypes
-  let (ms, xs, ts) = unzip3 $ DT.consArgs decisionCase
-  ts' <- mapM (reduce' ax) ts
-  cont' <- reduceDecisionTree ax $ DT.cont decisionCase
-  return $
-    decisionCase
-      { DT.dataArgs = zip dataTerms' dataTypes',
-        DT.consArgs = zip3 ms xs ts',
-        DT.cont = cont'
-      }
+reduceCase axis decisionCase = do
+  case decisionCase of
+    DT.LiteralIntCase mPat i cont -> do
+      cont' <- reduceDecisionTree axis cont
+      return $ DT.LiteralIntCase mPat i cont'
+    DT.ConsCase {..} -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM (reduce' axis) dataTerms
+      dataTypes' <- mapM (reduce' axis) dataTypes
+      let (ms, xs, ts) = unzip3 consArgs
+      ts' <- mapM (reduce' axis) ts
+      cont' <- reduceDecisionTree axis cont
+      return $
+        decisionCase
+          { DT.dataArgs = zip dataTerms' dataTypes',
+            DT.consArgs = zip3 ms xs ts',
+            DT.cont = cont'
+          }
 
 findClause ::
   D.Discriminant ->

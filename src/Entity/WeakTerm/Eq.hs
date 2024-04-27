@@ -155,7 +155,9 @@ eqDT tree1 tree2
       False
 
 eqCase :: DT.Case WT.WeakTerm -> DT.Case WT.WeakTerm -> Bool
-eqCase case1 case2 = do
+eqCase (DT.LiteralIntCase _ i1 cont1) (DT.LiteralIntCase _ i2 cont2) = do
+  i1 == i2 && eqDT cont1 cont2
+eqCase case1@(DT.ConsCase {}) case2@(DT.ConsCase {}) = do
   let b1 = DT.consDD case1 == DT.consDD case2
   let b2 = DT.isConstLike case1 == DT.isConstLike case2
   let b3 = DT.disc case1 == DT.disc case2
@@ -167,6 +169,8 @@ eqCase case1 case2 = do
   let b7 = eqBinder (DT.consArgs case1) (DT.consArgs case2)
   let b8 = eqDT (DT.cont case1) (DT.cont case2)
   b1 && b2 && b3 && b4 && b5 && b6 && b7 && b8
+eqCase _ _ =
+  False
 
 eqWP :: WP.WeakPrim WT.WeakTerm -> WP.WeakPrim WT.WeakTerm -> Bool
 eqWP prim1 prim2

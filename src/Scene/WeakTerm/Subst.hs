@@ -235,16 +235,21 @@ substCase ::
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
 substCase sub decisionCase = do
-  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
-  dataTerms' <- mapM (subst sub) dataTerms
-  dataTypes' <- mapM (subst sub) dataTypes
-  (consArgs', cont') <- subst''' sub (DT.consArgs decisionCase) (DT.cont decisionCase)
-  return $
-    decisionCase
-      { DT.dataArgs = zip dataTerms' dataTypes',
-        DT.consArgs = consArgs',
-        DT.cont = cont'
-      }
+  case decisionCase of
+    DT.LiteralIntCase mPat i cont -> do
+      cont' <- substDecisionTree sub cont
+      return $ DT.LiteralIntCase mPat i cont'
+    DT.ConsCase {..} -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM (subst sub) dataTerms
+      dataTypes' <- mapM (subst sub) dataTypes
+      (consArgs', cont') <- subst''' sub consArgs cont
+      return $
+        decisionCase
+          { DT.dataArgs = zip dataTerms' dataTypes',
+            DT.consArgs = consArgs',
+            DT.cont = cont'
+          }
 
 substLeafVar :: WT.SubstWeakTerm -> Ident -> Maybe Ident
 substLeafVar sub leafVar =

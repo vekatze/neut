@@ -975,7 +975,7 @@ In this case,
 
 ## `match`
 
-You can use `match` to destructure ADT values.
+You can use `match` to destructure ADT values or integers.
 
 ### Example
 
@@ -1019,7 +1019,17 @@ define eq-nat(n1: my-nat, n2: my-nat): bool {
   }
 }
 
-
+define literal-match(x: int): int {
+  // 🌟 (You can use `match` against integers)
+  match x {
+  | 3 =>
+    30
+  | 5 =>
+    50
+  | _ =>
+    add-int(x, 10)
+  }
+}
 ```
 
 ### Syntax
@@ -1125,7 +1135,7 @@ An example of the application of the typing rule of `match`:
 
 ## `case`
 
-You can use `case` to inspect noetic ADT values.
+You can use `case` to inspect noetic ADT values or integers.
 
 ### Example
 

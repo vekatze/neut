@@ -297,7 +297,7 @@ infer varEnv term =
                     ( DT.Switch
                         (cursor, t'')
                         ( DT.Unreachable,
-                          [ DT.Case
+                          [ DT.ConsCase
                               { mCons = m,
                                 consDD = consDD,
                                 isConstLike = isConstLike',
@@ -506,25 +506,30 @@ inferClause ::
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
-inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
-  let m = DT.mCons decisionCase
-  let (dataTermList, _) = unzip dataArgs
-  typedDataArgs' <- mapM (infer varEnv) dataTermList
-  (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
-  let argNum = AN.fromInt $ length dataArgs + length consArgs
-  let attr = AttrVG.Attr {..}
-  consTerm <- infer varEnv $ m :< WT.VarGlobal attr consDD
-  (_, tPat) <- inferPiElimExplicit m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
-  insConstraintEnv cursorType tPat
-  (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
-  return
-    ( decisionCase
-        { DT.dataArgs = typedDataArgs',
-          DT.consArgs = consArgs',
-          DT.cont = cont'
-        },
-      tCont
-    )
+inferClause varEnv cursorType decisionCase = do
+  case decisionCase of
+    DT.LiteralIntCase mPat i cont -> do
+      (cont', tCont) <- inferDecisionTree mPat varEnv cont
+      return (DT.LiteralIntCase mPat i cont', tCont)
+    DT.ConsCase {..} -> do
+      let m = DT.mCons decisionCase
+      let (dataTermList, _) = unzip dataArgs
+      typedDataArgs' <- mapM (infer varEnv) dataTermList
+      (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
+      let argNum = AN.fromInt $ length dataArgs + length consArgs
+      let attr = AttrVG.Attr {..}
+      consTerm <- infer varEnv $ m :< WT.VarGlobal attr consDD
+      (_, tPat) <- inferPiElimExplicit m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+      insConstraintEnv cursorType tPat
+      (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
+      return
+        ( decisionCase
+            { DT.dataArgs = typedDataArgs',
+              DT.consArgs = consArgs',
+              DT.cont = cont'
+            },
+          tCont
+        )
 
 resolveType :: WT.WeakTerm -> App WT.WeakTerm
 resolveType t = do

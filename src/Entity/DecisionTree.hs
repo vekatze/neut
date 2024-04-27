@@ -5,6 +5,7 @@ module Entity.DecisionTree
     getConstructors,
     isUnreachable,
     findCase,
+    getCont,
   )
 where
 
@@ -25,15 +26,17 @@ data DecisionTree a
 
 type CaseList a = (DecisionTree a, [Case a])
 
-data Case a = Case
-  { mCons :: Hint,
-    consDD :: DD.DefiniteDescription,
-    isConstLike :: IsConstLike,
-    disc :: D.Discriminant,
-    dataArgs :: [(a, a)],
-    consArgs :: [BinderF a],
-    cont :: DecisionTree a
-  }
+data Case a
+  = ConsCase
+      { mCons :: Hint,
+        consDD :: DD.DefiniteDescription,
+        isConstLike :: IsConstLike,
+        disc :: D.Discriminant,
+        dataArgs :: [(a, a)],
+        consArgs :: [BinderF a],
+        cont :: DecisionTree a
+      }
+  | LiteralIntCase Hint Integer (DecisionTree a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (DecisionTree a)
@@ -57,3 +60,11 @@ findCase consDisc decisionCase =
   if consDisc == disc decisionCase
     then return (map (\(_, x, t) -> (x, t)) (consArgs decisionCase), cont decisionCase)
     else Nothing
+
+getCont :: Case a -> DecisionTree a
+getCont c =
+  case c of
+    ConsCase {..} ->
+      cont
+    LiteralIntCase _ _ cont ->
+      cont
