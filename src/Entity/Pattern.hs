@@ -31,6 +31,7 @@ data Pattern
   = Var Ident
   | WildcardVar
   | Cons ConsInfo
+  | LiteralInt Integer
   deriving (Show)
 
 data ConsInfo = ConsInfo
@@ -67,6 +68,8 @@ patVars (m, pat) =
   case pat of
     Var x ->
       [(m, x)]
+    LiteralInt _ ->
+      []
     WildcardVar ->
       []
     Cons consInfo ->
@@ -87,7 +90,7 @@ new rows =
 
 getHeadConstructors ::
   PatternMatrix a ->
-  [(Hint, ConsInfo)]
+  [(Hint, Either Integer ConsInfo)]
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -99,21 +102,32 @@ getHeadConstructors' (rows, _) =
     Nothing ->
       Nothing
 
-consInfoToDD :: (Hint, ConsInfo) -> DD.DefiniteDescription
-consInfoToDD (_, consInfo) =
-  consDD consInfo
+data PseudoDD
+  = LiteralIntDD Integer
+  | ConsDD DD.DefiniteDescription
+  deriving (Eq, Ord)
 
-getColumnConstructors :: PatternColumn -> [(Hint, ConsInfo)]
-getColumnConstructors col =
+consInfoToDD :: (Hint, Either Integer ConsInfo) -> PseudoDD
+consInfoToDD (_, intOrConsInfo) =
+  case intOrConsInfo of
+    Left i ->
+      LiteralIntDD i
+    Right consInfo ->
+      ConsDD $ consDD consInfo
+
+getColumnConstructors :: PatternColumn -> [(Hint, Either Integer ConsInfo)]
+getColumnConstructors col = do
   ListUtils.nubOrdOn consInfoToDD $ mapMaybe getColumnConstructor col
 
 getColumnConstructor ::
   (Hint, Pattern) ->
-  Maybe (Hint, ConsInfo)
+  Maybe (Hint, Either Integer ConsInfo)
 getColumnConstructor (mPat, pat) =
   case pat of
+    LiteralInt i ->
+      return (mPat, Left i)
     Cons consInfo ->
-      return (mPat, consInfo)
+      return (mPat, Right consInfo)
     _ ->
       Nothing
 

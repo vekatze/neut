@@ -112,14 +112,19 @@ compressCaseList (fallbackClause, clauseList) = do
 
 compressCase :: DT.Case TM.Term -> DT.Case (Cofree TM.TermF ())
 compressCase decisionCase = do
-  let dataArgs' = map (bimap compress compress) $ DT.dataArgs decisionCase
-  let consArgs' = map compressBinder $ DT.consArgs decisionCase
-  let cont' = compressDecisionTree $ DT.cont decisionCase
-  decisionCase
-    { DT.dataArgs = dataArgs',
-      DT.consArgs = consArgs',
-      DT.cont = cont'
-    }
+  case decisionCase of
+    DT.LiteralIntCase mPat i cont -> do
+      let cont' = compressDecisionTree cont
+      DT.LiteralIntCase mPat i cont'
+    DT.ConsCase {..} -> do
+      let dataArgs' = map (bimap compress compress) dataArgs
+      let consArgs' = map compressBinder consArgs
+      let cont' = compressDecisionTree cont
+      decisionCase
+        { DT.dataArgs = dataArgs',
+          DT.consArgs = consArgs',
+          DT.cont = cont'
+        }
 
 compressStmtKind :: StmtKind TM.Term -> StmtKind (Cofree TM.TermF ())
 compressStmtKind stmtKind =

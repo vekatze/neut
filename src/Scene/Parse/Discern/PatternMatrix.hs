@@ -56,27 +56,36 @@ compilePatternMatrix nenv isNoetic occurrences mat =
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let (mCursor, cursor) = V.head occurrences
-              clauseList <- forM headConstructors $ \(mPat, PAT.ConsInfo {..}) -> do
-                dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
-                dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
-                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
-                let ms = map fst args
-                let consVars' = zip ms consVars
-                (consArgs', nenv') <- alignConsArgs nenv consVars'
-                let occurrences' = V.fromList consVars' <> V.tail occurrences
-                specialMatrix <- PATS.specialize isNoetic cursor (consDD, consArgNum) mat
-                specialDecisionTree <- compilePatternMatrix nenv' isNoetic occurrences' specialMatrix
-                let dataArgs' = zip dataHoles dataTypeHoles
-                return $
-                  DT.Case
-                    { mCons = mPat,
-                      consDD = consDD,
-                      isConstLike = isConstLike,
-                      disc = disc,
-                      dataArgs = dataArgs',
-                      consArgs = consArgs',
-                      cont = specialDecisionTree
-                    }
+              clauseList <- forM headConstructors $ \(mPat, intOrConsInfo) -> do
+                case intOrConsInfo of
+                  Left literalInt -> do
+                    let occurrences' = V.tail occurrences
+                    let specializer = PATS.LiteralIntSpecializer literalInt
+                    specialMatrix <- PATS.specialize isNoetic cursor specializer mat
+                    cont <- compilePatternMatrix nenv isNoetic occurrences' specialMatrix
+                    return $ DT.LiteralIntCase mPat literalInt cont
+                  Right PAT.ConsInfo {..} -> do
+                    dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
+                    dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
+                    consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
+                    let ms = map fst args
+                    let consVars' = zip ms consVars
+                    (consArgs', nenv') <- alignConsArgs nenv consVars'
+                    let occurrences' = V.fromList consVars' <> V.tail occurrences
+                    let specializer = PATS.ConsSpecializer consDD consArgNum
+                    specialMatrix <- PATS.specialize isNoetic cursor specializer mat
+                    specialDecisionTree <- compilePatternMatrix nenv' isNoetic occurrences' specialMatrix
+                    let dataArgs' = zip dataHoles dataTypeHoles
+                    return $
+                      DT.ConsCase
+                        { mCons = mPat,
+                          consDD = consDD,
+                          isConstLike = isConstLike,
+                          disc = disc,
+                          dataArgs = dataArgs',
+                          consArgs = consArgs',
+                          cont = specialDecisionTree
+                        }
               fallbackMatrix <- PATF.getFallbackMatrix isNoetic cursor mat
               fallbackClause <- compilePatternMatrix nenv isNoetic (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCursor []
@@ -128,6 +137,8 @@ ensurePatternSanity (m, pat) =
   case pat of
     PAT.Var v -> do
       Tag.insertBinder (m, v, ())
+    PAT.LiteralInt _ -> do
+      return ()
     PAT.WildcardVar {} ->
       return ()
     PAT.Cons consInfo -> do

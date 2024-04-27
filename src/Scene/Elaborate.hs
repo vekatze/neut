@@ -233,9 +233,13 @@ elaborate' term =
       when (DT.isUnreachable tree') $ do
         forM_ ts' $ \t -> do
           t' <- reduceType (weaken t)
-          consList <- extractConstructorList m t'
-          unless (null consList) $
-            raiseNonExhaustivePatternMatching m
+          switchSpec <- getSwitchSpec m t'
+          case switchSpec of
+            LiteralIntSwitch -> do
+              raiseNonExhaustivePatternMatching m
+            ConsSwitch consList -> do
+              unless (null consList) $
+                raiseNonExhaustivePatternMatching m
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     m :< WT.Noema t -> do
       t' <- elaborate' t
@@ -349,35 +353,48 @@ elaborateDecisionTree m tree =
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
       cursorType' <- reduceWeakType cursorType >>= elaborate'
-      consList <- extractConstructorList m cursorType'
-      let activeConsList = DT.getConstructors clauseList
-      let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
-      if S.size diff == 0
-        then do
+      switchSpec <- getSwitchSpec m cursorType'
+      case switchSpec of
+        LiteralIntSwitch -> do
+          when (DT.isUnreachable fallbackClause) $ do
+            raiseNonExhaustivePatternMatching m
+          fallbackClause' <- elaborateDecisionTree m fallbackClause
           clauseList' <- mapM elaborateClause clauseList
-          return $ DT.Switch (cursor, cursorType') (DT.Unreachable, clauseList')
-        else do
-          case fallbackClause of
-            DT.Unreachable ->
-              raiseNonExhaustivePatternMatching m
-            _ -> do
-              fallbackClause' <- elaborateDecisionTree m fallbackClause
+          return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
+        ConsSwitch consList -> do
+          let activeConsList = DT.getConstructors clauseList
+          let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
+          if S.size diff == 0
+            then do
               clauseList' <- mapM elaborateClause clauseList
-              return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
+              return $ DT.Switch (cursor, cursorType') (DT.Unreachable, clauseList')
+            else do
+              case fallbackClause of
+                DT.Unreachable ->
+                  raiseNonExhaustivePatternMatching m
+                _ -> do
+                  fallbackClause' <- elaborateDecisionTree m fallbackClause
+                  clauseList' <- mapM elaborateClause clauseList
+                  return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
 elaborateClause :: DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
 elaborateClause decisionCase = do
-  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
-  dataTerms' <- mapM elaborate' dataTerms
-  dataTypes' <- mapM elaborate' dataTypes
-  consArgs' <- mapM elaborateWeakBinder $ DT.consArgs decisionCase
-  cont' <- elaborateDecisionTree (DT.mCons decisionCase) (DT.cont decisionCase)
-  return $
-    decisionCase
-      { DT.dataArgs = zip dataTerms' dataTypes',
-        DT.consArgs = consArgs',
-        DT.cont = cont'
-      }
+  case decisionCase of
+    DT.LiteralIntCase mPat i cont -> do
+      cont' <- elaborateDecisionTree mPat cont
+      return $ DT.LiteralIntCase mPat i cont'
+    DT.ConsCase {..} -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM elaborate' dataTerms
+      dataTypes' <- mapM elaborate' dataTypes
+      consArgs' <- mapM elaborateWeakBinder consArgs
+      cont' <- elaborateDecisionTree mCons cont
+      return $
+        decisionCase
+          { DT.dataArgs = zip dataTerms' dataTypes',
+            DT.consArgs = consArgs',
+            DT.cont = cont'
+          }
 
 raiseNonExhaustivePatternMatching :: Hint -> App a
 raiseNonExhaustivePatternMatching m =
@@ -387,10 +404,16 @@ reduceType :: WT.WeakTerm -> App TM.Term
 reduceType e = do
   reduceWeakType e >>= elaborate'
 
-extractConstructorList :: Hint -> TM.Term -> App [DD.DefiniteDescription]
-extractConstructorList m cursorType = do
+data SwitchSpec
+  = LiteralIntSwitch
+  | ConsSwitch [DD.DefiniteDescription]
+
+getSwitchSpec :: Hint -> TM.Term -> App SwitchSpec
+getSwitchSpec m cursorType = do
   case cursorType of
     _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
-      return $ map fst consNameList
+      return $ ConsSwitch $ map fst consNameList
+    _ :< TM.Prim (P.Type (PT.Int _)) -> do
+      return LiteralIntSwitch
     _ ->
-      Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)
+      Throw.raiseError m $ "this term is expected to be an ADT value or an integer, but it's not:\n" <> toText (weaken cursorType)

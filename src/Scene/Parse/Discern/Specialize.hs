@@ -1,4 +1,8 @@
-module Scene.Parse.Discern.Specialize (specialize) where
+module Scene.Parse.Discern.Specialize
+  ( specialize,
+    Specializer (..),
+  )
+where
 
 import Context.App
 import Context.Gensym qualified as Gensym
@@ -16,11 +20,15 @@ import Entity.Pattern
 import Entity.WeakTerm qualified as WT
 import Scene.Parse.Discern.Noema
 
+data Specializer
+  = ConsSpecializer DD.DefiniteDescription AN.ArgNum
+  | LiteralIntSpecializer Integer
+
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 specialize ::
   N.IsNoetic ->
   Ident ->
-  (DD.DefiniteDescription, AN.ArgNum) ->
+  Specializer ->
   PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
   App (PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 specialize isNoetic cursor cons mat = do
@@ -29,30 +37,52 @@ specialize isNoetic cursor cons mat = do
 specializeRow ::
   N.IsNoetic ->
   Ident ->
-  (DD.DefiniteDescription, AN.ArgNum) ->
+  Specializer ->
   PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
   App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm)))
-specializeRow isNoetic cursor (dd, argNum) (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
+specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
       Throw.raiseCritical' "specialization against the empty pattern matrix shouldn't happen"
     Just ((m, WildcardVar), rest) -> do
-      let wildcards = V.fromList $ replicate (AN.reify argNum) (m, WildcardVar)
-      return $ Just (V.concat [wildcards, rest], (freedVars, baseSeq, body))
+      case specializer of
+        LiteralIntSpecializer _ -> do
+          return $ Just (rest, (freedVars, baseSeq, body))
+        ConsSpecializer _ argNum -> do
+          let wildcards = V.fromList $ replicate (AN.reify argNum) (m, WildcardVar)
+          return $ Just (V.concat [wildcards, rest], (freedVars, baseSeq, body))
     Just ((_, Var x), rest) -> do
-      let wildcards = V.fromList $ replicate (AN.reify argNum) (mBody, WildcardVar)
-      h <- Gensym.newHole mBody []
-      adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
-      return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
-    Just ((_, Cons (ConsInfo {..})), rest) ->
-      if dd == consDD
-        then do
-          od <- OptimizableData.lookup consDD
-          case od of
-            Just OD.Enum ->
-              return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body))
-            Just OD.Unary ->
-              return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body))
-            _ ->
-              return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, baseSeq, body))
-        else return Nothing
+      case specializer of
+        LiteralIntSpecializer _ -> do
+          h <- Gensym.newHole mBody []
+          adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
+          return $ Just (rest, (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
+        ConsSpecializer _ argNum -> do
+          let wildcards = V.fromList $ replicate (AN.reify argNum) (mBody, WildcardVar)
+          h <- Gensym.newHole mBody []
+          adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
+          return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
+    Just ((_, Cons (ConsInfo {..})), rest) -> do
+      case specializer of
+        LiteralIntSpecializer {} ->
+          return Nothing
+        ConsSpecializer dd _ -> do
+          if dd == consDD
+            then do
+              od <- OptimizableData.lookup consDD
+              case od of
+                Just OD.Enum ->
+                  return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body))
+                Just OD.Unary ->
+                  return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body))
+                _ ->
+                  return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, baseSeq, body))
+            else return Nothing
+    Just ((_, LiteralInt i), rest) -> do
+      case specializer of
+        LiteralIntSpecializer j ->
+          if i == j
+            then return $ Just (rest, (freedVars, baseSeq, body))
+            else return Nothing
+        ConsSpecializer {} ->
+          return Nothing

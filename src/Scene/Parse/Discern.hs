@@ -807,6 +807,8 @@ discernPattern (m, pat) = do
     RP.Var name -> do
       case name of
         Var x
+          | Just i <- R.readMaybe (T.unpack x) -> do
+              return ((m, PAT.LiteralInt i), [])
           | isConsName x -> do
               (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m $ Var x
               consDD' <- Locator.getReadableDD consDD

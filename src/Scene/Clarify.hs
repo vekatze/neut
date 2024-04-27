@@ -43,6 +43,7 @@ import Entity.OptimizableData qualified as OD
 import Entity.Prim qualified as P
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
+import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
 import Entity.StmtKind
@@ -337,6 +338,8 @@ getClauseDataGroup term =
       OptimizableData.lookup dataName
     _ :< TM.PiElim (_ :< TM.VarGlobal _ dataName) _ -> do
       OptimizableData.lookup dataName
+    _ :< TM.Prim (P.Type (PT.Int _)) -> do
+      return $ Just OD.Enum
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"
 
@@ -363,39 +366,44 @@ clarifyCase ::
   Ident ->
   DT.Case TM.Term ->
   App (EC.EnumCase, C.Comp, [BinderF TM.Term])
-clarifyCase tenv isNoetic dataArgsMap cursor decisionCase@(DT.Case {..}) = do
-  let (_, dataTypes) = unzip dataArgs
-  dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
-  let cursorSize = 1 + length dataArgVars + length consArgs
-  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
-  let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
-  let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
-  (body', contChain) <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
-  let chain = prefixChain ++ contChain
-  od <- OptimizableData.lookup consDD
-  case od of
-    Just OD.Enum -> do
-      return (EC.Int (D.reify disc), body', chain)
-    Just OD.Unary
-      | [(_, consArg, _)] <- consArgs ->
+clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
+  case decisionCase of
+    DT.LiteralIntCase _ i cont -> do
+      (body', contChain) <- clarifyDecisionTree tenv isNoetic dataArgsMap cont
+      return (EC.Int i, body', contChain)
+    DT.ConsCase {..} -> do
+      let (_, dataTypes) = unzip dataArgs
+      dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
+      let cursorSize = 1 + length dataArgVars + length consArgs
+      let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
+      let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
+      let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
+      (body', contChain) <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
+      let chain = prefixChain ++ contChain
+      od <- OptimizableData.lookup consDD
+      case od of
+        Just OD.Enum -> do
+          return (EC.Int (D.reify disc), body', chain)
+        Just OD.Unary
+          | [(_, consArg, _)] <- consArgs ->
+              return
+                ( EC.Int 0,
+                  C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body',
+                  chain
+                )
+          | otherwise ->
+              Throw.raiseCritical' "found a non-unary consArgs for unary ADT"
+        _ -> do
+          discriminantVar <- Gensym.newIdentFromText "discriminant"
           return
-            ( EC.Int 0,
-              C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body',
+            ( EC.Int (D.reify disc),
+              C.SigmaElim
+                False
+                (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
+                (C.VarLocal cursor)
+                body',
               chain
             )
-      | otherwise ->
-          Throw.raiseCritical' "found a non-unary consArgs for unary ADT"
-    _ -> do
-      discriminantVar <- Gensym.newIdentFromText "discriminant"
-      return
-        ( EC.Int (D.reify disc),
-          C.SigmaElim
-            False
-            (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
-            (C.VarLocal cursor)
-            body',
-          chain
-        )
 
 alignFreeVariable :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
 alignFreeVariable tenv fvs e = do
