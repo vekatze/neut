@@ -1,7 +1,3 @@
-import {
-  core.int.text {show},
-}
-
 define loop(f: (int) -> ?int): unit {
   let k =
     define self(count: int): unit {
@@ -10,7 +6,7 @@ define loop(f: (int) -> ?int): unit {
       | Fail(_) =>
         Unit
       | Pass(value) =>
-        printf("{}\n", [show(value)]);
+        printf("{}\n", [%ld(value)]);
         self(sub-int(count, 1))
       }
     }
