@@ -3,8 +3,7 @@ data nat {
 | Succ(nat)
 }
 
-data empty {
-}
+data empty {}
 
 define affine-nat(): unit {
   let _ = Zero in
@@ -222,6 +221,62 @@ define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
   }
 }
 
+define literal-match(x: int): int {
+  match x {
+  | 1 =>
+    10
+  | 2 =>
+    20
+  | 3 =>
+    30
+  | n =>
+    add-int(n, 1)
+  }
+}
+
+define literal-match-in-cons(xs: list(int)): int {
+  match xs {
+  | Nil =>
+    0
+  | Cons(1, _) =>
+    10
+  | Cons(2, _) =>
+    20
+  | Cons(_, _) =>
+    333
+  | Cons(4, _) =>
+    40
+  }
+}
+
+define literal-match-N(x: &int): int {
+  case x {
+  | 1 =>
+    10
+  | 2 =>
+    20
+  | 3 =>
+    30
+  | n =>
+    add-int(*n, 1)
+  }
+}
+
+define literal-match-in-cons-N(xs: &list(int)): int {
+  case xs {
+  | Nil =>
+    0
+  | Cons(1, _) =>
+    10
+  | Cons(2, _) =>
+    20
+  | Cons(k, _) =>
+    *k
+  | Cons(4, _) =>
+    40
+  }
+}
+
 data monoid(a) {
 | Monoid(
     m-empty: a,
@@ -281,6 +336,14 @@ define test-match(): unit {
   let _ = unbalanced-freevars-in-branches(_, t2) in
   let _ = unbalanced-freevars-in-branches(_, t3) in
   let _ = unbalanced-freevars-in-branches(_, t4) in
+  let n: int = 10 in
+  let xs: list(int) = [1, 2, 3] in
+  let _ = literal-match(n) in
+  let _ on n = literal-match-N(n) in
+  let _ = literal-match-in-cons(xs) in
+  let _ on xs = literal-match-in-cons-N(xs) in
+  let _ = n in
+  let _ = xs in
   let _: list(int) = use-struct(list-monoid(_)) in
   let _: list(bool) = use-struct(list-monoid(_)) in
   let _: list(() -> int) = use-struct(list-monoid(_)) in
