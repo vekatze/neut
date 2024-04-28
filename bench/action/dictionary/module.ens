@@ -1,17 +1,17 @@
 {
   target {
-    dictionary-nt "dictionary-nt.nt"
-  }
+    dictionary-nt "dictionary-nt.nt",
+  },
   prefix {
-    Dict "core.dict"
-  }
+    Dict "core.dict",
+  },
   dependency {
     core {
-      digest "XXYmbxyTkrvXKmzyY7ekHfFjmS-N5NAyWdn28KbpMHs"
+      digest "tWsEx8OjsmnwRh3GvHmGHK3gZNwazlgJ_Q1z_MWPmyw",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-40.tar.zst"
-      ]
-      enable-preset true
-    }
-  }
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-45.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
 }
