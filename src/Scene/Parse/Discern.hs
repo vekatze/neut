@@ -74,6 +74,7 @@ import Scene.Parse.Discern.NominalEnv
 import Scene.Parse.Discern.PatternMatrix
 import Scene.Parse.Discern.Struct
 import Scene.Parse.Foreign
+import Scene.Parse.Util
 import Text.Read qualified as R
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
@@ -235,6 +236,9 @@ discern nenv term =
       case name of
         Var s
           | Just x <- R.readMaybe (T.unpack s) -> do
+              h <- Gensym.newHole m []
+              return $ m :< WT.Prim (WP.Value $ WPV.Int h x)
+          | Just x <- readIntBinaryMaybe s -> do
               h <- Gensym.newHole m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int h x)
           | Just x <- R.readMaybe (T.unpack s) -> do
