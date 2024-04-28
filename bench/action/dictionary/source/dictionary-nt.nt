@@ -1,13 +1,13 @@
 import {
   Dict {dict, insert},
   core.control {loop},
-  core.int,
-  core.int.text {parse-int},
+  core.int.loset,
+  core.int.parse {parse},
   core.random {random},
 }
 
 constant intdict: Dict.trope(int) {
-  Dict.from-loset(core.int.as-loset)
+  Dict.from-loset(core.int.loset.as-loset-N)
 }
 
 define make-big-dict(size: int): dict(int, int) {
@@ -42,7 +42,7 @@ define main(): unit {
   match args {
   | [_, size-str] =>
     let _ on size-str =
-      match parse-int(size-str) {
+      match parse(size-str) {
       | Pass(size) =>
         let big-dict = make-big-dict(size) in
         let _ on big-dict = random-lookup-sum(size, big-dict) in

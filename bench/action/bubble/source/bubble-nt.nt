@@ -1,5 +1,5 @@
 import {
-  core.int.text {parse-int},
+  core.int.parse {parse},
   core.random {random},
 }
 
@@ -56,7 +56,7 @@ define main(): unit {
   match args {
   | [_, size-str] =>
     let _ on size-str =
-      match parse-int(size-str) {
+      match parse(size-str) {
       | Pass(size) =>
         let some-list = rand-list(size, My-Nil) in
         let some-list = sort(some-list, My-Nil) in
