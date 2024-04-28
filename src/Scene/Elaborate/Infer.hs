@@ -6,6 +6,7 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
 import Context.Locator qualified as Locator
+import Context.OptimizableData qualified as OptimizableData
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -35,6 +36,7 @@ import Entity.Key (Key)
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Name qualified as N
+import Entity.OptimizableData qualified as OD
 import Entity.PrimOp
 import Entity.Stmt
 import Entity.StmtKind
@@ -289,6 +291,8 @@ infer varEnv term =
               reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
               dataArgs' <- mapM (const $ newTypedHole m varEnv) [1 .. length dataArgs]
               cursor <- Gensym.newIdentFromText "cursor"
+              od <- OptimizableData.lookup consDD
+              let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
               infer varEnv $
                 m
                   :< WT.DataElim
@@ -304,7 +308,7 @@ infer varEnv term =
                                 disc = D.zero,
                                 dataArgs = dataArgs',
                                 consArgs = reorderedArgs,
-                                cont = DT.Leaf [cursor] (adjustCont m reorderedArgs) cont
+                                cont = DT.Leaf freedVars (adjustCont m reorderedArgs) cont
                               }
                           ]
                         )
@@ -313,6 +317,16 @@ infer varEnv term =
               Throw.raiseError mt $ "expected a single-constructor ADT, but found: " <> toText t''
         _ :< _ -> do
           Throw.raiseError mt $ "expected an ADT, but found: " <> toText t''
+
+mustBypassCursorDealloc :: Maybe OD.OptimizableData -> Bool
+mustBypassCursorDealloc odOrNone =
+  case odOrNone of
+    Just OD.Enum ->
+      True
+    Just OD.Unary ->
+      True
+    _ ->
+      False
 
 adjustCont :: Hint -> [BinderF WT.WeakTerm] -> [(BinderF WT.WeakTerm, WT.WeakTerm)]
 adjustCont m xts =
