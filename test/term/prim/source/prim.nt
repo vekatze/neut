@@ -12,6 +12,9 @@ define test-syntax(): unit {
   let _ = float64 in
   let _ = float in
   let _: int = 3 in
+  let _: int = 0b1100 in
+  let _: int = 0b_1100_0010_0000 in
+  let _: int = 0x0123456789abcdef in
   let _: float = 3.0 in
   Unit
 }
