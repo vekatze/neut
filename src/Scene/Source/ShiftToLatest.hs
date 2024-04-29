@@ -4,6 +4,7 @@ module Scene.Source.ShiftToLatest
   )
 where
 
+import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -17,8 +18,9 @@ import Path
 
 type ShiftMap = Map.HashMap MID.ModuleID Module
 
-shiftToLatest :: ShiftMap -> Source.Source -> App Source.Source
-shiftToLatest shiftMap source = do
+shiftToLatest :: Source.Source -> App Source.Source
+shiftToLatest source = do
+  shiftMap <- Antecedent.getMap
   case Map.lookup (moduleID $ sourceModule source) shiftMap of
     Nothing ->
       return source
