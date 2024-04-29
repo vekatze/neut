@@ -107,18 +107,26 @@ chainOfCaseList tenv m (fallbackClause, clauseList) = do
 
 chainOfCase :: TM.TypeEnv -> Hint -> DT.Case TM.Term -> [BinderF TM.Term]
 chainOfCase tenv m decisionCase = do
-  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
-  let xs1 = concatMap (chainOf' tenv) dataTerms
-  let xs2 = concatMap (chainOf' tenv) dataTypes
-  let xs3 = chainOfDecisionTree' tenv m (DT.consArgs decisionCase) (DT.cont decisionCase)
-  xs1 ++ xs2 ++ xs3
+  case decisionCase of
+    DT.LiteralIntCase _ _ cont -> do
+      chainOfDecisionTree' tenv m [] cont
+    DT.ConsCase {..} -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      let xs1 = concatMap (chainOf' tenv) dataTerms
+      let xs2 = concatMap (chainOf' tenv) dataTypes
+      let xs3 = chainOfDecisionTree' tenv m consArgs cont
+      xs1 ++ xs2 ++ xs3
 
 chainOfCaseWithoutCont :: TM.TypeEnv -> DT.Case TM.Term -> [BinderF TM.Term]
 chainOfCaseWithoutCont tenv decisionCase = do
-  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
-  let xs1 = concatMap (chainOf' tenv) dataTerms
-  let xs2 = concatMap (chainOf' tenv) dataTypes
-  xs1 ++ xs2
+  case decisionCase of
+    DT.LiteralIntCase mPat _ cont -> do
+      chainOfDecisionTree' tenv mPat [] cont
+    DT.ConsCase {..} -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      let xs1 = concatMap (chainOf' tenv) dataTerms
+      let xs2 = concatMap (chainOf' tenv) dataTypes
+      xs1 ++ xs2
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
 nubFreeVariables =

@@ -96,5 +96,9 @@ freeVarsCaseList (fallbackClause, clauseList) = do
 
 freeVarsCase :: DT.Case WT.WeakTerm -> S.Set Ident
 freeVarsCase decisionCase = do
-  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
-  S.unions $ freeVars' (DT.consArgs decisionCase) (freeVarsDecisionTree (DT.cont decisionCase)) : map freeVars dataTerms ++ map freeVars dataTypes
+  case decisionCase of
+    DT.LiteralIntCase _ _ cont -> do
+      freeVarsDecisionTree cont
+    DT.ConsCase {..} -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      S.unions $ freeVars' consArgs (freeVarsDecisionTree cont) : map freeVars dataTerms ++ map freeVars dataTypes
