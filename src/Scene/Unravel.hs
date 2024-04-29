@@ -54,8 +54,8 @@ unravel baseModule t = do
     Abstract a ->
       case a of
         Foundation -> do
-          shiftMap <- constructShiftMap baseModule
-          unravelFoundational (UAxis {shiftMap}) baseModule
+          registerShiftMap baseModule
+          unravelFoundational baseModule
     Concrete t' -> do
       case t' of
         Zen path ->
@@ -76,18 +76,17 @@ unravelFromFile baseModule path = do
 
 unravel' :: Source.Source -> App (A.ArtifactTime, [Source.Source])
 unravel' source = do
-  shiftMap <- constructShiftMap (Source.sourceModule source)
-  (artifactTime, sourceSeq) <- unravel'' (UAxis {shiftMap}) source
-  Antecedent.setMap shiftMap
+  registerShiftMap (Source.sourceModule source)
+  (artifactTime, sourceSeq) <- unravel'' source
   forM_ sourceSeq Parse.ensureExistence
   return (artifactTime, toList sourceSeq)
 
-constructShiftMap :: Module -> App ShiftMap
-constructShiftMap baseModule = do
+registerShiftMap :: Module -> App ()
+registerShiftMap baseModule = do
   axis <- newAxis
   arrowList <- unravelModule axis baseModule
   cAxis <- newCAxis
-  compressMap cAxis (Map.fromList arrowList) arrowList
+  compressMap cAxis (Map.fromList arrowList) arrowList >>= Antecedent.setMap
 
 type VisitMap =
   Map.HashMap (Path Abs File) VI.VisitInfo
@@ -124,15 +123,10 @@ unravelModule axis currentModule = do
       liftIO $ modifyIORef' (traceListRef axis) tail
       return $ getAntecedentArrow currentModule ++ arrows
 
-newtype UAxis = UAxis
-  { shiftMap :: ShiftMap
-  }
-
-unravel'' :: UAxis -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
-unravel'' axis source = do
-  source' <- shiftToLatest (shiftMap axis) source
+unravel'' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
+unravel'' source = do
   visitEnv <- Unravel.getVisitEnv
-  let path = Source.sourceFilePath source'
+  let path = Source.sourceFilePath source
   case Map.lookup path visitEnv of
     Just VI.Active -> do
       traceSourceList <- Unravel.getTraceSourceList
@@ -142,20 +136,20 @@ unravel'' axis source = do
       return (artifactTime, Seq.empty)
     Nothing -> do
       Unravel.insertToVisitEnv path VI.Active
-      Unravel.pushToTraceSourceList source'
-      children <- getChildren source'
-      (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' axis) children
+      Unravel.pushToTraceSourceList source
+      children <- getChildren source
+      (artifactTimeList, seqList) <- mapAndUnzipM unravel'' children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
-      baseArtifactTime <- getBaseArtifactTime source'
+      baseArtifactTime <- getBaseArtifactTime source
       artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
       Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
-      return (artifactTime, foldl' (><) Seq.empty seqList |> source')
+      return (artifactTime, foldl' (><) Seq.empty seqList |> source)
 
-unravelFoundational :: UAxis -> Module -> App (A.ArtifactTime, [Source.Source])
-unravelFoundational axis baseModule = do
+unravelFoundational :: Module -> App (A.ArtifactTime, [Source.Source])
+unravelFoundational baseModule = do
   children <- Module.getAllSourceInModule baseModule
-  (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' axis) children
+  (artifactTimeList, seqList) <- mapAndUnzipM unravel'' children
   baseArtifactTime <- artifactTimeFromCurrentTime
   artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
   return (artifactTime, toList $ foldl' (><) Seq.empty seqList)

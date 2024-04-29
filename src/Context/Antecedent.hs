@@ -13,6 +13,10 @@ setMap :: Map.HashMap MID.ModuleID M.Module -> App ()
 setMap =
   writeRef' antecedentMap
 
+getMap :: App (Map.HashMap MID.ModuleID M.Module)
+getMap =
+  readRef' antecedentMap
+
 lookup :: MD.ModuleDigest -> App (Maybe M.Module)
 lookup mc = do
   aenv <- readRef' antecedentMap

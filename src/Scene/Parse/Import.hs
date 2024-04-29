@@ -32,6 +32,7 @@ import Entity.Syntax.Series qualified as SE
 import Path
 import Scene.Module.GetEnabledPreset
 import Scene.Module.Reflect qualified as Module
+import Scene.Source.ShiftToLatest
 
 type LocatorText =
   T.Text
@@ -99,7 +100,7 @@ getSource mustUpdateTag m sgl locatorText = do
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $
     Tag.insertFileLoc m (T.length locatorText) (newSourceHint nextPath)
-  return $
+  shiftToLatest
     Source.Source
       { Source.sourceModule = nextModule,
         Source.sourceFilePath = nextPath,
