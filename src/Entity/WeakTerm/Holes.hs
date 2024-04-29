@@ -90,5 +90,9 @@ holesCaseList (fallbackClause, clauseList) = do
 
 holesCase :: DT.Case WT.WeakTerm -> S.Set HoleID
 holesCase decisionCase = do
-  let (dataTerms, dataTypes) = unzip (DT.dataArgs decisionCase)
-  S.unions $ holes' (DT.consArgs decisionCase) (holesDecisionTree (DT.cont decisionCase)) : map holes dataTerms ++ map holes dataTypes
+  case decisionCase of
+    DT.LiteralIntCase _ _ cont -> do
+      holesDecisionTree cont
+    DT.ConsCase {..} -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      S.unions $ holes' consArgs (holesDecisionTree cont) : map holes dataTerms ++ map holes dataTypes
