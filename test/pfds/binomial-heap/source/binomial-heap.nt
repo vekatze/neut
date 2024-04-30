@@ -8,12 +8,6 @@ inline heap(a: tau): tau {
   list(tree(a))
 }
 
-data order {
-| LT
-| EQ
-| GT
-}
-
 define join(a: tau, cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
   match t1, t2 {
   | Node(r1, x1, children1), Node(r2, x2, children2) =>

@@ -1,9 +1,3 @@
-data order {
-| LT
-| EQ
-| GT
-}
-
 data finite-map(a, b) {
 | Leaf
 | Node(finite-map(a, b), a, b, finite-map(a, b))

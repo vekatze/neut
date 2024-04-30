@@ -3,12 +3,6 @@ data heap(a) {
 | Node(a, list(heap(a)))
 }
 
-data order {
-| LT
-| EQ
-| GT
-}
-
 define find-min(a: tau, h: &heap(a)): ?a {
   case h {
   | Leaf =>
