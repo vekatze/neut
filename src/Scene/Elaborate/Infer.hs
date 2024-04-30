@@ -205,6 +205,10 @@ infer varEnv term =
       resultType <- newHole m varEnv
       insConstraintEnv (m :< WT.Noema resultType) noemaType
       return (m :< WT.Embody resultType e', resultType)
+    _ :< WT.Actual e -> do
+      (e', t') <- infer varEnv e
+      insertActualityConstraint t'
+      return (e', t')
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer varEnv e1
       t' <- inferType varEnv t >>= resolveType

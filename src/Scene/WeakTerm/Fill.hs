@@ -75,6 +75,9 @@ fill sub term =
       t' <- fill sub t
       e' <- fill sub e
       return $ m :< WT.Embody t' e'
+    m :< WT.Actual e -> do
+      e' <- fill sub e
+      return $ m :< WT.Actual e'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- fill sub e1
       (mxt', _, e2') <- fill'' sub mxt [] e2

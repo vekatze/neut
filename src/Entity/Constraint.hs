@@ -4,11 +4,11 @@ import Control.Comonad.Cofree
 import Data.Set qualified as S
 import Entity.Hint
 import Entity.HoleID qualified as HID
-import Entity.WeakTerm
+import Entity.WeakTerm qualified as WT
 
 data Constraint
-  = Eq WeakTerm WeakTerm -- (expected-type, actual-type)
-  | Actual WeakTerm
+  = Eq WT.WeakTerm WT.WeakTerm -- (expected-type, actual-type)
+  | Actual WT.WeakTerm
 
 type MetaVarSet =
   S.Set HID.HoleID

@@ -48,9 +48,10 @@ toText term =
           "function "
             <> showImpArgs impArgs
             <> inParen (showDomArgList expArgs)
-            <> inBrace (toText e)
             <> ": "
             <> toText codType
+            <> " "
+            <> inBrace (toText e)
     _ :< WT.PiElim e es -> do
       case e of
         _ :< WT.VarGlobal attr _
@@ -76,6 +77,8 @@ toText term =
       "&" <> toText t
     _ :< WT.Embody _ e ->
       "*" <> toText e
+    _ :< WT.Actual e ->
+      "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do
       case opacity of
         WT.Noetic ->
