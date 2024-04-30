@@ -1577,24 +1577,24 @@ You can create channels using `new-channel` and send/receive values using those 
 
 ```neut
 define sample(): unit {
-  let ch0 = new-channel(int) in
-  let ch1 = new-channel(int) in
+  let ch0 = new-channel() in
+  let ch1 = new-channel() in
   // use channels after turning them into noemata
   let result on ch0, ch1 =
     let f =
       detach {
-        let message0 = receive(_, ch0) in // receive value from ch0
-        send(int, ch1, add-int(message0, 1)); // send value to ch1
+        let message0 = receive(ch0) in // receive value from ch0
+        send(ch1, add-int(message0, 1)); // send value to ch1
         message0
       }
     in
     let g =
       detach {
-        let message1 = receive(_, ch1) in // receive value from ch1
+        let message1 = receive(ch1) in // receive value from ch1
         add-int(message1, 1)
       }
     in
-    send(int, ch0, 0); // send value to ch0
+    send(ch0, 0); // send value to ch0
     let v1 = attach { f } in
     let v2 = attach { g } in
     print("hey")
@@ -1630,11 +1630,15 @@ The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used t
 
 ### Type
 
+```neut
+Γ ⊢ a: tau
+-----------------------------
+Γ ⊢ new-channel(): channel(a)
 ```
 
-------------------------------------
-Γ ⊢ new-channel: <a>() -> channel(a)
-```
+You must use an "actual" type at the position of `a` in the typing rule above.
+
+For more, see [let-on](#on).
 
 ### Note
 
@@ -1653,7 +1657,7 @@ define sample(): int {
   let xs: list(int) = [] in
 
   // create a new cell using `new-cell`
-  let xs-cell = new-cell(list(int), xs) in
+  let xs-cell = new-cell(xs) in
 
   // create a noema of a cell
   let result on xs-cell =
