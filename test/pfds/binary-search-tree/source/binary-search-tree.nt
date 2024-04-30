@@ -1,9 +1,3 @@
-data order {
-| LT
-| EQ
-| GT
-}
-
 data set(a) {
 | Leaf
 | Node(set(a), a, set(a))
@@ -34,7 +28,7 @@ define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
       }
     },
     member = {
-      define member(needle: a, haystack: &set(a)): _ {
+      define member(needle: a, haystack: &set(a)) {
         case haystack {
         | Leaf =>
           False

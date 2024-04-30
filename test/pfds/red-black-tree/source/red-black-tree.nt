@@ -4,17 +4,8 @@ data color {
 }
 
 data tree(a) {
-  // Black
 | Leaf
 | Node(color, tree(a), a, tree(a))
-}
-
-// Invariant 1. No Red Node has a Red child.
-// Invariant 2. Every path from the root to an empty Node contains the same number of Black Nodes.
-data order {
-| LT
-| EQ
-| GT
 }
 
 define member(a: tau, cmp: (a, a) -> order, x: a, t: &tree(a)): bool {

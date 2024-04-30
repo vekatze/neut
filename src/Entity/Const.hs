@@ -173,6 +173,14 @@ coreThreadAttach :: T.Text
 coreThreadAttach =
   core <> nsSep <> "thread" <> nsSep <> "attach"
 
+coreCellNewCell :: T.Text
+coreCellNewCell =
+  core <> nsSep <> "cell" <> nsSep <> "_new-cell"
+
+coreChannelNewChannel :: T.Text
+coreChannelNewChannel =
+  core <> nsSep <> "channel" <> nsSep <> "_new-channel"
+
 holeVarPrefix :: T.Text
 holeVarPrefix =
   "{}"

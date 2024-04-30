@@ -87,6 +87,9 @@ subst sub term =
       t' <- subst sub t
       e' <- subst sub e
       return $ m :< WT.Embody t' e'
+    m :< WT.Actual e -> do
+      e' <- subst sub e
+      return $ m :< WT.Actual e'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- subst sub e1
       (mxt', _, e2') <- subst'' sub mxt [] e2

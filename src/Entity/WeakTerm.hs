@@ -38,6 +38,7 @@ data WeakTermF a
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a
+  | Actual a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)

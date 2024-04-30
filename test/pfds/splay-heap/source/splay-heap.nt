@@ -3,12 +3,6 @@ data heap(a) {
 | Node(heap(a), a, heap(a))
 }
 
-data order {
-| LT
-| EQ
-| GT
-}
-
 define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
   match t {
   | Leaf =>

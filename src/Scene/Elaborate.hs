@@ -248,6 +248,8 @@ elaborate' term =
       t' <- elaborate' t
       e' <- elaborate' e
       return $ m :< TM.Embody t' e'
+    _ :< WT.Actual e -> do
+      elaborate' e
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- elaborate' e1
       t' <- reduceType t

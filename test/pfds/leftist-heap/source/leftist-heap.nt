@@ -1,9 +1,3 @@
-data order {
-| LT
-| EQ
-| GT
-}
-
 // leftist heap
 data heap(a) {
 | Leaf

@@ -67,7 +67,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         className: "builtin",
-        begin: "<=|->|=>|\\*|:|\\||this|,|;|\\b_\\b|&|\\b-(?=\\s)|=|magic|assert",
+        begin: "<=|->|=>|\\*|:|\\||this|,|;|\\b_\\b|&|\\b-(?=\\s)|=|magic|assert|new-channel|new-cell",
       },
       hljs.COMMENT(
         "//", // begin

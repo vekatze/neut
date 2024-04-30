@@ -75,7 +75,7 @@ define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
 
 define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
   let wait-all =
-    define wait-all(ys: list(flow(unit))): _ {
+    define wait-all(ys: list(flow(unit))) {
       match ys {
       | Nil =>
         Unit
@@ -88,7 +88,7 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
   let size on xs = length(xs) in
   wait-all(xs);
   let receive-all =
-    define receive-all(count: int): _ {
+    define receive-all(count: int) {
       if eq-int(count, 0) {
         Unit
       } else {
@@ -124,35 +124,23 @@ define test-behavior(): unit {
   in
   let _ = ch in
   let ch = new-channel() in
-  let ch: channel(() -> int) = ch in
+  let ch: channel(int) = ch in
   let _ = ch in
-  let _ on ch =
-    send(ch, function () {
-      1
-    })
-  in
+  let _ on ch = send(ch, 1) in
   let ch = ch in
   let ch-clone = ch in
-  let _ on ch-clone =
-    send(ch-clone, function () {
-      1
-    })
-  in
+  let _ on ch-clone = send(ch-clone, 1) in
   let tmp on ch-clone =
     let f =
       detach {
         Ext.sleep(1);
-        send(ch-clone, function () {
-          3
-        })
+        send(ch-clone, 3)
       }
     in
     let g =
       detach {
         Ext.sleep(1);
-        send(ch-clone, function () {
-          4
-        })
+        send(ch-clone, 4)
       }
     in
     let _ = receive(ch-clone) in

@@ -358,7 +358,7 @@ simplifyActual ::
 simplifyActual m dataNameSet t orig = do
   t' <- reduce t
   case t' of
-    _ :< WT.Tau ->
+    _ :< WT.Tau -> do
       return []
     _ :< WT.Data (AttrD.Attr {..}) dataName dataArgs -> do
       let dataNameSet' = S.insert dataName dataNameSet
@@ -372,9 +372,9 @@ simplifyActual m dataNameSet t orig = do
         dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual m dataNameSet' consArg orig
-    _ :< WT.Prim {} ->
+    _ :< WT.Prim {} -> do
       return []
-    _ :< WT.Resource {} ->
+    _ :< WT.Resource {} -> do
       return []
     _ -> do
       sub <- getHoleSubst
@@ -387,13 +387,28 @@ simplifyActual m dataNameSet t orig = do
         Nothing -> do
           defMap <- WeakDefinition.read
           case Stuck.asStuckedTerm t' of
-            Just (Stuck.VarGlobal dd, ctx)
+            Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
-                  simplifyActual m dataNameSet (Stuck.resume lam ctx) orig
-              | otherwise ->
-                  return []
+                  simplifyActual m dataNameSet (Stuck.resume lam evalCtx) orig
+              | otherwise -> do
+                  simplifyEvalCtx m dataNameSet evalCtx orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
+
+simplifyEvalCtx ::
+  Hint ->
+  S.Set DD.DefiniteDescription ->
+  Stuck.EvalCtx ->
+  C.Constraint ->
+  App [SuspendedConstraint]
+simplifyEvalCtx m dataNameSet evalCtx orig =
+  case evalCtx of
+    _ :< Stuck.Base ->
+      return []
+    _ :< Stuck.PiElim evalCtx' args -> do
+      cs <- simplifyEvalCtx m dataNameSet evalCtx' orig
+      css <- mapM (\arg -> simplifyActual m dataNameSet arg orig) args
+      return $ cs ++ concat css
 
 substConsArgs :: Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
 substConsArgs sub consArgs =

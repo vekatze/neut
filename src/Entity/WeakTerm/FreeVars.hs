@@ -43,6 +43,8 @@ freeVars term =
       freeVars t
     _ :< WT.Embody t e ->
       S.union (freeVars t) (freeVars e)
+    _ :< WT.Actual e ->
+      freeVars e
     _ :< WT.Let _ mxt e1 e2 -> do
       let set1 = freeVars e1
       let set2 = freeVars' [mxt] (freeVars e2)

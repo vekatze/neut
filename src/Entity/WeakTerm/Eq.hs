@@ -82,6 +82,9 @@ eq (_ :< term1) (_ :< term2)
       let b1 = eq t1 t2
       let b2 = eq e1 e2
       b1 && b2
+  | WT.Actual e1 <- term1,
+    WT.Actual e2 <- term2 = do
+      eq e1 e2
   | WT.Let opacity1 mxt1 body1 cont1 <- term1,
     WT.Let opacity2 mxt2 body2 cont2 <- term2,
     opacity1 == opacity2 = do
