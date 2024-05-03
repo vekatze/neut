@@ -362,16 +362,17 @@ simplifyActual m dataNameSet t orig = do
       return []
     _ :< WT.Data (AttrD.Attr {..}) dataName dataArgs -> do
       let dataNameSet' = S.insert dataName dataNameSet
-      forM_ dataArgs $ \dataArg ->
+      constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
         simplifyActual m dataNameSet' dataArg orig
       dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
           else mapM (getConsArgTypes m . fst) consNameList
-      fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
+      constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
         dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual m dataNameSet' consArg orig
+      return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
     _ :< WT.Prim {} -> do
       return []
     _ :< WT.Resource {} -> do
