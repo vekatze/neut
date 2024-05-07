@@ -391,25 +391,8 @@ simplifyActual m dataNameSet t orig = do
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
                   simplifyActual m dataNameSet (Stuck.resume lam evalCtx) orig
-              | otherwise -> do
-                  simplifyEvalCtx m dataNameSet evalCtx orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
-
-simplifyEvalCtx ::
-  Hint ->
-  S.Set DD.DefiniteDescription ->
-  Stuck.EvalCtx ->
-  C.Constraint ->
-  App [SuspendedConstraint]
-simplifyEvalCtx m dataNameSet evalCtx orig =
-  case evalCtx of
-    _ :< Stuck.Base ->
-      return []
-    _ :< Stuck.PiElim evalCtx' args -> do
-      cs <- simplifyEvalCtx m dataNameSet evalCtx' orig
-      css <- mapM (\arg -> simplifyActual m dataNameSet arg orig) args
-      return $ cs ++ concat css
 
 substConsArgs :: Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
 substConsArgs sub consArgs =
