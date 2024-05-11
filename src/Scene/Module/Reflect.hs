@@ -207,12 +207,12 @@ interpretForeignDict ::
   App Foreign
 interpretForeignDict moduleRootDir ens = do
   (_, input) <- liftEither $ E.access keyForeignInput ens >>= E.toList
-  (_, outputs) <- liftEither $ E.access keyForeignOutput ens >>= E.toList
+  (_, output) <- liftEither $ E.access keyForeignOutput ens >>= E.toList
   (_, script) <- liftEither $ E.access keyForeignScript ens >>= E.toList
   input' <- mapM (interpretExtraPath moduleRootDir) $ SE.extract input
-  outputs' <- mapM interpretRelFilePath $ SE.extract outputs
+  output' <- mapM interpretRelFilePath $ SE.extract output
   script' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString script
-  return $ Foreign {input = input', script = script', output = outputs'}
+  return $ Foreign {input = input', script = script', output = output'}
 
 interpretAntecedent :: E.Ens -> App ModuleDigest
 interpretAntecedent ens = do

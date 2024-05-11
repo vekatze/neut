@@ -57,7 +57,7 @@ buildTarget axis baseModule target = do
   Initialize.initializeForTarget
   (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
-  compileForeign moduleList
+  didPerformForeignCompilation <- compileForeign moduleList
   contentSeq <- load dependenceSeq
   virtualCodeList <- compile target (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
@@ -66,7 +66,7 @@ buildTarget axis baseModule target = do
     Abstract {} ->
       return ()
     Concrete ct -> do
-      Link.link ct (_shouldSkipLink axis) artifactTime (toList dependenceSeq)
+      Link.link ct (_shouldSkipLink axis) didPerformForeignCompilation artifactTime (toList dependenceSeq)
       execute (_shouldExecute axis) ct (_executeArgs axis)
       install (_installDir axis) ct
 
@@ -128,12 +128,13 @@ install filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
   mapM_ (Install.install target) mDir
 
-compileForeign :: [M.Module] -> App ()
+compileForeign :: [M.Module] -> App Bool
 compileForeign moduleList = do
   currentTime <- liftIO getCurrentTime
-  forConcurrently_ moduleList (compileForeign' currentTime)
+  bs <- forConcurrently moduleList (compileForeign' currentTime)
+  return $ or bs
 
-compileForeign' :: UTCTime -> M.Module -> App ()
+compileForeign' :: UTCTime -> M.Module -> App Bool
 compileForeign' currentTime m = do
   sub <- getForeignSubst m
   let cmdList = M.script $ M.moduleForeign m
@@ -145,14 +146,14 @@ compileForeign' currentTime m = do
   outputTime <- Path.getLastModifiedInf outputPathList
   case (inputTime, outputTime) of
     (Just t1, Just t2)
-      | t1 <= t2 ->
-          return ()
+      | t1 <= t2 -> do
+          return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
       forM_ cmdList' $ \c -> do
         result <- External.runOrFail' moduleRootDir $ T.unpack c
         case result of
-          Right _ ->
+          Right _ -> do
             return ()
           Left err -> do
             let External.ExternalError {cmd, exitCode, errStr} = err
@@ -170,6 +171,7 @@ compileForeign' currentTime m = do
         if b
           then Path.setModificationTime outputPath currentTime
           else Throw.raiseError' $ "missing foreign output: " <> T.pack (toFilePath outputPath)
+      return $ not $ null cmdList
 
 naiveReplace :: [(T.Text, T.Text)] -> T.Text -> T.Text
 naiveReplace sub t =

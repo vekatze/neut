@@ -17,18 +17,19 @@ import Entity.Target
 import Path
 import Path.IO
 
-link :: ConcreteTarget -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
-link target shouldSkipLink artifactTime sourceList = do
+link :: ConcreteTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
+link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
   mainModule <- Module.getMainModule
   isExecutableAvailable <- Path.getExecutableOutputPath target mainModule >>= Path.doesFileExist
-  if shouldSkipLink || (isJust (A.objectTime artifactTime) && isExecutableAvailable)
+  let b1 = not didPerformForeignCompilation
+  let b2 = shouldSkipLink || (isJust (A.objectTime artifactTime) && isExecutableAvailable)
+  if b1 && b2
     then return ()
     else link' target mainModule sourceList
 
 link' :: ConcreteTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
-  -- foreignLibraries <- getForeignLibraries mainModule
   outputPath <- Path.getExecutableOutputPath target mainModule
   objectPathList <- mapM (Path.sourceToOutputPath OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
