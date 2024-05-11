@@ -11,6 +11,7 @@ import Context.App
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw
+import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
@@ -18,6 +19,7 @@ import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
 import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
+import Entity.Ens (dictFromListVertical')
 import Entity.Ens qualified as E
 import Entity.Error
 import Entity.GlobalLocator qualified as GL
@@ -57,7 +59,7 @@ getModule m moduleID locatorText = do
 
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
-  (_, (ens, _)) <- Ens.fromFilePath moduleFilePath
+  (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
   (_, targetEns) <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- mapM interpretRelFilePath $ Map.fromList $ SE.extract targetEns
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
@@ -74,6 +76,8 @@ fromFilePath moduleID moduleFilePath = do
   sourceDir <- interpretDirPath sourceDirEns
   (_, foreignDirListEns) <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
   foreignDirList <- mapM interpretDirPath $ SE.extract foreignDirListEns
+  foreignConfigEns <- liftEither $ E.access' keyForeignConfig (emptyForeign m) ens
+  foreignConfig <- interpretForeignDict (parent moduleFilePath) foreignConfigEns
   (mPrefix, prefixEns) <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary
   prefixMap <- liftEither $ interpretPrefixMap mPrefix prefixEns
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
@@ -91,6 +95,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleAntecedents = antecedents,
         moduleLocation = moduleFilePath,
         moduleForeignDirList = foreignDirList,
+        moduleForeignConfig = foreignConfig,
         modulePrefixMap = prefixMap,
         moduleInlineLimit = mInlineLimit,
         modulePresetMap = presetMap
@@ -190,6 +195,17 @@ interpretExtraPath moduleRootDir entity = do
       ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
       return $ Right filePath
 
+interpretForeignDict ::
+  Path Abs Dir ->
+  E.Ens ->
+  App ForeignConfig
+interpretForeignDict moduleRootDir ens = do
+  (_, assets) <- liftEither $ E.access keyForeignConfigAsset ens >>= E.toList
+  (_, setup) <- liftEither $ E.access keyForeignConfigProcess ens >>= E.toList
+  assets' <- mapM (interpretExtraPath moduleRootDir) $ SE.extract assets
+  setup' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString setup
+  return $ ForeignConfig {assets = assets', setup = setup'}
+
 interpretAntecedent :: E.Ens -> App ModuleDigest
 interpretAntecedent ens = do
   (_, digestText) <- liftEither $ E.toString ens
@@ -241,3 +257,10 @@ rightToMaybe errOrVal =
       Nothing
     Right val ->
       Just val
+
+emptyForeign :: H.Hint -> E.EnsF E.Ens
+emptyForeign m =
+  dictFromListVertical'
+    [ (keyForeignConfigAsset, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
+      (keyForeignConfigProcess, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma))
+    ]

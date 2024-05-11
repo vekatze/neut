@@ -51,6 +51,7 @@ constructDefaultModule name = do
         moduleAntecedents = [],
         moduleLocation = moduleRootDir </> moduleFile,
         moduleForeignDirList = [],
+        moduleForeignConfig = ForeignConfig {assets = [], setup = []},
         modulePrefixMap = Map.empty,
         moduleInlineLimit = Nothing,
         modulePresetMap = Map.empty

@@ -44,6 +44,12 @@ data Dependency = Dependency
   }
   deriving (Show)
 
+data ForeignConfig = ForeignConfig
+  { assets :: [SomePath Rel],
+    setup :: [T.Text]
+  }
+  deriving (Show)
+
 type TargetName =
   T.Text
 
@@ -58,6 +64,7 @@ data Module = Module
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
     moduleForeignDirList :: [Path Rel Dir],
+    moduleForeignConfig :: ForeignConfig,
     modulePrefixMap :: Map.HashMap BN.BaseName (MA.ModuleAlias, SL.SourceLocator),
     moduleInlineLimit :: Maybe Int,
     modulePresetMap :: PresetMap
@@ -107,6 +114,18 @@ keyAntecedent =
 keyForeign :: T.Text
 keyForeign =
   "foreign"
+
+keyForeignConfig :: T.Text
+keyForeignConfig =
+  "foreign-config"
+
+keyForeignConfigAsset :: T.Text
+keyForeignConfigAsset =
+  "asset"
+
+keyForeignConfigProcess :: T.Text
+keyForeignConfigProcess =
+  "process"
 
 keyPrefix :: T.Text
 keyPrefix =
@@ -185,11 +204,12 @@ toDefaultEns someModule =
         getArchiveDirInfo someModule,
         getExtraContentInfo someModule,
         getForeignInfo someModule,
-        getAntecedentInfo someModule,
-        getDependencyInfo someModule,
-        getPrefixMapInfo someModule,
+        getForeignConfigInfo someModule,
         getInlineLimitInfo someModule,
-        getPresetMapInfo someModule
+        getPrefixMapInfo someModule,
+        getPresetMapInfo someModule,
+        getAntecedentInfo someModule,
+        getDependencyInfo someModule
       ]
 
 getArchiveDirInfo :: Module -> Maybe (T.Text, E.Ens)
@@ -252,6 +272,23 @@ getForeignInfo someModule = do
   if null foreignList
     then Nothing
     else return (keyForeign, _m :< E.List (seriesFromList foreignList))
+
+getForeignConfigInfo :: Module -> Maybe (T.Text, E.Ens)
+getForeignConfigInfo someModule = do
+  let foreignConfig = moduleForeignConfig someModule
+  let assetList = map (\x -> _m :< E.String (ppExtraContent x)) $ assets foreignConfig
+  let cmdList = map (\x -> _m :< E.String x) $ setup foreignConfig
+  if null (assets foreignConfig) && null (setup foreignConfig)
+    then Nothing
+    else
+      return
+        ( keyForeignConfig,
+          _m
+            :< E.dictFromListVertical'
+              [ (keyForeignConfigAsset, _m :< E.List (seriesFromList assetList)),
+                (keyForeignConfigProcess, _m :< E.List (seriesFromList cmdList))
+              ]
+        )
 
 getPrefixMapInfo :: Module -> Maybe (T.Text, E.Ens)
 getPrefixMapInfo someModule = do

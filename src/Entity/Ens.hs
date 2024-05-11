@@ -23,7 +23,9 @@ module Entity.Ens
     nubEnsList,
     inject,
     dictFromList,
+    dictFromList',
     dictFromListVertical,
+    dictFromListVertical',
   )
 where
 
@@ -264,8 +266,16 @@ inject ens =
 
 dictFromList :: a -> [(T.Text, Cofree EnsF a)] -> Cofree EnsF a
 dictFromList m xs = do
-  m :< Dictionary (SE.fromList SE.Brace SE.Comma xs)
+  m :< dictFromList' xs
+
+dictFromList' :: [(T.Text, Cofree EnsF a)] -> EnsF (Cofree EnsF a)
+dictFromList' xs = do
+  Dictionary (SE.fromList SE.Brace SE.Comma xs)
 
 dictFromListVertical :: a -> [(T.Text, Cofree EnsF a)] -> Cofree EnsF a
 dictFromListVertical m xs = do
-  m :< Dictionary ((SE.fromList SE.Brace SE.Comma xs) {SE.hasOptionalSeparator = True})
+  m :< dictFromListVertical' xs
+
+dictFromListVertical' :: [(T.Text, Cofree EnsF a)] -> EnsF (Cofree EnsF a)
+dictFromListVertical' xs = do
+  Dictionary ((SE.fromList SE.Brace SE.Comma xs) {SE.hasOptionalSeparator = True})
