@@ -11,8 +11,8 @@ import Context.External qualified as External
 import Context.LLVM qualified as LLVM
 import Context.Module qualified as Module
 import Context.Path qualified as Path
-import Context.Remark (printNote')
 import Context.Remark qualified as Remark
+import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils (nubOrdOn)
@@ -23,6 +23,7 @@ import Data.Time
 import Entity.Cache
 import Entity.LowComp qualified as LC
 import Entity.Module qualified as M
+import Entity.ModuleID qualified as MID
 import Entity.OutputKind
 import Entity.Source
 import Entity.Stmt (getStmtName)
@@ -40,7 +41,6 @@ import Scene.Load qualified as Load
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
-import System.Process
 import UnliftIO.Async
 import Prelude hiding (log)
 
@@ -130,16 +130,46 @@ install filePathOrNone target = do
 
 compileForeign :: [M.Module] -> App ()
 compileForeign moduleList = do
-  forConcurrently_ moduleList compileForeign'
+  currentTime <- liftIO getCurrentTime
+  forConcurrently_ moduleList (compileForeign' currentTime)
 
-compileForeign' :: M.Module -> App ()
-compileForeign' m = do
+compileForeign' :: UTCTime -> M.Module -> App ()
+compileForeign' currentTime m = do
   sub <- getForeignSubst m
-  let cmdList = M.setup $ M.moduleForeignConfig m
-  let cmdList' = map (naiveReplace sub) cmdList
-  forM_ cmdList' $ \c -> do
-    printNote' c
-    liftIO $ system $ T.unpack c
+  let cmdList = M.script $ M.moduleForeign m
+  let moduleRootDir = M.getModuleRootDir m
+  foreignDir <- Path.getForeignDir m
+  inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
+  let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
+  inputTime <- Path.getLastModifiedSup inputPathList
+  outputTime <- Path.getLastModifiedInf outputPathList
+  case (inputTime, outputTime) of
+    (Just t1, Just t2)
+      | t1 <= t2 ->
+          return ()
+    _ -> do
+      let cmdList' = map (naiveReplace sub) cmdList
+      forM_ cmdList' $ \c -> do
+        result <- External.runOrFail' moduleRootDir $ T.unpack c
+        case result of
+          Right _ ->
+            return ()
+          Left err -> do
+            let External.ExternalError {cmd, exitCode, errStr} = err
+            Throw.raiseError' $
+              "foreign compilation of `"
+                <> MID.reify (M.moduleID m)
+                <> "` failed at `"
+                <> T.pack cmd
+                <> "` with the following error (exitcode = "
+                <> T.pack (show exitCode)
+                <> "):\n"
+                <> errStr
+      forM_ outputPathList $ \outputPath -> do
+        b <- Path.doesFileExist outputPath
+        if b
+          then Path.setModificationTime outputPath currentTime
+          else Throw.raiseError' $ "missing foreign output: " <> T.pack (toFilePath outputPath)
 
 naiveReplace :: [(T.Text, T.Text)] -> T.Text -> T.Text
 naiveReplace sub t =
@@ -158,3 +188,15 @@ getForeignSubst m = do
       ("{{clang}}", T.pack clang),
       ("{{foreign}}", T.pack $ toFilePath foreignDir)
     ]
+
+getInputPathList :: Path Abs Dir -> M.SomePath Rel -> App [Path Abs File]
+getInputPathList moduleRootDir =
+  Path.unrollPath . attachPrefixPath moduleRootDir
+
+attachPrefixPath :: Path Abs Dir -> M.SomePath Rel -> M.SomePath Abs
+attachPrefixPath baseDirPath path =
+  case path of
+    Left dirPath ->
+      Left $ baseDirPath </> dirPath
+    Right filePath ->
+      Right $ baseDirPath </> filePath

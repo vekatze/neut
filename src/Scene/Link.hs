@@ -28,13 +28,13 @@ link target shouldSkipLink artifactTime sourceList = do
 link' :: ConcreteTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
-  foreignLibraries <- getForeignLibraries mainModule
+  -- foreignLibraries <- getForeignLibraries mainModule
   outputPath <- Path.getExecutableOutputPath target mainModule
   objectPathList <- mapM (Path.sourceToOutputPath OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
   foreignDirList <- mapM Path.getForeignDir moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
-  LLVM.link (mainObject : objectPathList ++ foreignLibraries ++ foreignObjectList) outputPath
+  LLVM.link (mainObject : objectPathList ++ foreignObjectList) outputPath
 
 getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
 getForeignDirContent foreignDir = do
@@ -42,16 +42,3 @@ getForeignDirContent foreignDir = do
   if b
     then snd <$> listDir foreignDir
     else return []
-
-getForeignLibraries :: Module -> App [Path Abs File]
-getForeignLibraries targetModule = do
-  let foreignDirList = moduleForeignDirList targetModule
-  let moduleRootDir = getModuleRootDir targetModule
-  concat <$> mapM (getForeignLibraries' . (moduleRootDir </>)) foreignDirList
-
-getForeignLibraries' :: Path Abs Dir -> App [Path Abs File]
-getForeignLibraries' foreignDir = do
-  platformPrefix <- Path.getPlatformPrefix
-  let foreignDir' = foreignDir </> platformPrefix
-  (_, objectFileList) <- listDir foreignDir'
-  return objectFileList

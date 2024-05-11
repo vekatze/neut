@@ -44,10 +44,10 @@ data Dependency = Dependency
   }
   deriving (Show)
 
-data ForeignConfig = ForeignConfig
+data Foreign = Foreign
   { input :: [SomePath Rel],
     output :: [Path Rel File],
-    setup :: [T.Text]
+    script :: [T.Text]
   }
   deriving (Show)
 
@@ -64,8 +64,7 @@ data Module = Module
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
-    moduleForeignDirList :: [Path Rel Dir],
-    moduleForeignConfig :: ForeignConfig,
+    moduleForeign :: Foreign,
     modulePrefixMap :: Map.HashMap BN.BaseName (MA.ModuleAlias, SL.SourceLocator),
     moduleInlineLimit :: Maybe Int,
     modulePresetMap :: PresetMap
@@ -116,21 +115,17 @@ keyForeign :: T.Text
 keyForeign =
   "foreign"
 
-keyForeignConfig :: T.Text
-keyForeignConfig =
-  "foreign-config"
-
-keyForeignConfigInput :: T.Text
-keyForeignConfigInput =
+keyForeignInput :: T.Text
+keyForeignInput =
   "input"
 
-keyForeignConfigOutput :: T.Text
-keyForeignConfigOutput =
+keyForeignOutput :: T.Text
+keyForeignOutput =
   "output"
 
-keyForeignConfigProcess :: T.Text
-keyForeignConfigProcess =
-  "process"
+keyForeignScript :: T.Text
+keyForeignScript =
+  "script"
 
 keyPrefix :: T.Text
 keyPrefix =
@@ -163,15 +158,6 @@ getTargetPath baseModule target = do
 getArchiveDir :: Module -> Path Abs Dir
 getArchiveDir baseModule =
   getModuleRootDir baseModule </> moduleArchiveDir baseModule
-
-getForeignContents :: Module -> [Path Abs Dir]
-getForeignContents baseModule = do
-  let moduleRootDir = getModuleRootDir baseModule
-  map (moduleRootDir </>) $ moduleForeignDirList baseModule
-
-getForeignContents' :: Module -> [Path Rel Dir]
-getForeignContents' baseModule = do
-  moduleForeignDirList baseModule
 
 getExtraContents :: Module -> [SomePath Rel]
 getExtraContents baseModule = do
@@ -209,7 +195,6 @@ toDefaultEns someModule =
         getArchiveDirInfo someModule,
         getExtraContentInfo someModule,
         getForeignInfo someModule,
-        getForeignConfigInfo someModule,
         getInlineLimitInfo someModule,
         getPrefixMapInfo someModule,
         getPresetMapInfo someModule,
@@ -273,27 +258,20 @@ getAntecedentInfo someModule = do
 
 getForeignInfo :: Module -> Maybe (T.Text, E.Ens)
 getForeignInfo someModule = do
-  let foreignList = map (\x -> _m :< E.String (ppDirPath x)) $ moduleForeignDirList someModule
-  if null foreignList
-    then Nothing
-    else return (keyForeign, _m :< E.List (seriesFromList foreignList))
-
-getForeignConfigInfo :: Module -> Maybe (T.Text, E.Ens)
-getForeignConfigInfo someModule = do
-  let foreignConfig = moduleForeignConfig someModule
-  let assetList = map (\x -> _m :< E.String (ppExtraContent x)) $ input foreignConfig
-  let outputList = map (\x -> _m :< E.String (T.pack $ toFilePath x)) $ output foreignConfig
-  let cmdList = map (\x -> _m :< E.String x) $ setup foreignConfig
-  if null (input foreignConfig) && null (setup foreignConfig)
+  let foreignInfo = moduleForeign someModule
+  let assetList = map (\x -> _m :< E.String (ppExtraContent x)) $ input foreignInfo
+  let outputList = map (\x -> _m :< E.String (T.pack $ toFilePath x)) $ output foreignInfo
+  let cmdList = map (\x -> _m :< E.String x) $ script foreignInfo
+  if null (input foreignInfo) && null (script foreignInfo)
     then Nothing
     else
       return
-        ( keyForeignConfig,
+        ( keyForeign,
           _m
             :< E.dictFromListVertical'
-              [ (keyForeignConfigInput, _m :< E.List (seriesFromList assetList)),
-                (keyForeignConfigOutput, _m :< E.List (seriesFromList outputList)),
-                (keyForeignConfigProcess, _m :< E.List (seriesFromList cmdList))
+              [ (keyForeignInput, _m :< E.List (seriesFromList assetList)),
+                (keyForeignOutput, _m :< E.List (seriesFromList outputList)),
+                (keyForeignScript, _m :< E.List (seriesFromList cmdList))
               ]
         )
 

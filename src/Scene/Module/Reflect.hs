@@ -74,10 +74,8 @@ fromFilePath moduleID moduleFilePath = do
   buildDir <- interpretDirPath buildDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns
-  (_, foreignDirListEns) <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
-  foreignDirList <- mapM interpretDirPath $ SE.extract foreignDirListEns
-  foreignConfigEns <- liftEither $ E.access' keyForeignConfig (emptyForeign m) ens
-  foreignConfig <- interpretForeignDict (parent moduleFilePath) foreignConfigEns
+  foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
+  foreignDict <- interpretForeignDict (parent moduleFilePath) foreignDictEns
   (mPrefix, prefixEns) <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary
   prefixMap <- liftEither $ interpretPrefixMap mPrefix prefixEns
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
@@ -94,8 +92,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,
         moduleLocation = moduleFilePath,
-        moduleForeignDirList = foreignDirList,
-        moduleForeignConfig = foreignConfig,
+        moduleForeign = foreignDict,
         modulePrefixMap = prefixMap,
         moduleInlineLimit = mInlineLimit,
         modulePresetMap = presetMap
@@ -207,15 +204,15 @@ interpretExtraPath moduleRootDir entity = do
 interpretForeignDict ::
   Path Abs Dir ->
   E.Ens ->
-  App ForeignConfig
+  App Foreign
 interpretForeignDict moduleRootDir ens = do
-  (_, input) <- liftEither $ E.access keyForeignConfigInput ens >>= E.toList
-  (_, outputs) <- liftEither $ E.access keyForeignConfigOutput ens >>= E.toList
-  (_, setup) <- liftEither $ E.access keyForeignConfigProcess ens >>= E.toList
+  (_, input) <- liftEither $ E.access keyForeignInput ens >>= E.toList
+  (_, outputs) <- liftEither $ E.access keyForeignOutput ens >>= E.toList
+  (_, script) <- liftEither $ E.access keyForeignScript ens >>= E.toList
   input' <- mapM (interpretExtraPath moduleRootDir) $ SE.extract input
   outputs' <- mapM interpretRelFilePath $ SE.extract outputs
-  setup' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString setup
-  return $ ForeignConfig {input = input', setup = setup', output = outputs'}
+  script' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString script
+  return $ Foreign {input = input', script = script', output = outputs'}
 
 interpretAntecedent :: E.Ens -> App ModuleDigest
 interpretAntecedent ens = do
@@ -272,7 +269,7 @@ rightToMaybe errOrVal =
 emptyForeign :: H.Hint -> E.EnsF E.Ens
 emptyForeign m =
   dictFromListVertical'
-    [ (keyForeignConfigInput, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
-      (keyForeignConfigOutput, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
-      (keyForeignConfigProcess, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma))
+    [ (keyForeignInput, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
+      (keyForeignOutput, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
+      (keyForeignScript, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma))
     ]
