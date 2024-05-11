@@ -39,6 +39,7 @@ copyModuleContents tempRootDir moduleRootDir contents = do
       Left dirPath -> do
         copyDirRecur (moduleRootDir </> dirPath) (tempRootDir </> dirPath)
       Right filePath -> do
+        ensureDir $ parent $ tempRootDir </> filePath
         copyFile (moduleRootDir </> filePath) (tempRootDir </> filePath)
 
 makeReadOnly :: Path Abs Dir -> App ()
