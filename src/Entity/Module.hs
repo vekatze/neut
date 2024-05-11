@@ -45,7 +45,8 @@ data Dependency = Dependency
   deriving (Show)
 
 data ForeignConfig = ForeignConfig
-  { assets :: [SomePath Rel],
+  { input :: [SomePath Rel],
+    output :: [Path Rel File],
     setup :: [T.Text]
   }
   deriving (Show)
@@ -119,9 +120,13 @@ keyForeignConfig :: T.Text
 keyForeignConfig =
   "foreign-config"
 
-keyForeignConfigAsset :: T.Text
-keyForeignConfigAsset =
-  "asset"
+keyForeignConfigInput :: T.Text
+keyForeignConfigInput =
+  "input"
+
+keyForeignConfigOutput :: T.Text
+keyForeignConfigOutput =
+  "output"
 
 keyForeignConfigProcess :: T.Text
 keyForeignConfigProcess =
@@ -276,16 +281,18 @@ getForeignInfo someModule = do
 getForeignConfigInfo :: Module -> Maybe (T.Text, E.Ens)
 getForeignConfigInfo someModule = do
   let foreignConfig = moduleForeignConfig someModule
-  let assetList = map (\x -> _m :< E.String (ppExtraContent x)) $ assets foreignConfig
+  let assetList = map (\x -> _m :< E.String (ppExtraContent x)) $ input foreignConfig
+  let outputList = map (\x -> _m :< E.String (T.pack $ toFilePath x)) $ output foreignConfig
   let cmdList = map (\x -> _m :< E.String x) $ setup foreignConfig
-  if null (assets foreignConfig) && null (setup foreignConfig)
+  if null (input foreignConfig) && null (setup foreignConfig)
     then Nothing
     else
       return
         ( keyForeignConfig,
           _m
             :< E.dictFromListVertical'
-              [ (keyForeignConfigAsset, _m :< E.List (seriesFromList assetList)),
+              [ (keyForeignConfigInput, _m :< E.List (seriesFromList assetList)),
+                (keyForeignConfigOutput, _m :< E.List (seriesFromList outputList)),
                 (keyForeignConfigProcess, _m :< E.List (seriesFromList cmdList))
               ]
         )

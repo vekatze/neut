@@ -21,6 +21,6 @@ collectModuleFiles baseModule = do
   let moduleRootDir = parent $ moduleLocation baseModule
   let relModuleSourceDir = Left $ moduleSourceDir baseModule
   let foreignContents = map Left $ moduleForeignDirList baseModule
-  let foreignConfigContents = assets $ moduleForeignConfig baseModule
+  let foreignConfigContents = input $ moduleForeignConfig baseModule
   let extraContents = moduleExtraContents baseModule
   (moduleRootDir, relModuleSourceDir : foreignContents ++ foreignConfigContents ++ extraContents)
