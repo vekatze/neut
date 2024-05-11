@@ -77,6 +77,10 @@ executableRelDir :: Path Rel Dir
 executableRelDir =
   $(mkRelDir "executable")
 
+foreignRelDir :: Path Rel Dir
+foreignRelDir =
+  $(mkRelDir "foreign")
+
 zenRelDir :: Path Rel Dir
 zenRelDir =
   $(mkRelDir "zen")

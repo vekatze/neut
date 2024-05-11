@@ -7,6 +7,7 @@ import Context.App
 import Context.LLVM qualified as LLVM
 import Context.Module qualified as Module
 import Context.Path qualified as Path
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Entity.Artifact qualified as A
 import Entity.Module
@@ -30,7 +31,17 @@ link' target mainModule sourceList = do
   foreignLibraries <- getForeignLibraries mainModule
   outputPath <- Path.getExecutableOutputPath target mainModule
   objectPathList <- mapM (Path.sourceToOutputPath OK.Object) sourceList
-  LLVM.link (mainObject : objectPathList ++ foreignLibraries) outputPath
+  let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
+  foreignDirList <- mapM Path.getForeignDir moduleList
+  foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
+  LLVM.link (mainObject : objectPathList ++ foreignLibraries ++ foreignObjectList) outputPath
+
+getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
+getForeignDirContent foreignDir = do
+  b <- doesDirExist foreignDir
+  if b
+    then snd <$> listDir foreignDir
+    else return []
 
 getForeignLibraries :: Module -> App [Path Abs File]
 getForeignLibraries targetModule = do

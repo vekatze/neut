@@ -20,6 +20,7 @@ module Context.Path
     removeDirRecur,
     getExecutableOutputPath,
     getBaseBuildDir,
+    getForeignDir,
     getInstallDir,
     getPlatformPrefix,
     sourceToOutputPath,
@@ -218,6 +219,11 @@ getArtifactDir :: Module -> App (Path Abs Dir)
 getArtifactDir baseModule = do
   buildDir <- getBuildDir baseModule
   return $ buildDir </> artifactRelDir
+
+getForeignDir :: Module -> App (Path Abs Dir)
+getForeignDir baseModule = do
+  buildDir <- getBuildDir baseModule
+  return $ buildDir </> foreignRelDir
 
 getEntryDir :: Module -> App (Path Abs Dir)
 getEntryDir baseModule = do
