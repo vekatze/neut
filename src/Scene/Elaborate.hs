@@ -115,9 +115,6 @@ elaborateStmt stmt = do
     WeakStmtDefineConst m dd t v -> do
       t' <- elaborate' t >>= TM.inline m
       v' <- elaborate' v >>= TM.inline m
-      unless (TM.isValue v') $ do
-        Throw.raiseError m $
-          "couldn't reduce this term into a constant, but got:\n" <> toText (weaken v')
       let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
       return [result]
