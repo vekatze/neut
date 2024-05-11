@@ -7,12 +7,15 @@ where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.External qualified as External
 import Context.LLVM qualified as LLVM
 import Context.Module qualified as Module
 import Context.Path qualified as Path
+import Context.Remark (printNote')
 import Context.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
@@ -24,6 +27,7 @@ import Entity.OutputKind
 import Entity.Source
 import Entity.Stmt (getStmtName)
 import Entity.Target
+import Path
 import Scene.Clarify qualified as Clarify
 import Scene.Elaborate qualified as Elaborate
 import Scene.Emit qualified as Emit
@@ -36,6 +40,7 @@ import Scene.Load qualified as Load
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
+import System.Process
 import UnliftIO.Async
 import Prelude hiding (log)
 
@@ -51,6 +56,8 @@ buildTarget :: Axis -> M.Module -> Target -> App ()
 buildTarget axis baseModule target = do
   Initialize.initializeForTarget
   (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target
+  let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
+  compileForeign moduleList
   contentSeq <- load dependenceSeq
   virtualCodeList <- compile target (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
@@ -120,3 +127,34 @@ install :: Maybe FilePath -> ConcreteTarget -> App ()
 install filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
   mapM_ (Install.install target) mDir
+
+compileForeign :: [M.Module] -> App ()
+compileForeign moduleList = do
+  forConcurrently_ moduleList compileForeign'
+
+compileForeign' :: M.Module -> App ()
+compileForeign' m = do
+  sub <- getForeignSubst m
+  let cmdList = M.setup $ M.moduleForeignConfig m
+  let cmdList' = map (naiveReplace sub) cmdList
+  forM_ cmdList' $ \c -> do
+    printNote' c
+    liftIO $ system $ T.unpack c
+
+naiveReplace :: [(T.Text, T.Text)] -> T.Text -> T.Text
+naiveReplace sub t =
+  case sub of
+    [] ->
+      t
+    (from, to) : rest -> do
+      T.replace from to (naiveReplace rest t)
+
+getForeignSubst :: M.Module -> App [(T.Text, T.Text)]
+getForeignSubst m = do
+  clang <- liftIO External.getClang
+  foreignDir <- Path.getForeignDir m
+  return
+    [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),
+      ("{{clang}}", T.pack clang),
+      ("{{foreign}}", T.pack $ toFilePath foreignDir)
+    ]

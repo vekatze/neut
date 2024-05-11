@@ -223,7 +223,9 @@ getArtifactDir baseModule = do
 getForeignDir :: Module -> App (Path Abs Dir)
 getForeignDir baseModule = do
   buildDir <- getBuildDir baseModule
-  return $ buildDir </> foreignRelDir
+  let foreignDir = buildDir </> foreignRelDir
+  ensureDir foreignDir
+  return foreignDir
 
 getEntryDir :: Module -> App (Path Abs Dir)
 getEntryDir baseModule = do
