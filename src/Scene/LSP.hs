@@ -34,9 +34,11 @@ lsp cfg = do
     runQuietServer $
       ServerDefinition
         { defaultConfig = (),
-          onConfigurationChange = const $ pure $ Right (),
+          parseConfig = const $ const $ Right (),
+          configSection = "Neut",
+          onConfigChange = const $ return (),
           doInitialize = \env _req -> pure $ Right env,
-          staticHandlers = handlers,
+          staticHandlers = const handlers,
           interpretHandler = \env -> Iso (runLSPApp cfg . runLspT env) liftIO,
           options = lspOptions
         }
