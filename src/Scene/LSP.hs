@@ -68,6 +68,8 @@ handlers =
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
         return (),
+      notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
+        return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
         LSP.lint,
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
