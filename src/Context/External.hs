@@ -1,8 +1,10 @@
 module Context.External
   ( run,
     runOrFail,
+    runOrFail',
     ensureExecutables,
     getClang,
+    ExternalError (..),
   )
 where
 
@@ -16,6 +18,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Entity.Const (envVarClang)
 import Entity.Error
+import Path
 import System.Directory
 import System.Environment (lookupEnv)
 import System.Exit
@@ -50,6 +53,35 @@ runOrFail procName optionList = do
                       <> "):\n"
                       <> errStr
 
+data ExternalError = ExternalError
+  { cmd :: String,
+    exitCode :: Int,
+    errStr :: T.Text
+  }
+
+runOrFail' :: Path Abs Dir -> String -> App (Either ExternalError ())
+runOrFail' cwd cmd = do
+  let sh = shellWithCwd (toFilePath cwd) cmd
+  withRunInIO $ \runInIO ->
+    withCreateProcess sh {std_err = CreatePipe} $ \_ _ mErrorHandler cmdHandler -> do
+      case mErrorHandler of
+        Nothing ->
+          runInIO $ Throw.raiseError' "couldn't obtain stderr"
+        Just errorHandler -> do
+          exitCode <- waitForProcess cmdHandler
+          case exitCode of
+            ExitSuccess -> do
+              return $ Right ()
+            ExitFailure i -> do
+              errStr <- liftIO $ decodeUtf8 <$> B.hGetContents errorHandler
+              return $
+                Left $
+                  ExternalError
+                    { cmd = cmd,
+                      exitCode = i,
+                      errStr = errStr
+                    }
+
 getClang :: IO String
 getClang = do
   mClang <- lookupEnv envVarClang
@@ -78,3 +110,23 @@ ensureExecutable name = do
       return ()
     Nothing ->
       Throw.raiseError' $ "command not found: " <> T.pack name
+
+shellWithCwd :: FilePath -> String -> CreateProcess
+shellWithCwd cwd str =
+  CreateProcess
+    { cmdspec = ShellCommand str,
+      cwd = Just cwd,
+      env = Nothing,
+      std_in = Inherit,
+      std_out = Inherit,
+      std_err = Inherit,
+      close_fds = False,
+      create_group = False,
+      delegate_ctlc = False,
+      detach_console = False,
+      create_new_console = False,
+      new_session = False,
+      child_group = Nothing,
+      child_user = Nothing,
+      use_process_jobs = False
+    }

@@ -20,6 +20,7 @@ module Context.Path
     removeDirRecur,
     getExecutableOutputPath,
     getBaseBuildDir,
+    getForeignDir,
     getInstallDir,
     getPlatformPrefix,
     sourceToOutputPath,
@@ -28,6 +29,9 @@ module Context.Path
     getSourceCompletionCachePath,
     attachOutputPath,
     getOutputPathForEntryPoint,
+    getLastModifiedSup,
+    getLastModifiedInf,
+    unrollPath,
   )
 where
 
@@ -55,6 +59,7 @@ import Entity.Digest
 import Entity.Ens qualified as E
 import Entity.Ens.Reify qualified as E
 import Entity.Module
+import Entity.Module qualified as M
 import Entity.ModuleAlias qualified as MA
 import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
@@ -219,6 +224,13 @@ getArtifactDir baseModule = do
   buildDir <- getBuildDir baseModule
   return $ buildDir </> artifactRelDir
 
+getForeignDir :: Module -> App (Path Abs Dir)
+getForeignDir baseModule = do
+  buildDir <- getBuildDir baseModule
+  let foreignDir = buildDir </> foreignRelDir
+  ensureDir foreignDir
+  return foreignDir
+
 getEntryDir :: Module -> App (Path Abs Dir)
 getEntryDir baseModule = do
   buildDir <- getBuildDir baseModule
@@ -285,3 +297,56 @@ getInstallDir filePath = do
   path <- P.resolveDir' filePath
   ensureDir path
   return path
+
+getLastModifiedSup :: [Path Abs File] -> App (Maybe UTCTime)
+getLastModifiedSup pathList =
+  case pathList of
+    [] ->
+      return Nothing
+    [path] -> do
+      b <- doesFileExist path
+      if b
+        then Just <$> getModificationTime path
+        else return Nothing
+    path : pathList' -> do
+      b <- doesFileExist path
+      if b
+        then do
+          t1 <- getModificationTime path
+          t2 <- getLastModifiedSup pathList'
+          if Just t1 > t2
+            then return $ Just t1
+            else return t2
+        else do
+          return Nothing
+
+getLastModifiedInf :: [Path Abs File] -> App (Maybe UTCTime)
+getLastModifiedInf pathList =
+  case pathList of
+    [] ->
+      return Nothing
+    [path] -> do
+      b <- doesFileExist path
+      if b
+        then Just <$> getModificationTime path
+        else return Nothing
+    path : pathList' -> do
+      b <- doesFileExist path
+      if b
+        then do
+          t1 <- getModificationTime path
+          t2 <- getLastModifiedInf pathList'
+          if Just t1 < t2
+            then return $ Just t1
+            else return t2
+        else do
+          return Nothing
+
+unrollPath :: M.SomePath Abs -> App [Path Abs File]
+unrollPath path =
+  case path of
+    Left dirPath -> do
+      (_, filePathList) <- P.listDirRecur dirPath
+      return filePathList
+    Right filePath ->
+      return [filePath]

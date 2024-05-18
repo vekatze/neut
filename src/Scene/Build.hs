@@ -7,12 +7,15 @@ where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.External qualified as External
 import Context.LLVM qualified as LLVM
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Remark qualified as Remark
+import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
@@ -20,10 +23,12 @@ import Data.Time
 import Entity.Cache
 import Entity.LowComp qualified as LC
 import Entity.Module qualified as M
+import Entity.ModuleID qualified as MID
 import Entity.OutputKind
 import Entity.Source
 import Entity.Stmt (getStmtName)
 import Entity.Target
+import Path
 import Scene.Clarify qualified as Clarify
 import Scene.Elaborate qualified as Elaborate
 import Scene.Emit qualified as Emit
@@ -51,6 +56,8 @@ buildTarget :: Axis -> M.Module -> Target -> App ()
 buildTarget axis baseModule target = do
   Initialize.initializeForTarget
   (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target
+  let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
+  didPerformForeignCompilation <- compileForeign moduleList
   contentSeq <- load dependenceSeq
   virtualCodeList <- compile target (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
@@ -59,7 +66,7 @@ buildTarget axis baseModule target = do
     Abstract {} ->
       return ()
     Concrete ct -> do
-      Link.link ct (_shouldSkipLink axis) artifactTime (toList dependenceSeq)
+      Link.link ct (_shouldSkipLink axis) didPerformForeignCompilation artifactTime (toList dependenceSeq)
       execute (_shouldExecute axis) ct (_executeArgs axis)
       install (_installDir axis) ct
 
@@ -120,3 +127,78 @@ install :: Maybe FilePath -> ConcreteTarget -> App ()
 install filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
   mapM_ (Install.install target) mDir
+
+compileForeign :: [M.Module] -> App Bool
+compileForeign moduleList = do
+  currentTime <- liftIO getCurrentTime
+  bs <- forConcurrently moduleList (compileForeign' currentTime)
+  return $ or bs
+
+compileForeign' :: UTCTime -> M.Module -> App Bool
+compileForeign' currentTime m = do
+  sub <- getForeignSubst m
+  let cmdList = M.script $ M.moduleForeign m
+  let moduleRootDir = M.getModuleRootDir m
+  foreignDir <- Path.getForeignDir m
+  inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
+  let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
+  inputTime <- Path.getLastModifiedSup inputPathList
+  outputTime <- Path.getLastModifiedInf outputPathList
+  case (inputTime, outputTime) of
+    (Just t1, Just t2)
+      | t1 <= t2 -> do
+          return False
+    _ -> do
+      let cmdList' = map (naiveReplace sub) cmdList
+      forM_ cmdList' $ \c -> do
+        result <- External.runOrFail' moduleRootDir $ T.unpack c
+        case result of
+          Right _ -> do
+            return ()
+          Left err -> do
+            let External.ExternalError {cmd, exitCode, errStr} = err
+            Throw.raiseError' $
+              "foreign compilation of `"
+                <> MID.reify (M.moduleID m)
+                <> "` failed at `"
+                <> T.pack cmd
+                <> "` with the following error (exitcode = "
+                <> T.pack (show exitCode)
+                <> "):\n"
+                <> errStr
+      forM_ outputPathList $ \outputPath -> do
+        b <- Path.doesFileExist outputPath
+        if b
+          then Path.setModificationTime outputPath currentTime
+          else Throw.raiseError' $ "missing foreign output: " <> T.pack (toFilePath outputPath)
+      return $ not $ null cmdList
+
+naiveReplace :: [(T.Text, T.Text)] -> T.Text -> T.Text
+naiveReplace sub t =
+  case sub of
+    [] ->
+      t
+    (from, to) : rest -> do
+      T.replace from to (naiveReplace rest t)
+
+getForeignSubst :: M.Module -> App [(T.Text, T.Text)]
+getForeignSubst m = do
+  clang <- liftIO External.getClang
+  foreignDir <- Path.getForeignDir m
+  return
+    [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),
+      ("{{clang}}", T.pack clang),
+      ("{{foreign}}", T.pack $ toFilePath foreignDir)
+    ]
+
+getInputPathList :: Path Abs Dir -> M.SomePath Rel -> App [Path Abs File]
+getInputPathList moduleRootDir =
+  Path.unrollPath . attachPrefixPath moduleRootDir
+
+attachPrefixPath :: Path Abs Dir -> M.SomePath Rel -> M.SomePath Abs
+attachPrefixPath baseDirPath path =
+  case path of
+    Left dirPath ->
+      Left $ baseDirPath </> dirPath
+    Right filePath ->
+      Right $ baseDirPath </> filePath

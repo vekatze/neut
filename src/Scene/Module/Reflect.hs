@@ -11,6 +11,7 @@ import Context.App
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw
+import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
@@ -18,6 +19,7 @@ import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
 import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
+import Entity.Ens (dictFromListVertical')
 import Entity.Ens qualified as E
 import Entity.Error
 import Entity.GlobalLocator qualified as GL
@@ -57,9 +59,9 @@ getModule m moduleID locatorText = do
 
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
-  (_, (ens, _)) <- Ens.fromFilePath moduleFilePath
+  (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
   (_, targetEns) <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
-  target <- mapM interpretRelFilePath $ Map.fromList $ SE.extract targetEns
+  target <- mapM interpretSourceLocator $ Map.fromList $ SE.extract targetEns
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
   (_, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
@@ -72,8 +74,8 @@ fromFilePath moduleID moduleFilePath = do
   buildDir <- interpretDirPath buildDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns
-  (_, foreignDirListEns) <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
-  foreignDirList <- mapM interpretDirPath $ SE.extract foreignDirListEns
+  foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
+  foreignDict <- interpretForeignDict (parent moduleFilePath) foreignDictEns
   (mPrefix, prefixEns) <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary
   prefixMap <- liftEither $ interpretPrefixMap mPrefix prefixEns
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
@@ -90,7 +92,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,
         moduleLocation = moduleFilePath,
-        moduleForeignDirList = foreignDirList,
+        moduleForeign = foreignDict,
         modulePrefixMap = prefixMap,
         moduleInlineLimit = mInlineLimit,
         modulePresetMap = presetMap
@@ -139,12 +141,21 @@ interpretPresetMap _ ens = do
     return (k, v')
   return $ Map.fromList kvs
 
-interpretRelFilePath :: E.Ens -> App SL.SourceLocator
-interpretRelFilePath ens = do
+interpretSourceLocator :: E.Ens -> App SL.SourceLocator
+interpretSourceLocator ens = do
   (m, pathString) <- liftEither $ E.toString ens
   case parseRelFile $ T.unpack pathString of
     Just relPath ->
       return $ SL.SourceLocator relPath
+    Nothing ->
+      raiseError m $ "invalid file path: " <> pathString
+
+interpretRelFilePath :: E.Ens -> App (Path Rel File)
+interpretRelFilePath ens = do
+  (m, pathString) <- liftEither $ E.toString ens
+  case parseRelFile $ T.unpack pathString of
+    Just relPath ->
+      return relPath
     Nothing ->
       raiseError m $ "invalid file path: " <> pathString
 
@@ -189,6 +200,19 @@ interpretExtraPath moduleRootDir entity = do
       filePath <- parseRelFile $ T.unpack itemPathText
       ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
       return $ Right filePath
+
+interpretForeignDict ::
+  Path Abs Dir ->
+  E.Ens ->
+  App Foreign
+interpretForeignDict moduleRootDir ens = do
+  (_, input) <- liftEither $ E.access keyForeignInput ens >>= E.toList
+  (_, output) <- liftEither $ E.access keyForeignOutput ens >>= E.toList
+  (_, script) <- liftEither $ E.access keyForeignScript ens >>= E.toList
+  input' <- mapM (interpretExtraPath moduleRootDir) $ SE.extract input
+  output' <- mapM interpretRelFilePath $ SE.extract output
+  script' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString script
+  return $ Foreign {input = input', script = script', output = output'}
 
 interpretAntecedent :: E.Ens -> App ModuleDigest
 interpretAntecedent ens = do
@@ -241,3 +265,11 @@ rightToMaybe errOrVal =
       Nothing
     Right val ->
       Just val
+
+emptyForeign :: H.Hint -> E.EnsF E.Ens
+emptyForeign m =
+  dictFromListVertical'
+    [ (keyForeignInput, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
+      (keyForeignOutput, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma)),
+      (keyForeignScript, m :< E.List (SE.emptySeries (Just SE.Brace) SE.Comma))
+    ]

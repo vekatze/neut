@@ -44,6 +44,13 @@ data Dependency = Dependency
   }
   deriving (Show)
 
+data Foreign = Foreign
+  { input :: [SomePath Rel],
+    output :: [Path Rel File],
+    script :: [T.Text]
+  }
+  deriving (Show)
+
 type TargetName =
   T.Text
 
@@ -57,7 +64,7 @@ data Module = Module
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
-    moduleForeignDirList :: [Path Rel Dir],
+    moduleForeign :: Foreign,
     modulePrefixMap :: Map.HashMap BN.BaseName (MA.ModuleAlias, SL.SourceLocator),
     moduleInlineLimit :: Maybe Int,
     modulePresetMap :: PresetMap
@@ -108,6 +115,18 @@ keyForeign :: T.Text
 keyForeign =
   "foreign"
 
+keyForeignInput :: T.Text
+keyForeignInput =
+  "input"
+
+keyForeignOutput :: T.Text
+keyForeignOutput =
+  "output"
+
+keyForeignScript :: T.Text
+keyForeignScript =
+  "script"
+
 keyPrefix :: T.Text
 keyPrefix =
   "prefix"
@@ -139,15 +158,6 @@ getTargetPath baseModule target = do
 getArchiveDir :: Module -> Path Abs Dir
 getArchiveDir baseModule =
   getModuleRootDir baseModule </> moduleArchiveDir baseModule
-
-getForeignContents :: Module -> [Path Abs Dir]
-getForeignContents baseModule = do
-  let moduleRootDir = getModuleRootDir baseModule
-  map (moduleRootDir </>) $ moduleForeignDirList baseModule
-
-getForeignContents' :: Module -> [Path Rel Dir]
-getForeignContents' baseModule = do
-  moduleForeignDirList baseModule
 
 getExtraContents :: Module -> [SomePath Rel]
 getExtraContents baseModule = do
@@ -185,11 +195,11 @@ toDefaultEns someModule =
         getArchiveDirInfo someModule,
         getExtraContentInfo someModule,
         getForeignInfo someModule,
-        getAntecedentInfo someModule,
-        getDependencyInfo someModule,
-        getPrefixMapInfo someModule,
         getInlineLimitInfo someModule,
-        getPresetMapInfo someModule
+        getPrefixMapInfo someModule,
+        getPresetMapInfo someModule,
+        getAntecedentInfo someModule,
+        getDependencyInfo someModule
       ]
 
 getArchiveDirInfo :: Module -> Maybe (T.Text, E.Ens)
@@ -248,10 +258,22 @@ getAntecedentInfo someModule = do
 
 getForeignInfo :: Module -> Maybe (T.Text, E.Ens)
 getForeignInfo someModule = do
-  let foreignList = map (\x -> _m :< E.String (ppDirPath x)) $ moduleForeignDirList someModule
-  if null foreignList
+  let foreignInfo = moduleForeign someModule
+  let assetList = map (\x -> _m :< E.String (ppExtraContent x)) $ input foreignInfo
+  let outputList = map (\x -> _m :< E.String (T.pack $ toFilePath x)) $ output foreignInfo
+  let cmdList = map (\x -> _m :< E.String x) $ script foreignInfo
+  if null (input foreignInfo) && null (script foreignInfo)
     then Nothing
-    else return (keyForeign, _m :< E.List (seriesFromList foreignList))
+    else
+      return
+        ( keyForeign,
+          _m
+            :< E.dictFromListVertical'
+              [ (keyForeignInput, _m :< E.List (seriesFromList assetList)),
+                (keyForeignOutput, _m :< E.List (seriesFromList outputList)),
+                (keyForeignScript, _m :< E.List (seriesFromList cmdList))
+              ]
+        )
 
 getPrefixMapInfo :: Module -> Maybe (T.Text, E.Ens)
 getPrefixMapInfo someModule = do

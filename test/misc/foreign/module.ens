@@ -1,16 +1,24 @@
 {
   dependency {
     core {
-      digest "LpSn6ST-EcDicu4U4atrHU28QCFdMRJRku4fAtCWVBg",
+      digest "URHaRyVrHOwvulrflTHLa8WNoRwPMl54Hnrk-CG4qFk",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-48-1.tar.zst",
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-48-2.tar.zst",
       ],
       enable-preset true,
     },
   },
-  foreign [
-    "foreign/",
-  ],
+  foreign {
+    input [
+      "foreign/add_const.c",
+    ],
+    output [
+      "add_const.o",
+    ],
+    script [
+      "{{clang}} -c -flto=thin -O2 foreign/add_const.c -o {{foreign}}/add_const.o",
+    ],
+  },
   target {
     foreign "foreign.nt",
   },
