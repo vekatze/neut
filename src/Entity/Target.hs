@@ -14,7 +14,8 @@ data Target
 
 data TargetSummary = TargetSummary
   { entryPoint :: SL.SourceLocator,
-    clangBuildOption :: [T.Text]
+    clangBuildOption :: [T.Text],
+    clangLinkOption :: [T.Text]
   }
   deriving (Show, Eq, Generic)
 
@@ -24,7 +25,7 @@ data AbstractTarget
 
 data ConcreteTarget
   = Named T.Text TargetSummary
-  | Zen (Path Abs File)
+  | Zen (Path Abs File) T.Text T.Text
   deriving (Show, Eq, Generic)
 
 instance Hashable Target
@@ -34,6 +35,10 @@ instance Hashable AbstractTarget
 instance Hashable TargetSummary
 
 instance Hashable ConcreteTarget
+
+emptyZen :: Path Abs File -> ConcreteTarget
+emptyZen path =
+  Zen path "" ""
 
 getEntryPointName :: ConcreteTarget -> BN.BaseName
 getEntryPointName target =
@@ -52,5 +57,17 @@ getClangBuildOption target =
       case c of
         Named _ targetSummary ->
           map T.unpack $ clangBuildOption targetSummary
-        Zen _ ->
-          []
+        Zen _ buildOption _ ->
+          [T.unpack buildOption]
+
+getClangLinkOption :: Target -> [String]
+getClangLinkOption target =
+  case target of
+    Abstract {} ->
+      []
+    Concrete c ->
+      case c of
+        Named _ targetSummary ->
+          map T.unpack $ clangLinkOption targetSummary
+        Zen _ _ linkOption ->
+          [T.unpack linkOption]

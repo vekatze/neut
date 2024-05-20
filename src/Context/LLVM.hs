@@ -2,13 +2,10 @@ module Context.LLVM
   ( emit,
     link,
     ensureSetupSanity,
-    getClangOptString,
-    setClangOptString,
   )
 where
 
 import Context.App
-import Context.App.Internal
 import Context.External qualified as External
 import Context.Module (getMainModule)
 import Context.Path qualified as Path
@@ -106,12 +103,11 @@ clangBaseOpt outputPath =
     toFilePath outputPath
   ]
 
-link :: [Path Abs File] -> Path Abs File -> App ()
-link objectPathList outputPath = do
+link :: [String] -> [Path Abs File] -> Path Abs File -> App ()
+link clangOptions objectPathList outputPath = do
   clang <- liftIO External.getClang
-  clangOptString <- getClangOptString
   ensureDir $ parent outputPath
-  External.run clang $ clangLinkOpt objectPathList outputPath clangOptString
+  External.run clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
 
 clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
 clangLinkOpt objectPathList outputPath additionalOptionStr = do
@@ -140,11 +136,3 @@ raiseIfProcessFailed procName exitCode h =
           <> T.pack (show i)
           <> "):\n"
           <> errStr
-
-getClangOptString :: App String
-getClangOptString =
-  readRef' clangOptString
-
-setClangOptString :: String -> App ()
-setClangOptString =
-  writeRef' clangOptString

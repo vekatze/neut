@@ -50,7 +50,6 @@ cmd name parser desc =
 parseBuildOpt :: Parser Command
 parseBuildOpt = do
   targetName <- argument str $ mconcat [metavar "TARGET", help "The build target"]
-  mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
   installDir <- optional $ strOption $ mconcat [long "install", metavar "DIRECTORY", help "Install the resulting binary to this directory"]
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   remarkCfg <- remarkConfigOpt
@@ -62,7 +61,6 @@ parseBuildOpt = do
     Build $
       Build.Config
         { Build.targetName = targetName,
-          Build.mClangOptString = mClangOpt,
           Build.remarkCfg = remarkCfg,
           Build.outputKindList = outputKindList,
           Build.shouldSkipLink = shouldSkipLink,

@@ -24,7 +24,7 @@ check = do
 
 checkSource :: Source -> App [Remark]
 checkSource source = do
-  _check $ Concrete $ Zen (sourceFilePath source)
+  _check $ Concrete $ emptyZen (sourceFilePath source)
 
 _check :: Target -> App [Remark]
 _check target = do

@@ -44,7 +44,11 @@ constructDefaultModule name = do
         moduleTarget =
           Map.fromList
             [ ( name,
-                TargetSummary {entryPoint = SL.SourceLocator mainFile, clangBuildOption = []}
+                TargetSummary
+                  { entryPoint = SL.SourceLocator mainFile,
+                    clangBuildOption = [],
+                    clangLinkOption = []
+                  }
               )
             ],
         moduleDependency = Map.empty,

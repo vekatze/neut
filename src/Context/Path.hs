@@ -65,7 +65,6 @@ import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
 import Entity.Platform as TP
 import Entity.Source qualified as Src
-import Entity.Target (getClangBuildOption)
 import Entity.Target qualified as Target
 import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
@@ -172,7 +171,7 @@ getExecutableOutputPath targetOrZen mainModule = do
     Target.Named target _ -> do
       executableDir <- getExecutableDir (Target.Concrete targetOrZen) mainModule
       resolveFile executableDir $ T.unpack target
-    Target.Zen path -> do
+    Target.Zen path _ _ -> do
       zenExecutableDir <- getZenExecutableDir (Target.Concrete targetOrZen) mainModule
       relPath <- getRelPathFromSourceDir mainModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
@@ -212,7 +211,8 @@ getBuildSignature target baseModule = do
             E.dictFromList
               _m
               [ ("build-mode", _m :< E.String (BM.reify buildMode)),
-                ("clang-build-option", _m :< E.String (T.pack $ unwords $ getClangBuildOption target)),
+                ("clang-build-option", _m :< E.String (T.pack $ unwords $ Target.getClangBuildOption target)),
+                ("clang-link-option", _m :< E.String (T.pack $ unwords $ Target.getClangLinkOption target)),
                 ("compatible-shift", E.dictFromList _m depList')
               ]
       let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
@@ -285,7 +285,7 @@ getOutputPathForEntryPoint baseModule kind targetOrZen = do
       relPath <- parseRelFile $ T.unpack target
       outputPath <- Src.attachExtension (entryDir </> relPath) kind
       return (kind, outputPath)
-    Target.Zen path -> do
+    Target.Zen path _ _ -> do
       zenEntryDir <- getZenEntryDir (Target.Concrete targetOrZen) baseModule
       relPath <- getRelPathFromSourceDir baseModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath

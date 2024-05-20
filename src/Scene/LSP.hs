@@ -29,7 +29,7 @@ import System.IO (stdin, stdout)
 
 lsp :: Remark.Config -> App Int
 lsp cfg = do
-  Initialize.initializeCompiler cfg Nothing
+  Initialize.initializeCompiler cfg
   liftIO $
     runQuietServer $
       ServerDefinition
@@ -139,5 +139,5 @@ handlers =
 runLSPApp :: Remark.Config -> App a -> IO a
 runLSPApp cfg app = do
   runApp $ do
-    Initialize.initializeCompiler cfg Nothing
+    Initialize.initializeCompiler cfg
     app

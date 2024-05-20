@@ -7,7 +7,6 @@ import Entity.OutputKind qualified as OK
 
 data Config = Config
   { targetName :: T.Text,
-    mClangOptString :: Maybe String,
     remarkCfg :: Remark.Config,
     outputKindList :: [OK.OutputKind],
     shouldSkipLink :: Bool,

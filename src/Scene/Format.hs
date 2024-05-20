@@ -34,7 +34,7 @@ _formatSource :: Path Abs File -> T.Text -> App T.Text
 _formatSource path content = do
   Initialize.initializeForTarget
   mainModule <- getMainModule
-  (_, dependenceSeq) <- Unravel.unravel mainModule $ Concrete $ Zen path
+  (_, dependenceSeq) <- Unravel.unravel mainModule $ Concrete (emptyZen path)
   contentSeq <- forConcurrently dependenceSeq $ \source -> do
     cacheOrContent <- Load.load (Abstract Foundation) source
     return (source, cacheOrContent)

@@ -95,6 +95,10 @@ keyClangBuildOption :: T.Text
 keyClangBuildOption =
   "clang-build-option"
 
+keyClangLinkOption :: T.Text
+keyClangLinkOption =
+  "clang-link-option"
+
 keyDependency :: T.Text
 keyDependency =
   "dependency"

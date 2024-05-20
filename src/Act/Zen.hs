@@ -21,7 +21,7 @@ zen cfg = do
   setup cfg
   path <- resolveFile' (filePathString cfg)
   mainModule <- getMainModule
-  buildTarget (fromConfig cfg) mainModule $ Concrete (Zen path)
+  buildTarget (fromConfig cfg) mainModule $ Concrete (Zen path undefined undefined)
 
 fromConfig :: Config -> Axis
 fromConfig cfg =
@@ -36,6 +36,6 @@ fromConfig cfg =
 setup :: Config -> App ()
 setup cfg = do
   Path.ensureNotInLibDir
-  Initialize.initializeCompiler (remarkCfg cfg) (mClangOptString cfg)
+  Initialize.initializeCompiler (remarkCfg cfg)
   Env.setBuildMode $ buildMode cfg
   Module.getMainModule >>= Fetch.fetch

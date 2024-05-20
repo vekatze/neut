@@ -9,7 +9,7 @@ import Scene.Initialize qualified as Initialize
 
 check :: Config -> App ()
 check cfg = do
-  Initialize.initializeCompiler (remarkCfg cfg) Nothing
+  Initialize.initializeCompiler (remarkCfg cfg)
   logs <- Check.check
   if shouldInsertPadding cfg
     then Remark.printErrorList logs

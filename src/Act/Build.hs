@@ -26,7 +26,7 @@ setup :: Config -> App ()
 setup cfg = do
   LLVM.ensureSetupSanity cfg
   Path.ensureNotInLibDir
-  Initialize.initializeCompiler (remarkCfg cfg) (mClangOptString cfg)
+  Initialize.initializeCompiler (remarkCfg cfg)
   Env.setBuildMode $ buildMode cfg
   Module.getMainModule >>= Fetch.fetch
 

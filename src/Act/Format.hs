@@ -11,7 +11,7 @@ import Scene.Write qualified as Write
 
 format :: Config -> App ()
 format cfg = do
-  Initialize.initializeCompiler (remarkCfg cfg) Nothing
+  Initialize.initializeCompiler (remarkCfg cfg)
   Initialize.initializeForTarget
   path <- resolveFile' $ filePathString cfg
   content <- readTextFile path

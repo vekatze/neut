@@ -10,6 +10,6 @@ create :: Config -> App ()
 create cfg = do
   newModule <- New.constructDefaultModule (moduleName cfg)
   Initialize.initializeLogger (remarkCfg cfg)
-  Initialize.initializeCompilerWithModule newModule Nothing
+  Initialize.initializeCompilerWithModule newModule
   New.createNewProject (moduleName cfg) newModule
   Fetch.insertCoreDependency

@@ -58,7 +58,7 @@ unravel baseModule t = do
           unravelFoundational t baseModule
     Concrete t' -> do
       case t' of
-        Zen path ->
+        Zen path _ _ ->
           unravelFromFile t baseModule path
         Named targetName _ -> do
           case getTargetPath baseModule targetName of

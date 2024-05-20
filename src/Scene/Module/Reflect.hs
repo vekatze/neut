@@ -148,7 +148,9 @@ interpretTarget (_, targetDict) = do
     entryPoint <- liftEither (E.access keyEntryPoint v) >>= interpretSourceLocator
     (_, buildOptEnsSeries) <- liftEither $ E.access' keyClangBuildOption E.emptyList v >>= E.toList
     clangBuildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
-    return (k, TargetSummary {entryPoint, clangBuildOption})
+    (_, linkOptEnsSeries) <- liftEither $ E.access' keyClangLinkOption E.emptyList v >>= E.toList
+    clangLinkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
+    return (k, TargetSummary {entryPoint, clangBuildOption, clangLinkOption})
   return $ Map.fromList kvs
 
 interpretSourceLocator :: E.Ens -> App SL.SourceLocator
