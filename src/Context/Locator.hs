@@ -174,8 +174,8 @@ getMainDefiniteDescriptionByTarget targetOrZen = do
       case Map.lookup target (Module.moduleTarget mainModule) of
         Nothing ->
           Throw.raiseError' $ "no such target is defined: " <> target
-        Just sourceLocator -> do
-          relPathToDD (SL.reify sourceLocator) BN.mainName
+        Just targetSummary -> do
+          relPathToDD (SL.reify $ Module.entryPoint targetSummary) BN.mainName
     Target.Zen path -> do
       relPath <- Module.getRelPathFromSourceDir mainModule path
       relPathToDD relPath BN.zenName

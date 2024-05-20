@@ -43,7 +43,7 @@ constructDefaultModule name = do
         moduleTarget =
           Map.fromList
             [ ( name,
-                SL.SourceLocator mainFile
+                TargetSummary {entryPoint = SL.SourceLocator mainFile}
               )
             ],
         moduleDependency = Map.empty,

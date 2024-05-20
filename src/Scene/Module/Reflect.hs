@@ -60,8 +60,8 @@ getModule m moduleID locatorText = do
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
-  (_, targetEns) <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
-  target <- mapM interpretSourceLocator $ Map.fromList $ SE.extract targetEns
+  targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
+  target <- interpretTarget targetEns
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
   (_, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
@@ -139,6 +139,13 @@ interpretPresetMap _ ens = do
     (_, presetSeries) <- E.toList v
     v' <- mapM (E.toString >=> uncurry BN.reflect) $ SE.extract presetSeries
     return (k, v')
+  return $ Map.fromList kvs
+
+interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap TargetName TargetSummary)
+interpretTarget (_, targetDict) = do
+  kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
+    entryPoint <- liftEither (E.access keyEntryPoint v) >>= interpretSourceLocator
+    return (k, TargetSummary {entryPoint})
   return $ Map.fromList kvs
 
 interpretSourceLocator :: E.Ens -> App SL.SourceLocator
