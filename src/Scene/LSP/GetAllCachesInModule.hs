@@ -11,6 +11,7 @@ import Data.Maybe (catMaybes)
 import Entity.Cache
 import Entity.Module
 import Entity.Source
+import Entity.Target
 import Path
 import Path.IO
 import UnliftIO.Async
@@ -23,7 +24,7 @@ getAllCachesInModule baseModule = do
 getCache :: Module -> Path Abs File -> App (Maybe (Source, Cache))
 getCache baseModule filePath = do
   let source = Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <- getSourceCachePath source >>= Cache.loadCacheOptimistically
+  cacheOrNone <- getSourceCachePath (Abstract Foundation) source >>= Cache.loadCacheOptimistically
   case cacheOrNone of
     Nothing ->
       return Nothing
@@ -38,7 +39,9 @@ getAllCompletionCachesInModule baseModule = do
 getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache baseModule filePath = do
   let source = Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <- getSourceCompletionCachePath source >>= Cache.loadCompletionCacheOptimistically
+  cacheOrNone <-
+    getSourceCompletionCachePath (Abstract Foundation) source
+      >>= Cache.loadCompletionCacheOptimistically
   case cacheOrNone of
     Nothing ->
       return Nothing

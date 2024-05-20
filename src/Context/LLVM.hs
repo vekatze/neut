@@ -42,11 +42,11 @@ ensureSetupSanity cfg = do
   when (not willBuildObjects && willLink) $
     Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
 
-emit :: [ClangOption] -> UTCTime -> Either ConcreteTarget Source -> [OK.OutputKind] -> L.ByteString -> App ()
-emit clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
+emit :: Target -> [ClangOption] -> UTCTime -> Either ConcreteTarget Source -> [OK.OutputKind] -> L.ByteString -> App ()
+emit target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
   case sourceOrNone of
     Right source -> do
-      kindPathList <- zipWithM Path.attachOutputPath outputKindList (repeat source)
+      kindPathList <- zipWithM (Path.attachOutputPath target) outputKindList (repeat source)
       forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
       emitAll clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do

@@ -57,11 +57,11 @@ buildTarget axis baseModule target = do
   Initialize.initializeForTarget
   (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
-  didPerformForeignCompilation <- compileForeign moduleList
-  contentSeq <- load dependenceSeq
+  didPerformForeignCompilation <- compileForeign target moduleList
+  contentSeq <- load target dependenceSeq
   virtualCodeList <- compile target (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
-  emitAndWrite (getClangBuildOption target) (_outputKindList axis) virtualCodeList
+  emitAndWrite target (getClangBuildOption target) (_outputKindList axis) virtualCodeList
   case target of
     Abstract {} ->
       return ()
@@ -80,17 +80,17 @@ abstractAxis =
       _executeArgs = []
     }
 
-load :: [Source] -> App [(Source, Either Cache T.Text)]
-load dependenceSeq =
+load :: Target -> [Source] -> App [(Source, Either Cache T.Text)]
+load target dependenceSeq =
   forConcurrently dependenceSeq $ \source -> do
-    cacheOrContent <- Load.load source
+    cacheOrContent <- Load.load target source
     return (source, cacheOrContent)
 
 compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Either ConcreteTarget Source, LC.LowCode)]
 compile target outputKindList contentSeq = do
   virtualCodeList <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
-    stmtList <- Parse.parse source cacheOrContent >>= Elaborate.elaborate
+    stmtList <- Parse.parse source cacheOrContent >>= Elaborate.elaborate target
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary outputKindList source $ do
       virtualCode <- Clarify.clarify stmtList >>= Lower.lower
@@ -112,12 +112,12 @@ compileEntryPoint mainModule target outputKindList = do
           mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint t
           return [(Left t, mainVirtualCode)]
 
-emitAndWrite :: [String] -> [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
-emitAndWrite clangOptions outputKindList virtualCodeList = do
+emitAndWrite :: Target -> [String] -> [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
+emitAndWrite target clangOptions outputKindList virtualCodeList = do
   currentTime <- liftIO getCurrentTime
   forConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
-    LLVM.emit clangOptions currentTime sourceOrNone outputKindList llvmIR'
+    LLVM.emit target clangOptions currentTime sourceOrNone outputKindList llvmIR'
 
 execute :: Bool -> ConcreteTarget -> [String] -> App ()
 execute shouldExecute target args = do
@@ -128,18 +128,18 @@ install filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
   mapM_ (Install.install target) mDir
 
-compileForeign :: [M.Module] -> App Bool
-compileForeign moduleList = do
+compileForeign :: Target -> [M.Module] -> App Bool
+compileForeign t moduleList = do
   currentTime <- liftIO getCurrentTime
-  bs <- forConcurrently moduleList (compileForeign' currentTime)
+  bs <- forConcurrently moduleList (compileForeign' t currentTime)
   return $ or bs
 
-compileForeign' :: UTCTime -> M.Module -> App Bool
-compileForeign' currentTime m = do
-  sub <- getForeignSubst m
+compileForeign' :: Target -> UTCTime -> M.Module -> App Bool
+compileForeign' t currentTime m = do
+  sub <- getForeignSubst t m
   let cmdList = M.script $ M.moduleForeign m
   let moduleRootDir = M.getModuleRootDir m
-  foreignDir <- Path.getForeignDir m
+  foreignDir <- Path.getForeignDir t m
   inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   inputTime <- Path.getLastModifiedSup inputPathList
@@ -181,10 +181,10 @@ naiveReplace sub t =
     (from, to) : rest -> do
       T.replace from to (naiveReplace rest t)
 
-getForeignSubst :: M.Module -> App [(T.Text, T.Text)]
-getForeignSubst m = do
+getForeignSubst :: Target -> M.Module -> App [(T.Text, T.Text)]
+getForeignSubst t m = do
   clang <- liftIO External.getClang
-  foreignDir <- Path.getForeignDir m
+  foreignDir <- Path.getForeignDir t m
   return
     [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),
       ("{{clang}}", T.pack clang),
