@@ -61,7 +61,7 @@ buildTarget axis baseModule target = do
   contentSeq <- load dependenceSeq
   virtualCodeList <- compile target (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
-  emitAndWrite (_outputKindList axis) virtualCodeList
+  emitAndWrite (getClangBuildOption target) (_outputKindList axis) virtualCodeList
   case target of
     Abstract {} ->
       return ()
@@ -112,12 +112,12 @@ compileEntryPoint mainModule target outputKindList = do
           mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint t
           return [(Left t, mainVirtualCode)]
 
-emitAndWrite :: [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
-emitAndWrite outputKindList virtualCodeList = do
+emitAndWrite :: [String] -> [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
+emitAndWrite clangOptions outputKindList virtualCodeList = do
   currentTime <- liftIO getCurrentTime
   forConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
-    LLVM.emit currentTime sourceOrNone outputKindList llvmIR'
+    LLVM.emit clangOptions currentTime sourceOrNone outputKindList llvmIR'
 
 execute :: Bool -> ConcreteTarget -> [String] -> App ()
 execute shouldExecute target args = do

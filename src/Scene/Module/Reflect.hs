@@ -31,6 +31,7 @@ import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
 import Entity.Syntax.Series qualified as SE
+import Entity.Target
 import Path
 import Path.IO
 import Scene.Ens.Reflect qualified as Ens
@@ -145,7 +146,9 @@ interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap Targe
 interpretTarget (_, targetDict) = do
   kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
     entryPoint <- liftEither (E.access keyEntryPoint v) >>= interpretSourceLocator
-    return (k, TargetSummary {entryPoint})
+    (_, buildOptEnsSeries) <- liftEither $ E.access' keyClangBuildOption E.emptyList v >>= E.toList
+    clangBuildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
+    return (k, TargetSummary {entryPoint, clangBuildOption})
   return $ Map.fromList kvs
 
 interpretSourceLocator :: E.Ens -> App SL.SourceLocator

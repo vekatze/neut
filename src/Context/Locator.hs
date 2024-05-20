@@ -170,12 +170,12 @@ getMainDefiniteDescriptionByTarget :: Target.ConcreteTarget -> App DD.DefiniteDe
 getMainDefiniteDescriptionByTarget targetOrZen = do
   mainModule <- getMainModule
   case targetOrZen of
-    Target.Named target -> do
+    Target.Named target _ -> do
       case Map.lookup target (Module.moduleTarget mainModule) of
         Nothing ->
           Throw.raiseError' $ "no such target is defined: " <> target
         Just targetSummary -> do
-          relPathToDD (SL.reify $ Module.entryPoint targetSummary) BN.mainName
+          relPathToDD (SL.reify $ Target.entryPoint targetSummary) BN.mainName
     Target.Zen path -> do
       relPath <- Module.getRelPathFromSourceDir mainModule path
       relPathToDD relPath BN.zenName

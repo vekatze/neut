@@ -51,18 +51,13 @@ data Foreign = Foreign
   }
   deriving (Show)
 
-newtype TargetSummary = TargetSummary
-  { entryPoint :: SL.SourceLocator
-  }
-  deriving (Show)
-
 type TargetName =
   T.Text
 
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
-    moduleTarget :: Map.HashMap TargetName TargetSummary,
+    moduleTarget :: Map.HashMap TargetName Target.TargetSummary,
     moduleArchiveDir :: Path Rel Dir,
     moduleBuildDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
@@ -95,6 +90,10 @@ keyTarget =
 keyEntryPoint :: T.Text
 keyEntryPoint =
   "entry-point"
+
+keyClangBuildOption :: T.Text
+keyClangBuildOption =
+  "clang-build-option"
 
 keyDependency :: T.Text
 keyDependency =
@@ -156,13 +155,13 @@ getTargetPathList :: Module -> [Path Abs File]
 getTargetPathList baseModule = do
   let moduleSourceDir = getSourceDir baseModule
   let sourceLocatorList = Map.elems $ moduleTarget baseModule
-  map ((moduleSourceDir </>) . SL.reify . entryPoint) sourceLocatorList
+  map ((moduleSourceDir </>) . SL.reify . Target.entryPoint) sourceLocatorList
 
 getTargetPath :: Module -> T.Text -> Maybe (Path Abs File)
 getTargetPath baseModule target = do
   let moduleSourceDir = getSourceDir baseModule
   sourceLocator <- Map.lookup target (moduleTarget baseModule)
-  return $ moduleSourceDir </> SL.reify (entryPoint sourceLocator)
+  return $ moduleSourceDir </> SL.reify (Target.entryPoint sourceLocator)
 
 getArchiveDir :: Module -> Path Abs Dir
 getArchiveDir baseModule =
@@ -237,7 +236,7 @@ getTargetInfo someModule = do
   let targetDict = flip Map.map (moduleTarget someModule) $ \summary -> do
         E.dictFromListVertical
           _m
-          [(keyEntryPoint, _m :< E.String (SL.getRelPathText (entryPoint summary)))]
+          [(keyEntryPoint, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))
 
 getDependencyInfo :: Module -> Maybe (T.Text, E.Ens)
@@ -336,13 +335,10 @@ getDigestFromModulePath moduleFilePath =
             dirname $
               parent moduleFilePath
 
-getTargetList :: Module -> Maybe Target.ConcreteTarget -> [Target.ConcreteTarget]
-getTargetList someModule mTarget =
-  case mTarget of
-    Just target ->
-      [target]
-    Nothing -> do
-      map Target.Named $ Map.keys $ moduleTarget someModule
+getTarget :: Module -> T.Text -> Maybe Target.ConcreteTarget
+getTarget someModule targetName = do
+  target <- Map.lookup targetName (moduleTarget someModule)
+  return $ Target.Named targetName target
 
 stylize :: E.Ens -> Either Error E.Ens
 stylize ens = do

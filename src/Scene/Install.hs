@@ -14,8 +14,8 @@ install :: Target.ConcreteTarget -> Path Abs Dir -> App ()
 install targetOrZen dir = do
   execPath <- Module.getMainModule >>= Path.getExecutableOutputPath targetOrZen
   case targetOrZen of
-    Target.Named target -> do
-      execName <- parseRelFile $ T.unpack target
+    Target.Named targetName _ -> do
+      execName <- parseRelFile $ T.unpack targetName
       let destPath = dir </> execName
       copyFile execPath destPath
     Target.Zen {} ->

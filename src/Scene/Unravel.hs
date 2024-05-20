@@ -60,10 +60,10 @@ unravel baseModule t = do
       case t' of
         Zen path ->
           unravelFromFile baseModule path
-        Named target -> do
-          case getTargetPath baseModule target of
+        Named targetName _ -> do
+          case getTargetPath baseModule targetName of
             Nothing ->
-              Throw.raiseError' $ "no such target is defined: `" <> target <> "`"
+              Throw.raiseError' $ "no such target is defined: `" <> targetName <> "`"
             Just path -> do
               unravelFromFile baseModule path
 

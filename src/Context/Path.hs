@@ -168,7 +168,7 @@ getPlatformPrefix = do
 getExecutableOutputPath :: Target.ConcreteTarget -> Module -> App (Path Abs File)
 getExecutableOutputPath targetOrZen mainModule = do
   case targetOrZen of
-    Target.Named target -> do
+    Target.Named target _ -> do
       executableDir <- getExecutableDir mainModule
       resolveFile executableDir $ T.unpack target
     Target.Zen path -> do
@@ -280,7 +280,7 @@ attachOutputPath outputKind source = do
 getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.ConcreteTarget -> App (OK.OutputKind, Path Abs File)
 getOutputPathForEntryPoint baseModule kind targetOrZen = do
   case targetOrZen of
-    Target.Named target -> do
+    Target.Named target _ -> do
       entryDir <- getEntryDir baseModule
       relPath <- parseRelFile $ T.unpack target
       outputPath <- Src.attachExtension (entryDir </> relPath) kind

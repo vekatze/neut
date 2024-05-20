@@ -42,45 +42,44 @@ ensureSetupSanity cfg = do
   when (not willBuildObjects && willLink) $
     Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
 
-emit :: UTCTime -> Either ConcreteTarget Source -> [OK.OutputKind] -> L.ByteString -> App ()
-emit timeStamp sourceOrNone outputKindList llvmCode = do
+emit :: [ClangOption] -> UTCTime -> Either ConcreteTarget Source -> [OK.OutputKind] -> L.ByteString -> App ()
+emit clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
   case sourceOrNone of
     Right source -> do
       kindPathList <- zipWithM Path.attachOutputPath outputKindList (repeat source)
       forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
-      emitAll llvmCode kindPathList
+      emitAll clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
         Path.setModificationTime path timeStamp
     Left t -> do
       mainModule <- getMainModule
       kindPathList <- zipWithM (Path.getOutputPathForEntryPoint mainModule) outputKindList (repeat t)
       forM_ kindPathList $ \(_, path) -> Path.ensureDir $ parent path
-      emitAll llvmCode kindPathList
+      emitAll clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
         Path.setModificationTime path timeStamp
 
-emitAll :: LLVMCode -> [(OK.OutputKind, Path Abs File)] -> App ()
-emitAll llvmCode kindPathList = do
+emitAll :: [ClangOption] -> LLVMCode -> [(OK.OutputKind, Path Abs File)] -> App ()
+emitAll clangOptions llvmCode kindPathList = do
   case kindPathList of
     [] ->
       return ()
     (kind, path) : rest -> do
-      emit' llvmCode kind path
-      emitAll llvmCode rest
+      emit' clangOptions llvmCode kind path
+      emitAll clangOptions llvmCode rest
 
-emit' :: LLVMCode -> OK.OutputKind -> Path Abs File -> App ()
-emit' llvmCode kind path = do
-  clangOptString <- getClangOptString
+emit' :: [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -> App ()
+emit' clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
       Path.writeByteString path llvmCode
     OK.Object ->
-      emitInner (words clangOptString) llvmCode path
+      emitInner clangOptString llvmCode path
 
 emitInner :: [ClangOption] -> L.ByteString -> Path Abs File -> App ()
 emitInner additionalClangOptions llvm outputPath = do
   clang <- liftIO External.getClang
-  let clangCmd = proc clang $ clangBaseOpt outputPath ++ additionalClangOptions
+  let clangCmd = proc "sh" ["-c", unwords (clang : clangBaseOpt outputPath ++ additionalClangOptions)]
   withRunInIO $ \runInIO ->
     withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $
       \mStdin _ mClangErrorHandler clangProcessHandler -> do

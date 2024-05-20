@@ -19,7 +19,6 @@ import Entity.Config.Zen qualified as Zen
 import Entity.FileType qualified as FT
 import Entity.ModuleURL
 import Entity.OutputKind qualified as OK
-import Entity.Target
 import Options.Applicative
 
 parseCommand :: App Command
@@ -50,7 +49,7 @@ cmd name parser desc =
 
 parseBuildOpt :: Parser Command
 parseBuildOpt = do
-  mTarget <- optional $ argument str $ mconcat [metavar "TARGET", help "The build target"]
+  targetName <- argument str $ mconcat [metavar "TARGET", help "The build target"]
   mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
   installDir <- optional $ strOption $ mconcat [long "install", metavar "DIRECTORY", help "Install the resulting binary to this directory"]
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
@@ -62,7 +61,7 @@ parseBuildOpt = do
   pure $
     Build $
       Build.Config
-        { Build.mTarget = Named <$> mTarget,
+        { Build.targetName = targetName,
           Build.mClangOptString = mClangOpt,
           Build.remarkCfg = remarkCfg,
           Build.outputKindList = outputKindList,

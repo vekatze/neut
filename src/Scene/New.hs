@@ -16,6 +16,7 @@ import Entity.Const
 import Entity.Module
 import Entity.ModuleID qualified as MID
 import Entity.SourceLocator qualified as SL
+import Entity.Target
 import Path (parent, (</>))
 
 createNewProject :: T.Text -> Module -> App ()
@@ -43,7 +44,7 @@ constructDefaultModule name = do
         moduleTarget =
           Map.fromList
             [ ( name,
-                TargetSummary {entryPoint = SL.SourceLocator mainFile}
+                TargetSummary {entryPoint = SL.SourceLocator mainFile, clangBuildOption = []}
               )
             ],
         moduleDependency = Map.empty,

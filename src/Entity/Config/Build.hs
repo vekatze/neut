@@ -1,12 +1,12 @@
 module Entity.Config.Build (Config (..)) where
 
+import Data.Text qualified as T
 import Entity.BuildMode
 import Entity.Config.Remark qualified as Remark
 import Entity.OutputKind qualified as OK
-import Entity.Target
 
 data Config = Config
-  { mTarget :: Maybe ConcreteTarget,
+  { targetName :: T.Text,
     mClangOptString :: Maybe String,
     remarkCfg :: Remark.Config,
     outputKindList :: [OK.OutputKind],
