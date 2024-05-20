@@ -13,10 +13,8 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
-import Data.Text.Encoding
 import Data.Time.Clock
 import Entity.Config.Build
 import Entity.OutputKind qualified as OK
@@ -25,7 +23,6 @@ import Entity.Target
 import GHC.IO.Handle
 import Path
 import Path.IO
-import System.Exit
 import System.Process
 
 type ClangOption = String
@@ -76,7 +73,7 @@ emit' clangOptString llvmCode kind path = do
 emitInner :: [ClangOption] -> L.ByteString -> Path Abs File -> App ()
 emitInner additionalClangOptions llvm outputPath = do
   clang <- liftIO External.getClang
-  let clangCmd = proc "sh" ["-c", unwords (clang : clangBaseOpt outputPath ++ additionalClangOptions)]
+  let clangCmd = proc clang (clangBaseOpt outputPath ++ additionalClangOptions)
   withRunInIO $ \runInIO ->
     withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $
       \mStdin _ mClangErrorHandler clangProcessHandler -> do
@@ -85,7 +82,7 @@ emitInner additionalClangOptions llvm outputPath = do
             L.hPut stdin llvm
             hClose stdin
             clangExitCode <- waitForProcess clangProcessHandler
-            runInIO $ raiseIfProcessFailed (T.pack clang) clangExitCode clangErrorHandler
+            runInIO $ External.raiseIfProcessFailed (T.pack clang) clangExitCode clangErrorHandler
           (Nothing, _) ->
             runInIO $ Throw.raiseError' "couldn't obtain stdin"
           (_, Nothing) ->
@@ -121,18 +118,3 @@ clangLinkOpt objectPathList outputPath additionalOptionStr = do
     ]
     ++ pathList
     ++ words additionalOptionStr
-
-raiseIfProcessFailed :: T.Text -> ExitCode -> Handle -> App ()
-raiseIfProcessFailed procName exitCode h =
-  case exitCode of
-    ExitSuccess ->
-      return ()
-    ExitFailure i -> do
-      errStr <- liftIO $ decodeUtf8 <$> B.hGetContents h
-      Throw.raiseError' $
-        "the child process `"
-          <> procName
-          <> "` failed with the following message (exitcode = "
-          <> T.pack (show i)
-          <> "):\n"
-          <> errStr

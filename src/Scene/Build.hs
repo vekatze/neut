@@ -54,14 +54,15 @@ data Axis = Axis
 
 buildTarget :: Axis -> M.Module -> Target -> App ()
 buildTarget axis baseModule target = do
+  target' <- expandClangOptions target
   Initialize.initializeForTarget
-  (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target
+  (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
-  didPerformForeignCompilation <- compileForeign target moduleList
-  contentSeq <- load target dependenceSeq
-  virtualCodeList <- compile target (_outputKindList axis) contentSeq
+  didPerformForeignCompilation <- compileForeign target' moduleList
+  contentSeq <- load target' dependenceSeq
+  virtualCodeList <- compile target' (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
-  emitAndWrite target (getClangBuildOption target) (_outputKindList axis) virtualCodeList
+  emitAndWrite target' (_outputKindList axis) virtualCodeList
   case target of
     Abstract {} ->
       return ()
@@ -112,8 +113,9 @@ compileEntryPoint mainModule target outputKindList = do
           mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint t
           return [(Left t, mainVirtualCode)]
 
-emitAndWrite :: Target -> [String] -> [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
-emitAndWrite target clangOptions outputKindList virtualCodeList = do
+emitAndWrite :: Target -> [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
+emitAndWrite target outputKindList virtualCodeList = do
+  let clangOptions = getClangBuildOption target
   currentTime <- liftIO getCurrentTime
   forConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
@@ -202,3 +204,19 @@ attachPrefixPath baseDirPath path =
       Left $ baseDirPath </> dirPath
     Right filePath ->
       Right $ baseDirPath </> filePath
+
+expandClangOptions :: Target -> App Target
+expandClangOptions target =
+  case target of
+    Abstract {} ->
+      return target
+    Concrete concreteTarget ->
+      case concreteTarget of
+        Named targetName summary -> do
+          clangBuildOption' <- mapM External.expandText (clangBuildOption summary)
+          clangLinkOption' <- mapM External.expandText (clangLinkOption summary)
+          return $ Concrete $ Named targetName (summary {clangBuildOption = clangBuildOption', clangLinkOption = clangLinkOption'})
+        Zen path buildOption linkOption -> do
+          buildOption' <- External.expandText buildOption
+          linkOption' <- External.expandText linkOption
+          return $ Concrete $ Zen path buildOption' linkOption'

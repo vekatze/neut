@@ -4,6 +4,8 @@ module Context.External
     runOrFail',
     ensureExecutables,
     getClang,
+    expandText,
+    raiseIfProcessFailed,
     ExternalError (..),
   )
 where
@@ -18,6 +20,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Entity.Const (envVarClang)
 import Entity.Error
+import GHC.IO.Handle
 import Path
 import System.Directory
 import System.Environment (lookupEnv)
@@ -130,3 +133,36 @@ shellWithCwd cwd str =
       child_user = Nothing,
       use_process_jobs = False
     }
+
+expandText :: T.Text -> App T.Text
+expandText t = do
+  let echo = "echo"
+  let echoCmd = proc "sh" ["-c", unwords [T.unpack echo, T.unpack t]]
+  withRunInIO $ \runInIO ->
+    withCreateProcess echoCmd {std_out = CreatePipe, std_err = CreatePipe} $
+      \_ mStdOut mClangErrorHandler echoProcessHandler -> do
+        case (mStdOut, mClangErrorHandler) of
+          (Just stdOut, Just stdErr) -> do
+            value <- B.hGetContents stdOut
+            echoExitCode <- waitForProcess echoProcessHandler
+            runInIO $ raiseIfProcessFailed echo echoExitCode stdErr
+            return $ decodeUtf8 value
+          (Nothing, _) ->
+            runInIO $ Throw.raiseError' "couldn't obtain stdout"
+          (_, Nothing) ->
+            runInIO $ Throw.raiseError' "couldn't obtain stderr"
+
+raiseIfProcessFailed :: T.Text -> ExitCode -> Handle -> App ()
+raiseIfProcessFailed procName exitCode h =
+  case exitCode of
+    ExitSuccess ->
+      return ()
+    ExitFailure i -> do
+      errStr <- liftIO $ decodeUtf8 <$> B.hGetContents h
+      Throw.raiseError' $
+        "the child process `"
+          <> procName
+          <> "` failed with the following message (exitcode = "
+          <> T.pack (show i)
+          <> "):\n"
+          <> errStr
