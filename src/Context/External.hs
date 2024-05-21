@@ -13,6 +13,7 @@ where
 import Context.App
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
+import Control.Monad (unless)
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Data.ByteString qualified as B
@@ -146,6 +147,14 @@ expandText t = do
             value <- B.hGetContents stdOut
             printfExitCode <- waitForProcess printfProcessHandler
             runInIO $ raiseIfProcessFailed printf printfExitCode stdErr
+            errorMessage <- liftIO $ decodeUtf8 <$> B.hGetContents stdErr
+            unless (T.null errorMessage) $ do
+              runInIO $
+                Throw.raiseError' $
+                  "expanding the text\n"
+                    <> indent t
+                    <> "\nfailed with the following message:\n"
+                    <> indent errorMessage
             return $ decodeUtf8 value
           (Nothing, _) ->
             runInIO $ Throw.raiseError' "couldn't obtain stdout"
@@ -165,4 +174,8 @@ raiseIfProcessFailed procName exitCode h =
           <> "` failed with the following message (exitcode = "
           <> T.pack (show i)
           <> "):\n"
-          <> errStr
+          <> indent errStr
+
+indent :: T.Text -> T.Text
+indent t =
+  T.intercalate "\n" $ map ("  " <>) $ T.splitOn "\n" t
