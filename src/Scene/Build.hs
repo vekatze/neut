@@ -63,7 +63,7 @@ buildTarget axis baseModule target = do
   virtualCodeList <- compile target' (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
   emitAndWrite target' (_outputKindList axis) virtualCodeList
-  case target of
+  case target' of
     Abstract {} ->
       return ()
     Concrete ct -> do
@@ -115,7 +115,7 @@ compileEntryPoint mainModule target outputKindList = do
 
 emitAndWrite :: Target -> [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
 emitAndWrite target outputKindList virtualCodeList = do
-  let clangOptions = getClangCompileOption target
+  let clangOptions = getCompileOption target
   currentTime <- liftIO getCurrentTime
   forConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
@@ -213,9 +213,19 @@ expandClangOptions target =
     Concrete concreteTarget ->
       case concreteTarget of
         Named targetName summary -> do
-          clangCompileOption' <- mapM External.expandText (compileOption summary)
-          clangLinkOption' <- mapM External.expandText (linkOption summary)
-          return $ Concrete $ Named targetName (summary {compileOption = clangCompileOption', linkOption = clangLinkOption'})
+          buildOption' <- mapM External.expandText (buildOption summary)
+          compileOption' <- mapM External.expandText (compileOption summary)
+          linkOption' <- mapM External.expandText (linkOption summary)
+          return $
+            Concrete $
+              Named
+                targetName
+                ( summary
+                    { buildOption = buildOption',
+                      compileOption = compileOption',
+                      linkOption = linkOption'
+                    }
+                )
         Zen path compileOption linkOption -> do
           compileOption' <- External.expandText compileOption
           linkOption' <- External.expandText linkOption

@@ -14,6 +14,7 @@ data Target
 
 data TargetSummary = TargetSummary
   { entryPoint :: SL.SourceLocator,
+    buildOption :: [T.Text],
     compileOption :: [T.Text],
     linkOption :: [T.Text]
   }
@@ -48,26 +49,26 @@ getEntryPointName target =
     Zen {} ->
       BN.zenName
 
-getClangCompileOption :: Target -> [String]
-getClangCompileOption target =
+getCompileOption :: Target -> [String]
+getCompileOption target =
   case target of
     Abstract {} ->
       []
     Concrete c ->
       case c of
         Named _ targetSummary ->
-          map T.unpack $ compileOption targetSummary
+          map T.unpack $ buildOption targetSummary ++ compileOption targetSummary
         Zen _ compileOption _ ->
           [T.unpack compileOption]
 
-getClangLinkOption :: Target -> [String]
-getClangLinkOption target =
+getLinkOption :: Target -> [String]
+getLinkOption target =
   case target of
     Abstract {} ->
       []
     Concrete c ->
       case c of
         Named _ targetSummary ->
-          map T.unpack $ linkOption targetSummary
+          map T.unpack $ buildOption targetSummary ++ linkOption targetSummary
         Zen _ _ linkOption ->
           [T.unpack linkOption]

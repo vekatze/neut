@@ -35,7 +35,7 @@ link' target mainModule sourceList = do
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
   foreignDirList <- mapM (Path.getForeignDir (Concrete target)) moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
-  let clangOptions = getClangLinkOption (Concrete target)
+  let clangOptions = getLinkOption (Concrete target)
   LLVM.link clangOptions (mainObject : objectPathList ++ foreignObjectList) outputPath
 
 getForeignDirContent :: Path Abs Dir -> App [Path Abs File]

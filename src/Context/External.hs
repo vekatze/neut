@@ -136,16 +136,16 @@ shellWithCwd cwd str =
 
 expandText :: T.Text -> App T.Text
 expandText t = do
-  let echo = "echo"
-  let echoCmd = proc "sh" ["-c", unwords [T.unpack echo, T.unpack t]]
+  let printf = "printf"
+  let printfCmd = proc "sh" ["-c", unwords [T.unpack printf, "%s", "\"" ++ T.unpack t ++ "\""]]
   withRunInIO $ \runInIO ->
-    withCreateProcess echoCmd {std_out = CreatePipe, std_err = CreatePipe} $
-      \_ mStdOut mClangErrorHandler echoProcessHandler -> do
+    withCreateProcess printfCmd {std_out = CreatePipe, std_err = CreatePipe} $
+      \_ mStdOut mClangErrorHandler printfProcessHandler -> do
         case (mStdOut, mClangErrorHandler) of
           (Just stdOut, Just stdErr) -> do
             value <- B.hGetContents stdOut
-            echoExitCode <- waitForProcess echoProcessHandler
-            runInIO $ raiseIfProcessFailed echo echoExitCode stdErr
+            printfExitCode <- waitForProcess printfProcessHandler
+            runInIO $ raiseIfProcessFailed printf printfExitCode stdErr
             return $ decodeUtf8 value
           (Nothing, _) ->
             runInIO $ Throw.raiseError' "couldn't obtain stdout"

@@ -146,11 +146,13 @@ interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap Targe
 interpretTarget (_, targetDict) = do
   kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
     entryPoint <- liftEither (E.access keyRoot v) >>= interpretSourceLocator
+    (_, buildOptEnsSeries) <- liftEither $ E.access' keyBuildOption E.emptyList v >>= E.toList
+    buildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
     (_, compileOptEnsSeries) <- liftEither $ E.access' keyCompileOption E.emptyList v >>= E.toList
     compileOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract compileOptEnsSeries
     (_, linkOptEnsSeries) <- liftEither $ E.access' keyLinkOption E.emptyList v >>= E.toList
     linkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
-    return (k, TargetSummary {entryPoint, compileOption, linkOption})
+    return (k, TargetSummary {entryPoint, buildOption, compileOption, linkOption})
   return $ Map.fromList kvs
 
 interpretSourceLocator :: E.Ens -> App SL.SourceLocator

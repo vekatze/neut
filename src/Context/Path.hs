@@ -211,8 +211,8 @@ getBuildSignature target baseModule = do
             E.dictFromList
               _m
               [ ("build-mode", _m :< E.String (BM.reify buildMode)),
-                ("compile-option", _m :< E.String (T.pack $ unwords $ Target.getClangCompileOption target)),
-                ("link-option", _m :< E.String (T.pack $ unwords $ Target.getClangLinkOption target)),
+                ("compile-option", _m :< E.String (T.pack $ unwords $ Target.getCompileOption target)),
+                ("link-option", _m :< E.String (T.pack $ unwords $ Target.getLinkOption target)),
                 ("compatible-shift", E.dictFromList _m depList')
               ]
       let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
