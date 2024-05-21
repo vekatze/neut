@@ -7,7 +7,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (find, sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const
@@ -238,9 +238,21 @@ getBuildDirInfo someModule = do
 getTargetInfo :: Module -> (T.Text, E.Ens)
 getTargetInfo someModule = do
   let targetDict = flip Map.map (moduleTarget someModule) $ \summary -> do
+        let buildOption = map (\x -> _m :< E.String x) $ Target.clangBuildOption summary
+        let buildOption' =
+              if null buildOption
+                then Nothing
+                else Just (keyClangBuildOption, _m :< E.List (seriesFromList buildOption))
+        let linkOption = map (\x -> _m :< E.String x) $ Target.clangLinkOption summary
+        let linkOption' =
+              if null linkOption
+                then Nothing
+                else Just (keyClangLinkOption, _m :< E.List (seriesFromList linkOption))
         E.dictFromListVertical
           _m
-          [(keyRoot, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
+          $ [(keyRoot, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
+            ++ maybeToList buildOption'
+            ++ maybeToList linkOption'
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))
 
 getDependencyInfo :: Module -> Maybe (T.Text, E.Ens)
