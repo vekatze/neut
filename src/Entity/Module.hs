@@ -91,13 +91,13 @@ keyRoot :: T.Text
 keyRoot =
   "root"
 
-keyClangBuildOption :: T.Text
-keyClangBuildOption =
-  "clang-build-option"
+keyCompileOption :: T.Text
+keyCompileOption =
+  "compile-option"
 
-keyClangLinkOption :: T.Text
-keyClangLinkOption =
-  "clang-link-option"
+keyLinkOption :: T.Text
+keyLinkOption =
+  "link-option"
 
 keyDependency :: T.Text
 keyDependency =
@@ -242,12 +242,12 @@ getTargetInfo someModule = do
         let buildOption' =
               if null buildOption
                 then Nothing
-                else Just (keyClangBuildOption, _m :< E.List (seriesFromList buildOption))
+                else Just (keyCompileOption, _m :< E.List (seriesFromList buildOption))
         let linkOption = map (\x -> _m :< E.String x) $ Target.clangLinkOption summary
         let linkOption' =
               if null linkOption
                 then Nothing
-                else Just (keyClangLinkOption, _m :< E.List (seriesFromList linkOption))
+                else Just (keyLinkOption, _m :< E.List (seriesFromList linkOption))
         E.dictFromListVertical
           _m
           $ [(keyRoot, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
