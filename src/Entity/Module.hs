@@ -91,6 +91,10 @@ keyRoot :: T.Text
 keyRoot =
   "root"
 
+keyBuildOption :: T.Text
+keyBuildOption =
+  "build-option"
+
 keyCompileOption :: T.Text
 keyCompileOption =
   "compile-option"
@@ -238,12 +242,12 @@ getBuildDirInfo someModule = do
 getTargetInfo :: Module -> (T.Text, E.Ens)
 getTargetInfo someModule = do
   let targetDict = flip Map.map (moduleTarget someModule) $ \summary -> do
-        let buildOption = map (\x -> _m :< E.String x) $ Target.clangBuildOption summary
-        let buildOption' =
-              if null buildOption
+        let compileOption = map (\x -> _m :< E.String x) $ Target.compileOption summary
+        let compileOption' =
+              if null compileOption
                 then Nothing
-                else Just (keyCompileOption, _m :< E.List (seriesFromList buildOption))
-        let linkOption = map (\x -> _m :< E.String x) $ Target.clangLinkOption summary
+                else Just (keyCompileOption, _m :< E.List (seriesFromList compileOption))
+        let linkOption = map (\x -> _m :< E.String x) $ Target.linkOption summary
         let linkOption' =
               if null linkOption
                 then Nothing
@@ -251,7 +255,7 @@ getTargetInfo someModule = do
         E.dictFromListVertical
           _m
           $ [(keyRoot, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
-            ++ maybeToList buildOption'
+            ++ maybeToList compileOption'
             ++ maybeToList linkOption'
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))
 

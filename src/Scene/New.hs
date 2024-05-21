@@ -46,8 +46,8 @@ constructDefaultModule name = do
             [ ( name,
                 TargetSummary
                   { entryPoint = SL.SourceLocator mainFile,
-                    clangBuildOption = [],
-                    clangLinkOption = []
+                    compileOption = [],
+                    linkOption = []
                   }
               )
             ],

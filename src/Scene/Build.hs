@@ -115,7 +115,7 @@ compileEntryPoint mainModule target outputKindList = do
 
 emitAndWrite :: Target -> [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
 emitAndWrite target outputKindList virtualCodeList = do
-  let clangOptions = getClangBuildOption target
+  let clangOptions = getClangCompileOption target
   currentTime <- liftIO getCurrentTime
   forConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
@@ -213,10 +213,10 @@ expandClangOptions target =
     Concrete concreteTarget ->
       case concreteTarget of
         Named targetName summary -> do
-          clangBuildOption' <- mapM External.expandText (clangBuildOption summary)
-          clangLinkOption' <- mapM External.expandText (clangLinkOption summary)
-          return $ Concrete $ Named targetName (summary {clangBuildOption = clangBuildOption', clangLinkOption = clangLinkOption'})
-        Zen path buildOption linkOption -> do
-          buildOption' <- External.expandText buildOption
+          clangCompileOption' <- mapM External.expandText (compileOption summary)
+          clangLinkOption' <- mapM External.expandText (linkOption summary)
+          return $ Concrete $ Named targetName (summary {compileOption = clangCompileOption', linkOption = clangLinkOption'})
+        Zen path compileOption linkOption -> do
+          compileOption' <- External.expandText compileOption
           linkOption' <- External.expandText linkOption
-          return $ Concrete $ Zen path buildOption' linkOption'
+          return $ Concrete $ Zen path compileOption' linkOption'

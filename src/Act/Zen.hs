@@ -9,7 +9,7 @@ import Control.Monad
 import Data.Maybe
 import Entity.Config.Zen
 import Entity.OutputKind
-import Entity.Target hiding (clangBuildOption, clangLinkOption)
+import Entity.Target hiding (compileOption, linkOption)
 import Path.IO (resolveFile')
 import Scene.Build (Axis (..), buildTarget)
 import Scene.Fetch qualified as Fetch
@@ -22,7 +22,7 @@ zen cfg = do
   path <- resolveFile' (filePathString cfg)
   mainModule <- getMainModule
   buildTarget (fromConfig cfg) mainModule $
-    Concrete (Zen path (clangBuildOption cfg) (clangLinkOption cfg))
+    Concrete (Zen path (compileOption cfg) (linkOption cfg))
 
 fromConfig :: Config -> Axis
 fromConfig cfg =
