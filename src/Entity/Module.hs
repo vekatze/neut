@@ -87,9 +87,9 @@ keyTarget :: T.Text
 keyTarget =
   "target"
 
-keyEntryPoint :: T.Text
-keyEntryPoint =
-  "entry-point"
+keyRoot :: T.Text
+keyRoot =
+  "root"
 
 keyClangBuildOption :: T.Text
 keyClangBuildOption =
@@ -240,7 +240,7 @@ getTargetInfo someModule = do
   let targetDict = flip Map.map (moduleTarget someModule) $ \summary -> do
         E.dictFromListVertical
           _m
-          [(keyEntryPoint, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
+          [(keyRoot, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))
 
 getDependencyInfo :: Module -> Maybe (T.Text, E.Ens)

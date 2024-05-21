@@ -145,7 +145,7 @@ interpretPresetMap _ ens = do
 interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap TargetName TargetSummary)
 interpretTarget (_, targetDict) = do
   kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
-    entryPoint <- liftEither (E.access keyEntryPoint v) >>= interpretSourceLocator
+    entryPoint <- liftEither (E.access keyRoot v) >>= interpretSourceLocator
     (_, buildOptEnsSeries) <- liftEither $ E.access' keyClangBuildOption E.emptyList v >>= E.toList
     clangBuildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
     (_, linkOptEnsSeries) <- liftEither $ E.access' keyClangLinkOption E.emptyList v >>= E.toList
