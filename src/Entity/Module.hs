@@ -87,9 +87,9 @@ keyTarget :: T.Text
 keyTarget =
   "target"
 
-keyRoot :: T.Text
-keyRoot =
-  "root"
+keyMain :: T.Text
+keyMain =
+  "main"
 
 keyBuildOption :: T.Text
 keyBuildOption =
@@ -254,7 +254,7 @@ getTargetInfo someModule = do
                 else Just (keyLinkOption, _m :< E.List (seriesFromList linkOption))
         E.dictFromListVertical
           _m
-          $ [(keyRoot, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
+          $ [(keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
             ++ maybeToList compileOption'
             ++ maybeToList linkOption'
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))
