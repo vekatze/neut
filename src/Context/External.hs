@@ -2,15 +2,18 @@ module Context.External
   ( run,
     runOrFail,
     runOrFail',
-    ensureExecutables,
     getClang,
+    getClangDigest,
+    ensureExecutables,
     expandText,
     raiseIfProcessFailed,
+    calculateClangDigest,
     ExternalError (..),
   )
 where
 
 import Context.App
+import Context.App.Internal
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Control.Monad (unless)
@@ -20,6 +23,7 @@ import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Entity.Const (envVarClang)
+import Entity.Digest
 import Entity.Error
 import GHC.IO.Handle
 import Path
@@ -94,6 +98,33 @@ getClang = do
       return clang
     Nothing -> do
       return "clang"
+
+getClangDigest :: App T.Text
+getClangDigest = do
+  digestOrNone <- readRefMaybe clangDigest
+  case digestOrNone of
+    Just digest -> do
+      return digest
+    Nothing -> do
+      digest <- calculateClangDigest
+      writeRef clangDigest digest
+      return digest
+
+calculateClangDigest :: App T.Text
+calculateClangDigest = do
+  clang <- liftIO getClang
+  let printfCmd = proc clang ["-v"]
+  withRunInIO $ \runInIO ->
+    withCreateProcess printfCmd {std_err = CreatePipe} $
+      \_ _ mStdErr printfProcessHandler -> do
+        case mStdErr of
+          Just stdErr -> do
+            value <- B.hGetContents stdErr
+            printfExitCode <- waitForProcess printfProcessHandler
+            runInIO $ raiseIfProcessFailed (T.pack clang) printfExitCode stdErr
+            return $ decodeUtf8 $ hashAndEncode value
+          Nothing ->
+            runInIO $ Throw.raiseError' "couldn't obtain stderr"
 
 ensureExecutables :: App ()
 ensureExecutables = do

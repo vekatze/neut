@@ -39,6 +39,7 @@ import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
+import Context.External (getClangDigest)
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -207,13 +208,15 @@ getBuildSignature target baseModule = do
             return Nothing
           Just shiftedModule ->
             return $ Just (MA.reify alias, _m :< E.String (MID.reify $ moduleID shiftedModule))
+      clangDigest <- getClangDigest
       let ens =
             E.dictFromList
               _m
               [ ("build-mode", _m :< E.String (BM.reify buildMode)),
+                ("clang-digest", _m :< E.String clangDigest),
+                ("compatible-shift", E.dictFromList _m depList'),
                 ("compile-option", _m :< E.String (T.pack $ unwords $ Target.getCompileOption target)),
-                ("link-option", _m :< E.String (T.pack $ unwords $ Target.getLinkOption target)),
-                ("compatible-shift", E.dictFromList _m depList')
+                ("link-option", _m :< E.String (T.pack $ unwords $ Target.getLinkOption target))
               ]
       let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
       modifyRef' buildSignatureMap $ Map.insert (moduleID baseModule) sig

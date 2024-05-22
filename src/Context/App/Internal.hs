@@ -50,7 +50,6 @@ import Path
 data Env = Env
   { counter :: IORefU Int,
     endOfEntry :: IORef T.Text,
-    clangOptString :: IORef String,
     shouldColorize :: IORef Bool,
     buildMode :: IORef BM.BuildMode,
     moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
@@ -97,6 +96,7 @@ data Env = Env
     activeDefiniteDescriptionList :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
     currentSource :: Ref Source.Source,
+    clangDigest :: Ref T.Text,
     mainModule :: Ref Module.Module
   }
 
@@ -110,7 +110,6 @@ newEnv :: IO Env
 newEnv = do
   counter <- newIORefU 0
   endOfEntry <- newIORef ""
-  clangOptString <- newIORef ""
   shouldColorize <- newIORef True
   buildMode <- newIORef BM.Develop
   moduleCacheMap <- newIORef Map.empty
@@ -157,5 +156,6 @@ newEnv = do
   activeDefiniteDescriptionList <- newIORef Map.empty
   currentGlobalLocator <- newRef
   currentSource <- newRef
+  clangDigest <- newRef
   mainModule <- newRef
   return Env {..}
