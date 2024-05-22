@@ -99,16 +99,6 @@ By default, `neut build` builds all the source files into object files and then 
 
 You can emit LLVM IR by passing `--emit llvm` to `neut build`. In this case, you must also pass `--skip-link`.
 
-### `--clang-option "(any-string)"`
-
-You can pass `--clang-option "(any-string)"` to `neut build` to pass additional clang options to the compiler.
-
-Internally, the Neut compiler translates source files into LLVM IR files. Then, it calls `clang` to convert these IR files into object files and calls `clang` again to link them all.
-
-The options specified here are used when the compiler internally calls clang.
-
-For example, by passing `--clang-option "-fsanitize=address"`, you can use the address sanitizer of clang.
-
 ### `--mode`
 
 You can pass `--mode {develop,release}` like the below:
