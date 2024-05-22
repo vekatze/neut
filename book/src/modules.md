@@ -25,9 +25,13 @@ The field `target` defines the entry points of a module. It should look like the
 {
   // ..
   target {
-    TARGET-1 "path/to/source/file-1.nt",
+    TARGET-1 {
+      main "path/to/source/file-1.nt"
+    },
     // ..
-    TARGET-N "path/to/source/file-n.nt",
+    TARGET-N {
+      main "path/to/source/file-n.nt"
+    },
   },
   // ..
 }
@@ -39,8 +43,12 @@ Suppose that your module has the following `target` in `module.ens`:
 {
   // ..
   target {
-    foo "foo.nt",
-    bar "item/whatever.nt",
+    foo {
+      main "foo.nt",
+    },
+    bar {
+      main "item/whatever.nt"
+    },
   },
   // ..
 }
@@ -52,7 +60,87 @@ The names in `target` can be specified when running `neut build`. For example, g
 
 The names of targets are also used as the names of executables. For example, if you run `neut build --install ./bin/`, two binaries named `foo` and `bar` will be created under the directory `./bin/`.
 
-The field `target` is optional. The default value of `target` is `{}`
+The field `target` is optional. The default value of `target` is `{}`.
+
+### `compile-option`
+
+You can add `compile-option` to a target as follows:
+
+```ens
+{
+  target {
+    foo {
+      main "foo.nt",
+      // ↓ here
+      compile-option [
+        "-g",
+        "-O0",
+        "-fsanitize=address",
+        "$SOME_ENV_VAR",
+        "$(some-command arg)",
+      ],
+    },
+  },
+}
+```
+
+The compiler passes the options specified here to `clang` when compiling LLVM IRs into object files.
+
+In `compile-option`, you can use environment variables and shell interpolations.
+
+The field `compile-option` is optional. The default value of `compile-option` is `[]`.
+
+### `link-option`
+
+You can add `link-option` to a target as follows:
+
+```ens
+{
+  target {
+    foo {
+      main "foo.nt",
+      // ↓ here
+      link-option [
+        "-g",
+        "-O0",
+        "$SOME_ENV_VAR",
+        "$(some-command)",
+      ],
+    },
+  },
+}
+```
+
+The compiler passes the options specified here to `clang` when linking object files.
+
+In `link-option`, you can use environment variables and shell interpolations.
+
+The field `link-option` is optional. The default value of `link-option` is `[]`.
+
+### `build-option`
+
+You can add `build-option` to a target as follows:
+
+```ens
+{
+  target {
+    foo {
+      main "foo.nt",
+      // ↓ here
+      build-option [
+        "$(pkg-config openssl --libs --cflags)",
+        "whatever",
+      ],
+    },
+  },
+}
+```
+
+Adding an element to `build-option` is the same as adding the element to both `compile-option` and `link-option`.
+
+In `build-option`, you can use environment variables and shell interpolations.
+
+The field `build-option` is optional. The default value of `build-option` is `[]`.
 
 ## `dependency`
 
@@ -188,7 +276,7 @@ import {
 
 The prefixes specified in a `module.ens` of a module can be used only in the module.
 
-The field `prefix` is optional. The default value of `prefix` is `{}`
+The field `prefix` is optional. The default value of `prefix` is `{}`.
 
 ## `foreign`
 
