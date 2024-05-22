@@ -1,14 +1,19 @@
 {
+  target {
+    tau {
+      main "tau.nt",
+      build-option [
+        "-fsanitize=address",
+      ],
+    },
+  },
   dependency {
     core {
-      digest "URHaRyVrHOwvulrflTHLa8WNoRwPMl54Hnrk-CG4qFk",
+      digest "OFjMSEj_TlNUOGBp3-r8HinLhYPsu4xkChTgd91RQt0",
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-48-2.tar.zst",
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-48-3.tar.zst",
       ],
       enable-preset true,
     },
-  },
-  target {
-    tau "tau.nt",
   },
 }
