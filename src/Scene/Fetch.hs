@@ -82,30 +82,30 @@ insertDependency aliasName url = do
                 <> MD.reify (M.dependencyDigest dep)
                 <> "\n- new: "
                 <> MD.reify digest
+            installModule tempFilePath alias digest
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
             updateDependencyInModuleFile (moduleLocation mainModule) alias dep'
-            installModule tempFilePath alias digest
       Nothing -> do
         Remark.printNote' $ "adding a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
+        installModule tempFilePath alias digest
         addDependencyToModuleFile alias $
           M.Dependency
             { dependencyMirrorList = [url],
               dependencyDigest = digest,
               dependencyPresetEnabled = False
             }
-        installModule tempFilePath alias digest
 
 insertCoreDependency :: App ()
 insertCoreDependency = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
+  installIfNecessary coreModuleAlias [coreModuleURL] digest
   addDependencyToModuleFile coreModuleAlias $
     M.Dependency
       { dependencyMirrorList = [coreModuleURL],
         dependencyDigest = digest,
         dependencyPresetEnabled = True
       }
-  installIfNecessary coreModuleAlias [coreModuleURL] digest
 
 installIfNecessary :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App ()
 installIfNecessary alias mirrorList digest = do
