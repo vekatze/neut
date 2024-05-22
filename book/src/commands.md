@@ -49,8 +49,12 @@ Some subcommands share command line options. The list of them is as follows:
 {
   // ..
   target {
-    foo "foo.nt",
-    bar "item/bar.nt",
+    foo {
+      main "foo.nt",
+    },
+    bar {
+      main "item/bar.nt",
+    },
   },
   // ..
 }
