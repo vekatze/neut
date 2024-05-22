@@ -58,7 +58,7 @@ In this case, your module has two targets: `foo` and `bar`. The entry point of `
 
 The names in `target` can be specified when running `neut build`. For example, given the above definition of `target`, you can run `neut build foo`.
 
-The names of targets are also used as the names of executables. For example, if you run `neut build --install ./bin/`, two binaries named `foo` and `bar` will be created under the directory `./bin/`.
+The names of targets are also used as the names of executables. For example, if you run `neut build foo --install ./bin/`, an executable named `foo` will be created under the directory `./bin/`.
 
 The field `target` is optional. The default value of `target` is `{}`.
 

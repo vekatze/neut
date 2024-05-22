@@ -24,7 +24,7 @@ The command `neut` has subcommands like `neut build`, `neut get`, etc. This sect
 Most of the subcommands of `neut` must be executed inside a module. If you execute such a subcommand outside a module, the command will emit an error like the one below:
 
 ```sh
-neut build
+neut build foo
 #=> error: couldn't find a module file (context: /Users/foo/Desktop)
 ```
 
@@ -62,8 +62,6 @@ Some subcommands share command line options. The list of them is as follows:
 
 In this case, running `neut build foo` creates the executable `foo` by building the current module, using the `main` in `foo.nt` as the entry point.
 
-If you omit the target and simply write `neut build`, all the targets are built.
-
 The resulting binaries are put inside the module's build directory. You might want to use the option `--install` to copy those binaries.
 
 ### Example
@@ -74,11 +72,11 @@ neut create hello
 cd hello
 
 # build and run
-neut build --execute # => hello
+neut build hello --execute # => "Hello, world!"
 
 # build the module, copy the resulting binary, and execute the binary
-neut build --install ./bin
-./bin/hello #=> hello
+neut build hello --install ./bin
+./bin/hello #=> "Hello, world!"
 ```
 
 ### `--execute`
@@ -88,8 +86,6 @@ If you pass `--execute` to `neut build`, the resulting binaries are executed aft
 ### `--install DIR`
 
 If you pass `--install DIR` to `neut build`, the resulting binaries are copied to the specified directory.
-
-For example, if you're at the module's root, `neut build --install ./bin` will copy the resulting binaries into `(module-root)/bin/`.
 
 ### `--skip-link`
 
@@ -104,7 +100,7 @@ You can emit LLVM IR by passing `--emit llvm` to `neut build`. In this case, you
 You can pass `--mode {develop,release}` like the below:
 
 ```sh
-neut build --mode release
+neut build my-app --mode release
 ```
 
 If you don't specify `--mode`, the mode defaults to `develop`.
@@ -134,7 +130,7 @@ define main(): int {
 }
 ```
 
-When running `neut build`, the compiler reports errors like the below:
+When running `neut build TARGET`, the compiler reports errors like the below:
 
 ```text
 /path/to/sample/source/hey.nt:1:8
@@ -149,7 +145,7 @@ error: expected:
          tau
 ```
 
-On the other hand, when running `neut build --end-of-entry EOE`, the text `EOE` is inserted after each entry:
+On the other hand, when running `neut build TARGET --end-of-entry EOE`, the text `EOE` is inserted after each entry:
 
 ```text
 /path/to/sample/source/hey.nt:1:8
