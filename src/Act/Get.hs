@@ -9,6 +9,6 @@ import Prelude hiding (log)
 
 get :: Config -> App ()
 get cfg = do
-  Initialize.initializeCompiler (remarkCfg cfg) Nothing
+  Initialize.initializeCompiler (remarkCfg cfg)
   Path.ensureNotInLibDir
   Fetch.insertDependency (moduleAliasText cfg) (moduleURL cfg)

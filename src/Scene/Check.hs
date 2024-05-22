@@ -24,7 +24,7 @@ check = do
 
 checkSource :: Source -> App [Remark]
 checkSource source = do
-  _check $ Concrete $ Zen (sourceFilePath source)
+  _check $ Concrete $ emptyZen (sourceFilePath source)
 
 _check :: Target -> App [Remark]
 _check target = do
@@ -33,8 +33,8 @@ _check target = do
     mainModule <- getMainModule
     (_, dependenceSeq) <- Unravel.unravel mainModule target
     contentSeq <- forConcurrently dependenceSeq $ \source -> do
-      cacheOrContent <- Load.load source
+      cacheOrContent <- Load.load target source
       return (source, cacheOrContent)
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      void $ Parse.parse source cacheOrContent >>= Elaborate.elaborate
+      void $ Parse.parse source cacheOrContent >>= Elaborate.elaborate target

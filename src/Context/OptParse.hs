@@ -19,7 +19,6 @@ import Entity.Config.Zen qualified as Zen
 import Entity.FileType qualified as FT
 import Entity.ModuleURL
 import Entity.OutputKind qualified as OK
-import Entity.Target
 import Options.Applicative
 
 parseCommand :: App Command
@@ -50,8 +49,7 @@ cmd name parser desc =
 
 parseBuildOpt :: Parser Command
 parseBuildOpt = do
-  mTarget <- optional $ argument str $ mconcat [metavar "TARGET", help "The build target"]
-  mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
+  targetName <- argument str $ mconcat [metavar "TARGET", help "The build target"]
   installDir <- optional $ strOption $ mconcat [long "install", metavar "DIRECTORY", help "Install the resulting binary to this directory"]
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   remarkCfg <- remarkConfigOpt
@@ -62,8 +60,7 @@ parseBuildOpt = do
   pure $
     Build $
       Build.Config
-        { Build.mTarget = Named <$> mTarget,
-          Build.mClangOptString = mClangOpt,
+        { Build.targetName = targetName,
           Build.remarkCfg = remarkCfg,
           Build.outputKindList = outputKindList,
           Build.shouldSkipLink = shouldSkipLink,
@@ -98,7 +95,22 @@ parseGetOpt = do
 parseZenOpt :: Parser Command
 parseZenOpt = do
   inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
-  mClangOptString <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
+  compileOption <-
+    strOption $
+      mconcat
+        [ long "compile-option",
+          metavar "OPT",
+          help "Options used by clang when compiling source files",
+          value ""
+        ]
+  linkOption <-
+    strOption $
+      mconcat
+        [ long "link-option",
+          metavar "OPT",
+          help "Options used by clang when linking object files",
+          value ""
+        ]
   remarkCfg <- remarkConfigOpt
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   rest <- (many . strArgument) (metavar "args")
@@ -106,7 +118,8 @@ parseZenOpt = do
     Entity.Command.Zen $
       Zen.Config
         { Zen.filePathString = inputFilePath,
-          Zen.mClangOptString = mClangOptString,
+          Zen.compileOption = compileOption,
+          Zen.linkOption = linkOption,
           Zen.remarkCfg = remarkCfg,
           Zen.buildMode = buildMode,
           Zen.args = rest

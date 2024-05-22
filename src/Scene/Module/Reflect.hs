@@ -31,6 +31,7 @@ import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
 import Entity.Syntax.Series qualified as SE
+import Entity.Target
 import Path
 import Path.IO
 import Scene.Ens.Reflect qualified as Ens
@@ -60,8 +61,8 @@ getModule m moduleID locatorText = do
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
-  (_, targetEns) <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
-  target <- mapM interpretSourceLocator $ Map.fromList $ SE.extract targetEns
+  targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
+  target <- interpretTarget targetEns
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
   (_, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
@@ -139,6 +140,19 @@ interpretPresetMap _ ens = do
     (_, presetSeries) <- E.toList v
     v' <- mapM (E.toString >=> uncurry BN.reflect) $ SE.extract presetSeries
     return (k, v')
+  return $ Map.fromList kvs
+
+interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap TargetName TargetSummary)
+interpretTarget (_, targetDict) = do
+  kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
+    entryPoint <- liftEither (E.access keyMain v) >>= interpretSourceLocator
+    (_, buildOptEnsSeries) <- liftEither $ E.access' keyBuildOption E.emptyList v >>= E.toList
+    buildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
+    (_, compileOptEnsSeries) <- liftEither $ E.access' keyCompileOption E.emptyList v >>= E.toList
+    compileOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract compileOptEnsSeries
+    (_, linkOptEnsSeries) <- liftEither $ E.access' keyLinkOption E.emptyList v >>= E.toList
+    linkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
+    return (k, TargetSummary {entryPoint, buildOption, compileOption, linkOption})
   return $ Map.fromList kvs
 
 interpretSourceLocator :: E.Ens -> App SL.SourceLocator

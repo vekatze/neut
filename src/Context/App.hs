@@ -3,6 +3,7 @@ module Context.App
     runApp,
     runAppInEnv,
     readRef,
+    readRefMaybe,
     writeRef,
     readRef',
     writeRef',
@@ -34,6 +35,15 @@ readRef name accessor = do
       return a
     Nothing ->
       error $ T.unpack $ "[compiler bug] `" <> name <> "` is uninitialized"
+
+readRefMaybe :: (Env -> Ref a) -> App (Maybe a)
+readRefMaybe accessor = do
+  mValue <- asks accessor >>= liftIO . readIORef
+  case mValue of
+    Just a ->
+      return (Just a)
+    Nothing ->
+      return Nothing
 
 writeRef :: (Env -> Ref a) -> a -> App ()
 writeRef accessor value = do

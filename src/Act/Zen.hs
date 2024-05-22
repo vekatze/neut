@@ -9,7 +9,7 @@ import Control.Monad
 import Data.Maybe
 import Entity.Config.Zen
 import Entity.OutputKind
-import Entity.Target
+import Entity.Target hiding (compileOption, linkOption)
 import Path.IO (resolveFile')
 import Scene.Build (Axis (..), buildTarget)
 import Scene.Fetch qualified as Fetch
@@ -21,7 +21,8 @@ zen cfg = do
   setup cfg
   path <- resolveFile' (filePathString cfg)
   mainModule <- getMainModule
-  buildTarget (fromConfig cfg) mainModule $ Concrete (Zen path)
+  buildTarget (fromConfig cfg) mainModule $
+    Concrete (Zen path (compileOption cfg) (linkOption cfg))
 
 fromConfig :: Config -> Axis
 fromConfig cfg =
@@ -36,6 +37,6 @@ fromConfig cfg =
 setup :: Config -> App ()
 setup cfg = do
   Path.ensureNotInLibDir
-  Initialize.initializeCompiler (remarkCfg cfg) (mClangOptString cfg)
+  Initialize.initializeCompiler (remarkCfg cfg)
   Env.setBuildMode $ buildMode cfg
   Module.getMainModule >>= Fetch.fetch

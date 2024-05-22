@@ -18,15 +18,15 @@ import Prelude hiding (log)
 build :: Config -> App ()
 build cfg = do
   setup cfg
-  targetList <- Collect.collectTargetList $ mTarget cfg
+  target <- Collect.getConcreteTarget $ targetName cfg
   mainModule <- getMainModule
-  forM_ (map Concrete targetList) $ Build.buildTarget (fromConfig cfg) mainModule
+  Build.buildTarget (fromConfig cfg) mainModule (Concrete target)
 
 setup :: Config -> App ()
 setup cfg = do
   LLVM.ensureSetupSanity cfg
   Path.ensureNotInLibDir
-  Initialize.initializeCompiler (remarkCfg cfg) (mClangOptString cfg)
+  Initialize.initializeCompiler (remarkCfg cfg)
   Env.setBuildMode $ buildMode cfg
   Module.getMainModule >>= Fetch.fetch
 

@@ -4,10 +4,9 @@ base_dir=$(pwd)
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 LSAN_FILE=$SCRIPT_DIR/lsan.supp
-clang_option="-fsanitize=address"
 
 cd $SCRIPT_DIR/meta
-NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build --clang-option $clang_option
+NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build meta
 
 pids=()
 
@@ -21,7 +20,7 @@ for target_dir in "$@"; do
     (
       exit_code=0
       NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT clean
-      output=$(ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$LSAN_FILE NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build --clang-option $clang_option --execute 2>&1 > actual)
+      output=$(ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$LSAN_FILE NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build $(basename $i) --execute 2>&1 > actual)
       last_exit_code=$?
       if [ $last_exit_code -ne 0 ]; then
         echo "\033[1;31merror:\033[0m a test failed: $(basename $i)\n$output"

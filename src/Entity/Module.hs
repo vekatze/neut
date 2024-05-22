@@ -7,7 +7,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (find, sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const
@@ -57,7 +57,7 @@ type TargetName =
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
-    moduleTarget :: Map.HashMap TargetName SL.SourceLocator,
+    moduleTarget :: Map.HashMap TargetName Target.TargetSummary,
     moduleArchiveDir :: Path Rel Dir,
     moduleBuildDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
@@ -86,6 +86,22 @@ keySource =
 keyTarget :: T.Text
 keyTarget =
   "target"
+
+keyMain :: T.Text
+keyMain =
+  "main"
+
+keyBuildOption :: T.Text
+keyBuildOption =
+  "build-option"
+
+keyCompileOption :: T.Text
+keyCompileOption =
+  "compile-option"
+
+keyLinkOption :: T.Text
+keyLinkOption =
+  "link-option"
 
 keyDependency :: T.Text
 keyDependency =
@@ -147,13 +163,13 @@ getTargetPathList :: Module -> [Path Abs File]
 getTargetPathList baseModule = do
   let moduleSourceDir = getSourceDir baseModule
   let sourceLocatorList = Map.elems $ moduleTarget baseModule
-  map ((moduleSourceDir </>) . SL.reify) sourceLocatorList
+  map ((moduleSourceDir </>) . SL.reify . Target.entryPoint) sourceLocatorList
 
 getTargetPath :: Module -> T.Text -> Maybe (Path Abs File)
 getTargetPath baseModule target = do
   let moduleSourceDir = getSourceDir baseModule
   sourceLocator <- Map.lookup target (moduleTarget baseModule)
-  return $ moduleSourceDir </> SL.reify sourceLocator
+  return $ moduleSourceDir </> SL.reify (Target.entryPoint sourceLocator)
 
 getArchiveDir :: Module -> Path Abs Dir
 getArchiveDir baseModule =
@@ -225,7 +241,22 @@ getBuildDirInfo someModule = do
 
 getTargetInfo :: Module -> (T.Text, E.Ens)
 getTargetInfo someModule = do
-  let targetDict = Map.map (\x -> _m :< E.String (SL.getRelPathText x)) $ moduleTarget someModule
+  let targetDict = flip Map.map (moduleTarget someModule) $ \summary -> do
+        let compileOption = map (\x -> _m :< E.String x) $ Target.compileOption summary
+        let compileOption' =
+              if null compileOption
+                then Nothing
+                else Just (keyCompileOption, _m :< E.List (seriesFromList compileOption))
+        let linkOption = map (\x -> _m :< E.String x) $ Target.linkOption summary
+        let linkOption' =
+              if null linkOption
+                then Nothing
+                else Just (keyLinkOption, _m :< E.List (seriesFromList linkOption))
+        E.dictFromListVertical
+          _m
+          $ [(keyMain, _m :< E.String (SL.getRelPathText (Target.entryPoint summary)))]
+            ++ maybeToList compileOption'
+            ++ maybeToList linkOption'
   (keyTarget, E.dictFromListVertical _m (Map.toList targetDict))
 
 getDependencyInfo :: Module -> Maybe (T.Text, E.Ens)
@@ -324,13 +355,10 @@ getDigestFromModulePath moduleFilePath =
             dirname $
               parent moduleFilePath
 
-getTargetList :: Module -> Maybe Target.ConcreteTarget -> [Target.ConcreteTarget]
-getTargetList someModule mTarget =
-  case mTarget of
-    Just target ->
-      [target]
-    Nothing -> do
-      map Target.Named $ Map.keys $ moduleTarget someModule
+getTarget :: Module -> T.Text -> Maybe Target.ConcreteTarget
+getTarget someModule targetName = do
+  target <- Map.lookup targetName (moduleTarget someModule)
+  return $ Target.Named targetName target
 
 stylize :: E.Ens -> Either Error E.Ens
 stylize ens = do

@@ -3,10 +3,9 @@
 base_dir=$(pwd)
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
-clang_option="-fsanitize=address"
 
 cd $SCRIPT_DIR/meta
-NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build --clang-option $clang_option
+NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build meta
 
 pids=()
 
@@ -16,7 +15,7 @@ cd $target_directory
 echo $(basename $target_directory)
 exit_code=0
 NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT clean
-output=$(ASAN_OPTIONS=detect_leaks=1 NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build --clang-option $clang_option --execute 2>&1 > actual)
+output=$(ASAN_OPTIONS=detect_leaks=1 NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build $(basename $target_directory) --execute 2>&1 > actual)
 last_exit_code=$?
 if [ $last_exit_code -ne 0 ]; then
   printf "\033[1;31merror:\033[0m a test failed: $(basename $target_directory)\n$output\n"

@@ -2,22 +2,30 @@ module Context.External
   ( run,
     runOrFail,
     runOrFail',
-    ensureExecutables,
     getClang,
+    getClangDigest,
+    ensureExecutables,
+    expandText,
+    raiseIfProcessFailed,
+    calculateClangDigest,
     ExternalError (..),
   )
 where
 
 import Context.App
+import Context.App.Internal
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
+import Control.Monad (unless)
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Entity.Const (envVarClang)
+import Entity.Digest
 import Entity.Error
+import GHC.IO.Handle
 import Path
 import System.Directory
 import System.Environment (lookupEnv)
@@ -91,6 +99,33 @@ getClang = do
     Nothing -> do
       return "clang"
 
+getClangDigest :: App T.Text
+getClangDigest = do
+  digestOrNone <- readRefMaybe clangDigest
+  case digestOrNone of
+    Just digest -> do
+      return digest
+    Nothing -> do
+      digest <- calculateClangDigest
+      writeRef clangDigest digest
+      return digest
+
+calculateClangDigest :: App T.Text
+calculateClangDigest = do
+  clang <- liftIO getClang
+  let printfCmd = proc clang ["-v"]
+  withRunInIO $ \runInIO ->
+    withCreateProcess printfCmd {std_err = CreatePipe} $
+      \_ _ mStdErr printfProcessHandler -> do
+        case mStdErr of
+          Just stdErr -> do
+            value <- B.hGetContents stdErr
+            printfExitCode <- waitForProcess printfProcessHandler
+            runInIO $ raiseIfProcessFailed (T.pack clang) printfExitCode stdErr
+            return $ decodeUtf8 $ hashAndEncode value
+          Nothing ->
+            runInIO $ Throw.raiseError' "couldn't obtain stderr"
+
 ensureExecutables :: App ()
 ensureExecutables = do
   clang <- liftIO getClang
@@ -130,3 +165,48 @@ shellWithCwd cwd str =
       child_user = Nothing,
       use_process_jobs = False
     }
+
+expandText :: T.Text -> App T.Text
+expandText t = do
+  let printf = "printf"
+  let printfCmd = proc "sh" ["-c", unwords [T.unpack printf, "%s", "\"" ++ T.unpack t ++ "\""]]
+  withRunInIO $ \runInIO ->
+    withCreateProcess printfCmd {std_out = CreatePipe, std_err = CreatePipe} $
+      \_ mStdOut mClangErrorHandler printfProcessHandler -> do
+        case (mStdOut, mClangErrorHandler) of
+          (Just stdOut, Just stdErr) -> do
+            value <- B.hGetContents stdOut
+            printfExitCode <- waitForProcess printfProcessHandler
+            runInIO $ raiseIfProcessFailed printf printfExitCode stdErr
+            errorMessage <- liftIO $ decodeUtf8 <$> B.hGetContents stdErr
+            unless (T.null errorMessage) $ do
+              runInIO $
+                Throw.raiseError' $
+                  "expanding the text\n"
+                    <> indent t
+                    <> "\nfailed with the following message:\n"
+                    <> indent errorMessage
+            return $ decodeUtf8 value
+          (Nothing, _) ->
+            runInIO $ Throw.raiseError' "couldn't obtain stdout"
+          (_, Nothing) ->
+            runInIO $ Throw.raiseError' "couldn't obtain stderr"
+
+raiseIfProcessFailed :: T.Text -> ExitCode -> Handle -> App ()
+raiseIfProcessFailed procName exitCode h =
+  case exitCode of
+    ExitSuccess ->
+      return ()
+    ExitFailure i -> do
+      errStr <- liftIO $ decodeUtf8 <$> B.hGetContents h
+      Throw.raiseError' $
+        "the child process `"
+          <> procName
+          <> "` failed with the following message (exitcode = "
+          <> T.pack (show i)
+          <> "):\n"
+          <> indent errStr
+
+indent :: T.Text -> T.Text
+indent t =
+  T.intercalate "\n" $ map ("  " <>) $ T.splitOn "\n" t
