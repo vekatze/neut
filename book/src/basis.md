@@ -92,7 +92,7 @@ These fake discarding/copying are optimized away at compile-time.
 Also, this function is internally called `"base.#.imm"`. Try compiling your project as follows:
 
 ```sh
-neut build --emit llvm --skip-link
+neut build TARGET --emit llvm --skip-link
 ```
 
 Then, take a peek at the `build` directory. You'll find the name here and there.

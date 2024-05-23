@@ -28,7 +28,7 @@ The command `create` creates a sample project that performs "hello world". This 
 
 ```sh
 cd ./sample
-neut build --execute # => "Hello, world!"
+neut build sample --execute # => "Hello, world!"
 ```
 
 Let's see what a module in Neut is like.
@@ -65,7 +65,9 @@ The content of `module.ens` should be something like the below:
 ```ens
 {
   target {
-    sample "sample.nt",
+    sample {
+      main "sample.nt",
+    },
   },
   dependency {
     core {
@@ -79,7 +81,7 @@ The content of `module.ens` should be something like the below:
 }
 ```
 
-`target` specifies the name and the entry point of the resulting executables. In the case above, `neut build` will create an executable file `sample` by compiling sources using the `main` function in `sample.nt` as the entry point.
+`target` specifies the name and the main file of the resulting executables. In the case above, `neut build` will create an executable file `sample` by compiling sources using the `main` function in `sample.nt` as the entry point.
 
 `dependency` specifies external dependencies. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
 
@@ -128,13 +130,13 @@ define main(): unit {
 Then, build the project:
 
 ```sh
-neut build --execute # => 42
+neut build sample --execute # => 42
 ```
 
 You can also obtain the resulting binary:
 
 ```sh
-neut build --install ./bin # creates a directory `bin` and put the resulting binary there
+neut build sample --install ./bin # creates a directory `bin` and put the resulting binary there
 ./bin/sample # => 42
 ```
 
@@ -230,7 +232,7 @@ cd new-item
 # ↓ add the previous module to our `new-item`
 neut get some-name https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1.tar.zst
 
-# for your convenience, you can try the following command:
+# you can try the following command for example:
 neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1.tar.zst
 ```
 
@@ -241,7 +243,9 @@ The information of the newly-added module is saved to `module.ens`:
 ```ens
 {
   target {
-    new-item "new-item.nt",
+    new-item {
+      main "new-item.nt",
+    },
   },
   dependency {
     core { .. },
@@ -379,12 +383,10 @@ We'll rewrite this example into a "prefixed" form. Firstly, edit the `module.ens
 
 ```ens
 {
+  target {..},
   prefix {                  //
     S "some-name.sample",   // ← alias: S -> some-name.sample
   },                        //
-  target {
-    new-item "new-item.nt",
-  },
   dependency {..},
 }
 ```
@@ -414,7 +416,7 @@ Unlike Haskell, these prefixes are defined per module, not per file. The prefixe
 ## What You've Learned Here
 
 - Use `neut create MODULE_NAME` to create a module
-- Use `neut build [TARGET_NAME]` to build modules
-- Use `neut build [TARGET_NAME] --execute` to execute modules
+- Use `neut build TARGET_NAME` to build modules
+- Use `neut build TARGET_NAME --execute` to execute modules
 - Use `neut get` to add external dependencies
 - Use `neut archive` and push it to publish modules
