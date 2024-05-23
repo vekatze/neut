@@ -161,6 +161,10 @@ coreText :: T.Text
 coreText =
   core <> nsSep <> "text" <> nsSep <> "text"
 
+coreRune :: T.Text
+coreRune =
+  core <> nsSep <> "rune" <> nsSep <> "rune"
+
 coreSystemAdmit :: T.Text
 coreSystemAdmit =
   core <> nsSep <> "system" <> nsSep <> "admit"

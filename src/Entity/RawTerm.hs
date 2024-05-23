@@ -64,6 +64,7 @@ data RawTermF a
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | StaticText a T.Text
+  | Rune a T.Text
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a

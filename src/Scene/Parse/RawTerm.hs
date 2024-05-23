@@ -125,6 +125,7 @@ rawTermSimple = do
     [ rawTermBrace,
       rawTermListIntro,
       rawTermTextIntro,
+      rawTermRuneIntro,
       rawTermTau,
       rawTermAdmit,
       rawTermHole,
@@ -745,6 +746,13 @@ rawTermTextIntro = do
   (s, c) <- string
   textType <- lift $ locatorToVarGlobal m coreText
   return (m :< RT.StaticText textType s, c)
+
+rawTermRuneIntro :: Parser (RT.RawTerm, C)
+rawTermRuneIntro = do
+  m <- getCurrentHint
+  (s, c) <- rune
+  runeType <- lift $ locatorToVarGlobal m coreRune
+  return (m :< RT.Rune runeType s, c)
 
 locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do
