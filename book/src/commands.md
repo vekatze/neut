@@ -483,5 +483,5 @@ For more information, please see [Lovely LSP Showcase](./lovely-lsp-showcase.md)
 
 ```sh
 neut version
-#=> 0.8.0
+#=> X.Y.Z
 ```
