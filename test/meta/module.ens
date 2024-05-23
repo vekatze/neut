@@ -2,6 +2,9 @@
   target {
     meta {
       main "meta.nt",
+      build-option [
+        "-fsanitize=address",
+      ],
     },
   },
   dependency {
