@@ -1,5 +1,6 @@
 module Scene.Parse.Discern (discernStmtList) where
 
+import Codec.Binary.UTF8.String
 import Context.App
 import Context.Decl qualified as Decl
 import Context.Env qualified as Env
@@ -14,12 +15,14 @@ import Context.TopCandidate qualified as TopCandidate
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Data.Bits (shiftL, (.|.))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Data.Word
 import Entity.Annotation qualified as AN
 import Entity.Arch qualified as Arch
 import Entity.ArgNum qualified as AN
@@ -387,6 +390,16 @@ discern nenv term =
           Throw.raiseError m $ "couldn't interpret the following as a string: " <> str
         Just str' -> do
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
+    m :< RT.Rune runeType str -> do
+      let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
+      runeType' <- discern nenv runeType
+      case strOrNone of
+        Just str'
+          | Just (c, "") <- T.uncons str' -> do
+              let runeValue = calculateRuneValue $ encode [c]
+              return $ m :< WT.Prim (WP.Value $ WPV.Int runeType' runeValue)
+        _ ->
+          Throw.raiseError m $ "couldn't interpret the following as a rune: " <> str
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do
@@ -925,3 +938,7 @@ locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair (blur m) text
   return $ blur m :< RT.Var (Locator (gl, ll))
+
+calculateRuneValue :: [Word8] -> Integer
+calculateRuneValue =
+  foldl' (\acc byte -> (acc `shiftL` 8) .|. fromIntegral byte) 0

@@ -104,6 +104,8 @@ toDoc term =
         ]
     _ :< StaticText _ txt -> do
       D.text $ "\"" <> txt <> "\""
+    _ :< Rune _ ch -> do
+      D.text $ "`" <> ch <> "`"
     _ :< Magic c magic ->
       case magic of
         Cast c1 from to e -> do

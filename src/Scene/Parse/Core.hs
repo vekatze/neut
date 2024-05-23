@@ -132,7 +132,7 @@ delimiter expected = do
 string :: Parser (T.Text, C)
 string =
   lexeme $ do
-    _ <- char '\"'
+    _ <- char '"'
     stringInner []
 
 stringInner :: [Char] -> Parser T.Text
@@ -146,6 +146,24 @@ stringInner acc = do
       return $ T.pack $ Prelude.reverse acc
     _ ->
       stringInner (c : acc)
+
+rune :: Parser (T.Text, C)
+rune =
+  lexeme $ do
+    _ <- char '`'
+    runeInner []
+
+runeInner :: [Char] -> Parser T.Text
+runeInner acc = do
+  c <- anySingle
+  case c of
+    '\\' -> do
+      c' <- anySingle
+      runeInner (c' : '\\' : acc)
+    '`' ->
+      return $ T.pack $ Prelude.reverse acc
+    _ ->
+      runeInner (c : acc)
 
 integer :: Parser (Integer, C)
 integer = do
