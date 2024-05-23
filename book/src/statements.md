@@ -384,11 +384,11 @@ If a nominal definition isn't followed by a real definition, the compiler report
 
 ## `foreign`
 
-`foreign` declares functions that is defined in linked objects. It should look like the following:
+`foreign` declares functions that are defined in linked objects. It should look like the following:
 
 ```neut
 foreign {
-  add_const(int): int,
+  neut_myapp_v1_add_const(int): int,
 }
 ```
 
@@ -399,21 +399,21 @@ Suppose that you have a C source file with the following definition:
 ```c
 // add_const.c
 
-int add_const(int value) {
+int neut_myapp_v1_add_const(int value) {
   return value + 100;
 }
 ```
 
-You compile this file with `clang -c` to produce an object file and put it into [a foreign directory of your module](modules.md#foreign). Under this setting, the following code can utilize `add_const`:
+You can add the field `foreign` to your `module.ens` to compile and link this C source file, as written [here](modules.md#foreign). Under this setting, the following code can utilize `neut_myapp_v1_add_const`:
 
 ```neut
 foreign {
-  add_const(int): int,
+  neut_myapp_v1_add_const(int): int,
 }
 
 define main(): unit {
   let x: int = 10 in
-  print-int(magic external add_const(x)); // ← `magic external` is used here
+  print-int(magic external neut_myapp_v1_add_const(x)); // ← `magic external` is used here
   print("\n")
 }
 ```

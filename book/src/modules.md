@@ -280,54 +280,70 @@ The field `prefix` is optional. The default value of `prefix` is `{}`.
 
 ## `foreign`
 
-The field `foreign` defines a list of directories that contains platform-dependent object files. It should look like the following:
+The field `foreign` defines a way to compile external source files. It should look like the following:
 
 ```ens
 {
   // ..
-  foreign [
-    "./ffi/",
-    // ..
-    "./some-directory/",
-  ],
-  // ..
+  foreign {
+    input [
+      "source/foo.c",
+      "source/bar.c",
+    ],
+    output [
+      "foo.o",
+      "bar.o"
+    ],
+    script [
+      "{{clang}} -c -flto=thin -O2 source/foo.c -o {{foreign}}/foo.o",
+      "{{clang}} -c -flto=thin -O2 source/bar.c -o {{foreign}}/bar.o",
+    ]
+  }
 }
 ```
 
-The structure of a directory specified in `foreign` must be something like the below:
+### `input`
 
-```text
-./ffi/
-├── amd64-linux/
-│  ├── foo.o
-│  └── bar.o
-├── arm64-darwin/
-│  ├── foo.o
-│  └── bar.o
-└── arm64-linux/
-   ├── foo.o
-   └── bar.o
+The field `input` specifies the list of external source files. The paths are relative to the root of the module.
+
+When running `neut archive`, the compiler adds all the `input` files to the resulting tarballs.
+
+### `output`
+
+The field `output` specifies the resulting files of foreign source files. The paths are relative to a directory named _foreign directory_. You can find a foreign directory in the build directory.
+
+When running `neut build`, the compiler links all the `output` files in the foreign directory (in addition to Neut's "domestic" object files).
+
+### `script`
+
+The field `script` specifies how to compile external source files. When running `neut build`, the compiler executes the specified commands immediately after resolving all the `import`s.
+
+In the field `script`, you can use the following placeholders:
+
+- `{{clang}}`: The `clang` used by the compiler
+- `{{foreign}}`: The foreign directory
+
+The compiler skips running the `script` if all the files in `output` are newer than `input`.
+
+When running the `script`, the compiler sets the current working directory to the module's root directory.
+
+### Notes
+
+The field `foreign` is optional. The default value of `foreign` is:
+
+```ens
+{
+  input [],
+  output [],
+  script [],
+}
 ```
 
-That is, the directory must be of the following form:
-
-```text
-{foreign-directory-root}/{platform-name}/(.. list of object files ..)
-```
-
-When building a module with `foreign` directories, all the object files placed in the corresponding `{platform-name}` in `foreign` directories are used during linking phase.
-
-The "object files" here are expected to be something that can be generated using clang as follows:
-
-```sh
-clang -c -o ffi/arm64-darwin/foo.o path/to/foo.c
-```
-
-The field `foreign` is optional. The default value of `foreign` is `[]`.
+An example of `foreign` can be found in the [core library](https://github.com/vekatze/neut-core/blob/0570cd5aa17914bef7021b7e88ca1fa421af721e/module.ens#L10).
 
 <div class="info-block">
 
-If you peek at the `build` directory, you'll find a directory named `artifact` that contains cache files (`foo.i`) and object files (`foo.o`). When linking phase, all the object files in the `artifact` directory and the object files in the `foreign` directories are linked to produce an executable.
+The compiler links the resulting foreign object files without any name mangling. You're strongly encouraged to prefix names in your foreign sources with your module name and the major version to avoid name collision. You can find an example of prefixed names [here](https://github.com/vekatze/neut-core/blob/0570cd5aa17914bef7021b7e88ca1fa421af721e/source/foreign.c).
 
 </div>
 
