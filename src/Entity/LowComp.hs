@@ -66,7 +66,7 @@ data Op
   | PointerToInt Value LowType LowType
   | Load Value LowType
   | Store LowType Value Value
-  | StackAlloc LowType Integer
+  | StackAlloc LowType Value
   | Alloc Value Int AllocID
   | Free Value Int FreeID
   | PrimOp PrimOp [Value]

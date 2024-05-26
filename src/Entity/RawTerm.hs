@@ -194,7 +194,7 @@ data RawMagic
   = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm)
   | Store C (EL RLT.RawLowType) (EL RawTerm) (EL RawTerm)
   | Load C (EL RLT.RawLowType) (EL RawTerm)
-  | Alloca C (EL RLT.RawLowType) (EL Integer)
+  | Alloca C (EL RLT.RawLowType) (EL RawTerm)
   | External C EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
   | Global C (EL EN.ExternalName) (EL RLT.RawLowType)
 
