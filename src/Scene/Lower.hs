@@ -240,8 +240,9 @@ lowerCompPrimitive codeOp =
           uncast result valueLowType
         M.Alloca lt size -> do
           baseSize <- lift Env.getBaseSize'
-          castedSize <- lowerValueLetCast size $ LT.PrimNum $ PT.Int $ IntSize baseSize
-          result <- reflect $ LC.StackAlloc lt castedSize
+          let indexType = LT.PrimNum $ PT.Int $ IntSize baseSize
+          castedSize <- lowerValueLetCast size indexType
+          result <- reflect $ LC.StackAlloc lt indexType castedSize
           uncast result LT.Pointer
         M.External domList cod name args varArgAndTypeList -> do
           alreadyRegistered <- lift $ Decl.member (DN.Ext name)

@@ -51,8 +51,8 @@ emitLowOp ax lowOp =
           emitLowType LT.Pointer,
           emitValue d2
         ]
-    LC.StackAlloc lt num -> do
-      unwordsL ["alloca", emitLowType lt <> ",", emitLowType lt, emitValue num]
+    LC.StackAlloc lt indexType num -> do
+      unwordsL ["alloca", emitLowType lt <> ",", emitLowType indexType, emitValue num]
     LC.Alloc d _ _ -> do
       unwordsL ["call fastcc", "ptr", "@malloc(" <> emitLowType (intType ax) <> " " <> emitValue d <> ")"]
     LC.Free d _ _ -> do
