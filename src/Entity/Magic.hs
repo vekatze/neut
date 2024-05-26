@@ -11,7 +11,7 @@ data Magic a
   = Cast a a a
   | Store LowType a a
   | Load LowType a
-  | Alloca LowType Integer
+  | Alloca LowType a
   | External [LowType] LowType EN.ExternalName [a] [(a, LowType)]
   | Global EN.ExternalName LowType
   deriving (Show, Eq, G.Generic)
@@ -27,8 +27,8 @@ instance Functor Magic where
         Store lt (f value) (f pointer)
       Load lt pointer ->
         Load lt (f pointer)
-      Alloca lt num ->
-        Alloca lt num
+      Alloca lt size ->
+        Alloca lt (f size)
       External domList cod extFunName args varArgs -> do
         let varArgs' = map (first f) varArgs
         External domList cod extFunName (fmap f args) varArgs'
@@ -60,8 +60,8 @@ instance Traversable Magic where
         Store lt <$> f value <*> f pointer
       Load lt pointer ->
         Load lt <$> f pointer
-      Alloca lt num ->
-        pure $ Alloca lt num
+      Alloca lt size ->
+        Alloca lt <$> f size
       External domList cod extFunName args varArgs -> do
         let swap (x, y) = (y, x)
         let varArgs' = traverse (fmap swap . traverse f . swap) varArgs

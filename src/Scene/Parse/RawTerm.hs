@@ -395,8 +395,8 @@ rawTermMagicAlloca m c = do
   rawTermMagicBase "alloca" $ do
     lt <- lowType
     c3 <- delimiter ","
-    (num, c4) <- integer
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, lt) (c3, (num, c4)))
+    size <- rawExpr
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, lt) (c3, size))
 
 rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicExternal m c0 = do

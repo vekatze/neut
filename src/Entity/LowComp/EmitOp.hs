@@ -52,7 +52,7 @@ emitLowOp ax lowOp =
           emitValue d2
         ]
     LC.StackAlloc lt num -> do
-      unwordsL ["alloca", emitLowType lt <> ",", emitLowType lt, TE.encodeUtf8Builder $ T.pack $ show num]
+      unwordsL ["alloca", emitLowType lt <> ",", emitLowType lt, emitValue num]
     LC.Alloc d _ _ -> do
       unwordsL ["call fastcc", "ptr", "@malloc(" <> emitLowType (intType ax) <> " " <> emitValue d <> ")"]
     LC.Free d _ _ -> do

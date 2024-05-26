@@ -137,7 +137,7 @@ toDoc term =
                     RT.mapEL toDoc pointer
                   ]
             ]
-        Alloca c1 lt num -> do
+        Alloca c1 lt size -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic alloca",
               SE.decode $
@@ -145,7 +145,7 @@ toDoc term =
                   (Just SE.Paren)
                   SE.Comma
                   [ RT.mapEL RLT.decode lt,
-                    RT.mapEL (D.text . T.pack . show) num
+                    RT.mapEL toDoc size
                   ]
             ]
         External c1 funcName c2 args varArgsOrNone -> do

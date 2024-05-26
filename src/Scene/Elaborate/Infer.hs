@@ -258,10 +258,11 @@ infer varEnv term =
           (value', t) <- infer varEnv value
           insConstraintEnv from' t
           return (m :< WT.Magic (M.Cast from' to' value'), m :< toInner)
-        M.Alloca {} -> do
-          magic' <- mapM (infer varEnv >=> return . fst) magic
+        M.Alloca lt size -> do
+          (size', sizeType) <- infer varEnv size
           intType <- getIntType m
-          return (m :< WT.Magic magic', intType)
+          insConstraintEnv intType sizeType
+          return (m :< WT.Magic (M.Alloca lt size'), intType)
         _ -> do
           magic' <- mapM (infer varEnv >=> return . fst) magic
           resultType <- newHole m varEnv
