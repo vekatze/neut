@@ -61,6 +61,7 @@ rawTerm = do
   choice
     [ rawTermDefine,
       rawTermIntrospect,
+      rawTermIncludeText,
       rawTermMagic,
       rawTermMatch,
       rawTermPi,
@@ -717,6 +718,13 @@ rawTermIntrospectiveClause = do
   if s /= "default"
     then return ((Just s, cKey ++ cArrow, body), c)
     else return ((Nothing, cKey ++ cArrow, body), c)
+
+rawTermIncludeText :: Parser (RT.RawTerm, C)
+rawTermIncludeText = do
+  m <- getCurrentHint
+  c1 <- keyword "include-text"
+  (c2, (path, c)) <- betweenParen string
+  return (m :< RT.IncludeText c1 c2 path, c)
 
 rawTermSymbol :: Parser (RT.RawTerm, C)
 rawTermSymbol = do

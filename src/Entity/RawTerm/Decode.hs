@@ -103,7 +103,7 @@ toDoc term =
           attachComment c5 $ toDoc cont
         ]
     _ :< StaticText _ txt -> do
-      D.text $ "\"" <> txt <> "\""
+      quoteText txt
     _ :< Rune _ ch -> do
       D.text $ "`" <> ch <> "`"
     _ :< Magic c magic ->
@@ -233,6 +233,12 @@ toDoc term =
           PI.horizontal $ D.text key,
           PI.inject $ SE.decode' $ fmap decodeIntrospectClause clauseList
         ]
+    _ :< IncludeText c1 c2 (path, c3) -> do
+      let args = SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (path, c3))]
+      PI.arrange
+        [ PI.inject $ D.text "include-text",
+          PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap quoteText args
+        ]
     _ :< With withClause -> do
       decodeKeywordClause "with" $ mapKeywordClause toDoc withClause
     _ :< Projection e (_, proj) _ -> do
@@ -243,6 +249,10 @@ toDoc term =
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
+
+quoteText :: T.Text -> D.Doc
+quoteText txt =
+  D.text $ "\"" <> txt <> "\""
 
 decodeDef :: (a -> D.Doc) -> T.Text -> C -> RawDef a -> D.Doc
 decodeDef nameDecoder keyword c def = do
