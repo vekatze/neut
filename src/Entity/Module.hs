@@ -65,6 +65,7 @@ data Module = Module
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
     moduleForeign :: Foreign,
+    moduleStaticFiles :: Map.HashMap T.Text (Path Rel File),
     modulePrefixMap :: Map.HashMap BN.BaseName (MA.ModuleAlias, SL.SourceLocator),
     moduleInlineLimit :: Maybe Int,
     modulePresetMap :: PresetMap
@@ -126,6 +127,10 @@ keyExtraContent =
 keyAntecedent :: T.Text
 keyAntecedent =
   "antecedent"
+
+keyStatic :: T.Text
+keyStatic =
+  "static"
 
 keyForeign :: T.Text
 keyForeign =
