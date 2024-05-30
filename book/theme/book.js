@@ -74,7 +74,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         className: "builtin",
-        begin: "<=|->|=>|\\*|:|\\||this|,|;|\\b_\\b|&|\\b-(?=\\s)|=|magic|assert|new-channel|new-cell",
+        begin: "<=|->|=>|\\*|:|\\||this|,|;|\\b_\\b|&|\\b-(?=\\s)|=|magic|assert|new-channel|new-cell|static|include-text",
       },
       hljs.COMMENT(
         "//", // begin
@@ -99,6 +99,7 @@ hljs.registerLanguage("ens", function (hljs) {
         "preset",
         "source",
         "target",
+        "static",
       ].join(" "),
     },
     contains: [

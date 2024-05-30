@@ -49,6 +49,7 @@
 
 - [magic](#magic)
 - [introspect](#introspect)
+- [include-text](#include-text)
 - [admit](#admit)
 - [assert](#assert)
 - [\_](#_)
@@ -1980,6 +1981,47 @@ The configuration value `default` is equal to any configuration values.
 ### Note
 
 - The branching of an `introspect` is resolved at compile-time.
+
+## `include-text`
+
+You can use `include-text` to embed the content of a static file into a source file at compile time.
+
+### Example
+
+```neut
+import {
+  static {some-file}
+}
+
+define use-some-file(): unit {
+  let t &text = include-text(some-file) in
+  print(t)
+}
+```
+
+### Syntax
+
+```neut
+include-text(key)
+```
+
+### Sematics
+
+The compiler expands `include-text(foo)` into the content of `foo` at compile time.
+
+If `foo` isn't a key of a UTF-8 file, `include-text(foo)` reports a compilation error.
+
+### Type
+
+```neut
+(Γ is a context)    (k is a static file's key)
+----------------------------------------------
+Γ ⊢ include-text(k): &text
+```
+
+### Notes
+
+You may also want to read [the section on static files in Modules](modules.md#static).
 
 ## `admit`
 
