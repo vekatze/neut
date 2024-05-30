@@ -94,6 +94,7 @@ data Env = Env
     typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     activeGlobalLocatorList :: IORef [SGL.StrictGlobalLocator],
     activeDefiniteDescriptionList :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
+    activeStaticFileList :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
     currentSource :: Ref Source.Source,
     clangDigest :: Ref T.Text,
@@ -154,6 +155,7 @@ newEnv = do
   typeEnv <- newIORef Map.empty
   activeGlobalLocatorList <- newIORef []
   activeDefiniteDescriptionList <- newIORef Map.empty
+  activeStaticFileList <- newIORef Map.empty
   currentGlobalLocator <- newRef
   currentSource <- newRef
   clangDigest <- newRef

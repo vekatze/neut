@@ -15,15 +15,12 @@ import Context.TopCandidate qualified as TopCandidate
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
-import Control.Monad.IO.Class
 import Data.Bits (shiftL, (.|.))
-import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Text.Encoding
 import Data.Vector qualified as V
 import Data.Word
 import Entity.Annotation qualified as AN
@@ -74,8 +71,6 @@ import Entity.VarDefKind qualified as VDK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Path
-import Path.IO (doesFileExist)
 import Scene.Parse.Discern.Data
 import Scene.Parse.Discern.Name
 import Scene.Parse.Discern.Noema
@@ -486,22 +481,15 @@ discern axis term =
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern axis clause
-    m :< RT.IncludeText _ _ (path, _) -> do
-      case parseRelFile (T.unpack path) of
-        Just path' -> do
-          let dir = getModuleRootDir $ currentModule axis
-          let filePath = dir </> path'
-          b <- doesFileExist filePath
-          if b
-            then do
-              content <- liftIO $ fmap decodeUtf8 $ B.readFile $ toFilePath filePath
-              textType <- locatorToVarGlobal m coreText >>= discern axis
-              Tag.insertFileLoc m (T.length "include-text") (newSourceHint filePath)
-              return $ m :< WT.Prim (WP.Value $ WPV.StaticText textType content)
-            else do
-              Throw.raiseError m $ "No such file exist: `" <> T.pack (toFilePath filePath) <> "`"
+    m :< RT.IncludeText _ _ mKey (key, _) -> do
+      contentOrNone <- Locator.getStaticFileContent key
+      case contentOrNone of
+        Just (path, content) -> do
+          textType <- locatorToVarGlobal m coreText >>= discern axis
+          Tag.insertFileLoc mKey (T.length key) (newSourceHint path)
+          return $ m :< WT.Prim (WP.Value $ WPV.StaticText textType content)
         Nothing ->
-          Throw.raiseError m $ "couldn't parse the relative path: `" <> path <> "`"
+          Throw.raiseError m $ "no such static file is defined: `" <> key <> "`"
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of

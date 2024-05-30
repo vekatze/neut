@@ -4,8 +4,9 @@ module Context.Locator
     attachPublicCurrentLocator,
     getCurrentGlobalLocator,
     activateSpecifiedNames,
+    getStaticFileContent,
+    activateStaticFile,
     isMainFile,
-    clearActiveLocators,
     getPossibleReferents,
     getMainDefiniteDescription,
     getNameLifter,
@@ -19,13 +20,17 @@ import Context.App
 import Context.App.Internal
 import Context.Env (getCurrentSource)
 import Context.Module (getMainModule)
+import Context.Path (doesFileExist)
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Monad
+import Control.Monad.IO.Class
+import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
+import Data.Text.Encoding
 import Entity.AliasInfo (MustUpdateTag)
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
@@ -56,6 +61,7 @@ initialize = do
   writeRef currentGlobalLocator cgl
   writeRef' activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
   writeRef' activeDefiniteDescriptionList Map.empty
+  writeRef' activeStaticFileList Map.empty
 
 activateSpecifiedNames :: TopNameMap -> MustUpdateTag -> SGL.StrictGlobalLocator -> [(Hint, LL.LocalLocator)] -> App ()
 activateSpecifiedNames topNameMap mustUpdateTag sgl lls = do
@@ -84,6 +90,22 @@ activateSpecifiedNames topNameMap mustUpdateTag sgl lls = do
           _ ->
             modifyRef' activeDefiniteDescriptionList $ Map.insert ll dd
 
+activateStaticFile :: Hint -> T.Text -> Path Abs File -> App ()
+activateStaticFile m key path = do
+  b <- doesFileExist path
+  if b
+    then do
+      content <- liftIO $ fmap decodeUtf8 $ B.readFile $ toFilePath path
+      modifyRef' activeStaticFileList $ Map.insert key (path, content)
+    else
+      Throw.raiseError m $
+        "the static file `" <> key <> "` doesn't exist at: " <> T.pack (toFilePath path)
+
+getStaticFileContent :: T.Text -> App (Maybe (Path Abs File, T.Text))
+getStaticFileContent key = do
+  env <- readRef' activeStaticFileList
+  return $ Map.lookup key env
+
 attachCurrentLocator ::
   BN.BaseName ->
   App DD.DefiniteDescription
@@ -107,10 +129,6 @@ attachPublicCurrentLocator name = do
 getCurrentGlobalLocator :: App SGL.StrictGlobalLocator
 getCurrentGlobalLocator =
   readRef "currentGlobalLocator" currentGlobalLocator
-
-clearActiveLocators :: App ()
-clearActiveLocators = do
-  writeRef' activeGlobalLocatorList []
 
 getPossibleReferents :: LL.LocalLocator -> App [DD.DefiniteDescription]
 getPossibleReferents localLocator = do

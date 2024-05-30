@@ -233,11 +233,11 @@ toDoc term =
           PI.horizontal $ D.text key,
           PI.inject $ SE.decode' $ fmap decodeIntrospectClause clauseList
         ]
-    _ :< IncludeText c1 c2 (path, c3) -> do
+    _ :< IncludeText c1 c2 _ (path, c3) -> do
       let args = SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (path, c3))]
       PI.arrange
         [ PI.inject $ D.text "include-text",
-          PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap quoteText args
+          PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap D.text args
         ]
     _ :< With withClause -> do
       decodeKeywordClause "with" $ mapKeywordClause toDoc withClause

@@ -7,7 +7,7 @@ where
 import Context.Alias qualified as Alias
 import Context.App
 import Context.Global qualified as Global
-import Context.Path (doesFileExist)
+import Context.Locator qualified as Locator
 import Context.RawImportSummary qualified as RawImportSummary
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
@@ -51,12 +51,7 @@ activateImport m sourceInfoList = do
           Alias.activateAliasInfo namesInSource aliasInfo
       StaticKey pathList -> do
         forM_ pathList $ \(key, (mKey, path)) -> do
-          b <- doesFileExist path
-          if b
-            then return ()
-            else
-              Throw.raiseError mKey $
-                "the static file `" <> key <> "` doesn't exist at: " <> T.pack (toFilePath path)
+          Locator.activateStaticFile mKey key path
 
 interpretImport :: Hint -> Source.Source -> [(RawImport, C)] -> App [ImportItem]
 interpretImport m currentSource importList = do

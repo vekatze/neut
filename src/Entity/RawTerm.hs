@@ -80,7 +80,7 @@ data RawTermF a
   | Option a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
-  | IncludeText C C (T.Text, C)
+  | IncludeText C C Hint (T.Text, C)
   | With (KeywordClause a)
   | Projection a (Hint, RawIdent) Loc
   | Brace C (a, C)

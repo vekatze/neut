@@ -723,8 +723,11 @@ rawTermIncludeText :: Parser (RT.RawTerm, C)
 rawTermIncludeText = do
   m <- getCurrentHint
   c1 <- keyword "include-text"
-  (c2, (path, c)) <- betweenParen string
-  return (m :< RT.IncludeText c1 c2 path, c)
+  (c2, ((mKey, key), c)) <- betweenParen $ do
+    mKey <- getCurrentHint
+    k <- symbol
+    return (mKey, k)
+  return (m :< RT.IncludeText c1 c2 mKey key, c)
 
 rawTermSymbol :: Parser (RT.RawTerm, C)
 rawTermSymbol = do
