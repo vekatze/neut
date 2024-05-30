@@ -7,7 +7,6 @@ import Data.IORef.Unboxed
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.AliasInfo
 import Entity.ArgNum qualified as AN
 import Entity.Artifact qualified as AR
 import Entity.Binder
@@ -22,6 +21,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.HoleSubst qualified as HS
 import Entity.Ident
+import Entity.Import
 import Entity.IsConstLike
 import Entity.Key
 import Entity.LocalLocator qualified as LL
@@ -74,7 +74,7 @@ data Env = Env
     unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
     buildSignatureMap :: IORef (Map.HashMap MID.ModuleID String), -- only for memoization
     holeSubst :: IORef HS.HoleSubst,
-    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [(Source.Source, [AliasInfo])]),
+    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
     traceSourceList :: IORef [Source.Source],
     weakTypeEnv :: IORef (IntMap.IntMap WT.WeakTerm),
     holeEnv :: IORef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),

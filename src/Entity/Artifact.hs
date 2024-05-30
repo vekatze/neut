@@ -1,6 +1,7 @@
 module Entity.Artifact
   ( ArtifactTime (..),
     empty,
+    inject,
   )
 where
 
@@ -11,7 +12,7 @@ data ArtifactTime = ArtifactTime
     llvmTime :: Maybe UTCTime,
     objectTime :: Maybe UTCTime
   }
-  deriving (Show)
+  deriving (Show, Ord, Eq)
 
 empty :: ArtifactTime
 empty =
@@ -19,4 +20,12 @@ empty =
     { cacheTime = Nothing,
       llvmTime = Nothing,
       objectTime = Nothing
+    }
+
+inject :: UTCTime -> ArtifactTime
+inject t =
+  ArtifactTime
+    { cacheTime = Just t,
+      llvmTime = Just t,
+      objectTime = Just t
     }

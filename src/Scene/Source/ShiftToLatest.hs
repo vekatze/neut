@@ -1,5 +1,6 @@
 module Scene.Source.ShiftToLatest
   ( shiftToLatest,
+    shiftToLatestModule,
     ShiftMap,
   )
 where
@@ -26,6 +27,15 @@ shiftToLatest source = do
       return source
     Just newModule -> do
       getNewerSource source newModule
+
+shiftToLatestModule :: Module -> App Module
+shiftToLatestModule m = do
+  shiftMap <- Antecedent.getMap
+  case Map.lookup (moduleID m) shiftMap of
+    Nothing ->
+      return m
+    Just newModule -> do
+      return newModule
 
 getNewerSource :: Source.Source -> Module -> App Source.Source
 getNewerSource source newModule = do
