@@ -9,6 +9,7 @@ import Context.Global qualified as Global
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedPreset qualified as UnusedPreset
+import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -68,6 +69,7 @@ interpret currentSource (RawProgram m importList stmtList) = do
   UnusedGlobalLocator.registerRemarks
   UnusedLocalLocator.registerRemarks
   UnusedPreset.registerRemarks
+  UnusedStaticFile.registerRemarks
   return stmtList'
 
 saveTopLevelNames :: Source.Source -> [(Hint, DD.DefiniteDescription)] -> App ()

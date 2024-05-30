@@ -12,6 +12,7 @@ import Context.SymLoc qualified as SymLoc
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.TopCandidate qualified as TopCandidate
+import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
@@ -485,6 +486,7 @@ discern axis term =
       contentOrNone <- Locator.getStaticFileContent key
       case contentOrNone of
         Just (path, content) -> do
+          UnusedStaticFile.delete key
           textType <- locatorToVarGlobal m coreText >>= discern axis
           Tag.insertFileLoc mKey (T.length key) (newSourceHint path)
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText textType content)

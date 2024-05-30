@@ -72,6 +72,7 @@ data Env = Env
     unusedGlobalLocatorMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMap :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
+    unusedStaticFileMap :: IORef (Map.HashMap T.Text Hint),
     buildSignatureMap :: IORef (Map.HashMap MID.ModuleID String), -- only for memoization
     holeSubst :: IORef HS.HoleSubst,
     sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
@@ -128,6 +129,7 @@ newEnv = do
   unusedGlobalLocatorMap <- newIORef Map.empty
   unusedPresetMap <- newIORef Map.empty
   unusedLocalLocatorMap <- newIORef Map.empty
+  unusedStaticFileMap <- newIORef Map.empty
   nameMap <- newIORef Map.empty
   geistMap <- newIORef Map.empty
   antecedentMap <- newIORef Map.empty

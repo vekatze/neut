@@ -13,6 +13,7 @@ import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -83,6 +84,7 @@ interpretImportItemStatic currentModule keyList = do
       Just path -> do
         let fullPath = moduleRootDir </> path
         Tag.insertFileLoc mKey (T.length key) (newSourceHint fullPath)
+        UnusedStaticFile.insert key mKey
         return (key, (mKey, fullPath))
       Nothing ->
         Throw.raiseError mKey $ "no such static file is defined: " <> key
