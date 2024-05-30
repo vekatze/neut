@@ -14,6 +14,7 @@
 - [Integers](#integers)
 - [Floats](#floats)
 - [Texts](#texts)
+- [Runes](#runes)
 
 ### Function
 
@@ -406,6 +407,63 @@ The type of an integer is unknown in itself. It must be inferred to be one of th
 ### Note
 
 - The type `float` is also available. For more, see [Primitives](./primitives.md#primitive-types).
+
+## Runes
+
+### Example
+
+```neut
+define foo(): unit {
+  let _: rune = `A` in
+  //            ^^^
+  let _: rune = `\n` in
+  //            ^^^
+  let _: rune = `\n` in
+  //            ^^^
+  Unit
+}
+
+```
+
+### Syntax
+
+`` `A` ``, `` `\n` ``, `` `\1234` ``, etc.
+
+### Semantics
+
+The value of a rune literal is a Unicode codepoint encoded in UTF-8.
+
+The underlying representation of a rune is an int32.
+
+### Type
+
+```neut
+(Γ is a context)  (c is a rune literal)
+---------------------------------------
+         Γ ⊢ c: rune
+```
+
+### Note
+
+(1) You can write `` `\1234` ``, for example, to represent U+1234 (`` `ሴ` ``).
+
+(2) We have the following equalities, for example:
+
+```neut
+`A` == magic cast(int32, rune, 0x41)
+`Γ` == magic cast(int32, rune, 0xCE93)
+`あ` == magic cast(int32, rune, 0xE38182)
+`⭐` == magic cast(int32, rune, 0xE2AD90)
+```
+
+You can see this by calling the following function:
+
+```neut
+define print-star(): unit {
+  // prints "⭐"
+  printf("{}\n", [core.text.singleton(magic cast(int32, rune, 0xE2AD90))])
+}
+```
 
 ## Texts
 

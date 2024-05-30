@@ -62,6 +62,13 @@ hljs.registerLanguage("neut", function (hljs) {
         end: '"',
         contains: [hljs.BACKSLASH_ESCAPE],
       },
+      {
+        className: "string",
+        scope: "string",
+        begin: '`',
+        end: '`',
+        contains: [hljs.BACKSLASH_ESCAPE],
+      },
       { className: "warning",
         begin: "admit",
       },
