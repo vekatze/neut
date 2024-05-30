@@ -56,6 +56,7 @@ constructDefaultModule name = do
         moduleExtraContents = [],
         moduleAntecedents = [],
         moduleLocation = moduleRootDir </> moduleFile,
+        moduleStaticFiles = Map.empty,
         moduleForeign = Foreign {input = [], output = [], script = []},
         modulePrefixMap = Map.empty,
         moduleInlineLimit = Nothing,

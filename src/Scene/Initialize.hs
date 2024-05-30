@@ -23,6 +23,7 @@ import Context.TopCandidate qualified as TopCandidate
 import Context.Unravel qualified as Unravel
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Context.UnusedVariable qualified as UnusedVariable
 import Context.WeakDefinition qualified as WeakDefinition
 import Entity.Config.Remark qualified as Remark
@@ -60,6 +61,7 @@ initializeForSource source = do
   UnusedVariable.initialize
   UnusedGlobalLocator.initialize
   UnusedLocalLocator.initialize
+  UnusedStaticFile.initialize
   Remark.initialize
   Global.initialize
   Env.setCurrentSource source

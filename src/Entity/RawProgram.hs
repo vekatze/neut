@@ -63,12 +63,19 @@ data RawImport
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
+  | RawStaticKey Hint C (SE.Series (Hint, T.Text))
 
 compareImportItem :: RawImportItem -> RawImportItem -> Ordering
 compareImportItem item1 item2 = do
-  let RawImportItem _ locator1 _ = item1
-  let RawImportItem _ locator2 _ = item2
-  compare locator1 locator2
+  case (item1, item2) of
+    (RawImportItem _ locator1 _, RawImportItem _ locator2 _) ->
+      compare locator1 locator2
+    (RawImportItem {}, RawStaticKey {}) ->
+      LT
+    (RawStaticKey {}, RawImportItem {}) ->
+      GT
+    (RawStaticKey {}, RawStaticKey {}) ->
+      EQ
 
 data RawForeignItem
   = RawForeignItem Hint EN.ExternalName C (SE.Series RLT.RawLowType) C C RLT.RawLowType

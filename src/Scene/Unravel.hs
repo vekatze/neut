@@ -23,9 +23,9 @@ import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
-import Entity.AliasInfo
 import Entity.Artifact qualified as A
 import Entity.Hint
+import Entity.Import
 import Entity.Module
 import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
@@ -139,13 +139,24 @@ unravel'' target source = do
       Unravel.insertToVisitEnv path VI.Active
       Unravel.pushToTraceSourceList source
       children <- getChildren source
-      (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' target) children
+      (artifactTimeList, seqList) <- mapAndUnzipM (unravelImportItem target) children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
       baseArtifactTime <- getBaseArtifactTime target source
       artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
       Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source)
+
+unravelImportItem :: Target -> ImportItem -> App (A.ArtifactTime, Seq Source.Source)
+unravelImportItem t importItem = do
+  case importItem of
+    ImportItem source _ ->
+      unravel'' t source
+    StaticKey staticFileList -> do
+      let pathList = map (snd . snd) staticFileList
+      itemModTime <- mapM Path.getModificationTime pathList
+      let newestArtifactTime = maximum $ map A.inject itemModTime
+      return (newestArtifactTime, Seq.empty)
 
 unravelFoundational :: Target -> Module -> App (A.ArtifactTime, [Source.Source])
 unravelFoundational target baseModule = do
@@ -247,7 +258,7 @@ showCycle' textList =
     text : ps ->
       "\n  ~> " <> text <> showCycle' ps
 
-getChildren :: Source.Source -> App [Source.Source]
+getChildren :: Source.Source -> App [ImportItem]
 getChildren currentSource = do
   Env.setCurrentSource currentSource
   Alias.initializeAliasMap
@@ -255,13 +266,13 @@ getChildren currentSource = do
   let currentSourceFilePath = Source.sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of
     Just sourceAliasList ->
-      return $ map fst sourceAliasList
+      return sourceAliasList
     Nothing -> do
       sourceAliasList <- parseSourceHeader currentSource
       Unravel.insertToSourceChildrenMap currentSourceFilePath sourceAliasList
-      return $ map fst sourceAliasList
+      return sourceAliasList
 
-parseSourceHeader :: Source.Source -> App [(Source.Source, [AliasInfo])]
+parseSourceHeader :: Source.Source -> App [ImportItem]
 parseSourceHeader currentSource = do
   Locator.initialize
   Parse.ensureExistence currentSource

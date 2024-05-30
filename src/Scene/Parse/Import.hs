@@ -7,11 +7,13 @@ where
 import Context.Alias qualified as Alias
 import Context.App
 import Context.Global qualified as Global
+import Context.Locator qualified as Locator
 import Context.RawImportSummary qualified as RawImportSummary
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -21,6 +23,7 @@ import Entity.C
 import Entity.Const
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
+import Entity.Import (ImportItem (..))
 import Entity.LocalLocator qualified as LL
 import Entity.Module
 import Entity.ModuleAlias (ModuleAlias (ModuleAlias))
@@ -37,16 +40,21 @@ import Scene.Source.ShiftToLatest
 type LocatorText =
   T.Text
 
-activateImport :: Hint -> [(Source.Source, [AI.AliasInfo])] -> App ()
+activateImport :: Hint -> [ImportItem] -> App ()
 activateImport m sourceInfoList = do
-  forM_ sourceInfoList $ \(source, aliasInfoList) -> do
-    let path = Source.sourceFilePath source
-    namesInSource <- Global.lookupSourceNameMap m path
-    Global.activateTopLevelNames namesInSource
-    forM_ aliasInfoList $ \aliasInfo ->
-      Alias.activateAliasInfo namesInSource aliasInfo
+  forM_ sourceInfoList $ \importItem -> do
+    case importItem of
+      ImportItem source aliasInfoList -> do
+        let path = Source.sourceFilePath source
+        namesInSource <- Global.lookupSourceNameMap m path
+        Global.activateTopLevelNames namesInSource
+        forM_ aliasInfoList $ \aliasInfo ->
+          Alias.activateAliasInfo namesInSource aliasInfo
+      StaticKey pathList -> do
+        forM_ pathList $ \(key, (mKey, path)) -> do
+          Locator.activateStaticFile mKey key path
 
-interpretImport :: Hint -> Source.Source -> [(RawImport, C)] -> App [(Source.Source, [AI.AliasInfo])]
+interpretImport :: Hint -> Source.Source -> [(RawImport, C)] -> App [ImportItem]
 interpretImport m currentSource importList = do
   presetImportList <- interpretPreset m (Source.sourceModule currentSource)
   let (importList'@((RawImport _ _ importItemList _)), _) = mergeImportList m importList
@@ -55,10 +63,32 @@ interpretImport m currentSource importList = do
     else do
       RawImportSummary.set importList'
       importItemList' <- fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
-        let RawImportItem mItem (locatorText, _) localLocatorList = rawImportItem
-        let localLocatorList' = SE.extract localLocatorList
-        interpretImportItem True (Source.sourceModule currentSource) mItem locatorText localLocatorList'
+        case rawImportItem of
+          RawImportItem mItem (locatorText, _) localLocatorList -> do
+            let localLocatorList' = SE.extract localLocatorList
+            interpretImportItem True (Source.sourceModule currentSource) mItem locatorText localLocatorList'
+          RawStaticKey _ _ keys -> do
+            let keys' = SE.extract keys
+            interpretImportItemStatic (Source.sourceModule currentSource) keys'
       return $ presetImportList ++ importItemList'
+
+interpretImportItemStatic ::
+  Module ->
+  [(Hint, T.Text)] ->
+  App [ImportItem]
+interpretImportItemStatic currentModule keyList = do
+  currentModule' <- shiftToLatestModule currentModule
+  let moduleRootDir = getModuleRootDir currentModule'
+  pathList <- forM keyList $ \(mKey, key) -> do
+    case Map.lookup key (moduleStaticFiles currentModule') of
+      Just path -> do
+        let fullPath = moduleRootDir </> path
+        Tag.insertFileLoc mKey (T.length key) (newSourceHint fullPath)
+        UnusedStaticFile.insert key mKey
+        return (key, (mKey, fullPath))
+      Nothing ->
+        Throw.raiseError mKey $ "no such static file is defined: " <> key
+  return [StaticKey pathList]
 
 interpretImportItem ::
   AI.MustUpdateTag ->
@@ -66,7 +96,7 @@ interpretImportItem ::
   Hint ->
   LocatorText ->
   [(Hint, LL.LocalLocator)] ->
-  App [(Source.Source, [AI.AliasInfo])]
+  App [ImportItem]
 interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList = do
   baseNameList <- Throw.liftEither $ BN.bySplit m locatorText
   case baseNameList of
@@ -77,7 +107,7 @@ interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList =
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
           source <- getSource mustUpdateTag m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
-          return [(source, [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl])]
+          return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl]]
       | otherwise ->
           Throw.raiseError m $ "no such prefix is defined: " <> BN.reify baseName
     aliasText : locator ->
@@ -91,7 +121,7 @@ interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList =
             UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
           source <- getSource mustUpdateTag m sgl locatorText
-          return [(source, [AI.Use mustUpdateTag sgl localLocatorList])]
+          return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
 
 getSource :: AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
 getSource mustUpdateTag m sgl locatorText = do
@@ -107,7 +137,7 @@ getSource mustUpdateTag m sgl locatorText = do
         Source.sourceHint = Just m
       }
 
-interpretPreset :: Hint -> Module -> App [(Source.Source, [AI.AliasInfo])]
+interpretPreset :: Hint -> Module -> App [ImportItem]
 interpretPreset m currentModule = do
   presetInfo <- getEnabledPreset currentModule
   fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do

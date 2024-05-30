@@ -9,6 +9,7 @@ import Context.Global qualified as Global
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedPreset qualified as UnusedPreset
+import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -61,13 +62,14 @@ parseCachedStmtList stmtList = do
 interpret :: Source.Source -> RawProgram -> App [WeakStmt]
 interpret currentSource (RawProgram m importList stmtList) = do
   interpretImport m currentSource importList >>= activateImport m
-  stmtList' <- Discern.discernStmtList $ map fst stmtList
+  stmtList' <- Discern.discernStmtList (Source.sourceModule currentSource) $ map fst stmtList
   Global.reportMissingDefinitions
   saveTopLevelNames currentSource $ getWeakStmtName stmtList'
   UnusedVariable.registerRemarks
   UnusedGlobalLocator.registerRemarks
   UnusedLocalLocator.registerRemarks
   UnusedPreset.registerRemarks
+  UnusedStaticFile.registerRemarks
   return stmtList'
 
 saveTopLevelNames :: Source.Source -> [(Hint, DD.DefiniteDescription)] -> App ()

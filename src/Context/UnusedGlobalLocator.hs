@@ -4,7 +4,6 @@ module Context.UnusedGlobalLocator
     delete,
     registerRemarks,
     get,
-    set,
   )
 where
 
@@ -35,10 +34,6 @@ get :: App UnusedGlobalLocators
 get = do
   uenv <- readRef' unusedGlobalLocatorMap
   return $ Map.toList uenv
-
-set :: UnusedGlobalLocators -> App ()
-set uenv = do
-  writeRef' unusedGlobalLocatorMap $ Map.fromList uenv
 
 registerRemarks :: App ()
 registerRemarks = do

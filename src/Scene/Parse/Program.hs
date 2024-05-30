@@ -9,6 +9,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.ExternalName qualified as EN
@@ -44,8 +45,13 @@ parseSingleImport = do
   (importItems, loc, c) <- P.seriesBrace' $ do
     mImportItem <- P.getCurrentHint
     locator <- P.symbol
-    (lls, c) <- parseLocalLocatorList'
-    return (RawImportItem mImportItem locator lls, c)
+    case fst locator of
+      "static" -> do
+        (ks, c) <- parseStaticKeyList
+        return (RawStaticKey m c1 ks, c)
+      _ -> do
+        (lls, c) <- parseLocalLocatorList'
+        return (RawImportItem mImportItem locator lls, c)
   return (RawImport c1 m importItems loc, c)
 
 parseStmt :: P.Parser (RawStmt, C)
@@ -64,6 +70,16 @@ parseLocalLocatorList' :: P.Parser (SE.Series (Hint, LL.LocalLocator), C)
 parseLocalLocatorList' = do
   choice
     [ P.seriesBrace parseLocalLocator,
+      return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
+    ]
+
+parseStaticKeyList :: P.Parser (SE.Series (Hint, T.Text), C)
+parseStaticKeyList = do
+  choice
+    [ P.seriesBrace $ do
+        m <- P.getCurrentHint
+        (k, c) <- P.symbol
+        return ((m, k), c),
       return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
 

@@ -69,6 +69,8 @@ fromFilePath moduleID moduleFilePath = do
   extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) $ SE.extract extraContentsEns
   (_, antecedentsEns) <- liftEither $ E.access' keyAntecedent E.emptyList ens >>= E.toList
   antecedents <- mapM interpretAntecedent $ SE.extract antecedentsEns
+  (_, staticFileEns) <- liftEither $ E.access' keyStatic E.emptyDict ens >>= E.toDictionary
+  staticFileMap <- interpretStaticFiles staticFileEns
   archiveDirEns <- liftEither $ E.access' keyArchive (E.ensPath archiveRelDir) ens
   archiveDir <- interpretDirPath archiveDirEns
   buildDirEns <- liftEither $ E.access' keyBuild (E.ensPath buildRelDir) ens
@@ -93,6 +95,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,
         moduleLocation = moduleFilePath,
+        moduleStaticFiles = staticFileMap,
         moduleForeign = foreignDict,
         modulePrefixMap = prefixMap,
         moduleInlineLimit = mInlineLimit,
@@ -153,6 +156,14 @@ interpretTarget (_, targetDict) = do
     (_, linkOptEnsSeries) <- liftEither $ E.access' keyLinkOption E.emptyList v >>= E.toList
     linkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
     return (k, TargetSummary {entryPoint, buildOption, compileOption, linkOption})
+  return $ Map.fromList kvs
+
+interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> App (Map.HashMap T.Text (Path Rel File))
+interpretStaticFiles staticFileDict = do
+  kvs <- forM (SE.extract staticFileDict) $ \(staticFileKey, staticFilePathEns) -> do
+    (_, staticFilePathText) <- liftEither $ E.toString staticFilePathEns
+    staticFilePath <- parseRelFile $ T.unpack staticFilePathText
+    return (staticFileKey, staticFilePath)
   return $ Map.fromList kvs
 
 interpretSourceLocator :: E.Ens -> App SL.SourceLocator

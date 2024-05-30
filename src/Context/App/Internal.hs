@@ -7,7 +7,6 @@ import Data.IORef.Unboxed
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.AliasInfo
 import Entity.ArgNum qualified as AN
 import Entity.Artifact qualified as AR
 import Entity.Binder
@@ -22,6 +21,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.HoleSubst qualified as HS
 import Entity.Ident
+import Entity.Import
 import Entity.IsConstLike
 import Entity.Key
 import Entity.LocalLocator qualified as LL
@@ -72,9 +72,10 @@ data Env = Env
     unusedGlobalLocatorMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMap :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
+    unusedStaticFileMap :: IORef (Map.HashMap T.Text Hint),
     buildSignatureMap :: IORef (Map.HashMap MID.ModuleID String), -- only for memoization
     holeSubst :: IORef HS.HoleSubst,
-    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [(Source.Source, [AliasInfo])]),
+    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
     traceSourceList :: IORef [Source.Source],
     weakTypeEnv :: IORef (IntMap.IntMap WT.WeakTerm),
     holeEnv :: IORef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
@@ -94,6 +95,7 @@ data Env = Env
     typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     activeGlobalLocatorList :: IORef [SGL.StrictGlobalLocator],
     activeDefiniteDescriptionList :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
+    activeStaticFileList :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
     currentSource :: Ref Source.Source,
     clangDigest :: Ref T.Text,
@@ -127,6 +129,7 @@ newEnv = do
   unusedGlobalLocatorMap <- newIORef Map.empty
   unusedPresetMap <- newIORef Map.empty
   unusedLocalLocatorMap <- newIORef Map.empty
+  unusedStaticFileMap <- newIORef Map.empty
   nameMap <- newIORef Map.empty
   geistMap <- newIORef Map.empty
   antecedentMap <- newIORef Map.empty
@@ -154,6 +157,7 @@ newEnv = do
   typeEnv <- newIORef Map.empty
   activeGlobalLocatorList <- newIORef []
   activeDefiniteDescriptionList <- newIORef Map.empty
+  activeStaticFileList <- newIORef Map.empty
   currentGlobalLocator <- newRef
   currentSource <- newRef
   clangDigest <- newRef
