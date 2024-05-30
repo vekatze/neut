@@ -62,12 +62,19 @@ hljs.registerLanguage("neut", function (hljs) {
         end: '"',
         contains: [hljs.BACKSLASH_ESCAPE],
       },
+      {
+        className: "string",
+        scope: "string",
+        begin: '`',
+        end: '`',
+        contains: [hljs.BACKSLASH_ESCAPE],
+      },
       { className: "warning",
         begin: "admit",
       },
       {
         className: "builtin",
-        begin: "<=|->|=>|\\*|:|\\||this|,|;|\\b_\\b|&|\\b-(?=\\s)|=|magic|assert|new-channel|new-cell",
+        begin: "<=|->|=>|\\*|:|\\||this|,|;|\\b_\\b|&|\\b-(?=\\s)|=|magic|assert|new-channel|new-cell|static|include-text",
       },
       hljs.COMMENT(
         "//", // begin
@@ -92,6 +99,7 @@ hljs.registerLanguage("ens", function (hljs) {
         "preset",
         "source",
         "target",
+        "static",
       ].join(" "),
     },
     contains: [

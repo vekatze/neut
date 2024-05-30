@@ -65,6 +65,16 @@ define yo(): unit {
 }
 ```
 
+You can also list static files in `import`:
+
+```neut
+import {
+  static {some-file, other-file}
+}
+```
+
+For more on static files, please see [the section in Modules](modules.md#static).
+
 ### Prefix Entry
 
 A prefix entry in `import` is something like `Qux` or `ZZ`. That is, a capitalized name that doesn't contain any `.`.
