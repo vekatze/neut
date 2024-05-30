@@ -1,0 +1,7 @@
+import {
+  static {some-file},
+}
+
+define main(): unit {
+  print(include-text(some-file))
+}
