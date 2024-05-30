@@ -80,8 +80,10 @@ interpretImportItemStatic currentModule keyList = do
   let moduleRootDir = getModuleRootDir currentModule'
   pathList <- forM keyList $ \(mKey, key) -> do
     case Map.lookup key (moduleStaticFiles currentModule') of
-      Just path ->
-        return (key, (mKey, moduleRootDir </> path))
+      Just path -> do
+        let fullPath = moduleRootDir </> path
+        Tag.insertFileLoc mKey (T.length key) (newSourceHint fullPath)
+        return (key, (mKey, fullPath))
       Nothing ->
         Throw.raiseError mKey $ "no such static file is defined: " <> key
   return [StaticKey pathList]
