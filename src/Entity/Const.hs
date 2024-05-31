@@ -113,14 +113,6 @@ coreBoolFalse :: T.Text
 coreBoolFalse =
   core <> nsSep <> "bool" <> nsSep <> "False"
 
-corePair :: T.Text
-corePair =
-  core <> nsSep <> "pair" <> nsSep <> "pair"
-
-corePairPair :: T.Text
-corePairPair =
-  core <> nsSep <> "pair" <> nsSep <> "Pair"
-
 coreEither :: T.Text
 coreEither =
   core <> nsSep <> "either" <> nsSep <> "either"
@@ -132,10 +124,6 @@ coreEitherLeft =
 coreEitherRight :: T.Text
 coreEitherRight =
   core <> nsSep <> "either" <> nsSep <> "Right"
-
-coreEitherOption :: T.Text
-coreEitherOption =
-  core <> nsSep <> "either" <> nsSep <> "option"
 
 coreList :: T.Text
 coreList =
