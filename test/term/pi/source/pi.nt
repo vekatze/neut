@@ -18,8 +18,8 @@ define test-syntax(): unit {
   let _ = (a: tau, list(tau)) -> a in
   let _ = (a: tau, a) -> &list(tau) in
   let _ = (a: tau, &list(tau)) -> a in
-  let _ = (a: tau, a) -> flow(list(tau)) in
-  let _ = (a: tau, flow(list(tau))) -> a in
+  let _ = (a: tau, a) -> thread(list(tau)) in
+  let _ = (a: tau, thread(list(tau))) -> a in
   let _ = (a: tau, a) -> tau in
   let _ = (a: tau, (a) -> a) -> tau in
   let _ = (a: tau, ((a) -> a) -> a) -> tau in
@@ -32,8 +32,8 @@ define test-syntax(): unit {
   let _ = (tau) -> {(list(tau)) -> tau} in
   let _ = (tau) -> {(tau) -> &list(tau)} in
   let _ = (tau) -> {(&list(tau)) -> tau} in
-  let _ = (tau) -> {(tau) -> flow(list(tau))} in
-  let _ = (tau) -> {(flow(list(tau))) -> tau} in
+  let _ = (tau) -> {(tau) -> thread(list(tau))} in
+  let _ = (tau) -> {(thread(list(tau))) -> tau} in
   let _ = (tau) -> {({(tau) -> tau}) -> tau} in
   let _ = (tau) -> {(tau) -> {(tau) -> tau}} in
   let _ = (tau) -> {({(tau) -> tau}) -> {(tau) -> tau}} in

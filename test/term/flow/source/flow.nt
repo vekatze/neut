@@ -3,11 +3,11 @@ import {
 }
 
 define test-syntax(): unit {
-  let _ = flow(tau) in
-  let _ = (flow(tau)) -> tau in
-  let _ = (tau) -> flow(tau) in
-  let _ = (flow(tau), flow(tau)) -> (flow(tau)) -> flow(tau) in
-  let _ = flow(flow(tau)) in
+  let _ = thread(tau) in
+  let _ = (thread(tau)) -> tau in
+  let _ = (tau) -> thread(tau) in
+  let _ = (thread(tau), thread(tau)) -> (thread(tau)) -> thread(tau) in
+  let _ = thread(thread(tau)) in
   let _ = detach {Unit} in
   let _ =
     detach {
@@ -29,7 +29,7 @@ define test-syntax(): unit {
     }
   in
   let _ =
-    function (fl: flow(unit)) {
+    function (fl: thread(unit)) {
       attach {
         let _ = Unit in
         fl
@@ -48,11 +48,11 @@ define some-list(len: int, acc: list(int)): list(int) {
   }
 }
 
-define detach-send(x: int, ch: &channel(int)): flow(unit) {
+define detach-send(x: int, ch: &channel(int)): thread(unit) {
   detach {send(ch, x)}
 }
 
-define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(flow(unit)) {
+define send-all(xs: list(int), ch: &channel(int), acc: list(thread(unit))): list(thread(unit)) {
   match xs {
   | Nil =>
     acc
@@ -62,7 +62,7 @@ define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(f
   }
 }
 
-define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
+define receive-one-by-one(xs: list(thread(unit)), ch: &channel(int)): unit {
   match xs {
   | Nil =>
     Unit
@@ -73,9 +73,9 @@ define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
   }
 }
 
-define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
+define receive-all-at-once(xs: list(thread(unit)), ch: &channel(int)): unit {
   let wait-all =
-    define wait-all(ys: list(flow(unit))) {
+    define wait-all(ys: list(thread(unit))) {
       match ys {
       | Nil =>
         Unit

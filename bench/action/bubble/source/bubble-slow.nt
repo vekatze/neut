@@ -57,12 +57,12 @@ define main(): unit {
   | [_, size-str] =>
     let _ on size-str =
       match parse(size-str) {
-      | Pass(size) =>
+      | Right(size) =>
         let some-list = rand-list(size, My-Nil) in
         let some-list = sort(some-list, My-Nil) in
         let _ = some-list in
         Unit
-      | Fail(_) =>
+      | Left(_) =>
         printf("couldn't parse `{}` as an integer\n", [*size-str])
       }
     in

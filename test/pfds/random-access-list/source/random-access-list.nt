@@ -51,19 +51,19 @@ define uncons-tree(a: tau, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   | Nil =>
     none()
   | Cons(DigitOne(y), Nil) =>
-    Pass(Pair(y, New([])))
+    Right(Pair(y, New([])))
   | Cons(DigitOne(y), rest) =>
-    Pass(Pair(y, New(Cons(DigitZero, rest))))
+    Right(Pair(y, New(Cons(DigitZero, rest))))
   | Cons(DigitZero, rest) =>
     match uncons-tree(_, New(rest)) {
-    | Fail(_) =>
+    | Left(_) =>
       none()
-    | Pass(Pair(new-tree, New(new-ts))) =>
+    | Right(Pair(new-tree, New(new-ts))) =>
       match new-tree {
       | Leaf(_) =>
         none()
       | Node(_, t1, t2) =>
-        Pass(Pair(t1, New(Cons(DigitOne(t2), new-ts))))
+        Right(Pair(t1, New(Cons(DigitOne(t2), new-ts))))
       }
     }
   }
@@ -73,7 +73,7 @@ define lookup-tree(a: tau, i: int, t: &tree(a)): ?a {
   case t {
   | Leaf(v) =>
     if eq-int(i, 0) {
-      Pass(*v)
+      Right(*v)
     } else {
       none()
     }
@@ -146,9 +146,9 @@ define update(a: tau, i: int, x: a, xs: R-list(a)): R-list(a) {
 
 define find-and-get(i: int, xs: &R-list(int)): int {
   match lookup(_, i, xs) {
-  | Fail(_) =>
+  | Left(_) =>
     0
-  | Pass(v) =>
+  | Right(v) =>
     v
   }
 }

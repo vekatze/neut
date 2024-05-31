@@ -383,14 +383,14 @@ You can use `detach` and `attach` to perform parallel computation:
 
 ```neut
 define foo(): unit {
-  let flow-1: flow(unit) =
+  let thread-1: thread(unit) =
     // 🌟
     detach {
       let value = some-heavy-computation() in
       print(value)
     }
   in
-  let flow-2: flow(unit) =
+  let thread-2: thread(unit) =
     // 🌟
     detach {
       let value = other-heavy-computation() in
@@ -398,16 +398,16 @@ define foo(): unit {
     }
   in
                  // 🌟
-  let result-1 = attach { flow-1 } in
+  let result-1 = attach { thread-1 } in
                  // 🌟
-  let result-2 = attach { flow-2 } in
+  let result-2 = attach { thread-2 } in
   Unit
 }
 ```
 
-`detach` receives a term of type `t` and turns it into a term of type `flow(t)`. Internally, `detach` creates a new thread and computes the term in that thread.
+`detach` receives a term of type `t` and turns it into a term of type `thread(t)`. Internally, `detach` creates a new thread and computes the term in that thread.
 
-`attach` receives a term of type `flow(t)` and turns it into a term of type `t`. Internally, `attach` waits for a given computational flow (thread) to finish and extracts its result.
+`attach` receives a term of type `thread(t)` and turns it into a term of type `t`. Internally, `attach` waits for a given thread to finish and extracts its result.
 
 ### Auxiliary Syntaxes
 

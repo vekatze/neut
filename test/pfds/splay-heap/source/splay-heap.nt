@@ -57,7 +57,7 @@ define find-min(a: tau, t: &heap(a)): ?a {
   | Leaf =>
     none()
   | Node(Leaf, x, _) =>
-    Pass(*x)
+    Right(*x)
   | Node(left, _, _) =>
     find-min(a, left)
   }
@@ -68,12 +68,12 @@ define delete-min(a: tau, t: heap(a)): ?heap(a) {
   | Leaf =>
     none()
   | Node(Leaf, _, right) =>
-    Pass(right)
+    Right(right)
   | Node(Node(Leaf, _, t12), y, t2) =>
-    Pass(Node(t12, y, t2))
+    Right(Node(t12, y, t2))
   | Node(Node(t11, x, t12), y, t2) =>
     try t11 = delete-min(a, t11) in
-    Pass(Node(t11, x, Node(t12, y, t2)))
+    Right(Node(t11, x, Node(t12, y, t2)))
   }
 }
 
@@ -108,34 +108,34 @@ define main(): unit {
   // v1 = 3
   let v1 on h =
     match find-min(_, h) {
-    | Pass(xs) =>
+    | Right(xs) =>
       let v on xs = sum(xs) in
       // xs = [1, 2]
       let _ = xs in
       v
       // v = 3
-    | Fail(_) =>
+    | Left(_) =>
       4
     }
   in
   let mh = delete-min(_, h) in
   let result =
     match mh {
-    | Fail(_) =>
+    | Left(_) =>
       3
-    | Pass(h) =>
+    | Right(h) =>
       let h = insert(_, compare-int-list, [4, 8], h) in
       let h = insert(_, compare-int-list, [1, 1], h) in
       // v2 = 2
       let v2 on h =
         match find-min(_, h) {
-        | Pass(xs) =>
+        | Right(xs) =>
           let v on xs = sum(xs) in
           // xs = [1, 1]
           let _ = xs in
           v
           // v = 2
-        | Fail(_) =>
+        | Left(_) =>
           4
         }
       in

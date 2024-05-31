@@ -1,6 +1,6 @@
 import {
   core.bool {False, True, bool},
-  core.except {Pass, none},
+  core.either {Right, none},
   core.text,
   core.text.io {print, print-int},
   core.unit {unit},
@@ -29,7 +29,7 @@ define head(a: tau, xs: &stack(a)): ?&a {
   | Nil =>
     none()
   | Cons(a, _) =>
-    Pass(a)
+    Right(a)
   }
 }
 
@@ -38,7 +38,7 @@ define tail(a: tau, xs: &stack(a)): ?&stack(a) {
   | Nil =>
     none()
   | Cons(_, rest) =>
-    Pass(rest)
+    Right(rest)
   }
 }
 
