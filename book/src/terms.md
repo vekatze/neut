@@ -38,9 +38,9 @@
 - [on](#on)
 - [\*e](#e)
 
-### Flow and Channel
+### Thread and Channel
 
-- [flow](#flow)
+- [thread](#thread)
 - [detach](#detach)
 - [attach](#attach)
 - [new-channel](#new-channel)
@@ -1398,7 +1398,7 @@ match result {   // ... and thus using `result` here is a use-after-free!
 }
 ```
 
-Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `except(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
+Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `either(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
 
 More specifically, the type of `result` must be "actual"; The type must satisfy all of the following conditions:
 
@@ -1478,44 +1478,44 @@ The original hyle is kept intact.
 Γ ⊢ *e: a
 ```
 
-## `flow`
+## `thread`
 
-A `flow` in Neut is the type of control flow (much like promises in other languages).
+A `thread` in Neut is the type of a thread (much like promises in other languages).
 
 ### Example
 
 ```neut
-flow(int) // the type of control flow that returns int
+thread(int) // the type of a thread that returns int
 
-flow((int) -> bool) // the type of control flow that returns (int) -> bool
+thread((int) -> bool) // the type of a thread that returns (int) -> bool
 ```
 
 ### Syntax
 
 ```neut
-flow(t)
+thread(t)
 ```
 
 ### Semantics
 
-For any type `t`, the type `flow(t)` is compiled into a pointer to a closed function that discards and copies the values of the type in the following manner:
+For any type `t`, the type `thread(t)` is compiled into a pointer to a closed function that discards and copies the values of the type in the following manner:
 
-- Discard `e: flow(t)`: Waits the flow `e` to finish and discard the result along the type `t`, and then returns 0
-- Copy `e: flow(t)`: Waits the flow `e` to finish and copy the result along the type `t`, creates an already-finished control flow, and returns it as a clone.
+- Discard `e: thread(t)`: Waits the thread `e` to finish and discard the result along the type `t`, and then returns 0
+- Copy `e: thread(t)`: Waits the thread `e` to finish, copies the result along the type `t`, creates an already-finished thread, and returns it as a clone.
 
-The type `t` is inside the internal representation of `e`. Because of that, for any `t`, `flow(t)` is compiled to the same closed function. For more, see the following Note.
+The type `t` is inside the internal representation of a term `e: thread(t)`. Because of that, for any `t`, `thread(t)` is compiled to the same closed function. For more, see the following Note.
 
 ### Type
 
 ```neut
 Γ ⊢ t: tau
 ----------------
-Γ ⊢ flow(t): tau
+Γ ⊢ thread(t): tau
 ```
 
 ### Note
 
-(1) The internal representation of `e: flow(t)` is a "3-word + 1-byte" tuple like the below:
+(1) The internal representation of `e: thread(t)` is a "3-word + 1-byte" tuple like the below:
 
 ```neut
    (thread-id, t, result-value-or-none, finished)
@@ -1523,35 +1523,35 @@ The type `t` is inside the internal representation of `e`. Because of that, for 
 //  3-word                              1-byte
 ```
 
-When a flow is created,
+When a thread is created,
 
 - the value of `result-value-or-none` is initialized to 0, and
 - the value of `finished` is also initialized to 0.
 
-When a flow is completed,
+When a thread is completed,
 
-- the value `result-value-or-none` is updated to the result of the flow and
+- the value `result-value-or-none` is updated to the result of the thread, and
 - the value `finished` is updated to 1.
 
-(2) As you can see from the semantics, you must use control flows linearly to perform parallel computation.
+(2) As you can see from the semantics, you must use threads linearly to perform parallel computation.
 
-(3) A flow in Neut is a thin layer over pthread.
+(3) A thread in Neut is a thin layer over pthread.
 
 ## `detach`
 
-You can use `detach` to create a new control flow.
+You can use `detach` to create a new thread.
 
 ### Example
 
 ```neut
-define foo(): flow(int) {
+define foo(): thread(int) {
   detach {
     print("fA");
     1
   }
 }
 
-define bar(): flow(int) {
+define bar(): thread(int) {
   let f =
     detach {
       print("fA");
@@ -1573,14 +1573,14 @@ detach {
 
 ### Semantics
 
-`detach { e }` creates a new control flow and starts computation of `e` in that flow.
+`detach { e }` creates a new thread and starts computation of `e` in that thread.
 
 ### Type
 
 ```neut
 Γ ⊢ e: a
 -------------------------
-Γ ⊢ detach { e }: flow(a)
+Γ ⊢ detach { e }: thread(a)
 ```
 
 ### Note
@@ -1589,16 +1589,16 @@ detach {
 
 ## `attach`
 
-You can use `detach` to wait for a control flow and get its result.
+You can use `detach` to wait for a thread and get its result.
 
 ### Example
 
 ```neut
-define foo(f: flow(int)): int {
+define foo(f: thread(int)): int {
   attach { f }
 }
 
-define bar(f: flow((int) -> bool)): bool {
+define bar(f: thread((int) -> bool)): bool {
   let k = attach { f } in
   k(100)
 }
@@ -1612,14 +1612,14 @@ attach { e }
 
 ### Semantics
 
-`attach` waits given computational flow to finish and gets its resulting value.
+`attach` waits given thread to finish and gets its resulting value.
 
-It also `free`s the 3-word + 1-byte tuple that represents a control flow after getting the result.
+It also `free`s the 3-word + 1-byte tuple that represents a thread after getting the result.
 
 ### Type
 
 ```neut
-Γ ⊢ e: flow(a)
+Γ ⊢ e: thread(a)
 -------------------
 Γ ⊢ attach { e }: a
 ```
@@ -1670,7 +1670,7 @@ new-channel(e)
 
 ### Semantics
 
-`new-channel` creates a new channel that can be used to send/receive values between flows.
+`new-channel` creates a new channel that can be used to send/receive values between threads.
 
 The internal representation of `channel(a)` is something like the below:
 
@@ -1701,7 +1701,7 @@ For more, see [let-on](#on).
 
 ### Note
 
-- Channels are intended to be used with flows.
+- Channels are intended to be used with threads.
 - You'll use a channel after turning them into a noema (as in the example above).
 - You can use `send: <a>(ch: &channel, x: a) -> unit` to enqueue a value to the channel.
 - You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
@@ -2425,12 +2425,12 @@ Derived from the desugared form.
 
 ## `try x = e1 in e2`
 
-`try` is a shorthand for `match` + `except`.
+`try` is a shorthand for `match` + `either`.
 
 ### Example
 
 ```neut
-define get-value-or-fail(): except(error, int) {
+define get-value-or-fail(): either(error, int) {
   // .. whatever ..
 }
 
@@ -2454,9 +2454,9 @@ e2
 
 ```neut
 match e1 {
-| Fail(err) =>
-  Fail(err)
-| Pass(x) =>
+| Left(err) =>
+  Left(err)
+| Right(x) =>
   e2
 }
 ```
@@ -2467,12 +2467,12 @@ Derived from the desugared form.
 
 ### Note
 
-The definition of `except` is as follows:
+The definition of `either` is as follows:
 
 ```neut
-data except(a, b) {
-| Fail(a)
-| Pass(b)
+data either(a, b) {
+| Left(a)
+| Right(b)
 }
 ```
 
@@ -2527,9 +2527,9 @@ You can use `?t` to represent an optional type.
 ```neut
 define foo(x: int): ?int {
   if eq-int(x, 0) {
-    Pass(100)
+    Right(100)
   } else {
-    Fail(Unit)
+    Left(Unit)
   }
 }
 ```
@@ -2549,7 +2549,7 @@ define foo(x: int): ?int {
 
 ↓
 
-except(unit, t)
+either(unit, t)
 ```
 
 ### Type
@@ -2598,28 +2598,28 @@ You can use `with` / `bind` as "do-notations" in other languages.
 
 ```neut
 // define a monadic bind
-define except-bind<e, a, b>(x: except(e, a), k: (a) -> except(e, b)): except(e, b) {
+define either-bind<e, a, b>(x: either(e, a), k: (a) -> either(e, b)): either(e, b) {
   match x {
-  | Fail(err) =>
-    Fail(err)
-  | Pass(value) =>
+  | Left(err) =>
+    Left(err)
+  | Right(value) =>
     k(value)
   }
 }
 
-define test(): except(&text, int) {
+define test(): either(&text, int) {
   // ... and supply it to `with`
-  with except-bind {
-    bind _: bool = Fail("hello") in
-    bind _: bool = Fail("hello") in
-    bind _ = Pass(True) in
+  with either-bind {
+    bind _: bool = Left("hello") in
+    bind _: bool = Left("hello") in
+    bind _ = Right(True) in
     bind _: bool =
-      bind _ = Pass(True) in
-      Fail("hello")
+      bind _ = Right(True) in
+      Left("hello")
     in
-    bind _: bool = Fail("hello") in
-    bind _: tau = Pass(int) in
-    Pass(10)
+    bind _: bool = Left("hello") in
+    bind _: tau = Right(int) in
+    Right(10)
   }
 }
 ```

@@ -1,6 +1,6 @@
 import {
   core.bool {False, True, bool},
-  core.except {Fail, Pass, none},
+  core.either {Left, Right, none},
   core.pair {Pair, pair},
   core.text,
   core.text.io {print, print-int},
@@ -30,7 +30,7 @@ define head(a: tau, xs: &custom-stack(a)): ?&pair(a, a) {
   | Nil =>
     none()
   | Cons(a, _) =>
-    Pass(a)
+    Right(a)
   }
 }
 
@@ -39,7 +39,7 @@ define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
   | Nil =>
     none()
   | Cons(_, rest) =>
-    Pass(rest)
+    Right(rest)
   }
 }
 
@@ -62,9 +62,9 @@ define main(): unit {
     let _ = tail(_, zs) in
     let _ = tail(_, zs) in
     match h {
-    | Fail(_) =>
+    | Left(_) =>
       1
-    | Pass(pair) =>
+    | Right(pair) =>
       tie Pair(_, right) = pair in
       {*right}()
     }

@@ -47,8 +47,8 @@ define noema-is-tau(a: tau): tau {
   &a
 }
 
-define flow-is-tau(a: tau): tau {
-  flow(a)
+define thread-is-tau(a: tau): tau {
+  thread(a)
 }
 
 define resource-is-tau(): tau {
@@ -65,7 +65,7 @@ define test-semantics(): tau {
   let _ = pi-is-tau() in
   let _ = data-is-tau() in
   let _ = noema-is-tau(tau) in
-  let _ = flow-is-tau(tau) in
+  let _ = thread-is-tau(tau) in
   let _ = resource-is-tau() in
   tau
 }

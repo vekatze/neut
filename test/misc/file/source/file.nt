@@ -13,9 +13,9 @@ define use-file(): system(unit) {
 
 define main(): unit {
   match use-file() {
-  | Pass(_) =>
+  | Right(_) =>
     Unit
-  | Fail(_) =>
+  | Left(_) =>
     Unit
   }
 }

@@ -2,34 +2,34 @@ define nop(): unit {
   Unit
 }
 
-define except-bind<e, a, b>(x: except(e, a), k: (a) -> except(e, b)): except(e, b) {
+define either-bind<e, a, b>(x: either(e, a), k: (a) -> either(e, b)): either(e, b) {
   match x {
-  | Fail(err) =>
-    Fail(err)
-  | Pass(value) =>
+  | Left(err) =>
+    Left(err)
+  | Right(value) =>
     k(value)
   }
 }
 
-define test(): except(&text, int) {
-  with except-bind {
-    bind _: bool = Fail("hello") in
+define test(): either(&text, int) {
+  with either-bind {
+    bind _: bool = Left("hello") in
     let _ = tau in
-    bind _: bool = Fail("hello") in
+    bind _: bool = Left("hello") in
     let _ = tau in
-    bind _: bool = Pass(True) in
+    bind _: bool = Right(True) in
     nop();
     bind _: bool =
-      bind _: bool = Pass(True) in
+      bind _: bool = Right(True) in
       nop();
       let _ = tau in
-      Fail("hello")
+      Left("hello")
     in
-    bind _: bool = Fail("hello") in
-    bind _: bool = Fail("hello") in
+    bind _: bool = Left("hello") in
+    bind _: bool = Left("hello") in
     nop();
-    bind _: tau = Pass(int) in
-    Pass(10)
+    bind _: tau = Right(int) in
+    Right(10)
   }
 }
 

@@ -1,13 +1,13 @@
 import {
   IntMap {insert, intmap},
-  core.control {loop},
+  core.control {grow},
   core.int.parse {parse},
   core.intmap {lookup},
   core.random {random},
 }
 
 define make-big-dict(size: int): intmap(int) {
-  loop(size, IntMap.empty(), function (acc, _) {
+  grow(IntMap.empty(), size, function (acc, _) {
     let key = random(1000000) in
     let val = random(1000000) in
     insert(key, val, acc)
@@ -16,13 +16,13 @@ define make-big-dict(size: int): intmap(int) {
 
 define random-lookup-sum(count: int, d: &intmap(int)): unit {
   let rsum =
-    loop(count, 0, function (acc, _) {
+    grow(0, count, function (acc, _) {
       let key = random(1000000) in
       let val on key =
         match lookup(*key, d) {
-        | Fail(_) =>
+        | Left(_) =>
           0
-        | Pass(v) =>
+        | Right(v) =>
           *v
         }
       in
@@ -39,12 +39,12 @@ define main(): unit {
   | [_, size-str] =>
     let _ on size-str =
       match parse(size-str) {
-      | Pass(size) =>
+      | Right(size) =>
         let big-dict = make-big-dict(size) in
         let _ on big-dict = random-lookup-sum(size, big-dict) in
         let _ = big-dict in
         Unit
-      | Fail(_) =>
+      | Left(_) =>
         printf("couldn't parse `{}` as an integer\n", [*size-str])
       }
     in

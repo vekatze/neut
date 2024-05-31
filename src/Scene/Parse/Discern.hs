@@ -347,14 +347,14 @@ discern axis term =
         RT.Try -> do
           let mx' = blur mx
           let m2' = blur m2
-          eitherTypeInner <- locatorToVarGlobal mx' coreExcept
+          eitherTypeInner <- locatorToVarGlobal mx' coreEither
           leftType <- Gensym.newPreHole m2'
           let eitherType = m2' :< RT.piElim eitherTypeInner [leftType, t]
           e1' <- ascribe m2' eitherType e1
           err <- Gensym.newText
-          exceptFail <- locatorToName m2' coreExceptFail
-          exceptPass <- locatorToName m2' coreExceptPass
-          exceptFailVar <- locatorToVarGlobal mx' coreExceptFail
+          eitherLeft <- locatorToName m2' coreEitherLeft
+          eitherRight <- locatorToName m2' coreEitherRight
+          eitherLeftVar <- locatorToVarGlobal mx' coreEitherLeft
           discern axis $
             m
               :< RT.DataElim
@@ -364,12 +364,12 @@ discern axis term =
                 ( SE.fromList
                     SE.Brace
                     SE.Bar
-                    [ ( SE.fromList'' [(m2', RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
+                    [ ( SE.fromList'' [(m2', RP.Cons eitherLeft [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
                         [],
-                        m2' :< RT.piElim exceptFailVar [m2' :< RT.Var (Var err)],
+                        m2' :< RT.piElim eitherLeftVar [m2' :< RT.Var (Var err)],
                         fakeLoc
                       ),
-                      ( SE.fromList'' [(m2', RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+                      ( SE.fromList'' [(m2', RP.Cons eitherRight [] (RP.Paren (SE.fromList' [(mx, pat)])))],
                         [],
                         e2,
                         endLoc
@@ -465,9 +465,9 @@ discern axis term =
       attachVar <- locatorToVarGlobal m coreThreadAttach
       discern axis $ m :< RT.piElim attachVar [t, e]
     m :< RT.Option t -> do
-      exceptVar <- locatorToVarGlobal m coreExcept
+      eitherVar <- locatorToVarGlobal m coreEither
       unit <- locatorToVarGlobal m coreUnit
-      discern axis $ m :< RT.piElim exceptVar [unit, t]
+      discern axis $ m :< RT.piElim eitherVar [unit, t]
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- locatorToVarGlobal m coreSystemAssert
       textType <- locatorToVarGlobal m coreText

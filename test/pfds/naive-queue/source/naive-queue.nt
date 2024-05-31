@@ -9,7 +9,7 @@ define empty(a: tau): queue(a) {
 define head(a: tau, q: &queue(a)): ?a {
   case q {
   | Queue(Cons(x, _), _) =>
-    Pass(*x)
+    Right(*x)
   | _ =>
     none()
   }
@@ -27,7 +27,7 @@ define sanitize(a: tau, q: queue(a)): queue(a) {
 define tail(a: tau, q: queue(a)): ?queue(a) {
   match q {
   | Queue(Cons(_, rest), ys) =>
-    Pass(sanitize(_, Queue(rest, ys)))
+    Right(sanitize(_, Queue(rest, ys)))
   | _ =>
     none()
   }
@@ -55,30 +55,30 @@ define main(): unit {
   // v1 == 2
   let v1 on q =
     match head(_, q) {
-    | Pass(xs1) =>
+    | Right(xs1) =>
       let v1 on xs1 = sum(xs1) in
       let _ = xs1 in
       v1
-    | Fail(_) =>
+    | Left(_) =>
       4
     }
   in
   let mq = tail(_, q) in
   let result =
     match mq {
-    | Fail(_) =>
+    | Left(_) =>
       1
-    | Pass(q) =>
+    | Right(q) =>
       let q = snoc(_, [3], q) in
       let q = snoc(_, [8], q) in
       // v2 = 5
       let v2 on q =
         match head(_, q) {
-        | Pass(xs) =>
+        | Right(xs) =>
           let v on xs = sum(xs) in
           let _ = xs in
           v
-        | Fail(_) =>
+        | Left(_) =>
           4
         }
       in

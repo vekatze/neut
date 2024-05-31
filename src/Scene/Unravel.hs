@@ -153,8 +153,12 @@ unravelImportItem t importItem = do
     ImportItem source _ ->
       unravel'' t source
     StaticKey staticFileList -> do
-      let pathList = map (snd . snd) staticFileList
-      itemModTime <- mapM Path.getModificationTime pathList
+      let pathList = map snd staticFileList
+      itemModTime <- forM pathList $ \(m, p) -> do
+        b <- Path.doesFileExist p
+        if b
+          then Path.getModificationTime p
+          else Throw.raiseError m $ "no such file exists: " <> T.pack (toFilePath p)
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
 

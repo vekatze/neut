@@ -41,7 +41,7 @@ define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-sig
           | LT =>
             lookup(key, left)
           | EQ =>
-            Pass(*v)
+            Right(*v)
           | GT =>
             lookup(key, right)
           }
@@ -72,9 +72,9 @@ define main(): unit {
   let _ = mymap in
   let result on mymap =
     match lookup(2, mymap) {
-    | Fail(_) =>
+    | Left(_) =>
       1
-    | Pass(xs) =>
+    | Right(xs) =>
       match xs {
       | Nil =>
         10
