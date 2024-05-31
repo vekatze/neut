@@ -392,14 +392,15 @@ discern axis term =
           Throw.raiseError m $ "couldn't interpret the following as a string: " <> str
         Just str' -> do
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
-    m :< RT.Rune runeType str -> do
+    m :< RT.Rune runeCons str -> do
       let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
-      runeType' <- discern axis runeType
+      let int32Type = WT.intTypeBySize m 32
+      runeCons' <- discern axis runeCons
       case strOrNone of
         Just str'
           | Just (c, "") <- T.uncons str' -> do
               let runeValue = calculateRuneValue $ encode [c]
-              return $ m :< WT.Prim (WP.Value $ WPV.Int runeType' runeValue)
+              return $ m :< WT.PiElim runeCons' [m :< WT.Prim (WP.Value $ WPV.Int int32Type runeValue)]
         _ ->
           Throw.raiseError m $ "couldn't interpret the following as a rune: " <> str
     m :< RT.Hole k ->
