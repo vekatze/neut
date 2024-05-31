@@ -159,7 +159,9 @@ runeInner acc = do
   case c of
     '\\' -> do
       c' <- anySingle
-      runeInner (c' : '\\' : acc)
+      if c' == '`'
+        then runeInner (c' : acc)
+        else runeInner (c' : '\\' : acc)
     '`' ->
       return $ T.pack $ Prelude.reverse acc
     _ ->

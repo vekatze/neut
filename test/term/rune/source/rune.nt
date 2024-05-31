@@ -1,0 +1,28 @@
+import {
+  core.text {singleton},
+}
+
+define print-rune(r: rune): unit {
+  printf("{}\n", [singleton(r)])
+}
+
+define main(): unit {
+  print-rune(`a`);
+  print-rune(`b`);
+  print-rune(`α`);
+  print-rune(`β`);
+  print-rune(`↑`);
+  print-rune(`*`);
+  print-rune(`\\`);
+  print-rune(`\``);
+  print-rune(`あ`);
+  print-rune(`é`);
+  print-rune(`ب`);
+  print-rune(`𠮷`);
+  print-rune(`𠀋`);
+  print-rune(`💫`)
+}
+
+define zen(): unit {
+  main()
+}
