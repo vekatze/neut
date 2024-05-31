@@ -1530,7 +1530,7 @@ When a flow is created,
 
 When a flow is completed,
 
-- the value `result-value-or-none` is updated to the result of the flow and
+- the value `result-value-or-none` is updated to the result of the flow, and
 - the value `finished` is updated to 1.
 
 (2) As you can see from the semantics, you must use control flows linearly to perform parallel computation.
