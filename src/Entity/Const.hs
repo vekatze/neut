@@ -129,14 +129,6 @@ coreExceptOption :: T.Text
 coreExceptOption =
   core <> nsSep <> "except" <> nsSep <> "option"
 
-coreExceptNoneInternal :: T.Text
-coreExceptNoneInternal =
-  core <> nsSep <> "except" <> nsSep <> "none-internal"
-
-coreExceptSomeInternal :: T.Text
-coreExceptSomeInternal =
-  core <> nsSep <> "except" <> nsSep <> "some-internal"
-
 corePair :: T.Text
 corePair =
   core <> nsSep <> "pair" <> nsSep <> "pair"
