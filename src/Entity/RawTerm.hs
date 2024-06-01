@@ -73,6 +73,7 @@ data RawTermF a
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)
   | Seq (a, C) C a
+  | Trail a
   | ListIntro (SE.Series a)
   | Admit
   | Detach C C (a, C)
