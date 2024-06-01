@@ -82,8 +82,6 @@ handlers =
         return (),
       notificationHandler SMethod_CancelRequest $ \_ -> do
         return (),
-      notificationHandler SMethod_TextDocumentWillSave $ \_ -> do
-        return (),
       notificationHandler SMethod_SetTrace $ \_ -> do
         return (),
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
