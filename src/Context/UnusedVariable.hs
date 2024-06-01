@@ -43,8 +43,8 @@ registerRemarks = do
   forM_ unusedVars $ \(mx, x, k) ->
     case k of
       Normal ->
-        Remark.insertRemark $ newRemark mx Warning $ "defined but not used: `" <> toText x <> "`"
+        Remark.insertRemark $ newRemark mx Warning $ "Defined but not used: `" <> toText x <> "`"
       Borrowed ->
-        Remark.insertRemark $ newRemark mx Warning $ "borrowed but not used: `" <> toText x <> "`"
+        Remark.insertRemark $ newRemark mx Warning $ "Borrowed but not used: `" <> toText x <> "`"
       Relayed ->
-        Remark.insertRemark $ newRemark mx Warning $ "relayed but not used: `" <> toText x <> "`"
+        Remark.insertRemark $ newRemark mx Warning $ "Relayed but not used: `" <> toText x <> "`"

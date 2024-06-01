@@ -214,7 +214,7 @@ reportMissingDefinitions = do
 
 geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Remark
 geistToRemark dd (m, _) =
-  newRemark m Error $ "this nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"
+  newRemark m Error $ "This nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"
 
 insertToNameMap :: DD.DefiniteDescription -> Hint -> GN.GlobalName -> App ()
 insertToNameMap dd m gn = do

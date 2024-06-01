@@ -435,7 +435,7 @@ discern axis term =
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- locatorToVarGlobal m coreSystemAssert
       textType <- locatorToVarGlobal m coreText
-      let fullMessage = T.pack (Hint.toString m) <> "\nassertion failure: " <> message <> "\n"
+      let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
       cod <- Gensym.newPreHole (blur m)
       discern axis $
         m
