@@ -39,4 +39,4 @@ registerRemarks :: App ()
 registerRemarks = do
   unusedLocalLocators <- get
   forM_ unusedLocalLocators $ \(ll, m) ->
-    Remark.insertRemark $ newRemark m Warning $ "imported but not used: `" <> LL.reify ll <> "`"
+    Remark.insertRemark $ newRemark m Warning $ "Imported but not used: `" <> LL.reify ll <> "`"

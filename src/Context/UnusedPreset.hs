@@ -40,4 +40,4 @@ registerRemarks :: App ()
 registerRemarks = do
   unusedPresets <- get
   forM_ unusedPresets $ \(presetName, m) ->
-    Remark.insertRemark $ newRemark m Warning $ "imported but not used: `" <> presetName <> "`"
+    Remark.insertRemark $ newRemark m Warning $ "Imported but not used: `" <> presetName <> "`"

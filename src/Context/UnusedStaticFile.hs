@@ -38,4 +38,4 @@ registerRemarks :: App ()
 registerRemarks = do
   unusedStaticFiles <- get
   forM_ unusedStaticFiles $ \(k, m) ->
-    Remark.insertRemark $ newRemark m Warning $ "imported but not used: `" <> k <> "`"
+    Remark.insertRemark $ newRemark m Warning $ "Imported but not used: `" <> k <> "`"

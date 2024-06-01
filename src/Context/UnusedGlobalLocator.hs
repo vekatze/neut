@@ -39,4 +39,4 @@ registerRemarks :: App ()
 registerRemarks = do
   unusedGlobalLocators <- concatMap snd <$> get
   forM_ unusedGlobalLocators $ \(m, locatorText) ->
-    Remark.insertRemark $ newRemark m Warning $ "imported but not used: `" <> locatorText <> "`"
+    Remark.insertRemark $ newRemark m Warning $ "Imported but not used: `" <> locatorText <> "`"
