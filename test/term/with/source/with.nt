@@ -19,7 +19,7 @@ define test(): either(&text, int) {
     let _ = tau in
     bind _: bool = Right(True) in
     nop();
-    bind _: bool =
+    bind _: bool  =
       bind _: bool = Right(True) in
       nop();
       let _ = tau in
@@ -27,6 +27,31 @@ define test(): either(&text, int) {
     in
     bind _: bool = Left("hello") in
     bind _: bool = Left("hello") in
+    nop();
+    bind _: tau = Right(int) in
+    Right(10)
+  }
+}
+
+define test2(): either(int, int) {
+  with either-bind {
+    bind _: bool = Left(3) in
+    let _ = tau in
+    bind _: bool = Left(5) in
+    let _ = tau in
+    bind _: bool = Right(True) in
+    nop();
+    let tmp = tau in
+    bind _: bool  on tmp  =
+      let _: &tau = tmp in
+      bind _: bool = Right(True) in
+      nop();
+      let _ = tau in
+      Left(7)
+    in
+    let _: tau = tmp in
+    bind _: bool = Left(9) in
+    bind _: bool = Left(11) in
     nop();
     bind _: tau = Right(int) in
     Right(10)

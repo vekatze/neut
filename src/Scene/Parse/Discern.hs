@@ -342,48 +342,8 @@ discern axis term =
     m :< RT.Embody e -> do
       e' <- discern axis e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
-      case letKind of
-        RT.Try -> do
-          let mx' = blur mx
-          let m2' = blur m2
-          eitherTypeInner <- locatorToVarGlobal mx' coreEither
-          leftType <- Gensym.newPreHole m2'
-          let eitherType = m2' :< RT.piElim eitherTypeInner [leftType, t]
-          e1' <- ascribe m2' eitherType e1
-          err <- Gensym.newText
-          eitherLeft <- locatorToName m2' coreEitherLeft
-          eitherRight <- locatorToName m2' coreEitherRight
-          eitherLeftVar <- locatorToVarGlobal mx' coreEitherLeft
-          discern axis $
-            m
-              :< RT.DataElim
-                []
-                False
-                (SE.fromList'' [e1'])
-                ( SE.fromList
-                    SE.Brace
-                    SE.Bar
-                    [ ( SE.fromList'' [(m2', RP.Cons eitherLeft [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
-                        [],
-                        m2' :< RT.piElim eitherLeftVar [m2' :< RT.Var (Var err)],
-                        fakeLoc
-                      ),
-                      ( SE.fromList'' [(m2', RP.Cons eitherRight [] (RP.Paren (SE.fromList' [(mx, pat)])))],
-                        [],
-                        e2,
-                        endLoc
-                      )
-                    ]
-                )
-        RT.Bind -> do
-          Throw.raiseError m "`bind` can only be used inside `with`"
-        RT.Plain -> do
-          (x, modifier) <- getContinuationModifier (mx, pat) endLoc
-          discernLet axis m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier False e2) startLoc endLoc
-        RT.Noetic -> do
-          (x, modifier) <- getContinuationModifier (mx, pat) endLoc
-          discernLet axis m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier True e2) startLoc endLoc
+    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
+      discernLet axis m letKind (mx, pat, c1, c2, t) (SE.extract mys) e1 e2 startLoc endLoc
     m :< RT.StaticText s str -> do
       let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
       s' <- discern axis s
@@ -499,16 +459,36 @@ discern axis term =
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
-        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c mys c4 e1 c5 loc c6 e2 endLoc -> do
+        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c mys c4 e1 c5 startLoc c6 e2 endLoc -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
           case letKind of
             RT.Bind -> do
+              tmpVar <- Gensym.newText
               (x, modifier) <- getContinuationModifier (mPat, pat) endLoc
+              dom <- Gensym.newPreHole (blur m)
               cod <- Gensym.newPreHole (blur m)
-              discern axis $ m :< RT.piElim binder [e1', RT.lam loc m [((mPat, x, c2, c3, t), c)] cod (modifier False e2')]
+              discern axis $
+                bind'
+                  startLoc
+                  endLoc
+                  (mPat, tmpVar, c2, c3, dom)
+                  mys
+                  e1'
+                  ( m
+                      :< RT.piElim
+                        binder
+                        [ m :< RT.Var (Var tmpVar),
+                          RT.lam
+                            startLoc
+                            m
+                            [((mPat, x, c2, c3, t), c)]
+                            cod
+                            (modifier False e2')
+                        ]
+                  )
             _ -> do
-              discern axis $ mLet :< RT.Let letKind c1 mxt c mys c4 e1' c5 loc c6 e2' endLoc
+              discern axis $ mLet :< RT.Let letKind c1 mxt c mys c4 e1' c5 startLoc c6 e2' endLoc
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
@@ -591,20 +571,19 @@ getContinuationModifier pat endLoc =
                 (SE.fromList SE.Brace SE.Bar [(SE.fromList'' [pat], [], cont, endLoc)])
         )
 
-ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
-ascribe m t e = do
-  tmp <- Gensym.newTextForHole
-  return $ bind fakeLoc fakeLoc (m, tmp, [], [], t) e (m :< RT.Var (Var tmp))
-
 bind :: Loc -> Loc -> RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind loc endLoc (m, x, c1, c2, t) e cont =
+bind loc endLoc (m, x, c1, c2, t) =
+  bind' loc endLoc (m, x, c1, c2, t) (SE.emptySeries' Nothing SE.Comma)
+
+bind' :: Loc -> Loc -> RawBinder RT.RawTerm -> SE.Series (Hint, RawIdent) -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
+bind' loc endLoc (m, x, c1, c2, t) mys e cont =
   m
     :< RT.Let
       RT.Plain
       []
       (m, RP.Var (Var x), c1, c2, t)
       []
-      (SE.emptySeries' Nothing SE.Comma)
+      mys
       []
       e
       []
@@ -704,14 +683,15 @@ doNotCare m =
 discernLet ::
   Axis ->
   Hint ->
-  RawBinder RT.RawTerm ->
+  RT.LetKind ->
+  (Hint, RP.RawPattern, C, C, RT.RawTerm) ->
   [(Hint, RawIdent)] ->
   RT.RawTerm ->
   RT.RawTerm ->
   Loc ->
   Loc ->
   App WT.WeakTerm
-discernLet axis m mxt mys e1 e2 startLoc endLoc = do
+discernLet axis m letKind (mx, pat, c1, c2, t) mys e1 e2@(m2 :< _) startLoc endLoc = do
   mys' <- mapM (\(my, y) -> discernIdent my axis y) mys
   let (ms', ys') = unzip mys'
   let ysActual = zipWith (\my y -> my :< WT.Var y) ms' ys'
@@ -721,12 +701,59 @@ discernLet axis m mxt mys e1 e2 startLoc endLoc = do
   axisLocal <- extendAxisByNominalEnv VDK.Borrowed localAddition axis
   let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms' ysCont
   axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
-  e1' <- discern axisLocal e1
-  (mxt', e2') <- discernBinderWithBody' axisCont mxt e2 startLoc endLoc
-  Tag.insertBinder mxt'
-  e2'' <- attachSuffix (zip ysCont ysLocal) e2'
   let opacity = if null mys then WT.Clear else WT.Noetic
-  attachPrefix (zip ysLocal (zip ms' ysActual)) (m :< WT.Let opacity mxt' e1' e2'')
+  let discernLet' isNoetic = do
+        e1' <- discern axisLocal e1
+        (x, modifier) <- getContinuationModifier (mx, pat) endLoc
+        (mxt', e2') <- discernBinderWithBody' axisCont (mx, x, c1, c2, t) startLoc endLoc (modifier isNoetic e2)
+        Tag.insertBinder mxt'
+        e2'' <- attachSuffix (zip ysCont ysLocal) e2'
+        return $ m :< WT.Let opacity mxt' e1' e2''
+  body <-
+    case letKind of
+      RT.Plain -> do
+        discernLet' False
+      RT.Noetic -> do
+        discernLet' True
+      RT.Bind -> do
+        Throw.raiseError m "`bind` can only be used inside `with`"
+      RT.Try -> do
+        let mx' = blur mx
+        let m2' = blur m2
+        eitherTypeInner <- locatorToVarGlobal mx' coreEither
+        leftType <- Gensym.newPreHole m2'
+        let eitherType = m2' :< RT.piElim eitherTypeInner [leftType, t]
+        tmpVar <- Gensym.newText
+        e1' <- discern axisLocal e1
+        err <- Gensym.newText
+        eitherLeft <- locatorToName m2' coreEitherLeft
+        eitherRight <- locatorToName m2' coreEitherRight
+        eitherLeftVar <- locatorToVarGlobal mx' coreEitherLeft
+        (mxt', eitherCont) <-
+          discernBinderWithBody' axisCont (mx, tmpVar, c1, c2, eitherType) startLoc endLoc $
+            m
+              :< RT.DataElim
+                []
+                False
+                (SE.fromList'' [m :< RT.Var (Var tmpVar)])
+                ( SE.fromList
+                    SE.Brace
+                    SE.Bar
+                    [ ( SE.fromList'' [(m2', RP.Cons eitherLeft [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
+                        [],
+                        m2' :< RT.piElim eitherLeftVar [m2' :< RT.Var (Var err)],
+                        fakeLoc
+                      ),
+                      ( SE.fromList'' [(m2', RP.Cons eitherRight [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+                        [],
+                        e2,
+                        endLoc
+                      )
+                    ]
+                )
+        eitherCont' <- attachSuffix (zip ysCont ysLocal) eitherCont
+        return $ m :< WT.Let opacity mxt' e1' eitherCont'
+  attachPrefix (zip ysLocal (zip ms' ysActual)) body
 
 discernIdent :: Hint -> Axis -> RawIdent -> App (Hint, Ident)
 discernIdent m axis x =
@@ -774,11 +801,11 @@ discernBinder' axis binder =
 discernBinderWithBody' ::
   Axis ->
   RawBinder RT.RawTerm ->
+  Loc ->
+  Loc ->
   RT.RawTerm ->
-  Loc ->
-  Loc ->
   App (BinderF WT.WeakTerm, WT.WeakTerm)
-discernBinderWithBody' axis (mx, x, _, _, codType) e startLoc endLoc = do
+discernBinderWithBody' axis (mx, x, _, _, codType) startLoc endLoc e = do
   codType' <- discern axis codType
   x' <- Gensym.newIdentFromText x
   axis'' <- extendAxis mx x' VDK.Normal axis
