@@ -230,6 +230,6 @@ expandClangOptions target =
                     }
                 )
         Zen path compileOption linkOption -> do
-          compileOption' <- External.expandText compileOption
-          linkOption' <- External.expandText linkOption
+          compileOption' <- mapM External.expandText compileOption
+          linkOption' <- mapM External.expandText linkOption
           return $ Concrete $ Zen path compileOption' linkOption'

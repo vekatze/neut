@@ -25,7 +25,7 @@ data AbstractTarget
 
 data ConcreteTarget
   = Named T.Text TargetSummary
-  | Zen (Path Abs File) T.Text T.Text
+  | Zen (Path Abs File) [T.Text] [T.Text]
   deriving (Show, Eq, Generic)
 
 instance Hashable Target
@@ -38,7 +38,7 @@ instance Hashable ConcreteTarget
 
 emptyZen :: Path Abs File -> ConcreteTarget
 emptyZen path =
-  Zen path "" ""
+  Zen path [] []
 
 getEntryPointName :: ConcreteTarget -> BN.BaseName
 getEntryPointName target =
@@ -58,7 +58,7 @@ getCompileOption target =
         Named _ targetSummary -> do
           map T.unpack $ CL.compileOption (clangOption targetSummary)
         Zen _ compileOption _ ->
-          [T.unpack compileOption]
+          map T.unpack compileOption
 
 getLinkOption :: Target -> [String]
 getLinkOption target =
@@ -70,4 +70,4 @@ getLinkOption target =
         Named _ targetSummary ->
           map T.unpack $ CL.linkOption (clangOption targetSummary)
         Zen _ _ linkOption ->
-          [T.unpack linkOption]
+          map T.unpack linkOption

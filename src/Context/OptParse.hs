@@ -95,22 +95,6 @@ parseGetOpt = do
 parseZenOpt :: Parser Command
 parseZenOpt = do
   inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
-  compileOption <-
-    strOption $
-      mconcat
-        [ long "compile-option",
-          metavar "OPT",
-          help "Options used by clang when compiling source files",
-          value ""
-        ]
-  linkOption <-
-    strOption $
-      mconcat
-        [ long "link-option",
-          metavar "OPT",
-          help "Options used by clang when linking object files",
-          value ""
-        ]
   remarkCfg <- remarkConfigOpt
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   rest <- (many . strArgument) (metavar "args")
@@ -118,8 +102,6 @@ parseZenOpt = do
     Entity.Command.Zen $
       Zen.Config
         { Zen.filePathString = inputFilePath,
-          Zen.compileOption = compileOption,
-          Zen.linkOption = linkOption,
           Zen.remarkCfg = remarkCfg,
           Zen.buildMode = buildMode,
           Zen.args = rest
