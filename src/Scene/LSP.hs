@@ -82,8 +82,6 @@ handlers =
         return (),
       notificationHandler SMethod_CancelRequest $ \_ -> do
         return (),
-      notificationHandler SMethod_TextDocumentWillSave $ \_ -> do
-        return (),
       notificationHandler SMethod_SetTrace $ \_ -> do
         return (),
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
@@ -114,10 +112,6 @@ handlers =
           Just refs -> do
             responder $ Right $ InL refs,
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
-        let uri = req ^. (J.params . J.textDocument . J.uri)
-        textEditList <- LSP.format uri
-        responder $ Right $ InL textEditList,
-      requestHandler SMethod_TextDocumentWillSaveWaitUntil $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         textEditList <- LSP.format uri
         responder $ Right $ InL textEditList,

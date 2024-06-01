@@ -470,7 +470,6 @@ This can be done even if `some-file.nt` isn't an entrypoint of the module. You c
 - `textDocument/documentHighlight` (highlight symbols)
 - `textDocument/references` (find references)
 - `textDocument/formatting` (format)
-- `textDocument/willSaveWaitUntil` (format on save)
 - `textDocument/hover` (show the type of a symbol)
 
 For more information, please see [Lovely LSP Showcase](./lovely-lsp-showcase.md) and [Editor Setup](./editor-setup.md).
