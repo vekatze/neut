@@ -465,7 +465,7 @@ discern axis term =
           case letKind of
             RT.Bind -> do
               tmpVar <- Gensym.newText
-              (x, modifier) <- getContinuationModifier (mPat, pat) endLoc
+              (x, e2'') <- modifyLetContinuation (mPat, pat) endLoc False e2'
               dom <- Gensym.newPreHole (blur m)
               cod <- Gensym.newPreHole (blur m)
               discern axis $
@@ -484,7 +484,7 @@ discern axis term =
                             m
                             [((mPat, x, c2, c3, t), c)]
                             cod
-                            (modifier False e2')
+                            e2''
                         ]
                   )
             _ -> do
@@ -552,23 +552,22 @@ discernMagic axis m magic =
       lt' <- discernRawLowType m lt
       return $ M.Global name lt'
 
-getContinuationModifier :: (Hint, RP.RawPattern) -> Loc -> App (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
-getContinuationModifier pat endLoc =
+modifyLetContinuation :: (Hint, RP.RawPattern) -> Loc -> N.IsNoetic -> RT.RawTerm -> App (RawIdent, RT.RawTerm)
+modifyLetContinuation pat endLoc isNoetic cont@(mCont :< _) =
   case pat of
     (_, RP.Var (Var x))
       | not (isConsName x) ->
-          return (x, \_ cont -> cont)
+          return (x, cont)
     _ -> do
       tmp <- Gensym.newTextForHole
       return
         ( tmp,
-          \isNoetic cont@(mCont :< _) ->
-            mCont
-              :< RT.DataElim
-                []
-                isNoetic
-                (SE.fromList'' [mCont :< RT.Var (Var tmp)])
-                (SE.fromList SE.Brace SE.Bar [(SE.fromList'' [pat], [], cont, endLoc)])
+          mCont
+            :< RT.DataElim
+              []
+              isNoetic
+              (SE.fromList'' [mCont :< RT.Var (Var tmp)])
+              (SE.fromList SE.Brace SE.Bar [(SE.fromList'' [pat], [], cont, endLoc)])
         )
 
 bind :: Loc -> Loc -> RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
@@ -704,11 +703,11 @@ discernLet axis m letKind (mx, pat, c1, c2, t) mys e1 e2@(m2 :< _) startLoc endL
   let opacity = if null mys then WT.Clear else WT.Noetic
   let discernLet' isNoetic = do
         e1' <- discern axisLocal e1
-        (x, modifier) <- getContinuationModifier (mx, pat) endLoc
-        (mxt', e2') <- discernBinderWithBody' axisCont (mx, x, c1, c2, t) startLoc endLoc (modifier isNoetic e2)
+        (x, e2') <- modifyLetContinuation (mx, pat) endLoc isNoetic e2
+        (mxt', e2'') <- discernBinderWithBody' axisCont (mx, x, c1, c2, t) startLoc endLoc e2'
         Tag.insertBinder mxt'
-        e2'' <- attachSuffix (zip ysCont ysLocal) e2'
-        return $ m :< WT.Let opacity mxt' e1' e2''
+        e2''' <- attachSuffix (zip ysCont ysLocal) e2''
+        return $ m :< WT.Let opacity mxt' e1' e2'''
   body <-
     case letKind of
       RT.Plain -> do
