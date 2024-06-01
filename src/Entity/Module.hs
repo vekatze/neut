@@ -10,6 +10,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
+import Entity.ClangOption qualified as CL
 import Entity.Const
 import Entity.Ens qualified as E
 import Entity.Error
@@ -22,6 +23,7 @@ import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
 import Entity.Syntax.Series qualified as SE
 import Entity.Target qualified as Target
+import Entity.ZenConfig
 import Path
 import System.FilePath qualified as FP
 
@@ -58,6 +60,7 @@ data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
     moduleTarget :: Map.HashMap TargetName Target.TargetSummary,
+    moduleZenConfig :: ZenConfig,
     moduleArchiveDir :: Path Rel Dir,
     moduleBuildDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
@@ -87,6 +90,10 @@ keySource =
 keyTarget :: T.Text
 keyTarget =
   "target"
+
+keyZen :: T.Text
+keyZen =
+  "zen"
 
 keyMain :: T.Text
 keyMain =
@@ -247,12 +254,12 @@ getBuildDirInfo someModule = do
 getTargetInfo :: Module -> (T.Text, E.Ens)
 getTargetInfo someModule = do
   let targetDict = flip Map.map (moduleTarget someModule) $ \summary -> do
-        let compileOption = map (\x -> _m :< E.String x) $ Target.compileOption summary
+        let compileOption = map (\x -> _m :< E.String x) $ CL.compileOption (Target.clangOption summary)
         let compileOption' =
               if null compileOption
                 then Nothing
                 else Just (keyCompileOption, _m :< E.List (seriesFromList compileOption))
-        let linkOption = map (\x -> _m :< E.String x) $ Target.linkOption summary
+        let linkOption = map (\x -> _m :< E.String x) $ CL.linkOption (Target.clangOption summary)
         let linkOption' =
               if null linkOption
                 then Nothing

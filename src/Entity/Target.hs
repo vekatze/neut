@@ -3,6 +3,7 @@ module Entity.Target where
 import Data.Hashable
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
+import Entity.ClangOption qualified as CL
 import Entity.SourceLocator qualified as SL
 import GHC.Generics (Generic)
 import Path
@@ -14,9 +15,7 @@ data Target
 
 data TargetSummary = TargetSummary
   { entryPoint :: SL.SourceLocator,
-    buildOption :: [T.Text],
-    compileOption :: [T.Text],
-    linkOption :: [T.Text]
+    clangOption :: CL.ClangOption
   }
   deriving (Show, Eq, Generic)
 
@@ -56,8 +55,8 @@ getCompileOption target =
       []
     Concrete c ->
       case c of
-        Named _ targetSummary ->
-          map T.unpack $ buildOption targetSummary ++ compileOption targetSummary
+        Named _ targetSummary -> do
+          map T.unpack $ CL.compileOption (clangOption targetSummary)
         Zen _ compileOption _ ->
           [T.unpack compileOption]
 
@@ -69,6 +68,6 @@ getLinkOption target =
     Concrete c ->
       case c of
         Named _ targetSummary ->
-          map T.unpack $ buildOption targetSummary ++ linkOption targetSummary
+          map T.unpack $ CL.linkOption (clangOption targetSummary)
         Zen _ _ linkOption ->
           [T.unpack linkOption]

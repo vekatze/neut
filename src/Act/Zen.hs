@@ -9,7 +9,7 @@ import Control.Monad
 import Data.Maybe
 import Entity.Config.Zen
 import Entity.OutputKind
-import Entity.Target hiding (compileOption, linkOption)
+import Entity.Target
 import Path.IO (resolveFile')
 import Scene.Build (Axis (..), buildTarget)
 import Scene.Fetch qualified as Fetch
