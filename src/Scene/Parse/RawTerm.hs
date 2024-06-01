@@ -50,8 +50,13 @@ rawExpr = do
         choice
           [ do
               c1 <- delimiter ";"
-              (e2, c2) <- rawExpr
-              return (m :< RT.Seq e1 c1 e2, c2),
+              contOrNone <- optional rawExpr
+              case contOrNone of
+                Nothing -> do
+                  let (e, c) = e1
+                  return (m :< RT.Trail e, c ++ c1)
+                Just (e2, c2) ->
+                  return (m :< RT.Seq e1 c1 e2, c2),
             return e1
           ]
     ]

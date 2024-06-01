@@ -20,7 +20,7 @@ define main(): unit {
   print-rune(`ب`);
   print-rune(`𠮷`);
   print-rune(`𠀋`);
-  print-rune(`💫`)
+  print-rune(`💫`);
 }
 
 define zen(): unit {
