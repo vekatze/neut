@@ -7,9 +7,12 @@ import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Control.Monad
 import Data.Maybe
+import Entity.ClangOption qualified as CL
 import Entity.Config.Zen
+import Entity.Module (Module (moduleZenConfig))
 import Entity.OutputKind
-import Entity.Target hiding (compileOption, linkOption)
+import Entity.Target
+import Entity.ZenConfig qualified as Z
 import Path.IO (resolveFile')
 import Scene.Build (Axis (..), buildTarget)
 import Scene.Fetch qualified as Fetch
@@ -21,8 +24,9 @@ zen cfg = do
   setup cfg
   path <- resolveFile' (filePathString cfg)
   mainModule <- getMainModule
+  let zenConfig = Z.clangOption $ moduleZenConfig mainModule
   buildTarget (fromConfig cfg) mainModule $
-    Concrete (Zen path (compileOption cfg) (linkOption cfg))
+    Concrete (Zen path (CL.compileOption zenConfig) (CL.linkOption zenConfig))
 
 fromConfig :: Config -> Axis
 fromConfig cfg =

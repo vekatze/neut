@@ -18,6 +18,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
+import Entity.ClangOption qualified as CL
 import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
 import Entity.Ens (dictFromListVertical')
 import Entity.Ens qualified as E
@@ -32,6 +33,7 @@ import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
 import Entity.Syntax.Series qualified as SE
 import Entity.Target
+import Entity.ZenConfig (ZenConfig (..))
 import Path
 import Path.IO
 import Scene.Ens.Reflect qualified as Ens
@@ -63,6 +65,7 @@ fromFilePath moduleID moduleFilePath = do
   (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- interpretTarget targetEns
+  zenConfigEns <- liftEither (E.access' keyZen E.emptyDict ens) >>= interpretZenConfig
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
   (_, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
@@ -91,6 +94,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleBuildDir = buildDir,
         moduleSourceDir = sourceDir,
         moduleTarget = target,
+        moduleZenConfig = zenConfigEns,
         moduleDependency = dependency,
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,
@@ -149,14 +153,24 @@ interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap Targe
 interpretTarget (_, targetDict) = do
   kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
     entryPoint <- liftEither (E.access keyMain v) >>= interpretSourceLocator
-    (_, buildOptEnsSeries) <- liftEither $ E.access' keyBuildOption E.emptyList v >>= E.toList
-    buildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
-    (_, compileOptEnsSeries) <- liftEither $ E.access' keyCompileOption E.emptyList v >>= E.toList
-    compileOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract compileOptEnsSeries
-    (_, linkOptEnsSeries) <- liftEither $ E.access' keyLinkOption E.emptyList v >>= E.toList
-    linkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
-    return (k, TargetSummary {entryPoint, buildOption, compileOption, linkOption})
+    clangOption <- interpretClangOption v
+    return (k, TargetSummary {entryPoint, clangOption})
   return $ Map.fromList kvs
+
+interpretZenConfig :: E.Ens -> App ZenConfig
+interpretZenConfig zenDict = do
+  clangOption <- interpretClangOption zenDict
+  return $ ZenConfig {clangOption}
+
+interpretClangOption :: E.Ens -> App CL.ClangOption
+interpretClangOption v = do
+  (_, buildOptEnsSeries) <- liftEither $ E.access' keyBuildOption E.emptyList v >>= E.toList
+  buildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
+  (_, compileOptEnsSeries) <- liftEither $ E.access' keyCompileOption E.emptyList v >>= E.toList
+  compileOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract compileOptEnsSeries
+  (_, linkOptEnsSeries) <- liftEither $ E.access' keyLinkOption E.emptyList v >>= E.toList
+  linkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
+  return $ CL.new buildOption compileOption linkOption
 
 interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> App (Map.HashMap T.Text (Path Rel File))
 interpretStaticFiles staticFileDict = do

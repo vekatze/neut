@@ -21,6 +21,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
 import Entity.Cache
+import Entity.ClangOption qualified as CL
 import Entity.LowComp qualified as LC
 import Entity.Module qualified as M
 import Entity.ModuleID qualified as MID
@@ -213,20 +214,22 @@ expandClangOptions target =
     Concrete concreteTarget ->
       case concreteTarget of
         Named targetName summary -> do
-          buildOption' <- mapM External.expandText (buildOption summary)
-          compileOption' <- mapM External.expandText (compileOption summary)
-          linkOption' <- mapM External.expandText (linkOption summary)
+          let cl = clangOption summary
+          compileOption' <- mapM External.expandText (CL.compileOption cl)
+          linkOption' <- mapM External.expandText (CL.linkOption cl)
           return $
             Concrete $
               Named
                 targetName
                 ( summary
-                    { buildOption = buildOption',
-                      compileOption = compileOption',
-                      linkOption = linkOption'
+                    { clangOption =
+                        CL.ClangOption
+                          { compileOption = compileOption',
+                            linkOption = linkOption'
+                          }
                     }
                 )
         Zen path compileOption linkOption -> do
-          compileOption' <- External.expandText compileOption
-          linkOption' <- External.expandText linkOption
+          compileOption' <- mapM External.expandText compileOption
+          linkOption' <- mapM External.expandText linkOption
           return $ Concrete $ Zen path compileOption' linkOption'

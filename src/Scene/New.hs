@@ -6,12 +6,14 @@ where
 
 import Context.App
 import Context.Module qualified as Module
+import Entity.ZenConfig
 import Context.Path qualified as Path
 import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Entity.ClangOption qualified as CL
 import Entity.Const
 import Entity.Module
 import Entity.ModuleID qualified as MID
@@ -46,12 +48,11 @@ constructDefaultModule name = do
             [ ( name,
                 TargetSummary
                   { entryPoint = SL.SourceLocator mainFile,
-                    buildOption = [],
-                    compileOption = [],
-                    linkOption = []
+                    clangOption = CL.empty
                   }
               )
             ],
+        moduleZenConfig = ZenConfig {clangOption = CL.empty},
         moduleDependency = Map.empty,
         moduleExtraContents = [],
         moduleAntecedents = [],
