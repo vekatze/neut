@@ -69,7 +69,7 @@ activateSpecifiedNames topNameMap mustUpdateTag sgl lls = do
     let dd = DD.new sgl ll
     case Map.lookup dd topNameMap of
       Nothing ->
-        Throw.raiseError m $ "the name `" <> LL.reify ll <> "` isn't defined in the module"
+        Throw.raiseError m $ "The name `" <> LL.reify ll <> "` is not defined in the module"
       Just (mDef, gn) -> do
         when mustUpdateTag $
           Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
@@ -81,7 +81,7 @@ activateSpecifiedNames topNameMap mustUpdateTag sgl lls = do
                 let dd' = DD.getReadableDD (Source.sourceModule current) dd
                 let existingDD' = DD.getReadableDD (Source.sourceModule current) existingDD
                 Throw.raiseError m $
-                  "this `"
+                  "This `"
                     <> LL.reify ll
                     <> "` is ambiguous since it could refer to:\n- "
                     <> dd'
@@ -99,7 +99,7 @@ activateStaticFile m key path = do
       modifyRef' activeStaticFileList $ Map.insert key (path, content)
     else
       Throw.raiseError m $
-        "the static file `" <> key <> "` doesn't exist at: " <> T.pack (toFilePath path)
+        "The static file `" <> key <> "` does not exist at: " <> T.pack (toFilePath path)
 
 getStaticFileContent :: T.Text -> App (Maybe (Path Abs File, T.Text))
 getStaticFileContent key = do
@@ -164,7 +164,7 @@ removeExtension path =
     Just (path', _) ->
       return path'
     Nothing ->
-      Throw.raiseError' $ "file extension is missing in `" <> T.pack (toFilePath path) <> "`"
+      Throw.raiseError' $ "File extension is missing in `" <> T.pack (toFilePath path) <> "`"
 
 getMainDefiniteDescription ::
   Source.Source ->
@@ -191,7 +191,7 @@ getMainDefiniteDescriptionByTarget targetOrZen = do
     Target.Named target _ -> do
       case Map.lookup target (Module.moduleTarget mainModule) of
         Nothing ->
-          Throw.raiseError' $ "no such target is defined: " <> target
+          Throw.raiseError' $ "No such target is defined: " <> target
         Just targetSummary -> do
           relPathToDD (SL.reify $ Target.entryPoint targetSummary) BN.mainName
     Target.Zen path _ _ -> do

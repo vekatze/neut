@@ -61,7 +61,7 @@ getModuleDirByID mHint moduleID = do
   mainModule <- getMainModule
   case moduleID of
     MID.Base -> do
-      let message = "the base module can't be used here"
+      let message = "The base module cannot be used here"
       case mHint of
         Just hint ->
           Throw.raiseError hint message
@@ -85,7 +85,7 @@ getCoreModuleURL = do
     Just coreModuleURL ->
       return $ ModuleURL $ T.pack coreModuleURL
     Nothing ->
-      Throw.raiseError' $ "the URL of the core module isn't specified; set it via " <> T.pack envVarCoreModuleURL
+      Throw.raiseError' $ "The URL of the core module is not specified; set it via " <> T.pack envVarCoreModuleURL
 
 getCoreModuleDigest :: App ModuleDigest
 getCoreModuleDigest = do
@@ -94,7 +94,7 @@ getCoreModuleDigest = do
     Just coreModuleDigest ->
       return $ ModuleDigest $ T.pack coreModuleDigest
     Nothing ->
-      Throw.raiseError' $ "the digest of the core module isn't specified; set it via " <> T.pack envVarCoreModuleDigest
+      Throw.raiseError' $ "The digest of the core module is not specified; set it via " <> T.pack envVarCoreModuleDigest
 
 sourceFromPath :: Module -> Path Abs File -> App Source.Source
 sourceFromPath baseModule path = do
@@ -110,7 +110,7 @@ ensureFileModuleSanity :: Path Abs File -> Module -> App ()
 ensureFileModuleSanity filePath mainModule = do
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
     Throw.raiseError' $
-      "the file `"
+      "The file `"
         <> T.pack (toFilePath filePath)
         <> "` is not in the source directory of current module"
 

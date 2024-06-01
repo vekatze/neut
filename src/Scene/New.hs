@@ -6,7 +6,6 @@ where
 
 import Context.App
 import Context.Module qualified as Module
-import Entity.ZenConfig
 import Context.Path qualified as Path
 import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
@@ -19,6 +18,7 @@ import Entity.Module
 import Entity.ModuleID qualified as MID
 import Entity.SourceLocator qualified as SL
 import Entity.Target
+import Entity.ZenConfig
 import Path (parent, (</>))
 
 createNewProject :: T.Text -> Module -> App ()
@@ -26,11 +26,11 @@ createNewProject moduleName newModule = do
   let moduleDir = parent $ moduleLocation newModule
   moduleDirExists <- Path.doesDirExist moduleDir
   if moduleDirExists
-    then Throw.raiseError' $ "the directory `" <> moduleName <> "` already exists"
+    then Throw.raiseError' $ "The directory `" <> moduleName <> "` already exists"
     else do
       createModuleFile
       createMainFile
-      Remark.printNote' $ "created a module: " <> moduleName
+      Remark.printNote' $ "Created a module: " <> moduleName
 
 constructDefaultModule :: T.Text -> App Module
 constructDefaultModule name = do

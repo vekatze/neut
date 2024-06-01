@@ -97,14 +97,14 @@ fillAsMuchAsPossible sub e = do
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
 constructErrorMessageEq found expected =
-  "expected:\n  "
+  "Expected:\n  "
     <> toText expected
-    <> "\nfound:\n  "
+    <> "\nFound:\n  "
     <> toText found
 
 constructErrorMessageActual :: WT.WeakTerm -> T.Text
 constructErrorMessageActual t =
-  "a term of the following type might be noetic:\n"
+  "A term of the following type might be noetic:\n"
     <> toText t
 
 data Axis = Axis
@@ -133,7 +133,7 @@ detectPossibleInfiniteLoop :: Hint -> Axis -> App ()
 detectPossibleInfiniteLoop location axis = do
   let Axis {inlineLimit, currentStep} = axis
   when (inlineLimit < currentStep) $ do
-    Throw.raiseError location $ "exceeded max recursion depth of " <> T.pack (show inlineLimit) <> " during unification"
+    Throw.raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit) <> " during unification"
 
 simplify :: Axis -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> App [SuspendedConstraint]
 simplify ax susList constraintList =
@@ -416,4 +416,4 @@ getConsArgTypes m consName = do
     _ :< WT.Pi impArgs expArgs _ -> do
       return $ impArgs ++ expArgs
     _ ->
-      Throw.raiseCritical m $ "the type of a constructor must be a Π-type, but it's not:\n" <> toText t
+      Throw.raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t

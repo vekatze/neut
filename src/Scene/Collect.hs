@@ -22,7 +22,7 @@ getConcreteTarget targetName = do
     Just target ->
       return target
     Nothing ->
-      Throw.raiseError' $ "no such target exists: " <> targetName
+      Throw.raiseError' $ "No such target exists: " <> targetName
 
 collectModuleFiles :: Module -> (Path Abs Dir, [SomePath Rel])
 collectModuleFiles baseModule = do

@@ -389,7 +389,7 @@ discern axis term =
       s' <- discern axis s
       case strOrNone of
         Nothing ->
-          Throw.raiseError m $ "couldn't interpret the following as a string: " <> str
+          Throw.raiseError m $ "Could not interpret the following as a string: " <> str
         Just str' -> do
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
     m :< RT.Rune runeCons str -> do
@@ -402,7 +402,7 @@ discern axis term =
               let runeValue = calculateRuneValue $ encode [c]
               return $ m :< WT.PiElim runeCons' [m :< WT.Prim (WP.Value $ WPV.Int int32Type runeValue)]
         _ ->
-          Throw.raiseError m $ "couldn't interpret the following as a rune: " <> str
+          Throw.raiseError m $ "Could not interpret the following as a rune: " <> str
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do
@@ -495,7 +495,7 @@ discern axis term =
           Tag.insertFileLoc mKey (T.length key) (newSourceHint path)
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText textType content)
         Nothing ->
-          Throw.raiseError m $ "no such static file is defined: `" <> key <> "`"
+          Throw.raiseError m $ "No such static file is defined: `" <> key <> "`"
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
@@ -625,7 +625,7 @@ lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, RT.RawTerm)] -
 lookupIntrospectiveClause m value clauseList =
   case clauseList of
     [] ->
-      Throw.raiseError m $ "this term doesn't support `" <> value <> "`."
+      Throw.raiseError m $ "This term does not support `" <> value <> "`."
     (Just key, _, clause) : rest
       | key == value ->
           return clause
@@ -647,7 +647,7 @@ getIntrospectiveValue m key = do
     "build-mode" ->
       return $ BM.reify bm
     _ ->
-      Throw.raiseError m $ "no such introspective value is defined: " <> key
+      Throw.raiseError m $ "No such introspective value is defined: " <> key
 
 foldIf ::
   Hint ->
@@ -732,7 +732,7 @@ discernIdent :: Hint -> Axis -> RawIdent -> App (Hint, Ident)
 discernIdent m axis x =
   case lookup x (_nenv axis) of
     Nothing ->
-      Throw.raiseError m $ "undefined variable: " <> x
+      Throw.raiseError m $ "Undefined variable: " <> x
     Just (_, x') -> do
       UnusedVariable.delete x'
       return (m, x')
@@ -861,7 +861,7 @@ discernPattern (m, pat) = do
               consDD' <- Locator.getReadableDD consDD
               unless isConstLike $
                 Throw.raiseError m $
-                  "the constructor `" <> consDD' <> "` can't be used as a constant"
+                  "The constructor `" <> consDD' <> "` cannot be used as a constant"
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
           | otherwise -> do
               x' <- Gensym.newIdentFromText x
@@ -883,12 +883,12 @@ discernPattern (m, pat) = do
             _ -> do
               dd' <- Locator.getReadableDD dd
               Throw.raiseError m $
-                "the symbol `" <> dd' <> "` isn't defined as a constuctor"
+                "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mArgs -> do
       (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m cons
       when isConstLike $
         Throw.raiseError m $
-          "the constructor `" <> showName cons <> "` can't have any arguments"
+          "The constructor `" <> showName cons <> "` cannot have any arguments"
       case mArgs of
         RP.Paren args -> do
           (args', axisList) <- mapAndUnzipM discernPattern $ SE.extract args

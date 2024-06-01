@@ -34,7 +34,7 @@ ensureSetupSanity cfg = do
   let willBuildObjects = OK.Object `elem` outputKindList cfg
   let willLink = not $ shouldSkipLink cfg
   when (not willBuildObjects && willLink) $
-    Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
+    Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` does not contain `object`"
 
 emit :: Target -> [ClangOption] -> UTCTime -> Either ConcreteTarget Source -> [OK.OutputKind] -> L.ByteString -> App ()
 emit target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
@@ -84,9 +84,9 @@ emitInner additionalClangOptions llvm outputPath = do
             clangExitCode <- waitForProcess clangProcessHandler
             runInIO $ External.raiseIfProcessFailed (T.pack clang) clangExitCode clangErrorHandler
           (Nothing, _) ->
-            runInIO $ Throw.raiseError' "couldn't obtain stdin"
+            runInIO $ Throw.raiseError' "Could not obtain stdin"
           (_, Nothing) ->
-            runInIO $ Throw.raiseError' "couldn't obtain stderr"
+            runInIO $ Throw.raiseError' "Could not obtain stderr"
 
 clangBaseOpt :: Path Abs File -> [String]
 clangBaseOpt outputPath =

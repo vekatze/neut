@@ -58,7 +58,7 @@ detectPossibleInfiniteLoop :: Axis -> App ()
 detectPossibleInfiniteLoop axis = do
   let Axis {inlineLimit, currentStep, location} = axis
   when (inlineLimit < currentStep) $ do
-    Throw.raiseError location $ "exceeded max recursion depth of " <> T.pack (show inlineLimit)
+    Throw.raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
 
 inline :: Hint -> TM.Term -> App TM.Term
 inline m e = do

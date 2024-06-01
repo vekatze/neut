@@ -212,7 +212,7 @@ raiseTypeError :: Hint -> ET.EnsType -> ET.EnsType -> Either Error a
 raiseTypeError m expectedType actualType =
   Left $
     newError m $
-      "the value here is expected to be of type `"
+      "The value here is expected to be of type `"
         <> ET.showEnsType expectedType
         <> "`, but is: `"
         <> ET.showEnsType actualType
@@ -222,7 +222,7 @@ raiseKeyNotFoundError :: Hint -> T.Text -> Either Error a
 raiseKeyNotFoundError m k =
   Left $
     newError m $
-      "couldn't find the required key `"
+      "Could not find the required key `"
         <> k
         <> "`."
 

@@ -43,17 +43,17 @@ remarkLevelToText :: RemarkLevel -> T.Text
 remarkLevelToText level =
   case level of
     Note ->
-      "note"
+      "Note"
     Pass ->
-      "pass"
+      "Pass"
     Warning ->
-      "warning"
+      "Warning"
     Error ->
-      "error"
+      "Error"
     Fail ->
-      "fail"
+      "Fail"
     Critical ->
-      "critical"
+      "Critical"
 
 remarkLevelToSGR :: RemarkLevel -> [SGR]
 remarkLevelToSGR level =

@@ -47,7 +47,7 @@ insertDependency :: T.Text -> ModuleURL -> App ()
 insertDependency aliasName url = do
   aliasName' <- Throw.liftEither (BN.reflect' aliasName)
   when (isCapitalized aliasName') $ do
-    Throw.raiseError' $ "module aliases must not be capitalized, but found: " <> BN.reify aliasName'
+    Throw.raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
   let alias = ModuleAlias aliasName'
   withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias [url]
@@ -64,17 +64,17 @@ insertDependency aliasName url = do
                 libDirExists <- Path.doesDirExist moduleDirPath
                 if libDirExists
                   then do
-                    Remark.printNote' $ "already installed: `" <> MD.reify digest
+                    Remark.printNote' $ "Already installed: `" <> MD.reify digest
                   else do
-                    Remark.printNote' $ "reinstalling a dependency: `" <> MD.reify digest <> "`"
+                    Remark.printNote' $ "Reinstalling a dependency: `" <> MD.reify digest <> "`"
                     installModule tempFilePath alias digest
               else do
-                Remark.printNote' $ "adding a mirror of `" <> BN.reify (extract alias) <> "`"
+                Remark.printNote' $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
                 addDependencyToModuleFile alias dep'
           else do
             Remark.printNote' $
-              "replacing a dependency: "
+              "Replacing a dependency: "
                 <> BN.reify (extract alias)
                 <> "\n- old: "
                 <> MD.reify (M.dependencyDigest dep)
@@ -84,7 +84,7 @@ insertDependency aliasName url = do
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
             updateDependencyInModuleFile (moduleLocation mainModule) alias dep'
       Nothing -> do
-        Remark.printNote' $ "adding a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
+        Remark.printNote' $ "Adding a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
         installModule tempFilePath alias digest
         addDependencyToModuleFile alias $
           M.Dependency
@@ -109,14 +109,14 @@ installIfNecessary :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App ()
 installIfNecessary alias mirrorList digest = do
   isInstalled <- checkIfInstalled digest
   unless isInstalled $ do
-    Remark.printNote' $ "adding a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
+    Remark.printNote' $ "Adding a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
     withTempFile $ \tempFilePath tempFileHandle -> do
       download tempFilePath alias mirrorList
       archive <- getHandleContents tempFileHandle
       let archiveModuleDigest = MD.fromByteString archive
       when (digest /= archiveModuleDigest) $
         Throw.raiseError' $
-          "the digest of the module `"
+          "The digest of the module `"
             <> BN.reify (extract alias)
             <> "` is different from the expected one:"
             <> "\n- "
@@ -147,7 +147,7 @@ getLibraryModule alias digest = do
     then Module.fromFilePath (MID.Library digest) moduleFilePath
     else
       Throw.raiseError' $
-        "could not find the module file for `"
+        "Could not find the module file for `"
           <> BN.reify (extract alias)
           <> "` ("
           <> MD.reify digest
@@ -157,14 +157,14 @@ download :: Path Abs File -> ModuleAlias -> [ModuleURL] -> App ()
 download tempFilePath ma@(ModuleAlias alias) mirrorList = do
   case mirrorList of
     [] ->
-      Throw.raiseError' $ "couldn't obtain the module `" <> BN.reify alias <> "`."
+      Throw.raiseError' $ "Could not obtain the module `" <> BN.reify alias <> "`."
     ModuleURL mirror : rest -> do
       errOrUnit <- External.runOrFail "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror]
       case errOrUnit of
         Right () ->
           return ()
         Left (MakeError errorList) -> do
-          Remark.printWarning' $ "couldn't process the module at: " <> mirror
+          Remark.printWarning' $ "Could not process the module at: " <> mirror
           forM_ errorList Remark.printRemark
           download tempFilePath ma rest
 

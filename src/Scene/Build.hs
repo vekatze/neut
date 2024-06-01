@@ -161,7 +161,7 @@ compileForeign' t currentTime m = do
           Left err -> do
             let External.ExternalError {cmd, exitCode, errStr} = err
             Throw.raiseError' $
-              "foreign compilation of `"
+              "Foreign compilation of `"
                 <> MID.reify (M.moduleID m)
                 <> "` failed at `"
                 <> T.pack cmd
@@ -173,7 +173,7 @@ compileForeign' t currentTime m = do
         b <- Path.doesFileExist outputPath
         if b
           then Path.setModificationTime outputPath currentTime
-          else Throw.raiseError' $ "missing foreign output: " <> T.pack (toFilePath outputPath)
+          else Throw.raiseError' $ "Missing foreign output: " <> T.pack (toFilePath outputPath)
       return $ not $ null cmdList
 
 naiveReplace :: [(T.Text, T.Text)] -> T.Text -> T.Text

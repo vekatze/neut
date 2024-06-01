@@ -30,7 +30,7 @@ asIntSize dataSize size =
     then return $ IntSize size
     else
       Left $
-        "the size of an integer type must satisfy `1 <= SIZE <= "
+        "The size of an integer type must satisfy `1 <= SIZE <= "
           <> T.pack (show (DS.reify dataSize))
           <> "`, but found: "
           <> T.pack (show size)
@@ -40,7 +40,7 @@ asFloatSize dataSize size =
   if size > DS.reify dataSize
     then
       Left $
-        "the size of a float type must satisfy `1 <= SIZE <= "
+        "The size of a float type must satisfy `1 <= SIZE <= "
           <> T.pack (show (DS.reify dataSize))
           <> "`, but found: "
           <> T.pack (show size)
@@ -53,7 +53,7 @@ asFloatSize dataSize size =
         return FloatSize64
       _ ->
         Left $
-          "the size of a float type must be one in [16, 32, 64], but found: "
+          "The size of a float type must be one in [16, 32, 64], but found: "
             <> T.pack (show size)
 
 dataSizeToIntSize :: DS.DataSize -> IntSize

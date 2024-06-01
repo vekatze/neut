@@ -56,5 +56,5 @@ getArchiveFilePath targetModule versionText = do
   archiveFile <- Path.resolveFile archiveDir $ T.unpack $ versionText <> packageFileExtension
   archiveExists <- Path.doesFileExist archiveFile
   when archiveExists $ do
-    Throw.raiseError' $ "the archive `" <> versionText <> "` already exists"
+    Throw.raiseError' $ "The archive `" <> versionText <> "` already exists"
   return archiveFile

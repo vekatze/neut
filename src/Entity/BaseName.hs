@@ -58,7 +58,7 @@ bySplit m name = do
   let cand = map MakeBaseName $ T.split (nsSepChar ==) name
   if empty `notElem` cand
     then return $ map MakeBaseName $ T.split (nsSepChar ==) name
-    else Left (newError m $ "no succeeding dots are allowed here: " <> name)
+    else Left (newError m $ "No succeeding dots are allowed here: " <> name)
 
 reflect :: H.Hint -> T.Text -> Either Error BaseName
 reflect m rawTxt = do
@@ -66,7 +66,7 @@ reflect m rawTxt = do
     [baseName] ->
       return baseName
     _ ->
-      Left $ newError m $ "no dots are allowed here: " <> rawTxt
+      Left $ newError m $ "No dots are allowed here: " <> rawTxt
 
 reflect' :: T.Text -> Either Error BaseName
 reflect' rawTxt = do
@@ -74,7 +74,7 @@ reflect' rawTxt = do
     [baseName] ->
       return baseName
     _ ->
-      Left $ newError' $ "no dots are allowed here: " <> rawTxt
+      Left $ newError' $ "No dots are allowed here: " <> rawTxt
 
 isCapitalized :: BaseName -> Bool
 isCapitalized (MakeBaseName bn) =

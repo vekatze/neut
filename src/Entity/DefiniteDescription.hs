@@ -157,7 +157,7 @@ getLocatorPair m varText = do
     Nothing ->
       Left $ newError m "Entity.DefiniteDescription.getLocatorPair: empty variable name"
     Just ([], _) ->
-      Left $ newError m $ "the symbol `" <> varText <> "` doesn't contain a global locator"
+      Left $ newError m $ "The symbol `" <> varText <> "` does not contain a global locator"
     Just (initElems, lastElem) -> do
       gl <- GL.reflect m $ T.intercalate "." initElems
       ll <- LL.reflect m lastElem

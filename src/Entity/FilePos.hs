@@ -20,7 +20,7 @@ instance Binary FilePos where
       Just path ->
         return path
       Nothing ->
-        fail $ "couldn't parse given path: " <> filePath
+        fail $ "Could not parse given path: " <> filePath
     return $ FilePos path loc
 
 fromHint :: Hint -> Maybe FilePos

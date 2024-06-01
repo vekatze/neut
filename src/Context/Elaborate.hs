@@ -92,7 +92,7 @@ lookupWeakTypeEnv m k = do
       return t
     Nothing ->
       Throw.raiseCritical m $
-        Ident.toText' k <> " is not found in the weak type environment."
+        "`" <> Ident.toText' k <> "` is not found in the weak type environment."
 
 lookupWeakTypeEnvMaybe :: Int -> App (Maybe WeakTerm)
 lookupWeakTypeEnvMaybe k = do
@@ -168,10 +168,10 @@ fillHole m h es = do
   holeSubst <- getHoleSubst
   case HS.lookup h holeSubst of
     Nothing ->
-      Throw.raiseError m $ "couldn't instantiate the hole here: " <> T.pack (show h)
+      Throw.raiseError m $ "Could not instantiate the hole here: " <> T.pack (show h)
     Just (xs, e)
       | length xs == length es -> do
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
           WT.subst s e
       | otherwise ->
-          Throw.raiseError m "arity mismatch"
+          Throw.raiseError m "Arity mismatch"

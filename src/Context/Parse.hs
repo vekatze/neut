@@ -43,6 +43,6 @@ ensureExistence source = do
   unless fileExists $ do
     case sourceHint source of
       Just m ->
-        Throw.raiseError m $ T.pack $ "no such file exists: " <> toFilePath path
+        Throw.raiseError m $ T.pack $ "No such file exists: " <> toFilePath path
       Nothing ->
-        Throw.raiseError' $ T.pack $ "no such file exists: " <> toFilePath path
+        Throw.raiseError' $ T.pack $ "No such file exists: " <> toFilePath path

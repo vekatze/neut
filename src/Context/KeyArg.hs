@@ -44,7 +44,7 @@ insert m funcName isConstLike argNum keys = do
       | argNum /= argNum' -> do
           funcName' <- Locator.getReadableDD funcName
           Throw.raiseError m $
-            "the arity of `"
+            "The arity of `"
               <> funcName'
               <> "` is declared as "
               <> T.pack (show $ AN.reify argNum')
@@ -54,7 +54,7 @@ insert m funcName isConstLike argNum keys = do
       | not $ eqKeys keys keys' -> do
           funcName' <- Locator.getReadableDD funcName
           Throw.raiseError m $
-            "the explicit key sequence of `"
+            "The explicit key sequence of `"
               <> funcName'
               <> "` is declared as `"
               <> showKeys keys'
@@ -116,7 +116,7 @@ lookup m dataName = do
       return value
     Nothing -> do
       dataName' <- Locator.getReadableDD dataName
-      Throw.raiseError m $ "no such function is defined: " <> dataName'
+      Throw.raiseError m $ "No such function is defined: " <> dataName'
 
 lookupMaybe :: DD.DefiniteDescription -> App (Maybe (IsConstLike, [Key]))
 lookupMaybe dataName = do
@@ -135,13 +135,13 @@ reorderArgs m keyList kvs =
           return []
       | otherwise -> do
           let ks = map fst $ Map.toList kvs
-          Throw.raiseError m $ "the following fields are redundant:\n" <> showKeyList ks
+          Throw.raiseError m $ "The following fields are redundant:\n" <> showKeyList ks
     key : keyRest
       | Just v <- Map.lookup key kvs -> do
           vs <- reorderArgs m keyRest (Map.delete key kvs)
           return $ v : vs
       | otherwise ->
-          Throw.raiseError m $ "the field `" <> key <> "` is missing"
+          Throw.raiseError m $ "The field `" <> key <> "` is missing"
 
 showKeyList :: [Key] -> T.Text
 showKeyList ks =

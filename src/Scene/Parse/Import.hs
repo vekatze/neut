@@ -87,7 +87,7 @@ interpretImportItemStatic currentModule keyList = do
         UnusedStaticFile.insert key mKey
         return (key, (mKey, fullPath))
       Nothing ->
-        Throw.raiseError mKey $ "no such static file is defined: " <> key
+        Throw.raiseError mKey $ "No such static file is defined: " <> key
   return [StaticKey pathList]
 
 interpretImportItem ::
@@ -109,11 +109,11 @@ interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList =
           let gla = GLA.GlobalLocatorAlias baseName
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl]]
       | otherwise ->
-          Throw.raiseError m $ "no such prefix is defined: " <> BN.reify baseName
+          Throw.raiseError m $ "No such prefix is defined: " <> BN.reify baseName
     aliasText : locator ->
       case SL.fromBaseNameList locator of
         Nothing ->
-          Throw.raiseError m $ "couldn't parse the locator: " <> locatorText
+          Throw.raiseError m $ "Could not parse the locator: " <> locatorText
         Just sourceLocator -> do
           let moduleAlias = ModuleAlias aliasText
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator

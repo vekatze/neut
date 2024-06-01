@@ -66,7 +66,7 @@ resolveVarOrErr m name = do
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
-      return $ Left $ "undefined symbol: " <> name
+      return $ Left $ "Undefined symbol: " <> name
     [globalVar@(dd, (mDef, gn))] -> do
       Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
       UnusedLocalLocator.delete localLocator
@@ -74,7 +74,7 @@ resolveVarOrErr m name = do
     _ -> do
       foundNameList' <- mapM (Locator.getReadableDD . fst) foundNameList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
-      return $ Left $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
+      return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
 resolveLocator ::
   Hint ->
@@ -88,7 +88,7 @@ resolveLocator m (gl, ll) shouldInsertTag = do
   let foundName = candFilter (cand, cand')
   case foundName of
     Nothing ->
-      Throw.raiseError m $ "undefined constant: " <> L.reify (gl, ll)
+      Throw.raiseError m $ "Undefined constant: " <> L.reify (gl, ll)
     Just globalVar@(dd, (mDef, gn)) -> do
       when shouldInsertTag $ do
         let glLen = T.length $ GL.reify gl
@@ -109,7 +109,7 @@ resolveConstructor m s = do
     Just v ->
       return v
     Nothing ->
-      Throw.raiseError m $ DD.reify dd <> " is not a constructor"
+      Throw.raiseError m $ "`" <> DD.reify dd <> "` is not a constructor"
 
 resolveConstructorMaybe ::
   DD.DefiniteDescription ->

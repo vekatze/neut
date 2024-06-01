@@ -52,7 +52,7 @@ detectPossibleInfiniteLoop :: Axis -> App ()
 detectPossibleInfiniteLoop axis = do
   let Axis {inlineLimit, currentStep, location} = axis
   when (inlineLimit < currentStep) $ do
-    Throw.raiseError location $ "exceeded max recursion depth of " <> T.pack (show inlineLimit)
+    Throw.raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
 
 reduce :: WT.WeakTerm -> App WT.WeakTerm
 reduce term@(m :< _) = do

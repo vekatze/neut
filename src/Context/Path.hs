@@ -87,7 +87,7 @@ ensureNotInLibDir = do
   b <- inLibDir
   when b $
     Throw.raiseError'
-      "this command cannot be used under the library directory"
+      "This command cannot be used under the library directory"
 
 inLibDir :: App Bool
 inLibDir = do
