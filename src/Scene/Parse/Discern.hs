@@ -441,9 +441,10 @@ discern axis term =
       unitUnit <- locatorToVarGlobal m coreUnitUnit
       discern axis $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
     m :< RT.ListIntro es -> do
-      listNil <- locatorToVarGlobal m coreListNil
-      listCons <- locatorToVarGlobal m coreListCons
-      discern axis $ foldListApp m listNil listCons $ SE.extract es
+      let m' = m {metaShouldSaveLocation = False}
+      listNil <- locatorToVarGlobal m' coreListNil
+      listCons <- locatorToVarGlobal m' coreListCons
+      discern axis $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
       admit <- locatorToVarGlobal m coreSystemAdmit
       t <- Gensym.newPreHole (blur m)
@@ -922,9 +923,10 @@ discernPattern (m, pat) = do
                   }
           return ((m, PAT.Cons consInfo), concat axisList)
     RP.ListIntro patList -> do
-      listNil <- Throw.liftEither $ DD.getLocatorPair m coreListNil
-      listCons <- locatorToName m coreListCons
-      discernPattern $ foldListAppPat m listNil listCons $ SE.extract patList
+      let m' = m {metaShouldSaveLocation = False}
+      listNil <- Throw.liftEither $ DD.getLocatorPair m' coreListNil
+      listCons <- locatorToName m' coreListCons
+      discernPattern $ foldListAppPat m' listNil listCons $ SE.extract patList
 
 foldListAppPat ::
   Hint ->
