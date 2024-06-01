@@ -270,7 +270,7 @@ elaborate' term =
                   return $ m :< TM.Prim (P.Value (PV.Float size (fromInteger x)))
                 _ -> do
                   Throw.raiseError m $
-                    "the term `"
+                    "The term `"
                       <> T.pack (show x)
                       <> "` is an integer, but its type is: "
                       <> toText (weaken t')
@@ -281,7 +281,7 @@ elaborate' term =
                   return $ m :< TM.Prim (P.Value (PV.Float size x))
                 _ -> do
                   Throw.raiseError m $
-                    "the term `"
+                    "The term `"
                       <> T.pack (show x)
                       <> "` is a float, but its type is: "
                       <> toText (weaken t')
@@ -297,7 +297,7 @@ elaborate' term =
           let actual = length args
           when (actual /= length domList) $ do
             Throw.raiseError m $
-              "the external function `"
+              "The external function `"
                 <> EN.reify name
                 <> "` expects "
                 <> T.pack (show expected)
@@ -398,7 +398,7 @@ elaborateClause decisionCase = do
 
 raiseNonExhaustivePatternMatching :: Hint -> App a
 raiseNonExhaustivePatternMatching m =
-  Throw.raiseError m "encountered a non-exhaustive pattern matching"
+  Throw.raiseError m "Encountered a non-exhaustive pattern matching"
 
 reduceType :: WT.WeakTerm -> App TM.Term
 reduceType e = do
@@ -416,4 +416,4 @@ getSwitchSpec m cursorType = do
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
       return LiteralIntSwitch
     _ ->
-      Throw.raiseError m $ "this term is expected to be an ADT value or an integer, but it's not:\n" <> toText (weaken cursorType)
+      Throw.raiseError m $ "This term is expected to be an ADT value or an integer, but it's not:\n" <> toText (weaken cursorType)

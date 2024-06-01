@@ -63,7 +63,7 @@ unravel baseModule t = do
         Named targetName _ -> do
           case getTargetPath baseModule targetName of
             Nothing ->
-              Throw.raiseError' $ "no such target is defined: `" <> targetName <> "`"
+              Throw.raiseError' $ "No such target is defined: `" <> targetName <> "`"
             Just path -> do
               unravelFromFile t baseModule path
 
@@ -158,7 +158,7 @@ unravelImportItem t importItem = do
         b <- Path.doesFileExist p
         if b
           then Path.getModificationTime p
-          else Throw.raiseError m $ "no such file exists: " <> T.pack (toFilePath p)
+          else Throw.raiseError m $ "No such file exists: " <> T.pack (toFilePath p)
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
 
@@ -240,7 +240,7 @@ raiseCyclicPath :: Path Abs File -> [Path Abs File] -> App a
 raiseCyclicPath path pathList = do
   let m = newSourceHint path
   let cyclicPathList = reverse $ path : pathList
-  Throw.raiseError m $ "found a cyclic import:\n" <> showCycle (map (T.pack . toFilePath) cyclicPathList)
+  Throw.raiseError m $ "Found a cyclic import:\n" <> showCycle (map (T.pack . toFilePath) cyclicPathList)
 
 showCycle :: [T.Text] -> T.Text
 showCycle textList =
@@ -312,7 +312,7 @@ compressMap axis baseMap arrowList =
         Just to''
           | moduleID to' /= moduleID to'' -> do
               Throw.raiseError' $
-                "found a non-confluent antecedent graph:\n"
+                "Found a non-confluent antecedent graph:\n"
                   <> MID.reify from
                   <> " ~> {"
                   <> MID.reify (moduleID to')
@@ -342,7 +342,7 @@ chase' axis baseMap found k i = do
       if j' `elem` found
         then
           Throw.raiseError' $
-            "found a cycle in given antecedent graph:\n" <> showCycle (map MID.reify $ j' : found)
+            "Found a cycle in given antecedent graph:\n" <> showCycle (map MID.reify $ j' : found)
         else chase axis baseMap (j' : found) k j
 
 artifactTimeFromCurrentTime :: App A.ArtifactTime

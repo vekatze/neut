@@ -55,14 +55,14 @@ getNewerSource source newModule = do
       case Source.sourceHint source of
         Nothing -> do
           Throw.raiseError' $
-            "the file `"
+            "The file `"
               <> T.pack (toFilePath relPath)
               <> "` is missing in the module `"
               <> MID.reify (moduleID newModule)
               <> "`"
         Just m -> do
           Throw.raiseError m $
-            "the file `"
+            "The file `"
               <> T.pack (toFilePath relPath)
               <> "` is missing in the module `"
               <> MID.reify (moduleID newModule)

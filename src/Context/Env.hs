@@ -45,7 +45,7 @@ lookupArtifactTime path = do
     Just artifactTime ->
       return artifactTime
     Nothing ->
-      Throw.raiseCritical' $ "no artifact time is registered for the source: " <> T.pack (toFilePath path)
+      Throw.raiseCritical' $ "No artifact time is registered for the source: " <> T.pack (toFilePath path)
 
 getArtifactMap :: App (Map.HashMap (Path Abs File) A.ArtifactTime)
 getArtifactMap =
@@ -70,7 +70,7 @@ getDataSize'' mm = do
     Just dataSize ->
       return dataSize
     Nothing -> do
-      let message = "the data size of the platform `" <> reify platform <> "` is unknown"
+      let message = "The data size of the platform `" <> reify platform <> "` is unknown"
       case mm of
         Just m ->
           Throw.raiseError m message

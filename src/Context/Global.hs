@@ -172,7 +172,7 @@ lookup' m name = do
       return gn
     Nothing -> do
       name' <- Locator.getReadableDD name
-      Throw.raiseError m $ "no such top-level name is defined: " <> name'
+      Throw.raiseError m $ "No such top-level name is defined: " <> name'
 
 initialize :: App ()
 initialize = do
@@ -247,7 +247,7 @@ lookupSourceNameMap m sourcePath = do
     Just topLevelNameInfo -> do
       return topLevelNameInfo
     Nothing ->
-      Throw.raiseCritical m $ "top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
+      Throw.raiseCritical m $ "Top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
 
 activateTopLevelNames :: TopNameMap -> App ()
 activateTopLevelNames namesInSource = do

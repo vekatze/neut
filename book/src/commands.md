@@ -25,7 +25,7 @@ Most of the subcommands of `neut` must be executed inside a module. If you execu
 
 ```sh
 neut build foo
-#=> error: couldn't find a module file (context: /Users/foo/Desktop)
+#=> Error: Couldn't find a module file (Context: /Users/foo/Desktop)
 ```
 
 Only the following subcommands can be used outside a module:
@@ -134,14 +134,14 @@ When running `neut build TARGET`, the compiler reports errors like the below:
 
 ```text
 /path/to/sample/source/hey.nt:1:8
-error: expected:
+Error: Expected:
          () -> unit
-       found:
+       Found:
          () -> int64
 /path/to/sample/source/hey.nt:2:3
-error: expected:
+Error: Expected:
          int64
-       found:
+       Found:
          tau
 ```
 
@@ -149,15 +149,15 @@ On the other hand, when running `neut build TARGET --end-of-entry EOE`, the text
 
 ```text
 /path/to/sample/source/hey.nt:1:8
-error: expected:
+Error: Expected:
          () -> unit
-       found:
+       Found:
          () -> int64
 EOE
 /path/to/sample/source/hey.nt:2:3
-error: expected:
+Error: Expected:
          int64
-       found:
+       Found:
          tau
 EOE
 ```
@@ -176,14 +176,14 @@ Without `--no-padding`:
 
 ```text
 /path/to/sample/source/hey.nt:1:8
-error: expected:
+Error: Expected:
          () -> unit
-       found:
+       Found:
          () -> int64
 /path/to/sample/source/hey.nt:2:3
-error: expected:
+Error: Expected:
          int64
-       found:
+       Found:
          tau
 ```
 
@@ -191,14 +191,14 @@ With `--no-padding`:
 
 ```text
 /Users/vekatze/Desktop/hey/source/hey.nt:1:8
-error: expected:
+Error: Expected:
   () -> unit
-found:
+Found:
   () -> int64
 /Users/vekatze/Desktop/hey/source/hey.nt:2:3
-error: expected:
+Error: Expected:
   int64
-found:
+Found:
   tau
 ```
 

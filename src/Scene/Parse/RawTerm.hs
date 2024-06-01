@@ -234,7 +234,7 @@ ensureIdentLinearity foundVarSet vs =
       return ()
     (m, name) : rest
       | S.member name foundVarSet ->
-          Throw.raiseError m $ "found a non-linear occurrence of `" <> name <> "`."
+          Throw.raiseError m $ "Found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
           ensureIdentLinearity (S.insert name foundVarSet) rest
 
@@ -268,7 +268,7 @@ parseDef nameParser = do
   (geist, c1) <- parseGeist nameParser
   (c2, ((e, c3), loc, c)) <- betweenBrace' rawExpr
   if RT.isConstLike geist
-    then lift $ Throw.raiseError (RT.loc geist) "the argument list is missing"
+    then lift $ Throw.raiseError (RT.loc geist) "The argument list is missing"
     else
       return
         ( RT.RawDef
@@ -316,7 +316,7 @@ ensureArgumentLinearity foundVarSet vs =
       return ()
     (m, name) : rest
       | S.member name foundVarSet ->
-          Throw.raiseError m $ "found a non-linear occurrence of `" <> name <> "`."
+          Throw.raiseError m $ "Found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
           ensureArgumentLinearity (S.insert name foundVarSet) rest
 
@@ -492,9 +492,9 @@ rawTermPatternRow patternSize = do
       unless (len == patternSize) $ do
         lift $
           Throw.raiseError m $
-            "the size of the pattern row `"
+            "The size of the pattern row `"
               <> T.pack (show len)
-              <> "` doesn't match with its input size `"
+              <> "` does not match with its input size `"
               <> T.pack (show patternSize)
               <> "`"
       cArrow <- delimiter "=>"

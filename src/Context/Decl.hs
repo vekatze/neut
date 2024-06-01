@@ -47,7 +47,7 @@ lookupDeclEnv m name = do
     Just typeInfo ->
       return typeInfo
     Nothing -> do
-      Throw.raiseError m $ "undeclared function: " <> DN.reify name
+      Throw.raiseError m $ "Undeclared function: " <> DN.reify name
 
 member :: DN.DeclarationName -> App Bool
 member name = do

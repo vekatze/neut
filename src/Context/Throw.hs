@@ -89,7 +89,7 @@ raiseCritical' text =
 
 raiseSyntaxError :: Hint -> T.Text -> App a
 raiseSyntaxError m form =
-  raiseError m $ "couldn't match the input with the expected form: " <> form
+  raiseError m $ "Could not match the input with the expected form: " <> form
 
 liftEither :: Either E.Error a -> App a
 liftEither errOrResult =

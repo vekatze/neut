@@ -29,7 +29,7 @@ fallbackRow ::
 fallbackRow isNoetic cursor (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
-      Throw.raiseCritical' "defaulting against the empty pattern matrix shouldn't happen"
+      Throw.raiseCritical' "Defaulting against the empty pattern matrix should not happen"
     Just ((_, WildcardVar), rest) ->
       return $ Just (rest, (freedVars, baseSeq, body))
     Just ((_, Var x), rest) -> do

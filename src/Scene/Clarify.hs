@@ -123,7 +123,7 @@ clarifyStmt stmt =
                   (dataArgs', t') <- clarifyBinderBody IntMap.empty dataArgs t
                   return $ C.Def f O.Opaque (map fst dataArgs') t'
               | otherwise ->
-                  Throw.raiseCritical m "found a broken unary data"
+                  Throw.raiseCritical m "Found a broken unary data"
             _ -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM clarifyDataClause dataInfo
@@ -210,7 +210,7 @@ clarifyTerm tenv term =
           | [e] <- consArgs ->
               clarifyTerm tenv e
           | otherwise ->
-              Throw.raiseCritical m "found a malformed unary data in Scene.Clarify.clarifyTerm"
+              Throw.raiseCritical m "Found a malformed unary data in Scene.Clarify.clarifyTerm"
         _ -> do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
@@ -392,7 +392,7 @@ clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
                   chain
                 )
           | otherwise ->
-              Throw.raiseCritical' "found a non-unary consArgs for unary ADT"
+              Throw.raiseCritical' "Found a non-unary consArgs for unary ADT"
         _ -> do
           discriminantVar <- Gensym.newIdentFromText "discriminant"
           return

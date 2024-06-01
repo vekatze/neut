@@ -146,7 +146,7 @@ ensurePatternSanity (m, pat) =
       when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
         consDD' <- Locator.getReadableDD $ PAT.consDD consInfo
         Throw.raiseError m $
-          "the constructor `"
+          "The constructor `"
             <> consDD'
             <> "` expects "
             <> T.pack (show (AN.reify (PAT.consArgNum consInfo)))

@@ -53,7 +53,7 @@ getModule m moduleID locatorText = do
       moduleFileExists <- doesFileExist nextModuleFilePath
       unless moduleFileExists $ do
         raiseError m $
-          T.pack "could not find the module file for `"
+          T.pack "Could not find the module file for `"
             <> locatorText
             <> "`"
       nextModule <- fromFilePath moduleID nextModuleFilePath
@@ -133,7 +133,7 @@ interpretPrefixMap m ens = do
   kvs' <- forM ens $ \(k, v) -> do
     k' <- BN.reflect m k
     unless (isCapitalized k') $ do
-      Left $ newError m $ "prefixes must be capitalized, but found: " <> BN.reify k'
+      Left $ newError m $ "Prefixes must be capitalized, but found: " <> BN.reify k'
     v' <- E.toString v >>= uncurry GL.reflectLocator
     return (k', v')
   return $ Map.fromList $ SE.extract kvs'
@@ -187,7 +187,7 @@ interpretSourceLocator ens = do
     Just relPath ->
       return $ SL.SourceLocator relPath
     Nothing ->
-      raiseError m $ "invalid file path: " <> pathString
+      raiseError m $ "Invalid file path: " <> pathString
 
 interpretRelFilePath :: E.Ens -> App (Path Rel File)
 interpretRelFilePath ens = do
@@ -196,7 +196,7 @@ interpretRelFilePath ens = do
     Just relPath ->
       return relPath
     Nothing ->
-      raiseError m $ "invalid file path: " <> pathString
+      raiseError m $ "Invalid file path: " <> pathString
 
 interpretDependencyDict ::
   (H.Hint, SE.Series (T.Text, E.Ens)) ->
@@ -205,10 +205,10 @@ interpretDependencyDict (m, dep) = do
   items <- forM dep $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
     when (BN.isCapitalized k') $ do
-      raiseError m $ "module aliases can't be capitalized, but found: " <> BN.reify k'
+      raiseError m $ "Module aliases cannot be capitalized, but found: " <> BN.reify k'
     when (S.member k' BN.reservedAlias) $
       raiseError m $
-        "the reserved name `"
+        "The reserved name `"
           <> BN.reify k'
           <> "` cannot be used as an alias of a module"
     (_, urlEnsSeries) <- liftEither $ E.access keyMirror ens >>= E.toList
@@ -278,7 +278,7 @@ ensureExistence ::
 ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker (moduleRootDir </> path)
   unless b $ do
-    raiseError m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath path)
+    raiseError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
 
 findModuleFile :: Path Abs Dir -> Path Abs Dir -> App (Path Abs File)
 findModuleFile baseDir moduleRootDirCandidate = do
@@ -290,7 +290,7 @@ findModuleFile baseDir moduleRootDirCandidate = do
     (_, True) ->
       findModuleFile baseDir $ parent moduleRootDirCandidate
     _ ->
-      raiseError' $ "couldn't find a module file (context: " <> T.pack (toFilePath baseDir) <> ")"
+      raiseError' $ "Could not find a module file (Context: " <> T.pack (toFilePath baseDir) <> ")"
 
 getCurrentModuleFilePath :: App (Path Abs File)
 getCurrentModuleFilePath = do

@@ -86,6 +86,6 @@ ensureKeyLinearity mks foundKeySet =
       return ()
     (m, (k, _)) : rest
       | S.member k foundKeySet ->
-          Throw.raiseError m $ "found a duplicated key: `" <> k <> "`"
+          Throw.raiseError m $ "Found a duplicate key: `" <> k <> "`"
       | otherwise ->
           ensureKeyLinearity rest (S.insert k foundKeySet)

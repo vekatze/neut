@@ -154,7 +154,7 @@ parseDefineDataClause = do
   m <- P.getCurrentHint
   consName@(consName', _) <- P.baseName
   unless (isConsName (BN.reify consName')) $ do
-    lift $ Throw.raiseError m "the name of a constructor must be capitalized"
+    lift $ Throw.raiseError m "The name of a constructor must be capitalized"
   (consArgsOrNone, loc, c) <- parseConsArgs
   let consArgs = fromMaybe SE.emptySeriesPC consArgsOrNone
   let isConstLike = isNothing consArgsOrNone

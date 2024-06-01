@@ -182,7 +182,7 @@ infer varEnv term =
           lamID <- Gensym.newCount
           infer varEnv $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim e' expArgs'')
         _ ->
-          Throw.raiseError m $ "expected a function type, but got: " <> toText t'
+          Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (infer varEnv) es
       return (m :< WT.Data attr name es', m :< WT.Tau)
@@ -319,9 +319,9 @@ infer varEnv term =
                         )
                     )
           | otherwise -> do
-              Throw.raiseError mt $ "expected a single-constructor ADT, but found: " <> toText t''
+              Throw.raiseError mt $ "Expected a single-constructor ADT, but found: " <> toText t''
         _ :< _ -> do
-          Throw.raiseError mt $ "expected an ADT, but found: " <> toText t''
+          Throw.raiseError mt $ "Expected an ADT, but found: " <> toText t''
 
 mustBypassCursorDealloc :: Maybe OD.OptimizableData -> Bool
 mustBypassCursorDealloc odOrNone =
@@ -363,7 +363,7 @@ inferArgs sub m args1 args2 cod =
       insConstraintEnv tx' t
       inferArgs (IntMap.insert (Ident.toInt x) (Right e) sub) m ets xts cod
     _ ->
-      Throw.raiseCritical m "invalid argument passed to inferArgs"
+      Throw.raiseCritical m "Invalid argument passed to inferArgs"
 
 inferType :: BoundVarEnv -> WT.WeakTerm -> App WT.WeakTerm
 inferType varEnv t = do
@@ -417,7 +417,7 @@ inferPiElim varEnv m (e, t) expArgs = do
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
       return (m :< WT.PiElim e (map fst args), m :< cod')
     _ ->
-      Throw.raiseError m $ "expected a function type, but got: " <> toText t'
+      Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
 
 inferPiElimExplicit ::
   Hint ->
@@ -433,7 +433,7 @@ inferPiElimExplicit m (e, t) args = do
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
       return (m :< WT.PiElim e (map fst args), m :< cod')
     _ ->
-      Throw.raiseError m $ "expected a function type, but got: " <> toText t'
+      Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
 
 newTypedHole :: Hint -> BoundVarEnv -> App (WT.WeakTerm, WT.WeakTerm)
 newTypedHole m varEnv = do
@@ -452,7 +452,7 @@ ensureArityCorrectness function expected found = do
       m :< WT.VarGlobal _ name -> do
         name' <- Locator.getReadableDD name
         Throw.raiseError m $
-          "the function `"
+          "The function `"
             <> name'
             <> "` expects "
             <> T.pack (show expected)
@@ -461,7 +461,7 @@ ensureArityCorrectness function expected found = do
             <> "."
       m :< _ ->
         Throw.raiseError m $
-          "this function expects "
+          "This function expects "
             <> T.pack (show expected)
             <> " arguments, but found "
             <> T.pack (show found)
@@ -568,7 +568,7 @@ reduceWeakType' sub e = do
               let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
               WT.subst s body >>= reduceWeakType' sub
           | otherwise ->
-              Throw.raiseError m "arity mismatch"
+              Throw.raiseError m "Arity mismatch"
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
       mLam <- WeakDefinition.lookup name
       case mLam of

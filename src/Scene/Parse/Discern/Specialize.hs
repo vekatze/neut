@@ -43,7 +43,7 @@ specializeRow ::
 specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
-      Throw.raiseCritical' "specialization against the empty pattern matrix shouldn't happen"
+      Throw.raiseCritical' "Specialization against the empty pattern matrix should not happen"
     Just ((m, WildcardVar), rest) -> do
       case specializer of
         LiteralIntSpecializer _ -> do

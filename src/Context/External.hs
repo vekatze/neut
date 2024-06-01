@@ -43,7 +43,7 @@ runOrFail procName optionList = do
     withCreateProcess cmd {std_err = CreatePipe} $ \_ _ mErrorHandler cmdHandler -> do
       case mErrorHandler of
         Nothing ->
-          runInIO $ Throw.raiseError' "couldn't obtain stderr"
+          runInIO $ Throw.raiseError' "Could not obtain stderr"
         Just errorHandler -> do
           exitCode <- waitForProcess cmdHandler
           case exitCode of
@@ -54,7 +54,7 @@ runOrFail procName optionList = do
               return $
                 Left $
                   newError' $
-                    "the child process `"
+                    "The child process `"
                       <> T.pack procName
                       <> "` failed with the following message (exitcode = "
                       <> T.pack (show i)
@@ -74,7 +74,7 @@ runOrFail' cwd cmd = do
     withCreateProcess sh {std_err = CreatePipe} $ \_ _ mErrorHandler cmdHandler -> do
       case mErrorHandler of
         Nothing ->
-          runInIO $ Throw.raiseError' "couldn't obtain stderr"
+          runInIO $ Throw.raiseError' "Could not obtain stderr"
         Just errorHandler -> do
           exitCode <- waitForProcess cmdHandler
           case exitCode of
@@ -124,7 +124,7 @@ calculateClangDigest = do
             runInIO $ raiseIfProcessFailed (T.pack clang) printfExitCode stdErr
             return $ decodeUtf8 $ hashAndEncode value
           Nothing ->
-            runInIO $ Throw.raiseError' "couldn't obtain stderr"
+            runInIO $ Throw.raiseError' "Could not obtain stderr"
 
 ensureExecutables :: App ()
 ensureExecutables = do
@@ -144,7 +144,7 @@ ensureExecutable name = do
     Just _ ->
       return ()
     Nothing ->
-      Throw.raiseError' $ "command not found: " <> T.pack name
+      Throw.raiseError' $ "Command not found: " <> T.pack name
 
 shellWithCwd :: FilePath -> String -> CreateProcess
 shellWithCwd cwd str =
@@ -182,15 +182,15 @@ expandText t = do
             unless (T.null errorMessage) $ do
               runInIO $
                 Throw.raiseError' $
-                  "expanding the text\n"
+                  "Expanding the text\n"
                     <> indent t
                     <> "\nfailed with the following message:\n"
                     <> indent errorMessage
             return $ decodeUtf8 value
           (Nothing, _) ->
-            runInIO $ Throw.raiseError' "couldn't obtain stdout"
+            runInIO $ Throw.raiseError' "Could not obtain stdout"
           (_, Nothing) ->
-            runInIO $ Throw.raiseError' "couldn't obtain stderr"
+            runInIO $ Throw.raiseError' "Could not obtain stderr"
 
 raiseIfProcessFailed :: T.Text -> ExitCode -> Handle -> App ()
 raiseIfProcessFailed procName exitCode h =
@@ -200,7 +200,7 @@ raiseIfProcessFailed procName exitCode h =
     ExitFailure i -> do
       errStr <- liftIO $ decodeUtf8 <$> B.hGetContents h
       Throw.raiseError' $
-        "the child process `"
+        "The child process `"
           <> procName
           <> "` failed with the following message (exitcode = "
           <> T.pack (show i)

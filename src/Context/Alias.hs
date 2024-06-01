@@ -36,7 +36,7 @@ registerGlobalLocatorAlias ::
 registerGlobalLocatorAlias m from to = do
   amap <- readRef' locatorAliasMap
   if Map.member from amap
-    then Throw.raiseError m $ "the alias is already defined: " <> BN.reify (GLA.reify from)
+    then Throw.raiseError m $ "The alias is already defined: " <> BN.reify (GLA.reify from)
     else modifyRef' locatorAliasMap $ Map.insert from to
 
 resolveAlias ::
@@ -59,7 +59,7 @@ resolveAlias m gl = do
           return sgl
         Nothing ->
           Throw.raiseError m $
-            "no such global locator alias is defined: " <> BN.reify (GLA.reify alias)
+            "No such global locator alias is defined: " <> BN.reify (GLA.reify alias)
 
 resolveLocatorAlias ::
   Hint ->
@@ -89,7 +89,7 @@ resolveModuleAlias m moduleAlias = do
           resolveModuleAlias m defaultModuleAlias
       | otherwise ->
           Throw.raiseError m $
-            "no such module alias is defined: " <> BN.reify (extract moduleAlias)
+            "No such module alias is defined: " <> BN.reify (extract moduleAlias)
 
 getModuleDigestAliasList :: Module -> App [(ModuleAlias, ModuleDigest)]
 getModuleDigestAliasList baseModule = do

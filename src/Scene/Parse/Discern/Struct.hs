@@ -23,7 +23,7 @@ ensureFieldLinearity m ks found nonLinear =
         then return ()
         else
           Throw.raiseError m $
-            "the following fields are defined more than once:\n"
+            "The following fields are defined more than once:\n"
               <> T.intercalate "\n" (map ("- " <>) (S.toList nonLinear))
     k : rest -> do
       if S.member k found
