@@ -16,7 +16,7 @@ lspOptions =
             { _openClose = Just True,
               _change = Just TextDocumentSyncKind_Incremental,
               _willSave = Just True,
-              _willSaveWaitUntil = Just True,
+              _willSaveWaitUntil = Just False,
               _save = Just $ InR $ SaveOptions {_includeText = Just False}
             },
       optCompletionTriggerCharacters = Just ['.']

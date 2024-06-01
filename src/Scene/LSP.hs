@@ -117,10 +117,6 @@ handlers =
         let uri = req ^. (J.params . J.textDocument . J.uri)
         textEditList <- LSP.format uri
         responder $ Right $ InL textEditList,
-      requestHandler SMethod_TextDocumentWillSaveWaitUntil $ \req responder -> do
-        let uri = req ^. (J.params . J.textDocument . J.uri)
-        textEditList <- LSP.format uri
-        responder $ Right $ InL textEditList,
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
         textOrNone <- lift $ runAppM $ LSP.getSymbolInfo (req ^. J.params)
         case textOrNone of
