@@ -55,7 +55,6 @@ registerStmtDefine ::
   [Key] ->
   App ()
 registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames = do
-  KeyArg.insert m name isConstLike allArgNum expArgNames
   case stmtKind of
     SK.Normal _ ->
       registerTopLevelFunc isConstLike m name allArgNum
@@ -65,6 +64,7 @@ registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames = do
       registerAsEnumIfNecessary dataName dataArgs consInfoList
     SK.DataIntro {} ->
       return ()
+  KeyArg.insert m name isConstLike allArgNum expArgNames
 
 registerAsEnumIfNecessary ::
   DD.DefiniteDescription ->
