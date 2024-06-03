@@ -27,6 +27,7 @@ import Entity.Module (moduleInlineLimit)
 import Entity.Opacity qualified as O
 import Entity.Source (sourceModule)
 import Entity.Term qualified as TM
+import Scene.Term.Refresh (refresh)
 import Scene.Term.Subst qualified as Subst
 
 data Axis = Axis
@@ -120,10 +121,12 @@ inline' axis term =
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
                   _ :< body' <- Subst.subst sub body
-                  inline' (incrementStep axis) $ m :< body'
+                  body'' <- refresh $ m :< body'
+                  inline' (incrementStep axis) body''
                 else do
                   (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
-                  inline' (incrementStep axis) $ bind (zip xts' es') (m :< body')
+                  body'' <- refresh $ m :< body'
+                  inline' (incrementStep axis) $ bind (zip xts' es') body''
         _ ->
           return (m :< TM.PiElim e' es')
     m :< TM.Data attr name es -> do

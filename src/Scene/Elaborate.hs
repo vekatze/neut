@@ -59,7 +59,7 @@ elaborate target cacheOrStmt = do
       forM_ stmtList insertStmt
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
-      Gensym.setCount $ Cache.countSnapshot cache
+      Gensym.setCountByMax $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
       analyzeStmtList stmtList >>= synthesizeStmtList target
