@@ -59,6 +59,7 @@ data Env = Env
     nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     geistMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
     antecedentMap :: IORef (Map.HashMap MID.ModuleID M.Module),
+    antecedentDigestCache :: Ref T.Text,
     constraintEnv :: IORef [C.Constraint],
     suspendedEnv :: IORef [C.SuspendedConstraint],
     remarkList :: IORef [Remark.Remark], -- per file
@@ -133,6 +134,7 @@ newEnv = do
   nameMap <- newIORef Map.empty
   geistMap <- newIORef Map.empty
   antecedentMap <- newIORef Map.empty
+  antecedentDigestCache <- newRef
   constraintEnv <- newIORef []
   suspendedEnv <- newIORef []
   buildSignatureMap <- newIORef Map.empty
