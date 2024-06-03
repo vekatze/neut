@@ -11,7 +11,7 @@ module Context.Gensym
     newValueVarLocalWith,
     newTextualIdentFromText,
     getCount,
-    setCount,
+    setCountByMax,
   )
 where
 
@@ -98,6 +98,6 @@ getCount :: App Int
 getCount =
   asks counter >>= \ref -> liftIO $ readIORefU ref
 
-setCount :: Int -> App ()
-setCount countSnapshot =
+setCountByMax :: Int -> App ()
+setCountByMax countSnapshot =
   asks counter >>= \ref -> liftIO $ writeIORefU ref countSnapshot
