@@ -16,7 +16,7 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
-import Data.Maybe (maybeToList)
+import Data.Maybe
 import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
@@ -218,11 +218,15 @@ makeDependencyEns' :: Hint -> M.Dependency -> E.Ens
 makeDependencyEns' m dep = do
   let digest = M.dependencyDigest dep
   let mirrorList = M.dependencyMirrorList dep
-  let enablePreset = M.dependencyPresetEnabled dep
   let mirrorList' = SE.fromList SE.Bracket SE.Comma $ map (\(ModuleURL mirror) -> m :< E.String mirror) mirrorList
+  let enablePreset = M.dependencyPresetEnabled dep
+  let enablePresetField =
+        if M.dependencyPresetEnabled dep
+          then Just (keyEnablePreset, m :< E.Bool enablePreset)
+          else Nothing
   SE.dictFromList
     m
-    [ (keyDigest, m :< E.String (MD.reify digest)),
-      (keyMirror, m :< E.List (mirrorList' {hasOptionalSeparator = True})),
-      (keyEnablePreset, m :< E.Bool enablePreset)
-    ]
+    $ [ (keyDigest, m :< E.String (MD.reify digest)),
+        (keyMirror, m :< E.List (mirrorList' {hasOptionalSeparator = True}))
+      ]
+      ++ catMaybes [enablePresetField]
