@@ -10,6 +10,7 @@ module Context.Unravel
   )
 where
 
+import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
 import Data.HashMap.Strict qualified as Map
@@ -26,6 +27,7 @@ initialize :: App ()
 initialize = do
   writeRef' visitEnv Map.empty
   writeRef' sourceChildrenMap Map.empty
+  Antecedent.initialize
 
 insertToVisitEnv :: Path Abs File -> VisitInfo -> App ()
 insertToVisitEnv k v =

@@ -20,11 +20,11 @@ import UnliftIO.Async
 
 check :: App [Remark]
 check = do
-  _check (Abstract Foundation)
+  _check Peripheral
 
 checkSource :: Source -> App [Remark]
 checkSource source = do
-  _check $ Concrete $ emptyZen (sourceFilePath source)
+  _check $ Main $ emptyZen (sourceFilePath source)
 
 _check :: Target -> App [Remark]
 _check target = do

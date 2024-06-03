@@ -24,7 +24,7 @@ getAllCachesInModule baseModule = do
 getCache :: Module -> Path Abs File -> App (Maybe (Source, Cache))
 getCache baseModule filePath = do
   let source = Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <- getSourceCachePath (Abstract Foundation) source >>= Cache.loadCacheOptimistically
+  cacheOrNone <- getSourceCachePath Peripheral source >>= Cache.loadCacheOptimistically
   case cacheOrNone of
     Nothing ->
       return Nothing
@@ -40,7 +40,7 @@ getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionC
 getCompletionCache baseModule filePath = do
   let source = Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
   cacheOrNone <-
-    getSourceCompletionCachePath (Abstract Foundation) source
+    getSourceCompletionCachePath Peripheral source
       >>= Cache.loadCompletionCacheOptimistically
   case cacheOrNone of
     Nothing ->

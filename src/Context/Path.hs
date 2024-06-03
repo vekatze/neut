@@ -44,12 +44,10 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Bifunctor
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.ByteString.UTF8 qualified as B
 import Data.HashMap.Strict qualified as Map
-import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
@@ -61,8 +59,6 @@ import Entity.Ens qualified as E
 import Entity.Ens.Reify qualified as E
 import Entity.Module
 import Entity.Module qualified as M
-import Entity.ModuleAlias qualified as MA
-import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
 import Entity.Platform as TP
 import Entity.Source qualified as Src
@@ -166,14 +162,14 @@ getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do
   P.parseRelDir $ T.unpack $ TP.reify platform
 
-getExecutableOutputPath :: Target.ConcreteTarget -> Module -> App (Path Abs File)
+getExecutableOutputPath :: Target.MainTarget -> Module -> App (Path Abs File)
 getExecutableOutputPath targetOrZen mainModule = do
   case targetOrZen of
     Target.Named target _ -> do
-      executableDir <- getExecutableDir (Target.Concrete targetOrZen) mainModule
+      executableDir <- getExecutableDir (Target.Main targetOrZen) mainModule
       resolveFile executableDir $ T.unpack target
     Target.Zen path _ _ -> do
-      zenExecutableDir <- getZenExecutableDir (Target.Concrete targetOrZen) mainModule
+      zenExecutableDir <- getZenExecutableDir (Target.Main targetOrZen) mainModule
       relPath <- getRelPathFromSourceDir mainModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       return $ zenExecutableDir </> relPathWithoutExtension
@@ -194,33 +190,31 @@ getBuildDir target baseModule = do
 
 getBuildSignature :: Target.Target -> Module -> App String
 getBuildSignature target baseModule = do
-  sigMap <- readRef' buildSignatureMap
-  case Map.lookup (moduleID baseModule) sigMap of
-    Just sig -> do
-      return sig
-    Nothing -> do
-      buildMode <- Env.getBuildMode
-      let depList = map (second dependencyDigest) $ Map.toList $ moduleDependency baseModule
-      depList' <- fmap catMaybes $ forM depList $ \(alias, digest) -> do
-        shiftedDigestOrNone <- Antecedent.lookup digest
-        case shiftedDigestOrNone of
-          Nothing ->
-            return Nothing
-          Just shiftedModule ->
-            return $ Just (MA.reify alias, _m :< E.String (MID.reify $ moduleID shiftedModule))
-      clangDigest <- getClangDigest
-      let ens =
-            E.dictFromList
-              _m
-              [ ("build-mode", _m :< E.String (BM.reify buildMode)),
-                ("clang-digest", _m :< E.String clangDigest),
-                ("compatible-shift", E.dictFromList _m depList'),
-                ("compile-option", _m :< E.String (T.pack $ unwords $ Target.getCompileOption target)),
-                ("link-option", _m :< E.String (T.pack $ unwords $ Target.getLinkOption target))
-              ]
-      let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
-      modifyRef' buildSignatureMap $ Map.insert (moduleID baseModule) sig
-      return sig
+  case target of
+    Target.Peripheral {} ->
+      return "peripheral"
+    Target.Main {} -> do
+      sigMap <- readRef' buildSignatureMap
+      case Map.lookup (moduleID baseModule) sigMap of
+        Just sig -> do
+          return sig
+        Nothing -> do
+          shiftDigest <- Antecedent.getShiftDigest
+          buildMode <- Env.getBuildMode
+          clangDigest <- getClangDigest
+          let ens =
+                E.dictFromList
+                  _m
+                  [ ("build-mode", _m :< E.String (BM.reify buildMode)),
+                    ("clang-digest", _m :< E.String clangDigest),
+                    ("compatible-shift", _m :< E.String shiftDigest),
+                    ("compile-option", _m :< E.String (T.pack $ unwords $ Target.getCompileOption target)),
+                    ("link-option", _m :< E.String (T.pack $ unwords $ Target.getLinkOption target))
+                  ]
+          -- liftIO $ writeFile "ens-info" (T.unpack $ E.pp $ E.inject ens)
+          let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
+          modifyRef' buildSignatureMap $ Map.insert (moduleID baseModule) sig
+          return sig
 
 getArtifactDir :: Target.Target -> Module -> App (Path Abs Dir)
 getArtifactDir target baseModule = do
@@ -280,16 +274,16 @@ attachOutputPath target outputKind source = do
   outputPath <- sourceToOutputPath target outputKind source
   return (outputKind, outputPath)
 
-getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.ConcreteTarget -> App (OK.OutputKind, Path Abs File)
-getOutputPathForEntryPoint baseModule kind targetOrZen = do
-  case targetOrZen of
+getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.MainTarget -> App (OK.OutputKind, Path Abs File)
+getOutputPathForEntryPoint baseModule kind mainTarget = do
+  case mainTarget of
     Target.Named target _ -> do
-      entryDir <- getEntryDir (Target.Concrete targetOrZen) baseModule
+      entryDir <- getEntryDir (Target.Main mainTarget) baseModule
       relPath <- parseRelFile $ T.unpack target
       outputPath <- Src.attachExtension (entryDir </> relPath) kind
       return (kind, outputPath)
     Target.Zen path _ _ -> do
-      zenEntryDir <- getZenEntryDir (Target.Concrete targetOrZen) baseModule
+      zenEntryDir <- getZenEntryDir (Target.Main mainTarget) baseModule
       relPath <- getRelPathFromSourceDir baseModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       outputPath <- Src.attachExtension (zenEntryDir </> relPathWithoutExtension) kind

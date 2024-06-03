@@ -14,9 +14,7 @@ import Entity.Target
 ensureMain :: Target -> Source -> [DD.DefiniteDescription] -> App ()
 ensureMain t source topLevelNameList = do
   case t of
-    Abstract {} ->
-      return ()
-    Concrete target -> do
+    Main target -> do
       mainDD <- Locator.getMainDefiniteDescriptionByTarget target
       let hasEntryPoint = mainDD `elem` topLevelNameList
       entryPointIsNecessary <- Locator.checkIfEntryPointIsNecessary target source
@@ -24,6 +22,8 @@ ensureMain t source topLevelNameList = do
         let entryPointName = getEntryPointName target
         let m = newSourceHint $ sourceFilePath source
         raiseMissingEntryPoint m (BN.reify entryPointName)
+    Peripheral {} ->
+      return ()
 
 type EntryPointName =
   T.Text

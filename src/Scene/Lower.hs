@@ -81,7 +81,7 @@ lower stmtList = do
   stmtList' <- catMaybes <$> mapM lowerStmt stmtList
   LC.LowCodeNormal <$> summarize stmtList'
 
-lowerEntryPoint :: ConcreteTarget -> [C.CompStmt] -> App LC.LowCode
+lowerEntryPoint :: MainTarget -> [C.CompStmt] -> App LC.LowCode
 lowerEntryPoint target stmtList = do
   setup stmtList
   mainDD <- Locator.getMainDefiniteDescriptionByTarget target

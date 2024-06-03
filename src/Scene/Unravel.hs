@@ -51,12 +51,7 @@ type ObjectTime =
 unravel :: Module -> Target -> App (A.ArtifactTime, [Source.Source])
 unravel baseModule t = do
   case t of
-    Abstract a ->
-      case a of
-        Foundation -> do
-          registerShiftMap baseModule
-          unravelFoundational t baseModule
-    Concrete t' -> do
+    Main t' -> do
       case t' of
         Zen path _ _ ->
           unravelFromFile t baseModule path
@@ -66,6 +61,9 @@ unravel baseModule t = do
               Throw.raiseError' $ "No such target is defined: `" <> targetName <> "`"
             Just path -> do
               unravelFromFile t baseModule path
+    Peripheral -> do
+      registerShiftMap baseModule
+      unravelFoundational t baseModule
 
 unravelFromFile ::
   Target ->

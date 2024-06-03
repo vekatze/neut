@@ -1,5 +1,5 @@
 module Scene.Collect
-  ( getConcreteTarget,
+  ( getMainTarget,
     collectModuleFiles,
   )
 where
@@ -15,8 +15,8 @@ import Entity.Target
 import Path
 import Prelude hiding (log)
 
-getConcreteTarget :: T.Text -> App ConcreteTarget
-getConcreteTarget targetName = do
+getMainTarget :: T.Text -> App MainTarget
+getMainTarget targetName = do
   targetOrNone <- flip getTarget targetName <$> Module.getMainModule
   case targetOrNone of
     Just target ->

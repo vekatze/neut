@@ -17,11 +17,11 @@ getLocationTree ::
   AppM LT.LocationTree
 getLocationTree src = do
   lift Unravel.initialize
-  resultOrError <- lift $ Throw.execute $ unravel' (Abstract Foundation) src
+  resultOrError <- lift $ Throw.execute $ unravel' Peripheral src
   case resultOrError of
     Left _ ->
       liftMaybe Nothing
     Right _ -> do
-      cachePath <- lift $ Path.getSourceCachePath (Abstract Foundation) src
+      cachePath <- lift $ Path.getSourceCachePath Peripheral src
       cache <- lift (Cache.loadCacheOptimistically cachePath) >>= liftMaybe
       return $ Cache.locationTree cache

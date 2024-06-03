@@ -7,7 +7,7 @@ import Context.Path qualified as Path
 import Entity.Target
 import Path
 
-execute :: ConcreteTarget -> [String] -> App ()
+execute :: MainTarget -> [String] -> App ()
 execute target args = do
   mainModule <- Module.getMainModule
   outputPath <- Path.getExecutableOutputPath target mainModule

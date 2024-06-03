@@ -367,7 +367,7 @@ getDigestFromModulePath moduleFilePath =
             dirname $
               parent moduleFilePath
 
-getTarget :: Module -> T.Text -> Maybe Target.ConcreteTarget
+getTarget :: Module -> T.Text -> Maybe Target.MainTarget
 getTarget someModule targetName = do
   target <- Map.lookup targetName (moduleTarget someModule)
   return $ Target.Named targetName target
