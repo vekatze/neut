@@ -26,7 +26,7 @@ zen cfg = do
   mainModule <- getMainModule
   let zenConfig = Z.clangOption $ moduleZenConfig mainModule
   buildTarget (fromConfig cfg) mainModule $
-    Concrete (Zen path (CL.compileOption zenConfig) (CL.linkOption zenConfig))
+    Main (Zen path (CL.compileOption zenConfig) (CL.linkOption zenConfig))
 
 fromConfig :: Config -> Axis
 fromConfig cfg =

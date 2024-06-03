@@ -10,7 +10,7 @@ import Path
 import Path.IO
 import Prelude hiding (log)
 
-install :: Target.ConcreteTarget -> Path Abs Dir -> App ()
+install :: Target.MainTarget -> Path Abs Dir -> App ()
 install targetOrZen dir = do
   execPath <- Module.getMainModule >>= Path.getExecutableOutputPath targetOrZen
   case targetOrZen of

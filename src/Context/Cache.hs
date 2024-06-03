@@ -91,7 +91,7 @@ whenCompilationNecessary outputKindList source comp = do
     then return Nothing
     else Just <$> comp
 
-isEntryPointCompilationSkippable :: Module -> ConcreteTarget -> [OK.OutputKind] -> App Bool
+isEntryPointCompilationSkippable :: Module -> MainTarget -> [OK.OutputKind] -> App Bool
 isEntryPointCompilationSkippable baseModule target outputKindList = do
   case outputKindList of
     [] ->
@@ -105,7 +105,7 @@ isEntryPointCompilationSkippable baseModule target outputKindList = do
 
 invalidate :: Source.Source -> App ()
 invalidate source = do
-  cachePath <- Path.getSourceCachePath (Abstract Foundation) source
+  cachePath <- Path.getSourceCachePath Peripheral source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return ()

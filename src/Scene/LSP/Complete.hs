@@ -46,7 +46,7 @@ itemGetterList =
 
 getLocalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getLocalCompletionItems source loc = do
-  cachePath <- Path.getSourceCompletionCachePath (Abstract Foundation) source
+  cachePath <- Path.getSourceCompletionCachePath Peripheral source
   cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->
@@ -61,7 +61,7 @@ getGlobalCompletionItems currentSource loc = do
   let baseModule = sourceModule currentSource
   (globalVarList, aliasPresetMap) <- getAllTopCandidate baseModule
   baseCacheOrNone <-
-    Path.getSourceCompletionCachePath (Abstract Foundation) currentSource
+    Path.getSourceCompletionCachePath Peripheral currentSource
       >>= Cache.loadCompletionCacheOptimistically
   let importSummaryOrNone = baseCacheOrNone >>= Cache.rawImportSummary
   let impLoc = getImportLoc importSummaryOrNone

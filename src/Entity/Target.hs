@@ -9,8 +9,8 @@ import GHC.Generics (Generic)
 import Path
 
 data Target
-  = Abstract AbstractTarget
-  | Concrete ConcreteTarget
+  = Main MainTarget
+  | Peripheral
   deriving (Show, Eq, Generic)
 
 data TargetSummary = TargetSummary
@@ -19,28 +19,22 @@ data TargetSummary = TargetSummary
   }
   deriving (Show, Eq, Generic)
 
-data AbstractTarget
-  = Foundation
-  deriving (Show, Eq, Generic)
-
-data ConcreteTarget
+data MainTarget
   = Named T.Text TargetSummary
   | Zen (Path Abs File) [T.Text] [T.Text]
   deriving (Show, Eq, Generic)
 
 instance Hashable Target
 
-instance Hashable AbstractTarget
-
 instance Hashable TargetSummary
 
-instance Hashable ConcreteTarget
+instance Hashable MainTarget
 
-emptyZen :: Path Abs File -> ConcreteTarget
+emptyZen :: Path Abs File -> MainTarget
 emptyZen path =
   Zen path [] []
 
-getEntryPointName :: ConcreteTarget -> BN.BaseName
+getEntryPointName :: MainTarget -> BN.BaseName
 getEntryPointName target =
   case target of
     Named {} ->
@@ -51,9 +45,9 @@ getEntryPointName target =
 getCompileOption :: Target -> [String]
 getCompileOption target =
   case target of
-    Abstract {} ->
+    Peripheral {} ->
       []
-    Concrete c ->
+    Main c ->
       case c of
         Named _ targetSummary -> do
           map T.unpack $ CL.compileOption (clangOption targetSummary)
@@ -63,9 +57,9 @@ getCompileOption target =
 getLinkOption :: Target -> [String]
 getLinkOption target =
   case target of
-    Abstract {} ->
+    Peripheral {} ->
       []
-    Concrete c ->
+    Main c ->
       case c of
         Named _ targetSummary ->
           map T.unpack $ CL.linkOption (clangOption targetSummary)

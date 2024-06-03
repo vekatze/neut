@@ -17,7 +17,7 @@ import Entity.Target
 import Path
 import Path.IO
 
-link :: ConcreteTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
+link :: MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
   mainModule <- Module.getMainModule
   isExecutableAvailable <- Path.getExecutableOutputPath target mainModule >>= Path.doesFileExist
@@ -27,15 +27,15 @@ link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList 
     then return ()
     else link' target mainModule sourceList
 
-link' :: ConcreteTarget -> Module -> [Source.Source] -> App ()
+link' :: MainTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   outputPath <- Path.getExecutableOutputPath target mainModule
-  objectPathList <- mapM (Path.sourceToOutputPath (Concrete target) OK.Object) sourceList
+  objectPathList <- mapM (Path.sourceToOutputPath (Main target) OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
-  foreignDirList <- mapM (Path.getForeignDir (Concrete target)) moduleList
+  foreignDirList <- mapM (Path.getForeignDir (Main target)) moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
-  let clangOptions = getLinkOption (Concrete target)
+  let clangOptions = getLinkOption (Main target)
   LLVM.link clangOptions (mainObject : objectPathList ++ foreignObjectList) outputPath
 
 getForeignDirContent :: Path Abs Dir -> App [Path Abs File]

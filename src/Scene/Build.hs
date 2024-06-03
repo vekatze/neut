@@ -65,9 +65,9 @@ buildTarget axis baseModule target = do
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
   emitAndWrite target' (_outputKindList axis) virtualCodeList
   case target' of
-    Abstract {} ->
+    Peripheral {} ->
       return ()
-    Concrete ct -> do
+    Main ct -> do
       Link.link ct (_shouldSkipLink axis) didPerformForeignCompilation artifactTime (toList dependenceSeq)
       execute (_shouldExecute axis) ct (_executeArgs axis)
       install (_installDir axis) ct
@@ -88,7 +88,7 @@ load target dependenceSeq =
     cacheOrContent <- Load.load target source
     return (source, cacheOrContent)
 
-compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Either ConcreteTarget Source, LC.LowCode)]
+compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Either MainTarget Source, LC.LowCode)]
 compile target outputKindList contentSeq = do
   virtualCodeList <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
@@ -101,12 +101,12 @@ compile target outputKindList contentSeq = do
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   return $ entryPointVirtualCode ++ virtualCodeList
 
-compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either ConcreteTarget Source, LC.LowCode)]
+compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint mainModule target outputKindList = do
   case target of
-    Abstract {} ->
+    Peripheral {} ->
       return []
-    Concrete t -> do
+    Main t -> do
       b <- Cache.isEntryPointCompilationSkippable mainModule t outputKindList
       if b
         then return []
@@ -114,7 +114,7 @@ compileEntryPoint mainModule target outputKindList = do
           mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint t
           return [(Left t, mainVirtualCode)]
 
-emitAndWrite :: Target -> [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
+emitAndWrite :: Target -> [OutputKind] -> [(Either MainTarget Source, LC.LowCode)] -> App ()
 emitAndWrite target outputKindList virtualCodeList = do
   let clangOptions = getCompileOption target
   currentTime <- liftIO getCurrentTime
@@ -122,11 +122,11 @@ emitAndWrite target outputKindList virtualCodeList = do
     llvmIR' <- Emit.emit llvmIR
     LLVM.emit target clangOptions currentTime sourceOrNone outputKindList llvmIR'
 
-execute :: Bool -> ConcreteTarget -> [String] -> App ()
+execute :: Bool -> MainTarget -> [String] -> App ()
 execute shouldExecute target args = do
   when shouldExecute $ Execute.execute target args
 
-install :: Maybe FilePath -> ConcreteTarget -> App ()
+install :: Maybe FilePath -> MainTarget -> App ()
 install filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
   mapM_ (Install.install target) mDir
@@ -209,16 +209,14 @@ attachPrefixPath baseDirPath path =
 expandClangOptions :: Target -> App Target
 expandClangOptions target =
   case target of
-    Abstract {} ->
-      return target
-    Concrete concreteTarget ->
+    Main concreteTarget ->
       case concreteTarget of
         Named targetName summary -> do
           let cl = clangOption summary
           compileOption' <- mapM External.expandText (CL.compileOption cl)
           linkOption' <- mapM External.expandText (CL.linkOption cl)
           return $
-            Concrete $
+            Main $
               Named
                 targetName
                 ( summary
@@ -232,4 +230,6 @@ expandClangOptions target =
         Zen path compileOption linkOption -> do
           compileOption' <- mapM External.expandText compileOption
           linkOption' <- mapM External.expandText linkOption
-          return $ Concrete $ Zen path compileOption' linkOption'
+          return $ Main $ Zen path compileOption' linkOption'
+    Peripheral {} ->
+      return target

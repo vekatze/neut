@@ -40,17 +40,14 @@ import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
 import Context.External (getClangDigest)
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Bifunctor
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.ByteString.UTF8 qualified as B
 import Data.HashMap.Strict qualified as Map
-import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
@@ -62,8 +59,6 @@ import Entity.Ens qualified as E
 import Entity.Ens.Reify qualified as E
 import Entity.Module
 import Entity.Module qualified as M
-import Entity.ModuleAlias qualified as MA
-import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
 import Entity.Platform as TP
 import Entity.Source qualified as Src
@@ -167,14 +162,14 @@ getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do
   P.parseRelDir $ T.unpack $ TP.reify platform
 
-getExecutableOutputPath :: Target.ConcreteTarget -> Module -> App (Path Abs File)
+getExecutableOutputPath :: Target.MainTarget -> Module -> App (Path Abs File)
 getExecutableOutputPath targetOrZen mainModule = do
   case targetOrZen of
     Target.Named target _ -> do
-      executableDir <- getExecutableDir (Target.Concrete targetOrZen) mainModule
+      executableDir <- getExecutableDir (Target.Main targetOrZen) mainModule
       resolveFile executableDir $ T.unpack target
     Target.Zen path _ _ -> do
-      zenExecutableDir <- getZenExecutableDir (Target.Concrete targetOrZen) mainModule
+      zenExecutableDir <- getZenExecutableDir (Target.Main targetOrZen) mainModule
       relPath <- getRelPathFromSourceDir mainModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       return $ zenExecutableDir </> relPathWithoutExtension
@@ -196,9 +191,9 @@ getBuildDir target baseModule = do
 getBuildSignature :: Target.Target -> Module -> App String
 getBuildSignature target baseModule = do
   case target of
-    Target.Abstract {} ->
+    Target.Peripheral {} ->
       return "peripheral"
-    Target.Concrete {} -> do
+    Target.Main {} -> do
       sigMap <- readRef' buildSignatureMap
       case Map.lookup (moduleID baseModule) sigMap of
         Just sig -> do
@@ -279,16 +274,16 @@ attachOutputPath target outputKind source = do
   outputPath <- sourceToOutputPath target outputKind source
   return (outputKind, outputPath)
 
-getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.ConcreteTarget -> App (OK.OutputKind, Path Abs File)
-getOutputPathForEntryPoint baseModule kind targetOrZen = do
-  case targetOrZen of
+getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.MainTarget -> App (OK.OutputKind, Path Abs File)
+getOutputPathForEntryPoint baseModule kind mainTarget = do
+  case mainTarget of
     Target.Named target _ -> do
-      entryDir <- getEntryDir (Target.Concrete targetOrZen) baseModule
+      entryDir <- getEntryDir (Target.Main mainTarget) baseModule
       relPath <- parseRelFile $ T.unpack target
       outputPath <- Src.attachExtension (entryDir </> relPath) kind
       return (kind, outputPath)
     Target.Zen path _ _ -> do
-      zenEntryDir <- getZenEntryDir (Target.Concrete targetOrZen) baseModule
+      zenEntryDir <- getZenEntryDir (Target.Main mainTarget) baseModule
       relPath <- getRelPathFromSourceDir baseModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       outputPath <- Src.attachExtension (zenEntryDir </> relPathWithoutExtension) kind

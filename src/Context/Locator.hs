@@ -184,7 +184,7 @@ isMainFile source = do
     _ ->
       return False
 
-getMainDefiniteDescriptionByTarget :: Target.ConcreteTarget -> App DD.DefiniteDescription
+getMainDefiniteDescriptionByTarget :: Target.MainTarget -> App DD.DefiniteDescription
 getMainDefiniteDescriptionByTarget targetOrZen = do
   mainModule <- getMainModule
   case targetOrZen of
@@ -205,7 +205,7 @@ relPathToDD relPath baseName = do
   let ll = LL.new baseName
   return $ DD.new sgl ll
 
-checkIfEntryPointIsNecessary :: Target.ConcreteTarget -> Source.Source -> App Bool
+checkIfEntryPointIsNecessary :: Target.MainTarget -> Source.Source -> App Bool
 checkIfEntryPointIsNecessary target source = do
   case target of
     Target.Named {} -> do
