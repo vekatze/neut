@@ -221,7 +221,7 @@ makeDependencyEns' m dep = do
   let mirrorList' = SE.fromList SE.Bracket SE.Comma $ map (\(ModuleURL mirror) -> m :< E.String mirror) mirrorList
   let enablePreset = M.dependencyPresetEnabled dep
   let enablePresetField =
-        if M.dependencyPresetEnabled dep
+        if enablePreset
           then Just (keyEnablePreset, m :< E.Bool enablePreset)
           else Nothing
   SE.dictFromList
