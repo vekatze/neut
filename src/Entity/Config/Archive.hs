@@ -4,6 +4,6 @@ import Data.Text qualified as T
 import Entity.Config.Remark qualified as Remark
 
 data Config = Config
-  { getArchiveName :: T.Text,
+  { getArchiveName :: Maybe T.Text,
     remarkCfg :: Remark.Config
   }

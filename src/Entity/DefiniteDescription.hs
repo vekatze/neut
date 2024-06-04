@@ -28,6 +28,7 @@ import Entity.Const
 import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
+import Entity.List (initLast)
 import Entity.LocalLocator qualified as LL
 import Entity.Module qualified as M
 import Entity.ModuleAlias qualified as MA
@@ -162,17 +163,6 @@ getLocatorPair m varText = do
       gl <- GL.reflect m $ T.intercalate "." initElems
       ll <- LL.reflect m lastElem
       return (gl, ll)
-
-initLast :: [a] -> Maybe ([a], a)
-initLast xs =
-  case xs of
-    [] ->
-      Nothing
-    [x] ->
-      return ([], x)
-    x : rest -> do
-      (initElems, lastElem) <- initLast rest
-      return (x : initElems, lastElem)
 
 llvmGlobalLocator :: T.Text
 llvmGlobalLocator =
