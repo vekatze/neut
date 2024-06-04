@@ -144,7 +144,7 @@ parseCheckOpt = do
 
 parseArchiveOpt :: Parser Command
 parseArchiveOpt = do
-  archiveName <- argument str (mconcat [metavar "NAME", help "The name of the archive"])
+  archiveName <- optional $ argument str (mconcat [metavar "NAME", help "The name of the archive"])
   remarkCfg <- remarkConfigOpt
   pure $
     Archive $

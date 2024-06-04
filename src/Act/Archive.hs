@@ -9,13 +9,14 @@ import Scene.Archive qualified as Archive
 import Scene.Collect qualified as Collect
 import Scene.Initialize qualified as Initialize
 import Scene.Module.MakeArchiveEns
+import Scene.PackageVersion.ChooseNewVersion qualified as PV
 import Scene.PackageVersion.Reflect qualified as PV
 
 archive :: Config -> App ()
 archive cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
   Path.ensureNotInLibDir
-  packageVersion <- PV.reflect (getArchiveName cfg)
+  packageVersion <- maybe PV.chooseNewVersion PV.reflect (getArchiveName cfg)
   archiveEns <- Module.getMainModule >>= makeArchiveEns packageVersion
   mainModule <- getMainModule
   let (moduleRootDir, contents) = Collect.collectModuleFiles mainModule
