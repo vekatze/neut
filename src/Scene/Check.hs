@@ -1,15 +1,10 @@
-module Scene.Check
-  ( check,
-    checkSource,
-  )
-where
+module Scene.Check (check) where
 
 import Context.App
 import Context.Module (getMainModule)
 import Context.Throw qualified as Throw
 import Control.Monad
 import Entity.Remark
-import Entity.Source (Source (sourceFilePath))
 import Entity.Target
 import Scene.Elaborate qualified as Elaborate
 import Scene.Initialize qualified as Initialize
@@ -21,10 +16,6 @@ import UnliftIO.Async
 check :: App [Remark]
 check = do
   _check Peripheral
-
-checkSource :: Source -> App [Remark]
-checkSource source = do
-  _check $ Main $ emptyZen (sourceFilePath source)
 
 _check :: Target -> App [Remark]
 _check target = do
