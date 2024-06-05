@@ -6,8 +6,10 @@ import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -33,7 +35,7 @@ import Scene.Term.Subst qualified as Subst
 data Axis = Axis
   { dmap :: Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term),
     inlineLimit :: Int,
-    currentStep :: Int,
+    currentStepRef :: IORef Int,
     location :: Hint
   }
 
@@ -42,22 +44,24 @@ newAxis m = do
   source <- Env.getCurrentSource
   dmap <- Definition.get
   let limit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
+  currentStepRef <- liftIO $ newIORef 0
   return
     Axis
       { dmap = dmap,
         inlineLimit = limit,
-        currentStep = 0,
+        currentStepRef = currentStepRef,
         location = m
       }
 
-incrementStep :: Axis -> Axis
+incrementStep :: Axis -> App ()
 incrementStep axis = do
-  let Axis {currentStep} = axis
-  axis {currentStep = currentStep + 1}
+  let Axis {currentStepRef} = axis
+  liftIO $ modifyIORef' currentStepRef (+ 1)
 
 detectPossibleInfiniteLoop :: Axis -> App ()
 detectPossibleInfiniteLoop axis = do
-  let Axis {inlineLimit, currentStep, location} = axis
+  let Axis {inlineLimit, currentStepRef, location} = axis
+  currentStep <- liftIO $ readIORef currentStepRef
   when (inlineLimit < currentStep) $ do
     Throw.raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
 
@@ -67,7 +71,9 @@ inline m e = do
   inline' axis e
 
 inline' :: Axis -> TM.Term -> App TM.Term
-inline' axis term =
+inline' axis term = do
+  detectPossibleInfiniteLoop axis
+  incrementStep axis
   case term of
     m :< TM.Pi impArgs expArgs cod -> do
       impArgs' <- do
@@ -109,24 +115,23 @@ inline' axis term =
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
                   _ :< body' <- Subst.subst sub body
-                  inline' (incrementStep axis) $ m :< body'
+                  inline' axis $ m :< body'
                 else do
                   (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
                   inline' axis $ bind (zip xts' es') (m :< body')
         (_ :< TM.VarGlobal _ dd)
           | Just (xts, body) <- Map.lookup dd dmap -> do
-              detectPossibleInfiniteLoop axis
               if all TM.isValue es'
                 then do
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
                   _ :< body' <- Subst.subst sub body
                   body'' <- refresh $ m :< body'
-                  inline' (incrementStep axis) body''
+                  inline' axis body''
                 else do
                   (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
                   body'' <- refresh $ m :< body'
-                  inline' (incrementStep axis) $ bind (zip xts' es') body''
+                  inline' axis $ bind (zip xts' es') body''
         _ ->
           return (m :< TM.PiElim e' es')
     m :< TM.Data attr name es -> do
