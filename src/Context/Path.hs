@@ -193,6 +193,8 @@ getBuildSignature target baseModule = do
   case target of
     Target.Peripheral {} ->
       return "peripheral"
+    Target.PeripheralSingle {} ->
+      return "peripheral"
     Target.Main {} -> do
       sigMap <- readRef' buildSignatureMap
       case Map.lookup (moduleID baseModule) sigMap of

@@ -8,6 +8,7 @@ import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Text qualified as T
 import Entity.LocationTree qualified as LT
+import Entity.Source (Source (sourceFilePath))
 import Entity.Term.Weaken (weaken)
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText
@@ -25,7 +26,7 @@ getSymbolInfo ::
 getSymbolInfo params = do
   source <- LSP.getSource params
   lift $ invalidate source
-  lift Check.check
+  lift $ Check.checkSingle (sourceFilePath source)
   ((locType, _), _) <- lift (runAppM $ LSP.findDefinition params) >>= liftMaybe
   lift (runAppM $ _getSymbolInfo locType) >>= liftMaybe
 
