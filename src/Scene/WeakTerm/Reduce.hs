@@ -5,7 +5,9 @@ import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
@@ -33,26 +35,29 @@ type CurrentStep =
   Int
 
 data Axis = Axis
-  { currentStep :: CurrentStep,
+  { currentStepRef :: IORef CurrentStep,
     inlineLimit :: InlineLimit,
     location :: H.Hint
   }
-
-increment :: Axis -> Axis
-increment axis =
-  axis {currentStep = currentStep axis + 1}
 
 new :: H.Hint -> App Axis
 new m = do
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  return Axis {currentStep = 0, inlineLimit, location = m}
+  currentStepRef <- liftIO $ newIORef 0
+  return Axis {currentStepRef = currentStepRef, inlineLimit, location = m}
 
 detectPossibleInfiniteLoop :: Axis -> App ()
 detectPossibleInfiniteLoop axis = do
-  let Axis {inlineLimit, currentStep, location} = axis
+  let Axis {inlineLimit, currentStepRef, location} = axis
+  currentStep <- liftIO $ readIORef currentStepRef
   when (inlineLimit < currentStep) $ do
     Throw.raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
+
+incrementStep :: Axis -> App ()
+incrementStep axis = do
+  let Axis {currentStepRef} = axis
+  liftIO $ modifyIORef' currentStepRef (+ 1)
 
 reduce :: WT.WeakTerm -> App WT.WeakTerm
 reduce term@(m :< _) = do
@@ -60,7 +65,9 @@ reduce term@(m :< _) = do
   reduce' ax term
 
 reduce' :: Axis -> WT.WeakTerm -> App WT.WeakTerm
-reduce' ax term =
+reduce' ax term = do
+  detectPossibleInfiniteLoop ax
+  incrementStep ax
   case term of
     m :< WT.Pi impArgs expArgs cod -> do
       impArgs' <- do
@@ -96,10 +103,9 @@ reduce' ax term =
         (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal _} impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
-              detectPossibleInfiniteLoop ax
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')
-              Subst.subst sub body >>= reduce' (increment ax)
+              Subst.subst sub body >>= reduce' ax
         (_ :< WT.Prim (WP.Value (WPV.Op op)))
           | Just (op', cod) <- WPV.reflectFloatUnaryOp op,
             [Just value] <- map asPrimFloatValue es' -> do
@@ -147,7 +153,7 @@ reduce' ax term =
           case decisionTree of
             DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              Subst.subst sub (WT.fromLetSeq letSeq e) >>= reduce' (increment ax)
+              Subst.subst sub (WT.fromLetSeq letSeq e) >>= reduce' ax
             DT.Unreachable ->
               return $ m :< WT.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -157,7 +163,7 @@ reduce' ax term =
                       let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                       let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
                       cont' <- Subst.substDecisionTree sub cont
-                      reduce' (increment ax) $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
+                      reduce' ax $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
                 _ -> do
                   decisionTree' <- reduceDecisionTree ax decisionTree
                   return $ m :< WT.DataElim isNoetic oets' decisionTree'
@@ -174,7 +180,7 @@ reduce' ax term =
         WT.Clear -> do
           detectPossibleInfiniteLoop ax
           let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
-          Subst.subst sub e2 >>= reduce' (increment ax)
+          Subst.subst sub e2 >>= reduce' ax
         _ -> do
           e2' <- reduce' ax e2
           return $ m :< WT.Let opacity mxt e1' e2'
