@@ -11,6 +11,7 @@ import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Entity.ClangOption qualified as CL
 import Entity.Const
@@ -28,15 +29,16 @@ createNewProject moduleName newModule = do
   if moduleDirExists
     then Throw.raiseError' $ "The directory `" <> moduleName <> "` already exists"
     else do
-      createModuleFile
-      createMainFile
+      createModuleFile newModule
+      createMainFile newModule
       Remark.printNote' $ "Created a module: " <> moduleName
 
-constructDefaultModule :: T.Text -> App Module
-constructDefaultModule name = do
+constructDefaultModule :: T.Text -> Maybe T.Text -> App Module
+constructDefaultModule moduleName mTargetName = do
+  let targetName = fromMaybe moduleName mTargetName
   currentDir <- Path.getCurrentDir
-  moduleRootDir <- Path.resolveDir currentDir $ T.unpack name
-  mainFile <- Path.parseRelFile $ T.unpack name <> sourceFileExtension
+  moduleRootDir <- Path.resolveDir currentDir $ T.unpack moduleName
+  mainFile <- Path.parseRelFile $ T.unpack targetName <> sourceFileExtension
   return $
     Module
       { moduleID = MID.Main,
@@ -45,7 +47,7 @@ constructDefaultModule name = do
         moduleSourceDir = sourceRelDir,
         moduleTarget =
           Map.fromList
-            [ ( name,
+            [ ( targetName,
                 TargetSummary
                   { entryPoint = SL.SourceLocator mainFile,
                     clangOption = CL.empty
@@ -64,17 +66,15 @@ constructDefaultModule name = do
         modulePresetMap = Map.empty
       }
 
-createModuleFile :: App ()
-createModuleFile = do
-  newModule <- Module.getMainModule
+createModuleFile :: Module -> App ()
+createModuleFile newModule = do
   Path.ensureDir $ parent $ moduleLocation newModule
   Module.saveEns (moduleLocation newModule) ([], (toDefaultEns newModule, []))
   buildDir <- Path.getBaseBuildDir newModule
   Path.ensureDir buildDir
 
-createMainFile :: App ()
-createMainFile = do
-  newModule <- Module.getMainModule
+createMainFile :: Module -> App ()
+createMainFile newModule = do
   Path.ensureDir $ getSourceDir newModule
   forM_ (getTargetPathList newModule) $ \mainFilePath -> do
     Path.writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"
