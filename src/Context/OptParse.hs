@@ -117,11 +117,20 @@ parseLSPOpt = do
 parseCreateOpt :: Parser Command
 parseCreateOpt = do
   moduleName <- argument str (mconcat [metavar "MODULE", help "The name of the module"])
+  targetName <-
+    optional $
+      strOption $
+        mconcat
+          [ long "target",
+            metavar "TARGET_NAME",
+            help "The name of the target"
+          ]
   remarkCfg <- remarkConfigOpt
   pure $
     Create $
       Create.Config
         { Create.moduleName = T.pack moduleName,
+          Create.targetName = targetName,
           Create.remarkCfg = remarkCfg
         }
 
