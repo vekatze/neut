@@ -87,7 +87,6 @@ data Env = Env
     staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
-    codataDefMap :: IORef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, AN.ArgNum, AN.ArgNum), [DD.DefiniteDescription])),
     keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     declEnv :: IORef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
@@ -151,7 +150,6 @@ newEnv = do
   staticTextList <- newIORef []
   compAuxEnv <- newIORef Map.empty
   dataDefMap <- newIORef Map.empty
-  codataDefMap <- newIORef Map.empty
   keyArgMap <- newIORef Map.empty
   optDataMap <- newIORef Map.empty
   declEnv <- newIORef Map.empty
