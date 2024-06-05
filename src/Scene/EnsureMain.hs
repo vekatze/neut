@@ -24,6 +24,8 @@ ensureMain t source topLevelNameList = do
         raiseMissingEntryPoint m (BN.reify entryPointName)
     Peripheral {} ->
       return ()
+    PeripheralSingle {} ->
+      return ()
 
 type EntryPointName =
   T.Text

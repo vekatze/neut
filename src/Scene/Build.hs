@@ -67,6 +67,8 @@ buildTarget axis baseModule target = do
   case target' of
     Peripheral {} ->
       return ()
+    PeripheralSingle {} ->
+      return ()
     Main ct -> do
       Link.link ct (_shouldSkipLink axis) didPerformForeignCompilation artifactTime (toList dependenceSeq)
       execute (_shouldExecute axis) ct (_executeArgs axis)
@@ -105,6 +107,8 @@ compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarg
 compileEntryPoint mainModule target outputKindList = do
   case target of
     Peripheral {} ->
+      return []
+    PeripheralSingle {} ->
       return []
     Main t -> do
       b <- Cache.isEntryPointCompilationSkippable mainModule t outputKindList
@@ -232,4 +236,6 @@ expandClangOptions target =
           linkOption' <- mapM External.expandText linkOption
           return $ Main $ Zen path compileOption' linkOption'
     Peripheral {} ->
+      return target
+    PeripheralSingle {} ->
       return target

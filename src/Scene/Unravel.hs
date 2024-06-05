@@ -64,6 +64,8 @@ unravel baseModule t = do
     Peripheral -> do
       registerShiftMap baseModule
       unravelFoundational t baseModule
+    PeripheralSingle path -> do
+      unravelFromFile t baseModule path
 
 unravelFromFile ::
   Target ->

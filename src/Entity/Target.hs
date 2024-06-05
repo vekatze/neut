@@ -11,6 +11,7 @@ import Path
 data Target
   = Main MainTarget
   | Peripheral
+  | PeripheralSingle (Path Abs File)
   deriving (Show, Eq, Generic)
 
 data TargetSummary = TargetSummary
@@ -47,6 +48,8 @@ getCompileOption target =
   case target of
     Peripheral {} ->
       []
+    PeripheralSingle {} ->
+      []
     Main c ->
       case c of
         Named _ targetSummary -> do
@@ -58,6 +61,8 @@ getLinkOption :: Target -> [String]
 getLinkOption target =
   case target of
     Peripheral {} ->
+      []
+    PeripheralSingle {} ->
       []
     Main c ->
       case c of
