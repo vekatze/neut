@@ -7,6 +7,7 @@ import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
+import Context.KeyArg qualified as KeyArg
 import Context.RawImportSummary qualified as RawImportSummary
 import Context.Remark qualified as Remark
 import Context.SymLoc qualified as SymLoc
@@ -17,6 +18,7 @@ import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Bitraversable (bimapM)
+import Data.IntMap.Strict qualified as IntMap
 import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -25,11 +27,15 @@ import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.Cache qualified as Cache
+import Entity.Const (holeVarPrefix)
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Geist qualified as G
 import Entity.Hint
+import Entity.Ident
+import Entity.Ident.Reify qualified as Ident
+import Entity.IsConstLike (IsConstLike)
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
@@ -49,6 +55,7 @@ import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Inline qualified as TM
+import Scene.WeakTerm.Subst qualified as WT
 
 elaborate :: Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate target cacheOrStmt = do
@@ -227,17 +234,17 @@ elaborate' term =
       let (os, es, ts) = unzip3 oets
       es' <- mapM elaborate' es
       ts' <- mapM elaborate' ts
-      tree' <- elaborateDecisionTree m tree
+      tree' <- elaborateDecisionTree [] m m tree
       when (DT.isUnreachable tree') $ do
         forM_ ts' $ \t -> do
           t' <- reduceType (weaken t)
           switchSpec <- getSwitchSpec m t'
           case switchSpec of
             LiteralIntSwitch -> do
-              raiseNonExhaustivePatternMatching m
+              raiseEmptyNonExhaustivePatternMatching m
             ConsSwitch consList -> do
               unless (null consList) $
-                raiseNonExhaustivePatternMatching m
+                raiseEmptyNonExhaustivePatternMatching m
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     m :< WT.Noema t -> do
       t' <- elaborate' t
@@ -342,8 +349,71 @@ elaborateLamAttr (AttrL.Attr {lamKind, identity}) =
       xt' <- elaborateWeakBinder xt
       return $ AttrL.Attr {lamKind = LK.Fix xt', identity}
 
-elaborateDecisionTree :: Hint -> DT.DecisionTree WT.WeakTerm -> App (DT.DecisionTree TM.Term)
-elaborateDecisionTree m tree =
+type ClauseContext =
+  [(Ident, (DD.DefiniteDescription, IsConstLike, [Ident]))]
+
+data PatternTree
+  = Leaf
+  | Node T.Text IsConstLike [(Ident, PatternTree)]
+  deriving (Show)
+
+fromPatternTree :: Hint -> (Ident, PatternTree) -> WT.WeakTerm
+fromPatternTree m (x, t) =
+  case t of
+    Leaf ->
+      m :< WT.Var x
+    Node func isConstLike args -> do
+      if isConstLike
+        then m :< WT.Var (I (func, 0))
+        else do
+          let args' = map (fromPatternTree m) args
+          m :< WT.PiElim (m :< WT.Var (I (func, 0))) args'
+
+suppress :: (Ident, PatternTree) -> (Ident, PatternTree)
+suppress (x, tree) = do
+  case tree of
+    Leaf ->
+      (suppress' x, Leaf)
+    Node dd isConstLike args -> do
+      (suppress' x, Node dd isConstLike (map suppress args))
+
+suppress' :: Ident -> Ident
+suppress' (I (_, i)) =
+  I (holeVarPrefix, i)
+
+makeTree :: Hint -> ClauseContext -> App (Ident, PatternTree)
+makeTree m ctx =
+  case ctx of
+    [] ->
+      Throw.raiseCritical m "Scene.Elaborate.makeTree: invalid argument (empty context)"
+    [(v, (dd, isConstLike, args))] ->
+      return (v, Node (DD.localLocator dd) isConstLike (map (,Leaf) args))
+    (v, (dd, isConstLike, args)) : rest -> do
+      (v', t) <- makeTree m rest
+      return (v', graft v (Node (DD.localLocator dd) isConstLike (map (,Leaf) args)) t)
+
+graft :: Ident -> PatternTree -> PatternTree -> PatternTree
+graft from to tree =
+  case tree of
+    Leaf ->
+      Leaf
+    Node dd isConstLike children -> do
+      Node dd isConstLike $ flip map children $ \(x, t) -> do
+        if x == from
+          then (x, to)
+          else (x, graft from to t)
+
+holeIdent :: Ident
+holeIdent =
+  I (holeVarPrefix, 0)
+
+elaborateDecisionTree ::
+  ClauseContext ->
+  Hint ->
+  Hint ->
+  DT.DecisionTree WT.WeakTerm ->
+  App (DT.DecisionTree TM.Term)
+elaborateDecisionTree ctx mOrig m tree =
   case tree of
     DT.Leaf xs letSeq body -> do
       letSeq' <- mapM (bimapM elaborateWeakBinder elaborate') letSeq
@@ -357,38 +427,58 @@ elaborateDecisionTree m tree =
       case switchSpec of
         LiteralIntSwitch -> do
           when (DT.isUnreachable fallbackClause) $ do
-            raiseNonExhaustivePatternMatching m
-          fallbackClause' <- elaborateDecisionTree m fallbackClause
-          clauseList' <- mapM elaborateClause clauseList
+            raiseIntegerNonExhaustivePatternMatching m
+          fallbackClause' <- elaborateDecisionTree ctx mOrig m fallbackClause
+          clauseList' <- mapM (elaborateClause mOrig cursor ctx) clauseList
           return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
         ConsSwitch consList -> do
           let activeConsList = DT.getConstructors clauseList
           let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
           if S.size diff == 0
             then do
-              clauseList' <- mapM elaborateClause clauseList
+              clauseList' <- mapM (elaborateClause mOrig cursor ctx) clauseList
               return $ DT.Switch (cursor, cursorType') (DT.Unreachable, clauseList')
             else do
               case fallbackClause of
-                DT.Unreachable ->
-                  raiseNonExhaustivePatternMatching m
+                DT.Unreachable -> do
+                  t <- makeTree mOrig ctx
+                  let t' = fromPatternTree m $ suppress t
+                  uncoveredPatterns <- forM (S.toList diff) $ \(consDD, isConstLike) -> do
+                    let cons = m :< WT.Var (I (DD.localLocator consDD, 0))
+                    if isConstLike
+                      then do
+                        let sub = IntMap.fromList [(Ident.toInt cursor, Right cons)]
+                        WT.subst sub t'
+                      else do
+                        (_, keys) <- KeyArg.lookup m consDD
+                        let expArgNum = length keys
+                        let holes = map (const $ m :< WT.Var holeIdent) [1 .. expArgNum]
+                        let tip = m :< WT.PiElim cons holes
+                        let sub = IntMap.fromList [(Ident.toInt cursor, Right tip)]
+                        WT.subst sub t'
+                  let uncoveredPatterns' = T.concat $ flip map uncoveredPatterns $ \ex -> do
+                        "- " <> toText ex <> "\n"
+                  Throw.raiseError mOrig $
+                    "This pattern matching does not cover:\n" <> uncoveredPatterns'
                 _ -> do
-                  fallbackClause' <- elaborateDecisionTree m fallbackClause
-                  clauseList' <- mapM elaborateClause clauseList
+                  fallbackClause' <- elaborateDecisionTree ctx mOrig m fallbackClause
+                  clauseList' <- mapM (elaborateClause mOrig cursor ctx) clauseList
                   return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
-elaborateClause decisionCase = do
+elaborateClause :: Hint -> Ident -> ClauseContext -> DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
+elaborateClause mOrig cursor ctx decisionCase = do
   case decisionCase of
     DT.LiteralIntCase mPat i cont -> do
-      cont' <- elaborateDecisionTree mPat cont
+      cont' <- elaborateDecisionTree ctx mOrig mPat cont
       return $ DT.LiteralIntCase mPat i cont'
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM elaborate' dataTerms
       dataTypes' <- mapM elaborate' dataTypes
       consArgs' <- mapM elaborateWeakBinder consArgs
-      cont' <- elaborateDecisionTree mCons cont
+      let consArgIdents = map (\(_, x, _) -> x) consArgs
+      let consContext = (cursor, (consDD, isConstLike, consArgIdents))
+      cont' <- elaborateDecisionTree (consContext : ctx) mOrig mCons cont
       return $
         decisionCase
           { DT.dataArgs = zip dataTerms' dataTypes',
@@ -396,9 +486,13 @@ elaborateClause decisionCase = do
             DT.cont = cont'
           }
 
-raiseNonExhaustivePatternMatching :: Hint -> App a
-raiseNonExhaustivePatternMatching m =
-  Throw.raiseError m "Encountered a non-exhaustive pattern matching"
+raiseIntegerNonExhaustivePatternMatching :: Hint -> App a
+raiseIntegerNonExhaustivePatternMatching m =
+  Throw.raiseError m "Pattern matching on integers must have a fallback clause"
+
+raiseEmptyNonExhaustivePatternMatching :: Hint -> App a
+raiseEmptyNonExhaustivePatternMatching m =
+  Throw.raiseError m "Empty pattern matching can only be performed on empty ADT values"
 
 reduceType :: WT.WeakTerm -> App TM.Term
 reduceType e = do
@@ -406,14 +500,16 @@ reduceType e = do
 
 data SwitchSpec
   = LiteralIntSwitch
-  | ConsSwitch [DD.DefiniteDescription]
+  | ConsSwitch [(DD.DefiniteDescription, IsConstLike)]
 
 getSwitchSpec :: Hint -> TM.Term -> App SwitchSpec
 getSwitchSpec m cursorType = do
   case cursorType of
     _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
-      return $ ConsSwitch $ map fst consNameList
+      return $ ConsSwitch consNameList
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
       return LiteralIntSwitch
     _ ->
-      Throw.raiseError m $ "This term is expected to be an ADT value or an integer, but it's not:\n" <> toText (weaken cursorType)
+      Throw.raiseError m $
+        "This term is expected to be an ADT value or an integer, but it's not:\n"
+          <> toText (weaken cursorType)
