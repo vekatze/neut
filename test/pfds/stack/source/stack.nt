@@ -11,11 +11,11 @@ data stack(a) {
 | Cons(a, stack(a))
 }
 
-define empty(a: tau): stack(a) {
+define empty(a: type): stack(a) {
   Nil
 }
 
-define is-empty(a: tau, xs: &stack(a)): bool {
+define is-empty(a: type, xs: &stack(a)): bool {
   case xs {
   | Nil =>
     True
@@ -24,7 +24,7 @@ define is-empty(a: tau, xs: &stack(a)): bool {
   }
 }
 
-define head(a: tau, xs: &stack(a)): ?&a {
+define head(a: type, xs: &stack(a)): ?&a {
   case xs {
   | Nil =>
     none()
@@ -33,7 +33,7 @@ define head(a: tau, xs: &stack(a)): ?&a {
   }
 }
 
-define tail(a: tau, xs: &stack(a)): ?&stack(a) {
+define tail(a: type, xs: &stack(a)): ?&stack(a) {
   case xs {
   | Nil =>
     none()
@@ -42,7 +42,7 @@ define tail(a: tau, xs: &stack(a)): ?&stack(a) {
   }
 }
 
-define update(a: tau, xs: stack(a), index: int, value: a): stack(a) {
+define update(a: type, xs: stack(a), index: int, value: a): stack(a) {
   match xs {
   | Nil =>
     Nil
@@ -55,7 +55,7 @@ define update(a: tau, xs: stack(a), index: int, value: a): stack(a) {
   }
 }
 
-define suffixes(a: tau, xs: stack(a)): stack(stack(a)) {
+define suffixes(a: type, xs: stack(a)): stack(stack(a)) {
   match xs {
   | Nil =>
     Nil
@@ -64,7 +64,7 @@ define suffixes(a: tau, xs: stack(a)): stack(stack(a)) {
   }
 }
 
-define suffixes-noetic(a: tau, xs: &stack(a)): stack(&stack(a)) {
+define suffixes-noetic(a: type, xs: &stack(a)): stack(&stack(a)) {
   case xs {
   | Nil =>
     Nil

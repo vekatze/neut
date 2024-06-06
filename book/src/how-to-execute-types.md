@@ -149,7 +149,7 @@ Uses of `base.#.imm` like `base.#.imm(1, some-value)` are optimized away by inli
 
 <div class="info-block">
 
-A type is compiled into a pointer to a closed function. This means that types are immediate values. Because of that, the type of types (`tau`) is also compiled into `base.#.imm`.
+A type is compiled into a pointer to a closed function. This means that types are immediate values. Because of that, the type of types (`type`) is also compiled into `base.#.imm`.
 
 </div>
 
@@ -158,7 +158,7 @@ A type is compiled into a pointer to a closed function. This means that types ar
 Let's see how polymorphic values are copied. Consider the following code:
 
 ```neut
-define foo(a: tau, x: a): pair(a, a) {
+define foo(a: type, x: a): pair(a, a) {
   Pair(x, x)
 }
 ```
@@ -168,7 +168,7 @@ The code uses the variable `x` twice. Thus, this `x` must be copied according to
 This can be done because the internal representation of `a` is a function that can discard and copy the values of type `a`. Thus, the above code is compiled into something like the below:
 
 ```neut
-define foo(a: tau, x: a): pair(a, a) {
+define foo(a: type, x: a): pair(a, a) {
   let x-clone = a(1, x) in
   Pair(x, x-clone)
 }
@@ -257,9 +257,9 @@ We'll see how function types like `(int) -> bool` are translated.
 Suppose we have a function like the below:
 
 ```neut
-define foo(a: tau): int {
+define foo(a: type): int {
   let x: int = 10 in
-  let y = tau in
+  let y = type in
   let f =
     function (z: a) {  // lambda function
       let foo = x in   // ← x is a free var of this lambda
@@ -285,13 +285,13 @@ First, the compiler collects all the free variables in the lambda. Here, the com
 This list is "closed" in the following sense. Consider annotating all the variables in the list by their variables, like below:
 
 ```neut
-[a: tau, x: int, y: tau, z: a]
+[a: type, x: int, y: type, z: a]
 ```
 
 This list is closed in that the term
 
 ```neut
-function (a: tau, x: int, y: tau, z: a) {
+function (a: type, x: int, y: type, z: a) {
   Unit
 }
 ```
@@ -303,7 +303,7 @@ contains no free variables. We'll call a list like this a closed chain.
 We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like the following:
 
 ```text
-(Σ (a: tau, x: int, y: tau). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
+(Σ (a: type, x: int, y: type). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
  -----------------------------   ------------
  the type of the environment     the closed chain (i.e. environment)
 ```

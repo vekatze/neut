@@ -2,72 +2,72 @@ define test-syntax(): unit {
   // nullary
   let _ =
     function () {
-      tau
+      type
     }
   in
   // unary
-  let _: (tau) -> tau =
+  let _: (type) -> type =
     function (x) {
       x
     }
   in
   let _ =
-    function (x: tau) {
+    function (x: type) {
       x
     }
   in
   // binary
-  let _: (tau, tau) -> tau =
+  let _: (type, type) -> type =
     function (x, _) {
       x
     }
   in
-  let _: (tau, tau) -> tau =
+  let _: (type, type) -> type =
     function (_, y) {
       y
     }
   in
-  let _: (tau, tau) -> tau =
-    function (x: tau, _) {
+  let _: (type, type) -> type =
+    function (x: type, _) {
       x
     }
   in
-  let _: (tau, tau) -> tau =
-    function (_, y: tau) {
+  let _: (type, type) -> type =
+    function (_, y: type) {
       y
     }
   in
-  let _: (tau, tau) -> tau =
-    function (x: tau, _) {
+  let _: (type, type) -> type =
+    function (x: type, _) {
       x
     }
   in
   let _ =
-    function (x: tau, y: tau) {
+    function (x: type, y: type) {
       Pair(x, y)
     }
   in
   let _ =
     {
-      function (x: tau) {
+      function (x: type) {
         x
       }
-    }(tau)
+    }(type)
   in
   // exprs in bodies
   let _ =
-    function (f: (tau) -> tau) {
-      f(tau)
+    function (f: (type) -> type) {
+      f(type)
     }
   in
   let _ =
-    function (f: (tau) -> tau) {
-      let _ = f(tau) in
-      tau
+    function (f: (type) -> type) {
+      let _ = f(type) in
+      type
     }
   in
   let _ =
-    function (_: (tau) -> tau) {
+    function (_: (type) -> type) {
       Unit;
       Unit
     }
@@ -77,29 +77,29 @@ define test-syntax(): unit {
     function (
       x:
       {
-        let _ = tau in
-        (tau, tau) -> tau
+        let _ = type in
+        (type, type) -> type
       },
-      _: {(tau) -> tau},
+      _: {(type) -> type},
     )
     {
       x
     }
   in
   let f =
-    function (_: tau, _: tau, _: tau) {
-      tau
+    function (_: type, _: type, _: type) {
+      type
     }
   in
   let _ =
     f(
-      let _ = tau in
-      tau,
-      tau,
-      let _ = tau in
+      let _ = type in
+      type,
+      type,
+      let _ = type in
       {
         function () {
-          tau
+          type
         }
       }(),
     )
@@ -107,20 +107,20 @@ define test-syntax(): unit {
   Unit
 }
 
-define sample(): tau {
-  let _ = tau in
+define sample(): type {
+  let _ = type in
   Unit;
-  (tau, tau) -> tau
+  (type, type) -> type
 }
 
-define opaque(a: tau, x: a): _ {
+define opaque(a: type, x: a): _ {
   x
 }
 
 define affine-lam1(): unit {
   let lam1 =
     opaque(_, function () {
-      tau
+      type
     })
   in
   let _ = lam1 in
@@ -130,7 +130,7 @@ define affine-lam1(): unit {
 define relevant-lam1(): unit {
   let lam1 =
     opaque(_, function () {
-      tau
+      type
     })
   in
   let _ = lam1 in
@@ -141,7 +141,7 @@ define relevant-lam1(): unit {
 define affine-lam2(): unit {
   let lam1 =
     opaque(_, function () {
-      tau
+      type
     })
   in
   let lam2 =
@@ -157,7 +157,7 @@ define affine-lam2(): unit {
 define relevant-lam2(): unit {
   let lam1 =
     opaque(_, function () {
-      tau
+      type
     })
   in
   let lam2 =
@@ -174,7 +174,7 @@ define relevant-lam2(): unit {
 define affine-lam3(): unit {
   let lam1 =
     opaque(_, function () {
-      tau
+      type
     })
   in
   let lam2 =
@@ -184,7 +184,7 @@ define affine-lam3(): unit {
     })
   in
   let lam3 =
-    opaque(_, function (_: (tau) -> tau) {
+    opaque(_, function (_: (type) -> type) {
       let _ = lam1 in
       let v2 = lam2 in
       v2
@@ -197,7 +197,7 @@ define affine-lam3(): unit {
 define relevant-lam3(): unit {
   let lam1 =
     opaque(_, function () {
-      tau
+      type
     })
   in
   let lam2 =
@@ -207,7 +207,7 @@ define relevant-lam3(): unit {
     })
   in
   let lam3 =
-    opaque(_, function (_: (tau) -> tau) {
+    opaque(_, function (_: (type) -> type) {
       let _ = lam1 in
       let v2 = lam2 in
       v2
@@ -221,7 +221,7 @@ define relevant-lam3(): unit {
 define affine-lam4(): unit {
   let lam1 =
     opaque(_, function () {
-      tau
+      type
     })
   in
   let lam2 =
@@ -231,7 +231,7 @@ define affine-lam4(): unit {
     })
   in
   let lam3 =
-    opaque(_, function (_: (tau) -> tau) {
+    opaque(_, function (_: (type) -> type) {
       let _ = lam1 in
       let v2 = lam2 in
       v2
@@ -239,7 +239,7 @@ define affine-lam4(): unit {
   in
   let _ = lam3 in
   let lam4 =
-    opaque(_, function (_: (tau) -> tau) {
+    opaque(_, function (_: (type) -> type) {
       let _ = lam1 in
       let _ = lam2 in
       let v3 = lam3 in
@@ -253,7 +253,7 @@ define affine-lam4(): unit {
 define relevant-lam4(): unit {
   let lam1 =
     opaque(_, function () {
-      tau
+      type
     })
   in
   let lam2 =
@@ -263,7 +263,7 @@ define relevant-lam4(): unit {
     })
   in
   let lam3 =
-    opaque(_, function (_: (tau) -> tau) {
+    opaque(_, function (_: (type) -> type) {
       let _ = lam1 in
       let v2 = lam2 in
       v2
@@ -271,7 +271,7 @@ define relevant-lam4(): unit {
   in
   let _ = lam3 in
   let lam4 =
-    opaque(_, function (_: (tau) -> tau) {
+    opaque(_, function (_: (type) -> type) {
       let _ = lam1 in
       let _ = lam2 in
       let v3 = lam3 in

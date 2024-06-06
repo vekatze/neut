@@ -39,7 +39,7 @@ define gen(n: nat): list(nat) {
   }
 }
 
-define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a {
+define fold-r(a: type, b: type, f: (b, a) -> a, acc: a, xs: list(b)): a {
   match xs {
   | Nil =>
     acc
@@ -48,7 +48,7 @@ define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a {
   }
 }
 
-define tails(a: tau, xs: list(a)): list(list(a)) {
+define tails(a: type, xs: list(a)): list(list(a)) {
   match xs {
   | Nil =>
     Cons(Nil, Nil)

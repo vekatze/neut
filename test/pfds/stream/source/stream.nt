@@ -4,7 +4,7 @@ import {
 }
 
 nominal {
-  stream(a: tau): tau,
+  stream(a: type): type,
 }
 
 data stream-cell(a) {
@@ -16,7 +16,7 @@ data stream(a) {
 | Stream(() -> stream-cell(a))
 }
 
-define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
+define append(a: type, xs: stream(a), ys: stream(a)): stream(a) {
   let Stream(k) = xs in
   match k() {
   | Nil =>
@@ -28,7 +28,7 @@ define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
   }
 }
 
-define take(a: tau, n: int, xs: stream(a)): stream(a) {
+define take(a: type, n: int, xs: stream(a)): stream(a) {
   if eq-int(n, 0) {
     Stream(function () {
       Nil

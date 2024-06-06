@@ -2,11 +2,11 @@ data queue(a) {
 | Queue(list(a), list(a))
 }
 
-define empty(a: tau): queue(a) {
+define empty(a: type): queue(a) {
   Queue([], [])
 }
 
-define head(a: tau, q: &queue(a)): ?a {
+define head(a: type, q: &queue(a)): ?a {
   case q {
   | Queue(Cons(x, _), _) =>
     Right(*x)
@@ -15,7 +15,7 @@ define head(a: tau, q: &queue(a)): ?a {
   }
 }
 
-define sanitize(a: tau, q: queue(a)): queue(a) {
+define sanitize(a: type, q: queue(a)): queue(a) {
   match q {
   | Queue([], ys) =>
     Queue(reverse(ys), [])
@@ -24,7 +24,7 @@ define sanitize(a: tau, q: queue(a)): queue(a) {
   }
 }
 
-define tail(a: tau, q: queue(a)): ?queue(a) {
+define tail(a: type, q: queue(a)): ?queue(a) {
   match q {
   | Queue(Cons(_, rest), ys) =>
     Right(sanitize(_, Queue(rest, ys)))
@@ -33,7 +33,7 @@ define tail(a: tau, q: queue(a)): ?queue(a) {
   }
 }
 
-define snoc(a: tau, v: a, q: queue(a)): queue(a) {
+define snoc(a: type, v: a, q: queue(a)): queue(a) {
   let Queue(xs, ys) = q in
   sanitize(_, Queue(xs, Cons(v, ys)))
 }

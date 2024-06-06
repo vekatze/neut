@@ -24,7 +24,7 @@ toText :: WT.WeakTerm -> T.Text
 toText term =
   case term of
     _ :< WT.Tau ->
-      "tau"
+      "type"
     _ :< WT.Var x ->
       showVariable x
     _ :< WT.VarGlobal _ x ->

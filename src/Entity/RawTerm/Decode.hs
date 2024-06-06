@@ -42,7 +42,7 @@ toDoc :: RawTerm -> D.Doc
 toDoc term =
   case term of
     _ :< Tau ->
-      D.text "tau"
+      D.text "type"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
     _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do

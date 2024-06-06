@@ -22,14 +22,14 @@ define hello(): unit {
   print("Hello, world!\n")
 }
 
-// algebraic data types (tau = the type of types)
-data my-list(a: tau) {
+// algebraic data types
+data my-list(a) {
 | Nil
 | Cons(a, my-list(a))
 }
 
 // a recursive function with pattern matching
-define noisy-length(a: tau, xs: my-list(a)): int {
+define noisy-length(a: type, xs: my-list(a)): int {
   match xs {
   | Nil =>
     0

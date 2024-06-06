@@ -7,7 +7,7 @@ data set-signature(a) {
 | Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
 }
 
-define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
+define make-set-signature(a: type, compare: (a, a) -> order): set-signature(a) {
   Set of {
     empty = Leaf,
     insert = {

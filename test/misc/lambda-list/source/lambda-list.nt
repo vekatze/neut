@@ -30,7 +30,7 @@ define mul-nat(x: nat, y: nat): nat {
   }
 }
 
-define fold(a: tau, fs: list((a) -> a), x: a): a {
+define fold(a: type, fs: list((a) -> a), x: a): a {
   match fs {
   | Nil =>
     x

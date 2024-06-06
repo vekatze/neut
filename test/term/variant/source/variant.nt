@@ -71,7 +71,7 @@ data term(a) {
 | App(term(a), term(a))
 }
 
-define local-completeness(a: tau, t: term(a)): term(a) {
+define local-completeness(a: type, t: term(a)): term(a) {
   match t {
   | Var(v) =>
     Var(v)
@@ -82,7 +82,7 @@ define local-completeness(a: tau, t: term(a)): term(a) {
   }
 }
 
-define nested-match(a: tau, t: term(a)): term(a) {
+define nested-match(a: type, t: term(a)): term(a) {
   match t {
   | App(Abs(_, t'), _) =>
     t'
@@ -164,7 +164,7 @@ define nested-enum-match(t: term(my-enum)): my-enum {
   }
 }
 
-define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
+define unbalanced-freevars-in-branches(a: type, t: term(a)): term(a) {
   let foo = Var("test") in
   let f =
     function () {
@@ -284,7 +284,7 @@ data monoid(a) {
   )
 }
 
-define list-monoid(a: tau): monoid(list(a)) {
+define list-monoid(a: type): monoid(list(a)) {
   Monoid of {
     m-op = {
       function (xs, ys) {

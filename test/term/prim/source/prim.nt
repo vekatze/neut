@@ -77,7 +77,7 @@ define test-op(): unit {
   Unit
 }
 
-define opaque(a: tau, x: a): a {
+define opaque(a: type, x: a): a {
   x
 }
 

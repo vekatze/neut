@@ -31,22 +31,22 @@ data data-0-cons-1() {
 | Bar01(bool)
 }
 
-data data-1-cons-Z(_: tau) {
+data data-1-cons-Z(_: type) {
 | Foo1Z
 | Bar1Z
 }
 
-data data-1-cons-0(_: tau) {
+data data-1-cons-0(_: type) {
 | Foo10()
 | Bar10()
 }
 
-data data-1-cons-1(_: tau) {
+data data-1-cons-1(_: type) {
 | Foo11(int)
 | Bar11(bool)
 }
 
-data simple(a: tau) {
+data simple(a: type) {
 | New(a)
 }
 
@@ -59,7 +59,7 @@ data config {
 }
 
 data top {
-| Top(a: tau, x: a)
+| Top(a: type, x: a)
 }
 
 define yo(x: top): unit {
@@ -68,7 +68,7 @@ define yo(x: top): unit {
 }
 
 nominal {
-  bar: tau,
+  bar: type,
 }
 
 data foo {

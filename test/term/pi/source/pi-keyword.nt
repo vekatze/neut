@@ -1,18 +1,18 @@
 define foo(
   FOO: bool,
-  a: tau,
-  🌟🌟🌟: tau,
+  a: type,
+  🌟🌟🌟: type,
   竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int,
-): tau {
+): type {
   let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね in
   if FOO {
     (a) -> 🌟🌟🌟
   } else {
-    (🌟🌟🌟) -> tau
+    (🌟🌟🌟) -> type
   }
 }
 
-define bar(a: tau, some-value: a): unit {
+define bar(a: type, some-value: a): unit {
   let _ = some-value in
   Unit
 }
@@ -69,7 +69,7 @@ define test-syntax(): unit {
     // hole-notation + keyword arguments
     bar of {
       a = _,
-      some-value = tau,
+      some-value = type,
     }
   in
   Unit
@@ -77,8 +77,8 @@ define test-syntax(): unit {
 
 define def-func-using-of(
   arg-1: int,
-  arg-2: tau,
-): tau {
+  arg-2: type,
+): type {
   let _ = arg-1 in
   arg-2
 }

@@ -111,7 +111,7 @@ The definition of `id` in the example above is the same as the below:
 
 ```neut
 // you can explicitly write the type of `a`
-define id<a: tau>(x: a): a { // `tau` is the type of types
+define id<a: type>(x: a): a { // `type` is the type of types
   x
 }
 ```
@@ -119,7 +119,7 @@ define id<a: tau>(x: a): a { // `tau` is the type of types
 We can define `id` without using any implicit arguments as follows (just for comparison):
 
 ```neut
-define id(a: tau, x: a): a {
+define id(a: type, x: a): a {
   x
 }
 
@@ -383,14 +383,14 @@ You can use `detach` and `attach` to perform parallel computation:
 
 ```neut
 define foo(): unit {
-  let thread-1: thread(unit) =
+  let t1: thread(unit) =
     // 🌟
     detach {
       let value = some-heavy-computation() in
       print(value)
     }
   in
-  let thread-2: thread(unit) =
+  let t2: thread(unit) =
     // 🌟
     detach {
       let value = other-heavy-computation() in
@@ -398,9 +398,9 @@ define foo(): unit {
     }
   in
                  // 🌟
-  let result-1 = attach { thread-1 } in
+  let result-1 = attach { t1 } in
                  // 🌟
-  let result-2 = attach { thread-2 } in
+  let result-2 = attach { t2 } in
   Unit
 }
 ```
