@@ -401,7 +401,7 @@ substConsArgs sub consArgs =
       return []
     (m, x, t) : rest -> do
       t' <- Subst.subst sub t
-      let opaque = m :< WT.Tau -- allow `a` in `Cons(a: tau, x: a)`
+      let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (Ident.toInt x) (Right opaque) sub
       rest' <- substConsArgs sub' rest
       return $ (m, x, t') : rest'

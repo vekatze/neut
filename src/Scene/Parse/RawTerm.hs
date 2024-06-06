@@ -253,7 +253,7 @@ rawTermEmbody = do
 rawTermTau :: Parser (RT.RawTerm, C)
 rawTermTau = do
   m <- getCurrentHint
-  c <- keyword "tau"
+  c <- keyword "type"
   return (m :< RT.Tau, c)
 
 rawTermHole :: Parser (RT.RawTerm, C)
