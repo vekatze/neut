@@ -4,7 +4,7 @@
 
 ### Basics
 
-- [tau](#tau)
+- [type](#type)
 - [Local Variables](#local-variables)
 - [Top-Level Variables](#top-level-variables)
 - [let](#let)
@@ -68,21 +68,21 @@
 - [with / bind](#with--bind)
 - [{e}](#e)
 
-## `tau`
+## `type`
 
-`tau` is the type of types.
+`type` is the type of types.
 
 ### Example
 
 ```neut
 define sample(): unit {
-  // `tau` used as a term
-  let foo = tau in
+  // `type` used as a term
+  let foo = type in
   Unit
 }
 
-// `tau` used as a type
-define identity(a: tau, x: a): a {
+// `type` used as a type
+define identity(a: type, x: a): a {
   x
 }
 ```
@@ -90,19 +90,19 @@ define identity(a: tau, x: a): a {
 ### Syntax
 
 ```neut
-tau
+type
 ```
 
 ### Semantics
 
-`tau` is compiled into a pointer to `base.#.imm`.
+`type` is compiled into a pointer to `base.#.imm`.
 
 ### Type
 
 ```neut
 (Γ is a context)
 ----------------
-  Γ ⊢ tau: tau
+  Γ ⊢ type: type
 ```
 
 ## Local Variables
@@ -124,7 +124,7 @@ define sample(): unit {
 
   // shadowing (not reassignment)
   let x = Unit in
-  let x = tau in
+  let x = type in
   let x =
     function (x: bool) {
       x // x: bool
@@ -148,7 +148,7 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 ### Type
 
 ```neut
-  Γ ⊢ a: tau
+  Γ ⊢ a: type
 ----------------
 Γ, x: a ⊢ x: a
 ```
@@ -525,10 +525,10 @@ And a text like `"hello": &text` is compiled into `ptr @"text-hello"`.
 (int) -> bool
 
 // use a type variable
-(a: tau, x: a) -> a
+(a: type, x: a) -> a
 
 // make the first argument implicit
-<a: tau>(x: a) -> a
+<a: type>(x: a) -> a
 
 // this is equivalent to `<a: _>(x: a) -> a`
 <a>(x: a) -> a
@@ -568,9 +568,9 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 ### Type
 
 ```neut
-  Γ, x1: a1, ..., xn: an, y1: b1, ..., ym: bm ⊢ c: tau
+  Γ, x1: a1, ..., xn: an, y1: b1, ..., ym: bm ⊢ c: type
 --------------------------------------------------------
-Γ ⊢ <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c: tau
+Γ ⊢ <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c: type
 ```
 
 ## `function (x1: a1, ..., xn: an) { e }`
@@ -785,7 +785,7 @@ define use-id(): unit {
 The `id(Unit)` in the example above is (conceptually) compiled into the below:
 
 ```neut
-define _id(a: tau, x: a): a {
+define _id(a: type, x: a): a {
   x
 }
 
@@ -944,7 +944,7 @@ data my-nat {
 | Succ(my-nat)
 }
 
-define use-nat-type(): tau {
+define use-nat-type(): type {
   // 🌟
   my-nat
 }
@@ -960,7 +960,7 @@ The same as that of top-level variables.
 
 ### Type
 
-If an ADT `some-adt` is nullary, the type of `some-adt` is `tau`.
+If an ADT `some-adt` is nullary, the type of `some-adt` is `type`.
 
 Otherwise, suppose that an ADT `some-adt` is defined as follows:
 
@@ -968,7 +968,7 @@ Otherwise, suppose that an ADT `some-adt` is defined as follows:
 data some-adt(x1: a1, ..., xn: an) {..}
 ```
 
-In this case, the type of `some-adt` is `(x1: a1, ..., xn: an) -> tau`.
+In this case, the type of `some-adt` is `(x1: a1, ..., xn: an) -> type`.
 
 ## Constructors (ADT Introduction)
 
@@ -1005,7 +1005,7 @@ data some-adt {
 | c1
 }
 
-data other-adt(a: tau) {
+data other-adt(a: type) {
 | c2
 }
 ```
@@ -1022,7 +1022,7 @@ data some-adt {
 | c1(foo: int)
 }
 
-data other-adt(a: tau) {
+data other-adt(a: type) {
 | c2(bar: bool, buz: other-adt(a))
 }
 ```
@@ -1030,7 +1030,7 @@ data other-adt(a: tau) {
 In this case,
 
 - the type of `c1` is `(foo: int) -> some-adt`, and
-- the type of `c2` is `<a: tau>(bar: bool, buz: other-adt(a)) -> other-adt(a)`.
+- the type of `c2` is `<a: type>(bar: bool, buz: other-adt(a)) -> other-adt(a)`.
 
 ## `match`
 
@@ -1280,7 +1280,7 @@ An example of the application of the typing rule of `case`:
 
 ## `&a`
 
-Given a type `a: tau`, the `&a` is the type of noemata over `a`.
+Given a type `a: type`, the `&a` is the type of noemata over `a`.
 
 ### Example
 
@@ -1314,9 +1314,9 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 ### Type
 
 ```neut
-Γ ⊢ t: tau
+Γ ⊢ t: type
 -----------
-Γ ⊢ &t: tau
+Γ ⊢ &t: type
 ```
 
 ### Note
@@ -1508,9 +1508,9 @@ The type `t` is inside the internal representation of a term `e: thread(t)`. Bec
 ### Type
 
 ```neut
-Γ ⊢ t: tau
+Γ ⊢ t: type
 ----------------
-Γ ⊢ thread(t): tau
+Γ ⊢ thread(t): type
 ```
 
 ### Note
@@ -1690,7 +1690,7 @@ The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used t
 ### Type
 
 ```neut
-Γ ⊢ a: tau
+Γ ⊢ a: type
 -----------------------------
 Γ ⊢ new-channel(): channel(a)
 ```
@@ -1853,8 +1853,8 @@ You can also use `int` and `float` as a lowtype. These are platform-dependent lo
 ### Type
 
 ```neut
-Γ ⊢ t1: tau
-Γ ⊢ t2: tau
+Γ ⊢ t1: type
+Γ ⊢ t2: type
 Γ ⊢ e: t1
 -----------------------------
 Γ ⊢ magic cast(t1, t2, e): t2
@@ -1862,14 +1862,14 @@ You can also use `int` and `float` as a lowtype. These are platform-dependent lo
 
 Γ ⊢ stored-value: t1
 Γ ⊢ address: t2
-Γ ⊢ t3: tau
+Γ ⊢ t3: type
 (value-type is a low-type)
 ------------------------------------------------------
 Γ ⊢ magic store(value-type, stored-value, address): t3
 
 
 Γ ⊢ address: t1
-Γ ⊢ t2: tau
+Γ ⊢ t2: type
 (value-type is a low-type)
 ------------------------------------------------------
 Γ ⊢ magic load(value-type, address): t2
@@ -1878,7 +1878,7 @@ You can also use `int` and `float` as a lowtype. These are platform-dependent lo
 Γ ⊢ e1: t1
 ...
 Γ ⊢ en: tn
-Γ ⊢ t: tau
+Γ ⊢ t: type
 (func-name is a foreign function)
 --------------------------------------------------
 Γ ⊢ magic external func-name(e1, ..., en): t
@@ -1893,7 +1893,7 @@ You can also use `int` and `float` as a lowtype. These are platform-dependent lo
 (lt-1 is a low-type)
 ...
 (lt-m is a low-type)
-Γ ⊢ t: tau
+Γ ⊢ t: type
 (func-name is a foreign function)
 -----------------------------------------------------------------------------
 Γ ⊢ magic external func-name(e1, ..., en)(e{n+1}: lt-1, ..., e{n+m}: lt-m): t
@@ -2054,7 +2054,7 @@ When `admit` exits a program, the exit code is 1.
 ### Type
 
 ```neut
-Γ ⊢ t: tau
+Γ ⊢ t: type
 ------------
 Γ ⊢ admit: t
 ```
@@ -2112,7 +2112,7 @@ Otherwise, `assert "description" { condition }` evaluates `condition` and checks
 ### Example
 
 ```neut
-define id(a: tau, x: a): a {
+define id(a: type, x: a): a {
   x
 }
 
@@ -2618,7 +2618,7 @@ define test(): either(&text, int) {
       Left("hello")
     in
     bind _: bool = Left("hello") in
-    bind _: tau = Right(int) in
+    bind _: type = Right(int) in
     Right(10)
   }
 }

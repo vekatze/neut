@@ -50,7 +50,7 @@ In the above code, since `xs` isn't used, the content of `xs` is discarded as fo
 ```neut
 // after compilation (pseudo-code)
 define bar(xs: list(int)): unit {
-  let _ = discard-along-type(list(int), xs) in
+  let _ = discard(list(int), xs) in
   Unit
 }
 ```
@@ -67,7 +67,7 @@ define buz(x: int): unit {
 
 // pseudo-code
 define bar(x: int): unit {
-  let _ = discard-along-type(int, x) in
+  let _ = discard(int, x) in
   Unit
 }
 ```

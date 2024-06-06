@@ -126,7 +126,7 @@ For example, suppose we have this ill-typed program:
 
 ```neut
 define main(): int {
-  tau
+  type
 }
 ```
 
@@ -142,7 +142,7 @@ Error: Expected:
 Error: Expected:
          int64
        Found:
-         tau
+         type
 ```
 
 On the other hand, when running `neut build TARGET --end-of-entry EOE`, the text `EOE` is inserted after each entry:
@@ -158,7 +158,7 @@ EOE
 Error: Expected:
          int64
        Found:
-         tau
+         type
 EOE
 ```
 
@@ -184,7 +184,7 @@ Error: Expected:
 Error: Expected:
          int64
        Found:
-         tau
+         type
 ```
 
 With `--no-padding`:
@@ -199,7 +199,7 @@ Found:
 Error: Expected:
   int64
 Found:
-  tau
+  type
 ```
 
 This option is for linter wrappers like flycheck.

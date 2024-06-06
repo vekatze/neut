@@ -99,7 +99,7 @@ Then, take a peek at the `build` directory. You'll find the name here and there.
 
 <div class="info-block">
 
-Since every type is translated into a pointer to a function, a type is an immediate value. Thus, `tau` is compiled into `base.#.imm`.
+Since every type is translated into a pointer to a function, a type is an immediate value. Thus, `type` is compiled into `base.#.imm`.
 
 </div>
 

@@ -126,7 +126,7 @@ define foo(x: int, y: int): int {
   add-int(x, y)
 }
 
-define identity-1(a: tau, x: a): a {
+define identity-1(a: type, x: a): a {
   x
 }
 
