@@ -107,6 +107,9 @@ interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList =
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
           source <- getSource mustUpdateTag m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
+          when mustUpdateTag $ do
+            UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
+            forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl]]
       | otherwise ->
           Throw.raiseError m $ "No such prefix is defined: " <> BN.reify baseName
