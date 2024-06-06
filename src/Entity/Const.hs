@@ -173,6 +173,10 @@ coreChannelNewChannel :: T.Text
 coreChannelNewChannel =
   core <> nsSep <> "channel" <> nsSep <> "_new-channel"
 
+holeLiteral :: T.Text
+holeLiteral =
+  "_"
+
 holeVarPrefix :: T.Text
 holeVarPrefix =
   "{}"
