@@ -3,11 +3,11 @@ import {
 }
 
 define test-syntax(): unit {
-  let _ = thread(tau) in
-  let _ = (thread(tau)) -> tau in
-  let _ = (tau) -> thread(tau) in
-  let _ = (thread(tau), thread(tau)) -> (thread(tau)) -> thread(tau) in
-  let _ = thread(thread(tau)) in
+  let _ = thread(type) in
+  let _ = (thread(type)) -> type in
+  let _ = (type) -> thread(type) in
+  let _ = (thread(type), thread(type)) -> (thread(type)) -> thread(type) in
+  let _ = thread(thread(type)) in
   let _ = detach {Unit} in
   let _ =
     detach {

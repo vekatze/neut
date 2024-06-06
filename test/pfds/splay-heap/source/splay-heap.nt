@@ -3,7 +3,7 @@ data heap(a) {
 | Node(heap(a), a, heap(a))
 }
 
-define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
+define split(a: type, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
   match t {
   | Leaf =>
     Pair(Leaf, Leaf)
@@ -47,12 +47,12 @@ define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), 
   }
 }
 
-define insert(a: tau, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
+define insert(a: type, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
   let Pair(smaller, bigger) = split(_, cmp, x, t) in
   Node(smaller, x, bigger)
 }
 
-define find-min(a: tau, t: &heap(a)): ?a {
+define find-min(a: type, t: &heap(a)): ?a {
   case t {
   | Leaf =>
     none()
@@ -63,7 +63,7 @@ define find-min(a: tau, t: &heap(a)): ?a {
   }
 }
 
-define delete-min(a: tau, t: heap(a)): ?heap(a) {
+define delete-min(a: type, t: heap(a)): ?heap(a) {
   match t {
   | Leaf =>
     none()

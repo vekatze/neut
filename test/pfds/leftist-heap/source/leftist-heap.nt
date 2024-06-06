@@ -16,7 +16,7 @@ data heap-signature(a) {
   )
 }
 
-define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) {
+define make-heap-signature(a: type, compare: (a, a) -> order): heap-signature(a) {
   let merge =
     let rank =
       function (h: &heap(a)) {

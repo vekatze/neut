@@ -14,7 +14,7 @@ data R-list(a) {
 | New(list(digit(a)))
 }
 
-define size(a: tau, t: &tree(a)): int {
+define size(a: type, t: &tree(a)): int {
   case t {
   | Leaf(_) =>
     1
@@ -23,13 +23,13 @@ define size(a: tau, t: &tree(a)): int {
   }
 }
 
-define join(a: tau, t1: tree(a), t2: tree(a)): tree(a) {
+define join(a: type, t1: tree(a), t2: tree(a)): tree(a) {
   let s1 on t1 = size(_, t1) in
   let s2 on t2 = size(_, t2) in
   Node(add-int(s1, s2), t1, t2)
 }
 
-define cons-tree(a: tau, t: tree(a), ts: R-list(a)): R-list(a) {
+define cons-tree(a: type, t: tree(a), ts: R-list(a)): R-list(a) {
   match ts {
   | New([]) =>
     New([DigitOne(t)])
@@ -41,11 +41,11 @@ define cons-tree(a: tau, t: tree(a), ts: R-list(a)): R-list(a) {
   }
 }
 
-define cons(a: tau, x: a, ts: R-list(a)): R-list(a) {
+define cons(a: type, x: a, ts: R-list(a)): R-list(a) {
   cons-tree(a, Leaf(x), ts)
 }
 
-define uncons-tree(a: tau, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
+define uncons-tree(a: type, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   let New(xs) = ts in
   match xs {
   | Nil =>
@@ -69,7 +69,7 @@ define uncons-tree(a: tau, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   }
 }
 
-define lookup-tree(a: tau, i: int, t: &tree(a)): ?a {
+define lookup-tree(a: type, i: int, t: &tree(a)): ?a {
   case t {
   | Leaf(v) =>
     if eq-int(i, 0) {
@@ -87,7 +87,7 @@ define lookup-tree(a: tau, i: int, t: &tree(a)): ?a {
   }
 }
 
-define lookup-list(a: tau, i: int, xs: &list(digit(a))): ?a {
+define lookup-list(a: type, i: int, xs: &list(digit(a))): ?a {
   case xs {
   | [] =>
     none()
@@ -103,12 +103,12 @@ define lookup-list(a: tau, i: int, xs: &list(digit(a))): ?a {
   }
 }
 
-define lookup(a: tau, i: int, xs: &R-list(a)): ?a {
+define lookup(a: type, i: int, xs: &R-list(a)): ?a {
   tie New(xs) = xs in
   lookup-list(_, i, xs)
 }
 
-define update-tree(a: tau, i: int, x: a, t: tree(a)): tree(a) {
+define update-tree(a: type, i: int, x: a, t: tree(a)): tree(a) {
   match t {
   | Leaf(v) =>
     if eq-int(i, 0) {
@@ -126,7 +126,7 @@ define update-tree(a: tau, i: int, x: a, t: tree(a)): tree(a) {
   }
 }
 
-define update(a: tau, i: int, x: a, xs: R-list(a)): R-list(a) {
+define update(a: type, i: int, x: a, xs: R-list(a)): R-list(a) {
   match xs {
   | New([]) =>
     New([])

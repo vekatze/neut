@@ -12,11 +12,11 @@ data custom-stack(a) {
 | Cons(pair(a, a), custom-stack(a))
 }
 
-define empty(a: tau): custom-stack(a) {
+define empty(a: type): custom-stack(a) {
   Nil
 }
 
-define is-empty(a: tau, xs: &custom-stack(a)): bool {
+define is-empty(a: type, xs: &custom-stack(a)): bool {
   case xs {
   | Nil =>
     True
@@ -25,7 +25,7 @@ define is-empty(a: tau, xs: &custom-stack(a)): bool {
   }
 }
 
-define head(a: tau, xs: &custom-stack(a)): ?&pair(a, a) {
+define head(a: type, xs: &custom-stack(a)): ?&pair(a, a) {
   case xs {
   | Nil =>
     none()
@@ -34,7 +34,7 @@ define head(a: tau, xs: &custom-stack(a)): ?&pair(a, a) {
   }
 }
 
-define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
+define tail(a: type, xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
   | Nil =>
     none()

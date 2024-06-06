@@ -1,7 +1,7 @@
 define test-syntax(): unit {
-  let _ = &list(tau) in
-  let _ = &list(&list(tau)) in
-  let _ = (&tau, &list((&list(tau)) -> &list(tau))) -> &list(tau) in
+  let _ = &list(type) in
+  let _ = &list(&list(type)) in
+  let _ = (&type, &list((&list(type)) -> &list(type))) -> &list(type) in
   let xs: list(int) = [1, 2, 3] in
   let _ on xs =
     let _ on xs =
@@ -100,7 +100,7 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
   }
 }
 
-define unbalanced-freevars-in-branches(a: tau, t: &term(a)): term(a) {
+define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
   let foo = Var("test") in
   let f =
     function () {

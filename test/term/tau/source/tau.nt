@@ -2,72 +2,72 @@ import {
   core.vector {vector},
 }
 
-define test-syntax(): tau {
-  let _: tau = tau in
-  let _: tau = tau in
-  tau
+define test-syntax(): type {
+  let _: type = type in
+  let _: type = type in
+  type
 }
 
-define affine-tau(): tau {
-  let _ = tau in
-  tau
+define affine-type(): type {
+  let _ = type in
+  type
 }
 
-define linear-tau(): tau {
-  let x = tau in
+define linear-type(): type {
+  let x = type in
   x
 }
 
-define relevant-tau(): tau {
-  let x = tau in
+define relevant-type(): type {
+  let x = type in
   let _ = x in
   x
 }
 
-define tau-is-tau(): tau {
-  tau
+define type-is-type(): type {
+  type
 }
 
-define pi-is-tau(): tau {
-  let _: tau = () -> tau in
-  let _: tau = (tau) -> tau in
-  let _: tau = (tau, tau, tau) -> tau in
-  tau
+define pi-is-type(): type {
+  let _: type = () -> type in
+  let _: type = (type) -> type in
+  let _: type = (type, type, type) -> type in
+  type
 }
 
-define data-is-tau(): tau {
-  let _: tau = null in
-  let _: tau = unit in
-  let _: tau = bool in
-  let _: tau = list(tau) in
-  tau
+define data-is-type(): type {
+  let _: type = null in
+  let _: type = unit in
+  let _: type = bool in
+  let _: type = list(type) in
+  type
 }
 
-define noema-is-tau(a: tau): tau {
+define noema-is-type(a: type): type {
   &a
 }
 
-define thread-is-tau(a: tau): tau {
+define thread-is-type(a: type): type {
   thread(a)
 }
 
-define resource-is-tau(): tau {
-  let _: tau = text in
-  let _: tau = vector(text) in
-  tau
+define resource-is-type(): type {
+  let _: type = text in
+  let _: type = vector(text) in
+  type
 }
 
-define test-semantics(): tau {
-  let _ = affine-tau() in
-  let _ = linear-tau() in
-  let _ = relevant-tau() in
-  let _ = tau-is-tau() in
-  let _ = pi-is-tau() in
-  let _ = data-is-tau() in
-  let _ = noema-is-tau(tau) in
-  let _ = thread-is-tau(tau) in
-  let _ = resource-is-tau() in
-  tau
+define test-semantics(): type {
+  let _ = affine-type() in
+  let _ = linear-type() in
+  let _ = relevant-type() in
+  let _ = type-is-type() in
+  let _ = pi-is-type() in
+  let _ = data-is-type() in
+  let _ = noema-is-type(type) in
+  let _ = thread-is-type(type) in
+  let _ = resource-is-type() in
+  type
 }
 
 define main(): unit {

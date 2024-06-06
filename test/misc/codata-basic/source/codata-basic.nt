@@ -1,4 +1,4 @@
-data bar(a: tau) {
+data bar(a: type) {
 | Bar(value: a)
 }
 
@@ -6,7 +6,7 @@ data foo() {
 | Foo(value-1: int, value-2: int32, value-3: bar(int))
 }
 
-data stream(a: tau) {
+data stream(a: type) {
 | Stream(head: a, tail: () -> stream(a))
 }
 
@@ -21,14 +21,14 @@ define int-stream(x: int): stream(int) {
   }
 }
 
-define get-tail(a: tau, s: stream(a)): stream(a) {
+define get-tail(a: type, s: stream(a)): stream(a) {
   match s {
   | Stream(_, tail-generator) =>
     tail-generator()
   }
 }
 
-define get-head(a: tau, s: stream(a)): a {
+define get-head(a: type, s: stream(a)): a {
   match s {
   | Stream(v, _) =>
     v
