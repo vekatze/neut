@@ -43,9 +43,9 @@ instance (Binary a) => Binary (DecisionTree a)
 
 instance (Binary a) => Binary (Case a)
 
-getConstructors :: [Case a] -> [DD.DefiniteDescription]
+getConstructors :: [Case a] -> [(DD.DefiniteDescription, IsConstLike)]
 getConstructors clauseList = do
-  map consDD clauseList
+  map (\c -> (consDD c, isConstLike c)) clauseList
 
 isUnreachable :: DecisionTree a -> Bool
 isUnreachable tree =
