@@ -45,6 +45,7 @@ rawExpr = do
   choice
     [ rawTermLet m,
       rawTermUse m,
+      rawTermPin m,
       do
         e1 <- rawTerm
         choice
@@ -172,7 +173,7 @@ rawTermLet :: Hint -> Parser (RT.RawTerm, C)
 rawTermLet mLet = do
   (letKind, c1) <-
     choice
-      [ keyword "let" >>= \c1 -> return (RT.Plain, c1),
+      [ keyword "let" >>= \c1 -> return (RT.Plain False, c1),
         keyword "try" >>= \c1 -> return (RT.Try, c1),
         keyword "bind" >>= \c1 -> return (RT.Bind, c1),
         keyword "tie" >>= \c1 -> return (RT.Noetic, c1)
@@ -195,6 +196,19 @@ rawTermLet mLet = do
   (e2, c) <- rawExpr
   endLoc <- getCurrentLoc
   return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+
+rawTermPin :: Hint -> Parser (RT.RawTerm, C)
+rawTermPin m = do
+  c1 <- keyword "pin"
+  ((mx, x), c2) <- rawTermNoeticVar
+  (c3, (t, c4)) <- rawTermLetVarAscription mx
+  c5 <- delimiter "="
+  (e1, c6) <- rawExpr
+  loc <- getCurrentLoc
+  c7 <- delimiter "in"
+  (e2, c) <- rawExpr
+  endLoc <- getCurrentLoc
+  return (m :< RT.Pin c1 (mx, x, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
