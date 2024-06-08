@@ -42,6 +42,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "nominal",
         "of",
         "on",
+        "pin",
         "resource",
         "switch",
         "tie",
