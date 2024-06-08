@@ -474,8 +474,9 @@ discern axis term =
             RT.Bind -> do
               tmpVar <- Gensym.newText
               (x, e2'') <- modifyLetContinuation (mPat, pat) endLoc False e2'
-              dom <- Gensym.newPreHole (blur m)
-              cod <- Gensym.newPreHole (blur m)
+              let m' = blur m
+              dom <- Gensym.newPreHole m'
+              cod <- Gensym.newPreHole m'
               discern axis $
                 bind'
                   False
@@ -487,10 +488,10 @@ discern axis term =
                   ( m
                       :< RT.piElim
                         binder
-                        [ m :< RT.Var (Var tmpVar),
+                        [ m' :< RT.Var (Var tmpVar),
                           RT.lam
                             startLoc
-                            m
+                            m'
                             [((mPat, x, c2, c3, t), c)]
                             cod
                             e2''
