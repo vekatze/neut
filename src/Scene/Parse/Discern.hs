@@ -361,7 +361,7 @@ discern axis term =
         Just str' -> do
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
     m :< RT.Rune runeCons str -> do
-      let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
+      let strOrNone = if str == "\"" then Just "\"" else R.readMaybe (T.unpack $ "\"" <> str <> "\"")
       let int32Type = WT.intTypeBySize m 32
       runeCons' <- discern axis runeCons
       case strOrNone of
