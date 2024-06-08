@@ -344,6 +344,14 @@ discern axis term =
       return $ m :< WT.Embody (doNotCare m) e'
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
       discernLet axis m letKind (mx, pat, c1, c2, t) (SE.extract mys) e1 e2 startLoc endLoc
+    m :< RT.Pin _ mxt@(mx, x, _, _, _) _ _ e1 _ startLoc _ e2 endLoc -> do
+      let m' = blur m
+      tmp <- Gensym.newTextFromText "tmp-pin"
+      let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
+      resultType <- Gensym.newPreHole m'
+      discern axis $
+        bind startLoc endLoc mxt e1 $
+          bind' True startLoc endLoc (m', tmp, [], [], resultType) x' e2 (m' :< RT.Var (Var tmp))
     m :< RT.StaticText s str -> do
       let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
       s' <- discern axis s
@@ -470,6 +478,7 @@ discern axis term =
               cod <- Gensym.newPreHole (blur m)
               discern axis $
                 bind'
+                  False
                   startLoc
                   endLoc
                   (mPat, tmpVar, c2, c3, dom)
@@ -570,15 +579,29 @@ modifyLetContinuation pat endLoc isNoetic cont@(mCont :< _) =
               (SE.fromList SE.Brace SE.Bar [(SE.fromList'' [pat], [], cont, endLoc)])
         )
 
-bind :: Loc -> Loc -> RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
+bind ::
+  Loc ->
+  Loc ->
+  RawBinder RT.RawTerm ->
+  RT.RawTerm ->
+  RT.RawTerm ->
+  RT.RawTerm
 bind loc endLoc (m, x, c1, c2, t) =
-  bind' loc endLoc (m, x, c1, c2, t) (SE.emptySeries' Nothing SE.Comma)
+  bind' False loc endLoc (m, x, c1, c2, t) (SE.emptySeries' Nothing SE.Comma)
 
-bind' :: Loc -> Loc -> RawBinder RT.RawTerm -> SE.Series (Hint, RawIdent) -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind' loc endLoc (m, x, c1, c2, t) mys e cont =
+bind' ::
+  RT.MustIgnoreRelayedVars ->
+  Loc ->
+  Loc ->
+  RawBinder RT.RawTerm ->
+  SE.Series (Hint, RawIdent) ->
+  RT.RawTerm ->
+  RT.RawTerm ->
+  RT.RawTerm
+bind' mustIgnoreRelayedVars loc endLoc (m, x, c1, c2, t) mys e cont =
   m
     :< RT.Let
-      RT.Plain
+      (RT.Plain mustIgnoreRelayedVars)
       []
       (m, RP.Var (Var x), c1, c2, t)
       []
@@ -710,7 +733,7 @@ discernLet axis m letKind (mx, pat, c1, c2, t) mys e1 e2@(m2 :< _) startLoc endL
         return $ m :< WT.Let opacity mxt' e1' e2'''
   body <-
     case letKind of
-      RT.Plain -> do
+      RT.Plain _ -> do
         discernLet' False
       RT.Noetic -> do
         discernLet' True
@@ -752,7 +775,13 @@ discernLet axis m letKind (mx, pat, c1, c2, t) mys e1 e2@(m2 :< _) startLoc endL
                 )
         eitherCont' <- attachSuffix (zip ysCont ysLocal) eitherCont
         return $ m :< WT.Let opacity mxt' e1' eitherCont'
-  attachPrefix (zip ysLocal (zip ms' ysActual)) body
+  result <- attachPrefix (zip ysLocal (zip ms' ysActual)) body
+  case letKind of
+    RT.Plain True ->
+      forM_ ysCont UnusedVariable.delete
+    _ ->
+      return ()
+  return result
 
 discernIdent :: Hint -> Axis -> RawIdent -> App (Hint, Ident)
 discernIdent m axis x =

@@ -8,6 +8,7 @@ module Entity.RawTerm
     RawMagic (..),
     KeywordClause,
     EL,
+    MustIgnoreRelayedVars,
     Args,
     RawGeist (..),
     RawDef (..),
@@ -63,6 +64,7 @@ data RawTermF a
   | Noema a
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | Pin C (RawBinder a) C C a C Loc C a Loc
   | StaticText a T.Text
   | Rune a T.Text
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
@@ -175,8 +177,11 @@ lam loc m varList codType e =
           }
       )
 
+type MustIgnoreRelayedVars =
+  Bool
+
 data LetKind
-  = Plain
+  = Plain MustIgnoreRelayedVars
   | Noetic
   | Try
   | Bind
@@ -184,7 +189,7 @@ data LetKind
 decodeLetKind :: LetKind -> T.Text
 decodeLetKind letKind =
   case letKind of
-    Plain -> "let"
+    Plain _ -> "let"
     Noetic -> "tie"
     Try -> "try"
     Bind -> "bind"
