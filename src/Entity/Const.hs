@@ -87,7 +87,7 @@ zenRelDir =
 
 defaultInlineLimit :: Int
 defaultInlineLimit =
-  100000
+  1000000
 
 core :: T.Text
 core =

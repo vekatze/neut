@@ -491,7 +491,7 @@ The field `inline-limit` defines the limit on recursion performed during compila
 ```ens
 {
   // ..
-  inline-limit 1000000,
+  inline-limit 100000,
   // ..
 }
 ```
@@ -508,4 +508,4 @@ The `inline-limit` specifies a limit here. If the limit is exceeded, the compile
 Error: Exceeded max recursion depth of 1000 during (..)
 ```
 
-The field `inline-limit` is optional. The default value of `inline-limit` is `100000`.
+The field `inline-limit` is optional. The default value of `inline-limit` is `1000000`.
