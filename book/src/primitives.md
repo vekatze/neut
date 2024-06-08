@@ -25,13 +25,17 @@ These primitive types have a lot of primitive functions from LLVM:
 | arithmetics | add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                |
 | comparison  | eq, ne, gt, ge, lt, le, ugt, uge, ult, ule                    | eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
 
-For example, all `add-int32`, `neg-float64`, `eq-int64`, and `gt-float32` are available.
+For example, `add-int32`, `neg-float64`, `eq-int64`, and `gt-float32` are available.
 
 Neut uses LLVM's integer types and float types for its primitive types. Thus, the primitive integer types in Neut are signless. More specifically, the signedness of an integer type in Neut resides in functions, not values.
 
 For example, `div-int64` interprets its two arguments as signed integers and returns its (signed) result. `udiv-int64` interprets its two arguments as unsigned integers and returns its (unsigned) result. Integer functions prefixed with `u` are for unsigned functions.
 
 The internal representation of the integer types in Neut is the same as that of LLVM. Therefore, they are based on the two's complement representation. That is why Neut doesn't have something like `uadd-int64`. The `u`-prefixed integer functions are there only when we need different behaviors for different signednesses.
+
+The following conversion functions are also available: `trunc`, `zext`, `sext`, `fptrunc`, `fpext`, `fptoui`, `fptosi`, `uitofp`, and `sitofp`.
+
+For example, `trunc-int64-int32`, `zext-int8-int32`, `fptoui-float32-int64`, and `uitofp-int64-float64` are available.
 
 For their detailed behaviors, please refer to [the LLVM language reference](https://llvm.org/docs/LangRef.html).
 

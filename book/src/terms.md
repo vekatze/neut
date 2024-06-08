@@ -63,6 +63,7 @@
 - [e1; e2](#e1-e2)
 - [try x = e1 in e2](#try-x--e1-in-e2)
 - [tie x = e1 in e2](#tie-x--e1-in-e2)
+- [pin x = e1 in e2](#pin-x--e1-in-e2)
 - [?t](#t)
 - [[e1, ..., en]](#e1--en)
 - [with / bind](#with--bind)
@@ -2517,6 +2518,51 @@ case e1 {
 ### Type
 
 Derived from the desugared form.
+
+## `pin x = e1 in e2`
+
+You can use `pin` to create a value and use it as a noema.
+
+### Example
+
+```neut
+// before
+define foo(): unit {
+  let xs = make-list(123) in
+  let result on xs = some-func(xs) in
+  let _ = xs in
+  result
+}
+
+↓
+
+// after
+define foo(): unit {
+  pin xs = make-list(123) in
+  some-func(xs)
+}
+```
+
+### Syntax
+
+```neut
+pin x = e1 in
+e2
+```
+
+### Semantics
+
+```neut
+pin x = e1 in
+e2
+
+↓
+
+let x = e1 in
+let tmp on x = e2 in
+let _ = x in
+tmp
+```
 
 ## `?t`
 
