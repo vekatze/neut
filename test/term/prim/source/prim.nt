@@ -84,7 +84,7 @@ define opaque(a: type, x: a): a {
 define test-string(): unit {
   let _ = opaque(_, "") in
   let _ = opaque(_, "test") in
-  let _ = opaque(_, "🌟あ♥️a🌕亜\n\o33\x333") in
+  let _ = opaque(_, "🌟あ♥️a🌕亜\n\u{33}\u{333}\u{1f338}\0\t\n\r\"\\\`") in
   Unit
 }
 
