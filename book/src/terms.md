@@ -429,7 +429,9 @@ define foo(): unit {
 
 ### Syntax
 
-`` `A` ``, `` `\n` ``, `` `\1234` ``, etc.
+`` `A` ``, `` `\n` ``, `` `\u{123}` ``, etc.
+
+The available escape sequences in rune literals are the same as those of [text literals](./terms.md#texts).
 
 ### Semantics
 
@@ -482,7 +484,22 @@ define foo(): unit {
 
 ### Syntax
 
-`"hello"`, `"Hello, world!\n"`, etc.
+`"hello"`, `"Hello, world!\n"`, `"\u{1f338} ← Cherry Blossom"`, etc.
+
+Below is the list of all the escape sequences in Neut:
+
+| Escape Sequence | Meaning                        |
+| --------------- | ------------------------------ |
+| `\0`            | U+0000 (null character)        |
+| `\t`            | U+0009 (horizontal tab)        |
+| `\n`            | U+000A (line feed)             |
+| `\r`            | U+000D (carriage return)       |
+| `\"`            | U+0022 (double quotation mark) |
+| `\\`            | U+005C (backslash)             |
+| `` \` ``        | U+0060 (backtick)              |
+| `\u{n}`         | U+n                            |
+
+The `n` in `\u{n}` must be a lowercase hexadecimal number.
 
 ### Semantics
 
