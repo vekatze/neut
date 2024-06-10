@@ -78,6 +78,7 @@ import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.NominalEnv
 import Scene.Parse.Discern.PatternMatrix
 import Scene.Parse.Discern.Struct
+import Scene.Parse.Discern.Text
 import Scene.Parse.Foreign
 import Scene.Parse.Util
 import Text.Read qualified as R
@@ -353,24 +354,25 @@ discern axis term =
         bind startLoc endLoc mxt e1 $
           bind' True startLoc endLoc (m', tmp, [], [], resultType) x' e2 (m' :< RT.Var (Var tmp))
     m :< RT.StaticText s str -> do
-      let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
       s' <- discern axis s
-      case strOrNone of
-        Nothing ->
-          Throw.raiseError m $ "Could not interpret the following as a string: " <> str
-        Just str' -> do
+      case parseText str of
+        Left reason ->
+          Throw.raiseError m $ "Could not interpret the following as a text: " <> str <> "\nReason: " <> reason
+        Right str' -> do
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
     m :< RT.Rune runeCons str -> do
-      let strOrNone = if str == "\"" then Just "\"" else R.readMaybe (T.unpack $ "\"" <> str <> "\"")
       let int32Type = WT.intTypeBySize m 32
       runeCons' <- discern axis runeCons
-      case strOrNone of
-        Just str'
-          | Just (c, "") <- T.uncons str' -> do
+      case parseText str of
+        Right str' -> do
+          case T.uncons str' of
+            Just (c, "") -> do
               let runeValue = calculateRuneValue $ encode [c]
               return $ m :< WT.PiElim runeCons' [m :< WT.Prim (WP.Value $ WPV.Int int32Type runeValue)]
-        _ ->
-          Throw.raiseError m $ "Could not interpret the following as a rune: " <> str
+            _ -> do
+              Throw.raiseError m "The content of a rune literal must be of length 1"
+        Left reason ->
+          Throw.raiseError m $ "Could not interpret the following as a rune: " <> str <> "\nReason: " <> reason
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do

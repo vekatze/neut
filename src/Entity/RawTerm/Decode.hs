@@ -117,7 +117,7 @@ toDoc term =
           attachComment c5 $ toDoc e2
         ]
     _ :< StaticText _ txt -> do
-      quoteText txt
+      D.text $ "\"" <> txt <> "\""
     _ :< Rune _ ch -> do
       D.text $ "`" <> T.replace "`" "\\`" ch <> "`"
     _ :< Magic c magic ->
@@ -265,10 +265,6 @@ toDoc term =
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
-
-quoteText :: T.Text -> D.Doc
-quoteText txt =
-  D.text $ "\"" <> txt <> "\""
 
 decodeDef :: (a -> D.Doc) -> T.Text -> C -> RawDef a -> D.Doc
 decodeDef nameDecoder keyword c def = do
