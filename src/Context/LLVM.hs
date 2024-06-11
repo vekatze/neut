@@ -113,6 +113,7 @@ clangLinkOpt objectPathList outputPath additionalOptionStr = do
     "-O2",
     "-flto=thin",
     "-pthread",
+    "-lm",
     "-o",
     toFilePath outputPath
     ]
