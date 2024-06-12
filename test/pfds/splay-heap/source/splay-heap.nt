@@ -3,7 +3,7 @@ data heap(a) {
 | Node(heap(a), a, heap(a))
 }
 
-define split(a: type, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
+define split(a: type, cmp: (a, a) -> ordering, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
   match t {
   | Leaf =>
     Pair(Leaf, Leaf)
@@ -47,7 +47,7 @@ define split(a: type, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a),
   }
 }
 
-define insert(a: type, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
+define insert(a: type, cmp: (a, a) -> ordering, x: a, t: heap(a)): heap(a) {
   let Pair(smaller, bigger) = split(_, cmp, x, t) in
   Node(smaller, x, bigger)
 }
@@ -86,7 +86,7 @@ define sum(xs: &list(int)): int {
   }
 }
 
-define compare-int-list(xs: list(int), ys: list(int)): order {
+define compare-int-list(xs: list(int), ys: list(int)): ordering {
   let x on xs = sum(xs) in
   let y on ys = sum(ys) in
   let _ = xs in

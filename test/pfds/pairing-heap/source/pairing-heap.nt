@@ -12,7 +12,7 @@ define find-min(a: type, h: &heap(a)): ?a {
   }
 }
 
-define merge(a: type, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
+define merge(a: type, cmp: (a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
   | Leaf, h2 =>
     h2
@@ -28,11 +28,11 @@ define merge(a: type, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   }
 }
 
-define insert(a: type, cmp: (a, a) -> order, x: a, h: heap(a)): heap(a) {
+define insert(a: type, cmp: (a, a) -> ordering, x: a, h: heap(a)): heap(a) {
   merge(_, cmp, Node(x, []), h)
 }
 
-define merge-pairs(a: type, cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
+define merge-pairs(a: type, cmp: (a, a) -> ordering, hs: list(heap(a))): heap(a) {
   match hs {
   | Nil =>
     Leaf
@@ -43,7 +43,7 @@ define merge-pairs(a: type, cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
   }
 }
 
-define delete-min(a: type, cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
+define delete-min(a: type, cmp: (a, a) -> ordering, h: heap(a)): ?heap(a) {
   match h {
   | Leaf =>
     none()
@@ -52,7 +52,7 @@ define delete-min(a: type, cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   }
 }
 
-define compare-int(x: int, y: int): order {
+define compare-int(x: int, y: int): ordering {
   if lt-int(x, y) {
     LT
   } else-if gt-int(x, y) {

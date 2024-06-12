@@ -11,7 +11,7 @@ data finite-map-signature(a, b) {
   )
 }
 
-define make-finite-map(a: type, b: type, compare: (a, a) -> order): finite-map-signature(a, b) {
+define make-finite-map(a: type, b: type, compare: (a, a) -> ordering): finite-map-signature(a, b) {
   Finite-Map of {
     empty = Leaf,
     insert = {
@@ -51,7 +51,7 @@ define make-finite-map(a: type, b: type, compare: (a, a) -> order): finite-map-s
   }
 }
 
-define compare-int(x: int, y: int): order {
+define compare-int(x: int, y: int): ordering {
   if lt-int(x, y) {
     LT
   } else-if gt-int(x, y) {

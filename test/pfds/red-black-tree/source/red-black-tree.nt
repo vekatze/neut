@@ -8,7 +8,7 @@ data tree(a) {
 | Node(color, tree(a), a, tree(a))
 }
 
-define member(a: type, cmp: (a, a) -> order, x: a, t: &tree(a)): bool {
+define member(a: type, cmp: (a, a) -> ordering, x: a, t: &tree(a)): bool {
   case t {
   | Leaf =>
     False
@@ -40,7 +40,7 @@ define balance(a: type, c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   }
 }
 
-define insert(a: type, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
+define insert(a: type, cmp: (a, a) -> ordering, x: a, t: tree(a)): tree(a) {
   let helper =
     define self(t: tree(a)): tree(a) {
       match t {
@@ -67,7 +67,7 @@ define insert(a: type, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
   }
 }
 
-define compare-int(x: () -> int, y: () -> int): order {
+define compare-int(x: () -> int, y: () -> int): ordering {
   if lt-int(x(), y()) {
     LT
   } else-if gt-int(x(), y()) {
