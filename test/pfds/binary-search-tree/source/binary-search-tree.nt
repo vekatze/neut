@@ -1,3 +1,7 @@
+import {
+  core.int.ord,
+}
+
 data set(a) {
 | Leaf
 | Node(set(a), a, set(a))
@@ -7,7 +11,7 @@ data set-signature(a) {
 | Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
 }
 
-define make-set-signature(a: type, compare: (a, a) -> order): set-signature(a) {
+define make-set-signature(a: type, compare: (a, a) -> ordering): set-signature(a) {
   Set of {
     empty = Leaf,
     insert = {
@@ -47,18 +51,8 @@ define make-set-signature(a: type, compare: (a, a) -> order): set-signature(a) {
   }
 }
 
-define compare-int(x: int, y: int): order {
-  if lt-int(x, y) {
-    LT
-  } else-if gt-int(x, y) {
-    GT
-  } else {
-    EQ
-  }
-}
-
 define main(): unit {
-  let int-set-signature = make-set-signature(int, compare-int) in
+  let int-set-signature = make-set-signature(int, core.int.ord.as-ord::compare) in
   match int-set-signature {
   | Set of {insert, member, empty} =>
     let my-set = insert(10, empty) in

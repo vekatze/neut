@@ -16,7 +16,7 @@ data heap-signature(a) {
   )
 }
 
-define make-heap-signature(a: type, compare: (a, a) -> order): heap-signature(a) {
+define make-heap-signature(a: type, compare: (a, a) -> ordering): heap-signature(a) {
   let merge =
     let rank =
       function (h: &heap(a)) {
@@ -96,7 +96,7 @@ define make-heap-signature(a: type, compare: (a, a) -> order): heap-signature(a)
   }
 }
 
-define compare-int(x: int, y: int): order {
+define compare-int(x: int, y: int): ordering {
   if lt-int(x, y) {
     LT
   } else-if gt-int(x, y) {

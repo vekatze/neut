@@ -1,16 +1,16 @@
 import {
-  Dict {dict, insert},
+  Dict {dictionary},
   core.control {grow},
-  core.int.loset,
-  core.int.parse {parse},
+  core.int.ord,
+  core.int.parse {parse-int},
   core.random {random},
 }
 
 constant intdict: Dict.trope(int) {
-  Dict.from-loset(core.int.loset.as-loset-N)
+  Dict.from-ord(core.int.ord.as-ord-N)
 }
 
-define make-big-dict(size: int): dict(int, int) {
+define make-big-dict(size: int): dictionary(int, int) {
   grow(Dict.empty(), size, function (acc, _) {
     let key = random(1000000) in
     let val = random(1000000) in
@@ -18,7 +18,7 @@ define make-big-dict(size: int): dict(int, int) {
   })
 }
 
-define random-lookup-sum(count: int, d: &dict(int, int)): unit {
+define random-lookup-sum(count: int, d: &dictionary(int, int)): unit {
   let rsum =
     grow(count, 0, function (acc, _) {
       let key = random(1000000) in
@@ -42,7 +42,7 @@ define main(): unit {
   match args {
   | [_, size-str] =>
     let _ on size-str =
-      match parse(size-str) {
+      match parse-int(size-str) {
       | Right(size) =>
         let big-dict = make-big-dict(size) in
         let _ on big-dict = random-lookup-sum(size, big-dict) in
