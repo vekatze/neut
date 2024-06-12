@@ -2261,16 +2261,16 @@ Derived from the desugared form.
 One possible use of `::` is to select a function from a record of functions:
 
 ```neut
-// dict.nt ---------------------------------
+// dictionary.nt ---------------------------------
 
 ...
 
 // declare a record of functions (like signatures in OCaml)
 data trope(k) {
 | Trope(
-    insert: <v>(k, v, dict(k, v)) -> dict(k, v),
-    lookup: <v>(&k, &dict(k, v)) -> ?&v,
-    delete: <v>(k, dict(k, v)) -> dict(k, v),
+    insert: <v>(k, v, dictionary(k, v)) -> dictionary(k, v),
+    lookup: <v>(&k, &dictionary(k, v)) -> ?&v,
+    delete: <v>(k, dictionary(k, v)) -> dictionary(k, v),
   )
 }
 
@@ -2287,7 +2287,7 @@ constant intdict: Dict.trope(int) {
 }
 
 // ... and use a function of the record
-define make-big-dict(): dict(int, int) {
+define make-big-dict(): dictionary(int, int) {
   loop(700000, Dict.empty(), function (acc, _) {
     let key = random(1000000) in
     let val = random(1000000) in
