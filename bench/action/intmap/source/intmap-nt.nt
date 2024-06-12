@@ -1,7 +1,7 @@
 import {
   IntMap {insert, intmap},
   core.control {grow},
-  core.int.parse {parse},
+  core.int.parse {parse-int},
   core.intmap {lookup},
   core.random {random},
 }
@@ -38,7 +38,7 @@ define main(): unit {
   match args {
   | [_, size-str] =>
     let _ on size-str =
-      match parse(size-str) {
+      match parse-int(size-str) {
       | Right(size) =>
         let big-dict = make-big-dict(size) in
         let _ on big-dict = random-lookup-sum(size, big-dict) in
