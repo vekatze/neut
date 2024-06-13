@@ -1,6 +1,7 @@
 module Scene.LSP.Lint (lint) where
 
 import Context.App
+import Context.Module qualified as Module
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
@@ -22,11 +23,13 @@ import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Path
 import Scene.Check qualified as Check
+import Scene.Fetch qualified as Fetch
 import Scene.Parse.Core qualified as Parse
 
 lint :: AppLsp () ()
 lint = do
   flushDiagnosticsBySource maxDiagNum (Just "neut")
+  lift $ Module.getMainModule >>= Fetch.fetch
   logList <- lift Check.check
   let uriDiagList = mapMaybe remarkToDignostic logList
   let diagGroupList' = NE.groupBy ((==) `on` fst) $ sortBy (compare `on` fst) uriDiagList
