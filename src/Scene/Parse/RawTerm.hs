@@ -390,7 +390,8 @@ rawTermMagicCast m c = do
     castTo <- rawExpr
     c4 <- delimiter ","
     value <- rawExpr
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Cast c1 (c2, castFrom) (c3, castTo) (c4, value))
+    c6 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Cast c1 (c2, castFrom) (c3, castTo) (c4, value) c6)
 
 rawTermMagicStore :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicStore m c = do
@@ -400,7 +401,8 @@ rawTermMagicStore m c = do
     value <- rawExpr
     c4 <- delimiter ","
     pointer <- rawExpr
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 (c2, lt) (c3, value) (c4, pointer))
+    c5 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 (c2, lt) (c3, value) (c4, pointer) c5)
 
 rawTermMagicLoad :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicLoad m c = do
@@ -408,7 +410,8 @@ rawTermMagicLoad m c = do
     lt <- lowType
     c3 <- delimiter ","
     pointer <- rawExpr
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, lt) (c3, pointer))
+    c4 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, lt) (c3, pointer) c4)
 
 rawTermMagicAlloca :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicAlloca m c = do
@@ -416,7 +419,8 @@ rawTermMagicAlloca m c = do
     lt <- lowType
     c3 <- delimiter ","
     size <- rawExpr
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, lt) (c3, size))
+    c4 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, lt) (c3, size) c4)
 
 rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicExternal m c0 = do
@@ -445,7 +449,8 @@ rawTermMagicGlobal m c = do
     (globalVarName, c3) <- string
     c4 <- delimiter ","
     lt <- lowType
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt))
+    c5 <- optional $ delimiter ","
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
 
 lowType :: Parser (RLT.RawLowType, C)
 lowType = do
