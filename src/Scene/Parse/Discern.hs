@@ -530,21 +530,21 @@ discernRawLowType m rlt = do
 discernMagic :: Axis -> Hint -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
 discernMagic axis m magic =
   case magic of
-    RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) -> do
+    RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
       from' <- discern axis from
       to' <- discern axis to
       e' <- discern axis e
       return $ M.Cast from' to' e'
-    RT.Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) -> do
+    RT.Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
       lt' <- discernRawLowType m lt
       value' <- discern axis value
       pointer' <- discern axis pointer
       return $ M.Store lt' value' pointer'
-    RT.Load _ (_, (lt, _)) (_, (pointer, _)) -> do
+    RT.Load _ (_, (lt, _)) (_, (pointer, _)) _ -> do
       lt' <- discernRawLowType m lt
       pointer' <- discern axis pointer
       return $ M.Load lt' pointer'
-    RT.Alloca _ (_, (lt, _)) (_, (size, _)) -> do
+    RT.Alloca _ (_, (lt, _)) (_, (size, _)) _ -> do
       lt' <- discernRawLowType m lt
       size' <- discern axis size
       return $ M.Alloca lt' size'
@@ -560,7 +560,7 @@ discernMagic axis m magic =
             lt' <- discernRawLowType m lt
             return (arg', lt')
       return $ M.External domList cod funcName args' varArgs'
-    RT.Global _ (_, (name, _)) (_, (lt, _)) -> do
+    RT.Global _ (_, (name, _)) (_, (lt, _)) _ -> do
       lt' <- discernRawLowType m lt
       return $ M.Global name lt'
 

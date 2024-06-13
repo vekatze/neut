@@ -198,12 +198,12 @@ type VarArg =
   (Hint, RawTerm, C, C, RLT.RawLowType)
 
 data RawMagic
-  = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm)
-  | Store C (EL RLT.RawLowType) (EL RawTerm) (EL RawTerm)
-  | Load C (EL RLT.RawLowType) (EL RawTerm)
-  | Alloca C (EL RLT.RawLowType) (EL RawTerm)
+  = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | Store C (EL RLT.RawLowType) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | Load C (EL RLT.RawLowType) (EL RawTerm) (Maybe C)
+  | Alloca C (EL RLT.RawLowType) (EL RawTerm) (Maybe C)
   | External C EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
-  | Global C (EL EN.ExternalName) (EL RLT.RawLowType)
+  | Global C (EL EN.ExternalName) (EL RLT.RawLowType) (Maybe C)
 
 -- elem
 type EL a =

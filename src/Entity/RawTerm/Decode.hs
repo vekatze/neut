@@ -120,47 +120,50 @@ toDoc term =
       D.text $ "\"" <> txt <> "\""
     _ :< Rune _ ch -> do
       D.text $ "`" <> T.replace "`" "\\`" ch <> "`"
-    _ :< Magic c magic ->
+    _ :< Magic c magic -> do
       case magic of
-        Cast c1 from to e -> do
-          let args = SE.fromListWithComment (Just SE.Paren) SE.Comma [from, to, e]
+        Cast c1 from to e mc -> do
+          let args = attachOptionalComment mc $ SE.fromListWithComment (Just SE.Paren) SE.Comma [from, to, e]
           D.join
             [ attachComment (c ++ c1) $ D.text "magic cast",
               SE.decode $ toDoc <$> args
             ]
-        Store c1 lt value pointer -> do
+        Store c1 lt value pointer mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic store",
               SE.decode $
-                SE.fromListWithComment
-                  (Just SE.Paren)
-                  SE.Comma
-                  [ RT.mapEL RLT.decode lt,
-                    RT.mapEL toDoc value,
-                    RT.mapEL toDoc pointer
-                  ]
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [ RT.mapEL RLT.decode lt,
+                      RT.mapEL toDoc value,
+                      RT.mapEL toDoc pointer
+                    ]
             ]
-        Load c1 lt pointer -> do
+        Load c1 lt pointer mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic load",
               SE.decode $
-                SE.fromListWithComment
-                  (Just SE.Paren)
-                  SE.Comma
-                  [ RT.mapEL RLT.decode lt,
-                    RT.mapEL toDoc pointer
-                  ]
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [ RT.mapEL RLT.decode lt,
+                      RT.mapEL toDoc pointer
+                    ]
             ]
-        Alloca c1 lt size -> do
+        Alloca c1 lt size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic alloca",
               SE.decode $
-                SE.fromListWithComment
-                  (Just SE.Paren)
-                  SE.Comma
-                  [ RT.mapEL RLT.decode lt,
-                    RT.mapEL toDoc size
-                  ]
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [ RT.mapEL RLT.decode lt,
+                      RT.mapEL toDoc size
+                    ]
             ]
         External c1 funcName c2 args varArgsOrNone -> do
           let args' = SE.decode $ fmap toDoc args
@@ -176,16 +179,17 @@ toDoc term =
                   PI.inject $ attachComment c2 args',
                   PI.inject $ attachComment c3 $ SE.decode $ fmap varArgToDoc varArgs
                 ]
-        Global c1 name lt -> do
+        Global c1 name lt mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic global",
               SE.decode $
-                SE.fromListWithComment
-                  (Just SE.Paren)
-                  SE.Comma
-                  [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
-                    RT.mapEL RLT.decode lt
-                  ]
+                attachOptionalComment mc $
+                  SE.fromListWithComment
+                    (Just SE.Paren)
+                    SE.Comma
+                    [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
+                      RT.mapEL RLT.decode lt
+                    ]
             ]
     _ :< Hole {} ->
       D.text "_"
@@ -532,3 +536,14 @@ decodeBrace' forceVertical c1 d c2 = do
       layout $ D.join [attachComment c1 d, C.asSuffix c2],
       PI.inject $ D.text "}"
     ]
+
+attachOptionalComment :: Maybe C -> SE.Series a -> SE.Series a
+attachOptionalComment mc se =
+  case mc of
+    Nothing ->
+      se
+    Just c ->
+      se
+        { SE.trailingComment = SE.trailingComment se ++ c,
+          SE.hasOptionalSeparator = True
+        }
