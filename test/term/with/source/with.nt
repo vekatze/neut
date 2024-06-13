@@ -19,7 +19,7 @@ define test(): either(&text, int) {
     let _ = type in
     bind _: bool = Right(True) in
     nop();
-    bind _: bool  =
+    bind _: bool =
       bind _: bool = Right(True) in
       nop();
       let _ = type in
@@ -42,8 +42,9 @@ define test2(): either(int, int) {
     bind _: bool = Right(True) in
     nop();
     let tmp = type in
-    bind _: bool  on tmp  =
+    bind _: bool on tmp =
       let _: &type = tmp in
+      pin _ = tmp in
       bind _: bool = Right(True) in
       nop();
       let _ = type in
