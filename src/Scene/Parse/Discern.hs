@@ -743,6 +743,7 @@ discernLet axis m letKind (mx, pat, c1, c2, t) mys e1 e2@(m2 :< _) startLoc endL
       RT.Bind -> do
         Throw.raiseError m "`bind` can only be used inside `with`"
       RT.Try -> do
+        let m' = blur m
         let mx' = blur mx
         let m2' = blur m2
         eitherTypeInner <- locatorToVarGlobal mx' coreEither
@@ -756,11 +757,11 @@ discernLet axis m letKind (mx, pat, c1, c2, t) mys e1 e2@(m2 :< _) startLoc endL
         eitherLeftVar <- locatorToVarGlobal mx' coreEitherLeft
         (mxt', eitherCont) <-
           discernBinderWithBody' axisCont (mx, tmpVar, c1, c2, eitherType) startLoc endLoc $
-            m
+            m'
               :< RT.DataElim
                 []
                 False
-                (SE.fromList'' [m :< RT.Var (Var tmpVar)])
+                (SE.fromList'' [m' :< RT.Var (Var tmpVar)])
                 ( SE.fromList
                     SE.Brace
                     SE.Bar
