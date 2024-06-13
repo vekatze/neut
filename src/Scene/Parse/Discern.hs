@@ -508,6 +508,10 @@ discern axis term =
         mUse :< RT.Use c1 item c2 vars c3 cont endLoc -> do
           let cont' = m :< RT.With (([], (binder, [])), ([], (cont, [])))
           discern axis $ mUse :< RT.Use c1 item c2 vars c3 cont' endLoc
+        mPin :< RT.Pin c1 (mx, x, c2, c3, t) c4 c5 e1 c6 startLoc c7 e2 endLoc -> do
+          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          discern axis $ mPin :< RT.Pin c1 (mx, x, c2, c3, t) c4 c5 e1' c6 startLoc c7 e2' endLoc
         _ ->
           discern axis body
     _ :< RT.Projection e (mProj, proj) loc -> do
