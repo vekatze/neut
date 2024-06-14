@@ -44,21 +44,21 @@ define tail(a: type, xs: &custom-stack(a)): ?&custom-stack(a) {
 }
 
 define main(): unit {
-  let xs = empty(() -> int) in
-  let v =
+  let !xs = empty(() -> int) in
+  let !v =
     Pair(function () {
       1
     }, function () {
       2
     })
   in
-  let ys = Cons(v, xs) in
-  let zs = Cons(v, Cons(v, ys)) in
-  let calc on zs, xs =
+  let ys = Cons(!v, !xs) in
+  let zs = Cons(!v, Cons(!v, ys)) in
+  let calc on zs, !xs =
     let _ = is-empty(_, zs) in
-    let _ = is-empty(_, xs) in
+    let _ = is-empty(_, !xs) in
     let h = head(_, zs) in
-    let _ = head(_, xs) in
+    let _ = head(_, !xs) in
     let _ = tail(_, zs) in
     let _ = tail(_, zs) in
     match h {
@@ -70,7 +70,7 @@ define main(): unit {
     }
   in
   let _ = zs in
-  let _ = xs in
+  let _ = !xs in
   print-int(calc);
   print("\n")
 }

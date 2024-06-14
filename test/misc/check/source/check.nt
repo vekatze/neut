@@ -15,10 +15,10 @@ define nil-cons-cons(xs: nat): int {
 }
 
 define main(): unit {
-  let n0 = Zero in
-  let n1 = Succ(n0) in
+  let !n0 = Zero in
+  let n1 = Succ(!n0) in
   let n2 = Succ(Succ(Zero)) in
-  let z0 = nil-cons-cons(n0) in
+  let z0 = nil-cons-cons(!n0) in
   let z1 = nil-cons-cons(n1) in
   let z2 = nil-cons-cons(n2) in
   print-int(add-int(z0, add-int(z1, z2)));

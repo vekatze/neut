@@ -12,12 +12,12 @@ define add-nat(x: nat, y: nat): nat {
   }
 }
 
-define mul-nat(x: nat, y: nat): nat {
+define mul-nat(x: nat, !y: nat): nat {
   match x {
   | Zero =>
     Zero
   | Succ(m) =>
-    add-nat(mul-nat(m, y), y)
+    add-nat(mul-nat(m, !y), !y)
   }
 }
 
@@ -30,30 +30,30 @@ define interpret(n: nat): int {
   }
 }
 
-define gen(n: nat): list(nat) {
-  match n {
+define gen(!n: nat): list(nat) {
+  match !n {
   | Zero =>
     Nil
   | Succ(m) =>
-    Cons(n, gen(m))
+    Cons(!n, gen(m))
   }
 }
 
-define fold-r(a: type, b: type, f: (b, a) -> a, acc: a, xs: list(b)): a {
+define fold-r(a: type, b: type, !f: (b, a) -> a, acc: a, xs: list(b)): a {
   match xs {
   | Nil =>
     acc
   | Cons(y, ys) =>
-    f(y, fold-r(a, b, f, acc, ys))
+    !f(y, fold-r(a, b, !f, acc, ys))
   }
 }
 
-define tails(a: type, xs: list(a)): list(list(a)) {
-  match xs {
+define tails(a: type, !xs: list(a)): list(list(a)) {
+  match !xs {
   | Nil =>
     Cons(Nil, Nil)
-  | Cons(_, xs) =>
-    Cons(xs, tails(a, xs))
+  | Cons(_, !xs) =>
+    Cons(!xs, tails(a, !xs))
   }
 }
 
@@ -67,35 +67,35 @@ define head(xs: list(nat)): nat {
 }
 
 define main(): unit {
-  let n = Succ(Succ(Succ(Zero))) in
-  let _ = n in
-  let _ = n in
-  let _ = n in
-  let m = mul-nat(n, mul-nat(n, n)) in
+  let !n = Succ(Succ(Succ(Zero))) in
+  let _ = !n in
+  let _ = !n in
+  let _ = !n in
+  let !m = mul-nat(!n, mul-nat(!n, !n)) in
   // 27
-  let _ = m in
-  let _ = m in
+  let _ = !m in
+  let _ = !m in
   // [27, 26, 25, ..., 1]
-  let xs = gen(m) in
+  let xs = gen(!m) in
   // [[26, ...], [25, ...], ..., [1, ...]]
-  let yss = tails(_, xs) in
-  let _ = yss in
-  let _ = yss in
-  let zs =
+  let !yss = tails(_, xs) in
+  let _ = !yss in
+  let _ = !yss in
+  let !zs =
     // [26, ..., 1]
     map(
       function (l) {
         head(l)
       },
-      yss,
+      !yss,
     )
   in
-  let _ = zs in
-  let _ = zs in
-  let _ = zs in
-  let _ = zs in
-  let _ = zs in
-  let result-nat =
+  let _ = !zs in
+  let _ = !zs in
+  let _ = !zs in
+  let _ = !zs in
+  let _ = !zs in
+  let !result-nat =
     // 26 + ... + 1 = 351
     fold-r(
       nat,
@@ -104,12 +104,12 @@ define main(): unit {
         add-nat(a, b)
       },
       Zero,
-      zs,
+      !zs,
     )
   in
-  let _ = result-nat in
-  let _ = result-nat in
-  let result = interpret(result-nat) in
+  let _ = !result-nat in
+  let _ = !result-nat in
+  let result = interpret(!result-nat) in
   print-int(result);
   print("\n")
 }

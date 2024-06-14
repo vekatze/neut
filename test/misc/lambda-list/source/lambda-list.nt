@@ -21,12 +21,12 @@ define add-nat(x: nat, y: nat): nat {
   }
 }
 
-define mul-nat(x: nat, y: nat): nat {
+define mul-nat(x: nat, !y: nat): nat {
   match x {
   | Zero =>
     Zero
   | Succ(m) =>
-    add-nat(mul-nat(m, y), y)
+    add-nat(mul-nat(m, !y), !y)
   }
 }
 
@@ -34,37 +34,37 @@ define fold(a: type, fs: list((a) -> a), x: a): a {
   match fs {
   | Nil =>
     x
-  | Cons(f, rest) =>
-    let _ = rest in
-    let _ = rest in
-    f(fold(a, rest, x))
+  | Cons(f, !rest) =>
+    let _ = !rest in
+    let _ = !rest in
+    f(fold(a, !rest, x))
   }
 }
 
 define main(): unit {
   let n1 = Succ(Zero) in
-  let n2 = Succ(n1) in
-  let n3 = Succ(n2) in
+  let !n2 = Succ(n1) in
+  let !n3 = Succ(!n2) in
   let add2 =
     function (x) {
-      add-nat(x, n2)
+      add-nat(x, !n2)
     }
   in
   let mul3 =
     function (x) {
-      mul-nat(x, n3)
+      mul-nat(x, !n3)
     }
   in
-  let mul9 =
+  let !mul9 =
     function (x) {
-      mul-nat(x, mul-nat(n3, n3))
+      mul-nat(x, mul-nat(!n3, !n3))
     }
   in
-  let _ = mul9 in
-  let fs = Cons(add2, Cons(mul3, Cons(mul9, Nil))) in
+  let _ = !mul9 in
+  let fs = Cons(add2, Cons(mul3, Cons(!mul9, Nil))) in
   let gs = fs in
   let hs = gs in
   // 2 + (3 * (9 * 3)) = 83
-  print-int(interpret(fold(_, hs, n3)));
+  print-int(interpret(fold(_, hs, !n3)));
   print("\n")
 }

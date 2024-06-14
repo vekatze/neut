@@ -18,12 +18,12 @@ define merge(a: type, cmp: (a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(a
     h2
   | h1, Leaf =>
     h1
-  | Node(x1, hs1), Node(x2, hs2) =>
-    match cmp(x1, x2) {
+  | Node(!x1, hs1), Node(!x2, hs2) =>
+    match cmp(!x1, !x2) {
     | LT =>
-      Node(x1, Cons(Node(x2, hs2), hs1))
+      Node(!x1, Cons(Node(!x2, hs2), hs1))
     | _ =>
-      Node(x2, Cons(Node(x1, hs1), hs2))
+      Node(!x2, Cons(Node(!x1, hs1), hs2))
     }
   }
 }
@@ -32,14 +32,14 @@ define insert(a: type, cmp: (a, a) -> ordering, x: a, h: heap(a)): heap(a) {
   merge(_, cmp, Node(x, []), h)
 }
 
-define merge-pairs(a: type, cmp: (a, a) -> ordering, hs: list(heap(a))): heap(a) {
+define merge-pairs(a: type, !cmp: (a, a) -> ordering, hs: list(heap(a))): heap(a) {
   match hs {
   | Nil =>
     Leaf
   | Cons(h, Nil) =>
     h
   | Cons(h1, Cons(h2, rest)) =>
-    merge(_, cmp, merge(_, cmp, h1, h2), merge-pairs(_, cmp, rest))
+    merge(_, !cmp, merge(_, !cmp, h1, h2), merge-pairs(_, !cmp, rest))
   }
 }
 

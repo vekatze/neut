@@ -124,10 +124,10 @@ define test-behavior(): unit {
   in
   let _ = ch in
   let ch = new-channel() in
-  let ch: channel(int) = ch in
-  let _ = ch in
-  let _ on ch = send(ch, 1) in
-  let ch = ch in
+  let !ch: channel(int) = ch in
+  let _ = !ch in
+  let _ on !ch = send(!ch, 1) in
+  let ch = !ch in
   let ch-clone = ch in
   let _ on ch-clone = send(ch-clone, 1) in
   let tmp on ch-clone =

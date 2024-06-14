@@ -15,35 +15,35 @@ define make-finite-map(a: type, b: type, compare: (a, a) -> ordering): finite-ma
   Finite-Map of {
     empty = Leaf,
     insert = {
-      define insert(key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
+      define insert(!key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
         match haystack {
         | Leaf =>
-          Node(Leaf, key, value, Leaf)
-        | Node(left, k, v, right) =>
-          match compare(key, k) {
+          Node(Leaf, !key, value, Leaf)
+        | Node(left, !k, v, right) =>
+          match compare(!key, !k) {
           | LT =>
-            Node(insert(key, value, left), k, v, right)
+            Node(insert(!key, value, left), !k, v, right)
           | EQ =>
-            Node(left, k, value, right)
+            Node(left, !k, value, right)
           | GT =>
-            Node(left, k, v, insert(key, value, right))
+            Node(left, !k, v, insert(!key, value, right))
           }
         }
       }
     },
     lookup = {
-      define lookup(key: a, haystack: &finite-map(a, b)): ?b {
+      define lookup(!key: a, haystack: &finite-map(a, b)): ?b {
         case haystack {
         | Leaf =>
           none()
         | Node(left, k, v, right) =>
-          match compare(key, *k) {
+          match compare(!key, *k) {
           | LT =>
-            lookup(key, left)
+            lookup(!key, left)
           | EQ =>
             Right(*v)
           | GT =>
-            lookup(key, right)
+            lookup(!key, right)
           }
         }
       }
@@ -62,16 +62,16 @@ define compare-int(x: int, y: int): ordering {
 }
 
 define main(): unit {
-  let Finite-Map of {empty, insert, lookup} = make-finite-map(_, _, compare-int) in
-  let mymap = insert(1, [type], empty) in
-  let mymap = insert(2, [type, type], mymap) in
-  let mymap = insert(2, [type, type], mymap) in
-  let mymap = insert(2, [int], mymap) in
-  let mymap = insert(3, [() -> int], mymap) in
-  let _ = mymap in
-  let _ = mymap in
-  let result on mymap =
-    match lookup(2, mymap) {
+  let Finite-Map of {empty, insert = !insert, lookup} = make-finite-map(_, _, compare-int) in
+  let mymap = !insert(1, [type], empty) in
+  let mymap = !insert(2, [type, type], mymap) in
+  let mymap = !insert(2, [type, type], mymap) in
+  let mymap = !insert(2, [int], mymap) in
+  let !mymap = !insert(3, [() -> int], mymap) in
+  let _ = !mymap in
+  let _ = !mymap in
+  let result on !mymap =
+    match lookup(2, !mymap) {
     | Left(_) =>
       1
     | Right(xs) =>
@@ -83,7 +83,7 @@ define main(): unit {
       }
     }
   in
-  let _ = mymap in
+  let _ = !mymap in
   print-int(result);
   print("\n")
 }

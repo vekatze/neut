@@ -8,18 +8,18 @@ data tree(a) {
 | Node(color, tree(a), a, tree(a))
 }
 
-define member(a: type, cmp: (a, a) -> ordering, x: a, t: &tree(a)): bool {
+define member(a: type, !cmp: (a, a) -> ordering, !x: a, t: &tree(a)): bool {
   case t {
   | Leaf =>
     False
   | Node(_, t1, v, t2) =>
-    match cmp(x, *v) {
+    match !cmp(!x, *v) {
     | LT =>
-      member(a, cmp, x, t1)
+      member(a, !cmp, !x, t1)
     | EQ =>
       True
     | GT =>
-      member(a, cmp, x, t2)
+      member(a, !cmp, !x, t2)
     }
   }
 }
@@ -46,14 +46,14 @@ define insert(a: type, cmp: (a, a) -> ordering, x: a, t: tree(a)): tree(a) {
       match t {
       | Leaf =>
         Node(Red, Leaf, x, Leaf)
-      | Node(c, left, y, right) =>
-        match cmp(x, y) {
+      | Node(c, left, !y, right) =>
+        match cmp(x, !y) {
         | LT =>
-          balance(a, c, self(left), y, right)
+          balance(a, c, self(left), !y, right)
         | EQ =>
-          Node(c, left, y, right)
+          Node(c, left, !y, right)
         | GT =>
-          balance(a, c, left, y, self(right))
+          balance(a, c, left, !y, self(right))
         }
       }
     }
@@ -67,10 +67,10 @@ define insert(a: type, cmp: (a, a) -> ordering, x: a, t: tree(a)): tree(a) {
   }
 }
 
-define compare-int(x: () -> int, y: () -> int): ordering {
-  if lt-int(x(), y()) {
+define compare-int(!x: () -> int, !y: () -> int): ordering {
+  if lt-int(!x(), !y()) {
     LT
-  } else-if gt-int(x(), y()) {
+  } else-if gt-int(!x(), !y()) {
     GT
   } else {
     EQ
