@@ -1,5 +1,6 @@
 module Scene.Check
   ( check,
+    checkModule,
     checkSingle,
   )
 where
@@ -8,6 +9,7 @@ import Context.App
 import Context.Module (getMainModule)
 import Context.Throw qualified as Throw
 import Control.Monad
+import Entity.Module qualified as M
 import Entity.Remark
 import Entity.Target
 import Path
@@ -20,18 +22,21 @@ import UnliftIO.Async
 
 check :: App [Remark]
 check = do
-  _check Peripheral
+  getMainModule >>= _check Peripheral
 
 checkSingle :: Path Abs File -> App [Remark]
 checkSingle path = do
-  _check (PeripheralSingle path)
+  getMainModule >>= _check (PeripheralSingle path)
 
-_check :: Target -> App [Remark]
-_check target = do
+checkModule :: M.Module -> App [Remark]
+checkModule baseModule = do
+  _check Peripheral baseModule
+
+_check :: Target -> M.Module -> App [Remark]
+_check target baseModule = do
   Throw.collectLogs $ do
     Initialize.initializeForTarget
-    mainModule <- getMainModule
-    (_, dependenceSeq) <- Unravel.unravel mainModule target
+    (_, dependenceSeq) <- Unravel.unravel baseModule target
     contentSeq <- forConcurrently dependenceSeq $ \source -> do
       cacheOrContent <- Load.load target source
       return (source, cacheOrContent)
