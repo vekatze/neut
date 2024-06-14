@@ -59,12 +59,13 @@ inferStmt :: WeakStmt -> App WeakStmt
 inferStmt stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
-      (impArgs', varEnv) <- inferBinder' [] impArgs
-      (expArgs', varEnv') <- inferBinder' varEnv expArgs
-      codType' <- inferType varEnv' codType
+      axis <- createNewAxis
+      (impArgs', axis') <- inferBinder' axis impArgs
+      (expArgs', axis'') <- inferBinder' axis' expArgs
+      codType' <- inferType axis'' codType
       insertType x $ m :< WT.Pi impArgs' expArgs' codType'
       stmtKind' <- inferStmtKind stmtKind
-      (e', te) <- infer varEnv' e
+      (e', te) <- infer axis'' e
       insConstraintEnv codType' te
       when (DD.isEntryPoint x) $ do
         let _m = m {metaShouldSaveLocation = False}
@@ -72,9 +73,11 @@ inferStmt stmt =
         insConstraintEnv (m :< WT.Pi [] [] unitType) (m :< WT.Pi impArgs' expArgs' codType')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgs' expArgs' codType' e'
     WeakStmtDefineConst m dd t v -> do
-      t' <- inferType [] t
+      axis1 <- createNewAxis
+      t' <- inferType axis1 t
       insertType dd $ m :< WT.Pi [] [] t'
-      (v', tv) <- infer [] v
+      axis2 <- createNewAxis
+      (v', tv) <- infer axis2 v
       insConstraintEnv t' tv
       return $ WeakStmtDefineConst m dd t' v'
     WeakStmtNominal m geistList -> do
@@ -85,9 +88,10 @@ inferStmt stmt =
 
 inferGeist :: G.Geist WT.WeakTerm -> App (G.Geist WT.WeakTerm)
 inferGeist G.Geist {..} = do
-  (impArgs', varEnv) <- inferBinder' [] impArgs
-  (expArgs', varEnv') <- inferBinder' varEnv expArgs
-  cod' <- inferType varEnv' cod
+  axis <- createNewAxis
+  (impArgs', axis') <- inferBinder' axis impArgs
+  (expArgs', axis'') <- inferBinder' axis' expArgs
+  cod' <- inferType axis'' cod
   insertType name $ loc :< WT.Pi impArgs' expArgs' cod'
   return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
@@ -107,13 +111,15 @@ inferStmtKind stmtKind =
     Normal {} ->
       return stmtKind
     Data dataName dataArgs consInfoList -> do
-      (dataArgs', varEnv) <- inferBinder' [] dataArgs
+      empty <- createNewAxis
+      (dataArgs', varEnv) <- inferBinder' empty dataArgs
       consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
         (consArgs', _) <- inferBinder' varEnv consArgs
         return (m, dd, constLike, consArgs', discriminant)
       return $ Data dataName dataArgs' consInfoList'
     DataIntro consName dataArgs consArgs discriminant -> do
-      (dataArgs', varEnv) <- inferBinder' [] dataArgs
+      empty <- createNewAxis
+      (dataArgs', varEnv) <- inferBinder' empty dataArgs
       (consArgs', _) <- inferBinder' varEnv consArgs
       return $ DataIntro consName dataArgs' consArgs' discriminant
 
@@ -129,8 +135,25 @@ getUnitType m = do
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
   return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
 
-infer :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
-infer varEnv term =
+createNewAxis :: App Axis
+createNewAxis =
+  return Axis {varEnv = []}
+
+extendAxis :: BinderF WT.WeakTerm -> Axis -> Axis
+extendAxis (mx, x, t) axis = do
+  if isHole x then axis else axis {varEnv = (mx, x, t) : varEnv axis}
+
+extendAxis' :: BinderF WT.WeakTerm -> Axis -> Axis
+extendAxis' (mx, x, t) axis = do
+  axis {varEnv = (mx, x, t) : varEnv axis}
+
+newtype Axis
+  = Axis
+  { varEnv :: BoundVarEnv
+  }
+
+infer :: Axis -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
+infer axis term =
   case term of
     _ :< WT.Tau ->
       return (term, term)
@@ -141,85 +164,85 @@ infer varEnv term =
       _ :< t <- Type.lookup m name
       return (term, m :< t)
     m :< WT.Pi impArgs expArgs t -> do
-      (impArgs', varEnv') <- inferPiBinder varEnv impArgs
-      (expArgs', varEnv'') <- inferPiBinder varEnv' expArgs
-      t' <- inferType varEnv'' t
+      (impArgs', axis') <- inferPiBinder axis impArgs
+      (expArgs', axis'') <- inferPiBinder axis' expArgs
+      t' <- inferType axis'' t
       return (m :< WT.Pi impArgs' expArgs' t', m :< WT.Tau)
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
-          (impArgs', varEnv') <- inferBinder' varEnv impArgs
-          (expArgs', varEnv'') <- inferBinder' varEnv' expArgs
-          codType' <- inferType varEnv'' codType
+          (impArgs', axis') <- inferBinder' axis impArgs
+          (expArgs', axis'') <- inferBinder' axis' expArgs
+          codType' <- inferType axis'' codType
           let piType = m :< WT.Pi impArgs' expArgs' codType'
           insWeakTypeEnv x piType
-          (e', tBody) <- infer varEnv'' e
+          (e', tBody) <- infer axis'' e
           insConstraintEnv codType' tBody
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e'
           return (term', piType)
         LK.Normal codType -> do
-          (impArgs', varEnv') <- inferBinder' varEnv impArgs
-          (expArgs', varEnv'') <- inferBinder' varEnv' expArgs
-          codType' <- inferType varEnv'' codType
-          (e', t') <- infer varEnv'' e
+          (impArgs', axis') <- inferBinder' axis impArgs
+          (expArgs', axis'') <- inferBinder' axis' expArgs
+          codType' <- inferType axis'' codType
+          (e', t') <- infer axis'' e
           insConstraintEnv codType' t'
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal codType'}) impArgs' expArgs' e'
           return (term', m :< WT.Pi impArgs' expArgs' t')
     m :< WT.PiElim e es -> do
-      etl <- infer varEnv e
-      etls <- mapM (infer varEnv) es
-      inferPiElim varEnv m etl etls
+      etl <- infer axis e
+      etls <- mapM (infer axis) es
+      inferPiElim axis m etl etls
     m :< WT.PiElimExact e -> do
-      (e', t) <- infer varEnv e
+      (e', t) <- infer axis e
       t' <- resolveType t
       case t' of
         _ :< WT.Pi impArgs expArgs codType -> do
-          holes <- mapM (const $ newHole m varEnv) impArgs
+          holes <- mapM (const $ newHole m $ varEnv axis) impArgs
           let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impArgs) (map Right holes)
           (expArgs', _) <- Subst.subst' sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
           codType' <- Subst.subst sub codType
           lamID <- Gensym.newCount
-          infer varEnv $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim e' expArgs'')
+          infer axis $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim e' expArgs'')
         _ ->
           Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
-      (es', _) <- mapAndUnzipM (infer varEnv) es
+      (es', _) <- mapAndUnzipM (infer axis) es
       return (m :< WT.Data attr name es', m :< WT.Tau)
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
-      (dataArgs', _) <- mapAndUnzipM (infer varEnv) dataArgs
-      (consArgs', _) <- mapAndUnzipM (infer varEnv) consArgs
+      (dataArgs', _) <- mapAndUnzipM (infer axis) dataArgs
+      (consArgs', _) <- mapAndUnzipM (infer axis) consArgs
       let dataType = m :< WT.Data (AttrD.Attr {..}) dataName dataArgs'
       return (m :< WT.DataIntro attr consName dataArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
-      (es', ts') <- mapAndUnzipM (infer varEnv) es
+      (es', ts') <- mapAndUnzipM (infer axis) es
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
-      (tree', _ :< treeType) <- inferDecisionTree m varEnv tree
+      (tree', _ :< treeType) <- inferDecisionTree m axis tree
       return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', m :< treeType)
     m :< WT.Noema t -> do
-      t' <- inferType varEnv t
+      t' <- inferType axis t
       return (m :< WT.Noema t', m :< WT.Tau)
     m :< WT.Embody _ e -> do
-      (e', noemaType) <- infer varEnv e
-      resultType <- newHole m varEnv
+      (e', noemaType) <- infer axis e
+      resultType <- newHole m (varEnv axis)
       insConstraintEnv (m :< WT.Noema resultType) noemaType
       return (m :< WT.Embody resultType e', resultType)
     _ :< WT.Actual e -> do
-      (e', t') <- infer varEnv e
+      (e', t') <- infer axis e
       insertActualityConstraint t'
       return (e', t')
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
-      (e1', t1') <- infer varEnv e1
-      t' <- inferType varEnv t >>= resolveType
+      (e1', t1') <- infer axis e1
+      t' <- inferType axis t >>= resolveType
       insWeakTypeEnv x t'
       case opacity of
         WT.Noetic ->
           insertActualityConstraint t'
         _ ->
           return ()
-      insConstraintEnv t' t1' -- run this before `infer varEnv e2`
-      (e2', t2') <- infer varEnv e2 -- no context extension
+      insConstraintEnv t' t1' -- run this before `infer axis e2`
+      (e2', t2') <- infer axis e2 -- no context extension
       return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
     m :< WT.Hole holeID _ -> do
       let rawHoleID = HID.reify holeID
@@ -228,7 +251,7 @@ infer varEnv term =
         Just (_ :< holeTerm, _ :< holeType) -> do
           return (m :< holeTerm, m :< holeType)
         Nothing -> do
-          let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) varEnv
+          let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) (varEnv axis)
           let holeTerm = m :< WT.Hole holeID holeArgs
           holeType <- Gensym.newHole m holeArgs
           insHoleEnv rawHoleID holeTerm holeType
@@ -239,42 +262,47 @@ infer varEnv term =
       | WP.Value primValue <- prim ->
           case primValue of
             WPV.Int t v -> do
-              t' <- inferType [] t
+              empty <- createNewAxis
+              t' <- inferType empty t
               return (m :< WT.Prim (WP.Value (WPV.Int t' v)), t')
             WPV.Float t v -> do
-              t' <- inferType [] t
+              empty <- createNewAxis
+              t' <- inferType empty t
               return (m :< WT.Prim (WP.Value (WPV.Float t' v)), t')
             WPV.Op op -> do
               primOpType <- primOpToType m op
               return (term, weaken primOpType)
             WPV.StaticText t text -> do
-              t' <- inferType [] t
+              empty <- createNewAxis
+              t' <- inferType empty t
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.Noema t')
     m :< WT.Magic magic -> do
       case magic of
         M.Cast from to value -> do
-          from' <- inferType varEnv from
-          to'@(_ :< toInner) <- inferType varEnv to
-          (value', t) <- infer varEnv value
+          from' <- inferType axis from
+          to'@(_ :< toInner) <- inferType axis to
+          (value', t) <- infer axis value
           insConstraintEnv from' t
           return (m :< WT.Magic (M.Cast from' to' value'), m :< toInner)
         M.Alloca lt size -> do
-          (size', sizeType) <- infer varEnv size
+          (size', sizeType) <- infer axis size
           intType <- getIntType m
           insConstraintEnv intType sizeType
           return (m :< WT.Magic (M.Alloca lt size'), intType)
         _ -> do
-          magic' <- mapM (infer varEnv >=> return . fst) magic
-          resultType <- newHole m varEnv
+          magic' <- mapM (infer axis >=> return . fst) magic
+          resultType <- newHole m (varEnv axis)
           return (m :< WT.Magic magic', resultType)
     m :< WT.Annotation logLevel annot e -> do
-      (e', t) <- infer varEnv e
+      (e', t) <- infer axis e
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
     m :< WT.Resource resourceID discarder copier -> do
-      (discarder', td) <- infer [] discarder
-      (copier', tc) <- infer [] copier
+      empty1 <- createNewAxis
+      (discarder', td) <- infer empty1 discarder
+      empty2 <- createNewAxis
+      (copier', tc) <- infer empty2 copier
       x <- Gensym.newIdentFromText "_"
       intType <- getIntType m
       let tDiscard = m :< WT.Pi [] [(m, x, intType)] intType
@@ -283,22 +311,22 @@ infer varEnv term =
       insConstraintEnv tCopy tc
       return (m :< WT.Resource resourceID discarder' copier', m :< WT.Tau)
     m :< WT.Use e@(mt :< _) xts cont -> do
-      (_, t') <- infer varEnv e
+      (_, t') <- infer axis e
       t'' <- resolveType t'
       case t'' of
         _ :< WT.Data attr _ dataArgs
           | AttrD.Attr {..} <- attr,
             [(consDD, isConstLike')] <- consNameList -> do
               (_, keyList) <- KeyArg.lookup m consDD
-              defaultKeyMap <- constructDefaultKeyMap varEnv m keyList
+              defaultKeyMap <- constructDefaultKeyMap axis m keyList
               let specifiedKeyMap = Map.fromList $ flip map xts $ \(mx, x, t) -> (Ident.toText x, (mx, x, t))
               let keyMap = Map.union specifiedKeyMap defaultKeyMap
               reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
-              dataArgs' <- mapM (const $ newTypedHole m varEnv) [1 .. length dataArgs]
+              dataArgs' <- mapM (const $ newTypedHole m (varEnv axis)) [1 .. length dataArgs]
               cursor <- Gensym.newIdentFromText "cursor"
               od <- OptimizableData.lookup consDD
               let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
-              infer varEnv $
+              infer axis $
                 m
                   :< WT.DataElim
                     False
@@ -341,10 +369,10 @@ adjustCont m xts =
     (mx, x, t) : rest ->
       ((mx, x, t), mx :< WT.Var x) : adjustCont m rest
 
-constructDefaultKeyMap :: BoundVarEnv -> Hint -> [Key] -> App (Map.HashMap Key (BinderF WT.WeakTerm))
-constructDefaultKeyMap varEnv m keyList = do
+constructDefaultKeyMap :: Axis -> Hint -> [Key] -> App (Map.HashMap Key (BinderF WT.WeakTerm))
+constructDefaultKeyMap axis m keyList = do
   names <- mapM (const Gensym.newIdentForHole) keyList
-  ts <- mapM (const $ newHole m varEnv) names
+  ts <- mapM (const $ newHole m $ varEnv axis) names
   return $ Map.fromList $ zipWith (\k (v, t) -> (k, (m, v, t))) keyList $ zip names ts
 
 inferArgs ::
@@ -365,53 +393,52 @@ inferArgs sub m args1 args2 cod =
     _ ->
       Throw.raiseCritical m "Invalid argument passed to inferArgs"
 
-inferType :: BoundVarEnv -> WT.WeakTerm -> App WT.WeakTerm
+inferType :: Axis -> WT.WeakTerm -> App WT.WeakTerm
 inferType varEnv t = do
   (t', u) <- infer varEnv t
   insConstraintEnv (WT.metaOf t :< WT.Tau) u
   return t'
 
 inferPiBinder ::
-  BoundVarEnv ->
+  Axis ->
   [BinderF WT.WeakTerm] ->
-  App ([BinderF WT.WeakTerm], BoundVarEnv)
-inferPiBinder varEnv binder =
+  App ([BinderF WT.WeakTerm], Axis)
+inferPiBinder axis binder =
   case binder of
     [] -> do
-      return ([], varEnv)
+      return ([], axis)
     ((mx, x, t) : xts) -> do
-      t' <- inferType varEnv t
+      t' <- inferType axis t
       insWeakTypeEnv x t'
-      let varEnv' = if isHole x then varEnv else (mx, x, t') : varEnv
-      (xtls', varEnv'') <- inferPiBinder varEnv' xts
-      return ((mx, x, t') : xtls', varEnv'')
+      (xtls', axis') <- inferPiBinder (extendAxis (mx, x, t') axis) xts
+      return ((mx, x, t') : xtls', axis')
 
 inferBinder' ::
-  BoundVarEnv ->
+  Axis ->
   [BinderF WT.WeakTerm] ->
-  App ([BinderF WT.WeakTerm], BoundVarEnv)
-inferBinder' varEnv binder =
+  App ([BinderF WT.WeakTerm], Axis)
+inferBinder' axis binder =
   case binder of
     [] -> do
-      return ([], varEnv)
+      return ([], axis)
     ((mx, x, t) : xts) -> do
-      t' <- inferType varEnv t
+      t' <- inferType axis t
       insWeakTypeEnv x t'
-      (xts', newVarEnv) <- inferBinder' ((mx, x, t') : varEnv) xts
-      return ((mx, x, t') : xts', newVarEnv)
+      (xts', axis') <- inferBinder' (extendAxis' (mx, x, t') axis) xts
+      return ((mx, x, t') : xts', axis')
 
 inferPiElim ::
-  BoundVarEnv ->
+  Axis ->
   Hint ->
   (WT.WeakTerm, WT.WeakTerm) ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
   App (WT.WeakTerm, WT.WeakTerm)
-inferPiElim varEnv m (e, t) expArgs = do
+inferPiElim axis m (e, t) expArgs = do
   t' <- resolveType t
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       ensureArityCorrectness e (length expPiArgs) (length expArgs)
-      impArgs <- mapM (const $ newTypedHole m varEnv) [1 .. length impPiArgs]
+      impArgs <- mapM (const $ newTypedHole m $ varEnv axis) [1 .. length impPiArgs]
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
@@ -477,7 +504,7 @@ primOpToType m op = do
   return $ m :< TM.Pi [] xts cod'
 
 inferLet ::
-  BoundVarEnv ->
+  Axis ->
   (BinderF WT.WeakTerm, WT.WeakTerm) ->
   App (BinderF WT.WeakTerm, WT.WeakTerm)
 inferLet varEnv ((mx, x, t), e1) = do
@@ -489,39 +516,39 @@ inferLet varEnv ((mx, x, t), e1) = do
 
 inferDecisionTree ::
   Hint ->
-  BoundVarEnv ->
+  Axis ->
   DT.DecisionTree WT.WeakTerm ->
   App (DT.DecisionTree WT.WeakTerm, WT.WeakTerm)
-inferDecisionTree m varEnv tree =
+inferDecisionTree m axis tree =
   case tree of
     DT.Leaf ys letSeq body -> do
-      letSeq' <- mapM (inferLet varEnv) letSeq
-      (body', answerType) <- infer varEnv body
+      letSeq' <- mapM (inferLet axis) letSeq
+      (body', answerType) <- infer axis body
       return (DT.Leaf ys letSeq' body', answerType)
     DT.Unreachable -> do
-      h <- newHole m varEnv
+      h <- newHole m (varEnv axis)
       return (DT.Unreachable, h)
     DT.Switch (cursor, mCursor :< _) clauseList -> do
       _ :< cursorType <- lookupWeakTypeEnv m cursor
       let cursorType' = mCursor :< cursorType
-      (clauseList', answerType) <- inferClauseList m varEnv cursorType' clauseList
+      (clauseList', answerType) <- inferClauseList m axis cursorType' clauseList
       return (DT.Switch (cursor, cursorType') clauseList', answerType)
 
 inferClauseList ::
   Hint ->
-  BoundVarEnv ->
+  Axis ->
   WT.WeakTerm ->
   DT.CaseList WT.WeakTerm ->
   App (DT.CaseList WT.WeakTerm, WT.WeakTerm)
-inferClauseList m varEnv cursorType (fallbackClause, clauseList) = do
-  (clauseList', answerTypeList) <- mapAndUnzipM (inferClause varEnv cursorType) clauseList
-  (fallbackClause', fallbackAnswerType) <- inferDecisionTree m varEnv fallbackClause
-  h <- newHole m varEnv
+inferClauseList m axis cursorType (fallbackClause, clauseList) = do
+  (clauseList', answerTypeList) <- mapAndUnzipM (inferClause axis cursorType) clauseList
+  (fallbackClause', fallbackAnswerType) <- inferDecisionTree m axis fallbackClause
+  h <- newHole m (varEnv axis)
   forM_ (answerTypeList ++ [fallbackAnswerType]) $ insConstraintEnv h
   return ((fallbackClause', clauseList'), fallbackAnswerType)
 
 inferClause ::
-  BoundVarEnv ->
+  Axis ->
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
