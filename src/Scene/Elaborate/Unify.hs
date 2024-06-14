@@ -8,6 +8,7 @@ import Context.App
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
+import Context.OptimizableData qualified as OptimizableData
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -34,6 +35,7 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Module
+import Entity.OptimizableData qualified as OD
 import Entity.Remark qualified as R
 import Entity.Source
 import Entity.Stuck qualified as Stuck
@@ -82,6 +84,9 @@ throwTypeErrors susList = do
       C.Actual t -> do
         t' <- fillAsMuchAsPossible sub t
         return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
+      C.Immediate t -> do
+        t' <- fillAsMuchAsPossible sub t
+        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageImmediate t'
       C.Eq expected actual -> do
         expected' <- fillAsMuchAsPossible sub expected
         actual' <- fillAsMuchAsPossible sub actual
@@ -105,6 +110,11 @@ constructErrorMessageEq found expected =
 constructErrorMessageActual :: WT.WeakTerm -> T.Text
 constructErrorMessageActual t =
   "A term of the following type might be noetic:\n"
+    <> toText t
+
+constructErrorMessageImmediate :: WT.WeakTerm -> T.Text
+constructErrorMessageImmediate t =
+  "A term of the following type cannot be cloned for free:\n"
     <> toText t
 
 data Axis = Axis
@@ -143,6 +153,10 @@ simplify ax susList constraintList =
     (C.Actual t, orig) : cs -> do
       detectPossibleInfiniteLoop (C.getLoc orig) ax
       susList' <- simplifyActual (WT.metaOf t) S.empty t orig
+      simplify ax (susList' ++ susList) cs
+    (C.Immediate t, orig) : cs -> do
+      detectPossibleInfiniteLoop (C.getLoc orig) ax
+      susList' <- simplifyImmediate (WT.metaOf t) t orig
       simplify ax (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       detectPossibleInfiniteLoop (C.getLoc orig) ax
@@ -417,3 +431,41 @@ getConsArgTypes m consName = do
       return $ impArgs ++ expArgs
     _ ->
       Throw.raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
+
+simplifyImmediate ::
+  Hint ->
+  WT.WeakTerm ->
+  C.Constraint ->
+  App [SuspendedConstraint]
+simplifyImmediate m t orig = do
+  t' <- reduce t
+  case t' of
+    _ :< WT.Tau -> do
+      return []
+    _ :< WT.Data _ dataName _ -> do
+      od <- OptimizableData.lookup dataName
+      case od of
+        Just OD.Enum -> do
+          return []
+        _ -> do
+          return [C.SuspendedConstraint (holes t', (C.Actual t', orig))]
+    _ :< WT.Noema {} ->
+      return []
+    _ :< WT.Prim {} -> do
+      return []
+    _ -> do
+      sub <- getHoleSubst
+      let fmvs = holes t'
+      case lookupAny (S.toList fmvs) sub of
+        Just (h, (xs, body)) -> do
+          let s = HS.singleton h xs body
+          t'' <- fill s t'
+          simplifyImmediate m t'' orig
+        Nothing -> do
+          defMap <- WeakDefinition.read
+          case Stuck.asStuckedTerm t' of
+            Just (Stuck.VarGlobal dd, evalCtx)
+              | Just lam <- Map.lookup dd defMap -> do
+                  simplifyImmediate m (Stuck.resume lam evalCtx) orig
+            _ -> do
+              return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]

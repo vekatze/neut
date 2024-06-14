@@ -9,6 +9,7 @@ import Entity.WeakTerm qualified as WT
 data Constraint
   = Eq WT.WeakTerm WT.WeakTerm -- (expected-type, actual-type)
   | Actual WT.WeakTerm
+  | Immediate WT.WeakTerm
 
 type MetaVarSet =
   S.Set HID.HoleID
@@ -22,4 +23,6 @@ getLoc c = do
     Eq _ (m :< _) ->
       m
     Actual (m :< _) ->
+      m
+    Immediate (m :< _) ->
       m

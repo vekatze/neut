@@ -12,7 +12,9 @@ import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Entity.Annotation qualified as Annotation
@@ -30,7 +32,8 @@ import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
-import Entity.Ident (isHole)
+import Entity.Ident (Ident, isHole)
+import Entity.Ident.Reify (toInt)
 import Entity.Ident.Reify qualified as Ident
 import Entity.Key (Key)
 import Entity.LamKind qualified as LK
@@ -136,8 +139,10 @@ getUnitType m = do
   return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
 
 createNewAxis :: App Axis
-createNewAxis =
-  return Axis {varEnv = []}
+createNewAxis = do
+  let varEnv = []
+  foundVarSetRef <- liftIO $ newIORef IntMap.empty
+  return Axis {varEnv, foundVarSetRef}
 
 extendAxis :: BinderF WT.WeakTerm -> Axis -> Axis
 extendAxis (mx, x, t) axis = do
@@ -147,10 +152,31 @@ extendAxis' :: BinderF WT.WeakTerm -> Axis -> Axis
 extendAxis' (mx, x, t) axis = do
   axis {varEnv = (mx, x, t) : varEnv axis}
 
-newtype Axis
+cloneAxis :: Axis -> App Axis
+cloneAxis axis = do
+  liftIO $ do
+    foundVarSet <- readIORef $ foundVarSetRef axis
+    foundVarSetRef <- newIORef foundVarSet
+    return Axis {varEnv = varEnv axis, foundVarSetRef}
+
+data Axis
   = Axis
-  { varEnv :: BoundVarEnv
+  { varEnv :: BoundVarEnv,
+    foundVarSetRef :: IORef (IntMap.IntMap Bool)
   }
+
+isExistingVar :: Ident -> Axis -> App (Maybe Bool)
+isExistingVar i axis = do
+  foundVarSet <- liftIO $ readIORef $ foundVarSetRef axis
+  return $ IntMap.lookup (toInt i) foundVarSet
+
+insertVar :: Ident -> Axis -> App ()
+insertVar i axis = do
+  liftIO $ modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) False
+
+insertRelevantVar :: Ident -> Axis -> App ()
+insertRelevantVar i axis = do
+  liftIO $ modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) True
 
 infer :: Axis -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer axis term =
@@ -159,6 +185,14 @@ infer axis term =
       return (term, term)
     m :< WT.Var x -> do
       _ :< t <- lookupWeakTypeEnv m x
+      boolOrNone <- isExistingVar x axis
+      case boolOrNone of
+        Nothing ->
+          insertVar x axis
+        Just alreadyRegistered ->
+          unless alreadyRegistered $ do
+            insertImmediateConstraint $ m :< t
+            insertRelevantVar x axis
       return (term, m :< t)
     m :< WT.VarGlobal _ name -> do
       _ :< t <- Type.lookup m name
@@ -541,7 +575,10 @@ inferClauseList ::
   DT.CaseList WT.WeakTerm ->
   App (DT.CaseList WT.WeakTerm, WT.WeakTerm)
 inferClauseList m axis cursorType (fallbackClause, clauseList) = do
-  (clauseList', answerTypeList) <- mapAndUnzipM (inferClause axis cursorType) clauseList
+  -- (clauseList', answerTypeList) <- mapAndUnzipM (inferClause axis cursorType) clauseList
+  (clauseList', answerTypeList) <- flip mapAndUnzipM clauseList $ \clause -> do
+    axis' <- cloneAxis axis
+    inferClause axis' cursorType clause
   (fallbackClause', fallbackAnswerType) <- inferDecisionTree m axis fallbackClause
   h <- newHole m (varEnv axis)
   forM_ (answerTypeList ++ [fallbackAnswerType]) $ insConstraintEnv h
@@ -552,19 +589,19 @@ inferClause ::
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
-inferClause varEnv cursorType decisionCase = do
+inferClause axis cursorType decisionCase = do
   case decisionCase of
     DT.LiteralIntCase mPat i cont -> do
-      (cont', tCont) <- inferDecisionTree mPat varEnv cont
+      (cont', tCont) <- inferDecisionTree mPat axis cont
       return (DT.LiteralIntCase mPat i cont', tCont)
     DT.ConsCase {..} -> do
       let m = DT.mCons decisionCase
       let (dataTermList, _) = unzip dataArgs
-      typedDataArgs' <- mapM (infer varEnv) dataTermList
-      (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
+      typedDataArgs' <- mapM (infer axis) dataTermList
+      (consArgs', extendedVarEnv) <- inferBinder' axis consArgs
       let argNum = AN.fromInt $ length dataArgs + length consArgs
       let attr = AttrVG.Attr {..}
-      consTerm <- infer varEnv $ m :< WT.VarGlobal attr consDD
+      consTerm <- infer axis $ m :< WT.VarGlobal attr consDD
       (_, tPat) <- inferPiElimExplicit m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
       insConstraintEnv cursorType tPat
       (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
