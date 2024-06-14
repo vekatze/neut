@@ -1,3 +1,7 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use list comprehension" #-}
+
 module Scene.Elaborate.Infer (inferStmt) where
 
 import Context.App
@@ -32,7 +36,7 @@ import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
-import Entity.Ident (Ident, isHole)
+import Entity.Ident (Ident (..), isCartesian, isHole)
 import Entity.Ident.Reify (toInt)
 import Entity.Ident.Reify qualified as Ident
 import Entity.Key (Key)
@@ -142,7 +146,8 @@ createNewAxis :: App Axis
 createNewAxis = do
   let varEnv = []
   foundVarSetRef <- liftIO $ newIORef IntMap.empty
-  return Axis {varEnv, foundVarSetRef}
+  let mustPerformExpCheck = True
+  return Axis {varEnv, foundVarSetRef, mustPerformExpCheck}
 
 extendAxis :: BinderF WT.WeakTerm -> Axis -> Axis
 extendAxis (mx, x, t) axis = do
@@ -157,12 +162,18 @@ cloneAxis axis = do
   liftIO $ do
     foundVarSet <- readIORef $ foundVarSetRef axis
     foundVarSetRef <- newIORef foundVarSet
-    return Axis {varEnv = varEnv axis, foundVarSetRef}
+    let mustPerformExpCheck = True
+    return Axis {varEnv = varEnv axis, foundVarSetRef, mustPerformExpCheck}
+
+deactivateExpCheck :: Axis -> Axis
+deactivateExpCheck axis =
+  axis {mustPerformExpCheck = False}
 
 data Axis
   = Axis
   { varEnv :: BoundVarEnv,
-    foundVarSetRef :: IORef (IntMap.IntMap Bool)
+    foundVarSetRef :: IORef (IntMap.IntMap Bool),
+    mustPerformExpCheck :: Bool
   }
 
 isExistingVar :: Ident -> Axis -> App (Maybe Bool)
@@ -185,15 +196,19 @@ infer axis term =
       return (term, term)
     m :< WT.Var x -> do
       _ :< t <- lookupWeakTypeEnv m x
-      boolOrNone <- isExistingVar x axis
-      case boolOrNone of
-        Nothing ->
-          insertVar x axis
-        Just alreadyRegistered ->
-          unless alreadyRegistered $ do
-            insertImmediateConstraint $ m :< t
-            insertRelevantVar x axis
-      return (term, m :< t)
+      if isCartesian x || not (mustPerformExpCheck axis)
+        then
+          return (term, m :< t)
+        else do
+          boolOrNone <- isExistingVar x axis
+          case boolOrNone of
+            Nothing ->
+              insertVar x axis
+            Just alreadyRegistered ->
+              unless alreadyRegistered $ do
+                insertAffineConstraint $ m :< t
+                insertRelevantVar x axis
+          return (term, m :< t)
     m :< WT.VarGlobal _ name -> do
       _ :< t <- Type.lookup m name
       return (term, m :< t)
@@ -227,7 +242,7 @@ infer axis term =
       etls <- mapM (infer axis) es
       inferPiElim axis m etl etls
     m :< WT.PiElimExact e -> do
-      (e', t) <- infer axis e
+      (e', t) <- infer (deactivateExpCheck axis) e
       t' <- resolveType t
       case t' of
         _ :< WT.Pi impArgs expArgs codType -> do
@@ -241,11 +256,11 @@ infer axis term =
         _ ->
           Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
-      (es', _) <- mapAndUnzipM (infer axis) es
+      (es', _) <- mapAndUnzipM (infer $ deactivateExpCheck axis) es
       return (m :< WT.Data attr name es', m :< WT.Tau)
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
-      (dataArgs', _) <- mapAndUnzipM (infer axis) dataArgs
-      (consArgs', _) <- mapAndUnzipM (infer axis) consArgs
+      (dataArgs', _) <- mapAndUnzipM (infer $ deactivateExpCheck axis) dataArgs
+      (consArgs', _) <- mapAndUnzipM (infer $ deactivateExpCheck axis) consArgs
       let dataType = m :< WT.Data (AttrD.Attr {..}) dataName dataArgs'
       return (m :< WT.DataIntro attr consName dataArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
@@ -345,7 +360,7 @@ infer axis term =
       insConstraintEnv tCopy tc
       return (m :< WT.Resource resourceID discarder' copier', m :< WT.Tau)
     m :< WT.Use e@(mt :< _) xts cont -> do
-      (_, t') <- infer axis e
+      (e', t') <- infer axis e
       t'' <- resolveType t'
       case t'' of
         _ :< WT.Data attr _ dataArgs
@@ -360,26 +375,24 @@ infer axis term =
               cursor <- Gensym.newIdentFromText "cursor"
               od <- OptimizableData.lookup consDD
               let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
-              infer axis $
-                m
-                  :< WT.DataElim
-                    False
-                    [(cursor, e, t'')]
-                    ( DT.Switch
-                        (cursor, t'')
-                        ( DT.Unreachable,
-                          [ DT.ConsCase
-                              { mCons = m,
-                                consDD = consDD,
-                                isConstLike = isConstLike',
-                                disc = D.zero,
-                                dataArgs = dataArgs',
-                                consArgs = reorderedArgs,
-                                cont = DT.Leaf freedVars (adjustCont m reorderedArgs) cont
-                              }
-                          ]
-                        )
+              insWeakTypeEnv cursor t''
+              (tree', _ :< treeType) <-
+                inferDecisionTree m axis $
+                  DT.Switch
+                    (cursor, t'')
+                    ( DT.Unreachable,
+                      [ DT.ConsCase
+                          { mCons = m,
+                            consDD = consDD,
+                            isConstLike = isConstLike',
+                            disc = D.zero,
+                            dataArgs = dataArgs',
+                            consArgs = reorderedArgs,
+                            cont = DT.Leaf freedVars (adjustCont m reorderedArgs) cont
+                          }
+                      ]
                     )
+              return (m :< WT.DataElim False [(cursor, e', t'')] tree', m :< treeType)
           | otherwise -> do
               Throw.raiseError mt $ "Expected a single-constructor ADT, but found: " <> toText t''
         _ :< _ -> do
@@ -401,7 +414,11 @@ adjustCont m xts =
     [] ->
       []
     (mx, x, t) : rest ->
-      ((mx, x, t), mx :< WT.Var x) : adjustCont m rest
+      ((mx, x, t), mx :< WT.Var (ignoreUse x)) : adjustCont m rest
+
+ignoreUse :: Ident -> Ident
+ignoreUse (I (x, i)) =
+  I (expVarPrefix <> x, i)
 
 constructDefaultKeyMap :: Axis -> Hint -> [Key] -> App (Map.HashMap Key (BinderF WT.WeakTerm))
 constructDefaultKeyMap axis m keyList = do
@@ -575,7 +592,6 @@ inferClauseList ::
   DT.CaseList WT.WeakTerm ->
   App (DT.CaseList WT.WeakTerm, WT.WeakTerm)
 inferClauseList m axis cursorType (fallbackClause, clauseList) = do
-  -- (clauseList', answerTypeList) <- mapAndUnzipM (inferClause axis cursorType) clauseList
   (clauseList', answerTypeList) <- flip mapAndUnzipM clauseList $ \clause -> do
     axis' <- cloneAxis axis
     inferClause axis' cursorType clause

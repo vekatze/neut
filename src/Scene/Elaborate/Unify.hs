@@ -84,9 +84,9 @@ throwTypeErrors susList = do
       C.Actual t -> do
         t' <- fillAsMuchAsPossible sub t
         return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
-      C.Immediate t -> do
+      C.Affine t -> do
         t' <- fillAsMuchAsPossible sub t
-        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageImmediate t'
+        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageAffine t'
       C.Eq expected actual -> do
         expected' <- fillAsMuchAsPossible sub expected
         actual' <- fillAsMuchAsPossible sub actual
@@ -112,9 +112,9 @@ constructErrorMessageActual t =
   "A term of the following type might be noetic:\n"
     <> toText t
 
-constructErrorMessageImmediate :: WT.WeakTerm -> T.Text
-constructErrorMessageImmediate t =
-  "A term of the following type cannot be cloned for free:\n"
+constructErrorMessageAffine :: WT.WeakTerm -> T.Text
+constructErrorMessageAffine t =
+  "The type of this affine variable is not affine, but:\n"
     <> toText t
 
 data Axis = Axis
@@ -154,9 +154,9 @@ simplify ax susList constraintList =
       detectPossibleInfiniteLoop (C.getLoc orig) ax
       susList' <- simplifyActual (WT.metaOf t) S.empty t orig
       simplify ax (susList' ++ susList) cs
-    (C.Immediate t, orig) : cs -> do
+    (C.Affine t, orig) : cs -> do
       detectPossibleInfiniteLoop (C.getLoc orig) ax
-      susList' <- simplifyImmediate (WT.metaOf t) t orig
+      susList' <- simplifyAffine (WT.metaOf t) S.empty t orig
       simplify ax (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       detectPossibleInfiniteLoop (C.getLoc orig) ax
@@ -374,7 +374,7 @@ simplifyActual m dataNameSet t orig = do
   case t' of
     _ :< WT.Tau -> do
       return []
-    _ :< WT.Data (AttrD.Attr {..}) dataName dataArgs -> do
+    _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
       let dataNameSet' = S.insert dataName dataNameSet
       constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
         simplifyActual m dataNameSet' dataArg orig
@@ -432,23 +432,37 @@ getConsArgTypes m consName = do
     _ ->
       Throw.raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
 
-simplifyImmediate ::
+simplifyAffine ::
   Hint ->
+  S.Set DD.DefiniteDescription ->
   WT.WeakTerm ->
   C.Constraint ->
   App [SuspendedConstraint]
-simplifyImmediate m t orig = do
+simplifyAffine m dataNameSet t orig = do
   t' <- reduce t
   case t' of
     _ :< WT.Tau -> do
       return []
-    _ :< WT.Data _ dataName _ -> do
+    _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
       od <- OptimizableData.lookup dataName
       case od of
         Just OD.Enum -> do
           return []
+        Just OD.Unary -> do
+          let dataNameSet' = S.insert dataName dataNameSet
+          constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
+            simplifyAffine m dataNameSet' dataArg orig
+          dataConsArgsList <-
+            if S.member dataName dataNameSet
+              then return []
+              else mapM (getConsArgTypes m . fst) consNameList
+          constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
+            dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
+            fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
+              simplifyAffine m dataNameSet' consArg orig
+          return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
         _ -> do
-          return [C.SuspendedConstraint (holes t', (C.Actual t', orig))]
+          return [C.SuspendedConstraint (holes t', (C.Affine t', orig))]
     _ :< WT.Noema {} ->
       return []
     _ :< WT.Prim {} -> do
@@ -460,12 +474,12 @@ simplifyImmediate m t orig = do
         Just (h, (xs, body)) -> do
           let s = HS.singleton h xs body
           t'' <- fill s t'
-          simplifyImmediate m t'' orig
+          simplifyAffine m dataNameSet t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
-                  simplifyImmediate m (Stuck.resume lam evalCtx) orig
+                  simplifyAffine m dataNameSet (Stuck.resume lam evalCtx) orig
             _ -> do
-              return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
+              return [C.SuspendedConstraint (fmvs, (C.Affine t', orig))]

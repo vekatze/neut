@@ -181,6 +181,10 @@ holeVarPrefix :: T.Text
 holeVarPrefix =
   "{}"
 
+expVarPrefix :: T.Text
+expVarPrefix =
+  "!"
+
 unsafeArgcName :: T.Text
 unsafeArgcName =
   "neut-unsafe-argc"
