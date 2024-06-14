@@ -783,6 +783,43 @@ discernLet axis m letKind (mx, pat, c1, c2, t) mys e1 e2@(m2 :< _) startLoc endL
                 )
         eitherCont' <- attachSuffix (zip ysCont ysLocal) eitherCont
         return $ m :< WT.Let opacity mxt' e1' eitherCont'
+      RT.Catch -> do
+        let m' = blur m
+        let mx' = blur mx
+        let m2' = blur m2
+        eitherTypeInner <- locatorToVarGlobal mx' coreEither
+        rightType <- Gensym.newPreHole m2'
+        let eitherType = m2' :< RT.piElim eitherTypeInner [t, rightType]
+        tmpVar <- Gensym.newText
+        e1' <- discern axisLocal e1
+        result <- Gensym.newText
+        eitherLeft <- locatorToName m2' coreEitherLeft
+        eitherRight <- locatorToName m2' coreEitherRight
+        eitherRightVar <- locatorToVarGlobal mx' coreEitherRight
+        (mxt', eitherCont) <-
+          discernBinderWithBody' axisCont (mx, tmpVar, c1, c2, eitherType) startLoc endLoc $
+            m'
+              :< RT.DataElim
+                []
+                False
+                (SE.fromList'' [m' :< RT.Var (Var tmpVar)])
+                ( SE.fromList
+                    SE.Brace
+                    SE.Bar
+                    [ ( SE.fromList'' [(m2', RP.Cons eitherLeft [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+                        [],
+                        e2,
+                        endLoc
+                      ),
+                      ( SE.fromList'' [(m2', RP.Cons eitherRight [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var result))])))],
+                        [],
+                        m2' :< RT.piElim eitherRightVar [m2' :< RT.Var (Var result)],
+                        fakeLoc
+                      )
+                    ]
+                )
+        eitherCont' <- attachSuffix (zip ysCont ysLocal) eitherCont
+        return $ m :< WT.Let opacity mxt' e1' eitherCont'
   result <- attachPrefix (zip ysLocal (zip ms' ysActual)) body
   case letKind of
     RT.Plain True ->
