@@ -20,6 +20,7 @@ import Context.Remark qualified as Remark
 import Context.SymLoc qualified as SymLoc
 import Context.Tag qualified as Tag
 import Context.TopCandidate qualified as TopCandidate
+import Context.Type qualified as Type
 import Context.Unravel qualified as Unravel
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -55,6 +56,7 @@ initializeForTarget = do
   Global.clearSourceNameMap
   WeakDefinition.initialize
   Definition.initialize
+  Type.initialize
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do

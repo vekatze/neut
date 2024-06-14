@@ -33,6 +33,7 @@ import Entity.ModuleURL
 import Entity.Syntax.Series (Series (hasOptionalSeparator))
 import Entity.Syntax.Series qualified as SE
 import Path
+import Scene.Check (checkModule)
 import Scene.Ens.Reflect qualified as Ens
 import Scene.Module.Reflect qualified as Module
 import UnliftIO.Async
@@ -134,6 +135,7 @@ installModule archivePath alias digest = do
     extractToLibDir archivePath alias digest
     libModule <- getLibraryModule alias digest
     fetch libModule
+    void $ checkModule libModule
 
 checkIfInstalled :: MD.ModuleDigest -> App Bool
 checkIfInstalled digest = do
