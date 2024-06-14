@@ -1,5 +1,6 @@
 module Context.Type
-  ( lookup,
+  ( initialize,
+    lookup,
     lookupMaybe,
     insert,
   )
@@ -13,6 +14,10 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.WeakTerm
 import Prelude hiding (lookup)
+
+initialize :: App ()
+initialize = do
+  writeRef' typeEnv Map.empty
 
 lookup :: Hint -> DD.DefiniteDescription -> App WeakTerm
 lookup m k = do
