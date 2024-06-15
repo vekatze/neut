@@ -28,8 +28,8 @@ In the above code, the variable `xs` is used three times. Because of that, the c
 ```neut
 // after compilation (pseudo-code)
 define foo(xs: list(int)): list(int) {
-  let xs1 = copy-value-along-type(list(int), xs) in
-  let xs2 = copy-value-along-type(list(int), xs) in
+  let xs1 = COPY-VALUE(list(int), xs) in
+  let xs2 = COPY-VALUE(list(int), xs) in
   let ys = xs1 in
   let zs = xs2 in
   some-func(ys);
@@ -52,7 +52,7 @@ In the above code, since `xs` isn't used, the content of `xs` is discarded as fo
 ```neut
 // after compilation (pseudo-code)
 define bar(xs: list(int)): unit {
-  let _ = discard(list(int), xs) in
+  let _ = DISCARD-VALUE(list(int), xs) in
   Unit
 }
 ```
@@ -69,7 +69,7 @@ define buz(x: int): unit {
 
 // pseudo-code
 define bar(x: int): unit {
-  let _ = discard(int, x) in
+  let _ = DISCARD-VALUE(int, x) in
   Unit
 }
 ```
@@ -112,7 +112,7 @@ define make-pair(x: int): pair(int, int) {
 }
 ```
 
-because we can "copy" integers for free (by simply using the same `x`).
+because we can "copy" integers for free (by simply using the same `x` twice).
 
 ## The Problem: Excessive Copying
 
@@ -129,7 +129,7 @@ define length(xs: list(int)): int {
 }
 ```
 
-Also, suppose that we used the function as follows:
+Also, suppose that we used this `length` as follows:
 
 ```neut
 define use-length(!xs: list(int)): unit {
@@ -222,8 +222,8 @@ The result of `let-on` (that is, `len` in this case) can't include any noetic te
 Incidentally, you can also create a value of type `a` from a value of type `&a`, as follows:
 
 ```neut
-define clone-value<a>(x: &a) -> a {
-  *x
+define make-pair-from-noema<a>(x: &a): pair(a, a) {
+  Pair(*x, *x)
 }
 ```
 
