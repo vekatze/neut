@@ -13,6 +13,7 @@ Here, we'll see how to write performant programs in Neut.
 In Neut, the content of a variable is _copied_ according to its type _if the variable is used more than once_. Consider the following code:
 
 ```neut
+// before compilation (pseudo code)
 define foo(xs: list(int)): list(int) {
   let ys = xs in // use `xs` (1)
   let zs = xs in // use `xs` (2)
@@ -40,6 +41,7 @@ define foo(xs: list(int)): list(int) {
 Also, the content of a variable is _discarded_ _if the variable isn't used_. Consider the following code:
 
 ```neut
+// before compilation
 define bar(xs: list(int)): unit {
   Unit
 }
@@ -78,6 +80,40 @@ In the literature, a use of a variable is called _linear_ if the variable is use
 
 If you're interested in how Neut achieves these discarding/copying operations, please see [How to Execute Types](./how-to-execute-types.md).
 
+### To Be Conscious of Cloning Values
+
+Suppose the content of a variable were to be copied simply by using it more than once. In that case, we might suffer from unintended cloning and encounter unexpected performance degradation.
+
+The compiler thus requires us to prefix the name of a variable with `!` when the variable needs to be copied. Let's consider the following code:
+
+```neut
+define make-pair(xs: list(int)): pair(list(int), list(int)) {
+  Pair(xs, xs)
+}
+```
+
+When checking this code, the compiler will report an error because the code uses the variable `xs` twice and the variable isn't prefixed with `!`.
+
+You can satisfy the compiler by renaming `xs` into `!xs`:
+
+```neut
+define make-pair(!xs: list(int)): pair(list(int), list(int)) {
+  Pair(!xs, !xs)
+}
+```
+
+### Cloning Values For Free
+
+The prefix `!` is unnecessary if the variable can be copied for free. For example, the following code will typecheck:
+
+```neut
+define make-pair(x: int): pair(int, int) {
+  Pair(x, x)
+}
+```
+
+because we can "copy" integers for free (by simply using the same `x`).
+
 ## The Problem: Excessive Copying
 
 Now, suppose we defined a function `length` as follows:
@@ -96,13 +132,13 @@ define length(xs: list(int)): int {
 Also, suppose that we used the function as follows:
 
 ```neut
-define use-length(xs: list(int)): unit {
-  let len = length(xs) in // use `length` to calculate the length of `xs`
-  some-function(len, xs) // then use `len` and `xs`
+define use-length(!xs: list(int)): unit {
+  let len = length(!xs) in // use `length` to calculate the length of `!xs`
+  some-function(len, !xs) // then use `len` and `!xs`
 }
 ```
 
-Note that the variable `xs` is used twice. Therefore, in this example, the content of `xs` is copied _just to calculate its length_. This is a disaster. The end of the world. Every wish is crushed into pieces.
+Note that the variable `!xs` is used twice. Therefore, in this example, the content of `!xs` is copied _just to calculate its length_. This is a disaster. The end of the world. Every wish is crushed into pieces.
 
 Luckily, there is a loophole for this situation.
 
