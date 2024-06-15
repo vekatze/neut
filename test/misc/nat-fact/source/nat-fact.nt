@@ -12,12 +12,12 @@ define add-nat(x: nat, y: nat): nat {
   }
 }
 
-define mul-nat(x: nat, y: nat): nat {
+define mul-nat(x: nat, !y: nat): nat {
   match x {
   | Zero =>
     Zero
   | Succ(m) =>
-    add-nat(mul-nat(m, y), y)
+    add-nat(mul-nat(m, !y), !y)
   }
 }
 
@@ -32,12 +32,12 @@ define eq-nat(n1: nat, n2: nat): bool {
   }
 }
 
-define fact(n: nat): nat {
-  match n {
+define fact(!n: nat): nat {
+  match !n {
   | Zero =>
     Succ(Zero)
   | Succ(m) =>
-    mul-nat(n, fact(m))
+    mul-nat(!n, fact(m))
   }
 }
 

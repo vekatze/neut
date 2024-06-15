@@ -32,6 +32,9 @@ printConstraints = do
   cs <- getConstraintEnv
   forM_ cs $ \c -> do
     case c of
-      Actual {} -> return ()
+      Actual {} ->
+        return ()
+      Affine {} ->
+        return ()
       Eq expected actual -> do
         printNote' $ toText expected <> " == " <> toText actual

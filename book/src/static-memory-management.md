@@ -13,6 +13,7 @@ Here, we'll see how to write performant programs in Neut.
 In Neut, the content of a variable is _copied_ according to its type _if the variable is used more than once_. Consider the following code:
 
 ```neut
+// before compilation (pseudo code)
 define foo(xs: list(int)): list(int) {
   let ys = xs in // use `xs` (1)
   let zs = xs in // use `xs` (2)
@@ -27,8 +28,8 @@ In the above code, the variable `xs` is used three times. Because of that, the c
 ```neut
 // after compilation (pseudo-code)
 define foo(xs: list(int)): list(int) {
-  let xs1 = copy-value-along-type(list(int), xs) in
-  let xs2 = copy-value-along-type(list(int), xs) in
+  let xs1 = COPY-VALUE(list(int), xs) in
+  let xs2 = COPY-VALUE(list(int), xs) in
   let ys = xs1 in
   let zs = xs2 in
   some-func(ys);
@@ -40,6 +41,7 @@ define foo(xs: list(int)): list(int) {
 Also, the content of a variable is _discarded_ _if the variable isn't used_. Consider the following code:
 
 ```neut
+// before compilation
 define bar(xs: list(int)): unit {
   Unit
 }
@@ -50,7 +52,7 @@ In the above code, since `xs` isn't used, the content of `xs` is discarded as fo
 ```neut
 // after compilation (pseudo-code)
 define bar(xs: list(int)): unit {
-  let _ = discard(list(int), xs) in
+  let _ = DISCARD-VALUE(list(int), xs) in
   Unit
 }
 ```
@@ -67,7 +69,7 @@ define buz(x: int): unit {
 
 // pseudo-code
 define bar(x: int): unit {
-  let _ = discard(int, x) in
+  let _ = DISCARD-VALUE(int, x) in
   Unit
 }
 ```
@@ -77,6 +79,40 @@ In practice, however, discarding/copying operations on immediate values are opti
 In the literature, a use of a variable is called _linear_ if the variable is used exactly once. Neut's compiler translates programs so that every non-linear use of variables becomes linear, ignoring arguments in discarding/copying functions.
 
 If you're interested in how Neut achieves these discarding/copying operations, please see [How to Execute Types](./how-to-execute-types.md).
+
+### To Be Conscious of Cloning Values
+
+Suppose the content of a variable were to be copied simply by using it more than once. In that case, we might suffer from unintended cloning and encounter unexpected performance degradation.
+
+The compiler thus requires us to prefix the name of a variable with `!` when the variable needs to be copied. Let's consider the following code:
+
+```neut
+define make-pair(xs: list(int)): pair(list(int), list(int)) {
+  Pair(xs, xs)
+}
+```
+
+When checking this code, the compiler will report an error because the code uses the variable `xs` twice and the variable isn't prefixed with `!`.
+
+You can satisfy the compiler by renaming `xs` into `!xs`:
+
+```neut
+define make-pair(!xs: list(int)): pair(list(int), list(int)) {
+  Pair(!xs, !xs)
+}
+```
+
+### Cloning Values For Free
+
+The prefix `!` is unnecessary if the variable can be copied for free. For example, the following code will typecheck:
+
+```neut
+define make-pair(x: int): pair(int, int) {
+  Pair(x, x)
+}
+```
+
+because we can "copy" integers for free (by simply using the same `x` twice).
 
 ## The Problem: Excessive Copying
 
@@ -93,16 +129,16 @@ define length(xs: list(int)): int {
 }
 ```
 
-Also, suppose that we used the function as follows:
+Also, suppose that we used this `length` as follows:
 
 ```neut
-define use-length(xs: list(int)): unit {
-  let len = length(xs) in // use `length` to calculate the length of `xs`
-  some-function(len, xs) // then use `len` and `xs`
+define use-length(!xs: list(int)): unit {
+  let len = length(!xs) in // use `length` to calculate the length of `!xs`
+  some-function(len, !xs) // then use `len` and `!xs`
 }
 ```
 
-Note that the variable `xs` is used twice. Therefore, in this example, the content of `xs` is copied _just to calculate its length_. This is a disaster. The end of the world. Every wish is crushed into pieces.
+Note that the variable `!xs` is used twice. Therefore, in this example, the content of `!xs` is copied _just to calculate its length_. This is a disaster. The end of the world. Every wish is crushed into pieces.
 
 Luckily, there is a loophole for this situation.
 
@@ -186,8 +222,8 @@ The result of `let-on` (that is, `len` in this case) can't include any noetic te
 Incidentally, you can also create a value of type `a` from a value of type `&a`, as follows:
 
 ```neut
-define clone-value<a>(x: &a) -> a {
-  *x
+define make-pair-from-noema<a>(x: &a): pair(a, a) {
+  Pair(*x, *x)
 }
 ```
 

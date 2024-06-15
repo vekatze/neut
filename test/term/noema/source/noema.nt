@@ -10,13 +10,13 @@ define test-syntax(): unit {
       add-int(l1, l2)
     in
     let _ = length(xs) in
-    let xs-copy = *xs in
+    let !xs-copy = *xs in
     let _ = xs in
     let _ = xs in
     let _ = xs in
-    let _ = xs-copy in
-    let _ = xs-copy in
-    let _ = xs-copy in
+    let _ = !xs-copy in
+    let _ = !xs-copy in
+    let _ = !xs-copy in
     case xs {
     | Nil =>
       length(xs)
@@ -24,16 +24,17 @@ define test-syntax(): unit {
       length(ys)
     }
   in
-  let _ = xs in
-  let ys = xs in
-  let zs = xs in
-  let _ on xs, ys, zs =
-    let v1 = length(xs) in
+  let !xs = xs in
+  // let _ = xs in
+  let ys = !xs in
+  let zs = !xs in
+  let _ on !xs, ys, zs =
+    let v1 = length(!xs) in
     let v2 = length(ys) in
     let v3 = length(zs) in
     add-int(v1, add-int(v2, v3))
   in
-  let _ = xs in
+  let _ = !xs in
   let _ = ys in
   let _ = zs in
   Unit
@@ -53,16 +54,16 @@ data my-enum {
 define nested-enum-match(t: &term(my-enum)): term(my-enum) {
   let val =
     case t {
-    | App(Abs(x, t'), Var(e)) =>
+    | App(Abs(x, !t'), Var(e)) =>
       let _ = Var(e) in
-      let t' = *t' in
-      let _ = t' in
+      let !t' = *!t' in
+      let _ = !t' in
       let _ = x in
       let _ = Var(e) in
-      let _ = t' in
+      let _ = !t' in
       let _ = x in
       let _ = Var(e) in
-      let _ = t' in
+      let _ = !t' in
       let _ = x in
       let _ = Var(e) in
       let _ = x in
@@ -70,11 +71,11 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
       let _ = x in
       Bar
     | App(Abs(x, _), App(Var(_), App(_, App(w, _)))) =>
-      let foo = *w in
-      let _ = foo in
-      let _ = foo in
-      let _ = foo in
-      let _ = foo in
+      let !foo = *w in
+      let _ = !foo in
+      let _ = !foo in
+      let _ = !foo in
+      let _ = !foo in
       let _ = x in
       Foo
     | App(Abs(_, _), App(App(_, App(_, _)), Var(_))) =>
@@ -84,10 +85,10 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
     | App(App(Abs(_, _), Var(_)), App(App(_, App(_, _)), Var(_))) =>
       Bar
     | t =>
-      let t = *t in
-      let _ = t in
-      let _ = t in
-      let _ = t in
+      let !t = *t in
+      let _ = !t in
+      let _ = !t in
+      let _ = !t in
       Foo
     }
   in
@@ -101,20 +102,20 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
 }
 
 define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
-  let foo = Var("test") in
+  let !foo = Var("test") in
   let f =
     function () {
-      foo
+      !foo
     }
   in
   let g =
     function () {
-      foo
+      !foo
     }
   in
   let h =
     function () {
-      foo
+      !foo
     }
   in
   case t {
@@ -126,12 +127,12 @@ define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
       let _ = x in
       *t
     | Abs(_, t) =>
-      let val = *t in
-      let _ = val in
-      let _ = val in
-      let _ = val in
-      let _ = val in
-      val
+      let !val = *t in
+      let _ = !val in
+      let _ = !val in
+      let _ = !val in
+      let _ = !val in
+      !val
     | _ =>
       *t
     }
@@ -146,7 +147,7 @@ define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
     }
   | App(t1, _) =>
     let _ = g in
-    let k =
+    let !k =
       if False {
         h
       } else {
@@ -155,9 +156,9 @@ define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
         }
       }
     in
-    let _ = k in
-    let _ = k in
-    let _ = k in
+    let _ = !k in
+    let _ = !k in
+    let _ = !k in
     *t1
   }
 }

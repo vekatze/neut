@@ -54,22 +54,26 @@ Note that the above example executes the type `list(int)` as a function.
 Let's see how types are executed when copying values. For example, consider the following code:
 
 ```neut
-define foo(xs: list(int)): unit {
-  some-func(xs, xs)
+define foo(!xs: list(int)): unit {
+  some-func(!xs, !xs)
 }
 ```
 
-Note that the variable `xs` is used twice. Because of that, the compiler translates the above code into the below (pseudo-code; won't typecheck):
+Note that the variable `!xs` is used twice. Because of that, the compiler translates the above code into the below (pseudo-code; won't typecheck):
 
 ```neut
-define foo(xs: list(int)): unit {
+define foo(!xs: list(int)): unit {
   let f = list(int) in
-  let xs-clone = f(1, xs) in // passing `1` to copy `xs`
-  some-func(xs-clone, xs)
+  let xs-clone = f(1, !xs) in // passing `1` to copy `xs`
+  some-func(xs-clone, !xs)
 }
 ```
 
 Note that the above example executes the type `list(int)` as a function.
+
+You must prefix a variable with `!` if the variable needs to be copied.
+
+The prefix `!` is unnecessary if the variable can be copied for free.
 
 ### On Immediate Values
 

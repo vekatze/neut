@@ -169,6 +169,12 @@ define foo() {
 }
 ```
 
+<div class="info-block">
+
+The compiler reports an error if you rewrite the example above so that it uses the variable `f` more than once. This behavior is to avoid unexpected copying of values. You can satisfy the compiler by renaming `f` into `!f`. The next section will cover this topic.
+
+</div>
+
 ### Calling Functions
 
 Functions `f` can be called against arguments `e1`, ..., `en` by writing `f(e1, ..., en)`:

@@ -55,12 +55,12 @@ define update(a: type, xs: stack(a), index: int, value: a): stack(a) {
   }
 }
 
-define suffixes(a: type, xs: stack(a)): stack(stack(a)) {
-  match xs {
+define suffixes(a: type, !xs: stack(a)): stack(stack(a)) {
+  match !xs {
   | Nil =>
     Nil
   | Cons(_, ys) =>
-    Cons(xs, suffixes(a, ys))
+    Cons(!xs, suffixes(a, ys))
   }
 }
 
@@ -74,27 +74,27 @@ define suffixes-noetic(a: type, xs: &stack(a)): stack(&stack(a)) {
 }
 
 define main(): unit {
-  let xs = empty(int) in
-  let ys = Cons(10, xs) in
+  let !xs = empty(int) in
+  let ys = Cons(10, !xs) in
   let zs = Cons(30, Cons(20, ys)) in
-  let zs = update(_, zs, 1, 20000) in
-  let _ = suffixes(_, zs) in
-  let calc on zs, xs =
-    let b = is-empty(_, zs) in
-    let _ = is-empty(_, xs) in
-    let _ = head(_, zs) in
-    let _ = suffixes-noetic(_, zs) in
-    let _ = head(_, xs) in
-    let _ = tail(_, zs) in
-    let _ = tail(_, zs) in
+  let !zs = update(_, zs, 1, 20000) in
+  let _ = suffixes(_, !zs) in
+  let calc on !zs, !xs =
+    let b = is-empty(_, !zs) in
+    let _ = is-empty(_, !xs) in
+    let _ = head(_, !zs) in
+    let _ = suffixes-noetic(_, !zs) in
+    let _ = head(_, !xs) in
+    let _ = tail(_, !zs) in
+    let _ = tail(_, !zs) in
     if b {
       1
     } else {
       2
     }
   in
-  let _ = zs in
-  let _ = xs in
+  let _ = !zs in
+  let _ = !xs in
   print-int(calc);
   print("\n")
 }

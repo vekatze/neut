@@ -38,16 +38,16 @@ define use-item1-noetic(x: &item1): list(int) {
 }
 
 define test-item1(): unit {
-  let value = Item1([1, 2, 3]) in
-  let _ = value in
-  let _ = value in
-  let _ = value in
-  let _ = use-item1(value) in
-  let _ on value =
-    let _ = use-item1-noetic(value) in
+  let !value = Item1([1, 2, 3]) in
+  let _ = !value in
+  let _ = !value in
+  let _ = !value in
+  let _ = use-item1(!value) in
+  let _ on !value =
+    let _ = use-item1-noetic(!value) in
     Unit
   in
-  let _ = value in
+  let _ = !value in
   Unit
 }
 
@@ -66,16 +66,16 @@ define use-item2-noetic(a: type, x: &item2(a)): &a {
 }
 
 define test-item2(): unit {
-  let value: item2(list(int)) = Item2([1, 2, 3]) in
-  let _ = value in
-  let _ = value in
-  let _ = value in
-  let _ = use-item2(list(int), value) in
-  let _ on value =
-    let _ = use-item2-noetic(list(int), value) in
+  let !value: item2(list(int)) = Item2([1, 2, 3]) in
+  let _ = !value in
+  let _ = !value in
+  let _ = !value in
+  let _ = use-item2(list(int), !value) in
+  let _ on !value =
+    let _ = use-item2-noetic(list(int), !value) in
     Unit
   in
-  let _ = value in
+  let _ = !value in
   Unit
 }
 
@@ -94,20 +94,20 @@ define use-item3-noetic(a: type, b: type, f: &item3(a, b), x: a): b {
 }
 
 define test-item3(): unit {
-  let value: item3(int, list(int)) =
+  let !value: item3(int, list(int)) =
     Item3(function (x) {
       [x, 2, 3]
     })
   in
-  let _ = value in
-  let _ = value in
-  let _ = value in
-  let _ = use-item3(int, list(int), value, 1) in
-  let _ on value =
-    let _ = use-item3-noetic(int, list(int), value, 1) in
+  let _ = !value in
+  let _ = !value in
+  let _ = !value in
+  let _ = use-item3(int, list(int), !value, 1) in
+  let _ on !value =
+    let _ = use-item3-noetic(int, list(int), !value, 1) in
     Unit
   in
-  let _ = value in
+  let _ = !value in
   Unit
 }
 
@@ -126,16 +126,16 @@ define use-item4-noetic(x: &item4(int, list(int))): list(int) {
 }
 
 define test-item4(): unit {
-  let value: item4(int, list(int)) = Item4(Pair(3, [1, 2, 3])) in
-  let _ = value in
-  let _ = value in
-  let _ = value in
-  let _ = use-item4(value) in
-  let _ on value =
-    let _ = use-item4-noetic(value) in
+  let !value: item4(int, list(int)) = Item4(Pair(3, [1, 2, 3])) in
+  let _ = !value in
+  let _ = !value in
+  let _ = !value in
+  let _ = use-item4(!value) in
+  let _ on !value =
+    let _ = use-item4-noetic(!value) in
     Unit
   in
-  let _ = value in
+  let _ = !value in
   Unit
 }
 
