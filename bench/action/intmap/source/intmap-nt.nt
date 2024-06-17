@@ -10,7 +10,7 @@ define make-big-dict(size: int): intmap(int) {
   grow(IntMap.empty(), size, function (acc, _) {
     let key = random(1000000) in
     let val = random(1000000) in
-    insert(key, val, acc)
+    insert(acc, key, val)
   })
 }
 
@@ -19,7 +19,7 @@ define random-lookup-sum(count: int, d: &intmap(int)): unit {
     grow(0, count, function (acc, _) {
       let key = random(1000000) in
       let val on key =
-        match lookup(*key, d) {
+        match lookup(d, *key) {
         | Left(_) =>
           0
         | Right(v) =>

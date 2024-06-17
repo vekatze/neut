@@ -14,7 +14,7 @@ define make-big-dict(size: int): dictionary(int, int) {
   grow(Dict.empty(), size, function (acc, _) {
     let key = random(1000000) in
     let val = random(1000000) in
-    intdict::insert(key, val, acc)
+    intdict::insert(acc, key, val)
   })
 }
 
@@ -23,7 +23,7 @@ define random-lookup-sum(count: int, d: &dictionary(int, int)): unit {
     grow(0, count, function (acc, _) {
       let key = random(1000000) in
       let val on key =
-        match intdict::lookup(key, d) {
+        match intdict::lookup(d, key) {
         | Left(_) =>
           0
         | Right(v) =>
