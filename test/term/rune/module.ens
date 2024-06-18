@@ -2,6 +2,9 @@
   target {
     rune {
       main "rune.nt",
+      build-option [
+        "-fsanitize=address",
+      ],
     },
   },
   dependency {
