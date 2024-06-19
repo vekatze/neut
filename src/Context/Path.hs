@@ -38,14 +38,12 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.ByteString.UTF8 qualified as B
-import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
@@ -54,7 +52,6 @@ import Entity.Const
 import Entity.Digest
 import Entity.Module
 import Entity.Module qualified as M
-import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
 import Entity.Platform as TP
 import Entity.Source qualified as Src
@@ -162,10 +159,10 @@ getExecutableOutputPath :: Target.MainTarget -> Module -> App (Path Abs File)
 getExecutableOutputPath targetOrZen mainModule = do
   case targetOrZen of
     Target.Named target _ -> do
-      executableDir <- getExecutableDir (Target.Main targetOrZen) mainModule
+      executableDir <- getExecutableDir mainModule
       resolveFile executableDir $ T.unpack target
     Target.Zen path _ _ -> do
-      zenExecutableDir <- getZenExecutableDir (Target.Main targetOrZen) mainModule
+      zenExecutableDir <- getZenExecutableDir mainModule
       relPath <- getRelPathFromSourceDir mainModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       return $ zenExecutableDir </> relPathWithoutExtension
@@ -177,93 +174,93 @@ getBaseBuildDir baseModule = do
   let moduleRootDir = getModuleRootDir baseModule
   return $ moduleRootDir </> moduleBuildDir baseModule </> platformPrefix </> versionDir
 
-getBuildDir :: Target.Target -> Module -> App (Path Abs Dir)
-getBuildDir target baseModule = do
+getBuildDir :: Module -> App (Path Abs Dir)
+getBuildDir baseModule = do
   baseBuildDir <- getBaseBuildDir baseModule
-  buildSignature <- getBuildSignature target baseModule
+  buildSignature <- getBuildSignature
   buildPrefix <- P.parseRelDir $ "build-" ++ buildSignature
   return $ baseBuildDir </> buildPrefix
 
-getBuildSignature :: Target.Target -> Module -> App String
-getBuildSignature target baseModule = do
-  sigMap <- readRef' buildSignatureMap
-  case Map.lookup MID.Main sigMap of
+getBuildSignature :: App String
+getBuildSignature = do
+  sigCache <- readRef' buildSignatureCache
+  case sigCache of
     Just sig -> do
       return sig
     Nothing -> do
       mainModule <- Env.getMainModule
       sig <- fmap (B.toString . hashAndEncode) $ liftIO $ B.readFile $ P.toFilePath $ moduleLocation mainModule
-      modifyRef' buildSignatureMap $ Map.insert MID.Main sig
+      modifyRef' buildSignatureCache $ const $ Just sig
       return sig
 
-getArtifactDir :: Target.Target -> Module -> App (Path Abs Dir)
-getArtifactDir target baseModule = do
-  buildDir <- getBuildDir target baseModule
+getArtifactDir :: Module -> App (Path Abs Dir)
+getArtifactDir baseModule = do
+  buildDir <- getBuildDir baseModule
   return $ buildDir </> artifactRelDir
 
-getForeignDir :: Target.Target -> Module -> App (Path Abs Dir)
-getForeignDir target baseModule = do
-  buildDir <- getBuildDir target baseModule
+getForeignDir :: Module -> App (Path Abs Dir)
+getForeignDir baseModule = do
+  buildDir <- getBuildDir baseModule
   let foreignDir = buildDir </> foreignRelDir
   ensureDir foreignDir
   return foreignDir
 
-getEntryDir :: Target.Target -> Module -> App (Path Abs Dir)
-getEntryDir target baseModule = do
-  buildDir <- getBuildDir target baseModule
+getEntryDir :: Module -> App (Path Abs Dir)
+getEntryDir baseModule = do
+  buildDir <- getBuildDir baseModule
   return $ buildDir </> entryRelDir
 
-getExecutableDir :: Target.Target -> Module -> App (Path Abs Dir)
-getExecutableDir target baseModule = do
-  buildDir <- getBuildDir target baseModule
+getExecutableDir :: Module -> App (Path Abs Dir)
+getExecutableDir baseModule = do
+  buildDir <- getBuildDir baseModule
   return $ buildDir </> executableRelDir
 
-getZenExecutableDir :: Target.Target -> Module -> App (Path Abs Dir)
-getZenExecutableDir target baseModule = do
-  buildDir <- getBuildDir target baseModule
+getZenExecutableDir :: Module -> App (Path Abs Dir)
+getZenExecutableDir baseModule = do
+  buildDir <- getBuildDir baseModule
   return $ buildDir </> zenRelDir </> executableRelDir
 
-getZenEntryDir :: Target.Target -> Module -> App (Path Abs Dir)
-getZenEntryDir target baseModule = do
-  buildDir <- getBuildDir target baseModule
+getZenEntryDir :: Module -> App (Path Abs Dir)
+getZenEntryDir baseModule = do
+  buildDir <- getBuildDir baseModule
   return $ buildDir </> zenRelDir </> entryRelDir
 
-sourceToOutputPath :: Target.Target -> OK.OutputKind -> Src.Source -> App (Path Abs File)
-sourceToOutputPath target kind source = do
-  artifactDir <- getArtifactDir target $ Src.sourceModule source
+sourceToOutputPath :: OK.OutputKind -> Src.Source -> App (Path Abs File)
+sourceToOutputPath kind source = do
+  artifactDir <- getArtifactDir $ Src.sourceModule source
   relPath <- Src.getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- P.splitExtension relPath
   Src.attachExtension (artifactDir </> relPathWithoutExtension) kind
 
-getSourceCachePath :: Target.Target -> Src.Source -> App (Path Abs File)
-getSourceCachePath target source = do
-  artifactDir <- getArtifactDir target $ Src.sourceModule source
+getSourceCachePath :: Src.Source -> App (Path Abs File)
+getSourceCachePath source = do
+  artifactDir <- getArtifactDir $ Src.sourceModule source
   relPath <- Src.getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- P.splitExtension relPath
   P.addExtension ".i" (artifactDir </> relPathWithoutExtension)
 
-getSourceCompletionCachePath :: Target.Target -> Src.Source -> App (Path Abs File)
-getSourceCompletionCachePath target source = do
-  artifactDir <- getArtifactDir target $ Src.sourceModule source
+getSourceCompletionCachePath :: Src.Source -> App (Path Abs File)
+getSourceCompletionCachePath source = do
+  artifactDir <- getArtifactDir $ Src.sourceModule source
   relPath <- Src.getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- P.splitExtension relPath
   P.addExtension ".ic" (artifactDir </> relPathWithoutExtension)
 
-attachOutputPath :: Target.Target -> OK.OutputKind -> Src.Source -> App (OK.OutputKind, Path Abs File)
-attachOutputPath target outputKind source = do
-  outputPath <- sourceToOutputPath target outputKind source
+attachOutputPath :: OK.OutputKind -> Src.Source -> App (OK.OutputKind, Path Abs File)
+attachOutputPath outputKind source = do
+  outputPath <- sourceToOutputPath outputKind source
   return (outputKind, outputPath)
 
 getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.MainTarget -> App (OK.OutputKind, Path Abs File)
 getOutputPathForEntryPoint baseModule kind mainTarget = do
   case mainTarget of
     Target.Named target _ -> do
-      entryDir <- getEntryDir (Target.Main mainTarget) baseModule
+      entryDir <- getEntryDir baseModule
       relPath <- parseRelFile $ T.unpack target
       outputPath <- Src.attachExtension (entryDir </> relPath) kind
       return (kind, outputPath)
     Target.Zen path _ _ -> do
-      zenEntryDir <- getZenEntryDir (Target.Main mainTarget) baseModule
+      zenEntryDir <- getZenEntryDir baseModule
       relPath <- getRelPathFromSourceDir baseModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       outputPath <- Src.attachExtension (zenEntryDir </> relPathWithoutExtension) kind

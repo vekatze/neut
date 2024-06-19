@@ -31,9 +31,9 @@ link' :: MainTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   outputPath <- Path.getExecutableOutputPath target mainModule
-  objectPathList <- mapM (Path.sourceToOutputPath (Main target) OK.Object) sourceList
+  objectPathList <- mapM (Path.sourceToOutputPath OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
-  foreignDirList <- mapM (Path.getForeignDir (Main target)) moduleList
+  foreignDirList <- mapM Path.getForeignDir moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
   let clangOptions = getLinkOption (Main target)
   LLVM.link clangOptions (mainObject : objectPathList ++ foreignObjectList) outputPath

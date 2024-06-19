@@ -36,7 +36,7 @@ _formatSource path content = do
   mainModule <- getMainModule
   (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen path)
   contentSeq <- forConcurrently dependenceSeq $ \source -> do
-    cacheOrContent <- Load.load Peripheral source
+    cacheOrContent <- Load.load source
     return (source, cacheOrContent)
   let contentSeq' = _replaceLast content contentSeq
   forM_ contentSeq' $ \(source, cacheOrContent) -> do

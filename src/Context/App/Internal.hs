@@ -74,7 +74,7 @@ data Env = Env
     unusedLocalLocatorMap :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
     unusedStaticFileMap :: IORef (Map.HashMap T.Text Hint),
-    buildSignatureMap :: IORef (Map.HashMap MID.ModuleID String), -- only for memoization
+    buildSignatureCache :: IORef (Maybe String), -- only for memoization
     holeSubst :: IORef HS.HoleSubst,
     sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
     traceSourceList :: IORef [Source.Source],
@@ -136,7 +136,7 @@ newEnv = do
   antecedentDigestCache <- newRef
   constraintEnv <- newIORef []
   suspendedEnv <- newIORef []
-  buildSignatureMap <- newIORef Map.empty
+  buildSignatureCache <- newIORef Nothing
   holeSubst <- newIORef HS.empty
   sourceChildrenMap <- newIORef Map.empty
   weakTypeEnv <- newIORef IntMap.empty

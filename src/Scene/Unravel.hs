@@ -54,31 +54,30 @@ unravel baseModule t = do
     Main t' -> do
       case t' of
         Zen path _ _ ->
-          unravelFromFile t baseModule path
+          unravelFromFile baseModule path
         Named targetName _ -> do
           case getTargetPath baseModule targetName of
             Nothing ->
               Throw.raiseError' $ "No such target is defined: `" <> targetName <> "`"
             Just path -> do
-              unravelFromFile t baseModule path
+              unravelFromFile baseModule path
     Peripheral -> do
       registerShiftMap
-      unravelFoundational t baseModule
+      unravelFoundational baseModule
     PeripheralSingle path -> do
-      unravelFromFile t baseModule path
+      unravelFromFile baseModule path
 
 unravelFromFile ::
-  Target ->
   Module ->
   Path Abs File ->
   App (A.ArtifactTime, [Source.Source])
-unravelFromFile target baseModule path = do
-  Module.sourceFromPath baseModule path >>= unravel' target
+unravelFromFile baseModule path = do
+  Module.sourceFromPath baseModule path >>= unravel'
 
-unravel' :: Target -> Source.Source -> App (A.ArtifactTime, [Source.Source])
-unravel' target source = do
+unravel' :: Source.Source -> App (A.ArtifactTime, [Source.Source])
+unravel' source = do
   registerShiftMap
-  (artifactTime, sourceSeq) <- unravel'' target source
+  (artifactTime, sourceSeq) <- unravel'' source
   forM_ sourceSeq Parse.ensureExistence
   return (artifactTime, toList sourceSeq)
 
@@ -124,8 +123,8 @@ unravelModule axis currentModule = do
       liftIO $ modifyIORef' (traceListRef axis) tail
       return $ getAntecedentArrow currentModule ++ arrows
 
-unravel'' :: Target -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
-unravel'' target source = do
+unravel'' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
+unravel'' source = do
   visitEnv <- Unravel.getVisitEnv
   let path = Source.sourceFilePath source
   case Map.lookup path visitEnv of
@@ -139,19 +138,19 @@ unravel'' target source = do
       Unravel.insertToVisitEnv path VI.Active
       Unravel.pushToTraceSourceList source
       children <- getChildren source
-      (artifactTimeList, seqList) <- mapAndUnzipM (unravelImportItem target) children
+      (artifactTimeList, seqList) <- mapAndUnzipM unravelImportItem children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
-      baseArtifactTime <- getBaseArtifactTime target source
+      baseArtifactTime <- getBaseArtifactTime source
       artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
       Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source)
 
-unravelImportItem :: Target -> ImportItem -> App (A.ArtifactTime, Seq Source.Source)
-unravelImportItem t importItem = do
+unravelImportItem :: ImportItem -> App (A.ArtifactTime, Seq Source.Source)
+unravelImportItem importItem = do
   case importItem of
     ImportItem source _ ->
-      unravel'' t source
+      unravel'' source
     StaticKey staticFileList -> do
       let pathList = map snd staticFileList
       itemModTime <- forM pathList $ \(m, p) -> do
@@ -162,10 +161,10 @@ unravelImportItem t importItem = do
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
 
-unravelFoundational :: Target -> Module -> App (A.ArtifactTime, [Source.Source])
-unravelFoundational target baseModule = do
+unravelFoundational :: Module -> App (A.ArtifactTime, [Source.Source])
+unravelFoundational baseModule = do
   children <- Module.getAllSourceInModule baseModule
-  (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' target) children
+  (artifactTimeList, seqList) <- mapAndUnzipM unravel'' children
   baseArtifactTime <- artifactTimeFromCurrentTime
   artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
   return (artifactTime, toList $ foldl' (><) Seq.empty seqList)
@@ -177,11 +176,11 @@ getArtifactTime artifactTimeList artifactTime = do
   objectTime <- getItemTime' (map A.objectTime artifactTimeList) $ A.objectTime artifactTime
   return A.ArtifactTime {cacheTime, llvmTime, objectTime}
 
-getBaseArtifactTime :: Target -> Source.Source -> App A.ArtifactTime
-getBaseArtifactTime target source = do
-  cacheTime <- getFreshCacheTime target source
-  llvmTime <- getFreshLLVMTime target source
-  objectTime <- getFreshObjectTime target source
+getBaseArtifactTime :: Source.Source -> App A.ArtifactTime
+getBaseArtifactTime source = do
+  cacheTime <- getFreshCacheTime source
+  llvmTime <- getFreshLLVMTime source
+  objectTime <- getFreshObjectTime source
   return A.ArtifactTime {cacheTime, llvmTime, objectTime}
 
 getItemTime' ::
@@ -209,19 +208,19 @@ distributeMaybe xs =
       rest' <- distributeMaybe rest
       return $ y : rest'
 
-getFreshCacheTime :: Target -> Source.Source -> App CacheTime
-getFreshCacheTime target source = do
-  cachePath <- Path.getSourceCachePath target source
+getFreshCacheTime :: Source.Source -> App CacheTime
+getFreshCacheTime source = do
+  cachePath <- Path.getSourceCachePath source
   getFreshTime source cachePath
 
-getFreshLLVMTime :: Target -> Source.Source -> App LLVMTime
-getFreshLLVMTime target source = do
-  llvmPath <- Path.sourceToOutputPath target OK.LLVM source
+getFreshLLVMTime :: Source.Source -> App LLVMTime
+getFreshLLVMTime source = do
+  llvmPath <- Path.sourceToOutputPath OK.LLVM source
   getFreshTime source llvmPath
 
-getFreshObjectTime :: Target -> Source.Source -> App ObjectTime
-getFreshObjectTime target source = do
-  objectPath <- Path.sourceToOutputPath target OK.Object source
+getFreshObjectTime :: Source.Source -> App ObjectTime
+getFreshObjectTime source = do
+  objectPath <- Path.sourceToOutputPath OK.Object source
   getFreshTime source objectPath
 
 getFreshTime :: Source.Source -> Path Abs File -> App (Maybe UTCTime)

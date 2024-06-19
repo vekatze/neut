@@ -6,11 +6,10 @@ import Context.Parse (readTextFile)
 import Data.Text qualified as T
 import Entity.Cache qualified as Cache
 import Entity.Source qualified as Source
-import Entity.Target
 
-load :: Target -> Source.Source -> App (Either Cache.Cache T.Text)
-load target source = do
-  mCache <- Cache.loadCache target source
+load :: Source.Source -> App (Either Cache.Cache T.Text)
+load source = do
+  mCache <- Cache.loadCache source
   case mCache of
     Just cache -> do
       return $ Left cache
