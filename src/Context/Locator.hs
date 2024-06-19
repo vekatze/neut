@@ -18,8 +18,7 @@ where
 
 import Context.App
 import Context.App.Internal
-import Context.Env (getCurrentSource)
-import Context.Module (getMainModule)
+import Context.Env (getCurrentSource, getMainModule)
 import Context.Path (doesFileExist)
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw

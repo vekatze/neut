@@ -7,9 +7,9 @@ where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.Env qualified as Env
 import Context.External qualified as External
 import Context.LLVM qualified as LLVM
-import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
@@ -99,7 +99,7 @@ compile target outputKindList contentSeq = do
     Cache.whenCompilationNecessary outputKindList source $ do
       virtualCode <- Clarify.clarify stmtList >>= Lower.lower
       return (Right source, virtualCode)
-  mainModule <- Module.getMainModule
+  mainModule <- Env.getMainModule
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   return $ entryPointVirtualCode ++ virtualCodeList
 

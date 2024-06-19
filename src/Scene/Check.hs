@@ -6,7 +6,7 @@ module Scene.Check
 where
 
 import Context.App
-import Context.Module (getMainModule)
+import Context.Env (getMainModule)
 import Context.Throw qualified as Throw
 import Control.Monad
 import Entity.Module qualified as M

@@ -3,8 +3,6 @@ module Act.Build (build) where
 import Context.App
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
-import Context.Module (getMainModule)
-import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Control.Monad
 import Entity.Config.Build
@@ -19,7 +17,7 @@ build :: Config -> App ()
 build cfg = do
   setup cfg
   target <- Collect.getMainTarget $ targetName cfg
-  mainModule <- getMainModule
+  mainModule <- Env.getMainModule
   Build.buildTarget (fromConfig cfg) mainModule (Main target)
 
 setup :: Config -> App ()
@@ -28,7 +26,7 @@ setup cfg = do
   Path.ensureNotInLibDir
   Initialize.initializeCompiler (remarkCfg cfg)
   Env.setBuildMode $ buildMode cfg
-  Module.getMainModule >>= Fetch.fetch
+  Env.getMainModule >>= Fetch.fetch
 
 fromConfig :: Config -> Build.Axis
 fromConfig cfg =

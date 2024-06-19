@@ -85,7 +85,7 @@ unravel' target source = do
 registerShiftMap :: App ()
 registerShiftMap = do
   axis <- newAxis
-  arrowList <- Module.getMainModule >>= unravelModule axis
+  arrowList <- Env.getMainModule >>= unravelModule axis
   cAxis <- newCAxis
   compressMap cAxis (Map.fromList arrowList) arrowList >>= Antecedent.setMap
 

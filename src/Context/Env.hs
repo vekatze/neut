@@ -12,9 +12,18 @@ import Entity.BuildMode qualified as BM
 import Entity.DataSize qualified as DS
 import Entity.Hint
 import Entity.LocationTree qualified as LT
+import Entity.Module
 import Entity.Platform
 import Entity.Source qualified as Source
 import Path
+
+getMainModule :: App Module
+getMainModule =
+  readRef "mainModule" mainModule
+
+setMainModule :: Module -> App ()
+setMainModule =
+  writeRef mainModule
 
 setBuildMode :: BM.BuildMode -> App ()
 setBuildMode =

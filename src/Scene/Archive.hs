@@ -1,6 +1,7 @@
 module Scene.Archive (archive) where
 
 import Context.App
+import Context.Env qualified as Env
 import Context.External qualified as External
 import Context.Module qualified as Module
 import Context.Path qualified as Path
@@ -28,7 +29,7 @@ makeArchiveFromTempDir :: PV.PackageVersion -> Path Abs Dir -> App ()
 makeArchiveFromTempDir packageVersion tempRootDir = do
   (_, files) <- listDirRecurRel tempRootDir
   let newContents = map toFilePath files
-  mainModule <- Module.getMainModule
+  mainModule <- Env.getMainModule
   outputPath <- toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
   External.run "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
 

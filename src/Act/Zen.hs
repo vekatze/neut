@@ -2,8 +2,6 @@ module Act.Zen (zen) where
 
 import Context.App
 import Context.Env qualified as Env
-import Context.Module (getMainModule)
-import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Control.Monad
 import Data.Maybe
@@ -23,7 +21,7 @@ zen :: Config -> App ()
 zen cfg = do
   setup cfg
   path <- resolveFile' (filePathString cfg)
-  mainModule <- getMainModule
+  mainModule <- Env.getMainModule
   let zenConfig = Z.clangOption $ moduleZenConfig mainModule
   buildTarget (fromConfig cfg) mainModule $
     Main (Zen path (CL.compileOption zenConfig) (CL.linkOption zenConfig))
@@ -43,4 +41,4 @@ setup cfg = do
   Path.ensureNotInLibDir
   Initialize.initializeCompiler (remarkCfg cfg)
   Env.setBuildMode $ buildMode cfg
-  Module.getMainModule >>= Fetch.fetch
+  Env.getMainModule >>= Fetch.fetch

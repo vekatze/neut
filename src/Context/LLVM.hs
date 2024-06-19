@@ -6,8 +6,8 @@ module Context.LLVM
 where
 
 import Context.App
+import Context.Env (getMainModule)
 import Context.External qualified as External
-import Context.Module (getMainModule)
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad

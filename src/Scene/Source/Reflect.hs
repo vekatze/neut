@@ -1,7 +1,7 @@
 module Scene.Source.Reflect (reflect) where
 
 import Context.App
-import Context.Module (getMainModule)
+import Context.Env (getMainModule)
 import Entity.Module
 import Entity.Source
 import Path

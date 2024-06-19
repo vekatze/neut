@@ -1,7 +1,7 @@
 module Scene.PackageVersion.Reflect (reflect) where
 
 import Context.App
-import Context.Module qualified as Module
+import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Maybe
@@ -17,7 +17,7 @@ reflect versionText = do
     Nothing ->
       Throw.raiseError' "The version must be something like X-Y-Z"
     Just packageVersion -> do
-      mainModule <- Module.getMainModule
+      mainModule <- Env.getMainModule
       ensureNewVersionSanity mainModule packageVersion
       return packageVersion
 

@@ -1,7 +1,7 @@
 module Act.Check (check) where
 
 import Context.App
-import Context.Module qualified as Module
+import Context.Env qualified as Env
 import Context.Remark qualified as Remark
 import Entity.Config.Check
 import Entity.Remark qualified as Remark
@@ -20,4 +20,4 @@ check cfg = do
 setup :: Config -> App ()
 setup cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
-  Module.getMainModule >>= Fetch.fetch
+  Env.getMainModule >>= Fetch.fetch

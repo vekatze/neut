@@ -1,7 +1,7 @@
 module Scene.Format (format) where
 
 import Context.App
-import Context.Module (getMainModule)
+import Context.Env (getMainModule)
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Control.Monad

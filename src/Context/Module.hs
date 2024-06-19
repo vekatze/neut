@@ -1,8 +1,6 @@
 module Context.Module
   ( getModuleFilePath,
     getModuleDirByID,
-    getMainModule,
-    setMainModule,
     getModuleCacheMap,
     getCoreModuleURL,
     getCoreModuleDigest,
@@ -15,6 +13,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Env
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
@@ -34,14 +33,6 @@ import Entity.Source qualified as Source
 import Path
 import Path.IO
 import System.Environment
-
-getMainModule :: App Module
-getMainModule =
-  readRef "mainModule" mainModule
-
-setMainModule :: Module -> App ()
-setMainModule =
-  writeRef mainModule
 
 getModuleFilePath :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
 getModuleFilePath mHint moduleID = do
