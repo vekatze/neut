@@ -24,21 +24,21 @@ import Entity.Target
 import Path
 import Path.IO
 
-saveCache :: Target -> Source.Source -> Cache.Cache -> App ()
-saveCache target source cache = do
-  cachePath <- Path.getSourceCachePath target source
+saveCache :: Source.Source -> Cache.Cache -> App ()
+saveCache source cache = do
+  cachePath <- Path.getSourceCachePath source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) $ Cache.compress cache
 
-saveCompletionCache :: Target -> Source.Source -> Cache.CompletionCache -> App ()
-saveCompletionCache target source cache = do
-  cachePath <- Path.getSourceCompletionCachePath target source
+saveCompletionCache :: Source.Source -> Cache.CompletionCache -> App ()
+saveCompletionCache source cache = do
+  cachePath <- Path.getSourceCompletionCachePath source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
-loadCache :: Target -> Source.Source -> App (Maybe Cache.Cache)
-loadCache target source = do
-  cachePath <- Path.getSourceCachePath target source
+loadCache :: Source.Source -> App (Maybe Cache.Cache)
+loadCache source = do
+  cachePath <- Path.getSourceCompletionCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
@@ -105,7 +105,7 @@ isEntryPointCompilationSkippable baseModule target outputKindList = do
 
 invalidate :: Source.Source -> App ()
 invalidate source = do
-  cachePath <- Path.getSourceCachePath Peripheral source
+  cachePath <- Path.getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return ()

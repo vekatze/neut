@@ -6,9 +6,9 @@ module Scene.Fetch
 where
 
 import Context.App
+import Context.Env (getMainModule)
 import Context.External qualified as External
 import Context.Fetch
-import Context.Module (getMainModule)
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Remark qualified as Remark

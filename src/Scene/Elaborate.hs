@@ -44,7 +44,6 @@ import Entity.PrimValue qualified as PV
 import Entity.Remark qualified as Remark
 import Entity.Stmt
 import Entity.StmtKind
-import Entity.Target
 import Entity.Term qualified as TM
 import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
@@ -55,8 +54,8 @@ import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Inline qualified as TM
 
-elaborate :: Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
-elaborate target cacheOrStmt = do
+elaborate :: Either Cache.Cache [WeakStmt] -> App [Stmt]
+elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
     Left cache -> do
@@ -67,7 +66,7 @@ elaborate target cacheOrStmt = do
       Gensym.setCountByMax $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
-      analyzeStmtList stmtList >>= synthesizeStmtList target
+      analyzeStmtList stmtList >>= synthesizeStmtList
 
 analyzeStmtList :: [WeakStmt] -> App [WeakStmt]
 analyzeStmtList stmtList = do
@@ -77,8 +76,8 @@ analyzeStmtList stmtList = do
     insertWeakStmt stmt'
     return stmt'
 
-synthesizeStmtList :: Target -> [WeakStmt] -> App [Stmt]
-synthesizeStmtList target stmtList = do
+synthesizeStmtList :: [WeakStmt] -> App [Stmt]
+synthesizeStmtList stmtList = do
   -- mapM_ viewStmt stmtList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   stmtList' <- concat <$> mapM elaborateStmt stmtList
@@ -90,14 +89,14 @@ synthesizeStmtList target stmtList = do
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
   countSnapshot <- Gensym.getCount
-  Cache.saveCache target source $
+  Cache.saveCache source $
     Cache.Cache
       { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
         Cache.countSnapshot = countSnapshot
       }
-  Cache.saveCompletionCache target source $
+  Cache.saveCompletionCache source $
     Cache.CompletionCache
       { Cache.localVarTree = localVarTree,
         Cache.topCandidate = topCandidate,

@@ -6,7 +6,7 @@ module Scene.Check
 where
 
 import Context.App
-import Context.Module (getMainModule)
+import Context.Env (getMainModule)
 import Context.Throw qualified as Throw
 import Control.Monad
 import Entity.Module qualified as M
@@ -38,8 +38,8 @@ _check target baseModule = do
     Initialize.initializeForTarget
     (_, dependenceSeq) <- Unravel.unravel baseModule target
     contentSeq <- forConcurrently dependenceSeq $ \source -> do
-      cacheOrContent <- Load.load target source
+      cacheOrContent <- Load.load source
       return (source, cacheOrContent)
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      void $ Parse.parse source cacheOrContent >>= Elaborate.elaborate target
+      void $ Parse.parse source cacheOrContent >>= Elaborate.elaborate

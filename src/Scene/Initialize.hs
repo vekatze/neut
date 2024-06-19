@@ -14,7 +14,6 @@ import Context.Definition qualified as Definition
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
-import Context.Module qualified as Module
 import Context.RawImportSummary qualified as RawImportSummary
 import Context.Remark qualified as Remark
 import Context.SymLoc qualified as SymLoc
@@ -46,7 +45,7 @@ initializeCompiler cfg = do
 
 initializeCompilerWithModule :: Module -> App ()
 initializeCompilerWithModule newModule = do
-  Module.setMainModule newModule
+  Env.setMainModule newModule
 
 initializeForTarget :: App ()
 initializeForTarget = do

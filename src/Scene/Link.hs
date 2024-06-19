@@ -4,8 +4,8 @@ module Scene.Link
 where
 
 import Context.App
+import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
-import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
@@ -19,7 +19,7 @@ import Path.IO
 
 link :: MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
-  mainModule <- Module.getMainModule
+  mainModule <- Env.getMainModule
   isExecutableAvailable <- Path.getExecutableOutputPath target mainModule >>= Path.doesFileExist
   let b1 = not didPerformForeignCompilation
   let b2 = shouldSkipLink || (isJust (A.objectTime artifactTime) && isExecutableAvailable)
@@ -31,9 +31,9 @@ link' :: MainTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   outputPath <- Path.getExecutableOutputPath target mainModule
-  objectPathList <- mapM (Path.sourceToOutputPath (Main target) OK.Object) sourceList
+  objectPathList <- mapM (Path.sourceToOutputPath OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
-  foreignDirList <- mapM (Path.getForeignDir (Main target)) moduleList
+  foreignDirList <- mapM Path.getForeignDir moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
   let clangOptions = getLinkOption (Main target)
   LLVM.link clangOptions (mainObject : objectPathList ++ foreignObjectList) outputPath

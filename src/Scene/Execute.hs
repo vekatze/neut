@@ -1,14 +1,14 @@
 module Scene.Execute (execute) where
 
 import Context.App
+import Context.Env qualified as Env
 import Context.External qualified as External
-import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Entity.Target
 import Path
 
 execute :: MainTarget -> [String] -> App ()
 execute target args = do
-  mainModule <- Module.getMainModule
+  mainModule <- Env.getMainModule
   outputPath <- Path.getExecutableOutputPath target mainModule
   External.run (toFilePath outputPath) args

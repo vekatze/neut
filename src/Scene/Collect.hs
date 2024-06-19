@@ -5,7 +5,7 @@ module Scene.Collect
 where
 
 import Context.App
-import Context.Module qualified as Module
+import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
@@ -17,7 +17,7 @@ import Prelude hiding (log)
 
 getMainTarget :: T.Text -> App MainTarget
 getMainTarget targetName = do
-  targetOrNone <- flip getTarget targetName <$> Module.getMainModule
+  targetOrNone <- flip getTarget targetName <$> Env.getMainModule
   case targetOrNone of
     Just target ->
       return target
