@@ -62,7 +62,7 @@ unravel baseModule t = do
             Just path -> do
               unravelFromFile t baseModule path
     Peripheral -> do
-      registerShiftMap baseModule
+      registerShiftMap
       unravelFoundational t baseModule
     PeripheralSingle path -> do
       unravelFromFile t baseModule path
@@ -77,15 +77,15 @@ unravelFromFile target baseModule path = do
 
 unravel' :: Target -> Source.Source -> App (A.ArtifactTime, [Source.Source])
 unravel' target source = do
-  registerShiftMap (Source.sourceModule source)
+  registerShiftMap
   (artifactTime, sourceSeq) <- unravel'' target source
   forM_ sourceSeq Parse.ensureExistence
   return (artifactTime, toList sourceSeq)
 
-registerShiftMap :: Module -> App ()
-registerShiftMap baseModule = do
+registerShiftMap :: App ()
+registerShiftMap = do
   axis <- newAxis
-  arrowList <- unravelModule axis baseModule
+  arrowList <- Module.getMainModule >>= unravelModule axis
   cAxis <- newCAxis
   compressMap cAxis (Map.fromList arrowList) arrowList >>= Antecedent.setMap
 
