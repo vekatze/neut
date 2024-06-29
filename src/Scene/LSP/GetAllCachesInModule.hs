@@ -13,6 +13,7 @@ import Entity.Module
 import Entity.Source
 import Path
 import Path.IO
+import Scene.Source.ShiftToLatest (shiftToLatest)
 import UnliftIO.Async
 
 getAllCachesInModule :: Module -> App [(Source, Cache)]
@@ -22,7 +23,7 @@ getAllCachesInModule baseModule = do
 
 getCache :: Module -> Path Abs File -> App (Maybe (Source, Cache))
 getCache baseModule filePath = do
-  let source = Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
+  source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
   cacheOrNone <- getSourceCachePath source >>= Cache.loadCacheOptimistically
   case cacheOrNone of
     Nothing ->
@@ -37,10 +38,8 @@ getAllCompletionCachesInModule baseModule = do
 
 getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache baseModule filePath = do
-  let source = Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <-
-    getSourceCompletionCachePath source
-      >>= Cache.loadCompletionCacheOptimistically
+  source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
+  cacheOrNone <- getSourceCompletionCachePath source >>= Cache.loadCompletionCacheOptimistically
   case cacheOrNone of
     Nothing ->
       return Nothing

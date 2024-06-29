@@ -11,6 +11,7 @@ import Scene.LSP.FindDefinition qualified as LSP
 import Scene.LSP.FindReferences qualified as LSP
 import Scene.LSP.GetAllCachesInModule qualified as LSP
 import Scene.LSP.GetSource qualified as LSP
+import Scene.Unravel (registerShiftMap)
 import UnliftIO.Async (forConcurrently)
 
 references ::
@@ -18,6 +19,7 @@ references ::
   p ->
   AppM [Location]
 references params = do
+  lift registerShiftMap
   currentSource <- LSP.getSource params
   ((_, defLink), _) <- LSP.findDefinition params
   cacheSeq <- lift $ LSP.getAllCachesInModule $ sourceModule currentSource
