@@ -93,6 +93,7 @@ insertDependency aliasName url = do
               dependencyDigest = digest,
               dependencyPresetEnabled = False
             }
+    void $ getLibraryModule alias digest >>= checkModule
 
 insertCoreDependency :: App ()
 insertCoreDependency = do
@@ -105,6 +106,7 @@ insertCoreDependency = do
         dependencyDigest = digest,
         dependencyPresetEnabled = True
       }
+  void $ getLibraryModule coreModuleAlias digest >>= checkModule
 
 installIfNecessary :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App ()
 installIfNecessary alias mirrorList digest = do
@@ -135,7 +137,6 @@ installModule archivePath alias digest = do
     extractToLibDir archivePath alias digest
     libModule <- getLibraryModule alias digest
     fetch libModule
-    void $ checkModule libModule
 
 checkIfInstalled :: MD.ModuleDigest -> App Bool
 checkIfInstalled digest = do
