@@ -1,6 +1,7 @@
 module Scene.Unravel
   ( unravel,
     unravelFromFile,
+    registerShiftMap,
     unravel',
   )
 where
@@ -164,7 +165,8 @@ unravelImportItem importItem = do
 unravelFoundational :: Module -> App (A.ArtifactTime, [Source.Source])
 unravelFoundational baseModule = do
   children <- Module.getAllSourceInModule baseModule
-  (artifactTimeList, seqList) <- mapAndUnzipM unravel'' children
+  children' <- mapM shiftToLatest children
+  (artifactTimeList, seqList) <- mapAndUnzipM unravel'' children'
   baseArtifactTime <- artifactTimeFromCurrentTime
   artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
   return (artifactTime, toList $ foldl' (><) Seq.empty seqList)

@@ -5,6 +5,7 @@ import Context.App.Internal
 import Control.Monad
 import Data.ByteString.UTF8 qualified as B
 import Data.HashMap.Strict qualified as Map
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Digest (hashAndEncode)
 import Entity.Module qualified as M
@@ -15,15 +16,25 @@ import Prelude hiding (lookup, read)
 initialize :: App ()
 initialize = do
   writeRef' antecedentMap Map.empty
+  writeRef' reverseAntecedentMap Map.empty
   writeRef' antecedentDigestCache Nothing
 
 setMap :: Map.HashMap MID.ModuleID M.Module -> App ()
-setMap =
-  writeRef' antecedentMap
+setMap mp = do
+  writeRef' antecedentMap mp
+  forM_ (Map.toList mp) $ \(mid, m) -> do
+    modifyRef' reverseAntecedentMap $ Map.insertWith S.union (M.moduleID m) (S.singleton mid)
 
 getMap :: App (Map.HashMap MID.ModuleID M.Module)
 getMap =
   readRef' antecedentMap
+
+type RevMap =
+  Map.HashMap MID.ModuleID (S.Set MID.ModuleID)
+
+getReverseMap :: App RevMap
+getReverseMap =
+  readRef' reverseAntecedentMap
 
 lookup :: MD.ModuleDigest -> App (Maybe M.Module)
 lookup mc = do

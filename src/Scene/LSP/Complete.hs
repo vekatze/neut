@@ -1,5 +1,6 @@
 module Scene.LSP.Complete (complete) where
 
+import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.AppM
 import Context.Cache qualified as Cache
@@ -11,6 +12,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
@@ -22,6 +24,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.LocalVarTree qualified as LVT
 import Entity.Module
 import Entity.ModuleAlias qualified as MA
+import Entity.ModuleID qualified as MID
 import Entity.RawImportSummary
 import Entity.Source
 import Entity.SourceLocator qualified as SL
@@ -30,10 +33,12 @@ import Language.LSP.Protocol.Types
 import Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
 import Scene.Module.Reflect (getAllDependencies)
 import Scene.Source.Reflect qualified as Source
+import Scene.Unravel (registerShiftMap)
 import UnliftIO.Async
 
 complete :: Uri -> Position -> AppM [CompletionItem]
 complete uri pos = do
+  lift registerShiftMap
   pathString <- liftMaybe $ uriToFilePath uri
   currentSource <- lift (Source.reflect pathString) >>= liftMaybe
   let loc = positionToLoc pos
@@ -86,10 +91,15 @@ adjustTopCandidate ::
   App [CompletionItem]
 adjustTopCandidate summaryOrNone currentSource loc prefixSummary candInfo = do
   fmap concat $ forM candInfo $ \(candSource, candList) -> do
-    locator <- NE.head <$> getHumanReadableLocator (sourceModule currentSource) candSource
-    prefixList <- getPrefixList (sourceModule currentSource) candSource
-    let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
-    return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource prefixSummary locator loc prefixList) candList
+    revMap <- Antecedent.getReverseMap
+    locatorOrNone <- getHumanReadableLocator revMap (sourceModule currentSource) candSource
+    case locatorOrNone of
+      Nothing ->
+        return []
+      Just locator -> do
+        prefixList <- getPrefixList (sourceModule currentSource) candSource
+        let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
+        return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource prefixSummary locator loc prefixList) candList
 
 identToCompletionItem :: T.Text -> CompletionItem
 identToCompletionItem x = do
@@ -278,10 +288,50 @@ getPrefixList baseModule source = do
   if moduleID baseModule /= moduleID (sourceModule source)
     then return []
     else do
-      locatorList <- NE.toList <$> getHumanReadableLocator baseModule source
+      revMap <- Antecedent.getReverseMap
+      locatorList <- maybeToList <$> getHumanReadableLocator revMap baseModule source
       let prefixInfo = Map.toList $ modulePrefixMap baseModule
       return $ map (BN.reify . fst) $ filter (\(_, cod) -> uncurry reifyPrefixCod cod `elem` locatorList) prefixInfo
 
 reifyPrefixCod :: MA.ModuleAlias -> SL.SourceLocator -> T.Text
 reifyPrefixCod alias sl =
   MA.reify alias <> "." <> SL.toText sl
+
+getHumanReadableLocator :: Antecedent.RevMap -> Module -> Source -> App (Maybe T.Text)
+getHumanReadableLocator revMap baseModule source = do
+  let sourceModuleID = moduleID $ sourceModule source
+  baseReadableLocator <- getBaseReadableLocator source
+  _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator
+
+_getHumanReadableLocator :: Antecedent.RevMap -> Module -> MID.ModuleID -> T.Text -> App (Maybe T.Text)
+_getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator = do
+  case sourceModuleID of
+    MID.Main -> do
+      return $ Just $ "this" <> nsSep <> baseReadableLocator
+    MID.Base -> do
+      return $ Just $ "base" <> nsSep <> baseReadableLocator
+    MID.Library digest -> do
+      let digestMap = getDigestMap baseModule
+      case Map.lookup digest digestMap of
+        Nothing -> do
+          case Map.lookup sourceModuleID revMap of
+            Just midSet ->
+              _getHumanReadableLocator' revMap baseModule (S.toList midSet) baseReadableLocator
+            Nothing ->
+              return Nothing
+        Just aliasList -> do
+          let alias = BN.reify $ MA.extract $ NE.head aliasList
+          return $ Just $ alias <> nsSep <> baseReadableLocator
+
+_getHumanReadableLocator' :: Antecedent.RevMap -> Module -> [MID.ModuleID] -> T.Text -> App (Maybe T.Text)
+_getHumanReadableLocator' revMap baseModule midList baseReadableLocator = do
+  case midList of
+    [] ->
+      return Nothing
+    mid : rest -> do
+      locatorOrNone <- _getHumanReadableLocator revMap baseModule mid baseReadableLocator
+      case locatorOrNone of
+        Just locator ->
+          return $ Just locator
+        Nothing ->
+          _getHumanReadableLocator' revMap baseModule rest baseReadableLocator
