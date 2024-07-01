@@ -7,7 +7,7 @@ import {
 define use-file(): system(unit) {
   try file = open("./test", FF.for-rw, FM.default-file-mode) in
   try _ = write("hey\n", file) in
-  try _ = read(file) in
+  try _ = read(file, 1024) in
   close(file)
 }
 
