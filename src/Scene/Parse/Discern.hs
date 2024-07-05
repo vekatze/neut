@@ -350,18 +350,30 @@ discern axis term =
       t' <- discern axis t
       return $ m :< WT.Box t'
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
-      let (ms, xs) = unzip $ SE.extract mxs
-      xsOuter <- zipWithM (`discernIdent` axis) ms xs
-      xets <- forM (zip xs xsOuter) $ \(x, (mOuter, outerVar)) -> do
-        x' <- Gensym.newIdentFromText x
-        let t = doNotCare m
-        return (x', mOuter :< WT.Var outerVar, t)
+      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx axis x
+      xets <- discernNoeticVarList xsOuter
       let innerLayer = currentLayer axis - 1
-      let xsInner = map (\(x, _, _) -> x) xets
-      let innerAddition = zipWith (\my x -> (Ident.toText x, (my, x, innerLayer))) ms xsInner
+      let xsInner = map (\(x, mx :< _, _) -> (mx, x)) xets
+      let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer))) xsInner
       axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
       body' <- discern axisInner body
       return $ m :< WT.BoxIntro xets body'
+    m :< RT.BoxElim _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
+      -- inner
+      ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y
+      yetsInner <- discernNoeticVarList ysOuter
+      let innerLayer = currentLayer axis + 1
+      let ysInner = map (\(y, my :< _, _) -> (my, y)) yetsInner
+      let innerAddition = map (\(my, y) -> (Ident.toText y, (my, y, innerLayer))) ysInner
+      axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
+      e1' <- discern axisInner e1
+      -- cont
+      yetsCont <- discernNoeticVarList ysInner
+      let ysCont = map (\(y, my :< _, _) -> (my, y)) yetsCont
+      let contAddition = map (\(my, y) -> (Ident.toText y, (my, y, currentLayer axis))) ysCont
+      axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
+      (mxt', e2') <- discernBinderWithBody' axisCont mxt startLoc endLoc e2
+      return $ m :< WT.BoxElim mxt' yetsInner e1' yetsCont e2'
     m :< RT.Noema t -> do
       t' <- discern axis t
       return $ m :< WT.Noema t'
@@ -546,6 +558,12 @@ discern axis term =
       discern axis $ mProj :< RT.Use [] e [] args [] var loc
     _ :< RT.Brace _ (e, _) ->
       discern axis e
+
+discernNoeticVarList :: [(Hint, Ident)] -> App [(Ident, WT.WeakTerm, WT.WeakTerm)]
+discernNoeticVarList xsOuter = do
+  forM xsOuter $ \(mOuter, outerVar) -> do
+    xInner <- Gensym.newIdentFromIdent outerVar
+    return (xInner, mOuter :< WT.Var outerVar, doNotCare mOuter)
 
 discernRawLowType :: Hint -> RLT.RawLowType -> App LT.LowType
 discernRawLowType m rlt = do

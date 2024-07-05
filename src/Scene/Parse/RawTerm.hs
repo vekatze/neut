@@ -44,6 +44,7 @@ rawExpr = do
   m <- getCurrentHint
   choice
     [ rawTermLet m,
+      rawTermBoxElim m,
       rawTermUse m,
       rawTermPin m,
       do
@@ -199,6 +200,27 @@ rawTermLet mLet = do
   (e2, c) <- rawExpr
   endLoc <- getCurrentLoc
   return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+
+rawTermBoxElim :: Hint -> Parser (RT.RawTerm, C)
+rawTermBoxElim mLet = do
+  c1 <- keyword "unquote"
+  (mxt, c2) <- preBinder
+  noeticVarList <-
+    choice
+      [ do
+          c <- keyword "on"
+          vs <- bareSeries Nothing SE.Comma rawTermNoeticVar
+          return $ SE.pushComment c vs,
+        return $ SE.emptySeries' Nothing SE.Comma
+      ]
+  c5 <- delimiter "="
+  lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
+  (e1, c6) <- rawExpr
+  loc <- getCurrentLoc
+  c7 <- delimiter "in"
+  (e2, c) <- rawExpr
+  endLoc <- getCurrentLoc
+  return (mLet :< RT.BoxElim c1 mxt c2 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermPin :: Hint -> Parser (RT.RawTerm, C)
 rawTermPin m = do

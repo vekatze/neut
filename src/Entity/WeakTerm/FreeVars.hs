@@ -47,6 +47,9 @@ freeVars term =
       let binder = zipWith (\x t -> (m, x, t)) xs ts
       let xs2 = freeVars' binder (freeVars e)
       S.union xs1 xs2
+    m :< WT.BoxElim mxt yetsInner e1 yetsCont e2 -> do
+      let vs1 = freeVars' [mxt] (freeVars e1)
+      undefined
     _ :< WT.Noema t ->
       freeVars t
     _ :< WT.Embody t e ->

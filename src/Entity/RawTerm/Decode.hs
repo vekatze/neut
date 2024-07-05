@@ -95,6 +95,21 @@ toDoc term =
         [PI.horizontal $ attachComment c1 $ D.text "quote"]
           ++ decodeQuoteVarList vs
           ++ [PI.inject $ toDoc $ m :< Brace c2 (e, c3)]
+    _ :< BoxElim c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+      D.join
+        [ PI.arrange $
+            [ PI.beforeBareSeries $ D.text "unquote",
+              PI.bareSeries $ D.join [attachComment c1 $ boxElimArgToDoc mxt, C.asSuffix c2]
+            ]
+              ++ decodeNoeticVarList noeticVarList,
+          PI.arrange
+            [ PI.beforeBareSeries $ D.text "=",
+              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+            ],
+          D.text "in",
+          D.line,
+          attachComment c5 $ toDoc cont
+        ]
     _ :< Noema t ->
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
@@ -424,6 +439,10 @@ letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
 letArgToDoc (m, x, c1, c2, t) = do
   let x' = decodePattern x
   paramToDoc (m, x', c1, c2, t)
+
+boxElimArgToDoc :: (a, RawIdent, C, C, RawTerm) -> D.Doc
+boxElimArgToDoc (m, x, c1, c2, t) = do
+  paramToDoc (m, D.text x, c1, c2, t)
 
 typeAnnot :: D.Doc -> D.Doc
 typeAnnot t = do
