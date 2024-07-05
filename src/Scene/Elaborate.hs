@@ -248,13 +248,12 @@ elaborate' term =
     m :< WT.Box t -> do
       t' <- elaborate' t
       return $ m :< TM.Box t'
-    m :< WT.BoxIntro xets e -> do
-      let (xs, es, ts) = unzip3 xets
+    m :< WT.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      xts' <- mapM elaborateWeakBinder xts
       es' <- mapM elaborate' es
-      ts' <- mapM elaborate' ts
-      let xets' = zip3 xs es' ts'
       e' <- elaborate' e
-      return $ m :< TM.BoxIntro xets' e'
+      return $ m :< TM.BoxIntro (zip xts' es') e'
     m :< WT.Noema t -> do
       t' <- elaborate' t
       return $ m :< TM.Noema t'

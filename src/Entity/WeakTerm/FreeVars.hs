@@ -41,12 +41,9 @@ freeVars term =
       S.union xs1 xs2
     _ :< WT.Box t ->
       freeVars t
-    m :< WT.BoxIntro xets e -> do
-      let (xs, es, ts) = unzip3 xets
-      let xs1 = S.unions $ map freeVars es
-      let binder = zipWith (\x t -> (m, x, t)) xs ts
-      let xs2 = freeVars' binder (freeVars e)
-      S.union xs1 xs2
+    _ :< WT.BoxIntro letSeq e -> do
+      let (mxts, es) = unzip letSeq
+      freeVars' mxts (S.unions $ map freeVars (e : es))
     m :< WT.BoxElim mxt yetsInner e1 yetsCont e2 -> do
       let vs1 = freeVars' [mxt] (freeVars e1)
       undefined

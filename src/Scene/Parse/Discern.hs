@@ -353,7 +353,7 @@ discern axis term =
       xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx axis x
       xets <- discernNoeticVarList xsOuter
       let innerLayer = currentLayer axis - 1
-      let xsInner = map (\(x, mx :< _, _) -> (mx, x)) xets
+      let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
       let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer))) xsInner
       axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
       body' <- discern axisInner body
@@ -363,13 +363,13 @@ discern axis term =
       ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y
       yetsInner <- discernNoeticVarList ysOuter
       let innerLayer = currentLayer axis + 1
-      let ysInner = map (\(y, my :< _, _) -> (my, y)) yetsInner
+      let ysInner = map (\((my, y, _), _) -> (my, y)) yetsInner
       let innerAddition = map (\(my, y) -> (Ident.toText y, (my, y, innerLayer))) ysInner
       axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
       e1' <- discern axisInner e1
       -- cont
       yetsCont <- discernNoeticVarList ysInner
-      let ysCont = map (\(y, my :< _, _) -> (my, y)) yetsCont
+      let ysCont = map (\((my, y, _), _) -> (my, y)) yetsCont
       let contAddition = map (\(my, y) -> (Ident.toText y, (my, y, currentLayer axis))) ysCont
       axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
       (mxt', e2') <- discernBinderWithBody' axisCont mxt startLoc endLoc e2
@@ -559,11 +559,12 @@ discern axis term =
     _ :< RT.Brace _ (e, _) ->
       discern axis e
 
-discernNoeticVarList :: [(Hint, Ident)] -> App [(Ident, WT.WeakTerm, WT.WeakTerm)]
+discernNoeticVarList :: [(Hint, Ident)] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
 discernNoeticVarList xsOuter = do
   forM xsOuter $ \(mOuter, outerVar) -> do
     xInner <- Gensym.newIdentFromIdent outerVar
-    return (xInner, mOuter :< WT.Var outerVar, doNotCare mOuter)
+    t <- Gensym.newHole mOuter []
+    return ((mOuter, xInner, t), mOuter :< WT.Var outerVar)
 
 discernRawLowType :: Hint -> RLT.RawLowType -> App LT.LowType
 discernRawLowType m rlt = do

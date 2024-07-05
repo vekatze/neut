@@ -272,15 +272,15 @@ infer axis term =
     m :< WT.Box t -> do
       t' <- inferType axis t
       return (m :< WT.Box t', m :< WT.Tau)
-    m :< WT.BoxIntro xets e -> do
-      let (xs, es, _) = unzip3 xets
-      (es', ts) <- mapAndUnzipM (infer axis) es
-      innerTypes <- mapM (const $ newHole m (varEnv axis)) ts
+    m :< WT.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      (xts', axis') <- inferBinder' axis xts
+      (es', ts) <- mapAndUnzipM (infer axis') es
+      let innerTypes = map (\(_, _, t) -> t) xts
       forM_ (zip innerTypes ts) $ \(innerType, t) -> do
         insConstraintEnv (m :< WT.Noema innerType) t
-      forM_ (zip xs innerTypes) $ uncurry insWeakTypeEnv
-      (e', t) <- infer axis e
-      return (m :< WT.BoxIntro (zip3 xs es' ts) e', m :< WT.Box t)
+      (e', t) <- infer axis' e
+      return (m :< WT.BoxIntro (zip xts' es') e', m :< WT.Box t)
     m :< WT.Noema t -> do
       t' <- inferType axis t
       return (m :< WT.Noema t', m :< WT.Tau)

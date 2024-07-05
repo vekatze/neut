@@ -82,14 +82,12 @@ subst sub term =
     m :< TM.Box t -> do
       t' <- subst sub t
       return $ m :< TM.Box t'
-    m :< TM.BoxIntro xets e -> do
-      let (xs, es, ts) = unzip3 xets
-      es' <- mapM (subst sub) es
-      let binder = zipWith (\x t -> (m, x, t)) xs ts
-      (binder', sub') <- substBinder sub binder
-      let (_, xs', ts') = unzip3 binder'
+    m :< TM.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      (xts', sub') <- substBinder sub xts
+      es' <- mapM (subst sub') es
       e' <- subst sub' e
-      return $ m :< TM.BoxIntro (zip3 xs' es' ts') e'
+      return $ m :< TM.BoxIntro (zip xts' es') e'
     m :< TM.Noema t -> do
       t' <- subst sub t
       return $ m :< TM.Noema t'

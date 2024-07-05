@@ -40,11 +40,9 @@ freeVars term =
       S.union xs1 xs2
     _ :< TM.Box t ->
       freeVars t
-    m :< TM.BoxIntro xets e -> do
-      let (xs, es, ts) = unzip3 xets
-      let vs = S.unions $ map freeVars es
-      let mxts = zipWith (\x t -> (m, x, t)) xs ts
-      S.union vs $ freeVars' mxts (freeVars e)
+    _ :< TM.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      freeVars' xts (S.unions $ map freeVars (e : es))
     _ :< TM.Noema t ->
       freeVars t
     _ :< TM.Embody t e ->

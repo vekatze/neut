@@ -79,11 +79,10 @@ weaken term =
       m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
     m :< TM.Box t ->
       m :< WT.Box (weaken t)
-    m :< TM.BoxIntro xets e -> do
-      let (xs, es, ts) = unzip3 xets
-      let es' = map weaken es
-      let ts' = map weaken ts
-      m :< WT.BoxIntro (zip3 xs es' ts') (weaken e)
+    m :< TM.BoxIntro letSeq e -> do
+      let (mxts, es) = unzip letSeq
+      let letSeq' = zip (map weakenBinder mxts) (map weaken es)
+      m :< WT.BoxIntro letSeq' (weaken e)
     m :< TM.Noema t ->
       m :< WT.Noema (weaken t)
     m :< TM.Embody t e ->

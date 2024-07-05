@@ -226,9 +226,9 @@ clarifyTerm tenv term =
       return $ irreducibleBindLet (zip xs es') tree'
     _ :< TM.Box t -> do
       clarifyTerm tenv t
-    _ :< TM.BoxIntro xets e -> do
+    _ :< TM.BoxIntro letSeq e -> do
       e' <- clarifyTerm tenv e
-      embody tenv xets e'
+      embody tenv letSeq e'
     _ :< TM.Noema {} ->
       return returnImmediateS4
     m :< TM.Embody t e -> do
@@ -272,12 +272,12 @@ clarifyTerm tenv term =
         Clarify.insertToAuxEnv liftedName (O.Clear, [switchValue, value], enumElim)
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
 
-embody :: TM.TypeEnv -> [(Ident, TM.Term, TM.Term)] -> C.Comp -> App C.Comp
+embody :: TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> C.Comp -> App C.Comp
 embody tenv xets cont =
   case xets of
     [] ->
       return cont
-    (x, e, t@(m :< _)) : rest -> do
+    ((m, x, t), e) : rest -> do
       (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
       (valueVarName, value, valueVar) <- clarifyPlus tenv e
       cont' <- embody tenv rest cont

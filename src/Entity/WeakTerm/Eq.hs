@@ -77,15 +77,15 @@ eq (_ :< term1) (_ :< term2)
   | WT.Box t1 <- term1,
     WT.Box t2 <- term2 =
       eq t1 t2
-  | WT.BoxIntro xets1 e1 <- term1,
-    WT.BoxIntro xets2 e2 <- term2 = do
-      let (xs1, es1, ts1) = unzip3 xets1
-      let (xs2, es2, ts2) = unzip3 xets2
-      let b1 = xs1 == xs2
+  | WT.BoxIntro letSeq1 e1 <- term1,
+    WT.BoxIntro letSeq2 e2 <- term2,
+    length letSeq1 == length letSeq2 = do
+      let (xts1, es1) = unzip letSeq1
+      let (xts2, es2) = unzip letSeq2
+      let b1 = eqBinder xts1 xts2
       let b2 = all (uncurry eq) $ zip es1 es2
-      let b3 = all (uncurry eq) $ zip ts1 ts2
-      let b4 = eq e1 e2
-      b1 && b2 && b3 && b4
+      let b3 = eq e1 e2
+      b1 && b2 && b3
   | WT.Noema t1 <- term1,
     WT.Noema t2 <- term2 =
       eq t1 t2

@@ -49,11 +49,10 @@ compress term =
       () :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     _ :< TM.Box t ->
       () :< TM.Box (compress t)
-    _ :< TM.BoxIntro xets e -> do
-      let (xs, es, ts) = unzip3 xets
-      let es' = map compress es
-      let ts' = map compress ts
-      () :< TM.BoxIntro (zip3 xs es' ts') (compress e)
+    _ :< TM.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      let letSeq' = zip (map compressBinder xts) (map compress es)
+      () :< TM.BoxIntro letSeq' (compress e)
     _ :< TM.Noema t ->
       () :< TM.Noema (compress t)
     _ :< TM.Embody t e ->

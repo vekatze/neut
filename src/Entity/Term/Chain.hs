@@ -53,12 +53,9 @@ chainOf' tenv term =
       xs1 ++ xs2
     _ :< TM.Box t ->
       chainOf' tenv t
-    m :< TM.BoxIntro xets e -> do
-      let (xs, es, ts) = unzip3 xets
-      let xs1 = concatMap (chainOf' tenv) es
-      let mxts = zipWith (\x t -> (m, x, t)) xs ts
-      let xs2 = chainOfBinder tenv mxts [e]
-      xs1 ++ xs2
+    _ :< TM.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      chainOfBinder tenv xts (e : es)
     _ :< TM.Noema t ->
       chainOf' tenv t
     _ :< TM.Embody t e -> do

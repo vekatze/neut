@@ -71,14 +71,12 @@ fill sub term =
     m :< WT.Box t -> do
       t' <- fill sub t
       return $ m :< WT.Box t'
-    m :< WT.BoxIntro xets e -> do
-      let (xs, es, ts) = unzip3 xets
+    m :< WT.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      xts' <- fillBinder sub xts
       es' <- mapM (fill sub) es
-      let binder = zipWith (\x t -> (m, x, t)) xs ts
-      binder' <- fillBinder sub binder
-      let (_, xs', ts') = unzip3 binder'
       e' <- fill sub e
-      return $ m :< WT.BoxIntro (zip3 xs' es' ts') e'
+      return $ m :< WT.BoxIntro (zip xts' es') e'
     m :< WT.Noema t -> do
       t' <- fill sub t
       return $ m :< WT.Noema t'

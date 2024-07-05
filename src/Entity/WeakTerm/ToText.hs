@@ -75,8 +75,8 @@ toText term =
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
     _ :< WT.Box t ->
       "box" <> inParen (toText t)
-    _ :< WT.BoxIntro xets t -> do
-      let ks = map (\(x, _, _) -> x) xets
+    _ :< WT.BoxIntro letSeq t -> do
+      let ks = map (\((_, x, _), _) -> x) letSeq
       "quote " <> T.intercalate ", " (map Ident.toText ks) <> inBrace (toText t)
     _ :< WT.Noema t ->
       "&" <> toText t
