@@ -245,6 +245,12 @@ elaborate' term =
               unless (null consList) $
                 raiseEmptyNonExhaustivePatternMatching m
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
+    m :< WT.Box t -> do
+      t' <- elaborate' t
+      return $ m :< TM.Box t'
+    m :< WT.BoxIntro e -> do
+      e' <- elaborate' e
+      return $ m :< TM.BoxIntro e'
     m :< WT.Noema t -> do
       t' <- elaborate' t
       return $ m :< TM.Noema t'

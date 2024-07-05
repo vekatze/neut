@@ -52,6 +52,7 @@ import Entity.Term qualified as TM
 import Entity.Term.Chain (nubFreeVariables)
 import Entity.Term.Chain qualified as TM
 import Entity.Term.FromPrimNum
+import Entity.Term.TypedFreeVars qualified as TM
 import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
@@ -224,6 +225,12 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyTerm tenv) es
       (tree', _) <- clarifyDecisionTree (TM.insTypeEnv mxts tenv) isNoetic IntMap.empty tree
       return $ irreducibleBindLet (zip xs es') tree'
+    _ :< TM.Box t -> do
+      clarifyTerm tenv t
+    _ :< TM.BoxIntro e -> do
+      let fvs = TM.typedFreeVars tenv e
+      e' <- clarifyTerm tenv e
+      embody tenv fvs e'
     _ :< TM.Noema {} ->
       return returnImmediateS4
     m :< TM.Embody t e -> do
@@ -266,6 +273,22 @@ clarifyTerm tenv term =
       unless isAlreadyRegistered $ do
         Clarify.insertToAuxEnv liftedName (O.Clear, [switchValue, value], enumElim)
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
+
+embody :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
+embody tenv xts e =
+  case xts of
+    [] ->
+      return e
+    (m, x, t) : rest -> do
+      (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
+      cont <- embody tenv rest e
+      baseSize <- Env.getBaseSize m
+      return $
+        bindLet
+          [ (typeExpVarName, typeExp),
+            (x, C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, C.VarLocal x])
+          ]
+          cont
 
 type Size =
   Int
