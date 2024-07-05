@@ -72,6 +72,8 @@ rawTerm = do
       rawTermMatch,
       rawTermPi,
       rawTermPiIntro,
+      rawTermBox,
+      rawTermBoxIntro,
       rawTermNoema,
       rawTermIf,
       rawTermWhen,
@@ -627,6 +629,20 @@ rawTermWith = do
   m <- getCurrentHint
   (withClause, c) <- rawTermKeywordClause "with"
   return (m :< RT.With withClause, c)
+
+rawTermBox :: Parser (RT.RawTerm, C)
+rawTermBox = do
+  m <- getCurrentHint
+  c1 <- keyword "box"
+  (t, c) <- rawExpr
+  return (m :< RT.Box t, c1 ++ c)
+
+rawTermBoxIntro :: Parser (RT.RawTerm, C)
+rawTermBoxIntro = do
+  m <- getCurrentHint
+  c1 <- keyword "quote"
+  (c2, (e, c)) <- betweenBrace rawExpr
+  return (m :< RT.BoxIntro c1 c2 e, c)
 
 rawTermNoema :: Parser (RT.RawTerm, C)
 rawTermNoema = do

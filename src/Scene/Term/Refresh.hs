@@ -58,6 +58,12 @@ refresh term =
       (binder', decisionTree') <- refresh'' binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
+    m :< TM.Box t -> do
+      t' <- refresh t
+      return $ m :< TM.Box t'
+    m :< TM.BoxIntro e -> do
+      e' <- refresh e
+      return $ m :< TM.BoxIntro e'
     m :< TM.Noema t -> do
       t' <- refresh t
       return $ m :< TM.Noema t'

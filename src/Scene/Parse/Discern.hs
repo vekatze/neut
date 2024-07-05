@@ -337,6 +337,12 @@ discern axis term =
       let os' = zip ms os
       decisionTree <- compilePatternMatrix (_nenv axis) isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
+    m :< RT.Box t -> do
+      t' <- discern axis t
+      return $ m :< WT.Box t'
+    m :< RT.BoxIntro _ _ (e, _) -> do
+      e' <- discern axis e
+      return $ m :< WT.BoxIntro e'
     m :< RT.Noema t -> do
       t' <- discern axis t
       return $ m :< WT.Noema t'

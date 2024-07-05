@@ -167,6 +167,12 @@ reduce' ax term = do
                 _ -> do
                   decisionTree' <- reduceDecisionTree ax decisionTree
                   return $ m :< WT.DataElim isNoetic oets' decisionTree'
+    m :< WT.Box t -> do
+      t' <- reduce t
+      return $ m :< WT.Box t'
+    m :< WT.BoxIntro e -> do
+      e' <- reduce e
+      return $ m :< WT.BoxIntro e'
     m :< WT.Noema t -> do
       t' <- reduce' ax t
       return $ m :< WT.Noema t'

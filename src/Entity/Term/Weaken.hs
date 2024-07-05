@@ -77,6 +77,10 @@ weaken term =
       let ts' = map weaken ts
       let tree' = weakenDecisionTree tree
       m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
+    m :< TM.Box t ->
+      m :< WT.Box (weaken t)
+    m :< TM.BoxIntro e ->
+      m :< WT.BoxIntro (weaken e)
     m :< TM.Noema t ->
       m :< WT.Noema (weaken t)
     m :< TM.Embody t e ->

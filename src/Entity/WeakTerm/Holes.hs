@@ -37,6 +37,10 @@ holes term =
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = holes' binder (holesDecisionTree decisionTree)
       S.union xs1 xs2
+    _ :< WT.Box t ->
+      holes t
+    _ :< WT.BoxIntro e ->
+      holes e
     _ :< WT.Noema t ->
       holes t
     _ :< WT.Embody t e ->

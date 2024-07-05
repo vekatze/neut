@@ -38,6 +38,10 @@ freeVars term =
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = freeVars' binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
+    _ :< TM.Box t ->
+      freeVars t
+    _ :< TM.BoxIntro e ->
+      freeVars e
     _ :< TM.Noema t ->
       freeVars t
     _ :< TM.Embody t e ->

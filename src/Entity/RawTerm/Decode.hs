@@ -83,6 +83,13 @@ toDoc term =
             ],
           SE.decode' $ fmap decodePatternRow patternRowList
         ]
+    _ :< Box t -> do
+      D.join [D.text "box", toDoc t]
+    m :< BoxIntro c1 c2 (e, c3) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "quote",
+          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        ]
     _ :< Noema t ->
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->

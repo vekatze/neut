@@ -168,6 +168,12 @@ inline' axis term = do
                 _ -> do
                   decisionTree' <- inlineDecisionTree axis decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
+    m :< TM.Box t -> do
+      t' <- inline' axis t
+      return $ m :< TM.Box t'
+    m :< TM.BoxIntro e -> do
+      e' <- inline' axis e
+      return $ m :< TM.BoxIntro e'
     m :< TM.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- inline' axis e1
       case opacity of

@@ -52,6 +52,10 @@ extend term =
       let ts' = map extend ts
       let tree' = extendDecisionTree tree
       _m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
+    _ :< TM.Box t ->
+      _m :< TM.Box (extend t)
+    _ :< TM.BoxIntro e ->
+      _m :< TM.BoxIntro (extend e)
     _ :< TM.Noema t ->
       _m :< TM.Noema (extend t)
     _ :< TM.Embody t e ->

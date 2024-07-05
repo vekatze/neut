@@ -74,6 +74,12 @@ eq (_ :< term1) (_ :< term2)
       let b4 = all (uncurry eq) $ zip ts1 ts2
       let b5 = eqDT tree1 tree2
       b1 && b2 && b3 && b4 && b5
+  | WT.Box t1 <- term1,
+    WT.Box t2 <- term2 =
+      eq t1 t2
+  | WT.BoxIntro e1 <- term1,
+    WT.BoxIntro e2 <- term2 =
+      eq e1 e2
   | WT.Noema t1 <- term1,
     WT.Noema t2 <- term2 =
       eq t1 t2

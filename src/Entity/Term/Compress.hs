@@ -47,6 +47,10 @@ compress term =
       let ts' = map compress ts
       let tree' = compressDecisionTree tree
       () :< TM.DataElim isNoetic (zip3 os es' ts') tree'
+    _ :< TM.Box t ->
+      () :< TM.Box (compress t)
+    _ :< TM.BoxIntro e ->
+      () :< TM.BoxIntro (compress e)
     _ :< TM.Noema t ->
       () :< TM.Noema (compress t)
     _ :< TM.Embody t e ->

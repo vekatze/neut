@@ -79,6 +79,12 @@ subst sub term =
       (binder', decisionTree') <- subst'' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
+    m :< TM.Box t -> do
+      t' <- subst sub t
+      return $ m :< TM.Box t'
+    m :< TM.BoxIntro e -> do
+      e' <- subst sub e
+      return $ m :< TM.BoxIntro e'
     m :< TM.Noema t -> do
       t' <- subst sub t
       return $ m :< TM.Noema t'

@@ -36,6 +36,8 @@ data WeakTermF a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
+  | Box a
+  | BoxIntro a
   | Noema a
   | Embody a a
   | Actual a
