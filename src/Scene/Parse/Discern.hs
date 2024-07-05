@@ -373,7 +373,7 @@ discern axis term =
       let contAddition = map (\(my, y) -> (Ident.toText y, (my, y, currentLayer axis))) ysCont
       axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
       (mxt', e2') <- discernBinderWithBody' axisCont mxt startLoc endLoc e2
-      return $ m :< WT.BoxElim mxt' yetsInner e1' yetsCont e2'
+      return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2'
     m :< RT.Noema t -> do
       t' <- discern axis t
       return $ m :< WT.Noema t'

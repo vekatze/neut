@@ -42,6 +42,9 @@ holes term =
     _ :< WT.BoxIntro letSeq e -> do
       let (xts, es) = unzip letSeq
       holes' xts (S.unions $ map holes $ e : es)
+    _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
+      holes' xts (S.unions $ map holes $ es ++ [e2])
     _ :< WT.Noema t ->
       holes t
     _ :< WT.Embody t e ->

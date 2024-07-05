@@ -83,11 +83,15 @@ subst sub term =
       t' <- subst sub t
       return $ m :< TM.Box t'
     m :< TM.BoxIntro letSeq e -> do
-      let (xts, es) = unzip letSeq
-      (xts', sub') <- substBinder sub xts
-      es' <- mapM (subst sub') es
+      (letSeq', sub') <- substLetSeq sub letSeq
       e' <- subst sub' e
-      return $ m :< TM.BoxIntro (zip xts' es') e'
+      return $ m :< TM.BoxIntro letSeq' e'
+    m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      (castSeq', sub1) <- substLetSeq sub castSeq
+      ((mxt', e1'), sub2) <- substLet sub1 (mxt, e1)
+      (uncastSeq', sub3) <- substLetSeq sub2 uncastSeq
+      e2' <- subst sub3 e2
+      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.Noema t -> do
       t' <- subst sub t
       return $ m :< TM.Noema t'
@@ -158,11 +162,11 @@ subst'' sub binder decisionTree =
       (xts', e') <- subst'' sub' xts decisionTree
       return ((m, x', t') : xts', e')
 
-substBinder1 ::
+substLet ::
   SubstTerm ->
   (BinderF TM.Term, TM.Term) ->
   App ((BinderF TM.Term, TM.Term), SubstTerm)
-substBinder1 sub ((m, x, t), e) = do
+substLet sub ((m, x, t), e) = do
   e' <- subst sub e
   t' <- subst sub t
   x' <- Gensym.newIdentFromIdent x
@@ -178,7 +182,7 @@ substLetSeq sub letSeq = do
     [] ->
       return ([], sub)
     letPair : rest -> do
-      (letPair', sub') <- substBinder1 sub letPair
+      (letPair', sub') <- substLet sub letPair
       (rest', sub'') <- substLetSeq sub' rest
       return (letPair' : rest', sub'')
 

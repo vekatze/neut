@@ -62,11 +62,15 @@ refresh term =
       t' <- refresh t
       return $ m :< TM.Box t'
     m :< TM.BoxIntro letSeq e -> do
-      let (xts, es) = unzip letSeq
-      xts' <- refreshBinder xts
-      es' <- mapM refresh es
+      letSeq' <- mapM refreshLet letSeq
       e' <- refresh e
-      return $ m :< TM.BoxIntro (zip xts' es') e'
+      return $ m :< TM.BoxIntro letSeq' e'
+    m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      castSeq' <- mapM refreshLet castSeq
+      (mxt', e1') <- refreshLet (mxt, e1)
+      uncastSeq' <- mapM refreshLet uncastSeq
+      e2' <- refresh e2
+      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.Noema t -> do
       t' <- refresh t
       return $ m :< TM.Noema t'
@@ -99,6 +103,14 @@ refreshBinder binder =
       t' <- refresh t
       xts' <- refreshBinder xts
       return ((m, x, t') : xts')
+
+refreshLet ::
+  (BinderF TM.Term, TM.Term) ->
+  App (BinderF TM.Term, TM.Term)
+refreshLet ((m, x, t), e) = do
+  t' <- refresh t
+  e' <- refresh e
+  return ((m, x, t'), e')
 
 refresh' ::
   [BinderF TM.Term] ->

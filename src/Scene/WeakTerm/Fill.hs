@@ -77,6 +77,12 @@ fill sub term =
       es' <- mapM (fill sub) es
       e' <- fill sub e
       return $ m :< WT.BoxIntro (zip xts' es') e'
+    m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      castSeq' <- fillLetSeq sub castSeq
+      (mxt', e1') <- fillLet sub (mxt, e1)
+      uncastSeq' <- fillLetSeq sub uncastSeq
+      e2' <- fill sub e2
+      return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< WT.Noema t -> do
       t' <- fill sub t
       return $ m :< WT.Noema t'
@@ -136,6 +142,28 @@ fillBinder sub binder =
       t' <- fill sub t
       xts' <- fillBinder sub xts
       return $ (m, x, t') : xts'
+
+fillLet ::
+  HoleSubst ->
+  (BinderF WT.WeakTerm, WT.WeakTerm) ->
+  App (BinderF WT.WeakTerm, WT.WeakTerm)
+fillLet sub ((m, x, t), e) = do
+  e' <- fill sub e
+  t' <- fill sub t
+  return ((m, x, t'), e')
+
+fillLetSeq ::
+  HoleSubst ->
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  App [(BinderF WT.WeakTerm, WT.WeakTerm)]
+fillLetSeq sub letSeq = do
+  case letSeq of
+    [] ->
+      return []
+    letPair : rest -> do
+      letPair' <- fillLet sub letPair
+      rest' <- fillLetSeq sub rest
+      return $ letPair' : rest'
 
 fillSingleBinder ::
   HoleSubst ->

@@ -249,11 +249,16 @@ elaborate' term =
       t' <- elaborate' t
       return $ m :< TM.Box t'
     m :< WT.BoxIntro letSeq e -> do
-      let (xts, es) = unzip letSeq
-      xts' <- mapM elaborateWeakBinder xts
-      es' <- mapM elaborate' es
+      letSeq' <- mapM elaborateLet letSeq
       e' <- elaborate' e
-      return $ m :< TM.BoxIntro (zip xts' es') e'
+      return $ m :< TM.BoxIntro letSeq' e'
+    m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      castSeq' <- mapM elaborateLet castSeq
+      mxt' <- elaborateWeakBinder mxt
+      e1' <- elaborate' e1
+      uncastSeq' <- mapM elaborateLet uncastSeq
+      e2' <- elaborate' e2
+      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< WT.Noema t -> do
       t' <- elaborate' t
       return $ m :< TM.Noema t'
@@ -346,6 +351,12 @@ elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
+
+elaborateLet :: (BinderF WT.WeakTerm, WT.WeakTerm) -> App (BinderF TM.Term, TM.Term)
+elaborateLet (xt, e) = do
+  xt' <- elaborateWeakBinder xt
+  e' <- elaborate' e
+  return (xt', e')
 
 elaborateLamAttr :: AttrL.Attr WT.WeakTerm -> App (AttrL.Attr TM.Term)
 elaborateLamAttr (AttrL.Attr {lamKind, identity}) =

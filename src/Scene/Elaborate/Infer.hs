@@ -273,14 +273,17 @@ infer axis term =
       t' <- inferType axis t
       return (m :< WT.Box t', m :< WT.Tau)
     m :< WT.BoxIntro letSeq e -> do
-      let (xts, es) = unzip letSeq
-      (xts', axis') <- inferBinder' axis xts
-      (es', ts) <- mapAndUnzipM (infer axis') es
-      let innerTypes = map (\(_, _, t) -> t) xts
-      forM_ (zip innerTypes ts) $ \(innerType, t) -> do
-        insConstraintEnv (m :< WT.Noema innerType) t
+      (letSeq', axis') <- inferQuoteSeq axis letSeq FromNoema
       (e', t) <- infer axis' e
-      return (m :< WT.BoxIntro (zip xts' es') e', m :< WT.Box t)
+      return (m :< WT.BoxIntro letSeq' e', m :< WT.Box t)
+    m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      (castSeq', axis1) <- inferQuoteSeq axis castSeq ToNoema
+      (e1', t1) <- infer axis1 e1
+      (mxt'@(mx, _, t1'), axis2) <- inferBinder1 axis1 mxt
+      insConstraintEnv (mx :< WT.Box t1') t1
+      (uncastSeq', axis3) <- inferQuoteSeq axis2 uncastSeq FromNoema
+      (e2', t2) <- infer axis3 e2
+      return (m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2', t2)
     m :< WT.Noema t -> do
       t' <- inferType axis t
       return (m :< WT.Noema t', m :< WT.Tau)
@@ -410,6 +413,27 @@ infer axis term =
         _ :< _ -> do
           Throw.raiseError mt $ "Expected an ADT, but found: " <> toText t''
 
+data CastDirection
+  = FromNoema
+  | ToNoema
+
+inferQuoteSeq ::
+  Axis ->
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  CastDirection ->
+  App ([(BinderF WT.WeakTerm, WT.WeakTerm)], Axis)
+inferQuoteSeq axis letSeq castDirection = do
+  let (xts, es) = unzip letSeq
+  (xts', axis') <- inferBinder' axis xts
+  (es', ts) <- mapAndUnzipM (infer axis') es
+  forM_ (zip xts' ts) $ \((m1, _, tInner), tOuter@(m2 :< _)) -> do
+    case castDirection of
+      ToNoema ->
+        insConstraintEnv tInner (m2 :< WT.Noema tOuter)
+      FromNoema ->
+        insConstraintEnv (m1 :< WT.Noema tInner) tOuter
+  return (zip xts' es', axis')
+
 mustBypassCursorDealloc :: Maybe OD.OptimizableData -> Bool
 mustBypassCursorDealloc odOrNone =
   case odOrNone of
@@ -489,6 +513,15 @@ inferBinder' axis binder =
       insWeakTypeEnv x t'
       (xts', axis') <- inferBinder' (extendAxis' (mx, x, t') axis) xts
       return ((mx, x, t') : xts', axis')
+
+inferBinder1 ::
+  Axis ->
+  BinderF WT.WeakTerm ->
+  App (BinderF WT.WeakTerm, Axis)
+inferBinder1 axis (mx, x, t) = do
+  t' <- inferType axis t
+  insWeakTypeEnv x t'
+  return ((mx, x, t'), extendAxis' (mx, x, t') axis)
 
 inferPiElim ::
   Axis ->

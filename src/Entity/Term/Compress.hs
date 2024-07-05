@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)
 import Entity.Attr.Lam qualified as AttrL
+import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
@@ -50,9 +51,13 @@ compress term =
     _ :< TM.Box t ->
       () :< TM.Box (compress t)
     _ :< TM.BoxIntro letSeq e -> do
-      let (xts, es) = unzip letSeq
-      let letSeq' = zip (map compressBinder xts) (map compress es)
-      () :< TM.BoxIntro letSeq' (compress e)
+      () :< TM.BoxIntro (map compressLet letSeq) (compress e)
+    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      let castSeq' = map compressLet castSeq
+      let (mxt', e1') = compressLet (mxt, e1)
+      let uncastSeq' = map compressLet uncastSeq
+      let e2' = compress e2
+      () :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     _ :< TM.Noema t ->
       () :< TM.Noema (compress t)
     _ :< TM.Embody t e ->
@@ -69,6 +74,10 @@ compress term =
 compressBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, Cofree TM.TermF ())
 compressBinder (m, x, t) =
   (m, x, compress t)
+
+compressLet :: (BinderF TM.Term, TM.Term) -> (BinderF (Cofree TM.TermF ()), Cofree TM.TermF ())
+compressLet ((m, x, t), e) =
+  ((m, x, compress t), compress e)
 
 compressAttr :: AttrL.Attr TM.Term -> AttrL.Attr (Cofree TM.TermF ())
 compressAttr (AttrL.Attr {lamKind, identity}) =

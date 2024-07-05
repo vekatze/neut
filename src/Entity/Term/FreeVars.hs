@@ -43,6 +43,9 @@ freeVars term =
     _ :< TM.BoxIntro letSeq e -> do
       let (xts, es) = unzip letSeq
       freeVars' xts (S.unions $ map freeVars (e : es))
+    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
+      freeVars' xts (S.unions $ map freeVars $ es ++ [e2])
     _ :< TM.Noema t ->
       freeVars t
     _ :< TM.Embody t e ->

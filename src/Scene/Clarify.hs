@@ -229,6 +229,10 @@ clarifyTerm tenv term =
     _ :< TM.BoxIntro letSeq e -> do
       e' <- clarifyTerm tenv e
       embody tenv letSeq e'
+    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      clarifyTerm tenv $
+        TM.fromLetSeqOpaque castSeq $
+          TM.fromLetSeq ((mxt, e1) : uncastSeq) e2
     _ :< TM.Noema {} ->
       return returnImmediateS4
     m :< TM.Embody t e -> do

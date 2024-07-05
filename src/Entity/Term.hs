@@ -35,6 +35,7 @@ data TermF a
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Box a
   | BoxIntro [(BinderF a, a)] a
+  | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
   | Noema a
   | Embody a a
   | Let O.Opacity (BinderF a) a a
@@ -93,3 +94,11 @@ fromLetSeq xts cont =
       cont
     (mxt@(m, _, _), e) : rest ->
       m :< Let O.Clear mxt e (fromLetSeq rest cont)
+
+fromLetSeqOpaque :: [(BinderF Term, Term)] -> Term -> Term
+fromLetSeqOpaque xts cont =
+  case xts of
+    [] ->
+      cont
+    (mxt@(m, _, _), e) : rest ->
+      m :< Let O.Opaque mxt e (fromLetSeq rest cont)

@@ -78,6 +78,18 @@ toText term =
     _ :< WT.BoxIntro letSeq t -> do
       let ks = map (\((_, x, _), _) -> x) letSeq
       "quote " <> T.intercalate ", " (map Ident.toText ks) <> inBrace (toText t)
+    _ :< WT.BoxElim castSeq (_, x, t) e1 _ e2 -> do
+      let ks = map (\((_, y, _), _) -> y) castSeq
+      let ks' = if null ks then "" else "on " <> T.intercalate ", " (map Ident.toText ks)
+      "unquote "
+        <> showVariable x
+        <> ": "
+        <> toText t
+        <> ks'
+        <> " = "
+        <> toText e1
+        <> " in "
+        <> toText e2
     _ :< WT.Noema t ->
       "&" <> toText t
     _ :< WT.Embody _ e ->

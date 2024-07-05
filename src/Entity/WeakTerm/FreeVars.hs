@@ -44,9 +44,9 @@ freeVars term =
     _ :< WT.BoxIntro letSeq e -> do
       let (mxts, es) = unzip letSeq
       freeVars' mxts (S.unions $ map freeVars (e : es))
-    m :< WT.BoxElim mxt yetsInner e1 yetsCont e2 -> do
-      let vs1 = freeVars' [mxt] (freeVars e1)
-      undefined
+    _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
+      freeVars' xts (S.unions $ map freeVars $ es ++ [e2])
     _ :< WT.Noema t ->
       freeVars t
     _ :< WT.Embody t e ->
