@@ -34,7 +34,7 @@ data TermF a
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Box a
-  | BoxIntro a
+  | BoxIntro [(Ident, a, a)] a
   | Noema a
   | Embody a a
   | Let O.Opacity (BinderF a) a a

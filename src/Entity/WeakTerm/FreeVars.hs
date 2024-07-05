@@ -41,8 +41,12 @@ freeVars term =
       S.union xs1 xs2
     _ :< WT.Box t ->
       freeVars t
-    _ :< WT.BoxIntro e ->
-      freeVars e
+    m :< WT.BoxIntro xets e -> do
+      let (xs, es, ts) = unzip3 xets
+      let xs1 = S.unions $ map freeVars es
+      let binder = zipWith (\x t -> (m, x, t)) xs ts
+      let xs2 = freeVars' binder (freeVars e)
+      S.union xs1 xs2
     _ :< WT.Noema t ->
       freeVars t
     _ :< WT.Embody t e ->

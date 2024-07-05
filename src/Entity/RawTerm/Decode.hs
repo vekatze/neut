@@ -1,3 +1,5 @@
+{- HLINT ignore "Use list comprehension" -}
+
 module Entity.RawTerm.Decode
   ( pp,
     toDoc,
@@ -84,12 +86,15 @@ toDoc term =
           SE.decode' $ fmap decodePatternRow patternRowList
         ]
     _ :< Box t -> do
-      D.join [D.text "box", toDoc t]
-    m :< BoxIntro c1 c2 (e, c3) -> do
       PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text "quote",
-          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        [ PI.horizontal $ D.text "box",
+          PI.inject $ toDoc t
         ]
+    m :< BoxIntro c1 c2 vs (e, c3) -> do
+      PI.arrange $
+        [PI.horizontal $ attachComment c1 $ D.text "quote"]
+          ++ decodeQuoteVarList vs
+          ++ [PI.inject $ toDoc $ m :< Brace c2 (e, c3)]
     _ :< Noema t ->
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
@@ -348,6 +353,12 @@ decodeNoeticVarList vs =
       [ PI.beforeBareSeries $ D.text "on",
         PI.bareSeries $ SE.decode $ fmap decodeNoeticVar vs
       ]
+
+decodeQuoteVarList :: SE.Series (Hint, RawIdent) -> [PI.Piece]
+decodeQuoteVarList vs =
+  if SE.isEmpty vs
+    then []
+    else [PI.horizontal $ SE.decode $ fmap decodeNoeticVar vs]
 
 piArgToDoc :: RawBinder RawTerm -> D.Doc
 piArgToDoc (m, x, c1, c2, t) = do

@@ -52,7 +52,6 @@ import Entity.Term qualified as TM
 import Entity.Term.Chain (nubFreeVariables)
 import Entity.Term.Chain qualified as TM
 import Entity.Term.FromPrimNum
-import Entity.Term.TypedFreeVars qualified as TM
 import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
@@ -227,10 +226,9 @@ clarifyTerm tenv term =
       return $ irreducibleBindLet (zip xs es') tree'
     _ :< TM.Box t -> do
       clarifyTerm tenv t
-    _ :< TM.BoxIntro e -> do
-      let fvs = TM.typedFreeVars tenv e
+    _ :< TM.BoxIntro xets e -> do
       e' <- clarifyTerm tenv e
-      embody tenv fvs e'
+      embody tenv xets e'
     _ :< TM.Noema {} ->
       return returnImmediateS4
     m :< TM.Embody t e -> do
@@ -274,21 +272,23 @@ clarifyTerm tenv term =
         Clarify.insertToAuxEnv liftedName (O.Clear, [switchValue, value], enumElim)
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
 
-embody :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
-embody tenv xts e =
-  case xts of
+embody :: TM.TypeEnv -> [(Ident, TM.Term, TM.Term)] -> C.Comp -> App C.Comp
+embody tenv xets cont =
+  case xets of
     [] ->
-      return e
-    (m, x, t) : rest -> do
+      return cont
+    (x, e, t@(m :< _)) : rest -> do
       (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
-      cont <- embody tenv rest e
+      (valueVarName, value, valueVar) <- clarifyPlus tenv e
+      cont' <- embody tenv rest cont
       baseSize <- Env.getBaseSize m
       return $
         bindLet
           [ (typeExpVarName, typeExp),
-            (x, C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, C.VarLocal x])
+            (valueVarName, value),
+            (x, C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, valueVar])
           ]
-          cont
+          cont'
 
 type Size =
   Int

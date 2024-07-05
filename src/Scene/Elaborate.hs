@@ -248,9 +248,13 @@ elaborate' term =
     m :< WT.Box t -> do
       t' <- elaborate' t
       return $ m :< TM.Box t'
-    m :< WT.BoxIntro e -> do
+    m :< WT.BoxIntro xets e -> do
+      let (xs, es, ts) = unzip3 xets
+      es' <- mapM elaborate' es
+      ts' <- mapM elaborate' ts
+      let xets' = zip3 xs es' ts'
       e' <- elaborate' e
-      return $ m :< TM.BoxIntro e'
+      return $ m :< TM.BoxIntro xets' e'
     m :< WT.Noema t -> do
       t' <- elaborate' t
       return $ m :< TM.Noema t'

@@ -61,9 +61,14 @@ refresh term =
     m :< TM.Box t -> do
       t' <- refresh t
       return $ m :< TM.Box t'
-    m :< TM.BoxIntro e -> do
+    m :< TM.BoxIntro xets e -> do
+      let (xs, es, ts) = unzip3 xets
+      es' <- mapM refresh es
+      let binder = zipWith (\x t -> (m, x, t)) xs ts
+      binder' <- refreshBinder binder
+      let (_, xs', ts') = unzip3 binder'
       e' <- refresh e
-      return $ m :< TM.BoxIntro e'
+      return $ m :< TM.BoxIntro (zip3 xs' es' ts') e'
     m :< TM.Noema t -> do
       t' <- refresh t
       return $ m :< TM.Noema t'

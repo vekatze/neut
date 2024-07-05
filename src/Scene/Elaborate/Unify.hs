@@ -208,8 +208,15 @@ simplify ax susList constraintList =
                   simplify ax susList $ cs' ++ cs
             (_ :< WT.Box t1, _ :< WT.Box t2) ->
               simplify ax susList $ (C.Eq t1 t2, orig) : cs
-            (_ :< WT.BoxIntro e1, _ :< WT.BoxIntro e2) ->
-              simplify ax susList $ (C.Eq e1 e2, orig) : cs
+            (m1 :< WT.BoxIntro xets1 e1, m2 :< WT.BoxIntro xets2 e2)
+              | length xets1 == length xets2 -> do
+                  let (xs1, es1, ts1) = unzip3 xets1
+                  let (xs2, es2, ts2) = unzip3 xets2
+                  let cs' = map (orig,) $ zipWith C.Eq es1 es2
+                  let binder1 = zipWith (\x t -> (m1, x, t)) xs1 ts1
+                  let binder2 = zipWith (\x t -> (m2, x, t)) xs2 ts2
+                  cs'' <- simplifyBinder orig binder1 binder2
+                  simplify ax susList $ (C.Eq e1 e2, orig) : cs' ++ cs'' ++ cs
             (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
               simplify ax susList $ (C.Eq t1 t2, orig) : cs
             (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->

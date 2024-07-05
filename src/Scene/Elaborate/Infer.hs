@@ -53,7 +53,6 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.LayeredFreeVars (freeVarsAtCurrentLayer)
 import Entity.WeakTerm.ToText (toText)
 import Scene.Elaborate.Unify (unifyCurrentConstraints)
 import Scene.Parse.Discern.Name qualified as N
@@ -273,13 +272,15 @@ infer axis term =
     m :< WT.Box t -> do
       t' <- inferType axis t
       return (m :< WT.Box t', m :< WT.Tau)
-    m :< WT.BoxIntro e -> do
-      (e', t') <- infer axis e
-      forM_ (freeVarsAtCurrentLayer e) $ \(mFv, fv) -> do
-        _ :< fvType <- lookupWeakTypeEnv m fv
-        someType <- newHole m (varEnv axis)
-        insConstraintEnv (m :< WT.Noema someType) (mFv :< fvType)
-      return (m :< WT.BoxIntro e', m :< WT.Box t')
+    m :< WT.BoxIntro xets e -> do
+      let (xs, es, _) = unzip3 xets
+      (es', ts) <- mapAndUnzipM (infer axis) es
+      innerTypes <- mapM (const $ newHole m (varEnv axis)) ts
+      forM_ (zip innerTypes ts) $ \(innerType, t) -> do
+        insConstraintEnv (m :< WT.Noema innerType) t
+      forM_ (zip xs innerTypes) $ uncurry insWeakTypeEnv
+      (e', t) <- infer axis e
+      return (m :< WT.BoxIntro (zip3 xs es' ts) e', m :< WT.Box t)
     m :< WT.Noema t -> do
       t' <- inferType axis t
       return (m :< WT.Noema t', m :< WT.Tau)

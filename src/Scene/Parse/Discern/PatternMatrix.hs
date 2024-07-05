@@ -18,6 +18,7 @@ import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
+import Entity.Layer
 import Entity.Noema qualified as N
 import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
@@ -31,12 +32,13 @@ import Scene.Parse.Discern.Specialize qualified as PATS
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311
 compilePatternMatrix ::
+  Layer ->
   NominalEnv ->
   N.IsNoetic ->
   V.Vector (Hint, Ident) ->
   PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
   App (DT.DecisionTree WT.WeakTerm)
-compilePatternMatrix nenv isNoetic occurrences mat =
+compilePatternMatrix l nenv isNoetic occurrences mat =
   case PAT.unconsRow mat of
     Nothing ->
       return DT.Unreachable
@@ -52,7 +54,7 @@ compilePatternMatrix nenv isNoetic occurrences mat =
             then do
               occurrences' <- Throw.liftEither $ V.swap mCol i occurrences
               mat' <- Throw.liftEither $ PAT.swapColumn mCol i mat
-              compilePatternMatrix nenv isNoetic occurrences' mat'
+              compilePatternMatrix l nenv isNoetic occurrences' mat'
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let (mCursor, cursor) = V.head occurrences
@@ -62,7 +64,7 @@ compilePatternMatrix nenv isNoetic occurrences mat =
                     let occurrences' = V.tail occurrences
                     let specializer = PATS.LiteralIntSpecializer literalInt
                     specialMatrix <- PATS.specialize isNoetic cursor specializer mat
-                    cont <- compilePatternMatrix nenv isNoetic occurrences' specialMatrix
+                    cont <- compilePatternMatrix l nenv isNoetic occurrences' specialMatrix
                     return $ DT.LiteralIntCase mPat literalInt cont
                   Right PAT.ConsInfo {..} -> do
                     dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
@@ -70,11 +72,11 @@ compilePatternMatrix nenv isNoetic occurrences mat =
                     consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
                     let ms = map fst args
                     let consVars' = zip ms consVars
-                    (consArgs', nenv') <- alignConsArgs nenv consVars'
+                    (consArgs', nenv') <- alignConsArgs l nenv consVars'
                     let occurrences' = V.fromList consVars' <> V.tail occurrences
                     let specializer = PATS.ConsSpecializer consDD consArgNum
                     specialMatrix <- PATS.specialize isNoetic cursor specializer mat
-                    specialDecisionTree <- compilePatternMatrix nenv' isNoetic occurrences' specialMatrix
+                    specialDecisionTree <- compilePatternMatrix l nenv' isNoetic occurrences' specialMatrix
                     let dataArgs' = zip dataHoles dataTypeHoles
                     return $
                       DT.ConsCase
@@ -87,22 +89,23 @@ compilePatternMatrix nenv isNoetic occurrences mat =
                           cont = specialDecisionTree
                         }
               fallbackMatrix <- PATF.getFallbackMatrix isNoetic cursor mat
-              fallbackClause <- compilePatternMatrix nenv isNoetic (V.tail occurrences) fallbackMatrix
+              fallbackClause <- compilePatternMatrix l nenv isNoetic (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCursor []
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
 alignConsArgs ::
+  Layer ->
   NominalEnv ->
   [(Hint, Ident)] ->
   App ([BinderF WT.WeakTerm], NominalEnv)
-alignConsArgs nenv binder =
+alignConsArgs l nenv binder =
   case binder of
     [] -> do
       return ([], nenv)
     (mx, x) : xts -> do
       t <- Gensym.newHole mx []
-      let nenv' = extendNominalEnvWithoutInsert mx x nenv
-      (xts', nenv'') <- alignConsArgs nenv' xts
+      let nenv' = extendNominalEnvWithoutInsert mx x l nenv
+      (xts', nenv'') <- alignConsArgs l nenv' xts
       return ((mx, x, t) : xts', nenv'')
 
 asLetSeq ::

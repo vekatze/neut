@@ -170,9 +170,12 @@ reduce' ax term = do
     m :< WT.Box t -> do
       t' <- reduce t
       return $ m :< WT.Box t'
-    m :< WT.BoxIntro e -> do
+    m :< WT.BoxIntro xets e -> do
+      let (xs, es, ts) = unzip3 xets
+      es' <- mapM (reduce' ax) es
+      ts' <- mapM (reduce' ax) ts
       e' <- reduce e
-      return $ m :< WT.BoxIntro e'
+      return $ m :< WT.BoxIntro (zip3 xs es' ts') e'
     m :< WT.Noema t -> do
       t' <- reduce' ax t
       return $ m :< WT.Noema t'

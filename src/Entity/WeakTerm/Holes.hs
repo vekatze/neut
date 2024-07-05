@@ -39,8 +39,12 @@ holes term =
       S.union xs1 xs2
     _ :< WT.Box t ->
       holes t
-    _ :< WT.BoxIntro e ->
-      holes e
+    m :< WT.BoxIntro xets e -> do
+      let (xs, es, ts) = unzip3 xets
+      let xs1 = S.unions $ map holes es
+      let binder = zipWith (\x t -> (m, x, t)) xs ts
+      let xs2 = holes' binder (holes e)
+      S.union xs1 xs2
     _ :< WT.Noema t ->
       holes t
     _ :< WT.Embody t e ->

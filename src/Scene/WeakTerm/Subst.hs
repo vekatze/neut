@@ -83,9 +83,14 @@ subst sub term =
     m :< WT.Box t -> do
       t' <- subst sub t
       return $ m :< WT.Box t'
-    m :< WT.BoxIntro e -> do
-      e' <- subst sub e
-      return $ m :< WT.BoxIntro e'
+    m :< WT.BoxIntro xets e -> do
+      let (xs, es, ts) = unzip3 xets
+      es' <- mapM (subst sub) es
+      let binder = zipWith (\x t -> (m, x, t)) xs ts
+      (binder', sub') <- subst' sub binder
+      let (_, xs', ts') = unzip3 binder'
+      e' <- subst sub' e
+      return $ m :< WT.BoxIntro (zip3 xs' es' ts') e'
     m :< WT.Noema t -> do
       t' <- subst sub t
       return $ m :< WT.Noema t'

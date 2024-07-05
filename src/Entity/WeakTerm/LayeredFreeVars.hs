@@ -9,10 +9,8 @@ import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
+import Entity.Layer
 import Entity.WeakTerm qualified as WT
-
-type Layer =
-  Int
 
 freeVarsAtCurrentLayer :: WT.WeakTerm -> S.Set (Hint, Ident)
 freeVarsAtCurrentLayer =
@@ -51,8 +49,11 @@ freeVars' l term =
       S.union xs1 xs2
     _ :< WT.Box t ->
       freeVars' l t
-    _ :< WT.BoxIntro e ->
-      freeVars' (l - 1) e
+    _ :< WT.BoxIntro xets e -> do
+      let (xs, es, ts) = unzip3 xets
+      let outerFreeVars = map (freeVars' l) (es ++ ts)
+      let innerFreeVars = S.filter (\(_, y) -> y `notElem` xs) $ freeVars' (l - 1) e
+      S.unions $ innerFreeVars : outerFreeVars
     _ :< WT.Noema t ->
       freeVars' l t
     _ :< WT.Embody t e ->
