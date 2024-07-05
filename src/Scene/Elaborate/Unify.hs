@@ -206,6 +206,10 @@ simplify ax susList constraintList =
                   let es2 = dataArgs2 ++ consArgs2
                   let cs' = map (,orig) (zipWith C.Eq es1 es2)
                   simplify ax susList $ cs' ++ cs
+            (_ :< WT.Box t1, _ :< WT.Box t2) ->
+              simplify ax susList $ (C.Eq t1 t2, orig) : cs
+            (_ :< WT.BoxIntro e1, _ :< WT.BoxIntro e2) ->
+              simplify ax susList $ (C.Eq e1 e2, orig) : cs
             (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
               simplify ax susList $ (C.Eq t1 t2, orig) : cs
             (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->

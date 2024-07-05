@@ -53,6 +53,7 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.LayeredFreeVars (freeVarsAtCurrentLayer)
 import Entity.WeakTerm.ToText (toText)
 import Scene.Elaborate.Unify (unifyCurrentConstraints)
 import Scene.Parse.Discern.Name qualified as N
@@ -269,6 +270,16 @@ infer axis term =
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
       (tree', _ :< treeType) <- inferDecisionTree m axis tree
       return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', m :< treeType)
+    m :< WT.Box t -> do
+      t' <- inferType axis t
+      return (m :< WT.Box t', m :< WT.Tau)
+    m :< WT.BoxIntro e -> do
+      (e', t') <- infer axis e
+      forM_ (freeVarsAtCurrentLayer e) $ \(mFv, fv) -> do
+        _ :< fvType <- lookupWeakTypeEnv m fv
+        someType <- newHole m (varEnv axis)
+        insConstraintEnv (m :< WT.Noema someType) (mFv :< fvType)
+      return (m :< WT.BoxIntro e', m :< WT.Box t')
     m :< WT.Noema t -> do
       t' <- inferType axis t
       return (m :< WT.Noema t', m :< WT.Tau)
