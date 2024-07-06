@@ -74,10 +74,6 @@ refresh term =
       uncastSeq' <- mapM refreshLet uncastSeq
       e2' <- refresh e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< TM.Embody t e -> do
-      t' <- refresh t
-      e' <- refresh e
-      return $ m :< TM.Embody t' e'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- refresh e1
       ([mxt'], e2') <- refresh' [mxt] e2

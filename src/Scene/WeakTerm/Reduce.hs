@@ -179,10 +179,6 @@ reduce' ax term = do
       es' <- mapM (reduce' ax) es
       e' <- reduce e
       return $ m :< WT.BoxIntro (zip xts' es') e'
-    m :< WT.Embody t e -> do
-      t' <- reduce' ax t
-      e' <- reduce' ax e
-      return $ m :< WT.Embody t' e'
     m :< WT.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- reduce' ax e1
       case opacity of

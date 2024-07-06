@@ -264,10 +264,6 @@ elaborate' term =
       uncastSeq' <- mapM elaborateLet uncastSeq
       e2' <- elaborate' e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.Embody t e -> do
-      t' <- elaborate' t
-      e' <- elaborate' e
-      return $ m :< TM.Embody t' e'
     _ :< WT.Actual e -> do
       elaborate' e
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do

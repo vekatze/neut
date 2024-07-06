@@ -99,10 +99,6 @@ subst sub term =
       (uncastSeq', sub3) <- substLetSeq sub2 uncastSeq
       e2' <- subst sub3 e2
       return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.Embody t e -> do
-      t' <- subst sub t
-      e' <- subst sub e
-      return $ m :< WT.Embody t' e'
     m :< WT.Actual e -> do
       e' <- subst sub e
       return $ m :< WT.Actual e'

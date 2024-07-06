@@ -48,8 +48,6 @@ freeVars term =
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVars' xts (S.unions $ map freeVars $ es ++ [e2])
-    _ :< TM.Embody t e ->
-      S.union (freeVars t) (freeVars e)
     _ :< TM.Let _ mxt e1 e2 -> do
       let set1 = freeVars e1
       let set2 = freeVars' [mxt] (freeVars e2)

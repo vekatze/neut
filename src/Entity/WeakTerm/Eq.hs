@@ -89,11 +89,6 @@ eq (_ :< term1) (_ :< term2)
       let b2 = all (uncurry eq) $ zip es1 es2
       let b3 = eq e1 e2
       b1 && b2 && b3
-  | WT.Embody t1 e1 <- term1,
-    WT.Embody t2 e2 <- term2 = do
-      let b1 = eq t1 t2
-      let b2 = eq e1 e2
-      b1 && b2
   | WT.Actual e1 <- term1,
     WT.Actual e2 <- term2 = do
       eq e1 e2

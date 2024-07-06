@@ -217,8 +217,6 @@ simplify ax susList constraintList =
                   cs' <- simplifyBinder orig xts1 xts2
                   let cs'' = map (orig,) $ zipWith C.Eq es1 es2
                   simplify ax susList $ (C.Eq e1 e2, orig) : cs' ++ cs'' ++ cs
-            (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->
-              simplify ax susList $ (C.Eq t1 t2, orig) : (C.Eq e1 e2, orig) : cs
             (_ :< WT.Annotation _ _ e1, e2) ->
               simplify ax susList $ (C.Eq e1 e2, orig) : cs
             (e1, _ :< WT.Annotation _ _ e2) ->

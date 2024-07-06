@@ -37,7 +37,6 @@ data TermF a
   | BoxNoema a
   | BoxIntro [(BinderF a, a)] a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
-  | Embody a a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
   | Magic (Magic a)

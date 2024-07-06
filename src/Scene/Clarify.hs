@@ -234,13 +234,6 @@ clarifyTerm tenv term =
       clarifyTerm tenv $
         TM.fromLetSeqOpaque castSeq $
           TM.fromLetSeq ((mxt, e1) : uncastSeq) e2
-    m :< TM.Embody t e -> do
-      (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
-      (valueVarName, value, valueVar) <- clarifyPlus tenv e
-      baseSize <- Env.getBaseSize m
-      return $
-        bindLet [(typeExpVarName, typeExp), (valueVarName, value)] $
-          C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, valueVar]
     _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e2' <- clarifyTerm (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder tenv [mxt]

@@ -291,11 +291,6 @@ infer axis term =
       (uncastSeq', axis3) <- inferQuoteSeq axis2 uncastSeq FromNoema
       (e2', t2) <- infer axis3 e2
       return (m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2', t2)
-    m :< WT.Embody _ e -> do
-      (e', noemaType) <- infer axis e
-      resultType <- newHole m (varEnv axis)
-      insConstraintEnv (m :< WT.BoxNoema resultType) noemaType
-      return (m :< WT.Embody resultType e', resultType)
     _ :< WT.Actual e -> do
       (e', t') <- infer axis e
       insertActualityConstraint t'

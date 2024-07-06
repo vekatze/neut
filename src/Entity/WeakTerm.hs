@@ -41,7 +41,6 @@ data WeakTermF a
   | BoxIntro [(BinderF a, a)] a
   | BoxIntroQuote a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
-  | Embody a a
   | Actual a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)

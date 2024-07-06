@@ -89,10 +89,6 @@ fill sub term =
       uncastSeq' <- fillLetSeq sub uncastSeq
       e2' <- fill sub e2
       return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.Embody t e -> do
-      t' <- fill sub t
-      e' <- fill sub e
-      return $ m :< WT.Embody t' e'
     m :< WT.Actual e -> do
       e' <- fill sub e
       return $ m :< WT.Actual e'

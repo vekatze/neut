@@ -61,10 +61,6 @@ chainOf' tenv term =
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       chainOfBinder tenv xts (es ++ [e2])
-    _ :< TM.Embody t e -> do
-      let xs1 = chainOf' tenv t
-      let xs2 = chainOf' tenv e
-      xs1 ++ xs2
     _ :< TM.Let _ mxt e1 e2 -> do
       let xs1 = chainOf' tenv e1
       let xs2 = chainOfBinder tenv [mxt] [e2]

@@ -94,8 +94,6 @@ toText term =
         <> toText e1
         <> " in "
         <> toText e2
-    _ :< WT.Embody _ e ->
-      "*" <> toText e
     _ :< WT.Actual e ->
       "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do
