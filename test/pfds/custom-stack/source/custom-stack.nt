@@ -1,5 +1,6 @@
 import {
   core.bool {False, True, bool},
+  core.box,
   core.either {Left, Right, none},
   core.pair {Pair, pair},
   core.text,
