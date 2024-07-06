@@ -253,7 +253,7 @@ discern axis term =
               h <- Gensym.newHole m []
               return $ m :< WT.Prim (WP.Value $ WPV.Float h x)
           | Just (mDef, name', layer) <- lookup s (_nenv axis) -> do
-              if layer == currentLayer axis
+              if layer <= currentLayer axis
                 then do
                   UnusedVariable.delete name'
                   Tag.insertLocalVar m name' mDef
@@ -349,7 +349,7 @@ discern axis term =
       t' <- discern axis t
       return $ m :< WT.Box t'
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
-      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx axis x
+      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent' mx axis x
       xets <- discernNoeticVarList xsOuter
       let innerLayer = currentLayer axis - 1
       let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
@@ -368,11 +368,11 @@ discern axis term =
       return $ m :< WT.BoxIntroQuote body'
     m :< RT.BoxElim _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
       -- inner
-      ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y
+      ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent' my axis y
       yetsInner <- discernNoeticVarList ysOuter
       let innerLayer = currentLayer axis + 1
-      let ysInner = map (\((my, y, _), _) -> (my, y)) yetsInner
-      let innerAddition = map (\(my, y) -> (Ident.toText y, (my, y, innerLayer))) ysInner
+      let ysInner = map (\((my, y, myDef :< _), _) -> (myDef, (my, y))) yetsInner
+      let innerAddition = map (\(_, (my, y)) -> (Ident.toText y, (my, y, innerLayer))) ysInner
       axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
       e1' <- discern axisInner e1
       -- cont
@@ -381,6 +381,7 @@ discern axis term =
       let contAddition = map (\(my, y) -> (Ident.toText y, (my, y, currentLayer axis))) ysCont
       axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
       (mxt', e2') <- discernBinderWithBody' axisCont mxt startLoc endLoc e2
+      Tag.insertBinder mxt'
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2'
     m :< RT.Noema t -> do
       t' <- discern axis t
@@ -390,6 +391,9 @@ discern axis term =
       return $ m :< WT.Embody (doNotCare m) e'
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
       discernLet axis m letKind (mx, pat, c1, c2, t) (SE.extract mys) e1 e2 startLoc endLoc
+    m :< RT.LetOn _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
+      let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
+      discern axis $ m :< RT.BoxElim [] mxt [] mys [] e1' [] startLoc [] e2 endLoc
     m :< RT.Pin _ mxt@(mx, x, _, _, _) _ _ e1 _ startLoc _ e2 endLoc -> do
       let m' = blur m
       tmp <- Gensym.newTextFromText "tmp-pin"
@@ -567,12 +571,13 @@ discern axis term =
     _ :< RT.Brace _ (e, _) ->
       discern axis e
 
-discernNoeticVarList :: [(Hint, Ident)] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
+discernNoeticVarList :: [(Hint, (Hint, Ident))] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
 discernNoeticVarList xsOuter = do
-  forM xsOuter $ \(mOuter, outerVar) -> do
+  forM xsOuter $ \(mDef, (mOuter, outerVar)) -> do
     xInner <- Gensym.newIdentFromIdent outerVar
     t <- Gensym.newHole mOuter []
-    return ((mOuter, xInner, t), mOuter :< WT.Var outerVar)
+    Tag.insertLocalVar mDef outerVar mOuter
+    return ((mOuter, xInner, t), mDef :< WT.Var outerVar)
 
 discernRawLowType :: Hint -> RLT.RawLowType -> App LT.LowType
 discernRawLowType m rlt = do
@@ -890,6 +895,15 @@ discernIdent m axis x =
       UnusedVariable.delete x'
       return (m, x')
 
+discernIdent' :: Hint -> Axis -> RawIdent -> App (Hint, (Hint, Ident))
+discernIdent' m axis x =
+  case lookup x (_nenv axis) of
+    Nothing ->
+      Throw.raiseError m $ "Undefined variable: " <> x
+    Just (mDef, x', _) -> do
+      UnusedVariable.delete x'
+      return (mDef, (m, x'))
+
 discernBinder ::
   Axis ->
   [RawBinder RT.RawTerm] ->
@@ -1127,7 +1141,7 @@ findExternalVariable :: Hint -> Axis -> WT.WeakTerm -> App (Maybe (Ident, Layer)
 findExternalVariable m axis e = do
   let fvs = S.toList $ freeVars e
   ls <- mapM (getLayer m axis) fvs
-  return $ find (\(_, l) -> l /= currentLayer axis) $ zip fvs ls
+  return $ find (\(_, l) -> l > currentLayer axis) $ zip fvs ls
 
 ensureLayerClosedness :: Hint -> Axis -> WT.WeakTerm -> App ()
 ensureLayerClosedness mClosure axis e = do

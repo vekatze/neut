@@ -68,6 +68,7 @@ data RawTermF a
   | Noema a
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | LetOn C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder a) C C a C Loc C a Loc
   | StaticText a T.Text
   | Rune a T.Text

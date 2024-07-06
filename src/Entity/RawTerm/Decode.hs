@@ -134,6 +134,21 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc cont
         ]
+    _ :< LetOn c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+      D.join
+        [ PI.arrange $
+            [ PI.beforeBareSeries $ D.text "let",
+              PI.bareSeries $ D.join [attachComment c1 $ boxElimArgToDoc mxt, C.asSuffix c2]
+            ]
+              ++ decodeNoeticVarList noeticVarList,
+          PI.arrange
+            [ PI.beforeBareSeries $ D.text "=",
+              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+            ],
+          D.text "in",
+          D.line,
+          attachComment c5 $ toDoc cont
+        ]
     _ :< Pin c1 mxt c2 c3 e1 c4 _ c5 e2 _ -> do
       D.join
         [ PI.arrange
