@@ -227,8 +227,7 @@ clarifyTerm tenv term =
     _ :< TM.Box t -> do
       clarifyTerm tenv t
     _ :< TM.BoxIntro letSeq e -> do
-      e' <- clarifyTerm tenv e
-      embody tenv letSeq e'
+      embody tenv letSeq e
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       clarifyTerm tenv $
         TM.fromLetSeqOpaque castSeq $
@@ -276,15 +275,15 @@ clarifyTerm tenv term =
         Clarify.insertToAuxEnv liftedName (O.Clear, [switchValue, value], enumElim)
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
 
-embody :: TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> C.Comp -> App C.Comp
+embody :: TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> App C.Comp
 embody tenv xets cont =
   case xets of
     [] ->
-      return cont
-    ((m, x, t), e) : rest -> do
+      clarifyTerm tenv cont
+    (mxt@(m, x, t), e) : rest -> do
       (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
       (valueVarName, value, valueVar) <- clarifyPlus tenv e
-      cont' <- embody tenv rest cont
+      cont' <- embody (TM.insTypeEnv [mxt] tenv) rest cont
       baseSize <- Env.getBaseSize m
       return $
         bindLet

@@ -87,18 +87,18 @@ toDoc term =
         ]
     _ :< Box t -> do
       PI.arrange
-        [ PI.horizontal $ D.text "box",
+        [ PI.horizontal $ D.text "meta",
           PI.inject $ toDoc t
         ]
     m :< BoxIntro c1 c2 vs (e, c3) -> do
       PI.arrange $
-        [PI.horizontal $ attachComment c1 $ D.text "quote"]
+        [PI.horizontal $ attachComment c1 $ D.text "box"]
           ++ decodeQuoteVarList vs
           ++ [PI.inject $ toDoc $ m :< Brace c2 (e, c3)]
     _ :< BoxElim c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
       D.join
         [ PI.arrange $
-            [ PI.beforeBareSeries $ D.text "unquote",
+            [ PI.beforeBareSeries $ D.text "letbox",
               PI.bareSeries $ D.join [attachComment c1 $ boxElimArgToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,

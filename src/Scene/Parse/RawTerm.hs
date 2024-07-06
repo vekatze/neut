@@ -203,7 +203,7 @@ rawTermLet mLet = do
 
 rawTermBoxElim :: Hint -> Parser (RT.RawTerm, C)
 rawTermBoxElim mLet = do
-  c1 <- keyword "unquote"
+  c1 <- keyword "letbox"
   (mxt, c2) <- preBinder
   noeticVarList <-
     choice
@@ -655,14 +655,14 @@ rawTermWith = do
 rawTermBox :: Parser (RT.RawTerm, C)
 rawTermBox = do
   m <- getCurrentHint
-  c1 <- keyword "box"
+  c1 <- keyword "meta"
   (t, c) <- rawExpr
   return (m :< RT.Box t, c1 ++ c)
 
 rawTermBoxIntro :: Parser (RT.RawTerm, C)
 rawTermBoxIntro = do
   m <- getCurrentHint
-  c1 <- keyword "quote"
+  c1 <- keyword "box"
   vs <- bareSeries Nothing SE.Comma rawTermNoeticVar
   (c2, (e, c)) <- betweenBrace rawExpr
   return (m :< RT.BoxIntro c1 c2 vs e, c)
