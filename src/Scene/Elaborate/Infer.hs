@@ -276,6 +276,10 @@ infer axis term =
       (letSeq', axis') <- inferQuoteSeq axis letSeq FromNoema
       (e', t) <- infer axis' e
       return (m :< WT.BoxIntro letSeq' e', m :< WT.Box t)
+    m :< WT.BoxIntroQuote e -> do
+      (e', t) <- infer axis e
+      insertActualityConstraint t
+      return (m :< WT.BoxIntroQuote e', m :< WT.Box t)
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       (castSeq', axis1) <- inferQuoteSeq axis castSeq ToNoema
       (e1', t1) <- infer axis1 e1

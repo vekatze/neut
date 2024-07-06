@@ -87,6 +87,9 @@ subst sub term =
       (letSeq', sub') <- substLetSeq sub letSeq
       e' <- subst sub' e
       return $ m :< WT.BoxIntro letSeq' e'
+    m :< WT.BoxIntroQuote e -> do
+      e' <- subst sub e
+      return $ m :< WT.BoxIntroQuote e'
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       (castSeq', sub1) <- substLetSeq sub castSeq
       ((mxt', e1'), sub2) <- substLet sub1 (mxt, e1)

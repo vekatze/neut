@@ -74,14 +74,16 @@ toText term =
         then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
     _ :< WT.Box t ->
-      "box" <> inParen (toText t)
+      "meta " <> toText t
     _ :< WT.BoxIntro letSeq t -> do
       let ks = map (\((_, x, _), _) -> x) letSeq
-      "quote " <> T.intercalate ", " (map Ident.toText ks) <> inBrace (toText t)
+      "box " <> T.intercalate ", " (map Ident.toText ks) <> inBrace (toText t)
+    _ :< WT.BoxIntroQuote e ->
+      "quote " <> inBrace (toText e)
     _ :< WT.BoxElim castSeq (_, x, t) e1 _ e2 -> do
       let ks = map (\((_, y, _), _) -> y) castSeq
       let ks' = if null ks then "" else "on " <> T.intercalate ", " (map Ident.toText ks)
-      "unquote "
+      "letbox "
         <> showVariable x
         <> ": "
         <> toText t

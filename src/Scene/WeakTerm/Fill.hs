@@ -77,6 +77,9 @@ fill sub term =
       es' <- mapM (fill sub) es
       e' <- fill sub e
       return $ m :< WT.BoxIntro (zip xts' es') e'
+    m :< WT.BoxIntroQuote e -> do
+      e' <- fill sub e
+      return $ m :< WT.BoxIntroQuote e'
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- fillLetSeq sub castSeq
       (mxt', e1') <- fillLet sub (mxt, e1)

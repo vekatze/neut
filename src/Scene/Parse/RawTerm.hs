@@ -75,6 +75,7 @@ rawTerm = do
       rawTermPiIntro,
       rawTermBox,
       rawTermBoxIntro,
+      rawTermBoxIntroQuote,
       rawTermNoema,
       rawTermIf,
       rawTermWhen,
@@ -666,6 +667,13 @@ rawTermBoxIntro = do
   vs <- bareSeries Nothing SE.Comma rawTermNoeticVar
   (c2, (e, c)) <- betweenBrace rawExpr
   return (m :< RT.BoxIntro c1 c2 vs e, c)
+
+rawTermBoxIntroQuote :: Parser (RT.RawTerm, C)
+rawTermBoxIntroQuote = do
+  m <- getCurrentHint
+  c1 <- keyword "quote"
+  (c2, (e, c)) <- betweenBrace rawExpr
+  return (m :< RT.BoxIntroQuote c1 c2 e, c)
 
 rawTermNoema :: Parser (RT.RawTerm, C)
 rawTermNoema = do

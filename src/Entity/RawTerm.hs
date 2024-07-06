@@ -63,6 +63,7 @@ data RawTermF a
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | Box a
   | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
+  | BoxIntroQuote C C (a, C)
   | BoxElim C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Noema a
   | Embody a

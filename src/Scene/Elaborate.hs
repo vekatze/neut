@@ -252,6 +252,8 @@ elaborate' term =
       letSeq' <- mapM elaborateLet letSeq
       e' <- elaborate' e
       return $ m :< TM.BoxIntro letSeq' e'
+    _ :< WT.BoxIntroQuote e -> do
+      elaborate' e
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM elaborateLet castSeq
       mxt' <- elaborateWeakBinder mxt

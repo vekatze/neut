@@ -44,6 +44,8 @@ freeVars term =
     _ :< WT.BoxIntro letSeq e -> do
       let (mxts, es) = unzip letSeq
       freeVars' mxts (S.unions $ map freeVars (e : es))
+    _ :< WT.BoxIntroQuote e ->
+      freeVars e
     _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVars' xts (S.unions $ map freeVars $ es ++ [e2])

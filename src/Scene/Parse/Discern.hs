@@ -363,6 +363,9 @@ discern axis term =
         then return $ m :< WT.BoxIntro xets body'
         else do
           Throw.raiseError m ""
+    m :< RT.BoxIntroQuote _ _ (body, _) -> do
+      body' <- discern axis body
+      return $ m :< WT.BoxIntroQuote body'
     m :< RT.BoxElim _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
       -- inner
       ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y

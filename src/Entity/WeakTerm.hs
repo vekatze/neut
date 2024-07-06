@@ -38,6 +38,7 @@ data WeakTermF a
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Box a
   | BoxIntro [(BinderF a, a)] a
+  | BoxIntroQuote a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
   | Noema a -- structual necessity
   | Embody a a

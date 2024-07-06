@@ -95,6 +95,11 @@ toDoc term =
         [PI.horizontal $ attachComment c1 $ D.text "box"]
           ++ decodeQuoteVarList vs
           ++ [PI.inject $ toDoc $ m :< Brace c2 (e, c3)]
+    m :< BoxIntroQuote c1 c2 (e, c3) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "quote",
+          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        ]
     _ :< BoxElim c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
       D.join
         [ PI.arrange $
