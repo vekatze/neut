@@ -447,7 +447,7 @@ letArgToDoc (m, x, c1, c2, t) = do
 
 boxElimArgToDoc :: (a, RawIdent, C, C, RawTerm) -> D.Doc
 boxElimArgToDoc (m, x, c1, c2, t) = do
-  paramToDoc (m, D.text x, c1, c2, t)
+  paramToDoc (m, nameToDoc $ N.Var x, c1, c2, t)
 
 typeAnnot :: D.Doc -> D.Doc
 typeAnnot t = do
