@@ -61,6 +61,9 @@ refresh term =
     m :< TM.Box t -> do
       t' <- refresh t
       return $ m :< TM.Box t'
+    m :< TM.BoxNoema t -> do
+      t' <- refresh t
+      return $ m :< TM.BoxNoema t'
     m :< TM.BoxIntro letSeq e -> do
       letSeq' <- mapM refreshLet letSeq
       e' <- refresh e
@@ -71,9 +74,6 @@ refresh term =
       uncastSeq' <- mapM refreshLet uncastSeq
       e2' <- refresh e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< TM.Noema t -> do
-      t' <- refresh t
-      return $ m :< TM.Noema t'
     m :< TM.Embody t e -> do
       t' <- refresh t
       e' <- refresh e

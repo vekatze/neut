@@ -226,14 +226,14 @@ clarifyTerm tenv term =
       return $ irreducibleBindLet (zip xs es') tree'
     _ :< TM.Box t -> do
       clarifyTerm tenv t
+    _ :< TM.BoxNoema {} ->
+      return returnImmediateS4
     _ :< TM.BoxIntro letSeq e -> do
       embody tenv letSeq e
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       clarifyTerm tenv $
         TM.fromLetSeqOpaque castSeq $
           TM.fromLetSeq ((mxt, e1) : uncastSeq) e2
-    _ :< TM.Noema {} ->
-      return returnImmediateS4
     m :< TM.Embody t e -> do
       (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
       (valueVarName, value, valueVar) <- clarifyPlus tenv e

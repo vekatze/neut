@@ -82,6 +82,9 @@ subst sub term =
     m :< TM.Box t -> do
       t' <- subst sub t
       return $ m :< TM.Box t'
+    m :< TM.BoxNoema t -> do
+      t' <- subst sub t
+      return $ m :< TM.BoxNoema t'
     m :< TM.BoxIntro letSeq e -> do
       (letSeq', sub') <- substLetSeq sub letSeq
       e' <- subst sub' e
@@ -92,9 +95,6 @@ subst sub term =
       (uncastSeq', sub3) <- substLetSeq sub2 uncastSeq
       e2' <- subst sub3 e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< TM.Noema t -> do
-      t' <- subst sub t
-      return $ m :< TM.Noema t'
     m :< TM.Embody t e -> do
       t' <- subst sub t
       e' <- subst sub e

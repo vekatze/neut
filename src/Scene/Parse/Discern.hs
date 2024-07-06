@@ -348,6 +348,9 @@ discern axis term =
     m :< RT.Box t -> do
       t' <- discern axis t
       return $ m :< WT.Box t'
+    m :< RT.BoxNoema t -> do
+      t' <- discern axis t
+      return $ m :< WT.BoxNoema t'
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
       xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx axis x
       xets <- discernNoeticVarList xsOuter
@@ -385,9 +388,6 @@ discern axis term =
       when mustIgnoreRelayedVars $ do
         forM_ ysCont $ UnusedVariable.delete . snd
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2'
-    m :< RT.Noema t -> do
-      t' <- discern axis t
-      return $ m :< WT.Noema t'
     m :< RT.Embody e -> do
       e' <- discern axis e
       return $ m :< WT.Embody (doNotCare m) e'

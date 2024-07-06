@@ -34,9 +34,9 @@ data TermF a
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Box a
+  | BoxNoema a
   | BoxIntro [(BinderF a, a)] a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
-  | Noema a
   | Embody a a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
@@ -78,7 +78,9 @@ isValue term =
       all isValue args
     _ :< DataIntro _ _ dataArgs consArgs ->
       all isValue $ dataArgs ++ consArgs
-    _ :< Noema {} ->
+    _ :< Box {} ->
+      True
+    _ :< BoxNoema {} ->
       True
     _ :< Prim {} ->
       True

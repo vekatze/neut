@@ -37,10 +37,10 @@ data WeakTermF a
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Box a
+  | BoxNoema a
   | BoxIntro [(BinderF a, a)] a
   | BoxIntroQuote a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
-  | Noema a -- structual necessity
   | Embody a a
   | Actual a
   | Let LetOpacity (BinderF a) a a

@@ -71,6 +71,9 @@ fill sub term =
     m :< WT.Box t -> do
       t' <- fill sub t
       return $ m :< WT.Box t'
+    m :< WT.BoxNoema t -> do
+      t' <- fill sub t
+      return $ m :< WT.BoxNoema t'
     m :< WT.BoxIntro letSeq e -> do
       let (xts, es) = unzip letSeq
       xts' <- fillBinder sub xts
@@ -86,9 +89,6 @@ fill sub term =
       uncastSeq' <- fillLetSeq sub uncastSeq
       e2' <- fill sub e2
       return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.Noema t -> do
-      t' <- fill sub t
-      return $ m :< WT.Noema t'
     m :< WT.Embody t e -> do
       t' <- fill sub t
       e' <- fill sub e

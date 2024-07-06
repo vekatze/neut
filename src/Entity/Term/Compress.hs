@@ -50,6 +50,8 @@ compress term =
       () :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     _ :< TM.Box t ->
       () :< TM.Box (compress t)
+    _ :< TM.BoxNoema t ->
+      () :< TM.BoxNoema (compress t)
     _ :< TM.BoxIntro letSeq e -> do
       () :< TM.BoxIntro (map compressLet letSeq) (compress e)
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
@@ -58,8 +60,6 @@ compress term =
       let uncastSeq' = map compressLet uncastSeq
       let e2' = compress e2
       () :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    _ :< TM.Noema t ->
-      () :< TM.Noema (compress t)
     _ :< TM.Embody t e ->
       () :< TM.Embody (compress t) (compress e)
     _ :< TM.Let opacity mxt e1 e2 ->

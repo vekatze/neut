@@ -77,6 +77,9 @@ eq (_ :< term1) (_ :< term2)
   | WT.Box t1 <- term1,
     WT.Box t2 <- term2 =
       eq t1 t2
+  | WT.BoxNoema t1 <- term1,
+    WT.BoxNoema t2 <- term2 =
+      eq t1 t2
   | WT.BoxIntro letSeq1 e1 <- term1,
     WT.BoxIntro letSeq2 e2 <- term2,
     length letSeq1 == length letSeq2 = do
@@ -86,9 +89,6 @@ eq (_ :< term1) (_ :< term2)
       let b2 = all (uncurry eq) $ zip es1 es2
       let b3 = eq e1 e2
       b1 && b2 && b3
-  | WT.Noema t1 <- term1,
-    WT.Noema t2 <- term2 =
-      eq t1 t2
   | WT.Embody t1 e1 <- term1,
     WT.Embody t2 e2 <- term2 = do
       let b1 = eq t1 t2

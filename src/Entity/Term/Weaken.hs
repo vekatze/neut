@@ -80,6 +80,8 @@ weaken term =
       m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
     m :< TM.Box t ->
       m :< WT.Box (weaken t)
+    m :< TM.BoxNoema t ->
+      m :< WT.BoxNoema (weaken t)
     m :< TM.BoxIntro letSeq e -> do
       m :< WT.BoxIntro (map weakenLet letSeq) (weaken e)
     m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
@@ -88,8 +90,6 @@ weaken term =
       let uncastSeq' = map weakenLet uncastSeq
       let e2' = weaken e2
       m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< TM.Noema t ->
-      m :< WT.Noema (weaken t)
     m :< TM.Embody t e ->
       m :< WT.Embody (weaken t) (weaken e)
     m :< TM.Let opacity mxt e1 e2 ->

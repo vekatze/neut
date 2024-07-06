@@ -90,6 +90,8 @@ toDoc term =
         [ PI.horizontal $ D.text "meta",
           PI.inject $ toDoc t
         ]
+    _ :< BoxNoema t ->
+      D.join [D.text "&", toDoc t]
     m :< BoxIntro c1 c2 vs (e, c3) -> do
       PI.arrange $
         [PI.horizontal $ attachComment c1 $ D.text "box"]
@@ -115,8 +117,6 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc cont
         ]
-    _ :< Noema t ->
-      D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
     _ :< Let letKind c1 mxt c2 c3 e c4 _ c5 cont _ -> do

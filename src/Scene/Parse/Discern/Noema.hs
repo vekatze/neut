@@ -26,9 +26,9 @@ castFromNoemaIfNecessary isNoetic e =
 castToNoema :: WT.WeakTerm -> App WT.WeakTerm
 castToNoema e@(m :< _) = do
   t <- Gensym.newHole m []
-  return $ m :< WT.Magic (M.Cast t (m :< WT.Noema t) e)
+  return $ m :< WT.Magic (M.Cast t (m :< WT.BoxNoema t) e)
 
 castFromNoema :: WT.WeakTerm -> App WT.WeakTerm
 castFromNoema e@(m :< _) = do
   t <- Gensym.newHole m []
-  return $ m :< WT.Magic (M.Cast (m :< WT.Noema t) t e)
+  return $ m :< WT.Magic (M.Cast (m :< WT.BoxNoema t) t e)

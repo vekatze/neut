@@ -74,9 +74,9 @@ rawTerm = do
       rawTermPi,
       rawTermPiIntro,
       rawTermBox,
+      rawTermBoxNoema,
       rawTermBoxIntro,
       rawTermBoxIntroQuote,
-      rawTermNoema,
       rawTermIf,
       rawTermWhen,
       rawTermAssert,
@@ -685,12 +685,12 @@ rawTermBoxIntroQuote = do
   (c2, (e, c)) <- betweenBrace rawExpr
   return (m :< RT.BoxIntroQuote c1 c2 e, c)
 
-rawTermNoema :: Parser (RT.RawTerm, C)
-rawTermNoema = do
+rawTermBoxNoema :: Parser (RT.RawTerm, C)
+rawTermBoxNoema = do
   m <- getCurrentHint
   c1 <- delimiter "&"
   (t, c) <- rawTerm
-  return (m :< RT.Noema t, c1 ++ c)
+  return (m :< RT.BoxNoema t, c1 ++ c)
 
 rawTermFlowIntro :: Parser (RT.RawTerm, C)
 rawTermFlowIntro = do

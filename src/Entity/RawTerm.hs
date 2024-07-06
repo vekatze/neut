@@ -62,10 +62,10 @@ data RawTermF a
   | DataIntro (AttrDI.Attr BN.BaseName) BN.BaseName [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | Box a
+  | BoxNoema a
   | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
   | BoxIntroQuote C C (a, C)
   | BoxElim Bool C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | Noema a
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, a) C C a C Loc C a Loc
   | LetOn C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc

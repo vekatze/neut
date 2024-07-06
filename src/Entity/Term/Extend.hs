@@ -55,6 +55,8 @@ extend term =
       _m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     _ :< TM.Box t ->
       _m :< TM.Box (extend t)
+    _ :< TM.BoxNoema t ->
+      _m :< TM.BoxNoema (extend t)
     _ :< TM.BoxIntro letSeq e -> do
       let (xts, es) = unzip letSeq
       let letSeq' = zip (map extendBinder xts) (map extend es)
@@ -65,8 +67,6 @@ extend term =
       let uncastSeq' = map extendLet uncastSeq
       let e2' = extend e2
       _m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    _ :< TM.Noema t ->
-      _m :< TM.Noema (extend t)
     _ :< TM.Embody t e ->
       _m :< TM.Embody (extend t) (extend e)
     _ :< TM.Let opacity mxt e1 e2 ->

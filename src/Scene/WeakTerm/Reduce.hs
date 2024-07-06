@@ -170,15 +170,15 @@ reduce' ax term = do
     m :< WT.Box t -> do
       t' <- reduce t
       return $ m :< WT.Box t'
+    m :< WT.BoxNoema t -> do
+      t' <- reduce' ax t
+      return $ m :< WT.BoxNoema t'
     m :< WT.BoxIntro letSeq e -> do
       let (xts, es) = unzip letSeq
       xts' <- mapM (reduceBinder ax) xts
       es' <- mapM (reduce' ax) es
       e' <- reduce e
       return $ m :< WT.BoxIntro (zip xts' es') e'
-    m :< WT.Noema t -> do
-      t' <- reduce' ax t
-      return $ m :< WT.Noema t'
     m :< WT.Embody t e -> do
       t' <- reduce' ax t
       e' <- reduce' ax e

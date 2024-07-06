@@ -272,6 +272,9 @@ infer axis term =
     m :< WT.Box t -> do
       t' <- inferType axis t
       return (m :< WT.Box t', m :< WT.Tau)
+    m :< WT.BoxNoema t -> do
+      t' <- inferType axis t
+      return (m :< WT.BoxNoema t', m :< WT.Tau)
     m :< WT.BoxIntro letSeq e -> do
       (letSeq', axis') <- inferQuoteSeq axis letSeq FromNoema
       (e', t) <- infer axis' e
@@ -288,13 +291,10 @@ infer axis term =
       (uncastSeq', axis3) <- inferQuoteSeq axis2 uncastSeq FromNoema
       (e2', t2) <- infer axis3 e2
       return (m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2', t2)
-    m :< WT.Noema t -> do
-      t' <- inferType axis t
-      return (m :< WT.Noema t', m :< WT.Tau)
     m :< WT.Embody _ e -> do
       (e', noemaType) <- infer axis e
       resultType <- newHole m (varEnv axis)
-      insConstraintEnv (m :< WT.Noema resultType) noemaType
+      insConstraintEnv (m :< WT.BoxNoema resultType) noemaType
       return (m :< WT.Embody resultType e', resultType)
     _ :< WT.Actual e -> do
       (e', t') <- infer axis e
@@ -343,7 +343,7 @@ infer axis term =
             WPV.StaticText t text -> do
               empty <- createNewAxis
               t' <- inferType empty t
-              return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.Noema t')
+              return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.BoxNoema t')
     m :< WT.Magic magic -> do
       case magic of
         M.Cast from to value -> do
@@ -433,9 +433,9 @@ inferQuoteSeq axis letSeq castDirection = do
   forM_ (zip xts' ts) $ \((m1, _, tInner), tOuter@(m2 :< _)) -> do
     case castDirection of
       ToNoema ->
-        insConstraintEnv tInner (m2 :< WT.Noema tOuter)
+        insConstraintEnv tInner (m2 :< WT.BoxNoema tOuter)
       FromNoema ->
-        insConstraintEnv (m1 :< WT.Noema tInner) tOuter
+        insConstraintEnv (m1 :< WT.BoxNoema tInner) tOuter
   return (zip xts' es', axis')
 
 mustBypassCursorDealloc :: Maybe OD.OptimizableData -> Bool

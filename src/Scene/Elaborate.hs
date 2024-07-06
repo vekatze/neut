@@ -248,6 +248,9 @@ elaborate' term =
     m :< WT.Box t -> do
       t' <- elaborate' t
       return $ m :< TM.Box t'
+    m :< WT.BoxNoema t -> do
+      t' <- elaborate' t
+      return $ m :< TM.BoxNoema t'
     m :< WT.BoxIntro letSeq e -> do
       letSeq' <- mapM elaborateLet letSeq
       e' <- elaborate' e
@@ -261,9 +264,6 @@ elaborate' term =
       uncastSeq' <- mapM elaborateLet uncastSeq
       e2' <- elaborate' e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    m :< WT.Noema t -> do
-      t' <- elaborate' t
-      return $ m :< TM.Noema t'
     m :< WT.Embody t e -> do
       t' <- elaborate' t
       e' <- elaborate' e
