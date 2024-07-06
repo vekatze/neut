@@ -73,6 +73,7 @@ import Entity.VarDefKind qualified as VDK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.FreeVars (freeVars)
 import Scene.Parse.Discern.Data
 import Scene.Parse.Discern.Name
 import Scene.Parse.Discern.Noema
@@ -257,12 +258,8 @@ discern axis term =
                   UnusedVariable.delete name'
                   Tag.insertLocalVar m name' mDef
                   return $ m :< WT.Var name'
-                else do
-                  Throw.raiseError m $
-                    "Expected layer:\n  "
-                      <> T.pack (show (currentLayer axis))
-                      <> "\nFound layer:\n  "
-                      <> T.pack (show layer)
+                else
+                  raiseLayerError m (currentLayer axis) layer
         _ -> do
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
@@ -280,6 +277,7 @@ discern axis term =
       (expArgs', axis'') <- discernBinder axis' expArgs endLoc
       codType' <- discern axis'' $ snd $ RT.cod geist
       body' <- discern axis'' body
+      ensureLayerClosedness m axis'' body'
       return $ m :< WT.PiIntro (AttrL.normal lamID codType') impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
@@ -295,6 +293,7 @@ discern axis term =
       let mxt' = (mx, x', codType')
       Tag.insertBinder mxt'
       lamID <- Gensym.newCount
+      ensureLayerClosedness m axis''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
     m :< RT.PiElim e _ es -> do
       case e of
@@ -357,7 +356,13 @@ discern axis term =
       let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer))) xsInner
       axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
       body' <- discern axisInner body
-      return $ m :< WT.BoxIntro xets body'
+      let fvs = freeVars body'
+      let capturedVars = S.fromList $ map snd xsInner
+      let diff = S.difference capturedVars fvs
+      if S.null diff
+        then return $ m :< WT.BoxIntro xets body'
+        else do
+          Throw.raiseError m ""
     m :< RT.BoxElim _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
       -- inner
       ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y
@@ -1106,3 +1111,40 @@ locatorToVarGlobal m text = do
 calculateRuneValue :: [Word8] -> Integer
 calculateRuneValue =
   foldl' (\acc byte -> (acc `shiftL` 8) .|. fromIntegral byte) 0
+
+getLayer :: Hint -> Axis -> Ident -> App Layer
+getLayer m axis x =
+  case lookup (Ident.toText x) (_nenv axis) of
+    Nothing ->
+      Throw.raiseCritical m $ "Scene.Parse.Discern.getLayer: Undefined variable: " <> Ident.toText x
+    Just (_, _, l) -> do
+      return l
+
+findExternalVariable :: Hint -> Axis -> WT.WeakTerm -> App (Maybe (Ident, Layer))
+findExternalVariable m axis e = do
+  let fvs = S.toList $ freeVars e
+  ls <- mapM (getLayer m axis) fvs
+  return $ find (\(_, l) -> l /= currentLayer axis) $ zip fvs ls
+
+ensureLayerClosedness :: Hint -> Axis -> WT.WeakTerm -> App ()
+ensureLayerClosedness mClosure axis e = do
+  mvar <- findExternalVariable mClosure axis e
+  case mvar of
+    Nothing ->
+      return ()
+    Just (x, l) -> do
+      Throw.raiseError mClosure $
+        "This closure is at the layer "
+          <> T.pack (show (currentLayer axis))
+          <> ", but the free variable `"
+          <> Ident.toText x
+          <> "` is at the layer "
+          <> T.pack (show l)
+
+raiseLayerError :: Hint -> Layer -> Layer -> App a
+raiseLayerError m expected found = do
+  Throw.raiseError m $
+    "Expected layer:\n  "
+      <> T.pack (show expected)
+      <> "\nFound layer:\n  "
+      <> T.pack (show found)
