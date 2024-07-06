@@ -26,6 +26,7 @@ import Entity.Hint
 import Entity.Key
 import Entity.Locator qualified as Locator
 import Entity.Name qualified as N
+import Entity.NecessityVariant (showNecessityVariant)
 import Entity.Piece qualified as PI
 import Entity.RawBinder
 import Entity.RawIdent
@@ -102,10 +103,11 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "quote",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
-    _ :< BoxElim _ c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+    _ :< BoxElim nv _ c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+      let keyword = showNecessityVariant nv
       D.join
         [ PI.arrange $
-            [ PI.beforeBareSeries $ D.text "letbox",
+            [ PI.beforeBareSeries $ D.text keyword,
               PI.bareSeries $ D.join [attachComment c1 $ boxElimArgToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,

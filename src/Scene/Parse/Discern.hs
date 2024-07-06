@@ -52,6 +52,7 @@ import Entity.LowType.FromRawLowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Module
 import Entity.Name
+import Entity.NecessityVariant
 import Entity.Noema qualified as N
 import Entity.NominalEnv
 import Entity.OS qualified as OS
@@ -253,7 +254,7 @@ discern axis term =
               h <- Gensym.newHole m []
               return $ m :< WT.Prim (WP.Value $ WPV.Float h x)
           | Just (mDef, name', layer) <- lookup s (_nenv axis) -> do
-              if layer <= currentLayer axis
+              if layer == currentLayer axis
                 then do
                   UnusedVariable.delete name'
                   Tag.insertLocalVar m name' mDef
@@ -369,11 +370,11 @@ discern axis term =
     m :< RT.BoxIntroQuote _ _ (body, _) -> do
       body' <- discern axis body
       return $ m :< WT.BoxIntroQuote body'
-    m :< RT.BoxElim mustIgnoreRelayedVars _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
+    m :< RT.BoxElim nv mustIgnoreRelayedVars _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
       -- inner
       ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y
       yetsInner <- discernNoeticVarList ysOuter
-      let innerLayer = currentLayer axis + 1
+      let innerLayer = currentLayer axis + layerOffset nv
       let ysInner = map (\((my, y, myDef :< _), _) -> (myDef, (my, y))) yetsInner
       let innerAddition = map (\(_, (my, y)) -> (Ident.toText y, (my, y, innerLayer))) ysInner
       axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
@@ -395,7 +396,7 @@ discern axis term =
       discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
     m :< RT.LetOn _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
-      discern axis $ m :< RT.BoxElim True [] mxt [] mys [] e1' [] startLoc [] e2 endLoc
+      discern axis $ m :< RT.BoxElim VariantT True [] mxt [] mys [] e1' [] startLoc [] e2 endLoc
     m :< RT.Pin _ mxt@(mx, x, _, _, _) _ _ e1 _ startLoc _ e2 endLoc -> do
       let m' = blur m
       tmp <- Gensym.newTextFromText "tmp-pin"
@@ -1109,7 +1110,7 @@ findExternalVariable :: Hint -> Axis -> WT.WeakTerm -> App (Maybe (Ident, Layer)
 findExternalVariable m axis e = do
   let fvs = S.toList $ freeVars e
   ls <- mapM (getLayer m axis) fvs
-  return $ find (\(_, l) -> l > currentLayer axis) $ zip fvs ls
+  return $ find (\(_, l) -> l /= currentLayer axis) $ zip fvs ls
 
 ensureLayerClosedness :: Hint -> Axis -> WT.WeakTerm -> App ()
 ensureLayerClosedness mClosure axis e = do
@@ -1125,14 +1126,14 @@ ensureLayerClosedness mClosure axis e = do
           <> Ident.toText x
           <> "` is at the layer "
           <> T.pack (show l)
-          <> " (> "
+          <> " (≠ "
           <> T.pack (show (currentLayer axis))
           <> ")"
 
 raiseLayerError :: Hint -> Layer -> Layer -> App a
 raiseLayerError m expected found = do
   Throw.raiseError m $
-    "Expected layer:\n  n (<= "
+    "Expected layer:\n  "
       <> T.pack (show expected)
-      <> ")\nFound layer:\n  "
+      <> "\nFound layer:\n  "
       <> T.pack (show found)

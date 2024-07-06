@@ -27,6 +27,7 @@ import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Key
 import Entity.Name
+import Entity.NecessityVariant (NecessityVariant (..), showNecessityVariant)
 import Entity.RawBinder
 import Entity.RawIdent
 import Entity.RawLowType qualified as RLT
@@ -214,7 +215,12 @@ rawTermLet mLet = do
 
 rawTermBoxElim :: Hint -> Parser (RT.RawTerm, C)
 rawTermBoxElim mLet = do
-  c1 <- keyword "letbox"
+  let keywordReader nv = keyword (showNecessityVariant nv) >>= \c1 -> return (nv, c1)
+  (nv, c1) <-
+    choice
+      [ keywordReader VariantK,
+        keywordReader VariantT
+      ]
   (mxt, c2) <- preBinder
   noeticVarList <-
     choice
@@ -231,7 +237,7 @@ rawTermBoxElim mLet = do
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
   endLoc <- getCurrentLoc
-  return (mLet :< RT.BoxElim False c1 mxt c2 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+  return (mLet :< RT.BoxElim nv False c1 mxt c2 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermPin :: Hint -> Parser (RT.RawTerm, C)
 rawTermPin m = do

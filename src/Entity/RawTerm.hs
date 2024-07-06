@@ -39,6 +39,7 @@ import Entity.HoleID
 import Entity.IsConstLike
 import Entity.Key
 import Entity.Name
+import Entity.NecessityVariant (NecessityVariant)
 import Entity.Noema qualified as N
 import Entity.RawBinder
 import Entity.RawIdent
@@ -65,7 +66,7 @@ data RawTermF a
   | BoxNoema a
   | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
   | BoxIntroQuote C C (a, C)
-  | BoxElim Bool C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | BoxElim NecessityVariant Bool C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, a) C C a C Loc C a Loc
   | LetOn C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
