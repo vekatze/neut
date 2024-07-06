@@ -389,8 +389,8 @@ discern axis term =
         forM_ ysCont $ UnusedVariable.delete . snd
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2'
     m :< RT.Embody e -> do
-      e' <- discern axis e
-      return $ m :< WT.Embody (doNotCare m) e'
+      embodyVar <- locatorToVarGlobal m coreBoxEmbody
+      discern axis $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
     m :< RT.LetOn _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
