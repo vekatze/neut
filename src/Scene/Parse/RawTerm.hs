@@ -210,7 +210,7 @@ rawTermLet mLet = do
     (_, False) ->
       lift $ Throw.raiseError mLet $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
     _ ->
-      return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+      return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermBoxElim :: Hint -> Parser (RT.RawTerm, C)
 rawTermBoxElim mLet = do
@@ -231,7 +231,7 @@ rawTermBoxElim mLet = do
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
   endLoc <- getCurrentLoc
-  return (mLet :< RT.BoxElim c1 mxt c2 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+  return (mLet :< RT.BoxElim False c1 mxt c2 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermPin :: Hint -> Parser (RT.RawTerm, C)
 rawTermPin m = do

@@ -100,7 +100,7 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "quote",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
-    _ :< BoxElim c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+    _ :< BoxElim _ c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text "letbox",
@@ -119,13 +119,12 @@ toDoc term =
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
-    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+    _ :< Let letKind c1 mxt c2 c3 e c4 _ c5 cont _ -> do
       D.join
-        [ PI.arrange $
+        [ PI.arrange
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
               PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
-            ]
-              ++ decodeNoeticVarList noeticVarList,
+            ],
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
               PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
