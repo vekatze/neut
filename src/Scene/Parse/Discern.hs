@@ -360,13 +360,7 @@ discern axis term =
       let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer))) xsInner
       axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
       body' <- discern axisInner body
-      let fvs = freeVars body'
-      let capturedVars = S.fromList $ map snd xsInner
-      let diff = S.difference capturedVars fvs
-      if S.null diff
-        then return $ m :< WT.BoxIntro xets body'
-        else do
-          Throw.raiseError m ""
+      return $ m :< WT.BoxIntro xets body'
     m :< RT.BoxIntroQuote _ _ (body, _) -> do
       body' <- discern axis body
       return $ m :< WT.BoxIntroQuote body'
