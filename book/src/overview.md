@@ -62,7 +62,7 @@ some-func(xs1, xs2)
 
 If you need more, see [How to Execute Types](./how-to-execute-types.md).
 
-You may wonder: _"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./static-memory-management.md). As written there, those redundant copyings can be avoided via something like "borrowing" in Rust. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't discarded/copied, and to utilize it like a reference in the great ST monad.
+You may wonder: _"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./static-memory-management.md). As written there, Neut avoids such copyings by using the _T-necessity operator_ in modal logic to achieve something like borrowing in Rust.
 
 ## How Fast is This?
 
@@ -73,7 +73,7 @@ You may wonder: _"So we need to, for example, copy the whole list just to get it
 - Call by value
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
-- The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (fix) - (universe hierarchy)
+- The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (T-necessity) + (fix) - (universe hierarchy)
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in [LSP support](./lovely-lsp-showcase.md)
 - Built-in [rapid prototyping experience](./rapid-prototyping.md) like scripting languages
