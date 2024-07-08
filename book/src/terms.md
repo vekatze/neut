@@ -39,7 +39,6 @@
 - [letbox-T](#letbox-t)
 - [&a](#a)
 - [case](#case)
-- [let-on](#on)
 - [\*e](#e)
 
 ### Thread and Channel
@@ -61,6 +60,7 @@
 
 ### Syntax Sugar
 
+- [let x on y1, ..., yn = e1 in e2](#on)
 - [use e {x1, ..., xn} in cont](#use-e-x1--xn-in-cont)
 - [e::x](#ex)
 - [if](#if)
@@ -1746,120 +1746,6 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 - Values of type `&a` are expected to be used in combination with `case` or `*e`.
 - Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
 
-## `on`
-
-`let x on y = e1 in e2` can be used to introduce noetic values in a specific scope.
-
-### Example
-
-```neut
-define play-with-let-on(): unit {
-  let xs: list(int) = [1, 2, 3] in
-  let len on xs =
-    // the type of `xs` is `&list(int)` here
-    length(xs)
-  in
-  // the type of `xs` is `list(int)` here
-  print-int(len)
-}
-```
-
-### Syntax
-
-```neut
-let y on x1, ..., xn = e1 in
-e2
-```
-
-### Semantics
-
-`on` is conceptually the following syntax sugar:
-
-```neut
-let result on x = e in
-cont
-
-// ↓ desugar
-
-let x = unsafe-cast(a, &a, x) in // cast: `a` ~> `&a`
-let result = e in                // (use `&a`)
-let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
-cont
-```
-
-### Type
-
-```neut
-Γ ⊢ x1: a1
-...
-Γ ⊢ xn: an
-Γ, x1: &a1, ..., xn: &an ⊢ e1: b // note: the context `Γ` is ordered
-Γ, y: b ⊢ e2: c
-(the type `b` is actual) // see the below note for the definition of "actual"
----------------------------------------
-Γ ⊢ let y on x1, ..., xn = e1 in e2: c
-```
-
-### Note
-
-As you can see from the definition of `let-on`, a noema always has its source value. We'll call it the hyle of a noema.
-
-A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if `let-on` can return a noema:
-
-```neut
-let xs = [1, 2] in
-let result on xs = xs in // **CAUTION** the result of let-on is a noema
-let _ = xs in    // ← Since the variable `_` isn't used,
-                 // the hyle of `result`, namely `xs: list(int)`, is discarded here
-match result {   // ... and thus using `result` here is a use-after-free!
-| Nil =>
-  print("hey")
-| Cons(y, ys) =>
-  print("yo")
-}
-```
-
-Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `either(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
-
-More specifically, the type of `result` must be "actual"; The type must satisfy all of the following conditions:
-
-- It doesn't contain any free variables
-- It doesn't contain any noetic types
-- It doesn't contain any function types (since a noema can reside in it)
-- It doesn't contain any "dubious" ADTs
-
-Here, a "dubious" ADT is something like the below:
-
-```neut
-// the type `joker-x` is dubious since it contains a noetic argument
-data joker-x {
-| HideX(&list(int))
-}
-
-// the type `joker-y` is dubious since it contains a functional argument
-data joker-y {
-| HideY(int -> bool)
-}
-
-// the type `joker-z` is dubious since it contains a dubious ADT argument
-data joker-z {
-| HideZ(joker-y)
-}
-```
-
-Indeed, if we were to allow returning these dubious ADTs, we could exploit them to hide a noema:
-
-```neut
-let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
-let _ = xs in                   // `xs` is discarded here
-match result {
-| HideX(xs) =>
-  *xs                           // CRASH: use-after-free!
-}
-```
-
-This restriction is checked at compile time by the type system of Neut.
-
 ## `*e`
 
 You can use `*e` to create a non-noetic value from a noetic value.
@@ -2681,6 +2567,47 @@ _
 ### Note
 
 Please do not confuse a hole with the `_` in `let _ = e1 in e2`.
+
+## `on`
+
+`let x on y = e1 in e2` can be used to introduce noetic values in a specific scope.
+
+### Example
+
+```neut
+define play-with-let-on(): unit {
+  let xs: list(int) = [1, 2, 3] in
+  let len on xs =
+    // the type of `xs` is `&list(int)` here
+    length(xs)
+  in
+  // the type of `xs` is `list(int)` here
+  print-int(len)
+}
+```
+
+### Syntax
+
+```neut
+let y on x1, ..., xn = e1 in
+e2
+```
+
+### Semantics
+
+```neut
+let result on x1, ..., xn = e1 in
+e2
+
+// ↓ desugar
+
+letbox-T result on x1, ..., xn = quote {e1} in
+e2
+```
+
+### Type
+
+Derived from the desugared form.
 
 ## `use e {x1, ..., xn} in cont`
 
