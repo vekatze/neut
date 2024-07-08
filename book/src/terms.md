@@ -34,10 +34,10 @@
 ### Necessity and Noema
 
 - [meta](#meta)
+- [&a](#a)
 - [box](#box)
 - [letbox](#letbox)
 - [letbox-T](#letbox-t)
-- [&a](#a)
 - [case](#case)
 
 ### Thread and Channel
@@ -1239,92 +1239,6 @@ An example of the application of the typing rule of `match`:
     }: int
 ```
 
-## `case`
-
-You can use `case` to inspect noetic ADT values or integers.
-
-### Example
-
-```neut
-data my-nat {
-| Zero
-| Succ(my-nat)
-}
-
-define foo-noetic(n: &my-nat): int {
-  case n {
-  | Zero =>
-    100
-  | Succ(m) =>
-    // the type of foo-noetic is `(&my-nat) -> int`
-    foo-noetic(m)
-  }
-}
-```
-
-### Syntax
-
-```neut
-case e1, ..., en {
-| pattern-1 =>
-  body-1
-  ...
-| pattern-m =>
-  body-m
-}
-```
-
-### Semantics
-
-The semantics of `case` is the same as `match`, except that `case` doesn't consume ADT values.
-
-### Type
-
-```neut
-Γ ⊢ e1: a1
-...
-Γ ⊢ en: an
-
-Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ pat-1: a1
-Γ, arg_{1,1}: &t_{1,1}, ..., arg_{1, k_{1}}: &t{1, k_{1}} ⊢ body-1: b
-
-...
-
-Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ pat-m: an
-Γ, arg_{m,1}: &t_{m,1}, ..., arg_{m, k_{m}}: &t{m, k_{m}} ⊢ body-m: b
-
-(for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
-(the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
-------------------------------------------------------------------------------
-Γ ⊢ case e1, ..., en {
-    | pat-1 => body-1
-    ...
-    | pat-m => body-m
-    }: b
-```
-
-### Note
-
-An example of the application of the typing rule of `case`:
-
-```neut
-Γ ⊢ n: &my-nat
-
-Γ ⊢ Zero: my-nat // pat-1
-Γ ⊢ 100: int // body-1
-
-Γ, m: my-nat ⊢ Succ(m): my-nat // pat-2
-Γ, m: &my-nat ⊢ foo-noetic(m): int // body-2
-
-(Zero and Succ(m) are patterns for n)
-(the sequence Zero, Succ(m) is a exhaustinve matching against n)
-------------------------------------------------------------------------------
-Γ ⊢ case n {
-    | Zero => 100
-    | Succ(m) => foo-noetic(m)
-    }: int
-```
-
 ## `meta`
 
 Given a type `a: type`, `meta a` is the type of `a` in the "outer" layer.
@@ -1365,6 +1279,53 @@ For every type `a`, `meta a` is compiled into the same term as `a`.
 - `(meta a) -> a` (Axiom T)
 
 Note that `meta (a) -> b` means `meta {(a) -> b}` and not `(meta a) -> b`.
+
+## `&a`
+
+Given a type `a: type`, the `&a` is the type of noemata over `a`.
+
+### Example
+
+```neut
+data my-nat {
+| Zero
+| Succ(my-nat)
+}
+
+                     // 🌟
+define foo-noetic(n: &my-nat): int {
+  case n {
+  | Zero =>
+    100
+  | Succ(m) =>
+    foo-noetic(m)
+  }
+}
+```
+
+### Syntax
+
+```neut
+&t
+```
+
+### Semantics
+
+For every type `a`, `&a` is compiled into `base.#.imm`.
+
+### Type
+
+```neut
+Γ ⊢ t: type
+-----------
+Γ ⊢ &t: type
+```
+
+### Note
+
+- Values of type `&a` can be created using `on`.
+- Values of type `&a` are expected to be used in combination with `case` or `*e`.
+- Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
 
 ## `box`
 
@@ -1701,9 +1662,9 @@ define extract-value-from-meta(x: int): int {
 }
 ```
 
-## `&a`
+## `case`
 
-Given a type `a: type`, the `&a` is the type of noemata over `a`.
+You can use `case` to inspect noetic ADT values or integers.
 
 ### Example
 
@@ -1713,12 +1674,12 @@ data my-nat {
 | Succ(my-nat)
 }
 
-                     // 🌟
 define foo-noetic(n: &my-nat): int {
   case n {
   | Zero =>
     100
   | Succ(m) =>
+    // the type of foo-noetic is `(&my-nat) -> int`
     foo-noetic(m)
   }
 }
@@ -1727,26 +1688,65 @@ define foo-noetic(n: &my-nat): int {
 ### Syntax
 
 ```neut
-&t
+case e1, ..., en {
+| pattern-1 =>
+  body-1
+  ...
+| pattern-m =>
+  body-m
+}
 ```
 
 ### Semantics
 
-For every type `a`, `&a` is compiled into `base.#.imm`.
+The semantics of `case` is the same as `match`, except that `case` doesn't consume ADT values.
 
 ### Type
 
 ```neut
-Γ ⊢ t: type
------------
-Γ ⊢ &t: type
+Γ ⊢ e1: a1
+...
+Γ ⊢ en: an
+
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: &t_{1,1}, ..., arg_{1, k_{1}}: &t{1, k_{1}} ⊢ body-1: b
+
+...
+
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: &t_{m,1}, ..., arg_{m, k_{m}}: &t{m, k_{m}} ⊢ body-m: b
+
+(for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
+(the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
+------------------------------------------------------------------------------
+Γ ⊢ case e1, ..., en {
+    | pat-1 => body-1
+    ...
+    | pat-m => body-m
+    }: b
 ```
 
 ### Note
 
-- Values of type `&a` can be created using `on`.
-- Values of type `&a` are expected to be used in combination with `case` or `*e`.
-- Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
+An example of the application of the typing rule of `case`:
+
+```neut
+Γ ⊢ n: &my-nat
+
+Γ ⊢ Zero: my-nat // pat-1
+Γ ⊢ 100: int // body-1
+
+Γ, m: my-nat ⊢ Succ(m): my-nat // pat-2
+Γ, m: &my-nat ⊢ foo-noetic(m): int // body-2
+
+(Zero and Succ(m) are patterns for n)
+(the sequence Zero, Succ(m) is a exhaustinve matching against n)
+------------------------------------------------------------------------------
+Γ ⊢ case n {
+    | Zero => 100
+    | Succ(m) => foo-noetic(m)
+    }: int
+```
 
 ## `thread`
 
