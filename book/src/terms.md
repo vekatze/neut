@@ -39,7 +39,6 @@
 - [letbox-T](#letbox-t)
 - [&a](#a)
 - [case](#case)
-- [\*e](#e)
 
 ### Thread and Channel
 
@@ -61,6 +60,7 @@
 ### Syntax Sugar
 
 - [let x on y1, ..., yn = e1 in e2](#on)
+- [\*e](#e)
 - [use e {x1, ..., xn} in cont](#use-e-x1--xn-in-cont)
 - [e::x](#ex)
 - [if](#if)
@@ -1746,45 +1746,6 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 - Values of type `&a` are expected to be used in combination with `case` or `*e`.
 - Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
 
-## `*e`
-
-You can use `*e` to create a non-noetic value from a noetic value.
-
-### Example
-
-```neut
-define clone-list<a>(xs: &list(a)): list(a) {
-  case xs {
-  | Nil =>
-    Nil
-  | Cons(y, ys) =>
-    Cons(*y, clone-list(ys))
-  }
-}
-```
-
-### Syntax
-
-```neut
-*e
-```
-
-### Semantics
-
-Given a noema `e: &t`, `*e` is a clone of the hyle of the noema.
-
-This clone is created by copying the hyle along the type `t`.
-
-The original hyle is kept intact.
-
-### Type
-
-```neut
-Γ ⊢ e: &a
-----------
-Γ ⊢ *e: a
-```
-
 ## `thread`
 
 A `thread` in Neut is the type of a thread (much like promises in other languages).
@@ -2608,6 +2569,67 @@ e2
 ### Type
 
 Derived from the desugared form.
+
+## `*e`
+
+You can use `*e` to create a non-noetic value from a noetic value.
+
+### Example
+
+```neut
+define clone-list<a>(xs: &list(a)): list(a) {
+  case xs {
+  | Nil =>
+    Nil
+  | Cons(y, ys) =>
+    Cons(*y, clone-list(ys))
+  }
+}
+```
+
+### Syntax
+
+```neut
+*e
+```
+
+### Semantics
+
+```neut
+*e
+
+↓
+
+embody(e)
+```
+
+where the function `embody` is defined in the core library as follows:
+
+```neut
+// core.box
+
+// □A -> A (Axiom T)
+inline axiom-T<a>(x: meta a): a {
+  letbox-T x' = x in
+  x'
+}
+
+inline embody<a>(x: &a): a {
+  axiom-T(box x {x}) // ← this `box` copies the hyle of `x`
+}
+```
+
+### Type
+
+Derived from the desugared form.
+
+### Note
+
+Intuitively, given a noema `e: &a`, `*e: a` is a clone of the hyle of the noema.
+
+This clone is created by copying the hyle along the type `t`.
+
+The original hyle is kept intact.
 
 ## `use e {x1, ..., xn} in cont`
 
