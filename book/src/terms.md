@@ -707,6 +707,8 @@ define name<a1, ..., an>(y1: b1, ..., ym: bm): c {e}
 // define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
 ```
 
+As in `function`, all the free variables of a `define` must be at the same layer of the `define`.
+
 ### Semantics
 
 A term-level `define` is lifted to a top-level definition using lambda lifting. For example, consider the following example:
