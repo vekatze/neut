@@ -6,6 +6,7 @@
   - [Hello External World](./hello-external-world.md)
   - [Programming in Neut](./programming-in-neut.md)
   - [Static Memory Management](./static-memory-management.md)
+  - [Modality and Memory](./modality-and-memory.md)
 - [Language Reference](./language-reference.md)
   - [Commands](./commands.md)
   - [Modules](./modules.md)
