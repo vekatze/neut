@@ -31,11 +31,15 @@
 - [Constructors](#constructors-adt-introduction)
 - [match](#match)
 
-### Noema
+### Necessity and Noema
 
-- [case](#case)
+- [meta](#meta)
+- [box](#box)
+- [letbox](#letbox)
+- [letbox-T](#letbox-t)
 - [&a](#a)
-- [on](#on)
+- [case](#case)
+- [let-on](#on)
 - [\*e](#e)
 
 ### Thread and Channel
@@ -616,6 +620,28 @@ function (x1: a1, ..., xn: an) {
   e
 }
 ```
+
+All the free variables of a `function` must be at the same layer of the function. For example, the following is not a valid term in Neut:
+
+```neut
+define return-int(x: meta int): meta () -> int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    function () {
+      letbox result =
+        // here is layer 0
+        x // ← error
+      in
+      result
+    }
+  }
+}
+```
+
+because the free variable `x` in the `function` is at layer 0, whereas the `function` is at layer -1.
+
+For more on layers, please see the section on [box](#box), [letbox](#letbox), and [letbox-T](#letbox-t).
 
 ### Semantics
 
@@ -1294,6 +1320,382 @@ An example of the application of the typing rule of `case`:
     | Zero => 100
     | Succ(m) => foo-noetic(m)
     }: int
+```
+
+## `meta`
+
+Given a type `a: type`, `meta a` is the type of `a` in the "outer" layer.
+
+### Example
+
+```neut
+                     // 🌟
+define axiom-T<a>(x: meta a): a {
+  letbox-T result = x in
+  result
+}
+```
+
+### Syntax
+
+```neut
+meta a
+```
+
+### Semantics
+
+For every type `a`, `meta a` is compiled into the same term as `a`.
+
+### Type
+
+```neut
+Γ ⊢ t: type
+----------------
+Γ ⊢ meta t: type
+```
+
+### Note
+
+`meta` is the T-necessity operator in that we can construct terms of the following types:
+
+- `(meta (a) -> b, meta a) -> meta b` (Axiom K)
+- `(meta a) -> a` (Axiom T)
+
+Note that `meta (a) -> b` means `meta {(a) -> b}` and not `(meta a) -> b`.
+
+## `box`
+
+`box e` can be used to "lift" the layer of `e`.
+
+### Example
+
+```neut
+define use-noema<a>(x: &a, y: &a): meta b {
+  // layer 0
+  // - x: &a at layer 0
+  // - y: a  at layer 0
+  box x {
+    // layer -1
+    // x:  a at layer -1
+    // y: &a at layer 0 (cannot be used here; causes a layer error)
+    x
+  }
+}
+```
+
+### Syntax
+
+```neut
+box x1, ..., xn { e } // n >= 0
+```
+
+We say that this `box` captures the variables `x1, ..., xn`.
+
+### Semantics
+
+Given noetic variables `x1: &a1, ..., xn: &an`, the term `box x1, ..., xn { e }` copies all the `xi`s and execute `e`:
+
+```neut
+box x1, ..., xn { e }
+
+↓
+
+let x1 = copy-noema(x1) in
+...
+let xn = copy-noema(xn) in
+e
+```
+
+### Type
+
+```neut
+Γ1; ...; Γn; Δ ⊢ e1: a
+------------------------------------- (□-intro)
+Γ1; ...; Γn, &Δ ⊢ box Δ {e1}: meta a
+```
+
+where `Γ1; ...; Γn` is a sequence of contexts.
+
+### Notes
+
+The body of `define` is defined to be at layer 0:
+
+```neut
+define some-function(x: int): int {
+  // here is layer 0
+  // `x: int` is a variable at layer 0
+  add-int(x, 1)
+}
+```
+
+Since `box e` lifts the layer of `e`, if we use `box` at layer 0, the layer of `e` will become -1:
+
+```neut
+define use-box(x: int): meta int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    10
+  }
+}
+```
+
+_In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
+
+```neut
+define use-box-error(x: int): meta int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    add-int(x, 1) // error: use of a variable at layer 0 (≠ -1)
+  }
+}
+```
+
+We can incorporate variables outside `box` by capturing them:
+
+```neut
+define use-box-with-noema(x: &int): meta int {
+  // here is layer 0
+  // x: &int at layer 0
+  box x {
+    // here is layer -1
+    // x: int at layer -1
+    add-int(x, 1) // ok
+  }
+}
+```
+
+The body of this term is typed as follows:
+
+```neut
+--------------
+x: int ⊢ x: int // layer -1
+---------------------------
+x: int ⊢ add-int(x, 1): int // layer -1
+-------------------------------------------- (□-intro with Δ = (x: int))
+· ; x: &int ⊢ box x {add-int(x, 1)}: meta int  // layer 0
+```
+
+Here, `·` is the empty context.
+
+---
+
+Incidentally, the rule "The body of `define` is at layer 0" is not really necessary. We can simply replace the 0` with any integer.
+
+### Note
+
+- Variables at layer `n + 1` outside `box` i
+
+## `letbox`
+
+You can use `letbox` to "unlift" terms.
+
+### Example
+
+```neut
+define roundtrip(x: meta a): meta a {
+  // here is layer 0
+  box {
+    // here is layer -1
+    letbox tmp =
+      // here is layer 0
+      x
+    in
+    tmp
+  }
+}
+
+define try-borrowing(x: int): unit {
+  // here is layer 0
+  // x: int (at layer 0)
+  letbox tmp on x =
+    // here is layer 1
+    // x: &int (at layer 1)
+    some-func(x)
+  in
+  // here is layer 0
+  // x: int (at layer 0)
+  Unit
+}
+```
+
+### Syntax
+
+```neut
+letbox result = e1 in
+e2
+
+letbox result on x1, ..., xn = e1 in
+e2
+```
+
+### Semantics
+
+```neut
+letbox result on x1, ..., xn = e1 in
+e2
+
+↓
+
+let x1 = unsafe-cast(a1, &a1, x) in
+...
+let xn = unsafe-cast(an, &an, xn) in
+let result = e1 in
+let x1 = unsafe-cast(&a1, a1, x) in
+...
+let xn = unsafe-cast(&an, an, xn) in
+cont
+```
+
+### Type
+
+```neut
+Γ1; ...; Γn, &Δ ⊢ e1: meta a
+Γ1; ...; Γn; Δ, Δ', x: a ⊢ e2: b
+------------------------------------------------ (□-elim-K)
+Γ1; ...; Γn; Δ, Δ' ⊢ letbox x on Δ = e1 in e2: b
+```
+
+### Note
+
+Given a term `e1` at layer n + 1, `letbox x = e1 in e2` is at layer n:
+
+```neut
+define roundtrip(x: meta a): meta a {
+  box {
+    // here is layer -1 (= n)
+    letbox tmp =
+      // here is layer 0 (= n + 1)
+      x
+    in
+    // here is layer -1 (= n)
+    tmp
+  }
+}
+```
+
+_In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
+
+```neut
+define use-letbox-error(x: meta int): int {
+  // here is layer 0
+  // x: meta int (at layer 0)
+  letbox tmp =
+    // here is layer 1
+    x // error: use of a variable at layer 0 (≠ 1)
+  in
+  // here is layer 0
+  tmp
+}
+```
+
+We can incorporate variables outside `letbox` by using `on`:
+
+```neut
+define use-letbox(x: int): int {
+  // here is layer 0
+  // x: int (at layer 0)
+  letbox tmp on x =
+    // here is layer 1
+    // x: &int (at layer 1)
+    let _ = x in // ok
+    box { Unit }
+  in
+  // here is layer 0
+  10
+}
+```
+
+## `letbox-T`
+
+You can use `letbox-T` to get values from terms of type `meta a` without changing layers.
+
+### Example
+
+```neut
+define extract-value-from-meta(x: meta int): int {
+  // here is layer 0
+  // x: meta int (at layer 0)
+  letbox-T tmp =
+    // here is layer 0
+    x // ok
+  in
+  // here is layer 0
+  tmp
+}
+```
+
+### Syntax
+
+```neut
+letbox-T result = e1 in
+e2
+
+letbox-T result on x1, ..., xn = e1 in
+e2
+```
+
+### Semantics
+
+```neut
+letbox-T result on x1, ..., xn = e1 in
+e2
+
+↓
+
+let x1 = unsafe-cast(a1, &a1, x) in
+...
+let xn = unsafe-cast(an, &an, xn) in
+let result = e1 in
+let x1 = unsafe-cast(&a1, a1, x) in
+...
+let xn = unsafe-cast(&an, an, xn) in
+cont
+```
+
+### Type
+
+```neut
+Γ1; ...; Γn, &Δ ⊢ e1: meta a
+Γ1; ...; Γn, Δ, Δ', x: a ⊢ e2: b
+-------------------------------------------------- (□-elim-T)
+Γ1; ...; Γn, Δ, Δ' ⊢ letbox-T x on Δ = e1 in e2: b
+```
+
+Note that the layer of `e1`, `e2`, `letbox-T (..)` are the same.
+
+### Note
+
+`letbox-T` doesn't alter layers:
+
+```neut
+define extract-value-from-meta(x: meta int): int {
+  // here is layer 0
+  letbox-T tmp =
+    // here is layer 0
+    x
+  in
+  // here is layer 0
+  tmp
+}
+```
+
+`on` doesn't alter the layers of variables, too:
+
+```neut
+define extract-value-from-meta(x: int): int {
+  // here is layer 0
+  // x: int (at layer 0)
+  letbox-T tmp on x =
+    // here is layer 0
+    // x: &int (at layer 0)
+    x
+  in
+  // here is layer 0
+  // x: int (at layer 0)
+  tmp
+}
 ```
 
 ## `&a`
@@ -2037,7 +2439,7 @@ If `foo` isn't a key of a UTF-8 file, `include-text(foo)` reports a compilation 
 Γ ⊢ include-text(k): &text
 ```
 
-### Notes
+### Note
 
 You may also want to read [the section on static files in Modules](modules.md#static).
 
