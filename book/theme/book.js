@@ -19,6 +19,7 @@ hljs.registerLanguage("neut", function (hljs) {
       keyword: [
         "attach",
         "bind",
+        "box",
         "case",
         "constant",
         "data",
@@ -38,6 +39,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "inline",
         "introspect",
         "let",
+        "letbox",
         "match",
         "nominal",
         "of",
@@ -53,8 +55,11 @@ hljs.registerLanguage("neut", function (hljs) {
       ].join(" "),
     },
     contains: [
+      { className: "letbox-T",
+        begin: /letbox-T/,
+      },
       { className: "type",
-        begin: "type|&|:<|thread|\\b[A-Z][a-z0-9A-Z-]*",
+        begin: /(?!-)(type|&|:<|thread|meta|[A-Z][a-z0-9A-Z-]*)/,
       },
       {
         className: "string",
@@ -178,7 +183,7 @@ hljs.registerLanguage("llvm", function (hljs) {
       });
 
   code_nodes.forEach(function (block) {
-    hljs.highlightBlock(block);
+    hljs.highlightElement(block);
   });
 })();
 

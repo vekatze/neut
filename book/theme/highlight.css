@@ -63,6 +63,7 @@
 }
 
 .hljs-keyword,
+.hljs-letbox-T,
 .hljs-selector-tag,
 .hljs-name {
   color: var(--light-blue);
