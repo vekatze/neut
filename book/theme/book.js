@@ -45,6 +45,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "of",
         "on",
         "pin",
+        "quote",
         "resource",
         "switch",
         "tie",

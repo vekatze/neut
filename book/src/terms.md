@@ -51,6 +51,7 @@
 
 ### Miscs
 
+- [quote](#quote)
 - [magic](#magic)
 - [introspect](#introspect)
 - [include-text](#include-text)
@@ -2193,6 +2194,124 @@ define mutate<a>(ch: &cell(a), f: (a) -> a): unit {
   send(ch, f(v))
 }
 ```
+
+## `quote`
+
+You can use `quote` to wrap the types of "safe" values by `meta {..}`.
+
+### Example
+
+```neut
+define quote-int(x: int): meta int {
+  quote {x}
+}
+
+define quote-bool(x: bool): meta bool {
+  quote {x}
+}
+
+define quote-function(f: (int) -> bool): meta (int) -> bool {
+  quote {f} // error; won't typecheck
+}
+```
+
+### Syntax
+
+```neut
+quote {e}
+```
+
+### Semantics
+
+```neut
+quote {e}
+
+↓
+
+e
+```
+
+### Type
+
+```neut
+Γ ⊢ e: a
+(a is an "actual" type)
+-----------------------
+Γ ⊢ quote {e}: meta a
+```
+
+Here, an "actual" type is a type that satisfies all the following conditions:
+
+- It doesn't contain any free variables
+- It doesn't contain any noetic types
+- It doesn't contain any function types
+- It doesn't contain any "dubious" ADTs
+
+Here, a "dubious" ADT is something like the below:
+
+```neut
+// the type `joker-x` is dubious since it contains a noetic argument
+data joker-x {
+| Joker-X(&list(int))
+}
+
+// the type `joker-y` is dubious since it contains a functional argument
+data joker-y {
+| Joker-Y(int -> bool)
+}
+
+// the type `joker-z` is dubious since it contains a dubious ADT argument
+data joker-z {
+| Joker-Z(joker-y)
+}
+```
+
+### Note
+
+(1) Unlike `box`, `quote` doesn't alter layers.
+
+(2) `quote` doesn't add extra expressiveness to the type system. For example, `quote` on `bool` can be replaced with `box` as follows:
+
+```neut
+define quote-bool(b: bool): meta bool {
+  quote {b}
+}
+
+↓
+
+define quote-bool(b: bool): meta bool {
+  if b {
+    box {True}
+  } else {
+    box {False}
+  }
+}
+```
+
+`quote` on `either(bool, unit)` can also be replaced with `box` as follows:
+
+```neut
+define quote-either(x: either(bool, unit)): meta either(bool, unit) {
+  quote {b}
+}
+
+↓
+
+define quote-either(x: either(bool, unit)): meta either(bool, unit) {
+  match x {
+  | Left(b) =>
+    if b {
+      box {Left(True)}
+    } else {
+      box {Left(False)}
+    }
+  | Right(u) =>
+    box {Right(Unit)}
+  }
+}
+```
+
+`quote` is there only for convenience.
 
 ## `magic`
 
