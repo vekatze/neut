@@ -1326,6 +1326,7 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 - Values of type `&a` can be created using `on`.
 - Values of type `&a` are expected to be used in combination with `case` or `*e`.
 - Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
+- See the Note of [box](#box) to see the relation between `&a` and `meta a`
 
 ## `box`
 
@@ -1380,7 +1381,7 @@ e
 
 where `Γ1; ...; Γn` is a sequence of contexts.
 
-### Notes
+### Layers
 
 The body of `define` is defined to be at layer 0:
 
@@ -1449,7 +1450,59 @@ Incidentally, the rule "The body of `define` is at layer 0" is not really necess
 
 ### Note
 
-- Variables at layer `n + 1` outside `box` i
+"But what after all is the `&` in `&a`? Is it a modal operator? The way the type is introduced and used isn't very familiar to me. What on earth is it?"
+
+We'll see the answer here. To spoil the conclusion, `&a` is the T-necessity modality defined through structural rules. The use of `&a` is restricted simply by giving a name different from `meta a`.
+
+Firstly, observe that the following derivation is admissible in Neut:
+
+```neut
+Γ1; ...; Γn; x: a, Δ ⊢ e: b
+-------------------------------- (slide)
+Γ1; ...; Γn, x: meta a; Δ ⊢ e: b
+```
+
+Also, by setting `Δ = ·` in the typing rule of `box`, we obtain the following:
+
+```neut
+Γ1; ...; Γn; · ⊢ e1: a
+-------------------------------- (□-intro')
+Γ1; ...; Γn ⊢ box Δ {e1}: meta a
+```
+
+Thus, we can perform the following derivation:
+
+```neut
+Γ1; ...; Γn; Δ ⊢ e: a
+----------------------------- (slide)
+...
+----------------------------- (slide)
+Γ1; ...; Γn, meta Δ; · ⊢ e: a
+-------------------------------------  (□-intro')
+Γ1; ...; Γn, meta Δ ⊢ box {e}: meta a
+```
+
+That is to say, the following rule is admissible without using `&`:
+
+```neut
+Γ1; ...; Γn; Δ ⊢ e: a
+------------------------------------- (□-intro-slide)
+Γ1; ...; Γn, meta Δ ⊢ box {e}: meta a
+```
+
+Now, compare the above with the rule of `box`:
+
+```neut
+Γ1; ...; Γn; Δ ⊢ e1: a
+------------------------------------- (□-intro)
+Γ1; ...; Γn, &Δ ⊢ box Δ {e1}: meta a
+```
+
+As you can see, we can obtain `(□-intro)` from `(□-intro-slide)` by replacing `meta Δ` with `&Δ`. That is to say, `&a` is the "structurally-defined" variant of `meta a`.
+
+If we write `meta Δ` instead of `&Δ` in `(□-intro)`, the rule is equivalent to `(□-intro')`. By giving the "structural" part a name different from `meta`, the rule `(□-intro)` restricts the way how variables in `&Δ` (which could have been the same as `meta Δ`) are used.
+
+In this sense, `&a` is the T-necessity modality defined through structural rules.
 
 ## `letbox`
 
