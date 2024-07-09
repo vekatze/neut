@@ -1445,7 +1445,7 @@ Here, `·` is the empty context.
 
 ---
 
-Incidentally, the rule "The body of `define` is at layer 0" is not really necessary. We can simply replace the 0` with any integer.
+Incidentally, the rule "The body of `define` is at layer 0" is not really necessary. We can simply replace the 0 with any integer.
 
 ### Note
 
