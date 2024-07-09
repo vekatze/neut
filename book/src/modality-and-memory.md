@@ -431,6 +431,8 @@ e2
 
 and this is why the type of `e1` has some restrictions. Now we can see that those restrictions come from `quote`.
 
+If you're interested in the relation between `&a` and `meta a`, see the Note of the rule [box](terms.md#box). Spoiler: `&a` is a renamed `meta a` defined through structural rules.
+
 ## Layers and Functions
 
 `function` in Neut also has a layer condition. That is, every free variable in a `function` must be at the layer of `function`. For example, the following is not a valid term:
