@@ -11,6 +11,98 @@ Interestingly (at least to me and hopefully to you), `let-on` can be understood 
 - How to use "boxed" terms
 - How the borrowing-like operation in Neut is organized using the T-necessity operator
 
+## The Layer Structure of the Language
+
+For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator (often written as `□`).
+
+Given `e: a`, you can create values of type `meta a` by writing something like `box {e}`. However, the `e` is not arbitrary here since, if so, we must admit `a -> □a`, which makes every truth a necessary truth.
+
+Neut uses _layers_ to describe the condition that `e` must satisfy. So, before using `box` or whatever, let's see what layers are like.
+
+### The Basics of Layers
+
+For every term in Neut, an integer value called "layer" is defined.
+
+The layer of the body of a `define` is defined to be 0:
+
+```neut
+define foo(): unit {
+  // here is layer 0
+  // (i.e. layer(Unit) = 0)
+  Unit
+}
+```
+
+If you define a variable at layer N, the layer of the variable is also N:
+
+```neut
+// here is layer N
+
+let x = Unit in
+x // ← `x` is a variable at layer N
+```
+
+The layer of (an occurrence of) a constant is defined to be the layer in which the constant is used:
+
+```neut
+define my-func(): int {
+  10
+}
+
+define use-my-func() {
+  // layer 0
+  let v1 =
+    my-func() // ← `my-func` is at layer 0
+  in
+
+  ... // ← some layer operations here
+
+  // layer 3 (for example)
+  let v2 =
+    my-func() // ← `my-func` is at layer 3
+  in
+  v2
+}
+```
+
+In Neut, _a variable defined at layer n can only be used at layer n_. For example, the following is not a valid term:
+
+```neut
+define bar(): unit {
+  // here is layer 0
+  let x = Unit in
+
+  ... // ← some layer operations here
+
+  // layer 3 (for example)
+  let foo =
+    x // ← error: `x` @ 0 is used at layer 3 (≠ 0)
+  in
+  Unit
+}
+```
+
+Terms that aren't related to modality won't change layers. For example, the following is the layer structure of `function` and `let`:
+
+```neut
+// here is layer N
+function (x1: a1, ..., xn: an) {
+  // here is layer N
+  e
+}
+
+// here is layer N
+let x =
+  // here is layer N
+  e1
+in
+// here is layer N
+// (x: a at layer N)
+e2
+```
+
+Below, we'll see how modal inference rules interact with layers.
+
 ## □-introduction: Putting Values into Boxes
 
 For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator (the `□` in the literature).
