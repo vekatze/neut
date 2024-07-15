@@ -6,29 +6,28 @@ Interestingly (at least to me and hopefully to you), `let-on` can be understood 
 
 ## What You'll Learn Here
 
-- How layers in Neut is organized
+- How layers in Neut are organized
 - How to introduce "boxed" terms
 - How to use "boxed" terms
 - How the borrowing-like operation in Neut is organized using the T-necessity operator
 
-## The Layer Structure of the Language
+## Introducing the Concept of Layers
 
-For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator (often written as `□`).
+For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator, often written as `□` in the literature.
 
-Given `e: a`, you can create values of type `meta a` by writing something like `box {e}`. However, the `e` is not arbitrary here since, if so, we must admit `a -> □a`, which makes every truth a necessary truth.
+In Neut, given `e: a`, you can create values of type `meta a` by writing something like `box {e}`. Here, the `e` is not arbitrary since, if so, we must admit `a -> □a`, which makes every truth a necessary truth.
 
-Neut uses _layers_ to describe the condition that `e` must satisfy. So, before using `box` or whatever, let's see what layers are like.
+Neut uses _layers_ to capture the condition that `e` must satisfy. So, before using `box` or whatever, let's learn what layers are like.
 
 ### The Basics of Layers
 
-For every term in Neut, an integer value called "layer" is defined.
+For every term (and subterm) in Neut, an integer value called _layer_ is defined.
 
 The layer of the body of a `define` is defined to be 0:
 
 ```neut
 define foo(): unit {
   // here is layer 0
-  // (i.e. layer(Unit) = 0)
   Unit
 }
 ```
@@ -52,16 +51,17 @@ define my-func(): int {
 define use-my-func() {
   // layer 0
   let v1 =
-    my-func() // ← `my-func` is at layer 0
+    my-func() // ← this `my-func` is at layer 0
   in
 
   ... // ← some layer operations here
 
   // layer 3 (for example)
   let v2 =
-    my-func() // ← `my-func` is at layer 3
+    my-func() // ← this `my-func` is at layer 3
   in
-  v2
+
+  ...
 }
 ```
 
@@ -70,16 +70,18 @@ In Neut, _a variable defined at layer n can only be used at layer n_. For exampl
 ```neut
 define bar(): unit {
   // here is layer 0
-  let x = Unit in
+  let x = Unit in // ← `x` is defined at layer 0
 
   ... // ← some layer operations here
 
   // layer 3 (for example)
   let foo =
-    x // ← error: `x` @ 0 is used at layer 3 (≠ 0)
+    x // ← error: `x` is used at layer 3 (≠ 0)
   in
-  Unit
+
+  ...
 }
+
 ```
 
 Terms that aren't related to modality won't change layers. For example, the following is the layer structure of `function` and `let`:
@@ -103,9 +105,9 @@ e2
 
 Below, we'll see how modal inference rules interact with layers.
 
-## □-introduction: Putting Values into Boxes
+## □-Introduction: Putting Values into Boxes
 
-For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator (the `□` in the literature).
+Now that we have layers, we can talk about how to interact with values of type `meta a`.
 
 ### Creating Boxes
 
@@ -121,11 +123,9 @@ define some-function(): meta bool {
 
 Given a type `e`, the term `box {e}` is of type `meta a`.
 
-### Layer Structure
+### The Layer Structure of □-Introduction
 
-Here, the `e` in `box {e}` is not arbitrary. This `e` must satisfy some conditions regarding layers.
-
-First of all, every function starts at layer 0:
+Here, the `e` in `box {e}` is not arbitrary. This `e` must satisfy some layer conditions.
 
 The syntactic construct `box` introduced the concept of "layers" to the language.
 
