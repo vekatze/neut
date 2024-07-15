@@ -31,12 +31,14 @@
 - [Constructors](#constructors-adt-introduction)
 - [match](#match)
 
-### Noema
+### Necessity and Noema
 
-- [case](#case)
+- [meta](#meta)
 - [&a](#a)
-- [on](#on)
-- [\*e](#e)
+- [box](#box)
+- [letbox](#letbox)
+- [letbox-T](#letbox-t)
+- [case](#case)
 
 ### Thread and Channel
 
@@ -47,6 +49,7 @@
 
 ### Miscs
 
+- [quote](#quote)
 - [magic](#magic)
 - [introspect](#introspect)
 - [include-text](#include-text)
@@ -56,6 +59,8 @@
 
 ### Syntax Sugar
 
+- [let x on y1, ..., yn = e1 in e2](#on)
+- [\*e](#e)
 - [use e {x1, ..., xn} in cont](#use-e-x1--xn-in-cont)
 - [e::x](#ex)
 - [if](#if)
@@ -617,6 +622,28 @@ function (x1: a1, ..., xn: an) {
 }
 ```
 
+All the free variables of a `function` must be at the same layer of the function. For example, the following is not a valid term in Neut:
+
+```neut
+define return-int(x: meta int): meta () -> int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    function () {
+      letbox result =
+        // here is layer 0
+        x // ← error
+      in
+      result
+    }
+  }
+}
+```
+
+because the free variable `x` in the `function` is at layer 0, whereas the `function` is at layer -1.
+
+For more on layers, please see the section on [box](#box), [letbox](#letbox), and [letbox-T](#letbox-t).
+
 ### Semantics
 
 A `function` is compiled into a three-word closure. For more, please see [How to Execute Types](./how-to-execute-types.md#advanced-function-types).
@@ -679,6 +706,8 @@ define name<a1, ..., an>(y1: b1, ..., ym: bm): c {e}
 // ↓
 // define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
 ```
+
+As in `function`, all the free variables of a `define` must be at the same layer of the `define`.
 
 ### Semantics
 
@@ -1210,6 +1239,480 @@ An example of the application of the typing rule of `match`:
     }: int
 ```
 
+## `meta`
+
+Given a type `a: type`, `meta a` is the type of `a` in the "outer" layer.
+
+### Example
+
+```neut
+                     // 🌟
+define axiom-T<a>(x: meta a): a {
+  letbox-T result = x in
+  result
+}
+```
+
+### Syntax
+
+```neut
+meta a
+```
+
+### Semantics
+
+For every type `a`, `meta a` is compiled into the same term as `a`.
+
+### Type
+
+```neut
+Γ ⊢ t: type
+----------------
+Γ ⊢ meta t: type
+```
+
+### Note
+
+`meta` is the T-necessity operator in that we can construct terms of the following types:
+
+- `(meta (a) -> b, meta a) -> meta b` (Axiom K)
+- `(meta a) -> a` (Axiom T)
+
+Note that `meta (a) -> b` means `meta {(a) -> b}` and not `(meta a) -> b`.
+
+## `&a`
+
+Given a type `a: type`, the `&a` is the type of noemata over `a`.
+
+### Example
+
+```neut
+data my-nat {
+| Zero
+| Succ(my-nat)
+}
+
+                     // 🌟
+define foo-noetic(n: &my-nat): int {
+  case n {
+  | Zero =>
+    100
+  | Succ(m) =>
+    foo-noetic(m)
+  }
+}
+```
+
+### Syntax
+
+```neut
+&t
+```
+
+### Semantics
+
+For every type `a`, `&a` is compiled into `base.#.imm`.
+
+### Type
+
+```neut
+Γ ⊢ t: type
+-----------
+Γ ⊢ &t: type
+```
+
+### Note
+
+- Values of type `&a` can be created using `on`.
+- Values of type `&a` are expected to be used in combination with `case` or `*e`.
+- Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
+- See the Note of [box](#box) to see the relation between `&a` and `meta a`
+
+## `box`
+
+`box e` can be used to "lift" the layer of `e`.
+
+### Example
+
+```neut
+define use-noema<a>(x: &a, y: &a): meta b {
+  // layer 0
+  // - x: &a at layer 0
+  // - y: a  at layer 0
+  box x {
+    // layer -1
+    // x:  a at layer -1
+    // y: &a at layer 0 (cannot be used here; causes a layer error)
+    x
+  }
+}
+```
+
+### Syntax
+
+```neut
+box x1, ..., xn { e } // n >= 0
+```
+
+We say that this `box` captures the variables `x1, ..., xn`.
+
+### Semantics
+
+Given noetic variables `x1: &a1, ..., xn: &an`, the term `box x1, ..., xn { e }` copies all the `xi`s and execute `e`:
+
+```neut
+box x1, ..., xn { e }
+
+↓
+
+let x1 = copy-noema(x1) in
+...
+let xn = copy-noema(xn) in
+e
+```
+
+### Type
+
+```neut
+Γ1; ...; Γn; Δ ⊢ e1: a
+------------------------------------- (□-intro)
+Γ1; ...; Γn, &Δ ⊢ box Δ {e1}: meta a
+```
+
+where `Γ1; ...; Γn` is a sequence of contexts.
+
+### Layers
+
+The body of `define` is defined to be at layer 0:
+
+```neut
+define some-function(x: int): int {
+  // here is layer 0
+  // `x: int` is a variable at layer 0
+  add-int(x, 1)
+}
+```
+
+Since `box e` lifts the layer of `e`, if we use `box` at layer 0, the layer of `e` will become -1:
+
+```neut
+define use-box(x: int): meta int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    10
+  }
+}
+```
+
+_In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
+
+```neut
+define use-box-error(x: int): meta int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    add-int(x, 1) // error: use of a variable at layer 0 (≠ -1)
+  }
+}
+```
+
+We can incorporate variables outside `box` by capturing them:
+
+```neut
+define use-box-with-noema(x: &int): meta int {
+  // here is layer 0
+  // x: &int at layer 0
+  box x {
+    // here is layer -1
+    // x: int at layer -1
+    add-int(x, 1) // ok
+  }
+}
+```
+
+The body of this term is typed as follows:
+
+```neut
+--------------
+x: int ⊢ x: int // layer -1
+---------------------------
+x: int ⊢ add-int(x, 1): int // layer -1
+-------------------------------------------- (□-intro with Δ = (x: int))
+· ; x: &int ⊢ box x {add-int(x, 1)}: meta int  // layer 0
+```
+
+Here, `·` is the empty context.
+
+---
+
+Incidentally, the rule "The body of `define` is at layer 0" is not really necessary. We can simply replace the 0 with any integer.
+
+### Note
+
+"But what after all is the `&` in `&a`?" ―Let's give an answer to this question.
+
+Firstly, observe that the following derivation is admissible in Neut:
+
+```neut
+Γ1; ...; Γn; x: a, Δ ⊢ e: b
+-------------------------------- (slide)
+Γ1; ...; Γn, x: meta a; Δ ⊢ e: b
+```
+
+Also, by setting `Δ = ·` in the typing rule of `box`, we obtain the following:
+
+```neut
+Γ1; ...; Γn; · ⊢ e: a
+-------------------------------- (□-intro')
+Γ1; ...; Γn ⊢ box Δ {e}: meta a
+```
+
+Thus, we can perform the following derivation:
+
+```neut
+Γ1; ...; Γn; Δ ⊢ e: a
+----------------------------- (slide)
+...
+----------------------------- (slide)
+Γ1; ...; Γn, meta Δ; · ⊢ e: a
+-------------------------------------  (□-intro')
+Γ1; ...; Γn, meta Δ ⊢ box {e}: meta a
+```
+
+That is to say, the following rule is admissible without using `&`:
+
+```neut
+Γ1; ...; Γn; Δ ⊢ e: a
+------------------------------------- (□-intro-slide)
+Γ1; ...; Γn, meta Δ ⊢ box {e}: meta a
+```
+
+Now, compare the above with the rule of `box`:
+
+```neut
+Γ1; ...; Γn; Δ ⊢ e: a
+------------------------------------- (□-intro)
+Γ1; ...; Γn, &Δ ⊢ box Δ {e}: meta a
+```
+
+As you can see, we can obtain `(□-intro)` from `(□-intro-slide)` by replacing `meta Δ` with `&Δ`. That is to say, `&a` is the "structurally-defined" variant of `meta a`.
+
+If we write `meta Δ` instead of `&Δ` in `(□-intro)`, the rule is equivalent to `(□-intro')`. By giving the "structural" part a name different from `meta`, the rule `(□-intro)` restricts the way how variables in `&Δ` (which could have been the same as `meta Δ`) are used.
+
+In this sense, `&a` is the T-necessity modality defined through structural rules.
+
+## `letbox`
+
+You can use `letbox` to "unlift" terms.
+
+### Example
+
+```neut
+define roundtrip(x: meta a): meta a {
+  // here is layer 0
+  box {
+    // here is layer -1
+    letbox tmp =
+      // here is layer 0
+      x
+    in
+    tmp
+  }
+}
+
+define try-borrowing(x: int): unit {
+  // here is layer 0
+  // x: int (at layer 0)
+  letbox tmp on x =
+    // here is layer 1
+    // x: &int (at layer 1)
+    some-func(x)
+  in
+  // here is layer 0
+  // x: int (at layer 0)
+  Unit
+}
+```
+
+### Syntax
+
+```neut
+letbox result = e1 in
+e2
+
+letbox result on x1, ..., xn = e1 in
+e2
+```
+
+### Semantics
+
+```neut
+letbox result on x1, ..., xn = e1 in
+e2
+
+↓
+
+let x1 = unsafe-cast(a1, &a1, x) in
+...
+let xn = unsafe-cast(an, &an, xn) in
+let result = e1 in
+let x1 = unsafe-cast(&a1, a1, x) in
+...
+let xn = unsafe-cast(&an, an, xn) in
+cont
+```
+
+### Type
+
+```neut
+Γ1; ...; Γn, &Δ ⊢ e1: meta a
+Γ1; ...; Γn; Δ, Δ', x: a ⊢ e2: b
+------------------------------------------------ (□-elim-K)
+Γ1; ...; Γn; Δ, Δ' ⊢ letbox x on Δ = e1 in e2: b
+```
+
+### Note
+
+Given a term `e1` at layer n + 1, `letbox x = e1 in e2` is at layer n:
+
+```neut
+define roundtrip(x: meta a): meta a {
+  box {
+    // here is layer -1 (= n)
+    letbox tmp =
+      // here is layer 0 (= n + 1)
+      x
+    in
+    // here is layer -1 (= n)
+    tmp
+  }
+}
+```
+
+_In layer n, we can only use variables at the layer_. Thus, the following is not a valid term:
+
+```neut
+define use-letbox-error(x: meta int): int {
+  // here is layer 0
+  // x: meta int (at layer 0)
+  letbox tmp =
+    // here is layer 1
+    x // error: use of a variable at layer 0 (≠ 1)
+  in
+  // here is layer 0
+  tmp
+}
+```
+
+We can incorporate variables outside `letbox` by using `on`:
+
+```neut
+define use-letbox(x: int): int {
+  // here is layer 0
+  // x: int (at layer 0)
+  letbox tmp on x =
+    // here is layer 1
+    // x: &int (at layer 1)
+    let _ = x in // ok
+    box { Unit }
+  in
+  // here is layer 0
+  10
+}
+```
+
+## `letbox-T`
+
+You can use `letbox-T` to get values from terms of type `meta a` without changing layers.
+
+### Example
+
+```neut
+define extract-value-from-meta(x: meta int): int {
+  // here is layer 0
+  // x: meta int (at layer 0)
+  letbox-T tmp =
+    // here is layer 0
+    x // ok
+  in
+  // here is layer 0
+  tmp
+}
+```
+
+### Syntax
+
+```neut
+letbox-T result = e1 in
+e2
+
+letbox-T result on x1, ..., xn = e1 in
+e2
+```
+
+### Semantics
+
+```neut
+letbox-T result on x1, ..., xn = e1 in
+e2
+
+↓
+
+let x1 = unsafe-cast(a1, &a1, x) in
+...
+let xn = unsafe-cast(an, &an, xn) in
+let result = e1 in
+let x1 = unsafe-cast(&a1, a1, x) in
+...
+let xn = unsafe-cast(&an, an, xn) in
+cont
+```
+
+### Type
+
+```neut
+Γ1; ...; Γn, &Δ ⊢ e1: meta a
+Γ1; ...; Γn, Δ, Δ', x: a ⊢ e2: b
+-------------------------------------------------- (□-elim-T)
+Γ1; ...; Γn, Δ, Δ' ⊢ letbox-T x on Δ = e1 in e2: b
+```
+
+Note that the layer of `e1`, `e2`, `letbox-T (..)` are the same.
+
+### Note
+
+`letbox-T` doesn't alter layers:
+
+```neut
+define extract-value-from-meta(x: meta int): int {
+  // here is layer 0
+  letbox-T tmp =
+    // here is layer 0
+    x
+  in
+  // here is layer 0
+  tmp
+}
+```
+
+`on` doesn't alter the layers of variables, too:
+
+```neut
+define extract-value-from-meta(x: int): int {
+  // here is layer 0
+  // x: int (at layer 0)
+  letbox-T tmp on x =
+    // here is layer 0
+    // x: &int (at layer 0)
+    x
+  in
+  // here is layer 0
+  // x: int (at layer 0)
+  tmp
+}
+```
+
 ## `case`
 
 You can use `case` to inspect noetic ADT values or integers.
@@ -1294,206 +1797,6 @@ An example of the application of the typing rule of `case`:
     | Zero => 100
     | Succ(m) => foo-noetic(m)
     }: int
-```
-
-## `&a`
-
-Given a type `a: type`, the `&a` is the type of noemata over `a`.
-
-### Example
-
-```neut
-data my-nat {
-| Zero
-| Succ(my-nat)
-}
-
-                     // 🌟
-define foo-noetic(n: &my-nat): int {
-  case n {
-  | Zero =>
-    100
-  | Succ(m) =>
-    foo-noetic(m)
-  }
-}
-```
-
-### Syntax
-
-```neut
-&t
-```
-
-### Semantics
-
-For every type `a`, `&a` is compiled into `base.#.imm`.
-
-### Type
-
-```neut
-Γ ⊢ t: type
------------
-Γ ⊢ &t: type
-```
-
-### Note
-
-- Values of type `&a` can be created using `on`.
-- Values of type `&a` are expected to be used in combination with `case` or `*e`.
-- Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
-
-## `on`
-
-`let x on y = e1 in e2` can be used to introduce noetic values in a specific scope.
-
-### Example
-
-```neut
-define play-with-let-on(): unit {
-  let xs: list(int) = [1, 2, 3] in
-  let len on xs =
-    // the type of `xs` is `&list(int)` here
-    length(xs)
-  in
-  // the type of `xs` is `list(int)` here
-  print-int(len)
-}
-```
-
-### Syntax
-
-```neut
-let y on x1, ..., xn = e1 in
-e2
-```
-
-### Semantics
-
-`on` is conceptually the following syntax sugar:
-
-```neut
-let result on x = e in
-cont
-
-// ↓ desugar
-
-let x = unsafe-cast(a, &a, x) in // cast: `a` ~> `&a`
-let result = e in                // (use `&a`)
-let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
-cont
-```
-
-### Type
-
-```neut
-Γ ⊢ x1: a1
-...
-Γ ⊢ xn: an
-Γ, x1: &a1, ..., xn: &an ⊢ e1: b // note: the context `Γ` is ordered
-Γ, y: b ⊢ e2: c
-(the type `b` is actual) // see the below note for the definition of "actual"
----------------------------------------
-Γ ⊢ let y on x1, ..., xn = e1 in e2: c
-```
-
-### Note
-
-As you can see from the definition of `let-on`, a noema always has its source value. We'll call it the hyle of a noema.
-
-A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if `let-on` can return a noema:
-
-```neut
-let xs = [1, 2] in
-let result on xs = xs in // **CAUTION** the result of let-on is a noema
-let _ = xs in    // ← Since the variable `_` isn't used,
-                 // the hyle of `result`, namely `xs: list(int)`, is discarded here
-match result {   // ... and thus using `result` here is a use-after-free!
-| Nil =>
-  print("hey")
-| Cons(y, ys) =>
-  print("yo")
-}
-```
-
-Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `either(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
-
-More specifically, the type of `result` must be "actual"; The type must satisfy all of the following conditions:
-
-- It doesn't contain any free variables
-- It doesn't contain any noetic types
-- It doesn't contain any function types (since a noema can reside in it)
-- It doesn't contain any "dubious" ADTs
-
-Here, a "dubious" ADT is something like the below:
-
-```neut
-// the type `joker-x` is dubious since it contains a noetic argument
-data joker-x {
-| HideX(&list(int))
-}
-
-// the type `joker-y` is dubious since it contains a functional argument
-data joker-y {
-| HideY(int -> bool)
-}
-
-// the type `joker-z` is dubious since it contains a dubious ADT argument
-data joker-z {
-| HideZ(joker-y)
-}
-```
-
-Indeed, if we were to allow returning these dubious ADTs, we could exploit them to hide a noema:
-
-```neut
-let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
-let _ = xs in                   // `xs` is discarded here
-match result {
-| HideX(xs) =>
-  *xs                           // CRASH: use-after-free!
-}
-```
-
-This restriction is checked at compile time by the type system of Neut.
-
-## `*e`
-
-You can use `*e` to create a non-noetic value from a noetic value.
-
-### Example
-
-```neut
-define clone-list<a>(xs: &list(a)): list(a) {
-  case xs {
-  | Nil =>
-    Nil
-  | Cons(y, ys) =>
-    Cons(*y, clone-list(ys))
-  }
-}
-```
-
-### Syntax
-
-```neut
-*e
-```
-
-### Semantics
-
-Given a noema `e: &t`, `*e` is a clone of the hyle of the noema.
-
-This clone is created by copying the hyle along the type `t`.
-
-The original hyle is kept intact.
-
-### Type
-
-```neut
-Γ ⊢ e: &a
-----------
-Γ ⊢ *e: a
 ```
 
 ## `thread`
@@ -1792,6 +2095,124 @@ define mutate<a>(ch: &cell(a), f: (a) -> a): unit {
 }
 ```
 
+## `quote`
+
+You can use `quote` to wrap the types of "safe" values by `meta {..}`.
+
+### Example
+
+```neut
+define quote-int(x: int): meta int {
+  quote {x}
+}
+
+define quote-bool(x: bool): meta bool {
+  quote {x}
+}
+
+define quote-function(f: (int) -> bool): meta (int) -> bool {
+  quote {f} // error; won't typecheck
+}
+```
+
+### Syntax
+
+```neut
+quote {e}
+```
+
+### Semantics
+
+```neut
+quote {e}
+
+↓
+
+e
+```
+
+### Type
+
+```neut
+Γ ⊢ e: a
+(a is an "actual" type)
+-----------------------
+Γ ⊢ quote {e}: meta a
+```
+
+Here, an "actual" type is a type that satisfies all the following conditions:
+
+- It doesn't contain any free variables
+- It doesn't contain any noetic types
+- It doesn't contain any function types
+- It doesn't contain any "dubious" ADTs
+
+Here, a "dubious" ADT is something like the below:
+
+```neut
+// the type `joker-x` is dubious since it contains a noetic argument
+data joker-x {
+| Joker-X(&list(int))
+}
+
+// the type `joker-y` is dubious since it contains a functional argument
+data joker-y {
+| Joker-Y(int -> bool)
+}
+
+// the type `joker-z` is dubious since it contains a dubious ADT argument
+data joker-z {
+| Joker-Z(joker-y)
+}
+```
+
+### Note
+
+(1) Unlike `box`, `quote` doesn't alter layers.
+
+(2) `quote` doesn't add extra expressiveness to the type system. For example, `quote` on `bool` can be replaced with `box` as follows:
+
+```neut
+define quote-bool(b: bool): meta bool {
+  quote {b}
+}
+
+↓
+
+define quote-bool(b: bool): meta bool {
+  if b {
+    box {True}
+  } else {
+    box {False}
+  }
+}
+```
+
+`quote` on `either(bool, unit)` can also be replaced with `box` as follows:
+
+```neut
+define quote-either(x: either(bool, unit)): meta either(bool, unit) {
+  quote {b}
+}
+
+↓
+
+define quote-either(x: either(bool, unit)): meta either(bool, unit) {
+  match x {
+  | Left(b) =>
+    if b {
+      box {Left(True)}
+    } else {
+      box {Left(False)}
+    }
+  | Right(u) =>
+    box {Right(Unit)}
+  }
+}
+```
+
+`quote` is there only for convenience.
+
 ## `magic`
 
 You can use `magic` to perform weird stuff. Using `magic` is an unsafe operation.
@@ -2037,7 +2458,7 @@ If `foo` isn't a key of a UTF-8 file, `include-text(foo)` reports a compilation 
 Γ ⊢ include-text(k): &text
 ```
 
-### Notes
+### Note
 
 You may also want to read [the section on static files in Modules](modules.md#static).
 
@@ -2160,6 +2581,108 @@ _
 ### Note
 
 Please do not confuse a hole with the `_` in `let _ = e1 in e2`.
+
+## `on`
+
+`let x on y = e1 in e2` can be used to introduce noetic values in a specific scope.
+
+### Example
+
+```neut
+define play-with-let-on(): unit {
+  let xs: list(int) = [1, 2, 3] in
+  let len on xs =
+    // the type of `xs` is `&list(int)` here
+    length(xs)
+  in
+  // the type of `xs` is `list(int)` here
+  print-int(len)
+}
+```
+
+### Syntax
+
+```neut
+let y on x1, ..., xn = e1 in
+e2
+```
+
+### Semantics
+
+```neut
+let result on x1, ..., xn = e1 in
+e2
+
+// ↓ desugar
+
+letbox-T result on x1, ..., xn = quote {e1} in
+e2
+```
+
+### Type
+
+Derived from the desugared form.
+
+## `*e`
+
+You can use `*e` to create a non-noetic value from a noetic value.
+
+### Example
+
+```neut
+define clone-list<a>(xs: &list(a)): list(a) {
+  case xs {
+  | Nil =>
+    Nil
+  | Cons(y, ys) =>
+    Cons(*y, clone-list(ys))
+  }
+}
+```
+
+### Syntax
+
+```neut
+*e
+```
+
+### Semantics
+
+```neut
+*e
+
+↓
+
+embody(e)
+```
+
+where the function `embody` is defined in the core library as follows:
+
+```neut
+// core.box
+
+// □A -> A (Axiom T)
+inline axiom-T<a>(x: meta a): a {
+  letbox-T x' = x in
+  x'
+}
+
+inline embody<a>(x: &a): a {
+  axiom-T(box x {x}) // ← this `box` copies the hyle of `x`
+}
+```
+
+### Type
+
+Derived from the desugared form.
+
+### Note
+
+Intuitively, given a noema `e: &a`, `*e: a` is a clone of the hyle of the noema.
+
+This clone is created by copying the hyle along the type `t`.
+
+The original hyle is kept intact.
 
 ## `use e {x1, ..., xn} in cont`
 

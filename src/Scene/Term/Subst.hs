@@ -79,13 +79,22 @@ subst sub term =
       (binder', decisionTree') <- subst'' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< TM.Noema t -> do
+    m :< TM.Box t -> do
       t' <- subst sub t
-      return $ m :< TM.Noema t'
-    m :< TM.Embody t e -> do
+      return $ m :< TM.Box t'
+    m :< TM.BoxNoema t -> do
       t' <- subst sub t
-      e' <- subst sub e
-      return $ m :< TM.Embody t' e'
+      return $ m :< TM.BoxNoema t'
+    m :< TM.BoxIntro letSeq e -> do
+      (letSeq', sub') <- substLetSeq sub letSeq
+      e' <- subst sub' e
+      return $ m :< TM.BoxIntro letSeq' e'
+    m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      (castSeq', sub1) <- substLetSeq sub castSeq
+      ((mxt', e1'), sub2) <- substLet sub1 (mxt, e1)
+      (uncastSeq', sub3) <- substLetSeq sub2 uncastSeq
+      e2' <- subst sub3 e2
+      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- subst sub e1
       ([mxt'], e2') <- subst' sub [mxt] e2
@@ -149,11 +158,11 @@ subst'' sub binder decisionTree =
       (xts', e') <- subst'' sub' xts decisionTree
       return ((m, x', t') : xts', e')
 
-substBinder1 ::
+substLet ::
   SubstTerm ->
   (BinderF TM.Term, TM.Term) ->
   App ((BinderF TM.Term, TM.Term), SubstTerm)
-substBinder1 sub ((m, x, t), e) = do
+substLet sub ((m, x, t), e) = do
   e' <- subst sub e
   t' <- subst sub t
   x' <- Gensym.newIdentFromIdent x
@@ -169,7 +178,7 @@ substLetSeq sub letSeq = do
     [] ->
       return ([], sub)
     letPair : rest -> do
-      (letPair', sub') <- substBinder1 sub letPair
+      (letPair', sub') <- substLet sub letPair
       (rest', sub'') <- substLetSeq sub' rest
       return (letPair' : rest', sub'')
 

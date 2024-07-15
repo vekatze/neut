@@ -206,10 +206,17 @@ simplify ax susList constraintList =
                   let es2 = dataArgs2 ++ consArgs2
                   let cs' = map (,orig) (zipWith C.Eq es1 es2)
                   simplify ax susList $ cs' ++ cs
-            (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
+            (_ :< WT.Box t1, _ :< WT.Box t2) ->
               simplify ax susList $ (C.Eq t1 t2, orig) : cs
-            (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->
-              simplify ax susList $ (C.Eq t1 t2, orig) : (C.Eq e1 e2, orig) : cs
+            (_ :< WT.BoxNoema t1, _ :< WT.BoxNoema t2) ->
+              simplify ax susList $ (C.Eq t1 t2, orig) : cs
+            (_ :< WT.BoxIntro letSeq1 e1, _ :< WT.BoxIntro letSeq2 e2)
+              | length letSeq1 == length letSeq2 -> do
+                  let (xts1, es1) = unzip letSeq1
+                  let (xts2, es2) = unzip letSeq2
+                  cs' <- simplifyBinder orig xts1 xts2
+                  let cs'' = map (orig,) $ zipWith C.Eq es1 es2
+                  simplify ax susList $ (C.Eq e1 e2, orig) : cs' ++ cs'' ++ cs
             (_ :< WT.Annotation _ _ e1, e2) ->
               simplify ax susList $ (C.Eq e1 e2, orig) : cs
             (e1, _ :< WT.Annotation _ _ e2) ->
@@ -463,7 +470,7 @@ simplifyAffine m dataNameSet t orig = do
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
         _ -> do
           return [C.SuspendedConstraint (holes t', (C.Affine t', orig))]
-    _ :< WT.Noema {} ->
+    _ :< WT.BoxNoema {} ->
       return []
     _ :< WT.Prim {} -> do
       return []

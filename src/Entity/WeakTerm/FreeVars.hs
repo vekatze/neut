@@ -39,10 +39,18 @@ freeVars term =
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = freeVars' binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< WT.Noema t ->
+    _ :< WT.Box t ->
       freeVars t
-    _ :< WT.Embody t e ->
-      S.union (freeVars t) (freeVars e)
+    _ :< WT.BoxNoema t ->
+      freeVars t
+    _ :< WT.BoxIntro letSeq e -> do
+      let (mxts, es) = unzip letSeq
+      freeVars' mxts (S.unions $ map freeVars (e : es))
+    _ :< WT.BoxIntroQuote e ->
+      freeVars e
+    _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
+      freeVars' xts (S.unions $ map freeVars $ es ++ [e2])
     _ :< WT.Actual e ->
       freeVars e
     _ :< WT.Let _ mxt e1 e2 -> do

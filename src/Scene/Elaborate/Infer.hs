@@ -269,14 +269,28 @@ infer axis term =
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
       (tree', _ :< treeType) <- inferDecisionTree m axis tree
       return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', m :< treeType)
-    m :< WT.Noema t -> do
+    m :< WT.Box t -> do
       t' <- inferType axis t
-      return (m :< WT.Noema t', m :< WT.Tau)
-    m :< WT.Embody _ e -> do
-      (e', noemaType) <- infer axis e
-      resultType <- newHole m (varEnv axis)
-      insConstraintEnv (m :< WT.Noema resultType) noemaType
-      return (m :< WT.Embody resultType e', resultType)
+      return (m :< WT.Box t', m :< WT.Tau)
+    m :< WT.BoxNoema t -> do
+      t' <- inferType axis t
+      return (m :< WT.BoxNoema t', m :< WT.Tau)
+    m :< WT.BoxIntro letSeq e -> do
+      (letSeq', axis') <- inferQuoteSeq axis letSeq FromNoema
+      (e', t) <- infer axis' e
+      return (m :< WT.BoxIntro letSeq' e', m :< WT.Box t)
+    m :< WT.BoxIntroQuote e -> do
+      (e', t) <- infer axis e
+      insertActualityConstraint t
+      return (m :< WT.BoxIntroQuote e', m :< WT.Box t)
+    m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      (castSeq', axis1) <- inferQuoteSeq axis castSeq ToNoema
+      (e1', t1) <- infer axis1 e1
+      (mxt'@(mx, _, t1'), axis2) <- inferBinder1 axis1 mxt
+      insConstraintEnv (mx :< WT.Box t1') t1
+      (uncastSeq', axis3) <- inferQuoteSeq axis2 uncastSeq FromNoema
+      (e2', t2) <- infer axis3 e2
+      return (m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2', t2)
     _ :< WT.Actual e -> do
       (e', t') <- infer axis e
       insertActualityConstraint t'
@@ -324,7 +338,7 @@ infer axis term =
             WPV.StaticText t text -> do
               empty <- createNewAxis
               t' <- inferType empty t
-              return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.Noema t')
+              return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.BoxNoema t')
     m :< WT.Magic magic -> do
       case magic of
         M.Cast from to value -> do
@@ -397,6 +411,27 @@ infer axis term =
               Throw.raiseError mt $ "Expected a single-constructor ADT, but found: " <> toText t''
         _ :< _ -> do
           Throw.raiseError mt $ "Expected an ADT, but found: " <> toText t''
+
+data CastDirection
+  = FromNoema
+  | ToNoema
+
+inferQuoteSeq ::
+  Axis ->
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  CastDirection ->
+  App ([(BinderF WT.WeakTerm, WT.WeakTerm)], Axis)
+inferQuoteSeq axis letSeq castDirection = do
+  let (xts, es) = unzip letSeq
+  (xts', axis') <- inferBinder' axis xts
+  (es', ts) <- mapAndUnzipM (infer axis') es
+  forM_ (zip xts' ts) $ \((m1, _, tInner), tOuter@(m2 :< _)) -> do
+    case castDirection of
+      ToNoema ->
+        insConstraintEnv tInner (m2 :< WT.BoxNoema tOuter)
+      FromNoema ->
+        insConstraintEnv (m1 :< WT.BoxNoema tInner) tOuter
+  return (zip xts' es', axis')
 
 mustBypassCursorDealloc :: Maybe OD.OptimizableData -> Bool
 mustBypassCursorDealloc odOrNone =
@@ -477,6 +512,15 @@ inferBinder' axis binder =
       insWeakTypeEnv x t'
       (xts', axis') <- inferBinder' (extendAxis' (mx, x, t') axis) xts
       return ((mx, x, t') : xts', axis')
+
+inferBinder1 ::
+  Axis ->
+  BinderF WT.WeakTerm ->
+  App (BinderF WT.WeakTerm, Axis)
+inferBinder1 axis (mx, x, t) = do
+  t' <- inferType axis t
+  insWeakTypeEnv x t'
+  return ((mx, x, t'), extendAxis' (mx, x, t') axis)
 
 inferPiElim ::
   Axis ->

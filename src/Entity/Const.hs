@@ -173,6 +173,10 @@ coreChannelNewChannel :: T.Text
 coreChannelNewChannel =
   core <> nsSep <> "channel" <> nsSep <> "_new-channel"
 
+coreBoxEmbody :: T.Text
+coreBoxEmbody =
+  core <> nsSep <> "box" <> nsSep <> "embody"
+
 holeLiteral :: T.Text
 holeLiteral =
   "_"

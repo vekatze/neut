@@ -10,6 +10,7 @@ import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List
 import Entity.Attr.Lam qualified as AttrL
+import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
@@ -77,10 +78,18 @@ weaken term =
       let ts' = map weaken ts
       let tree' = weakenDecisionTree tree
       m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
-    m :< TM.Noema t ->
-      m :< WT.Noema (weaken t)
-    m :< TM.Embody t e ->
-      m :< WT.Embody (weaken t) (weaken e)
+    m :< TM.Box t ->
+      m :< WT.Box (weaken t)
+    m :< TM.BoxNoema t ->
+      m :< WT.BoxNoema (weaken t)
+    m :< TM.BoxIntro letSeq e -> do
+      m :< WT.BoxIntro (map weakenLet letSeq) (weaken e)
+    m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      let castSeq' = map weakenLet castSeq
+      let (mxt', e1') = weakenLet (mxt, e1)
+      let uncastSeq' = map weakenLet uncastSeq
+      let e2' = weaken e2
+      m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
@@ -93,6 +102,10 @@ weaken term =
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
   (m, x, weaken t)
+
+weakenLet :: (BinderF TM.Term, TM.Term) -> (BinderF WT.WeakTerm, WT.WeakTerm)
+weakenLet ((m, x, t), e) =
+  ((m, x, weaken t), weaken e)
 
 weakenAttr :: AttrL.Attr TM.Term -> AttrL.Attr WT.WeakTerm
 weakenAttr AttrL.Attr {lamKind, identity} =

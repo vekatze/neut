@@ -224,15 +224,16 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyTerm tenv) es
       (tree', _) <- clarifyDecisionTree (TM.insTypeEnv mxts tenv) isNoetic IntMap.empty tree
       return $ irreducibleBindLet (zip xs es') tree'
-    _ :< TM.Noema {} ->
+    _ :< TM.Box t -> do
+      clarifyTerm tenv t
+    _ :< TM.BoxNoema {} ->
       return returnImmediateS4
-    m :< TM.Embody t e -> do
-      (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
-      (valueVarName, value, valueVar) <- clarifyPlus tenv e
-      baseSize <- Env.getBaseSize m
-      return $
-        bindLet [(typeExpVarName, typeExp), (valueVarName, value)] $
-          C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, valueVar]
+    _ :< TM.BoxIntro letSeq e -> do
+      embody tenv letSeq e
+    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      clarifyTerm tenv $
+        TM.fromLetSeqOpaque castSeq $
+          TM.fromLetSeq ((mxt, e1) : uncastSeq) e2
     _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e2' <- clarifyTerm (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder tenv [mxt]
@@ -266,6 +267,24 @@ clarifyTerm tenv term =
       unless isAlreadyRegistered $ do
         Clarify.insertToAuxEnv liftedName (O.Clear, [switchValue, value], enumElim)
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
+
+embody :: TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> App C.Comp
+embody tenv xets cont =
+  case xets of
+    [] ->
+      clarifyTerm tenv cont
+    (mxt@(m, x, t), e) : rest -> do
+      (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
+      (valueVarName, value, valueVar) <- clarifyPlus tenv e
+      cont' <- embody (TM.insTypeEnv [mxt] tenv) rest cont
+      baseSize <- Env.getBaseSize m
+      return $
+        bindLet
+          [ (typeExpVarName, typeExp),
+            (valueVarName, value),
+            (x, C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, valueVar])
+          ]
+          cont'
 
 type Size =
   Int

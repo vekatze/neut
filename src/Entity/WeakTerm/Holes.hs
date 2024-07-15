@@ -37,10 +37,18 @@ holes term =
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = holes' binder (holesDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< WT.Noema t ->
+    _ :< WT.Box t ->
       holes t
-    _ :< WT.Embody t e ->
-      S.union (holes t) (holes e)
+    _ :< WT.BoxNoema t ->
+      holes t
+    _ :< WT.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      holes' xts (S.unions $ map holes $ e : es)
+    _ :< WT.BoxIntroQuote e ->
+      holes e
+    _ :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
+      holes' xts (S.unions $ map holes $ es ++ [e2])
     _ :< WT.Actual e ->
       holes e
     _ :< WT.Let _ mxt e1 e2 -> do

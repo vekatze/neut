@@ -73,10 +73,27 @@ toText term =
       if isNoetic
         then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
-    _ :< WT.Noema t ->
+    _ :< WT.Box t ->
+      "meta " <> toText t
+    _ :< WT.BoxNoema t ->
       "&" <> toText t
-    _ :< WT.Embody _ e ->
-      "*" <> toText e
+    _ :< WT.BoxIntro letSeq t -> do
+      let ks = map (\((_, x, _), _) -> x) letSeq
+      "box " <> T.intercalate ", " (map Ident.toText ks) <> inBrace (toText t)
+    _ :< WT.BoxIntroQuote e ->
+      "quote " <> inBrace (toText e)
+    _ :< WT.BoxElim castSeq (_, x, t) e1 _ e2 -> do
+      let ks = map (\((_, y, _), _) -> y) castSeq
+      let ks' = if null ks then "" else "on " <> T.intercalate ", " (map Ident.toText ks)
+      "letbox "
+        <> showVariable x
+        <> ": "
+        <> toText t
+        <> ks'
+        <> " = "
+        <> toText e1
+        <> " in "
+        <> toText e2
     _ :< WT.Actual e ->
       "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do

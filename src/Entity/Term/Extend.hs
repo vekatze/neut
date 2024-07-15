@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)
 import Entity.Attr.Lam qualified as AttrL
+import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
@@ -52,10 +53,20 @@ extend term =
       let ts' = map extend ts
       let tree' = extendDecisionTree tree
       _m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
-    _ :< TM.Noema t ->
-      _m :< TM.Noema (extend t)
-    _ :< TM.Embody t e ->
-      _m :< TM.Embody (extend t) (extend e)
+    _ :< TM.Box t ->
+      _m :< TM.Box (extend t)
+    _ :< TM.BoxNoema t ->
+      _m :< TM.BoxNoema (extend t)
+    _ :< TM.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      let letSeq' = zip (map extendBinder xts) (map extend es)
+      _m :< TM.BoxIntro letSeq' (extend e)
+    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      let castSeq' = map extendLet castSeq
+      let (mxt', e1') = extendLet (mxt, e1)
+      let uncastSeq' = map extendLet uncastSeq
+      let e2' = extend e2
+      _m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     _ :< TM.Let opacity mxt e1 e2 ->
       _m :< TM.Let opacity (extendBinder mxt) (extend e1) (extend e2)
     _ :< TM.Prim prim ->
@@ -68,6 +79,10 @@ extend term =
 extendBinder :: (Hint, Ident, Cofree TM.TermF ()) -> (Hint, Ident, TM.Term)
 extendBinder (m, x, t) =
   (m, x, extend t)
+
+extendLet :: (BinderF (Cofree TM.TermF ()), Cofree TM.TermF ()) -> (BinderF TM.Term, TM.Term)
+extendLet ((m, x, t), e) =
+  ((m, x, extend t), extend e)
 
 extendAttr :: AttrL.Attr (Cofree TM.TermF ()) -> AttrL.Attr TM.Term
 extendAttr AttrL.Attr {lamKind, identity} =

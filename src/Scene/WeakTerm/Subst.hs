@@ -80,13 +80,25 @@ subst sub term =
       (binder', decisionTree') <- subst''' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< WT.Noema t -> do
+    m :< WT.Box t -> do
       t' <- subst sub t
-      return $ m :< WT.Noema t'
-    m :< WT.Embody t e -> do
+      return $ m :< WT.Box t'
+    m :< WT.BoxNoema t -> do
       t' <- subst sub t
+      return $ m :< WT.BoxNoema t'
+    m :< WT.BoxIntro letSeq e -> do
+      (letSeq', sub') <- substLetSeq sub letSeq
+      e' <- subst sub' e
+      return $ m :< WT.BoxIntro letSeq' e'
+    m :< WT.BoxIntroQuote e -> do
       e' <- subst sub e
-      return $ m :< WT.Embody t' e'
+      return $ m :< WT.BoxIntroQuote e'
+    m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      (castSeq', sub1) <- substLetSeq sub castSeq
+      ((mxt', e1'), sub2) <- substLet sub1 (mxt, e1)
+      (uncastSeq', sub3) <- substLetSeq sub2 uncastSeq
+      e2' <- subst sub3 e2
+      return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< WT.Actual e -> do
       e' <- subst sub e
       return $ m :< WT.Actual e'
@@ -181,11 +193,11 @@ subst''' sub binder decisionTree =
       (xts', e') <- subst''' sub' xts decisionTree
       return ((m, x', t') : xts', e')
 
-substBinder1 ::
+substLet ::
   WT.SubstWeakTerm ->
   (BinderF WT.WeakTerm, WT.WeakTerm) ->
   App ((BinderF WT.WeakTerm, WT.WeakTerm), WT.SubstWeakTerm)
-substBinder1 sub ((m, x, t), e) = do
+substLet sub ((m, x, t), e) = do
   e' <- subst sub e
   t' <- subst sub t
   x' <- Gensym.newIdentFromIdent x
@@ -201,7 +213,7 @@ substLetSeq sub letSeq = do
     [] ->
       return ([], sub)
     letPair : rest -> do
-      (letPair', sub') <- substBinder1 sub letPair
+      (letPair', sub') <- substLet sub letPair
       (rest', sub'') <- substLetSeq sub' rest
       return (letPair' : rest', sub'')
 

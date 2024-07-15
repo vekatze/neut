@@ -36,8 +36,11 @@ data WeakTermF a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
-  | Noema a
-  | Embody a a
+  | Box a
+  | BoxNoema a
+  | BoxIntro [(BinderF a, a)] a
+  | BoxIntroQuote a
+  | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
   | Actual a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)

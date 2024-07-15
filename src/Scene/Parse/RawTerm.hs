@@ -27,6 +27,7 @@ import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Key
 import Entity.Name
+import Entity.NecessityVariant (NecessityVariant (..), showNecessityVariant)
 import Entity.RawBinder
 import Entity.RawIdent
 import Entity.RawLowType qualified as RLT
@@ -44,6 +45,7 @@ rawExpr = do
   m <- getCurrentHint
   choice
     [ rawTermLet m,
+      rawTermBoxElim m,
       rawTermUse m,
       rawTermPin m,
       do
@@ -72,7 +74,10 @@ rawTerm = do
       rawTermMatch,
       rawTermPi,
       rawTermPiIntro,
-      rawTermNoema,
+      rawTermBox,
+      rawTermBoxNoema,
+      rawTermBoxIntro,
+      rawTermBoxIntroQuote,
       rawTermIf,
       rawTermWhen,
       rawTermAssert,
@@ -196,7 +201,43 @@ rawTermLet mLet = do
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
   endLoc <- getCurrentLoc
-  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+  case (letKind, SE.isEmpty noeticVarList) of
+    (RT.Plain _, False) -> do
+      case patInner of
+        RP.Var (Var v) ->
+          return (mLet :< RT.LetOn c1 (mx, v, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+        _ ->
+          lift $ Throw.raiseError mLet "`let .. on` cannot be used with a pattern"
+    (_, False) ->
+      lift $ Throw.raiseError mLet $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
+    _ ->
+      return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
+
+rawTermBoxElim :: Hint -> Parser (RT.RawTerm, C)
+rawTermBoxElim mLet = do
+  let keywordReader nv = keyword (showNecessityVariant nv) >>= \c1 -> return (nv, c1)
+  (nv, c1) <-
+    choice
+      [ keywordReader VariantK,
+        keywordReader VariantT
+      ]
+  (mxt, c2) <- preBinder
+  noeticVarList <-
+    choice
+      [ do
+          c <- keyword "on"
+          vs <- bareSeries Nothing SE.Comma rawTermNoeticVar
+          return $ SE.pushComment c vs,
+        return $ SE.emptySeries' Nothing SE.Comma
+      ]
+  c5 <- delimiter "="
+  lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
+  (e1, c6) <- rawExpr
+  loc <- getCurrentLoc
+  c7 <- delimiter "in"
+  (e2, c) <- rawExpr
+  endLoc <- getCurrentLoc
+  return (mLet :< RT.BoxElim nv False c1 mxt c2 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermPin :: Hint -> Parser (RT.RawTerm, C)
 rawTermPin m = do
@@ -628,12 +669,34 @@ rawTermWith = do
   (withClause, c) <- rawTermKeywordClause "with"
   return (m :< RT.With withClause, c)
 
-rawTermNoema :: Parser (RT.RawTerm, C)
-rawTermNoema = do
+rawTermBox :: Parser (RT.RawTerm, C)
+rawTermBox = do
+  m <- getCurrentHint
+  c1 <- keyword "meta"
+  (t, c) <- rawExpr
+  return (m :< RT.Box t, c1 ++ c)
+
+rawTermBoxIntro :: Parser (RT.RawTerm, C)
+rawTermBoxIntro = do
+  m <- getCurrentHint
+  c1 <- keyword "box"
+  vs <- bareSeries Nothing SE.Comma rawTermNoeticVar
+  (c2, (e, c)) <- betweenBrace rawExpr
+  return (m :< RT.BoxIntro c1 c2 vs e, c)
+
+rawTermBoxIntroQuote :: Parser (RT.RawTerm, C)
+rawTermBoxIntroQuote = do
+  m <- getCurrentHint
+  c1 <- keyword "quote"
+  (c2, (e, c)) <- betweenBrace rawExpr
+  return (m :< RT.BoxIntroQuote c1 c2 e, c)
+
+rawTermBoxNoema :: Parser (RT.RawTerm, C)
+rawTermBoxNoema = do
   m <- getCurrentHint
   c1 <- delimiter "&"
   (t, c) <- rawTerm
-  return (m :< RT.Noema t, c1 ++ c)
+  return (m :< RT.BoxNoema t, c1 ++ c)
 
 rawTermFlowIntro :: Parser (RT.RawTerm, C)
 rawTermFlowIntro = do

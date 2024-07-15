@@ -245,13 +245,25 @@ elaborate' term =
               unless (null consList) $
                 raiseEmptyNonExhaustivePatternMatching m
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
-    m :< WT.Noema t -> do
+    m :< WT.Box t -> do
       t' <- elaborate' t
-      return $ m :< TM.Noema t'
-    m :< WT.Embody t e -> do
+      return $ m :< TM.Box t'
+    m :< WT.BoxNoema t -> do
       t' <- elaborate' t
+      return $ m :< TM.BoxNoema t'
+    m :< WT.BoxIntro letSeq e -> do
+      letSeq' <- mapM elaborateLet letSeq
       e' <- elaborate' e
-      return $ m :< TM.Embody t' e'
+      return $ m :< TM.BoxIntro letSeq' e'
+    _ :< WT.BoxIntroQuote e -> do
+      elaborate' e
+    m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      castSeq' <- mapM elaborateLet castSeq
+      mxt' <- elaborateWeakBinder mxt
+      e1' <- elaborate' e1
+      uncastSeq' <- mapM elaborateLet uncastSeq
+      e2' <- elaborate' e2
+      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     _ :< WT.Actual e -> do
       elaborate' e
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
@@ -337,6 +349,12 @@ elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
+
+elaborateLet :: (BinderF WT.WeakTerm, WT.WeakTerm) -> App (BinderF TM.Term, TM.Term)
+elaborateLet (xt, e) = do
+  xt' <- elaborateWeakBinder xt
+  e' <- elaborate' e
+  return (xt', e')
 
 elaborateLamAttr :: AttrL.Attr WT.WeakTerm -> App (AttrL.Attr TM.Term)
 elaborateLamAttr (AttrL.Attr {lamKind, identity}) =

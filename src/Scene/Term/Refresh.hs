@@ -58,13 +58,22 @@ refresh term =
       (binder', decisionTree') <- refresh'' binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< TM.Noema t -> do
+    m :< TM.Box t -> do
       t' <- refresh t
-      return $ m :< TM.Noema t'
-    m :< TM.Embody t e -> do
+      return $ m :< TM.Box t'
+    m :< TM.BoxNoema t -> do
       t' <- refresh t
+      return $ m :< TM.BoxNoema t'
+    m :< TM.BoxIntro letSeq e -> do
+      letSeq' <- mapM refreshLet letSeq
       e' <- refresh e
-      return $ m :< TM.Embody t' e'
+      return $ m :< TM.BoxIntro letSeq' e'
+    m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      castSeq' <- mapM refreshLet castSeq
+      (mxt', e1') <- refreshLet (mxt, e1)
+      uncastSeq' <- mapM refreshLet uncastSeq
+      e2' <- refresh e2
+      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- refresh e1
       ([mxt'], e2') <- refresh' [mxt] e2
@@ -90,6 +99,14 @@ refreshBinder binder =
       t' <- refresh t
       xts' <- refreshBinder xts
       return ((m, x, t') : xts')
+
+refreshLet ::
+  (BinderF TM.Term, TM.Term) ->
+  App (BinderF TM.Term, TM.Term)
+refreshLet ((m, x, t), e) = do
+  t' <- refresh t
+  e' <- refresh e
+  return ((m, x, t'), e')
 
 refresh' ::
   [BinderF TM.Term] ->

@@ -45,12 +45,14 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.Key
 import Entity.LamKind qualified as LK
+import Entity.Layer
 import Entity.Locator qualified as L
 import Entity.LowType qualified as LT
 import Entity.LowType.FromRawLowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Module
 import Entity.Name
+import Entity.NecessityVariant
 import Entity.Noema qualified as N
 import Entity.NominalEnv
 import Entity.OS qualified as OS
@@ -72,6 +74,7 @@ import Entity.VarDefKind qualified as VDK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.FreeVars (freeVars)
 import Scene.Parse.Discern.Data
 import Scene.Parse.Discern.Name
 import Scene.Parse.Discern.Noema
@@ -99,10 +102,10 @@ discernStmt mo stmt = do
       let m = RT.loc geist
       let functionName = nameLifter $ fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      (impArgs', nenv) <- discernBinder (emptyAxis mo) impArgs endLoc
+      (impArgs', nenv) <- discernBinder (emptyAxis mo 0) impArgs endLoc
       (expArgs', nenv') <- discernBinder nenv expArgs endLoc
       codType' <- discern nenv' codType
-      stmtKind' <- discernStmtKind (emptyAxis mo) stmtKind
+      stmtKind' <- discernStmtKind (emptyAxis mo 0) stmtKind
       body' <- discern nenv' body
       Tag.insertGlobalVar m functionName isConstLike m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
@@ -111,8 +114,8 @@ discernStmt mo stmt = do
     RawStmtDefineConst _ m (name, _) (_, (t, _)) (_, (v, _)) -> do
       let dd = nameLifter name
       registerTopLevelName nameLifter stmt
-      t' <- discern (emptyAxis mo) t
-      v' <- discern (emptyAxis mo) v
+      t' <- discern (emptyAxis mo 0) t
+      v' <- discern (emptyAxis mo 0) v
       Tag.insertGlobalVar m dd True m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineConst m dd t' v']
@@ -122,8 +125,8 @@ discernStmt mo stmt = do
     RawStmtDefineResource _ m (name, _) (_, discarder) (_, copier) _ -> do
       let dd = nameLifter name
       registerTopLevelName nameLifter stmt
-      t' <- discern (emptyAxis mo) $ m :< RT.Tau
-      e' <- discern (emptyAxis mo) $ m :< RT.Resource [] (discarder, []) (copier, [])
+      t' <- discern (emptyAxis mo 0) $ m :< RT.Tau
+      e' <- discern (emptyAxis mo 0) $ m :< RT.Resource [] (discarder, []) (copier, [])
       Tag.insertGlobalVar m dd True m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineConst m dd t' e']
@@ -142,7 +145,7 @@ discernGeist mo endLoc geist = do
   nameLifter <- Locator.getNameLifter
   let impArgs = RT.extractArgs $ RT.impArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
-  (impArgs', axis) <- discernBinder (emptyAxis mo) impArgs endLoc
+  (impArgs', axis) <- discernBinder (emptyAxis mo 0) impArgs endLoc
   (expArgs', axis') <- discernBinder axis expArgs endLoc
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
   cod' <- discern axis' $ snd $ RT.cod geist
@@ -210,7 +213,7 @@ discernStmtKind ax stmtKind =
       (dataArgs', axis) <- discernBinder' ax dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = unzip5 consInfoList
       (consArgsList', axisList) <- mapAndUnzipM (discernBinder' axis) consArgsList
-      forM_ (concatMap _nenv axisList) $ \(_, (_, newVar)) -> do
+      forM_ (concatMap _nenv axisList) $ \(_, (_, newVar, _)) -> do
         UnusedVariable.delete newVar
       let consNameList' = map nameLifter consNameList
       let consInfoList' = zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
@@ -219,7 +222,7 @@ discernStmtKind ax stmtKind =
       nameLifter <- Locator.getNameLifter
       (dataArgs', axis) <- discernBinder' ax dataArgs
       (consArgs', axis') <- discernBinder' axis consArgs
-      forM_ (_nenv axis') $ \(_, (_, newVar)) -> do
+      forM_ (_nenv axis') $ \(_, (_, newVar, _)) -> do
         UnusedVariable.delete newVar
       return $ SK.DataIntro (nameLifter dataName) dataArgs' consArgs' discriminant
 
@@ -250,10 +253,14 @@ discern axis term =
           | Just x <- R.readMaybe (T.unpack s) -> do
               h <- Gensym.newHole m []
               return $ m :< WT.Prim (WP.Value $ WPV.Float h x)
-          | Just (mDef, name') <- lookup s (_nenv axis) -> do
-              UnusedVariable.delete name'
-              Tag.insertLocalVar m name' mDef
-              return $ m :< WT.Var name'
+          | Just (mDef, name', layer) <- lookup s (_nenv axis) -> do
+              if layer == currentLayer axis
+                then do
+                  UnusedVariable.delete name'
+                  Tag.insertLocalVar m name' mDef
+                  return $ m :< WT.Var name'
+                else
+                  raiseLayerError m (currentLayer axis) layer
         _ -> do
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
@@ -271,6 +278,7 @@ discern axis term =
       (expArgs', axis'') <- discernBinder axis' expArgs endLoc
       codType' <- discern axis'' $ snd $ RT.cod geist
       body' <- discern axis'' body
+      ensureLayerClosedness m axis'' body'
       return $ m :< WT.PiIntro (AttrL.normal lamID codType') impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
@@ -286,6 +294,7 @@ discern axis term =
       let mxt' = (mx, x', codType')
       Tag.insertBinder mxt'
       lamID <- Gensym.newCount
+      ensureLayerClosedness m axis''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
     m :< RT.PiElim e _ es -> do
       case e of
@@ -335,16 +344,53 @@ discern axis term =
       patternMatrix' <- discernPatternMatrix axis $ SE.extract patternMatrix
       ensurePatternMatrixSanity patternMatrix'
       let os' = zip ms os
-      decisionTree <- compilePatternMatrix (_nenv axis) isNoetic (V.fromList os') patternMatrix'
+      decisionTree <- compilePatternMatrix (currentLayer axis) (_nenv axis) isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
-    m :< RT.Noema t -> do
+    m :< RT.Box t -> do
       t' <- discern axis t
-      return $ m :< WT.Noema t'
+      return $ m :< WT.Box t'
+    m :< RT.BoxNoema t -> do
+      t' <- discern axis t
+      return $ m :< WT.BoxNoema t'
+    m :< RT.BoxIntro _ _ mxs (body, _) -> do
+      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx axis x
+      xets <- discernNoeticVarList xsOuter
+      let innerLayer = currentLayer axis - 1
+      let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
+      let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer))) xsInner
+      axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
+      body' <- discern axisInner body
+      return $ m :< WT.BoxIntro xets body'
+    m :< RT.BoxIntroQuote _ _ (body, _) -> do
+      body' <- discern axis body
+      return $ m :< WT.BoxIntroQuote body'
+    m :< RT.BoxElim nv mustIgnoreRelayedVars _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
+      -- inner
+      ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y
+      yetsInner <- discernNoeticVarList ysOuter
+      let innerLayer = currentLayer axis + layerOffset nv
+      let ysInner = map (\((my, y, myDef :< _), _) -> (myDef, (my, y))) yetsInner
+      let innerAddition = map (\(_, (my, y)) -> (Ident.toText y, (my, y, innerLayer))) ysInner
+      axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
+      e1' <- discern axisInner e1
+      -- cont
+      yetsCont <- discernNoeticVarList ysInner
+      let ysCont = map (\((my, y, _), _) -> (my, y)) yetsCont
+      let contAddition = map (\(my, y) -> (Ident.toText y, (my, y, currentLayer axis))) ysCont
+      axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
+      (mxt', e2') <- discernBinderWithBody' axisCont mxt startLoc endLoc e2
+      Tag.insertBinder mxt'
+      when mustIgnoreRelayedVars $ do
+        forM_ ysCont $ UnusedVariable.delete . snd
+      return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2'
     m :< RT.Embody e -> do
-      e' <- discern axis e
-      return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
-      discernLet axis m letKind (mx, pat, c1, c2, t) (SE.extract mys) e1 e2 startLoc endLoc
+      embodyVar <- locatorToVarGlobal m coreBoxEmbody
+      discern axis $ m :< RT.piElim embodyVar [e]
+    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
+      discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
+    m :< RT.LetOn _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
+      let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
+      discern axis $ m :< RT.BoxElim VariantT True [] mxt [] mys [] e1' [] startLoc [] e2 endLoc
     m :< RT.Pin _ mxt@(mx, x, _, _, _) _ _ e1 _ startLoc _ e2 endLoc -> do
       let m' = blur m
       tmp <- Gensym.newTextFromText "tmp-pin"
@@ -352,7 +398,7 @@ discern axis term =
       resultType <- Gensym.newPreHole m'
       discern axis $
         bind startLoc endLoc mxt e1 $
-          bind' True startLoc endLoc (m', tmp, [], [], resultType) x' e2 (m' :< RT.Var (Var tmp))
+          m :< RT.LetOn [] (m', tmp, [], [], resultType) [] x' [] e2 [] startLoc [] (m' :< RT.Var (Var tmp)) endLoc
     m :< RT.StaticText s str -> do
       s' <- discern axis s
       case parseText str of
@@ -469,7 +515,7 @@ discern axis term =
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
-        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c mys c4 e1 c5 startLoc c6 e2 endLoc -> do
+        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c c4 e1 c5 startLoc c6 e2 endLoc -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
           case letKind of
@@ -485,7 +531,6 @@ discern axis term =
                   startLoc
                   endLoc
                   (mPat, tmpVar, c2, c3, dom)
-                  mys
                   e1'
                   ( m
                       :< RT.piElim
@@ -500,7 +545,7 @@ discern axis term =
                         ]
                   )
             _ -> do
-              discern axis $ mLet :< RT.Let letKind c1 mxt c mys c4 e1' c5 startLoc c6 e2' endLoc
+              discern axis $ mLet :< RT.Let letKind c1 mxt c c4 e1' c5 startLoc c6 e2' endLoc
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
@@ -521,6 +566,14 @@ discern axis term =
       discern axis $ mProj :< RT.Use [] e [] args [] var loc
     _ :< RT.Brace _ (e, _) ->
       discern axis e
+
+discernNoeticVarList :: [(Hint, (Hint, Ident))] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
+discernNoeticVarList xsOuter = do
+  forM xsOuter $ \(mDef, (mOuter, outerVar)) -> do
+    xInner <- Gensym.newIdentFromIdent outerVar
+    t <- Gensym.newHole mOuter []
+    Tag.insertLocalVar mDef outerVar mOuter
+    return ((mOuter, xInner, t), mDef :< WT.Var outerVar)
 
 discernRawLowType :: Hint -> RLT.RawLowType -> App LT.LowType
 discernRawLowType m rlt = do
@@ -594,25 +647,23 @@ bind ::
   RT.RawTerm ->
   RT.RawTerm
 bind loc endLoc (m, x, c1, c2, t) =
-  bind' False loc endLoc (m, x, c1, c2, t) (SE.emptySeries' Nothing SE.Comma)
+  bind' False loc endLoc (m, x, c1, c2, t)
 
 bind' ::
   RT.MustIgnoreRelayedVars ->
   Loc ->
   Loc ->
   RawBinder RT.RawTerm ->
-  SE.Series (Hint, RawIdent) ->
   RT.RawTerm ->
   RT.RawTerm ->
   RT.RawTerm
-bind' mustIgnoreRelayedVars loc endLoc (m, x, c1, c2, t) mys e cont =
+bind' mustIgnoreRelayedVars loc endLoc (m, x, c1, c2, t) e cont =
   m
     :< RT.Let
       (RT.Plain mustIgnoreRelayedVars)
       []
       (m, RP.Var (Var x), c1, c2, t)
       []
-      mys
       []
       e
       []
@@ -714,128 +765,107 @@ discernLet ::
   Hint ->
   RT.LetKind ->
   (Hint, RP.RawPattern, C, C, RT.RawTerm) ->
-  [(Hint, RawIdent)] ->
   RT.RawTerm ->
   RT.RawTerm ->
   Loc ->
   Loc ->
   App WT.WeakTerm
-discernLet axis m letKind (mx, pat, c1, c2, t) mys e1 e2@(m2 :< _) startLoc endLoc = do
-  mys' <- mapM (\(my, y) -> discernIdent my axis y) mys
-  let (ms', ys') = unzip mys'
-  let ysActual = zipWith (\my y -> my :< WT.Var y) ms' ys'
-  ysLocal <- mapM Gensym.newIdentFromIdent ys'
-  ysCont <- mapM Gensym.newIdentFromIdent ys'
-  let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms' ysLocal
-  axisLocal <- extendAxisByNominalEnv VDK.Borrowed localAddition axis
-  let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms' ysCont
-  axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
-  let opacity = if null mys then WT.Clear else WT.Noetic
+discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2@(m2 :< _) startLoc endLoc = do
+  let opacity = WT.Clear
   let discernLet' isNoetic = do
-        e1' <- discern axisLocal e1
+        e1' <- discern axis e1
         (x, e2') <- modifyLetContinuation (mx, pat) endLoc isNoetic e2
-        (mxt', e2'') <- discernBinderWithBody' axisCont (mx, x, c1, c2, t) startLoc endLoc e2'
+        (mxt', e2'') <- discernBinderWithBody' axis (mx, x, c1, c2, t) startLoc endLoc e2'
         Tag.insertBinder mxt'
-        e2''' <- attachSuffix (zip ysCont ysLocal) e2''
-        return $ m :< WT.Let opacity mxt' e1' e2'''
-  body <-
-    case letKind of
-      RT.Plain _ -> do
-        discernLet' False
-      RT.Noetic -> do
-        discernLet' True
-      RT.Bind -> do
-        Throw.raiseError m "`bind` can only be used inside `with`"
-      RT.Try -> do
-        let m' = blur m
-        let mx' = blur mx
-        let m2' = blur m2
-        eitherTypeInner <- locatorToVarGlobal mx' coreEither
-        leftType <- Gensym.newPreHole m2'
-        let eitherType = m2' :< RT.piElim eitherTypeInner [leftType, t]
-        tmpVar <- Gensym.newText
-        e1' <- discern axisLocal e1
-        err <- Gensym.newText
-        eitherLeft <- locatorToName m2' coreEitherLeft
-        eitherRight <- locatorToName m2' coreEitherRight
-        eitherLeftVar <- locatorToVarGlobal mx' coreEitherLeft
-        (mxt', eitherCont) <-
-          discernBinderWithBody' axisCont (mx, tmpVar, c1, c2, eitherType) startLoc endLoc $
-            m'
-              :< RT.DataElim
-                []
-                False
-                (SE.fromList'' [m' :< RT.Var (Var tmpVar)])
-                ( SE.fromList
-                    SE.Brace
-                    SE.Bar
-                    [ ( SE.fromList'' [(m2', RP.Cons eitherLeft [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
-                        [],
-                        m2' :< RT.piElim eitherLeftVar [m2' :< RT.Var (Var err)],
-                        fakeLoc
-                      ),
-                      ( SE.fromList'' [(m2', RP.Cons eitherRight [] (RP.Paren (SE.fromList' [(mx, pat)])))],
-                        [],
-                        e2,
-                        endLoc
-                      )
-                    ]
-                )
-        eitherCont' <- attachSuffix (zip ysCont ysLocal) eitherCont
-        return $ m :< WT.Let opacity mxt' e1' eitherCont'
-      RT.Catch -> do
-        let m' = blur m
-        let mx' = blur mx
-        let m2' = blur m2
-        eitherTypeInner <- locatorToVarGlobal mx' coreEither
-        rightType <- Gensym.newPreHole m2'
-        let eitherType = m2' :< RT.piElim eitherTypeInner [t, rightType]
-        tmpVar <- Gensym.newText
-        e1' <- discern axisLocal e1
-        result <- Gensym.newText
-        eitherLeft <- locatorToName m2' coreEitherLeft
-        eitherRight <- locatorToName m2' coreEitherRight
-        eitherRightVar <- locatorToVarGlobal mx' coreEitherRight
-        (mxt', eitherCont) <-
-          discernBinderWithBody' axisCont (mx, tmpVar, c1, c2, eitherType) startLoc endLoc $
-            m'
-              :< RT.DataElim
-                []
-                False
-                (SE.fromList'' [m' :< RT.Var (Var tmpVar)])
-                ( SE.fromList
-                    SE.Brace
-                    SE.Bar
-                    [ ( SE.fromList'' [(m2', RP.Cons eitherLeft [] (RP.Paren (SE.fromList' [(mx, pat)])))],
-                        [],
-                        e2,
-                        endLoc
-                      ),
-                      ( SE.fromList'' [(m2', RP.Cons eitherRight [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var result))])))],
-                        [],
-                        m2' :< RT.piElim eitherRightVar [m2' :< RT.Var (Var result)],
-                        fakeLoc
-                      )
-                    ]
-                )
-        eitherCont' <- attachSuffix (zip ysCont ysLocal) eitherCont
-        return $ m :< WT.Let opacity mxt' e1' eitherCont'
-  result <- attachPrefix (zip ysLocal (zip ms' ysActual)) body
+        return $ m :< WT.Let opacity mxt' e1' e2''
   case letKind of
-    RT.Plain True ->
-      forM_ ysCont UnusedVariable.delete
-    _ ->
-      return ()
-  return result
+    RT.Plain _ -> do
+      discernLet' False
+    RT.Noetic -> do
+      discernLet' True
+    RT.Bind -> do
+      Throw.raiseError m "`bind` can only be used inside `with`"
+    RT.Try -> do
+      let m' = blur m
+      let mx' = blur mx
+      let m2' = blur m2
+      eitherTypeInner <- locatorToVarGlobal mx' coreEither
+      leftType <- Gensym.newPreHole m2'
+      let eitherType = m2' :< RT.piElim eitherTypeInner [leftType, t]
+      tmpVar <- Gensym.newText
+      e1' <- discern axis e1
+      err <- Gensym.newText
+      eitherLeft <- locatorToName m2' coreEitherLeft
+      eitherRight <- locatorToName m2' coreEitherRight
+      eitherLeftVar <- locatorToVarGlobal mx' coreEitherLeft
+      (mxt', eitherCont) <-
+        discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc $
+          m'
+            :< RT.DataElim
+              []
+              False
+              (SE.fromList'' [m' :< RT.Var (Var tmpVar)])
+              ( SE.fromList
+                  SE.Brace
+                  SE.Bar
+                  [ ( SE.fromList'' [(m2', RP.Cons eitherLeft [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
+                      [],
+                      m2' :< RT.piElim eitherLeftVar [m2' :< RT.Var (Var err)],
+                      fakeLoc
+                    ),
+                    ( SE.fromList'' [(m2', RP.Cons eitherRight [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+                      [],
+                      e2,
+                      endLoc
+                    )
+                  ]
+              )
+      return $ m :< WT.Let opacity mxt' e1' eitherCont
+    RT.Catch -> do
+      let m' = blur m
+      let mx' = blur mx
+      let m2' = blur m2
+      eitherTypeInner <- locatorToVarGlobal mx' coreEither
+      rightType <- Gensym.newPreHole m2'
+      let eitherType = m2' :< RT.piElim eitherTypeInner [t, rightType]
+      tmpVar <- Gensym.newText
+      e1' <- discern axis e1
+      result <- Gensym.newText
+      eitherLeft <- locatorToName m2' coreEitherLeft
+      eitherRight <- locatorToName m2' coreEitherRight
+      eitherRightVar <- locatorToVarGlobal mx' coreEitherRight
+      (mxt', eitherCont) <-
+        discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc $
+          m'
+            :< RT.DataElim
+              []
+              False
+              (SE.fromList'' [m' :< RT.Var (Var tmpVar)])
+              ( SE.fromList
+                  SE.Brace
+                  SE.Bar
+                  [ ( SE.fromList'' [(m2', RP.Cons eitherLeft [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+                      [],
+                      e2,
+                      endLoc
+                    ),
+                    ( SE.fromList'' [(m2', RP.Cons eitherRight [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var result))])))],
+                      [],
+                      m2' :< RT.piElim eitherRightVar [m2' :< RT.Var (Var result)],
+                      fakeLoc
+                    )
+                  ]
+              )
+      return $ m :< WT.Let opacity mxt' e1' eitherCont
 
-discernIdent :: Hint -> Axis -> RawIdent -> App (Hint, Ident)
+discernIdent :: Hint -> Axis -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent m axis x =
   case lookup x (_nenv axis) of
     Nothing ->
       Throw.raiseError m $ "Undefined variable: " <> x
-    Just (_, x') -> do
+    Just (mDef, x', _) -> do
       UnusedVariable.delete x'
-      return (m, x')
+      return (mDef, (m, x'))
 
 discernBinder ::
   Axis ->
@@ -921,7 +951,7 @@ discernPatternRow' axis patList newVarList body = do
       body' <- discern axis' body
       return ([], ([], [], body'))
     pat : rest -> do
-      (pat', varsInPat) <- discernPattern pat
+      (pat', varsInPat) <- discernPattern (currentLayer axis) pat
       (rest', body') <- discernPatternRow' axis rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
 
@@ -940,16 +970,17 @@ getNonLinearOccurrences vars found nonLinear =
           "the pattern variable `"
             <> x
             <> "` is used non-linearly"
-    (from, (m, _)) : rest
+    (from, (m, _, _)) : rest
       | S.member from found ->
           getNonLinearOccurrences rest found ((m, from) : nonLinear)
       | otherwise ->
           getNonLinearOccurrences rest (S.insert from found) nonLinear
 
 discernPattern ::
+  Layer ->
   (Hint, RP.RawPattern) ->
   App ((Hint, PAT.Pattern), NominalEnv)
-discernPattern (m, pat) = do
+discernPattern layer (m, pat) = do
   case pat of
     RP.Var name -> do
       case name of
@@ -965,7 +996,7 @@ discernPattern (m, pat) = do
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
           | otherwise -> do
               x' <- Gensym.newIdentFromText x
-              return ((m, PAT.Var x'), [(x, (m, x'))])
+              return ((m, PAT.Var x'), [(x, (m, x', layer))])
         Locator l -> do
           (dd, gn) <- resolveName m $ Locator l
           case gn of
@@ -991,7 +1022,7 @@ discernPattern (m, pat) = do
           "The constructor `" <> showName cons <> "` cannot have any arguments"
       case mArgs of
         RP.Paren args -> do
-          (args', axisList) <- mapAndUnzipM discernPattern $ SE.extract args
+          (args', axisList) <- mapAndUnzipM (discernPattern layer) $ SE.extract args
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -1011,7 +1042,7 @@ discernPattern (m, pat) = do
           let specifiedKeyMap = Map.fromList $ zip ks mvs
           let keyMap = Map.union specifiedKeyMap defaultKeyMap
           reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
-          (patList', axisList) <- mapAndUnzipM discernPattern reorderedArgs
+          (patList', axisList) <- mapAndUnzipM (discernPattern layer) reorderedArgs
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -1026,7 +1057,7 @@ discernPattern (m, pat) = do
       let m' = m {metaShouldSaveLocation = False}
       listNil <- Throw.liftEither $ DD.getLocatorPair m' coreListNil
       listCons <- locatorToName m' coreListCons
-      discernPattern $ foldListAppPat m' listNil listCons $ SE.extract patList
+      discernPattern layer $ foldListAppPat m' listNil listCons $ SE.extract patList
 
 foldListAppPat ::
   Hint ->
@@ -1060,3 +1091,43 @@ locatorToVarGlobal m text = do
 calculateRuneValue :: [Word8] -> Integer
 calculateRuneValue =
   foldl' (\acc byte -> (acc `shiftL` 8) .|. fromIntegral byte) 0
+
+getLayer :: Hint -> Axis -> Ident -> App Layer
+getLayer m axis x =
+  case lookup (Ident.toText x) (_nenv axis) of
+    Nothing ->
+      Throw.raiseCritical m $ "Scene.Parse.Discern.getLayer: Undefined variable: " <> Ident.toText x
+    Just (_, _, l) -> do
+      return l
+
+findExternalVariable :: Hint -> Axis -> WT.WeakTerm -> App (Maybe (Ident, Layer))
+findExternalVariable m axis e = do
+  let fvs = S.toList $ freeVars e
+  ls <- mapM (getLayer m axis) fvs
+  return $ find (\(_, l) -> l /= currentLayer axis) $ zip fvs ls
+
+ensureLayerClosedness :: Hint -> Axis -> WT.WeakTerm -> App ()
+ensureLayerClosedness mClosure axis e = do
+  mvar <- findExternalVariable mClosure axis e
+  case mvar of
+    Nothing ->
+      return ()
+    Just (x, l) -> do
+      Throw.raiseError mClosure $
+        "This closure is at the layer "
+          <> T.pack (show (currentLayer axis))
+          <> ", but the free variable `"
+          <> Ident.toText x
+          <> "` is at the layer "
+          <> T.pack (show l)
+          <> " (≠ "
+          <> T.pack (show (currentLayer axis))
+          <> ")"
+
+raiseLayerError :: Hint -> Layer -> Layer -> App a
+raiseLayerError m expected found = do
+  Throw.raiseError m $
+    "Expected layer:\n  "
+      <> T.pack (show expected)
+      <> "\nFound layer:\n  "
+      <> T.pack (show found)

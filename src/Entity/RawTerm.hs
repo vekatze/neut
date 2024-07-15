@@ -39,6 +39,7 @@ import Entity.HoleID
 import Entity.IsConstLike
 import Entity.Key
 import Entity.Name
+import Entity.NecessityVariant (NecessityVariant)
 import Entity.Noema qualified as N
 import Entity.RawBinder
 import Entity.RawIdent
@@ -61,9 +62,14 @@ data RawTermF a
   | Data (AttrD.Attr BN.BaseName) BN.BaseName [a]
   | DataIntro (AttrDI.Attr BN.BaseName) BN.BaseName [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
-  | Noema a
+  | Box a
+  | BoxNoema a
+  | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
+  | BoxIntroQuote C C (a, C)
+  | BoxElim NecessityVariant Bool C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Embody a
-  | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | Let LetKind C (Hint, RP.RawPattern, C, C, a) C C a C Loc C a Loc
+  | LetOn C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder a) C C a C Loc C a Loc
   | StaticText a T.Text
   | Rune a T.Text

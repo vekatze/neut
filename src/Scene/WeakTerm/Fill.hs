@@ -68,13 +68,27 @@ fill sub term =
       (binder', decisionTree') <- fill''' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< WT.Noema t -> do
+    m :< WT.Box t -> do
       t' <- fill sub t
-      return $ m :< WT.Noema t'
-    m :< WT.Embody t e -> do
+      return $ m :< WT.Box t'
+    m :< WT.BoxNoema t -> do
       t' <- fill sub t
+      return $ m :< WT.BoxNoema t'
+    m :< WT.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      xts' <- fillBinder sub xts
+      es' <- mapM (fill sub) es
       e' <- fill sub e
-      return $ m :< WT.Embody t' e'
+      return $ m :< WT.BoxIntro (zip xts' es') e'
+    m :< WT.BoxIntroQuote e -> do
+      e' <- fill sub e
+      return $ m :< WT.BoxIntroQuote e'
+    m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      castSeq' <- fillLetSeq sub castSeq
+      (mxt', e1') <- fillLet sub (mxt, e1)
+      uncastSeq' <- fillLetSeq sub uncastSeq
+      e2' <- fill sub e2
+      return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
     m :< WT.Actual e -> do
       e' <- fill sub e
       return $ m :< WT.Actual e'
@@ -127,6 +141,28 @@ fillBinder sub binder =
       t' <- fill sub t
       xts' <- fillBinder sub xts
       return $ (m, x, t') : xts'
+
+fillLet ::
+  HoleSubst ->
+  (BinderF WT.WeakTerm, WT.WeakTerm) ->
+  App (BinderF WT.WeakTerm, WT.WeakTerm)
+fillLet sub ((m, x, t), e) = do
+  e' <- fill sub e
+  t' <- fill sub t
+  return ((m, x, t'), e')
+
+fillLetSeq ::
+  HoleSubst ->
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  App [(BinderF WT.WeakTerm, WT.WeakTerm)]
+fillLetSeq sub letSeq = do
+  case letSeq of
+    [] ->
+      return []
+    letPair : rest -> do
+      letPair' <- fillLet sub letPair
+      rest' <- fillLetSeq sub rest
+      return $ letPair' : rest'
 
 fillSingleBinder ::
   HoleSubst ->

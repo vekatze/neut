@@ -168,6 +168,15 @@ inline' axis term = do
                 _ -> do
                   decisionTree' <- inlineDecisionTree axis decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
+    m :< TM.Box t -> do
+      t' <- inline' axis t
+      return $ m :< TM.Box t'
+    m :< TM.BoxIntro letSeq e -> do
+      let (xts, es) = unzip letSeq
+      xts' <- mapM (inlineBinder axis) xts
+      es' <- mapM (inline' axis) es
+      e' <- inline' axis e
+      return $ m :< TM.BoxIntro (zip xts' es') e'
     m :< TM.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- inline' axis e1
       case opacity of

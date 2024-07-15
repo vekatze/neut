@@ -1,3 +1,5 @@
+{- HLINT ignore "Use list comprehension" -}
+
 module Entity.RawTerm.Decode
   ( pp,
     toDoc,
@@ -24,6 +26,7 @@ import Entity.Hint
 import Entity.Key
 import Entity.Locator qualified as Locator
 import Entity.Name qualified as N
+import Entity.NecessityVariant (showNecessityVariant)
 import Entity.Piece qualified as PI
 import Entity.RawBinder
 import Entity.RawIdent
@@ -83,15 +86,60 @@ toDoc term =
             ],
           SE.decode' $ fmap decodePatternRow patternRowList
         ]
-    _ :< Noema t ->
+    _ :< Box t -> do
+      PI.arrange
+        [ PI.horizontal $ D.text "meta",
+          PI.inject $ toDoc t
+        ]
+    _ :< BoxNoema t ->
       D.join [D.text "&", toDoc t]
-    _ :< Embody e ->
-      D.join [D.text "*", toDoc e]
-    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+    m :< BoxIntro c1 c2 vs (e, c3) -> do
+      PI.arrange $
+        [PI.horizontal $ attachComment c1 $ D.text "box"]
+          ++ decodeQuoteVarList vs
+          ++ [PI.inject $ toDoc $ m :< Brace c2 (e, c3)]
+    m :< BoxIntroQuote c1 c2 (e, c3) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "quote",
+          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        ]
+    _ :< BoxElim nv _ c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+      let keyword = showNecessityVariant nv
       D.join
         [ PI.arrange $
+            [ PI.beforeBareSeries $ D.text keyword,
+              PI.bareSeries $ D.join [attachComment c1 $ boxElimArgToDoc mxt, C.asSuffix c2]
+            ]
+              ++ decodeNoeticVarList noeticVarList,
+          PI.arrange
+            [ PI.beforeBareSeries $ D.text "=",
+              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+            ],
+          D.text "in",
+          D.line,
+          attachComment c5 $ toDoc cont
+        ]
+    _ :< Embody e ->
+      D.join [D.text "*", toDoc e]
+    _ :< Let letKind c1 mxt c2 c3 e c4 _ c5 cont _ -> do
+      D.join
+        [ PI.arrange
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
               PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
+            ],
+          PI.arrange
+            [ PI.beforeBareSeries $ D.text "=",
+              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+            ],
+          D.text "in",
+          D.line,
+          attachComment c5 $ toDoc cont
+        ]
+    _ :< LetOn c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+      D.join
+        [ PI.arrange $
+            [ PI.beforeBareSeries $ D.text "let",
+              PI.bareSeries $ D.join [attachComment c1 $ boxElimArgToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -342,6 +390,12 @@ decodeNoeticVarList vs =
         PI.bareSeries $ SE.decode $ fmap decodeNoeticVar vs
       ]
 
+decodeQuoteVarList :: SE.Series (Hint, RawIdent) -> [PI.Piece]
+decodeQuoteVarList vs =
+  if SE.isEmpty vs
+    then []
+    else [PI.horizontal $ SE.decode $ fmap decodeNoeticVar vs]
+
 piArgToDoc :: RawBinder RawTerm -> D.Doc
 piArgToDoc (m, x, c1, c2, t) = do
   let t' = toDoc t
@@ -406,6 +460,10 @@ letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
 letArgToDoc (m, x, c1, c2, t) = do
   let x' = decodePattern x
   paramToDoc (m, x', c1, c2, t)
+
+boxElimArgToDoc :: (a, RawIdent, C, C, RawTerm) -> D.Doc
+boxElimArgToDoc (m, x, c1, c2, t) = do
+  paramToDoc (m, nameToDoc $ N.Var x, c1, c2, t)
 
 typeAnnot :: D.Doc -> D.Doc
 typeAnnot t = do

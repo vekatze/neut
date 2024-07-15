@@ -33,8 +33,10 @@ data TermF a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
-  | Noema a
-  | Embody a a
+  | Box a
+  | BoxNoema a
+  | BoxIntro [(BinderF a, a)] a
+  | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
   | Magic (Magic a)
@@ -75,7 +77,9 @@ isValue term =
       all isValue args
     _ :< DataIntro _ _ dataArgs consArgs ->
       all isValue $ dataArgs ++ consArgs
-    _ :< Noema {} ->
+    _ :< Box {} ->
+      True
+    _ :< BoxNoema {} ->
       True
     _ :< Prim {} ->
       True
@@ -91,3 +95,11 @@ fromLetSeq xts cont =
       cont
     (mxt@(m, _, _), e) : rest ->
       m :< Let O.Clear mxt e (fromLetSeq rest cont)
+
+fromLetSeqOpaque :: [(BinderF Term, Term)] -> Term -> Term
+fromLetSeqOpaque xts cont =
+  case xts of
+    [] ->
+      cont
+    (mxt@(m, _, _), e) : rest ->
+      m :< Let O.Opaque mxt e (fromLetSeq rest cont)

@@ -1,7 +1,7 @@
 {
   target {
-    fact {
-      main "fact.nt",
+    box {
+      main "box.nt",
       build-option [
         "-fsanitize=address",
       ],
