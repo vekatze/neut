@@ -2,7 +2,7 @@
 
 At first glance, the `let-on` stuff in the previous section might seem a bit artificial.
 
-Interestingly (at least to me and hopefully to you), `let-on` can be understood as a syntax sugar over the T-necessity operator in modal logic. Below, we'll first see how Neut incorporates the necessity modality and then how `let-on` is desugared using the modality.
+This `let-on` can actually be understood as a syntax sugar over the T-necessity operator. Below, we'll first see how Neut incorporates the necessity modality and then how `let-on` is desugared using the modality.
 
 ## What You'll Learn Here
 
@@ -15,15 +15,15 @@ Interestingly (at least to me and hopefully to you), `let-on` can be understood 
 
 For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator, often written as `□` in the literature.
 
-In Neut, given `e: a`, you can create values of type `meta a` by writing something like `box {e}`. Here, the `e` is not arbitrary since, if so, we must admit `a -> □a`, which makes every truth a necessary truth.
+In Neut, given `e: a`, you can create values of type `meta a` by writing something like `box {e}`. Here, the `e` is not arbitrary since, if so, we must admit propositions like `a -> □a`, making every truth a necessary truth.
 
-Neut uses _layers_ to capture the condition that `e` must satisfy. So, before using `box` or whatever, let's learn what layers are like.
+In Neut, the condition that `e` must satisfy is described using _layers_. So, before using `box`, let's learn what layers are like.
 
 ### The Basics of Layers
 
-For every term (and subterm) in Neut, an integer value called _layer_ is defined.
+For every term in Neut, an integer value called _layer_ is defined.
 
-The layer of the body of a `define` is defined to be 0:
+Let's see how layers are calculated. The layer of the body of a `define` is defined to be 0:
 
 ```neut
 define foo(): unit {
@@ -65,25 +65,6 @@ define use-my-func() {
 }
 ```
 
-In Neut, _a variable defined at layer n can only be used at layer n_. For example, the following is not a valid term:
-
-```neut
-define bar(): unit {
-  // here is layer 0
-  let x = Unit in // ← `x` is defined at layer 0
-
-  ... // ← some layer operations here
-
-  // layer 3 (for example)
-  let foo =
-    x // ← error: `x` is used at layer 3 (≠ 0)
-  in
-
-  ...
-}
-
-```
-
 Terms that aren't related to modality won't change layers. For example, the following is the layer structure of `function` and `let`:
 
 ```neut
@@ -103,7 +84,30 @@ in
 e2
 ```
 
-Below, we'll see how modal inference rules interact with layers.
+As long as you don't use modality-related terms, the layer of a term (and a subterm) is always 0.
+
+### Layers and Variables
+
+In Neut, _a variable defined at layer n can only be used at layer n_. For example, the following is not a valid term:
+
+```neut
+define bar(): unit {
+  // here is layer 0
+  let x = Unit in // ← `x` is defined at layer 0
+
+  ... // ← some layer operations here
+
+  // layer 3 (for example)
+  let v2 =
+    x // ← ERROR
+  in
+
+  ...
+}
+
+```
+
+This is because the variable `x` is defined at layer 0 but used at layer 3 (≠ 0).
 
 ## □-Introduction: Putting Values into Boxes
 
@@ -116,22 +120,24 @@ A term of type `meta a` can be created using the syntactic construct `box`.
 The syntax of `box` is as follows:
 
 ```neut
-// here is layer (n + 1)
-// (x1: &a1): a variable at layer (n + 1)
-// ...
-// (xm: &am): a variable at layer (n + 1)
+// here is layer (n+1)
+// - x1: &a1 at (n+1)
+// - ...
+// - xm: &am at (n+1)
 box x1, ..., xm {
   // here is layer n
-  // (x1: a1): a variable at layer n
-  // ...
-  // (xm: am): a variable at layer n
+  // - x1: a1 at n
+  // - ...
+  // - xm: am at n
   e1
 }
 ```
 
 Given a term `e: A`, the type of `box x1, ..., xn {e}` is `meta A`.
 
-Note that the types of `xi`s must be of the form `&A`. `box` turns the types of `xi`s into `A`s inside its body.
+Note that the types of `xi`s must be of the form `&A`.
+
+`box` turns `&a1, ..., &an` into `a1, ..., an` inside its body.
 
 ### Semantics
 
@@ -158,10 +164,10 @@ Let's see some examples. Below is an example of `box`:
 ```neut
 define some-function(x: &int): meta int {
   // here is layer 0
-  // (x: &int): variable at layer 0
+  // (x: &int at 0)
   box x {
     // here is layer -1
-    // (x: int): variable at layer -1
+    // (x: int at -1)
     x
   }
 }
@@ -212,26 +218,24 @@ Or, with a bit verbose comments on layers and types:
 
 ```neut
 // here is layer n
-// (y1: a1): a variable at layer n
-// ...
-// (ym: am): a variable at layer n
+// - y1: a1 @ n
+// - ...
+// - ym: am @ n
 letbox x on y1, ..., ym =
   // here is layer (n+1)
-  // (y1: &a1): a variable at layer (n+1)
-  // ...
-  // (ym: &am): a variable at layer (n+1)
+  // - y1: &a1 @ (n+1)
+  // - ...
+  // - ym: &am @ (n+1)
   e1
 in
 // here is layer n
-// (y1: a1): a variable at layer n
-// ...
-// (ym: am): a variable at layer n
+// - y1: a1 @ n
+// - ...
+// - ym: am @ n
 e2
 ```
 
-Given a term `e1: meta a`, `letbox` extracts the value from `e1` and binds to `x` and then executes `e2`.
-
-The variables `y1, ..., yn` in the "outer" layer are temporarily borrowed as noemata in `e1`.
+Given a boxed term `e1: meta a`, `letbox` binds it to `x: a`, and executes `e2`.
 
 ### Semantics
 
@@ -243,19 +247,20 @@ e2
 
 ↓
 
-let y1 = unsafe-cast(a1, &a1, y1) in
+// pseudo-code
+let y1 = cast(from=a1, to=&a1, y1) in
 ...
-let ym = unsafe-cast(am, &am, ym) in
+let ym = cast(from=am, to=&am, ym) in
 let x = e1 in
-let y1 = unsafe-cast(&a1, a1, y1) in
+let y1 = cast(from=&a1, to=a1, y1) in
 ...
-let ym = unsafe-cast(&am, am, ym) in
+let ym = cast(from=&am, to=am, ym) in
 e2
 ```
 
 ### Examples
 
-Let's see some examples. Below is an example of `letbox`:
+Let's see some examples. Below is a simple example of `letbox`:
 
 ```neut
 define use-letbox(): bool {
@@ -277,7 +282,7 @@ A bit more complex example:
 
 ```neut
 // helper function
-define noema-to-meta(x: &bool): meta bool {
+define from-noema(x: &bool): meta bool {
   box x {
     x
   }
@@ -286,16 +291,14 @@ define noema-to-meta(x: &bool): meta bool {
 define use-letbox(): bool {
   let x = True in
   let y = True in
-  // *here is layer 0*
-  // the list of free variables:
+  // here is layer 0
   // - x: bool @ 0
   // - y: bool @ 0
   letbox value on x =
-    // *here is layer 1*
-    // the list of free variables:
+    // here is layer 1
     // - x: &bool @ 1
     // - y:  bool @ 0
-    noema-to-meta(x)
+    from-noema(x)
   in
   value
 }
@@ -335,15 +338,21 @@ define axiom-K<a, b>(f: meta (a) -> b, x: meta a): meta b {
 
 In this sense, the `meta` is a necessity operator that satisfies the axiom K.
 
-### Create and Embody a Noema
+<div class="info-block">
+
+Don't confuse `meta (a) -> b` with `(meta a) -> b`.
+
+</div>
+
+### Creating and Embodying a Noema
 
 The following code creates a noema using `letbox` and embodies it using `box`:
 
 ```neut
 define test-embody(): unit {
   let x: int = 1 in
-  letbox result on x = // 💫 create a noema
-    box x { // ← 💫 embody a noema
+  letbox result on x = // ← creates a noema
+    box x { // ← embodies a noema
       add-int(x, 2)
     }
   in
@@ -351,17 +360,16 @@ define test-embody(): unit {
 }
 ```
 
-See how the variable `x` is passed through layers.
-
 ### Borrowing a List
 
-Let's see a more "real-world" example (It's funny to talk about the real world when talking about modality). Suppose that we have the following function:
+Let's take a look at a more "real-world" example (It's funny to say "real-world" when talking about modality). Suppose that we have the following function:
 
 ```neut
+// returns `True` if and only if the input `xs` is empty.
 is-empty: (xs: &list(int)) -> bool
 ```
 
-which returns `True` if and only if the input `xs` is empty. You can use this function via `box` and `letbox`:
+You can use this function via `box` and `letbox`:
 
 ```neut
 define borrow-and-check-if-empty(): unit {
@@ -392,7 +400,7 @@ In the above example, the variable `xs: list(int)` is turned into a noema by `le
 
 ## Quote: A Shorthand for Boxes
 
-We can turn a `bool` into `meta bool` by doing something like the below:
+As in above, we can turn a `bool` into `meta bool` by doing something like this:
 
 ```neut
 define wrap-bool(b: bool): meta bool {
@@ -466,7 +474,7 @@ define foo(): unit {
 
 `quote` is after all just a shorthand.
 
-## □-elimination-T
+## □-elimination-T: Unboxing within the Current Layer
 
 Remember the example of `is-empty`:
 
@@ -474,6 +482,7 @@ Remember the example of `is-empty`:
 define borrow-and-check-if-empty(): unit {
   let xs: list(int) = [1, 2, 3] in
   letbox result on xs =
+    // here is layer 1
     let b = is-empty(xs) in
     (..)
   in
@@ -484,11 +493,11 @@ define borrow-and-check-if-empty(): unit {
 Although the above term is valid, the term obtained by parameterizing `is-empty` is not valid:
 
 ```neut
-// not well-layered
 define borrow-and-check-if-empty(is-empty: (&list(int)) -> bool): unit {
   let xs: list(int) = [1, 2, 3] in
   letbox result on xs =
-    let b = is-empty(xs) in
+    // here is layer 1
+    let b = is-empty(xs) in // ← error
     (..)
   in
   (..)
@@ -497,7 +506,7 @@ define borrow-and-check-if-empty(is-empty: (&list(int)) -> bool): unit {
 
 This is because the variable `is-empty` is defined at layer 0 but used at layer 1.
 
-You can use `letbox-T` to bypass such situations.
+`letbox-T` is the loophole for such situations.
 
 ### Syntax
 
@@ -522,7 +531,7 @@ in
 e2
 ```
 
-That is, `letbox-T` is the same as `letbox` except that it doesn't alter the layer structure.
+That is, `letbox-T` is the same as `letbox` except that it doesn't change the layer structure.
 
 ### Semantics
 
@@ -544,12 +553,12 @@ let ym = unsafe-cast(&am, am, ym) in
 e2
 ```
 
-### Example
+### Example: Parameterizing a Callback
 
 Using `letbox-T`, we can parameterize `is-empty` as follows:
 
 ```neut
-define foo(is-empty: (&list(int)) -> bool): unit {
+define borrow-and-check-if-empty(is-empty: (&list(int)) -> bool): unit {
   let xs: list(int) = [1, 2, 3] in
   // layer 0
   // (xs: list(int) @ 0)
@@ -570,11 +579,9 @@ define foo(is-empty: (&list(int)) -> bool): unit {
 
 Note that the body of `letbox-T` in the example above is not layer 1 but layer 0.
 
-## Combination of `box` and `letbox-T`
+### Example: The Axiom T in Neut
 
-### The Axiom T in Neut
-
-You can prove the axiom T in modal logic by using `letbox-T`:
+You can prove the axiom T by using `letbox-T`:
 
 ```neut
 // Axiom T: □a -> a
@@ -599,7 +606,7 @@ In this sense, the `meta` is a necessity operator that satisfies the axiom T.
 
 (I know this is a bit too informal, but anyway)
 
-### Desugaring let-on Using the T-necessity
+### Example: Desugaring let-on Using the T-necessity
 
 Now we can desugar `let-on` as follows:
 
@@ -615,15 +622,9 @@ e2
 
 and this is why the type of `e1` must be restricted to some extent. Now we can see that those restrictions come from `quote`.
 
-<div class="info-block">
-
-If you're interested in the relation between `&a` and `meta a`, see the Note of the rule [box](terms.md#box). Spoiler: from the viewpoint of logic, `&a` is the same as `meta a` except that `&a` can only be used via "structural" rules.
-
-</div>
-
 ## Layer Closedness of Functions
 
-There's one last condition to require: every free variable in a `function` must be at the layer of `function`. For example, the following is not a valid term:
+There's one last condition that we must require: every free variable in a `function` must be at the layer of `function`. For example, the following is not a valid term:
 
 ```neut
 define use-function(x: meta int): meta () -> int {
@@ -639,11 +640,9 @@ define use-function(x: meta int): meta () -> int {
 }
 ```
 
-since the function is at layer -1, but the free variable `x` is at layer 0.
+This is because the function is at layer -1, but the free variable `x` is at layer 0.
 
-<!-- This restriction prohibits `letbox`es to return value that depends on borrowed noemata. For example, consider the following code that tries to return a function from `letbox`: -->
-
-If it were not for the layer condition on functions, the following is well-typed and well-layered.
+If it were not for this condition, the following would be well-typed and well-layered:
 
 ```neut
 define joker(): () -> unit {
@@ -676,8 +675,7 @@ The inner function (💫), which depends on `xs: &list(int)`, is bound to `f` af
 
 ## What You've Learned Here
 
-- Layer structures of `box`, `letbox`, `letbox-T`
+- Layer structures of `box`, `letbox`, `letbox-T`, and `function`
 - Using `box` or `quote` to create terms of type `meta {..}`
 - Using `letbox` or `letbox-T` to use terms of type `meta {..}`
 - Decomposition of `let-on` into `letbox-T` and `quote`
-- The layer condition of functions

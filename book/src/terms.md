@@ -1450,9 +1450,7 @@ Incidentally, the rule "The body of `define` is at layer 0" is not really necess
 
 ### Note
 
-"But what after all is the `&` in `&a`? Is it a modal operator? The way the type is introduced and used isn't very familiar to me. What on earth is it?"
-
-We'll see the answer here. To spoil the conclusion, `&a` is the T-necessity modality defined through structural rules. The use of `&a` is restricted simply by giving a name different from `meta a`.
+"But what after all is the `&` in `&a`?" ―Let's give an answer to this question.
 
 Firstly, observe that the following derivation is admissible in Neut:
 
@@ -1465,9 +1463,9 @@ Firstly, observe that the following derivation is admissible in Neut:
 Also, by setting `Δ = ·` in the typing rule of `box`, we obtain the following:
 
 ```neut
-Γ1; ...; Γn; · ⊢ e1: a
+Γ1; ...; Γn; · ⊢ e: a
 -------------------------------- (□-intro')
-Γ1; ...; Γn ⊢ box Δ {e1}: meta a
+Γ1; ...; Γn ⊢ box Δ {e}: meta a
 ```
 
 Thus, we can perform the following derivation:
@@ -1493,9 +1491,9 @@ That is to say, the following rule is admissible without using `&`:
 Now, compare the above with the rule of `box`:
 
 ```neut
-Γ1; ...; Γn; Δ ⊢ e1: a
+Γ1; ...; Γn; Δ ⊢ e: a
 ------------------------------------- (□-intro)
-Γ1; ...; Γn, &Δ ⊢ box Δ {e1}: meta a
+Γ1; ...; Γn, &Δ ⊢ box Δ {e}: meta a
 ```
 
 As you can see, we can obtain `(□-intro)` from `(□-intro-slide)` by replacing `meta Δ` with `&Δ`. That is to say, `&a` is the "structurally-defined" variant of `meta a`.
