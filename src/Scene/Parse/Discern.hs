@@ -454,8 +454,6 @@ discern axis term =
       h <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
       discern axis $ bind fakeLoc fakeLoc (m, h, [], [], unit) e1 e2
-    _ :< RT.Trail e1 -> do
-      discern axis e1
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
       boolTrue <- locatorToName (blur m) coreBoolTrue
