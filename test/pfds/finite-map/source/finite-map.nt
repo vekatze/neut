@@ -11,7 +11,7 @@ data finite-map-signature(a, b) {
   )
 }
 
-define make-finite-map(a: type, b: type, compare: (a, a) -> ordering): finite-map-signature(a, b) {
+define make-finite-map(a: type, b: type, !compare: (a, a) -> ordering): finite-map-signature(a, b) {
   Finite-Map of {
     empty = Leaf,
     insert = {
@@ -20,7 +20,7 @@ define make-finite-map(a: type, b: type, compare: (a, a) -> ordering): finite-ma
         | Leaf =>
           Node(Leaf, !key, value, Leaf)
         | Node(left, !k, v, right) =>
-          match compare(!key, !k) {
+          match !compare(!key, !k) {
           | LT =>
             Node(insert(!key, value, left), !k, v, right)
           | EQ =>
@@ -37,7 +37,7 @@ define make-finite-map(a: type, b: type, compare: (a, a) -> ordering): finite-ma
         | Leaf =>
           none()
         | Node(left, k, v, right) =>
-          match compare(!key, *k) {
+          match !compare(!key, *k) {
           | LT =>
             lookup(!key, left)
           | EQ =>

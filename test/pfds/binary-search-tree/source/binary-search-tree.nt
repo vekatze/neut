@@ -11,7 +11,7 @@ data set-signature(a) {
 | Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
 }
 
-define make-set-signature(a: type, compare: (a, a) -> ordering): set-signature(a) {
+define make-set-signature(a: type, !compare: (a, a) -> ordering): set-signature(a) {
   Set of {
     empty = Leaf,
     insert = {
@@ -20,7 +20,7 @@ define make-set-signature(a: type, compare: (a, a) -> ordering): set-signature(a
         | Leaf =>
           Node(Leaf, !new-value, Leaf)
         | Node(left, !x, right) =>
-          match compare(!new-value, !x) {
+          match !compare(!new-value, !x) {
           | LT =>
             Node(insert(!new-value, left), !x, right)
           | EQ =>
@@ -37,7 +37,7 @@ define make-set-signature(a: type, compare: (a, a) -> ordering): set-signature(a
         | Leaf =>
           False
         | Node(left, x, right) =>
-          match compare(!needle, *x) {
+          match !compare(!needle, *x) {
           | LT =>
             member(!needle, left)
           | EQ =>

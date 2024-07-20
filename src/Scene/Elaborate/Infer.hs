@@ -176,6 +176,10 @@ data Axis
     mustPerformExpCheck :: Bool
   }
 
+mergeVarSet :: IntMap.IntMap Bool -> IntMap.IntMap Bool -> IntMap.IntMap Bool
+mergeVarSet set1 set2 = do
+  IntMap.unionWith (||) set1 set2
+
 isExistingVar :: Ident -> Axis -> App (Maybe Bool)
 isExistingVar i axis = do
   foundVarSet <- liftIO $ readIORef $ foundVarSetRef axis
@@ -636,10 +640,18 @@ inferClauseList ::
   DT.CaseList WT.WeakTerm ->
   App (DT.CaseList WT.WeakTerm, WT.WeakTerm)
 inferClauseList m axis cursorType (fallbackClause, clauseList) = do
+  newVarSetRef <- liftIO $ newIORef IntMap.empty
   (clauseList', answerTypeList) <- flip mapAndUnzipM clauseList $ \clause -> do
     axis' <- cloneAxis axis
-    inferClause axis' cursorType clause
+    result <- inferClause axis' cursorType clause
+    branchVarSet <- liftIO $ readIORef $ foundVarSetRef axis'
+    liftIO $ modifyIORef' newVarSetRef $ mergeVarSet branchVarSet
+    return result
   (fallbackClause', fallbackAnswerType) <- inferDecisionTree m axis fallbackClause
+  fallbackVarSet <- liftIO $ readIORef $ foundVarSetRef axis
+  liftIO $ modifyIORef' newVarSetRef $ mergeVarSet fallbackVarSet
+  newVarSet <- liftIO $ readIORef newVarSetRef
+  liftIO $ writeIORef (foundVarSetRef axis) newVarSet
   h <- newHole m (varEnv axis)
   forM_ (answerTypeList ++ [fallbackAnswerType]) $ insConstraintEnv h
   return ((fallbackClause', clauseList'), fallbackAnswerType)
