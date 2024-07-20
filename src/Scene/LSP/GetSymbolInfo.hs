@@ -27,8 +27,8 @@ getSymbolInfo params = do
   source <- LSP.getSource params
   lift $ invalidate source
   lift $ Check.checkSingle (sourceFilePath source)
-  ((locType, _), _) <- lift (runAppM $ LSP.findDefinition params) >>= liftMaybe
-  lift (runAppM $ _getSymbolInfo locType) >>= liftMaybe
+  ((locType, _), _) <- LSP.findDefinition params
+  _getSymbolInfo locType
 
 _getSymbolInfo :: LT.LocType -> AppM T.Text
 _getSymbolInfo locType = do

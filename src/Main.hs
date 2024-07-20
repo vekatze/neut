@@ -43,8 +43,8 @@ execute = do
           Get.get cfg
         C.Format cfg ->
           Format.format cfg
-        C.LSP cfg ->
-          LSP.lsp cfg
+        C.LSP ->
+          LSP.lsp
         C.ShowVersion cfg ->
           Version.showVersion cfg
         C.Zen cfg ->

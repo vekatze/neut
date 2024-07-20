@@ -3,6 +3,7 @@ module Context.Throw
     execute,
     run,
     runMaybe,
+    runEither,
     collectLogs,
     raiseError,
     raiseError',
@@ -50,6 +51,16 @@ runMaybe c = do
       return Nothing
     Right result ->
       return $ Just result
+
+runEither :: App a -> App (Either [R.Remark] a)
+runEither c = do
+  resultOrErr <- execute c
+  remarkList <- Remark.getGlobalRemarkList
+  case resultOrErr of
+    Left (E.MakeError logList) ->
+      return $ Left $ logList ++ remarkList
+    Right v ->
+      return $ Right v
 
 collectLogs :: App () -> App [R.Remark]
 collectLogs c = do
