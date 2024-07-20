@@ -28,13 +28,12 @@ _findDefinition ::
 _findDefinition params locationTree = do
   let line = fromEnum (params ^. J.position . J.line) + 1
   let col = fromEnum (params ^. J.position . J.character) + 1
-  (locType, m, (colFrom, colTo)) <- liftMaybe $ LT.find line col locationTree
+  (locType, m, _, symbolLen) <- liftMaybe $ LT.find line col locationTree
   let defPath = H.metaFileName m
   let (defLine, defCol) = H.metaLocation m
   let defFilePath' = filePathToUri defPath
-  let symbolLen = fromIntegral $ colTo - colFrom
   let _start = Position {_line = fromIntegral (defLine - 1), _character = fromIntegral (defCol - 1)}
-  let _end = _start {_character = _character _start + symbolLen}
+  let _end = _start {_character = _character _start + fromIntegral symbolLen}
   let range = Range {_start, _end}
   return
     ( locType,

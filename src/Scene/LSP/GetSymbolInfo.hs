@@ -34,7 +34,7 @@ _getSymbolInfo :: LT.LocType -> AppM T.Text
 _getSymbolInfo locType = do
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
-    LT.Local varID -> do
+    LT.Local varID _ -> do
       t <- lift (lookupWeakTypeEnvMaybe varID) >>= liftMaybe
       t' <- lift $ elaborate' t
       return $ toText $ weaken t'

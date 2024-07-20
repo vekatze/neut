@@ -1,8 +1,8 @@
 module Context.Tag
   ( initialize,
-    insert,
     insertLocalVar,
     insertGlobalVar,
+    insertLocator,
     insertFileLoc,
     insertBinder,
     get,
@@ -14,6 +14,7 @@ import Context.App.Internal
 import Control.Monad (unless, when)
 import Data.Text qualified as T
 import Entity.Binder
+import Entity.Const qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident
@@ -33,7 +34,7 @@ insertLocalVar :: Hint -> Ident -> Hint -> App ()
 insertLocalVar mUse ident@(I (var, varID)) mDef = do
   unless (isHole ident) $ do
     let nameLength = T.length var
-    let symbolLoc = LT.SymbolLoc (LT.Local varID)
+    let symbolLoc = LT.SymbolLoc (LT.Local varID nameLength)
     insert mUse symbolLoc nameLength mDef
 
 insertGlobalVar :: Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> App ()
@@ -41,6 +42,15 @@ insertGlobalVar mUse dd isConstLike mDef = do
   let nameLength = T.length (DD.localLocator dd)
   let symbolLoc = LT.SymbolLoc (LT.Global dd isConstLike)
   insert mUse symbolLoc nameLength mDef
+
+insertLocator :: Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> App ()
+insertLocator mUse dd isConstLike mDef = do
+  let gl = DD.globalLocator dd
+  let ll = DD.localLocator dd
+  let glLen = T.length gl
+  let llLen = T.length ll
+  let sepLen = T.length C.nsSep
+  insert mUse (LT.SymbolLoc (LT.Global dd isConstLike)) (glLen + sepLen + llLen) mDef
 
 insert :: Hint -> LT.LocType -> Int -> Hint -> App ()
 insert mUse locType nameLength mDef = do

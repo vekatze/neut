@@ -10,16 +10,26 @@ module Entity.LocationTree
 where
 
 import Data.Binary
+import Data.Text qualified as T
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.IsConstLike
 import GHC.Generics (Generic)
 
+type ColFrom =
+  Int
+
+type ColTo =
+  Int
+
+type DefSymbolLen =
+  Int
+
 type ColInterval =
-  (Int, Int)
+  (ColFrom, ColTo)
 
 data SymbolName
-  = Local Int
+  = Local Int DefSymbolLen
   | Global DD.DefiniteDescription IsConstLike
   deriving (Show, Generic)
 
@@ -40,11 +50,19 @@ instance Binary SymbolName
 
 instance Binary LocType
 
+getLength :: SymbolName -> DefSymbolLen
+getLength s =
+  case s of
+    Local _ len ->
+      len
+    Global dd _ ->
+      T.length $ DD.localLocator dd
+
 empty :: LocationTree
 empty =
   Leaf
 
-insert :: LocType -> (Int, (Int, Int)) -> Hint -> LocationTree -> LocationTree
+insert :: LocType -> (Line, ColInterval) -> Hint -> LocationTree -> LocationTree
 insert lt loc value t =
   case t of
     Leaf ->
@@ -58,7 +76,7 @@ insert lt loc value t =
         EQ ->
           Node lt' loc' (SavedHint value) t1 t2
 
-find :: Int -> Int -> LocationTree -> Maybe (LocType, Hint, ColInterval)
+find :: Int -> Int -> LocationTree -> Maybe (LocType, Hint, ColInterval, DefSymbolLen)
 find line col t =
   case t of
     Leaf ->
@@ -75,8 +93,12 @@ find line col t =
               find line col t1
             (_, True) ->
               find line col t2
-            _ ->
-              Just (lt, value, (colFrom, colTo))
+            _ -> do
+              case lt of
+                FileLoc ->
+                  Just (lt, value, (colFrom, colTo), colTo - colFrom)
+                SymbolLoc sym ->
+                  Just (lt, value, (colFrom, colTo), getLength sym)
 
 findRef :: Loc -> LocationTree -> [(FilePath, (Line, ColInterval))]
 findRef loc t =
