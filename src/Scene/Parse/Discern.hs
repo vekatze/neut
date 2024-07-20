@@ -250,6 +250,12 @@ discern axis term =
           | Just x <- readIntBinaryMaybe s -> do
               h <- Gensym.newHole m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int h x)
+          | Just x <- readIntOctalMaybe s -> do
+              h <- Gensym.newHole m []
+              return $ m :< WT.Prim (WP.Value $ WPV.Int h x)
+          | Just x <- readIntHexadecimalMaybe s -> do
+              h <- Gensym.newHole m []
+              return $ m :< WT.Prim (WP.Value $ WPV.Int h x)
           | Just x <- R.readMaybe (T.unpack s) -> do
               h <- Gensym.newHole m []
               return $ m :< WT.Prim (WP.Value $ WPV.Float h x)
