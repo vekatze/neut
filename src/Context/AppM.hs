@@ -6,15 +6,28 @@ module Context.AppM
 where
 
 import Context.App
-import Control.Monad.Trans.Maybe
+import Context.Throw qualified as Throw
+import Control.Monad.Trans.Except
+import Entity.Config.Remark qualified as Remark
+import Entity.Remark qualified as R
+import Scene.Initialize qualified as Initialize
 
 type AppM =
-  MaybeT App
+  ExceptT [R.Remark] App
 
-runAppM :: AppM a -> App (Maybe a)
-runAppM =
-  runMaybeT
+runAppM :: AppM a -> App (Either [R.Remark] a)
+runAppM action = do
+  unitOrNone <- Throw.runEither (Initialize.initializeCompiler Remark.lspConfig)
+  case unitOrNone of
+    Right _ ->
+      runExceptT action
+    Left remarks ->
+      return $ Left remarks
 
 liftMaybe :: Maybe a -> AppM a
-liftMaybe =
-  MaybeT . pure
+liftMaybe m =
+  case m of
+    Nothing ->
+      except $ Left []
+    Just v ->
+      return v

@@ -14,6 +14,7 @@ import Language.LSP.VFS
 import Path
 import Path.IO
 import Scene.Format qualified as Format
+import Scene.LSP.Util (liftAppM)
 
 format :: Uri -> AppLsp a [TextEdit]
 format uri = do
@@ -22,7 +23,7 @@ format uri = do
     Nothing ->
       return []
     Just file -> do
-      textEditOrNone <- lift $ runAppM $ _format uri file
+      textEditOrNone <- liftAppM $ _format uri file
       return $ fromMaybe [] textEditOrNone
 
 _format ::

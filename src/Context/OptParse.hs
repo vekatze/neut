@@ -12,7 +12,6 @@ import Entity.Config.Clean qualified as Clean
 import Entity.Config.Create qualified as Create
 import Entity.Config.Format qualified as Format
 import Entity.Config.Get qualified as Get
-import Entity.Config.LSP qualified as LSP
 import Entity.Config.Remark qualified as Remark
 import Entity.Config.Version qualified as Version
 import Entity.Config.Zen qualified as Zen
@@ -108,11 +107,8 @@ parseZenOpt = do
         }
 
 parseLSPOpt :: Parser Command
-parseLSPOpt = do
-  remarkCfg <- remarkConfigOpt
-  pure $
-    LSP $
-      LSP.Config {LSP.remarkCfg = remarkCfg}
+parseLSPOpt =
+  pure LSP
 
 parseCreateOpt :: Parser Command
 parseCreateOpt = do
