@@ -60,11 +60,11 @@ compilePatternMatrix l nenv isNoetic occurrences mat =
               let (mCursor, cursor) = V.head occurrences
               clauseList <- forM headConstructors $ \(mPat, specializer) -> do
                 case specializer of
-                  PAT.LiteralIntSpecializer literalInt -> do
+                  PAT.LiteralSpecializer literal -> do
                     let occurrences' = V.tail occurrences
                     specialMatrix <- PATS.specialize isNoetic cursor specializer mat
                     cont <- compilePatternMatrix l nenv isNoetic occurrences' specialMatrix
-                    return $ DT.LiteralIntCase mPat literalInt cont
+                    return $ DT.LiteralCase mPat literal cont
                   PAT.ConsSpecializer (PAT.ConsInfo {..}) -> do
                     dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
                     dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]

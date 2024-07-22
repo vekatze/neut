@@ -16,6 +16,7 @@ import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.Ident
 import Entity.IsConstLike
+import Entity.Literal qualified as L
 import GHC.Generics (Generic)
 
 data DecisionTree a
@@ -36,7 +37,7 @@ data Case a
         consArgs :: [BinderF a],
         cont :: DecisionTree a
       }
-  | LiteralIntCase Hint Integer (DecisionTree a)
+  | LiteralCase Hint L.Literal (DecisionTree a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (DecisionTree a)
@@ -66,5 +67,5 @@ getCont c =
   case c of
     ConsCase {..} ->
       cont
-    LiteralIntCase _ _ cont ->
+    LiteralCase _ _ cont ->
       cont

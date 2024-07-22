@@ -663,9 +663,9 @@ inferClause ::
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
 inferClause axis cursorType decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       (cont', tCont) <- inferDecisionTree mPat axis cont
-      return (DT.LiteralIntCase mPat i cont', tCont)
+      return (DT.LiteralCase mPat i cont', tCont)
     DT.ConsCase {..} -> do
       let m = DT.mCons decisionCase
       let (dataTermList, _) = unzip dataArgs

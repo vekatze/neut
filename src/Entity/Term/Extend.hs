@@ -133,9 +133,9 @@ extendCaseList (fallbackClause, clauseList) = do
 extendCase :: DT.Case (Cofree TM.TermF ()) -> DT.Case TM.Term
 extendCase decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       let cont' = extendDecisionTree cont
-      DT.LiteralIntCase mPat i cont'
+      DT.LiteralCase mPat i cont'
     DT.ConsCase {..} -> do
       let dataArgs' = map (bimap extend extend) dataArgs
       let consArgs' = map extendBinder consArgs

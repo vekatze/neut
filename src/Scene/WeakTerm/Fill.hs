@@ -245,9 +245,9 @@ fillCase ::
   App (DT.Case WT.WeakTerm)
 fillCase sub decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       cont' <- fillDecisionTree sub cont
-      return $ DT.LiteralIntCase mPat i cont'
+      return $ DT.LiteralCase mPat i cont'
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (fill sub) dataTerms

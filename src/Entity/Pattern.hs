@@ -27,6 +27,7 @@ import Entity.Error
 import Entity.Hint hiding (new)
 import Entity.Ident
 import Entity.IsConstLike
+import Entity.Literal qualified as L
 
 data Pattern
   = Var Ident
@@ -47,7 +48,7 @@ data ConsInfo = ConsInfo
 
 data Specializer
   = ConsSpecializer ConsInfo
-  | LiteralIntSpecializer Integer
+  | LiteralSpecializer L.Literal
 
 type PatternRow a =
   (V.Vector (Hint, Pattern), a)
@@ -108,15 +109,15 @@ getHeadConstructors' (rows, _) =
       Nothing
 
 data PseudoDD
-  = LiteralIntDD Integer
+  = LiteralDD L.Literal
   | ConsDD DD.DefiniteDescription
   deriving (Eq, Ord)
 
 consInfoToDD :: (Hint, Specializer) -> PseudoDD
 consInfoToDD (_, intOrConsInfo) =
   case intOrConsInfo of
-    LiteralIntSpecializer i ->
-      LiteralIntDD i
+    LiteralSpecializer i ->
+      LiteralDD i
     ConsSpecializer consInfo ->
       ConsDD $ consDD consInfo
 
@@ -130,7 +131,7 @@ getColumnConstructor ::
 getColumnConstructor (mPat, pat) =
   case pat of
     LiteralInt i ->
-      return (mPat, LiteralIntSpecializer i)
+      return (mPat, LiteralSpecializer (L.Int i))
     Cons consInfo ->
       return (mPat, ConsSpecializer consInfo)
     _ ->

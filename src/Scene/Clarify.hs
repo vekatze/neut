@@ -34,6 +34,7 @@ import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
+import Entity.Literal qualified as L
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Noema qualified as N
@@ -387,9 +388,13 @@ clarifyCase ::
   App (EC.EnumCase, C.Comp, [BinderF TM.Term])
 clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase _ i cont -> do
+    DT.LiteralCase _ l cont -> do
       (body', contChain) <- clarifyDecisionTree tenv isNoetic dataArgsMap cont
-      return (EC.Int i, body', contChain)
+      case l of
+        L.Int i ->
+          return (EC.Int i, body', contChain)
+        L.Rune _ ->
+          undefined
     DT.ConsCase {..} -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes

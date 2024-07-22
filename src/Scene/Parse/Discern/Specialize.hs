@@ -13,6 +13,7 @@ import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
 import Entity.Binder
 import Entity.Ident
+import Entity.Literal qualified as L
 import Entity.Noema qualified as N
 import Entity.OptimizableData qualified as OD
 import Entity.Pattern
@@ -41,14 +42,14 @@ specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, b
       Throw.raiseCritical' "Specialization against the empty pattern matrix should not happen"
     Just ((m, WildcardVar), rest) -> do
       case specializer of
-        LiteralIntSpecializer _ -> do
+        LiteralSpecializer _ -> do
           return $ Just (rest, (freedVars, baseSeq, body))
         ConsSpecializer (ConsInfo {consArgNum}) -> do
           let wildcards = V.fromList $ replicate (AN.reify consArgNum) (m, WildcardVar)
           return $ Just (V.concat [wildcards, rest], (freedVars, baseSeq, body))
     Just ((_, Var x), rest) -> do
       case specializer of
-        LiteralIntSpecializer _ -> do
+        LiteralSpecializer _ -> do
           h <- Gensym.newHole mBody []
           adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
           return $ Just (rest, (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
@@ -59,7 +60,7 @@ specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, b
           return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
     Just ((_, Cons (ConsInfo {..})), rest) -> do
       case specializer of
-        LiteralIntSpecializer {} ->
+        LiteralSpecializer {} ->
           return Nothing
         ConsSpecializer (ConsInfo {consDD = dd}) -> do
           if dd == consDD
@@ -75,9 +76,9 @@ specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, b
             else return Nothing
     Just ((_, LiteralInt i), rest) -> do
       case specializer of
-        LiteralIntSpecializer j ->
+        LiteralSpecializer (L.Int j) ->
           if i == j
             then return $ Just (rest, (freedVars, baseSeq, body))
             else return Nothing
-        ConsSpecializer {} ->
+        _ ->
           return Nothing

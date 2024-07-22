@@ -479,9 +479,9 @@ elaborateDecisionTree ctx mOrig m tree =
 elaborateClause :: Hint -> Ident -> ClauseContext -> DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
 elaborateClause mOrig cursor ctx decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       cont' <- elaborateDecisionTree ctx mOrig mPat cont
-      return $ DT.LiteralIntCase mPat i cont'
+      return $ DT.LiteralCase mPat i cont'
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM elaborate' dataTerms

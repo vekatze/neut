@@ -112,7 +112,7 @@ chainOfCaseList tenv m (fallbackClause, clauseList) = do
 chainOfCase :: TM.TypeEnv -> Hint -> DT.Case TM.Term -> [BinderF TM.Term]
 chainOfCase tenv m decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase _ _ cont -> do
+    DT.LiteralCase _ _ cont -> do
       chainOfDecisionTree' tenv m [] cont
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
@@ -124,7 +124,7 @@ chainOfCase tenv m decisionCase = do
 chainOfCaseWithoutCont :: TM.TypeEnv -> DT.Case TM.Term -> [BinderF TM.Term]
 chainOfCaseWithoutCont tenv decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat _ cont -> do
+    DT.LiteralCase mPat _ cont -> do
       chainOfDecisionTree' tenv mPat [] cont
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs

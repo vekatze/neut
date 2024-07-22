@@ -235,9 +235,9 @@ reduceCase ::
   App (DT.Case WT.WeakTerm)
 reduceCase axis decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       cont' <- reduceDecisionTree axis cont
-      return $ DT.LiteralIntCase mPat i cont'
+      return $ DT.LiteralCase mPat i cont'
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (reduce' axis) dataTerms
