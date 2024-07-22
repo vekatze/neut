@@ -3,6 +3,7 @@ module Entity.Pattern
     PatternRow,
     PatternMatrix,
     ConsInfo (..),
+    Specializer (..),
     new,
     getHeadConstructors,
     swapColumn,
@@ -43,6 +44,10 @@ data ConsInfo = ConsInfo
     args :: [(Hint, Pattern)]
   }
   deriving (Show)
+
+data Specializer
+  = ConsSpecializer ConsInfo
+  | LiteralIntSpecializer Integer
 
 type PatternRow a =
   (V.Vector (Hint, Pattern), a)
@@ -90,7 +95,7 @@ new rows =
 
 getHeadConstructors ::
   PatternMatrix a ->
-  [(Hint, Either Integer ConsInfo)]
+  [(Hint, Specializer)]
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -107,27 +112,27 @@ data PseudoDD
   | ConsDD DD.DefiniteDescription
   deriving (Eq, Ord)
 
-consInfoToDD :: (Hint, Either Integer ConsInfo) -> PseudoDD
+consInfoToDD :: (Hint, Specializer) -> PseudoDD
 consInfoToDD (_, intOrConsInfo) =
   case intOrConsInfo of
-    Left i ->
+    LiteralIntSpecializer i ->
       LiteralIntDD i
-    Right consInfo ->
+    ConsSpecializer consInfo ->
       ConsDD $ consDD consInfo
 
-getColumnConstructors :: PatternColumn -> [(Hint, Either Integer ConsInfo)]
+getColumnConstructors :: PatternColumn -> [(Hint, Specializer)]
 getColumnConstructors col = do
   ListUtils.nubOrdOn consInfoToDD $ mapMaybe getColumnConstructor col
 
 getColumnConstructor ::
   (Hint, Pattern) ->
-  Maybe (Hint, Either Integer ConsInfo)
+  Maybe (Hint, Specializer)
 getColumnConstructor (mPat, pat) =
   case pat of
     LiteralInt i ->
-      return (mPat, Left i)
+      return (mPat, LiteralIntSpecializer i)
     Cons consInfo ->
-      return (mPat, Right consInfo)
+      return (mPat, ConsSpecializer consInfo)
     _ ->
       Nothing
 

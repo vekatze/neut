@@ -12,17 +12,12 @@ import Control.Comonad.Cofree
 import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
 import Entity.Binder
-import Entity.DefiniteDescription qualified as DD
 import Entity.Ident
 import Entity.Noema qualified as N
 import Entity.OptimizableData qualified as OD
 import Entity.Pattern
 import Entity.WeakTerm qualified as WT
 import Scene.Parse.Discern.Noema
-
-data Specializer
-  = ConsSpecializer DD.DefiniteDescription AN.ArgNum
-  | LiteralIntSpecializer Integer
 
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 specialize ::
@@ -48,8 +43,8 @@ specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, b
       case specializer of
         LiteralIntSpecializer _ -> do
           return $ Just (rest, (freedVars, baseSeq, body))
-        ConsSpecializer _ argNum -> do
-          let wildcards = V.fromList $ replicate (AN.reify argNum) (m, WildcardVar)
+        ConsSpecializer (ConsInfo {consArgNum}) -> do
+          let wildcards = V.fromList $ replicate (AN.reify consArgNum) (m, WildcardVar)
           return $ Just (V.concat [wildcards, rest], (freedVars, baseSeq, body))
     Just ((_, Var x), rest) -> do
       case specializer of
@@ -57,8 +52,8 @@ specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, b
           h <- Gensym.newHole mBody []
           adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
           return $ Just (rest, (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
-        ConsSpecializer _ argNum -> do
-          let wildcards = V.fromList $ replicate (AN.reify argNum) (mBody, WildcardVar)
+        ConsSpecializer (ConsInfo {consArgNum}) -> do
+          let wildcards = V.fromList $ replicate (AN.reify consArgNum) (mBody, WildcardVar)
           h <- Gensym.newHole mBody []
           adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
           return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
@@ -66,7 +61,7 @@ specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, b
       case specializer of
         LiteralIntSpecializer {} ->
           return Nothing
-        ConsSpecializer dd _ -> do
+        ConsSpecializer (ConsInfo {consDD = dd}) -> do
           if dd == consDD
             then do
               od <- OptimizableData.lookup consDD
