@@ -9,6 +9,7 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
 import Context.RawImportSummary qualified as RawImportSummary
+import Context.Remark (printNote')
 import Context.Remark qualified as Remark
 import Context.SymLoc qualified as SymLoc
 import Context.Throw qualified as Throw
@@ -56,6 +57,7 @@ import Scene.Term.Inline qualified as TM
 
 elaborate :: Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate cacheOrStmt = do
+  printNote' "elaborate"
   initialize
   case cacheOrStmt of
     Left cache -> do

@@ -1,4 +1,4 @@
-module Scene.Parse.Discern.Text (parseText) where
+module Entity.Text.Util (parseText) where
 
 import Data.Char
 import Data.List

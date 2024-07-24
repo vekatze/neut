@@ -13,7 +13,6 @@ import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
 import Entity.Binder
 import Entity.Ident
-import Entity.Literal qualified as L
 import Entity.Noema qualified as N
 import Entity.OptimizableData qualified as OD
 import Entity.Pattern
@@ -74,10 +73,10 @@ specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, b
                 _ ->
                   return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, baseSeq, body))
             else return Nothing
-    Just ((_, LiteralInt i), rest) -> do
+    Just ((_, Literal l), rest) -> do
       case specializer of
-        LiteralSpecializer (L.Int j) ->
-          if i == j
+        LiteralSpecializer l' ->
+          if l == l'
             then return $ Just (rest, (freedVars, baseSeq, body))
             else return Nothing
         _ ->

@@ -138,7 +138,7 @@ ensurePatternSanity (m, pat) =
   case pat of
     PAT.Var v -> do
       Tag.insertBinder (m, v, ())
-    PAT.LiteralInt _ -> do
+    PAT.Literal _ -> do
       return ()
     PAT.WildcardVar {} ->
       return ()

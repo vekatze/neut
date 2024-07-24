@@ -33,6 +33,7 @@ import Entity.RawIdent
 import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
+import Entity.Rune qualified as RU
 import Entity.Syntax.Series qualified as SE
 import Entity.WeakPrimType qualified as WPT
 import Entity.WeakPrimType.FromText qualified as WPT
@@ -566,6 +567,7 @@ rawTermPatternBasic :: Parser ((Hint, RP.RawPattern), C)
 rawTermPatternBasic =
   choice
     [ rawTermPatternListIntro,
+      rawTermPatternRuneIntro,
       rawTermPatternConsOrVar
     ]
 
@@ -574,6 +576,16 @@ rawTermPatternListIntro = do
   m <- getCurrentHint
   (patList, c) <- seriesBracket rawTermPattern
   return ((m, RP.ListIntro patList), c)
+
+rawTermPatternRuneIntro :: Parser ((Hint, RP.RawPattern), C)
+rawTermPatternRuneIntro = do
+  m <- getCurrentHint
+  (s, c) <- rune
+  case RU.make s of
+    Right r ->
+      return ((m, RP.RuneIntro r), c)
+    Left e ->
+      lift $ Throw.raiseError m e
 
 parseName :: Parser ((Hint, Name), C)
 parseName = do
@@ -838,15 +850,19 @@ rawTermTextIntro :: Parser (RT.RawTerm, C)
 rawTermTextIntro = do
   m <- getCurrentHint
   (s, c) <- string
-  textType <- lift $ locatorToVarGlobal m coreText
+  textType <- lift $ locatorToVarGlobal (blur m) coreText
   return (m :< RT.StaticText textType s, c)
 
 rawTermRuneIntro :: Parser (RT.RawTerm, C)
 rawTermRuneIntro = do
   m <- getCurrentHint
   (s, c) <- rune
-  runeCons <- lift $ locatorToVarGlobal m coreRuneRune
-  return (m :< RT.Rune runeCons s, c)
+  runeCons <- lift $ locatorToVarGlobal (blur m) coreRuneRune
+  case RU.make s of
+    Right r ->
+      return (m :< RT.Rune runeCons r, c)
+    Left e ->
+      lift $ Throw.raiseError m e
 
 locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do

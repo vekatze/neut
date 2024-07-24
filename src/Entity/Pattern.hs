@@ -33,7 +33,7 @@ data Pattern
   = Var Ident
   | WildcardVar
   | Cons ConsInfo
-  | LiteralInt Integer
+  | Literal L.Literal
   deriving (Show)
 
 data ConsInfo = ConsInfo
@@ -74,7 +74,7 @@ patVars (m, pat) =
   case pat of
     Var x ->
       [(m, x)]
-    LiteralInt _ ->
+    Literal _ ->
       []
     WildcardVar ->
       []
@@ -114,8 +114,8 @@ data PseudoDD
   deriving (Eq, Ord)
 
 consInfoToDD :: (Hint, Specializer) -> PseudoDD
-consInfoToDD (_, intOrConsInfo) =
-  case intOrConsInfo of
+consInfoToDD (_, specializer) =
+  case specializer of
     LiteralSpecializer i ->
       LiteralDD i
     ConsSpecializer consInfo ->
@@ -130,8 +130,8 @@ getColumnConstructor ::
   Maybe (Hint, Specializer)
 getColumnConstructor (mPat, pat) =
   case pat of
-    LiteralInt i ->
-      return (mPat, LiteralSpecializer (L.Int i))
+    Literal l ->
+      return (mPat, LiteralSpecializer l)
     Cons consInfo ->
       return (mPat, ConsSpecializer consInfo)
     _ ->

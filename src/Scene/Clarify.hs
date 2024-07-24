@@ -12,6 +12,7 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Context.OptimizableData qualified as OptimizableData
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -46,6 +47,7 @@ import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
+import Entity.Rune qualified as RU
 import Entity.Stmt
 import Entity.StmtKind
 import Entity.StmtKind qualified as SK
@@ -61,6 +63,7 @@ import Scene.Term.Subst qualified as TM
 
 clarify :: [Stmt] -> App [C.CompStmt]
 clarify stmtList = do
+  printNote' "clarify"
   Clarify.clearAuxEnv
   baseAuxEnv <- Clarify.toCompStmtList <$> getBaseAuxEnv
   Clarify.clearAuxEnv
@@ -393,8 +396,8 @@ clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
       case l of
         L.Int i ->
           return (EC.Int i, body', contChain)
-        L.Rune _ ->
-          undefined
+        L.Rune r ->
+          return (EC.Int (RU.asInt r), body', contChain)
     DT.ConsCase {..} -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes

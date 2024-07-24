@@ -38,5 +38,5 @@ fallbackRow isNoetic cursor (patternVector, (freedVars, baseSeq, body@(mBody :< 
       return $ Just (rest, (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
     Just ((_, Cons {}), _) ->
       return Nothing
-    Just ((_, LiteralInt {}), _) ->
+    Just ((_, Literal {}), _) ->
       return Nothing

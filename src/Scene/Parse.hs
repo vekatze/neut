@@ -6,6 +6,7 @@ where
 
 import Context.App
 import Context.Global qualified as Global
+import Context.Remark (printNote')
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedPreset qualified as UnusedPreset
@@ -31,6 +32,7 @@ import Scene.Parse.Program qualified as Parse
 
 parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
 parse source cacheOrContent = do
+  printNote' "parse"
   parseSource source cacheOrContent
 
 parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
