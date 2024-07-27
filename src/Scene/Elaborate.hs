@@ -239,7 +239,7 @@ elaborate' term =
           t' <- reduceType (weaken t)
           switchSpec <- getSwitchSpec m t'
           case switchSpec of
-            LiteralIntSwitch -> do
+            LiteralSwitch -> do
               raiseEmptyNonExhaustivePatternMatching m
             ConsSwitch consList -> do
               unless (null consList) $
@@ -308,6 +308,8 @@ elaborate' term =
             WPV.StaticText t text -> do
               t' <- elaborate' t
               return $ m :< TM.Prim (P.Value (PV.StaticText t' text))
+            WPV.Rune r ->
+              return $ m :< TM.Prim (P.Value (PV.Rune r))
     m :< WT.Magic magic -> do
       case magic of
         M.External domList cod name args varArgs -> do
@@ -444,9 +446,9 @@ elaborateDecisionTree ctx mOrig m tree =
       cursorType' <- reduceWeakType cursorType >>= elaborate'
       switchSpec <- getSwitchSpec m cursorType'
       case switchSpec of
-        LiteralIntSwitch -> do
+        LiteralSwitch -> do
           when (DT.isUnreachable fallbackClause) $ do
-            raiseIntegerNonExhaustivePatternMatching m
+            raiseLiteralNonExhaustivePatternMatching m
           fallbackClause' <- elaborateDecisionTree ctx mOrig m fallbackClause
           clauseList' <- mapM (elaborateClause mOrig cursor ctx) clauseList
           return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
@@ -479,9 +481,9 @@ elaborateDecisionTree ctx mOrig m tree =
 elaborateClause :: Hint -> Ident -> ClauseContext -> DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
 elaborateClause mOrig cursor ctx decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       cont' <- elaborateDecisionTree ctx mOrig mPat cont
-      return $ DT.LiteralIntCase mPat i cont'
+      return $ DT.LiteralCase mPat i cont'
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM elaborate' dataTerms
@@ -497,9 +499,9 @@ elaborateClause mOrig cursor ctx decisionCase = do
             DT.cont = cont'
           }
 
-raiseIntegerNonExhaustivePatternMatching :: Hint -> App a
-raiseIntegerNonExhaustivePatternMatching m =
-  Throw.raiseError m "Pattern matching on integers must have a fallback clause"
+raiseLiteralNonExhaustivePatternMatching :: Hint -> App a
+raiseLiteralNonExhaustivePatternMatching m =
+  Throw.raiseError m "Pattern matching on literals must have a fallback clause"
 
 raiseEmptyNonExhaustivePatternMatching :: Hint -> App a
 raiseEmptyNonExhaustivePatternMatching m =
@@ -510,7 +512,7 @@ reduceType e = do
   reduceWeakType e >>= elaborate'
 
 data SwitchSpec
-  = LiteralIntSwitch
+  = LiteralSwitch
   | ConsSwitch [(DD.DefiniteDescription, IsConstLike)]
 
 getSwitchSpec :: Hint -> TM.Term -> App SwitchSpec
@@ -519,8 +521,10 @@ getSwitchSpec m cursorType = do
     _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
       return $ ConsSwitch consNameList
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
-      return LiteralIntSwitch
+      return LiteralSwitch
+    _ :< TM.Prim (P.Type PT.Rune) -> do
+      return LiteralSwitch
     _ ->
       Throw.raiseError m $
-        "This term is expected to be an ADT value or an integer, but it's not:\n"
+        "This term is expected to be an ADT value or a literal, but found:\n"
           <> toText (weaken cursorType)

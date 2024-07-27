@@ -165,7 +165,7 @@ eqDT tree1 tree2
       False
 
 eqCase :: DT.Case WT.WeakTerm -> DT.Case WT.WeakTerm -> Bool
-eqCase (DT.LiteralIntCase _ i1 cont1) (DT.LiteralIntCase _ i2 cont2) = do
+eqCase (DT.LiteralCase _ i1 cont1) (DT.LiteralCase _ i2 cont2) = do
   i1 == i2 && eqDT cont1 cont2
 eqCase case1@(DT.ConsCase {}) case2@(DT.ConsCase {}) = do
   let b1 = DT.consDD case1 == DT.consDD case2
@@ -204,6 +204,8 @@ eqWP prim1 prim2
           let b1 = eq t1 t2
           let b2 = x1 == x2
           b1 && b2
+        (WPV.Rune r1, WPV.Rune r2) ->
+          r1 == r2
         _ ->
           False
   | otherwise =

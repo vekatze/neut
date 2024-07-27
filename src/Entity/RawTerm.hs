@@ -46,6 +46,7 @@ import Entity.RawIdent
 import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.Remark
+import Entity.Rune qualified as R
 import Entity.Syntax.Series qualified as SE
 
 type RawTerm = Cofree RawTermF Hint
@@ -72,7 +73,8 @@ data RawTermF a
   | LetOn C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder a) C C a C Loc C a Loc
   | StaticText a T.Text
-  | Rune a T.Text
+  | Rune
+  | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a

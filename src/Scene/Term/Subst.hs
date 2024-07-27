@@ -216,9 +216,9 @@ substCase ::
   App (DT.Case TM.Term)
 substCase sub decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       cont' <- substDecisionTree sub cont
-      return $ DT.LiteralIntCase mPat i cont'
+      return $ DT.LiteralCase mPat i cont'
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (subst sub) dataTerms

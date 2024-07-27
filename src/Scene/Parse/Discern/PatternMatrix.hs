@@ -58,15 +58,14 @@ compilePatternMatrix l nenv isNoetic occurrences mat =
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let (mCursor, cursor) = V.head occurrences
-              clauseList <- forM headConstructors $ \(mPat, intOrConsInfo) -> do
-                case intOrConsInfo of
-                  Left literalInt -> do
+              clauseList <- forM headConstructors $ \(mPat, specializer) -> do
+                case specializer of
+                  PAT.LiteralSpecializer literal -> do
                     let occurrences' = V.tail occurrences
-                    let specializer = PATS.LiteralIntSpecializer literalInt
                     specialMatrix <- PATS.specialize isNoetic cursor specializer mat
                     cont <- compilePatternMatrix l nenv isNoetic occurrences' specialMatrix
-                    return $ DT.LiteralIntCase mPat literalInt cont
-                  Right PAT.ConsInfo {..} -> do
+                    return $ DT.LiteralCase mPat literal cont
+                  PAT.ConsSpecializer (PAT.ConsInfo {..}) -> do
                     dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
                     dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
                     consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
@@ -74,7 +73,6 @@ compilePatternMatrix l nenv isNoetic occurrences mat =
                     let consVars' = zip ms consVars
                     (consArgs', nenv') <- alignConsArgs l nenv consVars'
                     let occurrences' = V.fromList consVars' <> V.tail occurrences
-                    let specializer = PATS.ConsSpecializer consDD consArgNum
                     specialMatrix <- PATS.specialize isNoetic cursor specializer mat
                     specialDecisionTree <- compilePatternMatrix l nenv' isNoetic occurrences' specialMatrix
                     let dataArgs' = zip dataHoles dataTypeHoles
@@ -140,7 +138,7 @@ ensurePatternSanity (m, pat) =
   case pat of
     PAT.Var v -> do
       Tag.insertBinder (m, v, ())
-    PAT.LiteralInt _ -> do
+    PAT.Literal _ -> do
       return ()
     PAT.WildcardVar {} ->
       return ()

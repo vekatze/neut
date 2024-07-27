@@ -131,6 +131,8 @@ weakenPrim m prim =
             WPV.Op op
           PV.StaticText t text ->
             WPV.StaticText (weaken t) text
+          PV.Rune r ->
+            WPV.Rune r
 
 weakenDecisionTree :: DT.DecisionTree TM.Term -> DT.DecisionTree WT.WeakTerm
 weakenDecisionTree tree =
@@ -155,9 +157,9 @@ weakenCaseList (fallbackClause, clauseList) = do
 weakenCase :: DT.Case TM.Term -> DT.Case WT.WeakTerm
 weakenCase decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       let cont' = weakenDecisionTree cont
-      DT.LiteralIntCase mPat i cont'
+      DT.LiteralCase mPat i cont'
     DT.ConsCase {..} -> do
       let dataArgs' = map (bimap weaken weaken) dataArgs
       let consArgs' = map weakenBinder consArgs

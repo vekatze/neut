@@ -20,7 +20,26 @@ define main(): unit {
   print-rune(`ب`);
   print-rune(`𠮷`);
   print-rune(`𠀋`);
-  print-rune(`💫`)
+  print-rune(`💫`);
+  match `a` {
+  | `x` =>
+    print-rune(`x`)
+  | `a` =>
+    print-rune(`a`)
+  | _ =>
+    print("other\n")
+  };
+  let p: either(pair(rune, type), type) = Left(Pair(`x`, type)) in
+  match p {
+  | Right(_) =>
+    print("right\n")
+  | Left(Pair(`a`, _)) =>
+    print("pair-a\n")
+  | Left(Pair(`x`, _)) =>
+    print("pair-x\n")
+  | Left(Pair(_, _)) =>
+    print("pair-other\n")
+  }
 }
 
 define zen(): unit {

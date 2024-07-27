@@ -10,12 +10,14 @@ module Entity.DecisionTree
 where
 
 import Data.Binary
+import Data.Maybe (catMaybes)
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.Ident
 import Entity.IsConstLike
+import Entity.Literal qualified as L
 import GHC.Generics (Generic)
 
 data DecisionTree a
@@ -36,7 +38,7 @@ data Case a
         consArgs :: [BinderF a],
         cont :: DecisionTree a
       }
-  | LiteralIntCase Hint Integer (DecisionTree a)
+  | LiteralCase Hint L.Literal (DecisionTree a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (DecisionTree a)
@@ -45,7 +47,12 @@ instance (Binary a) => Binary (Case a)
 
 getConstructors :: [Case a] -> [(DD.DefiniteDescription, IsConstLike)]
 getConstructors clauseList = do
-  map (\c -> (consDD c, isConstLike c)) clauseList
+  catMaybes $ flip map clauseList $ \c -> do
+    case c of
+      ConsCase {..} ->
+        Just (consDD, isConstLike)
+      LiteralCase {} ->
+        Nothing
 
 isUnreachable :: DecisionTree a -> Bool
 isUnreachable tree =
@@ -57,14 +64,18 @@ isUnreachable tree =
 
 findCase :: D.Discriminant -> Case a -> Maybe ([(Ident, a)], DecisionTree a)
 findCase consDisc decisionCase =
-  if consDisc == disc decisionCase
-    then return (map (\(_, x, t) -> (x, t)) (consArgs decisionCase), cont decisionCase)
-    else Nothing
+  case decisionCase of
+    LiteralCase {} ->
+      Nothing
+    ConsCase {..} -> do
+      if consDisc == disc
+        then return (map (\(_, x, t) -> (x, t)) consArgs, cont)
+        else Nothing
 
 getCont :: Case a -> DecisionTree a
 getCont c =
   case c of
     ConsCase {..} ->
       cont
-    LiteralIntCase _ _ cont ->
+    LiteralCase _ _ cont ->
       cont

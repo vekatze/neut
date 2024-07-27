@@ -3,6 +3,7 @@ module Entity.Pattern
     PatternRow,
     PatternMatrix,
     ConsInfo (..),
+    Specializer (..),
     new,
     getHeadConstructors,
     swapColumn,
@@ -26,12 +27,13 @@ import Entity.Error
 import Entity.Hint hiding (new)
 import Entity.Ident
 import Entity.IsConstLike
+import Entity.Literal qualified as L
 
 data Pattern
   = Var Ident
   | WildcardVar
   | Cons ConsInfo
-  | LiteralInt Integer
+  | Literal L.Literal
   deriving (Show)
 
 data ConsInfo = ConsInfo
@@ -43,6 +45,10 @@ data ConsInfo = ConsInfo
     args :: [(Hint, Pattern)]
   }
   deriving (Show)
+
+data Specializer
+  = ConsSpecializer ConsInfo
+  | LiteralSpecializer L.Literal
 
 type PatternRow a =
   (V.Vector (Hint, Pattern), a)
@@ -68,7 +74,7 @@ patVars (m, pat) =
   case pat of
     Var x ->
       [(m, x)]
-    LiteralInt _ ->
+    Literal _ ->
       []
     WildcardVar ->
       []
@@ -90,7 +96,7 @@ new rows =
 
 getHeadConstructors ::
   PatternMatrix a ->
-  [(Hint, Either Integer ConsInfo)]
+  [(Hint, Specializer)]
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -103,31 +109,31 @@ getHeadConstructors' (rows, _) =
       Nothing
 
 data PseudoDD
-  = LiteralIntDD Integer
+  = LiteralDD L.Literal
   | ConsDD DD.DefiniteDescription
   deriving (Eq, Ord)
 
-consInfoToDD :: (Hint, Either Integer ConsInfo) -> PseudoDD
-consInfoToDD (_, intOrConsInfo) =
-  case intOrConsInfo of
-    Left i ->
-      LiteralIntDD i
-    Right consInfo ->
+consInfoToDD :: (Hint, Specializer) -> PseudoDD
+consInfoToDD (_, specializer) =
+  case specializer of
+    LiteralSpecializer i ->
+      LiteralDD i
+    ConsSpecializer consInfo ->
       ConsDD $ consDD consInfo
 
-getColumnConstructors :: PatternColumn -> [(Hint, Either Integer ConsInfo)]
+getColumnConstructors :: PatternColumn -> [(Hint, Specializer)]
 getColumnConstructors col = do
   ListUtils.nubOrdOn consInfoToDD $ mapMaybe getColumnConstructor col
 
 getColumnConstructor ::
   (Hint, Pattern) ->
-  Maybe (Hint, Either Integer ConsInfo)
+  Maybe (Hint, Specializer)
 getColumnConstructor (mPat, pat) =
   case pat of
-    LiteralInt i ->
-      return (mPat, Left i)
+    Literal l ->
+      return (mPat, LiteralSpecializer l)
     Cons consInfo ->
-      return (mPat, Right consInfo)
+      return (mPat, ConsSpecializer consInfo)
     _ ->
       Nothing
 

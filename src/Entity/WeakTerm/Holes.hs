@@ -101,7 +101,7 @@ holesCaseList (fallbackClause, clauseList) = do
 holesCase :: DT.Case WT.WeakTerm -> S.Set HoleID
 holesCase decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase _ _ cont -> do
+    DT.LiteralCase _ _ cont -> do
       holesDecisionTree cont
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs

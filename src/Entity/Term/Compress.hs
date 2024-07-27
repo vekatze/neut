@@ -101,6 +101,8 @@ compressPrim prim =
             PV.Op op
           PV.StaticText t text ->
             PV.StaticText (compress t) text
+          PV.Rune r ->
+            PV.Rune r
 
 compressDecisionTree :: DT.DecisionTree TM.Term -> DT.DecisionTree (Cofree TM.TermF ())
 compressDecisionTree tree =
@@ -126,9 +128,9 @@ compressCaseList (fallbackClause, clauseList) = do
 compressCase :: DT.Case TM.Term -> DT.Case (Cofree TM.TermF ())
 compressCase decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase mPat i cont -> do
+    DT.LiteralCase mPat i cont -> do
       let cont' = compressDecisionTree cont
-      DT.LiteralIntCase mPat i cont'
+      DT.LiteralCase mPat i cont'
     DT.ConsCase {..} -> do
       let dataArgs' = map (bimap compress compress) dataArgs
       let consArgs' = map compressBinder consArgs

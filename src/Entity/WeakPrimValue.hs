@@ -15,6 +15,7 @@ import Entity.PrimOp.BinaryOp
 import Entity.PrimOp.CmpOp
 import Entity.PrimOp.UnaryOp
 import Entity.PrimType (PrimType)
+import Entity.Rune qualified as RU
 import GHC.Generics (Generic)
 
 data WeakPrimValue a
@@ -22,6 +23,7 @@ data WeakPrimValue a
   | Float a Double
   | Op PrimOp
   | StaticText a T.Text
+  | Rune RU.Rune
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (WeakPrimValue a)
@@ -37,6 +39,8 @@ instance Functor WeakPrimValue where
         Op op
       StaticText t text ->
         StaticText (f t) text
+      Rune r ->
+        Rune r
 
 instance Foldable WeakPrimValue where
   foldMap f primValue =
@@ -49,6 +53,8 @@ instance Foldable WeakPrimValue where
         mempty
       StaticText t _ ->
         f t
+      Rune _ ->
+        mempty
 
 instance Traversable WeakPrimValue where
   traverse f primValue =
@@ -61,6 +67,8 @@ instance Traversable WeakPrimValue where
         pure $ Op op
       StaticText t text ->
         StaticText <$> f t <*> pure text
+      Rune r ->
+        pure $ Rune r
 
 reflectFloatUnaryOp :: PrimOp -> Maybe (Double -> Double, PrimType)
 reflectFloatUnaryOp primOp =

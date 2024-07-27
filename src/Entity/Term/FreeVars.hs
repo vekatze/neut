@@ -94,7 +94,7 @@ freeVarsCaseList (fallbackClause, clauseList) = do
 freeVarsCase :: DT.Case TM.Term -> S.Set Ident
 freeVarsCase decisionCase = do
   case decisionCase of
-    DT.LiteralIntCase _ _ cont -> do
+    DT.LiteralCase _ _ cont -> do
       freeVarsDecisionTree cont
     DT.ConsCase {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs

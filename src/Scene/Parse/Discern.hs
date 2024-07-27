@@ -1,6 +1,5 @@
 module Scene.Parse.Discern (discernStmtList) where
 
-import Codec.Binary.UTF8.String
 import Context.App
 import Context.Decl qualified as Decl
 import Context.Env qualified as Env
@@ -16,14 +15,12 @@ import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
-import Data.Bits (shiftL, (.|.))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Data.Word
 import Entity.Annotation qualified as AN
 import Entity.Arch qualified as Arch
 import Entity.ArgNum qualified as AN
@@ -46,6 +43,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.Key
 import Entity.LamKind qualified as LK
 import Entity.Layer
+import Entity.Literal qualified as LI
 import Entity.Locator qualified as L
 import Entity.LowType qualified as LT
 import Entity.LowType.FromRawLowType qualified as LT
@@ -59,6 +57,7 @@ import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
 import Entity.Platform qualified as Platform
+import Entity.PrimType qualified as PT
 import Entity.RawBinder
 import Entity.RawIdent hiding (isHole)
 import Entity.RawLowType qualified as RLT
@@ -69,6 +68,7 @@ import Entity.Remark qualified as R
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
+import Entity.Text.Util
 import Entity.TopCandidate
 import Entity.VarDefKind qualified as VDK
 import Entity.WeakPrim qualified as WP
@@ -81,7 +81,6 @@ import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.NominalEnv
 import Scene.Parse.Discern.PatternMatrix
 import Scene.Parse.Discern.Struct
-import Scene.Parse.Discern.Text
 import Scene.Parse.Foreign
 import Scene.Parse.Util
 import Text.Read qualified as R
@@ -412,19 +411,10 @@ discern axis term =
           Throw.raiseError m $ "Could not interpret the following as a text: " <> str <> "\nReason: " <> reason
         Right str' -> do
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
-    m :< RT.Rune runeCons str -> do
-      let int32Type = WT.intTypeBySize m 32
-      runeCons' <- discern axis runeCons
-      case parseText str of
-        Right str' -> do
-          case T.uncons str' of
-            Just (c, "") -> do
-              let runeValue = calculateRuneValue $ encode [c]
-              return $ m :< WT.PiElim runeCons' [m :< WT.Prim (WP.Value $ WPV.Int int32Type runeValue)]
-            _ -> do
-              Throw.raiseError m "The content of a rune literal must be of length 1"
-        Left reason ->
-          Throw.raiseError m $ "Could not interpret the following as a rune: " <> str <> "\nReason: " <> reason
+    m :< RT.Rune -> do
+      return $ m :< WT.Prim (WP.Type PT.Rune)
+    m :< RT.RuneIntro _ r -> do
+      return $ m :< WT.Prim (WP.Value $ WPV.Rune r)
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do
@@ -990,7 +980,7 @@ discernPattern layer (m, pat) = do
       case name of
         Var x
           | Just i <- R.readMaybe (T.unpack x) -> do
-              return ((m, PAT.LiteralInt i), [])
+              return ((m, PAT.Literal (LI.Int i)), [])
           | isConsName x -> do
               (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m $ Var x
               consDD' <- Locator.getReadableDD consDD
@@ -1062,6 +1052,8 @@ discernPattern layer (m, pat) = do
       listNil <- Throw.liftEither $ DD.getLocatorPair m' coreListNil
       listCons <- locatorToName m' coreListCons
       discernPattern layer $ foldListAppPat m' listNil listCons $ SE.extract patList
+    RP.RuneIntro r -> do
+      return ((m, PAT.Literal (LI.Rune r)), [])
 
 foldListAppPat ::
   Hint ->
@@ -1091,10 +1083,6 @@ locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair (blur m) text
   return $ blur m :< RT.Var (Locator (gl, ll))
-
-calculateRuneValue :: [Word8] -> Integer
-calculateRuneValue =
-  foldl' (\acc byte -> (acc `shiftL` 8) .|. fromIntegral byte) 0
 
 getLayer :: Hint -> Axis -> Ident -> App Layer
 getLayer m axis x =

@@ -34,6 +34,7 @@ import Entity.RawLowType.Decode qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm
 import Entity.RawTerm qualified as RT
+import Entity.Rune qualified as RU
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 
@@ -166,8 +167,10 @@ toDoc term =
         ]
     _ :< StaticText _ txt -> do
       D.text $ "\"" <> txt <> "\""
-    _ :< Rune _ ch -> do
-      D.text $ "`" <> T.replace "`" "\\`" ch <> "`"
+    _ :< Rune -> do
+      D.text "rune"
+    _ :< RuneIntro _ r -> do
+      D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
     _ :< Magic c magic -> do
       case magic of
         Cast c1 from to e mc -> do
@@ -562,6 +565,8 @@ decodePattern pat = do
           D.join [name', attachComment c kvs']
     RP.ListIntro patList -> do
       SE.decode $ fmap (decodePattern . snd) patList
+    RP.RuneIntro r ->
+      D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
 decodePatternKeyValue :: (Key, (Hint, C, RP.RawPattern)) -> D.Doc
 decodePatternKeyValue (k, (_, c, v)) = do

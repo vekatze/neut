@@ -11,3 +11,5 @@ toText primNum =
       intSizeToText size
     PT.Float size ->
       floatSizeToText size
+    PT.Rune ->
+      "rune"
