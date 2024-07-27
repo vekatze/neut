@@ -204,6 +204,8 @@ eqWP prim1 prim2
           let b1 = eq t1 t2
           let b2 = x1 == x2
           b1 && b2
+        (WPV.Rune r1, WPV.Rune r2) ->
+          r1 == r2
         _ ->
           False
   | otherwise =

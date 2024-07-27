@@ -101,6 +101,8 @@ compressPrim prim =
             PV.Op op
           PV.StaticText t text ->
             PV.StaticText (compress t) text
+          PV.Rune r ->
+            PV.Rune r
 
 compressDecisionTree :: DT.DecisionTree TM.Term -> DT.DecisionTree (Cofree TM.TermF ())
 compressDecisionTree tree =

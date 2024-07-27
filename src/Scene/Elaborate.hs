@@ -9,7 +9,6 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
 import Context.RawImportSummary qualified as RawImportSummary
-import Context.Remark (printNote')
 import Context.Remark qualified as Remark
 import Context.SymLoc qualified as SymLoc
 import Context.Throw qualified as Throw
@@ -57,7 +56,6 @@ import Scene.Term.Inline qualified as TM
 
 elaborate :: Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate cacheOrStmt = do
-  printNote' "elaborate"
   initialize
   case cacheOrStmt of
     Left cache -> do
@@ -310,6 +308,8 @@ elaborate' term =
             WPV.StaticText t text -> do
               t' <- elaborate' t
               return $ m :< TM.Prim (P.Value (PV.StaticText t' text))
+            WPV.Rune r ->
+              return $ m :< TM.Prim (P.Value (PV.Rune r))
     m :< WT.Magic magic -> do
       case magic of
         M.External domList cod name args varArgs -> do
@@ -521,6 +521,8 @@ getSwitchSpec m cursorType = do
     _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
       return $ ConsSwitch consNameList
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
+      return LiteralSwitch
+    _ :< TM.Prim (P.Type PT.Rune) -> do
       return LiteralSwitch
     _ ->
       Throw.raiseError m $

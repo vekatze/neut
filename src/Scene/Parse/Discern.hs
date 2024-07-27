@@ -57,6 +57,7 @@ import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
 import Entity.Platform qualified as Platform
+import Entity.PrimType qualified as PT
 import Entity.RawBinder
 import Entity.RawIdent hiding (isHole)
 import Entity.RawLowType qualified as RLT
@@ -64,7 +65,6 @@ import Entity.RawPattern qualified as RP
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
-import Entity.Rune qualified as RU
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
@@ -411,10 +411,10 @@ discern axis term =
           Throw.raiseError m $ "Could not interpret the following as a text: " <> str <> "\nReason: " <> reason
         Right str' -> do
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
-    m :< RT.Rune runeCons r -> do
-      let int32Type = WT.intTypeBySize m 32
-      runeCons' <- discern axis runeCons
-      return $ m :< WT.PiElim runeCons' [m :< WT.Prim (WP.Value $ WPV.Int int32Type (RU.asInt r))]
+    m :< RT.Rune -> do
+      return $ m :< WT.Prim (WP.Type PT.Rune)
+    m :< RT.RuneIntro _ r -> do
+      return $ m :< WT.Prim (WP.Value $ WPV.Rune r)
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do

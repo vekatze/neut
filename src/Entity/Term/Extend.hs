@@ -108,6 +108,8 @@ extendPrim prim =
             PV.Op op
           PV.StaticText t text ->
             PV.StaticText (extend t) text
+          PV.Rune r ->
+            PV.Rune r
 
 extendDecisionTree :: DT.DecisionTree (Cofree TM.TermF ()) -> DT.DecisionTree TM.Term
 extendDecisionTree tree =

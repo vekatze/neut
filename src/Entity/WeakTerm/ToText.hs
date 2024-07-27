@@ -16,6 +16,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.PrimOp qualified as PO
 import Entity.PrimType.ToText qualified as PT
+import Entity.Rune qualified as RU
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -209,6 +210,8 @@ showPrim prim =
               T.pack (show name)
         WPV.StaticText _ text ->
           T.pack $ show text
+        WPV.Rune r ->
+          "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
 showMatchArgs :: [(Ident, WT.WeakTerm, WT.WeakTerm)] -> T.Text
 showMatchArgs xets = do

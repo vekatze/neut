@@ -131,6 +131,8 @@ weakenPrim m prim =
             WPV.Op op
           PV.StaticText t text ->
             WPV.StaticText (weaken t) text
+          PV.Rune r ->
+            WPV.Rune r
 
 weakenDecisionTree :: DT.DecisionTree TM.Term -> DT.DecisionTree WT.WeakTerm
 weakenDecisionTree tree =

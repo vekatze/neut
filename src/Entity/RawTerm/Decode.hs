@@ -167,7 +167,9 @@ toDoc term =
         ]
     _ :< StaticText _ txt -> do
       D.text $ "\"" <> txt <> "\""
-    _ :< Rune _ r -> do
+    _ :< Rune -> do
+      D.text "rune"
+    _ :< RuneIntro _ r -> do
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
     _ :< Magic c magic -> do
       case magic of

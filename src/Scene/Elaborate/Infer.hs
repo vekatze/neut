@@ -41,10 +41,12 @@ import Entity.Ident.Reify (toInt)
 import Entity.Ident.Reify qualified as Ident
 import Entity.Key (Key)
 import Entity.LamKind qualified as LK
+import Entity.Literal qualified as L
 import Entity.Magic qualified as M
 import Entity.Name qualified as N
 import Entity.OptimizableData qualified as OD
 import Entity.PrimOp
+import Entity.PrimType qualified as PT
 import Entity.Stmt
 import Entity.StmtKind
 import Entity.Term qualified as TM
@@ -343,6 +345,8 @@ infer axis term =
               empty <- createNewAxis
               t' <- inferType empty t
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.BoxNoema t')
+            WPV.Rune _ -> do
+              return (m :< WT.Prim prim, m :< WT.Prim (WP.Type PT.Rune))
     m :< WT.Magic magic -> do
       case magic of
         M.Cast from to value -> do
@@ -661,11 +665,16 @@ inferClause ::
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
-inferClause axis cursorType decisionCase = do
+inferClause axis cursorType@(_ :< cursorTypeInner) decisionCase = do
   case decisionCase of
-    DT.LiteralCase mPat i cont -> do
+    DT.LiteralCase mPat literal cont -> do
       (cont', tCont) <- inferDecisionTree mPat axis cont
-      return (DT.LiteralCase mPat i cont', tCont)
+      case literal of
+        L.Int _ -> do
+          insertIntegerConstraint (mPat :< cursorTypeInner)
+        L.Rune _ ->
+          insConstraintEnv cursorType (mPat :< WT.Prim (WP.Type PT.Rune))
+      return (DT.LiteralCase mPat literal cont', tCont)
     DT.ConsCase {..} -> do
       let m = DT.mCons decisionCase
       let (dataTermList, _) = unzip dataArgs

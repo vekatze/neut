@@ -73,7 +73,8 @@ data RawTermF a
   | LetOn C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder a) C C a C Loc C a Loc
   | StaticText a T.Text
-  | Rune a R.Rune
+  | Rune
+  | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a

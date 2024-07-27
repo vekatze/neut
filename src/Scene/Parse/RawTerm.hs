@@ -133,6 +133,7 @@ rawTermSimple = do
     [ rawTermBrace,
       rawTermListIntro,
       rawTermTextIntro,
+      rawTermRune,
       rawTermRuneIntro,
       rawTermTau,
       rawTermAdmit,
@@ -853,6 +854,12 @@ rawTermTextIntro = do
   textType <- lift $ locatorToVarGlobal (blur m) coreText
   return (m :< RT.StaticText textType s, c)
 
+rawTermRune :: Parser (RT.RawTerm, C)
+rawTermRune = do
+  m <- getCurrentHint
+  c <- keyword "rune"
+  return (m :< RT.Rune, c)
+
 rawTermRuneIntro :: Parser (RT.RawTerm, C)
 rawTermRuneIntro = do
   m <- getCurrentHint
@@ -860,7 +867,7 @@ rawTermRuneIntro = do
   runeCons <- lift $ locatorToVarGlobal (blur m) coreRuneRune
   case RU.make s of
     Right r ->
-      return (m :< RT.Rune runeCons r, c)
+      return (m :< RT.RuneIntro runeCons r, c)
     Left e ->
       lift $ Throw.raiseError m e
 

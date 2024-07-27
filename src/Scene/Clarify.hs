@@ -12,7 +12,6 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Context.OptimizableData qualified as OptimizableData
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -63,7 +62,6 @@ import Scene.Term.Subst qualified as TM
 
 clarify :: [Stmt] -> App [C.CompStmt]
 clarify stmtList = do
-  printNote' "clarify"
   Clarify.clearAuxEnv
   baseAuxEnv <- Clarify.toCompStmtList <$> getBaseAuxEnv
   Clarify.clearAuxEnv
@@ -258,6 +256,8 @@ clarifyTerm tenv term =
               clarifyPrimOp tenv op m
             PV.StaticText _ text ->
               return $ C.UpIntro $ C.VarStaticText text
+            PV.Rune r ->
+              clarifyTerm tenv $ m :< TM.Prim (P.Value (PV.Int (PNS.IntSize 32) (RU.asInt r)))
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
     m :< TM.Resource resourceID discarder copier -> do
@@ -362,6 +362,8 @@ getClauseDataGroup term =
     _ :< TM.PiElim (_ :< TM.VarGlobal _ dataName) _ -> do
       OptimizableData.lookup dataName
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
+      return $ Just OD.Enum
+    _ :< TM.Prim (P.Type PT.Rune) -> do
       return $ Just OD.Enum
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"

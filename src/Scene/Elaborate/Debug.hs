@@ -38,3 +38,5 @@ printConstraints = do
         return ()
       Eq expected actual -> do
         printNote' $ toText expected <> " == " <> toText actual
+      Integer {} ->
+        return ()

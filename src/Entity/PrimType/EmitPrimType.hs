@@ -16,3 +16,5 @@ emitPrimType lowType =
       "float"
     PT.Float FloatSize64 ->
       "double"
+    PT.Rune ->
+      emitPrimType $ PT.Int (IntSize 32)

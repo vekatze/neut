@@ -36,6 +36,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Module
 import Entity.OptimizableData qualified as OD
+import Entity.PrimType qualified as PT
 import Entity.Remark qualified as R
 import Entity.Source
 import Entity.Stuck qualified as Stuck
@@ -87,6 +88,9 @@ throwTypeErrors susList = do
       C.Affine t -> do
         t' <- fillAsMuchAsPossible sub t
         return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageAffine t'
+      C.Integer t -> do
+        t' <- fillAsMuchAsPossible sub t
+        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageInteger t'
       C.Eq expected actual -> do
         expected' <- fillAsMuchAsPossible sub expected
         actual' <- fillAsMuchAsPossible sub actual
@@ -116,6 +120,16 @@ constructErrorMessageAffine :: WT.WeakTerm -> T.Text
 constructErrorMessageAffine t =
   "The type of this affine variable is not affine, but:\n"
     <> toText t
+
+constructErrorMessageInteger :: WT.WeakTerm -> T.Text
+constructErrorMessageInteger t =
+  "Expected:\n  "
+    <> "an integer type"
+    <> "\nFound:\n  "
+    <> toText t
+
+-- "This term is an integer, but its type is: "
+--   <> toText t
 
 data Axis = Axis
   { inlineLimit :: Int,
@@ -157,6 +171,10 @@ simplify ax susList constraintList =
     (C.Affine t, orig) : cs -> do
       detectPossibleInfiniteLoop (C.getLoc orig) ax
       susList' <- simplifyAffine (WT.metaOf t) S.empty t orig
+      simplify ax (susList' ++ susList) cs
+    (C.Integer t, orig) : cs -> do
+      detectPossibleInfiniteLoop (C.getLoc orig) ax
+      susList' <- simplifyInteger (WT.metaOf t) t orig
       simplify ax (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       detectPossibleInfiniteLoop (C.getLoc orig) ax
@@ -490,3 +508,30 @@ simplifyAffine m dataNameSet t orig = do
                   simplifyAffine m dataNameSet (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Affine t', orig))]
+
+simplifyInteger ::
+  Hint ->
+  WT.WeakTerm ->
+  C.Constraint ->
+  App [SuspendedConstraint]
+simplifyInteger m t orig = do
+  t' <- reduce t
+  case t' of
+    _ :< WT.Prim (WP.Type (PT.Int _)) -> do
+      return []
+    _ -> do
+      sub <- getHoleSubst
+      let fmvs = holes t'
+      case lookupAny (S.toList fmvs) sub of
+        Just (h, (xs, body)) -> do
+          let s = HS.singleton h xs body
+          t'' <- fill s t'
+          simplifyInteger m t'' orig
+        Nothing -> do
+          defMap <- WeakDefinition.read
+          case Stuck.asStuckedTerm t' of
+            Just (Stuck.VarGlobal dd, evalCtx)
+              | Just lam <- Map.lookup dd defMap -> do
+                  simplifyInteger m (Stuck.resume lam evalCtx) orig
+            _ -> do
+              return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
