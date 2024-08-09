@@ -6,20 +6,20 @@ where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.Module (getAllSourcePathInModule)
 import Context.Path (getSourceCachePath, getSourceCompletionCachePath)
 import Data.Maybe (catMaybes)
 import Entity.Cache
 import Entity.Module
 import Entity.Source
 import Path
-import Path.IO
 import Scene.Source.ShiftToLatest (shiftToLatest)
 import UnliftIO.Async
 
 getAllCachesInModule :: Module -> App [(Source, Cache)]
 getAllCachesInModule baseModule = do
-  (_, filePathList) <- listDirRecur $ getSourceDir baseModule
-  fmap catMaybes $ forConcurrently filePathList $ \path -> getCache baseModule path
+  sourcePathList <- getAllSourcePathInModule baseModule
+  fmap catMaybes $ forConcurrently sourcePathList $ \path -> getCache baseModule path
 
 getCache :: Module -> Path Abs File -> App (Maybe (Source, Cache))
 getCache baseModule filePath = do
@@ -33,8 +33,8 @@ getCache baseModule filePath = do
 
 getAllCompletionCachesInModule :: Module -> App [(Source, CompletionCache)]
 getAllCompletionCachesInModule baseModule = do
-  (_, filePathList) <- listDirRecur $ getSourceDir baseModule
-  fmap catMaybes $ forConcurrently filePathList $ \path -> getCompletionCache baseModule path
+  sourcePathList <- getAllSourcePathInModule baseModule
+  fmap catMaybes $ forConcurrently sourcePathList $ \path -> getCompletionCache baseModule path
 
 getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache baseModule filePath = do
