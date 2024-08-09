@@ -7,6 +7,7 @@ module Context.Module
     insertToModuleCacheMap,
     saveEns,
     sourceFromPath,
+    getAllSourcePathInModule,
     getAllSourceInModule,
   )
 where
@@ -105,10 +106,15 @@ ensureFileModuleSanity filePath mainModule = do
         <> T.pack (toFilePath filePath)
         <> "` is not in the source directory of current module"
 
+getAllSourcePathInModule :: Module -> App [Path Abs File]
+getAllSourcePathInModule baseModule = do
+  (_, filePathList) <- listDirRecur (getSourceDir baseModule)
+  return $ filter hasSourceExtension filePathList
+
 getAllSourceInModule :: Module -> App [Source.Source]
 getAllSourceInModule baseModule = do
-  (_, filePathList) <- listDirRecur (getSourceDir baseModule)
-  mapM (sourceFromPath baseModule) $ filter hasSourceExtension filePathList
+  sourcePathList <- getAllSourcePathInModule baseModule
+  mapM (sourceFromPath baseModule) sourcePathList
 
 hasSourceExtension :: Path Abs File -> Bool
 hasSourceExtension path =
