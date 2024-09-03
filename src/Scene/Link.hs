@@ -42,5 +42,5 @@ getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
 getForeignDirContent foreignDir = do
   b <- doesDirExist foreignDir
   if b
-    then snd <$> listDir foreignDir
+    then snd <$> listDirRecur foreignDir
     else return []
