@@ -149,6 +149,8 @@ compileForeign' currentTime m = do
   foreignDir <- Path.getForeignDir m
   inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
+  for_ outputPathList $ \outputPath -> do
+    Path.ensureDir $ parent outputPath
   inputTime <- Path.getLastModifiedSup inputPathList
   outputTime <- Path.getLastModifiedInf outputPathList
   case (inputTime, outputTime) of
