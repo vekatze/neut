@@ -23,6 +23,7 @@ import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Const qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
@@ -89,7 +90,10 @@ resolveLocator m (gl, ll) shouldInsertTag = do
       Throw.raiseError m $ "Undefined constant: " <> L.reify (gl, ll)
     Just globalVar@(dd, (mDef, gn)) -> do
       when shouldInsertTag $ do
-        Tag.insertLocator m dd (GN.getIsConstLike gn) mDef
+        let glLen = T.length $ GL.reify gl
+        let llLen = T.length $ LL.reify ll
+        let sepLen = T.length C.nsSep
+        Tag.insertLocator m dd (GN.getIsConstLike gn) (glLen + llLen + sepLen) mDef
       return globalVar
 
 resolveConstructor ::
