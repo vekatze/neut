@@ -14,7 +14,6 @@ import Context.App.Internal
 import Control.Monad (unless, when)
 import Data.Text qualified as T
 import Entity.Binder
-import Entity.Const qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident
@@ -43,14 +42,9 @@ insertGlobalVar mUse dd isConstLike mDef = do
   let symbolLoc = LT.SymbolLoc (LT.Global dd isConstLike)
   insert mUse symbolLoc nameLength mDef
 
-insertLocator :: Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> App ()
-insertLocator mUse dd isConstLike mDef = do
-  let gl = DD.globalLocator dd
-  let ll = DD.localLocator dd
-  let glLen = T.length gl
-  let llLen = T.length ll
-  let sepLen = T.length C.nsSep
-  insert mUse (LT.SymbolLoc (LT.Global dd isConstLike)) (glLen + sepLen + llLen) mDef
+insertLocator :: Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> App ()
+insertLocator mUse dd isConstLike nameLength mDef = do
+  insert mUse (LT.SymbolLoc (LT.Global dd isConstLike)) nameLength mDef
 
 insert :: Hint -> LT.LocType -> Int -> Hint -> App ()
 insert mUse locType nameLength mDef = do
