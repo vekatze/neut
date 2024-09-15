@@ -38,7 +38,7 @@ saveCompletionCache source cache = do
 
 loadCache :: Source.Source -> App (Maybe Cache.Cache)
 loadCache source = do
-  cachePath <- Path.getSourceCompletionCachePath source
+  cachePath <- Path.getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
