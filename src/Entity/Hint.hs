@@ -21,8 +21,10 @@ type Loc =
   (Line, Column)
 
 instance Binary Hint where
-  put _ = put ()
-  get = return internalHint
+  put _ =
+    return ()
+  get =
+    return internalHint
 
 instance Show Hint where
   show _ =
