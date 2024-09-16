@@ -1,6 +1,7 @@
 module Entity.AppLsp (AppLsp, lspOptions) where
 
 import Context.App
+import Entity.CodeAction qualified as CA
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 
@@ -19,5 +20,6 @@ lspOptions =
               _willSaveWaitUntil = Just False,
               _save = Just $ InR $ SaveOptions {_includeText = Just False}
             },
-      optCompletionTriggerCharacters = Just ['.']
+      optCompletionTriggerCharacters = Just ['.'],
+      optExecuteCommandCommands = Just [CA.minimizeImportsCommandName]
     }

@@ -15,7 +15,7 @@ format cfg = do
   Initialize.initializeForTarget
   path <- resolveFile' $ filePathString cfg
   content <- readTextFile path
-  content' <- Format.format (inputFileType cfg) path content
+  content' <- Format.format (shouldMinimizeImports cfg) (inputFileType cfg) path content
   if mustUpdateInPlace cfg
     then Write.write path content'
     else Parse.printTextFile content'

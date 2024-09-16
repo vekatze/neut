@@ -16,23 +16,24 @@ import Path.IO
 import Scene.Format qualified as Format
 import Scene.LSP.Util (liftAppM)
 
-format :: Uri -> AppLsp a [TextEdit]
-format uri = do
+format :: Format.ShouldMinimizeImports -> Uri -> AppLsp a [TextEdit]
+format shouldMinimizeImports uri = do
   fileOrNone <- getVirtualFile (toNormalizedUri uri)
   case fileOrNone of
     Nothing ->
       return []
     Just file -> do
-      textEditOrNone <- liftAppM $ _format uri file
+      textEditOrNone <- liftAppM $ _format shouldMinimizeImports uri file
       return $ fromMaybe [] textEditOrNone
 
 _format ::
+  Format.ShouldMinimizeImports ->
   Uri ->
   VirtualFile ->
   AppM [TextEdit]
-_format uri file = do
+_format shouldMinimizeImports uri file = do
   path <- liftMaybe (uriToFilePath uri) >>= lift . resolveFile'
-  newText <- getFormattedContent file path
+  newText <- getFormattedContent shouldMinimizeImports file path
   return
     [ TextEdit
         { _range =
@@ -44,13 +45,13 @@ _format uri file = do
         }
     ]
 
-getFormattedContent :: VirtualFile -> Path Abs File -> AppM T.Text
-getFormattedContent file path = do
+getFormattedContent :: Format.ShouldMinimizeImports -> VirtualFile -> Path Abs File -> AppM T.Text
+getFormattedContent shouldMinimizeImports file path = do
   (_, ext) <- liftMaybe $ splitExtension path
   case (ext == sourceFileExtension, ext == ensFileExtension) of
     (True, _) -> do
-      lift (Throw.runMaybe $ Format.format FT.Source path (virtualFileText file)) >>= liftMaybe
+      lift (Throw.runMaybe $ Format.format shouldMinimizeImports FT.Source path (virtualFileText file)) >>= liftMaybe
     (_, True) -> do
-      lift (Throw.runMaybe $ Format.format FT.Ens path (virtualFileText file)) >>= liftMaybe
+      lift (Throw.runMaybe $ Format.format shouldMinimizeImports FT.Ens path (virtualFileText file)) >>= liftMaybe
     _ ->
       liftMaybe Nothing

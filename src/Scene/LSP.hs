@@ -5,9 +5,11 @@ import Colog.Core qualified as L
 import Context.App
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
+import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Text qualified as T
 import Entity.AppLsp
+import Entity.CodeAction qualified as CA
 import Language.LSP.Logging
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
@@ -21,7 +23,7 @@ import Scene.LSP.GetSymbolInfo qualified as LSP
 import Scene.LSP.Highlight qualified as LSP
 import Scene.LSP.Lint qualified as LSP
 import Scene.LSP.References qualified as LSP
-import Scene.LSP.Util (liftAppM)
+import Scene.LSP.Util (getUriParam, liftAppM)
 import System.IO (stdin, stdout)
 
 lsp :: App Int
@@ -109,7 +111,7 @@ handlers =
             responder $ Right $ InL refs,
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
-        textEditList <- LSP.format uri
+        textEditList <- LSP.format False uri
         responder $ Right $ InL textEditList,
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
         textOrNone <- liftAppM $ LSP.getSymbolInfo (req ^. J.params)
@@ -123,5 +125,25 @@ handlers =
                   Hover
                     { _contents = InL $ MarkupContent {_kind = MarkupKind_PlainText, _value = text},
                       _range = Nothing
-                    }
+                    },
+      requestHandler SMethod_TextDocumentCodeAction $ \req responder -> do
+        let uri = req ^. (J.params . J.textDocument . J.uri)
+        responder $ Right $ InL [InL (CA.minimizeImportsCommand uri)],
+      requestHandler SMethod_WorkspaceExecuteCommand $ \req responder -> do
+        let params = req ^. J.params
+        case params ^. J.command of
+          commandName
+            | commandName == CA.minimizeImportsCommandName -> do
+                case params ^. J.arguments >>= getUriParam of
+                  Nothing ->
+                    responder $ Right $ InR Null
+                  Just uri -> do
+                    textEditList <- LSP.format True uri
+                    let editParams =
+                          ApplyWorkspaceEditParams (Just CA.minimizeImportsCommandTitle) $
+                            WorkspaceEdit (Just (M.singleton uri textEditList)) Nothing Nothing
+                    _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
+                    responder $ Right $ InR Null
+          _ ->
+            responder $ Right $ InR Null
     ]
