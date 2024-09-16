@@ -7,5 +7,6 @@ data Config = Config
   { remarkCfg :: Remark.Config,
     filePathString :: FilePath,
     mustUpdateInPlace :: Bool,
+    shouldMinimizeImports :: Bool,
     inputFileType :: FT.FileType
   }

@@ -162,6 +162,7 @@ parseFormatOpt :: FT.FileType -> Parser Command
 parseFormatOpt fileType = do
   inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
   inPlaceOpt <- flag False True (mconcat [long "in-place", help "Set this to perform in-place update"])
+  shouldMinimizeImports <- flag False True (mconcat [long "minimize-imports", help "Set this to remove unused items in `import {..}`"])
   remarkCfg <- remarkConfigOpt
   pure $
     Format $
@@ -169,6 +170,7 @@ parseFormatOpt fileType = do
         { Format.remarkCfg = remarkCfg,
           Format.filePathString = inputFilePath,
           Format.mustUpdateInPlace = inPlaceOpt,
+          Format.shouldMinimizeImports = shouldMinimizeImports,
           Format.inputFileType = fileType
         }
 

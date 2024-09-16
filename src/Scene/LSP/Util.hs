@@ -2,6 +2,7 @@ module Scene.LSP.Util
   ( liftAppM,
     report,
     maxDiagNum,
+    getUriParam,
   )
 where
 
@@ -10,6 +11,7 @@ import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans
+import Data.Aeson.Types qualified as A
 import Data.ByteString qualified as B
 import Data.Function (on)
 import Data.List (sortBy, sortOn)
@@ -120,3 +122,11 @@ levelToSeverity level =
       DiagnosticSeverity_Information
     Fail ->
       DiagnosticSeverity_Error
+
+getUriParam :: [A.Value] -> Maybe Uri
+getUriParam args =
+  case args of
+    [A.String uri] ->
+      Just $ Uri uri
+    _ ->
+      Nothing

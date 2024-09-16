@@ -1,4 +1,8 @@
-module Scene.Format (format) where
+module Scene.Format
+  ( format,
+    ShouldMinimizeImports,
+  )
+where
 
 import Context.App
 import Context.Env (getMainModule)
@@ -22,32 +26,42 @@ import Scene.Unravel qualified as Unravel
 import UnliftIO.Async
 import Prelude hiding (log)
 
-format :: FT.FileType -> Path Abs File -> T.Text -> App T.Text
-format fileType path content = do
+format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App T.Text
+format shouldMinimizeImports fileType path content = do
   case fileType of
     FT.Ens -> do
       Ens.pp <$> Ens.fromFilePath' path content
     FT.Source -> do
-      _formatSource path content
+      _formatSource shouldMinimizeImports path content
 
-_formatSource :: Path Abs File -> T.Text -> App T.Text
-_formatSource path content = do
+type ShouldMinimizeImports =
+  Bool
+
+_formatSource :: ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
+_formatSource shouldMinimizeImports path content = do
   Initialize.initializeForTarget
   mainModule <- getMainModule
-  (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen path)
-  contentSeq <- forConcurrently dependenceSeq $ \source -> do
-    cacheOrContent <- Load.load source
-    return (source, cacheOrContent)
-  let contentSeq' = _replaceLast content contentSeq
-  forM_ contentSeq' $ \(source, cacheOrContent) -> do
-    Initialize.initializeForSource source
-    void $ Parse.parse source cacheOrContent
-  unusedGlobalLocators <- UnusedGlobalLocator.get
-  unusedLocalLocators <- UnusedLocalLocator.get
-  program <- P.parseFile True Parse.parseProgram path content
-  presetNames <- getEnabledPreset mainModule
-  let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
-  return $ RawProgram.pp importInfo program
+  if shouldMinimizeImports
+    then do
+      (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen path)
+      contentSeq <- forConcurrently dependenceSeq $ \source -> do
+        cacheOrContent <- Load.load source
+        return (source, cacheOrContent)
+      let contentSeq' = _replaceLast content contentSeq
+      forM_ contentSeq' $ \(source, cacheOrContent) -> do
+        Initialize.initializeForSource source
+        void $ Parse.parse source cacheOrContent
+      unusedGlobalLocators <- UnusedGlobalLocator.get
+      unusedLocalLocators <- UnusedLocalLocator.get
+      program <- P.parseFile True Parse.parseProgram path content
+      presetNames <- getEnabledPreset mainModule
+      let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
+      return $ RawProgram.pp importInfo program
+    else do
+      program <- P.parseFile True Parse.parseProgram path content
+      presetNames <- getEnabledPreset mainModule
+      let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators = [], unusedLocalLocators = []}
+      return $ RawProgram.pp importInfo program
 
 _replaceLast :: T.Text -> [(a, Either b T.Text)] -> [(a, Either b T.Text)]
 _replaceLast content contentSeq =
