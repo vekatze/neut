@@ -1,5 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Context.Path
-  ( getCurrentDir,
+  ( getLibraryDirPath,
+    getCurrentDir,
+    ensureNotInLibDir,
     resolveDir,
     resolveFile,
     doesDirExist,
@@ -33,6 +37,7 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
+import Context.Throw qualified as Throw
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
@@ -45,6 +50,7 @@ import Entity.Const
 import Entity.Digest
 import Entity.Module
 import Entity.Module qualified as M
+import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
 import Entity.Platform as TP
 import Entity.Source qualified as Src
@@ -111,6 +117,26 @@ parseRelFile =
 removeDirRecur :: Path Abs Dir -> App ()
 removeDirRecur =
   P.removeDirRecur
+
+returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
+returnDirectory path =
+  ensureDir path >> return path
+
+getLibraryDirPath :: App (Path Abs Dir)
+getLibraryDirPath = do
+  mainModule <- Env.getMainModule
+  let moduleRootDir = getModuleRootDir mainModule
+  returnDirectory $ moduleRootDir </> moduleBuildDir mainModule </> $(P.mkRelDir "library")
+
+ensureNotInLibDir :: App ()
+ensureNotInLibDir = do
+  mainModule <- Env.getMainModule
+  case moduleID mainModule of
+    MID.Library _ ->
+      Throw.raiseError'
+        "This command cannot be used under the library directory"
+    _ ->
+      return ()
 
 getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do

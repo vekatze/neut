@@ -2,7 +2,7 @@ module Act.Archive (archive) where
 
 import Context.App
 import Context.Env (getMainModule)
-import Context.Module qualified as Module
+import Context.Path qualified as Path
 import Entity.Config.Archive
 import Scene.Archive qualified as Archive
 import Scene.Collect qualified as Collect
@@ -14,7 +14,7 @@ import Scene.PackageVersion.Reflect qualified as PV
 archive :: Config -> App ()
 archive cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
-  Module.ensureNotInLibDir
+  Path.ensureNotInLibDir
   packageVersion <- maybe PV.chooseNewVersion PV.reflect (getArchiveName cfg)
   archiveEns <- getMainModule >>= makeArchiveEns packageVersion
   mainModule <- getMainModule

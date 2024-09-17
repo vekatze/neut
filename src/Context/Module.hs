@@ -1,9 +1,5 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Context.Module
-  ( getLibraryDirPath,
-    ensureNotInLibDir,
-    getModuleFilePath,
+  ( getModuleFilePath,
     getModuleDirByID,
     getModuleCacheMap,
     getCoreModuleURL,
@@ -39,26 +35,6 @@ import Path
 import Path.IO
 import System.Environment
 
-returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
-returnDirectory path =
-  ensureDir path >> return path
-
-getLibraryDirPath :: App (Path Abs Dir)
-getLibraryDirPath = do
-  mainModule <- getMainModule
-  let moduleRootDir = getModuleRootDir mainModule
-  returnDirectory $ moduleRootDir </> moduleBuildDir mainModule </> $(mkRelDir "library")
-
-ensureNotInLibDir :: App ()
-ensureNotInLibDir = do
-  mainModule <- getMainModule
-  case moduleID mainModule of
-    MID.Library _ ->
-      Throw.raiseError'
-        "This command cannot be used under the library directory"
-    _ ->
-      return ()
-
 getModuleFilePath :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
 getModuleFilePath mHint moduleID = do
   moduleDir <- getModuleDirByID mHint moduleID
@@ -86,7 +62,7 @@ getModuleDirByID mHint moduleID = do
     MID.Main ->
       return $ getModuleRootDir mainModule
     MID.Library (MD.ModuleDigest digest) -> do
-      libraryDir <- getLibraryDirPath
+      libraryDir <- Path.getLibraryDirPath
       resolveDir libraryDir $ T.unpack digest
 
 saveEns :: Path Abs File -> FullEns -> App ()
