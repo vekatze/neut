@@ -2,7 +2,7 @@ module Act.Zen (zen) where
 
 import Context.App
 import Context.Env qualified as Env
-import Context.Path qualified as Path
+import Context.Module qualified as Module
 import Control.Monad
 import Data.Maybe
 import Entity.ClangOption qualified as CL
@@ -38,7 +38,7 @@ fromConfig cfg =
 
 setup :: Config -> App ()
 setup cfg = do
-  Path.ensureNotInLibDir
+  Module.ensureNotInLibDir
   Initialize.initializeCompiler (remarkCfg cfg)
   Env.setBuildMode $ buildMode cfg
   Env.getMainModule >>= Fetch.fetch

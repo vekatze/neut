@@ -3,7 +3,7 @@ module Act.Build (build) where
 import Context.App
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
-import Context.Path qualified as Path
+import Context.Module qualified as Module
 import Control.Monad
 import Entity.Config.Build
 import Entity.Target
@@ -23,7 +23,7 @@ build cfg = do
 setup :: Config -> App ()
 setup cfg = do
   LLVM.ensureSetupSanity cfg
-  Path.ensureNotInLibDir
+  Module.ensureNotInLibDir
   Initialize.initializeCompiler (remarkCfg cfg)
   Env.setBuildMode $ buildMode cfg
   Env.getMainModule >>= Fetch.fetch

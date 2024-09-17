@@ -1,10 +1,5 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Context.Path
-  ( getLibraryDirPath,
-    getCurrentDir,
-    ensureNotInLibDir,
-    inLibDir,
+  ( getCurrentDir,
     resolveDir,
     resolveFile,
     doesDirExist,
@@ -38,8 +33,6 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
-import Context.Throw qualified as Throw
-import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
@@ -60,29 +53,10 @@ import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
 import Path.IO qualified as P
 import Paths_neut
-import System.Environment
-
-getLibraryDirPath :: App (Path Abs Dir)
-getLibraryDirPath = do
-  cacheDirPath <- getCacheDirPath
-  returnDirectory $ cacheDirPath </> $(P.mkRelDir "library")
 
 getCurrentDir :: App (Path Abs Dir)
 getCurrentDir =
   P.getCurrentDir
-
-ensureNotInLibDir :: App ()
-ensureNotInLibDir = do
-  b <- inLibDir
-  when b $
-    Throw.raiseError'
-      "This command cannot be used under the library directory"
-
-inLibDir :: App Bool
-inLibDir = do
-  currentDir <- getCurrentDir
-  libDir <- getLibraryDirPath
-  return $ P.isProperPrefixOf libDir currentDir
 
 resolveDir :: Path Abs Dir -> FilePath -> App (Path Abs Dir)
 resolveDir =
@@ -137,19 +111,6 @@ parseRelFile =
 removeDirRecur :: Path Abs Dir -> App ()
 removeDirRecur =
   P.removeDirRecur
-
-getCacheDirPath :: App (Path Abs Dir)
-getCacheDirPath = do
-  mCacheDirPathString <- liftIO $ lookupEnv envVarCacheDir
-  case mCacheDirPathString of
-    Just cacheDirPathString -> do
-      P.parseAbsDir cacheDirPathString >>= returnDirectory
-    Nothing ->
-      P.getXdgDir P.XdgCache (Just $(P.mkRelDir "neut")) >>= returnDirectory
-
-returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
-returnDirectory path =
-  P.ensureDir path >> return path
 
 getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do

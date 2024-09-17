@@ -1,5 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Context.Module
-  ( getModuleFilePath,
+  ( getLibraryDirPath,
+    ensureNotInLibDir,
+    getModuleFilePath,
     getModuleDirByID,
     getModuleCacheMap,
     getCoreModuleURL,
@@ -35,6 +39,37 @@ import Path
 import Path.IO
 import System.Environment
 
+returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
+returnDirectory path =
+  ensureDir path >> return path
+
+getCacheDirPath :: App (Path Abs Dir)
+getCacheDirPath = do
+  mCacheDirPathString <- liftIO $ lookupEnv envVarCacheDir
+  case mCacheDirPathString of
+    Just cacheDirPathString -> do
+      parseAbsDir cacheDirPathString >>= returnDirectory
+    Nothing ->
+      getXdgDir XdgCache (Just $(mkRelDir "neut")) >>= returnDirectory
+
+getLibraryDirPath :: App (Path Abs Dir)
+getLibraryDirPath = do
+  cacheDirPath <- getCacheDirPath
+  returnDirectory $ cacheDirPath </> $(mkRelDir "library")
+
+ensureNotInLibDir :: App ()
+ensureNotInLibDir = do
+  b <- inLibDir
+  when b $
+    Throw.raiseError'
+      "This command cannot be used under the library directory"
+
+inLibDir :: App Bool
+inLibDir = do
+  currentDir <- getCurrentDir
+  libDir <- getLibraryDirPath
+  return $ isProperPrefixOf libDir currentDir
+
 getModuleFilePath :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
 getModuleFilePath mHint moduleID = do
   moduleDir <- getModuleDirByID mHint moduleID
@@ -62,7 +97,7 @@ getModuleDirByID mHint moduleID = do
     MID.Main ->
       return $ getModuleRootDir mainModule
     MID.Library (MD.ModuleDigest digest) -> do
-      libraryDir <- Path.getLibraryDirPath
+      libraryDir <- getLibraryDirPath
       resolveDir libraryDir $ T.unpack digest
 
 saveEns :: Path Abs File -> FullEns -> App ()

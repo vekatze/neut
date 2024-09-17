@@ -117,7 +117,7 @@ getAllDependencies baseModule =
 
 fromCurrentPath :: App Module
 fromCurrentPath = do
-  libraryDir <- Path.getLibraryDirPath
+  libraryDir <- Module.getLibraryDirPath
   moduleFilePath <- getCurrentModuleFilePath
   if isProperPrefixOf libraryDir moduleFilePath
     then do
