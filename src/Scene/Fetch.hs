@@ -147,7 +147,7 @@ getLibraryModule alias digest = do
   moduleFilePath <- Module.getModuleFilePath Nothing (MID.Library digest)
   moduleFileExists <- Path.doesFileExist moduleFilePath
   if moduleFileExists
-    then Module.fromFilePath (MID.Library digest) moduleFilePath
+    then Module.fromFilePath moduleFilePath
     else
       Throw.raiseError' $
         "Could not find the module file for `"

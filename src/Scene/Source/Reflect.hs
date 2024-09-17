@@ -26,6 +26,4 @@ getModule srcPath = do
   mainModule <- getMainModule
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
-    else do
-      let moduleID = getDigestFromModulePath moduleFilePath
-      Module.fromFilePath moduleID moduleFilePath
+    else Module.fromFilePath moduleFilePath
