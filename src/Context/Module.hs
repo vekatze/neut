@@ -43,32 +43,21 @@ returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
 returnDirectory path =
   ensureDir path >> return path
 
-getCacheDirPath :: App (Path Abs Dir)
-getCacheDirPath = do
-  mCacheDirPathString <- liftIO $ lookupEnv envVarCacheDir
-  case mCacheDirPathString of
-    Just cacheDirPathString -> do
-      parseAbsDir cacheDirPathString >>= returnDirectory
-    Nothing ->
-      getXdgDir XdgCache (Just $(mkRelDir "neut")) >>= returnDirectory
-
 getLibraryDirPath :: App (Path Abs Dir)
 getLibraryDirPath = do
-  cacheDirPath <- getCacheDirPath
-  returnDirectory $ cacheDirPath </> $(mkRelDir "library")
+  mainModule <- getMainModule
+  let moduleRootDir = getModuleRootDir mainModule
+  returnDirectory $ moduleRootDir </> moduleBuildDir mainModule </> $(mkRelDir "library")
 
 ensureNotInLibDir :: App ()
 ensureNotInLibDir = do
-  b <- inLibDir
-  when b $
-    Throw.raiseError'
-      "This command cannot be used under the library directory"
-
-inLibDir :: App Bool
-inLibDir = do
-  currentDir <- getCurrentDir
-  libDir <- getLibraryDirPath
-  return $ isProperPrefixOf libDir currentDir
+  mainModule <- getMainModule
+  case moduleID mainModule of
+    MID.Library _ ->
+      Throw.raiseError'
+        "This command cannot be used under the library directory"
+    _ ->
+      return ()
 
 getModuleFilePath :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
 getModuleFilePath mHint moduleID = do
