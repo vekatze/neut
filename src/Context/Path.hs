@@ -130,7 +130,11 @@ getDependencyDirPath :: App (Path Abs Dir)
 getDependencyDirPath = do
   mainModule <- Env.getMainModule
   let moduleRootDir = getModuleRootDir mainModule
-  returnDirectory $ moduleRootDir </> moduleCacheDir mainModule </> $(P.mkRelDir "dependency")
+  case moduleID mainModule of
+    MID.Library _ ->
+      returnDirectory $ P.parent moduleRootDir
+    _ -> do
+      returnDirectory $ moduleRootDir </> moduleCacheDir mainModule </> $(P.mkRelDir "dependency")
 
 ensureNotInDependencyDir :: App ()
 ensureNotInDependencyDir = do
