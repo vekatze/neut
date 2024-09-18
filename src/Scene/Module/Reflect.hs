@@ -76,8 +76,8 @@ fromFilePath moduleFilePath = do
   staticFileMap <- interpretStaticFiles staticFileEns
   archiveDirEns <- liftEither $ E.access' keyArchive (E.ensPath archiveRelDir) ens
   archiveDir <- interpretDirPath archiveDirEns
-  buildDirEns <- liftEither $ E.access' keyBuild (E.ensPath cacheRelDir) ens
-  buildDir <- interpretDirPath buildDirEns
+  cacheDirEns <- liftEither $ E.access' keyCache (E.ensPath cacheRelDir) ens
+  cacheDir <- interpretDirPath cacheDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns
   foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
@@ -92,7 +92,7 @@ fromFilePath moduleFilePath = do
     Module
       { moduleID = if isLibrary then getDigestFromModulePath moduleFilePath else MID.Main,
         moduleArchiveDir = archiveDir,
-        moduleCacheDir = buildDir,
+        moduleCacheDir = cacheDir,
         moduleSourceDir = sourceDir,
         moduleTarget = target,
         moduleZenConfig = zenConfigEns,
