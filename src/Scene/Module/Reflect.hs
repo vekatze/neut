@@ -19,7 +19,7 @@ import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
 import Entity.ClangOption qualified as CL
-import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
+import Entity.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
 import Entity.Ens (dictFromListVertical')
 import Entity.Ens qualified as E
 import Entity.Error
@@ -76,7 +76,7 @@ fromFilePath moduleFilePath = do
   staticFileMap <- interpretStaticFiles staticFileEns
   archiveDirEns <- liftEither $ E.access' keyArchive (E.ensPath archiveRelDir) ens
   archiveDir <- interpretDirPath archiveDirEns
-  buildDirEns <- liftEither $ E.access' keyBuild (E.ensPath buildRelDir) ens
+  buildDirEns <- liftEither $ E.access' keyBuild (E.ensPath cacheRelDir) ens
   buildDir <- interpretDirPath buildDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns

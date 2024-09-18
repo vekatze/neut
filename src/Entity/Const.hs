@@ -57,9 +57,9 @@ sourceRelDir :: Path Rel Dir
 sourceRelDir =
   $(mkRelDir "source")
 
-buildRelDir :: Path Rel Dir
-buildRelDir =
-  $(mkRelDir "build")
+cacheRelDir :: Path Rel Dir
+cacheRelDir =
+  $(mkRelDir "cache")
 
 archiveRelDir :: Path Rel Dir
 archiveRelDir =

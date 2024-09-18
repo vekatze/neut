@@ -247,7 +247,7 @@ getSourceDirInfo someModule = do
 getBuildDirInfo :: Module -> Maybe (T.Text, E.Ens)
 getBuildDirInfo someModule = do
   let dir = moduleCacheDir someModule
-  if dir == buildRelDir
+  if dir == cacheRelDir
     then Nothing
     else return (keyBuild, _m :< E.ensPath dir)
 
