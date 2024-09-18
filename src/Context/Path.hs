@@ -1,9 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Context.Path
-  ( getLibraryDirPath,
+  ( getDependencyDirPath,
     getCurrentDir,
-    ensureNotInLibDir,
+    ensureNotInDependencyDir,
     resolveDir,
     resolveFile,
     doesDirExist,
@@ -122,19 +122,19 @@ returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
 returnDirectory path =
   ensureDir path >> return path
 
-getLibraryDirPath :: App (Path Abs Dir)
-getLibraryDirPath = do
+getDependencyDirPath :: App (Path Abs Dir)
+getDependencyDirPath = do
   mainModule <- Env.getMainModule
   let moduleRootDir = getModuleRootDir mainModule
-  returnDirectory $ moduleRootDir </> moduleCacheDir mainModule </> $(P.mkRelDir "library")
+  returnDirectory $ moduleRootDir </> moduleCacheDir mainModule </> $(P.mkRelDir "dependency")
 
-ensureNotInLibDir :: App ()
-ensureNotInLibDir = do
+ensureNotInDependencyDir :: App ()
+ensureNotInDependencyDir = do
   mainModule <- Env.getMainModule
   case moduleID mainModule of
     MID.Library _ ->
       Throw.raiseError'
-        "This command cannot be used under the library directory"
+        "This command cannot be used under a dependency directory"
     _ ->
       return ()
 
@@ -159,7 +159,7 @@ getBaseBuildDir baseModule = do
   platformPrefix <- getPlatformPrefix
   versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
   let moduleRootDir = getModuleRootDir baseModule
-  return $ moduleRootDir </> moduleCacheDir baseModule </> platformPrefix </> versionDir
+  return $ moduleRootDir </> moduleCacheDir baseModule </> $(P.mkRelDir "build") </> platformPrefix </> versionDir
 
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do

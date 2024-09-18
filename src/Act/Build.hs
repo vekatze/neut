@@ -24,7 +24,7 @@ setup :: Config -> App ()
 setup cfg = do
   LLVM.ensureSetupSanity cfg
   Initialize.initializeCompiler (remarkCfg cfg)
-  Path.ensureNotInLibDir
+  Path.ensureNotInDependencyDir
   Env.setBuildMode $ buildMode cfg
   Env.getMainModule >>= Fetch.fetch
 

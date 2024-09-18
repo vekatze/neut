@@ -62,8 +62,8 @@ getModuleDirByID mHint moduleID = do
     MID.Main ->
       return $ getModuleRootDir mainModule
     MID.Library (MD.ModuleDigest digest) -> do
-      libraryDir <- Path.getLibraryDirPath
-      resolveDir libraryDir $ T.unpack digest
+      dependencyDir <- Path.getDependencyDirPath
+      resolveDir dependencyDir $ T.unpack digest
 
 saveEns :: Path Abs File -> FullEns -> App ()
 saveEns path (c1, (ens, c2)) = do

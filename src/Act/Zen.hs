@@ -39,6 +39,6 @@ fromConfig cfg =
 setup :: Config -> App ()
 setup cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
-  Path.ensureNotInLibDir
+  Path.ensureNotInDependencyDir
   Env.setBuildMode $ buildMode cfg
   Env.getMainModule >>= Fetch.fetch
