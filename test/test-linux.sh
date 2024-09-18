@@ -19,6 +19,7 @@ for target_dir in "$@"; do
     (
       exit_code=0
       NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT clean
+      ASAN_OPTIONS=detect_leaks=1 NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build $(basename $i) --execute 2>&1 > /dev/null
       output=$(ASAN_OPTIONS=detect_leaks=1 NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build $(basename $i) --execute 2>&1 > actual)
       last_exit_code=$?
       if [ $last_exit_code -ne 0 ]; then

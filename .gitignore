@@ -8,6 +8,8 @@ target/
 .build/
 test/**/build/
 bench/**/build/
+test/**/cache/
+bench/**/cache/
 dist-newstyle/
 book/dist/
 test/sandbox/

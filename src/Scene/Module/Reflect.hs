@@ -19,7 +19,7 @@ import Data.Text qualified as T
 import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
 import Entity.ClangOption qualified as CL
-import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
+import Entity.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
 import Entity.Ens (dictFromListVertical')
 import Entity.Ens qualified as E
 import Entity.Error
@@ -56,12 +56,12 @@ getModule m moduleID locatorText = do
           T.pack "Could not find the module file for `"
             <> locatorText
             <> "`"
-      nextModule <- fromFilePath moduleID nextModuleFilePath
+      nextModule <- fromFilePath nextModuleFilePath
       Module.insertToModuleCacheMap nextModuleFilePath nextModule
       return nextModule
 
-fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
-fromFilePath moduleID moduleFilePath = do
+fromFilePath :: Path Abs File -> App Module
+fromFilePath moduleFilePath = do
   (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- interpretTarget targetEns
@@ -76,8 +76,8 @@ fromFilePath moduleID moduleFilePath = do
   staticFileMap <- interpretStaticFiles staticFileEns
   archiveDirEns <- liftEither $ E.access' keyArchive (E.ensPath archiveRelDir) ens
   archiveDir <- interpretDirPath archiveDirEns
-  buildDirEns <- liftEither $ E.access' keyBuild (E.ensPath buildRelDir) ens
-  buildDir <- interpretDirPath buildDirEns
+  cacheDirEns <- liftEither $ E.access' keyCache (E.ensPath cacheRelDir) ens
+  cacheDir <- interpretDirPath cacheDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns
   foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
@@ -87,11 +87,12 @@ fromFilePath moduleID moduleFilePath = do
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
   (mPreset, presetEns) <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary
   presetMap <- liftEither $ interpretPresetMap mPreset presetEns
+  let isLibrary = E.hasKey keyAntecedent ens
   return
     Module
-      { moduleID = moduleID,
+      { moduleID = if isLibrary then getDigestFromModulePath moduleFilePath else MID.Main,
         moduleArchiveDir = archiveDir,
-        moduleBuildDir = buildDir,
+        moduleCacheDir = cacheDir,
         moduleSourceDir = sourceDir,
         moduleTarget = target,
         moduleZenConfig = zenConfigEns,
@@ -117,13 +118,7 @@ getAllDependencies baseModule =
 
 fromCurrentPath :: App Module
 fromCurrentPath = do
-  libraryDir <- Path.getLibraryDirPath
-  moduleFilePath <- getCurrentModuleFilePath
-  if isProperPrefixOf libraryDir moduleFilePath
-    then do
-      let moduleID = getDigestFromModulePath moduleFilePath
-      getCurrentModuleFilePath >>= fromFilePath moduleID
-    else getCurrentModuleFilePath >>= fromFilePath MID.Main
+  getCurrentModuleFilePath >>= fromFilePath
 
 interpretPrefixMap ::
   H.Hint ->

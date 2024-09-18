@@ -1,10 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Context.Path
-  ( getLibraryDirPath,
+  ( getDependencyDirPath,
     getCurrentDir,
-    ensureNotInLibDir,
-    inLibDir,
+    ensureNotInDependencyDir,
     resolveDir,
     resolveFile,
     doesDirExist,
@@ -38,8 +37,9 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
+import Context.External (getClangDigest)
 import Context.Throw qualified as Throw
-import Control.Monad
+import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
@@ -50,8 +50,11 @@ import Data.Time
 import Data.Version qualified as V
 import Entity.Const
 import Entity.Digest
+import Entity.Ens qualified as E
+import Entity.Ens.Reify qualified as E
 import Entity.Module
 import Entity.Module qualified as M
+import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
 import Entity.Platform as TP
 import Entity.Source qualified as Src
@@ -60,29 +63,10 @@ import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
 import Path.IO qualified as P
 import Paths_neut
-import System.Environment
-
-getLibraryDirPath :: App (Path Abs Dir)
-getLibraryDirPath = do
-  cacheDirPath <- getCacheDirPath
-  returnDirectory $ cacheDirPath </> $(P.mkRelDir "library")
 
 getCurrentDir :: App (Path Abs Dir)
 getCurrentDir =
   P.getCurrentDir
-
-ensureNotInLibDir :: App ()
-ensureNotInLibDir = do
-  b <- inLibDir
-  when b $
-    Throw.raiseError'
-      "This command cannot be used under the library directory"
-
-inLibDir :: App Bool
-inLibDir = do
-  currentDir <- getCurrentDir
-  libDir <- getLibraryDirPath
-  return $ P.isProperPrefixOf libDir currentDir
 
 resolveDir :: Path Abs Dir -> FilePath -> App (Path Abs Dir)
 resolveDir =
@@ -138,18 +122,25 @@ removeDirRecur :: Path Abs Dir -> App ()
 removeDirRecur =
   P.removeDirRecur
 
-getCacheDirPath :: App (Path Abs Dir)
-getCacheDirPath = do
-  mCacheDirPathString <- liftIO $ lookupEnv envVarCacheDir
-  case mCacheDirPathString of
-    Just cacheDirPathString -> do
-      P.parseAbsDir cacheDirPathString >>= returnDirectory
-    Nothing ->
-      P.getXdgDir P.XdgCache (Just $(P.mkRelDir "neut")) >>= returnDirectory
-
 returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
 returnDirectory path =
-  P.ensureDir path >> return path
+  ensureDir path >> return path
+
+getDependencyDirPath :: App (Path Abs Dir)
+getDependencyDirPath = do
+  mainModule <- Env.getMainModule
+  let moduleRootDir = getModuleRootDir mainModule
+  returnDirectory $ moduleRootDir </> moduleCacheDir mainModule </> $(P.mkRelDir "dependency")
+
+ensureNotInDependencyDir :: App ()
+ensureNotInDependencyDir = do
+  mainModule <- Env.getMainModule
+  case moduleID mainModule of
+    MID.Library _ ->
+      Throw.raiseError'
+        "This command cannot be used under a dependency directory"
+    _ ->
+      return ()
 
 getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do
@@ -172,7 +163,7 @@ getBaseBuildDir baseModule = do
   platformPrefix <- getPlatformPrefix
   versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
   let moduleRootDir = getModuleRootDir baseModule
-  return $ moduleRootDir </> moduleBuildDir baseModule </> platformPrefix </> versionDir
+  return $ moduleRootDir </> moduleCacheDir baseModule </> $(P.mkRelDir "build") </> platformPrefix </> versionDir
 
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do
@@ -188,8 +179,17 @@ getBuildSignature = do
     Just sig -> do
       return sig
     Nothing -> do
+      clangDigest <- getClangDigest
       mainModule <- Env.getMainModule
-      sig <- fmap (B.toString . hashAndEncode) $ liftIO $ B.readFile $ P.toFilePath $ moduleLocation mainModule
+      moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation mainModule
+      let moduleEns' = decodeUtf8 moduleEns
+      let ens =
+            E.dictFromList
+              _m
+              [ ("clang-digest", _m :< E.String clangDigest),
+                ("module-configuration", _m :< E.String moduleEns')
+              ]
+      let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
       modifyRef' buildSignatureCache $ const $ Just sig
       return sig
 

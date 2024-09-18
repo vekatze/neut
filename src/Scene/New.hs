@@ -43,7 +43,7 @@ constructDefaultModule moduleName mTargetName = do
     Module
       { moduleID = MID.Main,
         moduleArchiveDir = archiveRelDir,
-        moduleBuildDir = buildRelDir,
+        moduleCacheDir = cacheRelDir,
         moduleSourceDir = sourceRelDir,
         moduleTarget =
           Map.fromList

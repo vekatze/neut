@@ -62,7 +62,7 @@ data Module = Module
     moduleTarget :: Map.HashMap TargetName Target.TargetSummary,
     moduleZenConfig :: ZenConfig,
     moduleArchiveDir :: Path Rel Dir,
-    moduleBuildDir :: Path Rel Dir,
+    moduleCacheDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
@@ -79,9 +79,9 @@ keyArchive :: T.Text
 keyArchive =
   "archive"
 
-keyBuild :: T.Text
-keyBuild =
-  "build"
+keyCache :: T.Text
+keyCache =
+  "cache"
 
 keySource :: T.Text
 keySource =
@@ -219,7 +219,7 @@ toDefaultEns someModule =
     catMaybes
       [ return $ getTargetInfo someModule,
         getSourceDirInfo someModule,
-        getBuildDirInfo someModule,
+        getCacheDirInfo someModule,
         getArchiveDirInfo someModule,
         getExtraContentInfo someModule,
         getForeignInfo someModule,
@@ -244,12 +244,12 @@ getSourceDirInfo someModule = do
     then Nothing
     else return (keySource, _m :< E.ensPath dir)
 
-getBuildDirInfo :: Module -> Maybe (T.Text, E.Ens)
-getBuildDirInfo someModule = do
-  let dir = moduleBuildDir someModule
-  if dir == buildRelDir
+getCacheDirInfo :: Module -> Maybe (T.Text, E.Ens)
+getCacheDirInfo someModule = do
+  let dir = moduleCacheDir someModule
+  if dir == cacheRelDir
     then Nothing
-    else return (keyBuild, _m :< E.ensPath dir)
+    else return (keyCache, _m :< E.ensPath dir)
 
 getTargetInfo :: Module -> (T.Text, E.Ens)
 getTargetInfo someModule = do

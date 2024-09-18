@@ -14,7 +14,7 @@ import Scene.PackageVersion.Reflect qualified as PV
 archive :: Config -> App ()
 archive cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
-  Path.ensureNotInLibDir
+  Path.ensureNotInDependencyDir
   packageVersion <- maybe PV.chooseNewVersion PV.reflect (getArchiveName cfg)
   archiveEns <- getMainModule >>= makeArchiveEns packageVersion
   mainModule <- getMainModule
