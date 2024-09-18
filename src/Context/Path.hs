@@ -37,7 +37,9 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
+import Context.External (getClangDigest)
 import Context.Throw qualified as Throw
+import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
@@ -48,6 +50,8 @@ import Data.Time
 import Data.Version qualified as V
 import Entity.Const
 import Entity.Digest
+import Entity.Ens qualified as E
+import Entity.Ens.Reify qualified as E
 import Entity.Module
 import Entity.Module qualified as M
 import Entity.ModuleID qualified as MID
@@ -175,8 +179,17 @@ getBuildSignature = do
     Just sig -> do
       return sig
     Nothing -> do
+      clangDigest <- getClangDigest
       mainModule <- Env.getMainModule
-      sig <- fmap (B.toString . hashAndEncode) $ liftIO $ B.readFile $ P.toFilePath $ moduleLocation mainModule
+      moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation mainModule
+      let moduleEns' = decodeUtf8 moduleEns
+      let ens =
+            E.dictFromList
+              _m
+              [ ("clang-digest", _m :< E.String clangDigest),
+                ("module-configuration", _m :< E.String moduleEns')
+              ]
+      let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
       modifyRef' buildSignatureCache $ const $ Just sig
       return sig
 
