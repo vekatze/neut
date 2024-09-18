@@ -126,7 +126,7 @@ getLibraryDirPath :: App (Path Abs Dir)
 getLibraryDirPath = do
   mainModule <- Env.getMainModule
   let moduleRootDir = getModuleRootDir mainModule
-  returnDirectory $ moduleRootDir </> moduleBuildDir mainModule </> $(P.mkRelDir "library")
+  returnDirectory $ moduleRootDir </> moduleCacheDir mainModule </> $(P.mkRelDir "library")
 
 ensureNotInLibDir :: App ()
 ensureNotInLibDir = do
@@ -159,7 +159,7 @@ getBaseBuildDir baseModule = do
   platformPrefix <- getPlatformPrefix
   versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
   let moduleRootDir = getModuleRootDir baseModule
-  return $ moduleRootDir </> moduleBuildDir baseModule </> platformPrefix </> versionDir
+  return $ moduleRootDir </> moduleCacheDir baseModule </> platformPrefix </> versionDir
 
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do

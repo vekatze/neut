@@ -92,7 +92,7 @@ fromFilePath moduleFilePath = do
     Module
       { moduleID = if isLibrary then getDigestFromModulePath moduleFilePath else MID.Main,
         moduleArchiveDir = archiveDir,
-        moduleBuildDir = buildDir,
+        moduleCacheDir = buildDir,
         moduleSourceDir = sourceDir,
         moduleTarget = target,
         moduleZenConfig = zenConfigEns,

@@ -62,7 +62,7 @@ data Module = Module
     moduleTarget :: Map.HashMap TargetName Target.TargetSummary,
     moduleZenConfig :: ZenConfig,
     moduleArchiveDir :: Path Rel Dir,
-    moduleBuildDir :: Path Rel Dir,
+    moduleCacheDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
@@ -246,7 +246,7 @@ getSourceDirInfo someModule = do
 
 getBuildDirInfo :: Module -> Maybe (T.Text, E.Ens)
 getBuildDirInfo someModule = do
-  let dir = moduleBuildDir someModule
+  let dir = moduleCacheDir someModule
   if dir == buildRelDir
     then Nothing
     else return (keyBuild, _m :< E.ensPath dir)
