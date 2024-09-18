@@ -24,9 +24,9 @@ check :: App [Remark]
 check = do
   getMainModule >>= _check Peripheral
 
-checkSingle :: Path Abs File -> App [Remark]
-checkSingle path = do
-  getMainModule >>= _check (PeripheralSingle path)
+checkSingle :: M.Module -> Path Abs File -> App [Remark]
+checkSingle baseModule path = do
+  _check (PeripheralSingle path) baseModule
 
 checkModule :: M.Module -> App [Remark]
 checkModule baseModule = do
