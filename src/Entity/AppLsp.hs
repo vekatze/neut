@@ -21,5 +21,9 @@ lspOptions =
               _save = Just $ InR $ SaveOptions {_includeText = Just False}
             },
       optCompletionTriggerCharacters = Just ['.'],
-      optExecuteCommandCommands = Just [CA.minimizeImportsCommandName]
+      optExecuteCommandCommands =
+        Just
+          [ CA.minimizeImportsCommandName,
+            CA.refreshCacheCommandName
+          ]
     }

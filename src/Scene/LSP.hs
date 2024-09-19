@@ -5,6 +5,7 @@ import Colog.Core qualified as L
 import Context.App
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
+import Control.Monad.Trans
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Text qualified as T
@@ -16,6 +17,7 @@ import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Prettyprinter
+import Scene.Check (checkAll)
 import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
 import Scene.LSP.Format qualified as LSP
@@ -128,7 +130,12 @@ handlers =
                     },
       requestHandler SMethod_TextDocumentCodeAction $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
-        responder $ Right $ InL [InL (CA.minimizeImportsCommand uri)],
+        responder $
+          Right $
+            InL
+              [ InL (CA.minimizeImportsCommand uri),
+                InL CA.refreshCacheCommand
+              ],
       requestHandler SMethod_WorkspaceExecuteCommand $ \req responder -> do
         let params = req ^. J.params
         case params ^. J.command of
@@ -144,6 +151,9 @@ handlers =
                             WorkspaceEdit (Just (M.singleton uri textEditList)) Nothing Nothing
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
+            | commandName == CA.refreshCacheCommandName -> do
+                _ <- liftAppM $ lift checkAll
+                responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null
     ]

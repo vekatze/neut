@@ -2,6 +2,9 @@ module Entity.CodeAction
   ( minimizeImportsCommandTitle,
     minimizeImportsCommandName,
     minimizeImportsCommand,
+    refreshCacheCommandTitle,
+    refreshCacheCommandName,
+    refreshCacheCommand,
   )
 where
 
@@ -23,4 +26,20 @@ minimizeImportsCommand uri =
     { _title = minimizeImportsCommandTitle,
       _command = minimizeImportsCommandName,
       _arguments = Just [A.String (getUri uri)]
+    }
+
+refreshCacheCommandTitle :: T.Text
+refreshCacheCommandTitle =
+  "Refresh completion cache"
+
+refreshCacheCommandName :: T.Text
+refreshCacheCommandName =
+  "refreshCache"
+
+refreshCacheCommand :: Command
+refreshCacheCommand =
+  Command
+    { _title = refreshCacheCommandTitle,
+      _command = refreshCacheCommandName,
+      _arguments = Nothing
     }
