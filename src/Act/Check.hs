@@ -12,7 +12,10 @@ import Scene.Initialize qualified as Initialize
 check :: Config -> App ()
 check cfg = do
   setup cfg
-  logs <- Check.check
+  logs <-
+    if shouldCheckAllDependencies cfg
+      then Check.checkAll
+      else Check.check
   if shouldInsertPadding cfg
     then Remark.printErrorList logs
     else Remark.printErrorList $ map Remark.deactivatePadding logs

@@ -139,11 +139,13 @@ parseVersionOpt =
 parseCheckOpt :: Parser Command
 parseCheckOpt = do
   padOpt <- flag True False (mconcat [long "no-padding", help "Set this to disable padding of the output"])
+  shouldCheckAllDependencies <- flag False True (mconcat [long "full", help "Set this to refresh the caches of all the dependencies"])
   remarkCfg <- remarkConfigOpt
   pure $
     Check $
       Check.Config
         { Check.shouldInsertPadding = padOpt,
+          Check.shouldCheckAllDependencies = shouldCheckAllDependencies,
           Check.remarkCfg = remarkCfg
         }
 

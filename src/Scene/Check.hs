@@ -2,6 +2,7 @@ module Scene.Check
   ( check,
     checkModule,
     checkSingle,
+    checkAll,
   )
 where
 
@@ -16,6 +17,7 @@ import Path
 import Scene.Elaborate qualified as Elaborate
 import Scene.Initialize qualified as Initialize
 import Scene.Load qualified as Load
+import Scene.Module.Reflect (getAllDependencies)
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
 import UnliftIO.Async
@@ -43,3 +45,10 @@ _check target baseModule = do
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
       void $ Parse.parse source cacheOrContent >>= Elaborate.elaborate
+
+checkAll :: App [Remark]
+checkAll = do
+  mainModule <- getMainModule
+  deps <- getAllDependencies mainModule
+  forM_ deps $ \(_, m) -> checkModule m
+  checkModule mainModule
