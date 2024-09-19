@@ -33,7 +33,6 @@ import Entity.ModuleURL
 import Entity.Syntax.Series (Series (hasOptionalSeparator))
 import Entity.Syntax.Series qualified as SE
 import Path
-import Scene.Check (checkModule)
 import Scene.Ens.Reflect qualified as Ens
 import Scene.Module.Reflect qualified as Module
 import UnliftIO.Async
@@ -93,7 +92,6 @@ insertDependency aliasName url = do
               dependencyDigest = digest,
               dependencyPresetEnabled = False
             }
-    void $ getLibraryModule alias digest >>= checkModule
 
 insertCoreDependency :: App ()
 insertCoreDependency = do
@@ -106,7 +104,6 @@ insertCoreDependency = do
         dependencyDigest = digest,
         dependencyPresetEnabled = True
       }
-  void $ getLibraryModule coreModuleAlias digest >>= checkModule
 
 installIfNecessary :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App ()
 installIfNecessary alias mirrorList digest = do
