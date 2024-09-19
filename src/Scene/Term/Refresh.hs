@@ -83,10 +83,10 @@ refresh term =
     m :< TM.Magic der -> do
       der' <- traverse refresh der
       return (m :< TM.Magic der')
-    m :< TM.Resource resourceID discarder copier -> do
+    m :< TM.Resource dd resourceID discarder copier -> do
       discarder' <- refresh discarder
       copier' <- refresh copier
-      return $ m :< TM.Resource resourceID discarder' copier'
+      return $ m :< TM.Resource dd resourceID discarder' copier'
 
 refreshBinder ::
   [BinderF TM.Term] ->

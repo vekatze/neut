@@ -33,6 +33,7 @@ import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.BaseName qualified as BN
 import Entity.C
+import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.HoleID
@@ -78,7 +79,7 @@ data RawTermF a
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
-  | Resource C (a, C) (a, C) -- DD is only for printing
+  | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
   | Use C a C (Args a) C a Loc
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)

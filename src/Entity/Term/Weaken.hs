@@ -96,8 +96,8 @@ weaken term =
       m :< WT.Prim (weakenPrim m prim)
     m :< TM.Magic der -> do
       m :< WT.Magic (fmap weaken der)
-    m :< TM.Resource resourceID discarder copier -> do
-      m :< WT.Resource resourceID (weaken discarder) (weaken copier)
+    m :< TM.Resource dd resourceID discarder copier -> do
+      m :< WT.Resource dd resourceID (weaken discarder) (weaken copier)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
