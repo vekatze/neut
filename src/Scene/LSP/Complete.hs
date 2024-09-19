@@ -4,6 +4,7 @@ import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.AppM
 import Context.Cache qualified as Cache
+import Context.External (getClangDigest)
 import Context.Path qualified as Path
 import Control.Monad
 import Control.Monad.Trans
@@ -41,6 +42,7 @@ complete uri pos = do
   lift registerShiftMap
   pathString <- liftMaybe $ uriToFilePath uri
   currentSource <- lift (Source.reflect pathString) >>= liftMaybe
+  _ <- lift getClangDigest -- cache
   let loc = positionToLoc pos
   lift $ fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
 
