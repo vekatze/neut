@@ -125,7 +125,7 @@ discernStmt mo stmt = do
       let dd = nameLifter name
       registerTopLevelName nameLifter stmt
       t' <- discern (emptyAxis mo 0) $ m :< RT.Tau
-      e' <- discern (emptyAxis mo 0) $ m :< RT.Resource [] (discarder, []) (copier, [])
+      e' <- discern (emptyAxis mo 0) $ m :< RT.Resource dd [] (discarder, []) (copier, [])
       Tag.insertGlobalVar m dd True m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineConst m dd t' e']
@@ -425,11 +425,11 @@ discern axis term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Resource _ (discarder, _) (copier, _) -> do
+    m :< RT.Resource dd _ (discarder, _) (copier, _) -> do
       resourceID <- Gensym.newCount
       discarder' <- discern axis discarder
       copier' <- discern axis copier
-      return $ m :< WT.Resource resourceID discarder' copier'
+      return $ m :< WT.Resource dd resourceID discarder' copier'
     m :< RT.Use _ e _ xs _ cont endLoc -> do
       e' <- discern axis e
       (xs', axis') <- discernBinder axis (RT.extractArgs xs) endLoc

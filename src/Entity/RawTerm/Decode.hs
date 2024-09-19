@@ -20,6 +20,7 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.C.Decode qualified as C
+import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.Hint
@@ -246,8 +247,8 @@ toDoc term =
       D.text "_"
     _ :< Annotation {} -> do
       D.text "<annot>"
-    _ :< Resource {} -> do
-      D.text "<resource>"
+    _ :< Resource dd _ _ _ -> do
+      D.text $ DD.localLocator dd
     _ :< Use c1 trope c2 (args, c3) c4 cont _ -> do
       D.join
         [ PI.arrange

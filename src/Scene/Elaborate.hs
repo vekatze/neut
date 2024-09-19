@@ -340,10 +340,10 @@ elaborate' term =
           let typeRemark = Remark.newRemark m remarkLevel message
           Remark.insertRemark typeRemark
           return e'
-    m :< WT.Resource resourceID discarder copier -> do
+    m :< WT.Resource dd resourceID discarder copier -> do
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier
-      return $ m :< TM.Resource resourceID discarder' copier'
+      return $ m :< TM.Resource dd resourceID discarder' copier'
     m :< WT.Use {} -> do
       Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
 
