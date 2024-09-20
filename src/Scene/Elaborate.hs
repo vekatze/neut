@@ -50,6 +50,7 @@ import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText
+import Scene.Elaborate.EnsureAffinity
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Inline qualified as TM
@@ -110,17 +111,27 @@ elaborateStmt stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
       stmtKind' <- elaborateStmtKind stmtKind
-      e' <- elaborate' e >>= TM.inline m
+      e' <- elaborate' e
       impArgs' <- mapM elaborateWeakBinder impArgs
       expArgs' <- mapM elaborateWeakBinder expArgs
-      codType' <- elaborate' codType >>= TM.inline m
-      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType' e'
+      codType' <- elaborate' codType
+      let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
+      remarks <- ensureAffinity $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
+      forM_ remarks Remark.insertRemark
+      e'' <- TM.inline m e'
+      codType'' <- TM.inline m codType'
+      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType'' e''
       insertStmt result
       return [result]
     WeakStmtDefineConst m dd t v -> do
-      t' <- elaborate' t >>= TM.inline m
-      v' <- elaborate' v >>= TM.inline m
-      let result = StmtDefineConst (SavedHint m) dd t' v'
+      t' <- elaborate' t
+      v' <- elaborate' v
+      remarks1 <- ensureAffinity t'
+      remarks2 <- ensureAffinity v'
+      forM_ (remarks1 ++ remarks2) Remark.insertRemark
+      t'' <- TM.inline m t'
+      v'' <- TM.inline m v'
+      let result = StmtDefineConst (SavedHint m) dd t'' v''
       insertStmt result
       return [result]
     WeakStmtNominal _ geistList -> do

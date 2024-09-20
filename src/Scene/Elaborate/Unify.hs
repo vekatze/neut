@@ -8,7 +8,6 @@ import Context.App
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
-import Context.OptimizableData qualified as OptimizableData
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -35,7 +34,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Module
-import Entity.OptimizableData qualified as OD
 import Entity.PrimType qualified as PT
 import Entity.Remark qualified as R
 import Entity.Source
@@ -85,9 +83,6 @@ throwTypeErrors susList = do
       C.Actual t -> do
         t' <- fillAsMuchAsPossible sub t
         return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
-      C.Affine t -> do
-        t' <- fillAsMuchAsPossible sub t
-        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageAffine t'
       C.Integer t -> do
         t' <- fillAsMuchAsPossible sub t
         return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageInteger t'
@@ -116,20 +111,12 @@ constructErrorMessageActual t =
   "A term of the following type might be noetic:\n"
     <> toText t
 
-constructErrorMessageAffine :: WT.WeakTerm -> T.Text
-constructErrorMessageAffine t =
-  "The type of this affine variable is not affine, but:\n"
-    <> toText t
-
 constructErrorMessageInteger :: WT.WeakTerm -> T.Text
 constructErrorMessageInteger t =
   "Expected:\n  "
     <> "an integer type"
     <> "\nFound:\n  "
     <> toText t
-
--- "This term is an integer, but its type is: "
---   <> toText t
 
 data Axis = Axis
   { inlineLimit :: Int,
@@ -167,10 +154,6 @@ simplify ax susList constraintList =
     (C.Actual t, orig) : cs -> do
       detectPossibleInfiniteLoop (C.getLoc orig) ax
       susList' <- simplifyActual (WT.metaOf t) S.empty t orig
-      simplify ax (susList' ++ susList) cs
-    (C.Affine t, orig) : cs -> do
-      detectPossibleInfiniteLoop (C.getLoc orig) ax
-      susList' <- simplifyAffine (WT.metaOf t) S.empty t orig
       simplify ax (susList' ++ susList) cs
     (C.Integer t, orig) : cs -> do
       detectPossibleInfiniteLoop (C.getLoc orig) ax
@@ -456,58 +439,6 @@ getConsArgTypes m consName = do
       return $ impArgs ++ expArgs
     _ ->
       Throw.raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
-
-simplifyAffine ::
-  Hint ->
-  S.Set DD.DefiniteDescription ->
-  WT.WeakTerm ->
-  C.Constraint ->
-  App [SuspendedConstraint]
-simplifyAffine m dataNameSet t orig = do
-  t' <- reduce t
-  case t' of
-    _ :< WT.Tau -> do
-      return []
-    _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
-      od <- OptimizableData.lookup dataName
-      case od of
-        Just OD.Enum -> do
-          return []
-        Just OD.Unary -> do
-          let dataNameSet' = S.insert dataName dataNameSet
-          constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
-            simplifyAffine m dataNameSet' dataArg orig
-          dataConsArgsList <-
-            if S.member dataName dataNameSet
-              then return []
-              else mapM (getConsArgTypes m . fst) consNameList
-          constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-            dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
-            fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
-              simplifyAffine m dataNameSet' consArg orig
-          return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
-        _ -> do
-          return [C.SuspendedConstraint (holes t', (C.Affine t', orig))]
-    _ :< WT.BoxNoema {} ->
-      return []
-    _ :< WT.Prim {} -> do
-      return []
-    _ -> do
-      sub <- getHoleSubst
-      let fmvs = holes t'
-      case lookupAny (S.toList fmvs) sub of
-        Just (h, (xs, body)) -> do
-          let s = HS.singleton h xs body
-          t'' <- fill s t'
-          simplifyAffine m dataNameSet t'' orig
-        Nothing -> do
-          defMap <- WeakDefinition.read
-          case Stuck.asStuckedTerm t' of
-            Just (Stuck.VarGlobal dd, evalCtx)
-              | Just lam <- Map.lookup dd defMap -> do
-                  simplifyAffine m dataNameSet (Stuck.resume lam evalCtx) orig
-            _ -> do
-              return [C.SuspendedConstraint (fmvs, (C.Affine t', orig))]
 
 simplifyInteger ::
   Hint ->

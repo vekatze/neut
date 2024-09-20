@@ -212,7 +212,6 @@ infer axis term =
               insertVar x axis
             Just alreadyRegistered ->
               unless alreadyRegistered $ do
-                insertAffineConstraint $ m :< t
                 insertRelevantVar x axis
           return (term, m :< t)
     m :< WT.VarGlobal _ name -> do
