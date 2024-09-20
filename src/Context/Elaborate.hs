@@ -3,7 +3,6 @@ module Context.Elaborate
     initializeInferenceEnv,
     insConstraintEnv,
     insertActualityConstraint,
-    insertAffineConstraint,
     insertIntegerConstraint,
     setConstraintEnv,
     getConstraintEnv,
@@ -65,10 +64,6 @@ insConstraintEnv expected actual = do
 insertActualityConstraint :: WeakTerm -> App ()
 insertActualityConstraint t = do
   modifyRef' constraintEnv $ (:) (C.Actual t)
-
-insertAffineConstraint :: WeakTerm -> App ()
-insertAffineConstraint t = do
-  modifyRef' constraintEnv $ (:) (C.Affine t)
 
 insertIntegerConstraint :: WeakTerm -> App ()
 insertIntegerConstraint t = do

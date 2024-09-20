@@ -34,8 +34,6 @@ printConstraints = do
     case c of
       Actual {} ->
         return ()
-      Affine {} ->
-        return ()
       Eq expected actual -> do
         printNote' $ toText expected <> " == " <> toText actual
       Integer {} ->

@@ -72,7 +72,7 @@ define root(a: type, t: &tree(a)): a {
   }
 }
 
-define find-min(a: type, cmp: (a, a) -> ordering, h: &heap(a)): ?a {
+define find-min(a: type, !cmp: (a, a) -> ordering, h: &heap(a)): ?a {
   let helper =
     define self(!cand: a, h: &heap(a)): a {
       case h {
@@ -80,7 +80,7 @@ define find-min(a: type, cmp: (a, a) -> ordering, h: &heap(a)): ?a {
         !cand
       | Cons(t, ts) =>
         let !root-head = root(a, t) in
-        match cmp(!root-head, !cand) {
+        match !cmp(!root-head, !cand) {
         | LT =>
           self(!root-head, ts)
         | _ =>

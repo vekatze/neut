@@ -24,8 +24,8 @@ define main(): unit {
   in
   let _ = single-free-var(3) in
   let !ys = !xs in
-  let zs = !xs in
-  let ws: list(int) = [] in
+  let !zs = !xs in
+  let !ws: list(int) = [] in
   let multiple-free-var =
     define free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
@@ -33,14 +33,14 @@ define main(): unit {
         let _ = !xs in
         let _ = !ys in
         let _ on !ys = length(!ys) in
-        let _ on zs = length(zs) in
+        let _ on !zs = length(!zs) in
         let _ = !ys in
-        let _ = zs in
+        let _ = !zs in
         1
       } else {
         let _ = !xs in
         let _ = !ys in
-        let _ = ws in
+        let _ = !ws in
         free-vars-in-recursion(sub-int(c, 1))
       }
     }

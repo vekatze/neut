@@ -1,7 +1,7 @@
-define loop(f: (int) -> ?int): unit {
+define loop(!f: (int) -> ?int): unit {
   let k =
     define self(count: int): unit {
-      let value-or-none = f(count) in
+      let value-or-none = !f(count) in
       match value-or-none {
       | Left(_) =>
         Unit

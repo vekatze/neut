@@ -9,7 +9,6 @@ import Entity.WeakTerm qualified as WT
 data Constraint
   = Eq WT.WeakTerm WT.WeakTerm -- (expected-type, actual-type)
   | Actual WT.WeakTerm
-  | Affine WT.WeakTerm
   | Integer WT.WeakTerm
 
 type MetaVarSet =
@@ -24,8 +23,6 @@ getLoc c = do
     Eq _ (m :< _) ->
       m
     Actual (m :< _) ->
-      m
-    Affine (m :< _) ->
       m
     Integer (m :< _) ->
       m

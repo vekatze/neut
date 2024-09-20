@@ -40,14 +40,14 @@ define balance(a: type, c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   }
 }
 
-define insert(a: type, cmp: (a, a) -> ordering, x: a, t: tree(a)): tree(a) {
+define insert(a: type, !cmp: (a, a) -> ordering, !x: a, t: tree(a)): tree(a) {
   let helper =
     define self(t: tree(a)): tree(a) {
       match t {
       | Leaf =>
-        Node(Red, Leaf, x, Leaf)
+        Node(Red, Leaf, !x, Leaf)
       | Node(c, left, !y, right) =>
-        match cmp(x, !y) {
+        match !cmp(!x, !y) {
         | LT =>
           balance(a, c, self(left), !y, right)
         | EQ =>

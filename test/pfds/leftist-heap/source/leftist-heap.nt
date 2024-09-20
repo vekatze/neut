@@ -16,7 +16,7 @@ data heap-signature(a) {
   )
 }
 
-define make-heap-signature(a: type, compare: (a, a) -> ordering): heap-signature(a) {
+define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signature(a) {
   let !merge =
     let !rank =
       function (h: &heap(a)) {
@@ -28,7 +28,7 @@ define make-heap-signature(a: type, compare: (a, a) -> ordering): heap-signature
         }
       }
     in
-    let make-Node =
+    let !make-Node =
       function (x: a, l: heap(a), r: heap(a)) {
         let rank1 on l = !rank(l) in
         let rank2 on r = !rank(r) in
@@ -46,11 +46,11 @@ define make-heap-signature(a: type, compare: (a, a) -> ordering): heap-signature
       | Leaf, h2 =>
         h2
       | Node(rank1, !value1, left1, right1), Node(rank2, !value2, left2, right2) =>
-        match compare(!value1, !value2) {
+        match !compare(!value1, !value2) {
         | LT =>
-          make-Node(!value1, left1, merge(right1, Node(rank2, !value2, left2, right2)))
+          !make-Node(!value1, left1, merge(right1, Node(rank2, !value2, left2, right2)))
         | _ =>
-          make-Node(!value2, left2, merge(Node(rank1, !value1, left1, right1), right2))
+          !make-Node(!value2, left2, merge(Node(rank1, !value1, left1, right1), right2))
         }
       }
     }
