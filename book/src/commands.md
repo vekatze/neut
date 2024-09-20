@@ -394,6 +394,10 @@ You can import dependencies from source files. See the notes on `import` in [Sta
 
 When the option `--in-place` is set, `format-source` performs in-place update.
 
+### `--minimize-imports`
+
+When the option `--minimize-imports` is set, `format-source` removes all the unused items in `import {..}`.
+
 ## `neut format-ens`
 
 `neut format-ens path/to/source/file.ens` formats specified ens file and outputs the result to stdout.
