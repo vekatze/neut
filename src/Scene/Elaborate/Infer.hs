@@ -16,9 +16,7 @@ import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
-import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Entity.Annotation qualified as Annotation
@@ -36,8 +34,7 @@ import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
-import Entity.Ident (Ident (..), isCartesian, isHole)
-import Entity.Ident.Reify (toInt)
+import Entity.Ident (Ident (..), isHole)
 import Entity.Ident.Reify qualified as Ident
 import Entity.Key (Key)
 import Entity.LamKind qualified as LK
@@ -147,9 +144,7 @@ getUnitType m = do
 createNewAxis :: App Axis
 createNewAxis = do
   let varEnv = []
-  foundVarSetRef <- liftIO $ newIORef IntMap.empty
-  let mustPerformExpCheck = True
-  return Axis {varEnv, foundVarSetRef, mustPerformExpCheck}
+  return Axis {varEnv}
 
 extendAxis :: BinderF WT.WeakTerm -> Axis -> Axis
 extendAxis (mx, x, t) axis = do
@@ -159,41 +154,8 @@ extendAxis' :: BinderF WT.WeakTerm -> Axis -> Axis
 extendAxis' (mx, x, t) axis = do
   axis {varEnv = (mx, x, t) : varEnv axis}
 
-cloneAxis :: Axis -> App Axis
-cloneAxis axis = do
-  liftIO $ do
-    foundVarSet <- readIORef $ foundVarSetRef axis
-    foundVarSetRef <- newIORef foundVarSet
-    let mustPerformExpCheck = True
-    return Axis {varEnv = varEnv axis, foundVarSetRef, mustPerformExpCheck}
-
-deactivateExpCheck :: Axis -> Axis
-deactivateExpCheck axis =
-  axis {mustPerformExpCheck = False}
-
-data Axis
-  = Axis
-  { varEnv :: BoundVarEnv,
-    foundVarSetRef :: IORef (IntMap.IntMap Bool),
-    mustPerformExpCheck :: Bool
-  }
-
-mergeVarSet :: IntMap.IntMap Bool -> IntMap.IntMap Bool -> IntMap.IntMap Bool
-mergeVarSet set1 set2 = do
-  IntMap.unionWith (||) set1 set2
-
-isExistingVar :: Ident -> Axis -> App (Maybe Bool)
-isExistingVar i axis = do
-  foundVarSet <- liftIO $ readIORef $ foundVarSetRef axis
-  return $ IntMap.lookup (toInt i) foundVarSet
-
-insertVar :: Ident -> Axis -> App ()
-insertVar i axis = do
-  liftIO $ modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) False
-
-insertRelevantVar :: Ident -> Axis -> App ()
-insertRelevantVar i axis = do
-  liftIO $ modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) True
+newtype Axis
+  = Axis {varEnv :: BoundVarEnv}
 
 infer :: Axis -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer axis term =
@@ -202,18 +164,7 @@ infer axis term =
       return (term, term)
     m :< WT.Var x -> do
       _ :< t <- lookupWeakTypeEnv m x
-      if isCartesian x || not (mustPerformExpCheck axis)
-        then
-          return (term, m :< t)
-        else do
-          boolOrNone <- isExistingVar x axis
-          case boolOrNone of
-            Nothing ->
-              insertVar x axis
-            Just alreadyRegistered ->
-              unless alreadyRegistered $ do
-                insertRelevantVar x axis
-          return (term, m :< t)
+      return (term, m :< t)
     m :< WT.VarGlobal _ name -> do
       _ :< t <- Type.lookup m name
       return (term, m :< t)
@@ -247,7 +198,7 @@ infer axis term =
       etls <- mapM (infer axis) es
       inferPiElim axis m etl etls
     m :< WT.PiElimExact e -> do
-      (e', t) <- infer (deactivateExpCheck axis) e
+      (e', t) <- infer axis e
       t' <- resolveType t
       case t' of
         _ :< WT.Pi impArgs expArgs codType -> do
@@ -261,11 +212,11 @@ infer axis term =
         _ ->
           Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
-      (es', _) <- mapAndUnzipM (infer $ deactivateExpCheck axis) es
+      (es', _) <- mapAndUnzipM (infer axis) es
       return (m :< WT.Data attr name es', m :< WT.Tau)
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
-      (dataArgs', _) <- mapAndUnzipM (infer $ deactivateExpCheck axis) dataArgs
-      (consArgs', _) <- mapAndUnzipM (infer $ deactivateExpCheck axis) consArgs
+      (dataArgs', _) <- mapAndUnzipM (infer axis) dataArgs
+      (consArgs', _) <- mapAndUnzipM (infer axis) consArgs
       let dataType = m :< WT.Data (AttrD.Attr {..}) dataName dataArgs'
       return (m :< WT.DataIntro attr consName dataArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
@@ -643,18 +594,8 @@ inferClauseList ::
   DT.CaseList WT.WeakTerm ->
   App (DT.CaseList WT.WeakTerm, WT.WeakTerm)
 inferClauseList m axis cursorType (fallbackClause, clauseList) = do
-  newVarSetRef <- liftIO $ newIORef IntMap.empty
-  (clauseList', answerTypeList) <- flip mapAndUnzipM clauseList $ \clause -> do
-    axis' <- cloneAxis axis
-    result <- inferClause axis' cursorType clause
-    branchVarSet <- liftIO $ readIORef $ foundVarSetRef axis'
-    liftIO $ modifyIORef' newVarSetRef $ mergeVarSet branchVarSet
-    return result
+  (clauseList', answerTypeList) <- flip mapAndUnzipM clauseList $ inferClause axis cursorType
   (fallbackClause', fallbackAnswerType) <- inferDecisionTree m axis fallbackClause
-  fallbackVarSet <- liftIO $ readIORef $ foundVarSetRef axis
-  liftIO $ modifyIORef' newVarSetRef $ mergeVarSet fallbackVarSet
-  newVarSet <- liftIO $ readIORef newVarSetRef
-  liftIO $ writeIORef (foundVarSetRef axis) newVarSet
   h <- newHole m (varEnv axis)
   forM_ (answerTypeList ++ [fallbackAnswerType]) $ insConstraintEnv h
   return ((fallbackClause', clauseList'), fallbackAnswerType)

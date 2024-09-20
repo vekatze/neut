@@ -17,6 +17,7 @@ import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.List
 import Data.Set qualified as S
@@ -29,6 +30,7 @@ import Entity.Cache qualified as Cache
 import Entity.Const (holeLiteral)
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
+import Entity.Error qualified as E
 import Entity.ExternalName qualified as EN
 import Entity.Geist qualified as G
 import Entity.Hint
@@ -41,6 +43,7 @@ import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
+import Entity.Remark qualified as R
 import Entity.Remark qualified as Remark
 import Entity.Stmt
 import Entity.StmtKind
@@ -81,7 +84,9 @@ synthesizeStmtList :: [WeakStmt] -> App [Stmt]
 synthesizeStmtList stmtList = do
   -- mapM_ viewStmt stmtList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
-  stmtList' <- concat <$> mapM elaborateStmt stmtList
+  (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM elaborateStmt stmtList
+  unless (null affineErrorList) $ do
+    Throw.throw $ E.MakeError affineErrorList
   -- mapM_ (viewStmt . weakenStmt) stmtList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
@@ -106,7 +111,7 @@ synthesizeStmtList stmtList = do
   Remark.insertToGlobalRemarkList remarkList
   return stmtList'
 
-elaborateStmt :: WeakStmt -> App [Stmt]
+elaborateStmt :: WeakStmt -> App ([Stmt], [R.Remark])
 elaborateStmt stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
@@ -117,28 +122,26 @@ elaborateStmt stmt = do
       codType' <- elaborate' codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
       remarks <- ensureAffinity $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
-      forM_ remarks Remark.insertRemark
       e'' <- TM.inline m e'
       codType'' <- TM.inline m codType'
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType'' e''
       insertStmt result
-      return [result]
+      return ([result], remarks)
     WeakStmtDefineConst m dd t v -> do
       t' <- elaborate' t
       v' <- elaborate' v
       remarks1 <- ensureAffinity t'
       remarks2 <- ensureAffinity v'
-      forM_ (remarks1 ++ remarks2) Remark.insertRemark
       t'' <- TM.inline m t'
       v'' <- TM.inline m v'
       let result = StmtDefineConst (SavedHint m) dd t'' v''
       insertStmt result
-      return [result]
+      return ([result], remarks1 ++ remarks2)
     WeakStmtNominal _ geistList -> do
       mapM_ elaborateGeist geistList
-      return []
+      return ([], [])
     WeakStmtForeign foreignList -> do
-      return [StmtForeign foreignList]
+      return ([StmtForeign foreignList], [])
 
 elaborateGeist :: G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
 elaborateGeist G.Geist {..} = do
