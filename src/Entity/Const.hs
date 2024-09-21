@@ -29,10 +29,6 @@ verSep :: T.Text
 verSep =
   "-"
 
-envVarCacheDir :: String
-envVarCacheDir =
-  "NEUT_CACHE_DIR"
-
 envVarCoreModuleURL :: String
 envVarCoreModuleURL =
   "NEUT_CORE_MODULE_URL"
