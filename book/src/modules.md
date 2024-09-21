@@ -15,8 +15,8 @@ Below is the list of configurations of `module.ens`.
 - [foreign](#foreign)
 - [static](#static)
 - [preset](#preset)
-- [antecedent](#antecedent)
 - [inline-limit](#inline-limit)
+- [antecedent](#antecedent)
 
 ## `target`
 
@@ -213,19 +213,19 @@ The field `archive` defines the path of the directory into which the subcommand 
 
 The field `archive` is optional. The default value of `archive` is `./archive/`.
 
-## `build`
+## `cache`
 
-The field `build` defines the path of the directory to store object files, executables, etc. It should look like the following:
+The field `cache` defines the path of the directory to store object files, executables, dependencies, etc. It should look like the following:
 
 ```ens
 {
   // ..
-  build ".build",
+  cache ".cache",
   // ..
 }
 ```
 
-The field `build` is optional. The default value of `build` is `./build/`.
+The field `cache` is optional. The default value of `cache` is `./cache/`.
 
 ## `source`
 
@@ -458,32 +458,6 @@ The field `preset` is expected to be used as a way to realize "preludes" in othe
 
 The field `preset` is optional. The default value of `preset` is `{}`.
 
-## `antecedent`
-
-The field `antecedent` defines the list of older compatible versions. This field should look like the following:
-
-```ens
-{
-  // ..
-  antecedent [
-    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag",
-    // ..
-    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA",
-  ],
-  // ..
-}
-```
-
-This information is used to select the newest compatible version of the module. For more information, see the explanation on `neut archive` in [Commands](./commands.md).
-
-The field `antecedent` is optional. The default value of `antecedent` is `[]`.
-
-<div class="info-block">
-
-You won't write this field by hand because it is inserted automatically into `module.ens` of a tarball when `neut archive` is executed.
-
-</div>
-
 ## `inline-limit`
 
 The field `inline-limit` defines the limit on recursion performed during compilation. It should look like the below:
@@ -509,3 +483,31 @@ Error: Exceeded max recursion depth of 1000 during (..)
 ```
 
 The field `inline-limit` is optional. The default value of `inline-limit` is `1000000`.
+
+## `antecedent`
+
+The _internal_ field `antecedent` defines the list of older compatible versions. This field should look like the following:
+
+```ens
+{
+  // ..
+  antecedent [
+    "Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag",
+    // ..
+    "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA",
+  ],
+  // ..
+}
+```
+
+This information is used to select the newest compatible version of the module. For more information, see the explanation on `neut archive` in [Commands](./commands.md).
+
+The field `antecedent` is optional. The default value of `antecedent` is `[]`.
+
+This field must be modified _only by the compiler_. If you modify this field manually, the behavior of the compiler is undefined.
+
+<div class="info-block">
+
+Internally, the compiler treats a module as a library if and only if the module's `module.ens` contains the key `antecedent`.
+
+</div>

@@ -210,18 +210,18 @@ The same as the one of `neut build`.
 
 ## `neut clean`
 
-`neut clean` removes the cache files in the current module's `build` directory.
+`neut clean` removes the cache files in the current module's `cache` directory.
 
 More specifically, this command removes the following directory in the current module:
 
 ```text
-(build-directory)/(platform)/(compiler-version)/
+(cache-directory)/build/(platform)/(compiler-version)/
 ```
 
 An example of a removed directory:
 
 ```text
-build/arm64-darwin/compiler-0.8.0/
+cache/build/arm64-darwin/compiler-0.8.0/
 ```
 
 ## `neut archive`
@@ -393,6 +393,10 @@ You can import dependencies from source files. See the notes on `import` in [Sta
 ### `--in-place`
 
 When the option `--in-place` is set, `format-source` performs in-place update.
+
+### `--minimize-imports`
+
+When the option `--minimize-imports` is set, `format-source` removes all the unused items in `import {..}`.
 
 ## `neut format-ens`
 

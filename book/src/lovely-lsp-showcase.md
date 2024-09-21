@@ -10,7 +10,8 @@ The LSP server currently has the following features:
 - [Completion (+ automatic import)](#completion--automatic-import)
 - [Jump to Definition](#jump-to-definition)
 - [Find References](#find-references)
-- [Format on Save (+ Remove Unused Imports)](#format-on-save--remove-unused-imports)
+- [Format on Save](#format-on-save)
+- [Remove Unused Imports](#remove-unused-imports)
 - [Show the Type of a Variable](#show-the-type-of-a-variable)
 - [Highlight Symbols](#highlight-symbols)
 
@@ -30,9 +31,13 @@ The LSP server currently has the following features:
 
 ![find references](./image/screencasts/find-references.gif "find references")
 
-### Format on Save (+ Remove Unused Imports)
+### Format on Save
 
 ![format on save](./image/screencasts/format-on-save.gif "format on save")
+
+### Remove Unused Imports
+
+![remove unused imports](./image/screencasts/minimize.gif "remove unused imports")
 
 ### Show the Type of a Variable
 

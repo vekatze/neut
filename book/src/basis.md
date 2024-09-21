@@ -71,7 +71,7 @@ define foo(!xs: list(int)): unit {
 
 Note that the above example executes the type `list(int)` as a function.
 
-You must prefix a variable with `!` if the variable needs to be copied.
+You must prefix a variable with `!` if the variable needs to be copied. You must also prefix free variables in a term-level `define` with `!` if they cannot be copied for free.
 
 The prefix `!` is unnecessary if the variable can be copied for free.
 
@@ -297,18 +297,16 @@ If a bar-separated sequence has a leading bar, the sequence is formatted vertica
 
 The behavior of the compiler can be adjusted using the following environment variables:
 
-| Environment Variable      | Meaning                           |
-| ------------------------- | --------------------------------- |
-| `NEUT_CACHE_DIR`          | the directory used to save caches |
-| `NEUT_CLANG`              | the command to call `clang`       |
-| `NEUT_CORE_MODULE_DIGEST` | the digest of the core module     |
-| `NEUT_CORE_MODULE_URL`    | the URL of the core module        |
+| Environment Variable      | Meaning                       |
+| ------------------------- | ----------------------------- |
+| `NEUT_CLANG`              | the command to call `clang`   |
+| `NEUT_CORE_MODULE_DIGEST` | the digest of the core module |
+| `NEUT_CORE_MODULE_URL`    | the URL of the core module    |
 
 The default values are as follows:
 
 | Environment Variable      | Default Value                 |
 | ------------------------- | ----------------------------- |
-| `NEUT_CACHE_DIR`          | `$XDG_CACHE_HOME/neut`        |
 | `NEUT_CLANG`              | `clang`                       |
 | `NEUT_CORE_MODULE_DIGEST` | (undefined; you must set one) |
 | `NEUT_CORE_MODULE_URL`    | (undefined; you must set one) |
