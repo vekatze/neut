@@ -71,7 +71,7 @@ define foo(!xs: list(int)): unit {
 
 Note that the above example executes the type `list(int)` as a function.
 
-You must prefix a variable with `!` if the variable needs to be copied.
+You must prefix a variable with `!` if the variable needs to be copied. You must also prefix free variables in a term-level `define` with `!` if they cannot be copied for free.
 
 The prefix `!` is unnecessary if the variable can be copied for free.
 
