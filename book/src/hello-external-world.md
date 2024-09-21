@@ -39,14 +39,14 @@ The content should be something like the following:
 
 ```text
 sample/
-├── build/
+├── cache/
 │  └── ...
 ├── source/
 │  └── sample.nt
 └── module.ens
 ```
 
-The directory `build` is where object files (binary files) are put in. You won't have to go into the directory for daily use.
+The directory `cache` is where object files (binary files) and dependencies are put in. You won't have to go into the directory for daily use.
 
 The directory `source` is where we put source files.
 

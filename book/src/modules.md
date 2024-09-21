@@ -213,19 +213,19 @@ The field `archive` defines the path of the directory into which the subcommand 
 
 The field `archive` is optional. The default value of `archive` is `./archive/`.
 
-## `build`
+## `cache`
 
-The field `build` defines the path of the directory to store object files, executables, etc. It should look like the following:
+The field `cache` defines the path of the directory to store object files, executables, dependencies, etc. It should look like the following:
 
 ```ens
 {
   // ..
-  build ".build",
+  cache ".cache",
   // ..
 }
 ```
 
-The field `build` is optional. The default value of `build` is `./build/`.
+The field `cache` is optional. The default value of `cache` is `./cache/`.
 
 ## `source`
 
