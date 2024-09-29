@@ -133,8 +133,8 @@ topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSum
         let textEditOrNone = if needsTextEdit then interpretCand importSummaryOrNone cand else Nothing
         let CompletionItem {..} = toCompletionItem $ reifyCand cand
         let _kind = Just $ fromCandidateKind $ kind topCandidate
-        let _detail = Just ("in " <> locator)
-        CompletionItem {_kind, _detail, _additionalTextEdits = textEditOrNone, ..}
+        let _labelDetails = Just CompletionItemLabelDetails {_description = Just ("in " <> locator), _detail = Nothing}
+        CompletionItem {_kind, _labelDetails, _additionalTextEdits = textEditOrNone, ..}
 
 data Cand
   = FullyQualified T.Text T.Text
