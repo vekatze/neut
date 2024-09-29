@@ -2,8 +2,8 @@ FROM debian:12.5
 
 WORKDIR /app/
 
-ENV LANG C.utf8
-ENV LC_ALL C.utf8
+ENV LANG=C.utf8
+ENV LC_ALL=C.utf8
 
 RUN apt-get update && \
   apt-get install --no-install-recommends -y \
