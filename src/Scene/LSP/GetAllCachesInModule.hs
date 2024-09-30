@@ -1,5 +1,5 @@
 module Scene.LSP.GetAllCachesInModule
-  ( getAllCachesInModule,
+  ( getAllLocationCachesInModule,
     getAllCompletionCachesInModule,
   )
 where
@@ -7,7 +7,7 @@ where
 import Context.App
 import Context.Cache qualified as Cache
 import Context.Module (getAllSourcePathInModule)
-import Context.Path (getSourceCachePath, getSourceCompletionCachePath)
+import Context.Path (getSourceCompletionCachePath)
 import Data.Maybe (catMaybes)
 import Entity.Cache
 import Entity.Module
@@ -16,15 +16,15 @@ import Path
 import Scene.Source.ShiftToLatest (shiftToLatest)
 import UnliftIO.Async
 
-getAllCachesInModule :: Module -> App [(Source, Cache)]
-getAllCachesInModule baseModule = do
+getAllLocationCachesInModule :: Module -> App [(Source, LocationCache)]
+getAllLocationCachesInModule baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
-  fmap catMaybes $ forConcurrently sourcePathList $ \path -> getCache baseModule path
+  fmap catMaybes $ forConcurrently sourcePathList $ \path -> getLocationCache baseModule path
 
-getCache :: Module -> Path Abs File -> App (Maybe (Source, Cache))
-getCache baseModule filePath = do
+getLocationCache :: Module -> Path Abs File -> App (Maybe (Source, LocationCache))
+getLocationCache baseModule filePath = do
   source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <- getSourceCachePath source >>= Cache.loadCacheOptimistically
+  cacheOrNone <- Cache.loadLocationCache source
   case cacheOrNone of
     Nothing ->
       return Nothing

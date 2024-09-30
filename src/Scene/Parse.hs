@@ -5,6 +5,8 @@ module Scene.Parse
 where
 
 import Context.App
+import Context.Cache qualified as Cache
+import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -44,7 +46,10 @@ parseSource source cacheOrContent = do
       return $ Left cache
     Right content -> do
       prog <- P.parseFile True Parse.parseProgram path content
-      Right <$> interpret source (snd prog)
+      prog' <- interpret source (snd prog)
+      tmap <- Env.getTagMap
+      Cache.saveLocationCache source $ Cache.LocationCache tmap
+      return $ Right prog'
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
