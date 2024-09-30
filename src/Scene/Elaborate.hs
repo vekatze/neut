@@ -90,7 +90,6 @@ synthesizeStmtList stmtList = do
   -- mapM_ (viewStmt . weakenStmt) stmtList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
-  tmap <- Env.getTagMap
   localVarTree <- SymLoc.get
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
@@ -99,7 +98,6 @@ synthesizeStmtList stmtList = do
     Cache.Cache
       { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
-        Cache.locationTree = tmap,
         Cache.countSnapshot = countSnapshot
       }
   Cache.saveCompletionCache source $

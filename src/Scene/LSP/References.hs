@@ -22,7 +22,7 @@ references params = do
   lift registerShiftMap
   currentSource <- LSP.getSource params
   ((_, defLink), _) <- LSP.findDefinition params
-  cacheSeq <- lift $ LSP.getAllCachesInModule $ sourceModule currentSource
+  cacheSeq <- lift $ LSP.getAllLocationCachesInModule $ sourceModule currentSource
   fmap concat $ lift $ forConcurrently cacheSeq $ \(path, cache) -> do
     refList <- LSP.findReferences defLink (Cache.locationTree cache)
     return $ map (toLocation $ sourceFilePath path) refList

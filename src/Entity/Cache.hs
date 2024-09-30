@@ -12,7 +12,6 @@ import GHC.Generics
 data Cache = Cache
   { stmtList :: [Stmt.Stmt],
     remarkList :: [Remark],
-    locationTree :: LT.LocationTree,
     countSnapshot :: Int
   }
   deriving (Generic)
@@ -20,7 +19,6 @@ data Cache = Cache
 data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
     remarkList' :: [Remark],
-    locationTree' :: LT.LocationTree,
     countSnapshot' :: Int
   }
   deriving (Generic)
@@ -36,12 +34,18 @@ data CompletionCache = CompletionCache
 
 instance Binary CompletionCache
 
+newtype LocationCache = LocationCache
+  { locationTree :: LT.LocationTree
+  }
+  deriving (Generic)
+
+instance Binary LocationCache
+
 compress :: Cache -> LowCache
 compress cache =
   LowCache
     { stmtList' = map Stmt.compress (stmtList cache),
       remarkList' = remarkList cache,
-      locationTree' = locationTree cache,
       countSnapshot' = countSnapshot cache
     }
 
@@ -50,6 +54,5 @@ extend cache =
   Cache
     { stmtList = map Stmt.extend (stmtList' cache),
       remarkList = remarkList' cache,
-      locationTree = locationTree' cache,
       countSnapshot = countSnapshot' cache
     }

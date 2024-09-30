@@ -1,9 +1,11 @@
 module Context.Cache
   ( saveCache,
     saveCompletionCache,
+    saveLocationCache,
     loadCache,
     loadCacheOptimistically,
     loadCompletionCacheOptimistically,
+    loadLocationCache,
     whenCompilationNecessary,
     isEntryPointCompilationSkippable,
     invalidate,
@@ -12,6 +14,7 @@ where
 
 import Context.App
 import Context.Env qualified as Env
+import Context.Path (getSourceLocationCachePath)
 import Context.Path qualified as Path
 import Control.Monad.IO.Class
 import Data.Binary
@@ -33,6 +36,12 @@ saveCache source cache = do
 saveCompletionCache :: Source.Source -> Cache.CompletionCache -> App ()
 saveCompletionCache source cache = do
   cachePath <- Path.getSourceCompletionCachePath source
+  ensureDir $ parent cachePath
+  liftIO $ encodeFile (toFilePath cachePath) cache
+
+saveLocationCache :: Source.Source -> Cache.LocationCache -> App ()
+saveLocationCache source cache = do
+  cachePath <- Path.getSourceLocationCachePath source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
@@ -72,6 +81,21 @@ loadCacheOptimistically cachePath = do
 
 loadCompletionCacheOptimistically :: Path Abs File -> App (Maybe Cache.CompletionCache)
 loadCompletionCacheOptimistically cachePath = do
+  hasCache <- doesFileExist cachePath
+  if not hasCache
+    then return Nothing
+    else do
+      dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
+      case dataOrErr of
+        Left _ -> do
+          removeFile cachePath
+          return Nothing
+        Right content ->
+          return $ Just content
+
+loadLocationCache :: Source.Source -> App (Maybe Cache.LocationCache)
+loadLocationCache source = do
+  cachePath <- getSourceLocationCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing

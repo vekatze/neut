@@ -26,6 +26,7 @@ module Context.Path
     getZenExecutableDir,
     getSourceCachePath,
     getSourceCompletionCachePath,
+    getSourceLocationCachePath,
     attachOutputPath,
     getOutputPathForEntryPoint,
     getLastModifiedSup,
@@ -237,18 +238,23 @@ sourceToOutputPath kind source = do
   Src.attachExtension (artifactDir </> relPathWithoutExtension) kind
 
 getSourceCachePath :: Src.Source -> App (Path Abs File)
-getSourceCachePath source = do
-  artifactDir <- getArtifactDir $ Src.sourceModule source
-  relPath <- Src.getRelPathFromSourceDir source
-  (relPathWithoutExtension, _) <- P.splitExtension relPath
-  P.addExtension ".i" (artifactDir </> relPathWithoutExtension)
+getSourceCachePath =
+  getCachePath ".i"
 
 getSourceCompletionCachePath :: Src.Source -> App (Path Abs File)
-getSourceCompletionCachePath source = do
+getSourceCompletionCachePath =
+  getCachePath ".ic"
+
+getSourceLocationCachePath :: Src.Source -> App (Path Abs File)
+getSourceLocationCachePath =
+  getCachePath ".loc"
+
+getCachePath :: String -> Src.Source -> App (Path Abs File)
+getCachePath extension source = do
   artifactDir <- getArtifactDir $ Src.sourceModule source
   relPath <- Src.getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- P.splitExtension relPath
-  P.addExtension ".ic" (artifactDir </> relPathWithoutExtension)
+  P.addExtension extension (artifactDir </> relPathWithoutExtension)
 
 attachOutputPath :: OK.OutputKind -> Src.Source -> App (OK.OutputKind, Path Abs File)
 attachOutputPath outputKind source = do
