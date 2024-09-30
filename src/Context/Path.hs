@@ -239,11 +239,11 @@ sourceToOutputPath kind source = do
 
 getSourceCachePath :: Src.Source -> App (Path Abs File)
 getSourceCachePath =
-  getCachePath ".i"
+  getCachePath ".def"
 
 getSourceCompletionCachePath :: Src.Source -> App (Path Abs File)
 getSourceCompletionCachePath =
-  getCachePath ".ic"
+  getCachePath ".cmp"
 
 getSourceLocationCachePath :: Src.Source -> App (Path Abs File)
 getSourceLocationCachePath =
