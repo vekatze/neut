@@ -13,7 +13,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (maybeToList)
+import Data.Maybe (mapMaybe, maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
@@ -126,7 +126,7 @@ topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSum
       let fullyQualified = FullyQualified locator ll
       let bare = Bare locator ll
       let prefixed = map (`Prefixed` ll) prefixList
-      let cands = fullyQualified : bare : prefixed
+      let cands = mapMaybe (removeAmbiguousCand importSummaryOrNone) (fullyQualified : bare : prefixed)
       flip map cands $ \cand -> do
         let inPresetImport = isInPresetImport presetSummary cand
         let needsTextEdit = not candIsInCurrentSource && not inPresetImport
@@ -140,6 +140,26 @@ data Cand
   = FullyQualified T.Text T.Text
   | Prefixed T.Text T.Text
   | Bare T.Text T.Text
+
+removeAmbiguousCand :: Maybe RawImportSummary -> Cand -> Maybe Cand
+removeAmbiguousCand summaryOrNone cand = do
+  case summaryOrNone of
+    Nothing ->
+      Just cand
+    Just (summary, _) -> do
+      if shouldRemoveLocatorPair (getLocatorPair cand) summary
+        then Nothing
+        else Just cand
+
+shouldRemoveLocatorPair :: (T.Text, T.Text) -> [(T.Text, [T.Text])] -> Bool
+shouldRemoveLocatorPair (gl, ll) summary = do
+  case summary of
+    [] ->
+      False
+    (gl', lls) : rest -> do
+      let b1 = gl /= gl' && ll `elem` lls
+      let b2 = shouldRemoveLocatorPair (gl, ll) rest
+      b1 || b2
 
 isInPresetImport :: FastPresetSummary -> Cand -> Bool
 isInPresetImport presetSummary cand =
@@ -170,6 +190,16 @@ interpretCand importSummaryOrNone cand =
           let edit = prefix <> constructEditText cand <> "\n"
           let pos = locToPosition loc
           Just [TextEdit {_range = Range {_start = pos, _end = pos}, _newText = edit}]
+
+getLocatorPair :: Cand -> (T.Text, T.Text)
+getLocatorPair cand =
+  case cand of
+    FullyQualified gl ll ->
+      (gl, ll)
+    Prefixed prefix ll ->
+      (prefix, ll)
+    Bare gl ll ->
+      (gl, ll)
 
 reifyCand :: Cand -> T.Text
 reifyCand cand =
