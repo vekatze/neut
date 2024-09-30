@@ -143,13 +143,17 @@ data Cand
 
 removeAmbiguousCand :: Maybe RawImportSummary -> Cand -> Maybe Cand
 removeAmbiguousCand summaryOrNone cand = do
-  case summaryOrNone of
-    Nothing ->
+  case cand of
+    Bare gl ll ->
+      case summaryOrNone of
+        Nothing ->
+          Just cand
+        Just (summary, _) -> do
+          if shouldRemoveLocatorPair (gl, ll) summary
+            then Nothing
+            else Just cand
+    _ ->
       Just cand
-    Just (summary, _) -> do
-      if shouldRemoveLocatorPair (getLocatorPair cand) summary
-        then Nothing
-        else Just cand
 
 shouldRemoveLocatorPair :: (T.Text, T.Text) -> [(T.Text, [T.Text])] -> Bool
 shouldRemoveLocatorPair (gl, ll) summary = do
@@ -190,16 +194,6 @@ interpretCand importSummaryOrNone cand =
           let edit = prefix <> constructEditText cand <> "\n"
           let pos = locToPosition loc
           Just [TextEdit {_range = Range {_start = pos, _end = pos}, _newText = edit}]
-
-getLocatorPair :: Cand -> (T.Text, T.Text)
-getLocatorPair cand =
-  case cand of
-    FullyQualified gl ll ->
-      (gl, ll)
-    Prefixed prefix ll ->
-      (prefix, ll)
-    Bare gl ll ->
-      (gl, ll)
 
 reifyCand :: Cand -> T.Text
 reifyCand cand =
