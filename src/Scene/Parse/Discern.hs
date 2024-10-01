@@ -315,8 +315,8 @@ discern axis term =
               e' <- discern axis $ m :< RT.piElim newChannelDD []
               return $ m :< WT.Actual e'
         _ -> do
-          es' <- mapM (discern axis) $ SE.extract es
           e' <- discern axis e
+          es' <- mapM (discern axis) $ SE.extract es
           return $ m :< WT.PiElim e' es'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, _) <- resolveName m name
