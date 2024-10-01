@@ -1,3 +1,8 @@
+import {
+  core.system {get-argc, get-argv},
+  core.text.io {print-int},
+}
+
 define main(): unit {
   let _ = get-argv() in
   let argc = get-argc() in

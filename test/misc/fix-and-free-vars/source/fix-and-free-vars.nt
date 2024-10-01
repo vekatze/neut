@@ -1,3 +1,8 @@
+import {
+  core.list {length},
+  core.text.io {print-int},
+}
+
 define main(): unit {
   let !xs: list(int) = [] in
   let no-free-var =

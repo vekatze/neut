@@ -1,3 +1,8 @@
+import {
+  core.list {reverse},
+  core.text.io {print-int},
+}
+
 data queue(a) {
 | Queue(list(a), list(a))
 }

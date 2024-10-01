@@ -2,6 +2,8 @@ import {
   FF,
   FM,
   core.errno {system},
+  core.file {close, open},
+  core.text.io {read, write},
 }
 
 define use-file(): system(unit) {
