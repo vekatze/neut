@@ -1,5 +1,6 @@
 import {
   core.int.ord,
+  core.text.io {print-int},
 }
 
 data set(a) {

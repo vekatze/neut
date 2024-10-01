@@ -4,6 +4,8 @@ import {
   core.int.parse {parse-int},
   core.intmap {lookup},
   core.random {random},
+  core.system {get-argv},
+  core.text.io {print-int},
 }
 
 define make-big-dict(size: int): intmap(int) {

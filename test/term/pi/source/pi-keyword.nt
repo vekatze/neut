@@ -1,3 +1,7 @@
+import {
+  core.null {null},
+}
+
 define foo(
   FOO: bool,
   a: type,

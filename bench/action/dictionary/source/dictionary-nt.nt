@@ -4,6 +4,8 @@ import {
   core.int.ord,
   core.int.parse {parse-int},
   core.random {random},
+  core.system {get-argv},
+  core.text.io {print-int},
 }
 
 constant intdict: Dict.trope(int) {

@@ -1,6 +1,7 @@
 import {
   core.control {discard},
   core.int.show {show-int},
+  core.list {length},
 }
 
 define axiom-K<a, b>(f: meta (a) -> b, x: meta a): meta b {

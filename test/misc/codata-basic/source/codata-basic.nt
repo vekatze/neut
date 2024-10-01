@@ -1,3 +1,7 @@
+import {
+  core.text.io {print-int},
+}
+
 data bar(a: type) {
 | Bar(value: a)
 }

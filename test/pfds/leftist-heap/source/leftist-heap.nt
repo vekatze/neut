@@ -1,3 +1,7 @@
+import {
+  core.text.io {print-int},
+}
+
 // leftist heap
 data heap(a) {
 | Leaf

@@ -1,5 +1,7 @@
 import {
   Ext,
+  core.channel {channel, receive, send},
+  core.list {length},
 }
 
 define test-syntax(): unit {
