@@ -121,6 +121,9 @@ Let's try editing the code as follows:
 
 ```neut
 // sample.nt
+import {
+  core.text.io {print-int},
+}
 
 define main(): unit {
   print-int(42) // `print-int` is also defined in `core`
@@ -146,6 +149,9 @@ Of course, you can define a function:
 
 ```neut
 // sample.nt
+import {
+  core.text.io {print-int},
+}
 
 define get-int(): int {
   42
@@ -160,6 +166,9 @@ A function can take arguments. Let's rewrite `sample.nt` into the below:
 
 ```neut
 // sample.nt
+import {
+  core.text.io {print-int},
+}
 
 define increment(x: int): int {
   add-int(x, 1)
@@ -274,6 +283,7 @@ These dependencies can then be used in your code:
 // new-item.nt
 
 import {
+  core.text.io {print-int},
   some-name.sample {my-add},
 }
 
@@ -302,6 +312,7 @@ Suppose you didn't write `{my-add}`. In this case, you can use the fully-qualifi
 // new-item.nt
 
 import {
+  core.text.io {print-int},
   some-name.sample, // removed `{my-add}`
 }
 
@@ -370,6 +381,7 @@ We can also use so-called qualified imports as in Haskell. Let's remember the ex
 // new-item.nt
 
 import {
+  core.text.io {print-int},
   some-name.sample, // removed `{my-add}`
 }
 
@@ -400,6 +412,7 @@ We can now rewrite the `new-item.nt` as follows:
 
 import {
   S, // == some-name.sample
+  core.text.io {print-int},
 }
 
 define main(): unit {
