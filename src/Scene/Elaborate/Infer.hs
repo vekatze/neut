@@ -309,7 +309,8 @@ infer axis term =
           (size', sizeType) <- infer axis size
           intType <- getIntType m
           insConstraintEnv intType sizeType
-          return (m :< WT.Magic (M.Alloca lt size'), intType)
+          resultType <- newHole m (varEnv axis)
+          return (m :< WT.Magic (M.Alloca lt size'), resultType)
         _ -> do
           magic' <- mapM (infer axis >=> return . fst) magic
           resultType <- newHole m (varEnv axis)
