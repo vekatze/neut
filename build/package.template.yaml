@@ -1,6 +1,6 @@
 name: neut
 version: 0
-license: ISC
+license: MIT
 license-file: license.md
 author: "vekatze"
 maintainer: "vekatze@icloud.com"
