@@ -15,6 +15,7 @@ import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
@@ -39,9 +40,22 @@ import UnliftIO.Async
 
 fetch :: M.Module -> App ()
 fetch baseModule = do
-  let dependency = Map.toList $ M.moduleDependency baseModule
-  forConcurrently_ dependency $ \(alias, dep) ->
-    installIfNecessary alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
+  fetchDeps $ collectDependency baseModule
+
+fetchDeps :: [(ModuleAlias, M.Dependency)] -> App ()
+fetchDeps deps = do
+  deps' <- tidy deps
+  if null deps'
+    then return ()
+    else do
+      next <- fmap concat $ forConcurrently deps' $ \(alias, dep) -> do
+        installModule alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
+      fetchDeps next
+
+tidy :: [(ModuleAlias, M.Dependency)] -> App [(ModuleAlias, M.Dependency)]
+tidy deps = do
+  let deps' = nubOrdOn (M.dependencyDigest . snd) deps
+  filterM (fmap not . checkIfInstalled . M.dependencyDigest . snd) deps'
 
 insertDependency :: T.Text -> ModuleURL -> App ()
 insertDependency aliasName url = do
@@ -66,8 +80,8 @@ insertDependency aliasName url = do
                   then do
                     Remark.printNote' $ "Already installed: `" <> MD.reify digest
                   else do
-                    Remark.printNote' $ "Reinstalling a dependency: `" <> MD.reify digest <> "`"
-                    installModule tempFilePath alias digest
+                    printInstallationRemark alias digest
+                    installModule' tempFilePath alias digest >>= fetchDeps
               else do
                 Remark.printNote' $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
@@ -80,12 +94,12 @@ insertDependency aliasName url = do
                 <> MD.reify (M.dependencyDigest dep)
                 <> "\n- new: "
                 <> MD.reify digest
-            installModule tempFilePath alias digest
+            installModule' tempFilePath alias digest >>= fetchDeps
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
             updateDependencyInModuleFile (moduleLocation mainModule) alias dep'
       Nothing -> do
-        Remark.printNote' $ "Adding a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
-        installModule tempFilePath alias digest
+        printInstallationRemark alias digest
+        installModule' tempFilePath alias digest >>= fetchDeps
         addDependencyToModuleFile alias $
           M.Dependency
             { dependencyMirrorList = [url],
@@ -97,7 +111,7 @@ insertCoreDependency :: App ()
 insertCoreDependency = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
-  installIfNecessary coreModuleAlias [coreModuleURL] digest
+  _ <- installModule coreModuleAlias [coreModuleURL] digest
   addDependencyToModuleFile coreModuleAlias $
     M.Dependency
       { dependencyMirrorList = [coreModuleURL],
@@ -105,35 +119,39 @@ insertCoreDependency = do
         dependencyPresetEnabled = True
       }
 
-installIfNecessary :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App ()
-installIfNecessary alias mirrorList digest = do
-  isInstalled <- checkIfInstalled digest
-  unless isInstalled $ do
-    Remark.printNote' $ "Adding a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
-    withTempFile $ \tempFilePath tempFileHandle -> do
-      download tempFilePath alias mirrorList
-      archive <- getHandleContents tempFileHandle
-      let archiveModuleDigest = MD.fromByteString archive
-      when (digest /= archiveModuleDigest) $
-        Throw.raiseError' $
-          "The digest of the module `"
-            <> BN.reify (extract alias)
-            <> "` is different from the expected one:"
-            <> "\n- "
-            <> MD.reify digest
-            <> " (expected)"
-            <> "\n- "
-            <> MD.reify archiveModuleDigest
-            <> " (actual)"
-      installModule tempFilePath alias digest
+installModule :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
+installModule alias mirrorList digest = do
+  printInstallationRemark alias digest
+  withTempFile $ \tempFilePath tempFileHandle -> do
+    download tempFilePath alias mirrorList
+    archive <- getHandleContents tempFileHandle
+    let archiveModuleDigest = MD.fromByteString archive
+    when (digest /= archiveModuleDigest) $
+      Throw.raiseError' $
+        "The digest of the module `"
+          <> BN.reify (extract alias)
+          <> "` is different from the expected one:"
+          <> "\n- "
+          <> MD.reify digest
+          <> " (expected)"
+          <> "\n- "
+          <> MD.reify archiveModuleDigest
+          <> " (actual)"
+    installModule' tempFilePath alias digest
 
-installModule :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
-installModule archivePath alias digest = do
-  isInstalled <- checkIfInstalled digest
-  unless isInstalled $ do
-    extractToDependencyDir archivePath alias digest
-    libModule <- getLibraryModule alias digest
-    fetch libModule
+installModule' :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
+installModule' archivePath alias digest = do
+  extractToDependencyDir archivePath alias digest
+  libModule <- getLibraryModule alias digest
+  return $ collectDependency libModule
+
+printInstallationRemark :: ModuleAlias -> MD.ModuleDigest -> App ()
+printInstallationRemark alias digest = do
+  Remark.printNote' $ "Install: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
+
+collectDependency :: M.Module -> [(ModuleAlias, M.Dependency)]
+collectDependency baseModule = do
+  Map.toList $ M.moduleDependency baseModule
 
 checkIfInstalled :: MD.ModuleDigest -> App Bool
 checkIfInstalled digest = do
