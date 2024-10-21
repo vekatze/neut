@@ -70,3 +70,7 @@ remarkLevelToSGR level =
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
     Critical ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
+
+attachSuffix :: Remark -> T.Text -> Remark
+attachSuffix (mpos, b, level, text) suffix =
+  (mpos, b, level, text <> suffix)

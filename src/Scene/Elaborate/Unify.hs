@@ -78,19 +78,22 @@ unify' constraintList = do
 throwTypeErrors :: [SuspendedConstraint] -> App a
 throwTypeErrors susList = do
   sub <- getHoleSubst
-  errorList <- forM susList $ \(C.SuspendedConstraint (_, (_, c))) -> do
-    case c of
-      C.Actual t -> do
-        t' <- fillAsMuchAsPossible sub t
-        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
-      C.Integer t -> do
-        t' <- fillAsMuchAsPossible sub t
-        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageInteger t'
-      C.Eq expected actual -> do
-        expected' <- fillAsMuchAsPossible sub expected
-        actual' <- fillAsMuchAsPossible sub actual
-        return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMessageEq actual' expected'
+  errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark sub c) susList
   Throw.throw $ E.MakeError errorList
+
+constraintToRemark :: HS.HoleSubst -> C.Constraint -> App R.Remark
+constraintToRemark sub c = do
+  case c of
+    C.Actual t -> do
+      t' <- fillAsMuchAsPossible sub t
+      return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
+    C.Integer t -> do
+      t' <- fillAsMuchAsPossible sub t
+      return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageInteger t'
+    C.Eq expected actual -> do
+      expected' <- fillAsMuchAsPossible sub expected
+      actual' <- fillAsMuchAsPossible sub actual
+      return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMessageEq actual' expected'
 
 fillAsMuchAsPossible :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fillAsMuchAsPossible sub e = do
@@ -108,7 +111,7 @@ constructErrorMessageEq found expected =
 
 constructErrorMessageActual :: WT.WeakTerm -> T.Text
 constructErrorMessageActual t =
-  "A term of the following type might be noetic:\n"
+  "A term of the following type might be noetic:\n  "
     <> toText t
 
 constructErrorMessageInteger :: WT.WeakTerm -> T.Text
@@ -140,11 +143,19 @@ increment :: Axis -> Axis
 increment ax = do
   ax {currentStep = currentStep ax + 1}
 
-detectPossibleInfiniteLoop :: Hint -> Axis -> App ()
-detectPossibleInfiniteLoop location axis = do
+detectPossibleInfiniteLoop :: Axis -> C.Constraint -> App ()
+detectPossibleInfiniteLoop axis c = do
   let Axis {inlineLimit, currentStep} = axis
   when (inlineLimit < currentStep) $ do
-    Throw.raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit) <> " during unification"
+    sub <- getHoleSubst
+    r <- constraintToRemark sub c
+    Throw.throw $
+      E.MakeError
+        [ R.attachSuffix r $
+            "\n(Exceeded max recursion depth of "
+              <> T.pack (show inlineLimit)
+              <> " during unification)"
+        ]
 
 simplify :: Axis -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> App [SuspendedConstraint]
 simplify ax susList constraintList =
@@ -152,15 +163,13 @@ simplify ax susList constraintList =
     [] ->
       return susList
     (C.Actual t, orig) : cs -> do
-      detectPossibleInfiniteLoop (C.getLoc orig) ax
-      susList' <- simplifyActual (WT.metaOf t) S.empty t orig
+      susList' <- simplifyActual ax (WT.metaOf t) S.empty t orig
       simplify ax (susList' ++ susList) cs
     (C.Integer t, orig) : cs -> do
-      detectPossibleInfiniteLoop (C.getLoc orig) ax
-      susList' <- simplifyInteger (WT.metaOf t) t orig
+      susList' <- simplifyInteger ax (WT.metaOf t) t orig
       simplify ax (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
-      detectPossibleInfiniteLoop (C.getLoc orig) ax
+      detectPossibleInfiniteLoop ax orig
       expected' <- reduce expected
       actual' <- reduce actual
       if WT.eq expected' actual'
@@ -372,12 +381,14 @@ lookupAny is sub =
           lookupAny js sub
 
 simplifyActual ::
+  Axis ->
   Hint ->
   S.Set DD.DefiniteDescription ->
   WT.WeakTerm ->
   C.Constraint ->
   App [SuspendedConstraint]
-simplifyActual m dataNameSet t orig = do
+simplifyActual ax m dataNameSet t orig = do
+  detectPossibleInfiniteLoop ax orig
   t' <- reduce t
   case t' of
     _ :< WT.Tau -> do
@@ -385,7 +396,7 @@ simplifyActual m dataNameSet t orig = do
     _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
       let dataNameSet' = S.insert dataName dataNameSet
       constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
-        simplifyActual m dataNameSet' dataArg orig
+        simplifyActual ax m dataNameSet' dataArg orig
       dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
@@ -393,7 +404,7 @@ simplifyActual m dataNameSet t orig = do
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
         dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
-          simplifyActual m dataNameSet' consArg orig
+          simplifyActual ax m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
     _ :< WT.Prim {} -> do
       return []
@@ -406,13 +417,13 @@ simplifyActual m dataNameSet t orig = do
         Just (h, (xs, body)) -> do
           let s = HS.singleton h xs body
           t'' <- fill s t'
-          simplifyActual m dataNameSet t'' orig
+          simplifyActual ax m dataNameSet t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
-                  simplifyActual m dataNameSet (Stuck.resume lam evalCtx) orig
+                  simplifyActual (increment ax) m dataNameSet (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
 
@@ -441,11 +452,13 @@ getConsArgTypes m consName = do
       Throw.raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
 
 simplifyInteger ::
+  Axis ->
   Hint ->
   WT.WeakTerm ->
   C.Constraint ->
   App [SuspendedConstraint]
-simplifyInteger m t orig = do
+simplifyInteger ax m t orig = do
+  detectPossibleInfiniteLoop ax orig
   t' <- reduce t
   case t' of
     _ :< WT.Prim (WP.Type (PT.Int _)) -> do
@@ -457,12 +470,12 @@ simplifyInteger m t orig = do
         Just (h, (xs, body)) -> do
           let s = HS.singleton h xs body
           t'' <- fill s t'
-          simplifyInteger m t'' orig
+          simplifyInteger ax m t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
-                  simplifyInteger m (Stuck.resume lam evalCtx) orig
+                  simplifyInteger (increment ax) m (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
