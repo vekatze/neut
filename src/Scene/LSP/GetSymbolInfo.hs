@@ -3,6 +3,7 @@ module Scene.LSP.GetSymbolInfo (getSymbolInfo) where
 import Context.AppM
 import Context.Cache (invalidate)
 import Context.Elaborate
+import Context.Throw qualified as Throw
 import Context.Type
 import Control.Comonad.Cofree
 import Control.Monad.Trans
@@ -36,7 +37,7 @@ _getSymbolInfo locType = do
   case symbolName of
     LT.Local varID _ -> do
       t <- lift (lookupWeakTypeEnvMaybe varID) >>= liftMaybe
-      t' <- lift $ elaborate' t
+      t' <- lift (Throw.runMaybe $ elaborate' t) >>= liftMaybe
       return $ toText $ weaken t'
     LT.Global dd isConstLike -> do
       t <- lift (lookupMaybe dd) >>= liftMaybe
