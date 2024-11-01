@@ -1,6 +1,7 @@
 module Scene.Parse.Util
   ( readIntBinaryMaybe,
     readIntOctalMaybe,
+    readIntDecimalMaybe,
     readIntHexadecimalMaybe,
   )
 where
@@ -14,6 +15,10 @@ readIntBinaryMaybe = do
 readIntOctalMaybe :: T.Text -> Maybe Integer
 readIntOctalMaybe = do
   readIntMaybe "0o" octalMap
+
+readIntDecimalMaybe :: T.Text -> Maybe Integer
+readIntDecimalMaybe = do
+  readIntMaybe "" decimalMap
 
 readIntHexadecimalMaybe :: T.Text -> Maybe Integer
 readIntHexadecimalMaybe = do
@@ -53,6 +58,20 @@ octalMap =
     ('5', 5),
     ('6', 6),
     ('7', 7)
+  ]
+
+decimalMap :: [(Char, Integer)]
+decimalMap =
+  [ ('0', 0),
+    ('1', 1),
+    ('2', 2),
+    ('3', 3),
+    ('4', 4),
+    ('5', 5),
+    ('6', 6),
+    ('7', 7),
+    ('8', 8),
+    ('9', 9)
   ]
 
 hexadecimalMap :: [(Char, Integer)]
