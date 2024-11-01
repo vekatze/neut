@@ -243,7 +243,7 @@ discern axis term =
     m :< RT.Var name ->
       case name of
         Var s
-          | Just x <- R.readMaybe (T.unpack s) -> do
+          | Just x <- readIntDecimalMaybe s -> do
               h <- Gensym.newHole m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int h x)
           | Just x <- readIntBinaryMaybe s -> do
