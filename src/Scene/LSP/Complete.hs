@@ -6,6 +6,7 @@ import Context.AppM
 import Context.Cache qualified as Cache
 import Context.External (getClangDigest)
 import Context.Path qualified as Path
+import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Trans
 import Data.Bifunctor (second)
@@ -44,7 +45,11 @@ complete uri pos = do
   currentSource <- lift (Source.reflect pathString) >>= liftMaybe
   _ <- lift getClangDigest -- cache
   let loc = positionToLoc pos
-  lift $ fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
+  lift (Throw.runMaybe $ collectCompletionItems currentSource loc) >>= liftMaybe
+
+collectCompletionItems :: Source -> Loc -> App [CompletionItem]
+collectCompletionItems currentSource loc = do
+  fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
 
 itemGetterList :: [Source -> Loc -> App [CompletionItem]]
 itemGetterList =
