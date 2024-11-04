@@ -15,6 +15,7 @@ define test(): either(&text, int) {
   with either-bind {
     bind _: bool = Left("hello") in
     let _ = type in
+    letbox _ = box {type} in
     bind _: bool = Left("hello") in
     let _ = type in
     bind _: bool = Right(True) in

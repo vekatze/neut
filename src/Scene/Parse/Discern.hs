@@ -540,6 +540,11 @@ discern axis term =
                   )
             _ -> do
               discern axis $ mLet :< RT.Let letKind c1 mxt c c4 e1' c5 startLoc c6 e2' endLoc
+        mBox :< RT.BoxElim nesVariant mustIgnoreRelayedVars c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
+          let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          discern axis $
+            mBox :< RT.BoxElim nesVariant mustIgnoreRelayedVars c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
