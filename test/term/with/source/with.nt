@@ -14,7 +14,12 @@ define either-bind<e, a, b>(x: either(e, a), k: (a) -> either(e, b)): either(e, 
 define test(): either(&text, int) {
   with either-bind {
     bind _: bool = Left("hello") in
-    let _ = type in
+    let x = type in
+    let _ on x =
+      let _ = x in
+      type
+    in
+    let _ = x in
     letbox _ = box {type} in
     bind _: bool = Left("hello") in
     let _ = type in
