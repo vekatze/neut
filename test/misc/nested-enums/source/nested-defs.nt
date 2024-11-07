@@ -1,0 +1,21 @@
+data dummy(a: type) {
+| Dummy
+}
+
+define joker(x: unit, y: bool): dummy(int) {
+  match x, y {
+  | Unit, True =>
+    print("a");
+    Dummy
+  | Unit, False =>
+    print("b");
+    Dummy
+  }
+}
+
+define main(): unit {
+  let _ = joker(Unit, True) in
+  let _ = joker(Unit, False) in
+  print("\n");
+  Unit
+}
