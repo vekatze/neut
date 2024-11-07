@@ -321,27 +321,28 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
           return (cont'', chain)
     DT.Unreachable -> do
       return (C.Unreachable, [])
-    DT.Switch (cursor, t) (fallbackClause, clauseList) -> do
+    DT.Switch (cursor, t@(m :< _)) (fallbackClause, clauseList) -> do
       (fallbackClause', fallbackChain) <- clarifyDecisionTree tenv isNoetic dataArgsMap fallbackClause
       tmp <- mapM (clarifyCase tenv isNoetic dataArgsMap cursor) clauseList
       let (enumCaseList, clauseList', clauseChainList) = unzip3 tmp
       let chain = nubFreeVariables $ fallbackChain ++ concat clauseChainList
       let aligner = alignFreeVariable tenv chain
       clauseList'' <- mapM aligner clauseList'
-      let idents = nubOrd $ cursor : map (\(_, x, _) -> x) chain
+      let newChain = (m, cursor, m :< TM.Tau) : chain
+      let idents = nubOrd $ map (\(_, x, _) -> x) newChain
       ck <- getClauseDataGroup t
       case ck of
         Just OD.Enum -> do
           tree' <- getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
-          return (tree', chain)
+          return (tree', newChain)
         Just OD.Unary -> do
-          return (getFirstClause fallbackClause' clauseList'', chain)
+          return (getFirstClause fallbackClause' clauseList'', newChain)
         _ -> do
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return
             ( C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal cursor)))) enumElim,
-              chain
+              newChain
             )
 
 getFirstClause :: C.Comp -> [C.Comp] -> C.Comp
