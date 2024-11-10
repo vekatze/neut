@@ -147,11 +147,11 @@ coreRuneRune =
 
 coreSystemAdmit :: T.Text
 coreSystemAdmit =
-  core <> nsSep <> "system" <> nsSep <> "admit"
+  core <> nsSep <> "system" <> nsSep <> "_admit"
 
 coreSystemAssert :: T.Text
 coreSystemAssert =
-  core <> nsSep <> "system" <> nsSep <> "assert"
+  core <> nsSep <> "system" <> nsSep <> "_assert"
 
 coreThreadDetach :: T.Text
 coreThreadDetach =
