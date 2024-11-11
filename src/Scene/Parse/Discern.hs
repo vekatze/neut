@@ -2,6 +2,7 @@ module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
 import Context.Decl qualified as Decl
+import Context.Env (getPlatform)
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
@@ -699,13 +700,14 @@ lookupIntrospectiveClause m value clauseList =
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
 getIntrospectiveValue m key = do
   bm <- Env.getBuildMode
+  p <- getPlatform (Just m)
   case key of
     "platform" -> do
-      return $ Platform.reify Platform.platform
+      return $ Platform.reify p
     "arch" ->
-      return $ Arch.reify (Platform.arch Platform.platform)
+      return $ Arch.reify (Platform.arch p)
     "os" ->
-      return $ OS.reify (Platform.os Platform.platform)
+      return $ OS.reify (Platform.os p)
     "build-mode" ->
       return $ BM.reify bm
     _ ->

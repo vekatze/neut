@@ -1,6 +1,7 @@
 module Entity.LowType where
 
 import Data.Binary
+import Entity.Arch qualified as A
 import Entity.ArgNum qualified as AN
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
@@ -14,6 +15,7 @@ data LowType
   | Function [LowType] LowType
   | Void
   | VarArgs
+  | Word A.Arch -- architecture-dependent unsigned integer
   deriving (Eq, Ord, G.Generic)
 
 instance Show LowType where

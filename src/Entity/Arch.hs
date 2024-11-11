@@ -1,19 +1,22 @@
 module Entity.Arch
   ( Arch (..),
     reify,
-    reflect,
     dataSizeOf,
   )
 where
 
+import Data.Binary
 import Data.Text qualified as T
 import Entity.DataSize qualified as DS
+import GHC.Generics qualified as G
 
 -- names are chosen as in https://wiki.debian.org/SupportedArchitectures
 data Arch
   = Amd64
   | Arm64
-  | Unknown T.Text
+  deriving (Eq, Ord, G.Generic)
+
+instance Binary Arch
 
 reify :: Arch -> T.Text
 reify arch =
@@ -22,29 +25,11 @@ reify arch =
       "amd64"
     Arm64 ->
       "arm64"
-    Unknown name ->
-      name
 
-reflect :: T.Text -> Arch
-reflect name =
-  case name of
-    "amd64" ->
-      Amd64
-    "x86_64" ->
-      Amd64
-    "arm64" ->
-      Arm64
-    "aarch64" ->
-      Arm64
-    _ ->
-      Unknown name
-
-dataSizeOf :: Arch -> Maybe DS.DataSize
+dataSizeOf :: Arch -> DS.DataSize
 dataSizeOf arch =
   case arch of
     Amd64 ->
-      Just DS.DataSize64
+      DS.DataSize64
     Arm64 ->
-      Just DS.DataSize64
-    _ ->
-      Nothing
+      DS.DataSize64

@@ -149,7 +149,8 @@ ensureNotInDependencyDir = do
 
 getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do
-  P.parseRelDir $ T.unpack $ TP.reify platform
+  p <- Env.getPlatform Nothing
+  P.parseRelDir $ T.unpack $ TP.reify p
 
 getExecutableOutputPath :: Target.MainTarget -> Module -> App (Path Abs File)
 getExecutableOutputPath targetOrZen mainModule = do
