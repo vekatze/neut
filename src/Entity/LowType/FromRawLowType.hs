@@ -16,4 +16,4 @@ fromRawLowType dataSize rlt = do
     RLT.Void ->
       return LT.Void
     RLT.Word arch ->
-      return $ LT.getDefaultInt arch
+      return $ LT.getWordType arch

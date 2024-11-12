@@ -39,6 +39,6 @@ textTypeInner :: Int -> LowType
 textTypeInner len =
   Array len (PrimNum $ PT.Int $ IntSize 8)
 
-getDefaultInt :: A.Arch -> LowType
-getDefaultInt arch =
+getWordType :: A.Arch -> LowType
+getWordType arch =
   PrimNum $ PT.Int $ IntSize $ DS.reify $ A.dataSizeOf arch

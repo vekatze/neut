@@ -14,6 +14,6 @@ instance Binary Foreign
 
 defaultForeignList :: A.Arch -> [Foreign]
 defaultForeignList arch =
-  [ Foreign EN.malloc [LT.getDefaultInt arch] LT.Pointer,
+  [ Foreign EN.malloc [LT.getWordType arch] LT.Pointer,
     Foreign EN.free [LT.Pointer] LT.Void
   ]
