@@ -17,6 +17,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Entity.Builder
 import Entity.Const
+import Entity.DataSize qualified as DS
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Ident
@@ -28,6 +29,7 @@ import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
+import Entity.PrimType.EmitPrimType (emitPrimType)
 import Scene.LowComp.Reduce qualified as LowComp
 
 emit :: LC.LowCode -> App L.ByteString
@@ -116,11 +118,16 @@ emitDefinitions (name, (args, body)) = do
   let args'' = map (emitValue . LC.VarLocal) args'
   emitDefinition "ptr" (DD.toBuilder name) args'' body'
 
+getMainType :: App Builder
+getMainType = do
+  dataSize <- Env.getDataSize'
+  return $ emitPrimType $ PT.Int (IntSize $ DS.reify dataSize)
+
 emitMain :: LC.DefContent -> App [Builder]
 emitMain (args, body) = do
-  mainType <- Env.getMainType
+  mainType <- getMainType
   let args' = map (emitValue . LC.VarLocal) args
-  emitDefinition (TE.encodeUtf8Builder mainType) "main" args' body
+  emitDefinition mainType "main" args' body
 
 declToBuilder :: (DN.DeclarationName, ([LT.LowType], LT.LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do

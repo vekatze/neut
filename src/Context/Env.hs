@@ -76,15 +76,7 @@ getDataSize' = do
 
 getDataSize'' :: Maybe Hint -> App DS.DataSize
 getDataSize'' mm = do
-  a <- getArch mm
-  return $ Arch.dataSizeOf a
-
-getMainType :: App T.Text
-getMainType = do
-  dataSize <- getDataSize'
-  case dataSize of
-    DS.DataSize64 ->
-      return "i64"
+  Arch.dataSizeOf <$> getArch mm
 
 getBaseSize :: Hint -> App Int
 getBaseSize m = do
