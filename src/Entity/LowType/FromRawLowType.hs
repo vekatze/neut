@@ -15,3 +15,5 @@ fromRawLowType dataSize rlt = do
       return LT.Pointer
     RLT.Void ->
       return LT.Void
+    RLT.Word arch ->
+      return $ LT.getDefaultInt arch

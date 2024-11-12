@@ -1,11 +1,8 @@
 module Entity.LowType.EmitLowType where
 
 import Data.ByteString.Builder
-import Entity.Arch qualified as A
 import Entity.Builder
 import Entity.LowType qualified as LT
-import Entity.PrimNumSize (IntSize (IntSize))
-import Entity.PrimType qualified as PT
 import Entity.PrimType.EmitPrimType
 
 emitLowType :: LT.LowType -> Builder
@@ -25,9 +22,3 @@ emitLowType lowType =
       "void"
     LT.VarArgs ->
       "..."
-    LT.Word arch ->
-      case arch of
-        A.Amd64 ->
-          emitLowType $ LT.PrimNum $ PT.Int $ IntSize 64
-        A.Arm64 ->
-          emitLowType $ LT.PrimNum $ PT.Int $ IntSize 64

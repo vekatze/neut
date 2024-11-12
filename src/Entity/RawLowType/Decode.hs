@@ -18,6 +18,8 @@ decode lt =
       D.text "pointer"
     RLT.Void ->
       D.text "void"
+    RLT.Word _ ->
+      D.text "word"
 
 decodeSize :: Maybe Int -> T.Text
 decodeSize sizeOrNone =

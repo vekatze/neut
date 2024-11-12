@@ -24,8 +24,8 @@ import Prelude hiding (lookup, read)
 initialize :: App ()
 initialize = do
   writeRef' declEnv Map.empty
-  intBaseSize <- Env.getBaseSize'
-  forM_ (F.defaultForeignList intBaseSize) $ \(F.Foreign name domList cod) -> do
+  arch <- Env.getArch Nothing
+  forM_ (F.defaultForeignList arch) $ \(F.Foreign name domList cod) -> do
     insDeclEnv' (DN.Ext name) domList cod
 
 getDeclEnv :: App DN.DeclEnv

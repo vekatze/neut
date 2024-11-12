@@ -1,10 +1,9 @@
 module Entity.Foreign where
 
 import Data.Binary
+import Entity.Arch qualified as A
 import Entity.ExternalName qualified as EN
 import Entity.LowType qualified as LT
-import Entity.PrimNumSize qualified as PNS
-import Entity.PrimType qualified as PT
 import GHC.Generics
 
 data Foreign
@@ -13,8 +12,8 @@ data Foreign
 
 instance Binary Foreign
 
-defaultForeignList :: Int -> [Foreign]
-defaultForeignList baseIntSize =
-  [ Foreign EN.malloc [LT.PrimNum (PT.Int (PNS.IntSize baseIntSize))] LT.Pointer,
+defaultForeignList :: A.Arch -> [Foreign]
+defaultForeignList arch =
+  [ Foreign EN.malloc [LT.getDefaultInt arch] LT.Pointer,
     Foreign EN.free [LT.Pointer] LT.Void
   ]
