@@ -13,6 +13,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify
+import Entity.LowType (LowType)
 import Entity.Magic
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
@@ -39,7 +40,7 @@ data TermF a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
-  | Magic (Magic a)
+  | Magic (Magic LowType a)
   | Resource DD.DefiniteDescription ID a a
   deriving (Show, Generic)
 

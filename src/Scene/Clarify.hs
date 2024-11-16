@@ -440,7 +440,7 @@ alignFreeVariable tenv fvs e = do
   fvs' <- dropFst <$> clarifyBinder tenv fvs
   linearize fvs' e
 
-clarifyMagic :: TM.TypeEnv -> M.Magic TM.Term -> App C.Comp
+clarifyMagic :: TM.TypeEnv -> M.Magic LT.LowType TM.Term -> App C.Comp
 clarifyMagic tenv der =
   case der of
     M.Cast from to value -> do

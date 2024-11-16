@@ -13,6 +13,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
+import Entity.LowType qualified as LT
 import Entity.Magic
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
@@ -44,7 +45,7 @@ data WeakTermF a
   | Actual a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)
-  | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
+  | Magic (Magic LT.LowType a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
   | Resource DD.DefiniteDescription Int a a

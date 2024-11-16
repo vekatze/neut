@@ -5,6 +5,7 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder (BinderF)
 import Entity.DecisionTree qualified as DT
 import Entity.LamKind qualified as LK
+import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
@@ -211,7 +212,7 @@ eqWP prim1 prim2
   | otherwise =
       False
 
-eqM :: M.Magic WT.WeakTerm -> M.Magic WT.WeakTerm -> Bool
+eqM :: M.Magic LT.LowType WT.WeakTerm -> M.Magic LT.LowType WT.WeakTerm -> Bool
 eqM m1 m2
   | M.Cast from1 to1 e1 <- m1,
     M.Cast from2 to2 e2 <- m2 = do

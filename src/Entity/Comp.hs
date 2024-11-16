@@ -9,6 +9,7 @@ import Entity.EnumCase
 import Entity.Foreign qualified as F
 import Entity.Ident
 import Entity.Ident.Reify
+import Entity.LowType
 import Entity.Magic
 import Entity.Opacity
 import Entity.PrimNumSize
@@ -80,7 +81,7 @@ type ShouldDeallocate = Bool
 
 data Primitive
   = PrimOp PrimOp [Value]
-  | Magic (Magic Value)
+  | Magic (Magic LowType Value)
   deriving (Show)
 
 type SubstValue =

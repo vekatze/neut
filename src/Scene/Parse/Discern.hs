@@ -590,7 +590,7 @@ discernRawLowType m rlt = do
     Right lt ->
       return lt
 
-discernMagic :: Axis -> Hint -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
+discernMagic :: Axis -> Hint -> RT.RawMagic -> App (M.Magic LT.LowType WT.WeakTerm)
 discernMagic axis m magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
