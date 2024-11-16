@@ -532,12 +532,14 @@ lowTypeNumber = do
 
 primType :: Parser (WPT.WeakPrimType, C)
 primType = do
+  m <- getCurrentHint
   (sizeString, c) <- symbol
-  case WPT.fromText sizeString of
+  dataSize <- lift $ Env.getDataSize m
+  case WPT.fromText dataSize sizeString of
     Just primNum ->
       return (primNum, c)
     _ -> do
-      failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
+      failure (Just (asTokens sizeString)) (S.fromList [asLabel "int{n}", asLabel "float{n}"])
 
 rawTermMatch :: Parser (RT.RawTerm, C)
 rawTermMatch = do

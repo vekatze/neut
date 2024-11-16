@@ -581,14 +581,9 @@ discernNoeticVarList xsOuter = do
     Tag.insertLocalVar mDef outerVar mOuter
     return ((mOuter, xInner, t), mDef :< WT.Var outerVar)
 
-discernRawLowType :: Hint -> RLT.RawLowType -> App LT.LowType
-discernRawLowType m rlt = do
-  dataSize <- Env.getDataSize m
-  case LT.fromRawLowType dataSize rlt of
-    Left err ->
-      Throw.raiseError m err
-    Right lt ->
-      return lt
+discernRawLowType :: RLT.RawLowType -> App LT.LowType
+discernRawLowType rlt = do
+  return $ LT.fromRawLowType rlt
 
 discernMagic :: Axis -> Hint -> RT.RawMagic -> App (M.Magic LT.LowType WT.WeakTerm)
 discernMagic axis m magic =
@@ -599,16 +594,16 @@ discernMagic axis m magic =
       e' <- discern axis e
       return $ M.Cast from' to' e'
     RT.Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
-      lt' <- discernRawLowType m lt
+      lt' <- discernRawLowType lt
       value' <- discern axis value
       pointer' <- discern axis pointer
       return $ M.Store lt' value' pointer'
     RT.Load _ (_, (lt, _)) (_, (pointer, _)) _ -> do
-      lt' <- discernRawLowType m lt
+      lt' <- discernRawLowType lt
       pointer' <- discern axis pointer
       return $ M.Load lt' pointer'
     RT.Alloca _ (_, (lt, _)) (_, (size, _)) _ -> do
-      lt' <- discernRawLowType m lt
+      lt' <- discernRawLowType lt
       size' <- discern axis size
       return $ M.Alloca lt' size'
     RT.External _ funcName _ args varArgsOrNone -> do
@@ -620,11 +615,11 @@ discernMagic axis m magic =
         Just (_, varArgs) ->
           forM (SE.extract varArgs) $ \(_, arg, _, _, lt) -> do
             arg' <- discern axis arg
-            lt' <- discernRawLowType m lt
+            lt' <- discernRawLowType lt
             return (arg', lt')
       return $ M.External domList cod funcName args' varArgs'
     RT.Global _ (_, (name, _)) (_, (lt, _)) _ -> do
-      lt' <- discernRawLowType m lt
+      lt' <- discernRawLowType lt
       return $ M.Global name lt'
 
 modifyLetContinuation :: (Hint, RP.RawPattern) -> Loc -> N.IsNoetic -> RT.RawTerm -> App (RawIdent, RT.RawTerm)

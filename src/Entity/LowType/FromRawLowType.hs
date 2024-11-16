@@ -1,19 +1,17 @@
 module Entity.LowType.FromRawLowType (fromRawLowType) where
 
-import Data.Text qualified as T
-import Entity.DataSize qualified as DS
 import Entity.LowType qualified as LT
 import Entity.PrimType.FromWeakPrimType
 import Entity.RawLowType qualified as RLT
 
-fromRawLowType :: DS.DataSize -> RLT.RawLowType -> Either T.Text LT.LowType
-fromRawLowType dataSize rlt = do
+fromRawLowType :: RLT.RawLowType -> LT.LowType
+fromRawLowType rlt = do
   case rlt of
     RLT.PrimNum wpt ->
-      LT.PrimNum <$> fromWeakPrimType dataSize wpt
+      LT.PrimNum $ fromWeakPrimType wpt
     RLT.Pointer ->
-      return LT.Pointer
+      LT.Pointer
     RLT.Void ->
-      return LT.Void
+      LT.Void
     RLT.Word arch ->
-      return $ LT.getWordType arch
+      LT.getWordType arch
