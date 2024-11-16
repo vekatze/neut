@@ -504,7 +504,6 @@ lowType = do
   choice
     [ lowTypePointer,
       lowTypeVoid,
-      lowTypeWord,
       lowTypeNumber
     ]
 
@@ -517,13 +516,6 @@ lowTypeVoid :: Parser (RLT.RawLowType, C)
 lowTypeVoid = do
   c <- keyword "void"
   return (RLT.Void, c)
-
-lowTypeWord :: Parser (RLT.RawLowType, C)
-lowTypeWord = do
-  m <- getCurrentHint
-  c <- keyword "word"
-  arch <- lift $ Env.getArch (Just m)
-  return (RLT.Word arch, c)
 
 lowTypeNumber :: Parser (RLT.RawLowType, C)
 lowTypeNumber = do

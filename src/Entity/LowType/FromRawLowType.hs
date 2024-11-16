@@ -13,5 +13,3 @@ fromRawLowType rlt = do
       LT.Pointer
     RLT.Void ->
       LT.Void
-    RLT.Word arch ->
-      LT.getWordType arch

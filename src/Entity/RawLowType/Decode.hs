@@ -20,8 +20,6 @@ decode lt =
       D.text "pointer"
     RLT.Void ->
       D.text "void"
-    RLT.Word _ ->
-      D.text "word"
 
 showWeakIntSize :: WPT.WeakSize IntSize -> T.Text
 showWeakIntSize size =
