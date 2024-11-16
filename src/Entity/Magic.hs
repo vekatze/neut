@@ -2,7 +2,6 @@ module Entity.Magic where
 
 import Data.Bifunctor
 import Data.Binary
-import Data.Text qualified as T
 import Entity.ExternalName qualified as EN
 import Entity.LowType
 import GHC.Generics qualified as G
@@ -68,19 +67,3 @@ instance Traversable Magic where
         External domList cod extFunName <$> traverse f args <*> varArgs'
       Global name lt ->
         pure $ Global name lt
-
-getMagicName :: Magic a -> T.Text
-getMagicName d =
-  case d of
-    External {} ->
-      "external"
-    Load {} ->
-      "load"
-    Store {} ->
-      "store"
-    Alloca {} ->
-      "alloca"
-    Cast {} ->
-      "nop"
-    Global {} ->
-      "global"
