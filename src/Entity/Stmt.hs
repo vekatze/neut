@@ -6,6 +6,7 @@ module Entity.Stmt
     Stmt,
     StrippedStmt,
     PathSet,
+    WeakForeign,
     compress,
     extend,
     getStmtName,
@@ -35,6 +36,9 @@ import Path
 
 type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)
 
+type WeakForeign =
+  F.BaseForeign WT.WeakTerm
+
 data WeakStmt
   = WeakStmtDefine
       IsConstLike
@@ -47,7 +51,7 @@ data WeakStmt
       WT.WeakTerm
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtNominal Hint [G.Geist WT.WeakTerm]
-  | WeakStmtForeign [F.Foreign]
+  | WeakStmtForeign [F.WeakForeign]
 
 type Program =
   (Source.Source, [Stmt])

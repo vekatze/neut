@@ -120,7 +120,7 @@ registerInternalNames stmtList =
       C.Def name _ _ _ ->
         insDefinedName name
       C.Foreign foreignList ->
-        forM_ foreignList $ \(F.Foreign name domList cod) -> do
+        forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
           Decl.insDeclEnv' (DN.Ext name) domList cod
 
 constructMainTerm :: DD.DefiniteDescription -> App LC.DefContent

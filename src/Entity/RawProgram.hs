@@ -7,12 +7,12 @@ module Entity.RawProgram
     compareImportItem,
     isImportEmpty,
     mergeImportList,
-    RawForeignItem (..),
+    RawForeignItemF (..),
+    RawForeignItem,
   )
 where
 
 import Data.Text qualified as T
-import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.ExternalName qualified as EN
@@ -78,8 +78,15 @@ compareImportItem item1 item2 = do
     (RawStaticKey {}, RawStaticKey {}) ->
       EQ
 
-data RawForeignItem
-  = RawForeignItem Hint EN.ExternalName C (SE.Series BLT.BaseLowType) C C (F.ForeignCodType BLT.BaseLowType)
+data RawForeignItemF a
+  = RawForeignItemF Hint EN.ExternalName C (SE.Series a) C C (F.ForeignCodType a)
+  deriving (Functor, Foldable, Traversable)
+
+type RawForeignItem =
+  RawForeignItemF RT.RawTerm
+
+-- data RawForeignItemF a
+--   = RawForeignItemF Hint EN.ExternalName C (SE.Series RT.RawTerm) C C (F.ForeignCodType RT.RawTerm)
 
 isImportEmpty :: RawImport -> Bool
 isImportEmpty rawImport =

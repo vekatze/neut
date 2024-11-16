@@ -3,6 +3,7 @@ module Scene.Elaborate (elaborate, elaborate') where
 import Context.App
 import Context.Cache qualified as Cache
 import Context.DataDefinition qualified as DataDefinition
+import Context.Decl qualified as Decl
 import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
@@ -31,8 +32,10 @@ import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.Const (holeLiteral)
 import Entity.DecisionTree qualified as DT
+import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
+import Entity.Foreign qualified as F
 import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.Ident
@@ -140,7 +143,11 @@ elaborateStmt stmt = do
       mapM_ elaborateGeist geistList
       return ([], [])
     WeakStmtForeign foreignList -> do
-      return ([StmtForeign foreignList], [])
+      foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
+        domList' <- mapM strictify domList
+        cod' <- mapM strictify cod
+        return $ F.Foreign m externalName domList' cod'
+      return ([StmtForeign foreignList'], [])
 
 elaborateGeist :: G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
 elaborateGeist G.Geist {..} = do
@@ -172,8 +179,11 @@ insertWeakStmt stmt = do
       WeakDefinition.insert O.Clear m dd [] [] codType v
     WeakStmtNominal {} -> do
       return ()
-    WeakStmtForeign {} ->
-      return ()
+    WeakStmtForeign foreignList ->
+      forM_ foreignList $ \(F.Foreign m externalName domList cod) -> do
+        domList' <- mapM strictify domList
+        cod' <- mapM strictify cod
+        activateForeign $ F.Foreign m externalName domList' cod'
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
@@ -562,3 +572,7 @@ getSwitchSpec m cursorType = do
       Throw.raiseError m $
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toText (weaken cursorType)
+
+activateForeign :: F.Foreign -> App ()
+activateForeign (F.Foreign _ name domList cod) = do
+  Decl.insDeclEnv' (DN.Ext name) domList cod

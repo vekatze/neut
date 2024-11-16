@@ -5,6 +5,7 @@
 module Scene.Elaborate.Infer (inferStmt) where
 
 import Context.App
+import Context.Decl qualified as Decl
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
@@ -28,8 +29,10 @@ import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
 import Entity.DecisionTree qualified as DT
+import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ForeignCodType qualified as FCT
 import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.HoleID qualified as HID
@@ -311,8 +314,24 @@ infer axis term =
           insConstraintEnv intType sizeType
           resultType <- newHole m (varEnv axis)
           return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), resultType)
-        M.External _ _ name args varArgs -> do
-          undefined
+        M.External _ _ funcName args varArgs -> do
+          (domList, cod) <- Decl.lookupDeclEnv m (DN.Ext funcName)
+          let domList' = map (WT.fromBaseLowType m) domList
+          ensureArityCorrectness term (length domList) (length args)
+          (args', argTypes) <- mapAndUnzipM (infer axis) args
+          forM_ (zip domList' argTypes) $ uncurry insConstraintEnv
+          varArgs' <- forM varArgs $ \(e, t) -> do
+            (e', t') <- infer axis e
+            t'' <- inferType axis t
+            insConstraintEnv t'' t'
+            return (e', t')
+          case cod of
+            FCT.Cod c -> do
+              let c' = WT.fromBaseLowType m c
+              return (m :< WT.Magic (M.WeakMagic $ M.External domList' (FCT.Cod c') funcName args' varArgs'), c')
+            FCT.Void -> do
+              let voidType = undefined
+              return (m :< WT.Magic (M.WeakMagic $ M.External domList' FCT.Void funcName args' varArgs'), voidType)
         _ -> do
           magic' <- mapM (infer axis >=> return . fst) (M.WeakMagic magic)
           resultType <- newHole m (varEnv axis)

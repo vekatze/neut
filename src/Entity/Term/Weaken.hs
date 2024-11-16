@@ -13,6 +13,7 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.BaseLowType qualified as BLT
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
+import Entity.Foreign qualified as F
 import Entity.Hint
 import Entity.Ident
 import Entity.LamKind qualified as LK
@@ -44,7 +45,7 @@ weakenStmt stmt = do
       let v' = weaken v
       WeakStmtDefineConst m dd t' v'
     StmtForeign foreignList ->
-      WeakStmtForeign foreignList
+      WeakStmtForeign $ map weakenForeign foreignList
 
 weaken :: TM.Term -> WT.WeakTerm
 weaken term =
@@ -206,3 +207,7 @@ weakenStmtKind stmtKind =
       let dataArgs' = map weakenBinder dataArgs
       let consArgs' = map weakenBinder consArgs
       DataIntro dataName dataArgs' consArgs' discriminant
+
+weakenForeign :: F.Foreign -> F.WeakForeign
+weakenForeign foreignItem@(F.Foreign m _ _ _) =
+  fmap (WT.fromBaseLowType m) foreignItem

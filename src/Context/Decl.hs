@@ -26,7 +26,7 @@ initialize :: App ()
 initialize = do
   writeRef' declEnv Map.empty
   arch <- Env.getArch Nothing
-  forM_ (F.defaultForeignList arch) $ \(F.Foreign name domList cod) -> do
+  forM_ (F.defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
     insDeclEnv' (DN.Ext name) domList cod
 
 getDeclEnv :: App DN.DeclEnv

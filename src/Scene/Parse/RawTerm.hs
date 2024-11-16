@@ -1,5 +1,6 @@
 module Scene.Parse.RawTerm
   ( rawExpr,
+    rawTerm,
     var,
     preAscription,
     preBinder,
@@ -510,11 +511,6 @@ lowTypePointer :: Parser (BLT.BaseLowType, C)
 lowTypePointer = do
   c <- keyword "pointer"
   return (BLT.Pointer, c)
-
--- lowTypeVoid :: Parser (BLT.BaseLowType, C)
--- lowTypeVoid = do
---   c <- keyword "void"
---   return (BLT.Void, c)
 
 lowTypeNumber :: Parser (BLT.BaseLowType, C)
 lowTypeNumber = do

@@ -1,27 +1,16 @@
-module Scene.Parse.Foreign
-  ( activateForeign,
-    interpretForeign,
-  )
-where
+module Scene.Parse.Foreign (interpretForeign) where
 
 import Context.App
-import Context.Decl qualified as Decl
-import Control.Monad
-import Entity.DeclarationName qualified as DN
 import Entity.Foreign qualified as F
 import Entity.RawProgram
 import Entity.Syntax.Series qualified as SE
+import Entity.WeakTerm qualified as WT
 
-activateForeign :: [F.Foreign] -> App ()
-activateForeign foreignItemList = do
-  forM_ foreignItemList $ \(F.Foreign name domList cod) -> do
-    Decl.insDeclEnv' (DN.Ext name) domList cod
-
-interpretForeign :: SE.Series RawForeignItem -> App [F.Foreign]
+interpretForeign :: [RawForeignItemF WT.WeakTerm] -> App [F.WeakForeign]
 interpretForeign foreignItemList = do
-  mapM interpretForeignItem $ SE.extract foreignItemList
+  mapM interpretForeignItem foreignItemList
 
-interpretForeignItem :: RawForeignItem -> App F.Foreign
-interpretForeignItem (RawForeignItem _ name _ lts _ _ cod) = do
+interpretForeignItem :: RawForeignItemF WT.WeakTerm -> App F.WeakForeign
+interpretForeignItem (RawForeignItemF m name _ lts _ _ cod) = do
   let lts' = SE.extract lts
-  return $ F.Foreign name lts' cod
+  return $ F.Foreign m name lts' cod

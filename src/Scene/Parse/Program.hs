@@ -100,18 +100,18 @@ parseForeignItem :: P.Parser (RawForeignItem, C)
 parseForeignItem = do
   (funcName, c1) <- P.symbol
   m <- P.getCurrentHint
-  (lts, c2) <- P.seriesParen lowType
+  (domList, c2) <- P.seriesParen rawTerm
   c3 <- P.delimiter ":"
   (cod, c) <-
     choice
       [ do
-          (lt, c) <- lowType
+          (lt, c) <- rawTerm
           return (F.Cod lt, c),
         do
           c <- P.keyword "void"
           return (F.Void, c)
       ]
-  return (RawForeignItem m (EN.ExternalName funcName) c1 lts c2 c3 cod, c)
+  return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
 
 parseDefine :: P.Parser (RawStmt, C)
 parseDefine =

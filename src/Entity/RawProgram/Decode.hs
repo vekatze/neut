@@ -3,7 +3,6 @@ module Entity.RawProgram.Decode (pp, ImportInfo (..)) where
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
-import Entity.BaseLowType.Decode qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.C.Decode qualified as C
@@ -215,7 +214,6 @@ decStmt stmt =
                 separator = SE.Comma,
                 hasOptionalSeparator = True
               }
-      -- let resourcePair = SE.pushComment c3 $ SE.fromListWithComment SE.Brace SE.Hyphen [discarder, copier]
       RT.attachComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
@@ -237,12 +235,12 @@ decStmt stmt =
           ]
 
 decForeignItem :: RawForeignItem -> D.Doc
-decForeignItem (RawForeignItem _ funcName _ args _ _ cod) = do
-  let args' = SE.decode $ fmap BLT.decode args
+decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do
+  let args' = SE.decode $ fmap RT.toDoc args
   let cod' =
         case cod of
           FCT.Cod c ->
-            BLT.decode c
+            RT.toDoc c
           FCT.Void ->
             D.text "void"
   D.join [D.text (EN.reify funcName), args', D.text ": ", cod']

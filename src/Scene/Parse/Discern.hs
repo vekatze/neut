@@ -135,8 +135,9 @@ discernStmt mo stmt = do
         discernGeist mo endLoc geist
       return [WeakStmtNominal m geistList']
     RawStmtForeign _ foreignList -> do
-      foreign' <- interpretForeign foreignList
-      activateForeign foreign'
+      let foreignList' = SE.extract foreignList
+      foreignList'' <- mapM (mapM (discern (emptyAxis mo 0))) foreignList'
+      foreign' <- interpretForeign foreignList''
       return [WeakStmtForeign foreign']
 
 discernGeist :: Module -> Loc -> RT.TopGeist -> App (G.Geist WT.WeakTerm)
