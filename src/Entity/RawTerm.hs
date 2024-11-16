@@ -95,6 +95,7 @@ data RawTermF a
   | With (KeywordClause a)
   | Projection a (Hint, RawIdent) Loc
   | Brace C (a, C)
+  | Pointer
 
 type Args a =
   (SE.Series (RawBinder a), C)

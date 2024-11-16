@@ -319,6 +319,8 @@ toDoc term =
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
+    _ :< Pointer ->
+      D.text "pointer"
 
 decodeDef :: (a -> D.Doc) -> T.Text -> C -> RawDef a -> D.Doc
 decodeDef nameDecoder keyword c def = do

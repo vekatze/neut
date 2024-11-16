@@ -13,3 +13,5 @@ toText primNum =
       floatSizeToText size
     PT.Rune ->
       "rune"
+    PT.Pointer ->
+      "pointer"

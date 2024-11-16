@@ -570,6 +570,8 @@ discern axis term =
       discern axis $ mProj :< RT.Use [] e [] args [] var loc
     _ :< RT.Brace _ (e, _) ->
       discern axis e
+    m :< RT.Pointer ->
+      return $ m :< WT.Prim (WP.Type PT.Pointer)
 
 discernNoeticVarList :: [(Hint, (Hint, Ident))] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
 discernNoeticVarList xsOuter = do

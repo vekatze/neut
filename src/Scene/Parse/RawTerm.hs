@@ -137,6 +137,7 @@ rawTermSimple = do
       rawTermRune,
       rawTermRuneIntro,
       rawTermTau,
+      rawTermPointer,
       rawTermAdmit,
       rawTermHole,
       rawTermSymbol
@@ -309,6 +310,12 @@ rawTermTau = do
   m <- getCurrentHint
   c <- keyword "type"
   return (m :< RT.Tau, c)
+
+rawTermPointer :: Parser (RT.RawTerm, C)
+rawTermPointer = do
+  m <- getCurrentHint
+  c <- keyword "pointer"
+  return (m :< RT.Pointer, c)
 
 rawTermHole :: Parser (RT.RawTerm, C)
 rawTermHole = do
