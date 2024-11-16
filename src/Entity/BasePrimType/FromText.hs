@@ -1,17 +1,17 @@
-module Entity.WeakPrimType.FromText (fromText) where
+module Entity.BasePrimType.FromText (fromText) where
 
 import Data.Text qualified as T
+import Entity.BasePrimType qualified as BPT
 import Entity.DataSize qualified as DS
 import Entity.PrimNumSize
-import Entity.WeakPrimType qualified as PT
 import Text.Read
 
-fromText :: DS.DataSize -> T.Text -> Maybe PT.WeakPrimType
+fromText :: DS.DataSize -> T.Text -> Maybe BPT.BasePrimType
 fromText dataSize name
   | Just intSize <- asLowInt dataSize name =
-      Just $ PT.Int intSize
+      Just $ BPT.Int intSize
   | Just floatSize <- asLowFloat dataSize name =
-      Just $ PT.Float floatSize
+      Just $ BPT.Float floatSize
   | otherwise =
       Nothing
 
@@ -21,23 +21,23 @@ intTypeName = "int"
 floatTypeName :: T.Text
 floatTypeName = "float"
 
-asLowInt :: DS.DataSize -> T.Text -> Maybe (PT.WeakSize IntSize)
+asLowInt :: DS.DataSize -> T.Text -> Maybe (BPT.BasePrimTypeSize IntSize)
 asLowInt dataSize s = do
   rest <- T.stripPrefix intTypeName s
   if T.null rest
-    then return $ PT.Implicit $ dataSizeToIntSize dataSize
+    then return $ BPT.Implicit $ dataSizeToIntSize dataSize
     else do
       size <- readMaybe $ T.unpack rest
-      PT.Explicit <$> asIntSize dataSize size
+      BPT.Explicit <$> asIntSize dataSize size
 
-asLowFloat :: DS.DataSize -> T.Text -> Maybe (PT.WeakSize FloatSize)
+asLowFloat :: DS.DataSize -> T.Text -> Maybe (BPT.BasePrimTypeSize FloatSize)
 asLowFloat dataSize s = do
   rest <- T.stripPrefix floatTypeName s
   if T.null rest
-    then return $ PT.Implicit $ dataSizeToFloatSize dataSize
+    then return $ BPT.Implicit $ dataSizeToFloatSize dataSize
     else do
       size <- readMaybe $ T.unpack rest
-      PT.Explicit <$> asFloatSize dataSize size
+      BPT.Explicit <$> asFloatSize dataSize size
 
 dataSizeToIntSize :: DS.DataSize -> IntSize
 dataSizeToIntSize dataSize =

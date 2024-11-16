@@ -22,6 +22,8 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
+import Entity.BasePrimType qualified as BPT
+import Entity.BasePrimType.FromText qualified as BPT
 import Entity.C
 import Entity.Const
 import Entity.DefiniteDescription qualified as DD
@@ -36,8 +38,6 @@ import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Rune qualified as RU
 import Entity.Syntax.Series qualified as SE
-import Entity.WeakPrimType qualified as WPT
-import Entity.WeakPrimType.FromText qualified as WPT
 import Scene.Parse.Core
 import Text.Megaparsec
 import Text.Read qualified as R
@@ -521,12 +521,12 @@ lowTypeNumber = do
   (pt, c) <- primType
   return (BLT.PrimNum pt, c)
 
-primType :: Parser (WPT.WeakPrimType, C)
+primType :: Parser (BPT.BasePrimType, C)
 primType = do
   m <- getCurrentHint
   (sizeString, c) <- symbol
   dataSize <- lift $ Env.getDataSize m
-  case WPT.fromText dataSize sizeString of
+  case BPT.fromText dataSize sizeString of
     Just primNum ->
       return (primNum, c)
     _ -> do

@@ -26,6 +26,7 @@ import Entity.Annotation qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.Lam qualified as AttrL
 import Entity.BaseLowType qualified as BLT
+import Entity.BasePrimType qualified as BPT
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.Const (holeLiteral)
@@ -50,7 +51,6 @@ import Entity.StmtKind
 import Entity.Term qualified as TM
 import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimType qualified as WPT
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText
@@ -371,9 +371,9 @@ strictify t = do
   t' <- reduceWeakType t >>= elaborate'
   case t' of
     _ :< TM.Prim (P.Type (PT.Int size)) ->
-      return $ BLT.PrimNum $ WPT.Int $ WPT.Explicit size
+      return $ BLT.PrimNum $ BPT.Int $ BPT.Explicit size
     _ :< TM.Prim (P.Type (PT.Float size)) ->
-      return $ BLT.PrimNum $ WPT.Float $ WPT.Explicit size
+      return $ BLT.PrimNum $ BPT.Float $ BPT.Explicit size
     _ :< TM.Prim (P.Type PT.Pointer) ->
       return BLT.Pointer
     m :< _ ->

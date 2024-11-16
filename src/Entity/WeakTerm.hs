@@ -8,6 +8,7 @@ import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.BaseLowType qualified as BLT
+import Entity.BasePrimType qualified as BPT
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -21,7 +22,6 @@ import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
 import Entity.Remark
 import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimType qualified as WPT
 
 type WeakTerm = Cofree WeakTermF Hint
 
@@ -116,9 +116,9 @@ fromBaseLowType m lt =
   case lt of
     BLT.PrimNum pt ->
       case pt of
-        WPT.Int s ->
-          m :< Prim (WP.Type (PT.Int (WPT.extractSize s)))
-        WPT.Float s ->
-          m :< Prim (WP.Type (PT.Float (WPT.extractSize s)))
+        BPT.Int s ->
+          m :< Prim (WP.Type (PT.Int (BPT.extractSize s)))
+        BPT.Float s ->
+          m :< Prim (WP.Type (PT.Float (BPT.extractSize s)))
     BLT.Pointer ->
       m :< Prim (WP.Type PT.Pointer)
