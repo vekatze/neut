@@ -31,6 +31,7 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as Annot
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.DefiniteDescription qualified as DD
@@ -44,7 +45,6 @@ import Entity.NecessityVariant (NecessityVariant)
 import Entity.Noema qualified as N
 import Entity.RawBinder
 import Entity.RawIdent
-import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.Remark
 import Entity.Rune qualified as R
@@ -206,15 +206,15 @@ decodeLetKind letKind =
     Bind -> "bind"
 
 type VarArg =
-  (Hint, RawTerm, C, C, RLT.RawLowType)
+  (Hint, RawTerm, C, C, BLT.BaseLowType)
 
 data RawMagic
   = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Store C (EL RLT.RawLowType) (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Load C (EL RLT.RawLowType) (EL RawTerm) (Maybe C)
-  | Alloca C (EL RLT.RawLowType) (EL RawTerm) (Maybe C)
+  | Store C (EL BLT.BaseLowType) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | Load C (EL BLT.BaseLowType) (EL RawTerm) (Maybe C)
+  | Alloca C (EL BLT.BaseLowType) (EL RawTerm) (Maybe C)
   | External C EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
-  | Global C (EL EN.ExternalName) (EL RLT.RawLowType) (Maybe C)
+  | Global C (EL EN.ExternalName) (EL BLT.BaseLowType) (Maybe C)
 
 -- elem
 type EL a =

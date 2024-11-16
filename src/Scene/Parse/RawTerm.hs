@@ -20,6 +20,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.Const
@@ -31,7 +32,6 @@ import Entity.Name
 import Entity.NecessityVariant (NecessityVariant (..), showNecessityVariant)
 import Entity.RawBinder
 import Entity.RawIdent
-import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Rune qualified as RU
@@ -499,7 +499,7 @@ rawTermMagicGlobal m c = do
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
 
-lowType :: Parser (RLT.RawLowType, C)
+lowType :: Parser (BLT.BaseLowType, C)
 lowType = do
   choice
     [ lowTypePointer,
@@ -507,20 +507,20 @@ lowType = do
       lowTypeNumber
     ]
 
-lowTypePointer :: Parser (RLT.RawLowType, C)
+lowTypePointer :: Parser (BLT.BaseLowType, C)
 lowTypePointer = do
   c <- keyword "pointer"
-  return (RLT.Pointer, c)
+  return (BLT.Pointer, c)
 
-lowTypeVoid :: Parser (RLT.RawLowType, C)
+lowTypeVoid :: Parser (BLT.BaseLowType, C)
 lowTypeVoid = do
   c <- keyword "void"
-  return (RLT.Void, c)
+  return (BLT.Void, c)
 
-lowTypeNumber :: Parser (RLT.RawLowType, C)
+lowTypeNumber :: Parser (BLT.BaseLowType, C)
 lowTypeNumber = do
   (pt, c) <- primType
-  return (RLT.PrimNum pt, c)
+  return (BLT.PrimNum pt, c)
 
 primType :: Parser (WPT.WeakPrimType, C)
 primType = do

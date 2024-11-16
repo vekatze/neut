@@ -3,6 +3,7 @@ module Entity.RawProgram.Decode (pp, ImportInfo (..)) where
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
+import Entity.BaseLowType.Decode qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.C.Decode qualified as C
@@ -13,7 +14,6 @@ import Entity.LocalLocator qualified as LL
 import Entity.Name qualified as N
 import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
-import Entity.RawLowType.Decode qualified as RLT
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
@@ -237,8 +237,8 @@ decStmt stmt =
 
 decForeignItem :: RawForeignItem -> D.Doc
 decForeignItem (RawForeignItem _ funcName _ args _ _ cod) = do
-  let args' = SE.decode $ fmap RLT.decode args
-  let cod' = RLT.decode cod
+  let args' = SE.decode $ fmap BLT.decode args
+  let cod' = BLT.decode cod
   D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
 
 decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc

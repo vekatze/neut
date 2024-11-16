@@ -1,9 +1,9 @@
-module Entity.RawLowType (RawLowType (..)) where
+module Entity.BaseLowType (BaseLowType (..)) where
 
 import Entity.WeakPrimType qualified as WPT
 import GHC.Generics qualified as G
 
-data RawLowType
+data BaseLowType
   = PrimNum WPT.WeakPrimType
   | Pointer
   | Void

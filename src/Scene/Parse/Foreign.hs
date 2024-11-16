@@ -9,7 +9,7 @@ import Context.Decl qualified as Decl
 import Control.Monad
 import Entity.DeclarationName qualified as DN
 import Entity.Foreign qualified as F
-import Entity.LowType.FromRawLowType
+import Entity.LowType.FromBaseLowType
 import Entity.RawProgram
 import Entity.Syntax.Series qualified as SE
 
@@ -24,6 +24,6 @@ interpretForeign foreignItemList = do
 
 interpretForeignItem :: RawForeignItem -> App F.Foreign
 interpretForeignItem (RawForeignItem _ name _ lts _ _ cod) = do
-  let lts' = map fromRawLowType $ SE.extract lts
-  let cod' = fromRawLowType cod
+  let lts' = map fromBaseLowType $ SE.extract lts
+  let cod' = fromBaseLowType cod
   return $ F.Foreign name lts' cod'
