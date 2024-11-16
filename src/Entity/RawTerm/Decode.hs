@@ -417,7 +417,8 @@ piIntroArgToDoc (m, x, c1, c2, t) = do
 varArgToDoc :: VarArg -> D.Doc
 varArgToDoc (m, e, c1, c2, t) = do
   let e' = toDoc e
-  paramToDoc' (m, e', c1, c2, BLT.decode t)
+  let t' = toDoc t
+  paramToDoc' (m, e', c1, c2, t')
 
 paramToDoc :: (a, D.Doc, C, C, RawTerm) -> D.Doc
 paramToDoc (m, x, c1, c2, t) = do

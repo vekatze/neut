@@ -297,22 +297,24 @@ infer axis term =
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.BoxNoema t')
             WPV.Rune _ -> do
               return (m :< WT.Prim prim, m :< WT.Prim (WP.Type PT.Rune))
-    m :< WT.Magic magic -> do
+    m :< WT.Magic (M.WeakMagic magic) -> do
       case magic of
         M.Cast from to value -> do
           from' <- inferType axis from
           to'@(_ :< toInner) <- inferType axis to
           (value', t) <- infer axis value
           insConstraintEnv from' t
-          return (m :< WT.Magic (M.Cast from' to' value'), m :< toInner)
+          return (m :< WT.Magic (M.WeakMagic $ M.Cast from' to' value'), m :< toInner)
         M.Alloca lt size -> do
           (size', sizeType) <- infer axis size
           intType <- getIntType m
           insConstraintEnv intType sizeType
           resultType <- newHole m (varEnv axis)
-          return (m :< WT.Magic (M.Alloca lt size'), resultType)
+          return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), resultType)
+        M.External _ _ name args varArgs -> do
+          undefined
         _ -> do
-          magic' <- mapM (infer axis >=> return . fst) magic
+          magic' <- mapM (infer axis >=> return . fst) (M.WeakMagic magic)
           resultType <- newHole m (varEnv axis)
           return (m :< WT.Magic magic', resultType)
     m :< WT.Annotation logLevel annot e -> do

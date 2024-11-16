@@ -15,10 +15,11 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Entity.ArgNum qualified as AN
+import Entity.BaseLowType qualified as BLT
 import Entity.DeclarationName qualified as DN
 import Entity.Foreign qualified as F
+import Entity.ForeignCodType qualified as FCT
 import Entity.Hint
-import Entity.LowType qualified as LT
 import Prelude hiding (lookup, read)
 
 initialize :: App ()
@@ -34,13 +35,13 @@ getDeclEnv =
 
 insDeclEnv :: DN.DeclarationName -> AN.ArgNum -> App ()
 insDeclEnv k argNum =
-  modifyRef' declEnv $ Map.insert k (LT.toVoidPtrSeq argNum, LT.Pointer)
+  modifyRef' declEnv $ Map.insert k (BLT.toVoidPtrSeq argNum, FCT.Void)
 
-insDeclEnv' :: DN.DeclarationName -> [LT.LowType] -> LT.LowType -> App ()
+insDeclEnv' :: DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> App ()
 insDeclEnv' k domList cod =
   modifyRef' declEnv $ Map.insert k (domList, cod)
 
-lookupDeclEnv :: Hint -> DN.DeclarationName -> App ([LT.LowType], LT.LowType)
+lookupDeclEnv :: Hint -> DN.DeclarationName -> App ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)
 lookupDeclEnv m name = do
   denv <- readRef' declEnv
   case Map.lookup name denv of

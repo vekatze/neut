@@ -9,6 +9,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Artifact qualified as AR
+import Entity.BaseLowType qualified as BLT
 import Entity.Binder
 import Entity.BuildMode qualified as BM
 import Entity.Comp
@@ -16,6 +17,7 @@ import Entity.Constraint qualified as C
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ForeignCodType qualified as F
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.GlobalName qualified as GN
 import Entity.Hint
@@ -27,7 +29,6 @@ import Entity.Key
 import Entity.LocalLocator qualified as LL
 import Entity.LocalVarTree qualified as LVT
 import Entity.LocationTree qualified as LT
-import Entity.LowType qualified as LT
 import Entity.Module qualified as M
 import Entity.Module qualified as Module
 import Entity.ModuleAlias qualified as MA
@@ -90,7 +91,7 @@ data Env = Env
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
-    declEnv :: IORef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
+    declEnv :: IORef (Map.HashMap DN.DeclarationName ([BLT.BaseLowType], F.ForeignCodType BLT.BaseLowType)),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),

@@ -16,6 +16,7 @@ import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.ExternalName qualified as EN
+import Entity.ForeignCodType qualified as F
 import Entity.Hint
 import Entity.IsConstLike
 import Entity.LocalLocator qualified as LL
@@ -78,7 +79,7 @@ compareImportItem item1 item2 = do
       EQ
 
 data RawForeignItem
-  = RawForeignItem Hint EN.ExternalName C (SE.Series BLT.BaseLowType) C C BLT.BaseLowType
+  = RawForeignItem Hint EN.ExternalName C (SE.Series BLT.BaseLowType) C C (F.ForeignCodType BLT.BaseLowType)
 
 isImportEmpty :: RawImport -> Bool
 isImportEmpty rawImport =

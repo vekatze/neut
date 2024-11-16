@@ -4,8 +4,8 @@ import Control.Comonad.Cofree
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder (BinderF)
 import Entity.DecisionTree qualified as DT
+import Entity.ForeignCodType qualified as FCT
 import Entity.LamKind qualified as LK
-import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
@@ -212,8 +212,8 @@ eqWP prim1 prim2
   | otherwise =
       False
 
-eqM :: M.Magic LT.LowType WT.WeakTerm -> M.Magic LT.LowType WT.WeakTerm -> Bool
-eqM m1 m2
+eqM :: M.WeakMagic WT.WeakTerm -> M.WeakMagic WT.WeakTerm -> Bool
+eqM (M.WeakMagic m1) (M.WeakMagic m2)
   | M.Cast from1 to1 e1 <- m1,
     M.Cast from2 to2 e2 <- m2 = do
       let b1 = eq from1 from2
@@ -233,21 +233,33 @@ eqM m1 m2
       b1 && b2
   | M.External domList1 cod1 funcName1 args1 varArgs1 <- m1,
     M.External domList2 cod2 funcName2 args2 varArgs2 <- m2,
+    length domList1 == length domList2,
     length args1 == length args2,
     length varArgs1 == length varArgs2 = do
-      let b1 = domList1 == domList2
-      let b2 = cod1 == cod2
+      let b1 = all (uncurry eq) $ zip domList1 domList2
+      let b2 = eqCod cod1 cod2
       let b3 = funcName1 == funcName2
       let b4 = all (uncurry eq) $ zip args1 args2
       let (es1, ts1) = unzip varArgs1
       let (es2, ts2) = unzip varArgs2
       let b5 = all (uncurry eq) $ zip es1 es2
-      let b6 = ts1 == ts2
+      let b6 = all (uncurry eq) $ zip ts1 ts2
       b1 && b2 && b3 && b4 && b5 && b6
   | M.Global name1 lt1 <- m1,
     M.Global name2 lt2 <- m2 = do
       let b1 = name1 == name2
       let b2 = lt1 == lt2
       b1 && b2
+  | otherwise =
+      False
+
+eqCod :: FCT.ForeignCodType WT.WeakTerm -> FCT.ForeignCodType WT.WeakTerm -> Bool
+eqCod cod1 cod2
+  | FCT.Void <- cod1,
+    FCT.Void <- cod2 =
+      True
+  | FCT.Cod t1 <- cod1,
+    FCT.Cod t2 <- cod2 =
+      eq t1 t2
   | otherwise =
       False

@@ -1,9 +1,6 @@
 module Entity.LowType where
 
 import Data.Binary
-import Entity.Arch qualified as A
-import Entity.ArgNum qualified as AN
-import Entity.DataSize qualified as DS
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
 import GHC.Generics qualified as G
@@ -23,10 +20,6 @@ instance Show LowType where
 
 instance Binary LowType
 
-toVoidPtrSeq :: AN.ArgNum -> [LowType]
-toVoidPtrSeq argNum =
-  map (const Pointer) [1 .. AN.reify argNum]
-
 textType :: Int -> Int -> LowType
 textType baseSize len =
   Struct
@@ -38,7 +31,3 @@ textType baseSize len =
 textTypeInner :: Int -> LowType
 textTypeInner len =
   Array len (PrimNum $ PT.Int $ IntSize 8)
-
-getWordType :: A.Arch -> LowType
-getWordType arch =
-  PrimNum $ PT.Int $ IntSize $ DS.reify $ A.dataSizeOf arch

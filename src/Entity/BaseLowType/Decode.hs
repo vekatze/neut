@@ -18,8 +18,6 @@ decode lt =
           D.join [D.text "float", D.text $ showWeakFloatSize size]
     BLT.Pointer ->
       D.text "pointer"
-    BLT.Void ->
-      D.text "void"
 
 showWeakIntSize :: WPT.WeakSize IntSize -> T.Text
 showWeakIntSize size =

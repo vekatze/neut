@@ -206,7 +206,7 @@ decodeLetKind letKind =
     Bind -> "bind"
 
 type VarArg =
-  (Hint, RawTerm, C, C, BLT.BaseLowType)
+  (Hint, RawTerm, C, C, RawTerm)
 
 data RawMagic
   = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)

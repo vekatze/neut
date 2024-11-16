@@ -4,12 +4,12 @@ import Data.IntMap qualified as IntMap
 import Data.List (intercalate)
 import Data.Text qualified as T
 import Entity.ArgNum
+import Entity.BaseLowType
 import Entity.DefiniteDescription qualified as DD
 import Entity.EnumCase
 import Entity.Foreign qualified as F
 import Entity.Ident
 import Entity.Ident.Reify
-import Entity.LowType
 import Entity.Magic
 import Entity.Opacity
 import Entity.PrimNumSize
@@ -81,7 +81,7 @@ type ShouldDeallocate = Bool
 
 data Primitive
   = PrimOp PrimOp [Value]
-  | Magic (Magic LowType Value)
+  | Magic (Magic BaseLowType Value)
   deriving (Show)
 
 type SubstValue =

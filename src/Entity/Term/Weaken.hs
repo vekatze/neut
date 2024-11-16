@@ -10,11 +10,13 @@ import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List
 import Entity.Attr.Lam qualified as AttrL
+import Entity.BaseLowType qualified as BLT
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
 import Entity.LamKind qualified as LK
+import Entity.Magic qualified as M
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
@@ -94,10 +96,29 @@ weaken term =
       m :< WT.Let (reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrim m prim)
-    m :< TM.Magic der -> do
-      m :< WT.Magic (fmap weaken der)
+    m :< TM.Magic magic -> do
+      m :< WT.Magic (weakenMagic m magic)
     m :< TM.Resource dd resourceID discarder copier -> do
       m :< WT.Resource dd resourceID (weaken discarder) (weaken copier)
+
+weakenMagic :: Hint -> M.Magic BLT.BaseLowType TM.Term -> M.WeakMagic WT.WeakTerm
+weakenMagic m magic = do
+  case magic of
+    M.Cast from to value ->
+      M.WeakMagic $ M.Cast (weaken from) (weaken to) (weaken value)
+    M.Store lt value pointer ->
+      M.WeakMagic $ M.Store lt (weaken value) (weaken pointer)
+    M.Load lt pointer ->
+      M.WeakMagic $ M.Load lt (weaken pointer)
+    M.Alloca lt size ->
+      M.WeakMagic $ M.Alloca lt (weaken size)
+    M.External domList cod extFunName args varArgs -> do
+      let domList' = map (WT.fromBaseLowType m) domList
+      let cod' = fmap (WT.fromBaseLowType m) cod
+      let varArgs' = map (bimap weaken (WT.fromBaseLowType m)) varArgs
+      M.WeakMagic $ M.External domList' cod' extFunName (fmap weaken args) varArgs'
+    M.Global name lt ->
+      M.WeakMagic $ M.Global name lt
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =

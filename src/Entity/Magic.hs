@@ -2,7 +2,9 @@ module Entity.Magic where
 
 import Data.Bifunctor
 import Data.Binary
+import Entity.BaseLowType
 import Entity.ExternalName qualified as EN
+import Entity.ForeignCodType qualified as FCT
 import Entity.LowType
 import GHC.Generics qualified as G
 
@@ -11,13 +13,13 @@ data Magic t a
   | Store LowType a a
   | Load LowType a
   | Alloca LowType a
-  | External [t] t EN.ExternalName [a] [(a, t)]
+  | External [t] (FCT.ForeignCodType t) EN.ExternalName [a] [(a, t)]
   | Global EN.ExternalName LowType
   deriving (Show, Eq, G.Generic)
 
-instance (Binary a) => Binary (Magic LowType a)
+instance (Binary a) => Binary (Magic BaseLowType a)
 
-instance Functor (Magic LowType) where
+instance Functor (Magic BaseLowType) where
   fmap f der =
     case der of
       Cast from to value ->
@@ -34,7 +36,7 @@ instance Functor (Magic LowType) where
       Global name lt ->
         Global name lt
 
-instance Foldable (Magic LowType) where
+instance Foldable (Magic BaseLowType) where
   foldMap f der =
     case der of
       Cast from to value ->
@@ -50,7 +52,7 @@ instance Foldable (Magic LowType) where
       Global {} ->
         mempty
 
-instance Traversable (Magic LowType) where
+instance Traversable (Magic BaseLowType) where
   traverse f der =
     case der of
       Cast from to value ->
@@ -83,7 +85,7 @@ instance Functor WeakMagic where
         WeakMagic (Alloca lt (f size))
       External domList cod extFunName args varArgs -> do
         let domList' = map f domList
-        let cod' = f cod
+        let cod' = fmap f cod
         let varArgs' = map (bimap f f) varArgs
         WeakMagic (External domList' cod' extFunName (fmap f args) varArgs')
       Global name lt ->
@@ -102,7 +104,11 @@ instance Foldable WeakMagic where
         mempty
       External domList cod _ args varArgs -> do
         let varArgs' = concatMap (\(x, y) -> [x, y]) varArgs
-        foldMap f (domList ++ [cod] ++ args ++ varArgs')
+        case cod of
+          FCT.Cod t ->
+            foldMap f (domList ++ [t] ++ args ++ varArgs')
+          FCT.Void ->
+            foldMap f (domList ++ args ++ varArgs')
       Global {} ->
         mempty
 
@@ -126,7 +132,7 @@ instance Traversable WeakMagic where
         return $ WeakMagic $ Alloca lt size'
       External domList cod extFunName args varArgs -> do
         domList' <- traverse f domList
-        cod' <- f cod
+        cod' <- traverse f cod
         args' <- traverse f args
         let (xs, ys) = unzip varArgs
         xs' <- traverse f xs

@@ -487,7 +487,7 @@ rawExprAndLowType = do
   m <- getCurrentHint
   (e, c1) <- rawExpr
   c2 <- delimiter ":"
-  (t, c) <- lowType
+  (t, c) <- rawTerm
   return ((m, e, c1, c2, t), c)
 
 rawTermMagicGlobal :: Hint -> C -> Parser (RT.RawTerm, C)
@@ -503,7 +503,6 @@ lowType :: Parser (BLT.BaseLowType, C)
 lowType = do
   choice
     [ lowTypePointer,
-      lowTypeVoid,
       lowTypeNumber
     ]
 
@@ -512,10 +511,10 @@ lowTypePointer = do
   c <- keyword "pointer"
   return (BLT.Pointer, c)
 
-lowTypeVoid :: Parser (BLT.BaseLowType, C)
-lowTypeVoid = do
-  c <- keyword "void"
-  return (BLT.Void, c)
+-- lowTypeVoid :: Parser (BLT.BaseLowType, C)
+-- lowTypeVoid = do
+--   c <- keyword "void"
+--   return (BLT.Void, c)
 
 lowTypeNumber :: Parser (BLT.BaseLowType, C)
 lowTypeNumber = do

@@ -32,9 +32,11 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.EnumCase qualified as EC
 import Entity.ExternalName qualified as EN
 import Entity.Foreign qualified as F
+import Entity.ForeignCodType qualified as F
 import Entity.Ident
 import Entity.LowComp qualified as LC
 import Entity.LowType qualified as LT
+import Entity.LowType.FromBaseLowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
@@ -249,17 +251,18 @@ lowerCompPrimitive codeOp =
           unless alreadyRegistered $ do
             lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
           let (varArgs, varTypes) = unzip varArgAndTypeList
-          let argCaster = domList ++ varTypes
+          let argCaster = map LT.fromBaseLowType $ domList ++ varTypes
           castedArgs <- zipWithM lowerValueLetCast (args ++ varArgs) argCaster
           let suffix = if null varArgs then [] else [LT.VarArgs]
-          let funcType = LT.Function (domList ++ suffix) cod
-          case cod of
+          let lowCod = F.fromForeignCodType cod
+          let funcType = LT.Function (map LT.fromBaseLowType domList ++ suffix) lowCod
+          case lowCod of
             LT.Void -> do
               reflectCont $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
               return LC.Null
             _ -> do
               result <- reflect $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
-              uncast result cod
+              uncast result lowCod
         M.Global name lt -> do
           uncast (LC.VarExternal name) lt
 

@@ -9,6 +9,7 @@ import Entity.C
 import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
+import Entity.ForeignCodType qualified as FCT
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Name qualified as N
@@ -238,7 +239,12 @@ decStmt stmt =
 decForeignItem :: RawForeignItem -> D.Doc
 decForeignItem (RawForeignItem _ funcName _ args _ _ cod) = do
   let args' = SE.decode $ fmap BLT.decode args
-  let cod' = BLT.decode cod
+  let cod' =
+        case cod of
+          FCT.Cod c ->
+            BLT.decode c
+          FCT.Void ->
+            D.text "void"
   D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
 
 decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc

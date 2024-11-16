@@ -11,5 +11,3 @@ fromBaseLowType rlt = do
       LT.PrimNum $ fromWeakPrimType wpt
     BLT.Pointer ->
       LT.Pointer
-    BLT.Void ->
-      LT.Void

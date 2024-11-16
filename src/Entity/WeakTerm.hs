@@ -7,13 +7,13 @@ import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
+import Entity.BaseLowType qualified as BLT
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
-import Entity.LowType qualified as LT
 import Entity.Magic
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
@@ -21,6 +21,7 @@ import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
 import Entity.Remark
 import Entity.WeakPrim qualified as WP
+import Entity.WeakPrimType qualified as WPT
 
 type WeakTerm = Cofree WeakTermF Hint
 
@@ -45,7 +46,7 @@ data WeakTermF a
   | Actual a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)
-  | Magic (Magic LT.LowType a) -- (magic kind arg-1 ... arg-n)
+  | Magic (WeakMagic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
   | Resource DD.DefiniteDescription Int a a
@@ -109,3 +110,15 @@ fromLetSeq xts cont =
       cont
     (mxt@(m, _, _), e) : rest ->
       m :< Let Clear mxt e (fromLetSeq rest cont)
+
+fromBaseLowType :: Hint -> BLT.BaseLowType -> WeakTerm
+fromBaseLowType m lt =
+  case lt of
+    BLT.PrimNum pt ->
+      case pt of
+        WPT.Int s ->
+          m :< Prim (WP.Type (PT.Int (WPT.extractSize s)))
+        WPT.Float s ->
+          m :< Prim (WP.Type (PT.Float (WPT.extractSize s)))
+    BLT.Pointer ->
+      m :< Prim (WP.Type PT.Pointer)

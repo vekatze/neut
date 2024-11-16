@@ -23,6 +23,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
+import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
@@ -440,7 +441,7 @@ alignFreeVariable tenv fvs e = do
   fvs' <- dropFst <$> clarifyBinder tenv fvs
   linearize fvs' e
 
-clarifyMagic :: TM.TypeEnv -> M.Magic LT.LowType TM.Term -> App C.Comp
+clarifyMagic :: TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Term -> App C.Comp
 clarifyMagic tenv der =
   case der of
     M.Cast from to value -> do

@@ -1,7 +1,6 @@
 module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
-import Context.Decl qualified as Decl
 import Context.Env (getPlatform)
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
@@ -33,9 +32,9 @@ import Entity.Binder
 import Entity.BuildMode qualified as BM
 import Entity.C
 import Entity.Const
-import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
+import Entity.ForeignCodType qualified as FCT
 import Entity.Geist qualified as G
 import Entity.GlobalName qualified as GN
 import Entity.Hint
@@ -419,7 +418,7 @@ discern axis term =
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do
-      magic' <- discernMagic axis m magic
+      magic' <- discernMagic axis magic
       return $ m :< WT.Magic magic'
     m :< RT.Annotation remarkLevel annot e -> do
       e' <- discern axis e
@@ -585,42 +584,43 @@ discernBaseLowType :: BLT.BaseLowType -> App LT.LowType
 discernBaseLowType rlt = do
   return $ LT.fromBaseLowType rlt
 
-discernMagic :: Axis -> Hint -> RT.RawMagic -> App (M.Magic LT.LowType WT.WeakTerm)
-discernMagic axis m magic =
+discernMagic :: Axis -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
+discernMagic axis magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
       from' <- discern axis from
       to' <- discern axis to
       e' <- discern axis e
-      return $ M.Cast from' to' e'
+      return $ M.WeakMagic $ M.Cast from' to' e'
     RT.Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
       lt' <- discernBaseLowType lt
       value' <- discern axis value
       pointer' <- discern axis pointer
-      return $ M.Store lt' value' pointer'
+      return $ M.WeakMagic $ M.Store lt' value' pointer'
     RT.Load _ (_, (lt, _)) (_, (pointer, _)) _ -> do
       lt' <- discernBaseLowType lt
       pointer' <- discern axis pointer
-      return $ M.Load lt' pointer'
+      return $ M.WeakMagic $ M.Load lt' pointer'
     RT.Alloca _ (_, (lt, _)) (_, (size, _)) _ -> do
       lt' <- discernBaseLowType lt
       size' <- discern axis size
-      return $ M.Alloca lt' size'
+      return $ M.WeakMagic $ M.Alloca lt' size'
     RT.External _ funcName _ args varArgsOrNone -> do
-      (domList, cod) <- Decl.lookupDeclEnv m (DN.Ext funcName)
+      let domList = []
+      let cod = FCT.Void
       args' <- mapM (discern axis) $ SE.extract args
       varArgs' <- case varArgsOrNone of
         Nothing ->
           return []
         Just (_, varArgs) ->
-          forM (SE.extract varArgs) $ \(_, arg, _, _, lt) -> do
+          forM (SE.extract varArgs) $ \(_, arg, _, _, t) -> do
             arg' <- discern axis arg
-            lt' <- discernBaseLowType lt
-            return (arg', lt')
-      return $ M.External domList cod funcName args' varArgs'
+            t' <- discern axis t
+            return (arg', t')
+      return $ M.WeakMagic $ M.External domList cod funcName args' varArgs'
     RT.Global _ (_, (name, _)) (_, (lt, _)) _ -> do
       lt' <- discernBaseLowType lt
-      return $ M.Global name lt'
+      return $ M.WeakMagic $ M.Global name lt'
 
 modifyLetContinuation :: (Hint, RP.RawPattern) -> Loc -> N.IsNoetic -> RT.RawTerm -> App (RawIdent, RT.RawTerm)
 modifyLetContinuation pat endLoc isNoetic cont@(mCont :< _) =

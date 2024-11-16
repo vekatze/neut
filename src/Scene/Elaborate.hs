@@ -25,13 +25,13 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.Lam qualified as AttrL
+import Entity.BaseLowType qualified as BLT
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.Const (holeLiteral)
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
-import Entity.ExternalName qualified as EN
 import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.Ident
@@ -50,6 +50,7 @@ import Entity.StmtKind
 import Entity.Term qualified as TM
 import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
+import Entity.WeakPrimType qualified as WPT
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText
@@ -322,27 +323,33 @@ elaborate' term =
               return $ m :< TM.Prim (P.Value (PV.StaticText t' text))
             WPV.Rune r ->
               return $ m :< TM.Prim (P.Value (PV.Rune r))
-    m :< WT.Magic magic -> do
+    m :< WT.Magic (M.WeakMagic magic) -> do
       case magic of
         M.External domList cod name args varArgs -> do
-          let expected = length domList
-          let actual = length args
-          when (actual /= length domList) $ do
-            Throw.raiseError m $
-              "The external function `"
-                <> EN.reify name
-                <> "` expects "
-                <> T.pack (show expected)
-                <> " arguments, but found "
-                <> T.pack (show actual)
-                <> "."
+          domList' <- mapM strictify domList
+          cod' <- mapM strictify cod
           args' <- mapM elaborate' args
           let (vArgs, vTypes) = unzip varArgs
           vArgs' <- mapM elaborate' vArgs
-          return $ m :< TM.Magic (M.External domList cod name args' (zip vArgs' vTypes))
-        _ -> do
-          magic' <- mapM elaborate' magic
-          return $ m :< TM.Magic magic'
+          vTypes' <- mapM strictify vTypes
+          return $ m :< TM.Magic (M.External domList' cod' name args' (zip vArgs' vTypes'))
+        M.Cast from to value -> do
+          from' <- elaborate' from
+          to' <- elaborate' to
+          value' <- elaborate' value
+          return $ m :< TM.Magic (M.Cast from' to' value')
+        M.Store lt value pointer -> do
+          value' <- elaborate' value
+          pointer' <- elaborate' pointer
+          return $ m :< TM.Magic (M.Store lt value' pointer')
+        M.Load lt pointer -> do
+          pointer' <- elaborate' pointer
+          return $ m :< TM.Magic (M.Load lt pointer')
+        M.Alloca lt size -> do
+          size' <- elaborate' size
+          return $ m :< TM.Magic (M.Alloca lt size')
+        M.Global name lt -> do
+          return $ m :< TM.Magic (M.Global name lt)
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' e
       case annot of
@@ -358,6 +365,21 @@ elaborate' term =
       return $ m :< TM.Resource dd resourceID discarder' copier'
     m :< WT.Use {} -> do
       Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
+
+strictify :: WT.WeakTerm -> App BLT.BaseLowType
+strictify t = do
+  t' <- reduceWeakType t >>= elaborate'
+  case t' of
+    _ :< TM.Prim (P.Type (PT.Int size)) ->
+      return $ BLT.PrimNum $ WPT.Int $ WPT.Explicit size
+    _ :< TM.Prim (P.Type (PT.Float size)) ->
+      return $ BLT.PrimNum $ WPT.Float $ WPT.Explicit size
+    _ :< TM.Prim (P.Type PT.Pointer) ->
+      return BLT.Pointer
+    m :< _ ->
+      Throw.raiseError m $
+        "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
+          <> toText (weaken t')
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
