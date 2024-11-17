@@ -375,6 +375,8 @@ elaborate' term =
       return $ m :< TM.Resource dd resourceID discarder' copier'
     m :< WT.Use {} -> do
       Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
+    m :< WT.Void ->
+      return $ m :< TM.Void
 
 strictify :: WT.WeakTerm -> App BLT.BaseLowType
 strictify t = do

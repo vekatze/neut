@@ -330,7 +330,7 @@ infer axis term =
               let c' = WT.fromBaseLowType m c
               return (m :< WT.Magic (M.WeakMagic $ M.External domList' (FCT.Cod c') funcName args' varArgs'), c')
             FCT.Void -> do
-              let voidType = undefined
+              let voidType = m :< WT.Void
               return (m :< WT.Magic (M.WeakMagic $ M.External domList' FCT.Void funcName args' varArgs'), voidType)
         _ -> do
           magic' <- mapM (infer axis >=> return . fst) (M.WeakMagic magic)
@@ -391,6 +391,8 @@ infer axis term =
               Throw.raiseError mt $ "Expected a single-constructor ADT, but found: " <> toText t''
         _ :< _ -> do
           Throw.raiseError mt $ "Expected an ADT, but found: " <> toText t''
+    m :< WT.Void ->
+      return (m :< WT.Void, m :< WT.Tau)
 
 data CastDirection
   = FromNoema

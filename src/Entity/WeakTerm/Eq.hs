@@ -123,6 +123,9 @@ eq (_ :< term1) (_ :< term2)
       let b2 = eqBinder xts1 xts2
       let b3 = eq cont1 cont2
       b1 && b2 && b3
+  | WT.Void <- term1,
+    WT.Void <- term2 =
+      True
   | otherwise =
       False
 

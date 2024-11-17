@@ -96,6 +96,7 @@ data RawTermF a
   | Projection a (Hint, RawIdent) Loc
   | Brace C (a, C)
   | Pointer
+  | Void
 
 type Args a =
   (SE.Series (RawBinder a), C)

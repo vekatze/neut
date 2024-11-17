@@ -64,6 +64,8 @@ freeVars term =
       let xs1 = freeVars discarder
       let xs2 = freeVars copier
       S.union xs1 xs2
+    _ :< TM.Void ->
+      S.empty
 
 freeVars' :: [BinderF TM.Term] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =

@@ -73,6 +73,8 @@ chainOf' tenv term =
       let xs1 = chainOf' tenv discarder
       let xs2 = chainOf' tenv copier
       xs1 ++ xs2
+    _ :< TM.Void ->
+      []
 
 chainOfBinder :: TM.TypeEnv -> [BinderF TM.Term] -> [TM.Term] -> [BinderF TM.Term]
 chainOfBinder tenv binder es =

@@ -130,6 +130,8 @@ subst sub term =
       (xts', sub') <- subst' sub xts
       cont' <- subst sub' cont
       return $ m :< WT.Use e' xts' cont'
+    _ :< WT.Void ->
+      return term
 
 substBinder ::
   WT.SubstWeakTerm ->

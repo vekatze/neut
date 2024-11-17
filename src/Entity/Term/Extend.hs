@@ -75,6 +75,8 @@ extend term =
       _m :< TM.Magic (fmap extend der)
     _ :< TM.Resource dd resourceID discarder copier -> do
       _m :< TM.Resource dd resourceID (extend discarder) (extend copier)
+    _ :< TM.Void ->
+      _m :< TM.Void
 
 extendBinder :: (Hint, Ident, Cofree TM.TermF ()) -> (Hint, Ident, TM.Term)
 extendBinder (m, x, t) =

@@ -272,6 +272,8 @@ clarifyTerm tenv term =
       unless isAlreadyRegistered $ do
         Clarify.insertToAuxEnv liftedName (O.Clear, [switchValue, value], enumElim)
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
+    _ :< TM.Void ->
+      return returnImmediateS4
 
 embody :: TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> App C.Comp
 embody tenv xets cont =

@@ -101,6 +101,8 @@ weaken term =
       m :< WT.Magic (weakenMagic m magic)
     m :< TM.Resource dd resourceID discarder copier -> do
       m :< WT.Resource dd resourceID (weaken discarder) (weaken copier)
+    m :< TM.Void ->
+      m :< WT.Void
 
 weakenMagic :: Hint -> M.Magic BLT.BaseLowType TM.Term -> M.WeakMagic WT.WeakTerm
 weakenMagic m magic = do

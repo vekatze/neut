@@ -51,6 +51,7 @@ data WeakTermF a
   | Annotation RemarkLevel (AN.Annotation a) a
   | Resource DD.DefiniteDescription Int a a
   | Use a [BinderF a] a
+  | Void
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)

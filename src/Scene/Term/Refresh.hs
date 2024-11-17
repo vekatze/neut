@@ -87,6 +87,8 @@ refresh term =
       discarder' <- refresh discarder
       copier' <- refresh copier
       return $ m :< TM.Resource dd resourceID discarder' copier'
+    _ :< TM.Void ->
+      return term
 
 refreshBinder ::
   [BinderF TM.Term] ->

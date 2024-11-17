@@ -408,6 +408,8 @@ simplifyActual ax m dataNameSet t orig = do
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
     _ :< WT.Prim {} -> do
       return []
+    _ :< WT.Void -> do
+      return []
     _ :< WT.Resource {} -> do
       return []
     _ -> do

@@ -42,6 +42,7 @@ data TermF a
   | Prim (P.Prim a)
   | Magic (Magic BaseLowType a)
   | Resource DD.DefiniteDescription ID a a
+  | Void
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)
@@ -85,6 +86,8 @@ isValue term =
     _ :< Prim {} ->
       True
     _ :< Resource {} ->
+      True
+    _ :< Void ->
       True
     _ ->
       False
