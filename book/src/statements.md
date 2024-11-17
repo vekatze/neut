@@ -456,13 +456,31 @@ Syscall wrapper functions and library functions are also available:
 
 ```neut
 foreign {
-  write(int, pointer, int): int, // write(2)
-  exit(int): void, // exit(3)
-  pthread_exit(pointer): void, // pthread_exit(3)
+  exit(c-int): void,
+  sleep(c-int): c-int,
 }
 ```
 
-In foreign entries, you can use `int`, `int1`, ..., `int64` `float`, `float16`, `float32`, `float64`, `void`, and `pointer` as types.
+Here, the definition of `c-int` is as follows:
+
+```neut
+constant _c-int: type {
+  introspect arch {
+  | amd64 =>
+    int32
+  | arm64 =>
+    int32
+  }
+}
+
+data c-int {
+| C-Int(_c-int)
+}
+```
+
+The type of each argument in every foreign entry must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation. For example, the `c-int` in `exit(c-int): void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
+
+The resulting type of every foreign entry must be `void` or a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation.
 
 When declaring a variadic function, declare only the non-variadic part:
 
