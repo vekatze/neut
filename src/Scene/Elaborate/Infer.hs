@@ -315,23 +315,22 @@ infer axis term =
           resultType <- newHole m (varEnv axis)
           return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), resultType)
         M.External _ _ funcName args varArgs -> do
-          (domList, cod) <- Decl.lookupDeclEnv m (DN.Ext funcName)
-          let domList' = map (WT.fromBaseLowType m) domList
+          (domList, cod) <- Decl.lookupWeakDeclEnv m (DN.Ext funcName)
           ensureArityCorrectness term (length domList) (length args)
           (args', argTypes) <- mapAndUnzipM (infer axis) args
-          forM_ (zip domList' argTypes) $ uncurry insConstraintEnv
+          forM_ (zip domList argTypes) $ uncurry insConstraintEnv
           varArgs' <- forM varArgs $ \(e, t) -> do
             (e', t') <- infer axis e
             t'' <- inferType axis t
             insConstraintEnv t'' t'
             return (e', t')
           case cod of
-            FCT.Cod c -> do
-              let c' = WT.fromBaseLowType m c
-              return (m :< WT.Magic (M.WeakMagic $ M.External domList' (FCT.Cod c') funcName args' varArgs'), c')
+            FCT.Cod (_ :< c) -> do
+              let c' = m :< c
+              return (m :< WT.Magic (M.WeakMagic $ M.External domList (FCT.Cod c') funcName args' varArgs'), c')
             FCT.Void -> do
               let voidType = m :< WT.Void
-              return (m :< WT.Magic (M.WeakMagic $ M.External domList' FCT.Void funcName args' varArgs'), voidType)
+              return (m :< WT.Magic (M.WeakMagic $ M.External domList FCT.Void funcName args' varArgs'), voidType)
         _ -> do
           magic' <- mapM (infer axis >=> return . fst) (M.WeakMagic magic)
           resultType <- newHole m (varEnv axis)

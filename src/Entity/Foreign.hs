@@ -26,3 +26,7 @@ defaultForeignList arch =
   [ Foreign internalHint EN.malloc [BLT.getWordType arch] (Cod BLT.Pointer),
     Foreign internalHint EN.free [BLT.Pointer] Void
   ]
+
+defaultWeakForeignList :: A.Arch -> [WeakForeign]
+defaultWeakForeignList arch =
+  fmap (fmap (WT.fromBaseLowType internalHint)) (defaultForeignList arch)

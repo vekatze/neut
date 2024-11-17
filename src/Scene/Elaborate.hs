@@ -144,8 +144,8 @@ elaborateStmt stmt = do
       return ([], [])
     WeakStmtForeign foreignList -> do
       foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
-        domList' <- mapM strictify domList
-        cod' <- mapM strictify cod
+        domList' <- mapM (strictify m) domList
+        cod' <- mapM (strictify m) cod
         return $ F.Foreign m externalName domList' cod'
       return ([StmtForeign foreignList'], [])
 
@@ -165,8 +165,9 @@ insertStmt stmt = do
     StmtDefineConst (SavedHint m) dd t v -> do
       Type.insert dd $ weaken $ m :< TM.Pi [] [] t
       Definition.insert O.Clear dd [] v
-    StmtForeign _ -> do
-      return ()
+    StmtForeign foreignList -> do
+      forM_ foreignList $ \(F.Foreign m externalName domList cod) -> do
+        activateForeign $ F.Foreign m externalName domList cod
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
 
@@ -180,10 +181,10 @@ insertWeakStmt stmt = do
     WeakStmtNominal {} -> do
       return ()
     WeakStmtForeign foreignList ->
-      forM_ foreignList $ \(F.Foreign m externalName domList cod) -> do
-        domList' <- mapM strictify domList
-        cod' <- mapM strictify cod
-        activateForeign $ F.Foreign m externalName domList' cod'
+      forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
+        domList' <- mapM (elaborate' >=> return . weaken) domList
+        cod' <- mapM (elaborate' >=> return . weaken) cod
+        Decl.insWeakDeclEnv (DN.Ext externalName) domList' cod'
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
@@ -336,12 +337,12 @@ elaborate' term =
     m :< WT.Magic (M.WeakMagic magic) -> do
       case magic of
         M.External domList cod name args varArgs -> do
-          domList' <- mapM strictify domList
-          cod' <- mapM strictify cod
+          domList' <- mapM (strictify m) domList
+          cod' <- mapM (strictify m) cod
           args' <- mapM elaborate' args
           let (vArgs, vTypes) = unzip varArgs
           vArgs' <- mapM elaborate' vArgs
-          vTypes' <- mapM strictify vTypes
+          vTypes' <- mapM (strictify m) vTypes
           return $ m :< TM.Magic (M.External domList' cod' name args' (zip vArgs' vTypes'))
         M.Cast from to value -> do
           from' <- elaborate' from
@@ -378,8 +379,8 @@ elaborate' term =
     m :< WT.Void ->
       return $ m :< TM.Void
 
-strictify :: WT.WeakTerm -> App BLT.BaseLowType
-strictify t = do
+strictify :: Hint -> WT.WeakTerm -> App BLT.BaseLowType
+strictify m t = do
   t' <- reduceWeakType t >>= elaborate'
   case t' of
     _ :< TM.Prim (P.Type (PT.Int size)) ->
@@ -388,10 +389,22 @@ strictify t = do
       return $ BLT.PrimNum $ BPT.Float $ BPT.Explicit size
     _ :< TM.Prim (P.Type PT.Pointer) ->
       return BLT.Pointer
-    m :< _ ->
-      Throw.raiseError m $
-        "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
-          <> toText (weaken t')
+    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
+      consType <- Type.lookup m consName
+      case consType of
+        _ :< WT.Pi impArgs expArgs _
+          | [(_, _, arg)] <- impArgs ++ expArgs -> do
+              strictify m arg
+        _ ->
+          raiseNonStrictType m (weaken t')
+    _ :< _ ->
+      raiseNonStrictType m (weaken t')
+
+raiseNonStrictType :: Hint -> WT.WeakTerm -> App a
+raiseNonStrictType m t = do
+  Throw.raiseError m $
+    "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
+      <> toText t
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do

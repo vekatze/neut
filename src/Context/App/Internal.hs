@@ -92,6 +92,7 @@ data Env = Env
     keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     declEnv :: IORef (Map.HashMap DN.DeclarationName ([BLT.BaseLowType], F.ForeignCodType BLT.BaseLowType)),
+    weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
@@ -156,6 +157,7 @@ newEnv = do
   keyArgMap <- newIORef Map.empty
   optDataMap <- newIORef Map.empty
   declEnv <- newIORef Map.empty
+  weakDeclEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty
   typeEnv <- newIORef Map.empty
   activeGlobalLocatorList <- newIORef []
