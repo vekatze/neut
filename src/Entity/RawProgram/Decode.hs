@@ -8,12 +8,12 @@ import Entity.C
 import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
+import Entity.ForeignCodType qualified as FCT
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Name qualified as N
 import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
-import Entity.RawLowType.Decode qualified as RLT
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
@@ -214,7 +214,6 @@ decStmt stmt =
                 separator = SE.Comma,
                 hasOptionalSeparator = True
               }
-      -- let resourcePair = SE.pushComment c3 $ SE.fromListWithComment SE.Brace SE.Hyphen [discarder, copier]
       RT.attachComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
@@ -236,9 +235,14 @@ decStmt stmt =
           ]
 
 decForeignItem :: RawForeignItem -> D.Doc
-decForeignItem (RawForeignItem _ funcName _ args _ _ cod) = do
-  let args' = SE.decode $ fmap RLT.decode args
-  let cod' = RLT.decode cod
+decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do
+  let args' = SE.decode $ fmap RT.toDoc args
+  let cod' =
+        case cod of
+          FCT.Cod c ->
+            RT.toDoc c
+          FCT.Void ->
+            D.text "void"
   D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
 
 decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc

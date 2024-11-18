@@ -14,7 +14,7 @@ Neut supports integers and floats. More specifically, the following types are su
 - integer types: `intN (= int1, int2, int3, ..., int64)`
 - float types: `floatN (= float16, float32, float64)`
 
-You can also use `int` and `float`. These are a syntax sugar for target-dependent types. For example, if the target architecture is 64-bit, the `int` is an alias of `int64`. If the target is 32-bit, `int` is an alias of `int32`, etc.
+You can also use `int` and `float`. These are just syntax sugar for `int64` and `float64`, respectively.
 
 ### Primitive Functions
 
@@ -41,7 +41,7 @@ For their detailed behaviors, please refer to [the LLVM language reference](http
 
 <div class="info-block">
 
-Primitive functions for `int` and `float` are also available. For example, you can use `div-int`, `eq-int`, `add-float`, etc. These are aliases of the corresponding primitive functions. For example, if `int` is `int64`, the `div-int` is the same as `div-int64`.
+Primitive functions for `int` and `float` are also available. For example, you can use `div-int`, `eq-int`, `add-float`, etc.
 
 </div>
 

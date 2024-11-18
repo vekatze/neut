@@ -128,6 +128,8 @@ fill sub term =
       xts' <- fillBinder sub xts
       cont' <- fill sub cont
       return $ m :< WT.Use e' xts' cont'
+    _ :< WT.Void ->
+      return term
 
 fillBinder ::
   HoleSubst ->

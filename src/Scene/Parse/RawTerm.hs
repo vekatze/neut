@@ -1,5 +1,6 @@
 module Scene.Parse.RawTerm
   ( rawExpr,
+    rawTerm,
     var,
     preAscription,
     preBinder,
@@ -12,6 +13,7 @@ module Scene.Parse.RawTerm
 where
 
 import Context.App
+import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -19,7 +21,10 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
+import Entity.BasePrimType qualified as BPT
+import Entity.BasePrimType.FromText qualified as BPT
 import Entity.C
 import Entity.Const
 import Entity.DefiniteDescription qualified as DD
@@ -30,13 +35,10 @@ import Entity.Name
 import Entity.NecessityVariant (NecessityVariant (..), showNecessityVariant)
 import Entity.RawBinder
 import Entity.RawIdent
-import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Rune qualified as RU
 import Entity.Syntax.Series qualified as SE
-import Entity.WeakPrimType qualified as WPT
-import Entity.WeakPrimType.FromText qualified as WPT
 import Scene.Parse.Core
 import Text.Megaparsec
 import Text.Read qualified as R
@@ -136,6 +138,8 @@ rawTermSimple = do
       rawTermRune,
       rawTermRuneIntro,
       rawTermTau,
+      rawTermPointer,
+      rawTermVoid,
       rawTermAdmit,
       rawTermHole,
       rawTermSymbol
@@ -309,6 +313,18 @@ rawTermTau = do
   c <- keyword "type"
   return (m :< RT.Tau, c)
 
+rawTermPointer :: Parser (RT.RawTerm, C)
+rawTermPointer = do
+  m <- getCurrentHint
+  c <- keyword "pointer"
+  return (m :< RT.Pointer, c)
+
+rawTermVoid :: Parser (RT.RawTerm, C)
+rawTermVoid = do
+  m <- getCurrentHint
+  c <- keyword "void"
+  return (m :< RT.Void, c)
+
 rawTermHole :: Parser (RT.RawTerm, C)
 rawTermHole = do
   m <- getCurrentHint
@@ -479,7 +495,7 @@ rawExprAndLowType = do
   m <- getCurrentHint
   (e, c1) <- rawExpr
   c2 <- delimiter ":"
-  (t, c) <- lowType
+  (t, c) <- rawTerm
   return ((m, e, c1, c2, t), c)
 
 rawTermMagicGlobal :: Hint -> C -> Parser (RT.RawTerm, C)
@@ -491,37 +507,33 @@ rawTermMagicGlobal m c = do
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
 
-lowType :: Parser (RLT.RawLowType, C)
+lowType :: Parser (BLT.BaseLowType, C)
 lowType = do
   choice
     [ lowTypePointer,
-      lowTypeVoid,
       lowTypeNumber
     ]
 
-lowTypePointer :: Parser (RLT.RawLowType, C)
+lowTypePointer :: Parser (BLT.BaseLowType, C)
 lowTypePointer = do
   c <- keyword "pointer"
-  return (RLT.Pointer, c)
+  return (BLT.Pointer, c)
 
-lowTypeVoid :: Parser (RLT.RawLowType, C)
-lowTypeVoid = do
-  c <- keyword "void"
-  return (RLT.Void, c)
-
-lowTypeNumber :: Parser (RLT.RawLowType, C)
+lowTypeNumber :: Parser (BLT.BaseLowType, C)
 lowTypeNumber = do
   (pt, c) <- primType
-  return (RLT.PrimNum pt, c)
+  return (BLT.PrimNum pt, c)
 
-primType :: Parser (WPT.WeakPrimType, C)
+primType :: Parser (BPT.BasePrimType, C)
 primType = do
+  m <- getCurrentHint
   (sizeString, c) <- symbol
-  case WPT.fromText sizeString of
+  dataSize <- lift $ Env.getDataSize m
+  case BPT.fromText dataSize sizeString of
     Just primNum ->
       return (primNum, c)
     _ -> do
-      failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
+      failure (Just (asTokens sizeString)) (S.fromList [asLabel "int{n}", asLabel "float{n}"])
 
 rawTermMatch :: Parser (RT.RawTerm, C)
 rawTermMatch = do

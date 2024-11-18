@@ -15,10 +15,13 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Entity.BaseLowType qualified as BLT
 import Entity.Builder
 import Entity.Const
+import Entity.DataSize qualified as DS
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
+import Entity.ForeignCodType qualified as FCT
 import Entity.Ident
 import Entity.Ident.Reify
 import Entity.LowComp qualified as LC
@@ -26,8 +29,10 @@ import Entity.LowComp.EmitOp qualified as EOP
 import Entity.LowComp.EmitValue
 import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
+import Entity.LowType.FromBaseLowType qualified as LT
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
+import Entity.PrimType.EmitPrimType (emitPrimType)
 import Scene.LowComp.Reduce qualified as LowComp
 
 emit :: LC.LowCode -> App L.ByteString
@@ -116,21 +121,26 @@ emitDefinitions (name, (args, body)) = do
   let args'' = map (emitValue . LC.VarLocal) args'
   emitDefinition "ptr" (DD.toBuilder name) args'' body'
 
+getMainType :: App Builder
+getMainType = do
+  dataSize <- Env.getDataSize'
+  return $ emitPrimType $ PT.Int (IntSize $ DS.reify dataSize)
+
 emitMain :: LC.DefContent -> App [Builder]
 emitMain (args, body) = do
-  mainType <- Env.getMainType
+  mainType <- getMainType
   let args' = map (emitValue . LC.VarLocal) args
-  emitDefinition (TE.encodeUtf8Builder mainType) "main" args' body
+  emitDefinition mainType "main" args' body
 
-declToBuilder :: (DN.DeclarationName, ([LT.LowType], LT.LowType)) -> Builder
+declToBuilder :: (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
   let name' = DN.toBuilder name
   "declare "
-    <> emitLowType cod
+    <> emitLowType (FCT.fromForeignCodType cod)
     <> " @"
     <> name'
     <> "("
-    <> unwordsC (map emitLowType dom)
+    <> unwordsC (map (emitLowType . LT.fromBaseLowType) dom)
     <> ")"
 
 emitDefinition :: Builder -> Builder -> [Builder] -> LC.Comp -> App [Builder]

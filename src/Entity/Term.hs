@@ -7,6 +7,7 @@ import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
+import Entity.BaseLowType
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -39,8 +40,9 @@ data TermF a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
-  | Magic (Magic a)
+  | Magic (Magic BaseLowType a)
   | Resource DD.DefiniteDescription ID a a
+  | Void
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)
@@ -84,6 +86,8 @@ isValue term =
     _ :< Prim {} ->
       True
     _ :< Resource {} ->
+      True
+    _ :< Void ->
       True
     _ ->
       False

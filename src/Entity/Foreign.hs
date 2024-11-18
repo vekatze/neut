@@ -1,20 +1,32 @@
 module Entity.Foreign where
 
 import Data.Binary
+import Entity.Arch qualified as A
+import Entity.BaseLowType qualified as BLT
 import Entity.ExternalName qualified as EN
-import Entity.LowType qualified as LT
-import Entity.PrimNumSize qualified as PNS
-import Entity.PrimType qualified as PT
+import Entity.ForeignCodType
+import Entity.Hint
+import Entity.WeakTerm qualified as WT
 import GHC.Generics
 
-data Foreign
-  = Foreign EN.ExternalName [LT.LowType] LT.LowType
-  deriving (Generic)
+data BaseForeign a
+  = Foreign Hint EN.ExternalName [a] (ForeignCodType a)
+  deriving (Generic, Functor, Foldable, Traversable)
 
-instance Binary Foreign
+instance (Binary a) => Binary (BaseForeign a)
 
-defaultForeignList :: Int -> [Foreign]
-defaultForeignList baseIntSize =
-  [ Foreign EN.malloc [LT.PrimNum (PT.Int (PNS.IntSize baseIntSize))] LT.Pointer,
-    Foreign EN.free [LT.Pointer] LT.Void
+type Foreign =
+  BaseForeign BLT.BaseLowType
+
+type WeakForeign =
+  BaseForeign WT.WeakTerm
+
+defaultForeignList :: A.Arch -> [Foreign]
+defaultForeignList arch =
+  [ Foreign internalHint EN.malloc [BLT.getWordType arch] (Cod BLT.Pointer),
+    Foreign internalHint EN.free [BLT.Pointer] Void
   ]
+
+defaultWeakForeignList :: A.Arch -> [WeakForeign]
+defaultWeakForeignList arch =
+  fmap (fmap (WT.fromBaseLowType internalHint)) (defaultForeignList arch)

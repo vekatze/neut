@@ -13,9 +13,11 @@ import Entity.DataSize qualified as DS
 import Entity.Hint
 import Entity.LocationTree qualified as LT
 import Entity.Module
+import Entity.OS qualified as O
 import Entity.Platform
 import Entity.Source qualified as Source
 import Path
+import System.Info qualified as SI
 
 getMainModule :: App Module
 getMainModule =
@@ -74,24 +76,7 @@ getDataSize' = do
 
 getDataSize'' :: Maybe Hint -> App DS.DataSize
 getDataSize'' mm = do
-  let mDataSize = Arch.dataSizeOf (arch platform)
-  case mDataSize of
-    Just dataSize ->
-      return dataSize
-    Nothing -> do
-      let message = "The data size of the platform `" <> reify platform <> "` is unknown"
-      case mm of
-        Just m ->
-          Throw.raiseError m message
-        Nothing ->
-          Throw.raiseError' message
-
-getMainType :: App T.Text
-getMainType = do
-  dataSize <- getDataSize'
-  case dataSize of
-    DS.DataSize64 ->
-      return "i64"
+  Arch.dataSizeOf <$> getArch mm
 
 getBaseSize :: Hint -> App Int
 getBaseSize m = do
@@ -100,3 +85,41 @@ getBaseSize m = do
 getBaseSize' :: App Int
 getBaseSize' = do
   DS.reify <$> getDataSize'
+
+getArch :: Maybe Hint -> App Arch.Arch
+getArch mm = do
+  case SI.arch of
+    "amd64" ->
+      return Arch.Amd64
+    "x86_64" ->
+      return Arch.Amd64
+    "arm64" ->
+      return Arch.Arm64
+    "aarch64" ->
+      return Arch.Arm64
+    arch ->
+      case mm of
+        Just m ->
+          Throw.raiseError m $ "Unknown architecture: " <> T.pack arch
+        Nothing ->
+          Throw.raiseError' $ "Unknown architecture: " <> T.pack arch
+
+getOS :: Maybe Hint -> App O.OS
+getOS mm = do
+  case SI.os of
+    "linux" ->
+      return O.Linux
+    "darwin" ->
+      return O.Darwin
+    os ->
+      case mm of
+        Just m ->
+          Throw.raiseError m $ "Unknown OS: " <> T.pack os
+        Nothing ->
+          Throw.raiseError' $ "Unknown OS: " <> T.pack os
+
+getPlatform :: Maybe Hint -> App Platform
+getPlatform mm = do
+  arch <- getArch mm
+  os <- getOS mm
+  return $ Platform {arch, os}

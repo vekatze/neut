@@ -1,7 +1,7 @@
 module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
-import Context.Decl qualified as Decl
+import Context.Env (getPlatform)
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
@@ -26,14 +26,15 @@ import Entity.Arch qualified as Arch
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
+import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.BuildMode qualified as BM
 import Entity.C
 import Entity.Const
-import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
+import Entity.ForeignCodType qualified as FCT
 import Entity.Geist qualified as G
 import Entity.GlobalName qualified as GN
 import Entity.Hint
@@ -46,7 +47,7 @@ import Entity.Layer
 import Entity.Literal qualified as LI
 import Entity.Locator qualified as L
 import Entity.LowType qualified as LT
-import Entity.LowType.FromRawLowType qualified as LT
+import Entity.LowType.FromBaseLowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Module
 import Entity.Name
@@ -60,7 +61,6 @@ import Entity.Platform qualified as Platform
 import Entity.PrimType qualified as PT
 import Entity.RawBinder
 import Entity.RawIdent hiding (isHole)
-import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
@@ -135,8 +135,9 @@ discernStmt mo stmt = do
         discernGeist mo endLoc geist
       return [WeakStmtNominal m geistList']
     RawStmtForeign _ foreignList -> do
-      foreign' <- interpretForeign foreignList
-      activateForeign foreign'
+      let foreignList' = SE.extract foreignList
+      foreignList'' <- mapM (mapM (discern (emptyAxis mo 0))) foreignList'
+      foreign' <- interpretForeign foreignList''
       return [WeakStmtForeign foreign']
 
 discernGeist :: Module -> Loc -> RT.TopGeist -> App (G.Geist WT.WeakTerm)
@@ -418,7 +419,7 @@ discern axis term =
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do
-      magic' <- discernMagic axis m magic
+      magic' <- discernMagic axis magic
       return $ m :< WT.Magic magic'
     m :< RT.Annotation remarkLevel annot e -> do
       e' <- discern axis e
@@ -569,6 +570,10 @@ discern axis term =
       discern axis $ mProj :< RT.Use [] e [] args [] var loc
     _ :< RT.Brace _ (e, _) ->
       discern axis e
+    m :< RT.Pointer ->
+      return $ m :< WT.Prim (WP.Type PT.Pointer)
+    m :< RT.Void ->
+      return $ m :< WT.Void
 
 discernNoeticVarList :: [(Hint, (Hint, Ident))] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
 discernNoeticVarList xsOuter = do
@@ -578,51 +583,47 @@ discernNoeticVarList xsOuter = do
     Tag.insertLocalVar mDef outerVar mOuter
     return ((mOuter, xInner, t), mDef :< WT.Var outerVar)
 
-discernRawLowType :: Hint -> RLT.RawLowType -> App LT.LowType
-discernRawLowType m rlt = do
-  dataSize <- Env.getDataSize m
-  case LT.fromRawLowType dataSize rlt of
-    Left err ->
-      Throw.raiseError m err
-    Right lt ->
-      return lt
+discernBaseLowType :: BLT.BaseLowType -> App LT.LowType
+discernBaseLowType rlt = do
+  return $ LT.fromBaseLowType rlt
 
-discernMagic :: Axis -> Hint -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
-discernMagic axis m magic =
+discernMagic :: Axis -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
+discernMagic axis magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
       from' <- discern axis from
       to' <- discern axis to
       e' <- discern axis e
-      return $ M.Cast from' to' e'
+      return $ M.WeakMagic $ M.Cast from' to' e'
     RT.Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
-      lt' <- discernRawLowType m lt
+      lt' <- discernBaseLowType lt
       value' <- discern axis value
       pointer' <- discern axis pointer
-      return $ M.Store lt' value' pointer'
+      return $ M.WeakMagic $ M.Store lt' value' pointer'
     RT.Load _ (_, (lt, _)) (_, (pointer, _)) _ -> do
-      lt' <- discernRawLowType m lt
+      lt' <- discernBaseLowType lt
       pointer' <- discern axis pointer
-      return $ M.Load lt' pointer'
+      return $ M.WeakMagic $ M.Load lt' pointer'
     RT.Alloca _ (_, (lt, _)) (_, (size, _)) _ -> do
-      lt' <- discernRawLowType m lt
+      lt' <- discernBaseLowType lt
       size' <- discern axis size
-      return $ M.Alloca lt' size'
+      return $ M.WeakMagic $ M.Alloca lt' size'
     RT.External _ funcName _ args varArgsOrNone -> do
-      (domList, cod) <- Decl.lookupDeclEnv m (DN.Ext funcName)
+      let domList = []
+      let cod = FCT.Void
       args' <- mapM (discern axis) $ SE.extract args
       varArgs' <- case varArgsOrNone of
         Nothing ->
           return []
         Just (_, varArgs) ->
-          forM (SE.extract varArgs) $ \(_, arg, _, _, lt) -> do
+          forM (SE.extract varArgs) $ \(_, arg, _, _, t) -> do
             arg' <- discern axis arg
-            lt' <- discernRawLowType m lt
-            return (arg', lt')
-      return $ M.External domList cod funcName args' varArgs'
+            t' <- discern axis t
+            return (arg', t')
+      return $ M.WeakMagic $ M.External domList cod funcName args' varArgs'
     RT.Global _ (_, (name, _)) (_, (lt, _)) _ -> do
-      lt' <- discernRawLowType m lt
-      return $ M.Global name lt'
+      lt' <- discernBaseLowType lt
+      return $ M.WeakMagic $ M.Global name lt'
 
 modifyLetContinuation :: (Hint, RP.RawPattern) -> Loc -> N.IsNoetic -> RT.RawTerm -> App (RawIdent, RT.RawTerm)
 modifyLetContinuation pat endLoc isNoetic cont@(mCont :< _) =
@@ -699,13 +700,14 @@ lookupIntrospectiveClause m value clauseList =
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
 getIntrospectiveValue m key = do
   bm <- Env.getBuildMode
+  p <- getPlatform (Just m)
   case key of
     "platform" -> do
-      return $ Platform.reify Platform.platform
+      return $ Platform.reify p
     "arch" ->
-      return $ Arch.reify (Platform.arch Platform.platform)
+      return $ Arch.reify (Platform.arch p)
     "os" ->
-      return $ OS.reify (Platform.os Platform.platform)
+      return $ OS.reify (Platform.os p)
     "build-mode" ->
       return $ BM.reify bm
     _ ->

@@ -17,6 +17,7 @@ where
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Entity.BaseLowType.Decode qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.C.Decode qualified as C
@@ -31,7 +32,6 @@ import Entity.NecessityVariant (showNecessityVariant)
 import Entity.Piece qualified as PI
 import Entity.RawBinder
 import Entity.RawIdent
-import Entity.RawLowType.Decode qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm
 import Entity.RawTerm qualified as RT
@@ -188,7 +188,7 @@ toDoc term =
                   SE.fromListWithComment
                     (Just SE.Paren)
                     SE.Comma
-                    [ RT.mapEL RLT.decode lt,
+                    [ RT.mapEL BLT.decode lt,
                       RT.mapEL toDoc value,
                       RT.mapEL toDoc pointer
                     ]
@@ -201,7 +201,7 @@ toDoc term =
                   SE.fromListWithComment
                     (Just SE.Paren)
                     SE.Comma
-                    [ RT.mapEL RLT.decode lt,
+                    [ RT.mapEL BLT.decode lt,
                       RT.mapEL toDoc pointer
                     ]
             ]
@@ -213,7 +213,7 @@ toDoc term =
                   SE.fromListWithComment
                     (Just SE.Paren)
                     SE.Comma
-                    [ RT.mapEL RLT.decode lt,
+                    [ RT.mapEL BLT.decode lt,
                       RT.mapEL toDoc size
                     ]
             ]
@@ -240,7 +240,7 @@ toDoc term =
                     (Just SE.Paren)
                     SE.Comma
                     [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
-                      RT.mapEL RLT.decode lt
+                      RT.mapEL BLT.decode lt
                     ]
             ]
     _ :< Hole {} ->
@@ -319,6 +319,10 @@ toDoc term =
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
+    _ :< Pointer ->
+      D.text "pointer"
+    _ :< Void ->
+      D.text "void"
 
 decodeDef :: (a -> D.Doc) -> T.Text -> C -> RawDef a -> D.Doc
 decodeDef nameDecoder keyword c def = do
@@ -415,7 +419,8 @@ piIntroArgToDoc (m, x, c1, c2, t) = do
 varArgToDoc :: VarArg -> D.Doc
 varArgToDoc (m, e, c1, c2, t) = do
   let e' = toDoc e
-  paramToDoc' (m, e', c1, c2, RLT.decode t)
+  let t' = toDoc t
+  paramToDoc' (m, e', c1, c2, t')
 
 paramToDoc :: (a, D.Doc, C, C, RawTerm) -> D.Doc
 paramToDoc (m, x, c1, c2, t) = do

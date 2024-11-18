@@ -8,6 +8,7 @@ data PrimType
   = Int IntSize
   | Float FloatSize
   | Rune
+  | Pointer
   deriving (Show, G.Generic, Eq, Ord)
 
 instance Binary PrimType

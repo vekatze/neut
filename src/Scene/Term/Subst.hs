@@ -108,6 +108,8 @@ subst sub term =
       discarder' <- subst sub discarder
       copier' <- subst sub copier
       return $ m :< TM.Resource dd resourceID discarder' copier'
+    _ :< TM.Void ->
+      return term
 
 substBinder ::
   SubstTerm ->

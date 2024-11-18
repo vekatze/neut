@@ -13,6 +13,7 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.ExternalName qualified as EN
+import Entity.ForeignCodType qualified as F
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Name
@@ -97,12 +98,20 @@ parseForeign = do
 
 parseForeignItem :: P.Parser (RawForeignItem, C)
 parseForeignItem = do
-  (funcName, c1) <- P.symbol
   m <- P.getCurrentHint
-  (lts, c2) <- P.seriesParen lowType
+  (funcName, c1) <- P.symbol
+  (domList, c2) <- P.seriesParen rawTerm
   c3 <- P.delimiter ":"
-  (cod, c) <- lowType
-  return (RawForeignItem m (EN.ExternalName funcName) c1 lts c2 c3 cod, c)
+  (cod, c) <-
+    choice
+      [ do
+          c <- P.keyword "void"
+          return (F.Void, c),
+        do
+          (lt, c) <- rawTerm
+          return (F.Cod lt, c)
+      ]
+  return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
 
 parseDefine :: P.Parser (RawStmt, C)
 parseDefine =

@@ -5,9 +5,10 @@ import Data.HashMap.Strict qualified as Map
 import Data.Hashable
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Entity.BaseLowType
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
-import Entity.LowType
+import Entity.ForeignCodType qualified as F
 import GHC.Generics
 
 data DeclarationName
@@ -17,7 +18,7 @@ data DeclarationName
 
 instance Hashable DeclarationName
 
-type DeclEnv = Map.HashMap DeclarationName ([LowType], LowType)
+type DeclEnv = Map.HashMap DeclarationName ([BaseLowType], F.ForeignCodType BaseLowType)
 
 malloc :: DeclarationName
 malloc =

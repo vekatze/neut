@@ -117,6 +117,8 @@ toText term =
       let xs = map (\(_, x, _) -> x) xts
       let varSeq = inBrace $ T.intercalate "," $ map showVariable xs
       "use " <> toText e <> " " <> varSeq <> " in " <> toText cont
+    _ :< WT.Void ->
+      "void"
 
 showImpArgs :: [BinderF WT.WeakTerm] -> T.Text
 showImpArgs impArgs =

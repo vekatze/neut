@@ -23,6 +23,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
+import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
@@ -271,6 +272,8 @@ clarifyTerm tenv term =
       unless isAlreadyRegistered $ do
         Clarify.insertToAuxEnv liftedName (O.Clear, [switchValue, value], enumElim)
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
+    _ :< TM.Void ->
+      return returnImmediateS4
 
 embody :: TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> App C.Comp
 embody tenv xets cont =
@@ -440,7 +443,7 @@ alignFreeVariable tenv fvs e = do
   fvs' <- dropFst <$> clarifyBinder tenv fvs
   linearize fvs' e
 
-clarifyMagic :: TM.TypeEnv -> M.Magic TM.Term -> App C.Comp
+clarifyMagic :: TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Term -> App C.Comp
 clarifyMagic tenv der =
   case der of
     M.Cast from to value -> do

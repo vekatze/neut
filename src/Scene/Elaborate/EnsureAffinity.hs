@@ -213,6 +213,8 @@ analyze axis term = do
       cs1 <- analyze axis discarder
       cs2 <- analyze axis copier
       return $ cs1 ++ cs2
+    _ :< TM.Void ->
+      return []
 
 analyzeBinder ::
   Axis ->

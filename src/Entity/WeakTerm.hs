@@ -7,6 +7,8 @@ import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
+import Entity.BaseLowType qualified as BLT
+import Entity.BasePrimType qualified as BPT
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -44,11 +46,12 @@ data WeakTermF a
   | Actual a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)
-  | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
+  | Magic (WeakMagic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
   | Resource DD.DefiniteDescription Int a a
   | Use a [BinderF a] a
+  | Void
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)
@@ -108,3 +111,15 @@ fromLetSeq xts cont =
       cont
     (mxt@(m, _, _), e) : rest ->
       m :< Let Clear mxt e (fromLetSeq rest cont)
+
+fromBaseLowType :: Hint -> BLT.BaseLowType -> WeakTerm
+fromBaseLowType m lt =
+  case lt of
+    BLT.PrimNum pt ->
+      case pt of
+        BPT.Int s ->
+          m :< Prim (WP.Type (PT.Int (BPT.extractSize s)))
+        BPT.Float s ->
+          m :< Prim (WP.Type (PT.Float (BPT.extractSize s)))
+    BLT.Pointer ->
+      m :< Prim (WP.Type PT.Pointer)

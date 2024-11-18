@@ -65,6 +65,8 @@ freeVarsWithHints term =
       let xs1 = freeVarsWithHints discarder
       let xs2 = freeVarsWithHints copier
       S.union xs1 xs2
+    _ :< TM.Void ->
+      S.empty
 
 freeVarsWithHints' :: [BinderF TM.Term] -> S.Set (Hint, Ident) -> S.Set (Hint, Ident)
 freeVarsWithHints' binder zs =

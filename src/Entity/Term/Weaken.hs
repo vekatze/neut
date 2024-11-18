@@ -10,11 +10,14 @@ import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List
 import Entity.Attr.Lam qualified as AttrL
+import Entity.BaseLowType qualified as BLT
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
+import Entity.Foreign qualified as F
 import Entity.Hint
 import Entity.Ident
 import Entity.LamKind qualified as LK
+import Entity.Magic qualified as M
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
@@ -42,7 +45,7 @@ weakenStmt stmt = do
       let v' = weaken v
       WeakStmtDefineConst m dd t' v'
     StmtForeign foreignList ->
-      WeakStmtForeign foreignList
+      WeakStmtForeign $ map weakenForeign foreignList
 
 weaken :: TM.Term -> WT.WeakTerm
 weaken term =
@@ -94,10 +97,31 @@ weaken term =
       m :< WT.Let (reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrim m prim)
-    m :< TM.Magic der -> do
-      m :< WT.Magic (fmap weaken der)
+    m :< TM.Magic magic -> do
+      m :< WT.Magic (weakenMagic m magic)
     m :< TM.Resource dd resourceID discarder copier -> do
       m :< WT.Resource dd resourceID (weaken discarder) (weaken copier)
+    m :< TM.Void ->
+      m :< WT.Void
+
+weakenMagic :: Hint -> M.Magic BLT.BaseLowType TM.Term -> M.WeakMagic WT.WeakTerm
+weakenMagic m magic = do
+  case magic of
+    M.Cast from to value ->
+      M.WeakMagic $ M.Cast (weaken from) (weaken to) (weaken value)
+    M.Store lt value pointer ->
+      M.WeakMagic $ M.Store lt (weaken value) (weaken pointer)
+    M.Load lt pointer ->
+      M.WeakMagic $ M.Load lt (weaken pointer)
+    M.Alloca lt size ->
+      M.WeakMagic $ M.Alloca lt (weaken size)
+    M.External domList cod extFunName args varArgs -> do
+      let domList' = map (WT.fromBaseLowType m) domList
+      let cod' = fmap (WT.fromBaseLowType m) cod
+      let varArgs' = map (bimap weaken (WT.fromBaseLowType m)) varArgs
+      M.WeakMagic $ M.External domList' cod' extFunName (fmap weaken args) varArgs'
+    M.Global name lt ->
+      M.WeakMagic $ M.Global name lt
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
@@ -185,3 +209,7 @@ weakenStmtKind stmtKind =
       let dataArgs' = map weakenBinder dataArgs
       let consArgs' = map weakenBinder consArgs
       DataIntro dataName dataArgs' consArgs' discriminant
+
+weakenForeign :: F.Foreign -> F.WeakForeign
+weakenForeign foreignItem@(F.Foreign m _ _ _) =
+  fmap (WT.fromBaseLowType m) foreignItem

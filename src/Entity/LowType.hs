@@ -1,7 +1,6 @@
 module Entity.LowType where
 
 import Data.Binary
-import Entity.ArgNum qualified as AN
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
 import GHC.Generics qualified as G
@@ -20,10 +19,6 @@ instance Show LowType where
   show _ = "<LT>"
 
 instance Binary LowType
-
-toVoidPtrSeq :: AN.ArgNum -> [LowType]
-toVoidPtrSeq argNum =
-  map (const Pointer) [1 .. AN.reify argNum]
 
 textType :: Int -> Int -> LowType
 textType baseSize len =

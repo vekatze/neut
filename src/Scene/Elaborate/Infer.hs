@@ -5,6 +5,7 @@
 module Scene.Elaborate.Infer (inferStmt) where
 
 import Context.App
+import Context.Decl qualified as Decl
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
@@ -28,8 +29,10 @@ import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
 import Entity.DecisionTree qualified as DT
+import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ForeignCodType qualified as FCT
 import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.HoleID qualified as HID
@@ -297,22 +300,39 @@ infer axis term =
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.BoxNoema t')
             WPV.Rune _ -> do
               return (m :< WT.Prim prim, m :< WT.Prim (WP.Type PT.Rune))
-    m :< WT.Magic magic -> do
+    m :< WT.Magic (M.WeakMagic magic) -> do
       case magic of
         M.Cast from to value -> do
           from' <- inferType axis from
           to'@(_ :< toInner) <- inferType axis to
           (value', t) <- infer axis value
           insConstraintEnv from' t
-          return (m :< WT.Magic (M.Cast from' to' value'), m :< toInner)
+          return (m :< WT.Magic (M.WeakMagic $ M.Cast from' to' value'), m :< toInner)
         M.Alloca lt size -> do
           (size', sizeType) <- infer axis size
           intType <- getIntType m
           insConstraintEnv intType sizeType
           resultType <- newHole m (varEnv axis)
-          return (m :< WT.Magic (M.Alloca lt size'), resultType)
+          return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), resultType)
+        M.External _ _ funcName args varArgs -> do
+          (domList, cod) <- Decl.lookupWeakDeclEnv m (DN.Ext funcName)
+          ensureArityCorrectness term (length domList) (length args)
+          (args', argTypes) <- mapAndUnzipM (infer axis) args
+          forM_ (zip domList argTypes) $ uncurry insConstraintEnv
+          varArgs' <- forM varArgs $ \(e, t) -> do
+            (e', t') <- infer axis e
+            t'' <- inferType axis t
+            insConstraintEnv t'' t'
+            return (e', t')
+          case cod of
+            FCT.Cod (_ :< c) -> do
+              let c' = m :< c
+              return (m :< WT.Magic (M.WeakMagic $ M.External domList (FCT.Cod c') funcName args' varArgs'), c')
+            FCT.Void -> do
+              let voidType = m :< WT.Void
+              return (m :< WT.Magic (M.WeakMagic $ M.External domList FCT.Void funcName args' varArgs'), voidType)
         _ -> do
-          magic' <- mapM (infer axis >=> return . fst) magic
+          magic' <- mapM (infer axis >=> return . fst) (M.WeakMagic magic)
           resultType <- newHole m (varEnv axis)
           return (m :< WT.Magic magic', resultType)
     m :< WT.Annotation logLevel annot e -> do
@@ -370,6 +390,8 @@ infer axis term =
               Throw.raiseError mt $ "Expected a single-constructor ADT, but found: " <> toText t''
         _ :< _ -> do
           Throw.raiseError mt $ "Expected an ADT, but found: " <> toText t''
+    m :< WT.Void ->
+      return (m :< WT.Void, m :< WT.Tau)
 
 data CastDirection
   = FromNoema

@@ -3,6 +3,7 @@ module Scene.Elaborate (elaborate, elaborate') where
 import Context.App
 import Context.Cache qualified as Cache
 import Context.DataDefinition qualified as DataDefinition
+import Context.Decl qualified as Decl
 import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
@@ -25,13 +26,16 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.Lam qualified as AttrL
+import Entity.BaseLowType qualified as BLT
+import Entity.BasePrimType qualified as BPT
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.Const (holeLiteral)
 import Entity.DecisionTree qualified as DT
+import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
-import Entity.ExternalName qualified as EN
+import Entity.Foreign qualified as F
 import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.Ident
@@ -139,7 +143,11 @@ elaborateStmt stmt = do
       mapM_ elaborateGeist geistList
       return ([], [])
     WeakStmtForeign foreignList -> do
-      return ([StmtForeign foreignList], [])
+      foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
+        domList' <- mapM (strictify m) domList
+        cod' <- mapM (strictify m) cod
+        return $ F.Foreign m externalName domList' cod'
+      return ([StmtForeign foreignList'], [])
 
 elaborateGeist :: G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
 elaborateGeist G.Geist {..} = do
@@ -157,8 +165,9 @@ insertStmt stmt = do
     StmtDefineConst (SavedHint m) dd t v -> do
       Type.insert dd $ weaken $ m :< TM.Pi [] [] t
       Definition.insert O.Clear dd [] v
-    StmtForeign _ -> do
-      return ()
+    StmtForeign foreignList -> do
+      forM_ foreignList $ \(F.Foreign m externalName domList cod) -> do
+        activateForeign $ F.Foreign m externalName domList cod
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
 
@@ -171,8 +180,11 @@ insertWeakStmt stmt = do
       WeakDefinition.insert O.Clear m dd [] [] codType v
     WeakStmtNominal {} -> do
       return ()
-    WeakStmtForeign {} ->
-      return ()
+    WeakStmtForeign foreignList ->
+      forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
+        domList' <- mapM (elaborate' >=> return . weaken) domList
+        cod' <- mapM (elaborate' >=> return . weaken) cod
+        Decl.insWeakDeclEnv (DN.Ext externalName) domList' cod'
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
@@ -322,27 +334,33 @@ elaborate' term =
               return $ m :< TM.Prim (P.Value (PV.StaticText t' text))
             WPV.Rune r ->
               return $ m :< TM.Prim (P.Value (PV.Rune r))
-    m :< WT.Magic magic -> do
+    m :< WT.Magic (M.WeakMagic magic) -> do
       case magic of
         M.External domList cod name args varArgs -> do
-          let expected = length domList
-          let actual = length args
-          when (actual /= length domList) $ do
-            Throw.raiseError m $
-              "The external function `"
-                <> EN.reify name
-                <> "` expects "
-                <> T.pack (show expected)
-                <> " arguments, but found "
-                <> T.pack (show actual)
-                <> "."
+          domList' <- mapM (strictify m) domList
+          cod' <- mapM (strictify m) cod
           args' <- mapM elaborate' args
           let (vArgs, vTypes) = unzip varArgs
           vArgs' <- mapM elaborate' vArgs
-          return $ m :< TM.Magic (M.External domList cod name args' (zip vArgs' vTypes))
-        _ -> do
-          magic' <- mapM elaborate' magic
-          return $ m :< TM.Magic magic'
+          vTypes' <- mapM (strictify m) vTypes
+          return $ m :< TM.Magic (M.External domList' cod' name args' (zip vArgs' vTypes'))
+        M.Cast from to value -> do
+          from' <- elaborate' from
+          to' <- elaborate' to
+          value' <- elaborate' value
+          return $ m :< TM.Magic (M.Cast from' to' value')
+        M.Store lt value pointer -> do
+          value' <- elaborate' value
+          pointer' <- elaborate' pointer
+          return $ m :< TM.Magic (M.Store lt value' pointer')
+        M.Load lt pointer -> do
+          pointer' <- elaborate' pointer
+          return $ m :< TM.Magic (M.Load lt pointer')
+        M.Alloca lt size -> do
+          size' <- elaborate' size
+          return $ m :< TM.Magic (M.Alloca lt size')
+        M.Global name lt -> do
+          return $ m :< TM.Magic (M.Global name lt)
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' e
       case annot of
@@ -358,6 +376,35 @@ elaborate' term =
       return $ m :< TM.Resource dd resourceID discarder' copier'
     m :< WT.Use {} -> do
       Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
+    m :< WT.Void ->
+      return $ m :< TM.Void
+
+strictify :: Hint -> WT.WeakTerm -> App BLT.BaseLowType
+strictify m t = do
+  t' <- reduceWeakType t >>= elaborate'
+  case t' of
+    _ :< TM.Prim (P.Type (PT.Int size)) ->
+      return $ BLT.PrimNum $ BPT.Int $ BPT.Explicit size
+    _ :< TM.Prim (P.Type (PT.Float size)) ->
+      return $ BLT.PrimNum $ BPT.Float $ BPT.Explicit size
+    _ :< TM.Prim (P.Type PT.Pointer) ->
+      return BLT.Pointer
+    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
+      consType <- Type.lookup m consName
+      case consType of
+        _ :< WT.Pi impArgs expArgs _
+          | [(_, _, arg)] <- impArgs ++ expArgs -> do
+              strictify m arg
+        _ ->
+          raiseNonStrictType m (weaken t')
+    _ :< _ ->
+      raiseNonStrictType m (weaken t')
+
+raiseNonStrictType :: Hint -> WT.WeakTerm -> App a
+raiseNonStrictType m t = do
+  Throw.raiseError m $
+    "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
+      <> toText t
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
@@ -540,3 +587,7 @@ getSwitchSpec m cursorType = do
       Throw.raiseError m $
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toText (weaken cursorType)
+
+activateForeign :: F.Foreign -> App ()
+activateForeign (F.Foreign _ name domList cod) = do
+  Decl.insDeclEnv' (DN.Ext name) domList cod
