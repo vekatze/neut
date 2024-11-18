@@ -3,7 +3,7 @@ import {
   core.control {grow},
   core.int.ord,
   core.int.parse {parse-int},
-  core.random {random},
+  core.random {random-int},
   core.system {get-argv},
   core.text.io {print-int},
 }
@@ -14,8 +14,8 @@ constant intdict: Dict.trope(int) {
 
 define make-big-dict(size: int): dictionary(int, int) {
   grow(Dict.empty(), size, function (acc, _) {
-    let key = random(1000000) in
-    let val = random(1000000) in
+    let key = random-int(1000000) in
+    let val = random-int(1000000) in
     intdict::insert(acc, key, val)
   })
 }
@@ -23,7 +23,7 @@ define make-big-dict(size: int): dictionary(int, int) {
 define random-lookup-sum(count: int, d: &dictionary(int, int)): unit {
   let rsum =
     grow(0, count, function (acc, _) {
-      let key = random(1000000) in
+      let key = random-int(1000000) in
       let val on key =
         match intdict::lookup(d, key) {
         | Left(_) =>
