@@ -1,6 +1,6 @@
 import {
   core.int.parse {parse-int},
-  core.random {random},
+  core.random {random-int},
   core.system {get-argv},
 }
 
@@ -47,7 +47,7 @@ define rand-list(len: int, acc: int-list): int-list {
   if eq-int(len, 0) {
     acc
   } else {
-    let val = random(10000) in
+    let val = random-int(10000) in
     rand-list(sub-int(len, 1), My-Cons(val, acc))
   }
 }

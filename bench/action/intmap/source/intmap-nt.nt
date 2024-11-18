@@ -3,15 +3,15 @@ import {
   core.control {grow},
   core.int.parse {parse-int},
   core.intmap {lookup},
-  core.random {random},
+  core.random {random-int},
   core.system {get-argv},
   core.text.io {print-int},
 }
 
 define make-big-dict(size: int): intmap(int) {
   grow(IntMap.empty(), size, function (acc, _) {
-    let key = random(1000000) in
-    let val = random(1000000) in
+    let key = random-int(1000000) in
+    let val = random-int(1000000) in
     insert(acc, key, val)
   })
 }
@@ -19,7 +19,7 @@ define make-big-dict(size: int): intmap(int) {
 define random-lookup-sum(count: int, d: &intmap(int)): unit {
   let rsum =
     grow(0, count, function (acc, _) {
-      let key = random(1000000) in
+      let key = random-int(1000000) in
       let val on key =
         match lookup(d, *key) {
         | Left(_) =>
