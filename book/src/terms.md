@@ -2350,7 +2350,7 @@ You can use `introspect key {..}` to introspect the compiler's configuration.
 
 ```neut
 define arch-dependent-constant(): int {
-  introspect arch {
+  introspect architecture {
   | arm64 =>
     1
   | amd64 =>
@@ -2359,7 +2359,7 @@ define arch-dependent-constant(): int {
 }
 
 define os-dependent-constant(): int {
-  introspect os {
+  introspect operating-system {
   | linux =>
     1
   | default =>
