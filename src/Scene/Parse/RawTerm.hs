@@ -204,11 +204,7 @@ rawTermLet mLet = do
   endLoc <- getCurrentLoc
   case (letKind, SE.isEmpty noeticVarList) of
     (RT.Plain _, False) -> do
-      case patInner of
-        RP.Var (Var v) ->
-          return (mLet :< RT.LetOn c1 (mx, v, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
-        _ ->
-          lift $ Throw.raiseError mLet "`let .. on` cannot be used with a pattern"
+      return (mLet :< RT.LetOn c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
     (_, False) ->
       lift $ Throw.raiseError mLet $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
     _ ->
@@ -222,7 +218,8 @@ rawTermBoxElim mLet = do
       [ keywordReader VariantK,
         keywordReader VariantT
       ]
-  (mxt, c2) <- preBinder
+  ((mx, patInner), c2) <- rawTermPattern
+  (c3, (t, c4)) <- rawTermLetVarAscription mx
   noeticVarList <-
     choice
       [ do
@@ -238,7 +235,7 @@ rawTermBoxElim mLet = do
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
   endLoc <- getCurrentLoc
-  return (mLet :< RT.BoxElim nv False c1 mxt c2 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+  return (mLet :< RT.BoxElim nv False c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermPin :: Hint -> Parser (RT.RawTerm, C)
 rawTermPin m = do

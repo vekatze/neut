@@ -68,10 +68,10 @@ data RawTermF a
   | BoxNoema a
   | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
   | BoxIntroQuote C C (a, C)
-  | BoxElim NecessityVariant Bool C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | BoxElim NecessityVariant Bool C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Embody a
-  | Let LetKind C (Hint, RP.RawPattern, C, C, a) C C a C Loc C a Loc
-  | LetOn C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | Let LetKind C (PatParam a) C C a C Loc C a Loc
+  | LetOn C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder a) C C a C Loc C a Loc
   | StaticText a T.Text
   | Rune
@@ -97,6 +97,9 @@ data RawTermF a
   | Brace C (a, C)
   | Pointer
   | Void
+
+type PatParam a =
+  (Hint, RP.RawPattern, C, C, a)
 
 type Args a =
   (SE.Series (RawBinder a), C)
