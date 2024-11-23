@@ -66,9 +66,12 @@ test-arm64-linux-single target:
 test-arm64-darwin:
     @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_DARWIN_CLANG_PATH} ./test/test-darwin.sh ./test/term ./test/statement ./test/pfds ./test/misc
 
+test-bench-darwin:
+    @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin PLATFORM=arm64-darwin {{justfile_directory()}}/bench/script/bench-darwin-mini.sh
+
 update-core new-version:
-    @cd ./test/meta && neut get core https://github.com/vekatze/neut-core/raw/main/archive/{{new-version}}.tar.zst
-    @NEW_VERSION={{new-version}} ./test/update-core.sh ./test/statement ./test/term ./test/misc ./test/pfds
+    # @cd ./test/meta && neut get core https://github.com/vekatze/neut-core/raw/main/archive/{{new-version}}.tar.zst
+    @NEW_VERSION={{new-version}} ./test/update-core.sh ./test/meta ./test/statement ./test/term ./test/misc ./test/pfds ./bench/action
 
 release:
     @echo "creating a release: $VERSION"
