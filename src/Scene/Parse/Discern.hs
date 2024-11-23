@@ -704,9 +704,9 @@ getIntrospectiveValue m key = do
   case key of
     "platform" -> do
       return $ Platform.reify p
-    "arch" ->
+    "architecture" ->
       return $ Arch.reify (Platform.arch p)
-    "os" ->
+    "operating-system" ->
       return $ OS.reify (Platform.os p)
     "build-mode" ->
       return $ BM.reify bm
