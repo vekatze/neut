@@ -110,7 +110,7 @@ toDoc term =
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text keyword,
-              PI.bareSeries $ D.join [attachComment c1 $ boxElimArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -141,7 +141,7 @@ toDoc term =
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text "let",
-              PI.bareSeries $ D.join [attachComment c1 $ boxElimArgToDoc mxt, C.asSuffix c2]
+              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
@@ -467,10 +467,6 @@ letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
 letArgToDoc (m, x, c1, c2, t) = do
   let x' = decodePattern x
   paramToDoc (m, x', c1, c2, t)
-
-boxElimArgToDoc :: (a, RawIdent, C, C, RawTerm) -> D.Doc
-boxElimArgToDoc (m, x, c1, c2, t) = do
-  paramToDoc (m, nameToDoc $ N.Var x, c1, c2, t)
 
 typeAnnot :: D.Doc -> D.Doc
 typeAnnot t = do

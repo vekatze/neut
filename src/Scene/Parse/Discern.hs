@@ -370,7 +370,12 @@ discern axis term =
     m :< RT.BoxIntroQuote _ _ (body, _) -> do
       body' <- discern axis body
       return $ m :< WT.BoxIntroQuote body'
-    m :< RT.BoxElim nv mustIgnoreRelayedVars _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
+    m :< RT.BoxElim nv mustIgnoreRelayedVars _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
+      tmp <- Gensym.newTextFromText "tmp"
+      let mxt = (mx, tmp, c1, c2, t)
+      let m' = blur m
+      let patParam = (mx, pat, [], [], t)
+      let e2' = m' :< RT.Let (RT.Plain False) [] patParam [] [] (m' :< RT.Var (Var tmp)) [] startLoc [] e2 endLoc
       -- inner
       ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y
       yetsInner <- discernNoeticVarList ysOuter
@@ -384,27 +389,32 @@ discern axis term =
       let ysCont = map (\((my, y, _), _) -> (my, y)) yetsCont
       let contAddition = map (\(my, y) -> (Ident.toText y, (my, y, currentLayer axis))) ysCont
       axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
-      (mxt', e2') <- discernBinderWithBody' axisCont mxt startLoc endLoc e2
-      Tag.insertBinder mxt'
+      (mxt', e2'') <- discernBinderWithBody' axisCont mxt startLoc endLoc e2'
+      case pat of
+        RP.Var _ ->
+          Tag.insertBinder mxt'
+        _ ->
+          return ()
       when mustIgnoreRelayedVars $ do
         forM_ ysCont $ UnusedVariable.delete . snd
-      return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2'
+      return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
     m :< RT.Embody e -> do
       embodyVar <- locatorToVarGlobal m coreBoxEmbody
       discern axis $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
-    m :< RT.LetOn _ mxt _ mys _ e1 _ startLoc _ e2 endLoc -> do
+    m :< RT.LetOn _ pat _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
-      discern axis $ m :< RT.BoxElim VariantT True [] mxt [] mys [] e1' [] startLoc [] e2 endLoc
+      discern axis $ m :< RT.BoxElim VariantT True [] pat [] mys [] e1' [] startLoc [] e2 endLoc
     m :< RT.Pin _ mxt@(mx, x, _, _, _) _ _ e1 _ startLoc _ e2 endLoc -> do
       let m' = blur m
       tmp <- Gensym.newTextFromText "tmp-pin"
+      let tmpPat = RP.Var (Var tmp)
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
       resultType <- Gensym.newPreHole m'
       discern axis $
         bind startLoc endLoc mxt e1 $
-          m :< RT.LetOn [] (m', tmp, [], [], resultType) [] x' [] e2 [] startLoc [] (m' :< RT.Var (Var tmp)) endLoc
+          m :< RT.LetOn [] (m', tmpPat, [], [], resultType) [] x' [] e2 [] startLoc [] (m' :< RT.Var (Var tmp)) endLoc
     m :< RT.StaticText s str -> do
       s' <- discern axis s
       case parseText str of
@@ -650,8 +660,8 @@ bind ::
   RT.RawTerm ->
   RT.RawTerm ->
   RT.RawTerm
-bind loc endLoc (m, x, c1, c2, t) =
-  bind' False loc endLoc (m, x, c1, c2, t)
+bind startLoc endLoc (m, x, c1, c2, t) =
+  bind' False startLoc endLoc (m, x, c1, c2, t)
 
 bind' ::
   RT.MustIgnoreRelayedVars ->
