@@ -17,6 +17,6 @@ emitPrimType lowType =
     PT.Float FloatSize64 ->
       "double"
     PT.Rune ->
-      emitPrimType $ PT.Int (IntSize 32)
+      emitPrimType $ PT.Int intSize32
     PT.Pointer ->
       "ptr"

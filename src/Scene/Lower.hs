@@ -352,7 +352,7 @@ lowerValue v =
 
 getElemPtr :: LC.Value -> LT.LowType -> [Integer] -> Lower LC.Value
 getElemPtr value valueType indexList = do
-  let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int $ IntSize 32)) indexList
+  let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int intSize32)) indexList
   reflect $ LC.GetElementPtr (value, valueType) indexList'
 
 reflect :: LC.Op -> Lower LC.Value

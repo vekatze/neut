@@ -249,16 +249,17 @@ clarifyTerm tenv term =
           return returnImmediateS4
         P.Value primValue ->
           case primValue of
-            PV.Int size l ->
+            PV.Int _ size l ->
               return $ C.UpIntro (C.Int size l)
-            PV.Float size l ->
+            PV.Float _ size l ->
               return $ C.UpIntro (C.Float size l)
             PV.Op op ->
               clarifyPrimOp tenv op m
             PV.StaticText _ text ->
               return $ C.UpIntro $ C.VarStaticText text
-            PV.Rune r ->
-              clarifyTerm tenv $ m :< TM.Prim (P.Value (PV.Int (PNS.IntSize 32) (RU.asInt r)))
+            PV.Rune r -> do
+              let t = fromPrimNum m (PT.Int PNS.intSize32)
+              clarifyTerm tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.intSize32 (RU.asInt r)))
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
     m :< TM.Resource _ resourceID discarder copier -> do

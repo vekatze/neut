@@ -11,8 +11,8 @@ import Entity.Rune qualified as RU
 import GHC.Generics (Generic)
 
 data PrimValue a
-  = Int IntSize Integer
-  | Float FloatSize Double
+  = Int a IntSize Integer
+  | Float a FloatSize Double
   | Op PrimOp
   | StaticText a T.Text
   | Rune RU.Rune

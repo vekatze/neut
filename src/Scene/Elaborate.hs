@@ -45,6 +45,7 @@ import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
+import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Remark qualified as R
@@ -304,29 +305,15 @@ elaborate' term =
         WP.Value primValue ->
           case primValue of
             WPV.Int t x -> do
-              t' <- reduceWeakType t >>= elaborate'
-              case t' of
-                _ :< TM.Prim (P.Type (PT.Int size)) ->
-                  return $ m :< TM.Prim (P.Value (PV.Int size x))
-                _ :< TM.Prim (P.Type (PT.Float size)) ->
-                  return $ m :< TM.Prim (P.Value (PV.Float size (fromInteger x)))
-                _ -> do
-                  Throw.raiseError m $
-                    "The term `"
-                      <> T.pack (show x)
-                      <> "` is an integer, but its type is: "
-                      <> toText (weaken t')
+              (size, t') <- strictifyDecimalType m x t
+              case size of
+                Right intSize ->
+                  return $ m :< TM.Prim (P.Value (PV.Int t' intSize x))
+                Left floatSize ->
+                  return $ m :< TM.Prim (P.Value (PV.Float t' floatSize (fromInteger x)))
             WPV.Float t x -> do
-              t' <- reduceWeakType t >>= elaborate'
-              case t' of
-                _ :< TM.Prim (P.Type (PT.Float size)) ->
-                  return $ m :< TM.Prim (P.Value (PV.Float size x))
-                _ -> do
-                  Throw.raiseError m $
-                    "The term `"
-                      <> T.pack (show x)
-                      <> "` is a float, but its type is: "
-                      <> toText (weaken t')
+              (size, t') <- strictifyFloatType m x t
+              return $ m :< TM.Prim (P.Value (PV.Float t' size x))
             WPV.Op op ->
               return $ m :< TM.Prim (P.Value (PV.Op op))
             WPV.StaticText t text -> do
@@ -404,6 +391,58 @@ raiseNonStrictType :: Hint -> WT.WeakTerm -> App a
 raiseNonStrictType m t = do
   Throw.raiseError m $
     "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
+      <> toText t
+
+strictifyDecimalType :: Hint -> Integer -> WT.WeakTerm -> App (Either FloatSize IntSize, TM.Term)
+strictifyDecimalType m x t = do
+  t' <- reduceWeakType t >>= elaborate'
+  case t' of
+    _ :< TM.Prim (P.Type (PT.Int size)) ->
+      return (Right size, t')
+    _ :< TM.Prim (P.Type (PT.Float size)) ->
+      return (Left size, t')
+    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
+      consType <- Type.lookup m consName
+      case consType of
+        _ :< WT.Pi impArgs expArgs _
+          | [(_, _, arg)] <- impArgs ++ expArgs -> do
+              strictifyDecimalType m x arg
+        _ ->
+          raiseNonDecimalType m x (weaken t')
+    _ :< _ ->
+      raiseNonDecimalType m x (weaken t')
+
+raiseNonDecimalType :: Hint -> Integer -> WT.WeakTerm -> App a
+raiseNonDecimalType m x t = do
+  Throw.raiseError m $
+    "The term `"
+      <> T.pack (show x)
+      <> "` is an integer, but its type is: "
+      <> toText t
+
+strictifyFloatType :: Hint -> Double -> WT.WeakTerm -> App (FloatSize, TM.Term)
+strictifyFloatType m x t = do
+  t' <- reduceWeakType t >>= elaborate'
+  case t' of
+    _ :< TM.Prim (P.Type (PT.Float size)) ->
+      return (size, t')
+    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
+      consType <- Type.lookup m consName
+      case consType of
+        _ :< WT.Pi impArgs expArgs _
+          | [(_, _, arg)] <- impArgs ++ expArgs -> do
+              strictifyFloatType m x arg
+        _ ->
+          raiseNonFloatType m x (weaken t')
+    _ :< _ ->
+      raiseNonFloatType m x (weaken t')
+
+raiseNonFloatType :: Hint -> Double -> WT.WeakTerm -> App a
+raiseNonFloatType m x t = do
+  Throw.raiseError m $
+    "The term `"
+      <> T.pack (show x)
+      <> "` is a float, but its type is: "
       <> toText t
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
