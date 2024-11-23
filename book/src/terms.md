@@ -2383,12 +2383,11 @@ introspect key {
 
 You can use the following configuration `key`s and configuration `value`s:
 
-| Configuration Key | Configuration Value            |
-| ----------------- | ------------------------------ |
-| `platform`        | `{amd64,arm64}-{linux,darwin}` |
-| `arch`            | `amd64` or `arm64`             |
-| `os`              | `linux` or `darwin`            |
-| `build-mode`      | `develop` or `release`         |
+| Configuration Key  | Configuration Value    |
+| ------------------ | ---------------------- |
+| `architecture`     | `amd64` or `arm64`     |
+| `operating-system` | `linux` or `darwin`    |
+| `build-mode`       | `develop` or `release` |
 
 You can also use `default` as a configuration value to represent a fallback case.
 

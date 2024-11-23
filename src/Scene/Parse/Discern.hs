@@ -702,8 +702,6 @@ getIntrospectiveValue m key = do
   bm <- Env.getBuildMode
   p <- getPlatform (Just m)
   case key of
-    "platform" -> do
-      return $ Platform.reify p
     "architecture" ->
       return $ Arch.reify (Platform.arch p)
     "operating-system" ->
