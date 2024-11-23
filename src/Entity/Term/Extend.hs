@@ -102,10 +102,10 @@ extendPrim prim =
     P.Value v ->
       P.Value $
         case v of
-          PV.Int size integer ->
-            PV.Int size integer
-          PV.Float size float ->
-            PV.Float size float
+          PV.Int t size integer ->
+            PV.Int (extend t) size integer
+          PV.Float t size float ->
+            PV.Float (extend t) size float
           PV.Op op ->
             PV.Op op
           PV.StaticText t text ->

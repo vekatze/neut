@@ -19,12 +19,10 @@ import Entity.Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Prim qualified as P
-import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
 import Entity.StmtKind
 import Entity.Term qualified as TM
-import Entity.Term.FromPrimNum
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm (reflectOpacity)
@@ -96,7 +94,7 @@ weaken term =
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
-      m :< WT.Prim (weakenPrim m prim)
+      m :< WT.Prim (weakenPrim prim)
     m :< TM.Magic magic -> do
       m :< WT.Magic (weakenMagic m magic)
     m :< TM.Resource dd resourceID discarder copier -> do
@@ -139,18 +137,18 @@ weakenAttr AttrL.Attr {lamKind, identity} =
     LK.Fix xt ->
       AttrL.Attr {lamKind = LK.Fix (weakenBinder xt), identity}
 
-weakenPrim :: Hint -> P.Prim TM.Term -> WP.WeakPrim WT.WeakTerm
-weakenPrim m prim =
+weakenPrim :: P.Prim TM.Term -> WP.WeakPrim WT.WeakTerm
+weakenPrim prim =
   case prim of
     P.Type t ->
       WP.Type t
     P.Value v ->
       WP.Value $
         case v of
-          PV.Int size integer ->
-            WPV.Int (weaken (fromPrimNum m (PT.Int size))) integer
-          PV.Float size float ->
-            WPV.Float (weaken (fromPrimNum m (PT.Float size))) float
+          PV.Int t _ integer ->
+            WPV.Int (weaken t) integer
+          PV.Float t _ float ->
+            WPV.Float (weaken t) float
           PV.Op op ->
             WPV.Op op
           PV.StaticText t text ->
