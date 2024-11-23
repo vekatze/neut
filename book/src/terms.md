@@ -2273,7 +2273,7 @@ A "lowtype" is one of the following:
 - `float16`, `float32`, `float64`
 - `pointer`
 
-You can also use `int` and `float` as a lowtype. These are platform-dependent lowtypes. If the target architecture is 64-bit, `int` is interpreted as `int64`.
+You can also use `int` and `float` as a lowtype. These are just syntax sugar for `int64` and `float64`, respectively.
 
 ### Semantics
 
@@ -2350,7 +2350,7 @@ You can use `introspect key {..}` to introspect the compiler's configuration.
 
 ```neut
 define arch-dependent-constant(): int {
-  introspect arch {
+  introspect architecture {
   | arm64 =>
     1
   | amd64 =>
@@ -2359,7 +2359,7 @@ define arch-dependent-constant(): int {
 }
 
 define os-dependent-constant(): int {
-  introspect os {
+  introspect operating-system {
   | linux =>
     1
   | default =>
@@ -2383,12 +2383,11 @@ introspect key {
 
 You can use the following configuration `key`s and configuration `value`s:
 
-| Configuration Key | Configuration Value            |
-| ----------------- | ------------------------------ |
-| `platform`        | `{amd64,arm64}-{linux,darwin}` |
-| `arch`            | `amd64` or `arm64`             |
-| `os`              | `linux` or `darwin`            |
-| `build-mode`      | `develop` or `release`         |
+| Configuration Key  | Configuration Value    |
+| ------------------ | ---------------------- |
+| `architecture`     | `amd64` or `arm64`     |
+| `operating-system` | `linux` or `darwin`    |
+| `build-mode`       | `develop` or `release` |
 
 You can also use `default` as a configuration value to represent a fallback case.
 
