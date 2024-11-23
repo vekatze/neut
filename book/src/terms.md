@@ -2273,7 +2273,7 @@ A "lowtype" is one of the following:
 - `float16`, `float32`, `float64`
 - `pointer`
 
-You can also use `int` and `float` as a lowtype. These are platform-dependent lowtypes. If the target architecture is 64-bit, `int` is interpreted as `int64`.
+You can also use `int` and `float` as a lowtype. These are just syntax sugar for `int64` and `float64`, respectively.
 
 ### Semantics
 
