@@ -219,8 +219,8 @@ expandClangOptions target =
       case concreteTarget of
         Named targetName summary -> do
           let cl = clangOption summary
-          compileOption' <- mapM External.expandText (CL.compileOption cl)
-          linkOption' <- mapM External.expandText (CL.linkOption cl)
+          compileOption' <- expandOptions (CL.compileOption cl)
+          linkOption' <- expandOptions (CL.linkOption cl)
           return $
             Main $
               Named
@@ -234,10 +234,14 @@ expandClangOptions target =
                     }
                 )
         Zen path compileOption linkOption -> do
-          compileOption' <- mapM External.expandText compileOption
-          linkOption' <- mapM External.expandText linkOption
+          compileOption' <- expandOptions compileOption
+          linkOption' <- expandOptions linkOption
           return $ Main $ Zen path compileOption' linkOption'
     Peripheral {} ->
       return target
     PeripheralSingle {} ->
       return target
+
+expandOptions :: [T.Text] -> App [T.Text]
+expandOptions foo =
+  map T.strip <$> mapM External.expandText foo
