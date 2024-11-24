@@ -406,14 +406,16 @@ discern axis term =
     m :< RT.LetOn _ pat _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
       discern axis $ m :< RT.BoxElim VariantT True [] pat [] mys [] e1' [] startLoc [] e2 endLoc
-    m :< RT.Pin _ mxt@(mx, x, _, _, _) _ _ e1 _ startLoc _ e2 endLoc -> do
+    m :< RT.Pin _ (mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let m' = blur m
-      tmp <- Gensym.newTextFromText "tmp-pin"
-      let tmpPat = RP.Var (Var tmp)
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
       resultType <- Gensym.newPreHole m'
+      let mxt' = (mx, RP.Var (Var x), [], [], t)
+      let outerLet cont = m :< RT.LetOn [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
+      tmp <- Gensym.newTextFromText "tmp-pin"
+      let tmpPat = RP.Var (Var tmp)
       discern axis $
-        bind startLoc endLoc mxt e1 $
+        outerLet $
           m :< RT.LetOn [] (m', tmpPat, [], [], resultType) [] x' [] e2 [] startLoc [] (m' :< RT.Var (Var tmp)) endLoc
     m :< RT.StaticText s str -> do
       s' <- discern axis s
@@ -567,10 +569,10 @@ discern axis term =
         mUse :< RT.Use c1 item c2 vars c3 cont endLoc -> do
           let cont' = m :< RT.With (([], (binder, [])), ([], (cont, [])))
           discern axis $ mUse :< RT.Use c1 item c2 vars c3 cont' endLoc
-        mPin :< RT.Pin c1 (mx, x, c2, c3, t) c4 c5 e1 c6 startLoc c7 e2 endLoc -> do
+        mPin :< RT.Pin c1 (mx, x, c2, c3, t) c4 mys c5 e1 c6 startLoc c7 e2 endLoc -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
-          discern axis $ mPin :< RT.Pin c1 (mx, x, c2, c3, t) c4 c5 e1' c6 startLoc c7 e2' endLoc
+          discern axis $ mPin :< RT.Pin c1 (mx, x, c2, c3, t) c4 mys c5 e1' c6 startLoc c7 e2' endLoc
         _ ->
           discern axis body
     _ :< RT.Projection e (mProj, proj) loc -> do

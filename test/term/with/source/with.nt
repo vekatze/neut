@@ -49,7 +49,11 @@ define test2(): either(int, int) {
     nop();
     let tmp = type in
     bind _: bool =
-      pin _ = tmp in
+      let k = type in
+      pin _ on k =
+        let _ = k in
+        tmp
+      in
       bind _: bool = Right(True) in
       nop();
       let _ = type in

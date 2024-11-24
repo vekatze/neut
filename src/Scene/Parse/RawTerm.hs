@@ -242,13 +242,21 @@ rawTermPin m = do
   c1 <- keyword "pin"
   ((mx, x), c2) <- rawTermNoeticVar
   (c3, (t, c4)) <- rawTermLetVarAscription mx
+  noeticVarList <-
+    choice
+      [ do
+          c <- keyword "on"
+          vs <- bareSeries Nothing SE.Comma rawTermNoeticVar
+          return $ SE.pushComment c vs,
+        return $ SE.emptySeries' Nothing SE.Comma
+      ]
   c5 <- delimiter "="
   (e1, c6) <- rawExpr
   loc <- getCurrentLoc
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
   endLoc <- getCurrentLoc
-  return (m :< RT.Pin c1 (mx, x, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
+  return (m :< RT.Pin c1 (mx, x, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do

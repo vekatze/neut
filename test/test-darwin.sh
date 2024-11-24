@@ -5,9 +5,6 @@ base_dir=$(pwd)
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 LSAN_FILE=$SCRIPT_DIR/lsan.supp
 
-cd $SCRIPT_DIR/meta
-NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build meta
-
 pids=()
 
 for target_dir in "$@"; do
