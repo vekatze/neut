@@ -152,12 +152,13 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc cont
         ]
-    _ :< Pin c1 mxt c2 c3 e1 c4 _ c5 e2 _ -> do
+    _ :< Pin c1 mxt c2 noeticVarList c3 e1 c4 _ c5 e2 _ -> do
       D.join
-        [ PI.arrange
+        [ PI.arrange $
             [ PI.beforeBareSeries $ D.text "pin",
               PI.bareSeries $ D.join [attachComment c1 $ piIntroArgToDoc mxt, C.asSuffix c2]
-            ],
+            ]
+              ++ decodeNoeticVarList noeticVarList,
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
               PI.bareSeries $ D.join [attachComment c3 $ toDoc e1, C.asSuffix c4]
