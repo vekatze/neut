@@ -406,6 +406,8 @@ simplifyActual ax m dataNameSet t orig = do
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual ax m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
+    _ :< WT.Box t'' -> do
+      simplifyActual ax m dataNameSet t'' orig
     _ :< WT.Prim {} -> do
       return []
     _ :< WT.Void -> do
