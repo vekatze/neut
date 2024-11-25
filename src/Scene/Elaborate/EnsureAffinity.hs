@@ -209,10 +209,11 @@ analyze axis term = do
           concat <$> mapM (analyze axis) args
         M.Global _ _ ->
           return []
-    _ :< TM.Resource _ _ discarder copier -> do
-      cs1 <- analyze axis discarder
-      cs2 <- analyze axis copier
-      return $ cs1 ++ cs2
+    _ :< TM.Resource _ _ unitType discarder copier -> do
+      cs1 <- analyze axis unitType
+      cs2 <- analyze axis discarder
+      cs3 <- analyze axis copier
+      return $ cs1 ++ cs2 ++ cs3
     _ :< TM.Void ->
       return []
 

@@ -119,10 +119,11 @@ fill sub term =
         AN.Type t -> do
           t' <- fill sub t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
-    m :< WT.Resource dd resourceID discarder copier -> do
+    m :< WT.Resource dd resourceID unitType discarder copier -> do
+      unitType' <- fill sub unitType
       discarder' <- fill sub discarder
       copier' <- fill sub copier
-      return $ m :< WT.Resource dd resourceID discarder' copier'
+      return $ m :< WT.Resource dd resourceID unitType' discarder' copier'
     m :< WT.Use e xts cont -> do
       e' <- fill sub e
       xts' <- fillBinder sub xts

@@ -262,7 +262,7 @@ clarifyTerm tenv term =
               clarifyTerm tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.intSize32 (RU.asInt r)))
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
-    m :< TM.Resource _ resourceID discarder copier -> do
+    m :< TM.Resource _ resourceID _ discarder copier -> do
       liftedName <- Locator.attachCurrentLocator $ BN.resourceName resourceID
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"

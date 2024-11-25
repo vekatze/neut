@@ -433,10 +433,11 @@ discern axis term =
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
     m :< RT.Resource dd _ (discarder, _) (copier, _) -> do
+      unitType <- locatorToVarGlobal m coreUnit >>= discern axis
       resourceID <- Gensym.newCount
       discarder' <- discern axis discarder
       copier' <- discern axis copier
-      return $ m :< WT.Resource dd resourceID discarder' copier'
+      return $ m :< WT.Resource dd resourceID unitType discarder' copier'
     m :< RT.Use _ e _ xs _ cont endLoc -> do
       e' <- discern axis e
       (xs', axis') <- discernBinder axis (RT.extractArgs xs) endLoc

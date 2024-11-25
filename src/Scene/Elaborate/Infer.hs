@@ -340,18 +340,19 @@ infer axis term =
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
-    m :< WT.Resource dd resourceID discarder copier -> do
+    m :< WT.Resource dd resourceID unitType discarder copier -> do
+      unitType' <- inferType axis unitType
       empty1 <- createNewAxis
       (discarder', td) <- infer empty1 discarder
       empty2 <- createNewAxis
       (copier', tc) <- infer empty2 copier
       x <- Gensym.newIdentFromText "_"
-      intType <- getIntType m
-      let tDiscard = m :< WT.Pi [] [(m, x, intType)] intType
-      let tCopy = m :< WT.Pi [] [(m, x, intType)] intType
+      resourceType <- newHole m []
+      let tDiscard = m :< WT.Pi [] [(m, x, resourceType)] unitType'
+      let tCopy = m :< WT.Pi [] [(m, x, resourceType)] resourceType
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
-      return (m :< WT.Resource dd resourceID discarder' copier', m :< WT.Tau)
+      return (m :< WT.Resource dd resourceID unitType' discarder' copier', m :< WT.Tau)
     m :< WT.Use e@(mt :< _) xts cont -> do
       (e', t') <- infer axis e
       t'' <- resolveType t'

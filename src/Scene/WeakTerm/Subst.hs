@@ -121,10 +121,11 @@ subst sub term =
         AN.Type t -> do
           t' <- subst sub t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
-    m :< WT.Resource dd resourceID discarder copier -> do
+    m :< WT.Resource dd resourceID unitType discarder copier -> do
+      unitType' <- subst sub unitType
       discarder' <- subst sub discarder
       copier' <- subst sub copier
-      return $ m :< WT.Resource dd resourceID discarder' copier'
+      return $ m :< WT.Resource dd resourceID unitType' discarder' copier'
     m :< WT.Use e xts cont -> do
       e' <- subst sub e
       (xts', sub') <- subst' sub xts

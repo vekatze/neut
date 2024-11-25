@@ -69,10 +69,11 @@ freeVars term =
         AN.Type t -> do
           let xs2 = freeVars t
           S.union xs1 xs2
-    _ :< WT.Resource _ _ discarder copier -> do
-      let xs1 = freeVars discarder
-      let xs2 = freeVars copier
-      S.union xs1 xs2
+    _ :< WT.Resource _ _ unitType discarder copier -> do
+      let xs1 = freeVars unitType
+      let xs2 = freeVars discarder
+      let xs3 = freeVars copier
+      S.unions [xs1, xs2, xs3]
     _ :< WT.Use e xts cont -> do
       let fvs1 = freeVars e
       let fvs2 = freeVars' xts (freeVars cont)
