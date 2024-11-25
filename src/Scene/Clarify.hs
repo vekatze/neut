@@ -286,13 +286,14 @@ embody tenv xets cont =
       (valueVarName, value, valueVar) <- clarifyPlus tenv e
       cont' <- embody (TM.insTypeEnv [mxt] tenv) rest cont
       baseSize <- Env.getBaseSize m
+      cont'' <- linearize [(x, typeExp)] cont'
       return $
         bindLet
           [ (typeExpVarName, typeExp),
             (valueVarName, value),
             (x, C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, valueVar])
           ]
-          cont'
+          cont''
 
 type Size =
   Int

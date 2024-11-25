@@ -303,22 +303,9 @@ discern axis term =
       ensureLayerClosedness m axis''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
     m :< RT.PiElim e _ es -> do
-      case e of
-        _ :< RT.Var (Var c)
-          | c == "new-cell",
-            [arg] <- SE.extract es -> do
-              newCellDD <- locatorToVarGlobal m coreCellNewCell
-              e' <- discern axis $ m :< RT.piElim newCellDD [arg]
-              return $ m :< WT.Actual e'
-          | c == "new-channel",
-            [] <- SE.extract es -> do
-              newChannelDD <- locatorToVarGlobal m coreChannelNewChannel
-              e' <- discern axis $ m :< RT.piElim newChannelDD []
-              return $ m :< WT.Actual e'
-        _ -> do
-          e' <- discern axis e
-          es' <- mapM (discern axis) $ SE.extract es
-          return $ m :< WT.PiElim e' es'
+      e' <- discern axis e
+      es' <- mapM (discern axis) $ SE.extract es
+      return $ m :< WT.PiElim e' es'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, _) <- resolveName m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
@@ -406,17 +393,24 @@ discern axis term =
     m :< RT.LetOn _ pat _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
       discern axis $ m :< RT.BoxElim VariantT True [] pat [] mys [] e1' [] startLoc [] e2 endLoc
-    m :< RT.Pin _ (mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
+    m :< RT.Pin _ mxt@(mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let m' = blur m
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
       resultType <- Gensym.newPreHole m'
-      let mxt' = (mx, RP.Var (Var x), [], [], t)
-      let outerLet cont = m :< RT.LetOn [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
-      tmp <- Gensym.newTextFromText "tmp-pin"
-      let tmpPat = RP.Var (Var tmp)
-      discern axis $
-        outerLet $
-          m :< RT.LetOn [] (m', tmpPat, [], [], resultType) [] x' [] e2 [] startLoc [] (m' :< RT.Var (Var tmp)) endLoc
+      resultVar <- Var <$> Gensym.newTextFromText "tmp-pin"
+      let resultParam = (m', RP.Var resultVar, [], [], resultType)
+      let isNoetic = not $ null $ SE.extract mys
+      if isNoetic
+        then do
+          let mxt' = (mx, RP.Var (Var x), [], [], t)
+          let outerLet cont = m :< RT.LetOn [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
+          discern axis $
+            outerLet $
+              m :< RT.LetOn [] resultParam [] x' [] e2 [] startLoc [] (m' :< RT.Var resultVar) endLoc
+        else do
+          discern axis $
+            bind startLoc endLoc mxt e1 $
+              m :< RT.LetOn [] resultParam [] x' [] e2 [] startLoc [] (m' :< RT.Var resultVar) endLoc
     m :< RT.StaticText s str -> do
       s' <- discern axis s
       case parseText str of
