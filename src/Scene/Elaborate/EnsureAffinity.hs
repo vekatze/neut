@@ -196,10 +196,11 @@ analyze axis term = do
           cs1 <- analyze axis to
           cs2 <- analyze axis value
           return $ cs0 ++ cs1 ++ cs2
-        M.Store _ e1 e2 -> do
-          cs1 <- analyze axis e1
-          cs2 <- analyze axis e2
-          return $ cs1 ++ cs2
+        M.Store _ unit e1 e2 -> do
+          cs1 <- analyze axis unit
+          cs2 <- analyze axis e1
+          cs3 <- analyze axis e2
+          return $ cs1 ++ cs2 ++ cs3
         M.Load _ e -> do
           analyze axis e
         M.Alloca _ size -> do
@@ -209,10 +210,11 @@ analyze axis term = do
           concat <$> mapM (analyze axis) args
         M.Global _ _ ->
           return []
-    _ :< TM.Resource _ _ discarder copier -> do
-      cs1 <- analyze axis discarder
-      cs2 <- analyze axis copier
-      return $ cs1 ++ cs2
+    _ :< TM.Resource _ _ unitType discarder copier -> do
+      cs1 <- analyze axis unitType
+      cs2 <- analyze axis discarder
+      cs3 <- analyze axis copier
+      return $ cs1 ++ cs2 ++ cs3
     _ :< TM.Void ->
       return []
 

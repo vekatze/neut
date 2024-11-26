@@ -1,25 +1,20 @@
 import {
   core.c-size {C-Size},
   core.external {free, malloc},
-  core.magic,
   core.memory {load-int, store-int},
-  core.pointer {extract},
 }
 
 resource noisy-boxed-int {
-  function (v: int) {
-    let v = core.magic.cast(int, pointer, v) in
+  function (v: pointer) {
     print("discarded.\n");
-    free(v);
-    0
+    free(v)
   },
-  function (v: int) {
-    let v = core.magic.cast(int, pointer, v) in
+  function (v: pointer) {
     print("copied.\n");
     let orig-value = load-int(v) in
     let new-ptr = malloc(C-Size(1)) in
     magic store(int, orig-value, new-ptr);
-    extract(new-ptr)
+    new-ptr
   },
 }
 

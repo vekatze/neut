@@ -305,10 +305,10 @@ define use-config(c: config) {
 
 ```neut
 resource my-new-type {
-  function (value: int) {
+  function (value: pointer) {
     // .. discard the value ..
   },
-  function (value: int) {
+  function (value: pointer) {
     // .. create a new clone of the value and return it as int ..
   },
 }
@@ -316,22 +316,21 @@ resource my-new-type {
 
 `resource` takes two terms. The first term ("discarder") receives a value of the type and discards the value. The second term ("copier") receives a value of the type and returns the clone of the value (keeping the original value intact).
 
-The type of a discarder is `(int) -> int`. The type of the argument is `int`, so you'll have to cast it if necessary. After discarding the argument, you should return 0 from this function. You might want to call functions like `free` in this term.
+The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
 
-The type of a copier is `(int) -> int`. The type of the argument is `int`, so you'll have to cast it as necessary. The return value in this term is the new clone of the argument, cast to `int`. You might want to call functions like `malloc` in this term.
+The type of a copier is `(int) -> int` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
 
 For example, the following is a definition of a "boxed" integer type with some noisy messages:
 
 ```neut
 resource boxed-int {
-  // discarder
-  function (v: int) {
+  // discarder: (pointer) -> unit
+  function (v: pointer) {
     print("discarded!\n");
-    free(v);
-    0
+    free(v)
   },
-  // copier
-  function (v: int) {
+  // copier: (pointer) -> pointer
+  function (v: pointer) {
     let orig-value = load-int(v) in
     let new-ptr = malloc(1) in
     magic store(int, orig-value, new-ptr);
@@ -351,7 +350,7 @@ A value of type `boxed-int` prints `"discarded!\n"` when the value is discarded.
 
 `resource` can be used to define low-level types like arrays.
 
-You can find an example usage of `resource` in the `int8-array.nt` in the [core library](https://github.com/vekatze/neut-core/blob/main/source/int8-array.nt).
+You can find an example usage of `resource` in the `binary.nt` in the [core library](https://github.com/vekatze/neut-core/blob/main/source/binary.nt).
 
 ## `nominal`
 

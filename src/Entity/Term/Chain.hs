@@ -69,10 +69,11 @@ chainOf' tenv term =
       []
     _ :< TM.Magic der ->
       foldMap (chainOf' tenv) der
-    _ :< TM.Resource _ _ discarder copier -> do
-      let xs1 = chainOf' tenv discarder
-      let xs2 = chainOf' tenv copier
-      xs1 ++ xs2
+    _ :< TM.Resource _ _ unitType discarder copier -> do
+      let xs1 = chainOf' tenv unitType
+      let xs2 = chainOf' tenv discarder
+      let xs3 = chainOf' tenv copier
+      xs1 ++ xs2 ++ xs3
     _ :< TM.Void ->
       []
 

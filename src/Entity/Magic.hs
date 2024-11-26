@@ -5,16 +5,15 @@ import Data.Binary
 import Entity.BaseLowType
 import Entity.ExternalName qualified as EN
 import Entity.ForeignCodType qualified as FCT
-import Entity.LowType
 import GHC.Generics qualified as G
 
 data Magic t a
   = Cast a a a
-  | Store LowType a a
-  | Load LowType a
-  | Alloca LowType a
+  | Store t a a a
+  | Load t a
+  | Alloca t a
   | External [t] (FCT.ForeignCodType t) EN.ExternalName [a] [(a, t)]
-  | Global EN.ExternalName LowType
+  | Global EN.ExternalName t
   deriving (Show, Eq, G.Generic)
 
 instance (Binary a) => Binary (Magic BaseLowType a)
@@ -24,8 +23,8 @@ instance Functor (Magic BaseLowType) where
     case der of
       Cast from to value ->
         Cast (f from) (f to) (f value)
-      Store lt value pointer ->
-        Store lt (f value) (f pointer)
+      Store lt unit value pointer ->
+        Store lt (f unit) (f value) (f pointer)
       Load lt pointer ->
         Load lt (f pointer)
       Alloca lt size ->
@@ -41,12 +40,12 @@ instance Foldable (Magic BaseLowType) where
     case der of
       Cast from to value ->
         f from <> f to <> f value
-      Store _ value pointer ->
-        f value <> f pointer
+      Store _ unit value pointer ->
+        f unit <> f value <> f pointer
       Load _ pointer ->
         f pointer
-      Alloca {} ->
-        mempty
+      Alloca _ size ->
+        f size
       External _ _ _ args varArgs ->
         foldMap f (args ++ map fst varArgs)
       Global {} ->
@@ -57,8 +56,8 @@ instance Traversable (Magic BaseLowType) where
     case der of
       Cast from to value ->
         Cast <$> f from <*> f to <*> f value
-      Store lt value pointer ->
-        Store lt <$> f value <*> f pointer
+      Store lt unit value pointer ->
+        Store lt <$> f unit <*> f value <*> f pointer
       Load lt pointer ->
         Load lt <$> f pointer
       Alloca lt size ->
@@ -77,31 +76,31 @@ instance Functor WeakMagic where
     case der of
       Cast from to value ->
         WeakMagic (Cast (f from) (f to) (f value))
-      Store lt value pointer ->
-        WeakMagic (Store lt (f value) (f pointer))
-      Load lt pointer ->
-        WeakMagic (Load lt (f pointer))
-      Alloca lt size ->
-        WeakMagic (Alloca lt (f size))
+      Store t unit value pointer ->
+        WeakMagic (Store (f t) (f unit) (f value) (f pointer))
+      Load t pointer ->
+        WeakMagic (Load (f t) (f pointer))
+      Alloca t size ->
+        WeakMagic (Alloca (f t) (f size))
       External domList cod extFunName args varArgs -> do
         let domList' = map f domList
         let cod' = fmap f cod
         let varArgs' = map (bimap f f) varArgs
         WeakMagic (External domList' cod' extFunName (fmap f args) varArgs')
-      Global name lt ->
-        WeakMagic (Global name lt)
+      Global name t ->
+        WeakMagic (Global name (f t))
 
 instance Foldable WeakMagic where
   foldMap f (WeakMagic der) =
     case der of
       Cast from to value ->
         f from <> f to <> f value
-      Store _ value pointer ->
-        f value <> f pointer
-      Load _ pointer ->
-        f pointer
-      Alloca {} ->
-        mempty
+      Store t unit value pointer ->
+        f t <> f unit <> f value <> f pointer
+      Load t pointer ->
+        f t <> f pointer
+      Alloca t size ->
+        f t <> f size
       External domList cod _ args varArgs -> do
         let varArgs' = concatMap (\(x, y) -> [x, y]) varArgs
         case cod of
@@ -109,8 +108,8 @@ instance Foldable WeakMagic where
             foldMap f (domList ++ [t] ++ args ++ varArgs')
           FCT.Void ->
             foldMap f (domList ++ args ++ varArgs')
-      Global {} ->
-        mempty
+      Global _ t ->
+        f t
 
 instance Traversable WeakMagic where
   traverse f (WeakMagic der) =
@@ -120,16 +119,20 @@ instance Traversable WeakMagic where
         to' <- f to
         value' <- f value
         return $ WeakMagic $ Cast from' to' value'
-      Store lt value pointer -> do
+      Store t unit value pointer -> do
+        t' <- f t
+        unit' <- f unit
         value' <- f value
         pointer' <- f pointer
-        return $ WeakMagic $ Store lt value' pointer'
-      Load lt pointer -> do
+        return $ WeakMagic $ Store t' unit' value' pointer'
+      Load t pointer -> do
+        t' <- f t
         pointer' <- f pointer
-        return $ WeakMagic $ Load lt pointer'
-      Alloca lt size -> do
+        return $ WeakMagic $ Load t' pointer'
+      Alloca t size -> do
+        t' <- f t
         size' <- f size
-        return $ WeakMagic $ Alloca lt size'
+        return $ WeakMagic $ Alloca t' size'
       External domList cod extFunName args varArgs -> do
         domList' <- traverse f domList
         cod' <- traverse f cod
@@ -138,5 +141,6 @@ instance Traversable WeakMagic where
         xs' <- traverse f xs
         ys' <- traverse f ys
         return $ WeakMagic $ External domList' cod' extFunName args' (zip xs' ys')
-      Global name lt -> do
-        return $ WeakMagic $ Global name lt
+      Global name t -> do
+        t' <- f t
+        return $ WeakMagic $ Global name t'

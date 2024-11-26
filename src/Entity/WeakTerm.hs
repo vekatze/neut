@@ -49,7 +49,7 @@ data WeakTermF a
   | Magic (WeakMagic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
-  | Resource DD.DefiniteDescription Int a a
+  | Resource DD.DefiniteDescription Int a a a
   | Use a [BinderF a] a
   | Void
 

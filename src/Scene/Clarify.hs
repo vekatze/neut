@@ -36,7 +36,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Literal qualified as L
-import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Noema qualified as N
 import Entity.Opacity (isOpaque)
@@ -262,7 +261,7 @@ clarifyTerm tenv term =
               clarifyTerm tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.intSize32 (RU.asInt r)))
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
-    m :< TM.Resource _ resourceID discarder copier -> do
+    m :< TM.Resource _ resourceID _ discarder copier -> do
       liftedName <- Locator.attachCurrentLocator $ BN.resourceName resourceID
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
@@ -346,7 +345,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return
-            ( C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal cursor)))) enumElim,
+            ( C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal cursor)))) enumElim,
               newChain
             )
 
@@ -455,12 +454,13 @@ clarifyMagic tenv der =
       return $
         bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
           C.Primitive (C.Magic (M.Cast fromVar toVar valueVar))
-    M.Store lt value pointer -> do
+    M.Store lt _ value pointer -> do
+      let doNotCare = C.SigmaIntro []
       (valueVarName, value', valueVar) <- clarifyPlus tenv value
       (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
       return $
         bindLet [(valueVarName, value'), (pointerVarName, pointer')] $
-          C.Primitive (C.Magic (M.Store lt valueVar pointerVar))
+          C.Primitive (C.Magic (M.Store lt doNotCare valueVar pointerVar))
     M.Load lt pointer -> do
       (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
       return $

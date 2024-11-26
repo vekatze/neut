@@ -104,10 +104,11 @@ subst sub term =
     m :< TM.Magic der -> do
       der' <- traverse (subst sub) der
       return (m :< TM.Magic der')
-    m :< TM.Resource dd resourceID discarder copier -> do
+    m :< TM.Resource dd resourceID unitType discarder copier -> do
+      unitType' <- subst sub unitType
       discarder' <- subst sub discarder
       copier' <- subst sub copier
-      return $ m :< TM.Resource dd resourceID discarder' copier'
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
     _ :< TM.Void ->
       return term
 
