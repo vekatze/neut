@@ -232,19 +232,22 @@ lowerCompPrimitive codeOp =
         M.Cast _ _ value -> do
           lowerValue value
         M.Store valueLowType value pointer -> do
-          valVar <- lowerValueLetCast value valueLowType
+          let valueLowType' = LT.fromBaseLowType valueLowType
+          valVar <- lowerValueLetCast value valueLowType'
           ptrVar <- lowerValueLetCast pointer LT.Pointer
-          extend $ return . LC.Cont (LC.Store valueLowType valVar ptrVar)
+          extend $ return . LC.Cont (LC.Store valueLowType' valVar ptrVar)
           return LC.Null
         M.Load valueLowType pointer -> do
+          let valueLowType' = LT.fromBaseLowType valueLowType
           castedPointer <- lowerValueLetCast pointer LT.Pointer
-          result <- reflect $ LC.Load castedPointer valueLowType
-          uncast result valueLowType
-        M.Alloca lt size -> do
+          result <- reflect $ LC.Load castedPointer valueLowType'
+          uncast result valueLowType'
+        M.Alloca t size -> do
+          let t' = LT.fromBaseLowType t
           baseSize <- lift Env.getBaseSize'
           let indexType = LT.PrimNum $ PT.Int $ IntSize baseSize
           castedSize <- lowerValueLetCast size indexType
-          result <- reflect $ LC.StackAlloc lt indexType castedSize
+          result <- reflect $ LC.StackAlloc t' indexType castedSize
           uncast result LT.Pointer
         M.External domList cod name args varArgAndTypeList -> do
           alreadyRegistered <- lift $ Decl.member (DN.Ext name)
@@ -263,8 +266,9 @@ lowerCompPrimitive codeOp =
             _ -> do
               result <- reflect $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
               uncast result lowCod
-        M.Global name lt -> do
-          uncast (LC.VarExternal name) lt
+        M.Global name t -> do
+          let t' = LT.fromBaseLowType t
+          uncast (LC.VarExternal name) t'
 
 lowerCompPrimOp :: PrimOp -> [C.Value] -> Lower LC.Value
 lowerCompPrimOp op vs = do

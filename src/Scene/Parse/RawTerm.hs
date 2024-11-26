@@ -8,12 +8,10 @@ module Scene.Parse.RawTerm
     parseGeist,
     parseDefInfoCod,
     typeWithoutIdent,
-    lowType,
   )
 where
 
 import Context.App
-import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -21,10 +19,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
-import Entity.BasePrimType qualified as BPT
-import Entity.BasePrimType.FromText qualified as BPT
 import Entity.C
 import Entity.Const
 import Entity.DefiniteDescription qualified as DD
@@ -456,31 +451,31 @@ rawTermMagicCast m c = do
 rawTermMagicStore :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicStore m c = do
   rawTermMagicBase "store" $ do
-    lt <- lowType
+    t <- rawExpr
     c3 <- delimiter ","
     value <- rawExpr
     c4 <- delimiter ","
     pointer <- rawExpr
     c5 <- optional $ delimiter ","
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 (c2, lt) (c3, value) (c4, pointer) c5)
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 (c2, t) (c3, value) (c4, pointer) c5)
 
 rawTermMagicLoad :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicLoad m c = do
   rawTermMagicBase "load" $ do
-    lt <- lowType
+    t <- rawExpr
     c3 <- delimiter ","
     pointer <- rawExpr
     c4 <- optional $ delimiter ","
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, lt) (c3, pointer) c4)
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, t) (c3, pointer) c4)
 
 rawTermMagicAlloca :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicAlloca m c = do
   rawTermMagicBase "alloca" $ do
-    lt <- lowType
+    t <- rawExpr
     c3 <- delimiter ","
     size <- rawExpr
     c4 <- optional $ delimiter ","
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, lt) (c3, size) c4)
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, t) (c3, size) c4)
 
 rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicExternal m c0 = do
@@ -508,37 +503,9 @@ rawTermMagicGlobal m c = do
   rawTermMagicBase "global" $ do
     (globalVarName, c3) <- string
     c4 <- delimiter ","
-    lt <- lowType
+    lt <- rawExpr
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
-
-lowType :: Parser (BLT.BaseLowType, C)
-lowType = do
-  choice
-    [ lowTypePointer,
-      lowTypeNumber
-    ]
-
-lowTypePointer :: Parser (BLT.BaseLowType, C)
-lowTypePointer = do
-  c <- keyword "pointer"
-  return (BLT.Pointer, c)
-
-lowTypeNumber :: Parser (BLT.BaseLowType, C)
-lowTypeNumber = do
-  (pt, c) <- primType
-  return (BLT.PrimNum pt, c)
-
-primType :: Parser (BPT.BasePrimType, C)
-primType = do
-  m <- getCurrentHint
-  (sizeString, c) <- symbol
-  dataSize <- lift $ Env.getDataSize m
-  case BPT.fromText dataSize sizeString of
-    Just primNum ->
-      return (primNum, c)
-    _ -> do
-      failure (Just (asTokens sizeString)) (S.fromList [asLabel "int{n}", asLabel "float{n}"])
 
 rawTermMatch :: Parser (RT.RawTerm, C)
 rawTermMatch = do

@@ -145,8 +145,8 @@ elaborateStmt stmt = do
       return ([], [])
     WeakStmtForeign foreignList -> do
       foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
-        domList' <- mapM (strictify m) domList
-        cod' <- mapM (strictify m) cod
+        domList' <- mapM strictify domList
+        cod' <- mapM strictify cod
         return $ F.Foreign m externalName domList' cod'
       return ([StmtForeign foreignList'], [])
 
@@ -324,30 +324,34 @@ elaborate' term =
     m :< WT.Magic (M.WeakMagic magic) -> do
       case magic of
         M.External domList cod name args varArgs -> do
-          domList' <- mapM (strictify m) domList
-          cod' <- mapM (strictify m) cod
+          domList' <- mapM strictify domList
+          cod' <- mapM strictify cod
           args' <- mapM elaborate' args
           let (vArgs, vTypes) = unzip varArgs
           vArgs' <- mapM elaborate' vArgs
-          vTypes' <- mapM (strictify m) vTypes
+          vTypes' <- mapM strictify vTypes
           return $ m :< TM.Magic (M.External domList' cod' name args' (zip vArgs' vTypes'))
         M.Cast from to value -> do
           from' <- elaborate' from
           to' <- elaborate' to
           value' <- elaborate' value
           return $ m :< TM.Magic (M.Cast from' to' value')
-        M.Store lt value pointer -> do
+        M.Store t value pointer -> do
+          t' <- strictify t
           value' <- elaborate' value
           pointer' <- elaborate' pointer
-          return $ m :< TM.Magic (M.Store lt value' pointer')
-        M.Load lt pointer -> do
+          return $ m :< TM.Magic (M.Store t' value' pointer')
+        M.Load t pointer -> do
+          t' <- strictify t
           pointer' <- elaborate' pointer
-          return $ m :< TM.Magic (M.Load lt pointer')
-        M.Alloca lt size -> do
+          return $ m :< TM.Magic (M.Load t' pointer')
+        M.Alloca t size -> do
+          t' <- strictify t
           size' <- elaborate' size
-          return $ m :< TM.Magic (M.Alloca lt size')
-        M.Global name lt -> do
-          return $ m :< TM.Magic (M.Global name lt)
+          return $ m :< TM.Magic (M.Alloca t' size')
+        M.Global name t -> do
+          t' <- strictify t
+          return $ m :< TM.Magic (M.Global name t')
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' e
       case annot of
@@ -367,8 +371,12 @@ elaborate' term =
     m :< WT.Void ->
       return $ m :< TM.Void
 
-strictify :: Hint -> WT.WeakTerm -> App BLT.BaseLowType
-strictify m t = do
+strictify :: WT.WeakTerm -> App BLT.BaseLowType
+strictify t@(mt :< _) =
+  strictify' mt t
+
+strictify' :: Hint -> WT.WeakTerm -> App BLT.BaseLowType
+strictify' m t = do
   t' <- reduceWeakType t >>= elaborate'
   case t' of
     _ :< TM.Prim (P.Type (PT.Int size)) ->
@@ -382,7 +390,7 @@ strictify m t = do
       case consType of
         _ :< WT.Pi impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
-              strictify m arg
+              strictify' m arg
         _ ->
           raiseNonStrictType m (weaken t')
     _ :< _ ->

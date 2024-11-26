@@ -36,7 +36,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Literal qualified as L
-import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Noema qualified as N
 import Entity.Opacity (isOpaque)
@@ -346,7 +345,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return
-            ( C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal cursor)))) enumElim,
+            ( C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal cursor)))) enumElim,
               newChain
             )
 

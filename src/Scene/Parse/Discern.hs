@@ -26,7 +26,6 @@ import Entity.Arch qualified as Arch
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
-import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.BuildMode qualified as BM
@@ -46,8 +45,6 @@ import Entity.LamKind qualified as LK
 import Entity.Layer
 import Entity.Literal qualified as LI
 import Entity.Locator qualified as L
-import Entity.LowType qualified as LT
-import Entity.LowType.FromBaseLowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Module
 import Entity.Name
@@ -590,10 +587,6 @@ discernNoeticVarList xsOuter = do
     Tag.insertLocalVar mDef outerVar mOuter
     return ((mOuter, xInner, t), mDef :< WT.Var outerVar)
 
-discernBaseLowType :: BLT.BaseLowType -> App LT.LowType
-discernBaseLowType rlt = do
-  return $ LT.fromBaseLowType rlt
-
 discernMagic :: Axis -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
 discernMagic axis magic =
   case magic of
@@ -602,19 +595,19 @@ discernMagic axis magic =
       to' <- discern axis to
       e' <- discern axis e
       return $ M.WeakMagic $ M.Cast from' to' e'
-    RT.Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
-      lt' <- discernBaseLowType lt
+    RT.Store _ (_, (t, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
+      t' <- discern axis t
       value' <- discern axis value
       pointer' <- discern axis pointer
-      return $ M.WeakMagic $ M.Store lt' value' pointer'
-    RT.Load _ (_, (lt, _)) (_, (pointer, _)) _ -> do
-      lt' <- discernBaseLowType lt
+      return $ M.WeakMagic $ M.Store t' value' pointer'
+    RT.Load _ (_, (t, _)) (_, (pointer, _)) _ -> do
+      t' <- discern axis t
       pointer' <- discern axis pointer
-      return $ M.WeakMagic $ M.Load lt' pointer'
-    RT.Alloca _ (_, (lt, _)) (_, (size, _)) _ -> do
-      lt' <- discernBaseLowType lt
+      return $ M.WeakMagic $ M.Load t' pointer'
+    RT.Alloca _ (_, (t, _)) (_, (size, _)) _ -> do
+      t' <- discern axis t
       size' <- discern axis size
-      return $ M.WeakMagic $ M.Alloca lt' size'
+      return $ M.WeakMagic $ M.Alloca t' size'
     RT.External _ funcName _ args varArgsOrNone -> do
       let domList = []
       let cod = FCT.Void
@@ -628,9 +621,9 @@ discernMagic axis magic =
             t' <- discern axis t
             return (arg', t')
       return $ M.WeakMagic $ M.External domList cod funcName args' varArgs'
-    RT.Global _ (_, (name, _)) (_, (lt, _)) _ -> do
-      lt' <- discernBaseLowType lt
-      return $ M.WeakMagic $ M.Global name lt'
+    RT.Global _ (_, (name, _)) (_, (t, _)) _ -> do
+      t' <- discern axis t
+      return $ M.WeakMagic $ M.Global name t'
 
 modifyLetContinuation :: (Hint, RP.RawPattern) -> Loc -> N.IsNoetic -> RT.RawTerm -> App (RawIdent, RT.RawTerm)
 modifyLetContinuation pat endLoc isNoetic cont@(mCont :< _) =

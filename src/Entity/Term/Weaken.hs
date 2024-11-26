@@ -107,19 +107,19 @@ weakenMagic m magic = do
   case magic of
     M.Cast from to value ->
       M.WeakMagic $ M.Cast (weaken from) (weaken to) (weaken value)
-    M.Store lt value pointer ->
-      M.WeakMagic $ M.Store lt (weaken value) (weaken pointer)
-    M.Load lt pointer ->
-      M.WeakMagic $ M.Load lt (weaken pointer)
-    M.Alloca lt size ->
-      M.WeakMagic $ M.Alloca lt (weaken size)
+    M.Store t value pointer ->
+      M.WeakMagic $ M.Store (WT.fromBaseLowType m t) (weaken value) (weaken pointer)
+    M.Load t pointer ->
+      M.WeakMagic $ M.Load (WT.fromBaseLowType m t) (weaken pointer)
+    M.Alloca t size ->
+      M.WeakMagic $ M.Alloca (WT.fromBaseLowType m t) (weaken size)
     M.External domList cod extFunName args varArgs -> do
       let domList' = map (WT.fromBaseLowType m) domList
       let cod' = fmap (WT.fromBaseLowType m) cod
       let varArgs' = map (bimap weaken (WT.fromBaseLowType m)) varArgs
       M.WeakMagic $ M.External domList' cod' extFunName (fmap weaken args) varArgs'
-    M.Global name lt ->
-      M.WeakMagic $ M.Global name lt
+    M.Global name t ->
+      M.WeakMagic $ M.Global name (WT.fromBaseLowType m t)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =

@@ -14,13 +14,13 @@ import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Control.Monad
 import Entity.ArgNum qualified as AN
+import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.Comp qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.EnumCase qualified as EC
 import Entity.Ident
-import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
 import Scene.Clarify.Linearize
@@ -177,7 +177,7 @@ sigmaData resourceHandler dataInfo arg = do
       enumElim <- getEnumElim [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $
-          C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal localName)))) enumElim
+          C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal localName)))) enumElim
 
 sigmaBinderT :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
 sigmaBinderT xts v = do

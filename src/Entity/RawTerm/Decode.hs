@@ -17,7 +17,6 @@ where
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Entity.BaseLowType.Decode qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.C.Decode qualified as C
@@ -181,7 +180,7 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic cast",
               SE.decode $ toDoc <$> args
             ]
-        Store c1 lt value pointer mc -> do
+        Store c1 t value pointer mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic store",
               SE.decode $
@@ -189,12 +188,12 @@ toDoc term =
                   SE.fromListWithComment
                     (Just SE.Paren)
                     SE.Comma
-                    [ RT.mapEL BLT.decode lt,
+                    [ RT.mapEL toDoc t,
                       RT.mapEL toDoc value,
                       RT.mapEL toDoc pointer
                     ]
             ]
-        Load c1 lt pointer mc -> do
+        Load c1 t pointer mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic load",
               SE.decode $
@@ -202,11 +201,11 @@ toDoc term =
                   SE.fromListWithComment
                     (Just SE.Paren)
                     SE.Comma
-                    [ RT.mapEL BLT.decode lt,
+                    [ RT.mapEL toDoc t,
                       RT.mapEL toDoc pointer
                     ]
             ]
-        Alloca c1 lt size mc -> do
+        Alloca c1 t size mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic alloca",
               SE.decode $
@@ -214,7 +213,7 @@ toDoc term =
                   SE.fromListWithComment
                     (Just SE.Paren)
                     SE.Comma
-                    [ RT.mapEL BLT.decode lt,
+                    [ RT.mapEL toDoc t,
                       RT.mapEL toDoc size
                     ]
             ]
@@ -232,7 +231,7 @@ toDoc term =
                   PI.inject $ attachComment c2 args',
                   PI.inject $ attachComment c3 $ SE.decode $ fmap varArgToDoc varArgs
                 ]
-        Global c1 name lt mc -> do
+        Global c1 name t mc -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic global",
               SE.decode $
@@ -241,7 +240,7 @@ toDoc term =
                     (Just SE.Paren)
                     SE.Comma
                     [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
-                      RT.mapEL BLT.decode lt
+                      RT.mapEL toDoc t
                     ]
             ]
     _ :< Hole {} ->

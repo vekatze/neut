@@ -312,8 +312,7 @@ infer axis term =
           (size', sizeType) <- infer axis size
           intType <- getIntType m
           insConstraintEnv intType sizeType
-          resultType <- newHole m (varEnv axis)
-          return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), resultType)
+          return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), m :< WT.Prim (WP.Type PT.Pointer))
         M.External _ _ funcName args varArgs -> do
           (domList, cod) <- Decl.lookupWeakDeclEnv m (DN.Ext funcName)
           ensureArityCorrectness term (length domList) (length args)

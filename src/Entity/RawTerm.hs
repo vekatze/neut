@@ -31,7 +31,6 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as Annot
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
-import Entity.BaseLowType qualified as BLT
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.DefiniteDescription qualified as DD
@@ -214,11 +213,11 @@ type VarArg =
 
 data RawMagic
   = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Store C (EL BLT.BaseLowType) (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Load C (EL BLT.BaseLowType) (EL RawTerm) (Maybe C)
-  | Alloca C (EL BLT.BaseLowType) (EL RawTerm) (Maybe C)
+  | Store C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | Load C (EL RawTerm) (EL RawTerm) (Maybe C)
+  | Alloca C (EL RawTerm) (EL RawTerm) (Maybe C)
   | External C EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
-  | Global C (EL EN.ExternalName) (EL BLT.BaseLowType) (Maybe C)
+  | Global C (EL EN.ExternalName) (EL RawTerm) (Maybe C)
 
 -- elem
 type EL a =

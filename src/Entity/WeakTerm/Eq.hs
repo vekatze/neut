@@ -223,16 +223,21 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
       let b2 = eq to1 to2
       let b3 = eq e1 e2
       b1 && b2 && b3
-  | M.Store lt1 value1 pointer1 <- m1,
-    M.Store lt2 value2 pointer2 <- m2 = do
-      let b1 = lt1 == lt2
+  | M.Store t1 value1 pointer1 <- m1,
+    M.Store t2 value2 pointer2 <- m2 = do
+      let b1 = eq t1 t2
       let b2 = eq value1 value2
       let b3 = eq pointer1 pointer2
       b1 && b2 && b3
-  | M.Load lt1 pointer1 <- m1,
-    M.Load lt2 pointer2 <- m2 = do
-      let b1 = lt1 == lt2
+  | M.Load t1 pointer1 <- m1,
+    M.Load t2 pointer2 <- m2 = do
+      let b1 = eq t1 t2
       let b2 = eq pointer1 pointer2
+      b1 && b2
+  | M.Alloca t1 size1 <- m1,
+    M.Alloca t2 size2 <- m2 = do
+      let b1 = eq t1 t2
+      let b2 = eq size1 size2
       b1 && b2
   | M.External domList1 cod1 funcName1 args1 varArgs1 <- m1,
     M.External domList2 cod2 funcName2 args2 varArgs2 <- m2,
@@ -248,10 +253,10 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
       let b5 = all (uncurry eq) $ zip es1 es2
       let b6 = all (uncurry eq) $ zip ts1 ts2
       b1 && b2 && b3 && b4 && b5 && b6
-  | M.Global name1 lt1 <- m1,
-    M.Global name2 lt2 <- m2 = do
+  | M.Global name1 t1 <- m1,
+    M.Global name2 t2 <- m2 = do
       let b1 = name1 == name2
-      let b2 = lt1 == lt2
+      let b2 = eq t1 t2
       b1 && b2
   | otherwise =
       False
