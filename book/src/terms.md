@@ -2087,7 +2087,7 @@ define malloc-then-free(): unit {
 
   // allocate memory region (heap)
   let size: int = 10 in
-  let ptr: int = magic external malloc(size) in // 🌟 external
+  let ptr: pointer = magic external malloc(size) in // 🌟 external
 
   // store a value
   let value: int = 123 in
@@ -2120,7 +2120,7 @@ magic external func-name(e1, ..., en)
 magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
 ```
 
-A "lowtype" is one of the following:
+A "lowtype" is a term that reduces to one of the following:
 
 - `int1`, `int2`, ..., `int64`
 - `float16`, `float32`, `float64`
@@ -2152,28 +2152,31 @@ You can also use `int` and `float` as a lowtype. These are just syntax sugar for
 Γ ⊢ magic cast(t1, t2, e): t2
 
 
-Γ ⊢ stored-value: t1
-Γ ⊢ address: t2
-Γ ⊢ t3: type
-(value-type is a low-type)
+(t is a lowtype)
+Γ ⊢ stored-value: t
+Γ ⊢ address: pointer
 ------------------------------------------------------
-Γ ⊢ magic store(value-type, stored-value, address): t3
+Γ ⊢ magic store(t, stored-value, address): unit
 
 
-Γ ⊢ address: t1
-Γ ⊢ t2: type
-(value-type is a low-type)
+(t is a lowtype)
+Γ ⊢ t: type
+Γ ⊢ address: pointer
 ------------------------------------------------------
-Γ ⊢ magic load(value-type, address): t2
+Γ ⊢ magic load(t, address): t
 
 
 Γ ⊢ e1: t1
 ...
 Γ ⊢ en: tn
 Γ ⊢ t: type
-(func-name is a foreign function)
+(t1 is a lowtype)
+...
+(tn is a lowtype)
+(t is a lowtype or void)
+(func is a foreign function)
 --------------------------------------------------
-Γ ⊢ magic external func-name(e1, ..., en): t
+Γ ⊢ magic external func(e1, ..., en): t
 
 
 Γ ⊢ e1: t1
@@ -2182,18 +2185,15 @@ You can also use `int` and `float` as a lowtype. These are just syntax sugar for
 Γ ⊢ e{n+1}: t{n+1}
 ...
 Γ ⊢ e{n+m}: t{n+m}
-(lt-1 is a low-type)
-...
-(lt-m is a low-type)
 Γ ⊢ t: type
-(func-name is a foreign function)
------------------------------------------------------------------------------
-Γ ⊢ magic external func-name(e1, ..., en)(e{n+1}: lt-1, ..., e{n+m}: lt-m): t
+(t1 is a lowtype)
+...
+(tm is a lowtype)
+(t is a lowtype or void)
+(func is a foreign function)
+---------------------------------------------------------------------------------
+Γ ⊢ magic external func(e1, ..., en)(e{n+1}: t{n+1}, ..., e{n+m}: t{n+m}): t
 ```
-
-### Note
-
-Except for `cast`, the result type of `magic` is unspecified. You may have to supply annotations.
 
 ## `introspect`
 

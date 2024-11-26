@@ -60,7 +60,7 @@ hljs.registerLanguage("neut", function (hljs) {
         begin: /letbox-T/,
       },
       { className: "type",
-        begin: /(?!-)(type|&|:<|thread|meta|[A-Z][a-z0-9A-Z-]*)/,
+        begin: /(?!-)(type|&|:<|thread|meta|pointer|void|rune|[A-Z][a-z0-9A-Z-]*)/,
       },
       {
         className: "string",
