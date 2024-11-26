@@ -358,7 +358,7 @@ elaborate' term =
       case annot of
         AN.Type t -> do
           t' <- elaborate' t
-          let message = "admitting `" <> toText (weaken t') <> "`"
+          let message = "Admitted: `" <> toText (weaken t') <> "`"
           let typeRemark = Remark.newRemark m remarkLevel message
           Remark.insertRemark typeRemark
           return e'
