@@ -472,7 +472,7 @@ discern axis term =
             ( m
                 :< RT.piElim
                   admit
-                  [t, m :< RT.StaticText textType ("admit: " <> T.pack (Hint.toString m) <> "\n")]
+                  [t, m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
             )
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
