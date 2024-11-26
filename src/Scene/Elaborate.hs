@@ -336,11 +336,12 @@ elaborate' term =
           to' <- elaborate' to
           value' <- elaborate' value
           return $ m :< TM.Magic (M.Cast from' to' value')
-        M.Store t value pointer -> do
+        M.Store t unit value pointer -> do
           t' <- strictify t
+          unit' <- elaborate' unit
           value' <- elaborate' value
           pointer' <- elaborate' pointer
-          return $ m :< TM.Magic (M.Store t' value' pointer')
+          return $ m :< TM.Magic (M.Store t' unit' value' pointer')
         M.Load t pointer -> do
           t' <- strictify t
           pointer' <- elaborate' pointer

@@ -9,7 +9,7 @@ import GHC.Generics qualified as G
 
 data Magic t a
   = Cast a a a
-  | Store t a a
+  | Store t a a a
   | Load t a
   | Alloca t a
   | External [t] (FCT.ForeignCodType t) EN.ExternalName [a] [(a, t)]
@@ -23,8 +23,8 @@ instance Functor (Magic BaseLowType) where
     case der of
       Cast from to value ->
         Cast (f from) (f to) (f value)
-      Store lt value pointer ->
-        Store lt (f value) (f pointer)
+      Store lt unit value pointer ->
+        Store lt (f unit) (f value) (f pointer)
       Load lt pointer ->
         Load lt (f pointer)
       Alloca lt size ->
@@ -40,8 +40,8 @@ instance Foldable (Magic BaseLowType) where
     case der of
       Cast from to value ->
         f from <> f to <> f value
-      Store _ value pointer ->
-        f value <> f pointer
+      Store _ unit value pointer ->
+        f unit <> f value <> f pointer
       Load _ pointer ->
         f pointer
       Alloca _ size ->
@@ -56,8 +56,8 @@ instance Traversable (Magic BaseLowType) where
     case der of
       Cast from to value ->
         Cast <$> f from <*> f to <*> f value
-      Store lt value pointer ->
-        Store lt <$> f value <*> f pointer
+      Store lt unit value pointer ->
+        Store lt <$> f unit <*> f value <*> f pointer
       Load lt pointer ->
         Load lt <$> f pointer
       Alloca lt size ->
@@ -76,8 +76,8 @@ instance Functor WeakMagic where
     case der of
       Cast from to value ->
         WeakMagic (Cast (f from) (f to) (f value))
-      Store t value pointer ->
-        WeakMagic (Store (f t) (f value) (f pointer))
+      Store t unit value pointer ->
+        WeakMagic (Store (f t) (f unit) (f value) (f pointer))
       Load t pointer ->
         WeakMagic (Load (f t) (f pointer))
       Alloca t size ->
@@ -95,8 +95,8 @@ instance Foldable WeakMagic where
     case der of
       Cast from to value ->
         f from <> f to <> f value
-      Store t value pointer ->
-        f t <> f value <> f pointer
+      Store t unit value pointer ->
+        f t <> f unit <> f value <> f pointer
       Load t pointer ->
         f t <> f pointer
       Alloca t size ->
@@ -119,11 +119,12 @@ instance Traversable WeakMagic where
         to' <- f to
         value' <- f value
         return $ WeakMagic $ Cast from' to' value'
-      Store t value pointer -> do
+      Store t unit value pointer -> do
         t' <- f t
+        unit' <- f unit
         value' <- f value
         pointer' <- f pointer
-        return $ WeakMagic $ Store t' value' pointer'
+        return $ WeakMagic $ Store t' unit' value' pointer'
       Load t pointer -> do
         t' <- f t
         pointer' <- f pointer

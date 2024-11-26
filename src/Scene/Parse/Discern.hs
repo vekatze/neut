@@ -422,7 +422,7 @@ discern axis term =
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do
-      magic' <- discernMagic axis magic
+      magic' <- discernMagic axis m magic
       return $ m :< WT.Magic magic'
     m :< RT.Annotation remarkLevel annot e -> do
       e' <- discern axis e
@@ -587,8 +587,8 @@ discernNoeticVarList xsOuter = do
     Tag.insertLocalVar mDef outerVar mOuter
     return ((mOuter, xInner, t), mDef :< WT.Var outerVar)
 
-discernMagic :: Axis -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
-discernMagic axis magic =
+discernMagic :: Axis -> Hint -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
+discernMagic axis m magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
       from' <- discern axis from
@@ -597,9 +597,10 @@ discernMagic axis magic =
       return $ M.WeakMagic $ M.Cast from' to' e'
     RT.Store _ (_, (t, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
       t' <- discern axis t
+      unit <- locatorToVarGlobal m coreUnit >>= discern axis
       value' <- discern axis value
       pointer' <- discern axis pointer
-      return $ M.WeakMagic $ M.Store t' value' pointer'
+      return $ M.WeakMagic $ M.Store t' unit value' pointer'
     RT.Load _ (_, (t, _)) (_, (pointer, _)) _ -> do
       t' <- discern axis t
       pointer' <- discern axis pointer

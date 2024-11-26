@@ -196,10 +196,11 @@ analyze axis term = do
           cs1 <- analyze axis to
           cs2 <- analyze axis value
           return $ cs0 ++ cs1 ++ cs2
-        M.Store _ e1 e2 -> do
-          cs1 <- analyze axis e1
-          cs2 <- analyze axis e2
-          return $ cs1 ++ cs2
+        M.Store _ unit e1 e2 -> do
+          cs1 <- analyze axis unit
+          cs2 <- analyze axis e1
+          cs3 <- analyze axis e2
+          return $ cs1 ++ cs2 ++ cs3
         M.Load _ e -> do
           analyze axis e
         M.Alloca _ size -> do

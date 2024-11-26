@@ -126,10 +126,11 @@ distinguishPrimitive z term =
           (vs2, to') <- distinguishValue z to
           (vs3, value') <- distinguishValue z value
           return (vs1 <> vs2 <> vs3, C.Magic (M.Cast from' to' value'))
-        M.Store lt value pointer -> do
-          (vs1, value') <- distinguishValue z value
-          (vs2, pointer') <- distinguishValue z pointer
-          return (vs1 <> vs2, C.Magic (M.Store lt value' pointer'))
+        M.Store lt unit value pointer -> do
+          (vs1, unit') <- distinguishValue z unit
+          (vs2, value') <- distinguishValue z value
+          (vs3, pointer') <- distinguishValue z pointer
+          return (vs1 <> vs2 <> vs3, C.Magic (M.Store lt unit' value' pointer'))
         M.Load lt pointer -> do
           (vs, pointer') <- distinguishValue z pointer
           return (vs, C.Magic (M.Load lt pointer'))

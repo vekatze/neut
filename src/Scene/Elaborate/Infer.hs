@@ -308,6 +308,19 @@ infer axis term =
           (value', t) <- infer axis value
           insConstraintEnv from' t
           return (m :< WT.Magic (M.WeakMagic $ M.Cast from' to' value'), m :< toInner)
+        M.Store t unit value pointer -> do
+          t' <- inferType axis t
+          unit' <- inferType axis unit
+          (value', tValue) <- infer axis value
+          (pointer', tPointer) <- infer axis pointer
+          insConstraintEnv t' tValue
+          insConstraintEnv (m :< WT.Prim (WP.Type PT.Pointer)) tPointer
+          return (m :< WT.Magic (M.WeakMagic $ M.Store t' unit' value' pointer'), unit')
+        M.Load t pointer -> do
+          t' <- inferType axis t
+          (pointer', tPointer) <- infer axis pointer
+          insConstraintEnv (m :< WT.Prim (WP.Type PT.Pointer)) tPointer
+          return (m :< WT.Magic (M.WeakMagic $ M.Load t' pointer'), t')
         M.Alloca lt size -> do
           (size', sizeType) <- infer axis size
           intType <- getIntType m
@@ -330,10 +343,9 @@ infer axis term =
             FCT.Void -> do
               let voidType = m :< WT.Void
               return (m :< WT.Magic (M.WeakMagic $ M.External domList FCT.Void funcName args' varArgs'), voidType)
-        _ -> do
-          magic' <- mapM (infer axis >=> return . fst) (M.WeakMagic magic)
-          resultType <- newHole m (varEnv axis)
-          return (m :< WT.Magic magic', resultType)
+        M.Global name t -> do
+          t' <- inferType axis t
+          return (m :< WT.Magic (M.WeakMagic $ M.Global name t'), t')
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer axis e
       case annot of

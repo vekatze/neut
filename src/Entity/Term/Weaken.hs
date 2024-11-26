@@ -107,8 +107,8 @@ weakenMagic m magic = do
   case magic of
     M.Cast from to value ->
       M.WeakMagic $ M.Cast (weaken from) (weaken to) (weaken value)
-    M.Store t value pointer ->
-      M.WeakMagic $ M.Store (WT.fromBaseLowType m t) (weaken value) (weaken pointer)
+    M.Store t unit value pointer ->
+      M.WeakMagic $ M.Store (WT.fromBaseLowType m t) (weaken unit) (weaken value) (weaken pointer)
     M.Load t pointer ->
       M.WeakMagic $ M.Load (WT.fromBaseLowType m t) (weaken pointer)
     M.Alloca t size ->

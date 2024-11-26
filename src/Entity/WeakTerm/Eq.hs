@@ -223,12 +223,13 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
       let b2 = eq to1 to2
       let b3 = eq e1 e2
       b1 && b2 && b3
-  | M.Store t1 value1 pointer1 <- m1,
-    M.Store t2 value2 pointer2 <- m2 = do
+  | M.Store t1 unit1 value1 pointer1 <- m1,
+    M.Store t2 unit2 value2 pointer2 <- m2 = do
       let b1 = eq t1 t2
-      let b2 = eq value1 value2
-      let b3 = eq pointer1 pointer2
-      b1 && b2 && b3
+      let b2 = eq unit1 unit2
+      let b3 = eq value1 value2
+      let b4 = eq pointer1 pointer2
+      b1 && b2 && b3 && b4
   | M.Load t1 pointer1 <- m1,
     M.Load t2 pointer2 <- m2 = do
       let b1 = eq t1 t2
