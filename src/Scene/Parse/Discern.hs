@@ -625,6 +625,9 @@ discernMagic axis m magic =
     RT.Global _ (_, (name, _)) (_, (t, _)) _ -> do
       t' <- discern axis t
       return $ M.WeakMagic $ M.Global name t'
+    RT.OpaqueValue _ (_, (e, _)) -> do
+      e' <- discern axis e
+      return $ M.WeakMagic $ M.OpaqueValue e'
 
 modifyLetContinuation :: (Hint, RP.RawPattern) -> Loc -> N.IsNoetic -> RT.RawTerm -> App (RawIdent, RT.RawTerm)
 modifyLetContinuation pat endLoc isNoetic cont@(mCont :< _) =

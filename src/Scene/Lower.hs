@@ -269,6 +269,8 @@ lowerCompPrimitive codeOp =
         M.Global name t -> do
           let t' = LT.fromBaseLowType t
           uncast (LC.VarExternal name) t'
+        M.OpaqueValue e ->
+          lowerValue e
 
 lowerCompPrimOp :: PrimOp -> [C.Value] -> Lower LC.Value
 lowerCompPrimOp op vs = do

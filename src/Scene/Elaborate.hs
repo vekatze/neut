@@ -356,6 +356,9 @@ elaborate' term =
         M.Global name t -> do
           t' <- strictify t
           return $ m :< TM.Magic (M.Global name t')
+        M.OpaqueValue e -> do
+          e' <- elaborate' e
+          return $ m :< TM.Magic (M.OpaqueValue e')
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' e
       case annot of

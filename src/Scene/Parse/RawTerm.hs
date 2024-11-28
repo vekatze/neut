@@ -428,6 +428,7 @@ rawTermMagic = do
       rawTermMagicLoad m c,
       rawTermMagicAlloca m c,
       rawTermMagicExternal m c,
+      rawTermMagicOpaqueValue m c,
       rawTermMagicGlobal m c
     ]
 
@@ -506,6 +507,12 @@ rawTermMagicGlobal m c = do
     lt <- rawExpr
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
+
+rawTermMagicOpaqueValue :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicOpaqueValue m c0 = do
+  c1 <- keyword "opaque-value"
+  (c2, (e, c)) <- betweenBrace rawExpr
+  return (m :< RT.Magic c0 (RT.OpaqueValue c1 (c2, e)), c)
 
 rawTermMatch :: Parser (RT.RawTerm, C)
 rawTermMatch = do

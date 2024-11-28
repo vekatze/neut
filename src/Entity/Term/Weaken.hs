@@ -120,6 +120,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.External domList' cod' extFunName (fmap weaken args) varArgs'
     M.Global name t ->
       M.WeakMagic $ M.Global name (WT.fromBaseLowType m t)
+    M.OpaqueValue e ->
+      M.WeakMagic $ M.OpaqueValue (weaken e)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =

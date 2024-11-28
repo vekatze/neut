@@ -210,6 +210,8 @@ analyze axis term = do
           concat <$> mapM (analyze axis) args
         M.Global _ _ ->
           return []
+        M.OpaqueValue e ->
+          analyze axis e
     _ :< TM.Resource _ _ unitType discarder copier -> do
       cs1 <- analyze axis unitType
       cs2 <- analyze axis discarder

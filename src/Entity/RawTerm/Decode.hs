@@ -243,6 +243,11 @@ toDoc term =
                       RT.mapEL toDoc t
                     ]
             ]
+        OpaqueValue c1 (c2, (e, c3)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic opaque-value ",
+              decodeBrace True c2 e c3
+            ]
     _ :< Hole {} ->
       D.text "_"
     _ :< Annotation {} -> do

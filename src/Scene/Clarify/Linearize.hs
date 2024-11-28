@@ -143,3 +143,6 @@ distinguishPrimitive z term =
           return (concat vss ++ concat vss2, C.Magic (M.External domList cod extFunName args' (zip varArgs' varTypes)))
         M.Global name lt -> do
           return ([], C.Magic (M.Global name lt))
+        M.OpaqueValue e -> do
+          (vs, e') <- distinguishValue z e
+          return (vs, C.Magic (M.OpaqueValue e'))

@@ -218,6 +218,7 @@ data RawMagic
   | Alloca C (EL RawTerm) (EL RawTerm) (Maybe C)
   | External C EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
   | Global C (EL EN.ExternalName) (EL RawTerm) (Maybe C)
+  | OpaqueValue C (EL RawTerm)
 
 -- elem
 type EL a =

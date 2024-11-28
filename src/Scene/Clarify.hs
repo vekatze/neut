@@ -480,6 +480,8 @@ clarifyMagic tenv der =
           C.Primitive (C.Magic (M.External domList cod extFunName xsAsVars (zip ysAsVarArgs varTypes)))
     M.Global name lt -> do
       return $ C.Primitive (C.Magic (M.Global name lt))
+    M.OpaqueValue e ->
+      clarifyTerm tenv e
 
 clarifyLambda ::
   TM.TypeEnv ->

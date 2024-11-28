@@ -14,6 +14,7 @@ data Magic t a
   | Alloca t a
   | External [t] (FCT.ForeignCodType t) EN.ExternalName [a] [(a, t)]
   | Global EN.ExternalName t
+  | OpaqueValue a
   deriving (Show, Eq, G.Generic)
 
 instance (Binary a) => Binary (Magic BaseLowType a)
@@ -34,6 +35,8 @@ instance Functor (Magic BaseLowType) where
         External domList cod extFunName (fmap f args) varArgs'
       Global name lt ->
         Global name lt
+      OpaqueValue e ->
+        OpaqueValue (f e)
 
 instance Foldable (Magic BaseLowType) where
   foldMap f der =
@@ -50,6 +53,8 @@ instance Foldable (Magic BaseLowType) where
         foldMap f (args ++ map fst varArgs)
       Global {} ->
         mempty
+      OpaqueValue e ->
+        f e
 
 instance Traversable (Magic BaseLowType) where
   traverse f der =
@@ -68,6 +73,8 @@ instance Traversable (Magic BaseLowType) where
         External domList cod extFunName <$> traverse f args <*> varArgs'
       Global name lt ->
         pure $ Global name lt
+      OpaqueValue e ->
+        OpaqueValue <$> f e
 
 newtype WeakMagic a = WeakMagic (Magic a a)
 
@@ -89,6 +96,8 @@ instance Functor WeakMagic where
         WeakMagic (External domList' cod' extFunName (fmap f args) varArgs')
       Global name t ->
         WeakMagic (Global name (f t))
+      OpaqueValue e ->
+        WeakMagic (OpaqueValue (f e))
 
 instance Foldable WeakMagic where
   foldMap f (WeakMagic der) =
@@ -110,6 +119,8 @@ instance Foldable WeakMagic where
             foldMap f (domList ++ args ++ varArgs')
       Global _ t ->
         f t
+      OpaqueValue e ->
+        f e
 
 instance Traversable WeakMagic where
   traverse f (WeakMagic der) =
@@ -144,3 +155,6 @@ instance Traversable WeakMagic where
       Global name t -> do
         t' <- f t
         return $ WeakMagic $ Global name t'
+      OpaqueValue e -> do
+        e' <- f e
+        return $ WeakMagic $ OpaqueValue e'

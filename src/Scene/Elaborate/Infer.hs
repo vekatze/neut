@@ -346,6 +346,9 @@ infer axis term =
         M.Global name t -> do
           t' <- inferType axis t
           return (m :< WT.Magic (M.WeakMagic $ M.Global name t'), t')
+        M.OpaqueValue e -> do
+          (e', t) <- infer axis e
+          return (m :< WT.Magic (M.WeakMagic $ M.OpaqueValue e'), t)
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer axis e
       case annot of
