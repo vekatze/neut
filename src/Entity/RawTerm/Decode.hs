@@ -8,6 +8,7 @@ module Entity.RawTerm.Decode
     decodeArgs,
     decodeArgs',
     decodeDef,
+    decodeImpParams,
     attachComment,
     decodeBlock,
     decodeKeywordClause,
@@ -449,24 +450,37 @@ decGeist
       { name = (name, c0),
         impArgs = (impArgs, c1),
         expArgs = (expArgs, c2),
-        cod = (c3, cod)
+        cod = (c3, cod),
+        isConstLike
       }
     ) =
     case cod of
       _ :< RT.Hole {} ->
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
-            PI.horizontal $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs
+            PI.inject $ decodeImpParams impArgs,
+            PI.horizontal $ attachComment c1 $ decodeExpParams isConstLike expArgs
           ]
       _ ->
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
-            PI.inject $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
+            PI.inject $ decodeImpParams impArgs,
+            PI.inject $ attachComment c1 $ decodeExpParams isConstLike expArgs,
             PI.horizontal $ attachComment c2 $ D.text ":",
             PI.horizontal $ attachComment c3 $ toDoc cod
           ]
+
+decodeImpParams :: SE.Series (RawBinder RawTerm) -> D.Doc
+decodeImpParams impParams =
+  if SE.isEmpty impParams
+    then D.Nil
+    else SE.decode $ fmap piIntroArgToDoc impParams
+
+decodeExpParams :: Bool -> SE.Series (RawBinder RawTerm) -> D.Doc
+decodeExpParams isConstLike expParams =
+  if isConstLike && SE.isEmpty expParams
+    then D.Nil
+    else SE.decode $ fmap piIntroArgToDoc expParams
 
 letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
 letArgToDoc (m, x, c1, c2, t) = do

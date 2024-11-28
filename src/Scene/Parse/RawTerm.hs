@@ -337,19 +337,16 @@ parseDef :: Parser (a, C) -> Parser (RT.RawDef a, C)
 parseDef nameParser = do
   (geist, c1) <- parseGeist nameParser
   (c2, ((e, c3), loc, c)) <- betweenBrace' rawExpr
-  if RT.isConstLike geist
-    then lift $ Throw.raiseError (RT.loc geist) "The argument list is missing"
-    else
-      return
-        ( RT.RawDef
-            { geist,
-              leadingComment = c1 ++ c2,
-              body = e,
-              trailingComment = c3,
-              endLoc = loc
-            },
-          c
-        )
+  return
+    ( RT.RawDef
+        { geist,
+          leadingComment = c1 ++ c2,
+          body = e,
+          trailingComment = c3,
+          endLoc = loc
+        },
+      c
+    )
 
 parseGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeist nameParser = do
