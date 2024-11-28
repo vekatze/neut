@@ -888,7 +888,7 @@ data config {
   )
 }
 
-constant some-config {
+inline some-config {
   Config of {
     count = 10,
     colorize = True,
@@ -2077,27 +2077,34 @@ You can use `magic` to perform weird stuff. Using `magic` is an unsafe operation
 data descriptor {}
 
 // add an element to the empty type
-constant stdin: descriptor {
+inline stdin: descriptor {
   magic cast(int, descriptor, 0) // 🌟 cast
 }
 
 define malloc-then-free(): unit {
-  // allocate memory region (stack)
+  // allocates memory region (stack)
   let ptr = magic alloca(int64, 2) in // allocates (64 / 8) * 2 = 16 byte
 
-  // allocate memory region (heap)
+  // allocates memory region (heap)
   let size: int = 10 in
   let ptr: pointer = magic external malloc(size) in // 🌟 external
 
-  // store a value
+  // stores a value
   let value: int = 123 in
   magic store(int, value, ptr); // 🌟 store
 
-  // load and print a value
+  // loads and print a value
   let value = magic load(int, ptr) in // 🌟 load
   print-int(value); // => 123
 
-  // free the pointer and return
+  // tells the compiler to treat the content of {..} as a value
+  let v =
+    magic opaque-value {
+      get-some-c-constant-using-FFI()
+    }
+  in
+
+  // frees the pointer and return
   magic external free(ptr); // 🌟 external
   Unit
 }
@@ -2114,6 +2121,8 @@ magic store(lowtype, stored-value, address)
 magic load(lowtype, address)
 
 magic alloca(lowtype, num-of-elems)
+
+magic opaque-value { e }
 
 magic external func-name(e1, ..., en)
 
@@ -2137,6 +2146,8 @@ You can also use `int` and `float` as a lowtype. These are just syntax sugar for
 `magic load(lowtype, address)` loads a value from `address`. This is the same as `load` [in LLVM](https://llvm.org/docs/LangRef.html#load-instruction).
 
 `magic alloca(lowtype, num-of-elems)` allocates memory region on the stack frame. This is the same as `alloca` [in LLVM](https://llvm.org/docs/LangRef.html#alloca-instruction).
+
+`magic opaque-value { e }` tells the compiler to treat the term `e` as a value. You may want to use this in combination with `define` or `inline` that don't have any explicit arguments.
 
 `magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 
@@ -2164,6 +2175,10 @@ You can also use `int` and `float` as a lowtype. These are just syntax sugar for
 Γ ⊢ address: pointer
 ------------------------------------------------------
 Γ ⊢ magic load(t, address): t
+
+Γ ⊢ e:t
+------------------------------------------------------
+Γ ⊢ magic opaque-value { e }: t
 
 
 Γ ⊢ e1: t1
@@ -2658,7 +2673,7 @@ import {
 }
 
 // create a record of functions
-constant intdict: Dict.trope(int) {
+inline intdict: Dict.trope(int) {
   // ... whatever ...
 }
 

@@ -5,7 +5,6 @@
 - [import](#import)
 - [define](#define)
 - [inline](#inline)
-- [constant](#constant)
 - [data](#data)
 - [resource](#resource)
 - [nominal](#nominal)
@@ -155,6 +154,49 @@ define use-func-with-implicit-arg(): int {
 }
 ```
 
+You can also use `define` without any explicit arguments:
+
+```neut
+define foo: int {
+  10
+}
+
+define empty-list<a>: list(a) {
+  Nil
+}
+
+define use-constants(): list(int) {
+  let x = foo in
+  empty-list
+}
+```
+
+The above code is translated into the following during compile time:
+
+```neut
+define foo(): int {
+  10
+}
+
+define empty-list<a>(): list(a) {
+  Nil
+}
+
+define use-constants(): list(int) {
+  let x = foo() in
+  empty-list()
+}
+```
+
+The compiler tries to reduce the body of a `define` into a value at compile time if the `define` doesn't have any explicit arguments. The compiler reports an error if it can't get a value. For example, the following should result in an error:
+
+```neut
+define bar: int {
+  print("hello");
+  123
+}
+```
+
 A function with the same name can't be defined in the same file.
 
 All the tail-recursions in Neut are optimized into loops (thanks to geniuses in the LLVM team).
@@ -209,39 +251,46 @@ define use-inline-foo(): int {
 }
 ```
 
-## `constant`
-
-`constant` defines a constant. It should look like the following:
+You can also use `inline` without any explicit arguments:
 
 ```neut
-constant some-number: int {
-  123
+inline foo: int {
+  10
+}
+
+inline empty-list<a>: list(a) {
+  Nil
+}
+
+define use-constants(): list(int) {
+  let x = foo in
+  empty-list
 }
 ```
 
-The compiler tries to reduce the body of a constant at compile time. The compiler reports an error if it can't reduce the body into a value. For example, the following should raise an error:
+The above code is translated into the following during compile time:
 
 ```neut
-constant some-number: int {
+inline foo(): int {
+  10
+}
+
+inline empty-list<a>(): list(a) {
+  Nil
+}
+
+define use-constants(): list(int) {
+  let x = foo() in
+  empty-list()
+}
+```
+
+The compiler tries to reduce the body of an `inline` into a value at compile time if the `inline` doesn't have any explicit arguments. The compiler reports an error if it can't get a value. For example, the following should result in an error:
+
+```neut
+inline bar: int {
   print("hello");
   123
-}
-```
-
-The compiler can't reduce `print("hello"); 123` into a value, so it raises an error.
-
-You can use constants just like ordinary variables:
-
-```neut
-// define a constant
-constant some-number: int {
-  123
-}
-
-define use-constant(): int {
-  // ... and use it
-  print-int(some-number);
-  456
 }
 ```
 
@@ -463,7 +512,7 @@ foreign {
 Here, the definition of `c-int` is as follows:
 
 ```neut
-constant _c-int: type {
+inline _c-int: type {
   introspect architecture {
   | amd64 =>
     int32
