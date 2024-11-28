@@ -38,10 +38,6 @@ weakenStmt stmt = do
       let codType' = weaken codType
       let e' = weaken e
       WeakStmtDefine isConstLike stmtKind' m name impArgs' expArgs' codType' e'
-    StmtDefineConst (SavedHint m) dd t v -> do
-      let t' = weaken t
-      let v' = weaken v
-      WeakStmtDefineConst m dd t' v'
     StmtForeign foreignList ->
       WeakStmtForeign $ map weakenForeign foreignList
 

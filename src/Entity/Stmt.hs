@@ -49,7 +49,6 @@ data WeakStmt
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
-  | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtNominal Hint [G.Geist WT.WeakTerm]
   | WeakStmtForeign [F.WeakForeign]
 
@@ -66,7 +65,6 @@ data StmtF a
       [BinderF a]
       a
       a
-  | StmtDefineConst SavedHint DD.DefiniteDescription a a
   | StmtForeign [F.Foreign]
   deriving (Generic)
 
@@ -90,10 +88,6 @@ compress stmt =
       let codType' = TM.compress codType
       let e' = TM.compress e
       StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
-    StmtDefineConst m dd t e -> do
-      let t' = TM.compress t
-      let e' = TM.compress e
-      StmtDefineConst m dd t' e'
     StmtForeign foreignList ->
       StmtForeign foreignList
 
@@ -107,10 +101,6 @@ extend stmt =
       let codType' = TM.extend codType
       let e' = TM.extend e
       StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
-    StmtDefineConst m dd t e -> do
-      let t' = TM.extend t
-      let e' = TM.extend e
-      StmtDefineConst m dd t' e'
     StmtForeign foreignList ->
       StmtForeign foreignList
 
@@ -123,8 +113,6 @@ getStmtName' stmt =
   case stmt of
     StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
       return (m, name)
-    StmtDefineConst (SavedHint m) name _ _ ->
-      return (m, name)
     StmtForeign _ ->
       Nothing
 
@@ -136,8 +124,6 @@ getWeakStmtName' :: WeakStmt -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName' stmt =
   case stmt of
     WeakStmtDefine _ _ m name _ _ _ _ ->
-      [(m, name)]
-    WeakStmtDefineConst m name _ _ ->
       [(m, name)]
     WeakStmtNominal {} ->
       []

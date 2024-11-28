@@ -49,7 +49,6 @@ import Entity.PrimValue qualified as PV
 import Entity.Rune qualified as RU
 import Entity.Stmt
 import Entity.StmtKind
-import Entity.StmtKind qualified as SK
 import Entity.Term qualified as TM
 import Entity.Term.Chain (nubFreeVariables)
 import Entity.Term.Chain qualified as TM
@@ -133,8 +132,6 @@ clarifyStmt stmt =
         _ -> do
           e' <- clarifyStmtDefineBody tenv xts' e
           return $ C.Def f (toLowOpacity stmtKind) (map fst xts') e'
-    StmtDefineConst m dd t' v' ->
-      clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd [] [] t' v'
     StmtForeign foreignList ->
       return $ C.Foreign foreignList
 
