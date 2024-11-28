@@ -137,6 +137,9 @@ elaborateStmt stmt = do
       remarks2 <- ensureAffinity v'
       t'' <- TM.inline m t'
       v'' <- TM.inline m v'
+      unless (TM.isValue v'') $ do
+        Throw.raiseError m $
+          "Could not reduce this term into a constant, but got:\n" <> toText (weaken v'')
       let result = StmtDefineConst (SavedHint m) dd t'' v''
       insertStmt result
       return ([result], remarks1 ++ remarks2)
