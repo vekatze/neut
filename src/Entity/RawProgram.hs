@@ -37,8 +37,10 @@ data RawStmt
       C
       Hint
       (BN.BaseName, C)
+      (RT.Args RT.RawTerm)
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
+      Loc
   | RawStmtDefineData
       C
       Hint

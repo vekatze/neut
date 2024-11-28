@@ -204,6 +204,8 @@ parseConstant = do
   c1 <- P.keyword "constant"
   m <- P.getCurrentHint
   (constName, c2) <- P.baseName
+  impArgs <- parseImplicitArgs
   t <- parseDefInfoCod m
   (c3, (v, c4)) <- P.betweenBrace rawExpr
-  return (RawStmtDefineConst c1 m (constName, c2) t (c3, v), c4)
+  endLoc <- P.getCurrentLoc
+  return (RawStmtDefineConst c1 m (constName, c2) impArgs t (c3, v) endLoc, c4)

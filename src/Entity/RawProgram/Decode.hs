@@ -187,12 +187,13 @@ decStmt stmt =
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
-    RawStmtDefineConst c1 _ (name, c2) cod body -> do
+    RawStmtDefineConst c1 _ (name, c2) impArgs cod body _ -> do
       let constClause = RT.mapKeywordClause RT.toDoc (cod, body)
       RT.attachComment (c1 ++ c2) $
         D.join
           [ D.text "constant ",
             D.text (BN.reify name),
+            RT.decodeArgs' impArgs,
             RT.decodeKeywordClause ":" constClause
           ]
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do

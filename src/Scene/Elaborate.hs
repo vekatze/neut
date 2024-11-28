@@ -127,6 +127,10 @@ elaborateStmt stmt = do
       remarks <- ensureAffinity $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
       e'' <- TM.inline m e'
       codType'' <- TM.inline m codType'
+      when isConstLike $ do
+        unless (TM.isValue e'') $ do
+          Throw.raiseError m $
+            "Could not reduce the body of this definition into a constant, but got:\n" <> toText (weaken e'')
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType'' e''
       insertStmt result
       return ([result], remarks)

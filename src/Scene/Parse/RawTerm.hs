@@ -8,6 +8,7 @@ module Scene.Parse.RawTerm
     parseGeist,
     parseDefInfoCod,
     typeWithoutIdent,
+    parseImplicitArgs,
   )
 where
 
