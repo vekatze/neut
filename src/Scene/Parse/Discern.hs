@@ -107,15 +107,6 @@ discernStmt mo stmt = do
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
       forM_ expArgs' Tag.insertBinder
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
-    RawStmtDefineConst _ m (name, _) impArgs (_, (t, _)) (_, (v, _)) endLoc -> do
-      let dd = nameLifter name
-      registerTopLevelName nameLifter stmt
-      (impArgs', nenv) <- discernBinder (emptyAxis mo 0) (RT.extractArgs impArgs) endLoc
-      t' <- discern nenv t
-      v' <- discern nenv v
-      Tag.insertGlobalVar m dd True m
-      TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefine True (SK.Normal O.Clear) m dd impArgs' [] t' v']
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       stmtList <- defineData m dd args (SE.extract consInfo) loc
       discernStmtList mo stmtList
@@ -174,9 +165,6 @@ registerTopLevelName nameLifter stmt =
       let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
       stmtKind' <- liftStmtKind stmtKind
       Global.registerStmtDefine isConstLike m stmtKind' functionName allArgNum expArgNames
-    RawStmtDefineConst _ m (name, _) impArgs _ _ _ -> do
-      let allArgNum = AN.fromInt $ length impArgs
-      Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) allArgNum []
     RawStmtNominal {} -> do
       return ()
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do

@@ -61,7 +61,6 @@ parseStmt = do
     [ parseDefine,
       parseData,
       parseInline,
-      parseConstant,
       parseNominal,
       parseResource,
       parseForeign
@@ -198,14 +197,3 @@ parseResource = do
       return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
     _ ->
       failure Nothing (S.fromList [asLabel "discarder and copier"])
-
-parseConstant :: P.Parser (RawStmt, C)
-parseConstant = do
-  c1 <- P.keyword "constant"
-  m <- P.getCurrentHint
-  (constName, c2) <- P.baseName
-  impArgs <- parseImplicitArgs
-  t <- parseDefInfoCod m
-  (c3, (v, c4)) <- P.betweenBrace rawExpr
-  endLoc <- P.getCurrentLoc
-  return (RawStmtDefineConst c1 m (constName, c2) impArgs t (c3, v) endLoc, c4)
