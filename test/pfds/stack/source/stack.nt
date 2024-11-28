@@ -27,7 +27,7 @@ define is-empty(a: type, xs: &stack(a)): bool {
 define head(a: type, xs: &stack(a)): ?&a {
   case xs {
   | Nil =>
-    none()
+    none
   | Cons(a, _) =>
     Right(a)
   }
@@ -36,7 +36,7 @@ define head(a: type, xs: &stack(a)): ?&a {
 define tail(a: type, xs: &stack(a)): ?&stack(a) {
   case xs {
   | Nil =>
-    none()
+    none
   | Cons(_, rest) =>
     Right(rest)
   }

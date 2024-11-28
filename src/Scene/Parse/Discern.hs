@@ -107,14 +107,6 @@ discernStmt mo stmt = do
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
       forM_ expArgs' Tag.insertBinder
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
-    RawStmtDefineConst _ m (name, _) (_, (t, _)) (_, (v, _)) -> do
-      let dd = nameLifter name
-      registerTopLevelName nameLifter stmt
-      t' <- discern (emptyAxis mo 0) t
-      v' <- discern (emptyAxis mo 0) v
-      Tag.insertGlobalVar m dd True m
-      TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefineConst m dd t' v']
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       stmtList <- defineData m dd args (SE.extract consInfo) loc
       discernStmtList mo stmtList
@@ -125,7 +117,7 @@ discernStmt mo stmt = do
       e' <- discern (emptyAxis mo 0) $ m :< RT.Resource dd [] (discarder, []) (copier, [])
       Tag.insertGlobalVar m dd True m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefineConst m dd t' e']
+      return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
     RawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
         Global.registerGeist geist
@@ -173,8 +165,6 @@ registerTopLevelName nameLifter stmt =
       let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
       stmtKind' <- liftStmtKind stmtKind
       Global.registerStmtDefine isConstLike m stmtKind' functionName allArgNum expArgNames
-    RawStmtDefineConst _ m (name, _) _ _ -> do
-      Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
     RawStmtNominal {} -> do
       return ()
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
@@ -625,6 +615,9 @@ discernMagic axis m magic =
     RT.Global _ (_, (name, _)) (_, (t, _)) _ -> do
       t' <- discern axis t
       return $ M.WeakMagic $ M.Global name t'
+    RT.OpaqueValue _ (_, (e, _)) -> do
+      e' <- discern axis e
+      return $ M.WeakMagic $ M.OpaqueValue e'
 
 modifyLetContinuation :: (Hint, RP.RawPattern) -> Loc -> N.IsNoetic -> RT.RawTerm -> App (RawIdent, RT.RawTerm)
 modifyLetContinuation pat endLoc isNoetic cont@(mCont :< _) =

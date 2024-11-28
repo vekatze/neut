@@ -21,11 +21,9 @@ import Entity.Cache qualified as Cache
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident.Reify
-import Entity.Opacity qualified as O
 import Entity.RawProgram
 import Entity.Source qualified as Source
 import Entity.Stmt
-import Entity.StmtKind qualified as SK
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
 import Scene.Parse.Import
@@ -59,8 +57,6 @@ parseCachedStmtList stmtList = do
         let expArgNames = map (\(_, x, _) -> toText x) expArgs
         let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
         Global.registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames
-      StmtDefineConst (SavedHint m) dd _ _ ->
-        Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
       StmtForeign {} ->
         return ()
 

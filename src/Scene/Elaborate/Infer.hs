@@ -81,14 +81,6 @@ inferStmt stmt =
         unitType <- getUnitType _m
         insConstraintEnv (m :< WT.Pi [] [] unitType) (m :< WT.Pi impArgs' expArgs' codType')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgs' expArgs' codType' e'
-    WeakStmtDefineConst m dd t v -> do
-      axis1 <- createNewAxis
-      t' <- inferType axis1 t
-      insertType dd $ m :< WT.Pi [] [] t'
-      axis2 <- createNewAxis
-      (v', tv) <- infer axis2 v
-      insConstraintEnv t' tv
-      return $ WeakStmtDefineConst m dd t' v'
     WeakStmtNominal m geistList -> do
       geistList' <- mapM inferGeist geistList
       return $ WeakStmtNominal m geistList'
@@ -346,6 +338,9 @@ infer axis term =
         M.Global name t -> do
           t' <- inferType axis t
           return (m :< WT.Magic (M.WeakMagic $ M.Global name t'), t')
+        M.OpaqueValue e -> do
+          (e', t) <- infer axis e
+          return (m :< WT.Magic (M.WeakMagic $ M.OpaqueValue e'), t)
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer axis e
       case annot of

@@ -89,6 +89,8 @@ isValue term =
       True
     _ :< Void ->
       True
+    _ :< Magic (OpaqueValue _) ->
+      True
     _ ->
       False
 

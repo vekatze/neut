@@ -81,7 +81,7 @@ define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signatur
       function (h: &heap(a)) {
         case h {
         | Leaf =>
-          none()
+          none
         | Node(_, value, _, _) =>
           Right(*value)
         }
@@ -91,7 +91,7 @@ define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signatur
       function (h: heap(a)) {
         match h {
         | Leaf =>
-          none()
+          none
         | Node(_, _, left, right) =>
           Right(!merge(left, right))
         }

@@ -38,10 +38,6 @@ weakenStmt stmt = do
       let codType' = weaken codType
       let e' = weaken e
       WeakStmtDefine isConstLike stmtKind' m name impArgs' expArgs' codType' e'
-    StmtDefineConst (SavedHint m) dd t v -> do
-      let t' = weaken t
-      let v' = weaken v
-      WeakStmtDefineConst m dd t' v'
     StmtForeign foreignList ->
       WeakStmtForeign $ map weakenForeign foreignList
 
@@ -120,6 +116,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.External domList' cod' extFunName (fmap weaken args) varArgs'
     M.Global name t ->
       M.WeakMagic $ M.Global name (WT.fromBaseLowType m t)
+    M.OpaqueValue e ->
+      M.WeakMagic $ M.OpaqueValue (weaken e)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =

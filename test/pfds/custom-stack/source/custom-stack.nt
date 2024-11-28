@@ -29,7 +29,7 @@ define is-empty(a: type, xs: &custom-stack(a)): bool {
 define head(a: type, xs: &custom-stack(a)): ?&pair(a, a) {
   case xs {
   | Nil =>
-    none()
+    none
   | Cons(a, _) =>
     Right(a)
   }
@@ -38,7 +38,7 @@ define head(a: type, xs: &custom-stack(a)): ?&pair(a, a) {
 define tail(a: type, xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
   | Nil =>
-    none()
+    none
   | Cons(_, rest) =>
     Right(rest)
   }

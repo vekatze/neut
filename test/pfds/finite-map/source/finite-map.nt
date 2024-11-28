@@ -39,7 +39,7 @@ define make-finite-map(a: type, b: type, !compare: (a, a) -> ordering): finite-m
       define lookup(!key: a, haystack: &finite-map(a, b)): ?b {
         case haystack {
         | Leaf =>
-          none()
+          none
         | Node(left, k, v, right) =>
           match !compare(!key, *k) {
           | LT =>

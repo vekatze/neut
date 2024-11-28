@@ -29,8 +29,6 @@ _decode forceVertical series = do
         [ PI.inject prefix',
           PI.inject $ PI.arrange $ intercalate sep (elems series) isVertical (trailingComment series)
         ]
-    (Just Angle, True) ->
-      D.Nil
     (Just k, _) -> do
       let (open, close) = getContainerPair k
       let isVertical = forceVertical || hasOptionalSeparator series

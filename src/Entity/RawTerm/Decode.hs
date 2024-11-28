@@ -8,6 +8,7 @@ module Entity.RawTerm.Decode
     decodeArgs,
     decodeArgs',
     decodeDef,
+    decodeImpParams,
     attachComment,
     decodeBlock,
     decodeKeywordClause,
@@ -51,7 +52,7 @@ toDoc term =
       nameToDoc varOrLocator
     _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do
       PI.arrange
-        [ PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
+        [ PI.container $ decodeImpParams impArgs,
           PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
@@ -242,6 +243,11 @@ toDoc term =
                     [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
                       RT.mapEL toDoc t
                     ]
+            ]
+        OpaqueValue c1 (c2, (e, c3)) -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic opaque-value ",
+              decodeBrace True c2 e c3
             ]
     _ :< Hole {} ->
       D.text "_"
@@ -444,24 +450,37 @@ decGeist
       { name = (name, c0),
         impArgs = (impArgs, c1),
         expArgs = (expArgs, c2),
-        cod = (c3, cod)
+        cod = (c3, cod),
+        isConstLike
       }
     ) =
     case cod of
       _ :< RT.Hole {} ->
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
-            PI.horizontal $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs
+            PI.inject $ decodeImpParams impArgs,
+            PI.horizontal $ attachComment c1 $ decodeExpParams isConstLike expArgs
           ]
       _ ->
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
-            PI.inject $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
+            PI.inject $ decodeImpParams impArgs,
+            PI.inject $ attachComment c1 $ decodeExpParams isConstLike expArgs,
             PI.horizontal $ attachComment c2 $ D.text ":",
             PI.horizontal $ attachComment c3 $ toDoc cod
           ]
+
+decodeImpParams :: SE.Series (RawBinder RawTerm) -> D.Doc
+decodeImpParams impParams =
+  if SE.isEmpty impParams
+    then D.Nil
+    else SE.decode $ fmap piIntroArgToDoc impParams
+
+decodeExpParams :: Bool -> SE.Series (RawBinder RawTerm) -> D.Doc
+decodeExpParams isConstLike expParams =
+  if isConstLike && SE.isEmpty expParams
+    then D.Nil
+    else SE.decode $ fmap piIntroArgToDoc expParams
 
 letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
 letArgToDoc (m, x, c1, c2, t) = do

@@ -96,7 +96,7 @@ define find-min(a: type, !cmp: (a, a) -> ordering, h: &heap(a)): ?a {
   in
   case h {
   | Nil =>
-    none()
+    none
   | Cons(t, ts) =>
     let r = root(a, t) in
     Right(helper(r, ts))
@@ -106,7 +106,7 @@ define find-min(a: type, !cmp: (a, a) -> ordering, h: &heap(a)): ?a {
 define remove-min-tree(a: type, !cmp: (a, a) -> ordering, h: heap(a)): ?pair(tree(a), heap(a)) {
   match h {
   | Nil =>
-    none()
+    none
   | Cons(t, Nil) =>
     Right(Pair(t, Nil))
   | Cons(t, ts) =>

@@ -33,12 +33,6 @@ data RawStmt
       C
       (SK.RawStmtKind BN.BaseName)
       RT.TopDef
-  | RawStmtDefineConst
-      C
-      Hint
-      (BN.BaseName, C)
-      (C, (RT.RawTerm, C))
-      (C, (RT.RawTerm, C))
   | RawStmtDefineData
       C
       Hint

@@ -8,6 +8,7 @@ module Scene.Parse.RawTerm
     parseGeist,
     parseDefInfoCod,
     typeWithoutIdent,
+    parseImplicitArgs,
   )
 where
 
@@ -336,19 +337,16 @@ parseDef :: Parser (a, C) -> Parser (RT.RawDef a, C)
 parseDef nameParser = do
   (geist, c1) <- parseGeist nameParser
   (c2, ((e, c3), loc, c)) <- betweenBrace' rawExpr
-  if RT.isConstLike geist
-    then lift $ Throw.raiseError (RT.loc geist) "The argument list is missing"
-    else
-      return
-        ( RT.RawDef
-            { geist,
-              leadingComment = c1 ++ c2,
-              body = e,
-              trailingComment = c3,
-              endLoc = loc
-            },
-          c
-        )
+  return
+    ( RT.RawDef
+        { geist,
+          leadingComment = c1 ++ c2,
+          body = e,
+          trailingComment = c3,
+          endLoc = loc
+        },
+      c
+    )
 
 parseGeist :: Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeist nameParser = do
@@ -428,6 +426,7 @@ rawTermMagic = do
       rawTermMagicLoad m c,
       rawTermMagicAlloca m c,
       rawTermMagicExternal m c,
+      rawTermMagicOpaqueValue m c,
       rawTermMagicGlobal m c
     ]
 
@@ -506,6 +505,12 @@ rawTermMagicGlobal m c = do
     lt <- rawExpr
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
+
+rawTermMagicOpaqueValue :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicOpaqueValue m c0 = do
+  c1 <- keyword "opaque-value"
+  (c2, (e, c)) <- betweenBrace rawExpr
+  return (m :< RT.Magic c0 (RT.OpaqueValue c1 (c2, e)), c)
 
 rawTermMatch :: Parser (RT.RawTerm, C)
 rawTermMatch = do

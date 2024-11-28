@@ -259,6 +259,9 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
       let b1 = name1 == name2
       let b2 = eq t1 t2
       b1 && b2
+  | M.OpaqueValue e1 <- m1,
+    M.OpaqueValue e2 <- m2 = do
+      eq e1 e2
   | otherwise =
       False
 

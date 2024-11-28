@@ -9,7 +9,7 @@ import {
 }
 
 define make-big-dict(size: int): intmap(int) {
-  grow(IntMap.empty(), size, function (acc, _) {
+  grow(IntMap.empty, size, function (acc, _) {
     let key = random-int(1000000) in
     let val = random-int(1000000) in
     insert(acc, key, val)

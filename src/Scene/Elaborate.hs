@@ -43,7 +43,6 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.IsConstLike (IsConstLike)
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
-import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
@@ -127,19 +126,13 @@ elaborateStmt stmt = do
       remarks <- ensureAffinity $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
       e'' <- TM.inline m e'
       codType'' <- TM.inline m codType'
+      when isConstLike $ do
+        unless (TM.isValue e'') $ do
+          Throw.raiseError m $
+            "Could not reduce the body of this definition into a constant, but got:\n" <> toText (weaken e'')
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType'' e''
       insertStmt result
       return ([result], remarks)
-    WeakStmtDefineConst m dd t v -> do
-      t' <- elaborate' t
-      v' <- elaborate' v
-      remarks1 <- ensureAffinity t'
-      remarks2 <- ensureAffinity v'
-      t'' <- TM.inline m t'
-      v'' <- TM.inline m v'
-      let result = StmtDefineConst (SavedHint m) dd t'' v''
-      insertStmt result
-      return ([result], remarks1 ++ remarks2)
     WeakStmtNominal _ geistList -> do
       mapM_ elaborateGeist geistList
       return ([], [])
@@ -163,9 +156,6 @@ insertStmt stmt = do
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs t e -> do
       Type.insert f $ weaken $ m :< TM.Pi impArgs expArgs t
       Definition.insert (toOpacity stmtKind) f (impArgs ++ expArgs) e
-    StmtDefineConst (SavedHint m) dd t v -> do
-      Type.insert dd $ weaken $ m :< TM.Pi [] [] t
-      Definition.insert O.Clear dd [] v
     StmtForeign foreignList -> do
       forM_ foreignList $ \(F.Foreign m externalName domList cod) -> do
         activateForeign $ F.Foreign m externalName domList cod
@@ -177,8 +167,6 @@ insertWeakStmt stmt = do
   case stmt of
     WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
       WeakDefinition.insert (toOpacity stmtKind) m f impArgs expArgs codType e
-    WeakStmtDefineConst m dd codType v -> do
-      WeakDefinition.insert O.Clear m dd [] [] codType v
     WeakStmtNominal {} -> do
       return ()
     WeakStmtForeign foreignList ->
@@ -198,8 +186,6 @@ insertStmtKindInfo stmt = do
           DataDefinition.insert dataName dataArgs consInfoList
         DataIntro {} ->
           return ()
-    StmtDefineConst {} ->
-      return ()
     StmtForeign {} ->
       return ()
 
@@ -353,6 +339,9 @@ elaborate' term =
         M.Global name t -> do
           t' <- strictify t
           return $ m :< TM.Magic (M.Global name t')
+        M.OpaqueValue e -> do
+          e' <- elaborate' e
+          return $ m :< TM.Magic (M.OpaqueValue e')
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' e
       case annot of
