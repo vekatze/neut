@@ -52,7 +52,7 @@ toDoc term =
       nameToDoc varOrLocator
     _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do
       PI.arrange
-        [ PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
+        [ PI.container $ decodeImpParams impArgs,
           PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
