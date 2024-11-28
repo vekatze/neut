@@ -10,7 +10,7 @@ data heap(a) {
 define find-min(a: type, h: &heap(a)): ?a {
   case h {
   | Leaf =>
-    none()
+    none
   | Node(v, _) =>
     Right(*v)
   }
@@ -50,7 +50,7 @@ define merge-pairs(a: type, !cmp: (a, a) -> ordering, hs: list(heap(a))): heap(a
 define delete-min(a: type, cmp: (a, a) -> ordering, h: heap(a)): ?heap(a) {
   match h {
   | Leaf =>
-    none()
+    none
   | Node(_, hs) =>
     Right(merge-pairs(_, cmp, hs))
   }

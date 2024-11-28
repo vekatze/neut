@@ -8,12 +8,12 @@ import {
   core.text.io {print-int},
 }
 
-constant intdict: Dict.trope(int) {
+inline intdict: Dict.trope(int) {
   Dict.from-ord(core.int.ord.as-ord-N)
 }
 
 define make-big-dict(size: int): dictionary(int, int) {
-  grow(Dict.empty(), size, function (acc, _) {
+  grow(Dict.empty, size, function (acc, _) {
     let key = random-int(1000000) in
     let val = random-int(1000000) in
     intdict::insert(acc, key, val)

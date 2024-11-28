@@ -16,7 +16,7 @@ define head(a: type, q: &queue(a)): ?a {
   | Queue(Cons(x, _), _) =>
     Right(*x)
   | _ =>
-    none()
+    none
   }
 }
 
@@ -34,7 +34,7 @@ define tail(a: type, q: queue(a)): ?queue(a) {
   | Queue(Cons(_, rest), ys) =>
     Right(sanitize(_, Queue(rest, ys)))
   | _ =>
-    none()
+    none
   }
 }
 

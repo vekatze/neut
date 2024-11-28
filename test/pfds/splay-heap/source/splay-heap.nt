@@ -59,7 +59,7 @@ define insert(a: type, cmp: (a, a) -> ordering, !x: a, t: heap(a)): heap(a) {
 define find-min(a: type, t: &heap(a)): ?a {
   case t {
   | Leaf =>
-    none()
+    none
   | Node(Leaf, x, _) =>
     Right(*x)
   | Node(left, _, _) =>
@@ -70,7 +70,7 @@ define find-min(a: type, t: &heap(a)): ?a {
 define delete-min(a: type, t: heap(a)): ?heap(a) {
   match t {
   | Leaf =>
-    none()
+    none
   | Node(Leaf, _, right) =>
     Right(right)
   | Node(Node(Leaf, _, t12), y, t2) =>

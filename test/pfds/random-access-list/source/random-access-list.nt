@@ -53,7 +53,7 @@ define uncons-tree(a: type, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   let New(xs) = ts in
   match xs {
   | Nil =>
-    none()
+    none
   | Cons(DigitOne(y), Nil) =>
     Right(Pair(y, New([])))
   | Cons(DigitOne(y), rest) =>
@@ -61,11 +61,11 @@ define uncons-tree(a: type, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   | Cons(DigitZero, rest) =>
     match uncons-tree(_, New(rest)) {
     | Left(_) =>
-      none()
+      none
     | Right(Pair(new-tree, New(new-ts))) =>
       match new-tree {
       | Leaf(_) =>
-        none()
+        none
       | Node(_, t1, t2) =>
         Right(Pair(t1, New(Cons(DigitOne(t2), new-ts))))
       }
@@ -79,7 +79,7 @@ define lookup-tree(a: type, i: int, t: &tree(a)): ?a {
     if eq-int(i, 0) {
       Right(*v)
     } else {
-      none()
+      none
     }
   | Node(w, t1, t2) =>
     let w-div-2 = div-int(*w, 2) in
@@ -94,7 +94,7 @@ define lookup-tree(a: type, i: int, t: &tree(a)): ?a {
 define lookup-list(a: type, i: int, xs: &list(digit(a))): ?a {
   case xs {
   | [] =>
-    none()
+    none
   | Cons(DigitZero, rest) =>
     lookup-list(_, i, rest)
   | Cons(DigitOne(t), rest) =>
