@@ -27,27 +27,27 @@ import Entity.Target
 import Path
 import Path.IO
 
-saveCache :: Source.Source -> Cache.Cache -> App ()
-saveCache source cache = do
-  cachePath <- Path.getSourceCachePath source
+saveCache :: Target -> Source.Source -> Cache.Cache -> App ()
+saveCache t source cache = do
+  cachePath <- Path.getSourceCachePath t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) $ Cache.compress cache
 
-saveCompletionCache :: Source.Source -> Cache.CompletionCache -> App ()
-saveCompletionCache source cache = do
-  cachePath <- Path.getSourceCompletionCachePath source
+saveCompletionCache :: Target -> Source.Source -> Cache.CompletionCache -> App ()
+saveCompletionCache t source cache = do
+  cachePath <- Path.getSourceCompletionCachePath t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
-saveLocationCache :: Source.Source -> Cache.LocationCache -> App ()
-saveLocationCache source cache = do
-  cachePath <- Path.getSourceLocationCachePath source
+saveLocationCache :: Target -> Source.Source -> Cache.LocationCache -> App ()
+saveLocationCache t source cache = do
+  cachePath <- Path.getSourceLocationCachePath t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
-loadCache :: Source.Source -> App (Maybe Cache.Cache)
-loadCache source = do
-  cachePath <- Path.getSourceCachePath source
+loadCache :: Target -> Source.Source -> App (Maybe Cache.Cache)
+loadCache t source = do
+  cachePath <- Path.getSourceCachePath t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
@@ -93,9 +93,9 @@ loadCompletionCacheOptimistically cachePath = do
         Right content ->
           return $ Just content
 
-loadLocationCache :: Source.Source -> App (Maybe Cache.LocationCache)
-loadLocationCache source = do
-  cachePath <- getSourceLocationCachePath source
+loadLocationCache :: Target -> Source.Source -> App (Maybe Cache.LocationCache)
+loadLocationCache t source = do
+  cachePath <- getSourceLocationCachePath t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
@@ -127,9 +127,9 @@ isEntryPointCompilationSkippable baseModule target outputKindList = do
         then isEntryPointCompilationSkippable baseModule target rest
         else return False
 
-invalidate :: Source.Source -> App ()
-invalidate source = do
-  cachePath <- Path.getSourceCachePath source
+invalidate :: Target -> Source.Source -> App ()
+invalidate t source = do
+  cachePath <- Path.getSourceCachePath t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return ()

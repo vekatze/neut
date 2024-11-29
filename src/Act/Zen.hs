@@ -5,7 +5,6 @@ import Context.Env qualified as Env
 import Context.Path qualified as Path
 import Control.Monad
 import Data.Maybe
-import Entity.ClangOption qualified as CL
 import Entity.Config.Zen
 import Entity.Module (Module (moduleZenConfig))
 import Entity.OutputKind
@@ -22,9 +21,11 @@ zen cfg = do
   setup cfg
   path <- resolveFile' (filePathString cfg)
   mainModule <- Env.getMainModule
-  let zenConfig = Z.clangOption $ moduleZenConfig mainModule
   buildTarget (fromConfig cfg) mainModule $
-    Main (Zen path (CL.compileOption zenConfig) (CL.linkOption zenConfig))
+    Main $
+      Zen path $
+        Z.clangOption $
+          moduleZenConfig mainModule
 
 fromConfig :: Config -> Axis
 fromConfig cfg =
