@@ -2,7 +2,8 @@ module Context.Decl
   ( initialize,
     insDeclEnv,
     insDeclEnv',
-    lookupDeclEnv,
+    insPreDeclEnv,
+    lookupPreDeclEnv,
     getDeclEnv,
     member,
     insWeakDeclEnv,
@@ -19,6 +20,7 @@ import Data.HashMap.Strict qualified as Map
 import Entity.ArgNum qualified as AN
 import Entity.BaseLowType qualified as BLT
 import Entity.DeclarationName qualified as DN
+import Entity.ExternalName qualified as EN
 import Entity.Foreign qualified as F
 import Entity.ForeignCodType qualified as FCT
 import Entity.Hint
@@ -27,6 +29,7 @@ import Prelude hiding (lookup, read)
 
 initialize :: App ()
 initialize = do
+  writeRef' preDeclEnv Map.empty
   writeRef' declEnv Map.empty
   writeRef' weakDeclEnv Map.empty
   arch <- Env.getArch Nothing
@@ -39,6 +42,19 @@ getDeclEnv :: App DN.DeclEnv
 getDeclEnv =
   readRef' declEnv
 
+insPreDeclEnv :: EN.ExternalName -> Hint -> App ()
+insPreDeclEnv k m =
+  modifyRef' preDeclEnv $ Map.insert k m
+
+lookupPreDeclEnv :: Hint -> EN.ExternalName -> App Hint
+lookupPreDeclEnv m name = do
+  denv <- readRef' preDeclEnv
+  case Map.lookup name denv of
+    Just typeInfo ->
+      return typeInfo
+    Nothing -> do
+      Throw.raiseError m $ "Undeclared function: " <> EN.reify name
+
 insDeclEnv :: DN.DeclarationName -> AN.ArgNum -> App ()
 insDeclEnv k argNum =
   modifyRef' declEnv $ Map.insert k (BLT.toVoidPtrSeq argNum, FCT.Void)
@@ -46,15 +62,6 @@ insDeclEnv k argNum =
 insDeclEnv' :: DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> App ()
 insDeclEnv' k domList cod =
   modifyRef' declEnv $ Map.insert k (domList, cod)
-
-lookupDeclEnv :: Hint -> DN.DeclarationName -> App ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)
-lookupDeclEnv m name = do
-  denv <- readRef' declEnv
-  case Map.lookup name denv of
-    Just typeInfo ->
-      return typeInfo
-    Nothing -> do
-      Throw.raiseError m $ "Undeclared function: " <> DN.reify name
 
 member :: DN.DeclarationName -> App Bool
 member name = do

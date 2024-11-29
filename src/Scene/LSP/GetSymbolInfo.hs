@@ -46,6 +46,8 @@ _getSymbolInfo locType = do
           return $ toText cod
         _ ->
           return $ toText t
+    LT.Foreign {} -> do
+      liftMaybe Nothing
 
 getSymbolLoc :: LT.LocType -> Maybe LT.SymbolName
 getSymbolLoc locType =

@@ -2,6 +2,7 @@ module Context.Tag
   ( initialize,
     insertLocalVar,
     insertGlobalVar,
+    insertExternalName,
     insertLocator,
     insertFileLoc,
     insertBinder,
@@ -15,6 +16,7 @@ import Control.Monad (unless, when)
 import Data.Text qualified as T
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
+import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Ident
 import Entity.IsConstLike
@@ -40,6 +42,12 @@ insertGlobalVar :: Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> App 
 insertGlobalVar mUse dd isConstLike mDef = do
   let nameLength = T.length (DD.localLocator dd)
   let symbolLoc = LT.SymbolLoc (LT.Global dd isConstLike)
+  insert mUse symbolLoc nameLength mDef
+
+insertExternalName :: Hint -> EN.ExternalName -> Hint -> App ()
+insertExternalName mUse externalName mDef = do
+  let symbolLoc = LT.SymbolLoc (LT.Foreign externalName)
+  let nameLength = T.length $ EN.reify externalName
   insert mUse symbolLoc nameLength mDef
 
 insertLocator :: Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> App ()

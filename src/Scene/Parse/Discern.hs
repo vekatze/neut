@@ -1,6 +1,7 @@
 module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
+import Context.Decl qualified as Decl
 import Context.Env (getPlatform)
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
@@ -599,7 +600,9 @@ discernMagic axis m magic =
       t' <- discern axis t
       size' <- discern axis size
       return $ M.WeakMagic $ M.Alloca t' size'
-    RT.External _ funcName _ args varArgsOrNone -> do
+    RT.External _ mUse funcName _ args varArgsOrNone -> do
+      mDef <- Decl.lookupPreDeclEnv m funcName
+      Tag.insertExternalName mUse funcName mDef
       let domList = []
       let cod = FCT.Void
       args' <- mapM (discern axis) $ SE.extract args
