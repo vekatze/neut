@@ -26,6 +26,7 @@ I've been enjoying this language by myself and have written several libraries:
 - [rin](https://github.com/vekatze/rin) - An HTTP client over libcurl
 - [socket](https://github.com/vekatze/socket-nt) - A thin layer over network sockets
 - [sui](https://github.com/vekatze/sui) - An HTTP server
+- [text-builder](https://github.com/vekatze/text-builder) - Constructs texts efficiently
 - [time](https://github.com/vekatze/time-nt) - Provides time-related operations
 - [zonk](https://github.com/vekatze/zonk) - A parser combinator
 
