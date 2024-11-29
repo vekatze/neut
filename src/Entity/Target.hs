@@ -22,7 +22,7 @@ data TargetSummary = TargetSummary
 
 data MainTarget
   = Named T.Text TargetSummary
-  | Zen (Path Abs File) [T.Text] [T.Text]
+  | Zen (Path Abs File) CL.ClangOption
   deriving (Show, Eq, Generic)
 
 instance Hashable Target
@@ -33,7 +33,7 @@ instance Hashable MainTarget
 
 emptyZen :: Path Abs File -> MainTarget
 emptyZen path =
-  Zen path [] []
+  Zen path $ CL.ClangOption {compileOption = [], linkOption = []}
 
 getEntryPointName :: MainTarget -> BN.BaseName
 getEntryPointName target =
@@ -54,8 +54,8 @@ getCompileOption target =
       case c of
         Named _ targetSummary -> do
           map T.unpack $ CL.compileOption (clangOption targetSummary)
-        Zen _ compileOption _ ->
-          map T.unpack compileOption
+        Zen _ clangOption ->
+          map T.unpack $ CL.compileOption clangOption
 
 getLinkOption :: Target -> [String]
 getLinkOption target =
@@ -68,5 +68,5 @@ getLinkOption target =
       case c of
         Named _ targetSummary ->
           map T.unpack $ CL.linkOption (clangOption targetSummary)
-        Zen _ _ linkOption ->
-          map T.unpack linkOption
+        Zen _ clangOption ->
+          map T.unpack $ CL.linkOption clangOption

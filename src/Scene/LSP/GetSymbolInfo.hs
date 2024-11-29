@@ -10,6 +10,7 @@ import Control.Monad.Trans
 import Data.Text qualified as T
 import Entity.LocationTree qualified as LT
 import Entity.Source (Source (sourceFilePath, sourceModule))
+import Entity.Target (Target (Peripheral))
 import Entity.Term.Weaken (weaken)
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText
@@ -26,7 +27,7 @@ getSymbolInfo ::
   AppM T.Text
 getSymbolInfo params = do
   source <- LSP.getSource params
-  lift $ invalidate source
+  lift $ invalidate Peripheral source
   lift $ Check.checkSingle (sourceModule source) (sourceFilePath source)
   ((locType, _), _) <- LSP.findDefinition params
   _getSymbolInfo locType

@@ -45,12 +45,12 @@ _formatSource shouldMinimizeImports path content = do
     then do
       (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen path)
       contentSeq <- forConcurrently dependenceSeq $ \source -> do
-        cacheOrContent <- Load.load source
+        cacheOrContent <- Load.load Peripheral source
         return (source, cacheOrContent)
       let contentSeq' = _replaceLast content contentSeq
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
         Initialize.initializeForSource source
-        void $ Parse.parse source cacheOrContent
+        void $ Parse.parse Peripheral source cacheOrContent
       unusedGlobalLocators <- UnusedGlobalLocator.get
       unusedLocalLocators <- UnusedLocalLocator.get
       program <- P.parseFile True Parse.parseProgram path content

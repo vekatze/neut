@@ -8,6 +8,7 @@ import Control.Monad.Trans
 import Entity.Cache qualified as Cache
 import Entity.LocationTree qualified as LT
 import Entity.Source
+import Entity.Target (Target (Peripheral))
 import Scene.Unravel
 
 getLocationTree ::
@@ -15,10 +16,10 @@ getLocationTree ::
   AppM LT.LocationTree
 getLocationTree src = do
   lift Unravel.initialize
-  resultOrError <- lift $ Throw.execute $ unravel' src
+  resultOrError <- lift $ Throw.execute $ unravel' Peripheral src
   case resultOrError of
     Left _ ->
       liftMaybe Nothing
     Right _ -> do
-      cache <- lift (Cache.loadLocationCache src) >>= liftMaybe
+      cache <- lift (Cache.loadLocationCache Peripheral src) >>= liftMaybe
       return $ Cache.locationTree cache

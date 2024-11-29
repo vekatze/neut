@@ -40,11 +40,11 @@ _check target baseModule = do
     Initialize.initializeForTarget
     (_, dependenceSeq) <- Unravel.unravel baseModule target
     contentSeq <- forConcurrently dependenceSeq $ \source -> do
-      cacheOrContent <- Load.load source
+      cacheOrContent <- Load.load target source
       return (source, cacheOrContent)
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      void $ Parse.parse source cacheOrContent >>= Elaborate.elaborate
+      void $ Parse.parse target source cacheOrContent >>= Elaborate.elaborate target
 
 checkAll :: App [Remark]
 checkAll = do

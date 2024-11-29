@@ -193,7 +193,7 @@ getMainDefiniteDescriptionByTarget targetOrZen = do
           Throw.raiseError' $ "No such target is defined: " <> target
         Just targetSummary -> do
           relPathToDD (SL.reify $ Target.entryPoint targetSummary) BN.mainName
-    Target.Zen path _ _ -> do
+    Target.Zen path _ -> do
       relPath <- Module.getRelPathFromSourceDir mainModule path
       relPathToDD relPath BN.zenName
 
@@ -209,7 +209,7 @@ checkIfEntryPointIsNecessary target source = do
   case target of
     Target.Named {} -> do
       isMainFile source
-    Target.Zen path _ _ -> do
+    Target.Zen path _ -> do
       return $ Source.sourceFilePath source == path
 
 getReadableDD :: DD.DefiniteDescription -> App T.Text

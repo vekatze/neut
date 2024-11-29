@@ -12,6 +12,7 @@ import Data.Maybe (catMaybes)
 import Entity.Cache
 import Entity.Module
 import Entity.Source
+import Entity.Target (Target (Peripheral))
 import Path
 import Scene.Source.ShiftToLatest (shiftToLatest)
 import UnliftIO.Async
@@ -24,7 +25,7 @@ getAllLocationCachesInModule baseModule = do
 getLocationCache :: Module -> Path Abs File -> App (Maybe (Source, LocationCache))
 getLocationCache baseModule filePath = do
   source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <- Cache.loadLocationCache source
+  cacheOrNone <- Cache.loadLocationCache Peripheral source
   case cacheOrNone of
     Nothing ->
       return Nothing
@@ -39,7 +40,7 @@ getAllCompletionCachesInModule baseModule = do
 getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache baseModule filePath = do
   source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <- getSourceCompletionCachePath source >>= Cache.loadCompletionCacheOptimistically
+  cacheOrNone <- getSourceCompletionCachePath Peripheral source >>= Cache.loadCompletionCacheOptimistically
   case cacheOrNone of
     Nothing ->
       return Nothing

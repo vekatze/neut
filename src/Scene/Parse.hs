@@ -24,17 +24,18 @@ import Entity.Ident.Reify
 import Entity.RawProgram
 import Entity.Source qualified as Source
 import Entity.Stmt
+import Entity.Target
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
 import Scene.Parse.Import
 import Scene.Parse.Program qualified as Parse
 
-parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
-parse source cacheOrContent = do
-  parseSource source cacheOrContent
+parse :: Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
+parse t source cacheOrContent = do
+  parseSource t source cacheOrContent
 
-parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
-parseSource source cacheOrContent = do
+parseSource :: Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
+parseSource t source cacheOrContent = do
   let path = Source.sourceFilePath source
   case cacheOrContent of
     Left cache -> do
@@ -46,7 +47,7 @@ parseSource source cacheOrContent = do
       prog <- P.parseFile True Parse.parseProgram path content
       prog' <- interpret source (snd prog)
       tmap <- Env.getTagMap
-      Cache.saveLocationCache source $ Cache.LocationCache tmap
+      Cache.saveLocationCache t source $ Cache.LocationCache tmap
       return $ Right prog'
 
 parseCachedStmtList :: [Stmt] -> App ()

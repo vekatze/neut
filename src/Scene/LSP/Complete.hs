@@ -30,6 +30,7 @@ import Entity.ModuleID qualified as MID
 import Entity.RawImportSummary
 import Entity.Source
 import Entity.SourceLocator qualified as SL
+import Entity.Target
 import Entity.TopCandidate
 import Language.LSP.Protocol.Types
 import Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
@@ -57,7 +58,7 @@ itemGetterList =
 
 getLocalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getLocalCompletionItems source loc = do
-  cachePath <- Path.getSourceCompletionCachePath source
+  cachePath <- Path.getSourceCompletionCachePath Peripheral source
   cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->
@@ -72,7 +73,7 @@ getGlobalCompletionItems currentSource loc = do
   let baseModule = sourceModule currentSource
   (globalVarList, aliasPresetMap) <- getAllTopCandidate baseModule
   baseCacheOrNone <-
-    Path.getSourceCompletionCachePath currentSource
+    Path.getSourceCompletionCachePath Peripheral currentSource
       >>= Cache.loadCompletionCacheOptimistically
   let importSummaryOrNone = baseCacheOrNone >>= Cache.rawImportSummary
   let impLoc = getImportLoc importSummaryOrNone
