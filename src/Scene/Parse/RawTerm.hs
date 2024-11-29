@@ -479,14 +479,15 @@ rawTermMagicAlloca m c = do
 rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicExternal m c0 = do
   c1 <- keyword "external"
+  mUse <- getCurrentHint
   (extFunName, cExt) <- symbol
   let extFunName' = EN.ExternalName extFunName
   (es, c2) <- seriesParen rawExpr
   choice
     [ do
         (s, c) <- seriesParen rawExprAndLowType
-        return (m :< RT.Magic c0 (RT.External c1 extFunName' cExt es (Just (c2, s))), c),
-      return (m :< RT.Magic c0 (RT.External c1 extFunName' cExt es Nothing), c2)
+        return (m :< RT.Magic c0 (RT.External c1 mUse extFunName' cExt es (Just (c2, s))), c),
+      return (m :< RT.Magic c0 (RT.External c1 mUse extFunName' cExt es Nothing), c2)
     ]
 
 rawExprAndLowType :: Parser (RT.VarArg, C)

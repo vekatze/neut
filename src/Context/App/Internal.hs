@@ -17,6 +17,7 @@ import Entity.Constraint qualified as C
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ExternalName qualified as EN
 import Entity.ForeignCodType qualified as F
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.GlobalName qualified as GN
@@ -91,6 +92,7 @@ data Env = Env
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
+    preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
     declEnv :: IORef (Map.HashMap DN.DeclarationName ([BLT.BaseLowType], F.ForeignCodType BLT.BaseLowType)),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
@@ -156,6 +158,7 @@ newEnv = do
   dataDefMap <- newIORef Map.empty
   keyArgMap <- newIORef Map.empty
   optDataMap <- newIORef Map.empty
+  preDeclEnv <- newIORef Map.empty
   declEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty

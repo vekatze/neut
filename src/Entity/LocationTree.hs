@@ -12,6 +12,7 @@ where
 import Data.Binary
 import Data.Text qualified as T
 import Entity.DefiniteDescription qualified as DD
+import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.IsConstLike
 import GHC.Generics (Generic)
@@ -31,6 +32,7 @@ type ColInterval =
 data SymbolName
   = Local Int DefSymbolLen
   | Global DD.DefiniteDescription IsConstLike
+  | Foreign EN.ExternalName
   deriving (Show, Generic)
 
 data LocType
@@ -57,6 +59,8 @@ getLength s =
       len
     Global dd _ ->
       T.length $ DD.localLocator dd
+    Foreign externalName ->
+      T.length $ EN.reify externalName
 
 empty :: LocationTree
 empty =

@@ -218,7 +218,7 @@ toDoc term =
                       RT.mapEL toDoc size
                     ]
             ]
-        External c1 funcName c2 args varArgsOrNone -> do
+        External c1 _ funcName c2 args varArgsOrNone -> do
           let args' = SE.decode $ fmap toDoc args
           case varArgsOrNone of
             Nothing ->
