@@ -335,7 +335,7 @@ discern axis term =
       return $ m :< WT.BoxNoema t'
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
       xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx axis x
-      xets <- discernNoeticVarList xsOuter
+      xets <- discernNoeticVarList True xsOuter
       let innerLayer = currentLayer axis - 1
       let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
       let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer))) xsInner
@@ -353,16 +353,16 @@ discern axis term =
       let e2' = m' :< RT.Let (RT.Plain False) [] patParam [] [] (m' :< RT.Var (Var tmp)) [] startLoc [] e2 endLoc
       -- inner
       ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my axis y
-      yetsInner <- discernNoeticVarList ysOuter
+      yetsInner <- discernNoeticVarList True ysOuter
       let innerLayer = currentLayer axis + layerOffset nv
-      let ysInner = map (\((my, y, myDef :< _), _) -> (myDef, (my, y))) yetsInner
-      let innerAddition = map (\(_, (my, y)) -> (Ident.toText y, (my, y, innerLayer))) ysInner
+      let ysInner = map (\((myUse, y, myDef :< _), _) -> (myDef, (myUse, y))) yetsInner
+      let innerAddition = map (\(_, (myUse, y)) -> (Ident.toText y, (myUse, y, innerLayer))) ysInner
       axisInner <- extendAxisByNominalEnv VDK.Borrowed innerAddition (axis {currentLayer = innerLayer})
       e1' <- discern axisInner e1
       -- cont
-      yetsCont <- discernNoeticVarList ysInner
-      let ysCont = map (\((my, y, _), _) -> (my, y)) yetsCont
-      let contAddition = map (\(my, y) -> (Ident.toText y, (my, y, currentLayer axis))) ysCont
+      yetsCont <- discernNoeticVarList False ysInner
+      let ysCont = map (\((myUse, y, _), _) -> (myUse, y)) yetsCont
+      let contAddition = map (\(myUse, y) -> (Ident.toText y, (myUse, y, currentLayer axis))) ysCont
       axisCont <- extendAxisByNominalEnv VDK.Relayed contAddition axis
       (mxt', e2'') <- discernBinderWithBody' axisCont mxt startLoc endLoc e2'
       case pat of
@@ -570,13 +570,17 @@ discern axis term =
     m :< RT.Void ->
       return $ m :< WT.Void
 
-discernNoeticVarList :: [(Hint, (Hint, Ident))] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
-discernNoeticVarList xsOuter = do
-  forM xsOuter $ \(mDef, (mOuter, outerVar)) -> do
+type ShouldInsertTagInfo =
+  Bool
+
+discernNoeticVarList :: ShouldInsertTagInfo -> [(Hint, (Hint, Ident))] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
+discernNoeticVarList mustInsertTagInfo xsOuter = do
+  forM xsOuter $ \(mDef, (mUse, outerVar)) -> do
     xInner <- Gensym.newIdentFromIdent outerVar
-    t <- Gensym.newHole mOuter []
-    Tag.insertLocalVar mDef outerVar mOuter
-    return ((mOuter, xInner, t), mDef :< WT.Var outerVar)
+    t <- Gensym.newHole mUse []
+    when mustInsertTagInfo $ do
+      Tag.insertLocalVar mUse outerVar mDef
+    return ((mUse, xInner, t), mDef :< WT.Var outerVar)
 
 discernMagic :: Axis -> Hint -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
 discernMagic axis m magic =
@@ -859,13 +863,13 @@ discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2@(m2 :< _) startLoc endLoc =
       return $ m :< WT.Let opacity mxt' e1' eitherCont
 
 discernIdent :: Hint -> Axis -> RawIdent -> App (Hint, (Hint, Ident))
-discernIdent m axis x =
+discernIdent mUse axis x =
   case lookup x (_nenv axis) of
     Nothing ->
-      Throw.raiseError m $ "Undefined variable: " <> x
+      Throw.raiseError mUse $ "Undefined variable: " <> x
     Just (mDef, x', _) -> do
       UnusedVariable.delete x'
-      return (mDef, (m, x'))
+      return (mDef, (mUse, x'))
 
 discernBinder ::
   Axis ->
