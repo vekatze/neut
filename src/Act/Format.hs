@@ -1,7 +1,7 @@
 module Act.Format (format) where
 
 import Context.App
-import Context.Parse (readTextFile)
+import Context.Parse (ensureExistence', readTextFile)
 import Context.Parse qualified as Parse
 import Entity.Config.Format
 import Path.IO
@@ -14,6 +14,7 @@ format cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
   Initialize.initializeForTarget
   path <- resolveFile' $ filePathString cfg
+  ensureExistence' path Nothing
   content <- readTextFile path
   content' <- Format.format (shouldMinimizeImports cfg) (inputFileType cfg) path content
   if mustUpdateInPlace cfg

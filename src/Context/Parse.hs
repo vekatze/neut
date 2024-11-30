@@ -3,6 +3,7 @@ module Context.Parse
     writeTextFile,
     printTextFile,
     ensureExistence,
+    ensureExistence',
   )
 where
 
@@ -13,6 +14,7 @@ import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Entity.Hint
 import Entity.Source
 import Path
 import Path.IO
@@ -39,10 +41,15 @@ printTextFile content = do
 ensureExistence :: Source -> App ()
 ensureExistence source = do
   let path = sourceFilePath source
+  ensureExistence' path (sourceHint source)
+
+ensureExistence' :: Path Abs File -> Maybe Hint -> App ()
+ensureExistence' path mHint = do
   fileExists <- doesFileExist path
   unless fileExists $ do
-    case sourceHint source of
+    let message = T.pack $ "No such file exists: " <> toFilePath path
+    case mHint of
       Just m ->
-        Throw.raiseError m $ T.pack $ "No such file exists: " <> toFilePath path
+        Throw.raiseError m message
       Nothing ->
-        Throw.raiseError' $ T.pack $ "No such file exists: " <> toFilePath path
+        Throw.raiseError' message
