@@ -12,6 +12,7 @@ import Context.App
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
 import Context.Module qualified as Module
+import Context.Parse (ensureExistence')
 import Context.Parse qualified as Parse
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -156,10 +157,8 @@ unravelImportItem t importItem = do
     StaticKey staticFileList -> do
       let pathList = map snd staticFileList
       itemModTime <- forM pathList $ \(m, p) -> do
-        b <- Path.doesFileExist p
-        if b
-          then Path.getModificationTime p
-          else Throw.raiseError m $ "No such file exists: " <> T.pack (toFilePath p)
+        ensureExistence' p (Just m)
+        Path.getModificationTime p
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
 
