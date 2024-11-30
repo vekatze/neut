@@ -129,8 +129,7 @@ elaborateStmt stmt = do
       codType'' <- TM.inline m codType'
       when isConstLike $ do
         unless (TM.isValue e'') $ do
-          Throw.raiseError m $
-            "Could not reduce the body of this definition into a constant, but got:\n" <> toText (weaken e'')
+          Throw.raiseError m "Could not reduce the body of this definition into a constant"
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType'' e''
       insertStmt result
       return ([result], remarks)
