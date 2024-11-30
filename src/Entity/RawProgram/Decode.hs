@@ -216,7 +216,7 @@ decStmt stmt =
       RT.attachComment c $
         D.join
           [ D.text "nominal ",
-            SE.decode $ fmap decGeistList geistList
+            SE.decode $ fmap (decTopGeist . fst) geistList
           ]
     RawStmtForeign c foreignList -> do
       let foreignList' = SE.decode $ fmap decForeignItem foreignList
@@ -252,25 +252,6 @@ decConsInfo (_, (consName, cCons), isConstLike, args, _) = do
     then D.join [consName', C.asSuffix cCons]
     else D.join [consName', C.asSuffix cCons, RT.decodeArgs (args, [])]
 
-decGeistList :: (RT.TopGeist, a) -> D.Doc
-decGeistList (decl, _) = do
-  let (functionName, _) = RT.name decl
-  let impArgs' = RT.decodeArgs' $ RT.impArgs decl
-  let cod = RT.toDoc $ snd $ RT.cod decl
-  if RT.isConstLike decl
-    then do
-      D.join
-        [ D.text (BN.reify functionName),
-          impArgs',
-          D.text ": ",
-          cod
-        ]
-    else do
-      let expArgs' = RT.decodeArgs' $ RT.expArgs decl
-      D.join
-        [ D.text (BN.reify functionName),
-          impArgs',
-          expArgs',
-          D.text ": ",
-          cod
-        ]
+decTopGeist :: RT.TopGeist -> D.Doc
+decTopGeist = do
+  RT.decGeist (D.text . BN.reify)

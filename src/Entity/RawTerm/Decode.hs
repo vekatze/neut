@@ -8,6 +8,7 @@ module Entity.RawTerm.Decode
     decodeArgs,
     decodeArgs',
     decodeDef,
+    decGeist,
     decodeImpParams,
     attachComment,
     decodeBlock,
@@ -337,6 +338,7 @@ decodeDef nameDecoder keyword c def = do
       [ D.text keyword,
         D.text " ",
         decGeist nameDecoder $ RT.geist def,
+        D.text " ",
         decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
 
@@ -459,7 +461,7 @@ decGeist
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
             PI.inject $ decodeImpParams impArgs,
-            PI.horizontal $ attachComment c1 $ decodeExpParams isConstLike expArgs
+            PI.inject $ attachComment c1 $ decodeExpParams isConstLike expArgs
           ]
       _ ->
         PI.arrange
@@ -467,7 +469,7 @@ decGeist
             PI.inject $ decodeImpParams impArgs,
             PI.inject $ attachComment c1 $ decodeExpParams isConstLike expArgs,
             PI.horizontal $ attachComment c2 $ D.text ":",
-            PI.horizontal $ attachComment c3 $ toDoc cod
+            PI.inject $ attachComment c3 $ toDoc cod
           ]
 
 decodeImpParams :: SE.Series (RawBinder RawTerm) -> D.Doc
