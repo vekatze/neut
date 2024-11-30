@@ -8,11 +8,15 @@
 
 /* Comment */
 .hljs-comment,
-.hljs-quote,
-.hljs-hole-suffix {
+.hljs-quote {
   color: var(--nibi);
   background-color: var(--dark-blue);
   /* color: #575757; */
+}
+
+.hljs-definition {
+  color: var(--light-yellow);
+  background-color: var(--dark-yellow);
 }
 
 /* Red */
@@ -33,6 +37,7 @@
 .hljs-meta,
 .hljs-literal,
 .hljs-type,
+.hljs-constructor,
 .hljs-params {
   color: var(--light-green);
   background-color: var(--dark-green);

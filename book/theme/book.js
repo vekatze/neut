@@ -15,22 +15,19 @@ function playground_text(playground, hidden = true) {
 hljs.registerLanguage("neut", function (hljs) {
   return {
     keywords: {
-      $pattern: /[\w-:=<>]+/,
+      $pattern: /[\w-]+/,
       keyword: [
         "attach",
         "bind",
         "box",
         "case",
-        "constant",
         "data",
-        "declare",
         "default",
         "define",
         "detach",
         "else",
         "else-if",
         "exact",
-        "export",
         "foreign",
         "function",
         "if",
@@ -40,6 +37,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "introspect",
         "let",
         "letbox",
+        "letbox-T",
         "match",
         "nominal",
         "of",
@@ -47,46 +45,70 @@ hljs.registerLanguage("neut", function (hljs) {
         "pin",
         "quote",
         "resource",
-        "switch",
         "tie",
         "try",
         "use",
         "when",
         "with",
       ].join(" "),
+      builtin: [
+        "_",
+        "assert",
+        "include-text",
+        "magic",
+        "static",
+        "this",
+      ],
+      type: [
+        "meta",
+        "pointer",
+        "rune",
+        "thread",
+        "type",
+        "void",
+      ],
     },
     contains: [
-      { className: "letbox-T",
-        begin: /letbox-T/,
-      },
-      { className: "type",
-        begin: /(?!-)(type|&|:<|thread|meta|pointer|void|rune|[A-Z][a-z0-9A-Z-]*)/,
+      {
+        begin: [
+          /\s/,
+          /[A-Z][a-z0-9A-Z-]*/,
+          /[^\w-=<>]/
+        ],
+        beginScope: {
+          2: "constructor"
+        },
       },
       {
-        className: "string",
+        begin: [
+          /(define|inline|data|resource)/,
+          /\s+/,
+          /[\w-]+/,
+        ],
+        beginScope: {
+          3: "definition"
+        },
+      },
+      {
         scope: "string",
         begin: '"',
         end: '"',
         contains: [hljs.BACKSLASH_ESCAPE],
       },
       {
-        className: "string",
         scope: "string",
         begin: '`',
         end: '`',
         contains: [hljs.BACKSLASH_ESCAPE],
       },
-      { className: "warning",
+      { scope: "warning",
         begin: "admit",
       },
       {
-        className: "builtin",
-        begin: "<=|->|=>|\\*|:|!|\\||this|,|;|\\b_\\b|&|\\b-(?=\\s)|=|magic|assert|static|include-text",
+        scope: "builtin",
+        begin: "\\*|\\||->|=>|:|!|,|;|&|=",
       },
-      hljs.COMMENT(
-        "//", // begin
-        "$" // end
-      ),
+      hljs.COMMENT("//", "$"),
     ],
   };
 });
@@ -94,40 +116,29 @@ hljs.registerLanguage("neut", function (hljs) {
 hljs.registerLanguage("ens", function (hljs) {
   return {
     keywords: {
-      $pattern: /[\w-:=<>]+/,
-      keyword: [
-        "antecedent",
-        "archive",
-        "build",
-        "dependency",
-        "foreign",
-        "inline-limit",
-        "prefix",
-        "preset",
-        "source",
-        "target",
-        "static",
-      ].join(" "),
+      $pattern: /[\w-]+/,
     },
     contains: [
-      { className: "type",
-        begin: "&|:<|true|false|[A-Z][a-z0-9A-Z-]*",
+      { scope: "type",
+        begin: "true|false",
       },
       {
-        className: "string",
+        begin: [
+          /^\s+/,
+          /[\w-]+/,
+          /\s+/,
+        ],
+        beginScope: {
+          2: "keyword"
+        },
+      },
+      {
         scope: "string",
         begin: '"',
         end: '"',
         contains: [hljs.BACKSLASH_ESCAPE],
       },
-      {
-        className: "builtin",
-        begin: "<=|->|=>|\\*|,|:|this|&|-(?=\\s)|tuple|magic",
-      },
-      hljs.COMMENT(
-        "//", // begin
-        "$" // end
-      ),
+      hljs.COMMENT("//", "$"),
     ],
   };
 });
@@ -144,28 +155,20 @@ hljs.registerLanguage("llvm", function (hljs) {
       ].join(" "),
     },
     contains: [
-      { className: "type",
+      { scope: "type",
         begin: "\\bptr\\b|i64|i8|float|double|x86_fp80|fp128|ppc_fp128",
       },
       {
-        className: "string",
         scope: "string",
         begin: '"',
         end: '"',
         contains: [hljs.BACKSLASH_ESCAPE],
       },
       {
-        className: "hole-suffix",
-        begin: /\/[0-9]+/,
-      },
-      {
-        className: "builtin",
+        scope: "builtin",
         begin: "unnamed_addr|add|ptrtoint|inttoptr|getelementptr|call|store|load|null|fastcc",
       },
-      hljs.COMMENT(
-        ";", // begin
-        "$" // end
-      ),
+      hljs.COMMENT(";", "$"),
     ],
   };
 });

@@ -12,9 +12,9 @@ Its key features include:
 
 Neut doesn't use GCs or regions. Instead, it takes a _type-directed approach_ to handle resources.
 
-## How Does it Look?
+## What Does it Look Like?
 
-Like below:
+Like the following:
 
 ```neut
 // the obligated hello world
@@ -29,14 +29,14 @@ data my-list(a) {
 }
 
 // a recursive function with pattern matching
-define noisy-length(a: type, xs: my-list(a)): int {
+define noisy-length<a>(xs: my-list(a)): int {
   match xs {
   | Nil =>
     0
   | Cons(_, ys) =>
     let my-message = "hey\n" in
     print(my-message);
-    add-int(1, noisy-length(a, ys))
+    add-int(1, noisy-length(ys))
   }
 }
 ```
