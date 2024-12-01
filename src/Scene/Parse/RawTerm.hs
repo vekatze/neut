@@ -178,7 +178,6 @@ rawTermLet mLet = do
       [ keyword "let" >>= \c1 -> return (RT.Plain False, c1),
         keyword "try" >>= \c1 -> return (RT.Try, c1),
         keyword "bind" >>= \c1 -> return (RT.Bind, c1),
-        keyword "catch" >>= \c1 -> return (RT.Catch, c1),
         keyword "tie" >>= \c1 -> return (RT.Noetic, c1)
       ]
   ((mx, patInner), c2) <- rawTermPattern

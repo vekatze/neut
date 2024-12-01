@@ -22,9 +22,9 @@ define random-lookup-sum(count: int, d: &intmap(int)): unit {
       let key = random-int(1000000) in
       let val on key =
         match lookup(d, *key) {
-        | Left(_) =>
+        | Error(_) =>
           0
-        | Right(v) =>
+        | OK(v) =>
           *v
         }
       in
@@ -41,12 +41,12 @@ define main(): unit {
   | [_, size-str] =>
     let _ on size-str =
       match parse-int(size-str) {
-      | Right(size) =>
+      | OK(size) =>
         let big-dict = make-big-dict(size) in
         let _ on big-dict = random-lookup-sum(size, big-dict) in
         let _ = big-dict in
         Unit
-      | Left(_) =>
+      | Error(_) =>
         printf("couldn't parse `{}` as an integer\n", [*size-str])
       }
     in

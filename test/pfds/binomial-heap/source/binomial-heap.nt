@@ -99,7 +99,7 @@ define find-min(a: type, !cmp: (a, a) -> ordering, h: &heap(a)): ?a {
     none
   | Cons(t, ts) =>
     let r = root(a, t) in
-    Right(helper(r, ts))
+    OK(helper(r, ts))
   }
 }
 
@@ -108,7 +108,7 @@ define remove-min-tree(a: type, !cmp: (a, a) -> ordering, h: heap(a)): ?pair(tre
   | Nil =>
     none
   | Cons(t, Nil) =>
-    Right(Pair(t, Nil))
+    OK(Pair(t, Nil))
   | Cons(t, ts) =>
     try Pair(cand, ts-adjusted) = remove-min-tree(a, !cmp, ts) in
     let c on t, cand =
@@ -118,16 +118,16 @@ define remove-min-tree(a: type, !cmp: (a, a) -> ordering, h: heap(a)): ?pair(tre
     in
     match c {
     | LT =>
-      Right(Pair(t, Cons(cand, ts-adjusted)))
+      OK(Pair(t, Cons(cand, ts-adjusted)))
     | _ =>
-      Right(Pair(cand, Cons(t, ts-adjusted)))
+      OK(Pair(cand, Cons(t, ts-adjusted)))
     }
   }
 }
 
 define delete-min(a: type, !cmp: (a, a) -> ordering, h: heap(a)): ?heap(a) {
   try Pair(Node(_, _, ts1), ts2): pair(tree(a), heap(a)) = remove-min-tree(a, !cmp, h) in
-  Right(merge(a, !cmp, reverse(ts1), ts2))
+  OK(merge(a, !cmp, reverse(ts1), ts2))
 }
 
 define compare-int(x: int, y: int): ordering {
@@ -152,9 +152,9 @@ define main(): unit {
   let h = merge(int, compare-int, !h, !h) in
   let maybe-min on h =
     match find-min(int, compare-int, h) {
-    | Left(_) =>
+    | Error(_) =>
       10
-    | Right(min) =>
+    | OK(min) =>
       min
     }
   in

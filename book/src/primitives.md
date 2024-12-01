@@ -66,10 +66,10 @@ data list(a) {
 | Cons(a, list(a))
 }
 
-// you can also write `?a` instead of `either(unit, a)`
-data either(a, b) {
-| Left(a)
-| Right(b)
+// you can also write `?a` instead of `except(unit, a)`
+data except(e, a) {
+| Error(e)
+| OK(a)
 }
 
 data pair(a, b) {

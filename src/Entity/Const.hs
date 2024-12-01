@@ -109,17 +109,17 @@ coreBoolFalse :: T.Text
 coreBoolFalse =
   core <> nsSep <> "bool" <> nsSep <> "False"
 
-coreEither :: T.Text
-coreEither =
-  core <> nsSep <> "either" <> nsSep <> "either"
+coreExcept :: T.Text
+coreExcept =
+  core <> nsSep <> "except" <> nsSep <> "except"
 
-coreEitherLeft :: T.Text
-coreEitherLeft =
-  core <> nsSep <> "either" <> nsSep <> "Left"
+coreExceptError :: T.Text
+coreExceptError =
+  core <> nsSep <> "except" <> nsSep <> "Error"
 
-coreEitherRight :: T.Text
-coreEitherRight =
-  core <> nsSep <> "either" <> nsSep <> "Right"
+coreExceptOK :: T.Text
+coreExceptOK =
+  core <> nsSep <> "except" <> nsSep <> "OK"
 
 coreList :: T.Text
 coreList =

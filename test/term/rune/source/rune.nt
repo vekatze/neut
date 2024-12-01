@@ -29,15 +29,15 @@ define main(): unit {
   | _ =>
     print("other\n")
   };
-  let p: either(pair(rune, type), type) = Left(Pair(`x`, type)) in
+  let p: except(pair(rune, type), type) = Error(Pair(`x`, type)) in
   match p {
-  | Right(_) =>
+  | OK(_) =>
     print("right\n")
-  | Left(Pair(`a`, _)) =>
+  | Error(Pair(`a`, _)) =>
     print("pair-a\n")
-  | Left(Pair(`x`, _)) =>
+  | Error(Pair(`x`, _)) =>
     print("pair-x\n")
-  | Left(Pair(_, _)) =>
+  | Error(Pair(_, _)) =>
     print("pair-other\n")
   }
 }
