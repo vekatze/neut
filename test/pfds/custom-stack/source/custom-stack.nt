@@ -1,46 +1,40 @@
 import {
-  core.bool {False, True, bool},
-  core.box,
-  core.either {Left, Right, none},
-  core.pair {Pair, pair},
-  core.text,
-  core.text.io {print, print-int},
-  core.unit {unit},
+  core.text.io {print-int},
 }
 
 data custom-stack(a) {
-| Nil
-| Cons(pair(a, a), custom-stack(a))
+| N
+| C(pair(a, a), custom-stack(a))
 }
 
 define empty(a: type): custom-stack(a) {
-  Nil
+  N
 }
 
 define is-empty(a: type, xs: &custom-stack(a)): bool {
   case xs {
-  | Nil =>
+  | N =>
     True
-  | Cons(_, _) =>
+  | C(_, _) =>
     False
   }
 }
 
 define head(a: type, xs: &custom-stack(a)): ?&pair(a, a) {
   case xs {
-  | Nil =>
+  | N =>
     none
-  | Cons(a, _) =>
-    Right(a)
+  | C(a, _) =>
+    OK(a)
   }
 }
 
 define tail(a: type, xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
-  | Nil =>
+  | N =>
     none
-  | Cons(_, rest) =>
-    Right(rest)
+  | C(_, rest) =>
+    OK(rest)
   }
 }
 
@@ -53,8 +47,8 @@ define main(): unit {
       2
     })
   in
-  let ys = Cons(!v, !xs) in
-  let zs = Cons(!v, Cons(!v, ys)) in
+  let ys = C(!v, !xs) in
+  let zs = C(!v, C(!v, ys)) in
   let calc on zs, !xs =
     let _ = is-empty(_, zs) in
     let _ = is-empty(_, !xs) in
@@ -63,9 +57,9 @@ define main(): unit {
     let _ = tail(_, zs) in
     let _ = tail(_, zs) in
     match h {
-    | Left(_) =>
+    | Error(_) =>
       1
-    | Right(pair) =>
+    | OK(pair) =>
       tie Pair(_, right) = pair in
       {*right}()
     }

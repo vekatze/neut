@@ -412,19 +412,19 @@ define wrap-bool(b: bool): meta bool {
 }
 ```
 
-You might find it a bit wordy. Indeed, this translation can be mechanically done on certain "simple" types. For example, we can do the same to `either(bool, unit)`:
+You might find it a bit wordy. Indeed, this translation can be mechanically done on certain "simple" types. For example, we can do the same to `except(bool, unit)`:
 
 ```neut
-define wrap-either(x: either(bool, unit)): meta either(bool, unit) {
+define wrap-except(x: except(bool, unit)): meta except(bool, unit) {
   match x {
-  | Left(b) =>
+  | Error(b) =>
     if b {
-      box {Left(True)}
+      box {Error(True)}
     } else {
-      box {Left(False)}
+      box {Error(False)}
     }
-  | Right(u) =>
-    box {Right(Unit)}
+  | OK(u) =>
+    box {OK(Unit)}
   }
 }
 ```
@@ -438,7 +438,7 @@ define wrap-bool(b: bool): meta bool {
   quote {b}
 }
 
-define wrap-either(x: either(bool, unit)): meta either(bool, unit) {
+define wrap-except(x: except(bool, unit)): meta except(bool, unit) {
   quote {x}
 }
 ```
@@ -469,8 +469,8 @@ define foo(): unit {
 
 - `&list(int)`
 - `(int) -> bool`
-- `either(bool, &list(int))`
-- `either(bool, (int) -> bool)`
+- `except(bool, &list(int))`
+- `except(bool, (int) -> bool)`
 
 `quote` is after all just a shorthand.
 

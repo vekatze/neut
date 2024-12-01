@@ -45,17 +45,17 @@ define relevant-list(): unit {
   Unit
 }
 
-define affine-either(): unit {
-  let _: either(bool, list(nat)) = Left(True) in
-  let _: either(bool, list(nat)) = Right([Zero]) in
-  let _: either(bool, list(nat)) = Right([Succ(Zero), Zero]) in
+define affine-except(): unit {
+  let _: except(bool, list(nat)) = Error(True) in
+  let _: except(bool, list(nat)) = OK([Zero]) in
+  let _: except(bool, list(nat)) = OK([Succ(Zero), Zero]) in
   Unit
 }
 
-define relevant-either(): unit {
-  let !foo: either(bool, list(nat)) = Left(True) in
-  let !bar: either(bool, list(nat)) = Right([Zero]) in
-  let !buz: either(bool, list(nat)) = Right([Succ(Zero), Zero]) in
+define relevant-except(): unit {
+  let !foo: except(bool, list(nat)) = Error(True) in
+  let !bar: except(bool, list(nat)) = OK([Zero]) in
+  let !buz: except(bool, list(nat)) = OK([Succ(Zero), Zero]) in
   let _ = !foo in
   let _ = !foo in
   let _ = !bar in
@@ -311,8 +311,8 @@ define test-resource(): unit {
   relevant-nat();
   affine-list();
   relevant-list();
-  affine-either();
-  relevant-either()
+  affine-except();
+  relevant-except()
 }
 
 define test-match(): unit {

@@ -55,19 +55,19 @@ define uncons-tree(a: type, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   | Nil =>
     none
   | Cons(DigitOne(y), Nil) =>
-    Right(Pair(y, New([])))
+    OK(Pair(y, New([])))
   | Cons(DigitOne(y), rest) =>
-    Right(Pair(y, New(Cons(DigitZero, rest))))
+    OK(Pair(y, New(Cons(DigitZero, rest))))
   | Cons(DigitZero, rest) =>
     match uncons-tree(_, New(rest)) {
-    | Left(_) =>
+    | Error(_) =>
       none
-    | Right(Pair(new-tree, New(new-ts))) =>
+    | OK(Pair(new-tree, New(new-ts))) =>
       match new-tree {
       | Leaf(_) =>
         none
       | Node(_, t1, t2) =>
-        Right(Pair(t1, New(Cons(DigitOne(t2), new-ts))))
+        OK(Pair(t1, New(Cons(DigitOne(t2), new-ts))))
       }
     }
   }
@@ -77,7 +77,7 @@ define lookup-tree(a: type, i: int, t: &tree(a)): ?a {
   case t {
   | Leaf(v) =>
     if eq-int(i, 0) {
-      Right(*v)
+      OK(*v)
     } else {
       none
     }
@@ -150,9 +150,9 @@ define update(a: type, i: int, x: a, xs: R-list(a)): R-list(a) {
 
 define find-and-get(i: int, xs: &R-list(int)): int {
   match lookup(_, i, xs) {
-  | Left(_) =>
+  | Error(_) =>
     0
-  | Right(v) =>
+  | OK(v) =>
     v
   }
 }

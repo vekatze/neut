@@ -83,7 +83,7 @@ define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signatur
         | Leaf =>
           none
         | Node(_, value, _, _) =>
-          Right(*value)
+          OK(*value)
         }
       }
     },
@@ -93,7 +93,7 @@ define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signatur
         | Leaf =>
           none
         | Node(_, _, left, right) =>
-          Right(!merge(left, right))
+          OK(!merge(left, right))
         }
       }
     },
@@ -122,15 +122,15 @@ define main(): unit {
   let h = !insert(3, h) in
   let mh = delete-min(h) in
   match mh {
-  | Left(_) =>
+  | Error(_) =>
     print-int(100)
-  | Right(h) =>
+  | OK(h) =>
     let h = !insert(9, h) in
     let min on h =
       match find-min(h) {
-      | Left(_) =>
+      | Error(_) =>
         print-int(100)
-      | Right(value) =>
+      | OK(value) =>
         print-int(value)
       }
     in

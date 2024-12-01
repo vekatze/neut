@@ -1,65 +1,65 @@
 data joker {
-| JLeft(joker)
-| JRight(int)
+| L(joker)
+| R(int)
 }
 
 // cancel: x ~> {}
 define test(x: joker): joker {
   match x {
-  | JLeft(v1) =>
+  | L(v1) =>
     // the `free(x)` inserted here is cancelled by ((A) + (B)) * (C)
     match v1 {
-    | JLeft(v2) =>
+    | L(v2) =>
       match v2 {
-      | JLeft(v3) =>
+      | L(v3) =>
         // (A)
-        JLeft(v3)
-      | JRight(_) =>
+        L(v3)
+      | R(_) =>
         // (B)
-        JRight(10)
+        R(10)
       }
-    | JRight(_) =>
+    | R(_) =>
       // (C)
-      JRight(10)
+      R(10)
     }
-  | JRight(_) =>
-    JRight(3)
+  | R(_) =>
+    R(3)
   }
 }
 
 define test2(x: joker): int {
   match x {
-  | JLeft(v1) =>
+  | L(v1) =>
     // the `free(x)` inserted here isn't cancelled
     match v1 {
-    | JLeft(v2) =>
+    | L(v2) =>
       match v2 {
-      | JLeft(v3) =>
-        let _ = JLeft(v3) in
+      | L(v3) =>
+        let _ = L(v3) in
         1
-      | JRight(_) =>
+      | R(_) =>
         1
         // !
       }
-    | JRight(_) =>
-      let _ = JRight(10) in
+    | R(_) =>
+      let _ = R(10) in
       1
     }
-  | JRight(_) =>
+  | R(_) =>
     3
   }
 }
 
 define main(): unit {
-  let _ = test(JLeft(JLeft(JLeft(JLeft(JRight(10)))))) in
-  let _ = test(JLeft(JLeft(JLeft(JRight(10))))) in
-  let _ = test(JLeft(JLeft(JRight(10)))) in
-  let _ = test(JLeft(JRight(10))) in
-  let _ = test(JRight(10)) in
-  let _ = test2(JLeft(JLeft(JLeft(JLeft(JRight(10)))))) in
-  let _ = test2(JLeft(JLeft(JLeft(JRight(10))))) in
-  let _ = test2(JLeft(JLeft(JRight(10)))) in
-  let _ = test2(JLeft(JRight(10))) in
-  let _ = test2(JRight(10)) in
+  let _ = test(L(L(L(L(R(10)))))) in
+  let _ = test(L(L(L(R(10))))) in
+  let _ = test(L(L(R(10)))) in
+  let _ = test(L(R(10))) in
+  let _ = test(R(10)) in
+  let _ = test2(L(L(L(L(R(10)))))) in
+  let _ = test2(L(L(L(R(10))))) in
+  let _ = test2(L(L(R(10)))) in
+  let _ = test2(L(R(10))) in
+  let _ = test2(R(10)) in
   Unit
 }
