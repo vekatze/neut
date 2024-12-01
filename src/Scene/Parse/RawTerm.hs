@@ -171,14 +171,20 @@ rawTermKeyValuePair = do
         return ((m, key, c1, [], m :< RT.Var (Var key)), [])
     ]
 
+{-# INLINE rawTermLetKeyword #-}
+rawTermLetKeyword :: RT.LetKind -> Parser (RT.LetKind, C)
+rawTermLetKeyword letKind = do
+  keyword (RT.decodeLetKind letKind) >>= \c1 -> return (letKind, c1)
+
 rawTermLet :: Hint -> Parser (RT.RawTerm, C)
 rawTermLet mLet = do
   (letKind, c1) <-
     choice
-      [ keyword "let" >>= \c1 -> return (RT.Plain False, c1),
-        keyword "try" >>= \c1 -> return (RT.Try, c1),
-        keyword "bind" >>= \c1 -> return (RT.Bind, c1),
-        keyword "tie" >>= \c1 -> return (RT.Noetic, c1)
+      [ rawTermLetKeyword (RT.Plain False),
+        rawTermLetKeyword RT.Try,
+        rawTermLetKeyword RT.Bind,
+        rawTermLetKeyword RT.Cotry,
+        rawTermLetKeyword RT.Noetic
       ]
   ((mx, patInner), c2) <- rawTermPattern
   (c3, (t, c4)) <- rawTermLetVarAscription mx

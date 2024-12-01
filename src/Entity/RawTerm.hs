@@ -196,14 +196,17 @@ data LetKind
   = Plain MustIgnoreRelayedVars
   | Noetic
   | Try
+  | Cotry
   | Bind
 
+{-# INLINE decodeLetKind #-}
 decodeLetKind :: LetKind -> T.Text
 decodeLetKind letKind =
   case letKind of
     Plain _ -> "let"
     Noetic -> "tie"
     Try -> "try"
+    Cotry -> "cotry"
     Bind -> "bind"
 
 type VarArg =
