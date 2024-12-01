@@ -196,7 +196,6 @@ data LetKind
   = Plain MustIgnoreRelayedVars
   | Noetic
   | Try
-  | Catch
   | Bind
 
 decodeLetKind :: LetKind -> T.Text
@@ -205,7 +204,6 @@ decodeLetKind letKind =
     Plain _ -> "let"
     Noetic -> "tie"
     Try -> "try"
-    Catch -> "catch"
     Bind -> "bind"
 
 type VarArg =
