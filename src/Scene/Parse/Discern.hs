@@ -456,15 +456,16 @@ discern axis term =
       t <- Gensym.newPreHole (blur m)
       textType <- locatorToVarGlobal m coreText
       discern axis $
-        m
-          :< RT.Annotation
-            R.Warning
-            (AN.Type ())
-            ( m
-                :< RT.piElim
-                  admit
-                  [t, m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
-            )
+        asOpaqueValue $
+          m
+            :< RT.Annotation
+              R.Warning
+              (AN.Type ())
+              ( m
+                  :< RT.piElim
+                    admit
+                    [t, m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
+              )
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
       detachVar <- locatorToVarGlobal m coreThreadDetach
@@ -1097,3 +1098,7 @@ raiseLayerError m expected found = do
       <> T.pack (show expected)
       <> "\nFound layer:\n  "
       <> T.pack (show found)
+
+asOpaqueValue :: RT.RawTerm -> RT.RawTerm
+asOpaqueValue e@(m :< _) =
+  m :< RT.Magic [] (RT.OpaqueValue [] ([], (e, [])))
