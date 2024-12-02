@@ -452,8 +452,7 @@ discern axis term =
       listCons <- locatorToVarGlobal m' coreListCons
       discern axis $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
-      admit <- locatorToVarGlobal m coreSystemAdmit
-      t <- Gensym.newPreHole (blur m)
+      panic <- locatorToVarGlobal m coreSystemPanic
       textType <- locatorToVarGlobal m coreText
       discern axis $
         asOpaqueValue $
@@ -463,8 +462,8 @@ discern axis term =
               (AN.Type ())
               ( m
                   :< RT.piElim
-                    admit
-                    [t, m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
+                    panic
+                    [m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
               )
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)

@@ -145,9 +145,9 @@ coreRuneRune :: T.Text
 coreRuneRune =
   core <> nsSep <> "rune" <> nsSep <> "_Rune"
 
-coreSystemAdmit :: T.Text
-coreSystemAdmit =
-  core <> nsSep <> "system" <> nsSep <> "_admit"
+coreSystemPanic :: T.Text
+coreSystemPanic =
+  core <> nsSep <> "system" <> nsSep <> "panic"
 
 coreSystemAssert :: T.Text
 coreSystemAssert =
