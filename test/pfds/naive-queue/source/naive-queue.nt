@@ -14,7 +14,7 @@ define empty(a: type): queue(a) {
 define head(a: type, q: &queue(a)): ?a {
   case q {
   | Queue(Cons(x, _), _) =>
-    OK(*x)
+    Right(*x)
   | _ =>
     none
   }
@@ -32,7 +32,7 @@ define sanitize(a: type, q: queue(a)): queue(a) {
 define tail(a: type, q: queue(a)): ?queue(a) {
   match q {
   | Queue(Cons(_, rest), ys) =>
-    OK(sanitize(_, Queue(rest, ys)))
+    Right(sanitize(_, Queue(rest, ys)))
   | _ =>
     none
   }
@@ -60,30 +60,30 @@ define main(): unit {
   // v1 == 2
   let v1 on q =
     match head(_, q) {
-    | OK(xs1) =>
+    | Right(xs1) =>
       let v1 on xs1 = sum(xs1) in
       let _ = xs1 in
       v1
-    | Error(_) =>
+    | Left(_) =>
       4
     }
   in
   let mq = tail(_, q) in
   let result =
     match mq {
-    | Error(_) =>
+    | Left(_) =>
       1
-    | OK(q) =>
+    | Right(q) =>
       let q = snoc(_, [3], q) in
       let q = snoc(_, [8], q) in
       // v2 = 5
       let v2 on q =
         match head(_, q) {
-        | OK(xs) =>
+        | Right(xs) =>
           let v on xs = sum(xs) in
           let _ = xs in
           v
-        | Error(_) =>
+        | Left(_) =>
           4
         }
       in

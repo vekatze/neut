@@ -12,7 +12,7 @@ define find-min(a: type, h: &heap(a)): ?a {
   | Leaf =>
     none
   | Node(v, _) =>
-    OK(*v)
+    Right(*v)
   }
 }
 
@@ -52,7 +52,7 @@ define delete-min(a: type, cmp: (a, a) -> ordering, h: heap(a)): ?heap(a) {
   | Leaf =>
     none
   | Node(_, hs) =>
-    OK(merge-pairs(_, cmp, hs))
+    Right(merge-pairs(_, cmp, hs))
   }
 }
 
@@ -74,9 +74,9 @@ define main(): unit {
   let h = insert(_, compare-int, 2, h) in
   let maybe-min on h =
     match find-min(_, h) {
-    | Error(_) =>
+    | Left(_) =>
       10
-    | OK(min) =>
+    | Right(min) =>
       min
     }
   in

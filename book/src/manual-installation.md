@@ -11,8 +11,8 @@ Add the below to your `.bashrc`, `.zshrc`, etc.
 
 ```sh
 # this sets the core module (or "prelude") that is used in `neut create`
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-50-41.tar.zst"
-export NEUT_CORE_MODULE_DIGEST="dzZMB865Wo1e4zJrBxQlLqpb-D0_H_AcLiFOmDwWEcE"
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-50-42.tar.zst"
+export NEUT_CORE_MODULE_DIGEST="to0_J79vnQD63lhOCK6exPHjVayNBL6GUgLOC256aHM"
 ```
 
 Then, get the compiler:

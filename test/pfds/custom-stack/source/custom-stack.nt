@@ -25,7 +25,7 @@ define head(a: type, xs: &custom-stack(a)): ?&pair(a, a) {
   | N =>
     none
   | C(a, _) =>
-    OK(a)
+    Right(a)
   }
 }
 
@@ -34,7 +34,7 @@ define tail(a: type, xs: &custom-stack(a)): ?&custom-stack(a) {
   | N =>
     none
   | C(_, rest) =>
-    OK(rest)
+    Right(rest)
   }
 }
 
@@ -57,9 +57,9 @@ define main(): unit {
     let _ = tail(_, zs) in
     let _ = tail(_, zs) in
     match h {
-    | Error(_) =>
+    | Left(_) =>
       1
-    | OK(pair) =>
+    | Right(pair) =>
       tie Pair(_, right) = pair in
       {*right}()
     }
