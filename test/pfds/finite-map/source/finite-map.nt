@@ -45,7 +45,7 @@ define make-finite-map(a: type, b: type, !compare: (a, a) -> ordering): finite-m
           | LT =>
             lookup(!key, left)
           | EQ =>
-            OK(*v)
+            Right(*v)
           | GT =>
             lookup(!key, right)
           }
@@ -76,9 +76,9 @@ define main(): unit {
   let _ = !mymap in
   let result on !mymap =
     match lookup(2, !mymap) {
-    | Error(_) =>
+    | Left(_) =>
       1
-    | OK(xs) =>
+    | Right(xs) =>
       match xs {
       | Nil =>
         10

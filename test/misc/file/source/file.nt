@@ -15,9 +15,9 @@ define use-file(): system(unit) {
 
 define main(): unit {
   match use-file() {
-  | OK(_) =>
+  | Right(_) =>
     Unit
-  | Error(_) =>
+  | Left(_) =>
     Unit
   }
 }

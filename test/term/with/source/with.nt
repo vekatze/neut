@@ -2,18 +2,18 @@ define nop(): unit {
   Unit
 }
 
-define except-bind<e, a, b>(x: except(e, a), k: (a) -> except(e, b)): except(e, b) {
+define either-bind<e, a, b>(x: either(e, a), k: (a) -> either(e, b)): either(e, b) {
   match x {
-  | Error(err) =>
-    Error(err)
-  | OK(value) =>
+  | Left(err) =>
+    Left(err)
+  | Right(value) =>
     k(value)
   }
 }
 
-define test(): except(&text, int) {
-  with except-bind {
-    bind _: bool = Error("hello") in
+define test(): either(&text, int) {
+  with either-bind {
+    bind _: bool = Left("hello") in
     let x = type in
     let _ on x =
       let _ = x in
@@ -21,31 +21,31 @@ define test(): except(&text, int) {
     in
     let _ = x in
     letbox _ = box {type} in
-    bind _: bool = Error("hello") in
+    bind _: bool = Left("hello") in
     let _ = type in
-    bind _: bool = OK(True) in
+    bind _: bool = Right(True) in
     nop();
     bind _: bool =
-      bind _: bool = OK(True) in
+      bind _: bool = Right(True) in
       nop();
       let _ = type in
-      Error("hello")
+      Left("hello")
     in
-    bind _: bool = Error("hello") in
-    bind _: bool = Error("hello") in
+    bind _: bool = Left("hello") in
+    bind _: bool = Left("hello") in
     nop();
-    bind _: type = OK(int) in
-    OK(10)
+    bind _: type = Right(int) in
+    Right(10)
   }
 }
 
-define test2(): except(int, int) {
-  with except-bind {
-    bind _: bool = Error(3) in
+define test2(): either(int, int) {
+  with either-bind {
+    bind _: bool = Left(3) in
     let _ = type in
-    bind _: bool = Error(5) in
+    bind _: bool = Left(5) in
     let _ = type in
-    bind _: bool = OK(True) in
+    bind _: bool = Right(True) in
     nop();
     let tmp = type in
     bind _: bool =
@@ -54,17 +54,17 @@ define test2(): except(int, int) {
         let _ = k in
         tmp
       in
-      bind _: bool = OK(True) in
+      bind _: bool = Right(True) in
       nop();
       let _ = type in
-      Error(7)
+      Left(7)
     in
     let _: type = tmp in
-    bind _: bool = Error(9) in
-    bind _: bool = Error(11) in
+    bind _: bool = Left(9) in
+    bind _: bool = Left(11) in
     nop();
-    bind _: type = OK(int) in
-    OK(10)
+    bind _: type = Right(int) in
+    Right(10)
   }
 }
 

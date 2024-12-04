@@ -7,9 +7,9 @@ define loop(!f: (int) -> ?int): unit {
     define self(count: int): unit {
       let value-or-none = !f(count) in
       match value-or-none {
-      | Error(_) =>
+      | Left(_) =>
         Unit
-      | OK(value) =>
+      | Right(value) =>
         printf("{}\n", [show-int(value)]);
         self(sub-int(count, 1))
       }
@@ -21,9 +21,9 @@ define loop(!f: (int) -> ?int): unit {
 define main(): unit {
   loop(function (x) {
     if eq-int(x, 0) {
-      Error(Unit)
+      Left(Unit)
     } else {
-      OK(sub-int(x, 1))
+      Right(sub-int(x, 1))
     }
   })
 }

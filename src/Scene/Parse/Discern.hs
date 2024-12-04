@@ -452,8 +452,7 @@ discern axis term =
       listCons <- locatorToVarGlobal m' coreListCons
       discern axis $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
-      admit <- locatorToVarGlobal m coreSystemAdmit
-      t <- Gensym.newPreHole (blur m)
+      panic <- locatorToVarGlobal m coreSystemPanic
       textType <- locatorToVarGlobal m coreText
       discern axis $
         asOpaqueValue $
@@ -463,8 +462,8 @@ discern axis term =
               (AN.Type ())
               ( m
                   :< RT.piElim
-                    admit
-                    [t, m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
+                    panic
+                    [m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
               )
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
@@ -476,9 +475,9 @@ discern axis term =
       attachVar <- locatorToVarGlobal m coreThreadAttach
       discern axis $ m :< RT.piElim attachVar [t, e]
     m :< RT.Option t -> do
-      exceptVar <- locatorToVarGlobal m coreExcept
+      eitherVar <- locatorToVarGlobal m coreEither
       unit <- locatorToVarGlobal m coreUnit
-      discern axis $ m :< RT.piElim exceptVar [unit, t]
+      discern axis $ m :< RT.piElim eitherVar [unit, t]
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- locatorToVarGlobal m coreSystemAssert
       textType <- locatorToVarGlobal m coreText
@@ -775,7 +774,7 @@ discernLet ::
   Loc ->
   Loc ->
   App WT.WeakTerm
-discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2@(m2 :< _) startLoc endLoc = do
+discernLet axis m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
   let opacity = WT.Clear
   let discernLet' isNoetic = do
         e1' <- discern axis e1
@@ -792,40 +791,69 @@ discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2@(m2 :< _) startLoc endLoc =
       Throw.raiseError m "`bind` can only be used inside `with`"
     RT.Try -> do
       let m' = blur m
-      let mx' = blur mx
-      let m2' = blur m2
-      exceptTypeInner <- locatorToVarGlobal mx' coreExcept
-      leftType <- Gensym.newPreHole m2'
-      let exceptType = m2' :< RT.piElim exceptTypeInner [leftType, t]
-      tmpVar <- Gensym.newText
+      eitherTypeInner <- locatorToVarGlobal m' coreEither
+      leftType <- Gensym.newPreHole m'
+      let eitherType = m' :< RT.piElim eitherTypeInner [leftType, t]
       e1' <- discern axis e1
-      err <- Gensym.newText
-      exceptError <- locatorToName m2' coreExceptError
-      exceptOK <- locatorToName m2' coreExceptOK
-      exceptErrorVar <- locatorToVarGlobal mx' coreExceptError
-      (mxt', exceptCont) <-
-        discernBinderWithBody' axis (mx, tmpVar, c1, c2, exceptType) startLoc endLoc $
-          m'
-            :< RT.DataElim
-              []
-              False
-              (SE.fromList'' [m' :< RT.Var (Var tmpVar)])
-              ( SE.fromList
-                  SE.Brace
-                  SE.Bar
-                  [ ( SE.fromList'' [(m2', RP.Cons exceptError [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
-                      [],
-                      m2' :< RT.piElim exceptErrorVar [m2' :< RT.Var (Var err)],
-                      fakeLoc
-                    ),
-                    ( SE.fromList'' [(m2', RP.Cons exceptOK [] (RP.Paren (SE.fromList' [(mx, pat)])))],
-                      [],
-                      e2,
-                      endLoc
-                    )
-                  ]
-              )
-      return $ m :< WT.Let opacity mxt' e1' exceptCont
+      tmpVar <- Gensym.newText
+      eitherCont <- constructEitherBinder True mx m1 pat tmpVar e2 endLoc
+      (mxt', eitherCont') <- discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
+      return $ m :< WT.Let opacity mxt' e1' eitherCont'
+    RT.Cotry -> do
+      let m' = blur m
+      eitherTypeInner <- locatorToVarGlobal m' coreEither
+      rightType <- Gensym.newPreHole m'
+      let eitherType = m' :< RT.piElim eitherTypeInner [t, rightType]
+      e1' <- discern axis e1
+      tmpVar <- Gensym.newText
+      eitherCont <- constructEitherBinder False mx m1 pat tmpVar e2 endLoc
+      (mxt', eitherCont') <- discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
+      return $ m :< WT.Let opacity mxt' e1' eitherCont'
+
+constructEitherBinder ::
+  Bool ->
+  Hint ->
+  Hint ->
+  RP.RawPattern ->
+  RawIdent ->
+  Cofree RT.RawTermF Hint ->
+  Loc ->
+  App RT.RawTerm
+constructEitherBinder isTry mx m1 pat tmpVar cont endLoc = do
+  let mx' = blur mx
+  let m1' = blur m1
+  var <- Gensym.newText
+  eitherL <- locatorToName m1 coreEitherLeft
+  eitherR <- locatorToName m1 coreEitherRight
+  eitherVarL <- locatorToVarGlobal m1 coreEitherLeft
+  eitherVarR <- locatorToVarGlobal m1 coreEitherRight
+  let shortPat cons func =
+        ( SE.fromList'' [(m1', RP.Cons cons [] (RP.Paren (SE.fromList' [(m1', RP.Var (Var var))])))],
+          [],
+          m1' :< RT.piElim func [m1' :< RT.Var (Var var)],
+          fakeLoc
+        )
+  let contPat cons =
+        ( SE.fromList'' [(mx', RP.Cons cons [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+          [],
+          cont,
+          endLoc
+        )
+  let leftTuple =
+        if isTry
+          then shortPat eitherL eitherVarL
+          else contPat eitherL
+  let rightTuple =
+        if isTry
+          then contPat eitherR
+          else shortPat eitherR eitherVarR
+  return $
+    m1
+      :< RT.DataElim
+        []
+        False
+        (SE.fromList'' [m1' :< RT.Var (Var tmpVar)])
+        (SE.fromList SE.Brace SE.Bar [leftTuple, rightTuple])
 
 discernIdent :: Hint -> Axis -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent mUse axis x =

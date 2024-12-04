@@ -109,17 +109,17 @@ coreBoolFalse :: T.Text
 coreBoolFalse =
   core <> nsSep <> "bool" <> nsSep <> "False"
 
-coreExcept :: T.Text
-coreExcept =
-  core <> nsSep <> "except" <> nsSep <> "except"
+coreEither :: T.Text
+coreEither =
+  core <> nsSep <> "either" <> nsSep <> "either"
 
-coreExceptError :: T.Text
-coreExceptError =
-  core <> nsSep <> "except" <> nsSep <> "Error"
+coreEitherLeft :: T.Text
+coreEitherLeft =
+  core <> nsSep <> "either" <> nsSep <> "Left"
 
-coreExceptOK :: T.Text
-coreExceptOK =
-  core <> nsSep <> "except" <> nsSep <> "OK"
+coreEitherRight :: T.Text
+coreEitherRight =
+  core <> nsSep <> "either" <> nsSep <> "Right"
 
 coreList :: T.Text
 coreList =
@@ -145,9 +145,9 @@ coreRuneRune :: T.Text
 coreRuneRune =
   core <> nsSep <> "rune" <> nsSep <> "_Rune"
 
-coreSystemAdmit :: T.Text
-coreSystemAdmit =
-  core <> nsSep <> "system" <> nsSep <> "_admit"
+coreSystemPanic :: T.Text
+coreSystemPanic =
+  core <> nsSep <> "system" <> nsSep <> "panic"
 
 coreSystemAssert :: T.Text
 coreSystemAssert =
