@@ -381,12 +381,12 @@ discern axis term =
     m :< RT.LetOn mustIgnoreRelayedVars _ pat _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
       discern axis $ m :< RT.BoxElim VariantT mustIgnoreRelayedVars [] pat [] mys [] e1' [] startLoc [] e2 endLoc
-    m :< RT.Pin _ mxt@(mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
-      let m' = blur m
+    m :< RT.Pin _ mxt@(mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
+      let m2' = blur m2
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
-      resultType <- Gensym.newPreHole m'
+      resultType <- Gensym.newPreHole m2'
       resultVar <- Var <$> Gensym.newTextFromText "tmp-pin"
-      let resultParam = (m', RP.Var resultVar, [], [], resultType)
+      let resultParam = (m2', RP.Var resultVar, [], [], resultType)
       let isNoetic = not $ null $ SE.extract mys
       if isNoetic
         then do
@@ -394,11 +394,11 @@ discern axis term =
           let outerLet cont = m :< RT.LetOn False [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
           discern axis $
             outerLet $
-              m :< RT.LetOn True [] resultParam [] x' [] e2 [] startLoc [] (m' :< RT.Var resultVar) endLoc
+              m :< RT.LetOn True [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
         else do
           discern axis $
             bind startLoc endLoc mxt e1 $
-              m :< RT.LetOn True [] resultParam [] x' [] e2 [] startLoc [] (m' :< RT.Var resultVar) endLoc
+              m :< RT.LetOn True [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
     m :< RT.StaticText s str -> do
       s' <- discern axis s
       case parseText str of
@@ -796,7 +796,7 @@ discernLet axis m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc =
       let eitherType = m' :< RT.piElim eitherTypeInner [leftType, t]
       e1' <- discern axis e1
       tmpVar <- Gensym.newText
-      eitherCont <- constructEitherBinder True mx m1 pat tmpVar e2 endLoc
+      eitherCont <- constructEitherBinder True m mx m1 pat tmpVar e2 endLoc
       (mxt', eitherCont') <- discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
       return $ m :< WT.Let opacity mxt' e1' eitherCont'
     RT.TryLeft -> do
@@ -806,7 +806,7 @@ discernLet axis m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc =
       let eitherType = m' :< RT.piElim eitherTypeInner [t, rightType]
       e1' <- discern axis e1
       tmpVar <- Gensym.newText
-      eitherCont <- constructEitherBinder False mx m1 pat tmpVar e2 endLoc
+      eitherCont <- constructEitherBinder False m mx m1 pat tmpVar e2 endLoc
       (mxt', eitherCont') <- discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
       return $ m :< WT.Let opacity mxt' e1' eitherCont'
 
@@ -814,46 +814,48 @@ constructEitherBinder ::
   Bool ->
   Hint ->
   Hint ->
+  Hint ->
   RP.RawPattern ->
   RawIdent ->
   Cofree RT.RawTermF Hint ->
   Loc ->
   App RT.RawTerm
-constructEitherBinder isTry mx m1 pat tmpVar cont endLoc = do
+constructEitherBinder isTry m mx m1 pat tmpVar cont endLoc = do
+  let m' = blur m
   let mx' = blur mx
   let m1' = blur m1
-  var <- Gensym.newText
+  earlyRetVar <- Gensym.newText
   eitherL <- locatorToName m1 coreEitherLeft
   eitherR <- locatorToName m1 coreEitherRight
   eitherVarL <- locatorToVarGlobal m1 coreEitherLeft
   eitherVarR <- locatorToVarGlobal m1 coreEitherRight
-  let shortPat cons func =
-        ( SE.fromList'' [(m1', RP.Cons cons [] (RP.Paren (SE.fromList' [(m1', RP.Var (Var var))])))],
-          [],
-          m1' :< RT.piElim func [m1' :< RT.Var (Var var)],
-          fakeLoc
-        )
-  let contPat cons =
+  let longClauseGen cons =
         ( SE.fromList'' [(mx', RP.Cons cons [] (RP.Paren (SE.fromList' [(mx, pat)])))],
           [],
           cont,
           endLoc
         )
-  let leftTuple =
+  let shortClauseGen cons func =
+        ( SE.fromList'' [(m', RP.Cons cons [] (RP.Paren (SE.fromList' [(m', RP.Var (Var earlyRetVar))])))],
+          [],
+          m' :< RT.piElim func [m' :< RT.Var (Var earlyRetVar)],
+          fakeLoc
+        )
+  let longClause =
         if isTry
-          then shortPat eitherL eitherVarL
-          else contPat eitherL
-  let rightTuple =
+          then longClauseGen eitherR
+          else longClauseGen eitherL
+  let shortClause =
         if isTry
-          then contPat eitherR
-          else shortPat eitherR eitherVarR
+          then shortClauseGen eitherL eitherVarL
+          else shortClauseGen eitherR eitherVarR
   return $
-    m1
+    m'
       :< RT.DataElim
         []
         False
         (SE.fromList'' [m1' :< RT.Var (Var tmpVar)])
-        (SE.fromList SE.Brace SE.Bar [leftTuple, rightTuple])
+        (SE.fromList SE.Brace SE.Bar [longClause, shortClause])
 
 discernIdent :: Hint -> Axis -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent mUse axis x =

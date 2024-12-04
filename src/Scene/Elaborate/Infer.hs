@@ -218,8 +218,8 @@ infer axis term =
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer axis) es
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
-      (tree', _ :< treeType) <- inferDecisionTree m axis tree
-      return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', m :< treeType)
+      (tree', treeType) <- inferDecisionTree m axis tree
+      return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', treeType)
     m :< WT.Box t -> do
       t' <- inferType axis t
       return (m :< WT.Box t', m :< WT.Tau)
@@ -611,9 +611,9 @@ inferDecisionTree m axis tree =
     DT.Unreachable -> do
       h <- newHole m (varEnv axis)
       return (DT.Unreachable, h)
-    DT.Switch (cursor, mCursor :< _) clauseList -> do
+    DT.Switch (cursor, _) clauseList -> do
       _ :< cursorType <- lookupWeakTypeEnv m cursor
-      let cursorType' = mCursor :< cursorType
+      let cursorType' = m :< cursorType
       (clauseList', answerType) <- inferClauseList m axis cursorType' clauseList
       return (DT.Switch (cursor, cursorType') clauseList', answerType)
 
@@ -625,10 +625,19 @@ inferClauseList ::
   App (DT.CaseList WT.WeakTerm, WT.WeakTerm)
 inferClauseList m axis cursorType (fallbackClause, clauseList) = do
   (clauseList', answerTypeList) <- flip mapAndUnzipM clauseList $ inferClause axis cursorType
-  (fallbackClause', fallbackAnswerType) <- inferDecisionTree m axis fallbackClause
-  h <- newHole m (varEnv axis)
+  let mAns = getClauseHint answerTypeList m
+  h <- newHole mAns (varEnv axis)
+  (fallbackClause', fallbackAnswerType) <- inferDecisionTree mAns axis fallbackClause
   forM_ (answerTypeList ++ [fallbackAnswerType]) $ insConstraintEnv h
   return ((fallbackClause', clauseList'), fallbackAnswerType)
+
+getClauseHint :: [WT.WeakTerm] -> Hint -> Hint
+getClauseHint ts fallbackHint =
+  case ts of
+    (m :< _) : _ ->
+      m
+    _ ->
+      fallbackHint
 
 inferClause ::
   Axis ->
