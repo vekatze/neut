@@ -799,7 +799,7 @@ discernLet axis m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc =
       eitherCont <- constructEitherBinder True mx m1 pat tmpVar e2 endLoc
       (mxt', eitherCont') <- discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
       return $ m :< WT.Let opacity mxt' e1' eitherCont'
-    RT.Cotry -> do
+    RT.TryLeft -> do
       let m' = blur m
       eitherTypeInner <- locatorToVarGlobal m' coreEither
       rightType <- Gensym.newPreHole m'
