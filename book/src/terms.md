@@ -2041,25 +2041,25 @@ define quote-bool(b: bool): meta bool {
 }
 ```
 
-`quote` on `except(bool, unit)` can also be replaced with `box` as follows:
+`quote` on `either(bool, unit)` can also be replaced with `box` as follows:
 
 ```neut
-define quote-except(x: except(bool, unit)): meta except(bool, unit) {
+define quote-either(x: either(bool, unit)): meta either(bool, unit) {
   quote {b}
 }
 
 ↓
 
-define quote-except(x: except(bool, unit)): meta except(bool, unit) {
+define quote-either(x: either(bool, unit)): meta either(bool, unit) {
   match x {
-  | Error(b) =>
+  | Left(b) =>
     if b {
-      box {Error(True)}
+      box {Left(True)}
     } else {
-      box {Error(False)}
+      box {Left(False)}
     }
-  | OK(u) =>
-    box {OK(Unit)}
+  | Right(u) =>
+    box {Right(Unit)}
   }
 }
 ```
@@ -2834,12 +2834,12 @@ Derived from the desugared form.
 
 ## `try x = e1 in e2`
 
-`try` is a shorthand for `match` + `except`.
+`try` is a shorthand for `match` + `either`.
 
 ### Example
 
 ```neut
-define get-value-or-fail(): except(error, int) {
+define get-value-or-fail(): either(error, int) {
   // .. whatever ..
 }
 
@@ -2863,9 +2863,9 @@ e2
 
 ```neut
 match e1 {
-| Error(err) =>
-  Error(err)
-| OK(x) =>
+| Left(err) =>
+  Left(err)
+| Right(x) =>
   e2
 }
 ```
@@ -2876,12 +2876,12 @@ Derived from the desugared form.
 
 ### Note
 
-The definition of `except` is as follows:
+The definition of `either` is as follows:
 
 ```neut
-data except(a, b) {
-| Error(a)
-| OK(b)
+data either(a, b) {
+| Left(a)
+| Right(b)
 }
 ```
 
@@ -2981,9 +2981,9 @@ You can use `?t` to represent an optional type.
 ```neut
 define foo(x: int): ?int {
   if eq-int(x, 0) {
-    OK(100)
+    Right(100)
   } else {
-    Error(Unit)
+    Left(Unit)
   }
 }
 ```
@@ -3003,7 +3003,7 @@ define foo(x: int): ?int {
 
 ↓
 
-except(unit, t)
+either(unit, t)
 ```
 
 ### Type
@@ -3052,28 +3052,28 @@ You can use `with` / `bind` as "do-notations" in other languages.
 
 ```neut
 // define a monadic bind
-define except-bind<e, a, b>(x: except(e, a), k: (a) -> except(e, b)): except(e, b) {
+define either-bind<e, a, b>(x: either(e, a), k: (a) -> either(e, b)): either(e, b) {
   match x {
-  | Error(err) =>
-    Error(err)
-  | OK(value) =>
+  | Left(err) =>
+    Left(err)
+  | Right(value) =>
     k(value)
   }
 }
 
-define test(): except(&text, int) {
+define test(): either(&text, int) {
   // ... and supply it to `with`
-  with except-bind {
-    bind _: bool = Error("hello") in
-    bind _: bool = Error("hello") in
-    bind _ = OK(True) in
+  with either-bind {
+    bind _: bool = Left("hello") in
+    bind _: bool = Left("hello") in
+    bind _ = Right(True) in
     bind _: bool =
-      bind _ = OK(True) in
-      Error("hello")
+      bind _ = Right(True) in
+      Left("hello")
     in
-    bind _: bool = Error("hello") in
-    bind _: type = OK(int) in
-    OK(10)
+    bind _: bool = Left("hello") in
+    bind _: type = Right(int) in
+    Right(10)
   }
 }
 ```
