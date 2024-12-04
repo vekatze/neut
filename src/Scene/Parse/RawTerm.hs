@@ -205,7 +205,7 @@ rawTermLet mLet = do
   endLoc <- getCurrentLoc
   case (letKind, SE.isEmpty noeticVarList) of
     (RT.Plain _, False) -> do
-      return (mLet :< RT.LetOn c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
+      return (mLet :< RT.LetOn False c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
     (_, False) ->
       lift $ Throw.raiseError mLet $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
     _ ->

@@ -70,7 +70,7 @@ data RawTermF a
   | BoxElim NecessityVariant Bool C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Embody a
   | Let LetKind C (PatParam a) C C a C Loc C a Loc
-  | LetOn C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | LetOn Bool C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | StaticText a T.Text
   | Rune

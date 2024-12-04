@@ -378,9 +378,9 @@ discern axis term =
       discern axis $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet axis m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
-    m :< RT.LetOn _ pat _ mys _ e1 _ startLoc _ e2 endLoc -> do
+    m :< RT.LetOn mustIgnoreRelayedVars _ pat _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
-      discern axis $ m :< RT.BoxElim VariantT True [] pat [] mys [] e1' [] startLoc [] e2 endLoc
+      discern axis $ m :< RT.BoxElim VariantT mustIgnoreRelayedVars [] pat [] mys [] e1' [] startLoc [] e2 endLoc
     m :< RT.Pin _ mxt@(mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
       let m' = blur m
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
@@ -391,14 +391,14 @@ discern axis term =
       if isNoetic
         then do
           let mxt' = (mx, RP.Var (Var x), [], [], t)
-          let outerLet cont = m :< RT.LetOn [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
+          let outerLet cont = m :< RT.LetOn False [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
           discern axis $
             outerLet $
-              m :< RT.LetOn [] resultParam [] x' [] e2 [] startLoc [] (m' :< RT.Var resultVar) endLoc
+              m :< RT.LetOn True [] resultParam [] x' [] e2 [] startLoc [] (m' :< RT.Var resultVar) endLoc
         else do
           discern axis $
             bind startLoc endLoc mxt e1 $
-              m :< RT.LetOn [] resultParam [] x' [] e2 [] startLoc [] (m' :< RT.Var resultVar) endLoc
+              m :< RT.LetOn True [] resultParam [] x' [] e2 [] startLoc [] (m' :< RT.Var resultVar) endLoc
     m :< RT.StaticText s str -> do
       s' <- discern axis s
       case parseText str of
@@ -536,10 +536,10 @@ discern axis term =
                   )
             _ -> do
               discern axis $ mLet :< RT.Let letKind c1 mxt c c4 e1' c5 startLoc c6 e2' endLoc
-        mLet :< RT.LetOn c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
+        mLet :< RT.LetOn mustIgnoreRelayedVars c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
-          discern axis $ mLet :< RT.LetOn c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
+          discern axis $ mLet :< RT.LetOn mustIgnoreRelayedVars c1 mxt c2 mys c3 e1' c4 startLoc c5 e2' endLoc
         mBox :< RT.BoxElim nesVariant mustIgnoreRelayedVars c1 mxt c2 mys c3 e1 c4 startLoc c5 e2 endLoc -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
