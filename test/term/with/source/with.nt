@@ -54,6 +54,7 @@ define test2(): either(int, int) {
         let _ = k in
         tmp
       in
+      let _ = k in
       bind _: bool = Right(True) in
       nop();
       let _ = type in
