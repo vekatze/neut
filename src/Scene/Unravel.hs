@@ -3,6 +3,7 @@ module Scene.Unravel
     unravelFromFile,
     registerShiftMap,
     unravel',
+    unravelModule,
   )
 where
 
@@ -87,7 +88,7 @@ unravel' t source = do
 registerShiftMap :: App ()
 registerShiftMap = do
   axis <- newAxis
-  arrowList <- Env.getMainModule >>= unravelModule axis
+  arrowList <- Env.getMainModule >>= unravelAntecedentArrow axis
   cAxis <- newCAxis
   compressMap cAxis (Map.fromList arrowList) arrowList >>= Antecedent.setMap
 
@@ -105,8 +106,8 @@ data Axis = Axis
     traceListRef :: IORef [Path Abs File]
   }
 
-unravelModule :: Axis -> Module -> App [(MID.ModuleID, Module)]
-unravelModule axis currentModule = do
+unravelAntecedentArrow :: Axis -> Module -> App [(MID.ModuleID, Module)]
+unravelAntecedentArrow axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
   path <- Module.getModuleFilePath Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
@@ -121,10 +122,36 @@ unravelModule axis currentModule = do
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath Nothing moduleID
-        Module.fromFilePath path' >>= unravelModule axis
+        Module.fromFilePath path' >>= unravelAntecedentArrow axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
       return $ getAntecedentArrow currentModule ++ arrows
+
+unravelModule :: Module -> App [Module]
+unravelModule currentModule = do
+  axis <- newAxis
+  unravelModule' axis currentModule
+
+unravelModule' :: Axis -> Module -> App [Module]
+unravelModule' axis currentModule = do
+  visitMap <- liftIO $ readIORef $ visitMapRef axis
+  path <- Module.getModuleFilePath Nothing (moduleID currentModule)
+  case Map.lookup path visitMap of
+    Just VI.Active -> do
+      pathList <- liftIO $ readIORef $ traceListRef axis
+      raiseCyclicPath path pathList
+    Just VI.Finish ->
+      return []
+    Nothing -> do
+      liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Active
+      liftIO $ modifyIORef' (traceListRef axis) $ (:) path
+      let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
+      arrows <- fmap concat $ forM children $ \moduleID -> do
+        path' <- Module.getModuleFilePath Nothing moduleID
+        Module.fromFilePath path' >>= unravelModule' axis
+      liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
+      liftIO $ modifyIORef' (traceListRef axis) tail
+      return $ currentModule : arrows
 
 unravel'' :: Target -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
 unravel'' t source = do
