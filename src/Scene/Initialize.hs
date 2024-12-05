@@ -1,6 +1,7 @@
 module Scene.Initialize
   ( initializeCompiler,
     initializeCompilerWithModule,
+    initializeCompilerWithPath,
     initializeLogger,
     initializeForTarget,
     initializeForSource,
@@ -29,6 +30,7 @@ import Context.WeakDefinition qualified as WeakDefinition
 import Entity.Config.Remark qualified as Remark
 import Entity.Module
 import Entity.Source qualified as Source
+import Path
 import Scene.Clarify qualified as Clarify
 import Scene.Module.Reflect qualified as Module
 
@@ -41,6 +43,12 @@ initializeCompiler :: Remark.Config -> App ()
 initializeCompiler cfg = do
   initializeLogger cfg
   mainModule <- Module.fromCurrentPath
+  initializeCompilerWithModule mainModule
+
+initializeCompilerWithPath :: Path Abs File -> Remark.Config -> App ()
+initializeCompilerWithPath path cfg = do
+  initializeLogger cfg
+  mainModule <- Module.fromFilePath path
   initializeCompilerWithModule mainModule
 
 initializeCompilerWithModule :: Module -> App ()
