@@ -78,7 +78,7 @@ insertDependency aliasName url = do
                 dependencyDirExists <- Path.doesDirExist moduleDirPath
                 if dependencyDirExists
                   then do
-                    Remark.printNote' $ "Already installed: `" <> MD.reify digest
+                    Remark.printNote' $ "Already installed: " <> MD.reify digest
                   else do
                     printInstallationRemark alias digest
                     installModule' tempFilePath alias digest >>= fetchDeps
