@@ -183,7 +183,6 @@ rawTermLet mLet = do
       [ rawTermLetKeyword (RT.Plain False),
         rawTermLetKeyword RT.Try,
         rawTermLetKeyword RT.Bind,
-        rawTermLetKeyword RT.TryLeft,
         rawTermLetKeyword RT.Noetic
       ]
   ((mx, patInner), c2) <- rawTermPattern

@@ -796,22 +796,11 @@ discernLet axis m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc =
       let eitherType = m' :< RT.piElim eitherTypeInner [leftType, t]
       e1' <- discern axis e1
       tmpVar <- Gensym.newText
-      eitherCont <- constructEitherBinder True m mx m1 pat tmpVar e2 endLoc
-      (mxt', eitherCont') <- discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
-      return $ m :< WT.Let opacity mxt' e1' eitherCont'
-    RT.TryLeft -> do
-      let m' = blur m
-      eitherTypeInner <- locatorToVarGlobal m' coreEither
-      rightType <- Gensym.newPreHole m'
-      let eitherType = m' :< RT.piElim eitherTypeInner [t, rightType]
-      e1' <- discern axis e1
-      tmpVar <- Gensym.newText
-      eitherCont <- constructEitherBinder False m mx m1 pat tmpVar e2 endLoc
+      eitherCont <- constructEitherBinder m mx m1 pat tmpVar e2 endLoc
       (mxt', eitherCont') <- discernBinderWithBody' axis (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
       return $ m :< WT.Let opacity mxt' e1' eitherCont'
 
 constructEitherBinder ::
-  Bool ->
   Hint ->
   Hint ->
   Hint ->
@@ -820,7 +809,7 @@ constructEitherBinder ::
   Cofree RT.RawTermF Hint ->
   Loc ->
   App RT.RawTerm
-constructEitherBinder isTry m mx m1 pat tmpVar cont endLoc = do
+constructEitherBinder m mx m1 pat tmpVar cont endLoc = do
   let m' = blur m
   let mx' = blur mx
   let m1' = blur m1
@@ -828,27 +817,18 @@ constructEitherBinder isTry m mx m1 pat tmpVar cont endLoc = do
   eitherL <- locatorToName m1 coreEitherLeft
   eitherR <- locatorToName m1 coreEitherRight
   eitherVarL <- locatorToVarGlobal m1 coreEitherLeft
-  eitherVarR <- locatorToVarGlobal m1 coreEitherRight
-  let longClauseGen cons =
-        ( SE.fromList'' [(mx', RP.Cons cons [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+  let longClause =
+        ( SE.fromList'' [(mx', RP.Cons eitherR [] (RP.Paren (SE.fromList' [(mx, pat)])))],
           [],
           cont,
           endLoc
         )
-  let shortClauseGen cons func =
-        ( SE.fromList'' [(m', RP.Cons cons [] (RP.Paren (SE.fromList' [(m', RP.Var (Var earlyRetVar))])))],
+  let shortClause =
+        ( SE.fromList'' [(m', RP.Cons eitherL [] (RP.Paren (SE.fromList' [(m', RP.Var (Var earlyRetVar))])))],
           [],
-          m' :< RT.piElim func [m' :< RT.Var (Var earlyRetVar)],
+          m' :< RT.piElim eitherVarL [m' :< RT.Var (Var earlyRetVar)],
           fakeLoc
         )
-  let longClause =
-        if isTry
-          then longClauseGen eitherR
-          else longClauseGen eitherL
-  let shortClause =
-        if isTry
-          then shortClauseGen eitherL eitherVarL
-          else shortClauseGen eitherR eitherVarR
   return $
     m'
       :< RT.DataElim
