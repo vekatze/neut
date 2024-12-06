@@ -196,7 +196,6 @@ data LetKind
   = Plain MustIgnoreRelayedVars
   | Noetic
   | Try
-  | TryLeft
   | Bind
 
 {-# INLINE decodeLetKind #-}
@@ -206,7 +205,6 @@ decodeLetKind letKind =
     Plain _ -> "let"
     Noetic -> "tie"
     Try -> "try"
-    TryLeft -> "try-left"
     Bind -> "bind"
 
 type VarArg =
