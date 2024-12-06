@@ -14,7 +14,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (mapMaybe, maybeToList)
+import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
@@ -132,7 +132,7 @@ topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSum
       let fullyQualified = FullyQualified locator ll
       let bare = Bare locator ll
       let prefixed = map (`Prefixed` ll) prefixList
-      let cands = mapMaybe (removeAmbiguousCand importSummaryOrNone) (fullyQualified : bare : prefixed)
+      let cands = filter (isProperCand importSummaryOrNone) (fullyQualified : bare : prefixed)
       flip map cands $ \cand -> do
         let inPresetImport = isInPresetImport presetSummary cand
         let needsTextEdit = not candIsInCurrentSource && not inPresetImport
@@ -147,19 +147,31 @@ data Cand
   | Prefixed T.Text T.Text
   | Bare T.Text T.Text
 
-removeAmbiguousCand :: Maybe RawImportSummary -> Cand -> Maybe Cand
-removeAmbiguousCand summaryOrNone cand = do
+isProperCand :: Maybe RawImportSummary -> Cand -> Bool
+isProperCand summaryOrNone cand =
+  not (isAmbiguousCand summaryOrNone cand) && isVisibleCand cand
+
+isAmbiguousCand :: Maybe RawImportSummary -> Cand -> Bool
+isAmbiguousCand summaryOrNone cand = do
   case cand of
     Bare gl ll ->
       case summaryOrNone of
         Nothing ->
-          Just cand
-        Just (summary, _) -> do
-          if shouldRemoveLocatorPair (gl, ll) summary
-            then Nothing
-            else Just cand
+          False
+        Just (summary, _) ->
+          shouldRemoveLocatorPair (gl, ll) summary
     _ ->
-      Just cand
+      False
+
+isVisibleCand :: Cand -> Bool
+isVisibleCand cand =
+  case cand of
+    Bare gl ll -> do
+      ("this." `T.isPrefixOf` gl) || (not ("._" `T.isInfixOf` gl) && not ("_" `T.isPrefixOf` ll))
+    Prefixed _ ll ->
+      not ("_" `T.isPrefixOf` ll)
+    FullyQualified gl ll -> do
+      ("this." `T.isPrefixOf` gl) || (not ("._" `T.isInfixOf` gl) && not ("_" `T.isPrefixOf` ll))
 
 shouldRemoveLocatorPair :: (T.Text, T.Text) -> [(T.Text, [T.Text])] -> Bool
 shouldRemoveLocatorPair (gl, ll) summary = do
