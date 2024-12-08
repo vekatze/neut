@@ -135,8 +135,8 @@ registerData isConstLike m dataName dataArgs consInfoList = do
   let dataArgNum = AN.fromInt $ length dataArgs
   let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
   insertToNameMap dataName m $ GN.Data dataArgNum consNameArrowList isConstLike
-  forM_ consNameArrowList $ \(consDD, consGN) -> do
-    ensureDefFreshness m consDD
+  forM_ consNameArrowList $ \(consDD, consGN@(mCons, _)) -> do
+    ensureDefFreshness mCons consDD
     uncurry (insertToNameMap consDD) consGN
 
 toConsNameArrow ::
