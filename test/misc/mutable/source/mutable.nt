@@ -1,5 +1,5 @@
 import {
-  core.cell {borrow, cell, mutate, new-cell},
+  core.cell {borrow, mutate, new-cell},
   core.list {length},
   core.text.io {print-int},
 }
