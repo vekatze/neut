@@ -20,18 +20,18 @@ _decode :: Bool -> Series D.Doc -> D.Doc
 _decode forceVertical series = do
   let prefix' = decodePrefix series
   let sep = separator series
-  case (container series, null (elems series)) of
+  case (container series, isEmpty series) of
     (Nothing, True) ->
       D.Nil
     (Nothing, _) -> do
-      let isVertical = forceVertical || hasOptionalSeparator series
+      let isVertical = forceVertical || hasOptionalSeparator series || hasComment series
       PI.arrange
         [ PI.inject prefix',
           PI.inject $ PI.arrange $ intercalate sep (elems series) isVertical (trailingComment series)
         ]
     (Just k, _) -> do
       let (open, close) = getContainerPair k
-      let isVertical = forceVertical || hasOptionalSeparator series
+      let isVertical = forceVertical || hasOptionalSeparator series || hasComment series
       let arranger = if isVertical then PI.arrangeVertical else PI.arrange
       case sep of
         Bar -> do
