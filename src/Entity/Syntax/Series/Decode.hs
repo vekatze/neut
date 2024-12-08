@@ -25,9 +25,13 @@ _decode forceVertical series = do
       D.Nil
     (Nothing, _) -> do
       let isVertical = forceVertical || hasOptionalSeparator series || hasComment series
+      let intercalate =
+            case sep of
+              Bar -> barSeq
+              Comma -> commaSeq
       PI.arrange
         [ PI.inject prefix',
-          PI.inject $ PI.arrange $ intercalate sep (elems series) isVertical (trailingComment series)
+          PI.inject $ PI.arrange $ intercalate (elems series) isVertical (trailingComment series)
         ]
     (Just k, _) -> do
       let (open, close) = getContainerPair k
@@ -39,7 +43,7 @@ _decode forceVertical series = do
           PI.arrange
             [ PI.inject prefix',
               PI.inject $ D.text open,
-              layout $ arranger $ intercalate sep (elems series) isVertical (trailingComment series),
+              layout $ arranger $ barSeq (elems series) isVertical (trailingComment series),
               PI.inject $ D.text close
             ]
         Comma -> do
@@ -47,7 +51,7 @@ _decode forceVertical series = do
           PI.arrange
             [ PI.inject prefix',
               PI.inject $ D.text open,
-              layout $ arranger $ intercalate sep (elems series) isVertical (trailingComment series),
+              layout $ arranger $ commaSeq (elems series) isVertical (trailingComment series),
               PI.inject $ D.text close
             ]
 
@@ -83,30 +87,19 @@ decodeClauseItemHorizontal (dom, delim, cod) = do
       PI.inject cod
     ]
 
-intercalate :: Separator -> [(C, D.Doc)] -> Bool -> C -> [PI.Piece]
-intercalate sep elems isVertical trailingComment = do
-  case sep of
-    Comma -> do
-      let elems' = map (uncurry attachComment) elems
-      commaSeq elems' isVertical trailingComment
-    Bar -> do
-      case elems of
-        [] ->
-          []
-        (c, d) : rest -> do
-          let prefix = if isVertical then PI.inject $ D.text (getSeparator sep <> " ") else PI.inject D.Nil
-          let headElem = [PI.inject $ C.asPrefix' c, prefix, PI.inject (D.nest D.indent d)]
-          let rest' = barSeq rest trailingComment
-          headElem ++ rest'
+commaSeq :: [(C, D.Doc)] -> Bool -> C -> [PI.Piece]
+commaSeq elems isVertical trailingComment = do
+  let elems' = map (uncurry attachComment) elems
+  commaSeq' elems' isVertical trailingComment
 
-commaSeq :: [D.Doc] -> Bool -> C -> [PI.Piece]
-commaSeq elems hasOptionalSeparator trailingComment = do
+commaSeq' :: [D.Doc] -> Bool -> C -> [PI.Piece]
+commaSeq' elems isVertical trailingComment = do
   let separator = getSeparator Comma
   case elems of
     [] ->
       [PI.inject $ C.decode trailingComment]
     [d] -> do
-      if hasOptionalSeparator
+      if isVertical
         then
           [ PI.inject d,
             PI.inject $ D.text separator,
@@ -114,26 +107,33 @@ commaSeq elems hasOptionalSeparator trailingComment = do
           ]
         else [PI.appendCommaIfVertical d, PI.inject $ C.asSuffix trailingComment]
     d : rest -> do
-      [PI.inject d, PI.delimiterLeftAligned $ D.text separator] ++ commaSeq rest hasOptionalSeparator trailingComment
+      [PI.inject d, PI.delimiterLeftAligned $ D.text separator] ++ commaSeq' rest isVertical trailingComment
 
-barSeq :: [(C, D.Doc)] -> C -> [PI.Piece]
-barSeq elems trailingComment = do
+barSeq :: [(C, D.Doc)] -> Bool -> C -> [PI.Piece]
+barSeq elems isVertical trailingComment = do
+  case elems of
+    [] ->
+      if null trailingComment
+        then [PI.inject D.Nil]
+        else [PI.inject $ D.join [D.text (T.replicate D.indent " "), C.decode trailingComment]]
+    (c, d) : rest -> do
+      let prefix = if isVertical then PI.inject $ D.text (getSeparator Bar <> " ") else PI.inject D.Nil
+      let headElem = [PI.inject $ C.asPrefix' c, prefix, PI.inject (D.nest D.indent d)]
+      let rest' = barSeq' rest trailingComment
+      headElem ++ rest'
+
+barSeq' :: [(C, D.Doc)] -> C -> [PI.Piece]
+barSeq' elems trailingComment = do
   let separator = getSeparator Bar
   case elems of
     [] ->
-      [PI.inject $ C.decode trailingComment]
-    [(c, d)] -> do
-      [ PI.inject $ C.asClauseHeader c,
-        PI.delimiterBar $ D.text separator,
-        PI.inject $ D.nest D.indent d,
-        PI.inject $ D.nest D.indent $ C.asSuffix trailingComment
-        ]
+      [PI.inject $ D.nest D.indent $ C.asSuffix trailingComment]
     (c, d) : rest -> do
       [ PI.inject $ C.asClauseHeader c,
         PI.delimiterBar $ D.text separator,
         PI.inject $ D.nest D.indent d
         ]
-        ++ barSeq rest trailingComment
+        ++ barSeq' rest trailingComment
 
 decodePrefix :: Series a -> D.Doc
 decodePrefix series =
