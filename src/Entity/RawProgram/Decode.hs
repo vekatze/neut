@@ -5,7 +5,6 @@ import Data.Bifunctor
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.C
-import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.ForeignCodType qualified as FCT
@@ -246,11 +245,11 @@ decDataArgs argsOrNone =
       RT.decodeArgs' args
 
 decConsInfo :: RawConsInfo BN.BaseName -> D.Doc
-decConsInfo (_, (consName, cCons), isConstLike, args, _) = do
+decConsInfo (_, consName, isConstLike, args, _) = do
   let consName' = D.text (BN.reify consName)
   if isConstLike
-    then D.join [consName', C.asSuffix cCons]
-    else D.join [consName', C.asSuffix cCons, RT.decodeArgs (args, [])]
+    then D.join [consName']
+    else D.join [consName', RT.decodeArgs (args, [])]
 
 decTopGeist :: RT.TopGeist -> D.Doc
 decTopGeist = do
