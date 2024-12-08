@@ -1,7 +1,7 @@
 import {
   Ext,
   core.c-int {C-Int},
-  core.channel {channel, new-channel, receive, send},
+  core.channel {new-channel, receive, send},
   core.list {length},
 }
 

@@ -68,7 +68,7 @@ modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
       []
-    (m, (consName, _), isConstLike, consArgs, _) : rest ->
+    (m, consName, isConstLike, consArgs, _) : rest ->
       (SavedHint m, consName, isConstLike, SE.extract consArgs, d) : modifyConsInfo (D.increment d) rest
 
 parseDefineDataConstructor ::
@@ -82,16 +82,16 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
   case consInfoList of
     [] ->
       return []
-    (m, (consName, cCons), isConstLike, consArgs, loc) : rest -> do
+    (m, consName, isConstLike, consArgs, loc) : rest -> do
       let dataArgs' = RT.extractArgs dataArgs
       let consArgs' = SE.extract consArgs
       let dataArgs'' = map identPlusToVar dataArgs'
       let consArgs'' = map adjustConsArg consArgs'
-      let consNameList = map (\(_, (dd, _), isConstLike', _, _) -> (dd, isConstLike')) consInfoList
+      let consNameList = map (\(_, dd, isConstLike', _, _) -> (dd, isConstLike')) consInfoList
       let geist =
             RT.RawGeist
               { loc = m,
-                name = (consName, cCons),
+                name = (consName, []),
                 isConstLike = isConstLike,
                 impArgs = dataArgs,
                 expArgs = (consArgs, []),

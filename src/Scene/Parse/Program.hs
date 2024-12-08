@@ -160,13 +160,13 @@ parseDataArgs = do
 parseDefineDataClause :: P.Parser (RawConsInfo BN.BaseName, C)
 parseDefineDataClause = do
   m <- P.getCurrentHint
-  consName@(consName', _) <- P.baseName
-  unless (isConsName (BN.reify consName')) $ do
+  (consName, c1) <- P.baseName
+  unless (isConsName (BN.reify consName)) $ do
     lift $ Throw.raiseError m "The name of a constructor must be capitalized"
-  (consArgsOrNone, loc, c) <- parseConsArgs
+  (consArgsOrNone, loc, c2) <- parseConsArgs
   let consArgs = fromMaybe SE.emptySeriesPC consArgsOrNone
   let isConstLike = isNothing consArgsOrNone
-  return ((m, consName, isConstLike, consArgs, loc), c)
+  return ((m, consName, isConstLike, consArgs, loc), c1 ++ c2)
 
 parseConsArgs :: P.Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
 parseConsArgs = do

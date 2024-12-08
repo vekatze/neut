@@ -51,7 +51,7 @@ data RawStmt
   | RawStmtForeign C (SE.Series RawForeignItem)
 
 type RawConsInfo a =
-  (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
+  (Hint, a, IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
 
 data RawImport
   = RawImport C Hint (SE.Series RawImportItem) Loc

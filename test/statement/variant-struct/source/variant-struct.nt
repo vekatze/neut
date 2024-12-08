@@ -1,5 +1,4 @@
-data my-null {
-}
+data my-null {}
 
 data data-Z-cons-Z {
 | FooZZ
