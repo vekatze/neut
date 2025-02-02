@@ -113,15 +113,15 @@ getClangDigest = do
 calculateClangDigest :: App T.Text
 calculateClangDigest = do
   clang <- liftIO getClang
-  let printfCmd = proc clang ["-v"]
+  let clangCmd = proc clang ["-v"]
   withRunInIO $ \runInIO ->
-    withCreateProcess printfCmd {std_err = CreatePipe} $
-      \_ _ mStdErr printfProcessHandler -> do
+    withCreateProcess clangCmd {std_err = CreatePipe} $
+      \_ _ mStdErr clangProcessHandler -> do
         case mStdErr of
           Just stdErr -> do
             value <- B.hGetContents stdErr
-            printfExitCode <- waitForProcess printfProcessHandler
-            runInIO $ raiseIfProcessFailed (T.pack clang) printfExitCode stdErr
+            clangExitCode <- waitForProcess clangProcessHandler
+            runInIO $ raiseIfProcessFailed (T.pack clang) clangExitCode stdErr
             return $ decodeUtf8 $ hashAndEncode value
           Nothing ->
             runInIO $ Throw.raiseError' "Could not obtain stderr"
