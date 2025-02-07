@@ -452,7 +452,7 @@ discern axis term =
       listCons <- locatorToVarGlobal m' coreListCons
       discern axis $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
-      panic <- locatorToVarGlobal m coreSystemPanic
+      panic <- locatorToVarGlobal m coreTrickUnsafePanic
       textType <- locatorToVarGlobal m coreText
       discern axis $
         asOpaqueValue $
@@ -479,7 +479,7 @@ discern axis term =
       unit <- locatorToVarGlobal m coreUnit
       discern axis $ m :< RT.piElim eitherVar [unit, t]
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
-      assert <- locatorToVarGlobal m coreSystemAssert
+      assert <- locatorToVarGlobal m coreTrickAssert
       textType <- locatorToVarGlobal m coreText
       let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
       cod <- Gensym.newPreHole (blur m)
