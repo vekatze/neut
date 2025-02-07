@@ -214,7 +214,7 @@ getClangOption t baseModule =
             Just (Target.TargetSummary {clangOption}) ->
               return clangOption
             Nothing ->
-              Throw.raiseError' $ "no such target is defined: `" <> name <> "`"
+              Throw.raiseError' $ "No such target is defined: `" <> name <> "`"
         Target.Zen _ clangOption ->
           return clangOption
     Target.Peripheral ->
