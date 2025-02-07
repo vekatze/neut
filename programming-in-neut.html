@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Programming in Neut - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Programming in Neut - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/programming-in-neut.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="hello-external-world.html"><strong aria-hidden="true">3.1.</strong> Hello External World</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html" class="active"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="programming-in-neut"><a class="header" href="#programming-in-neut">Programming in Neut</a></h1>
+<p>Now that we know how to deal with modules, let's write programs in Neut.</p>
+<h2 id="what-youll-learn-here"><a class="header" href="#what-youll-learn-here">What You'll Learn Here</a></h2>
+<ul>
+<li>How to define and use variables</li>
+<li>How to define and use functions</li>
+<li>How to define and use ADTs</li>
+<li>How to perform parallel computations</li>
+<li>Other syntactic utilities</li>
+</ul>
+<h2 id="programming-in-neut-1"><a class="header" href="#programming-in-neut-1">Programming in Neut</a></h2>
+<h3 id="variables-and-functions"><a class="header" href="#variables-and-functions">Variables and Functions</a></h3>
+<p>Below is an example of the use of variables and functions:</p>
+<pre><code class="language-neut">define hey(): unit {
+  let x = &quot;hello&quot; in
+  let y: int = 100 in
+  let z: float = 3.8 in
+  print(&quot;hey&quot;)
+}
+</code></pre>
+<p>As in the above example, you can use <code>let</code> to define variables.</p>
+<p>If you build the above code, you should notice that the compiler reports unused variables (<code>x</code>, <code>y</code>, and <code>z</code> in the example above). You can use the name <code>_</code> when defining variables to suppress those warnings:</p>
+<pre><code class="language-neut">define hey(): unit {
+  // 🌟
+  let _ = &quot;hello&quot; in
+  let _: int = 100 in
+  let _: float = 3.8 in
+  print(&quot;hey&quot;)
+}
+</code></pre>
+<p><code>let</code>s can be nested:</p>
+<pre><code class="language-neut">define hey(): unit {
+  let x =
+    // 🌟
+    let y: int = 100 in
+    let z: float = 3.8 in
+    &quot;hello&quot;
+  in
+  print(x) // =&gt; hello
+}
+</code></pre>
+<p>You can use <code>e1; e2</code> as a syntax sugar of <code>let _: unit = e1 in e2</code>:</p>
+<pre><code class="language-neut">define hey(): unit {
+  // 🌟
+  print(&quot;a&quot;);
+  print(&quot;b&quot;)
+}
+
+// ↓ (desugar)
+
+define hey(): unit {
+  let _ = print(&quot;a&quot;) in
+  print(&quot;b&quot;)
+}
+</code></pre>
+<h3 id="defining-functions-at-the-top-level"><a class="header" href="#defining-functions-at-the-top-level">Defining Functions at the Top Level</a></h3>
+<p>You can use the statement <code>define</code> to define functions:</p>
+<pre><code class="language-neut">// 🌟
+// defining an ordinary function
+define my-func1(x1: int, x2: bool): bool {
+  x2
+}
+
+// 🌟
+// defining a recursive function
+define my-func2(cond: bool): int {
+  if cond {
+    1
+  } else {
+    my-func2(not(cond)) // recursive call of `my-func2`
+  }
+}
+</code></pre>
+<p><code>define</code> can also define a function with implicit arguments (or &quot;generics&quot;):</p>
+<pre><code class="language-neut">// 🌟
+// The `a` in the angle bracket is the implicit argument of `id`
+define id&lt;a&gt;(x: a): a {
+  x
+}
+
+define use-id(): int {
+  let str = 10 in
+  id(str) // calling `id` without specifying `a` explicitly
+}
+</code></pre>
+<p>The definition of <code>id</code> in the example above is the same as the below:</p>
+<pre><code class="language-neut">// you can explicitly write the type of `a`
+define id&lt;a: type&gt;(x: a): a { // `type` is the type of types
+  x
+}
+</code></pre>
+<p>We can define <code>id</code> without using any implicit arguments as follows (just for comparison):</p>
+<pre><code class="language-neut">define id(a: type, x: a): a {
+  x
+}
+
+// using `id`
+define use-id(): int {
+  let str = 10 in
+  id(int, str) // ← the first argument `int` is now made explicit
+}
+</code></pre>
+<h3 id="defining-functions-in-a-body-of-a-function"><a class="header" href="#defining-functions-in-a-body-of-a-function">Defining Functions in a Body of a Function</a></h3>
+<p>You can use <code>function</code> to define an anonymous function:</p>
+<pre><code class="language-neut">define foo() {
+  let f =
+    // 🌟
+    function (x: int, cond: bool) {
+      if cond {
+        x
+      } else {
+        add-int(x, 1)
+      }
+    }
+  in
+  f(10, False) // → 11
+}
+</code></pre>
+<p>You can also use <code>define</code> in the body of a function to define recursive functions:</p>
+<pre><code class="language-neut">define foo() {
+  let f =
+    // 🌟
+    define print-multiple-hellos(counter: int) {
+      if eq-int(counter, 0) {
+        Unit
+      } else {
+        print(&quot;hello\n&quot;);
+        print-multiple-hellos(sub-int(counter, 1))
+      }
+    }
+  in
+  f(10) // prints 10 &quot;hello&quot;s
+}
+</code></pre>
+<div class="info-block">
+<p>The compiler reports an error if you rewrite the example above so that it uses the variable <code>f</code> more than once. This behavior is to avoid unexpected copying of values. You can satisfy the compiler by renaming <code>f</code> into <code>!f</code>. The next section will cover this topic.</p>
+</div>
+<h3 id="calling-functions"><a class="header" href="#calling-functions">Calling Functions</a></h3>
+<p>Functions <code>f</code> can be called against arguments <code>e1</code>, ..., <code>en</code> by writing <code>f(e1, ..., en)</code>:</p>
+<pre><code class="language-neut">define my-func(x: int, y: int): int {
+  // 🌟
+  add-int(x, y)
+}
+
+define use-my-func(): int {
+  // 🌟
+  my-func(10, 20)
+}
+</code></pre>
+<p>The syntax sugar <code>of</code> can be used to rewrite the above <code>use-my-func</code> into the below:</p>
+<pre><code class="language-neut">define use-my-func(): int {
+  // 🌟
+  my-func of {
+    x = 10,
+    y = 20,
+  }
+}
+</code></pre>
+<p>A lot of primitive functions (from LLVM) are also available. Please see <a href="./primitives.html">Primitives</a> for more.</p>
+<h3 id="defining-adts"><a class="header" href="#defining-adts">Defining ADTs</a></h3>
+<p>You can use the statement <code>data</code> to define ADTs:</p>
+<pre><code class="language-neut">// 🌟
+data my-nat {
+| My-Zero
+| My-Succ(my-nat)
+}
+// In Haskell:
+//   data my-nat
+//     = My-Zero
+//     | My-Succ my-nat
+
+
+//------------
+
+// 🌟
+data my-list(a) {
+| My-Nil
+| My-Cons(a, my-list(a))
+}
+// In Haskell:
+//   data my-list a
+//     = My-Nil
+//     | My-Cons a (my-list a)
+</code></pre>
+<p>Arguments in constructors can optionally have explicit names:</p>
+<pre><code class="language-neut">data config {
+  // 🌟
+| Config(count: int, cond: bool)
+}
+</code></pre>
+<p>You may want to write this vertically using a trailing comma:</p>
+<pre><code class="language-neut">data config {
+  // 🌟
+| Config(
+    count: int,
+    cond: bool,
+  )
+}
+</code></pre>
+<h3 id="creating-adt-values"><a class="header" href="#creating-adt-values">Creating ADT Values</a></h3>
+<p>You can use constructors as usual functions:</p>
+<pre><code class="language-neut">define make-my-list(): my-list(int) {
+  // 🌟
+  My-Cons(1, My-Cons(2, My-Nil))
+}
+
+define make-config(): term {
+  // 🌟
+  Config of {
+    count = 10,
+    cond = True,
+  }
+}
+</code></pre>
+<h3 id="using-adt-values"><a class="header" href="#using-adt-values">Using ADT values</a></h3>
+<p>You can use <code>match</code> to destructure ADT values:</p>
+<pre><code class="language-neut">define sum(xs: my-list(int)): int {
+  // 🌟
+  match xs {
+  | My-Nil =&gt;
+    0
+  | My-Cons(y, ys) =&gt;
+    add-int(y, sum(ys))
+  }
+}
+</code></pre>
+<p>Nested matching is also possible:</p>
+<pre><code class="language-neut">define foo(xs: my-list(int)): int {
+  match xs {
+  | My-Nil =&gt;
+    0
+    // 🌟
+  | My-Cons(y, My-Cons(z, My-Nil)) =&gt;
+    1
+  | My-Cons(_, _) =&gt;
+    2
+  }
+}
+</code></pre>
+<p>Incidentally, the core library defines <code>bool</code> as follows:</p>
+<pre><code class="language-neut">// 🌟
+data bool {
+| False
+| True
+}
+</code></pre>
+<p>A syntax sugar <code>if</code> is there to use this <code>bool</code> as in other languages:</p>
+<pre><code class="language-neut">define factorial(n: int) {
+  // 🌟
+  if le-int(n, 0) { // `le-int(n, 0)` means `n &lt;= 0`
+    1
+  } else {
+    mul-int(n, sub-int(n, 1)) //  n * (n - 1)
+  }
+}
+</code></pre>
+<p>The result of <code>if</code> can be bound to a variable:</p>
+<pre><code class="language-neut">define yo(cond: bool) {
+  let x =
+    // 🌟
+    if cond {
+      1
+    } else {
+      2
+    }
+  in
+  print-int(x)
+}
+
+</code></pre>
+<h3 id="admit"><a class="header" href="#admit"><code>admit</code></a></h3>
+<p>You can use <code>admit</code> to postpone implementing a function and just satisfy the type checker:</p>
+<pre><code class="language-neut">define my-complex-function(x: int, y: bool): int {
+  // 🌟
+  admit
+}
+</code></pre>
+<h3 id="assert"><a class="header" href="#assert"><code>assert</code></a></h3>
+<p>You can use <code>assert</code> as follows:</p>
+<pre><code class="language-neut">// factorial
+define fact(n: int): int {
+  // 🌟
+  assert &quot;n must be non-negative&quot; {
+    ge-int(n, 0)
+  };
+  if eq-int(n, 0) {
+    1
+  } else {
+    let next = sub-int(n, 1) in
+    mul-int(n, fact(next))
+  }
+}
+</code></pre>
+<p>The type of <code>assert &quot;..&quot; { .. }</code> is <code>Unit</code>.</p>
+<p><code>assert</code> checks if a given condition is satisfied. If the condition is True, it does nothing. Otherwise, it reports that the assertion has failed and kills the program with exit code <code>1</code>.</p>
+<p>If you pass <code>--mode release</code> to <code>neut build</code>, <code>assert</code> does nothing.</p>
+<h3 id="parallel-computation"><a class="header" href="#parallel-computation">Parallel Computation</a></h3>
+<p>You can use <code>detach</code> and <code>attach</code> to perform parallel computation:</p>
+<pre><code class="language-neut">define foo(): unit {
+  let t1: thread(unit) =
+    // 🌟
+    detach {
+      let value = some-heavy-computation() in
+      print(value)
+    }
+  in
+  let t2: thread(unit) =
+    // 🌟
+    detach {
+      let value = other-heavy-computation() in
+      print(value)
+    }
+  in
+                 // 🌟
+  let result-1 = attach { t1 } in
+                 // 🌟
+  let result-2 = attach { t2 } in
+  Unit
+}
+</code></pre>
+<p><code>detach</code> receives a term of type <code>t</code> and turns it into a term of type <code>thread(t)</code>. Internally, <code>detach</code> creates a new thread and computes the term in that thread.</p>
+<p><code>attach</code> receives a term of type <code>thread(t)</code> and turns it into a term of type <code>t</code>. Internally, <code>attach</code> waits for a given thread to finish and extracts its result.</p>
+<h3 id="auxiliary-syntaxes"><a class="header" href="#auxiliary-syntaxes">Auxiliary Syntaxes</a></h3>
+<ul>
+<li>Additional syntax sugars are also available. For more, please see the <a href="./terms.html#use-e-x-in-cont">language reference</a>.</li>
+<li>If you want to call foreign functions (FFI), please see the <a href="statements.html#foreign">here</a>.</li>
+</ul>
+<h2 id="what-youve-learned-here"><a class="header" href="#what-youve-learned-here">What You've Learned Here</a></h2>
+<ul>
+<li>Use <code>let</code> to define variables.</li>
+<li>Use <code>function</code> or <code>define</code> to define functions</li>
+<li>Use <code>f(e1, ..., en)</code> to call functions</li>
+<li>Use <code>data</code> to define ADTs.</li>
+<li>Constructors of ADTs are normal functions.</li>
+<li>Use <code>match</code> to destruct ADT values</li>
+<li>Use <code>detach</code> and <code>attach</code> to perform parallel computation</li>
+<li>You can find other syntax sugars in the <a href="./terms.html#syntax-sugar">language reference</a></li>
+</ul>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="hello-external-world.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="static-memory-management.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="hello-external-world.html"><strong aria-hidden="true">3.1.</strong> Hello External World</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html" class="active"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

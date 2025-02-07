@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Modality and Memory - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Modality and Memory - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/modality-and-memory.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="hello-external-world.html"><strong aria-hidden="true">3.1.</strong> Hello External World</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html" class="active"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="modality-and-memory"><a class="header" href="#modality-and-memory">Modality and Memory</a></h1>
+<p>At first glance, the <code>let-on</code> stuff in the previous section might seem a bit artificial.</p>
+<p>This <code>let-on</code> can actually be understood as a syntax sugar over the T-necessity operator. Below, we'll first see how Neut incorporates the necessity modality and then how <code>let-on</code> is desugared using the modality.</p>
+<h2 id="what-youll-learn-here"><a class="header" href="#what-youll-learn-here">What You'll Learn Here</a></h2>
+<ul>
+<li>How layers in Neut are organized</li>
+<li>How to introduce &quot;boxed&quot; terms</li>
+<li>How to use &quot;boxed&quot; terms</li>
+<li>How the borrowing-like operation in Neut is organized using the T-necessity operator</li>
+</ul>
+<h2 id="introducing-the-concept-of-layers"><a class="header" href="#introducing-the-concept-of-layers">Introducing the Concept of Layers</a></h2>
+<p>For every type <code>a</code>, Neut has a type <code>meta a</code>. As we will see, this <code>meta</code> is a necessity operator, often written as <code>□</code> in the literature.</p>
+<p>In Neut, given <code>e: a</code>, you can create values of type <code>meta a</code> by writing something like <code>box {e}</code>. Here, the <code>e</code> is not arbitrary since, if so, we must admit propositions like <code>a -&gt; □a</code>, making every truth a necessary truth.</p>
+<p>In Neut, the condition that <code>e</code> must satisfy is described using <em>layers</em>. So, before using <code>box</code>, let's learn what layers are like.</p>
+<h3 id="the-basics-of-layers"><a class="header" href="#the-basics-of-layers">The Basics of Layers</a></h3>
+<p>For every term in Neut, an integer value called <em>layer</em> is defined.</p>
+<p>Let's see how layers are calculated. The layer of the body of a <code>define</code> is defined to be 0:</p>
+<pre><code class="language-neut">define foo(): unit {
+  // here is layer 0
+  Unit
+}
+</code></pre>
+<p>If you define a variable at layer N, the layer of the variable is also N:</p>
+<pre><code class="language-neut">// here is layer N
+
+let x = Unit in
+x // ← `x` is a variable at layer N
+</code></pre>
+<p>The layer of (an occurrence of) a constant is defined to be the layer in which the constant is used:</p>
+<pre><code class="language-neut">define my-func(): int {
+  10
+}
+
+define use-my-func() {
+  // layer 0
+  let v1 =
+    my-func() // ← this `my-func` is at layer 0
+  in
+
+  ... // ← some layer operations here
+
+  // layer 3 (for example)
+  let v2 =
+    my-func() // ← this `my-func` is at layer 3
+  in
+
+  ...
+}
+</code></pre>
+<p>Terms that aren't related to modality won't change layers. For example, the following is the layer structure of <code>function</code> and <code>let</code>:</p>
+<pre><code class="language-neut">// here is layer N
+function (x1: a1, ..., xn: an) {
+  // here is layer N
+  e
+}
+
+// here is layer N
+let x =
+  // here is layer N
+  e1
+in
+// here is layer N
+// (x: a at layer N)
+e2
+</code></pre>
+<p>As long as you don't use modality-related terms, the layer of a term (and a subterm) is always 0.</p>
+<h3 id="layers-and-variables"><a class="header" href="#layers-and-variables">Layers and Variables</a></h3>
+<p>In Neut, <em>a variable defined at layer n can only be used at layer n</em>. For example, the following is not a valid term:</p>
+<pre><code class="language-neut">define bar(): unit {
+  // here is layer 0
+  let x = Unit in // ← `x` is defined at layer 0
+
+  ... // ← some layer operations here
+
+  // layer 3 (for example)
+  let v2 =
+    x // ← ERROR
+  in
+
+  ...
+}
+
+</code></pre>
+<p>This is because the variable <code>x</code> is defined at layer 0 but used at layer 3 (≠ 0).</p>
+<h2 id="-introduction-putting-values-into-boxes"><a class="header" href="#-introduction-putting-values-into-boxes">□-Introduction: Putting Values into Boxes</a></h2>
+<p>Now that we have layers, we can talk about how to interact with values of type <code>meta a</code>.</p>
+<h3 id="syntax"><a class="header" href="#syntax">Syntax</a></h3>
+<p>A term of type <code>meta a</code> can be created using the syntactic construct <code>box</code>.</p>
+<p>The syntax of <code>box</code> is as follows:</p>
+<pre><code class="language-neut">// here is layer (n+1)
+// - x1: &amp;a1 at (n+1)
+// - ...
+// - xm: &amp;am at (n+1)
+box x1, ..., xm {
+  // here is layer n
+  // - x1: a1 at n
+  // - ...
+  // - xm: am at n
+  e1
+}
+</code></pre>
+<p>Given a term <code>e: A</code>, the type of <code>box x1, ..., xn {e}</code> is <code>meta A</code>.</p>
+<p>Note that the types of <code>xi</code>s must be of the form <code>&amp;A</code>.</p>
+<p><code>box</code> turns <code>&amp;a1, ..., &amp;an</code> into <code>a1, ..., an</code> inside its body.</p>
+<h3 id="semantics"><a class="header" href="#semantics">Semantics</a></h3>
+<p>Operationally, <code>box x1, ..., xn { e }</code> copies all the <code>x1, ..., xn</code> and executes <code>e</code>:</p>
+<pre><code class="language-neut">box x1, ..., xn { e }
+
+↓
+
+// psueudo-code
+let x1 = copy(x1) in
+...
+let xn = copy(xn) in
+e
+</code></pre>
+<p>As you can see from the above semantics, terms of type <code>meta a</code> have the same forms as <code>a</code>. Thus, the type <code>meta a</code> is compiled into the same closed function as <code>a</code>.</p>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<p>Let's see some examples. Below is an example of <code>box</code>:</p>
+<pre><code class="language-neut">define some-function(x: &amp;int): meta int {
+  // here is layer 0
+  // (x: &amp;int at 0)
+  box x {
+    // here is layer -1
+    // (x: int at -1)
+    x
+  }
+}
+</code></pre>
+<p>The sequence <code>x1, ..., xn</code> can be empty. Thus, below is also a valid term:</p>
+<pre><code class="language-neut">define box-unit(): meta unit {
+  // here is layer 0
+  box {
+    // here is layer -1
+    Unit
+  }
+}
+</code></pre>
+<p>On the other hand, below isn't a valid term:</p>
+<pre><code class="language-neut">define some-function(x: bool): meta bool {
+  // here is layer 0
+  box {
+    // here is at layer -1
+    not(x)
+  }
+}
+</code></pre>
+<p>This is because the variable <code>x</code> is defined at layer 0 but used at layer -1.</p>
+<h2 id="-elimination-extracting-values-from-boxes"><a class="header" href="#-elimination-extracting-values-from-boxes">□-elimination: Extracting Values from Boxes</a></h2>
+<p>We can extract values from a box using <code>letbox</code>.</p>
+<h3 id="syntax-1"><a class="header" href="#syntax-1">Syntax</a></h3>
+<p>The syntax of <code>letbox</code> is as follows:</p>
+<pre><code class="language-neut">letbox x on y1, ..., ym =
+  e1
+in
+e2
+</code></pre>
+<p>Or, with a bit verbose comments on layers and types:</p>
+<pre><code class="language-neut">// here is layer n
+// - y1: a1 @ n
+// - ...
+// - ym: am @ n
+letbox x on y1, ..., ym =
+  // here is layer (n+1)
+  // - y1: &amp;a1 @ (n+1)
+  // - ...
+  // - ym: &amp;am @ (n+1)
+  e1
+in
+// here is layer n
+// - y1: a1 @ n
+// - ...
+// - ym: am @ n
+e2
+</code></pre>
+<p>Given a boxed term <code>e1: meta a</code>, <code>letbox</code> binds it to <code>x: a</code>, and executes <code>e2</code>.</p>
+<h3 id="semantics-1"><a class="header" href="#semantics-1">Semantics</a></h3>
+<p>The operational semantics of <code>letbox</code> is as follows:</p>
+<pre><code class="language-neut">letbox x on y1, ..., ym = e1 in
+e2
+
+↓
+
+// pseudo-code
+let y1 = cast(from=a1, to=&amp;a1, y1) in
+...
+let ym = cast(from=am, to=&amp;am, ym) in
+let x = e1 in
+let y1 = cast(from=&amp;a1, to=a1, y1) in
+...
+let ym = cast(from=&amp;am, to=am, ym) in
+e2
+</code></pre>
+<h3 id="examples"><a class="header" href="#examples">Examples</a></h3>
+<p>Let's see some examples. Below is a simple example of <code>letbox</code>:</p>
+<pre><code class="language-neut">define use-letbox(): bool {
+  let x = True in
+  // here is layer 0
+  letbox value =
+    // here is layer 1
+    box {
+      // here is layer 0
+      x
+    }
+  in
+  // here is layer 0
+  value
+}
+</code></pre>
+<p>A bit more complex example:</p>
+<pre><code class="language-neut">// helper function
+define from-noema(x: &amp;bool): meta bool {
+  box x {
+    x
+  }
+}
+
+define use-letbox(): bool {
+  let x = True in
+  let y = True in
+  // here is layer 0
+  // - x: bool @ 0
+  // - y: bool @ 0
+  letbox value on x =
+    // here is layer 1
+    // - x: &amp;bool @ 1
+    // - y:  bool @ 0
+    from-noema(x)
+  in
+  value
+}
+</code></pre>
+<p>Below isn't a well-layered term:</p>
+<pre><code class="language-neut">define use-letbox(x: meta bool): bool {
+  // here is layer 0
+  letbox value =
+    // here is layer 1
+    x // ← error: the layer of `x` is 0 but used at layer 1
+  in
+  x
+}
+</code></pre>
+<h2 id="combination-of-box-and-letbox"><a class="header" href="#combination-of-box-and-letbox">Combination of <code>box</code> and <code>letbox</code></a></h2>
+<p>Let's see how <code>box</code> and <code>letbox</code> work in harmony with each other.</p>
+<h3 id="the-axiom-k-in-neut"><a class="header" href="#the-axiom-k-in-neut">The Axiom K in Neut</a></h3>
+<p>We can prove the axiom K in the literature using <code>box</code> and <code>letbox</code>:</p>
+<pre><code class="language-neut">// Axiom K: □(a -&gt; b) -&gt; □a -&gt; □b
+define axiom-K&lt;a, b&gt;(f: meta (a) -&gt; b, x: meta a): meta b {
+  box {
+    letbox f' = f in
+    letbox x' = x in
+    f'(x')
+  }
+}
+</code></pre>
+<p>In this sense, the <code>meta</code> is a necessity operator that satisfies the axiom K.</p>
+<div class="info-block">
+<p>Don't confuse <code>meta (a) -&gt; b</code> with <code>(meta a) -&gt; b</code>.</p>
+</div>
+<h3 id="creating-and-embodying-a-noema"><a class="header" href="#creating-and-embodying-a-noema">Creating and Embodying a Noema</a></h3>
+<p>The following code creates a noema using <code>letbox</code> and embodies it using <code>box</code>:</p>
+<pre><code class="language-neut">define test-embody(): unit {
+  let x: int = 1 in
+  letbox result on x = // ← creates a noema
+    box x { // ← embodies a noema
+      add-int(x, 2)
+    }
+  in
+  print-int(result) // → &quot;3&quot;
+}
+</code></pre>
+<h3 id="borrowing-a-list"><a class="header" href="#borrowing-a-list">Borrowing a List</a></h3>
+<p>Let's take a look at a more &quot;real-world&quot; example (It's funny to say &quot;real-world&quot; when talking about modality). Suppose that we have the following function:</p>
+<pre><code class="language-neut">// returns `True` if and only if the input `xs` is empty.
+is-empty: (xs: &amp;list(int)) -&gt; bool
+</code></pre>
+<p>You can use this function via <code>box</code> and <code>letbox</code>:</p>
+<pre><code class="language-neut">define borrow-and-check-if-empty(): unit {
+  let xs: list(int) = [1, 2, 3] in
+  // layer 0
+  // (xs: list(int) @ 0)
+  letbox result on xs =
+    // layer 1
+    // (xs: &amp;list(int) @ 1)
+    let b = is-empty(xs) in // ← using the borrowed `xs`
+    if b {
+      box {True}
+    } else {
+      box {False}
+    }
+  in
+  // layer 0
+  // (xs: list(int) @ 0)
+  if result {
+    print(&quot;xs is empty\n&quot;)
+  } else {
+    print(&quot;xs is not empty\n&quot;)
+  }
+}
+</code></pre>
+<p>In the above example, the variable <code>xs: list(int)</code> is turned into a noema by <code>letbox</code>, and then used by <code>is-empty</code>. Since <code>xs</code> is a noema inside the <code>letbox</code>, the <code>is-empty</code> doesn't have to consume the list <code>xs</code>.</p>
+<h2 id="quote-a-shorthand-for-boxes"><a class="header" href="#quote-a-shorthand-for-boxes">Quote: A Shorthand for Boxes</a></h2>
+<p>As in above, we can turn a <code>bool</code> into <code>meta bool</code> by doing something like this:</p>
+<pre><code class="language-neut">define wrap-bool(b: bool): meta bool {
+  if b {
+    box {True}
+  } else {
+    box {False}
+  }
+}
+</code></pre>
+<p>You might find it a bit wordy. Indeed, this translation can be mechanically done on certain &quot;simple&quot; types. For example, we can do the same to <code>either(bool, unit)</code>:</p>
+<pre><code class="language-neut">define wrap-either(x: either(bool, unit)): meta either(bool, unit) {
+  match x {
+  | Left(b) =&gt;
+    if b {
+      box {Left(True)}
+    } else {
+      box {Left(False)}
+    }
+  | Right(u) =&gt;
+    box {Right(Unit)}
+  }
+}
+</code></pre>
+<p>We just have to decompose values and reconstruct them with <code>box</code> added.</p>
+<p>Neut has a syntactic construct <code>quote</code> that bypasses these manual translations. Using <code>quote</code>, the above two functions can be rewritten into the following functions:</p>
+<pre><code class="language-neut">define wrap-bool(b: bool): meta bool {
+  quote {b}
+}
+
+define wrap-either(x: either(bool, unit)): meta either(bool, unit) {
+  quote {x}
+}
+</code></pre>
+<p>The example of <code>is-empty</code> can now be rewritten as follows:</p>
+<pre><code class="language-neut">define foo(): unit {
+  let xs: list(int) = [1, 2, 3] in
+  // layer 0
+  // (xs: list(int) @ 0)
+  letbox result on xs =
+    // layer 1
+    // (xs: &amp;list(int) @ 1)
+    quote {is-empty(xs)}
+  in
+  // layer 0
+  // (xs: list(int) @ 0)
+  if result {
+    print(&quot;xs is empty\n&quot;)
+  } else {
+    print(&quot;xs is not empty\n&quot;)
+  }
+}
+</code></pre>
+<p><code>quote</code> cannot be used against types that might contain types of the form <code>&amp;a</code> or <code>(a) -&gt; b</code>. For example, <code>quote</code> cannot be applied against values of the following types:</p>
+<ul>
+<li><code>&amp;list(int)</code></li>
+<li><code>(int) -&gt; bool</code></li>
+<li><code>either(bool, &amp;list(int))</code></li>
+<li><code>either(bool, (int) -&gt; bool)</code></li>
+</ul>
+<p><code>quote</code> is after all just a shorthand.</p>
+<h2 id="-elimination-t-unboxing-within-the-current-layer"><a class="header" href="#-elimination-t-unboxing-within-the-current-layer">□-elimination-T: Unboxing within the Current Layer</a></h2>
+<p>Remember the example of <code>is-empty</code>:</p>
+<pre><code class="language-neut">define borrow-and-check-if-empty(): unit {
+  let xs: list(int) = [1, 2, 3] in
+  letbox result on xs =
+    // here is layer 1
+    let b = is-empty(xs) in
+    (..)
+  in
+  (..)
+}
+</code></pre>
+<p>Although the above term is valid, the term obtained by parameterizing <code>is-empty</code> is not valid:</p>
+<pre><code class="language-neut">define borrow-and-check-if-empty(is-empty: (&amp;list(int)) -&gt; bool): unit {
+  let xs: list(int) = [1, 2, 3] in
+  letbox result on xs =
+    // here is layer 1
+    let b = is-empty(xs) in // ← error
+    (..)
+  in
+  (..)
+}
+</code></pre>
+<p>This is because the variable <code>is-empty</code> is defined at layer 0 but used at layer 1.</p>
+<p><code>letbox-T</code> is the loophole for such situations.</p>
+<h3 id="syntax-2"><a class="header" href="#syntax-2">Syntax</a></h3>
+<p>The syntax of <code>letbox-T</code> is as follows:</p>
+<pre><code class="language-neut">// here is layer n
+// (y1: a1): a variable at layer n
+// ...
+// (ym: am): a variable at layer n
+letbox-T x on y1, ..., yn =
+  // here is layer n
+  // (y1: &amp;a1): a variable at layer n
+  // ...
+  // (ym: &amp;am): a variable at layer n
+  e1
+in
+// here is layer n
+// (y1: a1): a variable at layer n
+// ...
+// (ym: am): a variable at layer n
+e2
+</code></pre>
+<p>That is, <code>letbox-T</code> is the same as <code>letbox</code> except that it doesn't change the layer structure.</p>
+<h3 id="semantics-2"><a class="header" href="#semantics-2">Semantics</a></h3>
+<p>The operational semantics of <code>letbox-T</code> is again the same as <code>letbox</code>:</p>
+<pre><code class="language-neut">letbox-T x on y1, ..., ym = e1 in
+e2
+
+↓
+
+let y1 = unsafe-cast(a1, &amp;a1, y1) in
+...
+let ym = unsafe-cast(am, &amp;am, ym) in
+let x = e1 in
+let y1 = unsafe-cast(&amp;a1, a1, y1) in
+...
+let ym = unsafe-cast(&amp;am, am, ym) in
+e2
+</code></pre>
+<h3 id="example-parameterizing-a-callback"><a class="header" href="#example-parameterizing-a-callback">Example: Parameterizing a Callback</a></h3>
+<p>Using <code>letbox-T</code>, we can parameterize <code>is-empty</code> as follows:</p>
+<pre><code class="language-neut">define borrow-and-check-if-empty(is-empty: (&amp;list(int)) -&gt; bool): unit {
+  let xs: list(int) = [1, 2, 3] in
+  // layer 0
+  // (xs: list(int) @ 0)
+  // (is-empty: &amp;list(int) -&gt; bool @ 0)
+  letbox-T result on xs =
+    // layer 0
+    // (xs: &amp;list(int) @ 0)
+    // (is-empty: &amp;list(int) -&gt; bool @ 0)
+    let b = is-empty(xs) in
+    (..)
+  in
+  // layer 0
+  // (xs: list(int) @ 0)
+  // (is-empty: &amp;list(int) -&gt; bool @ 0)
+  (..)
+}
+</code></pre>
+<p>Note that the body of <code>letbox-T</code> in the example above is not layer 1 but layer 0.</p>
+<h3 id="example-the-axiom-t-in-neut"><a class="header" href="#example-the-axiom-t-in-neut">Example: The Axiom T in Neut</a></h3>
+<p>You can prove the axiom T by using <code>letbox-T</code>:</p>
+<pre><code class="language-neut">// Axiom T: □a -&gt; a
+define axiom-T&lt;a&gt;(x: meta a): a {
+  letbox-T tmp = x in
+  tmp
+}
+</code></pre>
+<p>Note that the following is not well-layered:</p>
+<pre><code class="language-neut">define axiom-T&lt;a&gt;(x: meta a): a {
+  letbox tmp = x in
+  tmp
+}
+</code></pre>
+<p>since the variable <code>x</code> is defined at layer 0 but used at layer 1.</p>
+<p>In this sense, the <code>meta</code> is a necessity operator that satisfies the axiom T.</p>
+<p>(I know this is a bit too informal, but anyway)</p>
+<h3 id="example-desugaring-let-on-using-the-t-necessity"><a class="header" href="#example-desugaring-let-on-using-the-t-necessity">Example: Desugaring let-on Using the T-necessity</a></h3>
+<p>Now we can desugar <code>let-on</code> as follows:</p>
+<pre><code class="language-neut">let x on y, z = e1 in
+e2
+
+↓
+
+letbox-T x on y, z = quote {e1} in
+e2
+</code></pre>
+<p>and this is why the type of <code>e1</code> must be restricted to some extent. Now we can see that those restrictions come from <code>quote</code>.</p>
+<h2 id="layer-closedness-of-functions"><a class="header" href="#layer-closedness-of-functions">Layer Closedness of Functions</a></h2>
+<p>There's one last condition that we must require: every free variable in a <code>function</code> must be at the layer of <code>function</code>. For example, the following is not a valid term:</p>
+<pre><code class="language-neut">define use-function(x: meta int): meta () -&gt; int {
+  // layer 0
+  let x = 10 in
+  box {
+    // layer -1
+    function () {
+      letbox value = x in
+      value
+    }
+  }
+}
+</code></pre>
+<p>This is because the function is at layer -1, but the free variable <code>x</code> is at layer 0.</p>
+<p>If it were not for this condition, the following would be well-typed and well-layered:</p>
+<pre><code class="language-neut">define joker(): () -&gt; unit {
+  // layer 0
+  let xs: list(int) = [1, 2, 3] in
+  letbox f on xs =
+    // layer 1
+    // xs: at 1
+    box {
+      // layer 0
+      // 💫
+      function () {
+        letbox k =
+          // 1
+          let len =
+            // using xs@1 in function@0
+            length(xs)
+          in
+          box {Unit}
+        in
+        Unit
+      }
+    }
+  in
+  f
+}
+</code></pre>
+<p>The inner function (💫), which depends on <code>xs: &amp;list(int)</code>, is bound to <code>f</code> after evaluating the outer <code>letbox</code>. Thus, we would be able to cause the dreaded use-after-free by deallocating <code>xs</code> and then calling the function <code>f</code>.</p>
+<h2 id="what-youve-learned-here"><a class="header" href="#what-youve-learned-here">What You've Learned Here</a></h2>
+<ul>
+<li>Layer structures of <code>box</code>, <code>letbox</code>, <code>letbox-T</code>, and <code>function</code></li>
+<li>Using <code>box</code> or <code>quote</code> to create terms of type <code>meta {..}</code></li>
+<li>Using <code>letbox</code> or <code>letbox-T</code> to use terms of type <code>meta {..}</code></li>
+<li>Decomposition of <code>let-on</code> into <code>letbox-T</code> and <code>quote</code></li>
+</ul>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="static-memory-management.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="language-reference.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="hello-external-world.html"><strong aria-hidden="true">3.1.</strong> Hello External World</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html" class="active"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>
