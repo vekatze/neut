@@ -1,5 +1,5 @@
 import {
-  core.system {get-argc, get-argv},
+  core.environment {get-argc, get-argv},
   core.text.io {print-int},
 }
 

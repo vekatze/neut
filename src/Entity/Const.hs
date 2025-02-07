@@ -145,13 +145,13 @@ coreRuneRune :: T.Text
 coreRuneRune =
   core <> nsSep <> "rune" <> nsSep <> "_Rune"
 
-coreSystemPanic :: T.Text
-coreSystemPanic =
-  core <> nsSep <> "system" <> nsSep <> "panic"
+coreTrickUnsafePanic :: T.Text
+coreTrickUnsafePanic =
+  core <> nsSep <> "trick" <> nsSep <> "unsafe-panic"
 
-coreSystemAssert :: T.Text
-coreSystemAssert =
-  core <> nsSep <> "system" <> nsSep <> "_assert"
+coreTrickAssert :: T.Text
+coreTrickAssert =
+  core <> nsSep <> "trick" <> nsSep <> "_assert"
 
 coreThreadDetach :: T.Text
 coreThreadDetach =

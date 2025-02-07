@@ -50,7 +50,7 @@ Primitive functions for `int` and `float` are also available. For example, you c
 The [preset](./modules.md#preset) of the core library (something like Prelude in other languages) is imported automatically and provides some types and functions. These types and functions can also be used as primitives. Things like the below are defined in the library:
 
 ```neut
-data void {}
+data null {}
 
 data unit {
 | Unit
