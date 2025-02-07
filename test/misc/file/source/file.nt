@@ -1,8 +1,8 @@
 import {
   FF,
   FM,
-  core.errno {system},
   core.file {close, open},
+  core.system {system},
   core.text.io {read, write},
 }
 
