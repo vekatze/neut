@@ -1,4 +1,4 @@
-FROM debian:12.5
+FROM debian:12.9-slim
 
 WORKDIR /app/
 
@@ -7,38 +7,24 @@ ENV LC_ALL=C.utf8
 
 RUN apt-get update && \
   apt-get install --no-install-recommends -y \
+  ca-certificates \
   curl \
   g++ \
-  gcc \
-  git \
   gnupg \
-  libc6-dev \
-  libffi-dev \
-  libgmp-dev \
   lsb-release \
-  make \
-  netbase \
   software-properties-common \
   tar \
   wget \
-  xxd \
-  xz-utils \
-  zlib1g-dev \
   zstd && \
-  rm -rf /var/lib/apt/lists/*
-
-RUN curl -sSL https://get.haskellstack.org/ | sh
-
-RUN wget --progress=dot:giga https://apt.llvm.org/llvm.sh && \
+  curl -sSL https://get.haskellstack.org/ | sh && \
+  curl -sSL https://github.com/casey/just/releases/download/1.39.0/just-1.39.0-x86_64-unknown-linux-musl.tar.gz | \
+  gunzip | \
+  tar xvf - -C /usr/local/bin/ just && \
+  rm -rf /var/lib/apt/lists/* && \
+  curl -O https://apt.llvm.org/llvm.sh && \
   chmod +x llvm.sh && \
-  ./llvm.sh 15 && \
-  ln -s /usr/bin/clang-15 /usr/bin/clang
-
-RUN wget -qO - 'https://proget.makedeb.org/debian-feeds/prebuilt-mpr.pub' | gpg --dearmor | tee /usr/share/keyrings/prebuilt-mpr-archive-keyring.gpg 1> /dev/null && \
-  echo "deb [arch=all,$(dpkg --print-architecture) signed-by=/usr/share/keyrings/prebuilt-mpr-archive-keyring.gpg] https://proget.makedeb.org prebuilt-mpr $(lsb_release -cs)" | tee /etc/apt/sources.list.d/prebuilt-mpr.list && \
-  apt-get update && \
-  apt-get install --no-install-recommends -y just && \
-  rm -rf /var/lib/apt/lists/*
+  ./llvm.sh 19 && \
+  ln -s /usr/bin/clang-19 /usr/bin/clang
 
 COPY build/package.template.yaml /app/build/package.template.yaml
 

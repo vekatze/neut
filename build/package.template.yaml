@@ -57,6 +57,7 @@ executables:
     main: Main.hs
     source-dirs: src
     ghc-options:
+      - -j
       - -Wall
       - -rtsopts
       - -threaded
