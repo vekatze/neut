@@ -1,4 +1,13 @@
-module Context.Antecedent where
+module Context.Antecedent
+  ( initialize,
+    setMap,
+    getMap,
+    RevMap,
+    getReverseMap,
+    lookup,
+    getShiftDigest,
+  )
+where
 
 import Context.App
 import Context.App.Internal

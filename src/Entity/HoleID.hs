@@ -1,4 +1,4 @@
-module Entity.HoleID where
+module Entity.HoleID (HoleID (..)) where
 
 import GHC.Generics
 

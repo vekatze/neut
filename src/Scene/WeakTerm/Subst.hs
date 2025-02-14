@@ -257,17 +257,18 @@ substCase sub decisionCase = do
     DT.LiteralCase mPat i cont -> do
       cont' <- substDecisionTree sub cont
       return $ DT.LiteralCase mPat i cont'
-    DT.ConsCase {..} -> do
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (subst sub) dataTerms
       dataTypes' <- mapM (subst sub) dataTypes
       (consArgs', cont') <- subst''' sub consArgs cont
       return $
-        decisionCase
-          { DT.dataArgs = zip dataTerms' dataTypes',
-            DT.consArgs = consArgs',
-            DT.cont = cont'
-          }
+        DT.ConsCase
+          record
+            { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consArgs = consArgs',
+              DT.cont = cont'
+            }
 
 substLeafVar :: WT.SubstWeakTerm -> Ident -> Maybe Ident
 substLeafVar sub leafVar =

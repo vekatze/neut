@@ -1,4 +1,8 @@
-module Entity.LamKind where
+module Entity.LamKind
+  ( LamKindF (..),
+    fromLamKind,
+  )
+where
 
 import Data.Binary
 import Entity.Binder

@@ -1,4 +1,9 @@
-module Entity.Ident where
+module Entity.Ident
+  ( Ident (..),
+    isHole,
+    isCartesian,
+  )
+where
 
 import Data.Binary
 import Data.Text qualified as T
@@ -21,10 +26,6 @@ instance Show Ident where
 
 instance Binary Ident
 
-attachHolePrefix :: Ident -> Ident
-attachHolePrefix (I (varName, i)) =
-  I (holeVarPrefix <> varName, i)
-
 isHole :: Ident -> Bool
 isHole (I (varName, _)) =
   holeVarPrefix `T.isPrefixOf` varName
@@ -32,7 +33,3 @@ isHole (I (varName, _)) =
 isCartesian :: Ident -> Bool
 isCartesian (I (varName, _)) =
   expVarPrefix `T.isPrefixOf` varName
-
-innerLength :: Ident -> Int
-innerLength (I (varName, _)) =
-  T.length varName

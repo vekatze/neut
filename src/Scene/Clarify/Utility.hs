@@ -1,4 +1,14 @@
-module Scene.Clarify.Utility where
+module Scene.Clarify.Utility
+  ( toAffineApp,
+    toRelevantApp,
+    bindLet,
+    bindLetWithReducibility,
+    irreducibleBindLet,
+    makeSwitcher,
+    registerSwitcher,
+    getEnumElim,
+  )
+where
 
 import Context.App
 import Context.Clarify

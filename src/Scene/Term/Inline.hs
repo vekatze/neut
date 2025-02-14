@@ -238,7 +238,7 @@ inlineCase axis decisionCase = do
     DT.LiteralCase mPat i cont -> do
       cont' <- inlineDecisionTree axis cont
       return $ DT.LiteralCase mPat i cont'
-    DT.ConsCase {..} -> do
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (inline' axis) dataTerms
       dataTypes' <- mapM (inline' axis) dataTypes
@@ -246,11 +246,12 @@ inlineCase axis decisionCase = do
       ts' <- mapM (inline' axis) ts
       cont' <- inlineDecisionTree axis cont
       return $
-        decisionCase
-          { DT.dataArgs = zip dataTerms' dataTypes',
-            DT.consArgs = zip3 ms xs ts',
-            DT.cont = cont'
-          }
+        DT.ConsCase
+          record
+            { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consArgs = zip3 ms xs ts',
+              DT.cont = cont'
+            }
 
 findClause ::
   Discriminant ->

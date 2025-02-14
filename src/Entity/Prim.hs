@@ -1,4 +1,4 @@
-module Entity.Prim where
+module Entity.Prim (Prim (..)) where
 
 import Data.Binary
 import Entity.PrimType qualified as PT
@@ -10,4 +10,4 @@ data Prim a
   | Value (PV.PrimValue a)
   deriving (Show, G.Generic)
 
-instance Binary a => Binary (Prim a)
+instance (Binary a) => Binary (Prim a)

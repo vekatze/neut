@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Context.Path
   ( getDependencyDirPath,
     getCurrentDir,

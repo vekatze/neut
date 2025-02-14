@@ -1,4 +1,4 @@
-module Entity.VisitInfo where
+module Entity.VisitInfo (VisitInfo (..)) where
 
 data VisitInfo
   = Active

@@ -381,15 +381,16 @@ infer axis term =
                   DT.Switch
                     (cursor, t'')
                     ( DT.Unreachable,
-                      [ DT.ConsCase
-                          { mCons = m,
-                            consDD = consDD,
-                            isConstLike = isConstLike',
-                            disc = D.zero,
-                            dataArgs = dataArgs',
-                            consArgs = reorderedArgs,
-                            cont = DT.Leaf freedVars (adjustCont m reorderedArgs) cont
-                          }
+                      [ DT.ConsCase $
+                          DT.ConsCaseRecord
+                            { mCons = m,
+                              consDD = consDD,
+                              isConstLike = isConstLike',
+                              disc = D.zero,
+                              dataArgs = dataArgs',
+                              consArgs = reorderedArgs,
+                              cont = DT.Leaf freedVars (adjustCont m reorderedArgs) cont
+                            }
                       ]
                     )
               return (m :< WT.DataElim False [(cursor, e', t'')] tree', m :< treeType)
@@ -654,8 +655,8 @@ inferClause axis cursorType@(_ :< cursorTypeInner) decisionCase = do
         L.Rune _ ->
           insConstraintEnv cursorType (mPat :< WT.Prim (WP.Type PT.Rune))
       return (DT.LiteralCase mPat literal cont', tCont)
-    DT.ConsCase {..} -> do
-      let m = DT.mCons decisionCase
+    DT.ConsCase record@DT.ConsCaseRecord {..} -> do
+      let m = mCons
       let (dataTermList, _) = unzip dataArgs
       typedDataArgs' <- mapM (infer axis) dataTermList
       (consArgs', extendedVarEnv) <- inferBinder' axis consArgs
@@ -666,11 +667,12 @@ inferClause axis cursorType@(_ :< cursorTypeInner) decisionCase = do
       insConstraintEnv cursorType tPat
       (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
       return
-        ( decisionCase
-            { DT.dataArgs = typedDataArgs',
-              DT.consArgs = consArgs',
-              DT.cont = cont'
-            },
+        ( DT.ConsCase
+            record
+              { DT.dataArgs = typedDataArgs',
+                DT.consArgs = consArgs',
+                DT.cont = cont'
+              },
           tCont
         )
 

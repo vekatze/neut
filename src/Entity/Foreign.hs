@@ -1,4 +1,11 @@
-module Entity.Foreign where
+module Entity.Foreign
+  ( BaseForeign (..),
+    Foreign,
+    WeakForeign,
+    defaultForeignList,
+    defaultWeakForeignList,
+  )
+where
 
 import Data.Binary
 import Entity.Arch qualified as A

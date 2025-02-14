@@ -20,7 +20,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
-import Data.List
+import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
@@ -581,7 +581,7 @@ elaborateClause mOrig cursor ctx decisionCase = do
     DT.LiteralCase mPat i cont -> do
       cont' <- elaborateDecisionTree ctx mOrig mPat cont
       return $ DT.LiteralCase mPat i cont'
-    DT.ConsCase {..} -> do
+    DT.ConsCase record@DT.ConsCaseRecord {..} -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM elaborate' dataTerms
       dataTypes' <- mapM elaborate' dataTypes
@@ -590,11 +590,12 @@ elaborateClause mOrig cursor ctx decisionCase = do
       let consContext = (cursor, (Just consDD, isConstLike, consArgIdents))
       cont' <- elaborateDecisionTree (consContext : ctx) mOrig mCons cont
       return $
-        decisionCase
-          { DT.dataArgs = zip dataTerms' dataTypes',
-            DT.consArgs = consArgs',
-            DT.cont = cont'
-          }
+        DT.ConsCase
+          record
+            { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consArgs = consArgs',
+              DT.cont = cont'
+            }
 
 raiseLiteralNonExhaustivePatternMatching :: Hint -> App a
 raiseLiteralNonExhaustivePatternMatching m =

@@ -1,4 +1,13 @@
-module Entity.Target where
+module Entity.Target
+  ( Target (..),
+    TargetSummary (..),
+    MainTarget (..),
+    emptyZen,
+    getEntryPointName,
+    getCompileOption,
+    getLinkOption,
+  )
+where
 
 import Data.Hashable
 import Data.Text qualified as T

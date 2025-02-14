@@ -1,4 +1,4 @@
-module Entity.RawBinder where
+module Entity.RawBinder (RawBinder) where
 
 import Entity.C
 import Entity.Hint

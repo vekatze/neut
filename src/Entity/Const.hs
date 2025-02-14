@@ -1,6 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
-
-module Entity.Const where
+module Entity.Const (module Entity.Const) where
 
 import Data.Text qualified as T
 import Path

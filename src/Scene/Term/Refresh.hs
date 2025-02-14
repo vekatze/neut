@@ -191,14 +191,15 @@ refreshCase decisionCase = do
     DT.LiteralCase mPat i cont -> do
       cont' <- refreshDecisionTree cont
       return $ DT.LiteralCase mPat i cont'
-    DT.ConsCase {..} -> do
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM refresh dataTerms
       dataTypes' <- mapM refresh dataTypes
       (consArgs', cont') <- refresh'' consArgs cont
       return $
-        decisionCase
-          { DT.dataArgs = zip dataTerms' dataTypes',
-            DT.consArgs = consArgs',
-            DT.cont = cont'
-          }
+        DT.ConsCase $
+          record
+            { DT.dataArgs = zip dataTerms' dataTypes',
+              DT.consArgs = consArgs',
+              DT.cont = cont'
+            }

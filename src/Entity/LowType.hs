@@ -1,4 +1,4 @@
-module Entity.LowType where
+module Entity.LowType (LowType (..), textType, textTypeInner) where
 
 import Data.Binary
 import Entity.PrimNumSize

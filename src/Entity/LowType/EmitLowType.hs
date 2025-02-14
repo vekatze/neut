@@ -1,4 +1,4 @@
-module Entity.LowType.EmitLowType where
+module Entity.LowType.EmitLowType (emitLowType) where
 
 import Data.ByteString.Builder
 import Entity.Builder

@@ -105,6 +105,6 @@ holesCase decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
       holesDecisionTree cont
-    DT.ConsCase {..} -> do
+    DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       S.unions $ holes' consArgs (holesDecisionTree cont) : map holes dataTerms ++ map holes dataTypes

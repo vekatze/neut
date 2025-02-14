@@ -1,4 +1,9 @@
-module Entity.ModuleDigest where
+module Entity.ModuleDigest
+  ( ModuleDigest (..),
+    reify,
+    fromByteString,
+  )
+where
 
 import Data.Binary
 import Data.ByteString qualified as B

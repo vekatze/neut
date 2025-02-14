@@ -1,4 +1,11 @@
-module Entity.Error where
+module Entity.Error
+  ( Error (..),
+    newError,
+    newError',
+    newCritical,
+    newCritical',
+  )
+where
 
 import Control.Exception
 import Data.Text qualified as T

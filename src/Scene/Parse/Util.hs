@@ -107,4 +107,4 @@ interpretAsInteger' charMap charMapLen base acc t = do
       interpretAsInteger' charMap charMapLen base acc t'
     Just (t', b) -> do
       v <- lookup b charMap
-      interpretAsInteger' charMap charMapLen (charMapLen * base) (base * fromIntegral v + acc) t'
+      interpretAsInteger' charMap charMapLen (charMapLen * base) (base * v + acc) t'

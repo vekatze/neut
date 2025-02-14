@@ -1,4 +1,8 @@
-module Entity.Magic where
+module Entity.Magic
+  ( Magic (..),
+    WeakMagic (..),
+  )
+where
 
 import Data.Bifunctor
 import Data.Binary

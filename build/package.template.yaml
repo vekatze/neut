@@ -7,59 +7,70 @@ maintainer: "vekatze@icloud.com"
 
 language: GHC2021
 
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+- -fmax-pmcheck-models=200
+- -j
+
 default-extensions:
-  - ApplicativeDo
-  - OverloadedStrings
-  - RecordWildCards
-  - StrictData
+- ApplicativeDo
+- OverloadedStrings
+- RecordWildCards
+- StrictData
+- TemplateHaskell
 
 dependencies:
-  - aeson
-  - ansi-terminal
-  - async
-  - base
-  - base64-bytestring
-  - binary
-  - bytestring
-  - co-log-core
-  - containers
-  - cryptohash-sha256
-  - directory
-  - exceptions
-  - filepath
-  - free
-  - half
-  - hashable
-  - lens
-  - lsp
-  - megaparsec
-  - mtl
-  - optparse-applicative
-  - parser-combinators
-  - path
-  - path-io
-  - prettyprinter
-  - process
-  - safe-exceptions
-  - template-haskell
-  - text
-  - time
-  - transformers
-  - unboxed-ref
-  - unliftio
-  - unliftio-core
-  - unordered-containers
-  - utf8-string
-  - vector
+- aeson
+- ansi-terminal
+- async
+- base
+- base64-bytestring
+- binary
+- bytestring
+- co-log-core
+- containers
+- cryptohash-sha256
+- directory
+- exceptions
+- filepath
+- free
+- half
+- hashable
+- lens
+- lsp
+- megaparsec
+- mtl
+- optparse-applicative
+- parser-combinators
+- path
+- path-io
+- prettyprinter
+- process
+- safe-exceptions
+- template-haskell
+- text
+- time
+- transformers
+- unboxed-ref
+- unliftio
+- unliftio-core
+- unordered-containers
+- utf8-string
+- vector
 
 executables:
   neut:
     main: Main.hs
     source-dirs: src
     ghc-options:
-      - -j
-      - -Wall
-      - -rtsopts
-      - -threaded
-      - -with-rtsopts=-N
-      - -fmax-pmcheck-models=200
+    - -rtsopts
+    - -threaded
+    - -with-rtsopts=-N

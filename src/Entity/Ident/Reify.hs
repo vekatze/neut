@@ -1,4 +1,9 @@
-module Entity.Ident.Reify where
+module Entity.Ident.Reify
+  ( toText,
+    toText',
+    toInt,
+  )
+where
 
 import Data.Text qualified as T
 import Entity.Ident
@@ -11,10 +16,6 @@ toText (I (s, _)) =
 toText' :: Ident -> T.Text
 toText' (I (s, i)) =
   s <> "-" <> T.pack (show i)
-
-toText'' :: Ident -> T.Text
-toText'' (I (_, i)) =
-  "_" <> T.pack (show i)
 
 toInt :: Ident -> Int
 toInt (I (_, i)) =

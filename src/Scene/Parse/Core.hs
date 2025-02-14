@@ -1,4 +1,35 @@
-module Scene.Parse.Core where
+module Scene.Parse.Core
+  ( Parser,
+    parseFile,
+    getCurrentHint,
+    getCurrentLoc,
+    symbol,
+    baseName,
+    delimiter,
+    nonSymbolCharSet,
+    keyword,
+    string,
+    rune,
+    integer,
+    float,
+    bool,
+    betweenParen,
+    betweenBrace,
+    betweenBrace',
+    series,
+    bareSeries,
+    seriesParen,
+    seriesParen',
+    seriesBrace,
+    seriesBrace',
+    seriesBracket,
+    seriesAngle,
+    seriesBraceList,
+    seriesBraceList',
+    asLabel,
+    var,
+  )
+where
 
 import Context.App
 import Context.Gensym qualified as Gensym
@@ -78,20 +109,10 @@ spaceConsumer =
     skipSpace
     many (comment <* skipSpace)
 
-{-# INLINE isAsciiSpace #-}
-isAsciiSpace :: Char -> Bool
-isAsciiSpace c =
-  c == ' '
-
 {-# INLINE asciiSpaceOrNewLine1 #-}
 asciiSpaceOrNewLine1 :: Parser ()
 asciiSpaceOrNewLine1 =
   void $ takeWhile1P (Just "space or newline") isAsciiSpaceOrNewLine
-
-{-# INLINE asciiSpace1 #-}
-asciiSpace1 :: Parser ()
-asciiSpace1 =
-  void $ takeWhile1P (Just "space") isAsciiSpaceOrNewLine
 
 {-# INLINE isAsciiSpaceOrNewLine #-}
 isAsciiSpaceOrNewLine :: Char -> Bool
@@ -120,10 +141,6 @@ keyword expected = do
   fmap snd $ lexeme $ try $ do
     _ <- chunk expected
     label (T.unpack expected) $ notFollowedBy symbol
-
-nonSymbolChar :: Parser Char
-nonSymbolChar =
-  satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
 
 delimiter :: T.Text -> Parser C
 delimiter expected = do

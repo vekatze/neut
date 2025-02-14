@@ -1,4 +1,4 @@
-module Entity.GlobalLocatorAlias where
+module Entity.GlobalLocatorAlias (GlobalLocatorAlias (..)) where
 
 import Data.Binary
 import Data.Hashable

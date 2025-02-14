@@ -1,4 +1,13 @@
-module Entity.Term where
+module Entity.Term
+  ( Term,
+    TermF (..),
+    TypeEnv,
+    insTypeEnv,
+    isValue,
+    fromLetSeq,
+    fromLetSeqOpaque,
+  )
+where
 
 import Control.Comonad.Cofree
 import Data.Binary

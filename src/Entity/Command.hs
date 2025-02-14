@@ -1,4 +1,4 @@
-module Entity.Command where
+module Entity.Command (Command (..)) where
 
 import Entity.Config.Archive qualified as Archive
 import Entity.Config.Build qualified as Build

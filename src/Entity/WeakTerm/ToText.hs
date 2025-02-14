@@ -253,7 +253,7 @@ showClauseList decisionCase = do
   case decisionCase of
     DT.LiteralCase _ i cont -> do
       showApp "literal" [T.pack (show i), showDecisionTree cont]
-    DT.ConsCase {..} -> do
+    DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       showApp
         (showGlobalVariable consDD)
         [ T.pack (show (D.reify disc)),

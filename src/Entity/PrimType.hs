@@ -1,4 +1,4 @@
-module Entity.PrimType where
+module Entity.PrimType (PrimType (..)) where
 
 import Data.Binary
 import Entity.PrimNumSize

@@ -1,4 +1,10 @@
-module Entity.StrictGlobalLocator where
+module Entity.StrictGlobalLocator
+  ( StrictGlobalLocator (..),
+    reify,
+    llvmGlobalLocator,
+    baseGlobalLocatorOf,
+  )
+where
 
 import Data.Binary
 import Data.Hashable

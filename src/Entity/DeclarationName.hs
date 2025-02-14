@@ -1,4 +1,10 @@
-module Entity.DeclarationName where
+module Entity.DeclarationName
+  ( DeclarationName (..),
+    DeclEnv,
+    reify,
+    toBuilder,
+  )
+where
 
 import Data.ByteString.Builder
 import Data.HashMap.Strict qualified as Map
@@ -19,14 +25,6 @@ data DeclarationName
 instance Hashable DeclarationName
 
 type DeclEnv = Map.HashMap DeclarationName ([BaseLowType], F.ForeignCodType BaseLowType)
-
-malloc :: DeclarationName
-malloc =
-  Ext EN.malloc
-
-free :: DeclarationName
-free =
-  Ext EN.free
 
 toBuilder :: DeclarationName -> Builder
 toBuilder dn =

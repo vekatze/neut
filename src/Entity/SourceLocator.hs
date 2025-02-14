@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Entity.SourceLocator
   ( SourceLocator (..),
     getRelPathText,

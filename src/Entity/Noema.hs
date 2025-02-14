@@ -1,3 +1,3 @@
-module Entity.Noema where
+module Entity.Noema (IsNoetic) where
 
 type IsNoetic = Bool

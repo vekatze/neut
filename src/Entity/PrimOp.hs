@@ -1,4 +1,4 @@
-module Entity.PrimOp where
+module Entity.PrimOp (PrimOp (..), getTypeInfo) where
 
 import Data.Binary
 import Entity.PrimOp.BinaryOp

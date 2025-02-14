@@ -1,4 +1,4 @@
-module Entity.Binder where
+module Entity.Binder (BinderF) where
 
 import Entity.Hint
 import Entity.Ident

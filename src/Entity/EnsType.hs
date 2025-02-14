@@ -1,4 +1,8 @@
-module Entity.EnsType where
+module Entity.EnsType
+  ( EnsType (..),
+    showEnsType,
+  )
+where
 
 import Data.Text qualified as T
 

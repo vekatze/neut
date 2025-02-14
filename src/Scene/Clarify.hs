@@ -402,7 +402,7 @@ clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
           return (EC.Int i, body', contChain)
         L.Rune r ->
           return (EC.Int (RU.asInt r), body', contChain)
-    DT.ConsCase {..} -> do
+    DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
       let cursorSize = 1 + length dataArgVars + length consArgs
