@@ -1,4 +1,8 @@
-module Entity.PrimOp.ConvOp where
+module Entity.PrimOp.ConvOp
+  ( ConvOp (..),
+    asConvOp,
+  )
+where
 
 import Data.Binary
 import Data.Text qualified as T

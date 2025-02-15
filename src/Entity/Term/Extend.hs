@@ -140,15 +140,16 @@ extendCase decisionCase = do
     DT.LiteralCase mPat i cont -> do
       let cont' = extendDecisionTree cont
       DT.LiteralCase mPat i cont'
-    DT.ConsCase {..} -> do
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let dataArgs' = map (bimap extend extend) dataArgs
       let consArgs' = map extendBinder consArgs
       let cont' = extendDecisionTree cont
-      decisionCase
-        { DT.dataArgs = dataArgs',
-          DT.consArgs = consArgs',
-          DT.cont = cont'
-        }
+      DT.ConsCase $
+        record
+          { DT.dataArgs = dataArgs',
+            DT.consArgs = consArgs',
+            DT.cont = cont'
+          }
 
 extendStmtKind :: StmtKind (Cofree TM.TermF ()) -> StmtKind TM.Term
 extendStmtKind stmtKind =

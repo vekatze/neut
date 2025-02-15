@@ -1,4 +1,4 @@
-module Entity.Import where
+module Entity.Import (ImportItem (..)) where
 
 import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI

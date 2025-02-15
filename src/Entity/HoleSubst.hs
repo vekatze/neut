@@ -1,10 +1,19 @@
-module Entity.HoleSubst where
+module Entity.HoleSubst
+  ( HoleSubst (..),
+    insert,
+    lookup,
+    empty,
+    singleton,
+    fillable,
+  )
+where
 
 import Data.IntMap qualified as IntMap
 import Entity.HoleID qualified as HID
 import Entity.Ident
 import Entity.WeakTerm
 import Entity.WeakTerm.Holes
+import Prelude hiding (lookup)
 
 newtype HoleSubst = HoleSubst (IntMap.IntMap ([Ident], WeakTerm))
   deriving (Semigroup, Monoid)

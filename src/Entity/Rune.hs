@@ -9,7 +9,7 @@ where
 import Codec.Binary.UTF8.String
 import Data.Binary
 import Data.Bits (shiftL, (.|.))
-import Data.List
+import Data.List qualified as List
 import Data.Text qualified as T
 import Entity.Text.Util (parseText)
 import GHC.Generics (Generic)
@@ -35,7 +35,7 @@ make t = do
 asInt :: Rune -> Integer
 asInt (MkRune r _) = do
   let r' = encodeChar r
-  foldl' (\acc byte -> (acc `shiftL` 8) .|. fromIntegral byte) 0 r'
+  List.foldl' (\acc byte -> (acc `shiftL` 8) .|. fromIntegral byte) 0 r'
 
 asText :: Rune -> T.Text
 asText (MkRune _ orig) =

@@ -1,4 +1,13 @@
-module Entity.Comp where
+module Entity.Comp
+  ( Value (..),
+    Comp (..),
+    Primitive (..),
+    CompStmt (..),
+    SubstValue,
+    IsReducible,
+    fromDefTuple,
+  )
+where
 
 import Data.IntMap qualified as IntMap
 import Data.List (intercalate)

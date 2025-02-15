@@ -1,4 +1,25 @@
-module Context.Env where
+module Context.Env
+  ( PathMap,
+    getArch,
+    getArtifactMap,
+    getBaseSize,
+    getBaseSize',
+    getBuildMode,
+    getCurrentSource,
+    getDataSize,
+    getDataSize',
+    getDataSize'',
+    getMainModule,
+    getOS,
+    getPlatform,
+    getTagMap,
+    insertToArtifactMap,
+    lookupArtifactTime,
+    setBuildMode,
+    setCurrentSource,
+    setMainModule,
+  )
+where
 
 import Context.App
 import Context.App.Internal

@@ -1,4 +1,9 @@
-module Entity.BasePrimType where
+module Entity.BasePrimType
+  ( BasePrimTypeSize (..),
+    BasePrimType (..),
+    extractSize,
+  )
+where
 
 import Data.Binary
 import Entity.PrimNumSize

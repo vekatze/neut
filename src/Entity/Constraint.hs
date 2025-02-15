@@ -1,8 +1,11 @@
-module Entity.Constraint where
+module Entity.Constraint
+  ( Constraint (..),
+    MetaVarSet,
+    SuspendedConstraint (..),
+  )
+where
 
-import Control.Comonad.Cofree
 import Data.Set qualified as S
-import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.WeakTerm qualified as WT
 
@@ -16,13 +19,3 @@ type MetaVarSet =
 
 newtype SuspendedConstraint
   = SuspendedConstraint (MetaVarSet, (Constraint, Constraint))
-
-getLoc :: Constraint -> Hint
-getLoc c = do
-  case c of
-    Eq _ (m :< _) ->
-      m
-    Actual (m :< _) ->
-      m
-    Integer (m :< _) ->
-      m

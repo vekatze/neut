@@ -8,7 +8,7 @@ where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor
-import Data.List
+import Data.List qualified as List
 import Entity.Attr.Lam qualified as AttrL
 import Entity.BaseLowType qualified as BLT
 import Entity.Binder
@@ -180,15 +180,16 @@ weakenCase decisionCase = do
     DT.LiteralCase mPat i cont -> do
       let cont' = weakenDecisionTree cont
       DT.LiteralCase mPat i cont'
-    DT.ConsCase {..} -> do
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let dataArgs' = map (bimap weaken weaken) dataArgs
       let consArgs' = map weakenBinder consArgs
       let cont' = weakenDecisionTree cont
-      decisionCase
-        { DT.dataArgs = dataArgs',
-          DT.consArgs = consArgs',
-          DT.cont = cont'
-        }
+      DT.ConsCase $
+        record
+          { DT.dataArgs = dataArgs',
+            DT.consArgs = consArgs',
+            DT.cont = cont'
+          }
 
 weakenStmtKind :: StmtKind TM.Term -> StmtKind WT.WeakTerm
 weakenStmtKind stmtKind =
@@ -197,9 +198,9 @@ weakenStmtKind stmtKind =
       Normal opacity
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenBinder dataArgs
-      let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList
+      let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
       let consArgsList' = map (map weakenBinder) consArgsList
-      let consInfoList' = zip5 hintList consNameList constLikeList consArgsList' discriminantList
+      let consInfoList' = List.zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
     DataIntro dataName dataArgs consArgs discriminant -> do
       let dataArgs' = map weakenBinder dataArgs

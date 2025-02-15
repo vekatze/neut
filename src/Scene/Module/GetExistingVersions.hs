@@ -2,7 +2,7 @@ module Scene.Module.GetExistingVersions (getExistingVersions) where
 
 import Context.App
 import Context.Path (getBaseName)
-import Data.List
+import Data.List qualified as List
 import Data.Maybe
 import Entity.Module
 import Entity.PackageVersion qualified as PV
@@ -17,4 +17,4 @@ getExistingVersions targetModule = do
     else do
       (_, archiveFiles) <- listDir archiveDir
       basenameList <- mapM getBaseName archiveFiles
-      return $ sort $ mapMaybe PV.reflect basenameList
+      return $ List.sort $ mapMaybe PV.reflect basenameList

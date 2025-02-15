@@ -1,4 +1,9 @@
-module Entity.PrimNumSize where
+module Entity.PrimNumSize
+  ( IntSize (..),
+    FloatSize (..),
+    intSize32,
+  )
+where
 
 import Data.Binary
 import GHC.Generics qualified as G

@@ -1,4 +1,4 @@
-module Entity.IsConstLike where
+module Entity.IsConstLike (IsConstLike) where
 
 type IsConstLike =
   Bool

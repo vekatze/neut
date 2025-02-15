@@ -1,11 +1,61 @@
-module Entity.Module where
+module Entity.Module
+  ( Module (..),
+    SomePath,
+    LocatorName,
+    AliasPresetMap,
+    Foreign (..),
+    Dependency (..),
+    TargetName,
+    PresetSummary,
+    keyAntecedent,
+    keyArchive,
+    keyBuildOption,
+    keyCache,
+    keyCompileOption,
+    keyDependency,
+    keyDigest,
+    keyEnablePreset,
+    keyExtraContent,
+    keyForeign,
+    keyForeignInput,
+    keyForeignOutput,
+    keyForeignScript,
+    keyInlineLimit,
+    keyLinkOption,
+    keyMain,
+    keyMirror,
+    keyPrefix,
+    keyPreset,
+    keySource,
+    keyStatic,
+    keyTarget,
+    keyZen,
+    getSourceDir,
+    getTargetPathList,
+    getTargetPath,
+    getArchiveDir,
+    getExtraContents,
+    insertDependency,
+    getAliasListWithEnabledPresets,
+    toDefaultEns,
+    ppDirPath,
+    getDigestMap,
+    getDigestFromModulePath,
+    reifyPresetMap,
+    getRelPathFromSourceDir,
+    _m,
+    getModuleRootDir,
+    getTarget,
+    stylize,
+  )
+where
 
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Catch
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
-import Data.List (find, sort)
+import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
@@ -324,7 +374,7 @@ getPrefixMapInfo someModule = do
     then Nothing
     else do
       let prefixMapDict = flip Map.map (modulePrefixMap someModule) $ \(alias, locator) ->
-            _m :< E.String (GL.reify (GL.GlobalLocator alias locator))
+            _m :< E.String (GL.reify (GL.GlobalLocator $ GL.IdentifiedGlobalLocator alias locator))
       let prefixMapDict' = Map.mapKeys BN.reify prefixMapDict
       return (keyPrefix, E.dictFromList _m (Map.toList prefixMapDict'))
 
@@ -384,17 +434,6 @@ stylize ens = do
         dep' <- E.put keyMirror (mDep :< E.List mirrorList') dep
         return (k, dep')
       E.put keyDependency (m :< E.Dictionary depDict') ens
-
-getReadableModuleID :: Module -> MID.ModuleID -> Maybe T.Text
-getReadableModuleID baseModule mid =
-  case mid of
-    MID.Main ->
-      Just "this"
-    MID.Base ->
-      Just "base"
-    MID.Library digest -> do
-      let depMap = Map.toList $ moduleDependency baseModule
-      fmap (MA.reify . fst) $ flip find depMap $ \(_, dep) -> digest == dependencyDigest dep
 
 getAliasListWithEnabledPresets :: Module -> [MA.ModuleAlias]
 getAliasListWithEnabledPresets baseModule = do

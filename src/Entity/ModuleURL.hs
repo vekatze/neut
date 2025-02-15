@@ -1,4 +1,4 @@
-module Entity.ModuleURL where
+module Entity.ModuleURL (ModuleURL (..)) where
 
 import Data.Text qualified as T
 

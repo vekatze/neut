@@ -1,4 +1,15 @@
-module Entity.LowComp where
+module Entity.LowComp
+  ( Value (..),
+    Comp (..),
+    Op (..),
+    AllocID,
+    FreeID,
+    LowCode (..),
+    LowCodeInfo,
+    Def,
+    DefContent,
+  )
+where
 
 import Data.ByteString.Builder
 import Data.Text qualified as T
@@ -71,9 +82,6 @@ data Op
   | Free Value Int FreeID
   | PrimOp PrimOp [Value]
   deriving (Show)
-
-type SizeInfo =
-  LowType
 
 type Def =
   (DD.DefiniteDescription, DefContent)

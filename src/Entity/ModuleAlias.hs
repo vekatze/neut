@@ -1,4 +1,11 @@
-module Entity.ModuleAlias where
+module Entity.ModuleAlias
+  ( ModuleAlias (..),
+    defaultModuleAlias,
+    coreModuleAlias,
+    baseModuleAlias,
+    reify,
+  )
+where
 
 import Data.Binary
 import Data.Hashable

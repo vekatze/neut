@@ -1,4 +1,8 @@
-module Entity.PrimOp.UnaryOp where
+module Entity.PrimOp.UnaryOp
+  ( UnaryOp (..),
+    asFloatUnaryOp,
+  )
+where
 
 import Data.Binary
 import Data.Text qualified as T
@@ -15,12 +19,6 @@ instance Show UnaryOp where
     case op of
       FNeg ->
         "fneg"
-
-getRep :: UnaryOp -> T.Text
-getRep op =
-  case op of
-    FNeg ->
-      "neg"
 
 asFloatUnaryOp :: T.Text -> Maybe UnaryOp
 asFloatUnaryOp name =

@@ -1,6 +1,7 @@
 module Entity.DecisionTree
   ( DecisionTree (..),
     CaseList,
+    ConsCaseRecord (..),
     Case (..),
     getConstructors,
     isUnreachable,
@@ -28,18 +29,23 @@ data DecisionTree a
 
 type CaseList a = (DecisionTree a, [Case a])
 
+data ConsCaseRecord a = ConsCaseRecord
+  { mCons :: Hint,
+    consDD :: DD.DefiniteDescription,
+    isConstLike :: IsConstLike,
+    disc :: D.Discriminant,
+    dataArgs :: [(a, a)],
+    consArgs :: [BinderF a],
+    cont :: DecisionTree a
+  }
+  deriving (Show, Generic)
+
 data Case a
-  = ConsCase
-      { mCons :: Hint,
-        consDD :: DD.DefiniteDescription,
-        isConstLike :: IsConstLike,
-        disc :: D.Discriminant,
-        dataArgs :: [(a, a)],
-        consArgs :: [BinderF a],
-        cont :: DecisionTree a
-      }
+  = ConsCase (ConsCaseRecord a)
   | LiteralCase Hint L.Literal (DecisionTree a)
   deriving (Show, Generic)
+
+instance (Binary a) => Binary (ConsCaseRecord a)
 
 instance (Binary a) => Binary (DecisionTree a)
 
@@ -49,7 +55,7 @@ getConstructors :: [Case a] -> [(DD.DefiniteDescription, IsConstLike)]
 getConstructors clauseList = do
   catMaybes $ flip map clauseList $ \c -> do
     case c of
-      ConsCase {..} ->
+      ConsCase (ConsCaseRecord {..}) ->
         Just (consDD, isConstLike)
       LiteralCase {} ->
         Nothing
@@ -67,7 +73,7 @@ findCase consDisc decisionCase =
   case decisionCase of
     LiteralCase {} ->
       Nothing
-    ConsCase {..} -> do
+    ConsCase (ConsCaseRecord {..}) -> do
       if consDisc == disc
         then return (map (\(_, x, t) -> (x, t)) consArgs, cont)
         else Nothing
@@ -75,7 +81,7 @@ findCase consDisc decisionCase =
 getCont :: Case a -> DecisionTree a
 getCont c =
   case c of
-    ConsCase {..} ->
+    ConsCase (ConsCaseRecord {..}) ->
       cont
     LiteralCase _ _ cont ->
       cont

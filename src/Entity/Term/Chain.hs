@@ -117,7 +117,7 @@ chainOfCase tenv m decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
       chainOfDecisionTree' tenv m [] cont
-    DT.ConsCase {..} -> do
+    DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       let xs1 = concatMap (chainOf' tenv) dataTerms
       let xs2 = concatMap (chainOf' tenv) dataTypes
@@ -129,7 +129,7 @@ chainOfCaseWithoutCont tenv decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat _ cont -> do
       chainOfDecisionTree' tenv mPat [] cont
-    DT.ConsCase {..} -> do
+    DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       let xs1 = concatMap (chainOf' tenv) dataTerms
       let xs2 = concatMap (chainOf' tenv) dataTypes

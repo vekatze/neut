@@ -1,4 +1,17 @@
-module Entity.WeakTerm where
+module Entity.WeakTerm
+  ( WeakTerm,
+    WeakTermF (..),
+    SubstWeakTerm,
+    LetOpacity (..),
+    reifyOpacity,
+    reflectOpacity,
+    intTypeBySize,
+    metaOf,
+    piElim,
+    fromLetSeq,
+    fromBaseLowType,
+  )
+where
 
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
@@ -24,8 +37,6 @@ import Entity.Remark
 import Entity.WeakPrim qualified as WP
 
 type WeakTerm = Cofree WeakTermF Hint
-
-type ID = Int
 
 data WeakTermF a
   = Tau
@@ -80,10 +91,6 @@ reflectOpacity opacity =
     O.Clear ->
       Clear
 
-toVar :: Hint -> Ident -> WeakTerm
-toVar m x =
-  m :< Var x
-
 intTypeBySize :: Hint -> Int -> WeakTerm
 intTypeBySize m size =
   m :< Prim (WP.Type $ PT.Int $ IntSize size)
@@ -91,14 +98,6 @@ intTypeBySize m size =
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =
   m
-
-asVar :: WeakTerm -> Maybe Ident
-asVar term =
-  case term of
-    (_ :< Var x) ->
-      Just x
-    _ ->
-      Nothing
 
 piElim :: a -> [a] -> WeakTermF a
 piElim =

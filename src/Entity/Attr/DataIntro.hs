@@ -1,4 +1,4 @@
-module Entity.Attr.DataIntro where
+module Entity.Attr.DataIntro (Attr (..)) where
 
 import Data.Bifunctor
 import Data.Binary

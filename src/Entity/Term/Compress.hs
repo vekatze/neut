@@ -133,15 +133,16 @@ compressCase decisionCase = do
     DT.LiteralCase mPat i cont -> do
       let cont' = compressDecisionTree cont
       DT.LiteralCase mPat i cont'
-    DT.ConsCase {..} -> do
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let dataArgs' = map (bimap compress compress) dataArgs
       let consArgs' = map compressBinder consArgs
       let cont' = compressDecisionTree cont
-      decisionCase
-        { DT.dataArgs = dataArgs',
-          DT.consArgs = consArgs',
-          DT.cont = cont'
-        }
+      DT.ConsCase $
+        record
+          { DT.dataArgs = dataArgs',
+            DT.consArgs = consArgs',
+            DT.cont = cont'
+          }
 
 compressStmtKind :: StmtKind TM.Term -> StmtKind (Cofree TM.TermF ())
 compressStmtKind stmtKind =

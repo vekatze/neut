@@ -1,4 +1,11 @@
-module Entity.GlobalLocator where
+module Entity.GlobalLocator
+  ( GlobalLocator (..),
+    IdentifiedGlobalLocator (..),
+    reify,
+    reflect,
+    reflectLocator,
+  )
+where
 
 import Data.Binary
 import Data.Hashable
@@ -8,15 +15,22 @@ import Entity.Const
 import Entity.Error
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint qualified as H
-import Entity.ModuleAlias
+import Entity.ModuleAlias hiding (reify)
 import Entity.SourceLocator qualified as SL
 import GHC.Generics
 
+data IdentifiedGlobalLocator = IdentifiedGlobalLocator
+  { moduleAlias :: ModuleAlias,
+    sourceLocator :: SL.SourceLocator
+  }
+  deriving (Generic, Show, Eq)
+
+instance Binary IdentifiedGlobalLocator
+
+instance Hashable IdentifiedGlobalLocator
+
 data GlobalLocator
-  = GlobalLocator
-      { moduleAlias :: ModuleAlias,
-        sourceLocator :: SL.SourceLocator
-      }
+  = GlobalLocator IdentifiedGlobalLocator
   | GlobalLocatorAlias GLA.GlobalLocatorAlias
   deriving (Generic, Show, Eq)
 
@@ -27,8 +41,8 @@ instance Hashable GlobalLocator
 reify :: GlobalLocator -> T.Text
 reify gl =
   case gl of
-    GlobalLocator alias locator ->
-      BN.reify (extract alias) <> nsSep <> SL.toText locator
+    GlobalLocator (IdentifiedGlobalLocator {moduleAlias, sourceLocator}) -> do
+      BN.reify (extract moduleAlias) <> nsSep <> SL.toText sourceLocator
     GlobalLocatorAlias alias ->
       BN.reify $ GLA.reify alias
 
@@ -40,7 +54,7 @@ reflect m rawTxt = do
       return $ GlobalLocatorAlias (GLA.GlobalLocatorAlias baseName)
     prefix : rest
       | Just locator <- SL.fromBaseNameList rest ->
-          return (GlobalLocator (ModuleAlias prefix) locator)
+          return (GlobalLocator (IdentifiedGlobalLocator (ModuleAlias prefix) locator))
     _ ->
       Left $ newError m $ "Invalid global locator: `" <> rawTxt <> "`"
 

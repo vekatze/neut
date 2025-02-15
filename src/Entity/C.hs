@@ -1,4 +1,4 @@
-module Entity.C where
+module Entity.C (C) where
 
 import Data.Text qualified as T
 

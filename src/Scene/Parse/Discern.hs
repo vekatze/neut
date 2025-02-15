@@ -18,7 +18,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
-import Data.List
+import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -183,9 +183,9 @@ liftStmtKind stmtKind = do
       return $ SK.Normal opacity
     SK.Data dataName dataArgs consInfoList -> do
       nameLifter <- Locator.getNameLifter
-      let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = unzip5 consInfoList
+      let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
       let consNameList' = map nameLifter consNameList
-      let consInfoList' = zip5 locList consNameList' isConstLikeList consArgsList discriminantList
+      let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList discriminantList
       return $ SK.Data (nameLifter dataName) dataArgs consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
       nameLifter <- Locator.getNameLifter
@@ -199,12 +199,12 @@ discernStmtKind ax stmtKind =
     SK.Data dataName dataArgs consInfoList -> do
       nameLifter <- Locator.getNameLifter
       (dataArgs', axis) <- discernBinder' ax dataArgs
-      let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = unzip5 consInfoList
+      let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
       (consArgsList', axisList) <- mapAndUnzipM (discernBinder' axis) consArgsList
       forM_ (concatMap _nenv axisList) $ \(_, (_, newVar, _)) -> do
         UnusedVariable.delete newVar
       let consNameList' = map nameLifter consNameList
-      let consInfoList' = zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
+      let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
       return $ SK.Data (nameLifter dataName) dataArgs' consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
       nameLifter <- Locator.getNameLifter
@@ -900,7 +900,7 @@ discernPatternMatrix ::
   [RP.RawPatternRow RT.RawTerm] ->
   App (PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternMatrix axis patternMatrix =
-  case uncons patternMatrix of
+  case List.uncons patternMatrix of
     Nothing ->
       return $ PAT.new []
     Just (row, rows) -> do
@@ -1081,7 +1081,7 @@ findExternalVariable :: Hint -> Axis -> WT.WeakTerm -> App (Maybe (Ident, Layer)
 findExternalVariable m axis e = do
   let fvs = S.toList $ freeVars e
   ls <- mapM (getLayer m axis) fvs
-  return $ find (\(_, l) -> l /= currentLayer axis) $ zip fvs ls
+  return $ List.find (\(_, l) -> l /= currentLayer axis) $ zip fvs ls
 
 ensureLayerClosedness :: Hint -> Axis -> WT.WeakTerm -> App ()
 ensureLayerClosedness mClosure axis e = do

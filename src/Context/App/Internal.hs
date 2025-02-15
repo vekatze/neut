@@ -1,4 +1,9 @@
-module Context.App.Internal where
+module Context.App.Internal
+  ( Env (..),
+    Ref,
+    newEnv,
+  )
+where
 
 import Data.ByteString.Builder
 import Data.HashMap.Strict qualified as Map

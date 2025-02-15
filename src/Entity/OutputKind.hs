@@ -1,4 +1,4 @@
-module Entity.OutputKind where
+module Entity.OutputKind (OutputKind (..)) where
 
 data OutputKind
   = Object

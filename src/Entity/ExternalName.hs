@@ -1,4 +1,10 @@
-module Entity.ExternalName where
+module Entity.ExternalName
+  ( ExternalName (..),
+    malloc,
+    free,
+    toBuilder,
+  )
+where
 
 import Data.Binary
 import Data.ByteString.Builder

@@ -302,7 +302,7 @@ analyzeCase axis decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
       analyzeDecisionTree axis cont
-    DT.ConsCase {..} -> do
+    DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (es1, ts1) = unzip dataArgs
       cs1 <- concat <$> mapM (analyze axis) (es1 ++ ts1)
       (cs2, axis') <- analyzeBinder axis consArgs

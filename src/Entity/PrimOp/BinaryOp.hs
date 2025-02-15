@@ -1,4 +1,9 @@
-module Entity.PrimOp.BinaryOp where
+module Entity.PrimOp.BinaryOp
+  ( BinaryOp (..),
+    asIntBinaryOp,
+    asFloatBinaryOp,
+  )
+where
 
 import Data.Binary
 import Data.Text qualified as T
@@ -66,46 +71,6 @@ instance Show BinaryOp where
         "fdiv"
       FRem ->
         "frem"
-
-getRep :: BinaryOp -> T.Text
-getRep op =
-  case op of
-    Add ->
-      "add"
-    Sub ->
-      "sub"
-    Mul ->
-      "mul"
-    SDiv ->
-      "div"
-    SRem ->
-      "rem"
-    UDiv ->
-      "udiv"
-    URem ->
-      "urem"
-    And ->
-      "and"
-    Or ->
-      "or"
-    Xor ->
-      "xor"
-    Shl ->
-      "shl"
-    Lshr ->
-      "lshr"
-    Ashr ->
-      "ashr"
-    FAdd ->
-      "add"
-    FSub ->
-      "sub"
-    FMul ->
-      "mul"
-    FDiv ->
-      "div"
-    FRem ->
-      "rem"
 
 asIntBinaryOp :: T.Text -> Maybe BinaryOp
 asIntBinaryOp name =

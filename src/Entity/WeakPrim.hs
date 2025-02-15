@@ -1,4 +1,4 @@
-module Entity.WeakPrim where
+module Entity.WeakPrim (WeakPrim (..)) where
 
 import Data.Binary
 import Entity.PrimType qualified as PT

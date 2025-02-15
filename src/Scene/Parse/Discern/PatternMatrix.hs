@@ -77,15 +77,16 @@ compilePatternMatrix l nenv isNoetic occurrences mat =
                     specialDecisionTree <- compilePatternMatrix l nenv' isNoetic occurrences' specialMatrix
                     let dataArgs' = zip dataHoles dataTypeHoles
                     return $
-                      DT.ConsCase
-                        { mCons = mPat,
-                          consDD = consDD,
-                          isConstLike = isConstLike,
-                          disc = disc,
-                          dataArgs = dataArgs',
-                          consArgs = consArgs',
-                          cont = specialDecisionTree
-                        }
+                      DT.ConsCase $
+                        DT.ConsCaseRecord
+                          { mCons = mPat,
+                            consDD = consDD,
+                            isConstLike = isConstLike,
+                            disc = disc,
+                            dataArgs = dataArgs',
+                            consArgs = consArgs',
+                            cont = specialDecisionTree
+                          }
               fallbackMatrix <- PATF.getFallbackMatrix isNoetic cursor mat
               fallbackClause <- compilePatternMatrix l nenv isNoetic (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCursor []

@@ -1,4 +1,12 @@
-module Entity.Cache where
+module Entity.Cache
+  ( Cache (..),
+    LowCache (..),
+    CompletionCache (..),
+    LocationCache (..),
+    compress,
+    extend,
+  )
+where
 
 import Data.Binary
 import Entity.LocalVarTree qualified as LVT

@@ -1,4 +1,4 @@
-module Entity.Vector where
+module Entity.Vector (swap) where
 
 import Data.Text qualified as T
 import Data.Vector qualified as V

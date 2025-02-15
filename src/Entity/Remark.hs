@@ -1,4 +1,15 @@
-module Entity.Remark where
+module Entity.Remark
+  ( RemarkLevel (..),
+    Remark,
+    ShouldInsertPadding,
+    newRemark,
+    newRemark',
+    remarkLevelToText,
+    remarkLevelToSGR,
+    attachSuffix,
+    deactivatePadding,
+  )
+where
 
 import Data.Binary
 import Data.Text qualified as T
@@ -22,9 +33,6 @@ type Remark =
   (Maybe FP.FilePos, ShouldInsertPadding, RemarkLevel, T.Text)
 
 type ShouldInsertPadding =
-  Bool
-
-type ColorFlag =
   Bool
 
 newRemark :: Hint -> RemarkLevel -> T.Text -> Remark

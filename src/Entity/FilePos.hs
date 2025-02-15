@@ -1,4 +1,9 @@
-module Entity.FilePos where
+module Entity.FilePos
+  ( FilePos (..),
+    fromHint,
+    showFilePos,
+  )
+where
 
 import Data.Binary
 import Entity.Hint

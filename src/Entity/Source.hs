@@ -1,14 +1,19 @@
-module Entity.Source where
+module Entity.Source
+  ( Source (..),
+    getRelPathFromSourceDir,
+    getBaseReadableLocator,
+    attachExtension,
+    isCompilationSkippable,
+  )
+where
 
 import Control.Monad.Catch
-import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Entity.Artifact qualified as A
 import Entity.Const
 import Entity.Hint
 import Entity.Module qualified as M
-import Entity.ModuleAlias
 import Entity.OutputKind qualified as OK
 import Path
 
@@ -36,10 +41,6 @@ attachExtension file kind =
       addExtension ".ll" file
     OK.Object -> do
       addExtension ".o" file
-
-hasCore :: Source -> Bool
-hasCore source =
-  Map.member coreModuleAlias $ M.moduleDependency $ sourceModule source
 
 isCompilationSkippable ::
   A.ArtifactTime ->

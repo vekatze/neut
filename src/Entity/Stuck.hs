@@ -1,4 +1,13 @@
-module Entity.Stuck where
+module Entity.Stuck
+  ( EvalBase (..),
+    EvalCtx,
+    EvalCtxF (..),
+    Stuck,
+    asStuckedTerm,
+    resume,
+    asPairList,
+  )
+where
 
 import Control.Comonad.Cofree
 import Entity.Constraint qualified as C

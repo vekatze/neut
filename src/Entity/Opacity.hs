@@ -1,4 +1,8 @@
-module Entity.Opacity where
+module Entity.Opacity
+  ( Opacity (..),
+    isOpaque,
+  )
+where
 
 import Data.Binary
 import GHC.Generics

@@ -1,4 +1,4 @@
-module Entity.EnumCase where
+module Entity.EnumCase (EnumCase (..)) where
 
 import GHC.Generics
 

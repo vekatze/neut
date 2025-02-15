@@ -47,15 +47,15 @@ import Scene.Cancel
 import Scene.Comp.Reduce qualified as C
 import Scene.Comp.Subst qualified as C
 
-type Lower = WriterT (Cont App) App
+type Lower = WriterT Cont App
 
-newtype Cont m = Cont (LC.Comp -> App LC.Comp)
+newtype Cont = Cont (LC.Comp -> App LC.Comp)
 
-instance Semigroup (Cont m) where
+instance Semigroup Cont where
   Cont newCont <> Cont oldCont =
     Cont $ newCont <=< oldCont
 
-instance Monoid (Cont m) where
+instance Monoid Cont where
   mempty =
     Cont return
 

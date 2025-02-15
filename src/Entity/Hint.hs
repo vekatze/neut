@@ -1,4 +1,16 @@
-module Entity.Hint where
+module Entity.Hint
+  ( Hint (..),
+    SavedHint (..),
+    Line,
+    Column,
+    Loc,
+    new,
+    blur,
+    internalHint,
+    newSourceHint,
+    fakeLoc,
+  )
+where
 
 import Data.Binary
 import GHC.Generics

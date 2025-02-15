@@ -99,6 +99,6 @@ freeVarsCase decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
       freeVarsDecisionTree cont
-    DT.ConsCase {..} -> do
+    DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       S.unions $ freeVars' consArgs (freeVarsDecisionTree cont) : map freeVars dataTerms ++ map freeVars dataTypes

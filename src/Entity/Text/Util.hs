@@ -1,7 +1,7 @@
 module Entity.Text.Util (parseText) where
 
 import Data.Char
-import Data.List
+import Data.List qualified as List
 import Data.Text qualified as T
 import Numeric (readHex)
 
@@ -73,4 +73,4 @@ parseText :: T.Text -> Either T.Text T.Text
 parseText t = do
   let ts = T.splitOn "\\\\" t
   ts' <- mapM parseTextFragment ts
-  return $ T.concat $ intercalate ["\\"] ts'
+  return $ T.concat $ List.intercalate ["\\"] ts'
