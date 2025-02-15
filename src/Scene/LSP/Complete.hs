@@ -50,7 +50,7 @@ complete uri pos = do
 
 collectCompletionItems :: Source -> Loc -> App [CompletionItem]
 collectCompletionItems currentSource loc = do
-  fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
+  fmap concat $ pooledForConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
 
 itemGetterList :: [Source -> Loc -> App [CompletionItem]]
 itemGetterList =
@@ -283,7 +283,7 @@ getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], FastPresetSumma
 getAllTopCandidate baseModule = do
   dependencies <- getAllDependencies baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
-  (candListList, aliasPresetInfo) <- unzip <$> mapConcurrently getAllTopCandidate' visibleModuleList
+  (candListList, aliasPresetInfo) <- unzip <$> pooledMapConcurrently getAllTopCandidate' visibleModuleList
   let aliasList = getAliasListWithEnabledPresets baseModule
   let aliasPresetMap = constructAliasPresetMap aliasPresetInfo
   let presetSummary =

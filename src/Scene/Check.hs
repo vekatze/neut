@@ -39,7 +39,7 @@ _check target baseModule = do
   Throw.collectLogs $ do
     Initialize.initializeForTarget
     (_, dependenceSeq) <- Unravel.unravel baseModule target
-    contentSeq <- forConcurrently dependenceSeq $ \source -> do
+    contentSeq <- pooledForConcurrently dependenceSeq $ \source -> do
       cacheOrContent <- Load.load target source
       return (source, cacheOrContent)
     forM_ contentSeq $ \(source, cacheOrContent) -> do

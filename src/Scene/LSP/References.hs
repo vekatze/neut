@@ -12,7 +12,7 @@ import Scene.LSP.FindReferences qualified as LSP
 import Scene.LSP.GetAllCachesInModule qualified as LSP
 import Scene.LSP.GetSource qualified as LSP
 import Scene.Unravel (registerShiftMap)
-import UnliftIO.Async (forConcurrently)
+import UnliftIO.Async (pooledForConcurrently)
 
 references ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
@@ -23,7 +23,7 @@ references params = do
   currentSource <- LSP.getSource params
   ((_, defLink), _) <- LSP.findDefinition params
   cacheSeq <- lift $ LSP.getAllLocationCachesInModule $ sourceModule currentSource
-  fmap concat $ lift $ forConcurrently cacheSeq $ \(path, cache) -> do
+  fmap concat $ lift $ pooledForConcurrently cacheSeq $ \(path, cache) -> do
     refList <- LSP.findReferences defLink (Cache.locationTree cache)
     return $ map (toLocation $ sourceFilePath path) refList
 

@@ -44,7 +44,7 @@ _formatSource shouldMinimizeImports path content = do
   if shouldMinimizeImports
     then do
       (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen path)
-      contentSeq <- forConcurrently dependenceSeq $ \source -> do
+      contentSeq <- pooledForConcurrently dependenceSeq $ \source -> do
         cacheOrContent <- Load.load Peripheral source
         return (source, cacheOrContent)
       let contentSeq' = _replaceLast content contentSeq

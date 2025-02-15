@@ -48,7 +48,7 @@ fetchDeps deps = do
   if null deps'
     then return ()
     else do
-      next <- fmap concat $ forConcurrently deps' $ \(alias, dep) -> do
+      next <- fmap concat $ pooledForConcurrently deps' $ \(alias, dep) -> do
         installModule alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
       fetchDeps next
 
