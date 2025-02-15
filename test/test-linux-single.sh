@@ -4,9 +4,6 @@ base_dir=$(pwd)
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 
-cd $SCRIPT_DIR/meta
-NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build meta
-
 pids=()
 
 target_directory="$@"
