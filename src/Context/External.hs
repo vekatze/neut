@@ -16,15 +16,15 @@ import Context.App
 import Context.App.Internal
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
-import Control.Monad (unless)
 import Control.Monad.IO.Class
-import Control.Monad.IO.Unlift
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Entity.Const (envVarClang)
 import Entity.Digest
 import Entity.Error
+import Entity.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
+import Entity.ProcessRunner.Rule qualified as ProcessRunner
 import GHC.IO.Handle
 import Path
 import System.Directory
@@ -38,28 +38,14 @@ run procName optionList = do
 
 runOrFail :: String -> [String] -> App (Either Error ())
 runOrFail procName optionList = do
-  let cmd = proc procName optionList
-  withRunInIO $ \runInIO ->
-    withCreateProcess cmd {std_err = CreatePipe} $ \_ _ mErrorHandler cmdHandler -> do
-      case mErrorHandler of
-        Nothing ->
-          runInIO $ Throw.raiseError' "Could not obtain stderr"
-        Just errorHandler -> do
-          exitCode <- waitForProcess cmdHandler
-          case exitCode of
-            ExitSuccess ->
-              return $ Right ()
-            ExitFailure i -> do
-              errStr <- liftIO $ decodeUtf8 <$> B.hGetContents errorHandler
-              return $
-                Left $
-                  newError' $
-                    "The child process `"
-                      <> T.pack procName
-                      <> "` failed with the following message (exitcode = "
-                      <> T.pack (show i)
-                      <> "):\n"
-                      <> errStr
+  let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
+  let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
+  value <- liftIO $ run00 spec
+  case value of
+    Right _ ->
+      return $ Right ()
+    Left err ->
+      Throw.throw $ ProcessRunner.toCompilerError err
 
 data ExternalError = ExternalError
   { cmd :: String,
@@ -69,26 +55,14 @@ data ExternalError = ExternalError
 
 runOrFail' :: Path Abs Dir -> String -> App (Either ExternalError ())
 runOrFail' cwd cmd = do
-  let sh = shellWithCwd (toFilePath cwd) cmd
-  withRunInIO $ \runInIO ->
-    withCreateProcess sh {std_err = CreatePipe} $ \_ _ mErrorHandler cmdHandler -> do
-      case mErrorHandler of
-        Nothing ->
-          runInIO $ Throw.raiseError' "Could not obtain stderr"
-        Just errorHandler -> do
-          exitCode <- waitForProcess cmdHandler
-          case exitCode of
-            ExitSuccess -> do
-              return $ Right ()
-            ExitFailure i -> do
-              errStr <- liftIO $ decodeUtf8 <$> B.hGetContents errorHandler
-              return $
-                Left $
-                  ExternalError
-                    { cmd = cmd,
-                      exitCode = i,
-                      errStr = errStr
-                    }
+  let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
+  let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
+  value <- liftIO $ run00 spec
+  case value of
+    Right _ ->
+      return $ Right ()
+    Left err ->
+      Throw.throw $ ProcessRunner.toCompilerError err
 
 getClang :: IO String
 getClang = do
@@ -113,18 +87,14 @@ getClangDigest = do
 calculateClangDigest :: App T.Text
 calculateClangDigest = do
   clang <- liftIO getClang
-  let clangCmd = proc clang ["--version"]
-  withRunInIO $ \runInIO ->
-    withCreateProcess clangCmd {std_out = CreatePipe} $
-      \_ mStdOut _ clangProcessHandler -> do
-        case mStdOut of
-          Just stdOut -> do
-            value <- B.hGetContents stdOut
-            clangExitCode <- waitForProcess clangProcessHandler
-            runInIO $ raiseIfProcessFailed (T.pack clang) clangExitCode stdOut
-            return $ decodeUtf8 $ hashAndEncode value
-          Nothing ->
-            runInIO $ Throw.raiseError' "Could not obtain stdout"
+  let ProcessRunner.Runner {run01} = ProcessRunner.ioRunner
+  let spec = ProcessRunner.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
+  output <- liftIO $ run01 spec
+  case output of
+    Right value ->
+      return $ decodeUtf8 $ hashAndEncode value
+    Left err ->
+      Throw.throw $ ProcessRunner.toCompilerError err
 
 ensureExecutables :: App ()
 ensureExecutables = do
@@ -146,51 +116,20 @@ ensureExecutable name = do
     Nothing ->
       Throw.raiseError' $ "Command not found: " <> T.pack name
 
-shellWithCwd :: FilePath -> String -> CreateProcess
-shellWithCwd cwd str =
-  CreateProcess
-    { cmdspec = ShellCommand str,
-      cwd = Just cwd,
-      env = Nothing,
-      std_in = Inherit,
-      std_out = Inherit,
-      std_err = Inherit,
-      close_fds = False,
-      create_group = False,
-      delegate_ctlc = False,
-      detach_console = False,
-      create_new_console = False,
-      new_session = False,
-      child_group = Nothing,
-      child_user = Nothing,
-      use_process_jobs = False
-    }
-
 expandText :: T.Text -> App T.Text
 expandText t = do
-  let printf = "printf"
-  let printfCmd = proc "sh" ["-c", unwords [T.unpack printf, "%s", "\"" ++ T.unpack t ++ "\""]]
-  withRunInIO $ \runInIO ->
-    withCreateProcess printfCmd {std_out = CreatePipe, std_err = CreatePipe} $
-      \_ mStdOut mClangErrorHandler printfProcessHandler -> do
-        case (mStdOut, mClangErrorHandler) of
-          (Just stdOut, Just stdErr) -> do
-            value <- B.hGetContents stdOut
-            printfExitCode <- waitForProcess printfProcessHandler
-            runInIO $ raiseIfProcessFailed printf printfExitCode stdErr
-            errorMessage <- liftIO $ decodeUtf8 <$> B.hGetContents stdErr
-            unless (T.null errorMessage) $ do
-              runInIO $
-                Throw.raiseError' $
-                  "Expanding the text\n"
-                    <> indent t
-                    <> "\nfailed with the following message:\n"
-                    <> indent errorMessage
-            return $ decodeUtf8 value
-          (Nothing, _) ->
-            runInIO $ Throw.raiseError' "Could not obtain stdout"
-          (_, Nothing) ->
-            runInIO $ Throw.raiseError' "Could not obtain stderr"
+  let ProcessRunner.Runner {run01} = ProcessRunner.ioRunner
+  let spec =
+        ProcessRunner.Spec
+          { cmdspec = RawCommand "sh" ["-c", unwords [T.unpack "printf", "%s", "\"" ++ T.unpack t ++ "\""]],
+            cwd = Nothing
+          }
+  output <- liftIO $ run01 spec
+  case output of
+    Right value ->
+      return $ decodeUtf8 value
+    Left err ->
+      Throw.throw $ ProcessRunner.toCompilerError err
 
 raiseIfProcessFailed :: T.Text -> ExitCode -> Handle -> App ()
 raiseIfProcessFailed procName exitCode h =

@@ -12,18 +12,17 @@ import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.IO.Unlift
 import Data.ByteString.Lazy qualified as L
-import Data.Text qualified as T
 import Data.Time.Clock
 import Entity.Config.Build
 import Entity.OutputKind qualified as OK
+import Entity.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
+import Entity.ProcessRunner.Rule qualified as ProcessRunner
 import Entity.Source
 import Entity.Target
-import GHC.IO.Handle
 import Path
 import Path.IO
-import System.Process
+import System.Process (CmdSpec (RawCommand))
 
 type ClangOption = String
 
@@ -73,20 +72,18 @@ emit' clangOptString llvmCode kind path = do
 emitInner :: [ClangOption] -> L.ByteString -> Path Abs File -> App ()
 emitInner additionalClangOptions llvm outputPath = do
   clang <- liftIO External.getClang
-  let clangCmd = proc clang (clangBaseOpt outputPath ++ additionalClangOptions)
-  withRunInIO $ \runInIO ->
-    withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $
-      \mStdin _ mClangErrorHandler clangProcessHandler -> do
-        case (mStdin, mClangErrorHandler) of
-          (Just stdin, Just clangErrorHandler) -> do
-            L.hPut stdin llvm
-            hClose stdin
-            clangExitCode <- waitForProcess clangProcessHandler
-            runInIO $ External.raiseIfProcessFailed (T.pack clang) clangExitCode clangErrorHandler
-          (Nothing, _) ->
-            runInIO $ Throw.raiseError' "Could not obtain stdin"
-          (_, Nothing) ->
-            runInIO $ Throw.raiseError' "Could not obtain stderr"
+  let ProcessRunner.Runner {run10} = ProcessRunner.ioRunner
+  let spec =
+        ProcessRunner.Spec
+          { cmdspec = RawCommand clang (clangBaseOpt outputPath ++ additionalClangOptions),
+            cwd = Nothing
+          }
+  value <- liftIO $ run10 spec (ProcessRunner.Lazy llvm)
+  case value of
+    Right _ ->
+      return ()
+    Left err ->
+      Throw.throw $ ProcessRunner.toCompilerError err
 
 clangBaseOpt :: Path Abs File -> [String]
 clangBaseOpt outputPath =
