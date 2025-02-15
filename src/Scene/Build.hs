@@ -86,7 +86,7 @@ abstractAxis =
 
 load :: Target -> [Source] -> App [(Source, Either Cache T.Text)]
 load t dependenceSeq =
-  forConcurrently dependenceSeq $ \source -> do
+  pooledForConcurrently dependenceSeq $ \source -> do
     cacheOrContent <- Load.load t source
     return (source, cacheOrContent)
 
@@ -122,7 +122,7 @@ emitAndWrite :: Target -> [OutputKind] -> [(Either MainTarget Source, LC.LowCode
 emitAndWrite target outputKindList virtualCodeList = do
   let clangOptions = getCompileOption target
   currentTime <- liftIO getCurrentTime
-  forConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
+  pooledForConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
     LLVM.emit target clangOptions currentTime sourceOrNone outputKindList llvmIR'
 
@@ -138,7 +138,7 @@ install filePathOrNone target = do
 compileForeign :: Target -> [M.Module] -> App Bool
 compileForeign t moduleList = do
   currentTime <- liftIO getCurrentTime
-  bs <- forConcurrently moduleList (compileForeign' t currentTime)
+  bs <- pooledForConcurrently moduleList (compileForeign' t currentTime)
   return $ or bs
 
 compileForeign' :: Target -> UTCTime -> M.Module -> App Bool

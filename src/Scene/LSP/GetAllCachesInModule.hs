@@ -20,7 +20,7 @@ import UnliftIO.Async
 getAllLocationCachesInModule :: Module -> App [(Source, LocationCache)]
 getAllLocationCachesInModule baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
-  fmap catMaybes $ forConcurrently sourcePathList $ \path -> getLocationCache baseModule path
+  fmap catMaybes $ pooledForConcurrently sourcePathList $ \path -> getLocationCache baseModule path
 
 getLocationCache :: Module -> Path Abs File -> App (Maybe (Source, LocationCache))
 getLocationCache baseModule filePath = do
@@ -35,7 +35,7 @@ getLocationCache baseModule filePath = do
 getAllCompletionCachesInModule :: Module -> App [(Source, CompletionCache)]
 getAllCompletionCachesInModule baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
-  fmap catMaybes $ forConcurrently sourcePathList $ \path -> getCompletionCache baseModule path
+  fmap catMaybes $ pooledForConcurrently sourcePathList $ \path -> getCompletionCache baseModule path
 
 getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache baseModule filePath = do
