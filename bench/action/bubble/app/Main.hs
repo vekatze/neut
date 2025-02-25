@@ -2,7 +2,7 @@ import System.Environment (getArgs)
 import System.Random
 import Text.Read
 
-data List = MyNil | MyCons Int List
+data List = MyNil | MyCons !Int !List
 
 {-# INLINE swapGT #-}
 swapGT :: Bool -> Int -> Int -> List -> List
@@ -25,15 +25,6 @@ randList len acc = do
       v <- randomRIO (0, 10000)
       randList (len - 1) (MyCons v acc)
 
--- handle laziness
-foo :: List -> Int
-foo xs =
-  case xs of
-    MyNil ->
-      0
-    MyCons _ rest ->
-      foo rest
-
 main :: IO ()
 main = do
   args <- getArgs
@@ -41,7 +32,7 @@ main = do
     [sizeStr]
       | Just size <- readMaybe sizeStr -> do
           someList <- randList size MyNil
-          let result = sort someList MyNil
-          print $ foo result
+          let !_ = sort someList MyNil
+          return ()
     _ ->
       putStrLn "usage: bubble-hs-exe SIZE"
