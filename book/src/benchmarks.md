@@ -11,7 +11,7 @@ You can find the source files for the following benchmarks [here](https://github
 
 ## Bubble Sort
 
-This test creates a random list of length `N` and performs bubble-sort on the list.
+This test creates a random list of length `N` and performs bubble-sort on the list[^bubble].
 
 ### Linux (AMD64)
 
@@ -66,3 +66,7 @@ just bench-darwin arm64-darwin # macOS (ARM64)
 You may want to read [the Dockerfile in the repository](https://github.com/vekatze/neut/blob/main/build/Dockerfile) to get the list of additional dependencies for running benchmarks. The list includes npm, hyperfine, etc.
 
 Please tell me (hopefully gently) if some of the results are unfair because of reasons I overlooked.
+
+---
+
+[^bubble]: I honestly don't know why the Haskell version is faster here on macOS. Please let me know if you happen to see why.
