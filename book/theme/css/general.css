@@ -501,6 +501,14 @@ div.info-block p:before {
   padding-right: 1rem;
 }
 
+.footnote-definition {
+    margin: 2rem 0;
+}
+
+.footnote-definition p {
+    display: inline;
+}
+
 #footer-wrapper {
   margin-top: 50px;
   margin-left: auto;
