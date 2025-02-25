@@ -1,7 +1,7 @@
 import {
+  core.environment {get-argv},
   core.int.parse {parse-int},
   core.random {random-int},
-  core.system {get-argv},
 }
 
 foreign {

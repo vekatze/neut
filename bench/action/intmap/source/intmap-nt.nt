@@ -1,10 +1,10 @@
 import {
   IntMap {insert, intmap},
   core.control {grow},
+  core.environment {get-argv},
   core.int.parse {parse-int},
   core.intmap {lookup},
   core.random {random-int},
-  core.system {get-argv},
   core.text.io {print-int},
 }
 
