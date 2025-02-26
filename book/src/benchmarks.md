@@ -69,4 +69,4 @@ Please tell me (hopefully gently) if some of the results are unfair because of r
 
 ---
 
-[^bubble]: I honestly don't know why the Haskell version is faster here on macOS. Please let me know if you happen to see why.
+[^bubble]: I honestly don't know why the faster one changes depending on the environment here. Please let me know if you find out why.
