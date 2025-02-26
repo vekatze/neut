@@ -1,10 +1,10 @@
 import {
   Dict {dictionary},
   core.control {grow},
+  core.environment {get-argv},
   core.int.ord,
   core.int.parse {parse-int},
   core.random {random-int},
-  core.system {get-argv},
   core.text.io {print-int},
 }
 
