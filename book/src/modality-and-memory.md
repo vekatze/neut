@@ -624,7 +624,7 @@ and this is why the type of `e1` must be restricted to some extent. Now we can s
 
 ## Layer Closedness of Functions
 
-There's one last condition that we must require: every free variable in a `function` must be at the layer of `function`. For example, the following is not a valid term:
+There's one last condition: for any free variable `x` of a function `f`, `layer(x) <= layer(f)` must hold. For example, the following is not a valid term:
 
 ```neut
 define use-function(x: meta int): meta () -> int {
@@ -640,7 +640,7 @@ define use-function(x: meta int): meta () -> int {
 }
 ```
 
-This is because the function is at layer -1, but the free variable `x` is at layer 0.
+since `layer(x) = 0 > -1 = layer(f)`, where `f` is the anonymous function.
 
 If it were not for this condition, the following would be well-typed and well-layered:
 
