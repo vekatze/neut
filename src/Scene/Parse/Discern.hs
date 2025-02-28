@@ -1081,7 +1081,7 @@ findExternalVariable :: Hint -> Axis -> WT.WeakTerm -> App (Maybe (Ident, Layer)
 findExternalVariable m axis e = do
   let fvs = S.toList $ freeVars e
   ls <- mapM (getLayer m axis) fvs
-  return $ List.find (\(_, l) -> l /= currentLayer axis) $ zip fvs ls
+  return $ List.find (\(_, l) -> l > currentLayer axis) $ zip fvs ls
 
 ensureLayerClosedness :: Hint -> Axis -> WT.WeakTerm -> App ()
 ensureLayerClosedness mClosure axis e = do
@@ -1091,13 +1091,13 @@ ensureLayerClosedness mClosure axis e = do
       return ()
     Just (x, l) -> do
       Throw.raiseError mClosure $
-        "This closure is at the layer "
+        "This function is at the layer "
           <> T.pack (show (currentLayer axis))
           <> ", but the free variable `"
           <> Ident.toText x
           <> "` is at the layer "
           <> T.pack (show l)
-          <> " (≠ "
+          <> " (> "
           <> T.pack (show (currentLayer axis))
           <> ")"
 
