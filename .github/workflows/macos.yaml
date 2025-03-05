@@ -25,7 +25,6 @@ jobs:
           enable-stack: true
           stack-no-global: true
       - uses: freckle/stack-cache-action@v2
-      - uses: Homebrew/actions/setup-homebrew@master
       - uses: tecolicom/actions-use-homebrew-tools@v1
         with:
           tools: llvm
