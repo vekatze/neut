@@ -7,6 +7,7 @@ where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.External qualified as External
 import Context.LLVM qualified as LLVM
@@ -16,6 +17,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils (nubOrdOn)
+import Data.Either (isLeft)
 import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
@@ -55,12 +57,13 @@ data Axis = Axis
 
 buildTarget :: Axis -> M.Module -> Target -> App ()
 buildTarget axis baseModule target = do
+  report $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
   Initialize.initializeForTarget
   (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign target moduleList
-  contentSeq <- load target dependenceSeq
+  contentSeq <- Load.load target dependenceSeq
   virtualCodeList <- compile target' (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
   emitAndWrite target' (_outputKindList axis) virtualCodeList
@@ -84,20 +87,18 @@ abstractAxis =
       _executeArgs = []
     }
 
-load :: Target -> [Source] -> App [(Source, Either Cache T.Text)]
-load t dependenceSeq =
-  pooledForConcurrently dependenceSeq $ \source -> do
-    cacheOrContent <- Load.load t source
-    return (source, cacheOrContent)
-
 compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Either MainTarget Source, LC.LowCode)]
 compile target outputKindList contentSeq = do
   virtualCodeList <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
-    stmtList <- Parse.parse target source cacheOrContent >>= Elaborate.elaborate target
+    let suffix = if isLeft cacheOrContent then " (cache found)" else ""
+    report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+    cacheOrStmtList <- Parse.parse target source cacheOrContent
+    stmtList <- Elaborate.elaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary outputKindList source $ do
-      virtualCode <- Clarify.clarify stmtList >>= Lower.lower
+      stmtList' <- Clarify.clarify stmtList
+      virtualCode <- Lower.lower stmtList'
       return (Right source, virtualCode)
   mainModule <- Env.getMainModule
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
@@ -122,13 +123,18 @@ emitAndWrite :: Target -> [OutputKind] -> [(Either MainTarget Source, LC.LowCode
 emitAndWrite target outputKindList virtualCodeList = do
   let clangOptions = getCompileOption target
   currentTime <- liftIO getCurrentTime
+  let num = length virtualCodeList
+  let suffix = if num > 1 then "s" else ""
+  when (num > 0) $ do
+    report $ "Generating " <> T.pack (show num) <> " object file" <> suffix
   pooledForConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
     LLVM.emit target clangOptions currentTime sourceOrNone outputKindList llvmIR'
 
 execute :: Bool -> MainTarget -> [String] -> App ()
 execute shouldExecute target args = do
-  when shouldExecute $ Execute.execute target args
+  when shouldExecute $ do
+    Execute.execute target args
 
 install :: Maybe FilePath -> MainTarget -> App ()
 install filePathOrNone target = do
@@ -145,6 +151,8 @@ compileForeign' :: Target -> UTCTime -> M.Module -> App Bool
 compileForeign' t currentTime m = do
   sub <- getForeignSubst t m
   let cmdList = M.script $ M.moduleForeign m
+  unless (null cmdList) $ do
+    report $ "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir t m
   inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
@@ -156,13 +164,14 @@ compileForeign' t currentTime m = do
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
+          report $ "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
       forM_ cmdList' $ \c -> do
         result <- External.runOrFail' moduleRootDir $ T.unpack c
         case result of
-          Right _ -> do
+          Right _ ->
             return ()
           Left err -> do
             let External.ExternalError {cmd, exitCode, errStr} = err

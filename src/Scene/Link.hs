@@ -4,6 +4,7 @@ module Scene.Link
 where
 
 import Context.App
+import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Path qualified as Path
@@ -24,7 +25,7 @@ link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList 
   let b1 = not didPerformForeignCompilation
   let b2 = shouldSkipLink || (isJust (A.objectTime artifactTime) && isExecutableAvailable)
   if b1 && b2
-    then return ()
+    then report "Skipped linking object files"
     else link' target mainModule sourceList
 
 link' :: MainTarget -> Module -> [Source.Source] -> App ()

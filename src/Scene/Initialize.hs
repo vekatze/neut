@@ -10,6 +10,7 @@ where
 
 import Context.Alias qualified as Alias
 import Context.App
+import Context.Debug qualified as Debug
 import Context.Decl qualified as Decl
 import Context.Definition qualified as Definition
 import Context.Env qualified as Env
@@ -38,6 +39,7 @@ initializeLogger :: Remark.Config -> App ()
 initializeLogger cfg = do
   Remark.setEndOfEntry $ Remark.endOfEntry cfg
   Remark.setShouldColorize $ Remark.shouldColorize cfg
+  Debug.setDebugMode $ Remark.enableDebugMode cfg
 
 initializeCompiler :: Remark.Config -> App ()
 initializeCompiler cfg = do

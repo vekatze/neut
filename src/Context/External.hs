@@ -14,6 +14,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Debug (report)
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Control.Monad.IO.Class
@@ -38,6 +39,7 @@ run procName optionList = do
 
 runOrFail :: String -> [String] -> App (Either Error ())
 runOrFail procName optionList = do
+  report $ "Executing: " <> T.pack (show (procName, optionList))
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
   value <- liftIO $ run00 spec
@@ -55,6 +57,7 @@ data ExternalError = ExternalError
 
 runOrFail' :: Path Abs Dir -> String -> App (Either ExternalError ())
 runOrFail' cwd cmd = do
+  report $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
   value <- liftIO $ run00 spec
@@ -91,7 +94,8 @@ calculateClangDigest = do
   let spec = ProcessRunner.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
   output <- liftIO $ run01 spec
   case output of
-    Right value ->
+    Right value -> do
+      report $ "Clang info:\n" <> decodeUtf8 value
       return $ decodeUtf8 $ hashAndEncode value
     Left err ->
       Throw.throw $ ProcessRunner.toCompilerError err

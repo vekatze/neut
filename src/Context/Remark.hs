@@ -26,7 +26,7 @@ module Context.Remark
     getEndOfEntry,
     setShouldColorize,
     getShouldColorize,
-    printLog,
+    withSGR,
   )
 where
 
@@ -219,7 +219,3 @@ setGlobalRemarkList = do
 getGlobalRemarkList :: App [R.Remark]
 getGlobalRemarkList = do
   readRef' globalRemarkList
-
-printLog :: T.Text -> App ()
-printLog text =
-  liftIO $ B.hPutStr stderr $ encodeUtf8 $ text <> "\n"

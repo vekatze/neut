@@ -23,7 +23,6 @@ import Scene.Parse qualified as Parse
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Program qualified as Parse
 import Scene.Unravel qualified as Unravel
-import UnliftIO.Async
 import Prelude hiding (log)
 
 format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App T.Text
@@ -44,9 +43,7 @@ _formatSource shouldMinimizeImports path content = do
   if shouldMinimizeImports
     then do
       (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen path)
-      contentSeq <- pooledForConcurrently dependenceSeq $ \source -> do
-        cacheOrContent <- Load.load Peripheral source
-        return (source, cacheOrContent)
+      contentSeq <- Load.load Peripheral dependenceSeq
       let contentSeq' = _replaceLast content contentSeq
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
         Initialize.initializeForSource source

@@ -10,6 +10,7 @@ where
 import Context.Alias qualified as Alias
 import Context.Antecedent qualified as Antecedent
 import Context.App
+import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
 import Context.Module qualified as Module
@@ -53,6 +54,7 @@ type ObjectTime =
 
 unravel :: Module -> Target -> App (A.ArtifactTime, [Source.Source])
 unravel baseModule t = do
+  report "Resolving file dependencies"
   case t of
     Main t' -> do
       case t' of
@@ -82,8 +84,9 @@ unravel' :: Target -> Source.Source -> App (A.ArtifactTime, [Source.Source])
 unravel' t source = do
   registerShiftMap
   (artifactTime, sourceSeq) <- unravel'' t source
+  let sourceList = toList sourceSeq
   forM_ sourceSeq Parse.ensureExistence
-  return (artifactTime, toList sourceSeq)
+  return (artifactTime, sourceList)
 
 registerShiftMap :: App ()
 registerShiftMap = do

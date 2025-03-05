@@ -12,6 +12,7 @@ import Data.IORef.Unboxed
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Time (UTCTime, getCurrentTime)
 import Entity.ArgNum qualified as AN
 import Entity.Artifact qualified as AR
 import Entity.BaseLowType qualified as BLT
@@ -55,7 +56,9 @@ import Entity.WeakTerm qualified as WT
 import Path
 
 data Env = Env
-  { counter :: IORefU Int,
+  { enableDebugMode :: IORef Bool,
+    startTime :: UTCTime,
+    counter :: IORefU Int,
     endOfEntry :: IORef T.Text,
     shouldColorize :: IORef Bool,
     buildMode :: IORef BM.BuildMode,
@@ -121,6 +124,8 @@ newRef =
 newEnv :: IO Env
 newEnv = do
   counter <- newIORefU 0
+  startTime <- getCurrentTime
+  enableDebugMode <- newIORef False
   endOfEntry <- newIORef ""
   shouldColorize <- newIORef True
   buildMode <- newIORef BM.Develop

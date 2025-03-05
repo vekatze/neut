@@ -6,6 +6,7 @@ module Context.LLVM
 where
 
 import Context.App
+import Context.Debug (report)
 import Context.Env (getMainModule)
 import Context.External qualified as External
 import Context.Path qualified as Path
@@ -13,6 +14,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
+import Data.Text qualified as T
 import Data.Time.Clock
 import Entity.Config.Build
 import Entity.OutputKind qualified as OK
@@ -65,6 +67,7 @@ emit' :: [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -> App ()
 emit' clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
+      report $ "Saving: " <> T.pack (toFilePath path)
       Path.writeByteString path llvmCode
     OK.Object ->
       emitInner clangOptString llvmCode path
@@ -72,12 +75,14 @@ emit' clangOptString llvmCode kind path = do
 emitInner :: [ClangOption] -> L.ByteString -> Path Abs File -> App ()
 emitInner additionalClangOptions llvm outputPath = do
   clang <- liftIO External.getClang
+  let optionList = clangBaseOpt outputPath ++ additionalClangOptions
   let ProcessRunner.Runner {run10} = ProcessRunner.ioRunner
   let spec =
         ProcessRunner.Spec
-          { cmdspec = RawCommand clang (clangBaseOpt outputPath ++ additionalClangOptions),
+          { cmdspec = RawCommand clang optionList,
             cwd = Nothing
           }
+  report $ "Executing: " <> T.pack (show (clang, optionList))
   value <- liftIO $ run10 spec (ProcessRunner.Lazy llvm)
   case value of
     Right _ ->
@@ -114,5 +119,5 @@ clangLinkOpt objectPathList outputPath additionalOptionStr = do
     "-o",
     toFilePath outputPath
     ]
-    ++ pathList
     ++ words additionalOptionStr
+    ++ pathList
