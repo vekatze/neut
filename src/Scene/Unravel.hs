@@ -148,7 +148,10 @@ unravelModule' axis currentModule = do
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath Nothing moduleID
-        Module.fromFilePath path' >>= unravelModule' axis
+        b <- Path.doesFileExist path'
+        if b
+          then Module.fromFilePath path' >>= unravelModule' axis
+          else return []
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
       return $ currentModule : arrows
