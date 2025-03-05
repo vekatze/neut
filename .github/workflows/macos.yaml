@@ -1,0 +1,32 @@
+name: Tests on macOS
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'bin/**'
+      - 'book/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'bin/**'
+      - 'book/**'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: extractions/setup-just@v1
+      - uses: haskell-actions/setup@v2
+        with:
+          enable-stack: true
+          stack-no-global: true
+      - uses: freckle/stack-cache-action@v2
+      - uses: tecolicom/actions-use-homebrew-tools@v1
+        with:
+          tools: llvm
+      - run: just build-compiler-arm64-darwin
+      - run: just test-arm64-darwin
