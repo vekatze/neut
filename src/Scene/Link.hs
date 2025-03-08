@@ -8,9 +8,13 @@ import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Path qualified as Path
+import Context.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
+import Data.Text qualified as T
+import Data.Text.Encoding (encodeUtf8)
 import Entity.Artifact qualified as A
 import Entity.Module
 import Entity.OutputKind qualified as OK
@@ -18,6 +22,8 @@ import Entity.Source qualified as Source
 import Entity.Target
 import Path
 import Path.IO
+import System.Console.ANSI
+import System.IO
 
 link :: MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
@@ -30,7 +36,8 @@ link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList 
 
 link' :: MainTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
-  liftIO $ putStrLn "Linking.."
+  liftIO $ putStr "⠋ Linking.."
+  liftIO $ hFlush stdout
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   outputPath <- Path.getExecutableOutputPath target mainModule
   objectPathList <- mapM (Path.sourceToOutputPath (Main target) OK.Object) sourceList
@@ -38,7 +45,9 @@ link' target mainModule sourceList = do
   foreignDirList <- mapM (Path.getForeignDir (Main target)) moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
   let clangOptions = getLinkOption (Main target)
-  LLVM.link clangOptions (mainObject : objectPathList ++ foreignObjectList) outputPath
+  let objects = mainObject : objectPathList ++ foreignObjectList
+  LLVM.link clangOptions objects outputPath
+  finalizeProgressBar $ "Linked " <> T.pack (show $ length objects) <> " objects"
 
 getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
 getForeignDirContent foreignDir = do
@@ -46,3 +55,11 @@ getForeignDirContent foreignDir = do
   if b
     then snd <$> listDirRecur foreignDir
     else return []
+
+finalizeProgressBar :: T.Text -> App ()
+finalizeProgressBar title = do
+  check <- Remark.withSGR [SetColor Foreground Vivid Green] "✓"
+  let title' = check <> " " <> title
+  liftIO $ B.hPutStr stdout $ encodeUtf8 "\r"
+  liftIO clearFromCursorToLineEnd
+  liftIO $ B.hPutStr stdout $ encodeUtf8 $ "\r" <> title' <> "\n"

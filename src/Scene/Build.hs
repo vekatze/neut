@@ -50,7 +50,7 @@ import Scene.Load qualified as Load
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
-import System.Console.ANSI (ConsoleIntensity (BoldIntensity), ConsoleLayer (Foreground), SGR (SetConsoleIntensity, SetRGBColor))
+import System.Console.ANSI
 import System.IO (stdout)
 import UnliftIO.Async
 import Prelude hiding (log)
@@ -116,7 +116,7 @@ compile target outputKindList contentSeq = do
   entryPointConc <- forM entryPointVirtualCode $ \(src, code) -> async $ do
     emit currentTime target ref numOfItems outputKindList src code
   mapM_ wait $ entryPointConc ++ contentConc
-  finalizeProgressBar
+  finalizeProgressBar $ "Compiled " <> T.pack (show numOfItems) <> " files"
 
 emit :: UTCTime -> Target -> IORef Int -> Int -> [OutputKind] -> Either MainTarget Source -> LC.LowCode -> App ()
 emit currentTime target ref numOfItems outputKindList src code = do
@@ -273,10 +273,13 @@ renderProgressBar :: T.Text -> Int -> Int -> App ()
 renderProgressBar title current size = do
   let frac :: Double = fromIntegral current / fromIntegral size
   let pivot = floor $ fromIntegral barLength * frac
+  spinner <- Remark.withSGR [SetColor Foreground Vivid Green] $ chooseSpinner current
+  let title' = spinner <> " " <> title
   prefix <- makePrefix pivot barLength
   let suffix = T.replicate (barLength - pivot) barInProgress
   let bar = prefix <> suffix
-  liftIO $ B.hPutStr stdout $ encodeUtf8 $ "\r" <> title <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
+  let content = "\r" <> title' <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
+  liftIO $ B.hPutStr stdout $ encodeUtf8 content
 
 makePrefix :: Int -> Int -> App T.Text
 makePrefix index size = do
@@ -327,6 +330,24 @@ initializeProgressBar :: Int -> App ()
 initializeProgressBar numOfItems = do
   renderProgressBar "Compiling" 0 numOfItems
 
-finalizeProgressBar :: App ()
-finalizeProgressBar = do
-  liftIO $ B.hPutStr stdout "\n"
+chooseSpinner :: Int -> T.Text
+chooseSpinner i = do
+  case i `rem` 10 of
+    0 -> "⠋"
+    1 -> "⠙"
+    2 -> "⠹"
+    3 -> "⠸"
+    4 -> "⠼"
+    5 -> "⠴"
+    6 -> "⠦"
+    7 -> "⠧"
+    8 -> "⠇"
+    _ -> "⠏"
+
+finalizeProgressBar :: T.Text -> App ()
+finalizeProgressBar title = do
+  check <- Remark.withSGR [SetColor Foreground Vivid Green] "✓"
+  let title' = check <> " " <> title
+  liftIO $ B.hPutStr stdout $ encodeUtf8 "\r"
+  liftIO clearFromCursorToLineEnd
+  liftIO $ B.hPutStr stdout $ encodeUtf8 $ "\r" <> title' <> "\n"
