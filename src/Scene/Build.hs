@@ -17,9 +17,6 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
-import Data.Colour.RGBSpace
-import Data.Colour.RGBSpace.HSL (hsl)
-import Data.Colour.SRGB (sRGB)
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Either (isLeft, isRight)
 import Data.Foldable
@@ -278,42 +275,11 @@ renderProgressBar title current size = do
   let pivot = floor $ fromIntegral barLength * frac
   spinner <- Remark.withSGR [SetColor Foreground Vivid Green] $ chooseSpinner current
   let title' = spinner <> " " <> title
-  prefix <- makePrefix pivot barLength
-  -- prefix <- Remark.withSGR [SetColor Foreground Vivid Green] $ T.replicate pivot barFinished
+  prefix <- Remark.withSGR [SetColor Foreground Vivid Green] $ T.replicate pivot barFinished
   let suffix = T.replicate (barLength - pivot) barInProgress
   let bar = prefix <> suffix
   let content = "\r" <> title' <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
   liftIO $ B.hPutStr stdout $ encodeUtf8 content
-
-makePrefix :: Int -> Int -> App T.Text
-makePrefix index size = do
-  if index <= 0
-    then return ""
-    else do
-      let color = getIdealColor index size
-      piece <- Remark.withSGR [SetRGBColor Foreground color, SetConsoleIntensity BoldIntensity] barFinished
-      yo <- makePrefix (index - 1) size
-      return $ yo <> piece
-
-sakura :: (Float, Float, Float)
-sakura =
-  (332.5, 0.92, 0.87)
-
-sora :: (Float, Float, Float)
-sora =
-  (192.7, 0.76, 0.87)
-
-getIdealColor :: Int -> Int -> Colour Float
-getIdealColor focus size = do
-  let focus' = fromIntegral focus
-  let size' = fromIntegral size
-  let (x1, x2, x3) = sakura
-  let (y1, y2, y3) = sora
-  let z1 = (y1 - x1) * focus' / size' + x1
-  let z2 = (y2 - x2) * focus' / size' + x2
-  let z3 = (y3 - x3) * focus' / size' + x3
-  let c = hsl z1 z2 z3
-  sRGB (channelRed c) (channelGreen c) (channelBlue c)
 
 barLength :: Int
 barLength =

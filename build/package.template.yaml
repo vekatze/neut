@@ -36,7 +36,6 @@ dependencies:
 - binary
 - bytestring
 - co-log-core
-- colour
 - containers
 - cryptohash-sha256
 - directory
