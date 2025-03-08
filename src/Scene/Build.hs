@@ -21,7 +21,7 @@ import Data.Colour.RGBSpace
 import Data.Colour.RGBSpace.HSL (hsl)
 import Data.Colour.SRGB (sRGB)
 import Data.Containers.ListUtils (nubOrdOn)
-import Data.Either (isLeft)
+import Data.Either (isLeft, isRight)
 import Data.Foldable
 import Data.IORef (IORef, atomicModifyIORef, newIORef)
 import Data.Maybe
@@ -96,27 +96,30 @@ abstractAxis =
 
 compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile target outputKindList contentSeq = do
-  ref <- liftIO $ newIORef (1 :: Int)
-  let numOfItems = length contentSeq + 1
-  initializeProgressBar numOfItems
-  currentTime <- liftIO getCurrentTime
-  contentConc <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
-    Initialize.initializeForSource source
-    let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-    report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
-    cacheOrStmtList <- Parse.parse target source cacheOrContent
-    stmtList <- Elaborate.elaborate target cacheOrStmtList
-    EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
-    Cache.whenCompilationNecessary outputKindList source (finishItem ref numOfItems) $ do
-      stmtList' <- Clarify.clarify stmtList
-      virtualCode <- Lower.lower stmtList'
-      async $ emit currentTime target ref numOfItems outputKindList (Right source) virtualCode
   mainModule <- Env.getMainModule
-  entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList (finishItem ref numOfItems)
-  entryPointConc <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-    emit currentTime target ref numOfItems outputKindList src code
-  mapM_ wait $ entryPointConc ++ contentConc
-  finalizeProgressBar $ "Compiled " <> T.pack (show numOfItems) <> " files"
+  entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
+  let numOfItems = length (filter (isRight . snd) contentSeq) + length entryPointVirtualCode
+  if numOfItems == 0
+    then return ()
+    else do
+      currentTime <- liftIO getCurrentTime
+      ref <- liftIO $ newIORef (1 :: Int)
+      entryPointConc <- forM entryPointVirtualCode $ \(src, code) -> async $ do
+        emit currentTime target ref numOfItems outputKindList src code
+      initializeProgressBar numOfItems
+      contentConc <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
+        Initialize.initializeForSource source
+        let suffix = if isLeft cacheOrContent then " (cache found)" else ""
+        report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+        cacheOrStmtList <- Parse.parse target source cacheOrContent
+        stmtList <- Elaborate.elaborate target cacheOrStmtList
+        EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
+        Cache.whenCompilationNecessary outputKindList source $ do
+          stmtList' <- Clarify.clarify stmtList
+          virtualCode <- Lower.lower stmtList'
+          async $ emit currentTime target ref numOfItems outputKindList (Right source) virtualCode
+      mapM_ wait $ entryPointConc ++ contentConc
+      finalizeProgressBar $ "Compiled " <> T.pack (show numOfItems) <> " files"
 
 emit :: UTCTime -> Target -> IORef Int -> Int -> [OutputKind] -> Either MainTarget Source -> LC.LowCode -> App ()
 emit currentTime target ref numOfItems outputKindList src code = do
@@ -128,10 +131,10 @@ emit currentTime target ref numOfItems outputKindList src code = do
 finishItem :: IORef Int -> Int -> App ()
 finishItem ref numOfItems = do
   value <- liftIO $ atomicModifyIORef ref (\x -> (x + 1, x))
-  renderProgressBar "Compling" value numOfItems
+  renderProgressBar "Compiling" value numOfItems
 
-compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App () -> App [(Either MainTarget Source, LC.LowCode)]
-compileEntryPoint mainModule target outputKindList fallbackComp = do
+compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
+compileEntryPoint mainModule target outputKindList = do
   case target of
     Peripheral {} ->
       return []
@@ -140,7 +143,7 @@ compileEntryPoint mainModule target outputKindList fallbackComp = do
     Main t -> do
       b <- Cache.isEntryPointCompilationSkippable mainModule t outputKindList
       if b
-        then fallbackComp >> return []
+        then return []
         else do
           mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint t
           return [(Left t, mainVirtualCode)]
@@ -276,6 +279,7 @@ renderProgressBar title current size = do
   spinner <- Remark.withSGR [SetColor Foreground Vivid Green] $ chooseSpinner current
   let title' = spinner <> " " <> title
   prefix <- makePrefix pivot barLength
+  -- prefix <- Remark.withSGR [SetColor Foreground Vivid Green] $ T.replicate pivot barFinished
   let suffix = T.replicate (barLength - pivot) barInProgress
   let bar = prefix <> suffix
   let content = "\r" <> title' <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)

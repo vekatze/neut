@@ -108,11 +108,11 @@ loadLocationCache t source = do
         Right content ->
           return $ Just content
 
-whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App () -> App a -> App (Maybe a)
-whenCompilationNecessary outputKindList source fallbackComp comp = do
+whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
+whenCompilationNecessary outputKindList source comp = do
   artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
   if Source.isCompilationSkippable artifactTime outputKindList
-    then fallbackComp >> return Nothing
+    then return Nothing
     else Just <$> comp
 
 isEntryPointCompilationSkippable :: Module -> MainTarget -> [OK.OutputKind] -> App Bool
