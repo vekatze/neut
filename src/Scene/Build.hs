@@ -16,11 +16,17 @@ import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.ByteString qualified as B
+import Data.Colour.RGBSpace
+import Data.Colour.RGBSpace.HSL (hsl)
+import Data.Colour.SRGB (sRGB)
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Either (isLeft)
 import Data.Foldable
+import Data.IORef (atomicModifyIORef, newIORef)
 import Data.Maybe
 import Data.Text qualified as T
+import Data.Text.Encoding (encodeUtf8)
 import Data.Time
 import Entity.Cache
 import Entity.ClangOption qualified as CL
@@ -44,6 +50,8 @@ import Scene.Load qualified as Load
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
+import System.Console.ANSI (ConsoleIntensity (BoldIntensity), ConsoleLayer (Foreground), SGR (SetConsoleIntensity, SetRGBColor))
+import System.IO (stdout)
 import UnliftIO.Async
 import Prelude hiding (log)
 
@@ -89,10 +97,12 @@ abstractAxis =
 
 compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Either MainTarget Source, LC.LowCode)]
 compile target outputKindList contentSeq = do
-  virtualCodeList <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
+  let numOfFiles = length contentSeq
+  virtualCodeList <- fmap catMaybes $ forM (zip [1 ..] contentSeq) $ \(current, (source, cacheOrContent)) -> do
     Initialize.initializeForSource source
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-    report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+    renderProgressBar "Compiling" current numOfFiles
+    report $ "Compiling.. " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- Parse.parse target source cacheOrContent
     stmtList <- Elaborate.elaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
@@ -100,6 +110,7 @@ compile target outputKindList contentSeq = do
       stmtList' <- Clarify.clarify stmtList
       virtualCode <- Lower.lower stmtList'
       return (Right source, virtualCode)
+  liftIO finalizeProgressBar
   mainModule <- Env.getMainModule
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   return $ entryPointVirtualCode ++ virtualCodeList
@@ -127,9 +138,14 @@ emitAndWrite target outputKindList virtualCodeList = do
   let suffix = if num > 1 then "s" else ""
   when (num > 0) $ do
     report $ "Generating " <> T.pack (show num) <> " object file" <> suffix
+  mvar <- liftIO $ newIORef (1 :: Int)
   pooledForConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
     LLVM.emit target clangOptions currentTime sourceOrNone outputKindList llvmIR'
+    value <- liftIO $ atomicModifyIORef mvar (\x -> (x + 1, x))
+    renderProgressBar "Postprocessing" value num
+  when (num > 0) $ do
+    liftIO finalizeProgressBar
 
 execute :: Bool -> MainTarget -> [String] -> App ()
 execute shouldExecute target args = do
@@ -254,3 +270,61 @@ expandClangOptions target =
 expandOptions :: [T.Text] -> App [T.Text]
 expandOptions foo =
   map T.strip <$> mapM External.expandText foo
+
+renderProgressBar :: T.Text -> Int -> Int -> App ()
+renderProgressBar title current size = do
+  let frac :: Double = fromIntegral current / fromIntegral size
+  let pivot = floor $ fromIntegral barLength * frac
+  prefix <- makePrefix pivot barLength
+  let suffix = T.replicate (barLength - pivot) barInProgress
+  let bar = prefix <> suffix
+  liftIO $ B.hPutStr stdout $ encodeUtf8 $ "\r" <> title <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
+
+makePrefix :: Int -> Int -> App T.Text
+makePrefix index size = do
+  if index < 0
+    then return ""
+    else do
+      let color = getIdealColor index size
+      piece <- Remark.withSGR [SetRGBColor Foreground color, SetConsoleIntensity BoldIntensity] barFinished
+      yo <- makePrefix (index - 1) size
+      return $ yo <> piece
+
+sakura :: (Float, Float, Float)
+sakura =
+  (332.5, 0.92, 0.87)
+
+sora :: (Float, Float, Float)
+sora =
+  (192.7, 0.76, 0.87)
+
+getIdealColor :: Int -> Int -> Colour Float
+getIdealColor focus size = do
+  let focus' = fromIntegral focus
+  let size' = fromIntegral size
+  let (x1, x2, x3) = sakura
+  let (y1, y2, y3) = sora
+  let z1 = (y1 - x1) * focus' / size' + x1
+  let z2 = (y2 - x2) * focus' / size' + x2
+  let z3 = (y3 - x3) * focus' / size' + x3
+  let c = hsl z1 z2 z3
+  sRGB (channelRed c) (channelGreen c) (channelBlue c)
+
+barLength :: Int
+barLength =
+  32
+
+barInProgress :: T.Text
+barInProgress =
+  -- "░"
+  -- "─"
+  " "
+
+barFinished :: T.Text
+barFinished =
+  -- "█"
+  "━"
+
+finalizeProgressBar :: IO ()
+finalizeProgressBar = do
+  liftIO $ B.hPutStr stdout "\n"

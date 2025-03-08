@@ -8,6 +8,7 @@ import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Path qualified as Path
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Entity.Artifact qualified as A
@@ -29,6 +30,7 @@ link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList 
 
 link' :: MainTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
+  liftIO $ putStrLn "Linking object files"
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   outputPath <- Path.getExecutableOutputPath target mainModule
   objectPathList <- mapM (Path.sourceToOutputPath (Main target) OK.Object) sourceList
