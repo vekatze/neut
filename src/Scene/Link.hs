@@ -22,9 +22,8 @@ link :: MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App (
 link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
   mainModule <- Env.getMainModule
   isExecutableAvailable <- Path.getExecutableOutputPath target mainModule >>= Path.doesFileExist
-  let b1 = not didPerformForeignCompilation
-  let b2 = shouldSkipLink || (isJust (A.objectTime artifactTime) && isExecutableAvailable)
-  if b1 && b2
+  let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
+  if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
     then report "Skipped linking object files"
     else link' target mainModule sourceList
 
