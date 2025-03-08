@@ -30,7 +30,7 @@ link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList 
 
 link' :: MainTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
-  liftIO $ putStrLn "Linking object files"
+  liftIO $ putStrLn "Linking.."
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   outputPath <- Path.getExecutableOutputPath target mainModule
   objectPathList <- mapM (Path.sourceToOutputPath (Main target) OK.Object) sourceList
