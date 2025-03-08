@@ -349,7 +349,7 @@ getLastModifiedInf pathList =
           return Nothing
 
 unrollPath :: M.SomePath Abs -> App [Path Abs File]
-unrollPath path =
+unrollPath path = do
   case path of
     Left dirPath -> do
       (_, filePathList) <- P.listDirRecur dirPath

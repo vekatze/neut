@@ -14,6 +14,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Debug (report)
 import Context.Env
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -67,6 +68,7 @@ getModuleDirByID mHint moduleID = do
 
 saveEns :: Path Abs File -> FullEns -> App ()
 saveEns path (c1, (ens, c2)) = do
+  report $ "Saving ens file to: " <> T.pack (toFilePath path)
   ens' <- Throw.liftEither $ stylize ens
   Path.writeText path $ Ens.pp (c1, (ens', c2))
 

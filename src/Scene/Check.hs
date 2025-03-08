@@ -7,11 +7,14 @@ module Scene.Check
 where
 
 import Context.App
+import Context.Debug (report)
 import Context.Env (getMainModule)
 import Context.Throw qualified as Throw
 import Control.Monad
+import Data.Text qualified as T
 import Entity.Module qualified as M
 import Entity.Remark
+import Entity.Source (Source (sourceFilePath))
 import Entity.Target
 import Path
 import Scene.Elaborate qualified as Elaborate
@@ -20,7 +23,6 @@ import Scene.Load qualified as Load
 import Scene.Module.Reflect (getAllDependencies)
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
-import UnliftIO.Async
 
 check :: App [Remark]
 check = do
@@ -39,11 +41,10 @@ _check target baseModule = do
   Throw.collectLogs $ do
     Initialize.initializeForTarget
     (_, dependenceSeq) <- Unravel.unravel baseModule target
-    contentSeq <- pooledForConcurrently dependenceSeq $ \source -> do
-      cacheOrContent <- Load.load target source
-      return (source, cacheOrContent)
+    contentSeq <- Load.load target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
+      report $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
       void $ Parse.parse target source cacheOrContent >>= Elaborate.elaborate target
 
 checkAll :: App [Remark]
