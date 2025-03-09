@@ -45,7 +45,6 @@ link' target mainModule sourceList = do
   let numOfObjects = length objects
   color <- getColor
   h <- liftIO $ ProgressBar.new Nothing "Linking" (getCompletedTitle numOfObjects) color
-  liftIO $ ProgressBar.render h
   LLVM.link clangOptions objects outputPath
   liftIO $ ProgressBar.close h
 

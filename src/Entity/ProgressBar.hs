@@ -1,5 +1,6 @@
 module Entity.ProgressBar
   ( ProgressBar (..),
+    Frame,
     renderInProgress,
     renderFinished,
     next,
@@ -19,18 +20,19 @@ data ProgressBar
     progress :: Maybe (Int, Int)
   }
 
-renderInProgress :: ProgressBar -> B.ByteString
-renderInProgress progressBar = do
+type Frame =
+  Int
+
+renderInProgress :: Frame -> ProgressBar -> B.ByteString
+renderInProgress frame progressBar = do
+  let spinner = withSGR (color progressBar) $ chooseSpinner frame
+  let title' = spinner <> " " <> workingTitle progressBar
   case progress progressBar of
     Nothing -> do
-      let spinner = withSGR (color progressBar) $ chooseSpinner 0
-      let title' = spinner <> " " <> workingTitle progressBar
       encodeUtf8 $ "\r" <> title'
     Just (current, size) -> do
       let frac :: Float = fromIntegral current / fromIntegral size
       let pivot = floor $ fromIntegral barLength * frac
-      let spinner = withSGR (color progressBar) $ chooseSpinner current
-      let title' = spinner <> " " <> workingTitle progressBar
       let prefix = withSGR (color progressBar) $ T.replicate pivot barFinished
       let suffix = T.replicate (barLength - pivot) barInProgress
       let bar = prefix <> suffix

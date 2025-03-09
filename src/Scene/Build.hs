@@ -137,7 +137,7 @@ emit progressBar currentTime target outputKindList src code = do
   let clangOptions = getCompileOption target
   llvmIR' <- Emit.emit code
   LLVM.emit target clangOptions currentTime src outputKindList llvmIR'
-  liftIO $ ProgressBar.increment progressBar >> ProgressBar.render progressBar
+  liftIO $ ProgressBar.increment progressBar
 
 compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint mainModule target outputKindList = do
