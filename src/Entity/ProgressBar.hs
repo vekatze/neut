@@ -29,19 +29,19 @@ renderInProgress frame progressBar = do
   let title' = spinner <> " " <> workingTitle progressBar
   case progress progressBar of
     Nothing -> do
-      encodeUtf8 $ "\r" <> title'
+      encodeUtf8 title'
     Just (current, size) -> do
       let frac :: Float = fromIntegral current / fromIntegral size
       let pivot = floor $ fromIntegral barLength * frac
       let prefix = withSGR (color progressBar) $ T.replicate pivot barFinished
       let suffix = T.replicate (barLength - pivot) barInProgress
       let bar = prefix <> suffix
-      encodeUtf8 $ "\r" <> title' <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
+      encodeUtf8 $ title' <> ":\n  " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
 
 renderFinished :: ProgressBar -> B.ByteString
 renderFinished progressBar = do
   let check = withSGR (color progressBar) "✓"
-  encodeUtf8 $ "\r" <> check <> " " <> completedTitle progressBar <> "\n"
+  encodeUtf8 $ check <> " " <> completedTitle progressBar <> "\n"
 
 next :: ProgressBar -> ProgressBar
 next progressBar = do

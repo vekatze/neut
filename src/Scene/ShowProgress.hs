@@ -9,7 +9,6 @@ where
 import Data.ByteString qualified as B
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
-import Data.Text.Encoding (encodeUtf8)
 import Entity.ProgressBar (Frame, ProgressBar (..), next, renderFinished, renderInProgress)
 import System.Console.ANSI
 import System.IO hiding (Handle)
@@ -44,12 +43,24 @@ render i ref = do
   progressBar <- readIORef ref
   B.hPutStr stderr $ renderInProgress i progressBar
   threadDelay 33333 -- 2F
+  clear ref
   render (i + 1) ref
+
+clear :: IORef ProgressBar -> IO ()
+clear ref = do
+  hClearFromCursorToLineBeginning stderr
+  progressBar <- readIORef ref
+  case progress progressBar of
+    Nothing ->
+      return ()
+    Just _ -> do
+      hCursorUpLine stderr 1
+      hClearFromCursorToLineBeginning stderr
+  hSetCursorColumn stderr 0
 
 close :: Handle -> IO ()
 close h = do
   cancel $ renderThread h
-  hClearFromCursorToLineBeginning stderr
-  B.hPutStr stderr $ encodeUtf8 "\r"
+  clear (progressBarRef h)
   progressBar <- readIORef (progressBarRef h)
   B.hPutStr stderr $ renderFinished progressBar
