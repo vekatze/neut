@@ -18,7 +18,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils (nubOrdOn)
-import Data.Either (isLeft, isRight)
+import Data.Either (isLeft)
 import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
