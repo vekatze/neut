@@ -16,14 +16,11 @@ import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Either (isLeft, isRight)
 import Data.Foldable
-import Data.IORef (IORef, atomicModifyIORef, newIORef)
 import Data.Maybe
 import Data.Text qualified as T
-import Data.Text.Encoding (encodeUtf8)
 import Data.Time
 import Entity.Cache
 import Entity.ClangOption qualified as CL
@@ -31,6 +28,7 @@ import Entity.LowComp qualified as LC
 import Entity.Module qualified as M
 import Entity.ModuleID qualified as MID
 import Entity.OutputKind
+import Entity.ProgressBar (ProgressBar)
 import Entity.Source
 import Entity.Stmt (getStmtName)
 import Entity.Target
@@ -46,9 +44,9 @@ import Scene.Link qualified as Link
 import Scene.Load qualified as Load
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
+import Scene.ShowProgress qualified as ProgressBar
 import Scene.Unravel qualified as Unravel
 import System.Console.ANSI
-import System.IO (stdout)
 import UnliftIO.Async
 import Prelude hiding (log)
 
@@ -100,10 +98,15 @@ compile target outputKindList contentSeq = do
     then return ()
     else do
       currentTime <- liftIO getCurrentTime
-      ref <- liftIO $ newIORef (1 :: Int)
+      color <- do
+        shouldColorize <- Remark.getShouldColorize
+        if shouldColorize
+          then return $ Just [SetColor Foreground Vivid Green]
+          else return Nothing
+      let completedTitle = getCompletedTitle numOfItems
+      progressBar <- liftIO $ ProgressBar.initialize (Just numOfItems) "Compiling" completedTitle color
       entryPointConc <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-        emit currentTime target ref numOfItems outputKindList src code
-      initializeProgressBar numOfItems
+        emit progressBar currentTime target outputKindList src code
       contentConc <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
         Initialize.initializeForSource source
         let suffix = if isLeft cacheOrContent then " (cache found)" else ""
@@ -114,21 +117,28 @@ compile target outputKindList contentSeq = do
         Cache.whenCompilationNecessary outputKindList source $ do
           stmtList' <- Clarify.clarify stmtList
           virtualCode <- Lower.lower stmtList'
-          async $ emit currentTime target ref numOfItems outputKindList (Right source) virtualCode
+          async $ emit progressBar currentTime target outputKindList (Right source) virtualCode
       mapM_ wait $ entryPointConc ++ contentConc
-      finalizeProgressBar $ "Compiled " <> T.pack (show numOfItems) <> " files"
+      liftIO $ ProgressBar.finalize progressBar
 
-emit :: UTCTime -> Target -> IORef Int -> Int -> [OutputKind] -> Either MainTarget Source -> LC.LowCode -> App ()
-emit currentTime target ref numOfItems outputKindList src code = do
+getCompletedTitle :: Int -> T.Text
+getCompletedTitle numOfItems = do
+  let suffix = if numOfItems <= 1 then "" else "s"
+  "Compiled " <> T.pack (show numOfItems) <> " file" <> suffix
+
+emit ::
+  ProgressBar ->
+  UTCTime ->
+  Target ->
+  [OutputKind] ->
+  Either MainTarget Source ->
+  LC.LowCode ->
+  App ()
+emit progressBar currentTime target outputKindList src code = do
   let clangOptions = getCompileOption target
   llvmIR' <- Emit.emit code
   LLVM.emit target clangOptions currentTime src outputKindList llvmIR'
-  finishItem ref numOfItems
-
-finishItem :: IORef Int -> Int -> App ()
-finishItem ref numOfItems = do
-  value <- liftIO $ atomicModifyIORef ref (\x -> (x + 1, x))
-  renderProgressBar "Compiling" value numOfItems
+  liftIO $ ProgressBar.increment progressBar >> ProgressBar.render progressBar
 
 compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint mainModule target outputKindList = do
@@ -268,56 +278,3 @@ expandClangOptions target =
 expandOptions :: [T.Text] -> App [T.Text]
 expandOptions foo =
   map T.strip <$> mapM External.expandText foo
-
-renderProgressBar :: T.Text -> Int -> Int -> App ()
-renderProgressBar title current size = do
-  let frac :: Double = fromIntegral current / fromIntegral size
-  let pivot = floor $ fromIntegral barLength * frac
-  spinner <- Remark.withSGR [SetColor Foreground Vivid Green] $ chooseSpinner current
-  let title' = spinner <> " " <> title
-  prefix <- Remark.withSGR [SetColor Foreground Vivid Green] $ T.replicate pivot barFinished
-  let suffix = T.replicate (barLength - pivot) barInProgress
-  let bar = prefix <> suffix
-  let content = "\r" <> title' <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
-  liftIO $ B.hPutStr stdout $ encodeUtf8 content
-
-barLength :: Int
-barLength =
-  32
-
-barInProgress :: T.Text
-barInProgress =
-  -- "░"
-  -- "─"
-  " "
-
-barFinished :: T.Text
-barFinished =
-  -- "█"
-  "━"
-
-initializeProgressBar :: Int -> App ()
-initializeProgressBar numOfItems = do
-  renderProgressBar "Compiling" 0 numOfItems
-
-chooseSpinner :: Int -> T.Text
-chooseSpinner i = do
-  case i `rem` 10 of
-    0 -> "⠋"
-    1 -> "⠙"
-    2 -> "⠹"
-    3 -> "⠸"
-    4 -> "⠼"
-    5 -> "⠴"
-    6 -> "⠦"
-    7 -> "⠧"
-    8 -> "⠇"
-    _ -> "⠏"
-
-finalizeProgressBar :: T.Text -> App ()
-finalizeProgressBar title = do
-  check <- Remark.withSGR [SetColor Foreground Vivid Green] "✓"
-  let title' = check <> " " <> title
-  liftIO $ B.hPutStr stdout $ encodeUtf8 "\r"
-  liftIO clearFromCursorToLineEnd
-  liftIO $ B.hPutStr stdout $ encodeUtf8 $ "\r" <> title' <> "\n"
