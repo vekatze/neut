@@ -34,7 +34,7 @@ new numOfItems workingTitle completedTitle color = do
       Just v -> do
         return $ Just (0, v)
   stdoutIsTerminal <- liftIO $ hIsTerminalDevice stdout
-  let progressBar = ProgressBar {workingTitle, completedTitle, color, progress}
+  let progressBar = ProgressBar {workingTitle, completedTitle, color, progress, showSymbol = stdoutIsTerminal}
   if stdoutIsTerminal
     then do
       progressBarRef <- liftIO $ newIORef progressBar
@@ -65,9 +65,9 @@ clear ref = do
   when stdoutIsTerminal $ do
     hSetCursorColumn stdout 0
     hClearFromCursorToLineEnd stdout
-    progressBar <- readIORef ref
     hCursorUpLine stdout 1
     hClearFromCursorToLineEnd stdout
+    progressBar <- readIORef ref
     case progress progressBar of
       Nothing ->
         return ()

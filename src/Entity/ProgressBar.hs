@@ -16,7 +16,8 @@ data ProgressBar
   { workingTitle :: T.Text,
     completedTitle :: T.Text,
     color :: [SGR],
-    progress :: Maybe (Int, Int)
+    progress :: Maybe (Int, Int),
+    showSymbol :: Bool
   }
 
 type Frame =
@@ -25,7 +26,8 @@ type Frame =
 renderInProgress :: Frame -> ProgressBar -> L.Log
 renderInProgress frame progressBar = do
   let spinner = L.pack (color progressBar) $ chooseSpinner frame
-  let title' = spinner <> " " <> L.pack' (workingTitle progressBar)
+  let symbol = if showSymbol progressBar then spinner <> " " else ""
+  let title' = symbol <> L.pack' (workingTitle progressBar)
   case progress progressBar of
     Nothing -> do
       title'
@@ -41,8 +43,9 @@ renderInProgress frame progressBar = do
 
 renderFinished :: ProgressBar -> L.Log
 renderFinished progressBar = do
-  let check = L.pack (color progressBar) "✓"
-  check <> " " <> L.pack' (completedTitle progressBar) <> "\n"
+  let check = L.pack (color progressBar) "✓" <> " "
+  let symbol = if showSymbol progressBar then check else ""
+  symbol <> L.pack' (completedTitle progressBar) <> "\n"
 
 next :: ProgressBar -> ProgressBar
 next progressBar = do
