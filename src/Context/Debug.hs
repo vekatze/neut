@@ -7,16 +7,14 @@ where
 
 import Context.App
 import Context.App.Internal
-import Context.Remark (withSGR)
+import Context.Color qualified as Color
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (asks)
-import Data.ByteString qualified as B
 import Data.Text qualified as T
-import Data.Text.Encoding (encodeUtf8)
 import Data.Time (NominalDiffTime, diffUTCTime, getCurrentTime)
+import Entity.Log qualified as L
 import System.Console.ANSI
-import System.IO (stderr)
 import Text.Printf (printf)
 
 report :: T.Text -> App ()
@@ -26,8 +24,8 @@ report message = do
     baseTime <- asks startTime
     currentTime <- liftIO getCurrentTime
     let elapsedTime = diffUTCTime currentTime baseTime
-    elapsedTime' <- withSGR [SetColor Foreground Vivid Black] (T.pack $ formatNominalDiffTime elapsedTime)
-    liftIO $ B.hPutStr stderr $ encodeUtf8 $ elapsedTime' <> " " <> message <> "\n"
+    let elapsedTime' = L.pack [SetColor Foreground Vivid Black] (T.pack $ formatNominalDiffTime elapsedTime)
+    Color.printStdErr $ elapsedTime' <> L.pack' " " <> L.pack' message <> L.pack' "\n"
 
 getDebugMode :: App Bool
 getDebugMode =

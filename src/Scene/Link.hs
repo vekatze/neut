@@ -4,11 +4,11 @@ module Scene.Link
 where
 
 import Context.App
+import Context.Color qualified as Color
 import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Path qualified as Path
-import Context.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
@@ -60,12 +60,12 @@ getCompletedTitle numOfObjects = do
   let suffix = if numOfObjects <= 1 then "" else "s"
   "Linked " <> T.pack (show numOfObjects) <> " object" <> suffix
 
-getColor :: App (Maybe [SGR])
+getColor :: App [SGR]
 getColor = do
-  shouldColorize <- Remark.getShouldColorize
+  shouldColorize <- Color.getShouldColorizeStdout
   if shouldColorize
-    then return $ Just [SetColor Foreground Vivid Green]
-    else return Nothing
+    then return [SetColor Foreground Vivid Green]
+    else return []
 
 getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
 getForeignDirContent foreignDir = do

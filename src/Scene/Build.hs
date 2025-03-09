@@ -7,6 +7,7 @@ where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.Color qualified as Color
 import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.External qualified as External
@@ -98,10 +99,10 @@ compile target outputKindList contentSeq = do
     else do
       currentTime <- liftIO getCurrentTime
       color <- do
-        shouldColorize <- Remark.getShouldColorize
+        shouldColorize <- Color.getShouldColorizeStdout
         if shouldColorize
-          then return $ Just [SetColor Foreground Vivid Green]
-          else return Nothing
+          then return [SetColor Foreground Vivid Green]
+          else return []
       let workingTitle = getWorkingTitle numOfItems
       let completedTitle = getCompletedTitle numOfItems
       h <- liftIO $ ProgressBar.new (Just numOfItems) workingTitle completedTitle color

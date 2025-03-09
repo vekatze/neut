@@ -16,7 +16,7 @@ data ProgressBar
   = ProgressBar
   { workingTitle :: T.Text,
     completedTitle :: T.Text,
-    color :: Maybe [SGR],
+    color :: [SGR],
     progress :: Maybe (Int, Int)
   }
 
@@ -51,13 +51,11 @@ next progressBar = do
     Just (i, count) ->
       progressBar {progress = Just (i + 1, count)}
 
-withSGR :: Maybe [SGR] -> T.Text -> T.Text
-withSGR colorOrNothing str = do
-  case colorOrNothing of
-    Just color ->
-      T.pack (setSGRCode color) <> str <> T.pack (setSGRCode [Reset])
-    Nothing ->
-      str
+withSGR :: [SGR] -> T.Text -> T.Text
+withSGR color str = do
+  if null color
+    then str
+    else T.pack (setSGRCode color) <> str <> T.pack (setSGRCode [Reset])
 
 chooseSpinner :: Int -> T.Text
 chooseSpinner i = do

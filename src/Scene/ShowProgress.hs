@@ -6,6 +6,7 @@ module Scene.ShowProgress
   )
 where
 
+import Control.Monad
 import Data.ByteString qualified as B
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
@@ -18,10 +19,10 @@ import UnliftIO.Concurrent (threadDelay)
 data Handle
   = Handle
   { progressBarRef :: IORef ProgressBar,
-    renderThread :: Async ()
+    renderThread :: Maybe (Async ())
   }
 
-new :: Maybe Int -> T.Text -> T.Text -> Maybe [SGR] -> IO Handle
+new :: Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
 new numOfItems workingTitle completedTitle color = do
   progress <-
     case numOfItems of
@@ -29,9 +30,15 @@ new numOfItems workingTitle completedTitle color = do
         return Nothing
       Just v -> do
         return $ Just (0, v)
-  progressBarRef <- newIORef $ ProgressBar {workingTitle, completedTitle, color, progress}
-  renderThread <- async $ render 0 progressBarRef
-  return $ Handle {progressBarRef, renderThread}
+  stdoutIsTerminal <- hIsTerminalDevice stdout
+  if stdoutIsTerminal
+    then do
+      progressBarRef <- newIORef $ ProgressBar {workingTitle, completedTitle, color, progress}
+      renderThread <- Just <$> async (render 0 progressBarRef)
+      return $ Handle {progressBarRef, renderThread}
+    else do
+      progressBarRef <- newIORef $ ProgressBar {workingTitle, completedTitle, color, progress = Nothing}
+      return $ Handle {progressBarRef, renderThread = Nothing}
 
 increment :: Handle -> IO ()
 increment h = do
@@ -60,7 +67,7 @@ clear ref = do
 
 close :: Handle -> IO ()
 close h = do
-  cancel $ renderThread h
+  forM_ (renderThread h) cancel
   clear (progressBarRef h)
   progressBar <- readIORef (progressBarRef h)
   B.hPutStr stdout $ renderFinished progressBar

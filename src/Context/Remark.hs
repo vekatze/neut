@@ -24,24 +24,20 @@ module Context.Remark
     printFail',
     setEndOfEntry,
     getEndOfEntry,
-    setShouldColorize,
-    getShouldColorize,
-    withSGR,
   )
 where
 
 import Context.App
 import Context.App.Internal
+import Context.Color qualified as Color
 import Control.Monad.IO.Class
-import Data.ByteString qualified as B
 import Data.Text qualified as T
-import Data.Text.Encoding
 import Entity.FilePos
 import Entity.FilePos qualified as FilePos
 import Entity.Hint
+import Entity.Log qualified as L
 import Entity.Remark qualified as R
 import System.Console.ANSI.Codes
-import System.IO
 
 initialize :: App ()
 initialize = do
@@ -121,27 +117,27 @@ printRemarkWithoutFilePos level txt =
 
 printRemarkIO :: R.Remark -> App ()
 printRemarkIO (mpos, shouldInsertPadding, l, t) = do
-  locText <- getRemarkLocation mpos
-  levelText <- getRemarkLevel l
-  remarkText <- getRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  footerText <- getFooter
-  liftIO $ B.putStr $ encodeUtf8 $ locText <> levelText <> remarkText <> footerText
+  let locText = getRemarkLocation mpos
+  let levelText = getRemarkLevel l
+  let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
+  footerText <- L.pack' <$> getFooter
+  Color.printStdOut $ locText <> levelText <> remarkText <> footerText
 
 printErrorIO :: R.Remark -> App ()
 printErrorIO (mpos, shouldInsertPadding, l, t) = do
-  locText <- getRemarkLocation mpos
-  levelText <- getRemarkLevel l
-  remarkText <- getRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  footerText <- getFooter
-  liftIO $ B.hPutStr stderr $ encodeUtf8 $ locText <> levelText <> remarkText <> footerText
+  let locText = getRemarkLocation mpos
+  let levelText = getRemarkLevel l
+  let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
+  footerText <- L.pack' <$> getFooter
+  Color.printStdErr $ locText <> levelText <> remarkText <> footerText
 
-getRemarkLocation :: Maybe FilePos -> App T.Text
+getRemarkLocation :: Maybe FilePos -> L.Log
 getRemarkLocation mpos = do
   case mpos of
     Just pos -> do
-      withSGR [SetConsoleIntensity BoldIntensity] $ T.pack $ showFilePos pos ++ "\n"
+      L.pack [SetConsoleIntensity BoldIntensity] $ T.pack (showFilePos pos ++ "\n")
     _ ->
-      return ""
+      L.Nil
 
 getFooter :: App T.Text
 getFooter = do
@@ -150,21 +146,20 @@ getFooter = do
     then return ""
     else return $ eoe <> "\n"
 
-getRemarkLevel :: R.RemarkLevel -> App T.Text
+getRemarkLevel :: R.RemarkLevel -> L.Log
 getRemarkLevel l =
-  withSGR (R.remarkLevelToSGR l) $ do
-    R.remarkLevelToText l <> ": "
+  L.pack (R.remarkLevelToSGR l) (R.remarkLevelToText l <> ": ")
 
-getRemarkText :: T.Text -> App T.Text -> App T.Text
+getRemarkText :: T.Text -> T.Text -> T.Text
 getRemarkText str padComp = do
-  remarkText <- stylizeRemarkText str <$> padComp
-  return $ remarkText <> "\n"
+  let remarkText = stylizeRemarkText str padComp
+  remarkText <> "\n"
 
-remarkLevelToPad :: R.ShouldInsertPadding -> R.RemarkLevel -> App T.Text
+remarkLevelToPad :: R.ShouldInsertPadding -> R.RemarkLevel -> T.Text
 remarkLevelToPad shouldInsertPadding level = do
   if shouldInsertPadding
-    then return $ T.replicate (T.length (R.remarkLevelToText level) + 2) " "
-    else return ""
+    then T.replicate (T.length (R.remarkLevelToText level) + 2) " "
+    else ""
 
 stylizeRemarkText :: T.Text -> T.Text -> T.Text
 stylizeRemarkText str pad = do
@@ -173,13 +168,6 @@ stylizeRemarkText str pad = do
     then str
     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
 
-withSGR :: [SGR] -> T.Text -> App T.Text
-withSGR arg str = do
-  shouldColorize <- getShouldColorize
-  if shouldColorize
-    then return $ T.pack (setSGRCode arg) <> str <> T.pack (setSGRCode [Reset])
-    else return str
-
 setEndOfEntry :: T.Text -> App ()
 setEndOfEntry =
   writeRef' endOfEntry
@@ -187,14 +175,6 @@ setEndOfEntry =
 getEndOfEntry :: App T.Text
 getEndOfEntry =
   readRef' endOfEntry
-
-setShouldColorize :: Bool -> App ()
-setShouldColorize =
-  writeRef' shouldColorize
-
-getShouldColorize :: App Bool
-getShouldColorize =
-  readRef' shouldColorize
 
 insertRemark :: R.Remark -> App ()
 insertRemark r = do
