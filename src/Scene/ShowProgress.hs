@@ -48,15 +48,15 @@ render i ref = do
 
 clear :: IORef ProgressBar -> IO ()
 clear ref = do
-  hClearFromCursorToLineBeginning stderr
+  hSetCursorColumn stderr 0
+  hClearFromCursorToLineEnd stderr
   progressBar <- readIORef ref
   case progress progressBar of
     Nothing ->
       return ()
     Just _ -> do
       hCursorUpLine stderr 1
-      hClearFromCursorToLineBeginning stderr
-  hSetCursorColumn stderr 0
+      hClearFromCursorToLineEnd stderr
 
 close :: Handle -> IO ()
 close h = do

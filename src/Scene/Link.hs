@@ -44,9 +44,16 @@ link' target mainModule sourceList = do
   let objects = mainObject : objectPathList ++ foreignObjectList
   let numOfObjects = length objects
   color <- getColor
-  h <- liftIO $ ProgressBar.new Nothing "Linking" (getCompletedTitle numOfObjects) color
+  let workingTitle = getWorkingTitle numOfObjects
+  let completedTitle = getCompletedTitle numOfObjects
+  h <- liftIO $ ProgressBar.new Nothing workingTitle completedTitle color
   LLVM.link clangOptions objects outputPath
   liftIO $ ProgressBar.close h
+
+getWorkingTitle :: Int -> T.Text
+getWorkingTitle numOfObjects = do
+  let suffix = if numOfObjects <= 1 then "" else "s"
+  "Linking " <> T.pack (show numOfObjects) <> " object" <> suffix
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfObjects = do

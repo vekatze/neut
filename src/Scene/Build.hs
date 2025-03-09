@@ -102,8 +102,9 @@ compile target outputKindList contentSeq = do
         if shouldColorize
           then return $ Just [SetColor Foreground Vivid Green]
           else return Nothing
+      let workingTitle = getWorkingTitle numOfItems
       let completedTitle = getCompletedTitle numOfItems
-      h <- liftIO $ ProgressBar.new (Just numOfItems) "Compiling" completedTitle color
+      h <- liftIO $ ProgressBar.new (Just numOfItems) workingTitle completedTitle color
       entryPointConc <- forM entryPointVirtualCode $ \(src, code) -> async $ do
         emit h currentTime target outputKindList src code
       contentConc <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
@@ -124,6 +125,11 @@ getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do
   let suffix = if numOfItems <= 1 then "" else "s"
   "Compiled " <> T.pack (show numOfItems) <> " file" <> suffix
+
+getWorkingTitle :: Int -> T.Text
+getWorkingTitle numOfItems = do
+  let suffix = if numOfItems <= 1 then "" else "s"
+  "Compiling " <> T.pack (show numOfItems) <> " file" <> suffix
 
 emit ::
   ProgressBar.Handle ->

@@ -36,7 +36,7 @@ renderInProgress frame progressBar = do
       let prefix = withSGR (color progressBar) $ T.replicate pivot barFinished
       let suffix = T.replicate (barLength - pivot) barInProgress
       let bar = prefix <> suffix
-      encodeUtf8 $ title' <> ":\n  " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
+      encodeUtf8 $ title' <> "\n  " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
 
 renderFinished :: ProgressBar -> B.ByteString
 renderFinished progressBar = do
