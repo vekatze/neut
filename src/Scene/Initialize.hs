@@ -10,6 +10,7 @@ where
 
 import Context.Alias qualified as Alias
 import Context.App
+import Context.Color qualified as Color
 import Context.Debug qualified as Debug
 import Context.Decl qualified as Decl
 import Context.Definition qualified as Definition
@@ -37,8 +38,10 @@ import Scene.Module.Reflect qualified as Module
 
 initializeLogger :: Remark.Config -> App ()
 initializeLogger cfg = do
+  Color.setShouldColorizeStdout $ Remark.shouldColorize cfg
+  Color.setShouldColorizeStderr $ Remark.shouldColorize cfg
   Remark.setEndOfEntry $ Remark.endOfEntry cfg
-  Remark.setShouldColorize $ Remark.shouldColorize cfg
+  Env.setSilentMode $ Remark.enableSilentMode cfg
   Debug.setDebugMode $ Remark.enableDebugMode cfg
 
 initializeCompiler :: Remark.Config -> App ()

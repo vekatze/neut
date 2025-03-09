@@ -181,10 +181,12 @@ remarkConfigOpt = do
   shouldColorize <- colorizeOpt
   eoe <- T.pack <$> endOfEntryOpt
   enableDebugMode <- flag False True (mconcat [long "enable-debug-output", help "Set this to print debug info"])
+  enableSilentMode <- flag False True (mconcat [long "silent", help "Set this to enable silent mode"])
   pure
     Remark.Config
       { Remark.shouldColorize = shouldColorize,
         Remark.enableDebugMode = enableDebugMode,
+        Remark.enableSilentMode = enableSilentMode,
         Remark.endOfEntry = eoe
       }
 

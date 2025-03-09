@@ -4,12 +4,14 @@ module Scene.Link
 where
 
 import Context.App
+import Context.Color qualified as Color
 import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Path qualified as Path
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
+import Data.Text qualified as T
 import Entity.Artifact qualified as A
 import Entity.Module
 import Entity.OutputKind qualified as OK
@@ -17,6 +19,8 @@ import Entity.Source qualified as Source
 import Entity.Target
 import Path
 import Path.IO
+import Scene.ShowProgress qualified as ProgressBar
+import System.Console.ANSI
 
 link :: MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
@@ -36,7 +40,31 @@ link' target mainModule sourceList = do
   foreignDirList <- mapM (Path.getForeignDir (Main target)) moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
   let clangOptions = getLinkOption (Main target)
-  LLVM.link clangOptions (mainObject : objectPathList ++ foreignObjectList) outputPath
+  let objects = mainObject : objectPathList ++ foreignObjectList
+  let numOfObjects = length objects
+  color <- getColor
+  let workingTitle = getWorkingTitle numOfObjects
+  let completedTitle = getCompletedTitle numOfObjects
+  h <- ProgressBar.new Nothing workingTitle completedTitle color
+  LLVM.link clangOptions objects outputPath
+  ProgressBar.close h
+
+getWorkingTitle :: Int -> T.Text
+getWorkingTitle numOfObjects = do
+  let suffix = if numOfObjects <= 1 then "" else "s"
+  "Linking " <> T.pack (show numOfObjects) <> " object" <> suffix
+
+getCompletedTitle :: Int -> T.Text
+getCompletedTitle numOfObjects = do
+  let suffix = if numOfObjects <= 1 then "" else "s"
+  "Linked " <> T.pack (show numOfObjects) <> " object" <> suffix
+
+getColor :: App [SGR]
+getColor = do
+  shouldColorize <- Color.getShouldColorizeStdout
+  if shouldColorize
+    then return [SetColor Foreground Vivid Green]
+    else return []
 
 getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
 getForeignDirContent foreignDir = do

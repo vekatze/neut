@@ -7,6 +7,7 @@ where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.Color qualified as Color
 import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.External qualified as External
@@ -17,7 +18,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils (nubOrdOn)
-import Data.Either (isLeft)
+import Data.Either (isLeft, isRight)
 import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
@@ -43,7 +44,9 @@ import Scene.Link qualified as Link
 import Scene.Load qualified as Load
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
+import Scene.ShowProgress qualified as ProgressBar
 import Scene.Unravel qualified as Unravel
+import System.Console.ANSI
 import UnliftIO.Async
 import Prelude hiding (log)
 
@@ -64,9 +67,8 @@ buildTarget axis baseModule target = do
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign target moduleList
   contentSeq <- Load.load target dependenceSeq
-  virtualCodeList <- compile target' (_outputKindList axis) contentSeq
+  compile target' (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
-  emitAndWrite target' (_outputKindList axis) virtualCodeList
   case target' of
     Peripheral {} ->
       return ()
@@ -87,9 +89,23 @@ abstractAxis =
       _executeArgs = []
     }
 
-compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Either MainTarget Source, LC.LowCode)]
+compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile target outputKindList contentSeq = do
-  virtualCodeList <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
+  mainModule <- Env.getMainModule
+  entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
+  let numOfItems = length (filter (isRight . snd) contentSeq) + length entryPointVirtualCode
+  currentTime <- liftIO getCurrentTime
+  color <- do
+    shouldColorize <- Color.getShouldColorizeStdout
+    if shouldColorize
+      then return [SetColor Foreground Vivid Green]
+      else return []
+  let workingTitle = getWorkingTitle numOfItems
+  let completedTitle = getCompletedTitle numOfItems
+  h <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
+  entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
+    emit h currentTime target outputKindList src code
+  contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
@@ -99,10 +115,33 @@ compile target outputKindList contentSeq = do
     Cache.whenCompilationNecessary outputKindList source $ do
       stmtList' <- Clarify.clarify stmtList
       virtualCode <- Lower.lower stmtList'
-      return (Right source, virtualCode)
-  mainModule <- Env.getMainModule
-  entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
-  return $ entryPointVirtualCode ++ virtualCodeList
+      async $ emit h currentTime target outputKindList (Right source) virtualCode
+  mapM_ wait $ entryPointAsync ++ contentAsync
+  ProgressBar.close h
+
+getCompletedTitle :: Int -> T.Text
+getCompletedTitle numOfItems = do
+  let suffix = if numOfItems <= 1 then "" else "s"
+  "Compiled " <> T.pack (show numOfItems) <> " file" <> suffix
+
+getWorkingTitle :: Int -> T.Text
+getWorkingTitle numOfItems = do
+  let suffix = if numOfItems <= 1 then "" else "s"
+  "Compiling " <> T.pack (show numOfItems) <> " file" <> suffix
+
+emit ::
+  ProgressBar.Handle ->
+  UTCTime ->
+  Target ->
+  [OutputKind] ->
+  Either MainTarget Source ->
+  LC.LowCode ->
+  App ()
+emit progressBar currentTime target outputKindList src code = do
+  let clangOptions = getCompileOption target
+  llvmIR' <- Emit.emit code
+  LLVM.emit target clangOptions currentTime src outputKindList llvmIR'
+  ProgressBar.increment progressBar
 
 compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint mainModule target outputKindList = do
@@ -118,18 +157,6 @@ compileEntryPoint mainModule target outputKindList = do
         else do
           mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint t
           return [(Left t, mainVirtualCode)]
-
-emitAndWrite :: Target -> [OutputKind] -> [(Either MainTarget Source, LC.LowCode)] -> App ()
-emitAndWrite target outputKindList virtualCodeList = do
-  let clangOptions = getCompileOption target
-  currentTime <- liftIO getCurrentTime
-  let num = length virtualCodeList
-  let suffix = if num > 1 then "s" else ""
-  when (num > 0) $ do
-    report $ "Generating " <> T.pack (show num) <> " object file" <> suffix
-  pooledForConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
-    llvmIR' <- Emit.emit llvmIR
-    LLVM.emit target clangOptions currentTime sourceOrNone outputKindList llvmIR'
 
 execute :: Bool -> MainTarget -> [String] -> App ()
 execute shouldExecute target args = do
