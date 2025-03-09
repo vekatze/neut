@@ -94,33 +94,30 @@ compile target outputKindList contentSeq = do
   mainModule <- Env.getMainModule
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   let numOfItems = length (filter (isRight . snd) contentSeq) + length entryPointVirtualCode
-  if numOfItems == 0
-    then return ()
-    else do
-      currentTime <- liftIO getCurrentTime
-      color <- do
-        shouldColorize <- Color.getShouldColorizeStdout
-        if shouldColorize
-          then return [SetColor Foreground Vivid Green]
-          else return []
-      let workingTitle = getWorkingTitle numOfItems
-      let completedTitle = getCompletedTitle numOfItems
-      h <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
-      entryPointConc <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-        emit h currentTime target outputKindList src code
-      contentConc <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
-        Initialize.initializeForSource source
-        let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-        report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
-        cacheOrStmtList <- Parse.parse target source cacheOrContent
-        stmtList <- Elaborate.elaborate target cacheOrStmtList
-        EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
-        Cache.whenCompilationNecessary outputKindList source $ do
-          stmtList' <- Clarify.clarify stmtList
-          virtualCode <- Lower.lower stmtList'
-          async $ emit h currentTime target outputKindList (Right source) virtualCode
-      mapM_ wait $ entryPointConc ++ contentConc
-      ProgressBar.close h
+  currentTime <- liftIO getCurrentTime
+  color <- do
+    shouldColorize <- Color.getShouldColorizeStdout
+    if shouldColorize
+      then return [SetColor Foreground Vivid Green]
+      else return []
+  let workingTitle = getWorkingTitle numOfItems
+  let completedTitle = getCompletedTitle numOfItems
+  h <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
+  entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
+    emit h currentTime target outputKindList src code
+  contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
+    Initialize.initializeForSource source
+    let suffix = if isLeft cacheOrContent then " (cache found)" else ""
+    report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+    cacheOrStmtList <- Parse.parse target source cacheOrContent
+    stmtList <- Elaborate.elaborate target cacheOrStmtList
+    EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
+    Cache.whenCompilationNecessary outputKindList source $ do
+      stmtList' <- Clarify.clarify stmtList
+      virtualCode <- Lower.lower stmtList'
+      async $ emit h currentTime target outputKindList (Right source) virtualCode
+  mapM_ wait $ entryPointAsync ++ contentAsync
+  ProgressBar.close h
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do

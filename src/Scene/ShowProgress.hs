@@ -20,7 +20,10 @@ import System.IO hiding (Handle)
 import UnliftIO.Async
 import UnliftIO.Concurrent (threadDelay)
 
-data Handle
+type Handle =
+  Maybe InnerHandle
+
+data InnerHandle
   = Handle
   { progressBarRef :: IORef ProgressBar,
     renderThread :: Maybe (Async ())
@@ -28,55 +31,63 @@ data Handle
 
 new :: Maybe Int -> T.Text -> T.Text -> [SGR] -> App Handle
 new numOfItems workingTitle completedTitle color = do
-  progress <-
-    case numOfItems of
-      Nothing ->
-        return Nothing
-      Just v -> do
-        return $ Just (0, v)
-  let progressBar = ProgressBar {workingTitle, completedTitle, color, progress}
-  progressBarRef <- liftIO $ newIORef progressBar
-  renderThread <- Just <$> async (render 0 progressBarRef)
-  return $ Handle {progressBarRef, renderThread}
+  silentMode <- getSilentMode
+  case (silentMode, numOfItems) of
+    (True, _) ->
+      return Nothing
+    (_, Just i)
+      | i <= 0 ->
+          return Nothing
+    _ -> do
+      progress <-
+        case numOfItems of
+          Nothing ->
+            return Nothing
+          Just v -> do
+            return $ Just (0, v)
+      let progressBar = ProgressBar {workingTitle, completedTitle, color, progress}
+      progressBarRef <- liftIO $ newIORef progressBar
+      renderThread <- Just <$> async (render 0 progressBarRef)
+      return $ Just $ Handle {progressBarRef, renderThread}
 
 increment :: Handle -> App ()
-increment h = do
-  liftIO $ atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
-    (next progressBar, ())
+increment mh = do
+  case mh of
+    Nothing ->
+      return ()
+    Just h -> do
+      liftIO $ atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
+        (next progressBar, ())
 
 render :: Frame -> IORef ProgressBar -> App ()
 render i ref = do
   progressBar <- liftIO $ readIORef ref
-  printProgressBar $ renderInProgress i progressBar <> L.pack' "\n"
+  Color.printStdOut $ renderInProgress i progressBar <> L.pack' "\n"
   threadDelay 33333 -- 2F
-  clear ref
+  liftIO $ clear ref
   render (i + 1) ref
 
-clear :: IORef ProgressBar -> App ()
+clear :: IORef ProgressBar -> IO ()
 clear ref = do
-  silentMode <- getSilentMode
-  unless silentMode $ liftIO $ do
-    hSetCursorColumn stdout 0
-    hClearFromCursorToLineEnd stdout
-    hCursorUpLine stdout 1
-    hClearFromCursorToLineEnd stdout
-    progressBar <- readIORef ref
-    case progress progressBar of
-      Nothing ->
-        return ()
-      Just _ -> do
-        hCursorUpLine stdout 1
-        hClearFromCursorToLineEnd stdout
+  hSetCursorColumn stdout 0
+  hClearFromCursorToLineEnd stdout
+  hCursorUpLine stdout 1
+  hClearFromCursorToLineEnd stdout
+  progressBar <- readIORef ref
+  case progress progressBar of
+    Nothing ->
+      return ()
+    Just _ -> do
+      hCursorUpLine stdout 1
+      hClearFromCursorToLineEnd stdout
 
 close :: Handle -> App ()
-close h = do
-  forM_ (renderThread h) cancel
-  clear (progressBarRef h)
-  progressBar <- liftIO $ readIORef (progressBarRef h)
-  printProgressBar $ renderFinished progressBar
-
-printProgressBar :: L.Log -> App ()
-printProgressBar l = do
-  silentMode <- getSilentMode
-  unless silentMode $ do
-    Color.printStdOut l
+close mh = do
+  case mh of
+    Nothing ->
+      return ()
+    Just h -> do
+      forM_ (renderThread h) cancel
+      liftIO $ clear (progressBarRef h)
+      progressBar <- liftIO $ readIORef (progressBarRef h)
+      Color.printStdOut $ renderFinished progressBar
