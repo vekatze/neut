@@ -47,7 +47,9 @@ link' target mainModule sourceList = do
   let clangOptions = getLinkOption (Main target)
   let objects = mainObject : objectPathList ++ foreignObjectList
   LLVM.link clangOptions objects outputPath
-  finalizeProgressBar $ "Linked " <> T.pack (show $ length objects) <> " objects"
+  let numOfObjects = length objects
+  let suffix = if numOfObjects <= 1 then "" else "s"
+  finalizeProgressBar $ "Linked " <> T.pack (show numOfObjects) <> " object" <> suffix
 
 getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
 getForeignDirContent foreignDir = do
