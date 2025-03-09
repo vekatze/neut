@@ -54,7 +54,7 @@ increment h = do
 render :: Frame -> IORef ProgressBar -> App ()
 render i ref = do
   progressBar <- liftIO $ readIORef ref
-  Color.printStdOut $ renderInProgress i progressBar
+  Color.printStdOut $ renderInProgress i progressBar <> L.pack' "\n"
   threadDelay 33333 -- 2F
   liftIO $ clear ref
   render (i + 1) ref
@@ -66,6 +66,8 @@ clear ref = do
     hSetCursorColumn stdout 0
     hClearFromCursorToLineEnd stdout
     progressBar <- readIORef ref
+    hCursorUpLine stdout 1
+    hClearFromCursorToLineEnd stdout
     case progress progressBar of
       Nothing ->
         return ()
