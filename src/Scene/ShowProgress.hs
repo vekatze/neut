@@ -6,10 +6,13 @@ module Scene.ShowProgress
   )
 where
 
+import Context.App
+import Context.Color qualified as Color
 import Control.Monad
-import Data.ByteString qualified as B
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
+import Entity.Log qualified as L
 import Entity.ProgressBar (Frame, ProgressBar (..), next, renderFinished, renderInProgress)
 import System.Console.ANSI
 import System.IO hiding (Handle)
@@ -22,7 +25,7 @@ data Handle
     renderThread :: Maybe (Async ())
   }
 
-new :: Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
+new :: Maybe Int -> T.Text -> T.Text -> [SGR] -> App Handle
 new numOfItems workingTitle completedTitle color = do
   progress <-
     case numOfItems of
@@ -30,44 +33,49 @@ new numOfItems workingTitle completedTitle color = do
         return Nothing
       Just v -> do
         return $ Just (0, v)
-  stdoutIsTerminal <- hIsTerminalDevice stdout
+  stdoutIsTerminal <- liftIO $ hIsTerminalDevice stdout
+  let progressBar = ProgressBar {workingTitle, completedTitle, color, progress}
   if stdoutIsTerminal
     then do
-      progressBarRef <- newIORef $ ProgressBar {workingTitle, completedTitle, color, progress}
+      progressBarRef <- liftIO $ newIORef progressBar
       renderThread <- Just <$> async (render 0 progressBarRef)
       return $ Handle {progressBarRef, renderThread}
     else do
-      progressBarRef <- newIORef $ ProgressBar {workingTitle, completedTitle, color, progress = Nothing}
+      let progressBar' = progressBar {progress = Nothing}
+      progressBarRef <- liftIO $ newIORef progressBar'
+      Color.printStdOut $ renderInProgress 0 progressBar' <> L.pack' "\n"
       return $ Handle {progressBarRef, renderThread = Nothing}
 
-increment :: Handle -> IO ()
+increment :: Handle -> App ()
 increment h = do
-  atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
+  liftIO $ atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
     (next progressBar, ())
 
-render :: Frame -> IORef ProgressBar -> IO ()
+render :: Frame -> IORef ProgressBar -> App ()
 render i ref = do
-  progressBar <- readIORef ref
-  B.hPutStr stdout $ renderInProgress i progressBar
+  progressBar <- liftIO $ readIORef ref
+  Color.printStdOut $ renderInProgress i progressBar
   threadDelay 33333 -- 2F
-  clear ref
+  liftIO $ clear ref
   render (i + 1) ref
 
 clear :: IORef ProgressBar -> IO ()
 clear ref = do
-  hSetCursorColumn stdout 0
-  hClearFromCursorToLineEnd stdout
-  progressBar <- readIORef ref
-  case progress progressBar of
-    Nothing ->
-      return ()
-    Just _ -> do
-      hCursorUpLine stdout 1
-      hClearFromCursorToLineEnd stdout
+  stdoutIsTerminal <- liftIO $ hIsTerminalDevice stdout
+  when stdoutIsTerminal $ do
+    hSetCursorColumn stdout 0
+    hClearFromCursorToLineEnd stdout
+    progressBar <- readIORef ref
+    case progress progressBar of
+      Nothing ->
+        return ()
+      Just _ -> do
+        hCursorUpLine stdout 1
+        hClearFromCursorToLineEnd stdout
 
-close :: Handle -> IO ()
+close :: Handle -> App ()
 close h = do
   forM_ (renderThread h) cancel
-  clear (progressBarRef h)
-  progressBar <- readIORef (progressBarRef h)
-  B.hPutStr stdout $ renderFinished progressBar
+  liftIO $ clear (progressBarRef h)
+  progressBar <- liftIO $ readIORef (progressBarRef h)
+  Color.printStdOut $ renderFinished progressBar

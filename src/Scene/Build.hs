@@ -105,7 +105,7 @@ compile target outputKindList contentSeq = do
           else return []
       let workingTitle = getWorkingTitle numOfItems
       let completedTitle = getCompletedTitle numOfItems
-      h <- liftIO $ ProgressBar.new (Just numOfItems) workingTitle completedTitle color
+      h <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
       entryPointConc <- forM entryPointVirtualCode $ \(src, code) -> async $ do
         emit h currentTime target outputKindList src code
       contentConc <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
@@ -120,7 +120,7 @@ compile target outputKindList contentSeq = do
           virtualCode <- Lower.lower stmtList'
           async $ emit h currentTime target outputKindList (Right source) virtualCode
       mapM_ wait $ entryPointConc ++ contentConc
-      liftIO $ ProgressBar.close h
+      ProgressBar.close h
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do
@@ -144,7 +144,7 @@ emit progressBar currentTime target outputKindList src code = do
   let clangOptions = getCompileOption target
   llvmIR' <- Emit.emit code
   LLVM.emit target clangOptions currentTime src outputKindList llvmIR'
-  liftIO $ ProgressBar.increment progressBar
+  ProgressBar.increment progressBar
 
 compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint mainModule target outputKindList = do

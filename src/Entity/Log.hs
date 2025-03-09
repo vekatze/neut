@@ -7,6 +7,7 @@ module Entity.Log
   )
 where
 
+import Data.String (IsString (..))
 import Data.Text qualified as T
 import System.Console.ANSI
 
@@ -25,6 +26,10 @@ instance Semigroup Log where
 instance Monoid Log where
   mempty =
     Nil
+
+instance IsString Log where
+  fromString s =
+    Cons [] (T.pack s) Nil
 
 pack :: [SGR] -> T.Text -> Log
 pack color t =

@@ -25,7 +25,7 @@ report message = do
     currentTime <- liftIO getCurrentTime
     let elapsedTime = diffUTCTime currentTime baseTime
     let elapsedTime' = L.pack [SetColor Foreground Vivid Black] (T.pack $ formatNominalDiffTime elapsedTime)
-    Color.printStdErr $ elapsedTime' <> L.pack' " " <> L.pack' message <> L.pack' "\n"
+    Color.printStdErr $ elapsedTime' <> " " <> L.pack' message <> "\n"
 
 getDebugMode :: App Bool
 getDebugMode =

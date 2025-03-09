@@ -9,7 +9,6 @@ import Context.Debug (report)
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Path qualified as Path
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
@@ -46,9 +45,9 @@ link' target mainModule sourceList = do
   color <- getColor
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
-  h <- liftIO $ ProgressBar.new Nothing workingTitle completedTitle color
+  h <- ProgressBar.new Nothing workingTitle completedTitle color
   LLVM.link clangOptions objects outputPath
-  liftIO $ ProgressBar.close h
+  ProgressBar.close h
 
 getWorkingTitle :: Int -> T.Text
 getWorkingTitle numOfObjects = do

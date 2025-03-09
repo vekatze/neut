@@ -7,9 +7,8 @@ module Entity.ProgressBar
   )
 where
 
-import Data.ByteString qualified as B
 import Data.Text qualified as T
-import Data.Text.Encoding (encodeUtf8)
+import Entity.Log qualified as L
 import System.Console.ANSI
 
 data ProgressBar
@@ -23,25 +22,27 @@ data ProgressBar
 type Frame =
   Int
 
-renderInProgress :: Frame -> ProgressBar -> B.ByteString
+renderInProgress :: Frame -> ProgressBar -> L.Log
 renderInProgress frame progressBar = do
-  let spinner = withSGR (color progressBar) $ chooseSpinner frame
-  let title' = spinner <> " " <> workingTitle progressBar
+  let spinner = L.pack (color progressBar) $ chooseSpinner frame
+  let title' = spinner <> " " <> L.pack' (workingTitle progressBar)
   case progress progressBar of
     Nothing -> do
-      encodeUtf8 title'
+      title'
     Just (current, size) -> do
       let frac :: Float = fromIntegral current / fromIntegral size
       let pivot = floor $ fromIntegral barLength * frac
-      let prefix = withSGR (color progressBar) $ T.replicate pivot barFinished
-      let suffix = T.replicate (barLength - pivot) barInProgress
+      let prefix = L.pack (color progressBar) $ T.replicate pivot barFinished
+      let suffix = L.pack' $ T.replicate (barLength - pivot) barInProgress
       let bar = prefix <> suffix
-      encodeUtf8 $ title' <> "\n  " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
+      let current' = L.pack' $ T.pack (show current)
+      let size' = L.pack' $ T.pack (show size)
+      title' <> "\n  " <> bar <> " " <> current' <> "/" <> size'
 
-renderFinished :: ProgressBar -> B.ByteString
+renderFinished :: ProgressBar -> L.Log
 renderFinished progressBar = do
-  let check = withSGR (color progressBar) "✓"
-  encodeUtf8 $ check <> " " <> completedTitle progressBar <> "\n"
+  let check = L.pack (color progressBar) "✓"
+  check <> " " <> L.pack' (completedTitle progressBar) <> "\n"
 
 next :: ProgressBar -> ProgressBar
 next progressBar = do
@@ -50,12 +51,6 @@ next progressBar = do
       progressBar
     Just (i, count) ->
       progressBar {progress = Just (i + 1, count)}
-
-withSGR :: [SGR] -> T.Text -> T.Text
-withSGR color str = do
-  if null color
-    then str
-    else T.pack (setSGRCode color) <> str <> T.pack (setSGRCode [Reset])
 
 chooseSpinner :: Int -> T.Text
 chooseSpinner i = do
