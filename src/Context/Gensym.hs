@@ -11,15 +11,16 @@ module Context.Gensym
     newValueVarLocalWith,
     newTextualIdentFromText,
     getCount,
-    setCountByMax,
+    setCount,
   )
 where
 
 import Context.App
 import Context.App.Internal
 import Control.Comonad.Cofree
+import Control.Monad (void)
 import Control.Monad.Reader
-import Data.IORef.Unboxed
+import Data.IORef
 import Data.Text qualified as T
 import Entity.Comp qualified as C
 import Entity.Const
@@ -32,7 +33,7 @@ import Entity.WeakTerm qualified as WT
 
 newCount :: App Int
 newCount =
-  asks counter >>= \ref -> liftIO $ atomicAddCounter ref 1
+  asks counter >>= \ref -> liftIO $ atomicModifyIORef' ref (\x -> (x + 1, x))
 
 {-# INLINE newText #-}
 newText :: App T.Text
@@ -96,8 +97,8 @@ newTextualIdentFromText txt = do
 
 getCount :: App Int
 getCount =
-  asks counter >>= \ref -> liftIO $ readIORefU ref
+  asks counter >>= \ref -> liftIO $ readIORef ref
 
-setCountByMax :: Int -> App ()
-setCountByMax countSnapshot =
-  asks counter >>= \ref -> liftIO $ writeIORefU ref countSnapshot
+setCount :: Int -> App ()
+setCount countSnapshot = do
+  asks counter >>= \ref -> liftIO $ void $ atomicModifyIORef' ref (\x -> (max x countSnapshot, ()))

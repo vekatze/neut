@@ -8,7 +8,6 @@ where
 import Data.ByteString.Builder
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Data.IORef.Unboxed
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -60,7 +59,7 @@ data Env = Env
   { enableDebugMode :: IORef Bool,
     enableSilentMode :: IORef Bool,
     startTime :: UTCTime,
-    counter :: IORefU Int,
+    counter :: IORef Int,
     endOfEntry :: IORef T.Text,
     shouldColorizeStdout :: IORef Bool,
     shouldColorizeStderr :: IORef Bool,
@@ -126,7 +125,7 @@ newRef =
 
 newEnv :: IO Env
 newEnv = do
-  counter <- newIORefU 0
+  counter <- newIORef 0
   startTime <- getCurrentTime
   enableDebugMode <- newIORef False
   enableSilentMode <- newIORef False
