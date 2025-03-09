@@ -41,26 +41,26 @@ increment h = do
 render :: Frame -> IORef ProgressBar -> IO ()
 render i ref = do
   progressBar <- readIORef ref
-  B.hPutStr stderr $ renderInProgress i progressBar
+  B.hPutStr stdout $ renderInProgress i progressBar
   threadDelay 33333 -- 2F
   clear ref
   render (i + 1) ref
 
 clear :: IORef ProgressBar -> IO ()
 clear ref = do
-  hSetCursorColumn stderr 0
-  hClearFromCursorToLineEnd stderr
+  hSetCursorColumn stdout 0
+  hClearFromCursorToLineEnd stdout
   progressBar <- readIORef ref
   case progress progressBar of
     Nothing ->
       return ()
     Just _ -> do
-      hCursorUpLine stderr 1
-      hClearFromCursorToLineEnd stderr
+      hCursorUpLine stdout 1
+      hClearFromCursorToLineEnd stdout
 
 close :: Handle -> IO ()
 close h = do
   cancel $ renderThread h
   clear (progressBarRef h)
   progressBar <- readIORef (progressBarRef h)
-  B.hPutStr stderr $ renderFinished progressBar
+  B.hPutStr stdout $ renderFinished progressBar
