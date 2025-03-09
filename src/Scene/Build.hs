@@ -6,6 +6,7 @@ module Scene.Build
 where
 
 import Context.App
+import Context.Cache (needsCompilation)
 import Context.Cache qualified as Cache
 import Context.Color qualified as Color
 import Context.Debug (report)
@@ -92,8 +93,9 @@ abstractAxis =
 compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile target outputKindList contentSeq = do
   mainModule <- Env.getMainModule
-  entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
-  let numOfItems = length (filter (isRight . snd) contentSeq) + length entryPointVirtualCode
+  bs <- mapM (needsCompilation outputKindList . fst) contentSeq
+  c <- getEntryPointCompilationCount mainModule target outputKindList
+  let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
   color <- do
     shouldColorize <- Color.getShouldColorizeStdout
@@ -103,8 +105,6 @@ compile target outputKindList contentSeq = do
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
   h <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
-  entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-    emit h currentTime target outputKindList src code
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
@@ -116,6 +116,9 @@ compile target outputKindList contentSeq = do
       stmtList' <- Clarify.clarify stmtList
       virtualCode <- Lower.lower stmtList'
       async $ emit h currentTime target outputKindList (Right source) virtualCode
+  entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
+  entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
+    emit h currentTime target outputKindList src code
   mapM_ wait $ entryPointAsync ++ contentAsync
   ProgressBar.close h
 
@@ -142,6 +145,17 @@ emit progressBar currentTime target outputKindList src code = do
   llvmIR' <- Emit.emit code
   LLVM.emit target clangOptions currentTime src outputKindList llvmIR'
   ProgressBar.increment progressBar
+
+getEntryPointCompilationCount :: M.Module -> Target -> [OutputKind] -> App Int
+getEntryPointCompilationCount mainModule target outputKindList = do
+  case target of
+    Peripheral {} ->
+      return 0
+    PeripheralSingle {} ->
+      return 0
+    Main t -> do
+      b <- Cache.isEntryPointCompilationSkippable mainModule t outputKindList
+      return $ if b then 0 else 1
 
 compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint mainModule target outputKindList = do

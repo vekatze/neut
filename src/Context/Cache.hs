@@ -8,6 +8,7 @@ module Context.Cache
     loadLocationCache,
     whenCompilationNecessary,
     isEntryPointCompilationSkippable,
+    needsCompilation,
     invalidate,
   )
 where
@@ -114,6 +115,11 @@ whenCompilationNecessary outputKindList source comp = do
   if Source.isCompilationSkippable artifactTime outputKindList
     then return Nothing
     else Just <$> comp
+
+needsCompilation :: [OK.OutputKind] -> Source.Source -> App Bool
+needsCompilation outputKindList source = do
+  artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
+  return $ not $ Source.isCompilationSkippable artifactTime outputKindList
 
 isEntryPointCompilationSkippable :: Module -> MainTarget -> [OK.OutputKind] -> App Bool
 isEntryPointCompilationSkippable baseModule target outputKindList = do
