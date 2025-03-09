@@ -28,7 +28,6 @@ import Entity.LowComp qualified as LC
 import Entity.Module qualified as M
 import Entity.ModuleID qualified as MID
 import Entity.OutputKind
-import Entity.ProgressBar (ProgressBar)
 import Entity.Source
 import Entity.Stmt (getStmtName)
 import Entity.Target
@@ -104,9 +103,9 @@ compile target outputKindList contentSeq = do
           then return $ Just [SetColor Foreground Vivid Green]
           else return Nothing
       let completedTitle = getCompletedTitle numOfItems
-      progressBar <- liftIO $ ProgressBar.initialize (Just numOfItems) "Compiling" completedTitle color
+      h <- liftIO $ ProgressBar.new (Just numOfItems) "Compiling" completedTitle color
       entryPointConc <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-        emit progressBar currentTime target outputKindList src code
+        emit h currentTime target outputKindList src code
       contentConc <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
         Initialize.initializeForSource source
         let suffix = if isLeft cacheOrContent then " (cache found)" else ""
@@ -117,9 +116,9 @@ compile target outputKindList contentSeq = do
         Cache.whenCompilationNecessary outputKindList source $ do
           stmtList' <- Clarify.clarify stmtList
           virtualCode <- Lower.lower stmtList'
-          async $ emit progressBar currentTime target outputKindList (Right source) virtualCode
+          async $ emit h currentTime target outputKindList (Right source) virtualCode
       mapM_ wait $ entryPointConc ++ contentConc
-      liftIO $ ProgressBar.finalize progressBar
+      liftIO $ ProgressBar.close h
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do
@@ -127,7 +126,7 @@ getCompletedTitle numOfItems = do
   "Compiled " <> T.pack (show numOfItems) <> " file" <> suffix
 
 emit ::
-  ProgressBar ->
+  ProgressBar.Handle ->
   UTCTime ->
   Target ->
   [OutputKind] ->
