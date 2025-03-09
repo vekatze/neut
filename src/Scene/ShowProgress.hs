@@ -11,7 +11,7 @@ import Data.ByteString qualified as B
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
 import Data.Text.Encoding (encodeUtf8)
-import Entity.ProgressBar (ProgressBar (..), renderFinished, renderInProgress)
+import Entity.ProgressBar (ProgressBar (..), next, renderFinished, renderInProgress)
 import System.Console.ANSI
 import System.IO hiding (Handle)
 
@@ -31,24 +31,16 @@ new numOfItems workingTitle completedTitle color = do
 increment :: Handle -> IO ()
 increment ref = do
   atomicModifyIORef' ref $ \progressBar -> do
-    case progress progressBar of
-      Nothing ->
-        (progressBar, ())
-      Just (i, count) ->
-        (progressBar {progress = Just (i + 1, count)}, ())
+    (next progressBar, ())
 
 render :: Handle -> IO ()
 render ref = do
   progressBar <- readIORef ref
-  case renderInProgress progressBar of
-    Nothing ->
-      return ()
-    Just bar -> do
-      B.hPutStr stdout bar
+  B.hPutStr stderr $ renderInProgress progressBar
 
 close :: Handle -> IO ()
 close ref = do
-  B.hPutStr stdout $ encodeUtf8 "\r"
-  clearFromCursorToLineEnd
+  hClearFromCursorToLineBeginning stderr
+  B.hPutStr stderr $ encodeUtf8 "\r"
   progressBar <- readIORef ref
-  B.hPutStr stdout $ renderFinished progressBar
+  B.hPutStr stderr $ renderFinished progressBar

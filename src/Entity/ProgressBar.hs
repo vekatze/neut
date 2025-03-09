@@ -2,6 +2,7 @@ module Entity.ProgressBar
   ( ProgressBar (..),
     renderInProgress,
     renderFinished,
+    next,
   )
 where
 
@@ -18,22 +19,35 @@ data ProgressBar
     progress :: Maybe (Int, Int)
   }
 
-renderInProgress :: ProgressBar -> Maybe B.ByteString
+renderInProgress :: ProgressBar -> B.ByteString
 renderInProgress progressBar = do
-  (current, size) <- progress progressBar
-  let frac :: Float = fromIntegral current / fromIntegral size
-  let pivot = floor $ fromIntegral barLength * frac
-  let spinner = withSGR (color progressBar) $ chooseSpinner current
-  let title' = spinner <> " " <> workingTitle progressBar
-  let prefix = withSGR (color progressBar) $ T.replicate pivot barFinished
-  let suffix = T.replicate (barLength - pivot) barInProgress
-  let bar = prefix <> suffix
-  Just $ encodeUtf8 $ "\r" <> title' <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
+  case progress progressBar of
+    Nothing -> do
+      let spinner = withSGR (color progressBar) $ chooseSpinner 0
+      let title' = spinner <> " " <> workingTitle progressBar
+      encodeUtf8 $ "\r" <> title'
+    Just (current, size) -> do
+      let frac :: Float = fromIntegral current / fromIntegral size
+      let pivot = floor $ fromIntegral barLength * frac
+      let spinner = withSGR (color progressBar) $ chooseSpinner current
+      let title' = spinner <> " " <> workingTitle progressBar
+      let prefix = withSGR (color progressBar) $ T.replicate pivot barFinished
+      let suffix = T.replicate (barLength - pivot) barInProgress
+      let bar = prefix <> suffix
+      encodeUtf8 $ "\r" <> title' <> ": " <> bar <> " " <> T.pack (show current) <> "/" <> T.pack (show size)
 
 renderFinished :: ProgressBar -> B.ByteString
 renderFinished progressBar = do
   let check = withSGR (color progressBar) "✓"
   encodeUtf8 $ "\r" <> check <> " " <> completedTitle progressBar <> "\n"
+
+next :: ProgressBar -> ProgressBar
+next progressBar = do
+  case progress progressBar of
+    Nothing ->
+      progressBar
+    Just (i, count) ->
+      progressBar {progress = Just (i + 1, count)}
 
 withSGR :: Maybe [SGR] -> T.Text -> T.Text
 withSGR colorOrNothing str = do
