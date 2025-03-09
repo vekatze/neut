@@ -58,6 +58,7 @@ import System.IO
 
 data Env = Env
   { enableDebugMode :: IORef Bool,
+    enableSilentMode :: IORef Bool,
     startTime :: UTCTime,
     counter :: IORefU Int,
     endOfEntry :: IORef T.Text,
@@ -128,6 +129,7 @@ newEnv = do
   counter <- newIORefU 0
   startTime <- getCurrentTime
   enableDebugMode <- newIORef False
+  enableSilentMode <- newIORef False
   endOfEntry <- newIORef ""
   shouldColorizeStdout <- hIsTerminalDevice stdout >>= newIORef
   shouldColorizeStderr <- hIsTerminalDevice stderr >>= newIORef

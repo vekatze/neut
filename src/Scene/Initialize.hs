@@ -41,6 +41,7 @@ initializeLogger cfg = do
   Color.setShouldColorizeStdout $ Remark.shouldColorize cfg
   Color.setShouldColorizeStderr $ Remark.shouldColorize cfg
   Remark.setEndOfEntry $ Remark.endOfEntry cfg
+  Env.setSilentMode $ Remark.enableSilentMode cfg
   Debug.setDebugMode $ Remark.enableDebugMode cfg
 
 initializeCompiler :: Remark.Config -> App ()

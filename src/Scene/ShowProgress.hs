@@ -8,6 +8,7 @@ where
 
 import Context.App
 import Context.Color qualified as Color
+import Context.Env (getSilentMode)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
@@ -43,7 +44,7 @@ new numOfItems workingTitle completedTitle color = do
     else do
       let progressBar' = progressBar {progress = Nothing}
       progressBarRef <- liftIO $ newIORef progressBar'
-      Color.printStdOut $ renderInProgress 0 progressBar' <> L.pack' "\n"
+      printProgressBar $ renderInProgress 0 progressBar' <> L.pack' "\n"
       return $ Handle {progressBarRef, renderThread = Nothing}
 
 increment :: Handle -> App ()
@@ -54,15 +55,16 @@ increment h = do
 render :: Frame -> IORef ProgressBar -> App ()
 render i ref = do
   progressBar <- liftIO $ readIORef ref
-  Color.printStdOut $ renderInProgress i progressBar <> L.pack' "\n"
+  printProgressBar $ renderInProgress i progressBar <> L.pack' "\n"
   threadDelay 33333 -- 2F
-  liftIO $ clear ref
+  clear ref
   render (i + 1) ref
 
-clear :: IORef ProgressBar -> IO ()
+clear :: IORef ProgressBar -> App ()
 clear ref = do
   stdoutIsTerminal <- liftIO $ hIsTerminalDevice stdout
-  when stdoutIsTerminal $ do
+  silentMode <- getSilentMode
+  when (stdoutIsTerminal && not silentMode) $ liftIO $ do
     hSetCursorColumn stdout 0
     hClearFromCursorToLineEnd stdout
     hCursorUpLine stdout 1
@@ -78,6 +80,12 @@ clear ref = do
 close :: Handle -> App ()
 close h = do
   forM_ (renderThread h) cancel
-  liftIO $ clear (progressBarRef h)
+  clear (progressBarRef h)
   progressBar <- liftIO $ readIORef (progressBarRef h)
-  Color.printStdOut $ renderFinished progressBar
+  printProgressBar $ renderFinished progressBar
+
+printProgressBar :: L.Log -> App ()
+printProgressBar l = do
+  silentMode <- getSilentMode
+  unless silentMode $ do
+    Color.printStdOut l

@@ -18,6 +18,8 @@ module Context.Env
     setBuildMode,
     setCurrentSource,
     setMainModule,
+    setSilentMode,
+    getSilentMode,
   )
 where
 
@@ -144,3 +146,11 @@ getPlatform mm = do
   arch <- getArch mm
   os <- getOS mm
   return $ Platform {arch, os}
+
+setSilentMode :: Bool -> App ()
+setSilentMode =
+  writeRef' enableSilentMode
+
+getSilentMode :: App Bool
+getSilentMode =
+  readRef' enableSilentMode
