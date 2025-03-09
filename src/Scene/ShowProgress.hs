@@ -34,18 +34,10 @@ new numOfItems workingTitle completedTitle color = do
         return Nothing
       Just v -> do
         return $ Just (0, v)
-  stdoutIsTerminal <- liftIO $ hIsTerminalDevice stdout
-  let progressBar = ProgressBar {workingTitle, completedTitle, color, progress, showSymbol = stdoutIsTerminal}
-  if stdoutIsTerminal
-    then do
-      progressBarRef <- liftIO $ newIORef progressBar
-      renderThread <- Just <$> async (render 0 progressBarRef)
-      return $ Handle {progressBarRef, renderThread}
-    else do
-      let progressBar' = progressBar {progress = Nothing}
-      progressBarRef <- liftIO $ newIORef progressBar'
-      printProgressBar $ renderInProgress 0 progressBar' <> L.pack' "\n"
-      return $ Handle {progressBarRef, renderThread = Nothing}
+  let progressBar = ProgressBar {workingTitle, completedTitle, color, progress}
+  progressBarRef <- liftIO $ newIORef progressBar
+  renderThread <- Just <$> async (render 0 progressBarRef)
+  return $ Handle {progressBarRef, renderThread}
 
 increment :: Handle -> App ()
 increment h = do
@@ -62,9 +54,8 @@ render i ref = do
 
 clear :: IORef ProgressBar -> App ()
 clear ref = do
-  stdoutIsTerminal <- liftIO $ hIsTerminalDevice stdout
   silentMode <- getSilentMode
-  when (stdoutIsTerminal && not silentMode) $ liftIO $ do
+  unless silentMode $ liftIO $ do
     hSetCursorColumn stdout 0
     hClearFromCursorToLineEnd stdout
     hCursorUpLine stdout 1
