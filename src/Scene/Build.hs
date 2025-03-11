@@ -114,8 +114,9 @@ compile target outputKindList contentSeq = do
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary outputKindList source $ do
       stmtList' <- Clarify.clarify stmtList
-      virtualCode <- Lower.lower stmtList'
-      async $ emit h currentTime target outputKindList (Right source) virtualCode
+      async $ do
+        virtualCode <- Lower.lower stmtList'
+        emit h currentTime target outputKindList (Right source) virtualCode
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
     emit h currentTime target outputKindList src code
