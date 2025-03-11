@@ -3,7 +3,6 @@ module Scene.Emit (emit) where
 import Context.App
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
-import Context.StaticText (StaticTextInfo)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Builder
@@ -87,6 +86,8 @@ emitGlobalExt name lt =
     <> TE.encodeUtf8Builder name
     <> " = external global "
     <> emitLowType lt
+
+type StaticTextInfo = (DD.DefiniteDescription, (Builder, Int))
 
 emitStaticText :: Int -> StaticTextInfo -> Builder
 emitStaticText baseSize (from, (text, len)) = do

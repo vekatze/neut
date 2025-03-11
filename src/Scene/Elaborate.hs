@@ -156,9 +156,8 @@ insertStmt stmt = do
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs t e -> do
       Type.insert f $ weaken $ m :< TM.Pi impArgs expArgs t
       Definition.insert (toOpacity stmtKind) f (impArgs ++ expArgs) e
-    StmtForeign foreignList -> do
-      forM_ foreignList $ \(F.Foreign m externalName domList cod) -> do
-        activateForeign $ F.Foreign m externalName domList cod
+    StmtForeign _ -> do
+      return ()
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
 
@@ -626,7 +625,3 @@ getSwitchSpec m cursorType = do
       Throw.raiseError m $
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toText (weaken cursorType)
-
-activateForeign :: F.Foreign -> App ()
-activateForeign (F.Foreign _ name domList cod) = do
-  Decl.insDeclEnv' (DN.Ext name) domList cod

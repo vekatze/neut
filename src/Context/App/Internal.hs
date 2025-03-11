@@ -5,7 +5,6 @@ module Context.App.Internal
   )
 where
 
-import Data.ByteString.Builder
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
@@ -14,7 +13,6 @@ import Data.Text qualified as T
 import Data.Time (UTCTime, getCurrentTime)
 import Entity.ArgNum qualified as AN
 import Entity.Artifact qualified as AR
-import Entity.BaseLowType qualified as BLT
 import Entity.Binder
 import Entity.BuildMode qualified as BM
 import Entity.Comp
@@ -97,15 +95,12 @@ data Env = Env
     visitEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
-    staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
-    declEnv :: IORef (Map.HashMap DN.DeclarationName ([BLT.BaseLowType], F.ForeignCodType BLT.BaseLowType)),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
-    definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     activeGlobalLocatorList :: IORef [SGL.StrictGlobalLocator],
@@ -163,17 +158,14 @@ newEnv = do
   holeEnv <- newIORef IntMap.empty
   traceSourceList <- newIORef []
   artifactMap <- newIORef Map.empty
-  definedNameSet <- newIORef S.empty
   visitEnv <- newIORef Map.empty
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
-  staticTextList <- newIORef []
   compAuxEnv <- newIORef Map.empty
   dataDefMap <- newIORef Map.empty
   keyArgMap <- newIORef Map.empty
   optDataMap <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty
-  declEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty
   typeEnv <- newIORef Map.empty
