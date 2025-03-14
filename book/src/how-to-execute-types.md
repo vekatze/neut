@@ -26,10 +26,10 @@ New(10, 20)
 
 // ↓ (compile)
 
-let v = malloc({2-words}) in
-store(10, v[0]);
-store(20, v[1]);
-v
+let ptr = malloc({2-words}) in
+store(ptr[0], 10); // ptr[0] := 10
+store(ptr[1], 20); // ptr[1] := 20
+ptr
 ```
 
 ### Discarding/Copying a Value
@@ -227,8 +227,8 @@ define exp-list(selector, v) {
       // copy Nil
       let ptr = malloc({2-words}) in
       let a = v[0] in
-      store(a, ptr[0]);
-      store(d, ptr[1]);
+      store(ptr[0], a);
+      store(ptr[1], d);
       ptr
     } else {
       // copy Cons
@@ -236,10 +236,10 @@ define exp-list(selector, v) {
       let a = v[0] in
       let cons-head-copy = a(1, v[2]) in // ← copy the head of cons using v[0]
       let cons-tail-copy = exp-list(1, v[3]) in
-      store(a, ptr[0]);
-      store(d, ptr[1]);
-      store(cons-head-copy, ptr[2]);
-      store(cons-tail-copy, ptr[3]);
+      store(ptr[0], a);
+      store(ptr[1], d);
+      store(ptr[2], cons-head-copy);
+      store(ptr[3], cons-tail-copy);
       ptr
     }
   }
@@ -327,9 +327,9 @@ let env-clone = env-type(1, env) in // copy the environment using the type of it
 let new-ptr = malloc(mul-int(3, word-size)) in
 
 // store cloned values
-store(env-type, new-ptr[0]);  // remember that a type is an immediate
-store(env-clone, new-ptr[1]);
-store(label, new-ptr[2]);     // note that a label is an immediate
+store(new-ptr[0], env-type);  // remember that a type is an immediate
+store(new-ptr[1], env-clone);
+store(new-ptr[2], label);     // note that a label is an immediate
 
 new-ptr // ... and return the new closure
 ```
@@ -369,9 +369,9 @@ define base.#.cls(action-selector, cls) {
 
     let new-ptr = malloc(mul-int(3, word-size)) in
     // copy the original values
-    store(env-type, new-ptr[0]);
-    store(env-clone, new-ptr[1]);
-    store(label, new-ptr[2]);
+    store(new-ptr[0], env-type);
+    store(new-ptr[1], env-clone);
+    store(new-ptr[2], label);
 
     // ... and return the new closure
     new-ptr
