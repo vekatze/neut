@@ -258,9 +258,7 @@ let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
 cont
 ```
 
-We'll call the content of noetic value `xs` a _hyle_. In the example, the hyle of `xs` at `length(xs)` is `[1, 2, 3]`.
-
-The result of `let-on` (that is, `len` in this case) can't include any noetic term. This restriction is required so that a noetic value won't outlive its hyle. If interested, please see the [corresponding part of the language reference](terms.md#on) for more information.
+The result of `let-on` (that is, `len` in this case) can't include any noetic term. This restriction is required for memory safety. If interested, please see the [corresponding part of the language reference](terms.md#on) for more information.
 
 ## Embodying a Noema
 
@@ -272,7 +270,7 @@ define make-pair-from-noema<a>(x: &a): pair(a, a) {
 }
 ```
 
-By writing `*e`, you can clone the hyle of the noema `e` along the type `a`, keeping the hyle intact.
+By writing `*e`, you can clone the content of the noema `e` along the type `a`, keeping the content intact.
 
 ## Allocation Canceling
 

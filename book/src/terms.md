@@ -2536,7 +2536,7 @@ inline axiom-T<a>(x: meta a): a {
 }
 
 inline embody<a>(x: &a): a {
-  axiom-T(box x {x}) // ← this `box` copies the hyle of `x`
+  axiom-T(box x {x}) // ← this `box` copies the content of `x`
 }
 ```
 
@@ -2546,11 +2546,11 @@ Derived from the desugared form.
 
 ### Note
 
-Intuitively, given a noema `e: &a`, `*e: a` is a clone of the hyle of the noema.
+Intuitively, given a term `e: &a`, `*e: a` is a clone of the content of `e`.
 
-This clone is created by copying the hyle along the type `t`.
+This clone is created by copying the content along the type `a`.
 
-The original hyle is kept intact.
+The original content is kept intact.
 
 ## `use e {x1, ..., xn} in cont`
 
