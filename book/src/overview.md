@@ -22,7 +22,7 @@ define hello(): unit {
   print("Hello, world!\n")
 }
 
-// algebraic data types
+// an algebraic data type
 data my-list(a) {
 | Nil
 | Cons(a, my-list(a))
@@ -45,7 +45,7 @@ define noisy-length<a>(xs: my-list(a)): int {
 
 _Neut translates a type into a function_ that can discard/copy the values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.
 
-For example, if a variable is used twice, a translation like the following will happen:
+For example, if a variable is used twice, a translation like the following happens:
 
 ```neut
 // (before)
@@ -62,28 +62,18 @@ some-func(xs1, xs2)
 
 If you need more, see [How to Execute Types](./how-to-execute-types.md).
 
-You may wonder: _"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./static-memory-management.md). As written there, Neut avoids such copyings by using the _T-necessity operator_ in modal logic to achieve something like borrowing in Rust.
+You might wonder: _"So do I have to, for example, copy an entire list just to get its length? Isn't that a tragedy?"_. This topic is covered in [Static Memory Management](./static-memory-management.md) and [Modality and Memory](./modality-and-memory.md). As written there, Neut avoids such copy operations by using the _T-necessity operator_ in modal logic, achieving something like borrowing in Rust.
 
-## How Fast is This?
-
-[Please see the benchmarks](./benchmarks.md).
-
-## List of Other Basic Characteristics?
+## Quick List of Other Features
 
 - Call by value
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html) and binary
-- The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (T-necessity) + (fix) - (universe hierarchy)
+- The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (recursion) + (T-necessity) - (universe hierarchy)
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in [LSP support](./lovely-lsp-showcase.md)
 - Built-in [rapid prototyping experience](./rapid-prototyping.md) like scripting languages
 - Built-in formatter like Go
-
-## Anything Else?
-
-You might also find Neut's module system interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of the language, it still might be of interest. This topic is covered in the [tutorial](./hello-external-world.md).
-
-Also, Neut includes an LSP server, which provides things like code completion, error reporting on save, etc. See [Lovely LSP Showcase](./lovely-lsp-showcase.md) to see it in action.
 
 ---
 

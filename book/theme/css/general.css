@@ -151,14 +151,6 @@ h5 {
   margin-top: 2em;
 }
 
-/* h3 a, */
-/* h4 a, */
-/* h5 a { */
-/*   color: var(--light-magenta); */
-/*   background: var(--dark-magenta); */
-/*   font-weight: normal; */
-/* } */
-
 .header + .header h3,
 .header + .header h4,
 .header + .header h5 {
@@ -170,6 +162,10 @@ h5 {
   padding: 50px 0;
   min-width: 0;
 }
+#content hr {
+  margin-top: 2.5em;
+}
+
 @media (min-width: 900px) {
   #content {
     overflow-y: scroll;

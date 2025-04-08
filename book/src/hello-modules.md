@@ -1,4 +1,4 @@
-# Hello External World
+# Hello Modules
 
 In this section, starting from the sacred hello world, we'll see how the development cycle in Neut proceeds.
 

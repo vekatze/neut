@@ -3,7 +3,7 @@
 - [Overview](./overview.md)
 - [Installation](./installation.md)
 - [Tutorial](./tutorial.md)
-  - [Hello External World](./hello-external-world.md)
+  - [Hello Modules](./hello-modules.md)
   - [Programming in Neut](./programming-in-neut.md)
   - [Static Memory Management](./static-memory-management.md)
   - [Modality and Memory](./modality-and-memory.md)

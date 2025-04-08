@@ -10,7 +10,7 @@ curl -sSL https://raw.githubusercontent.com/vekatze/neut/main/install.sh | bash
 
 Then please follow the instructions.
 
-You may also want to [configure your editor](./editor-setup.md).
+You might also want to [configure your editor](./editor-setup.md).
 
 If you prefer manual installation, see [here](./manual-installation.md).
 
@@ -20,4 +20,4 @@ To uninstall,
 
 1. remove the binary `~/.local/bin/neut`,
 2. remove `NEUT_CORE_MODULE_URL` and `NEUT_CORE_MODULE_DIGEST` in your shell config, and
-3. remove cache directories created in your Neut projects (if desired).
+3. remove cache directories in your projects (if desired).
