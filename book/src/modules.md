@@ -9,7 +9,7 @@ Below is the list of configurations of `module.ens`.
 - [target](#target)
 - [dependency](#dependency)
 - [archive](#archive)
-- [build](#build)
+- [cache](#cache)
 - [source](#source)
 - [prefix](#prefix)
 - [foreign](#foreign)
@@ -431,7 +431,7 @@ Suppose we released a module that contains the definition of `preset` as in the 
 
 In this case, source files in `MMM` imports our preset names automatically since `enable-preset` is `true`.
 
-As an example, suppose a file in `MMM` contains an `import` like the below:
+As an example, suppose a file in `MMM` contains an `import` like the following:
 
 ```neut
 import {
@@ -460,7 +460,7 @@ The field `preset` is optional. The default value of `preset` is `{}`.
 
 ## `inline-limit`
 
-The field `inline-limit` defines the limit on recursion performed during compilation. It should look like the below:
+The field `inline-limit` defines the limit on recursion performed during compilation. It should look like the following:
 
 ```ens
 {

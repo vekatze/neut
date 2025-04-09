@@ -2,7 +2,7 @@
 
 Neut is a _module-based_ _functional_ programming language with _static_ memory management via _modality_. This chapter is a quick introduction to this language.
 
-[Hello Modules](./hello-modules.md) covers the _"module-based"_ part. We'll see how to use modules in Neut.
+[Modules and Sources](./modules-and-sources.md) covers the _"module-based"_ part. We'll see how to use modules in Neut.
 
 [Programming in Neut](./programming-in-neut.md) covers the _"functional"_ part. We'll see how to write code in Neut.
 
