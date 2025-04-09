@@ -22,7 +22,7 @@ neut create sample
 
 This command creates a template module `./sample/` that performs "hello world".
 
-You can build and execute this module by running the following commands:
+You can build and execute this module as follows:
 
 ```sh
 cd ./sample
@@ -38,7 +38,7 @@ neut build sample --install ./bin # creates a directory `bin` if necessary
 
 ### Structure of a Module
 
-The content of a module should be something like the following:
+The structure of a module is as follows:
 
 ```text
 sample/
@@ -49,21 +49,21 @@ sample/
 └── module.ens
 ```
 
-The directory `cache` is where object files (binary files) and dependencies are put in. You won't have to go into the directory for daily use.
+The directory `cache` is where object files (binary files) and dependencies are put in. You don't have to go into the directory for daily use.
 
 The directory `source` is where we put source files.
 
-The file `module.ens` contains meta information about this project, such as dependencies.
+The file `module.ens` contains meta information about this module, such as dependencies.
 
 <div class="info-block">
 
-You can change the locations of special directories such as `cache` via `module.ens`. See [Modules](./modules.md) for more information.
+You can change the locations of special directories such as `cache` using `module.ens`. See [Modules](./modules.md) for more information.
 
 </div>
 
 ### module.ens
 
-The content of `module.ens` should be something like the following:
+The content of `module.ens` is something like the following:
 
 ```ens
 {
@@ -84,19 +84,19 @@ The content of `module.ens` should be something like the following:
 }
 ```
 
-`target` specifies the name and the main file of the resulting executables. In the case above, `neut build` will create an executable named as `sample` by compiling sources using the `main` function in `sample.nt` as the entry point.
+`target` specifies the targets of a module. In the case above, the command `neut build sample` builds the module using the file `source/sample.nt` as its entry point.
 
-`dependency` specifies external dependencies. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
+`dependency` specifies the external dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
 
-The `digest` is the base64url-encoded checksum of the tarball.
+`digest` is the base64url-encoded checksum of a dependency.
 
-The `mirror` is a list of URLs of the tarball.
+`mirror` is a list of URLs of a dependency.
 
-The `enable-preset` makes the `core` library behave like Prelude in Haskell. That is, when `enable-preset` is true, specified names in the dependency are automatically imported into every file in our module.
+`enable-preset` makes the dependency behave similarly to the Prelude in Haskell. That is, when `enable-preset` is set to `true`, the names specified in the dependency are automatically imported into every file in our module. This field should be set to `true` only for the `core` library.
 
 ## Basics of Source Files
 
-### Source files
+### Editing Source Files
 
 Let's see the content of `source/sample.nt`:
 
@@ -109,18 +109,6 @@ define main(): unit {
 ```
 
 The above code defines a function `main` that returns a value of type `unit`. This function prints `"Hello, world!\n"`.
-
-Here, the `unit` is an ADT that contains only one value `Unit`. The explicit definition of `unit` is as follows:
-
-```neut
-data unit {
-| Unit
-}
-
-// The Haskell equivalent of the above is:
-//   data unit =
-//     Unit
-```
 
 Let's try editing the code as follows:
 
@@ -135,13 +123,15 @@ define main(): unit {
 }
 ```
 
-Then, build the project:
+Then, build and execute the project:
 
 ```sh
 neut build sample --execute # => 42
 ```
 
-### Defining a function
+You should be able to see that the result changes accordingly.
+
+### Defining Functions
 
 Of course, you can define a function:
 
@@ -185,42 +175,24 @@ Top-level items like `define` are called statements. You'll see more in the next
 
 <div class="info-block">
 
-As in F#, statements in Neut are order-sensitive. If you define `main` before `my-add`, the code won't compile. For forward references, you'll have to explicitly declare names beforehand using a statement called `nominal`, which we'll see in the next section.
+As in F#, statements in Neut are order-sensitive. If you define `main` before `my-add`, the code won't compile. For forward references, you have to explicitly declare names beforehand using a statement called `nominal`, which we'll see in the next section.
 
 </div>
 
 ## Publishing Modules
 
-Let's publish our module so others can use the functions `my-add` and `increment`.
+Let's publish our module so others can use `my-add` and `increment`.
 
-You can create a tarball snapshot (an archive) of your module using `neut archive`:
+You can create a tarball snapshot of your module using `neut archive`:
 
 ```sh
 neut archive 0-1
 ls ./archive # => 0-1.tar.zst
 ```
 
-The name of an archive must be something like `0-1`, `2-3-1`, `1-2-3-4-5-6`.
+The argument of `neut archive` must be something like `0-1-0`, `2-3-1`, or `1-2-3-4-5-6`. The compiler interprets these names as semantic versions.
 
-The compiler interprets the names of archives as semantic versions. For example, if you create an archive `1-2-3` and then `1-2-4`, the `1-2-4` is treated as a newer compatible version of `1-2-3`.
-
-These archives are intended to be controlled with your version control system like Git:
-
-```sh
-# the usual git thing
-
-pwd # => path/to/sample/
-
-git init
-
-git commit --allow-empty -m "initial commit"
-echo "cache" > .gitignore
-git add .gitignore archive/ module.ens source/
-git commit -m "yo"
-
-git remote add origin git@github.com:YOUR_NAME/YOUR_REPO_NAME.git
-git push origin main
-```
+You can then upload these tarballs by pushing them to GitHub, for example.
 
 ## Adding Dependency Modules
 
@@ -232,10 +204,7 @@ pwd # => ~/Desktop (for example)
 neut create new-item
 cd new-item
 
-# ↓ this command adds the previous module to our `new-item`
-neut get some-name https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1.tar.zst
-
-# (↓ you can try the following sample project instead)
+# ↓ adds a sample module that contains `my-add` and `increment` to your module
 neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1.tar.zst
 ```
 
@@ -265,7 +234,7 @@ The information of the newly-added module is saved to `module.ens`:
 
 <div class="info-block">
 
-The "real" name of an archive is the digest of the tarball. You define an alias of the module for your convenience.
+The "real" name of a dependency is the digest of the tarball. Names such as `some-name` are just aliases.
 
 </div>
 
@@ -273,7 +242,7 @@ The "real" name of an archive is the digest of the tarball. You define an alias 
 
 ### Importing Files in Dependencies
 
-Added dependencies can then be used in your code, of course:
+Dependencies can be used in your code, of course:
 
 ```neut
 // new-item.nt
@@ -326,7 +295,7 @@ import {
 
 ### Importing Files in the Current Module
 
-Let's create a new file `new-item/source/foo/greet.nt` with the following content:
+Let's try creating a new file `new-item/source/foo/greet.nt` with the following content:
 
 ```neut
 // foo/greet.nt
@@ -352,9 +321,9 @@ define main(): unit {
 
 That is, the name of the current module is always `this`.
 
-### Qualified Import
+### Defining Aliases of Files
 
-We can also use so-called qualified imports. Let's remember the example of fully-qualified names:
+We can also define aliases of files. Let's look again at the example of fully-qualified names:
 
 ```neut
 // new-item.nt
@@ -369,26 +338,26 @@ define main(): unit {
 }
 ```
 
-We'll define an alias for `some-name.sample`. Firstly, edit the `module.ens` as follows:
+Let's define an alias for `some-name.sample`. Edit the `module.ens` as follows:
 
 ```ens
 {
   target {..},
   prefix {                  //
-    S "some-name.sample",   // ← alias: S -> some-name.sample
+    S "some-name.sample",   // ← alias: S == some-name.sample
   },                        //
   dependency {..},
 }
 ```
 
-We can now rewrite the `new-item.nt` as follows:
+We can then rewrite the `new-item.nt` as follows:
 
 ```neut
 // new-item.nt
 
 import {
-  S, // == some-name.sample
   core.text.io {print-int},
+  S, // == some-name.sample
 }
 
 define main(): unit {
@@ -398,6 +367,6 @@ define main(): unit {
 
 <div class="info-block">
 
-Unlike Haskell, these prefixes are defined per module, not per file. The prefixes must be consistent inside a module.
+Unlike Haskell, these prefixes are defined per module, not per file. The prefixes of a module must be consistent throughout the module.
 
 </div>
