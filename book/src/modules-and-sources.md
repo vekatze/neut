@@ -1,6 +1,6 @@
 # Modules and Sources
 
-In this section, we'll see how to use modules in Neut, using the example of the usual hello world.
+In this section, we'll see how to use modules in Neut.
 
 ## Table of Contents
 
@@ -49,7 +49,7 @@ sample/
 └── module.ens
 ```
 
-The directory `cache` is where object files (binary files) and dependencies are put in. You don't have to go into the directory for daily use.
+The directory `cache` is where object files (binary files) and dependencies are put. You don't normally have to go into the directory.
 
 The directory `source` is where we put source files.
 
@@ -86,7 +86,7 @@ The content of `module.ens` is something like the following:
 
 `target` specifies the targets of a module. In the case above, the command `neut build sample` builds the module using the file `source/sample.nt` as its entry point.
 
-`dependency` specifies the external dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
+`dependency` specifies the dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
 
 `digest` is the base64url-encoded checksum of a dependency.
 
@@ -114,6 +114,7 @@ Let's try editing the code as follows:
 
 ```neut
 // sample.nt
+
 import {
   core.text.io {print-int},
 }
@@ -137,6 +138,7 @@ Of course, you can define a function:
 
 ```neut
 // sample.nt
+
 import {
   core.text.io {print-int},
 }
@@ -150,10 +152,11 @@ define main(): unit {
 }
 ```
 
-A function can take arguments. Let's rewrite `sample.nt` into the below:
+A function can take arguments. Let's rewrite `sample.nt` as follows:
 
 ```neut
 // sample.nt
+
 import {
   core.text.io {print-int},
 }
@@ -171,7 +174,7 @@ define main(): unit {
 }
 ```
 
-Top-level items like `define` are called statements. You'll see more in the next section.
+Top-level items like `define` are called statements. You’ll learn more about them in the next section.
 
 <div class="info-block">
 
@@ -181,7 +184,7 @@ As in F#, statements in Neut are order-sensitive. If you define `main` before `m
 
 ## Publishing Modules
 
-Let's publish our module so others can use `my-add` and `increment`.
+Let's publish our module so others can use `increment` and `my-add`.
 
 You can create a tarball snapshot of your module using `neut archive`:
 
@@ -196,15 +199,14 @@ You can then upload these tarballs by pushing them to GitHub, for example.
 
 ## Adding Dependency Modules
 
-`neut get` can be used to add external dependencies:
+`neut get` can be used to add dependencies:
 
 ```sh
-# create a new module
-pwd # => ~/Desktop (for example)
+# creates a new module
 neut create new-item
 cd new-item
 
-# ↓ adds a sample module that contains `my-add` and `increment` to your module
+# adds a sample module that contains `my-add` and `increment` to your module
 neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1.tar.zst
 ```
 
