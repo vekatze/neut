@@ -4,15 +4,15 @@ Here, we'll see how memory is managed in Neut.
 
 ## Table of Contents
 
-- [Copying and Discarding Values](#linearity-and-memory)
+- [Variable Occurrences and Memory Management](#variable-occurrences-and-memory-management)
 - [Observing Excessive Copying](#functions)
 - [Noema Type](#noema-type)
 - [Allocation Canceling](#parallel-computation)
 - [Additional Notes](#parallel-computation)
 
-## Copying and Discarding Values
+## Variable Occurrences and Memory Management
 
-### Linearizing Variable Occurrences
+### Copying and Discarding Values
 
 In Neut, the content of a variable is copied if the variable is used more than once. For example, consider the following code:
 
@@ -27,7 +27,7 @@ define foo(xs: list(int)): list(int) {
 }
 ```
 
-In the above code, the variable `xs` is used three times. As a result, the content of `xs` is copied twice:
+In the above code, `xs` is used three times, so its content is copied twice:
 
 ```neut
 // after compilation (pseudo-code)
@@ -42,7 +42,7 @@ define foo(xs: list(int)): list(int) {
 }
 ```
 
-Also, the content of a variable is discarded if the variable isn't used. Consider the following code:
+Also, the content of a variable is discarded if the variable isn't used. For example, consider the following code:
 
 ```neut
 // before compilation
@@ -51,7 +51,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-In the above code, since `xs` isn't used, the content of `xs` is discarded as follows:
+In the above code, `xs` isn't used, so its content is discarded:
 
 ```neut
 // after compilation (pseudo-code)
