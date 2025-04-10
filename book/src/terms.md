@@ -56,7 +56,7 @@
 - [assert](#assert)
 - [\_](#_)
 
-### Syntax Sugar
+### Syntactic Sugar
 
 - [let x on y1, ..., yn = e1 in e2](#on)
 - [\*e](#e)
