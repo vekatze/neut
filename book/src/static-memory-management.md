@@ -1,6 +1,6 @@
 # Static Memory Management
 
-The following two mechanisms underpin memory management in Neut:
+The following two mechanisms underpin static memory management in Neut:
 
 - The compiler translates given code so that each variable is used exactly once
 - The compiler ensures that each variable's content is deallocated after it is used
@@ -66,7 +66,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-This translation ensures that each variable is used exactly once (ignoring the arguments to `COPY`).
+This translation ensures that each variable occurs exactly once (ignoring the arguments to `COPY`). We'll call such variable occurrences *linear*.
 
 If you're interested in how Neut implements this translation, please see [How to Execute Types](./how-to-execute-types.md).
 
@@ -92,11 +92,25 @@ define make-pair(!xs: list(int)): pair(list(int), list(int)) {
 
 ## Consuming Values
 
-In Neut, any consumed part of each variable's contents is deallocated after the variable is used. For example, consider the following code:
+In Neut, values are "consumed" when used. For example, let's take the constructor `Left`. This is a function that performs something like the following:
 
 ```neut
-define foo(value: either(int, int)): int {
-  match xs {
+// pseudo-code
+define Left<a, b>(x: a) {
+  let ptr = malloc(4-words) in
+  store(ptr[0], 0); // a tag to distinguish Left with Right
+  store(ptr[1], a); // the `a` in `either(a, b)`
+  store(ptr[2], b); // the `b` in `either(a, b)`
+  store(ptr[3], x);
+  ptr
+}
+```
+
+Now, consider the following code that performs `match` on `Left(1)`:
+
+```neut
+define foo(): int {
+  match Left(1) {
   | Left(x) =>
     x
   | Right(y) =>
@@ -104,14 +118,13 @@ define foo(value: either(int, int)): int {
   }
 }
 ```
+The `match` in this example behaves as follows:
 
-The `match` in the code uses the variable `xs`.
+1. extracts `1` from `Left(1)`
+2. deallocates the 4-word tuple of `tmp`
+3. returns `1`
 
-
-Now, suppose we pass, say, `Left(1)` to `foo`.
-
-(..)
-
+Here, note that the 4-word tuple of `tmp` is deallocated during this computation. As in this example, each variable's content is consumed when used.
 
 ## Optimization: Avoiding Unnecessary Copies
 
