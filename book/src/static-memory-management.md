@@ -1,18 +1,23 @@
 # Static Memory Management
 
-Here, we'll see how memory is managed in Neut.
+The following two mechanisms underpin memory management in Neut:
+
+- The compiler translates given code so that each variable is used exactly once
+- The compiler ensures that each variable's content is deallocated after it is used
+
+Below, we'll see how both of them work. After that, we'll also see some important optimizations.
 
 ## Table of Contents
 
-- [Variable Occurrences and Memory Management](#variable-occurrences-and-memory-management)
-- [Observing Excessive Copying](#functions)
-- [Noema Type](#noema-type)
-- [Allocation Canceling](#parallel-computation)
+- [Linearizing Variable Occurrences](#variables-and-memory)
+- [Consuming Values](#consuming-values)
+- [Optimization: Avoiding Unnecessary Copies](#optimization-avoiding-unnecessary-copies)
+- [Optimization: Reusing Memory](#optimization-reusing-memory)
 - [Additional Notes](#parallel-computation)
 
-## Variable Occurrences and Memory Management
+## Linearizing Variable Occurrences
 
-### Copying and Discarding Values
+### Copying and Discarding Variables
 
 In Neut, the content of a variable is copied if the variable is used more than once. For example, consider the following code:
 
@@ -32,8 +37,8 @@ In the above code, `xs` is used three times, so its content is copied twice:
 ```neut
 // after compilation (pseudo-code)
 define foo(xs: list(int)): list(int) {
-  let xs1 = COPY-VALUE(list(int), xs) in
-  let xs2 = COPY-VALUE(list(int), xs) in
+  let xs1 = COPY(list(int), xs) in
+  let xs2 = COPY(list(int), xs) in
   let ys = xs1 in
   let zs = xs2 in
   some-func(ys);
@@ -56,18 +61,18 @@ In the above code, `xs` isn't used, so its content is discarded:
 ```neut
 // after compilation (pseudo-code)
 define bar(xs: list(int)): unit {
-  let _ = DISCARD-VALUE(list(int), xs) in
+  DISCARD(list(int), xs);
   Unit
 }
 ```
 
-<!-- In the literature, a use of a variable is called _linear_ if the variable is used exactly once. Neut's compiler translates programs so that every non-linear use of variables becomes linear, ignoring arguments in discarding/copying functions. -->
+This translation ensures that each variable is used exactly once (excluding the arguments to `COPY`).
 
-If you're interested in how Neut achieves these discarding/copying operations, please see [How to Execute Types](./how-to-execute-types.md).
+If you're interested in how Neut implements this translation, please see [How to Execute Types](./how-to-execute-types.md).
 
-### Avoiding Unexpected Copying
+### Avoiding Unintentional Copies
 
-To avoid copying values unexpectedly, the compiler requires us to prefix the name of a variable with `!` when the variable needs to be copied. For example, let's consider the following code:
+To avoid unintentional copies, the compiler requires the `!` prefix on a variable name when a copy is needed. For example, consider the following code:
 
 ```neut
 define make-pair(xs: list(int)): pair(list(int), list(int)) {
@@ -75,9 +80,9 @@ define make-pair(xs: list(int)): pair(list(int), list(int)) {
 }
 ```
 
-The compiler will reject this code because the code uses the variable `xs` twice and the variable isn't prefixed with `!`.
+The compiler rejects this code because `xs` is used twice without the `!` prefix.
 
-You can satisfy the compiler by renaming `xs` into `!xs`:
+You can satisfy the compiler by renaming `xs` to `!xs`:
 
 ```neut
 define make-pair(!xs: list(int)): pair(list(int), list(int)) {
@@ -85,9 +90,34 @@ define make-pair(!xs: list(int)): pair(list(int), list(int)) {
 }
 ```
 
-## Observing Excessive Copying
+## Consuming Values
 
-Now, suppose we've defined a function `length` as follows:
+In Neut, any consumed part of each variable's contents is deallocated after the variable is used. For example, consider the following code:
+
+```neut
+define foo(value: either(int, int)): int {
+  match xs {
+  | Left(x) =>
+    x
+  | Right(y) =>
+    y
+  }
+}
+```
+
+The `match` in the code uses the variable `xs`.
+
+
+Now, suppose we pass, say, `Left(1)` to `foo`.
+
+(..)
+
+
+## Optimization: Avoiding Unnecessary Copies
+
+### The Tragedy of Excessive Copying
+
+Suppose we've defined a function `length` as follows:
 
 ```neut
 define length(xs: list(int)): int {
@@ -105,25 +135,23 @@ Then, consider the following code:
 ```neut
 define use-length(!xs: list(int)): unit {
   let len = length(!xs) in // use `length` to calculate the length of `!xs`
-  some-function(len, !xs) // then use `len` and `!xs`
+  some-function(len, !xs)  // .. then use `len` and `!xs`
 }
 ```
 
-Note that the variable `!xs` is used twice. Thus, that the content of `!xs` is copied just to calculate its length. This is of course a disaster.
+Note that the variable `!xs` is used twice. Thus, that the content of `!xs` is copied just to calculate its length. This is of course a tragedy.
 
-Luckily, there is a loophole for this situation.
-
-## Noema Type
+Luckily, Neut has a remedy for this kind of situation, as we'll see below.
 
 ### Introducing Noema Types
 
 For any type `t`, Neut has a type `&t`. We'll call this the noema type of `t`. We'll call a term `e` a noema if the type of `e` is a noema type.
 
-Unlike ordinary terms, _a noema isn't discarded or copied even when used non-linearly_. By using this behavior, we can avoid the disaster we have just seen.
+Unlike ordinary terms, _a noema isn't discarded or copied even when used non-linearly_. By exploiting this behavior, we can avoid the disaster we have just seen.
 
 ### Creating a Noema
 
-We can create a noema using `let-on`.
+Let's see how noemata can be used to avoid excessive copying. Firstly, we create a noema using `let-on`.
 
 ```neut
 define use-length(xs: list(int)): unit {
@@ -195,7 +223,7 @@ define make-pair-from-noema<a>(x: &a): pair(a, a) {
 
 By writing `*e`, you can copy the content of the noema `e` along the type `a`, keeping the content intact.
 
-## Allocation Canceling
+## Optimization: Reusing Memory
 
 Let's see another aspect of Neut's memory management. The compiler can sometimes optimize away memory allocation thanks to its static nature. Consider the following code:
 
