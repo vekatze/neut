@@ -9,11 +9,11 @@ Below, we'll see how both of them work. After that, we'll also see some importan
 
 ## Table of Contents
 
-- [Linearizing Variable Occurrences](#variables-and-memory)
+- [Linearizing Variable Occurrences](#linearizing-variable-occurrences)
 - [Consuming Values](#consuming-values)
 - [Optimization: Avoiding Unnecessary Copies](#optimization-avoiding-unnecessary-copies)
 - [Optimization: Reusing Memory](#optimization-reusing-memory)
-- [Additional Notes](#parallel-computation)
+- [Additional Notes](#additional-notes)
 
 ## Linearizing Variable Occurrences
 
@@ -66,7 +66,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-This translation ensures that each variable is used exactly once (excluding the arguments to `COPY`).
+This translation ensures that each variable is used exactly once (ignoring the arguments to `COPY`).
 
 If you're interested in how Neut implements this translation, please see [How to Execute Types](./how-to-execute-types.md).
 
