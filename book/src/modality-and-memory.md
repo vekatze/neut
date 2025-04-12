@@ -4,14 +4,18 @@ At first glance, the `let-on` stuff in the previous section might seem a bit art
 
 This `let-on` can actually be understood as a syntax sugar over the T-necessity operator. Below, we'll first see how Neut incorporates the necessity modality and then how `let-on` is desugared using the modality.
 
-## What You'll Learn Here
+## Table of Contents
 
-- How layers in Neut are organized
-- How to introduce "boxed" terms
-- How to use "boxed" terms
-- How the borrowing-like operation in Neut is organized using the T-necessity operator
+- [Introducing Layers](#copying-and-discarding-values)
+- [□-Introduction: Putting Values into Boxes](#optimization-reusing-memory)
+- [□-elimination: Extracting Values from Boxes](#optimization-avoiding-unnecessary-copies)
+- [Combination of box and letbox](#optimization-avoiding-unnecessary-copies)
+- [Quote: A Shorthand for Boxes](#optimization-avoiding-unnecessary-copies)
+- [□-elimination-T: Unboxing within the Current Layer](#optimization-avoiding-unnecessary-copies)
+- [Layer Closedness of Functions](#optimization-avoiding-unnecessary-copies)
 
-## Introducing the Concept of Layers
+
+## Introducing Layers
 
 For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator, often written as `□` in the literature.
 
@@ -111,7 +115,7 @@ This is because the variable `x` is defined at layer 0 but used at layer 3 (≠ 
 
 ## □-Introduction: Putting Values into Boxes
 
-Now that we have layers, we can talk about how to interact with values of type `meta a`.
+Now that we know layers, we can talk about how to interact with values of type `meta a`.
 
 ### Syntax
 
@@ -622,7 +626,9 @@ e2
 
 and this is why the type of `e1` must be restricted to some extent. Now we can see that those restrictions come from `quote`.
 
-## Layer Closedness of Functions
+## Miscs
+
+### Layer Closedness of Functions
 
 There's one last condition: for any free variable `x` of a function `f`, `layer(x) <= layer(f)` must hold. For example, the following is not a valid term:
 
@@ -672,10 +678,3 @@ define joker(): () -> unit {
 ```
 
 The inner function (💫), which depends on `xs: &list(int)`, is bound to `f` after evaluating the outer `letbox`. Thus, we would be able to cause the dreaded use-after-free by deallocating `xs` and then calling the function `f`.
-
-## What You've Learned Here
-
-- Layer structures of `box`, `letbox`, `letbox-T`, and `function`
-- Using `box` or `quote` to create terms of type `meta {..}`
-- Using `letbox` or `letbox-T` to use terms of type `meta {..}`
-- Decomposition of `let-on` into `letbox-T` and `quote`
