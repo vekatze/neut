@@ -25,7 +25,7 @@ define foo(xs: list(int)): list(int) {
 }
 ```
 
-In the above code, `xs` is used three times. Thus, its content is copied twice:
+In the code above, `xs` is used three times. Thus, its content is copied twice:
 
 ```neut
 // after compilation (pseudo-code)
@@ -49,7 +49,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-In the above code, `xs` isn't used. Thus, its content is discarded:
+In the code above, `xs` isn't used. Thus, its content is discarded:
 
 ```neut
 // after compilation (pseudo-code)
@@ -59,7 +59,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-This translation ensures that each variable occurs exactly once (ignoring the arguments to `COPY`), which underpins memory management in Neut.
+Ignoring the arguments to `COPY`, this translation ensures that each variable occurs linearly (i.e. exactly once). This forms the basis of memory management in Neut.
 
 If you're interested in how Neut implements this translation, see [How to Execute Types](./how-to-execute-types.md).
 
@@ -163,7 +163,7 @@ define use-length(!xs: list(int)): unit {
 }
 ```
 
-Note that the variable `!xs` is used twice. This means that the content of `!xs` is copied just to calculate its length. This is of course a tragedy. Worse, this kind of procedure isn't rare. We need some kind of loophole.
+Note that the variable `!xs` is used twice. This means that the content of `!xs` is copied just to calculate its length. This is of course unfortunate. Worse, this kind of procedure isn't rare. We need some kind of loophole.
 
 Luckily, Neut has a remedy for this kind of situation, as we'll see below.
 
@@ -207,7 +207,6 @@ let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
 cont
 ```
 
-
 ### Using a Noema: Pattern Matching
 
 If `t` is an ADT, you can view the content of a value `e: &t` using `case`:
@@ -225,7 +224,7 @@ define length(xs: &list(int)): int {
 
 `case` is similar to `match`. The difference is that, unlike `match`, `case` doesn't perform `free` on its arguments. You can think of `case` as a read-only version of `match`.
 
-Also, note that the newly-bound variables in `case` are wrapped in `&(_)`. In the above code, for example, the type of `ys` is not `list(int)`, but `&list(int)`.
+Also, note that the newly-bound variables in `case` are wrapped in `&(_)`. In the code above, for example, the type of `ys` is not `list(int)`, but `&list(int)`.
 
 Now, we have new implementations of `length` and `use-length`:
 
