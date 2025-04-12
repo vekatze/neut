@@ -25,7 +25,7 @@ define foo(xs: list(int)): list(int) {
 }
 ```
 
-In the code above, `xs` is used three times. Thus, its content is copied twice:
+In the code above, `xs` is used three times. Therefore, its content is copied twice:
 
 ```neut
 // after compilation (pseudo-code)
@@ -49,7 +49,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-In the code above, `xs` isn't used. Thus, its content is discarded:
+In the code above, `xs` isn't used. Therefore, its content is discarded:
 
 ```neut
 // after compilation (pseudo-code)
