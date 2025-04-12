@@ -1,6 +1,6 @@
 # Static Memory Management
 
-Here, we'll see how memory is managed in Neut. We'll also see some useful optimizations.
+Here, we'll see how memory is managed in Neut. We'll also see two important optimizations.
 
 ## Table of Contents
 
@@ -84,9 +84,20 @@ define make-pair(!t: text): pair(text, text) {
 }
 ```
 
+The `!` prefix is unnecessary if the variable can be copied for free. For example, the compiler accepts the following code:
+
+```neut
+define make-pair(x: int): pair(int, int) {
+  Pair(x, x)
+}
+```
+
+... because we can "copy" integers for free (by simply using the same `x` twice).
+
+
 ## Optimization: Avoiding Unnecessary Copies
 
-### The Tragedy of Excessive Copies
+### Observing Excessive Copies
 
 Suppose we've defined a function `length` as follows:
 
@@ -110,7 +121,7 @@ define use-length(!xs: list(int)): unit {
 }
 ```
 
-Note that the variable `!xs` is used twice. This means that the content of `!xs` is copied just to calculate its length. This is of course a tragedy.
+Note that the variable `!xs` is used twice. This means that the content of `!xs` is copied just to calculate its length. This is of course a tragedy. Worse, this kind of procedure isn't rare. We need some kind of loophole, or every wish will be shattered.
 
 Luckily, Neut has a remedy for this kind of situation, as we'll see below.
 
@@ -120,11 +131,11 @@ For any type `t`, Neut has a type `&t`. We'll call this type the noema type of `
 
 Unlike ordinary terms, _a noema isn't discarded or copied even when used non-linearly_. By exploiting this behavior, we can avoid the disaster we have just seen.
 
-Below, we'll see how to use noemata and use them to rewrite `length` and `use-length` in a way that we don't have to copy given lists.
+Below, we'll see how to interact with noemata, and then use them to rewrite `length` and `use-length` in a way that we don't have to copy lists.
 
 ### Creating a Noema
 
-We can create a noema using `let-on`:
+We can create a noema using `on`:
 
 ```neut
 define use-length(xs: list(int)): unit {
@@ -139,7 +150,7 @@ define use-length(xs: list(int)): unit {
 
 `on` takes a comma-separated list of variables. Variables specified there are cast to noema types in the body of the `let`, and cast back to the original types in the continuation.
 
-More specifically, `let-on` is something like the following syntax sugar:
+Conceptually, `on` is something like the following syntax sugar:
 
 ```neut
 let v on x = e in
@@ -169,20 +180,29 @@ define length(xs: &list(int)): int {
 }
 ```
 
-`case` is similar to `match`. The difference is that, unlike `match`, `case` doesn't call `free` on its arguments. In this sense, you can think of `case` as a read-only version of `match`.
+`case` is similar to `match`. The difference is that, unlike `match`, `case` doesn't perform `free` on its arguments. In this sense, you can think of `case` as a read-only version of `match`.
 
-Also, note that the newly-bound variables in `case` are wrapped with `&(_)`. In the above code, for example, the type of `ys` is not `list(int)`, but `&list(int)`.
+Also, note that the newly-bound variables in `case` are wrapped in `&(_)`. In the above code, for example, the type of `ys` is not `list(int)`, but `&list(int)`.
 
-Now, we can reimplement `use-length` as follows:
+Now, we have new `length` and `use-length`:
 
 ```neut
+define length(xs: &list(int)): int {
+  case xs {
+  | Nil =>
+    0
+  | Cons(_, ys) =>
+    add-int(1, length(ys))
+  }
+}
+
 define use-length(xs: list(int)): unit {
   let len on xs = length(xs) in
   some-function(len, xs)
 }
 ```
 
-Note that the content of `xs` isn't copied anymore.
+The code doesn't copy `xs` anymore, as you can see from the fact that it doesn't contain `!`.
 
 ### Using a Noema: Embodying
 
@@ -198,7 +218,7 @@ By writing `*e`, you can copy the content of the noema `e`, keeping the content 
 
 ## Optimization: Reusing Memory
 
-Let's see another aspect of Neut's memory management. Consider the following code:
+The compiler exploits Neut's static nature to reuse memory. Consider the following code:
 
 ```neut
 data int-list {
@@ -219,7 +239,7 @@ define increment(xs: int-list): int-list {
 }
 ```
 
-The expected behavior of the `Cons` clause would be something like the following:
+The expected behavior of the `Cons` clause in the `match` would be something like the following:
 
 1. Extract `y` and `ys` from `Cons(y, ys)`
 2. `free` the outer tuple of `Cons(y, ys)`
@@ -307,15 +327,3 @@ define bar(x: int): unit {
 ```
 
 In practice, however, discarding/copying operations on immediate values are optimized away.
-
-### Copying Values For Free
-
-The prefix `!` is unnecessary if the variable can be copied for free. For example, the following code will typecheck:
-
-```neut
-define make-pair(x: int): pair(int, int) {
-  Pair(x, x)
-}
-```
-
-because we can "copy" integers for free (by simply using the same `x` twice).
