@@ -59,9 +59,9 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-This translation ensures that each variable occurs exactly once, ignoring the arguments to `COPY`. This underpins memory management in Neut.
+This translation ensures that each variable occurs exactly once (ignoring the arguments to `COPY`), which underpins memory management in Neut.
 
-If you're interested in how Neut implements this translation, please see [How to Execute Types](./how-to-execute-types.md).
+If you're interested in how Neut implements this translation, see [How to Execute Types](./how-to-execute-types.md).
 
 ### Avoiding Unintentional Copies
 
@@ -258,70 +258,3 @@ define make-pair<a>(x: &a): pair(a, a) {
 ```
 
 By writing `*e`, you can copy the content of the noema `e`, keeping the content intact.
-
-<!-- ## Additional Notes -->
-
-<!-- ### Free Variables in a Local Recursion -->
-
-<!-- The `!` prefix is also required when using a free variable in a term-level `define`: -->
-
-<!-- ```neut -->
-<!-- define multi-print(!message: text): unit { -->
-<!--   let f = -->
-<!--     define self(counter: int): unit { -->
-<!--       if ge-int(counter, 10) { -->
-<!--         Unit -->
-<!--       } else { -->
-<!--         // `!message` is a free variable of `self` -->
-<!--         printf("message: {}\n", [!message]); -->
-<!--         self(add-int(counter, 1)) -->
-<!--       } -->
-<!--     } -->
-<!--   in -->
-<!--   f(0) -->
-<!-- } -->
-<!-- ``` -->
-
-<!-- This is because free variables in a term-level `define` are copied during recursion. Seeing how the above code is compiled might be illuminating: -->
-
-<!-- ```neut -->
-<!-- // `self` is now closed thanks to the new parameter `!m` (lambda lifting) -->
-<!-- define self(counter: int, !m: text): unit { -->
-<!--   if ge-int(counter, 10) { -->
-<!--     Unit -->
-<!--   } else { -->
-<!--     // note that `!m` is used twice -->
-<!--     printf("message: {}\n", [!m]); -->
-<!--     self(add-int(counter, 1), !m) -->
-<!--   } -->
-<!-- } -->
-
-<!-- define multi-print(!message: text): unit { -->
-<!--   let f = -->
-<!--     function (counter: int) { -->
-<!--       self(counter, !message) -->
-<!--     } -->
-<!--   in -->
-<!--   f(0) -->
-<!-- } -->
-<!-- ``` -->
-
-<!-- ### Copying Immediate Values -->
-
-<!-- Technically speaking, these discarding/copying operations also happen when the variable is an immediate value like an integer: -->
-
-<!-- ```neut -->
-<!-- define buz(x: int): unit { -->
-<!--   Unit -->
-<!-- } -->
-
-<!-- ↓ -->
-
-<!-- // pseudo-code -->
-<!-- define bar(x: int): unit { -->
-<!--   let _ = Discard-VALUE(int, x) in -->
-<!--   Unit -->
-<!-- } -->
-<!-- ``` -->
-
-<!-- In practice, however, discarding/copying operations on immediate values are optimized away. -->
