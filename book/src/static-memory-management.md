@@ -1,16 +1,10 @@
 # Static Memory Management
 
-The following two mechanisms underpin static memory management in Neut:
-
-- The compiler translates given code so that each variable is used exactly once
-- The compiler ensures that each variable's content is deallocated after it is used
-
-Below, we'll see how both of them work. After that, we'll also see some important optimizations.
+Here, we'll see how memory is managed in Neut. We'll also see some useful optimizations.
 
 ## Table of Contents
 
 - [Linearizing Variable Occurrences](#linearizing-variable-occurrences)
-- [Consuming Values](#consuming-values)
 - [Optimization: Avoiding Unnecessary Copies](#optimization-avoiding-unnecessary-copies)
 - [Optimization: Reusing Memory](#optimization-reusing-memory)
 - [Additional Notes](#additional-notes)
@@ -32,7 +26,7 @@ define foo(xs: list(int)): list(int) {
 }
 ```
 
-In the above code, `xs` is used three times, so its content is copied twice:
+In the above code, `xs` is used three times. Thus, its content is copied twice:
 
 ```neut
 // after compilation (pseudo-code)
@@ -56,7 +50,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-In the above code, `xs` isn't used, so its content is discarded:
+In the above code, `xs` isn't used. Thus, its content is discarded:
 
 ```neut
 // after compilation (pseudo-code)
@@ -66,7 +60,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-This translation ensures that each variable occurs exactly once (ignoring the arguments to `COPY`). We'll call such variable occurrences *linear*.
+This translation ensures that each variable occurs exactly once, ignoring the arguments to `COPY`. This underpins memory management in Neut.
 
 If you're interested in how Neut implements this translation, please see [How to Execute Types](./how-to-execute-types.md).
 
@@ -75,60 +69,24 @@ If you're interested in how Neut implements this translation, please see [How to
 To avoid unintentional copies, the compiler requires the `!` prefix on a variable name when a copy is needed. For example, consider the following code:
 
 ```neut
-define make-pair(xs: list(int)): pair(list(int), list(int)) {
-  Pair(xs, xs)
+define make-pair(t: text): pair(text, text) {
+  Pair(t, t)
 }
 ```
 
-The compiler rejects this code because `xs` is used twice without the `!` prefix.
+The compiler rejects this code because the variable `t` is used twice without the `!` prefix.
 
-You can satisfy the compiler by renaming `xs` to `!xs`:
+You can satisfy the compiler by renaming `t` to `!t`:
 
 ```neut
-define make-pair(!xs: list(int)): pair(list(int), list(int)) {
-  Pair(!xs, !xs)
+define make-pair(!t: text): pair(text, text) {
+  Pair(!t, !t)
 }
 ```
-
-## Consuming Values
-
-In Neut, values are "consumed" when used. For example, let's take the constructor `Left`. This is a function that performs something like the following:
-
-```neut
-// pseudo-code
-define Left<a, b>(x: a) {
-  let ptr = malloc(4-words) in
-  store(ptr[0], 0); // a tag to distinguish Left with Right
-  store(ptr[1], a); // the `a` in `either(a, b)`
-  store(ptr[2], b); // the `b` in `either(a, b)`
-  store(ptr[3], x);
-  ptr
-}
-```
-
-Now, consider the following code that performs `match` on `Left(1)`:
-
-```neut
-define foo(): int {
-  match Left(1) {
-  | Left(x) =>
-    x
-  | Right(y) =>
-    y
-  }
-}
-```
-The `match` in this example behaves as follows:
-
-1. extracts `1` from `Left(1)`
-2. deallocates the 4-word tuple of `tmp`
-3. returns `1`
-
-Here, note that the 4-word tuple of `tmp` is deallocated during this computation. As in this example, each variable's content is consumed when used.
 
 ## Optimization: Avoiding Unnecessary Copies
 
-### The Tragedy of Excessive Copying
+### The Tragedy of Excessive Copies
 
 Suppose we've defined a function `length` as follows:
 
@@ -143,28 +101,30 @@ define length(xs: list(int)): int {
 }
 ```
 
-Then, consider the following code:
+Now, consider the following code:
 
 ```neut
 define use-length(!xs: list(int)): unit {
-  let len = length(!xs) in // use `length` to calculate the length of `!xs`
-  some-function(len, !xs)  // .. then use `len` and `!xs`
+  let len = length(!xs) in
+  some-function(len, !xs)
 }
 ```
 
-Note that the variable `!xs` is used twice. Thus, that the content of `!xs` is copied just to calculate its length. This is of course a tragedy.
+Note that the variable `!xs` is used twice. This means that the content of `!xs` is copied just to calculate its length. This is of course a tragedy.
 
 Luckily, Neut has a remedy for this kind of situation, as we'll see below.
 
 ### Introducing Noema Types
 
-For any type `t`, Neut has a type `&t`. We'll call this the noema type of `t`. We'll call a term `e` a noema if the type of `e` is a noema type.
+For any type `t`, Neut has a type `&t`. We'll call this type the noema type of `t`. We'll call a term `e` a noema if the type of `e` is a noema type.
 
 Unlike ordinary terms, _a noema isn't discarded or copied even when used non-linearly_. By exploiting this behavior, we can avoid the disaster we have just seen.
 
+Below, we'll see how to use noemata and use them to rewrite `length` and `use-length` in a way that we don't have to copy given lists.
+
 ### Creating a Noema
 
-Let's see how noemata can be used to avoid excessive copying. Firstly, we create a noema using `let-on`.
+We can create a noema using `let-on`:
 
 ```neut
 define use-length(xs: list(int)): unit {
@@ -177,18 +137,18 @@ define use-length(xs: list(int)): unit {
 }
 ```
 
-`on` takes a comma-separated list of variables. Variables specified there are then cast to a noema in the body of the `let` and cast back to non-noetic values in its continuation.
+`on` takes a comma-separated list of variables. Variables specified there are cast to noema types in the body of the `let`, and cast back to the original types in the continuation.
 
-`let-on` is conceptually the following syntax sugar:
+More specifically, `let-on` is something like the following syntax sugar:
 
 ```neut
-let result on x = e in
+let v on x = e in
 cont
 
 // ↓ desugar
 
 let x = unsafe-cast(a, &a, x) in // cast: `a` ~> `&a`
-let result = e in                // (use `&a`)
+let v = e in                     // (use `&a` in `e`)
 let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
 cont
 ```
@@ -196,7 +156,7 @@ cont
 
 ### Using a Noema: Pattern Matching
 
-Let's see how it works. We first redefine `length`. If the type `t` is an ADT type, you can inspect its content using `case`:
+If `t` is an ADT type, you can view the content of a value `e: &t` using `case`:
 
 ```neut
 define length(xs: &list(int)): int {
@@ -209,11 +169,11 @@ define length(xs: &list(int)): int {
 }
 ```
 
-The main difference between `case` and `match` is that `case` doesn't perform `free` against its arguments. Because of that, this new `length` doesn't consume `xs`.
+`case` is similar to `match`. The difference is that, unlike `match`, `case` doesn't call `free` on its arguments. In this sense, you can think of `case` as a read-only version of `match`.
 
-Also, note that the newly-bound variables in `case` are automatically wrapped with `&(_)`. For example, in the above example, the type of `ys` is not `list(int)`, but `&list(int)`.
+Also, note that the newly-bound variables in `case` are wrapped with `&(_)`. In the above code, for example, the type of `ys` is not `list(int)`, but `&list(int)`.
 
-The `use-length` then becomes as follows:
+Now, we can reimplement `use-length` as follows:
 
 ```neut
 define use-length(xs: list(int)): unit {
@@ -222,23 +182,23 @@ define use-length(xs: list(int)): unit {
 }
 ```
 
-Now the content of `xs` isn't copied anymore.
+Note that the content of `xs` isn't copied anymore.
 
 ### Using a Noema: Embodying
 
-You can also create a value of type `a` from a value of type `&a`, as follows:
+Incidentally, you can create a value of type `a` from a value of type `&a`, as follows:
 
 ```neut
-define make-pair-from-noema<a>(x: &a): pair(a, a) {
+define make-pair<a>(x: &a): pair(a, a) {
   Pair(*x, *x)
 }
 ```
 
-By writing `*e`, you can copy the content of the noema `e` along the type `a`, keeping the content intact.
+By writing `*e`, you can copy the content of the noema `e`, keeping the content intact.
 
 ## Optimization: Reusing Memory
 
-Let's see another aspect of Neut's memory management. The compiler can sometimes optimize away memory allocation thanks to its static nature. Consider the following code:
+Let's see another aspect of Neut's memory management. Consider the following code:
 
 ```neut
 data int-list {
@@ -251,9 +211,9 @@ define increment(xs: int-list): int-list {
   match xs {
   | Nil =>
     Nil
-  | Cons(x, rest) => // ← "the `Cons` clause"
-    let foo = add-int(x, 1) in
-    let bar = increment(rest) in
+  | Cons(y, ys) => // ← "the `Cons` clause"
+    let foo = add-int(y, 1) in
+    let bar = increment(ys) in
     Cons(foo, bar)
   }
 }
@@ -261,24 +221,24 @@ define increment(xs: int-list): int-list {
 
 The expected behavior of the `Cons` clause would be something like the following:
 
-1. obtain `x` and `rest` from `xs`
-2. `free` the outer tuple of `xs`
-3. calculate `foo (= add-int(x, 1))` and `bar (= increment(rest))`
-4. allocate memory region using `malloc` to represent `Cons(foo, bar)`
-5. store the calculated values to the pointer and return it
+1. Extract `y` and `ys` from `Cons(y, ys)`
+2. `free` the outer tuple of `Cons(y, ys)`
+3. Calculate `foo` and `bar`
+4. Allocate memory region using `malloc` to represent the tuple of `Cons(foo, bar)`
+5. Store the calculated values to the pointer and return it
 
-However, the compiler knows the following two facts during compilation:
+Now, note that:
 
-- The size of outer tuples of `Cons(x, rest)` and `Cons(foo, bar)` are the same
-- The outer tuple of `Cons(x, rest)` will never be used after extracting its contents
+- the outer tuples of `Cons(y, ys)` and `Cons(foo, bar)` have the same size, and that
+- the outer tuple of `Cons(y, ys)` will never be used after extracting its contents
 
-Thanks to this knowledge, the compiler can optimize away a pair of `free` and `malloc`, as follows:
+Using this knowledge, the compiler translates given code so that it reuses the memory region of `Cons(y, ys)`. More specifically, the behavior of this part becomes something like the following:
 
-1. obtain `x` and `rest` from `xs`
-2. calculate `foo (= add-int(x, 1))` and `bar (= increment(rest))`
-3. store the calculated values to `xs` (overwrite)
+1. Obtain `y` and `ys` from `Cons(y, ys)`
+2. Calculate `foo` and `bar`
+3. Store the calculated values to `Cons(y, ys)` (overwrite)
 
-When a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+In other words, when a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
 ## Additional Notes
 
