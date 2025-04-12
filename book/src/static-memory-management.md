@@ -5,8 +5,8 @@ Here, we'll see how memory is managed in Neut. We'll also see two important opti
 ## Table of Contents
 
 - [Linearizing Variable Occurrences](#linearizing-variable-occurrences)
-- [Optimization: Avoiding Unnecessary Copies](#optimization-avoiding-unnecessary-copies)
 - [Optimization: Reusing Memory](#optimization-reusing-memory)
+- [Optimization: Avoiding Unnecessary Copies](#optimization-avoiding-unnecessary-copies)
 - [Additional Notes](#additional-notes)
 
 ## Linearizing Variable Occurrences
@@ -94,6 +94,49 @@ define make-pair(x: int): pair(int, int) {
 
 ... because we can "copy" integers for free (by simply using the same `x` twice).
 
+## Optimization: Reusing Memory
+
+The compiler exploits Neut's static nature to reuse memory. Consider the following code:
+
+```neut
+data int-list {
+| Nil
+| Cons(int, int-list)
+}
+
+// [1, 5, 9] => [2, 6, 10]
+define increment(xs: int-list): int-list {
+  match xs {
+  | Nil =>
+    Nil
+  | Cons(y, ys) => // ← "the `Cons` clause"
+    let foo = add-int(y, 1) in
+    let bar = increment(ys) in
+    Cons(foo, bar)
+  }
+}
+```
+
+The naive behavior of the `Cons` clause in the `match` would be something like the following:
+
+1. Extract `y` and `ys` from `Cons(y, ys)`
+2. `free` the outer tuple of `Cons(y, ys)`
+3. Calculate `foo` and `bar`
+4. Allocate memory region using `malloc` to represent the tuple of `Cons(foo, bar)`
+5. Store the calculated values to the pointer and return it
+
+Now, note that:
+
+- the outer tuples of `Cons(y, ys)` and `Cons(foo, bar)` have the same size, and that
+- the outer tuple of `Cons(y, ys)` will never be used after extracting its contents
+
+Using this knowledge, the compiler translates given code so that it reuses the memory region of `Cons(y, ys)`. More specifically, the behavior of this part becomes something like the following:
+
+1. Obtain `y` and `ys` from `Cons(y, ys)`
+2. Calculate `foo` and `bar`
+3. Store the calculated values to `Cons(y, ys)` (overwrite)
+
+In other words, when a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
 ## Optimization: Avoiding Unnecessary Copies
 
@@ -216,55 +259,11 @@ define make-pair<a>(x: &a): pair(a, a) {
 
 By writing `*e`, you can copy the content of the noema `e`, keeping the content intact.
 
-## Optimization: Reusing Memory
-
-The compiler exploits Neut's static nature to reuse memory. Consider the following code:
-
-```neut
-data int-list {
-| Nil
-| Cons(int, int-list)
-}
-
-// [1, 5, 9] => [2, 6, 10]
-define increment(xs: int-list): int-list {
-  match xs {
-  | Nil =>
-    Nil
-  | Cons(y, ys) => // ← "the `Cons` clause"
-    let foo = add-int(y, 1) in
-    let bar = increment(ys) in
-    Cons(foo, bar)
-  }
-}
-```
-
-The expected behavior of the `Cons` clause in the `match` would be something like the following:
-
-1. Extract `y` and `ys` from `Cons(y, ys)`
-2. `free` the outer tuple of `Cons(y, ys)`
-3. Calculate `foo` and `bar`
-4. Allocate memory region using `malloc` to represent the tuple of `Cons(foo, bar)`
-5. Store the calculated values to the pointer and return it
-
-Now, note that:
-
-- the outer tuples of `Cons(y, ys)` and `Cons(foo, bar)` have the same size, and that
-- the outer tuple of `Cons(y, ys)` will never be used after extracting its contents
-
-Using this knowledge, the compiler translates given code so that it reuses the memory region of `Cons(y, ys)`. More specifically, the behavior of this part becomes something like the following:
-
-1. Obtain `y` and `ys` from `Cons(y, ys)`
-2. Calculate `foo` and `bar`
-3. Store the calculated values to `Cons(y, ys)` (overwrite)
-
-In other words, when a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
-
 ## Additional Notes
 
 ### Free Variables in a Local Recursion
 
-The `!` is also required when using a free variable in a term-level `define`:
+The `!` prefix is also required when using a free variable in a term-level `define`:
 
 ```neut
 define multi-print(!message: text): unit {
@@ -291,7 +290,7 @@ define self(counter: int, !m: text): unit {
   if ge-int(counter, 10) {
     Unit
   } else {
-    // 💫 note that `!m` is used twice
+    // note that `!m` is used twice
     printf("message: {}\n", [!m]);
     self(add-int(counter, 1), !m)
   }
@@ -307,23 +306,22 @@ define multi-print(!message: text): unit {
 }
 ```
 
-### Copying Immediate Values
+<!-- ### Copying Immediate Values -->
 
-Technically speaking, these discarding/copying operations also happen when the variable is an immediate value like an integer:
+<!-- Technically speaking, these discarding/copying operations also happen when the variable is an immediate value like an integer: -->
 
-```neut
-define buz(x: int): unit {
-  Unit
-}
+<!-- ```neut -->
+<!-- define buz(x: int): unit { -->
+<!--   Unit -->
+<!-- } -->
 
-↓
+<!-- ↓ -->
 
+<!-- // pseudo-code -->
+<!-- define bar(x: int): unit { -->
+<!--   let _ = DISCARD-VALUE(int, x) in -->
+<!--   Unit -->
+<!-- } -->
+<!-- ``` -->
 
-// pseudo-code
-define bar(x: int): unit {
-  let _ = DISCARD-VALUE(int, x) in
-  Unit
-}
-```
-
-In practice, however, discarding/copying operations on immediate values are optimized away.
+<!-- In practice, however, discarding/copying operations on immediate values are optimized away. -->
