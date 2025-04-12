@@ -219,6 +219,12 @@ cont
 
 Since `xs` is discarded at `(*)`, using `ys` in `cont` should result in use-after-free. To prevent this kind of behavior, the compiler rejects code that might contain any noema in the result of `on`. In this case, since the type of `ys` is `&list(int)`, the compiler rejects this code.
 
+<div class="info-block">
+
+This condition might initially appear a bit artificial. In the next section, however, we'll see that it can in fact be understood via modal logic.
+
+</div>
+
 ### Using a Noema: Pattern Matching
 
 If `t` is an ADT, you can view the content of a value `e: &t` using `case`:
