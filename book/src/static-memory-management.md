@@ -207,6 +207,18 @@ let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
 cont
 ```
 
+`on` has to satisfy certain condition. Consider the following code:
+
+```neut
+// xs: list(int)
+// ...
+let ys on xs = xs in
+let _ = xs in // (*)
+cont
+```
+
+Since `xs` is discarded at `(*)`, using `ys` in `cont` should result in use-after-free. To prevent this kind of behavior, the compiler rejects code that might contain any noema in the result of `on`. In this case, since the type of `ys` is `&list(int)`, the compiler rejects this code.
+
 ### Using a Noema: Pattern Matching
 
 If `t` is an ADT, you can view the content of a value `e: &t` using `case`:
