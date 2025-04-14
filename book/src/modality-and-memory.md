@@ -6,14 +6,18 @@ This `let-on` can actually be understood as a syntax sugar over the T-necessity 
 
 ## Table of Contents
 
-- [Box Type](#copying-and-discarding-values)
+- [Introducing Layers](#copying-and-discarding-values)
+- [Basics of the Box Type](#copying-and-discarding-values)
   - [□-Introduction: Putting Values into Boxes](#optimization-reusing-memory)
   - [□-elimination: Extracting Values from Boxes](#optimization-avoiding-unnecessary-copies)
-  - [Borrowing via box and letbox](#optimization-avoiding-unnecessary-copies)
-- [Decomposing `on`](#decomposing-on)
+- [Utilities](#optimization-avoiding-unnecessary-copies)
+  - [quote](#optimization-reusing-memory)
+  - [Axiom T](#optimization-reusing-memory)
+- [Decomposing Artificial-Looking Stuff](#decomposing-on)
   - [Quote: A Shorthand for Boxes](#optimization-avoiding-unnecessary-copies)
   - [□-elimination-T: Unboxing within the Current Layer](#optimization-avoiding-unnecessary-copies)
 - [Miscs](#optimization-avoiding-unnecessary-copies)
+  - [Borrowing via box and letbox](#optimization-avoiding-unnecessary-copies)
 
 ## Introducing Layers
 
@@ -103,43 +107,45 @@ define box-unit(): meta unit {
 
 We can extract values from a box using `letbox`.
 
-### Syntax
-
-The syntax of `letbox` is as follows:
-
 ```neut
-letbox x on y1, ..., ym =
-  e1
-in
-e2
+define use-letbox(x: int, y: bool): bool {
+  // here is layer 0
+  // (x: int)
+  // (y: bool)
+  letbox value on x, y =
+    // here is layer 1
+    // (x: &int)
+    // (y: &bool)
+    box x, y { Pair(x, y) }
+  in
+  // here is layer 0
+  value
+}
 ```
 
-Or, with a bit verbose comments on layers and types:
+More specifically, assuming `e1: meta t`, the syntax of `letbox` is as follows:
 
 ```neut
 // here is layer n
-// - y1: a1 @ n
+// - y1: a1
 // - ...
-// - ym: am @ n
+// - ym: am
 letbox x on y1, ..., ym =
-  // here is layer (n+1)
-  // - y1: &a1 @ (n+1)
+  // here is layer n+1
+  // - y1: &a1
   // - ...
-  // - ym: &am @ (n+1)
+  // - ym: &am
   e1
 in
 // here is layer n
-// - y1: a1 @ n
+// - x: t
+// - y1: a1
 // - ...
-// - ym: am @ n
+// - ym: am
 e2
 ```
 
-Given a boxed term `e1: meta a`, `letbox` binds it to `x: a`, and executes `e2`.
-
-### Semantics
-
-The operational semantics of `letbox` is as follows:
+Operationally, `letbox` behaves as follows:
 
 ```neut
 letbox x on y1, ..., ym = e1 in
@@ -148,155 +154,17 @@ e2
 ↓
 
 // pseudo-code
-let y1 = cast(from=a1, to=&a1, y1) in
-...
-let ym = cast(from=am, to=&am, ym) in
+let y1 = cast(a1, &a1, y1) in // cast y1: a1 → &a1
+...                           // ...
+let ym = cast(am, &am, ym) in // cast ym: am → &am
 let x = e1 in
-let y1 = cast(from=&a1, to=a1, y1) in
-...
-let ym = cast(from=&am, to=am, ym) in
+let y1 = cast(&a1, a1, y1) in // cast y1: &a1 → a1
+...                           // ...
+let ym = cast(&am, am, ym) in // cast ym: &am → am
 e2
 ```
 
-### Examples
-
-Let's see some examples. Below is a simple example of `letbox`:
-
-```neut
-define use-letbox(): bool {
-  let x = True in
-  // here is layer 0
-  letbox value =
-    // here is layer 1
-    box {
-      // here is layer 0
-      x
-    }
-  in
-  // here is layer 0
-  value
-}
-```
-
-A bit more complex example:
-
-```neut
-// helper function
-define from-noema(x: &bool): meta bool {
-  box x {
-    x
-  }
-}
-
-define use-letbox(): bool {
-  let x = True in
-  let y = True in
-  // here is layer 0
-  // - x: bool @ 0
-  // - y: bool @ 0
-  letbox value on x =
-    // here is layer 1
-    // - x: &bool @ 1
-    // - y:  bool @ 0
-    from-noema(x)
-  in
-  value
-}
-```
-
-Below isn't a well-layered term:
-
-```neut
-define use-letbox(x: meta bool): bool {
-  // here is layer 0
-  letbox value =
-    // here is layer 1
-    x // ← error: the layer of `x` is 0 but used at layer 1
-  in
-  x
-}
-```
-
-## Combination of `box` and `letbox`
-
-Let's see how `box` and `letbox` work in harmony with each other.
-
-### The Axiom K in Neut
-
-We can prove the axiom K in the literature using `box` and `letbox`:
-
-```neut
-// Axiom K: □(a -> b) -> □a -> □b
-define axiom-K<a, b>(f: meta (a) -> b, x: meta a): meta b {
-  box {
-    letbox f' = f in
-    letbox x' = x in
-    f'(x')
-  }
-}
-```
-
-In this sense, the `meta` is a necessity operator that satisfies the axiom K.
-
-<div class="info-block">
-
-Don't confuse `meta (a) -> b` with `(meta a) -> b`.
-
-</div>
-
-### Creating and Embodying a Noema
-
-The following code creates a noema using `letbox` and embodies it using `box`:
-
-```neut
-define test-embody(): unit {
-  let x: int = 1 in
-  letbox result on x = // ← creates a noema
-    box x { // ← embodies a noema
-      add-int(x, 2)
-    }
-  in
-  print-int(result) // → "3"
-}
-```
-
-### Borrowing a List
-
-Let's take a look at a more "real-world" example (It's funny to say "real-world" when talking about modality). Suppose that we have the following function:
-
-```neut
-// returns `True` if and only if the input `xs` is empty.
-is-empty: (xs: &list(int)) -> bool
-```
-
-You can use this function via `box` and `letbox`:
-
-```neut
-define borrow-and-check-if-empty(): unit {
-  let xs: list(int) = [1, 2, 3] in
-  // layer 0
-  // (xs: list(int) @ 0)
-  letbox result on xs =
-    // layer 1
-    // (xs: &list(int) @ 1)
-    let b = is-empty(xs) in // ← using the borrowed `xs`
-    if b {
-      box {True}
-    } else {
-      box {False}
-    }
-  in
-  // layer 0
-  // (xs: list(int) @ 0)
-  if result {
-    print("xs is empty\n")
-  } else {
-    print("xs is not empty\n")
-  }
-}
-```
-
-In the above example, the variable `xs: list(int)` is turned into a noema by `letbox`, and then used by `is-empty`. Since `xs` is a noema inside the `letbox`, the `is-empty` doesn't have to consume the list `xs`.
+By combining `box` and `letbox`, we can achieve operations similar to borrowing. See the appendix of this page if you're interested.
 
 ## Quote: A Shorthand for Boxes
 
@@ -574,3 +442,64 @@ define joker(): () -> unit {
 ```
 
 The inner function (💫), which depends on `xs: &list(int)`, is bound to `f` after evaluating the outer `letbox`. Thus, we would be able to cause the dreaded use-after-free by deallocating `xs` and then calling the function `f`.
+
+### The Axiom K in Neut
+
+We can prove the axiom K in the literature using `box` and `letbox`:
+
+```neut
+// Axiom K: □(a -> b) -> □a -> □b
+define axiom-K<a, b>(f: meta (a) -> b, x: meta a): meta b {
+  box {
+    letbox f' = f in
+    letbox x' = x in
+    f'(x')
+  }
+}
+```
+
+In this sense, the `meta` is a necessity operator that satisfies the axiom K.
+
+<div class="info-block">
+
+Don't confuse `meta (a) -> b` with `(meta a) -> b`.
+
+</div>
+
+### Borrowing via box and letbox
+
+Let's take a look at a more "real-world" example (It's funny to say "real-world" when talking about modality). Suppose that we have the following function:
+
+```neut
+// returns `True` if and only if the input `xs` is empty.
+is-empty: (xs: &list(int)) -> bool
+```
+
+You can use this function via `box` and `letbox`:
+
+```neut
+define borrow-and-check-if-empty(): unit {
+  let xs: list(int) = [1, 2, 3] in
+  // layer 0
+  // (xs: list(int) @ 0)
+  letbox result on xs =
+    // layer 1
+    // (xs: &list(int) @ 1)
+    let b = is-empty(xs) in // ← using the borrowed `xs`
+    if b {
+      box {True}
+    } else {
+      box {False}
+    }
+  in
+  // layer 0
+  // (xs: list(int) @ 0)
+  if result {
+    print("xs is empty\n")
+  } else {
+    print("xs is not empty\n")
+  }
+}
+```
+
+In the above example, the variable `xs: list(int)` is turned into a noema by `letbox`, and then used by `is-empty`. Since `xs` is a noema inside the `letbox`, the `is-empty` doesn't have to consume the list `xs`.
