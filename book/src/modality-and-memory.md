@@ -164,8 +164,6 @@ let ym = cast(&am, am, ym) in // cast ym: &am → am
 e2
 ```
 
-By combining `box` and `letbox`, we can achieve operations similar to borrowing. See the appendix of this page if you're interested.
-
 ## Utilities
 
 ### Quote: A Shorthand for Boxes
@@ -322,64 +320,3 @@ define joker(): () -> unit {
 ```
 
 The inner function (💫), which depends on `xs: &list(int)`, is bound to `f` after evaluating the outer `letbox`. Thus, we would be able to cause the dreaded use-after-free by deallocating `xs` and then calling the function `f`.
-
-### The Axiom K in Neut
-
-We can prove the axiom K in the literature using `box` and `letbox`:
-
-```neut
-// Axiom K: □(a -> b) -> □a -> □b
-define axiom-K<a, b>(f: meta (a) -> b, x: meta a): meta b {
-  box {
-    letbox f' = f in
-    letbox x' = x in
-    f'(x')
-  }
-}
-```
-
-In this sense, the `meta` is a necessity operator that satisfies the axiom K.
-
-<div class="info-block">
-
-Don't confuse `meta (a) -> b` with `(meta a) -> b`.
-
-</div>
-
-### Borrowing via box and letbox
-
-Let's take a look at a more "real-world" example (It's funny to say "real-world" when talking about modality). Suppose that we have the following function:
-
-```neut
-// returns `True` if and only if the input `xs` is empty.
-is-empty: (xs: &list(int)) -> bool
-```
-
-You can use this function via `box` and `letbox`:
-
-```neut
-define borrow-and-check-if-empty(): unit {
-  let xs: list(int) = [1, 2, 3] in
-  // layer 0
-  // (xs: list(int) @ 0)
-  letbox result on xs =
-    // layer 1
-    // (xs: &list(int) @ 1)
-    let b = is-empty(xs) in // ← using the borrowed `xs`
-    if b {
-      box {True}
-    } else {
-      box {False}
-    }
-  in
-  // layer 0
-  // (xs: list(int) @ 0)
-  if result {
-    print("xs is empty\n")
-  } else {
-    print("xs is not empty\n")
-  }
-}
-```
-
-In the above example, the variable `xs: list(int)` is turned into a noema by `letbox`, and then used by `is-empty`. Since `xs` is a noema inside the `letbox`, the `is-empty` doesn't have to consume the list `xs`.
