@@ -166,9 +166,11 @@ e2
 
 By combining `box` and `letbox`, we can achieve operations similar to borrowing. See the appendix of this page if you're interested.
 
-## Quote: A Shorthand for Boxes
+## Utilities
 
-As in above, we can turn a `bool` into `meta bool` by doing something like this:
+### Quote: A Shorthand for Boxes
+
+Using `box` introduced above, we can turn a `bool` into `meta bool` by doing something like this:
 
 ```neut
 define wrap-bool(b: bool): meta bool {
@@ -180,56 +182,13 @@ define wrap-bool(b: bool): meta bool {
 }
 ```
 
-You might find it a bit wordy. Indeed, this translation can be mechanically done on certain "simple" types. For example, we can do the same to `either(bool, unit)`:
+This kind of translation can be mechanically done on "simple" types. To make things less tedious, Neut provides a syntactic construct `quote` that bypasses these translations.
 
-```neut
-define wrap-either(x: either(bool, unit)): meta either(bool, unit) {
-  match x {
-  | Left(b) =>
-    if b {
-      box {Left(True)}
-    } else {
-      box {Left(False)}
-    }
-  | Right(u) =>
-    box {Right(Unit)}
-  }
-}
-```
-
-We just have to decompose values and reconstruct them with `box` added.
-
-Neut has a syntactic construct `quote` that bypasses these manual translations. Using `quote`, the above two functions can be rewritten into the following functions:
+Using `quote`, the above `wrap-bool` can be rewritten as follows:
 
 ```neut
 define wrap-bool(b: bool): meta bool {
   quote {b}
-}
-
-define wrap-either(x: either(bool, unit)): meta either(bool, unit) {
-  quote {x}
-}
-```
-
-The example of `is-empty` can now be rewritten as follows:
-
-```neut
-define foo(): unit {
-  let xs: list(int) = [1, 2, 3] in
-  // layer 0
-  // (xs: list(int) @ 0)
-  letbox result on xs =
-    // layer 1
-    // (xs: &list(int) @ 1)
-    quote {is-empty(xs)}
-  in
-  // layer 0
-  // (xs: list(int) @ 0)
-  if result {
-    print("xs is empty\n")
-  } else {
-    print("xs is not empty\n")
-  }
 }
 ```
 
@@ -242,117 +201,29 @@ define foo(): unit {
 
 `quote` is after all just a shorthand.
 
-## □-elimination-T: Unboxing within the Current Layer
+### □-elimination-T: Unboxing within the Current Layer
 
-Remember the example of `is-empty`:
+Neut has a variant of `letbox`, called `letbox-T`. This is basically the same as `letbox`. The only difference is that it doesn't change layers:
 
 ```neut
-define borrow-and-check-if-empty(): unit {
-  let xs: list(int) = [1, 2, 3] in
-  letbox result on xs =
-    // here is layer 1
-    let b = is-empty(xs) in
-    (..)
+define use-letbox-T(x: int, y: bool): int {
+  // here is layer 0
+  // (x: int)
+  // (y: bool)
+  letbox-T value on x, y =
+    // here is layer 0 (not 1!)
+    // (x: &int)
+    // (y: &bool)
+    quote {10}
   in
-  (..)
+  // here is layer 0
+  value
 }
 ```
 
-Although the above term is valid, the term obtained by parameterizing `is-empty` is not valid:
+Using `letbox-T`, we can for example write functions of type `(meta a) -> a` as follows:
 
 ```neut
-define borrow-and-check-if-empty(is-empty: (&list(int)) -> bool): unit {
-  let xs: list(int) = [1, 2, 3] in
-  letbox result on xs =
-    // here is layer 1
-    let b = is-empty(xs) in // ← error
-    (..)
-  in
-  (..)
-}
-```
-
-This is because the variable `is-empty` is defined at layer 0 but used at layer 1.
-
-`letbox-T` is the loophole for such situations.
-
-### Syntax
-
-The syntax of `letbox-T` is as follows:
-
-```neut
-// here is layer n
-// (y1: a1): a variable at layer n
-// ...
-// (ym: am): a variable at layer n
-letbox-T x on y1, ..., yn =
-  // here is layer n
-  // (y1: &a1): a variable at layer n
-  // ...
-  // (ym: &am): a variable at layer n
-  e1
-in
-// here is layer n
-// (y1: a1): a variable at layer n
-// ...
-// (ym: am): a variable at layer n
-e2
-```
-
-That is, `letbox-T` is the same as `letbox` except that it doesn't change the layer structure.
-
-### Semantics
-
-The operational semantics of `letbox-T` is again the same as `letbox`:
-
-```neut
-letbox-T x on y1, ..., ym = e1 in
-e2
-
-↓
-
-let y1 = unsafe-cast(a1, &a1, y1) in
-...
-let ym = unsafe-cast(am, &am, ym) in
-let x = e1 in
-let y1 = unsafe-cast(&a1, a1, y1) in
-...
-let ym = unsafe-cast(&am, am, ym) in
-e2
-```
-
-### Example: Parameterizing a Callback
-
-Using `letbox-T`, we can parameterize `is-empty` as follows:
-
-```neut
-define borrow-and-check-if-empty(is-empty: (&list(int)) -> bool): unit {
-  let xs: list(int) = [1, 2, 3] in
-  // layer 0
-  // (xs: list(int) @ 0)
-  // (is-empty: &list(int) -> bool @ 0)
-  letbox-T result on xs =
-    // layer 0
-    // (xs: &list(int) @ 0)
-    // (is-empty: &list(int) -> bool @ 0)
-    let b = is-empty(xs) in
-    (..)
-  in
-  // layer 0
-  // (xs: list(int) @ 0)
-  // (is-empty: &list(int) -> bool @ 0)
-  (..)
-}
-```
-
-Note that the body of `letbox-T` in the example above is not layer 1 but layer 0.
-
-### Example: The Axiom T in Neut
-
-You can prove the axiom T by using `letbox-T`:
-
-```neut
-// Axiom T: □a -> a
 define axiom-T<a>(x: meta a): a {
   letbox-T tmp = x in
   tmp
@@ -363,18 +234,17 @@ Note that the following is not well-layered:
 
 ```neut
 define axiom-T<a>(x: meta a): a {
-  letbox tmp = x in
+  letbox tmp =
+    // error: x is defined at layer 0 but used at layer 1
+    x
+  in
   tmp
 }
 ```
 
-since the variable `x` is defined at layer 0 but used at layer 1.
+## Desugaring
 
-In this sense, the `meta` is a necessity operator that satisfies the axiom T.
-
-(I know this is a bit too informal, but anyway)
-
-### Example: Desugaring let-on Using the T-necessity
+### Borrowing operations
 
 Now we can desugar `let-on` as follows:
 
@@ -389,6 +259,16 @@ e2
 ```
 
 and this is why the type of `e1` must be restricted to some extent. Now we can see that those restrictions come from `quote`.
+
+### Embodying
+
+Using the `axiom-T` that we've defined, we can desugar `*e` as follows:
+
+```neut
+define embody<a>(x: &a): a {
+  axiom-T(box x {x})
+}
+```
 
 ## Miscs
 
