@@ -236,7 +236,7 @@ Now we can desugar `let-on` as follows:
 let x on y, z = e1 in
 e2
 
-↓
+↓ // desugar
 
 letbox-T x on y, z = quote {e1} in
 e2
@@ -249,9 +249,12 @@ and this is why the type of `e1` must be restricted to some extent. We can see t
 Using the `axiom-T` that we've defined, we can desugar `*e` as follows:
 
 ```neut
-define embody<a>(x: &a): a {
-  axiom-T(box x {x})
-}
+*e
+
+↓ // desugar
+
+let x = e in
+axiom-T(box x {x})
 ```
 
 ## Additional Notes
