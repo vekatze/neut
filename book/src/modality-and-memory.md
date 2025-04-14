@@ -2,24 +2,22 @@
 
 At first glance, the `let-on` stuff in the previous section might seem a bit artificial.
 
-This `let-on` can actually be understood as a syntax sugar over the T-necessity operator. Below, we'll first see how Neut incorporates the necessity modality and then how `let-on` is desugared using the modality.
+In fact, however, this `let-on` can be understood as a syntax sugar over the T-necessity operator.
+
+Below, we'll first see how Neut incorporates the necessity modality and then how `let-on` is desugared using the modality.
 
 ## Table of Contents
 
-- [Introducing Layers](#copying-and-discarding-values)
-- [Basics of the Box Type](#copying-and-discarding-values)
-  - [□-Introduction: Putting Values into Boxes](#optimization-reusing-memory)
-  - [□-elimination: Extracting Values from Boxes](#optimization-avoiding-unnecessary-copies)
-- [Utilities](#optimization-avoiding-unnecessary-copies)
-  - [quote](#optimization-reusing-memory)
-  - [Axiom T](#optimization-reusing-memory)
-- [Decomposing Artificial-Looking Stuff](#decomposing-on)
-  - [Quote: A Shorthand for Boxes](#optimization-avoiding-unnecessary-copies)
-  - [□-elimination-T: Unboxing within the Current Layer](#optimization-avoiding-unnecessary-copies)
-- [Miscs](#optimization-avoiding-unnecessary-copies)
-  - [Borrowing via box and letbox](#optimization-avoiding-unnecessary-copies)
+- [Introducing Layers and Boxes](#copying-and-discarding-values)
+- [Auxiliary Tools for Boxes](#optimization-avoiding-unnecessary-copies)
+- [Desugaring Exotic Operations](#decomposing-on)
+- [Additional Notes](#optimization-avoiding-unnecessary-copies)
 
-## Introducing Layers
+## Introducing Layers and Boxes
+
+For every type `a`, Neut has a type `meta a`. Terms of this type can be created via layer-related operations, as we'll see below.
+
+### Introducing Layers
 
 For every term in Neut, an integer value called _layer_ is defined. The layer of the body of a `define` is defined to be 0:
 
@@ -51,11 +49,7 @@ define bar(): unit {
 
 Only modality-related operations can change layers, as we'll see below.
 
-## The Box Type
-
-For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator, often written as `□` in the literature.
-
-### □-Introduction: Putting Values into Boxes
+### Creating Boxes
 
 You can use `box` to construct terms of type `meta a`:
 
@@ -91,19 +85,9 @@ let xn = COPY(type-n, xn) in
 e
 ```
 
-The sequence `x1, ..., xn` can be empty. Therefore, the following is valid:
+The sequence `x1, ..., xn` can be empty.
 
-```neut
-define box-unit(): meta unit {
-  // here is layer 0
-  box {
-    // here is layer -1
-    Unit
-  }
-}
-```
-
-### □-elimination: Extracting Values from Boxes
+### Using Boxes
 
 We can extract values from a box using `letbox`.
 
@@ -164,42 +148,11 @@ let ym = cast(&am, am, ym) in // cast ym: &am → am
 e2
 ```
 
-## Utilities
+The `on y1, ..., yn` part can be omitted.
 
-### Quote: A Shorthand for Boxes
+## Auxiliary Tools for Boxes
 
-Using `box` introduced above, we can turn a `bool` into `meta bool` by doing something like this:
-
-```neut
-define wrap-bool(b: bool): meta bool {
-  if b {
-    box {True}
-  } else {
-    box {False}
-  }
-}
-```
-
-This kind of translation can be mechanically done on "simple" types. To make things less tedious, Neut provides a syntactic construct `quote` that bypasses these translations.
-
-Using `quote`, the above `wrap-bool` can be rewritten as follows:
-
-```neut
-define wrap-bool(b: bool): meta bool {
-  quote {b}
-}
-```
-
-`quote` cannot be used against types that might contain types of the form `&a` or `(a) -> b`. For example, `quote` cannot be applied against values of the following types:
-
-- `&list(int)`
-- `(int) -> bool`
-- `either(bool, &list(int))`
-- `either(bool, (int) -> bool)`
-
-`quote` is after all just a shorthand.
-
-### □-elimination-T: Unboxing within the Current Layer
+### Using Boxes Without Changing the Current Layer
 
 Neut has a variant of `letbox`, called `letbox-T`. This is basically the same as `letbox`. The only difference is that it doesn't change layers:
 
@@ -228,7 +181,7 @@ define axiom-T<a>(x: meta a): a {
 }
 ```
 
-Note that the following is not well-layered:
+Note that `letbox` can't be used here:
 
 ```neut
 define axiom-T<a>(x: meta a): a {
@@ -240,9 +193,42 @@ define axiom-T<a>(x: meta a): a {
 }
 ```
 
-## Desugaring
+### A Shorthand for Creating Boxes
 
-### Borrowing operations
+Using `box` introduced before, we can turn a `bool` into `meta bool` by doing something like this:
+
+```neut
+define box-bool(b: bool): meta bool {
+  if b {
+    box {True}
+  } else {
+    box {False}
+  }
+}
+```
+
+This kind of translation can be mechanically done on "simple" types. To make things less tedious, Neut provides a syntactic construct `quote` that bypasses these translations.
+
+Using `quote`, the above `box-bool` can be rewritten as follows:
+
+```neut
+define box-bool(b: bool): meta bool {
+  quote {b}
+}
+```
+
+`quote` cannot be used against types that might contain types of the form `&a` or `(a) -> b`. For example, `quote` cannot be applied on values like the following:
+
+- `&list(int)`
+- `(int) -> bool`
+- `either(bool, &list(int))`
+- `either(bool, (int) -> bool)`
+
+`quote` is after all just a shorthand.
+
+## Desugaring Exotic Operations
+
+### Desugar: Borrowing
 
 Now we can desugar `let-on` as follows:
 
@@ -256,9 +242,9 @@ letbox-T x on y, z = quote {e1} in
 e2
 ```
 
-and this is why the type of `e1` must be restricted to some extent. Now we can see that those restrictions come from `quote`.
+and this is why the type of `e1` must be restricted to some extent. We can see that those restrictions come from `quote`.
 
-### Embodying
+### Desugar: Embodying
 
 Using the `axiom-T` that we've defined, we can desugar `*e` as follows:
 
@@ -268,7 +254,7 @@ define embody<a>(x: &a): a {
 }
 ```
 
-## Miscs
+## Additional Notes
 
 ### Layer Closedness of Functions
 
@@ -319,4 +305,4 @@ define joker(): () -> unit {
 }
 ```
 
-The inner function (💫), which depends on `xs: &list(int)`, is bound to `f` after evaluating the outer `letbox`. Thus, we would be able to cause the dreaded use-after-free by deallocating `xs` and then calling the function `f`.
+The inner `function`, which contains `xs: &list(int)`, is bound to `f` after evaluating the outer `letbox`. Thus, we would be able to cause the dreaded use-after-free by deallocating `xs` and then calling the function `f`.
