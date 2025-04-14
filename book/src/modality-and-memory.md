@@ -6,28 +6,18 @@ This `let-on` can actually be understood as a syntax sugar over the T-necessity 
 
 ## Table of Contents
 
-- [Introducing Layers](#copying-and-discarding-values)
-- [□-Introduction: Putting Values into Boxes](#optimization-reusing-memory)
-- [□-elimination: Extracting Values from Boxes](#optimization-avoiding-unnecessary-copies)
-- [Combination of box and letbox](#optimization-avoiding-unnecessary-copies)
-- [Quote: A Shorthand for Boxes](#optimization-avoiding-unnecessary-copies)
-- [□-elimination-T: Unboxing within the Current Layer](#optimization-avoiding-unnecessary-copies)
-- [Layer Closedness of Functions](#optimization-avoiding-unnecessary-copies)
-
+- [Box Type](#copying-and-discarding-values)
+  - [□-Introduction: Putting Values into Boxes](#optimization-reusing-memory)
+  - [□-elimination: Extracting Values from Boxes](#optimization-avoiding-unnecessary-copies)
+  - [Borrowing via box and letbox](#optimization-avoiding-unnecessary-copies)
+- [Decomposing `on`](#decomposing-on)
+  - [Quote: A Shorthand for Boxes](#optimization-avoiding-unnecessary-copies)
+  - [□-elimination-T: Unboxing within the Current Layer](#optimization-avoiding-unnecessary-copies)
+- [Miscs](#optimization-avoiding-unnecessary-copies)
 
 ## Introducing Layers
 
-For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator, often written as `□` in the literature.
-
-In Neut, given `e: a`, you can create values of type `meta a` by writing something like `box {e}`. Here, the `e` is not arbitrary since, if so, we must admit propositions like `a -> □a`, making every truth a necessary truth.
-
-In Neut, the condition that `e` must satisfy is described using _layers_. So, before using `box`, let's learn what layers are like.
-
-### The Basics of Layers
-
-For every term in Neut, an integer value called _layer_ is defined.
-
-Let's see how layers are calculated. The layer of the body of a `define` is defined to be 0:
+For every term in Neut, an integer value called _layer_ is defined. The layer of the body of a `define` is defined to be 0:
 
 ```neut
 define foo(): unit {
@@ -36,63 +26,7 @@ define foo(): unit {
 }
 ```
 
-If you define a variable at layer N, the layer of the variable is also N:
-
-```neut
-// here is layer N
-
-let x = Unit in
-x // ← `x` is a variable at layer N
-```
-
-The layer of (an occurrence of) a constant is defined to be the layer in which the constant is used:
-
-```neut
-define my-func(): int {
-  10
-}
-
-define use-my-func() {
-  // layer 0
-  let v1 =
-    my-func() // ← this `my-func` is at layer 0
-  in
-
-  ... // ← some layer operations here
-
-  // layer 3 (for example)
-  let v2 =
-    my-func() // ← this `my-func` is at layer 3
-  in
-
-  ...
-}
-```
-
-Terms that aren't related to modality won't change layers. For example, the following is the layer structure of `function` and `let`:
-
-```neut
-// here is layer N
-function (x1: a1, ..., xn: an) {
-  // here is layer N
-  e
-}
-
-// here is layer N
-let x =
-  // here is layer N
-  e1
-in
-// here is layer N
-// (x: a at layer N)
-e2
-```
-
-As long as you don't use modality-related terms, the layer of a term (and a subterm) is always 0.
-
-### Layers and Variables
-
-In Neut, _a variable defined at layer n can only be used at layer n_. For example, the following is not a valid term:
+A variable defined at layer n can only be used at layer n. For example, the following isn't valid:
 
 ```neut
 define bar(): unit {
@@ -103,7 +37,7 @@ define bar(): unit {
 
   // layer 3 (for example)
   let v2 =
-    x // ← ERROR
+    x // ← ERROR: 3 ≠ 0
   in
 
   ...
@@ -111,39 +45,33 @@ define bar(): unit {
 
 ```
 
-This is because the variable `x` is defined at layer 0 but used at layer 3 (≠ 0).
+Only modality-related operations can change layers, as we'll see below.
 
-## □-Introduction: Putting Values into Boxes
+## The Box Type
 
-Now that we know layers, we can talk about how to interact with values of type `meta a`.
+For every type `a`, Neut has a type `meta a`. As we will see, this `meta` is a necessity operator, often written as `□` in the literature.
 
-### Syntax
+### □-Introduction: Putting Values into Boxes
 
-A term of type `meta a` can be created using the syntactic construct `box`.
-
-The syntax of `box` is as follows:
+You can use `box` to construct terms of type `meta a`:
 
 ```neut
-// here is layer (n+1)
-// - x1: &a1 at (n+1)
-// - ...
-// - xm: &am at (n+1)
-box x1, ..., xm {
-  // here is layer n
-  // - x1: a1 at n
-  // - ...
-  // - xm: am at n
-  e1
+define use-box(x: &int, y: &bool): meta pair(int, bool) {
+  // here is layer 0
+  // x: &int
+  // y: &bool
+  box x, y {
+    // here is layer -1
+    // x: int
+    // y: bool
+    Pair(x, y)
+  }
 }
 ```
 
-Given a term `e: A`, the type of `box x1, ..., xn {e}` is `meta A`.
+Given a term `e: a` and variables `x1: &a1, ..., xn: &an`, the type of `box x1, ..., xn {e}` is `meta a`.
 
-Note that the types of `xi`s must be of the form `&A`.
-
-`box` turns `&a1, ..., &an` into `a1, ..., an` inside its body.
-
-### Semantics
+If the layer of a term `e` is n, that of `box x1, ..., xn {e}` is n + 1.
 
 Operationally, `box x1, ..., xn { e }` copies all the `x1, ..., xn` and executes `e`:
 
@@ -153,31 +81,13 @@ box x1, ..., xn { e }
 ↓
 
 // psueudo-code
-let x1 = copy(x1) in
+let x1 = COPY(type-1, x1) in
 ...
-let xn = copy(xn) in
+let xn = COPY(type-n, xn) in
 e
 ```
 
-As you can see from the above semantics, terms of type `meta a` have the same forms as `a`. Thus, the type `meta a` is compiled into the same closed function as `a`.
-
-### Example
-
-Let's see some examples. Below is an example of `box`:
-
-```neut
-define some-function(x: &int): meta int {
-  // here is layer 0
-  // (x: &int at 0)
-  box x {
-    // here is layer -1
-    // (x: int at -1)
-    x
-  }
-}
-```
-
-The sequence `x1, ..., xn` can be empty. Thus, below is also a valid term:
+The sequence `x1, ..., xn` can be empty. Therefore, the following is valid:
 
 ```neut
 define box-unit(): meta unit {
@@ -189,21 +99,7 @@ define box-unit(): meta unit {
 }
 ```
 
-On the other hand, below isn't a valid term:
-
-```neut
-define some-function(x: bool): meta bool {
-  // here is layer 0
-  box {
-    // here is at layer -1
-    not(x)
-  }
-}
-```
-
-This is because the variable `x` is defined at layer 0 but used at layer -1.
-
-## □-elimination: Extracting Values from Boxes
+### □-elimination: Extracting Values from Boxes
 
 We can extract values from a box using `letbox`.
 
