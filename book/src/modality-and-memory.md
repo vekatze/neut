@@ -1,17 +1,17 @@
 # Modality and Memory
 
-Here, we'll see how to interact with the box modality, which enables borrowing in Neut. We'll also see that both `on` and `*e` are in fact syntactic sugar over this modality.
+Here, we'll see how to interact with the box modality, which enables borrowing in Neut. We'll then see that both `on` and `*e` are actually syntactic sugar over this modality.
 
 ## Table of Contents
 
-- [Introducing Layers and Boxes](#copying-and-discarding-values)
-- [Auxiliary Tools for Boxes](#optimization-avoiding-unnecessary-copies)
-- [Desugaring Exotic Operations](#decomposing-on)
-- [Additional Notes](#optimization-avoiding-unnecessary-copies)
+- [Introducing Layers and Boxes](#introducing-layers-and-boxes)
+- [Auxiliary Tools for Boxes](#auxiliary-tools-for-boxes)
+- [Desugaring Exotic Operations](#desugaring-exotic-operations)
+- [Additional Notes](#additional-notes)
 
 ## Introducing Layers and Boxes
 
-For every type `a`, Neut has a type `meta a`. The `meta` here is often called a box modality in the literature.
+For every type `a`, Neut has a type `meta a`. This `meta` is often called a box modality in the literature.
 
 In Neut, terms of this type can be created via layer-related syntactic constructs.
 
