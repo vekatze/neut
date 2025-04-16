@@ -1,6 +1,6 @@
 # Modality and Memory
 
-Here, we'll see how to interact with the box modality `meta`, which enables borrowing in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality, even if they might have looked somewhat artificial at first glance.
+Here, we'll see how to interact with the box modality `meta`, which enables borrowing in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality.
 
 ## Table of Contents
 
@@ -13,11 +13,13 @@ Here, we'll see how to interact with the box modality `meta`, which enables borr
 
 In Neut, each type `a` has a corresponding type `meta a`. This type provides a way to work with *layers*, which are similar to lifetimes in other languages.
 
-Below, we’ll first introduce the concept of layers, and then see how to use this `meta a`.
+Below, we’ll first introduce the concept of layers, and then see how to use `meta a`.
 
 ### Layers and Variables
 
-Every term in Neut has an integer layer. Conceptually, a layer can be seen as the level at which a piece of data or code lives. The body of a `define` starts at layer 0:
+Every term in Neut has an integer called layer. Conceptually, a layer can be seen as the level at which a piece of data  lives.
+
+The body of a `define` starts at layer 0:
 
 ```neut
 define foo(): () -> unit {
@@ -62,7 +64,7 @@ define use-box(x: &int, y: &bool, z: &text): meta pair(int, bool) {
   // - y: &bool
   // - z: &text
   box x, y {
-    // here is layer -1 (== 0 - 1)
+    // here is layer -1 (== layer(outer) - 1)
     // free variables:
     // - x: int
     // - y: bool
@@ -77,21 +79,20 @@ Some notes on `box`:
 - The type of `xi` in `box x1, ..., xn {e}` must be of the form `&ai`.
 - Given `xi: &ai`, the type of `xi` in the body of `box` is `ai`.
 
-Operationally, `box x1, ..., xn { e }` copies all the `x1, ..., xn` and executes `e`:
+`box` behaves as follows:
 
 ```neut
 box x1, ..., xn { e }
 
-↓
+↓ // (compile)
 
-// pseudo-code
-let x1 = COPY(type-1, x1) in
+let x1 = COPY(a1, x1) in
 ...
-let xn = COPY(type-n, xn) in
+let xn = COPY(an, xn) in
 e
 ```
 
-You can also omit the sequence `x1, ..., xn` entirely if no variables need to be copied.
+You can omit the sequence `x1, ..., xn` entirely if no variables need to be copied.
 
 ### Using Boxes
 
@@ -105,11 +106,12 @@ define use-letbox(x: int, y: bool, z: text): int {
   // - y: bool
   // - z: text
   letbox extracted-value on x, y =
-    // here is layer 1
+    // here is layer 1 (== layer(outer) + 1)
     // free variables:
     // - x: &int
     // - y: &bool
     // - (z is unavailable here because of layer mismatch)
+    some-func(x, y);
     box {42}
   in
   // here is layer 0
@@ -123,24 +125,27 @@ define use-letbox(x: int, y: bool, z: text): int {
 
 Some notes on `letbox`:
 
-- The type of `yi` in `on y1, ..., yn` has no restriction.
-- Given `yi: ai`, the type of `xi` in the body of `letbox x on y1, ..., yn = e1 in e2` is `&ai`.
+- The type of `xi` in `on x1, ..., xn` has no restriction.
+- Given `xi: ai`, the type of `xi` inside `letbox` is `&ai`.
 
-Operationally, `letbox` behaves as follows:
+`letbox` behaves as follows:
 
 ```neut
-letbox x on y1, ..., ym = e1 in
+letbox v on x1, ..., xn = e1 in
 e2
 
-↓
+↓ // (compile)
 
-let y1 = cast(a1, &a1, y1) in // cast y1: a1 → &a1
+let x1 = cast(a1, &a1, x1) in // cast x1: a1 → &a1
 ...                           // ...
-let ym = cast(am, &am, ym) in // cast ym: am → &am
-let x = e1 in
-let y1 = cast(&a1, a1, y1) in // cast y1: &a1 → a1
+let xn = cast(an, &an, xn) in // cast xn: an → &an
+
+let v  = e1 in
+
+let x1 = cast(&a1, a1, x1) in // cast x1: &a1 → a1
 ...                           // ...
-let ym = cast(&am, am, ym) in // cast ym: &am → am
+let xn = cast(&an, an, xn) in // cast xn: &an → an
+
 e2
 ```
 
@@ -150,13 +155,13 @@ The `on y1, ..., yn` in `letbox` is optional.
 
 ### Using Boxes Without Changing the Current Layer
 
-Sometimes you want to use a term of type `meta a` without shifting your current layer. For this, Neut provides `letbox-T`. It keeps you in the same layer:
+Sometimes you want to use a term of type `meta a` without shifting your current layer. For this, Neut provides `letbox-T`, which keeps you in the same layer:
 
 ```neut
 define use-letbox-T(x: int, y: bool): int {
   // here is layer 0
     letbox-T value on x, y =
-    // here is layer 0 (not layer 1)
+    // here is layer 0 (== layer(outer))
     box {42}
   in
   // here is layer 0
@@ -175,9 +180,9 @@ define axiom-T<a>(x: meta a): a {
 
 If you tried to use `letbox` instead, you’d get an error because it would result in layer mismatch.
 
-### A Shorthand for Creating Boxes
+### A Shortcut for Creating Boxes
 
-We can construct a `meta bool` from a `bool` as follows:
+We can, for example, construct a `meta bool` from a `bool` as follows:
 
 ```neut
 define box-bool(b: bool): meta bool {
@@ -192,7 +197,7 @@ To streamline this kind of mechanical step, Neut provides `quote`:
 
 ```neut
 define box-bool(b: bool): meta bool {
-  quote {b} // directly casts `bool` into `meta bool`
+  quote {b} // `quote` casts `bool` into `meta bool`
 }
 ```
 
@@ -202,11 +207,11 @@ Not all types can be cast using `quote`. Specifically, it can't be used on any t
 - a type of the form `(a1, ..., an) -> b`
 - a type variable
 
-`quote` is after all a shorthand for simple types.
+If you can get `meta t` by quoting `e: t`, you can get the same type using `box` instead. In this sense, `quote` is a shortcut for creating boxes.
 
 ## Desugaring the Two Operations
 
-We've seen two constructs `let-on` and `*e`. Though they might have appeared “artificial,” they are in fact straightforward expansions over our box modality.
+We've seen the two constructs `let-on` and `*e`. Though they might have initially appeared a bit artificial, they are in fact straightforward applications of the box modality.
 
 ### Desugar: Borrowing
 
@@ -226,7 +231,7 @@ This explains why the result type of a `let-on` had to be restricted to some ext
 
 ### Desugar: Embodying
 
-Using the `axiom-T` we defined, we can desugar `*e` as follows:
+Using the `axiom-T` we defined above, we can also desugar `*e` as follows:
 
 ```neut
 *e
