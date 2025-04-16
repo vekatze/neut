@@ -6,7 +6,7 @@ Here, we'll see how to interact with the box modality `meta`, which enables borr
 
 - [Layers and the Box Modality](#layers-and-the-box-modality)
 - [More Tools for Boxes](#auxiliary-tools-for-boxes)
-- [Desugaring Exotic Operations](#desugaring-exotic-operations)
+- [Desugaring the Two Operations](#desugaring-exotic-operations)
 - [Additional Notes](#additional-notes)
 
 ## Layers and the Box Modality
@@ -206,7 +206,7 @@ define box-bool(b: bool): meta bool {
 
 `quote` is after all a shorthand for simple types.
 
-## Desugaring Exotic Operations
+## Desugaring the Two Operations
 
 We've seen two constructs `let-on` and `*e`. Though they might have appeared “artificial,” they are in fact straightforward expansions over our box modality.
 
@@ -243,25 +243,9 @@ axiom-T(box x {x})
 
 ### Layers and Free Variables
 
-Regarding layers, there's one last condition that must be satisfied. That is, if a function is defined at layer n, the layer of every free variable `x` in the function must satisfy `layer(x) <= n`.
+There's one last rule that must be satisfied for memory safety. That is, if a function is defined at layer `n`, then any free variable `x` in the function must satisfy `layer(x) <= n`.
 
-For example, the following isn't well-layered:
-
-```neut
-define use-function(x: meta int): meta () -> int {
-  // layer 0
-  let x = 10 in
-  box {
-    // layer -1
-    function () {
-      letbox value = x in // Error: layer(x) = 0 > -1
-      value
-    }
-  }
-}
-```
-
-Without this condition, the following would be well-typed and well-layered:
+Without this rule, you could do something like the following:
 
 ```neut
 define joker(): () -> unit {
@@ -269,16 +253,13 @@ define joker(): () -> unit {
   let xs: list(int) = [1, 2, 3] in
   letbox f on xs =
     // layer 1
-    // xs: at 1
+    // xs: &list(int), at 1
     box {
       // layer 0
-      function () {
+      function () { // ★
         letbox k =
           // 1
-          let len =
-            // using xs@1 in function@0
-            length(xs)
-          in
+          let len = length(xs) in
           box {Unit}
         in
         Unit
@@ -289,4 +270,4 @@ define joker(): () -> unit {
 }
 ```
 
-The inner `function`, which contains `xs: &list(int)`, is bound to `f` after evaluating the outer `letbox`. Hence, a use-after-free could occur by deallocating `xs` before calling `f`. This possibility explains the restriction.
+This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario. Hence, Neut’s layer rules prohibit capturing a higher-layer variable in a lower-layer function.
