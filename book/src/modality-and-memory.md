@@ -150,17 +150,15 @@ The `on y1, ..., yn` in `letbox` is optional.
 
 ### Using Boxes Without Changing the Current Layer
 
-Neut has a variant of `letbox`, called `letbox-T`. The only difference is that `letbox-T` doesn't change layers:
+<!-- Neut has a variant of `letbox`, called `letbox-T`. The only difference is that `letbox-T` doesn't shift layers: -->
+
+Sometimes you want to use a term of type `meta a` without shifting your current layer. For this, Neut provides `letbox-T`. It keeps you in the same layer:
 
 ```neut
 define use-letbox-T(x: int, y: bool): int {
   // here is layer 0
-  // (x: int)
-  // (y: bool)
-  letbox-T value on x, y =
-    // here is layer 0 (not 1!)
-    // (x: &int)
-    // (y: &bool)
+    letbox-T value on x, y =
+    // here is layer 0 (not layer 1)
     box {42}
   in
   // here is layer 0
@@ -168,7 +166,7 @@ define use-letbox-T(x: int, y: bool): int {
 }
 ```
 
-Using `letbox-T`, we can for example write functions of type `(meta a) -> a` as follows:
+`letbox-T` can be used for example to write functions of type `(meta a) -> a` as follows:
 
 ```neut
 define axiom-T<a>(x: meta a): a {
@@ -177,17 +175,7 @@ define axiom-T<a>(x: meta a): a {
 }
 ```
 
-Note that `letbox` can't be used here:
-
-```neut
-define axiom-T<a>(x: meta a): a {
-  letbox tmp =
-    // error: x is defined at layer 0 but used at layer 1
-    x
-  in
-  tmp
-}
-```
+If you tried to use `letbox` instead, you’d get an error because it would result in layer mismatch.
 
 ### A Shorthand for Creating Boxes
 
@@ -202,24 +190,21 @@ define box-bool(b: bool): meta bool {
 }
 ```
 
-This kind of construction can be mechanically done on "simple" types. To make things less tedious, Neut provides `quote` for this kind of constructions.
-
-Given a term of a "simple" type `a`, `quote` casts it to `meta a`:
+To streamline such mechanical lifting operation, Neut provides `quote`. It casts a term of simple type into its meta form:
 
 ```neut
 define box-bool(b: bool): meta bool {
-  quote {b}
+  quote {b} // directly constructs `meta bool` from `bool`
 }
 ```
 
-`quote` cannot be used against types that might contain types of the form `&a` or `(a) -> b`. For example, `quote` cannot be applied on values like the following:
+`quote` can't be used on types that might contain one of the following:
 
-- `&list(int)`
-- `(int) -> bool`
-- `either(bool, &list(int))`
-- `either(bool, (int) -> bool)`
+- a type of the form `&a`
+- a type of the form `(a1, ..., an) -> b`
+- a type variable
 
-`quote` is after all just a shorthand.
+`quote` is after all a shorthand for simple types.
 
 ## Desugaring Exotic Operations
 
