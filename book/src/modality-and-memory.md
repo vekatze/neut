@@ -1,6 +1,6 @@
 # Modality and Memory
 
-Here, we'll see how to interact with the box modality `meta`, which enables borrowing in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality, even if they might look somewhat artificial at first glance.
+Here, we'll see how to interact with the box modality `meta`, which enables borrowing in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality, even if they might have looked somewhat artificial at first glance.
 
 ## Table of Contents
 
