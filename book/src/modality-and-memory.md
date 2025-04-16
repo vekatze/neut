@@ -1,37 +1,37 @@
 # Modality and Memory
 
-Here, we'll see how to interact with the box modality, which enables borrowing in Neut. We'll then see that both `on` and `*e` are actually syntactic sugar over this modality.
+Here, we'll see how to interact with the box modality `meta`, which enables borrowing in Neut. We'll then see that both `on` and `*e` can be understood as syntactic sugar over this modality, even if they might look somewhat artificial at first glance.
 
 ## Table of Contents
 
-- [Introducing Layers and Boxes](#introducing-layers-and-boxes)
-- [Auxiliary Tools for Boxes](#auxiliary-tools-for-boxes)
+- [Layers and the Box Modality](#layers-and-the-box-modality)
+- [More Tools for Boxes](#auxiliary-tools-for-boxes)
 - [Desugaring Exotic Operations](#desugaring-exotic-operations)
 - [Additional Notes](#additional-notes)
 
-## Introducing Layers and Boxes
+## Layers and the Box Modality
 
-For every type `a`, Neut has a type `meta a`. This `meta` is often called a box modality in the literature.
+In Neut, each type `a` has a corresponding type `meta a`. This type provides a way to work with *layers*, which are similar to lifetimes in other languages.
 
-In Neut, terms of this type can be created via layer-related syntactic constructs.
+Below, we’ll first introduce the concept of layers, and then see how to use this `meta a`.
 
-Below, we'll firstly introduce the concept of layers, and then use it to show how to use the modality.
+### Layers in Program
 
-### Introducing Layers
+Every term in Neut has an integer layer. Conceptually, a layer can be seen as the level at which a piece of data or code lives. The body of a `define` starts at layer 0:
 
-For every term in Neut, an integer value called _layer_ is defined. The layer of the body of a `define` is defined to be 0:
+<!-- For every term in Neut, an integer value called _layer_ is defined. The layer of the body of a `define` is defined to be 0: -->
 
 ```neut
 define foo(): () -> unit {
-  // here is at layer 0
+  // here is layer 0
   function () {
-    // here is also at layer 0
+    // here is also layer 0
     Unit
   }
 }
 ```
 
-A variable defined at layer n can only be used at layer n. For example, the following isn't valid:
+A variable defined at layer n can only be used at the same layer. For example, the following code is invalid because it tries to use a layer-0 variable `x` at layer 3:
 
 ```neut
 define bar(): unit {
@@ -76,7 +76,7 @@ define use-box(x: &int, y: &bool, z: &text): meta pair(int, bool) {
 
 Given a term `e: a` and variables `x1: &a1, ..., xn: &an`, the type of `box x1, ..., xn {e}` is `meta a`.
 
-If the layer of a term `e` is n, that of `box x1, ..., xn {e}` is n + 1.
+If the layer of a term `e` is n, the layer of `box x1, ..., xn {e}` is n + 1.
 
 Operationally, `box x1, ..., xn { e }` copies all the `x1, ..., xn` and executes `e`:
 
@@ -85,14 +85,14 @@ box x1, ..., xn { e }
 
 ↓
 
-// psueudo-code
+// pseudo-code
 let x1 = COPY(type-1, x1) in
 ...
 let xn = COPY(type-n, xn) in
 e
 ```
 
-The sequence `x1, ..., xn` can be empty.
+You can omit the sequence `x1, ..., xn` entirely if no variables need to be captured.
 
 ### Using Boxes
 
@@ -118,7 +118,7 @@ define use-letbox(x: int, y: bool, z: text): int {
 }
 ```
 
-Operationally, `letbox` behaves as follows:
+Operationally, `letbox` is something like the following:
 
 ```neut
 letbox x on y1, ..., ym = e1 in
@@ -136,7 +136,7 @@ let ym = cast(&am, am, ym) in // cast ym: &am → am
 e2
 ```
 
-The `on y1, ..., yn` part in `letbox` can be omitted.
+The `on y1, ..., yn` clause in `letbox` is optional.
 
 ## Auxiliary Tools for Boxes
 
@@ -217,7 +217,7 @@ define box-bool(b: bool): meta bool {
 
 ### Desugar: Borrowing
 
-Now we can desugar `let-on` as follows:
+We can now desugar `let-on` as follows:
 
 ```neut
 let x on y, z = e1 in
@@ -233,7 +233,7 @@ This explains why the type of `e1` must be restricted to some extent; those rest
 
 ### Desugar: Embodying
 
-Using the `axiom-T` that we've defined, we can desugar `*e` as follows:
+Using the `axiom-T` we defined, we can desugar `*e` as follows:
 
 ```neut
 *e
@@ -249,8 +249,6 @@ axiom-T(box x {x})
 ### Layers and Free Variables
 
 Regarding layers, there's one last condition that must be satisfied. That is, if a function is defined at layer n, the layer of every free variable `x` in the function must satisfy `layer(x) <= n`.
-
-<!-- There's one last condition: for any free variable `x` of a function `f`, `layer(x) <= layer(f)` must hold.  -->
 
 For example, the following isn't well-layered:
 
@@ -296,4 +294,4 @@ define joker(): () -> unit {
 }
 ```
 
-The inner `function`, which contains `xs: &list(int)`, is bound to `f` after evaluating the outer `letbox`. Thus, we would be able to cause a use-after-free by deallocating `xs` and then calling the function `f`. Thus this restriction.
+The inner `function`, which contains `xs: &list(int)`, is bound to `f` after evaluating the outer `letbox`. Hence, a use-after-free could occur by deallocating `xs` before calling `f`. This possibility explains the restriction.
