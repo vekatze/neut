@@ -7,7 +7,7 @@ You can find the source files for the following benchmarks [here](https://github
 - [Bubble Sort](#bubble-sort)
 - [Dictionary (Create & Lookup)](#dictionary-create--lookup)
 - [IntMap (Create & Lookup)](#intmap-create--lookup)
-- [Additional Notes](#additional-notes)
+- [Notes](#notes)
 
 ## Bubble Sort
 
@@ -45,9 +45,7 @@ This test creates a random intmap of size `N` and performs random lookups from t
 
 ![IntMap](./image/graph/arm64-darwin/intmap.png "IntMap")
 
----
-
-## Additional Notes
+## Notes
 
 I used the following hardware in the above benchmarks:
 
@@ -66,7 +64,5 @@ just bench-darwin arm64-darwin # macOS (ARM64)
 You may want to read [the Dockerfile in the repository](https://github.com/vekatze/neut/blob/main/build/Dockerfile) to get the list of additional dependencies for running benchmarks. The list includes npm, hyperfine, etc.
 
 Please tell me (hopefully gently) if some of the results are unfair because of reasons I overlooked.
-
----
 
 [^bubble]: I honestly don't know why the faster one changes depending on the environment here. Please let me know if you find out why.

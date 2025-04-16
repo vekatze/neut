@@ -14,7 +14,7 @@ Neut supports integers and floats. More specifically, the following types are su
 - integer types: `intN (= int1, int2, int3, ..., int64)`
 - float types: `floatN (= float16, float32, float64)`
 
-You can also use `int` and `float`. These are just syntax sugar for `int64` and `float64`, respectively.
+You can also use `int` and `float`. These are just syntactic sugar for `int64` and `float64`, respectively.
 
 ### Primitive Functions
 
