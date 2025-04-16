@@ -183,7 +183,7 @@ define use-my-func(): int {
 }
 ```
 
-The syntax sugar `of` can be used to rewrite the above `use-my-func` as follows:
+The syntactic sugar `of` can be used to rewrite the above `use-my-func` as follows:
 
 ```neut
 define use-my-func(): int {
@@ -436,5 +436,5 @@ If you pass `--mode release` to `neut build`, `assert` does nothing.
 
 ### Misc
 
-- Additional syntactic sugars are also available. For more, please see the [language reference](./terms.md#syntactic-sugar).
+- Additional syntactic sugar is also available. For more, please see the [language reference](./terms.md#syntactic-sugar).
 - If you want to call foreign functions (FFI), please see the [here](statements.md#foreign).

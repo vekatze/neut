@@ -329,7 +329,7 @@ let x: t = e1 in e2
 
 (1) `let x = e1 in e2` isn't exactly the same as `{function (x) {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1 in e2`.
 
-(2) When a pattern is passed, `let` is the following syntax sugar:
+(2) When a pattern is passed, `let` is the following syntactic sugar:
 
 ```neut
 let pat = x in
@@ -2135,7 +2135,7 @@ A "lowtype" is a term that reduces to one of the following:
 - `float16`, `float32`, `float64`
 - `pointer`
 
-You can also use `int` and `float` as a lowtype. These are just syntax sugar for `int64` and `float64`, respectively.
+You can also use `int` and `float` as a lowtype. These are just syntactic sugar for `int64` and `float64`, respectively.
 
 ### Semantics
 
@@ -2587,7 +2587,7 @@ cont
 
 ### Semantics
 
-`use` is the following syntax sugar:
+`use` is the following syntactic sugar:
 
 ```neut
 use e {x1, ..., xn} in
@@ -2632,7 +2632,7 @@ e::x
 
 ### Semantics
 
-`::` is the following syntax sugar:
+`::` is the following syntactic sugar:
 
 ```neut
 e::x
@@ -2726,7 +2726,7 @@ if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
 
 ### Semantics
 
-`if` is the following syntax sugar:
+`if` is the following syntactic sugar:
 
 ```neut
 if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
@@ -2777,7 +2777,7 @@ when cond {
 
 ### Semantics
 
-`when` is the following syntax sugar:
+`when` is the following syntactic sugar:
 
 ```neut
 when cond {
@@ -2821,7 +2821,7 @@ e2
 
 ### Semantics
 
-`e1; e2` is the following syntax sugar:
+`e1; e2` is the following syntactic sugar:
 
 ```neut
 let _: unit = e1 in
@@ -2996,7 +2996,7 @@ define foo(x: int): ?int {
 
 ### Semantics
 
-`?t` is the following syntax sugar:
+`?t` is the following syntactic sugar:
 
 ```neut
 ?t
@@ -3008,7 +3008,7 @@ either(unit, t)
 
 ### Type
 
-Derived from the syntax sugar.
+Derived from the syntactic sugar.
 
 ## `[e1, ..., en]`
 
@@ -3030,7 +3030,7 @@ define make-int-list(): list(int) {
 
 ### Semantics
 
-`[e1, ..., en]` is the following syntax sugar:
+`[e1, ..., en]` is the following syntactic sugar:
 
 ```neut
 [e1, ..., en]
@@ -3094,7 +3094,7 @@ e2
 
 ### Semantics
 
-`with` / `bind` is the syntax sugar defined by the following five translation rules:
+`with` / `bind` is the syntactic sugar defined by the following five translation rules:
 
 ```neut
 // (1) -----------------------------------------------------

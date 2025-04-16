@@ -193,7 +193,7 @@ define use-length(xs: list(int)): unit {
 
 `on` takes a comma-separated list of variables. The variables in the list (`xs` in this example) are cast to noema types in the body of the `let`, and cast back to the original types in the continuation.
 
-Conceptually, `on` can be seen as the following syntax sugar:
+Conceptually, `on` can be seen as the following syntactic sugar:
 
 ```neut
 let v on x = e in
