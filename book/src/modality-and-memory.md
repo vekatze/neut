@@ -5,8 +5,8 @@ Here, we'll see how to interact with the box modality `meta`, which enables borr
 ## Table of Contents
 
 - [Layers and the Box Modality](#layers-and-the-box-modality)
-- [More Tools for Boxes](#auxiliary-tools-for-boxes)
-- [Desugaring the Two Operations](#desugaring-exotic-operations)
+- [More Tools for Boxes](#more-tools-for-boxes)
+- [Desugaring the Two Operations](#desugaring-the-two-operations)
 - [Additional Notes](#additional-notes)
 
 ## Layers and the Box Modality
@@ -146,11 +146,9 @@ e2
 
 The `on y1, ..., yn` in `letbox` is optional.
 
-## Auxiliary Tools for Boxes
+## More Tools for Boxes
 
 ### Using Boxes Without Changing the Current Layer
-
-<!-- Neut has a variant of `letbox`, called `letbox-T`. The only difference is that `letbox-T` doesn't shift layers: -->
 
 Sometimes you want to use a term of type `meta a` without shifting your current layer. For this, Neut provides `letbox-T`. It keeps you in the same layer:
 
