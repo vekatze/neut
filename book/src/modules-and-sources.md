@@ -29,7 +29,7 @@ cd ./sample
 neut build sample --execute # => "Hello, world!"
 ```
 
-You can also obtain the resulting binary:
+You can also retrieve the resulting binary:
 
 ```sh
 neut build sample --install ./bin # creates a directory `bin` if necessary
@@ -51,7 +51,7 @@ sample/
 
 The directory `cache` is where object files (binary files) and dependencies are put. You don't normally have to go into the directory.
 
-The directory `source` is where we put source files.
+The directory `source` is where source files are put.
 
 The file `module.ens` contains meta information about this module, such as dependencies.
 
@@ -84,7 +84,7 @@ The content of `module.ens` is something like the following:
 }
 ```
 
-`target` specifies the targets of a module. In the case above, the command `neut build sample` builds the module using the file `source/sample.nt` as its entry point.
+`target` specifies the targets of a module. In the example above, the command `neut build sample` builds the module using the file `source/sample.nt` as its entry point.
 
 `dependency` specifies the dependencies of a module. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
 
@@ -178,7 +178,7 @@ Top-level items like `define` are called statements. You’ll learn more about t
 
 <div class="info-block">
 
-As in F#, statements in Neut are order-sensitive. If you define `main` before `my-add`, the code won't compile. For forward references, you have to explicitly declare names beforehand using a statement called `nominal`, which we'll see in the next section.
+As in F#, statements in Neut are order-sensitive. Therefore, if you define `main` before `my-add`, the code won't compile. For forward references, you have to explicitly declare names beforehand using a statement called `nominal`, which we'll see in the next section.
 
 </div>
 
@@ -323,9 +323,9 @@ define main(): unit {
 
 That is, the name of the current module is always `this`.
 
-### Defining Aliases of Files
+### Defining Aliases for Files
 
-We can also define aliases of files. Let's look again at the example of fully-qualified names:
+Aliases for files can also be defined. Let's look again at the example of fully-qualified names:
 
 ```neut
 // new-item.nt
@@ -352,7 +352,7 @@ Let's define an alias for `some-name.sample`. Edit the `module.ens` as follows:
 }
 ```
 
-We can then rewrite the `new-item.nt` as follows:
+The `new-item.nt` can then be rewritten as follows:
 
 ```neut
 // new-item.nt
