@@ -15,11 +15,9 @@ In Neut, each type `a` has a corresponding type `meta a`. This type provides a w
 
 Below, we’ll first introduce the concept of layers, and then see how to use this `meta a`.
 
-### Layers in Program
+### Layers and Variables
 
 Every term in Neut has an integer layer. Conceptually, a layer can be seen as the level at which a piece of data or code lives. The body of a `define` starts at layer 0:
-
-<!-- For every term in Neut, an integer value called _layer_ is defined. The layer of the body of a `define` is defined to be 0: -->
 
 ```neut
 define foo(): () -> unit {
@@ -31,7 +29,7 @@ define foo(): () -> unit {
 }
 ```
 
-A variable defined at layer n can only be used at the same layer. For example, the following code is invalid because it tries to use a layer-0 variable `x` at layer 3:
+A variable defined at layer n can only be used at the same layer. For example, the following code is invalid because the variable `x` is defined at layer 0 but used at layer 3:
 
 ```neut
 define bar(): unit {
@@ -54,7 +52,7 @@ Only modality-related operations can change layers, as we'll see below.
 
 ### Creating Boxes
 
-You can use `box` to construct terms of type `meta a`:
+To create a term of type `meta a`, use `box`:
 
 ```neut
 define use-box(x: &int, y: &bool, z: &text): meta pair(int, bool) {
@@ -64,19 +62,20 @@ define use-box(x: &int, y: &bool, z: &text): meta pair(int, bool) {
   // - y: &bool
   // - z: &text
   box x, y {
-    // here is layer -1
+    // here is layer -1 (== 0 - 1)
     // free variables:
     // - x: int
     // - y: bool
-    // - (z can't be used here because of layer mismatch)
+    // - (z is unavailable here because of layer mismatch)
     Pair(x, y)
   }
 }
 ```
 
-Given a term `e: a` and variables `x1: &a1, ..., xn: &an`, the type of `box x1, ..., xn {e}` is `meta a`.
+Some notes on `box`:
 
-If the layer of a term `e` is n, the layer of `box x1, ..., xn {e}` is n + 1.
+- The type of `xi` in `box x1, ..., xn {e}` must be of the form `&ai`.
+- Given `xi: &ai`, the type of `xi` in the body of `box` is `ai`.
 
 Operationally, `box x1, ..., xn { e }` copies all the `x1, ..., xn` and executes `e`:
 
@@ -92,11 +91,11 @@ let xn = COPY(type-n, xn) in
 e
 ```
 
-You can omit the sequence `x1, ..., xn` entirely if no variables need to be captured.
+You can also omit the sequence `x1, ..., xn` entirely if no variables need to be copied.
 
 ### Using Boxes
 
-We can extract a value from a box using `letbox`:
+To use a term of type `meta a`, use `letbox`:
 
 ```neut
 define use-letbox(x: int, y: bool, z: text): int {
@@ -110,15 +109,24 @@ define use-letbox(x: int, y: bool, z: text): int {
     // free variables:
     // - x: &int
     // - y: &bool
-    // - (z can't be used here because of layer mismatch)
+    // - (z is unavailable here because of layer mismatch)
     box {42}
   in
   // here is layer 0
+  // free variables:
+  // - x: int
+  // - y: bool
+  // - z: text
   extracted-value // == 42
 }
 ```
 
-Operationally, `letbox` is something like the following:
+Some notes on `letbox`:
+
+- The type of `yi` in `on y1, ..., yn` has no restriction.
+- Given `yi: ai`, the type of `xi` in the body of `letbox x on y1, ..., yn = e1 in e2` is `&ai`.
+
+Operationally, `letbox` behaves as follows:
 
 ```neut
 letbox x on y1, ..., ym = e1 in
@@ -136,7 +144,7 @@ let ym = cast(&am, am, ym) in // cast ym: &am → am
 e2
 ```
 
-The `on y1, ..., yn` clause in `letbox` is optional.
+The `on y1, ..., yn` in `letbox` is optional.
 
 ## Auxiliary Tools for Boxes
 
