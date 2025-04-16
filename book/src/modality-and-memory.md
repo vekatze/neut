@@ -208,6 +208,8 @@ define box-bool(b: bool): meta bool {
 
 ## Desugaring Exotic Operations
 
+We've seen two constructs `let-on` and `*e`. Though they might have appeared “artificial,” they are in fact straightforward expansions over our box modality.
+
 ### Desugar: Borrowing
 
 We can now desugar `let-on` as follows:
@@ -222,7 +224,7 @@ letbox-T x on y, z = quote {e1} in
 e2
 ```
 
-This explains why the type of `e1` must be restricted to some extent; those restrictions are from `quote`.
+This explains why the result type of a `let-on` had to be restricted to some extent: the restriction is from `quote`.
 
 ### Desugar: Embodying
 
