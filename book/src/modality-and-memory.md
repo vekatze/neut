@@ -188,15 +188,15 @@ define box-bool(b: bool): meta bool {
 }
 ```
 
-To streamline such mechanical lifting step, Neut provides `quote`, which casts a term of a simple type into its meta form:
+To streamline this kind of mechanical step, Neut provides `quote`:
 
 ```neut
 define box-bool(b: bool): meta bool {
-  quote {b} // directly constructs `meta bool` from `bool`
+  quote {b} // directly casts `bool` into `meta bool`
 }
 ```
 
-Not all types can be lifted using `quote`. Namely, it can't be used on any type that contains:
+Not all types can be cast using `quote`. Specifically, it can't be used on any type that contains:
 
 - a type of the form `&a`
 - a type of the form `(a1, ..., an) -> b`
