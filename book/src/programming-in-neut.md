@@ -1,6 +1,6 @@
 # Programming in Neut
 
-Now that we know how to use modules, let's write programs in Neut.
+Here, we'll see how to write programs in Neut.
 
 ## Table of Contents
 
@@ -8,7 +8,7 @@ Now that we know how to use modules, let's write programs in Neut.
 - [Functions](#functions)
 - [Algebraic Data Types](#algebraic-data-types)
 - [Parallel Computation](#parallel-computation)
-- [Miscs](#miscs)
+- [Misc](#misc)
 
 ## Variables
 
@@ -23,7 +23,7 @@ define hey(): unit {
 }
 ```
 
-The compiler reports unused variables (`x`, `y`, and `z` in the example above). You can use the name `_` to suppress those warnings:
+The compiler warns about unused variables (`x`, `y`, and `z` in the example above). You can use the special name `_` to suppress those warnings:
 
 ```neut
 define hey(): unit {
@@ -47,7 +47,7 @@ define hey(): unit {
 }
 ```
 
-You can use `e1; e2` as a syntax sugar of `let _: unit = e1 in e2`:
+You can use `e1; e2` as syntactic sugar for `let _: unit = e1 in e2`:
 
 ```neut
 define hey(): unit {
@@ -112,7 +112,7 @@ define id<a: type>(x: a): a { // `type` is the type of types
 }
 ```
 
-We can define `id` without using any implicit arguments as follows (just for comparison):
+You can define `id` without using any implicit arguments as follows (just for comparison):
 
 ```neut
 define id(a: type, x: a): a {
@@ -165,7 +165,7 @@ define foo() {
 
 <div class="info-block">
 
-The compiler reports an error if you rewrite the example above so that it uses the variable `f` more than once. This behavior is to avoid unexpected copying of values. You can satisfy the compiler by renaming `f` into `!f`. The next section will cover this topic.
+The compiler reports an error if you rewrite the example above so that it uses the variable `f` more than once. This behavior prevents unexpected copying of values. You can satisfy the compiler by renaming `f` into `!f`. The next section will cover this topic.
 
 </div>
 
@@ -430,11 +430,11 @@ define fact(n: int): int {
 
 The type of `assert ".." { .. }` is `unit`.
 
-`assert` checks if a given condition is satisfied. If the condition is `True`, it does nothing. Otherwise, it reports that the assertion has failed and kills the program with exit code `1`.
+`assert` checks if a given condition is satisfied. If the condition is `True`, it does nothing. Otherwise, it reports that the assertion has failed and exits the program with exit code `1`.
 
 If you pass `--mode release` to `neut build`, `assert` does nothing.
 
-### Notes
+### Misc
 
 - Additional syntactic sugars are also available. For more, please see the [language reference](./terms.md#syntactic-sugar).
 - If you want to call foreign functions (FFI), please see the [here](statements.md#foreign).
