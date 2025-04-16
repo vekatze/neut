@@ -7,17 +7,17 @@ Its key features include:
 <ul class="star-list">
   <li>Full λ-calculus support</li>
   <li>Predictable automatic memory management</li>
-  <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
+  <li>The ability to achieve both of the above without extra type annotations</li>
 </ul>
 
-Neut doesn't use GCs or regions. Instead, it takes a _type-directed approach_ to handle resources.
+Neut doesn't use a GC. Instead, it takes a _type-directed approach_ for memory management.
 
 ## What Does it Look Like?
 
 Like the following:
 
 ```neut
-// the obligated hello world
+// the obligatory hello world
 define hello(): unit {
   print("Hello, world!\n")
 }
@@ -60,9 +60,9 @@ let (xs1, xs2) = copy-list-a(xs) in  // `xs` is used once
 some-func(xs1, xs2)
 ```
 
-If you need more, see [How to Execute Types](./how-to-execute-types.md).
+If you need more information, see [How to Execute Types](./how-to-execute-types.md).
 
-You might wonder: _"So do I have to, for example, copy an entire list just to get its length? Isn't that a tragedy?"_. This topic is covered in [Static Memory Management](./static-memory-management.md) and [Modality and Memory](./modality-and-memory.md). As written there, Neut avoids such copy operations by using the _T-necessity operator_ in modal logic, achieving something like borrowing in Rust.
+You might wonder: _"So do I have to, for example, copy an entire list just to get its length? Isn't that a tragedy?"_. This topic is covered in [Static Memory Management](./static-memory-management.md) and [Modality and Memory](./modality-and-memory.md). As written there, Neut avoids such copy operations by using the _box modality_, achieving something like borrowing in Rust.
 
 ## Quick List of Other Features
 
