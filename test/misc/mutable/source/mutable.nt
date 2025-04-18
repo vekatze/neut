@@ -1,5 +1,5 @@
 import {
-  core.cell {borrow, mutate, new-cell},
+  core.cell {borrow, mutate},
   core.list {length},
   core.text.io {print-int},
 }
@@ -19,14 +19,14 @@ define main(): unit {
   let _ on xs-cell =
     let _ = bar(xs-cell) in
     mutate(xs-cell, function (xs) {
-      quote {Cons(4, xs)}
+      Cons(4, xs)
     });
     let _ = bar(xs-cell) in
     mutate(xs-cell, function (_) {
-      quote {Nil}
+      Nil
     });
     mutate(xs-cell, function (xs) {
-      quote {Cons(4, xs)}
+      Cons(4, xs)
     });
     bar(xs-cell)
   in

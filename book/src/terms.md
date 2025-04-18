@@ -46,6 +46,11 @@
 - [detach](#detach)
 - [attach](#attach)
 
+### Channel and Cell
+
+- [new-channel](#new-channel)
+- [new-cell](#new-cell)
+
 ### Miscs
 
 - [quote](#quote)
@@ -1947,6 +1952,166 @@ It also `free`s the 3-word + 1-byte tuple that represents a thread after getting
 ### Note
 
 - `attach` internally uses pthread.
+
+## `new-channel`
+
+You can create channels using `new-channel` and send/receive values using them.
+
+### Example
+
+```neut
+define sample(): unit {
+  let ch0 = new-channel() in
+  let ch1 = new-channel() in
+  // use channels after turning them into noemata
+  let result on ch0, ch1 =
+    let f =
+      detach {
+        let message0 = receive(ch0) in // receive value from ch0
+        send(ch1, add-int(message0, 1)); // send value to ch1
+        message0
+      }
+    in
+    let g =
+      detach {
+        let message1 = receive(ch1) in // receive value from ch1
+        add-int(message1, 1)
+      }
+    in
+    send(ch0, 0); // send value to ch0
+    let v1 = attach { f } in
+    let v2 = attach { g } in
+    print("hey")
+  in
+  // ... cont ...
+}
+```
+
+### Syntax
+
+```neut
+new-channel()
+```
+
+### Semantics
+
+`new-channel` creates a new channel that can be used to send/receive values between threads.
+
+The internal representation of `channel(a)` is something like the below:
+
+```neut
+(queue, thread-mutex, thread-cond, a)
+```
+
+The `queue` is the place where inter-channel values are enqueued/dequeued. More specifically,
+
+- the function `send: <a>(ch: &channel, x: a) -> unit` enqueues values to there, and
+- the function `receive: <a>(ch: &channel) -> a` dequeues values from there.
+
+The `thread-mutex` is initialized by `pthread_mutex_init(3)`. This field is used to update the queue in a thread-safe way.
+
+The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used to update the queue in a thread-safe way.
+
+### Type
+
+```neut
+Γ ⊢ a: type
+-----------------------------
+Γ ⊢ new-channel(): channel(a)
+```
+
+You must use an "actual" type at the position of `a` in the typing rule above.
+
+For more, see [let-on](#on).
+
+### Note
+
+- Channels are intended to be used with threads.
+- You'll use a channel after turning them into a noema (as in the example above).
+- You can use `send: <a>(ch: &channel, x: a) -> unit` to enqueue a value to the channel.
+- You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
+- `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
+
+## `new-cell`
+
+You can create a mutable cell using `new-cell`.
+
+### Example
+
+```neut
+define sample(): int {
+  let xs: list(int) = [] in
+
+  // create a new cell using `new-cell`
+  let xs-cell = new-cell(xs) in
+
+  // create a noema of a cell
+  let result on xs-cell =
+    // mutate the cell using `mutate` (add an element)
+    mutate(xs-cell, function (xs) {
+      Cons(1, xs)
+    });
+
+    // peek the content of a cell using `borrow`
+    borrow(xs-cell, function (xs) {
+      let len = length(xs) in
+      print-int(len); // => 1
+      box {Unit}
+    })
+
+    // mutate again
+    mutate(xs-cell, function (xs) {
+      Cons(2, xs)
+    });
+
+    // get the length of the list in the cell, again
+    borrow(xs-cell, function (xs) {
+      let len = length(xs) in
+      print-int(len); // => 2
+      box {Unit}
+    })
+
+    ...
+  in
+  ...
+}
+```
+
+### Syntax
+
+```neut
+new-cell(initial-value)
+```
+
+### Semantics
+
+`new-cell` creates a new thread-safe mutable cell of type `cell(a)`, which can be manipulated using following functions:
+
+```neut
+// mutate the content of a cell by `f`
+mutate<a>(c: &cell(a), f: (a) -> a): unit
+
+// borrow the content of a cell and do something
+borrow<a>(c: &cell(a), f: (&a) -> meta b): meta b
+
+// clone the content of a cell
+clone<a>(c: &cell(a)): a
+
+// extract the content from a cell
+extract<a>(c: cell(a)): a
+```
+
+### Type
+
+```neut
+Γ ⊢ e: a
+-----------------------------
+Γ ⊢ new-cell(e): cell(a)
+```
+
+You must use an "actual" type at the position of `a` in the typing rule above.
+
+For more, see [let-on](#on).
 
 ## `quote`
 

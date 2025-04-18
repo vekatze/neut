@@ -1,5 +1,5 @@
 import {
-  core.cell {clone, mutate, new-cell},
+  core.cell {clone, mutate},
   core.list {length},
 }
 
@@ -180,7 +180,7 @@ define with-ctx(c: &ctx): unit {
   } else {
     print("loop\n");
     mutate(counter, function (x) {
-      quote {sub-int(x, 1)}
+      sub-int(x, 1)
     });
     with-ctx(c)
   }
