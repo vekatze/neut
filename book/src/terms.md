@@ -40,12 +40,16 @@
 - [letbox-T](#letbox-t)
 - [case](#case)
 
-### Thread and Channel
+### Thread
 
 - [thread](#thread)
 - [detach](#detach)
 - [attach](#attach)
+
+### Channel and Cell
+
 - [new-channel](#new-channel)
+- [new-cell](#new-cell)
 
 ### Miscs
 
@@ -2028,9 +2032,11 @@ For more, see [let-on](#on).
 - You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
 - `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
 
-Also, `channel(a)` can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type `cell(a)` is there to represent such a channel:
+## `new-cell`
 
-Below is an example of using the type `cell`:
+You can create a mutable cell using `new-cell`.
+
+### Example
 
 ```neut
 define sample(): int {
@@ -2049,7 +2055,8 @@ define sample(): int {
     // peek the content of a cell using `borrow`
     borrow(xs-cell, function (xs) {
       let len = length(xs) in
-      print-int(len) // => 1
+      print-int(len); // => 1
+      box {Unit}
     })
 
     // mutate again
@@ -2060,7 +2067,8 @@ define sample(): int {
     // get the length of the list in the cell, again
     borrow(xs-cell, function (xs) {
       let len = length(xs) in
-      print-int(len) // => 2
+      print-int(len); // => 2
+      box {Unit}
     })
 
     ...
@@ -2069,31 +2077,41 @@ define sample(): int {
 }
 ```
 
-Here, the type of related wrapper functions are:
+### Syntax
 
 ```neut
-// create a new channel
-new-cell<a>(x: a): cell(a)
+new-cell(initial-value)
+```
 
+### Semantics
+
+`new-cell` creates a new thread-safe mutable cell of type `cell(a)`, which can be manipulated using following functions:
+
+```neut
 // mutate the content of a cell by `f`
-mutate<a>(ch: &cell(a), f: (a) -> a): unit
+mutate<a>(c: &cell(a), f: (a) -> a): unit
 
 // borrow the content of a cell and do something
-borrow<a>(ch: &cell(a), f: (&a) -> unit): unit
+borrow<a>(c: &cell(a), f: (&a) -> meta b): meta b
 
 // clone the content of a cell
-clone<a>(ch: &cell(a)): a
+clone<a>(c: &cell(a)): a
+
+// extract the content from a cell
+extract<a>(c: cell(a)): a
 ```
 
-The definition of, for example, `mutate` is essentially something like the below:
+### Type
 
 ```neut
-define mutate<a>(ch: &cell(a), f: (a) -> a): unit {
-  let ch = Magic.cast(&cell(a), &channel(a), ch) in
-  let v = receive(ch) in
-  send(ch, f(v))
-}
+Γ ⊢ e: a
+-----------------------------
+Γ ⊢ new-cell(e): cell(a)
 ```
+
+You must use an "actual" type at the position of `a` in the typing rule above.
+
+For more, see [let-on](#on).
 
 ## `quote`
 
