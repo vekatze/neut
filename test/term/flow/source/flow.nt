@@ -1,7 +1,7 @@
 import {
   Ext,
   core.c-int {C-Int},
-  core.channel {new-channel, receive, send},
+  core.channel {receive, send},
   core.list {length},
 }
 
@@ -52,7 +52,7 @@ define some-list(len: int, acc: list(int)): list(int) {
 }
 
 define detach-send(x: int, ch: &channel(int)): thread(unit) {
-  detach {send(ch, quote {x})}
+  detach {send(ch, x)}
 }
 
 define send-all(xs: list(int), ch: &channel(int), acc: list(thread(unit))): list(thread(unit)) {
@@ -129,21 +129,21 @@ define test-behavior(): unit {
   let ch = new-channel() in
   let !ch: channel(int) = ch in
   let _ = !ch in
-  let _ on !ch = send(!ch, quote {1}) in
+  let _ on !ch = send(!ch, 1) in
   let ch = !ch in
   let ch-clone = ch in
-  let _ on ch-clone = send(ch-clone, quote {1}) in
+  let _ on ch-clone = send(ch-clone, 1) in
   let tmp on ch-clone =
     let f =
       detach {
         Ext.sleep(C-Int(1));
-        send(ch-clone, quote {3})
+        send(ch-clone, 3)
       }
     in
     let g =
       detach {
         Ext.sleep(C-Int(1));
-        send(ch-clone, quote {4})
+        send(ch-clone, 4)
       }
     in
     let _ = receive(ch-clone) in
