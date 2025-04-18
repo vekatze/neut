@@ -58,6 +58,8 @@ hljs.registerLanguage("neut", function (hljs) {
         "magic",
         "static",
         "this",
+        "new-cell",
+        "new-channel",
       ],
       type: [
         "meta",
