@@ -291,9 +291,22 @@ discern axis term =
       ensureLayerClosedness m axis''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
     m :< RT.PiElim e _ es -> do
-      e' <- discern axis e
-      es' <- mapM (discern axis) $ SE.extract es
-      return $ m :< WT.PiElim e' es'
+      case e of
+        _ :< RT.Var (Var c)
+          | c == "new-cell",
+            [arg] <- SE.extract es -> do
+              newCellDD <- locatorToVarGlobal m coreCellNewCell
+              e' <- discern axis $ m :< RT.piElim newCellDD [arg]
+              return $ m :< WT.Actual e'
+          | c == "new-channel",
+            [] <- SE.extract es -> do
+              newChannelDD <- locatorToVarGlobal m coreChannelNewChannel
+              e' <- discern axis $ m :< RT.piElim newChannelDD []
+              return $ m :< WT.Actual e'
+        _ -> do
+          e' <- discern axis e
+          es' <- mapM (discern axis) $ SE.extract es
+          return $ m :< WT.PiElim e' es'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, _) <- resolveName m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
