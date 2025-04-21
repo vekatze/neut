@@ -18,7 +18,7 @@ import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
 import Move.Context.Color qualified as Color
 import Move.Context.Debug (report)
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
@@ -198,7 +198,7 @@ compileForeign' t currentTime m = do
     report $ "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir t m
-  inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
+  inputPathList <- fmap concat $ mapM (toApp . getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
     Path.ensureDir $ parent outputPath
@@ -252,7 +252,7 @@ getForeignSubst t m = do
       ("{{foreign}}", T.pack $ toFilePath foreignDir)
     ]
 
-getInputPathList :: Path Abs Dir -> M.SomePath Rel -> App [Path Abs File]
+getInputPathList :: Path Abs Dir -> M.SomePath Rel -> EIO [Path Abs File]
 getInputPathList moduleRootDir =
   Path.unrollPath . attachPrefixPath moduleRootDir
 

@@ -343,7 +343,7 @@ getLastModifiedInf pathList =
         else do
           return Nothing
 
-unrollPath :: M.SomePath Abs -> App [Path Abs File]
+unrollPath :: M.SomePath Abs -> EIO [Path Abs File]
 unrollPath path = do
   case path of
     Left dirPath -> do
