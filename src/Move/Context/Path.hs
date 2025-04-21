@@ -299,21 +299,21 @@ getInstallDir filePath = do
   ensureDir path
   return path
 
-getLastModifiedSup :: [Path Abs File] -> App (Maybe UTCTime)
+getLastModifiedSup :: [Path Abs File] -> EIO (Maybe UTCTime)
 getLastModifiedSup pathList =
   case pathList of
     [] ->
       return Nothing
     [path] -> do
-      b <- doesFileExist path
+      b <- P.doesFileExist path
       if b
-        then Just <$> getModificationTime path
+        then Just <$> P.getModificationTime path
         else return Nothing
     path : pathList' -> do
-      b <- doesFileExist path
+      b <- P.doesFileExist path
       if b
         then do
-          t1 <- getModificationTime path
+          t1 <- P.getModificationTime path
           t2 <- getLastModifiedSup pathList'
           if Just t1 > t2
             then return $ Just t1
@@ -321,21 +321,21 @@ getLastModifiedSup pathList =
         else do
           return Nothing
 
-getLastModifiedInf :: [Path Abs File] -> App (Maybe UTCTime)
+getLastModifiedInf :: [Path Abs File] -> EIO (Maybe UTCTime)
 getLastModifiedInf pathList =
   case pathList of
     [] ->
       return Nothing
     [path] -> do
-      b <- doesFileExist path
+      b <- P.doesFileExist path
       if b
-        then Just <$> getModificationTime path
+        then Just <$> P.getModificationTime path
         else return Nothing
     path : pathList' -> do
-      b <- doesFileExist path
+      b <- P.doesFileExist path
       if b
         then do
-          t1 <- getModificationTime path
+          t1 <- P.getModificationTime path
           t2 <- getLastModifiedInf pathList'
           if Just t1 < t2
             then return $ Just t1

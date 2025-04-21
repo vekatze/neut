@@ -18,6 +18,7 @@ import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
 import Move.Context.Color qualified as Color
 import Move.Context.Debug (report)
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
@@ -201,8 +202,8 @@ compileForeign' t currentTime m = do
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
     Path.ensureDir $ parent outputPath
-  inputTime <- Path.getLastModifiedSup inputPathList
-  outputTime <- Path.getLastModifiedInf outputPathList
+  inputTime <- toApp $ Path.getLastModifiedSup inputPathList
+  outputTime <- toApp $ Path.getLastModifiedInf outputPathList
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
