@@ -9,7 +9,6 @@ module Move.Context.Path
     getModificationTime,
     setModificationTime,
     ensureDir,
-    stripPrefix,
     writeByteString,
     writeText,
     getBaseName,
@@ -103,10 +102,6 @@ getBaseName path = do
   let dirPath = P.parent path
   filename <- P.stripProperPrefix dirPath path
   return $ T.replace packageFileExtension "" $ T.pack $ P.toFilePath filename
-
-stripPrefix :: Path b Dir -> Path b t -> App (Path Rel t)
-stripPrefix =
-  P.stripProperPrefix
 
 writeByteString :: Path Abs File -> L.ByteString -> App ()
 writeByteString path content =
