@@ -5,16 +5,20 @@ module Move.Scene.Ens.Reflect
 where
 
 import Control.Comonad.Cofree
+import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.Reader (asks)
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Parse
-import Move.Context.Throw qualified as Throw
 import Move.Scene.Parse.Core
 import Path
 import Rule.C
 import Rule.Ens qualified as E
+import Rule.Error (newError)
 import Rule.Hint
 import Rule.Syntax.Series qualified as SE
 import Text.Megaparsec hiding (parse)
@@ -25,8 +29,10 @@ fromFilePath path = do
   fromFilePath' path fileContent
 
 fromFilePath' :: Path Abs File -> T.Text -> App (C, (E.Ens, C))
-fromFilePath' path content = do
-  parseFile True parseEns path content
+fromFilePath' filePath fileContent = do
+  counter <- asks App.counter
+  let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
+  toApp $ parseFile h (const parseEns)
 
 parseEns :: Parser (E.Ens, C)
 parseEns = do
@@ -79,13 +85,13 @@ parseKeyValuePair = do
   (v, cTrail) <- parseEns
   return ((cLead, (m, (k, v))), cTrail)
 
-ensureKeyLinearity :: [(Hint, (T.Text, a))] -> S.Set T.Text -> App ()
+ensureKeyLinearity :: [(Hint, (T.Text, a))] -> S.Set T.Text -> EIO ()
 ensureKeyLinearity mks foundKeySet =
   case mks of
     [] ->
       return ()
     (m, (k, _)) : rest
       | S.member k foundKeySet ->
-          Throw.raiseError m $ "Found a duplicate key: `" <> k <> "`"
+          throwError $ newError m $ "Found a duplicate key: `" <> k <> "`"
       | otherwise ->
           ensureKeyLinearity rest (S.insert k foundKeySet)

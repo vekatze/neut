@@ -4,8 +4,14 @@ module Move.Scene.Parse
   )
 where
 
+import Control.Monad
+import Control.Monad.Reader (asks)
+import Data.HashMap.Strict qualified as Map
+import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.App.Internal (counter)
 import Move.Context.Cache qualified as Cache
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
@@ -13,9 +19,11 @@ import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedPreset qualified as UnusedPreset
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
-import Control.Monad
-import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
+import Move.Scene.Parse.Core (Handle (Handle))
+import Move.Scene.Parse.Core qualified as P
+import Move.Scene.Parse.Discern qualified as Discern
+import Move.Scene.Parse.Import
+import Move.Scene.Parse.Program qualified as Parse
 import Rule.ArgNum qualified as AN
 import Rule.Cache qualified as Cache
 import Rule.DefiniteDescription qualified as DD
@@ -25,10 +33,6 @@ import Rule.RawProgram
 import Rule.Source qualified as Source
 import Rule.Stmt
 import Rule.Target
-import Move.Scene.Parse.Core qualified as P
-import Move.Scene.Parse.Discern qualified as Discern
-import Move.Scene.Parse.Import
-import Move.Scene.Parse.Program qualified as Parse
 
 parse :: Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
 parse t source cacheOrContent = do
@@ -36,15 +40,17 @@ parse t source cacheOrContent = do
 
 parseSource :: Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
 parseSource t source cacheOrContent = do
-  let path = Source.sourceFilePath source
+  let filePath = Source.sourceFilePath source
   case cacheOrContent of
     Left cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
       saveTopLevelNames source $ getStmtName stmtList
       return $ Left cache
-    Right content -> do
-      prog <- P.parseFile True Parse.parseProgram path content
+    Right fileContent -> do
+      counter <- asks counter
+      let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
+      prog <- toApp $ P.parseFile h Parse.parseProgram
       prog' <- interpret source (snd prog)
       tmap <- Env.getTagMap
       Cache.saveLocationCache t source $ Cache.LocationCache tmap

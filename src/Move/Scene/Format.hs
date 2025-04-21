@@ -4,25 +4,29 @@ module Move.Scene.Format
   )
 where
 
+import Control.Monad
+import Control.Monad.Reader (asks)
+import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
-import Control.Monad
-import Data.Text qualified as T
-import Rule.Ens.Reify qualified as Ens
-import Rule.FileType qualified as FT
-import Rule.RawProgram.Decode qualified as RawProgram
-import Rule.Target
-import Path
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetEnabledPreset
 import Move.Scene.Parse qualified as Parse
+import Move.Scene.Parse.Core (Handle (Handle))
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Program qualified as Parse
 import Move.Scene.Unravel qualified as Unravel
+import Path
+import Rule.Ens.Reify qualified as Ens
+import Rule.FileType qualified as FT
+import Rule.RawProgram.Decode qualified as RawProgram
+import Rule.Target
 import Prelude hiding (log)
 
 format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App T.Text
@@ -37,25 +41,29 @@ type ShouldMinimizeImports =
   Bool
 
 _formatSource :: ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
-_formatSource shouldMinimizeImports path content = do
+_formatSource shouldMinimizeImports filePath fileContent = do
   Initialize.initializeForTarget
   mainModule <- getMainModule
   if shouldMinimizeImports
     then do
-      (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen path)
+      (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen filePath)
       contentSeq <- Load.load Peripheral dependenceSeq
-      let contentSeq' = _replaceLast content contentSeq
+      let contentSeq' = _replaceLast fileContent contentSeq
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
         Initialize.initializeForSource source
         void $ Parse.parse Peripheral source cacheOrContent
       unusedGlobalLocators <- UnusedGlobalLocator.get
       unusedLocalLocators <- UnusedLocalLocator.get
-      program <- P.parseFile True Parse.parseProgram path content
+      counter <- asks App.counter
+      let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
+      program <- toApp $ P.parseFile h Parse.parseProgram
       presetNames <- getEnabledPreset mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
       return $ RawProgram.pp importInfo program
     else do
-      program <- P.parseFile True Parse.parseProgram path content
+      counter <- asks App.counter
+      let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
+      program <- toApp $ P.parseFile h Parse.parseProgram
       presetNames <- getEnabledPreset mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators = [], unusedLocalLocators = []}
       return $ RawProgram.pp importInfo program

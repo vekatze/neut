@@ -9,6 +9,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Reader (asks)
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
@@ -18,6 +19,7 @@ import Data.Time
 import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
+import Move.Context.App.Internal (counter)
 import Move.Context.Debug (report)
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -29,6 +31,7 @@ import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Context.Unravel qualified as Unravel
 import Move.Scene.Module.Reflect qualified as Module
+import Move.Scene.Parse.Core (Handle (Handle))
 import Move.Scene.Parse.Core qualified as ParseCore
 import Move.Scene.Parse.Import (interpretImport)
 import Move.Scene.Parse.Program (parseImport)
@@ -315,10 +318,12 @@ parseSourceHeader :: Source.Source -> App [ImportItem]
 parseSourceHeader currentSource = do
   Locator.initialize
   toApp $ Parse.ensureExistence currentSource
-  let path = Source.sourceFilePath currentSource
-  fileContent <- liftIO $ Parse.readTextFile path
-  (_, importList) <- ParseCore.parseFile False parseImport path fileContent
-  let m = newSourceHint path
+  let filePath = Source.sourceFilePath currentSource
+  fileContent <- liftIO $ Parse.readTextFile filePath
+  counter <- asks counter
+  let h = Handle {counter, filePath, fileContent, mustParseWholeFile = False}
+  (_, importList) <- toApp $ ParseCore.parseFile h (const parseImport)
+  let m = newSourceHint filePath
   interpretImport m currentSource importList
 
 getAntecedentArrow :: Module -> [(MID.ModuleID, Module)]

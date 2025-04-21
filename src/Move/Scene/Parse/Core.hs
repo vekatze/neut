@@ -1,5 +1,6 @@
 module Move.Scene.Parse.Core
-  ( Parser,
+  ( Handle (..),
+    Parser,
     parseFile,
     getCurrentHint,
     getCurrentLoc,
@@ -31,15 +32,17 @@ module Move.Scene.Parse.Core
   )
 where
 
-import Move.Context.App
-import Move.Context.Gensym qualified as Gensym
-import Move.Context.Throw qualified as Throw
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.Trans
+import Data.IORef
 import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
+import Move.Context.EIO
+import Move.Language.Utility.Gensym (newTextForHole)
+import Path
 import Rule.BaseName qualified as BN
 import Rule.C
 import Rule.Const
@@ -48,31 +51,38 @@ import Rule.Hint
 import Rule.Hint.Reflect qualified as Hint
 import Rule.Syntax.Block
 import Rule.Syntax.Series qualified as SE
-import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
 
-type Parser = ParsecT Void T.Text App
-
 type MustParseWholeFile =
   Bool
 
-parseFile :: MustParseWholeFile -> Parser a -> Path Abs File -> T.Text -> App (C, a)
-parseFile mustParseWholeFile parser path fileContent = do
+data Handle
+  = Handle
+  { counter :: IORef Int,
+    filePath :: Path Abs File,
+    fileContent :: T.Text,
+    mustParseWholeFile :: MustParseWholeFile
+  }
+
+type Parser a = ParsecT Void T.Text EIO a
+
+parseFile :: Handle -> (Handle -> Parser a) -> EIO (C, a)
+parseFile h parser = do
   let fileParser = do
         leadingComments <- spaceConsumer
-        value <- parser
-        when mustParseWholeFile eof
+        value <- parser h
+        when (mustParseWholeFile h) eof
         return (leadingComments, value)
-  let filePath = toFilePath path
-  result <- runParserT fileParser filePath fileContent
+  let path = toFilePath (filePath h)
+  result <- runParserT fileParser path (fileContent h)
   case result of
     Right v ->
       return v
     Left errorBundle ->
-      Throw.throw $ createParseError errorBundle
+      throwError $ createParseError errorBundle
 
 createParseError :: ParseErrorBundle T.Text Void -> E.Error
 createParseError errorBundle = do
@@ -366,14 +376,14 @@ seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBraceList' =
   series' Nothing SE.Brace SE.Bar
 
-var :: Parser ((Hint, T.Text), C)
-var = do
+var :: Handle -> Parser ((Hint, T.Text), C)
+var h = do
   m <- getCurrentHint
   (x, c) <- symbol
   if x /= "_"
     then return ((m, x), c)
     else do
-      unusedVar <- lift Gensym.newTextForHole
+      unusedVar <- liftIO $ newTextForHole (counter h)
       return ((m, unusedVar), c)
 
 {-# INLINE nonSymbolCharSet #-}
