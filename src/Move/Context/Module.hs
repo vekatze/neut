@@ -13,14 +13,14 @@ module Move.Context.Module
 where
 
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.Debug (report)
-import Move.Context.EIO (toApp)
-import Move.Context.Env
+import Move.Context.EIO (EIO)
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Path
@@ -28,6 +28,7 @@ import Path.IO
 import Rule.Const
 import Rule.Ens
 import Rule.Ens.Reify qualified as Ens
+import Rule.Error (newError, newError')
 import Rule.Hint qualified as H
 import Rule.Module
 import Rule.ModuleDigest
@@ -37,9 +38,9 @@ import Rule.ModuleURL
 import Rule.Source qualified as Source
 import System.Environment
 
-getModuleFilePath :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
-getModuleFilePath mHint moduleID = do
-  moduleDir <- getModuleDirByID mHint moduleID
+getModuleFilePath :: Module -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs File)
+getModuleFilePath mainModule mHint moduleID = do
+  moduleDir <- getModuleDirByID mainModule mHint moduleID
   return $ moduleDir </> moduleFile
 
 getModuleCacheMap :: App (Map.HashMap (Path Abs File) Module)
@@ -50,21 +51,20 @@ insertToModuleCacheMap :: Path Abs File -> Module -> App ()
 insertToModuleCacheMap k v =
   modifyRef' moduleCacheMap $ Map.insert k v
 
-getModuleDirByID :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs Dir)
-getModuleDirByID mHint moduleID = do
-  mainModule <- getMainModule
+getModuleDirByID :: Module -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs Dir)
+getModuleDirByID pivotModule mHint moduleID = do
   case moduleID of
     MID.Base -> do
       let message = "The base module cannot be used here"
       case mHint of
         Just hint ->
-          Throw.raiseError hint message
+          throwError $ newError hint message
         Nothing ->
-          Throw.raiseError' message
+          throwError $ newError' message
     MID.Main ->
-      return $ getModuleRootDir mainModule
+      return $ getModuleRootDir pivotModule
     MID.Library (MD.ModuleDigest digest) -> do
-      dependencyDir <- toApp $ Path.getDependencyDirPath mainModule
+      dependencyDir <- Path.getDependencyDirPath pivotModule
       resolveDir dependencyDir $ T.unpack digest
 
 saveEns :: Path Abs File -> FullEns -> App ()

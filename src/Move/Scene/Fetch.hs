@@ -78,7 +78,7 @@ insertDependency aliasName url = do
           then do
             if url `elem` M.dependencyMirrorList dep
               then do
-                moduleDirPath <- Module.getModuleDirByID Nothing (MID.Library digest)
+                moduleDirPath <- toApp $ Module.getModuleDirByID mainModule Nothing (MID.Library digest)
                 dependencyDirExists <- Path.doesDirExist moduleDirPath
                 if dependencyDirExists
                   then do
@@ -159,11 +159,13 @@ collectDependency baseModule = do
 
 checkIfInstalled :: MD.ModuleDigest -> App Bool
 checkIfInstalled digest = do
-  Module.getModuleFilePath Nothing (MID.Library digest) >>= Path.doesFileExist
+  mainModule <- getMainModule
+  toApp (Module.getModuleFilePath mainModule Nothing (MID.Library digest)) >>= Path.doesFileExist
 
 getLibraryModule :: ModuleAlias -> MD.ModuleDigest -> App M.Module
 getLibraryModule alias digest = do
-  moduleFilePath <- Module.getModuleFilePath Nothing (MID.Library digest)
+  mainModule <- getMainModule
+  moduleFilePath <- toApp $ Module.getModuleFilePath mainModule Nothing (MID.Library digest)
   moduleFileExists <- Path.doesFileExist moduleFilePath
   if moduleFileExists
     then do
@@ -195,7 +197,8 @@ download tempFilePath ma@(ModuleAlias alias) mirrorList = do
 
 extractToDependencyDir :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
 extractToDependencyDir archivePath _ digest = do
-  moduleDirPath <- Module.getModuleDirByID Nothing (MID.Library digest)
+  mainModule <- getMainModule
+  moduleDirPath <- toApp $ Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   Path.ensureDir moduleDirPath
   External.run "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 

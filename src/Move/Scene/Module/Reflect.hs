@@ -19,6 +19,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, toApp)
+import Move.Context.Env (getMainModule)
 import Move.Context.Module qualified as Module
 import Move.Context.Path qualified as Path
 import Move.Context.Throw hiding (liftEither)
@@ -55,7 +56,8 @@ getModule ::
   T.Text ->
   App Module
 getModule m moduleID locatorText = do
-  nextModuleFilePath <- Module.getModuleFilePath (Just m) moduleID
+  mainModule <- getMainModule
+  nextModuleFilePath <- toApp $ Module.getModuleFilePath mainModule (Just m) moduleID
   mcm <- Module.getModuleCacheMap
   case Map.lookup nextModuleFilePath mcm of
     Just nextModule ->
@@ -122,10 +124,11 @@ fromFilePath h moduleFilePath = do
       }
 
 getAllDependencies :: Module -> App [(ModuleAlias, Module)]
-getAllDependencies baseModule =
+getAllDependencies baseModule = do
+  mainModule <- getMainModule
   forM (Map.toList $ moduleDependency baseModule) $ \(alias, dependency) -> do
     let moduleID = MID.Library $ dependencyDigest dependency
-    moduleFilePath <- Module.getModuleFilePath Nothing moduleID
+    moduleFilePath <- toApp $ Module.getModuleFilePath mainModule Nothing moduleID
     let m = H.newSourceHint moduleFilePath
     dep <- getModule m moduleID (MID.reify moduleID)
     return (alias, dep)

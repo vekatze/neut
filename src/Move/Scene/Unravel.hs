@@ -22,6 +22,7 @@ import Move.Context.App
 import Move.Context.App.Internal (counter)
 import Move.Context.Debug (report)
 import Move.Context.EIO (toApp)
+import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
@@ -116,7 +117,8 @@ data Axis = Axis
 unravelAntecedentArrow :: Axis -> Module -> App [(MID.ModuleID, Module)]
 unravelAntecedentArrow axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  path <- Module.getModuleFilePath Nothing (moduleID currentModule)
+  mainModule <- getMainModule
+  path <- toApp $ Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
       pathList <- liftIO $ readIORef $ traceListRef axis
@@ -128,7 +130,7 @@ unravelAntecedentArrow axis currentModule = do
       liftIO $ modifyIORef' (traceListRef axis) $ (:) path
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
-        path' <- Module.getModuleFilePath Nothing moduleID
+        path' <- toApp $ Module.getModuleFilePath mainModule Nothing moduleID
         counter <- asks counter
         let h = Module.Handle {counter = counter}
         toApp (Module.fromFilePath h path') >>= unravelAntecedentArrow axis
@@ -144,7 +146,8 @@ unravelModule currentModule = do
 unravelModule' :: Axis -> Module -> App [Module]
 unravelModule' axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  path <- Module.getModuleFilePath Nothing (moduleID currentModule)
+  mainModule <- getMainModule
+  path <- toApp $ Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
       pathList <- liftIO $ readIORef $ traceListRef axis
@@ -156,7 +159,7 @@ unravelModule' axis currentModule = do
       liftIO $ modifyIORef' (traceListRef axis) $ (:) path
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
-        path' <- Module.getModuleFilePath Nothing moduleID
+        path' <- toApp $ Module.getModuleFilePath mainModule Nothing moduleID
         b <- Path.doesFileExist path'
         if b
           then do
