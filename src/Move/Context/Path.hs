@@ -44,7 +44,7 @@ import Data.Time
 import Data.Version qualified as V
 import Move.Context.App
 import Move.Context.App.Internal
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External (getClangDigest)
 import Move.Context.Throw qualified as Throw
@@ -132,13 +132,11 @@ getDependencyDirPath baseModule = do
     _ -> do
       returnDirectory $ moduleRootDir </> moduleCacheDir baseModule </> $(P.mkRelDir "dependency")
 
-ensureNotInDependencyDir :: App ()
-ensureNotInDependencyDir = do
-  mainModule <- Env.getMainModule
+ensureNotInDependencyDir :: MainModule -> EIO ()
+ensureNotInDependencyDir mainModule = do
   case moduleID (extractModule mainModule) of
     MID.Library _ ->
-      Throw.raiseError'
-        "This command cannot be used under a dependency directory"
+      raiseError' "This command cannot be used under a dependency directory"
     _ ->
       return ()
 

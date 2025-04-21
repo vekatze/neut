@@ -16,8 +16,8 @@ import Rule.Config.Archive
 archive :: Config -> App ()
 archive cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
-  Path.ensureNotInDependencyDir
   mainModule <- getMainModule
+  toApp $ Path.ensureNotInDependencyDir mainModule
   c <- getColorSpecStdOut
   packageVersion <- toApp $ maybe (PV.chooseNewVersion c mainModule) (PV.reflect mainModule) (getArchiveName cfg)
   archiveEns <- getMainModule >>= makeArchiveEns packageVersion

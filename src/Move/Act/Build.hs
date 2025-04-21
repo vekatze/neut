@@ -1,7 +1,7 @@
 module Move.Act.Build (build) where
 
-import Control.Monad
 import Move.Context.App
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
@@ -24,9 +24,10 @@ setup :: Config -> App ()
 setup cfg = do
   LLVM.ensureSetupSanity cfg
   Initialize.initializeCompiler (remarkCfg cfg)
-  Path.ensureNotInDependencyDir
+  mainModule <- Env.getMainModule
+  toApp $ Path.ensureNotInDependencyDir mainModule
   Env.setBuildMode $ buildMode cfg
-  Env.getMainModule >>= Fetch.fetch
+  Fetch.fetch mainModule
 
 fromConfig :: Config -> Build.Axis
 fromConfig cfg =
