@@ -7,6 +7,14 @@ module Move.Scene.Unravel
   )
 where
 
+import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Foldable
+import Data.HashMap.Strict qualified as Map
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
+import Data.Sequence as Seq (Seq, empty, (><), (|>))
+import Data.Text qualified as T
+import Data.Time
 import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
@@ -19,14 +27,12 @@ import Move.Context.Parse qualified as Parse
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Context.Unravel qualified as Unravel
-import Control.Monad
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Foldable
-import Data.HashMap.Strict qualified as Map
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
-import Data.Sequence as Seq (Seq, empty, (><), (|>))
-import Data.Text qualified as T
-import Data.Time
+import Move.Scene.Module.Reflect qualified as Module
+import Move.Scene.Parse.Core qualified as ParseCore
+import Move.Scene.Parse.Import (interpretImport)
+import Move.Scene.Parse.Program (parseImport)
+import Move.Scene.Source.ShiftToLatest
+import Path
 import Rule.Artifact qualified as A
 import Rule.Hint
 import Rule.Import
@@ -36,12 +42,6 @@ import Rule.OutputKind qualified as OK
 import Rule.Source qualified as Source
 import Rule.Target
 import Rule.VisitInfo qualified as VI
-import Path
-import Move.Scene.Module.Reflect qualified as Module
-import Move.Scene.Parse.Core qualified as ParseCore
-import Move.Scene.Parse.Import (interpretImport)
-import Move.Scene.Parse.Program (parseImport)
-import Move.Scene.Source.ShiftToLatest
 
 type CacheTime =
   Maybe UTCTime
@@ -315,7 +315,7 @@ parseSourceHeader currentSource = do
   Locator.initialize
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
-  fileContent <- Parse.readTextFile path
+  fileContent <- liftIO $ Parse.readTextFile path
   (_, importList) <- ParseCore.parseFile False parseImport path fileContent
   let m = newSourceHint path
   interpretImport m currentSource importList

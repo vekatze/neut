@@ -4,24 +4,24 @@ module Move.Scene.Ens.Reflect
   )
 where
 
-import Move.Context.App
-import Move.Context.Parse
-import Move.Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.Parse
+import Move.Context.Throw qualified as Throw
+import Move.Scene.Parse.Core
+import Path
 import Rule.C
 import Rule.Ens qualified as E
 import Rule.Hint
 import Rule.Syntax.Series qualified as SE
-import Path
-import Move.Scene.Parse.Core
 import Text.Megaparsec hiding (parse)
 
 fromFilePath :: Path Abs File -> App (C, (E.Ens, C))
 fromFilePath path = do
-  fileContent <- readTextFile path
+  fileContent <- liftIO $ readTextFile path
   fromFilePath' path fileContent
 
 fromFilePath' :: Path Abs File -> T.Text -> App (C, (E.Ens, C))

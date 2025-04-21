@@ -1,14 +1,14 @@
 module Move.Scene.Load (load) where
 
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Debug (report)
 import Move.Context.Parse (readTextFile)
-import Data.Text qualified as T
 import Rule.Cache qualified as Cache
 import Rule.Source qualified as Source
 import Rule.Target
-import UnliftIO (pooledForConcurrently)
+import UnliftIO (MonadIO (liftIO), pooledForConcurrently)
 
 load :: Target -> [Source.Source] -> App [(Source.Source, Either Cache.Cache T.Text)]
 load target dependenceSeq = do
@@ -24,4 +24,4 @@ _load t source = do
     Just cache -> do
       return $ Left cache
     Nothing -> do
-      fmap Right $ readTextFile $ Source.sourceFilePath source
+      fmap Right $ liftIO . readTextFile $ Source.sourceFilePath source

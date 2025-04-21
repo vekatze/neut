@@ -7,24 +7,23 @@ module Move.Context.Parse
   )
 where
 
-import Move.Context.App
-import Move.Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Rule.Hint
-import Rule.Source
+import Move.Context.App
+import Move.Context.Throw qualified as Throw
 import Path
 import Path.IO
+import Rule.Hint
+import Rule.Source
 
-readTextFile :: Path Abs File -> App T.Text
+readTextFile :: Path Abs File -> IO T.Text
 readTextFile path = do
-  liftIO $ do
-    if isStdin path
-      then decodeUtf8 <$> B.getContents
-      else fmap decodeUtf8 $ B.readFile $ toFilePath path
+  if isStdin path
+    then decodeUtf8 <$> B.getContents
+    else fmap decodeUtf8 $ B.readFile $ toFilePath path
 
 isStdin :: Path Abs File -> Bool
 isStdin path =
