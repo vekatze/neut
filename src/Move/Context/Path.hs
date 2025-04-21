@@ -293,10 +293,10 @@ getOutputPathForEntryPoint baseModule kind mainTarget = do
       outputPath <- Src.attachExtension (zenEntryDir </> relPathWithoutExtension) kind
       return (kind, outputPath)
 
-getInstallDir :: FilePath -> App (Path Abs Dir)
+getInstallDir :: FilePath -> EIO (Path Abs Dir)
 getInstallDir filePath = do
   path <- P.resolveDir' filePath
-  ensureDir path
+  P.ensureDir path
   return path
 
 getLastModifiedSup :: [Path Abs File] -> EIO (Maybe UTCTime)

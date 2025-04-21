@@ -181,7 +181,7 @@ execute shouldExecute target args = do
 
 install :: Maybe FilePath -> MainTarget -> App ()
 install filePathOrNone target = do
-  mDir <- mapM Path.getInstallDir filePathOrNone
+  mDir <- mapM (toApp . Path.getInstallDir) filePathOrNone
   mapM_ (Install.install target) mDir
 
 compileForeign :: Target -> [M.Module] -> App Bool
