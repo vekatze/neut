@@ -1,19 +1,19 @@
 module Main (main) where
 
-import Act.Archive qualified as Archive
-import Act.Build qualified as Build
-import Act.Check qualified as Check
-import Act.Clean qualified as Clean
-import Act.Create qualified as Create
-import Act.Format qualified as Format
-import Act.Get qualified as Get
-import Act.LSP qualified as LSP
-import Act.Version qualified as Version
-import Act.Zen qualified as Zen
-import Context.App
-import Context.External qualified as External
-import Context.OptParse qualified as OptParse
-import Context.Throw qualified as Throw
+import Move.Act.Archive qualified as Archive
+import Move.Act.Build qualified as Build
+import Move.Act.Check qualified as Check
+import Move.Act.Clean qualified as Clean
+import Move.Act.Create qualified as Create
+import Move.Act.Format qualified as Format
+import Move.Act.Get qualified as Get
+import Move.Act.LSP qualified as LSP
+import Move.Act.Version qualified as Version
+import Move.Act.Zen qualified as Zen
+import Move.Context.App
+import Move.Context.External qualified as External
+import Move.Context.OptParse qualified as OptParse
+import Move.Context.Throw qualified as Throw
 import Rule.Command qualified as C
 import System.IO
 

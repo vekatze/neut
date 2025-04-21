@@ -1,6 +1,6 @@
 module Rule.AppLsp (AppLsp, lspOptions) where
 
-import Context.App
+import Move.Context.App
 import Rule.CodeAction qualified as CA
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
