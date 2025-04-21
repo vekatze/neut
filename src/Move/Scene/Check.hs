@@ -11,7 +11,7 @@ import Control.Monad.Reader (asks)
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.Debug (report)
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Throw qualified as Throw
@@ -49,7 +49,8 @@ _check target baseModule = do
     contentSeq <- Load.load target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      toApp $ report $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
+      h <- Debug.new
+      toApp $ Debug.report h $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
       void $ Parse.parse target source cacheOrContent >>= Elaborate.elaborate target
 
 checkAll :: App [Remark]

@@ -8,7 +8,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Color qualified as Color
-import Move.Context.Debug (report)
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
@@ -31,7 +31,9 @@ link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList 
   isExecutableAvailable <- doesFileExist executablePath
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
   if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
-    then toApp $ report "Skipped linking object files"
+    then do
+      h' <- Debug.new
+      toApp $ Debug.report h' "Skipped linking object files"
     else link' target mainModule sourceList
 
 link' :: MainTarget -> MainModule -> [Source.Source] -> App ()

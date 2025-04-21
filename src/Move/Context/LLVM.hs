@@ -12,7 +12,7 @@ import Data.Text qualified as T
 import Data.Time.Clock
 import Move.Context.App
 import Move.Context.Clang qualified as Clang
-import Move.Context.Debug (report)
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
@@ -71,7 +71,8 @@ emit' :: [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -> App ()
 emit' clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
-      toApp $ report $ "Saving: " <> T.pack (toFilePath path)
+      h <- Debug.new
+      toApp $ Debug.report h $ "Saving: " <> T.pack (toFilePath path)
       liftIO $ Path.writeByteString path llvmCode
     OK.Object ->
       emitInner clangOptString llvmCode path
@@ -86,7 +87,8 @@ emitInner additionalClangOptions llvm outputPath = do
           { cmdspec = RawCommand clang optionList,
             cwd = Nothing
           }
-  toApp $ report $ "Executing: " <> T.pack (show (clang, optionList))
+  h <- Debug.new
+  toApp $ Debug.report h $ "Executing: " <> T.pack (show (clang, optionList))
   value <- liftIO $ run10 spec (ProcessRunner.Lazy llvm)
   case value of
     Right _ ->

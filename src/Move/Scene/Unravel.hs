@@ -20,7 +20,7 @@ import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal (counter)
-import Move.Context.Debug (report)
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
@@ -60,7 +60,8 @@ type ObjectTime =
 
 unravel :: Module -> Target -> App (A.ArtifactTime, [Source.Source])
 unravel baseModule t = do
-  toApp $ report "Resolving file dependencies"
+  h <- Debug.new
+  toApp $ Debug.report h "Resolving file dependencies"
   case t of
     Main t' -> do
       case t' of

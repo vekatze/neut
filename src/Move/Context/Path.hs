@@ -39,6 +39,7 @@ import Data.Version qualified as V
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Clang qualified as Clang
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
@@ -63,6 +64,7 @@ data Handle
   = Handle
   { cacheRef :: IORef (Maybe String),
     clangDigest :: IORef (Maybe T.Text),
+    debugHandle :: Debug.Handle,
     mainModule :: M.MainModule
   }
 
@@ -72,6 +74,7 @@ new = do
   cacheRef <- asks App.buildSignatureCache
   clangDigest <- asks App.clangDigest
   mainModule <- getMainModule
+  debugHandle <- Debug.new
   return $ Handle {..}
 
 getBaseName :: Path Abs File -> EIO T.Text
@@ -147,7 +150,7 @@ getBuildSignature h t = do
     Just sig -> do
       return sig
     Nothing -> do
-      let h' = Clang.Handle {clangRef = clangDigest h}
+      let h' = Clang.Handle {clangRef = clangDigest h, debugHandle = debugHandle h}
       clangDigest <- Clang.getClangDigest h'
       let MainModule m = mainModule h
       clangOption <- getClangOption t m

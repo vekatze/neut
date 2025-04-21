@@ -15,7 +15,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import GHC.IO.Handle
 import Move.Context.App
-import Move.Context.Debug (report)
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Throw (liftEither)
 import Move.Context.Throw qualified as Throw
@@ -33,7 +33,8 @@ run procName optionList = do
 
 runOrFail :: String -> [String] -> App (Either Error ())
 runOrFail procName optionList = do
-  toApp $ report $ "Executing: " <> T.pack (show (procName, optionList))
+  h <- Debug.new
+  toApp $ Debug.report h $ "Executing: " <> T.pack (show (procName, optionList))
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
   value <- liftIO $ run00 spec
@@ -51,7 +52,8 @@ data ExternalError = ExternalError
 
 runOrFail' :: Path Abs Dir -> String -> App (Either ExternalError ())
 runOrFail' cwd cmd = do
-  toApp $ report $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
+  h <- Debug.new
+  toApp $ Debug.report h $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
   value <- liftIO $ run00 spec
@@ -60,17 +62,6 @@ runOrFail' cwd cmd = do
       return $ Right ()
     Left err ->
       Throw.throw $ ProcessRunner.toCompilerError err
-
--- ensureExecutables :: App ()
--- ensureExecutables = do
---   clang <- liftIO getClang
---   mapM_
---     ensureExecutable
---     [ clang,
---       "curl",
---       "tar",
---       "zstd"
---     ]
 
 ensureExecutable :: String -> App ()
 ensureExecutable name = do

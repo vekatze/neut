@@ -15,7 +15,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.Debug (report)
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Rule.Const (envVarClang)
 import Rule.Digest
@@ -24,14 +24,16 @@ import Rule.ProcessRunner.Rule qualified as ProcessRunner
 import System.Environment (lookupEnv)
 import System.Process
 
-newtype Handle
+data Handle
   = Handle
-  { clangRef :: IORef (Maybe T.Text)
+  { clangRef :: IORef (Maybe T.Text),
+    debugHandle :: Debug.Handle
   }
 
 new :: App Handle
 new = do
   clangRef <- asks App.clangDigest
+  debugHandle <- Debug.new
   return $ Handle {..}
 
 getClang :: IO String
@@ -50,19 +52,19 @@ getClangDigest h = do
     Just digest -> do
       return digest
     Nothing -> do
-      digest <- calculateClangDigest
+      digest <- calculateClangDigest h
       liftIO $ writeIORef (clangRef h) (Just digest)
       return digest
 
-calculateClangDigest :: EIO T.Text
-calculateClangDigest = do
+calculateClangDigest :: Handle -> EIO T.Text
+calculateClangDigest h = do
   clang <- liftIO getClang
   let ProcessRunner.Runner {run01} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
   output <- liftIO $ run01 spec
   case output of
     Right value -> do
-      report $ "Clang info:\n" <> decodeUtf8 value
+      Debug.report (debugHandle h) $ "Clang info:\n" <> decodeUtf8 value
       return $ decodeUtf8 $ hashAndEncode value
     Left err ->
       throwError $ ProcessRunner.toCompilerError err
