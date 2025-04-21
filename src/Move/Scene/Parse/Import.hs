@@ -4,8 +4,15 @@ module Move.Scene.Parse.Import
   )
 where
 
+import Control.Monad
+import Control.Monad.Reader (asks)
+import Data.HashMap.Strict qualified as Map
+import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (toApp)
+import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.RawImportSummary qualified as RawImportSummary
@@ -14,9 +21,10 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
-import Control.Monad
-import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
+import Move.Scene.Module.GetEnabledPreset
+import Move.Scene.Module.GetModule qualified as Module
+import Move.Scene.Source.ShiftToLatest
+import Path
 import Rule.AliasInfo qualified as AI
 import Rule.BaseName qualified as BN
 import Rule.C
@@ -32,10 +40,6 @@ import Rule.Source qualified as Source
 import Rule.SourceLocator qualified as SL
 import Rule.StrictGlobalLocator qualified as SGL
 import Rule.Syntax.Series qualified as SE
-import Path
-import Move.Scene.Module.GetEnabledPreset
-import Move.Scene.Module.Reflect qualified as Module
-import Move.Scene.Source.ShiftToLatest
 
 type LocatorText =
   T.Text
@@ -128,7 +132,11 @@ interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList =
 
 getSource :: AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
 getSource mustUpdateTag m sgl locatorText = do
-  nextModule <- Module.getModule m (SGL.moduleID sgl) locatorText
+  mainModule <- getMainModule
+  counter <- asks App.counter
+  mcm <- asks App.moduleCacheMap
+  let h = Module.Handle {counter, mcm}
+  nextModule <- toApp $ Module.getModule h mainModule m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $

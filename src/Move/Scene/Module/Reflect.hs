@@ -1,26 +1,20 @@
 module Move.Scene.Module.Reflect
   ( Handle (..),
-    getModule,
     fromFilePath,
     fromCurrentPath,
     findModuleFile,
-    getAllDependencies,
   )
 where
 
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, toApp)
-import Move.Context.Env (getMainModule)
-import Move.Context.Module qualified as Module
 import Move.Context.Path qualified as Path
 import Move.Context.Throw hiding (liftEither)
 import Move.Scene.Ens.Reflect qualified as Ens
@@ -49,31 +43,6 @@ newtype Handle
   = Handle
   { counter :: IORef Int
   }
-
-getModule ::
-  H.Hint ->
-  MID.ModuleID ->
-  T.Text ->
-  App Module
-getModule m moduleID locatorText = do
-  mainModule <- getMainModule
-  nextModuleFilePath <- toApp $ Module.getModuleFilePath mainModule (Just m) moduleID
-  mcm <- Module.getModuleCacheMap
-  case Map.lookup nextModuleFilePath mcm of
-    Just nextModule ->
-      return nextModule
-    Nothing -> do
-      moduleFileExists <- doesFileExist nextModuleFilePath
-      unless moduleFileExists $ do
-        raiseError m $
-          T.pack "Could not find the module file for `"
-            <> locatorText
-            <> "`"
-      counter <- asks App.counter
-      let h = Handle {counter}
-      nextModule <- toApp $ fromFilePath h nextModuleFilePath
-      Module.insertToModuleCacheMap nextModuleFilePath nextModule
-      return nextModule
 
 fromFilePath :: Handle -> Path Abs File -> EIO Module
 fromFilePath h moduleFilePath = do
@@ -122,16 +91,6 @@ fromFilePath h moduleFilePath = do
         moduleInlineLimit = mInlineLimit,
         modulePresetMap = presetMap
       }
-
-getAllDependencies :: Module -> App [(ModuleAlias, Module)]
-getAllDependencies baseModule = do
-  mainModule <- getMainModule
-  forM (Map.toList $ moduleDependency baseModule) $ \(alias, dependency) -> do
-    let moduleID = MID.Library $ dependencyDigest dependency
-    moduleFilePath <- toApp $ Module.getModuleFilePath mainModule Nothing moduleID
-    let m = H.newSourceHint moduleFilePath
-    dep <- getModule m moduleID (MID.reify moduleID)
-    return (alias, dep)
 
 fromCurrentPath :: Handle -> App Module
 fromCurrentPath h = do

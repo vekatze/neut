@@ -1,13 +1,7 @@
 module Move.Scene.LSP.Complete (complete) where
 
-import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App
-import Move.Context.AppM
-import Move.Context.Cache qualified as Cache
-import Move.Context.External (getClangDigest)
-import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Control.Monad
+import Control.Monad.Reader (asks)
 import Control.Monad.Trans
 import Data.Bifunctor (second)
 import Data.Containers.ListUtils (nubOrd)
@@ -17,6 +11,21 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.LSP.Protocol.Types
+import Move.Context.Antecedent qualified as Antecedent
+import Move.Context.App
+import Move.Context.App.Internal qualified as App
+import Move.Context.AppM
+import Move.Context.Cache qualified as Cache
+import Move.Context.EIO (toApp)
+import Move.Context.Env (getMainModule)
+import Move.Context.External (getClangDigest)
+import Move.Context.Path qualified as Path
+import Move.Context.Throw qualified as Throw
+import Move.Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
+import Move.Scene.Module.GetModule qualified as Module
+import Move.Scene.Source.Reflect qualified as Source
+import Move.Scene.Unravel (registerShiftMap)
 import Rule.BaseName qualified as BN
 import Rule.Cache qualified as Cache
 import Rule.Const (nsSep)
@@ -32,11 +41,6 @@ import Rule.Source
 import Rule.SourceLocator qualified as SL
 import Rule.Target
 import Rule.TopCandidate
-import Language.LSP.Protocol.Types
-import Move.Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
-import Move.Scene.Module.Reflect (getAllDependencies)
-import Move.Scene.Source.Reflect qualified as Source
-import Move.Scene.Unravel (registerShiftMap)
 import UnliftIO.Async
 
 complete :: Uri -> Position -> AppM [CompletionItem]
@@ -281,7 +285,11 @@ locToPosition (line, character) =
 
 getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], FastPresetSummary)
 getAllTopCandidate baseModule = do
-  dependencies <- getAllDependencies baseModule
+  counter <- asks App.counter
+  mcm <- asks App.moduleCacheMap
+  let h = Module.Handle {counter, mcm}
+  mainModule <- getMainModule
+  dependencies <- toApp $ Module.getAllDependencies h mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   (candListList, aliasPresetInfo) <- unzip <$> pooledMapConcurrently getAllTopCandidate' visibleModuleList
   let aliasList = getAliasListWithEnabledPresets baseModule

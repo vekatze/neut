@@ -1,17 +1,25 @@
 module Move.Scene.Module.GetEnabledPreset (getEnabledPreset) where
 
-import Move.Context.App
+import Control.Monad.Reader (asks)
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (toApp)
+import Move.Context.Env (getMainModule)
+import Move.Scene.Module.GetModule qualified as Module
 import Rule.BaseName qualified as BN
 import Rule.Module
 import Rule.ModuleAlias qualified as MA
-import Move.Scene.Module.Reflect qualified as Module
 
 getEnabledPreset :: Module -> App [(T.Text, [BN.BaseName])]
 getEnabledPreset baseModule = do
-  dependencies <- Module.getAllDependencies baseModule
+  mainModule <- getMainModule
+  counter <- asks App.counter
+  mcm <- asks App.moduleCacheMap
+  let h = Module.Handle {counter, mcm}
+  dependencies <- toApp $ Module.getAllDependencies h mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   let aliasPresetInfo = map getAllTopCandidate' visibleModuleList
   let aliasList = getAliasListWithEnabledPresets baseModule
