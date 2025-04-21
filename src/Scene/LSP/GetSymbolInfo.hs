@@ -8,12 +8,12 @@ import Context.Type
 import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Text qualified as T
-import Entity.LocationTree qualified as LT
-import Entity.Source (Source (sourceFilePath, sourceModule))
-import Entity.Target (Target (Peripheral))
-import Entity.Term.Weaken (weaken)
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText
+import Rule.LocationTree qualified as LT
+import Rule.Source (Source (sourceFilePath, sourceModule))
+import Rule.Target (Target (Peripheral))
+import Rule.Term.Weaken (weaken)
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.ToText
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Scene.Check qualified as Check

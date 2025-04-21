@@ -2,9 +2,9 @@ module Scene.Cancel (cancel) where
 
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
-import Entity.Ident
-import Entity.LowComp qualified as LC
-import Entity.LowType qualified as LT
+import Rule.Ident
+import Rule.LowComp qualified as LC
+import Rule.LowType qualified as LT
 
 type FreeInfo =
   (Int, Ident, LC.FreeID)

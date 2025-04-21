@@ -9,10 +9,10 @@ import Context.Cache qualified as Cache
 import Context.Module (getAllSourcePathInModule)
 import Context.Path (getSourceCompletionCachePath)
 import Data.Maybe (catMaybes)
-import Entity.Cache
-import Entity.Module
-import Entity.Source
-import Entity.Target (Target (Peripheral))
+import Rule.Cache
+import Rule.Module
+import Rule.Source
+import Rule.Target (Target (Peripheral))
 import Path
 import Scene.Source.ShiftToLatest (shiftToLatest)
 import UnliftIO.Async

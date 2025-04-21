@@ -6,15 +6,15 @@ import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
-import Entity.Annotation qualified as AN
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.FreeVars qualified as WT
+import Rule.Annotation qualified as AN
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Binder
+import Rule.DecisionTree qualified as DT
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.LamKind qualified as LK
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.FreeVars qualified as WT
 
 subst :: WT.SubstWeakTerm -> WT.WeakTerm -> App WT.WeakTerm
 subst sub term =

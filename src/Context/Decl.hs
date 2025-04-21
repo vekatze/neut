@@ -13,12 +13,12 @@ import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
-import Entity.DeclarationName qualified as DN
-import Entity.ExternalName qualified as EN
-import Entity.Foreign qualified as F
-import Entity.ForeignCodType qualified as FCT
-import Entity.Hint
-import Entity.WeakTerm qualified as WT
+import Rule.DeclarationName qualified as DN
+import Rule.ExternalName qualified as EN
+import Rule.Foreign qualified as F
+import Rule.ForeignCodType qualified as FCT
+import Rule.Hint
+import Rule.WeakTerm qualified as WT
 import Prelude hiding (lookup, read)
 
 initialize :: App ()

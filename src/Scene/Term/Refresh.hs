@@ -3,11 +3,11 @@ module Scene.Term.Refresh (refresh, refresh', refresh'', refreshDecisionTree) wh
 import Context.App
 import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.LamKind qualified as LK
-import Entity.Term qualified as TM
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Binder
+import Rule.DecisionTree qualified as DT
+import Rule.LamKind qualified as LK
+import Rule.Term qualified as TM
 
 refresh :: TM.Term -> App TM.Term
 refresh term =

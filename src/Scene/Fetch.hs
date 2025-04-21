@@ -19,20 +19,20 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
-import Entity.BaseName (isCapitalized)
-import Entity.BaseName qualified as BN
-import Entity.Ens qualified as E
-import Entity.Ens qualified as SE
-import Entity.Error (Error (MakeError))
-import Entity.Hint
-import Entity.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
-import Entity.Module qualified as M
-import Entity.ModuleAlias
-import Entity.ModuleDigest qualified as MD
-import Entity.ModuleID qualified as MID
-import Entity.ModuleURL
-import Entity.Syntax.Series (Series (hasOptionalSeparator))
-import Entity.Syntax.Series qualified as SE
+import Rule.BaseName (isCapitalized)
+import Rule.BaseName qualified as BN
+import Rule.Ens qualified as E
+import Rule.Ens qualified as SE
+import Rule.Error (Error (MakeError))
+import Rule.Hint
+import Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
+import Rule.Module qualified as M
+import Rule.ModuleAlias
+import Rule.ModuleDigest qualified as MD
+import Rule.ModuleID qualified as MID
+import Rule.ModuleURL
+import Rule.Syntax.Series (Series (hasOptionalSeparator))
+import Rule.Syntax.Series qualified as SE
 import Path
 import Scene.Ens.Reflect qualified as Ens
 import Scene.Module.Reflect qualified as Module

@@ -3,7 +3,7 @@ module Act.Archive (archive) where
 import Context.App
 import Context.Env (getMainModule)
 import Context.Path qualified as Path
-import Entity.Config.Archive
+import Rule.Config.Archive
 import Scene.Archive qualified as Archive
 import Scene.Collect qualified as Collect
 import Scene.Initialize qualified as Initialize

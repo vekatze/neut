@@ -4,9 +4,9 @@ import Context.App
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.BaseName qualified as BN
-import Entity.Module
-import Entity.ModuleAlias qualified as MA
+import Rule.BaseName qualified as BN
+import Rule.Module
+import Rule.ModuleAlias qualified as MA
 import Scene.Module.Reflect qualified as Module
 
 getEnabledPreset :: Module -> App [(T.Text, [BN.BaseName])]

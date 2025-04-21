@@ -13,8 +13,8 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
-import Entity.Log qualified as L
-import Entity.ProgressBar (Frame, ProgressBar (..), next, renderFinished, renderInProgress)
+import Rule.Log qualified as L
+import Rule.ProgressBar (Frame, ProgressBar (..), next, renderFinished, renderInProgress)
 import System.Console.ANSI
 import System.IO hiding (Handle)
 import UnliftIO.Async

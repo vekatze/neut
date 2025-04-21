@@ -9,15 +9,15 @@ import Control.Monad
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Entity.Annotation qualified as AN
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.HoleSubst
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText (toText)
+import Rule.Annotation qualified as AN
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Binder
+import Rule.DecisionTree qualified as DT
+import Rule.HoleSubst
+import Rule.Ident.Reify qualified as Ident
+import Rule.LamKind qualified as LK
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.ToText (toText)
 import Scene.WeakTerm.Reduce
 import Scene.WeakTerm.Subst
 import Prelude hiding (lookup)
@@ -107,7 +107,7 @@ fill sub term =
               let varList = map Ident.toInt xs
               subst (IntMap.fromList $ zip varList (map Right es')) body >>= reduce
           | otherwise -> do
-              error $ "Entity.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\n" ++ show (map toText es') ++ "\nhole id = " ++ show i
+              error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\n" ++ show (map toText es') ++ "\nhole id = " ++ show i
         Nothing ->
           return $ m :< WT.Hole i es'
     m :< WT.Magic der -> do

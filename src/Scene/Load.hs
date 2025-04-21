@@ -5,9 +5,9 @@ import Context.Cache qualified as Cache
 import Context.Debug (report)
 import Context.Parse (readTextFile)
 import Data.Text qualified as T
-import Entity.Cache qualified as Cache
-import Entity.Source qualified as Source
-import Entity.Target
+import Rule.Cache qualified as Cache
+import Rule.Source qualified as Source
+import Rule.Target
 import UnliftIO (pooledForConcurrently)
 
 load :: Target -> [Source.Source] -> App [(Source.Source, Either Cache.Cache T.Text)]

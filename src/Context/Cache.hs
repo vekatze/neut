@@ -19,12 +19,12 @@ import Context.Path (getSourceLocationCachePath)
 import Context.Path qualified as Path
 import Control.Monad.IO.Class
 import Data.Binary
-import Entity.Artifact qualified as A
-import Entity.Cache qualified as Cache
-import Entity.Module
-import Entity.OutputKind qualified as OK
-import Entity.Source qualified as Source
-import Entity.Target
+import Rule.Artifact qualified as A
+import Rule.Cache qualified as Cache
+import Rule.Module
+import Rule.OutputKind qualified as OK
+import Rule.Source qualified as Source
+import Rule.Target
 import Path
 import Path.IO
 

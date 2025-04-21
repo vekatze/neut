@@ -19,40 +19,40 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Entity.ArgNum qualified as AN
-import Entity.Attr.DataIntro qualified as AttrDI
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Attr.VarGlobal qualified as AttrVG
-import Entity.BaseLowType qualified as BLT
-import Entity.BaseName qualified as BN
-import Entity.Binder
-import Entity.Comp qualified as C
-import Entity.DecisionTree qualified as DT
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.EnumCase qualified as EC
-import Entity.Hint
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.Literal qualified as L
-import Entity.Magic qualified as M
-import Entity.Noema qualified as N
-import Entity.Opacity (isOpaque)
-import Entity.Opacity qualified as O
-import Entity.OptimizableData qualified as OD
-import Entity.Prim qualified as P
-import Entity.PrimNumSize qualified as PNS
-import Entity.PrimOp
-import Entity.PrimType qualified as PT
-import Entity.PrimValue qualified as PV
-import Entity.Rune qualified as RU
-import Entity.Stmt
-import Entity.StmtKind
-import Entity.Term qualified as TM
-import Entity.Term.Chain (nubFreeVariables)
-import Entity.Term.Chain qualified as TM
-import Entity.Term.FromPrimNum
+import Rule.ArgNum qualified as AN
+import Rule.Attr.DataIntro qualified as AttrDI
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Attr.VarGlobal qualified as AttrVG
+import Rule.BaseLowType qualified as BLT
+import Rule.BaseName qualified as BN
+import Rule.Binder
+import Rule.Comp qualified as C
+import Rule.DecisionTree qualified as DT
+import Rule.DefiniteDescription qualified as DD
+import Rule.Discriminant qualified as D
+import Rule.EnumCase qualified as EC
+import Rule.Hint
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.LamKind qualified as LK
+import Rule.Literal qualified as L
+import Rule.Magic qualified as M
+import Rule.Noema qualified as N
+import Rule.Opacity (isOpaque)
+import Rule.Opacity qualified as O
+import Rule.OptimizableData qualified as OD
+import Rule.Prim qualified as P
+import Rule.PrimNumSize qualified as PNS
+import Rule.PrimOp
+import Rule.PrimType qualified as PT
+import Rule.PrimValue qualified as PV
+import Rule.Rune qualified as RU
+import Rule.Stmt
+import Rule.StmtKind
+import Rule.Term qualified as TM
+import Rule.Term.Chain (nubFreeVariables)
+import Rule.Term.Chain qualified as TM
+import Rule.Term.FromPrimNum
 import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility

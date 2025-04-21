@@ -18,25 +18,25 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
-import Entity.ArgNum qualified as AN
-import Entity.Attr.VarGlobal qualified as AttrVG
-import Entity.Const qualified as C
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.GlobalLocator qualified as GL
-import Entity.GlobalName qualified as GN
-import Entity.Hint
-import Entity.IsConstLike
-import Entity.LocalLocator qualified as LL
-import Entity.Locator qualified as L
-import Entity.Magic qualified as M
-import Entity.Name
-import Entity.PrimNumSize qualified as PNS
-import Entity.PrimOp qualified as PO
-import Entity.PrimType qualified as PT
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
+import Rule.ArgNum qualified as AN
+import Rule.Attr.VarGlobal qualified as AttrVG
+import Rule.Const qualified as C
+import Rule.DefiniteDescription qualified as DD
+import Rule.Discriminant qualified as D
+import Rule.GlobalLocator qualified as GL
+import Rule.GlobalName qualified as GN
+import Rule.Hint
+import Rule.IsConstLike
+import Rule.LocalLocator qualified as LL
+import Rule.Locator qualified as L
+import Rule.Magic qualified as M
+import Rule.Name
+import Rule.PrimNumSize qualified as PNS
+import Rule.PrimOp qualified as PO
+import Rule.PrimType qualified as PT
+import Rule.WeakPrim qualified as WP
+import Rule.WeakPrimValue qualified as WPV
+import Rule.WeakTerm qualified as WT
 
 {-# INLINE resolveName #-}
 resolveName :: Hint -> Name -> App (DD.DefiniteDescription, (Hint, GN.GlobalName))

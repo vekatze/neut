@@ -4,8 +4,8 @@ import Context.App
 import Context.Path (getBaseName)
 import Data.List qualified as List
 import Data.Maybe
-import Entity.Module
-import Entity.PackageVersion qualified as PV
+import Rule.Module
+import Rule.PackageVersion qualified as PV
 import Path.IO
 
 getExistingVersions :: Module -> App [PV.PackageVersion]

@@ -13,9 +13,9 @@ import Context.Remark qualified as Remark
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.Hint
-import Entity.Remark
-import Entity.UnusedGlobalLocators (UnusedGlobalLocators)
+import Rule.Hint
+import Rule.Remark
+import Rule.UnusedGlobalLocators (UnusedGlobalLocators)
 import Prelude hiding (lookup, read)
 
 initialize :: App ()

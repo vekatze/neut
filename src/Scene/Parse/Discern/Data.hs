@@ -3,19 +3,19 @@ module Scene.Parse.Discern.Data (defineData) where
 import Context.App
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe
-import Entity.Attr.Data qualified as AttrD
-import Entity.Attr.DataIntro qualified as AttrDI
-import Entity.BaseName qualified as BN
-import Entity.Discriminant qualified as D
-import Entity.Hint
-import Entity.IsConstLike
-import Entity.Name
-import Entity.RawBinder
-import Entity.RawIdent
-import Entity.RawProgram
-import Entity.RawTerm qualified as RT
-import Entity.StmtKind qualified as SK
-import Entity.Syntax.Series qualified as SE
+import Rule.Attr.Data qualified as AttrD
+import Rule.Attr.DataIntro qualified as AttrDI
+import Rule.BaseName qualified as BN
+import Rule.Discriminant qualified as D
+import Rule.Hint
+import Rule.IsConstLike
+import Rule.Name
+import Rule.RawBinder
+import Rule.RawIdent
+import Rule.RawProgram
+import Rule.RawTerm qualified as RT
+import Rule.StmtKind qualified as SK
+import Rule.Syntax.Series qualified as SE
 
 defineData ::
   Hint ->

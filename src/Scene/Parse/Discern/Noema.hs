@@ -7,9 +7,9 @@ where
 import Context.App
 import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree hiding (section)
-import Entity.Magic qualified as M
-import Entity.Noema qualified as N
-import Entity.WeakTerm qualified as WT
+import Rule.Magic qualified as M
+import Rule.Noema qualified as N
+import Rule.WeakTerm qualified as WT
 
 castToNoemaIfNecessary :: N.IsNoetic -> WT.WeakTerm -> App WT.WeakTerm
 castToNoemaIfNecessary isNoetic e =

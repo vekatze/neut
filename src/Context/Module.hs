@@ -22,16 +22,16 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.Const
-import Entity.Ens
-import Entity.Ens.Reify qualified as Ens
-import Entity.Hint qualified as H
-import Entity.Module
-import Entity.ModuleDigest
-import Entity.ModuleDigest qualified as MD
-import Entity.ModuleID qualified as MID
-import Entity.ModuleURL
-import Entity.Source qualified as Source
+import Rule.Const
+import Rule.Ens
+import Rule.Ens.Reify qualified as Ens
+import Rule.Hint qualified as H
+import Rule.Module
+import Rule.ModuleDigest
+import Rule.ModuleDigest qualified as MD
+import Rule.ModuleID qualified as MID
+import Rule.ModuleURL
+import Rule.Source qualified as Source
 import Path
 import Path.IO
 import System.Environment

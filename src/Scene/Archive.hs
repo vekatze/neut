@@ -8,10 +8,10 @@ import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Text qualified as T
-import Entity.Const
-import Entity.Ens qualified as E
-import Entity.Module
-import Entity.PackageVersion qualified as PV
+import Rule.Const
+import Rule.Ens qualified as E
+import Rule.Module
+import Rule.PackageVersion qualified as PV
 import Path
 import Path.IO
 import Prelude hiding (log)

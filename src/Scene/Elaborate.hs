@@ -23,41 +23,41 @@ import Data.Bitraversable (bimapM)
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.Annotation qualified as AN
-import Entity.Attr.Data qualified as AttrD
-import Entity.Attr.Lam qualified as AttrL
-import Entity.BaseLowType qualified as BLT
-import Entity.BasePrimType qualified as BPT
-import Entity.Binder
-import Entity.Cache qualified as Cache
-import Entity.Const (holeLiteral)
-import Entity.DecisionTree qualified as DT
-import Entity.DeclarationName qualified as DN
-import Entity.DefiniteDescription qualified as DD
-import Entity.Error qualified as E
-import Entity.Foreign qualified as F
-import Entity.Geist qualified as G
-import Entity.Hint
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.IsConstLike (IsConstLike)
-import Entity.LamKind qualified as LK
-import Entity.Magic qualified as M
-import Entity.Prim qualified as P
-import Entity.PrimNumSize
-import Entity.PrimType qualified as PT
-import Entity.PrimValue qualified as PV
-import Entity.Remark qualified as R
-import Entity.Remark qualified as Remark
-import Entity.Stmt
-import Entity.StmtKind
-import Entity.Target
-import Entity.Term qualified as TM
-import Entity.Term.Weaken
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText
+import Rule.Annotation qualified as AN
+import Rule.Attr.Data qualified as AttrD
+import Rule.Attr.Lam qualified as AttrL
+import Rule.BaseLowType qualified as BLT
+import Rule.BasePrimType qualified as BPT
+import Rule.Binder
+import Rule.Cache qualified as Cache
+import Rule.Const (holeLiteral)
+import Rule.DecisionTree qualified as DT
+import Rule.DeclarationName qualified as DN
+import Rule.DefiniteDescription qualified as DD
+import Rule.Error qualified as E
+import Rule.Foreign qualified as F
+import Rule.Geist qualified as G
+import Rule.Hint
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.IsConstLike (IsConstLike)
+import Rule.LamKind qualified as LK
+import Rule.Magic qualified as M
+import Rule.Prim qualified as P
+import Rule.PrimNumSize
+import Rule.PrimType qualified as PT
+import Rule.PrimValue qualified as PV
+import Rule.Remark qualified as R
+import Rule.Remark qualified as Remark
+import Rule.Stmt
+import Rule.StmtKind
+import Rule.Target
+import Rule.Term qualified as TM
+import Rule.Term.Weaken
+import Rule.WeakPrim qualified as WP
+import Rule.WeakPrimValue qualified as WPV
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.ToText
 import Scene.Elaborate.EnsureAffinity
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify

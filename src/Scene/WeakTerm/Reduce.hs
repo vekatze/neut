@@ -11,21 +11,21 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
-import Entity.Attr.DataIntro qualified as AttrDI
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Binder
-import Entity.Const
-import Entity.DecisionTree qualified as DT
-import Entity.Discriminant qualified as D
-import Entity.Hint qualified as H
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.Module
-import Entity.Source
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
+import Rule.Attr.DataIntro qualified as AttrDI
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Binder
+import Rule.Const
+import Rule.DecisionTree qualified as DT
+import Rule.Discriminant qualified as D
+import Rule.Hint qualified as H
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.LamKind qualified as LK
+import Rule.Module
+import Rule.Source
+import Rule.WeakPrim qualified as WP
+import Rule.WeakPrimValue qualified as WPV
+import Rule.WeakTerm qualified as WT
 import Scene.WeakTerm.Subst qualified as Subst
 
 type InlineLimit =

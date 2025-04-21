@@ -26,23 +26,23 @@ import Context.UnusedPreset qualified as UnusedPreset
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.ArgNum qualified as AN
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.Error (Error (MakeError))
-import Entity.GlobalName
-import Entity.GlobalName qualified as GN
-import Entity.Hint
-import Entity.Hint qualified as Hint
-import Entity.IsConstLike
-import Entity.Key
-import Entity.OptimizableData qualified as OD
-import Entity.PrimOp.FromText qualified as PrimOp
-import Entity.PrimType.FromText qualified as PT
-import Entity.RawTerm qualified as RT
-import Entity.Remark (Remark, RemarkLevel (Error), newRemark)
-import Entity.StmtKind qualified as SK
-import Entity.TopNameMap
+import Rule.ArgNum qualified as AN
+import Rule.DefiniteDescription qualified as DD
+import Rule.Discriminant qualified as D
+import Rule.Error (Error (MakeError))
+import Rule.GlobalName
+import Rule.GlobalName qualified as GN
+import Rule.Hint
+import Rule.Hint qualified as Hint
+import Rule.IsConstLike
+import Rule.Key
+import Rule.OptimizableData qualified as OD
+import Rule.PrimOp.FromText qualified as PrimOp
+import Rule.PrimType.FromText qualified as PT
+import Rule.RawTerm qualified as RT
+import Rule.Remark (Remark, RemarkLevel (Error), newRemark)
+import Rule.StmtKind qualified as SK
+import Rule.TopNameMap
 import Path
 import Prelude hiding (lookup)
 

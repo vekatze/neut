@@ -29,9 +29,9 @@ import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Context.UnusedVariable qualified as UnusedVariable
 import Context.WeakDefinition qualified as WeakDefinition
-import Entity.Config.Remark qualified as Remark
-import Entity.Module
-import Entity.Source qualified as Source
+import Rule.Config.Remark qualified as Remark
+import Rule.Module
+import Rule.Source qualified as Source
 import Path
 import Scene.Clarify qualified as Clarify
 import Scene.Module.Reflect qualified as Module

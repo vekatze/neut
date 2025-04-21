@@ -20,10 +20,10 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Entity.AppLsp
-import Entity.FilePos qualified as FP
-import Entity.Remark
-import Entity.Remark qualified as R
+import Rule.AppLsp
+import Rule.FilePos qualified as FP
+import Rule.Remark
+import Rule.Remark qualified as R
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types

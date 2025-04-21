@@ -22,14 +22,14 @@ import Control.Monad (void)
 import Control.Monad.Reader
 import Data.IORef
 import Data.Text qualified as T
-import Entity.Comp qualified as C
-import Entity.Const
-import Entity.Hint
-import Entity.HoleID
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.RawTerm qualified as RT
-import Entity.WeakTerm qualified as WT
+import Rule.Comp qualified as C
+import Rule.Const
+import Rule.Hint
+import Rule.HoleID
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.RawTerm qualified as RT
+import Rule.WeakTerm qualified as WT
 
 newCount :: App Int
 newCount =

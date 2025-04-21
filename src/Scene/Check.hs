@@ -12,10 +12,10 @@ import Context.Env (getMainModule)
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Text qualified as T
-import Entity.Module qualified as M
-import Entity.Remark
-import Entity.Source (Source (sourceFilePath))
-import Entity.Target
+import Rule.Module qualified as M
+import Rule.Remark
+import Rule.Source (Source (sourceFilePath))
+import Rule.Target
 import Path
 import Scene.Elaborate qualified as Elaborate
 import Scene.Initialize qualified as Initialize

@@ -12,12 +12,12 @@ import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.ArgNum qualified as AN
-import Entity.Const (holeVarPrefix)
-import Entity.DefiniteDescription qualified as DD
-import Entity.Hint
-import Entity.IsConstLike
-import Entity.Key
+import Rule.ArgNum qualified as AN
+import Rule.Const (holeVarPrefix)
+import Rule.DefiniteDescription qualified as DD
+import Rule.Hint
+import Rule.IsConstLike
+import Rule.Key
 import Prelude hiding (lookup, read)
 
 insert :: Hint -> DD.DefiniteDescription -> IsConstLike -> AN.ArgNum -> [Key] -> App ()

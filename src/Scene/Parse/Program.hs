@@ -10,19 +10,19 @@ import Control.Monad.Trans
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.BaseName qualified as BN
-import Entity.C
-import Entity.ExternalName qualified as EN
-import Entity.ForeignCodType qualified as F
-import Entity.Hint
-import Entity.LocalLocator qualified as LL
-import Entity.Name
-import Entity.Opacity qualified as O
-import Entity.RawBinder
-import Entity.RawProgram
-import Entity.RawTerm qualified as RT
-import Entity.StmtKind qualified as SK
-import Entity.Syntax.Series qualified as SE
+import Rule.BaseName qualified as BN
+import Rule.C
+import Rule.ExternalName qualified as EN
+import Rule.ForeignCodType qualified as F
+import Rule.Hint
+import Rule.LocalLocator qualified as LL
+import Rule.Name
+import Rule.Opacity qualified as O
+import Rule.RawBinder
+import Rule.RawProgram
+import Rule.RawTerm qualified as RT
+import Rule.StmtKind qualified as SK
+import Rule.Syntax.Series qualified as SE
 import Scene.Parse.Core (asLabel)
 import Scene.Parse.Core qualified as P
 import Scene.Parse.RawTerm

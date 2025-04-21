@@ -13,13 +13,13 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Entity.ClangOption qualified as CL
-import Entity.Const
-import Entity.Module
-import Entity.ModuleID qualified as MID
-import Entity.SourceLocator qualified as SL
-import Entity.Target
-import Entity.ZenConfig
+import Rule.ClangOption qualified as CL
+import Rule.Const
+import Rule.Module
+import Rule.ModuleID qualified as MID
+import Rule.SourceLocator qualified as SL
+import Rule.Target
+import Rule.ZenConfig
 import Path (parent, (</>))
 
 createNewProject :: T.Text -> Module -> App ()

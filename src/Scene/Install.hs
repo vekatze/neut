@@ -5,7 +5,7 @@ import Context.Env qualified as Env
 import Context.Path qualified as Path
 import Control.Monad
 import Data.Text qualified as T
-import Entity.Target qualified as Target
+import Rule.Target qualified as Target
 import Path
 import Path.IO
 import Prelude hiding (log)

@@ -7,8 +7,8 @@ where
 
 import Context.App
 import Context.App.Internal
-import Entity.RawImportSummary qualified as RIS
-import Entity.RawProgram (RawImport)
+import Rule.RawImportSummary qualified as RIS
+import Rule.RawProgram (RawImport)
 
 initialize :: App ()
 initialize =

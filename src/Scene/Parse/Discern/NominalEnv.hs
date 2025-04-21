@@ -9,13 +9,13 @@ where
 
 import Context.App
 import Context.UnusedVariable qualified as UnusedVariable
-import Entity.Hint
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.Layer
-import Entity.Module
-import Entity.NominalEnv
-import Entity.VarDefKind
+import Rule.Hint
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.Layer
+import Rule.Module
+import Rule.NominalEnv
+import Rule.VarDefKind
 
 data Axis = Axis
   { _nenv :: NominalEnv,

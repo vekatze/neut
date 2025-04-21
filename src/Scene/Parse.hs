@@ -16,15 +16,15 @@ import Context.UnusedVariable qualified as UnusedVariable
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.ArgNum qualified as AN
-import Entity.Cache qualified as Cache
-import Entity.DefiniteDescription qualified as DD
-import Entity.Hint
-import Entity.Ident.Reify
-import Entity.RawProgram
-import Entity.Source qualified as Source
-import Entity.Stmt
-import Entity.Target
+import Rule.ArgNum qualified as AN
+import Rule.Cache qualified as Cache
+import Rule.DefiniteDescription qualified as DD
+import Rule.Hint
+import Rule.Ident.Reify
+import Rule.RawProgram
+import Rule.Source qualified as Source
+import Rule.Stmt
+import Rule.Target
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
 import Scene.Parse.Import

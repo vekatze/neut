@@ -17,21 +17,21 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.BaseName qualified as BN
-import Entity.Cache qualified as Cache
-import Entity.Const (nsSep)
-import Entity.DefiniteDescription qualified as DD
-import Entity.Hint
-import Entity.Ident.Reify qualified as Ident
-import Entity.LocalVarTree qualified as LVT
-import Entity.Module
-import Entity.ModuleAlias qualified as MA
-import Entity.ModuleID qualified as MID
-import Entity.RawImportSummary
-import Entity.Source
-import Entity.SourceLocator qualified as SL
-import Entity.Target
-import Entity.TopCandidate
+import Rule.BaseName qualified as BN
+import Rule.Cache qualified as Cache
+import Rule.Const (nsSep)
+import Rule.DefiniteDescription qualified as DD
+import Rule.Hint
+import Rule.Ident.Reify qualified as Ident
+import Rule.LocalVarTree qualified as LVT
+import Rule.Module
+import Rule.ModuleAlias qualified as MA
+import Rule.ModuleID qualified as MID
+import Rule.RawImportSummary
+import Rule.Source
+import Rule.SourceLocator qualified as SL
+import Rule.Target
+import Rule.TopCandidate
 import Language.LSP.Protocol.Types
 import Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
 import Scene.Module.Reflect (getAllDependencies)

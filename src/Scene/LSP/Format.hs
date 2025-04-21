@@ -5,9 +5,9 @@ import Context.Throw qualified as Throw
 import Control.Monad.Trans
 import Data.Maybe
 import Data.Text qualified as T
-import Entity.AppLsp
-import Entity.Const
-import Entity.FileType qualified as FT
+import Rule.AppLsp
+import Rule.Const
+import Rule.FileType qualified as FT
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Language.LSP.VFS

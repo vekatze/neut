@@ -17,21 +17,21 @@ import Context.UnusedStaticFile qualified as UnusedStaticFile
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.AliasInfo qualified as AI
-import Entity.BaseName qualified as BN
-import Entity.C
-import Entity.Const
-import Entity.GlobalLocatorAlias qualified as GLA
-import Entity.Hint
-import Entity.Import (ImportItem (..))
-import Entity.LocalLocator qualified as LL
-import Entity.Module
-import Entity.ModuleAlias (ModuleAlias (ModuleAlias))
-import Entity.RawProgram
-import Entity.Source qualified as Source
-import Entity.SourceLocator qualified as SL
-import Entity.StrictGlobalLocator qualified as SGL
-import Entity.Syntax.Series qualified as SE
+import Rule.AliasInfo qualified as AI
+import Rule.BaseName qualified as BN
+import Rule.C
+import Rule.Const
+import Rule.GlobalLocatorAlias qualified as GLA
+import Rule.Hint
+import Rule.Import (ImportItem (..))
+import Rule.LocalLocator qualified as LL
+import Rule.Module
+import Rule.ModuleAlias (ModuleAlias (ModuleAlias))
+import Rule.RawProgram
+import Rule.Source qualified as Source
+import Rule.SourceLocator qualified as SL
+import Rule.StrictGlobalLocator qualified as SGL
+import Rule.Syntax.Series qualified as SE
 import Path
 import Scene.Module.GetEnabledPreset
 import Scene.Module.Reflect qualified as Module

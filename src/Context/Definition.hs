@@ -9,10 +9,10 @@ import Context.App
 import Context.App.Internal
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
-import Entity.Binder
-import Entity.DefiniteDescription qualified as DD
-import Entity.Opacity qualified as O
-import Entity.Term qualified as TM
+import Rule.Binder
+import Rule.DefiniteDescription qualified as DD
+import Rule.Opacity qualified as O
+import Rule.Term qualified as TM
 import Prelude hiding (lookup, read)
 
 initialize :: App ()

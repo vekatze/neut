@@ -11,10 +11,10 @@ import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.C
-import Entity.Ens qualified as E
-import Entity.Hint
-import Entity.Syntax.Series qualified as SE
+import Rule.C
+import Rule.Ens qualified as E
+import Rule.Hint
+import Rule.Syntax.Series qualified as SE
 import Path
 import Scene.Parse.Core
 import Text.Megaparsec hiding (parse)

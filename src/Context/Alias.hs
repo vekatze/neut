@@ -14,19 +14,19 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe qualified as Maybe
-import Entity.AliasInfo
-import Entity.BaseName qualified as BN
-import Entity.GlobalLocator qualified as GL
-import Entity.GlobalLocatorAlias qualified as GLA
-import Entity.Hint
-import Entity.Module
-import Entity.ModuleAlias
-import Entity.ModuleDigest
-import Entity.ModuleID qualified as MID
-import Entity.Source qualified as Source
-import Entity.SourceLocator qualified as SL
-import Entity.StrictGlobalLocator qualified as SGL
-import Entity.TopNameMap
+import Rule.AliasInfo
+import Rule.BaseName qualified as BN
+import Rule.GlobalLocator qualified as GL
+import Rule.GlobalLocatorAlias qualified as GLA
+import Rule.Hint
+import Rule.Module
+import Rule.ModuleAlias
+import Rule.ModuleDigest
+import Rule.ModuleID qualified as MID
+import Rule.Source qualified as Source
+import Rule.SourceLocator qualified as SL
+import Rule.StrictGlobalLocator qualified as SGL
+import Rule.TopNameMap
 
 registerGlobalLocatorAlias ::
   Hint ->

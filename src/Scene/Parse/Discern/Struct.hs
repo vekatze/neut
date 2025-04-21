@@ -7,8 +7,8 @@ import Context.App
 import Context.Throw qualified as Throw
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.Hint
-import Entity.Key
+import Rule.Hint
+import Rule.Key
 
 ensureFieldLinearity ::
   Hint ->

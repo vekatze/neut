@@ -12,10 +12,10 @@ import Context.App.Internal
 import Context.Remark qualified as Remark
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
-import Entity.Hint
-import Entity.LocalLocator qualified as LL
-import Entity.Remark
-import Entity.UnusedLocalLocators
+import Rule.Hint
+import Rule.LocalLocator qualified as LL
+import Rule.Remark
+import Rule.UnusedLocalLocators
 import Prelude hiding (lookup, read)
 
 initialize :: App ()

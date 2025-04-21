@@ -2,8 +2,8 @@ module Scene.Source.Reflect (reflect) where
 
 import Context.App
 import Context.Env (getMainModule)
-import Entity.Module
-import Entity.Source
+import Rule.Module
+import Rule.Source
 import Path
 import Scene.Module.Reflect qualified as Module
 

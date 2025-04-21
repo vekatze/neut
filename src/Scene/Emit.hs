@@ -14,24 +14,24 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Entity.BaseLowType qualified as BLT
-import Entity.Builder
-import Entity.Const
-import Entity.DataSize qualified as DS
-import Entity.DeclarationName qualified as DN
-import Entity.DefiniteDescription qualified as DD
-import Entity.ForeignCodType qualified as FCT
-import Entity.Ident
-import Entity.Ident.Reify
-import Entity.LowComp qualified as LC
-import Entity.LowComp.EmitOp qualified as EOP
-import Entity.LowComp.EmitValue
-import Entity.LowType qualified as LT
-import Entity.LowType.EmitLowType
-import Entity.LowType.FromBaseLowType qualified as LT
-import Entity.PrimNumSize
-import Entity.PrimType qualified as PT
-import Entity.PrimType.EmitPrimType (emitPrimType)
+import Rule.BaseLowType qualified as BLT
+import Rule.Builder
+import Rule.Const
+import Rule.DataSize qualified as DS
+import Rule.DeclarationName qualified as DN
+import Rule.DefiniteDescription qualified as DD
+import Rule.ForeignCodType qualified as FCT
+import Rule.Ident
+import Rule.Ident.Reify
+import Rule.LowComp qualified as LC
+import Rule.LowComp.EmitOp qualified as EOP
+import Rule.LowComp.EmitValue
+import Rule.LowType qualified as LT
+import Rule.LowType.EmitLowType
+import Rule.LowType.FromBaseLowType qualified as LT
+import Rule.PrimNumSize
+import Rule.PrimType qualified as PT
+import Rule.PrimType.EmitPrimType (emitPrimType)
 import Scene.LowComp.Reduce qualified as LowComp
 
 emit :: LC.LowCode -> App L.ByteString

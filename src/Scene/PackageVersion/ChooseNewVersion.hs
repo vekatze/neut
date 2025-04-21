@@ -4,7 +4,7 @@ import Context.App
 import Context.Env qualified as Env
 import Context.Remark (printNote')
 import Control.Monad
-import Entity.PackageVersion qualified as PV
+import Rule.PackageVersion qualified as PV
 import Scene.Module.GetExistingVersions
 import Prelude hiding (log)
 

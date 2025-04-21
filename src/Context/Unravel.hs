@@ -14,9 +14,9 @@ import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
 import Data.HashMap.Strict qualified as Map
-import Entity.Import
-import Entity.Source qualified as Source
-import Entity.VisitInfo
+import Rule.Import
+import Rule.Source qualified as Source
+import Rule.VisitInfo
 import Path
 
 getVisitEnv :: App (Map.HashMap (Path Abs File) VisitInfo)

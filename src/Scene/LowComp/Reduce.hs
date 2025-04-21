@@ -3,9 +3,9 @@ module Scene.LowComp.Reduce (reduce) where
 import Context.App
 import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
-import Entity.Ident.Reify qualified as Ident
-import Entity.LowComp qualified as LC
-import Entity.LowComp.Subst
+import Rule.Ident.Reify qualified as Ident
+import Rule.LowComp qualified as LC
+import Rule.LowComp.Subst
 
 reduce :: SubstLowComp -> LC.Comp -> App LC.Comp
 reduce sub lowComp = do

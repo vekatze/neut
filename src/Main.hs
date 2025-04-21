@@ -14,7 +14,7 @@ import Context.App
 import Context.External qualified as External
 import Context.OptParse qualified as OptParse
 import Context.Throw qualified as Throw
-import Entity.Command qualified as C
+import Rule.Command qualified as C
 import System.IO
 
 main :: IO ()

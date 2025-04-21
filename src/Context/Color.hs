@@ -13,7 +13,7 @@ import Context.App.Internal
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
 import Data.Text.Encoding
-import Entity.Log qualified as L
+import Rule.Log qualified as L
 import System.IO
 
 setShouldColorizeStdout :: Bool -> App ()

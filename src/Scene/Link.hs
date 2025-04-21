@@ -12,11 +12,11 @@ import Context.Path qualified as Path
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
-import Entity.Artifact qualified as A
-import Entity.Module
-import Entity.OutputKind qualified as OK
-import Entity.Source qualified as Source
-import Entity.Target
+import Rule.Artifact qualified as A
+import Rule.Module
+import Rule.OutputKind qualified as OK
+import Rule.Source qualified as Source
+import Rule.Target
 import Path
 import Path.IO
 import Scene.ShowProgress qualified as ProgressBar

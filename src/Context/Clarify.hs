@@ -11,7 +11,7 @@ import Context.App
 import Context.App.Internal
 import Context.CompDefinition qualified as CompDefinition
 import Data.HashMap.Strict qualified as Map
-import Entity.Comp (CompStmt, fromDefTuple)
+import Rule.Comp (CompStmt, fromDefTuple)
 import Prelude hiding (lookup)
 
 clearAuxEnv :: App ()

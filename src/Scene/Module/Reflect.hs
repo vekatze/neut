@@ -16,24 +16,24 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.BaseName (isCapitalized)
-import Entity.BaseName qualified as BN
-import Entity.ClangOption qualified as CL
-import Entity.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
-import Entity.Ens (dictFromListVertical')
-import Entity.Ens qualified as E
-import Entity.Error
-import Entity.GlobalLocator qualified as GL
-import Entity.Hint qualified as H
-import Entity.Module
-import Entity.ModuleAlias
-import Entity.ModuleDigest
-import Entity.ModuleID qualified as MID
-import Entity.ModuleURL
-import Entity.SourceLocator qualified as SL
-import Entity.Syntax.Series qualified as SE
-import Entity.Target
-import Entity.ZenConfig (ZenConfig (..))
+import Rule.BaseName (isCapitalized)
+import Rule.BaseName qualified as BN
+import Rule.ClangOption qualified as CL
+import Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
+import Rule.Ens (dictFromListVertical')
+import Rule.Ens qualified as E
+import Rule.Error
+import Rule.GlobalLocator qualified as GL
+import Rule.Hint qualified as H
+import Rule.Module
+import Rule.ModuleAlias
+import Rule.ModuleDigest
+import Rule.ModuleID qualified as MID
+import Rule.ModuleURL
+import Rule.SourceLocator qualified as SL
+import Rule.Syntax.Series qualified as SE
+import Rule.Target
+import Rule.ZenConfig (ZenConfig (..))
 import Path
 import Path.IO
 import Scene.Ens.Reflect qualified as Ens

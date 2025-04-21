@@ -13,22 +13,22 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Entity.Attr.DataIntro qualified as AttrDI
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Binder
-import Entity.Const (defaultInlineLimit)
-import Entity.DecisionTree qualified as DT
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant
-import Entity.Hint
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.Magic qualified as M
-import Entity.Module (moduleInlineLimit)
-import Entity.Opacity qualified as O
-import Entity.Source (sourceModule)
-import Entity.Term qualified as TM
+import Rule.Attr.DataIntro qualified as AttrDI
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Binder
+import Rule.Const (defaultInlineLimit)
+import Rule.DecisionTree qualified as DT
+import Rule.DefiniteDescription qualified as DD
+import Rule.Discriminant
+import Rule.Hint
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.LamKind qualified as LK
+import Rule.Magic qualified as M
+import Rule.Module (moduleInlineLimit)
+import Rule.Opacity qualified as O
+import Rule.Source (sourceModule)
+import Rule.Term qualified as TM
 import Scene.Term.Refresh (refresh)
 import Scene.Term.Subst qualified as Subst
 

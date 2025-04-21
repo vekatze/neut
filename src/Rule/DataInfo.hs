@@ -1,0 +1,4 @@
+module Rule.DataInfo
+  (
+  )
+where

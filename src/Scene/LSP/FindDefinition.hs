@@ -2,9 +2,9 @@ module Scene.LSP.FindDefinition (findDefinition) where
 
 import Context.AppM
 import Control.Lens hiding (Iso, List)
-import Entity.Hint qualified as H
-import Entity.LocationTree (LocationTree)
-import Entity.LocationTree qualified as LT
+import Rule.Hint qualified as H
+import Rule.LocationTree (LocationTree)
+import Rule.LocationTree qualified as LT
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Scene.LSP.GetLocationTree qualified as LSP

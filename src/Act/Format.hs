@@ -3,7 +3,7 @@ module Act.Format (format) where
 import Context.App
 import Context.Parse (ensureExistence', readTextFile)
 import Context.Parse qualified as Parse
-import Entity.Config.Format
+import Rule.Config.Format
 import Path.IO
 import Scene.Format qualified as Format
 import Scene.Initialize qualified as Initialize

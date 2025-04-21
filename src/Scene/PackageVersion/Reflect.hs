@@ -6,8 +6,8 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Maybe
 import Data.Text qualified as T
-import Entity.Module
-import Entity.PackageVersion qualified as PV
+import Rule.Module
+import Rule.PackageVersion qualified as PV
 import Scene.Module.GetExistingVersions
 import Prelude hiding (log)
 

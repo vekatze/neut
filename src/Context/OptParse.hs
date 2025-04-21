@@ -3,21 +3,21 @@ module Context.OptParse (parseCommand) where
 import Context.App
 import Control.Monad.IO.Class
 import Data.Text qualified as T
-import Entity.BuildMode qualified as BM
-import Entity.Command
-import Entity.Config.Archive qualified as Archive
-import Entity.Config.Build qualified as Build
-import Entity.Config.Check qualified as Check
-import Entity.Config.Clean qualified as Clean
-import Entity.Config.Create qualified as Create
-import Entity.Config.Format qualified as Format
-import Entity.Config.Get qualified as Get
-import Entity.Config.Remark qualified as Remark
-import Entity.Config.Version qualified as Version
-import Entity.Config.Zen qualified as Zen
-import Entity.FileType qualified as FT
-import Entity.ModuleURL
-import Entity.OutputKind qualified as OK
+import Rule.BuildMode qualified as BM
+import Rule.Command
+import Rule.Config.Archive qualified as Archive
+import Rule.Config.Build qualified as Build
+import Rule.Config.Check qualified as Check
+import Rule.Config.Clean qualified as Clean
+import Rule.Config.Create qualified as Create
+import Rule.Config.Format qualified as Format
+import Rule.Config.Get qualified as Get
+import Rule.Config.Remark qualified as Remark
+import Rule.Config.Version qualified as Version
+import Rule.Config.Zen qualified as Zen
+import Rule.FileType qualified as FT
+import Rule.ModuleURL
+import Rule.OutputKind qualified as OK
 import Options.Applicative
 
 parseCommand :: App Command
@@ -98,7 +98,7 @@ parseZenOpt = do
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Entity.Command.Zen $
+    Rule.Command.Zen $
       Zen.Config
         { Zen.filePathString = inputFilePath,
           Zen.remarkCfg = remarkCfg,

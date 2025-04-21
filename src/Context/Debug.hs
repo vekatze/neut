@@ -13,7 +13,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (asks)
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, diffUTCTime, getCurrentTime)
-import Entity.Log qualified as L
+import Rule.Log qualified as L
 import System.Console.ANSI
 import Text.Printf (printf)
 

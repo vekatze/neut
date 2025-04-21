@@ -9,15 +9,15 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
-import Entity.Const
-import Entity.Ens qualified as E
-import Entity.Hint
-import Entity.Module
-import Entity.ModuleDigest (ModuleDigest (..))
-import Entity.ModuleDigest qualified as MD
-import Entity.PackageVersion qualified as PV
-import Entity.Syntax.Series (Series (hasOptionalSeparator))
-import Entity.Syntax.Series qualified as SE
+import Rule.Const
+import Rule.Ens qualified as E
+import Rule.Hint
+import Rule.Module
+import Rule.ModuleDigest (ModuleDigest (..))
+import Rule.ModuleDigest qualified as MD
+import Rule.PackageVersion qualified as PV
+import Rule.Syntax.Series (Series (hasOptionalSeparator))
+import Rule.Syntax.Series qualified as SE
 import Path
 import Scene.Ens.Reflect qualified as Ens
 import Scene.Module.GetExistingVersions

@@ -13,16 +13,16 @@ import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Control.Monad
-import Entity.ArgNum qualified as AN
-import Entity.BaseLowType qualified as BLT
-import Entity.BaseName qualified as BN
-import Entity.Comp qualified as C
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.EnumCase qualified as EC
-import Entity.Ident
-import Entity.Magic qualified as M
-import Entity.Opacity qualified as O
+import Rule.ArgNum qualified as AN
+import Rule.BaseLowType qualified as BLT
+import Rule.BaseName qualified as BN
+import Rule.Comp qualified as C
+import Rule.DefiniteDescription qualified as DD
+import Rule.Discriminant qualified as D
+import Rule.EnumCase qualified as EC
+import Rule.Ident
+import Rule.Magic qualified as M
+import Rule.Opacity qualified as O
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
 

@@ -40,14 +40,14 @@ import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
-import Entity.BaseName qualified as BN
-import Entity.C
-import Entity.Const
-import Entity.Error qualified as E
-import Entity.Hint
-import Entity.Hint.Reflect qualified as Hint
-import Entity.Syntax.Block
-import Entity.Syntax.Series qualified as SE
+import Rule.BaseName qualified as BN
+import Rule.C
+import Rule.Const
+import Rule.Error qualified as E
+import Rule.Hint
+import Rule.Hint.Reflect qualified as Hint
+import Rule.Syntax.Block
+import Rule.Syntax.Series qualified as SE
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)

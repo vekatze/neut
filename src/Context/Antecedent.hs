@@ -16,10 +16,10 @@ import Data.ByteString.UTF8 qualified as B
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.Digest (hashAndEncode)
-import Entity.Module qualified as M
-import Entity.ModuleDigest qualified as MD
-import Entity.ModuleID qualified as MID
+import Rule.Digest (hashAndEncode)
+import Rule.Module qualified as M
+import Rule.ModuleDigest qualified as MD
+import Rule.ModuleID qualified as MID
 import Prelude hiding (lookup, read)
 
 initialize :: App ()

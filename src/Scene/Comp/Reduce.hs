@@ -7,12 +7,12 @@ import Context.App
 import Context.CompDefinition qualified as CompDefinition
 import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
-import Entity.Comp qualified as C
-import Entity.EnumCase qualified as EC
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.Magic qualified as M
-import Entity.Opacity qualified as O
+import Rule.Comp qualified as C
+import Rule.EnumCase qualified as EC
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.Magic qualified as M
+import Rule.Opacity qualified as O
 import Scene.Comp.Subst
 
 reduce :: C.Comp -> App C.Comp

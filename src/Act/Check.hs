@@ -3,8 +3,8 @@ module Act.Check (check) where
 import Context.App
 import Context.Env qualified as Env
 import Context.Remark qualified as Remark
-import Entity.Config.Check
-import Entity.Remark qualified as Remark
+import Rule.Config.Check
+import Rule.Remark qualified as Remark
 import Scene.Check qualified as Check
 import Scene.Fetch qualified as Fetch
 import Scene.Initialize qualified as Initialize

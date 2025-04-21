@@ -13,17 +13,17 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.ArgNum qualified as AN
-import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.Hint
-import Entity.Ident
-import Entity.Layer
-import Entity.Noema qualified as N
-import Entity.NominalEnv
-import Entity.Pattern qualified as PAT
-import Entity.Vector qualified as V
-import Entity.WeakTerm qualified as WT
+import Rule.ArgNum qualified as AN
+import Rule.Binder
+import Rule.DecisionTree qualified as DT
+import Rule.Hint
+import Rule.Ident
+import Rule.Layer
+import Rule.Noema qualified as N
+import Rule.NominalEnv
+import Rule.Pattern qualified as PAT
+import Rule.Vector qualified as V
+import Rule.WeakTerm qualified as WT
 import Scene.Parse.Discern.Fallback qualified as PATF
 import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.NominalEnv

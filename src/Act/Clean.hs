@@ -1,7 +1,7 @@
 module Act.Clean (clean) where
 
 import Context.App
-import Entity.Config.Clean
+import Rule.Config.Clean
 import Scene.Clean qualified as Clean
 import Scene.Initialize qualified as Initialize
 import Prelude hiding (log)

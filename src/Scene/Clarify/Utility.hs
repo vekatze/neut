@@ -15,14 +15,14 @@ import Context.Clarify
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
-import Entity.Comp qualified as C
-import Entity.DefiniteDescription qualified as DD
-import Entity.EnumCase
-import Entity.EnumCase qualified as EC
-import Entity.Ident
-import Entity.Ident.Reify
-import Entity.Opacity qualified as O
-import Entity.PrimNumSize
+import Rule.Comp qualified as C
+import Rule.DefiniteDescription qualified as DD
+import Rule.EnumCase
+import Rule.EnumCase qualified as EC
+import Rule.Ident
+import Rule.Ident.Reify
+import Rule.Opacity qualified as O
+import Rule.PrimNumSize
 import Scene.Comp.Subst qualified as C
 
 -- toAffineApp meta x t ~>

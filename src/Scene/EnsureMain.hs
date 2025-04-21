@@ -5,11 +5,11 @@ import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Text qualified as T
-import Entity.BaseName qualified as BN
-import Entity.DefiniteDescription qualified as DD
-import Entity.Hint
-import Entity.Source
-import Entity.Target
+import Rule.BaseName qualified as BN
+import Rule.DefiniteDescription qualified as DD
+import Rule.Hint
+import Rule.Source
+import Rule.Target
 
 ensureMain :: Target -> Source -> [DD.DefiniteDescription] -> App ()
 ensureMain t source topLevelNameList = do

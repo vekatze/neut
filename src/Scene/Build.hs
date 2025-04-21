@@ -24,15 +24,15 @@ import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
-import Entity.Cache
-import Entity.ClangOption qualified as CL
-import Entity.LowComp qualified as LC
-import Entity.Module qualified as M
-import Entity.ModuleID qualified as MID
-import Entity.OutputKind
-import Entity.Source
-import Entity.Stmt (getStmtName)
-import Entity.Target
+import Rule.Cache
+import Rule.ClangOption qualified as CL
+import Rule.LowComp qualified as LC
+import Rule.Module qualified as M
+import Rule.ModuleID qualified as MID
+import Rule.OutputKind
+import Rule.Source
+import Rule.Stmt (getStmtName)
+import Rule.Target
 import Path
 import Scene.Clarify qualified as Clarify
 import Scene.Elaborate qualified as Elaborate

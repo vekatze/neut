@@ -32,11 +32,11 @@ import Context.App.Internal
 import Context.Color qualified as Color
 import Control.Monad.IO.Class
 import Data.Text qualified as T
-import Entity.FilePos
-import Entity.FilePos qualified as FilePos
-import Entity.Hint
-import Entity.Log qualified as L
-import Entity.Remark qualified as R
+import Rule.FilePos
+import Rule.FilePos qualified as FilePos
+import Rule.Hint
+import Rule.Log qualified as L
+import Rule.Remark qualified as R
 import System.Console.ANSI.Codes
 
 initialize :: App ()

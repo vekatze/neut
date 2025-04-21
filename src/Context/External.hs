@@ -21,11 +21,11 @@ import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Entity.Const (envVarClang)
-import Entity.Digest
-import Entity.Error
-import Entity.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
-import Entity.ProcessRunner.Rule qualified as ProcessRunner
+import Rule.Const (envVarClang)
+import Rule.Digest
+import Rule.Error
+import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
+import Rule.ProcessRunner.Rule qualified as ProcessRunner
 import GHC.IO.Handle
 import Path
 import System.Directory

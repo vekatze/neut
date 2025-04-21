@@ -5,11 +5,11 @@ import Context.Env qualified as Env
 import Context.Path qualified as Path
 import Control.Monad
 import Data.Maybe
-import Entity.Config.Zen
-import Entity.Module (Module (moduleZenConfig))
-import Entity.OutputKind
-import Entity.Target
-import Entity.ZenConfig qualified as Z
+import Rule.Config.Zen
+import Rule.Module (Module (moduleZenConfig))
+import Rule.OutputKind
+import Rule.Target
+import Rule.ZenConfig qualified as Z
 import Path.IO (resolveFile')
 import Scene.Build (Axis (..), buildTarget)
 import Scene.Fetch qualified as Fetch

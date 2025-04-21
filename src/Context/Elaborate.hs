@@ -31,15 +31,15 @@ import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Entity.Binder
-import Entity.Constraint qualified as C
-import Entity.Hint
-import Entity.HoleID qualified as HID
-import Entity.HoleSubst qualified as HS
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.WeakTerm
-import Entity.WeakTerm qualified as WT
+import Rule.Binder
+import Rule.Constraint qualified as C
+import Rule.Hint
+import Rule.HoleID qualified as HID
+import Rule.HoleSubst qualified as HS
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.WeakTerm
+import Rule.WeakTerm qualified as WT
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 

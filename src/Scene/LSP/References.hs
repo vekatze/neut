@@ -2,8 +2,8 @@ module Scene.LSP.References (references) where
 
 import Context.AppM
 import Control.Monad.Trans
-import Entity.Cache qualified as Cache
-import Entity.Source (Source (sourceFilePath, sourceModule))
+import Rule.Cache qualified as Cache
+import Rule.Source (Source (sourceFilePath, sourceModule))
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Path

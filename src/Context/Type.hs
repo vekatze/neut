@@ -10,9 +10,9 @@ import Context.App
 import Context.App.Internal
 import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
-import Entity.DefiniteDescription qualified as DD
-import Entity.Hint
-import Entity.WeakTerm
+import Rule.DefiniteDescription qualified as DD
+import Rule.Hint
+import Rule.WeakTerm
 import Prelude hiding (lookup)
 
 initialize :: App ()

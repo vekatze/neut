@@ -9,8 +9,8 @@ import Control.Monad.Trans
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Text qualified as T
-import Entity.AppLsp
-import Entity.CodeAction qualified as CA
+import Rule.AppLsp
+import Rule.CodeAction qualified as CA
 import Language.LSP.Logging
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message

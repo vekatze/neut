@@ -5,8 +5,8 @@ import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Path qualified as Path
 import Control.Monad
-import Entity.Config.Build
-import Entity.Target
+import Rule.Config.Build
+import Rule.Target
 import Scene.Build qualified as Build
 import Scene.Collect qualified as Collect
 import Scene.Fetch qualified as Fetch

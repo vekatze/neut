@@ -3,7 +3,7 @@ module Scene.LSP.GetSource (getSource) where
 import Context.AppM
 import Control.Lens hiding (Iso, List)
 import Control.Monad.Trans
-import Entity.Source (Source)
+import Rule.Source (Source)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Scene.Source.Reflect qualified as Source

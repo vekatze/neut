@@ -3,8 +3,8 @@ module Scene.Comp.Subst (subst) where
 import Context.App
 import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
-import Entity.Comp qualified as C
-import Entity.Ident.Reify qualified as Ident
+import Rule.Comp qualified as C
+import Rule.Ident.Reify qualified as Ident
 
 subst :: C.SubstValue -> C.Comp -> App C.Comp
 subst =

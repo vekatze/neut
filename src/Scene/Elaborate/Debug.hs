@@ -10,13 +10,13 @@ import Context.Remark (printNote')
 import Context.Remark qualified as Remark
 import Control.Comonad.Cofree
 import Control.Monad
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Constraint
-import Entity.DefiniteDescription qualified as DD
-import Entity.LamKind qualified as LK
-import Entity.Stmt
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Constraint
+import Rule.DefiniteDescription qualified as DD
+import Rule.LamKind qualified as LK
+import Rule.Stmt
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.ToText
 
 viewStmt :: WeakStmt -> App ()
 viewStmt stmt = do

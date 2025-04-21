@@ -13,24 +13,24 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
-import Entity.Attr.Data qualified as AttrD
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.DefiniteDescription qualified as DD
-import Entity.Hint
-import Entity.Ident
-import Entity.Ident.Reify
-import Entity.LamKind qualified as LK
-import Entity.Magic qualified as M
-import Entity.OptimizableData qualified as OD
-import Entity.Remark qualified as R
-import Entity.Stuck qualified as Stuck
-import Entity.Term qualified as TM
-import Entity.Term.FreeVarsWithHints (freeVarsWithHints)
-import Entity.Term.Weaken (weaken)
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText qualified as WT
+import Rule.Attr.Data qualified as AttrD
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Binder
+import Rule.DecisionTree qualified as DT
+import Rule.DefiniteDescription qualified as DD
+import Rule.Hint
+import Rule.Ident
+import Rule.Ident.Reify
+import Rule.LamKind qualified as LK
+import Rule.Magic qualified as M
+import Rule.OptimizableData qualified as OD
+import Rule.Remark qualified as R
+import Rule.Stuck qualified as Stuck
+import Rule.Term qualified as TM
+import Rule.Term.FreeVarsWithHints (freeVarsWithHints)
+import Rule.Term.Weaken (weaken)
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.ToText qualified as WT
 import Scene.WeakTerm.Reduce
 import Scene.WeakTerm.Subst qualified as Subst
 

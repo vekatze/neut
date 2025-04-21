@@ -48,18 +48,18 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
 import Data.Version qualified as V
-import Entity.ClangOption qualified as CL
-import Entity.Const
-import Entity.Digest
-import Entity.Ens qualified as E
-import Entity.Ens.Reify qualified as E
-import Entity.Module
-import Entity.Module qualified as M
-import Entity.ModuleID qualified as MID
-import Entity.OutputKind qualified as OK
-import Entity.Platform as TP
-import Entity.Source qualified as Src
-import Entity.Target qualified as Target
+import Rule.ClangOption qualified as CL
+import Rule.Const
+import Rule.Digest
+import Rule.Ens qualified as E
+import Rule.Ens.Reify qualified as E
+import Rule.Module
+import Rule.Module qualified as M
+import Rule.ModuleID qualified as MID
+import Rule.OutputKind qualified as OK
+import Rule.Platform as TP
+import Rule.Source qualified as Src
+import Rule.Target qualified as Target
 import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
 import Path.IO qualified as P

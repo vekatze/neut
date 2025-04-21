@@ -11,10 +11,10 @@ where
 import Context.App
 import Context.App.Internal
 import Data.HashMap.Strict qualified as Map
-import Entity.Comp
-import Entity.DefiniteDescription qualified as DD
-import Entity.Ident
-import Entity.Opacity
+import Rule.Comp
+import Rule.DefiniteDescription qualified as DD
+import Rule.Ident
+import Rule.Opacity
 import Prelude hiding (lookup, read)
 
 type DefKey = DD.DefiniteDescription

@@ -8,8 +8,8 @@ where
 import Context.App
 import Context.Throw qualified as Throw
 import Control.Monad.Trans.Except
-import Entity.Config.Remark qualified as Remark
-import Entity.Remark qualified as R
+import Rule.Config.Remark qualified as Remark
+import Rule.Remark qualified as R
 import Scene.Initialize qualified as Initialize
 
 type AppM =

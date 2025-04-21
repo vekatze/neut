@@ -22,57 +22,57 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.Annotation qualified as AN
-import Entity.Arch qualified as Arch
-import Entity.ArgNum qualified as AN
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Attr.VarGlobal qualified as AttrVG
-import Entity.BaseName qualified as BN
-import Entity.Binder
-import Entity.BuildMode qualified as BM
-import Entity.C
-import Entity.Const
-import Entity.DefiniteDescription qualified as DD
-import Entity.Error qualified as E
-import Entity.ForeignCodType qualified as FCT
-import Entity.Geist qualified as G
-import Entity.GlobalName qualified as GN
-import Entity.Hint
-import Entity.Hint.Reify qualified as Hint
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.Key
-import Entity.LamKind qualified as LK
-import Entity.Layer
-import Entity.Literal qualified as LI
-import Entity.Locator qualified as L
-import Entity.Magic qualified as M
-import Entity.Module
-import Entity.Name
-import Entity.NecessityVariant
-import Entity.Noema qualified as N
-import Entity.NominalEnv
-import Entity.OS qualified as OS
-import Entity.Opacity qualified as O
-import Entity.Pattern qualified as PAT
-import Entity.Platform qualified as Platform
-import Entity.PrimType qualified as PT
-import Entity.RawBinder
-import Entity.RawIdent hiding (isHole)
-import Entity.RawPattern qualified as RP
-import Entity.RawProgram
-import Entity.RawTerm qualified as RT
-import Entity.Remark qualified as R
-import Entity.Stmt
-import Entity.StmtKind qualified as SK
-import Entity.Syntax.Series qualified as SE
-import Entity.Text.Util
-import Entity.TopCandidate
-import Entity.VarDefKind qualified as VDK
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.FreeVars (freeVars)
+import Rule.Annotation qualified as AN
+import Rule.Arch qualified as Arch
+import Rule.ArgNum qualified as AN
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Attr.VarGlobal qualified as AttrVG
+import Rule.BaseName qualified as BN
+import Rule.Binder
+import Rule.BuildMode qualified as BM
+import Rule.C
+import Rule.Const
+import Rule.DefiniteDescription qualified as DD
+import Rule.Error qualified as E
+import Rule.ForeignCodType qualified as FCT
+import Rule.Geist qualified as G
+import Rule.GlobalName qualified as GN
+import Rule.Hint
+import Rule.Hint.Reify qualified as Hint
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.Key
+import Rule.LamKind qualified as LK
+import Rule.Layer
+import Rule.Literal qualified as LI
+import Rule.Locator qualified as L
+import Rule.Magic qualified as M
+import Rule.Module
+import Rule.Name
+import Rule.NecessityVariant
+import Rule.Noema qualified as N
+import Rule.NominalEnv
+import Rule.OS qualified as OS
+import Rule.Opacity qualified as O
+import Rule.Pattern qualified as PAT
+import Rule.Platform qualified as Platform
+import Rule.PrimType qualified as PT
+import Rule.RawBinder
+import Rule.RawIdent hiding (isHole)
+import Rule.RawPattern qualified as RP
+import Rule.RawProgram
+import Rule.RawTerm qualified as RT
+import Rule.Remark qualified as R
+import Rule.Stmt
+import Rule.StmtKind qualified as SK
+import Rule.Syntax.Series qualified as SE
+import Rule.Text.Util
+import Rule.TopCandidate
+import Rule.VarDefKind qualified as VDK
+import Rule.WeakPrim qualified as WP
+import Rule.WeakPrimValue qualified as WPV
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.FreeVars (freeVars)
 import Scene.Parse.Discern.Data
 import Scene.Parse.Discern.Name
 import Scene.Parse.Discern.Noema

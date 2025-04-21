@@ -19,33 +19,33 @@ import Data.List (partition)
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.Attr.Data qualified as AttrD
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Binder
-import Entity.Const
-import Entity.Constraint (SuspendedConstraint)
-import Entity.Constraint qualified as C
-import Entity.DefiniteDescription qualified as DD
-import Entity.Error qualified as E
-import Entity.Hint
-import Entity.HoleID qualified as HID
-import Entity.HoleSubst qualified as HS
-import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.Module
-import Entity.PrimType qualified as PT
-import Entity.Remark qualified as R
-import Entity.Source
-import Entity.Stuck qualified as Stuck
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as Subst
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.Eq qualified as WT
-import Entity.WeakTerm.FreeVars
-import Entity.WeakTerm.Holes
-import Entity.WeakTerm.ToText
+import Rule.Attr.Data qualified as AttrD
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Binder
+import Rule.Const
+import Rule.Constraint (SuspendedConstraint)
+import Rule.Constraint qualified as C
+import Rule.DefiniteDescription qualified as DD
+import Rule.Error qualified as E
+import Rule.Hint
+import Rule.HoleID qualified as HID
+import Rule.HoleSubst qualified as HS
+import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
+import Rule.LamKind qualified as LK
+import Rule.Module
+import Rule.PrimType qualified as PT
+import Rule.Remark qualified as R
+import Rule.Source
+import Rule.Stuck qualified as Stuck
+import Rule.WeakPrim qualified as WP
+import Rule.WeakPrimValue qualified as WPV
+import Rule.WeakTerm qualified as Subst
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.Eq qualified as WT
+import Rule.WeakTerm.FreeVars
+import Rule.WeakTerm.Holes
+import Rule.WeakTerm.ToText
 import Scene.WeakTerm.Fill
 import Scene.WeakTerm.Reduce
 import Scene.WeakTerm.Subst qualified as Subst

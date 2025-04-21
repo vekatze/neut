@@ -7,7 +7,7 @@ where
 
 import Context.App
 import Context.App.Internal
-import Entity.TopCandidate
+import Rule.TopCandidate
 
 initialize :: App ()
 initialize =

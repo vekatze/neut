@@ -7,8 +7,8 @@ where
 import Context.App
 import Context.App.Internal
 import Data.HashMap.Strict qualified as Map
-import Entity.DefiniteDescription qualified as DD
-import Entity.OptimizableData
+import Rule.DefiniteDescription qualified as DD
+import Rule.OptimizableData
 import Prelude hiding (lookup)
 
 insert :: DD.DefiniteDescription -> OptimizableData -> App ()

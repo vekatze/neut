@@ -2,8 +2,8 @@ module Act.Create (create) where
 
 import Context.App
 import Control.Monad
-import Entity.Config.Create
-import Entity.Module (moduleLocation)
+import Rule.Config.Create
+import Rule.Module (moduleLocation)
 import Scene.Check qualified as Check
 import Scene.Fetch qualified as Fetch
 import Scene.Initialize qualified as Initialize

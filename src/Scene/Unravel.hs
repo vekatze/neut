@@ -27,15 +27,15 @@ import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
-import Entity.Artifact qualified as A
-import Entity.Hint
-import Entity.Import
-import Entity.Module
-import Entity.ModuleID qualified as MID
-import Entity.OutputKind qualified as OK
-import Entity.Source qualified as Source
-import Entity.Target
-import Entity.VisitInfo qualified as VI
+import Rule.Artifact qualified as A
+import Rule.Hint
+import Rule.Import
+import Rule.Module
+import Rule.ModuleID qualified as MID
+import Rule.OutputKind qualified as OK
+import Rule.Source qualified as Source
+import Rule.Target
+import Rule.VisitInfo qualified as VI
 import Path
 import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as ParseCore

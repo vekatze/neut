@@ -20,42 +20,42 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Entity.Annotation qualified as Annotation
-import Entity.ArgNum qualified as AN
-import Entity.Attr.Data qualified as AttrD
-import Entity.Attr.DataIntro qualified as AttrDI
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Attr.VarGlobal qualified as AttrVG
-import Entity.Binder
-import Entity.Const
-import Entity.DecisionTree qualified as DT
-import Entity.DeclarationName qualified as DN
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.ForeignCodType qualified as FCT
-import Entity.Geist qualified as G
-import Entity.Hint
-import Entity.HoleID qualified as HID
-import Entity.HoleSubst qualified as HS
-import Entity.Ident (Ident (..), isHole)
-import Entity.Ident.Reify qualified as Ident
-import Entity.Key (Key)
-import Entity.LamKind qualified as LK
-import Entity.Literal qualified as L
-import Entity.Magic qualified as M
-import Entity.Name qualified as N
-import Entity.OptimizableData qualified as OD
-import Entity.PrimOp
-import Entity.PrimType qualified as PT
-import Entity.Stmt
-import Entity.StmtKind
-import Entity.Term qualified as TM
-import Entity.Term.FromPrimNum qualified as Term
-import Entity.Term.Weaken
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText (toText)
+import Rule.Annotation qualified as Annotation
+import Rule.ArgNum qualified as AN
+import Rule.Attr.Data qualified as AttrD
+import Rule.Attr.DataIntro qualified as AttrDI
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Attr.VarGlobal qualified as AttrVG
+import Rule.Binder
+import Rule.Const
+import Rule.DecisionTree qualified as DT
+import Rule.DeclarationName qualified as DN
+import Rule.DefiniteDescription qualified as DD
+import Rule.Discriminant qualified as D
+import Rule.ForeignCodType qualified as FCT
+import Rule.Geist qualified as G
+import Rule.Hint
+import Rule.HoleID qualified as HID
+import Rule.HoleSubst qualified as HS
+import Rule.Ident (Ident (..), isHole)
+import Rule.Ident.Reify qualified as Ident
+import Rule.Key (Key)
+import Rule.LamKind qualified as LK
+import Rule.Literal qualified as L
+import Rule.Magic qualified as M
+import Rule.Name qualified as N
+import Rule.OptimizableData qualified as OD
+import Rule.PrimOp
+import Rule.PrimType qualified as PT
+import Rule.Stmt
+import Rule.StmtKind
+import Rule.Term qualified as TM
+import Rule.Term.FromPrimNum qualified as Term
+import Rule.Term.Weaken
+import Rule.WeakPrim qualified as WP
+import Rule.WeakPrimValue qualified as WPV
+import Rule.WeakTerm qualified as WT
+import Rule.WeakTerm.ToText (toText)
 import Scene.Elaborate.Unify (unifyCurrentConstraints)
 import Scene.Parse.Discern.Name qualified as N
 import Scene.WeakTerm.Reduce qualified as WT

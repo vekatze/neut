@@ -4,8 +4,8 @@ import Context.App
 import Context.Env qualified as Env
 import Context.Path qualified as Path
 import Control.Monad
-import Entity.Config.Get
-import Entity.Module
+import Rule.Config.Get
+import Rule.Module
 import Scene.Check qualified as Check
 import Scene.Clean qualified as Clean
 import Scene.Fetch qualified as Fetch

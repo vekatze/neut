@@ -12,11 +12,11 @@ import Context.Remark qualified as Remark
 import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
-import Entity.Hint
-import Entity.Ident
-import Entity.Ident.Reify
-import Entity.Remark
-import Entity.VarDefKind
+import Rule.Hint
+import Rule.Ident
+import Rule.Ident.Reify
+import Rule.Remark
+import Rule.VarDefKind
 import Prelude hiding (lookup, read)
 
 initialize :: App ()

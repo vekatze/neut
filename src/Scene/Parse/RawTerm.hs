@@ -20,21 +20,21 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.BaseName qualified as BN
-import Entity.C
-import Entity.Const
-import Entity.DefiniteDescription qualified as DD
-import Entity.ExternalName qualified as EN
-import Entity.Hint
-import Entity.Key
-import Entity.Name
-import Entity.NecessityVariant (NecessityVariant (..), showNecessityVariant)
-import Entity.RawBinder
-import Entity.RawIdent
-import Entity.RawPattern qualified as RP
-import Entity.RawTerm qualified as RT
-import Entity.Rune qualified as RU
-import Entity.Syntax.Series qualified as SE
+import Rule.BaseName qualified as BN
+import Rule.C
+import Rule.Const
+import Rule.DefiniteDescription qualified as DD
+import Rule.ExternalName qualified as EN
+import Rule.Hint
+import Rule.Key
+import Rule.Name
+import Rule.NecessityVariant (NecessityVariant (..), showNecessityVariant)
+import Rule.RawBinder
+import Rule.RawIdent
+import Rule.RawPattern qualified as RP
+import Rule.RawTerm qualified as RT
+import Rule.Rune qualified as RU
+import Rule.Syntax.Series qualified as SE
 import Scene.Parse.Core
 import Text.Megaparsec
 import Text.Read qualified as R

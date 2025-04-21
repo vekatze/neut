@@ -8,9 +8,9 @@ where
 import Context.App
 import Context.App.Internal
 import Control.Monad (unless)
-import Entity.Hint
-import Entity.Ident
-import Entity.LocalVarTree qualified as LVT
+import Rule.Hint
+import Rule.Ident
+import Rule.LocalVarTree qualified as LVT
 
 initialize :: App ()
 initialize =

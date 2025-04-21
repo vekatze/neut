@@ -6,10 +6,10 @@ where
 import Context.AppM
 import Context.Cache qualified as Cache
 import Control.Monad.Trans
-import Entity.Cache qualified as Cache
-import Entity.LocationTree qualified as LT
-import Entity.Source
-import Entity.Target (Target (Peripheral))
+import Rule.Cache qualified as Cache
+import Rule.LocationTree qualified as LT
+import Rule.Source
+import Rule.Target (Target (Peripheral))
 
 getLocationTree ::
   Source ->

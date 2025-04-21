@@ -10,8 +10,8 @@ import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
-import Entity.Module
-import Entity.Target
+import Rule.Module
+import Rule.Target
 import Path
 import Prelude hiding (log)
 

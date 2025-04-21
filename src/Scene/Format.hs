@@ -10,10 +10,10 @@ import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Control.Monad
 import Data.Text qualified as T
-import Entity.Ens.Reify qualified as Ens
-import Entity.FileType qualified as FT
-import Entity.RawProgram.Decode qualified as RawProgram
-import Entity.Target
+import Rule.Ens.Reify qualified as Ens
+import Rule.FileType qualified as FT
+import Rule.RawProgram.Decode qualified as RawProgram
+import Rule.Target
 import Path
 import Scene.Ens.Reflect qualified as Ens
 import Scene.Initialize qualified as Initialize

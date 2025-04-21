@@ -4,7 +4,7 @@ import Context.App
 import Context.Env qualified as Env
 import Context.External qualified as External
 import Context.Path qualified as Path
-import Entity.Target
+import Rule.Target
 import Path
 
 execute :: MainTarget -> [String] -> App ()

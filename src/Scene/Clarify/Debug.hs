@@ -3,8 +3,8 @@ module Scene.Clarify.Debug (printCompDef) where
 import Context.App
 import Context.Remark (printNote')
 import Data.Text qualified as T
-import Entity.Comp qualified as C
-import Entity.DefiniteDescription qualified as DD
+import Rule.Comp qualified as C
+import Rule.DefiniteDescription qualified as DD
 
 printCompDef :: C.CompStmt -> App ()
 printCompDef stmt = do

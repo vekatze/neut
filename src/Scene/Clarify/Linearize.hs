@@ -6,10 +6,10 @@ where
 import Context.App
 import Context.Gensym
 import Control.Monad
-import Entity.Comp qualified as C
-import Entity.Ident
-import Entity.Ident.Reify
-import Entity.Magic qualified as M
+import Rule.Comp qualified as C
+import Rule.Ident
+import Rule.Ident.Reify
+import Rule.Magic qualified as M
 import Scene.Clarify.Utility
 
 type Occurrence = Ident

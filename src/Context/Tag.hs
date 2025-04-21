@@ -14,13 +14,13 @@ import Context.App
 import Context.App.Internal
 import Control.Monad (unless, when)
 import Data.Text qualified as T
-import Entity.Binder
-import Entity.DefiniteDescription qualified as DD
-import Entity.ExternalName qualified as EN
-import Entity.Hint
-import Entity.Ident
-import Entity.IsConstLike
-import Entity.LocationTree qualified as LT
+import Rule.Binder
+import Rule.DefiniteDescription qualified as DD
+import Rule.ExternalName qualified as EN
+import Rule.Hint
+import Rule.Ident
+import Rule.IsConstLike
+import Rule.LocationTree qualified as LT
 import Prelude hiding (lookup, read)
 
 initialize :: App ()

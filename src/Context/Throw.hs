@@ -20,9 +20,9 @@ import Control.Exception.Safe qualified as Safe
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.Text qualified as T
-import Entity.Error qualified as E
-import Entity.Hint
-import Entity.Remark qualified as R
+import Rule.Error qualified as E
+import Rule.Hint
+import Rule.Remark qualified as R
 import System.Exit
 
 throw :: forall a. E.Error -> App a

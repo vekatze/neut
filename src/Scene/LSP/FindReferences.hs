@@ -3,7 +3,7 @@ module Scene.LSP.FindReferences (findReferences) where
 import Context.App
 import Control.Monad
 import Data.Maybe (fromMaybe)
-import Entity.LocationTree qualified as LT
+import Rule.LocationTree qualified as LT
 import Language.LSP.Protocol.Types
 import Path
 

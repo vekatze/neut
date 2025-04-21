@@ -5,11 +5,11 @@ import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Data.Vector qualified as V
-import Entity.Binder
-import Entity.Ident
-import Entity.Noema qualified as N
-import Entity.Pattern
-import Entity.WeakTerm qualified as WT
+import Rule.Binder
+import Rule.Ident
+import Rule.Noema qualified as N
+import Rule.Pattern
+import Rule.WeakTerm qualified as WT
 import Scene.Parse.Discern.Noema
 
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.

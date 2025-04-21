@@ -29,16 +29,16 @@ import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Data.Time
-import Entity.Arch qualified as Arch
-import Entity.Artifact qualified as A
-import Entity.BuildMode qualified as BM
-import Entity.DataSize qualified as DS
-import Entity.Hint
-import Entity.LocationTree qualified as LT
-import Entity.Module
-import Entity.OS qualified as O
-import Entity.Platform
-import Entity.Source qualified as Source
+import Rule.Arch qualified as Arch
+import Rule.Artifact qualified as A
+import Rule.BuildMode qualified as BM
+import Rule.DataSize qualified as DS
+import Rule.Hint
+import Rule.LocationTree qualified as LT
+import Rule.Module
+import Rule.OS qualified as O
+import Rule.Platform
+import Rule.Source qualified as Source
 import Path
 import System.Info qualified as SI
 

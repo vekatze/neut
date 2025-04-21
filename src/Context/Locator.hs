@@ -30,19 +30,19 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Entity.AliasInfo (MustUpdateTag)
-import Entity.BaseName qualified as BN
-import Entity.DefiniteDescription qualified as DD
-import Entity.GlobalName qualified as GN
-import Entity.Hint
-import Entity.LocalLocator qualified as LL
-import Entity.Module qualified as Module
-import Entity.ModuleID qualified as MID
-import Entity.Source qualified as Source
-import Entity.SourceLocator qualified as SL
-import Entity.StrictGlobalLocator qualified as SGL
-import Entity.Target qualified as Target
-import Entity.TopNameMap (TopNameMap)
+import Rule.AliasInfo (MustUpdateTag)
+import Rule.BaseName qualified as BN
+import Rule.DefiniteDescription qualified as DD
+import Rule.GlobalName qualified as GN
+import Rule.Hint
+import Rule.LocalLocator qualified as LL
+import Rule.Module qualified as Module
+import Rule.ModuleID qualified as MID
+import Rule.Source qualified as Source
+import Rule.SourceLocator qualified as SL
+import Rule.StrictGlobalLocator qualified as SGL
+import Rule.Target qualified as Target
+import Rule.TopNameMap (TopNameMap)
 import Path
 
 -- the structure of a name of a global variable:

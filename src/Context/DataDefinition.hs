@@ -7,12 +7,12 @@ where
 import Context.App
 import Context.App.Internal
 import Data.HashMap.Strict qualified as Map
-import Entity.Binder
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.Hint
-import Entity.IsConstLike
-import Entity.Term
+import Rule.Binder
+import Rule.DefiniteDescription qualified as DD
+import Rule.Discriminant qualified as D
+import Rule.Hint
+import Rule.IsConstLike
+import Rule.Term
 import Prelude hiding (lookup, read)
 
 insert ::

@@ -11,45 +11,45 @@ import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Time (UTCTime, getCurrentTime)
-import Entity.ArgNum qualified as AN
-import Entity.Artifact qualified as AR
-import Entity.Binder
-import Entity.BuildMode qualified as BM
-import Entity.Comp
-import Entity.Constraint qualified as C
-import Entity.DeclarationName qualified as DN
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.ExternalName qualified as EN
-import Entity.ForeignCodType qualified as F
-import Entity.GlobalLocatorAlias qualified as GLA
-import Entity.GlobalName qualified as GN
-import Entity.Hint
-import Entity.HoleSubst qualified as HS
-import Entity.Ident
-import Entity.Import
-import Entity.IsConstLike
-import Entity.Key
-import Entity.LocalLocator qualified as LL
-import Entity.LocalVarTree qualified as LVT
-import Entity.LocationTree qualified as LT
-import Entity.Module qualified as M
-import Entity.Module qualified as Module
-import Entity.ModuleAlias qualified as MA
-import Entity.ModuleDigest qualified as MD
-import Entity.ModuleID qualified as MID
-import Entity.Opacity qualified as O
-import Entity.OptimizableData
-import Entity.RawImportSummary (RawImportSummary)
-import Entity.Remark qualified as Remark
-import Entity.Source qualified as Source
-import Entity.StrictGlobalLocator qualified as SGL
-import Entity.Term qualified as TM
-import Entity.TopCandidate
-import Entity.TopNameMap
-import Entity.VarDefKind
-import Entity.VisitInfo
-import Entity.WeakTerm qualified as WT
+import Rule.ArgNum qualified as AN
+import Rule.Artifact qualified as AR
+import Rule.Binder
+import Rule.BuildMode qualified as BM
+import Rule.Comp
+import Rule.Constraint qualified as C
+import Rule.DeclarationName qualified as DN
+import Rule.DefiniteDescription qualified as DD
+import Rule.Discriminant qualified as D
+import Rule.ExternalName qualified as EN
+import Rule.ForeignCodType qualified as F
+import Rule.GlobalLocatorAlias qualified as GLA
+import Rule.GlobalName qualified as GN
+import Rule.Hint
+import Rule.HoleSubst qualified as HS
+import Rule.Ident
+import Rule.Import
+import Rule.IsConstLike
+import Rule.Key
+import Rule.LocalLocator qualified as LL
+import Rule.LocalVarTree qualified as LVT
+import Rule.LocationTree qualified as LT
+import Rule.Module qualified as M
+import Rule.Module qualified as Module
+import Rule.ModuleAlias qualified as MA
+import Rule.ModuleDigest qualified as MD
+import Rule.ModuleID qualified as MID
+import Rule.Opacity qualified as O
+import Rule.OptimizableData
+import Rule.RawImportSummary (RawImportSummary)
+import Rule.Remark qualified as Remark
+import Rule.Source qualified as Source
+import Rule.StrictGlobalLocator qualified as SGL
+import Rule.Term qualified as TM
+import Rule.TopCandidate
+import Rule.TopNameMap
+import Rule.VarDefKind
+import Rule.VisitInfo
+import Rule.WeakTerm qualified as WT
 import Path
 import System.IO
 

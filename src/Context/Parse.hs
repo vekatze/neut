@@ -14,8 +14,8 @@ import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Entity.Hint
-import Entity.Source
+import Rule.Hint
+import Rule.Source
 import Path
 import Path.IO
 

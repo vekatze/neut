@@ -22,28 +22,28 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.ArgNum qualified as AN
-import Entity.BaseLowType qualified as BLT
-import Entity.BaseName qualified as BN
-import Entity.Comp qualified as C
-import Entity.Const
-import Entity.DeclarationName qualified as DN
-import Entity.DefiniteDescription qualified as DD
-import Entity.EnumCase qualified as EC
-import Entity.ExternalName qualified as EN
-import Entity.Foreign qualified as F
-import Entity.ForeignCodType qualified as F
-import Entity.ForeignCodType qualified as FCT
-import Entity.Ident
-import Entity.LowComp qualified as LC
-import Entity.LowType qualified as LT
-import Entity.LowType.FromBaseLowType qualified as LT
-import Entity.Magic qualified as M
-import Entity.PrimNumSize
-import Entity.PrimNumSize.ToInt
-import Entity.PrimOp
-import Entity.PrimType qualified as PT
-import Entity.Target
+import Rule.ArgNum qualified as AN
+import Rule.BaseLowType qualified as BLT
+import Rule.BaseName qualified as BN
+import Rule.Comp qualified as C
+import Rule.Const
+import Rule.DeclarationName qualified as DN
+import Rule.DefiniteDescription qualified as DD
+import Rule.EnumCase qualified as EC
+import Rule.ExternalName qualified as EN
+import Rule.Foreign qualified as F
+import Rule.ForeignCodType qualified as F
+import Rule.ForeignCodType qualified as FCT
+import Rule.Ident
+import Rule.LowComp qualified as LC
+import Rule.LowType qualified as LT
+import Rule.LowType.FromBaseLowType qualified as LT
+import Rule.Magic qualified as M
+import Rule.PrimNumSize
+import Rule.PrimNumSize.ToInt
+import Rule.PrimOp
+import Rule.PrimType qualified as PT
+import Rule.Target
 import Scene.Cancel
 import Scene.Comp.Reduce qualified as C
 import Scene.Comp.Subst qualified as C

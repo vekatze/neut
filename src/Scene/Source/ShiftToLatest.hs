@@ -11,10 +11,10 @@ import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.Module
-import Entity.ModuleID qualified as MID
-import Entity.Source (Source (sourceModule))
-import Entity.Source qualified as Source
+import Rule.Module
+import Rule.ModuleID qualified as MID
+import Rule.Source (Source (sourceModule))
+import Rule.Source qualified as Source
 import Path
 
 type ShiftMap = Map.HashMap MID.ModuleID Module

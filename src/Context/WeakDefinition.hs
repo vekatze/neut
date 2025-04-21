@@ -13,13 +13,13 @@ import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
-import Entity.Attr.Lam qualified as AttrL
-import Entity.Binder
-import Entity.DefiniteDescription qualified as DD
-import Entity.Hint
-import Entity.Opacity qualified as O
-import Entity.WeakTerm
-import Entity.WeakTerm qualified as WT
+import Rule.Attr.Lam qualified as AttrL
+import Rule.Binder
+import Rule.DefiniteDescription qualified as DD
+import Rule.Hint
+import Rule.Opacity qualified as O
+import Rule.WeakTerm
+import Rule.WeakTerm qualified as WT
 import Prelude hiding (lookup, read)
 
 type DefMap =

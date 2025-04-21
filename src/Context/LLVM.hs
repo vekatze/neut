@@ -16,12 +16,12 @@ import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
-import Entity.Config.Build
-import Entity.OutputKind qualified as OK
-import Entity.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
-import Entity.ProcessRunner.Rule qualified as ProcessRunner
-import Entity.Source
-import Entity.Target
+import Rule.Config.Build
+import Rule.OutputKind qualified as OK
+import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
+import Rule.ProcessRunner.Rule qualified as ProcessRunner
+import Rule.Source
+import Rule.Target
 import Path
 import Path.IO
 import System.Process (CmdSpec (RawCommand))
