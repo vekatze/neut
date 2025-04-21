@@ -47,7 +47,6 @@ import Move.Context.App.Internal
 import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External (getClangDigest)
-import Move.Context.Throw qualified as Throw
 import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
 import Path.IO qualified as P
@@ -180,7 +179,7 @@ getBuildSignature t = do
     Nothing -> do
       clangDigest <- getClangDigest
       MainModule mainModule <- Env.getMainModule
-      clangOption <- getClangOption t mainModule
+      clangOption <- toApp $ getClangOption t mainModule
       moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation mainModule
       let moduleEns' = decodeUtf8 moduleEns
       let ens =
@@ -195,7 +194,7 @@ getBuildSignature t = do
       modifyRef' buildSignatureCache $ const $ Just sig
       return sig
 
-getClangOption :: Target.Target -> Module -> App CL.ClangOption
+getClangOption :: Target.Target -> Module -> EIO CL.ClangOption
 getClangOption t baseModule =
   case t of
     Target.Main mainModule ->
@@ -205,7 +204,7 @@ getClangOption t baseModule =
             Just (Target.TargetSummary {clangOption}) ->
               return clangOption
             Nothing ->
-              Throw.raiseError' $ "No such target is defined: `" <> name <> "`"
+              raiseError' $ "No such target is defined: `" <> name <> "`"
         Target.Zen _ clangOption ->
           return clangOption
     Target.Peripheral ->
