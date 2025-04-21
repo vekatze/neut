@@ -80,13 +80,13 @@ getBaseName path = do
   filename <- P.stripProperPrefix dirPath path
   return $ T.replace packageFileExtension "" $ T.pack $ P.toFilePath filename
 
-writeByteString :: Path Abs File -> L.ByteString -> App ()
-writeByteString path content =
-  liftIO $ L.writeFile (P.toFilePath path) content
+writeByteString :: Path Abs File -> L.ByteString -> IO ()
+writeByteString path =
+  L.writeFile (P.toFilePath path)
 
-writeText :: Path Abs File -> T.Text -> App ()
+writeText :: Path Abs File -> T.Text -> IO ()
 writeText path text =
-  liftIO $ B.writeFile (P.toFilePath path) $ encodeUtf8 text
+  B.writeFile (P.toFilePath path) $ encodeUtf8 text
 
 returnDirectory :: Path Abs Dir -> EIO (Path Abs Dir)
 returnDirectory path =

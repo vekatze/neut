@@ -72,7 +72,7 @@ emit' clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
       toApp $ report $ "Saving: " <> T.pack (toFilePath path)
-      Path.writeByteString path llvmCode
+      liftIO $ Path.writeByteString path llvmCode
     OK.Object ->
       emitInner clangOptString llvmCode path
 

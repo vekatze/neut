@@ -5,6 +5,7 @@ module Move.Scene.New
 where
 
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -32,7 +33,7 @@ createNewProject moduleName newModule = do
     then Throw.raiseError' $ "The directory `" <> moduleName <> "` already exists"
     else do
       createModuleFile newModule
-      createMainFile newModule
+      liftIO $ createMainFile newModule
       Remark.printNote' $ "Created a module: " <> moduleName
 
 constructDefaultModule :: T.Text -> Maybe T.Text -> App Module
@@ -75,7 +76,7 @@ createModuleFile newModule = do
   buildDir <- toApp $ Path.getBaseBuildDir newModule
   ensureDir buildDir
 
-createMainFile :: Module -> App ()
+createMainFile :: Module -> IO ()
 createMainFile newModule = do
   ensureDir $ getSourceDir newModule
   forM_ (getTargetPathList newModule) $ \mainFilePath -> do

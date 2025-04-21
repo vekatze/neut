@@ -71,7 +71,7 @@ saveEns :: Path Abs File -> FullEns -> App ()
 saveEns path (c1, (ens, c2)) = do
   toApp $ report $ "Saving ens file to: " <> T.pack (toFilePath path)
   ens' <- Throw.liftEither $ stylize ens
-  Path.writeText path $ Ens.pp (c1, (ens', c2))
+  liftIO $ Path.writeText path $ Ens.pp (c1, (ens', c2))
 
 getCoreModuleURL :: App ModuleURL
 getCoreModuleURL = do
