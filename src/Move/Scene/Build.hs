@@ -16,6 +16,7 @@ import Data.Time
 import Move.Context.App
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
+import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.Debug (report)
 import Move.Context.EIO (EIO, toApp)
@@ -62,7 +63,7 @@ data Axis = Axis
 
 buildTarget :: Axis -> M.MainModule -> Target -> App ()
 buildTarget axis (M.MainModule baseModule) target = do
-  report $ "Building: " <> T.pack (show target)
+  toApp $ report $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
   Initialize.initializeForTarget
   (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target'
@@ -109,7 +110,7 @@ compile target outputKindList contentSeq = do
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-    report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+    toApp $ report $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- Parse.parse target source cacheOrContent
     stmtList <- Elaborate.elaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
@@ -195,9 +196,10 @@ compileForeign' t currentTime m = do
   sub <- getForeignSubst t m
   let cmdList = M.script $ M.moduleForeign m
   unless (null cmdList) $ do
-    report $ "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
+    toApp $ report $ "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
-  foreignDir <- Path.getForeignDir t m
+  h <- Path.new
+  foreignDir <- toApp $ Path.getForeignDir h t m
   inputPathList <- fmap concat $ mapM (toApp . getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
@@ -207,7 +209,7 @@ compileForeign' t currentTime m = do
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
-          report $ "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
+          toApp $ report $ "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
@@ -244,8 +246,9 @@ naiveReplace sub t =
 
 getForeignSubst :: Target -> M.Module -> App [(T.Text, T.Text)]
 getForeignSubst t m = do
-  clang <- liftIO External.getClang
-  foreignDir <- Path.getForeignDir t m
+  clang <- liftIO Clang.getClang
+  h <- Path.new
+  foreignDir <- toApp $ Path.getForeignDir h t m
   return
     [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),
       ("{{clang}}", T.pack clang),

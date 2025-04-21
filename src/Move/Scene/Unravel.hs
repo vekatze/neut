@@ -59,7 +59,7 @@ type ObjectTime =
 
 unravel :: Module -> Target -> App (A.ArtifactTime, [Source.Source])
 unravel baseModule t = do
-  report "Resolving file dependencies"
+  toApp $ report "Resolving file dependencies"
   case t of
     Main t' -> do
       case t' of
@@ -257,17 +257,20 @@ distributeMaybe xs =
 
 getFreshCacheTime :: Target -> Source.Source -> App CacheTime
 getFreshCacheTime t source = do
-  cachePath <- Path.getSourceCachePath t source
+  h <- Path.new
+  cachePath <- toApp $ Path.getSourceCachePath h t source
   getFreshTime source cachePath
 
 getFreshLLVMTime :: Target -> Source.Source -> App LLVMTime
 getFreshLLVMTime t source = do
-  llvmPath <- Path.sourceToOutputPath t OK.LLVM source
+  h <- Path.new
+  llvmPath <- toApp $ Path.sourceToOutputPath h t OK.LLVM source
   getFreshTime source llvmPath
 
 getFreshObjectTime :: Target -> Source.Source -> App ObjectTime
 getFreshObjectTime t source = do
-  objectPath <- Path.sourceToOutputPath t OK.Object source
+  h <- Path.new
+  objectPath <- toApp $ Path.sourceToOutputPath h t OK.Object source
   getFreshTime source objectPath
 
 getFreshTime :: Source.Source -> Path Abs File -> App (Maybe UTCTime)

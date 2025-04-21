@@ -16,6 +16,7 @@ where
 import Control.Monad.IO.Class
 import Data.Binary
 import Move.Context.App
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Path (getSourceLocationCachePath)
 import Move.Context.Path qualified as Path
@@ -30,25 +31,29 @@ import Rule.Target
 
 saveCache :: Target -> Source.Source -> Cache.Cache -> App ()
 saveCache t source cache = do
-  cachePath <- Path.getSourceCachePath t source
+  h <- Path.new
+  cachePath <- toApp $ Path.getSourceCachePath h t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) $ Cache.compress cache
 
 saveCompletionCache :: Target -> Source.Source -> Cache.CompletionCache -> App ()
 saveCompletionCache t source cache = do
-  cachePath <- Path.getSourceCompletionCachePath t source
+  h <- Path.new
+  cachePath <- toApp $ Path.getSourceCompletionCachePath h t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
 saveLocationCache :: Target -> Source.Source -> Cache.LocationCache -> App ()
 saveLocationCache t source cache = do
-  cachePath <- Path.getSourceLocationCachePath t source
+  h <- Path.new
+  cachePath <- toApp $ Path.getSourceLocationCachePath h t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
 loadCache :: Target -> Source.Source -> App (Maybe Cache.Cache)
 loadCache t source = do
-  cachePath <- Path.getSourceCachePath t source
+  h <- Path.new
+  cachePath <- toApp $ Path.getSourceCachePath h t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
@@ -96,7 +101,8 @@ loadCompletionCacheOptimistically cachePath = do
 
 loadLocationCache :: Target -> Source.Source -> App (Maybe Cache.LocationCache)
 loadLocationCache t source = do
-  cachePath <- getSourceLocationCachePath t source
+  h <- Path.new
+  cachePath <- toApp $ getSourceLocationCachePath h t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
@@ -127,7 +133,8 @@ isEntryPointCompilationSkippable mainModule target outputKindList = do
     [] ->
       return True
     kind : rest -> do
-      (_, outputPath) <- Path.getOutputPathForEntryPoint (extractModule mainModule) kind target
+      h <- Path.new
+      (_, outputPath) <- toApp $ Path.getOutputPathForEntryPoint h (extractModule mainModule) kind target
       b <- Path.doesFileExist outputPath
       if b
         then isEntryPointCompilationSkippable mainModule target rest
@@ -135,7 +142,8 @@ isEntryPointCompilationSkippable mainModule target outputKindList = do
 
 invalidate :: Target -> Source.Source -> App ()
 invalidate t source = do
-  cachePath <- Path.getSourceCachePath t source
+  h <- Path.new
+  cachePath <- toApp $ Path.getSourceCachePath h t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return ()

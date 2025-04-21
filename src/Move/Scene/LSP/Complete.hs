@@ -17,9 +17,9 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.AppM
 import Move.Context.Cache qualified as Cache
+import Move.Context.Clang qualified as Clang
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
-import Move.Context.External (getClangDigest)
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
@@ -48,7 +48,8 @@ complete uri pos = do
   lift registerShiftMap
   pathString <- liftMaybe $ uriToFilePath uri
   currentSource <- lift (Source.reflect pathString) >>= liftMaybe
-  _ <- lift getClangDigest -- cache
+  h <- lift Clang.new
+  _ <- lift (toApp $ Clang.getClangDigest h) -- cache
   let loc = positionToLoc pos
   lift (Throw.runMaybe $ collectCompletionItems currentSource loc) >>= liftMaybe
 
@@ -62,7 +63,8 @@ itemGetterList =
 
 getLocalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getLocalCompletionItems source loc = do
-  cachePath <- Path.getSourceCompletionCachePath Peripheral source
+  h <- Path.new
+  cachePath <- toApp $ Path.getSourceCompletionCachePath h Peripheral source
   cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->
@@ -76,8 +78,9 @@ getGlobalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getGlobalCompletionItems currentSource loc = do
   let baseModule = sourceModule currentSource
   (globalVarList, aliasPresetMap) <- getAllTopCandidate baseModule
+  h <- Path.new
   baseCacheOrNone <-
-    Path.getSourceCompletionCachePath Peripheral currentSource
+    toApp (Path.getSourceCompletionCachePath h Peripheral currentSource)
       >>= Cache.loadCompletionCacheOptimistically
   let importSummaryOrNone = baseCacheOrNone >>= Cache.rawImportSummary
   let impLoc = getImportLoc importSummaryOrNone

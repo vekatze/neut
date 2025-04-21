@@ -9,6 +9,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug (report)
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
@@ -25,19 +26,22 @@ import System.Console.ANSI
 link :: MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
   mainModule <- Env.getMainModule
-  isExecutableAvailable <- Path.getExecutableOutputPath target (extractModule mainModule) >>= Path.doesFileExist
+  h <- Path.new
+  executablePath <- toApp $ Path.getExecutableOutputPath h target (extractModule mainModule)
+  isExecutableAvailable <- doesFileExist executablePath
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
   if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
-    then report "Skipped linking object files"
+    then toApp $ report "Skipped linking object files"
     else link' target mainModule sourceList
 
 link' :: MainTarget -> MainModule -> [Source.Source] -> App ()
 link' target (MainModule mainModule) sourceList = do
-  mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
-  outputPath <- Path.getExecutableOutputPath target mainModule
-  objectPathList <- mapM (Path.sourceToOutputPath (Main target) OK.Object) sourceList
+  h <- Path.new
+  mainObject <- toApp $ snd <$> Path.getOutputPathForEntryPoint h mainModule OK.Object target
+  outputPath <- toApp $ Path.getExecutableOutputPath h target mainModule
+  objectPathList <- toApp $ mapM (Path.sourceToOutputPath h (Main target) OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
-  foreignDirList <- mapM (Path.getForeignDir (Main target)) moduleList
+  foreignDirList <- toApp $ mapM (Path.getForeignDir h (Main target)) moduleList
   foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
   let clangOptions = getLinkOption (Main target)
   let objects = mainObject : objectPathList ++ foreignObjectList
@@ -45,9 +49,9 @@ link' target (MainModule mainModule) sourceList = do
   color <- getColor
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
-  h <- ProgressBar.new Nothing workingTitle completedTitle color
+  progressBarHandle <- ProgressBar.new Nothing workingTitle completedTitle color
   LLVM.link clangOptions objects outputPath
-  ProgressBar.close h
+  ProgressBar.close progressBarHandle
 
 getWorkingTitle :: Int -> T.Text
 getWorkingTitle numOfObjects = do

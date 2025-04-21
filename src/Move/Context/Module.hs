@@ -20,7 +20,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.Debug (report)
-import Move.Context.EIO (EIO)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Path
@@ -69,7 +69,7 @@ getModuleDirByID (MainModule pivotModule) mHint moduleID = do
 
 saveEns :: Path Abs File -> FullEns -> App ()
 saveEns path (c1, (ens, c2)) = do
-  report $ "Saving ens file to: " <> T.pack (toFilePath path)
+  toApp $ report $ "Saving ens file to: " <> T.pack (toFilePath path)
   ens' <- Throw.liftEither $ stylize ens
   Path.writeText path $ Ens.pp (c1, (ens', c2))
 

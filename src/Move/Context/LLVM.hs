@@ -11,7 +11,9 @@ import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
 import Move.Context.App
+import Move.Context.Clang qualified as Clang
 import Move.Context.Debug (report)
+import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
@@ -40,16 +42,17 @@ ensureSetupSanity cfg = do
 
 emit :: Target -> [ClangOption] -> UTCTime -> Either MainTarget Source -> [OK.OutputKind] -> L.ByteString -> App ()
 emit target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
+  h <- Path.new
   case sourceOrNone of
     Right source -> do
-      kindPathList <- zipWithM (Path.attachOutputPath target) outputKindList (repeat source)
+      kindPathList <- toApp $ zipWithM (Path.attachOutputPath h target) outputKindList (repeat source)
       forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
       emitAll clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
         Path.setModificationTime path timeStamp
     Left t -> do
       MainModule mainModule <- getMainModule
-      kindPathList <- zipWithM (Path.getOutputPathForEntryPoint mainModule) outputKindList (repeat t)
+      kindPathList <- toApp $ zipWithM (Path.getOutputPathForEntryPoint h mainModule) outputKindList (repeat t)
       forM_ kindPathList $ \(_, path) -> Path.ensureDir $ parent path
       emitAll clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
@@ -68,14 +71,14 @@ emit' :: [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -> App ()
 emit' clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
-      report $ "Saving: " <> T.pack (toFilePath path)
+      toApp $ report $ "Saving: " <> T.pack (toFilePath path)
       Path.writeByteString path llvmCode
     OK.Object ->
       emitInner clangOptString llvmCode path
 
 emitInner :: [ClangOption] -> L.ByteString -> Path Abs File -> App ()
 emitInner additionalClangOptions llvm outputPath = do
-  clang <- liftIO External.getClang
+  clang <- liftIO Clang.getClang
   let optionList = clangBaseOpt outputPath ++ additionalClangOptions
   let ProcessRunner.Runner {run10} = ProcessRunner.ioRunner
   let spec =
@@ -83,7 +86,7 @@ emitInner additionalClangOptions llvm outputPath = do
           { cmdspec = RawCommand clang optionList,
             cwd = Nothing
           }
-  report $ "Executing: " <> T.pack (show (clang, optionList))
+  toApp $ report $ "Executing: " <> T.pack (show (clang, optionList))
   value <- liftIO $ run10 spec (ProcessRunner.Lazy llvm)
   case value of
     Right _ ->
@@ -105,7 +108,7 @@ clangBaseOpt outputPath =
 
 link :: [String] -> [Path Abs File] -> Path Abs File -> App ()
 link clangOptions objectPathList outputPath = do
-  clang <- liftIO External.getClang
+  clang <- liftIO Clang.getClang
   ensureDir $ parent outputPath
   External.run clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
 

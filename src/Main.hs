@@ -10,8 +10,8 @@ import Move.Act.Get qualified as Get
 import Move.Act.LSP qualified as LSP
 import Move.Act.Version qualified as Version
 import Move.Act.Zen qualified as Zen
+import Move.Console.EnsureExecutables (ensureExecutables)
 import Move.Context.App
-import Move.Context.External qualified as External
 import Move.Context.OptParse qualified as OptParse
 import Move.Context.Throw qualified as Throw
 import Rule.Command qualified as C
@@ -27,7 +27,7 @@ execute = do
   runApp $ do
     c <- OptParse.parseCommand
     Throw.run $ do
-      External.ensureExecutables
+      ensureExecutables
       case c of
         C.Build cfg -> do
           Build.build cfg

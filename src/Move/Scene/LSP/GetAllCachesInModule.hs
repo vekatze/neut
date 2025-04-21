@@ -4,17 +4,18 @@ module Move.Scene.LSP.GetAllCachesInModule
   )
 where
 
+import Data.Maybe (catMaybes)
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
+import Move.Context.EIO (toApp)
 import Move.Context.Module (getAllSourcePathInModule)
-import Move.Context.Path (getSourceCompletionCachePath)
-import Data.Maybe (catMaybes)
+import Move.Context.Path qualified as Path
+import Move.Scene.Source.ShiftToLatest (shiftToLatest)
+import Path
 import Rule.Cache
 import Rule.Module
 import Rule.Source
 import Rule.Target (Target (Peripheral))
-import Path
-import Move.Scene.Source.ShiftToLatest (shiftToLatest)
 import UnliftIO.Async
 
 getAllLocationCachesInModule :: Module -> App [(Source, LocationCache)]
@@ -40,7 +41,9 @@ getAllCompletionCachesInModule baseModule = do
 getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache baseModule filePath = do
   source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <- getSourceCompletionCachePath Peripheral source >>= Cache.loadCompletionCacheOptimistically
+  h <- Path.new
+  cachePath <- toApp (Path.getSourceCompletionCachePath h Peripheral source)
+  cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->
       return Nothing

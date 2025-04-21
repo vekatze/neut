@@ -4,6 +4,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Debug (report)
+import Move.Context.EIO (toApp)
 import Move.Context.Parse (readTextFile)
 import Rule.Cache qualified as Cache
 import Rule.Source qualified as Source
@@ -12,7 +13,7 @@ import UnliftIO (MonadIO (liftIO), pooledForConcurrently)
 
 load :: Target -> [Source.Source] -> App [(Source.Source, Either Cache.Cache T.Text)]
 load target dependenceSeq = do
-  report "Loading source files and caches"
+  toApp $ report "Loading source files and caches"
   pooledForConcurrently dependenceSeq $ \source -> do
     cacheOrContent <- _load target source
     return (source, cacheOrContent)

@@ -1,5 +1,7 @@
 module Move.Context.Path
-  ( getDependencyDirPath,
+  ( Handle (..),
+    new,
+    getDependencyDirPath,
     getCurrentDir,
     ensureNotInDependencyDir,
     resolveDir,
@@ -34,19 +36,22 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
+import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.ByteString.UTF8 qualified as B
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
 import Data.Version qualified as V
 import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.App.Internal qualified as App
+import Move.Context.Clang qualified as Clang
+import Move.Context.EIO (EIO, raiseError')
+import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
-import Move.Context.External (getClangDigest)
 import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
 import Path.IO qualified as P
@@ -63,6 +68,21 @@ import Rule.OutputKind qualified as OK
 import Rule.Platform as TP
 import Rule.Source qualified as Src
 import Rule.Target qualified as Target
+
+data Handle
+  = Handle
+  { cacheRef :: IORef (Maybe String),
+    clangDigest :: IORef (Maybe T.Text),
+    mainModule :: M.MainModule
+  }
+
+-- temporary
+new :: App Handle
+new = do
+  cacheRef <- asks App.buildSignatureCache
+  clangDigest <- asks App.clangDigest
+  mainModule <- getMainModule
+  return $ Handle {..}
 
 getCurrentDir :: App (Path Abs Dir)
 getCurrentDir =
@@ -144,14 +164,14 @@ getPlatformPrefix = do
   p <- Env.getPlatform Nothing
   P.parseRelDir $ T.unpack $ TP.reify p
 
-getExecutableOutputPath :: Target.MainTarget -> Module -> App (Path Abs File)
-getExecutableOutputPath targetOrZen mainModule = do
+getExecutableOutputPath :: Handle -> Target.MainTarget -> Module -> EIO (Path Abs File)
+getExecutableOutputPath h targetOrZen mainModule = do
   case targetOrZen of
     Target.Named target _ -> do
-      executableDir <- getExecutableDir (Target.Main targetOrZen) mainModule
-      resolveFile executableDir $ T.unpack target
+      executableDir <- getExecutableDir h (Target.Main targetOrZen) mainModule
+      P.resolveFile executableDir $ T.unpack target
     Target.Zen path _ -> do
-      zenExecutableDir <- getZenExecutableDir (Target.Main targetOrZen) mainModule
+      zenExecutableDir <- getZenExecutableDir h (Target.Main targetOrZen) mainModule
       relPath <- getRelPathFromSourceDir mainModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       return $ zenExecutableDir </> relPathWithoutExtension
@@ -163,24 +183,25 @@ getBaseBuildDir baseModule = do
   let moduleRootDir = getModuleRootDir baseModule
   return $ moduleRootDir </> moduleCacheDir baseModule </> $(P.mkRelDir "build") </> platformPrefix </> versionDir
 
-getBuildDir :: Target.Target -> Module -> App (Path Abs Dir)
-getBuildDir t baseModule = do
-  baseBuildDir <- toApp $ getBaseBuildDir baseModule
-  buildSignature <- getBuildSignature t
+getBuildDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
+getBuildDir h t baseModule = do
+  baseBuildDir <- getBaseBuildDir baseModule
+  buildSignature <- getBuildSignature h t
   buildPrefix <- P.parseRelDir $ "build-" ++ buildSignature
   return $ baseBuildDir </> buildPrefix
 
-getBuildSignature :: Target.Target -> App String
-getBuildSignature t = do
-  sigCache <- readRef' buildSignatureCache
+getBuildSignature :: Handle -> Target.Target -> EIO String
+getBuildSignature h t = do
+  sigCache <- liftIO $ readIORef (cacheRef h)
   case sigCache of
     Just sig -> do
       return sig
     Nothing -> do
-      clangDigest <- getClangDigest
-      MainModule mainModule <- Env.getMainModule
-      clangOption <- toApp $ getClangOption t mainModule
-      moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation mainModule
+      let h' = Clang.Handle {clangRef = clangDigest h}
+      clangDigest <- Clang.getClangDigest h'
+      let MainModule m = mainModule h
+      clangOption <- getClangOption t m
+      moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation m
       let moduleEns' = decodeUtf8 moduleEns
       let ens =
             E.dictFromList
@@ -191,7 +212,7 @@ getBuildSignature t = do
                 ("module-configuration", _m :< E.String moduleEns')
               ]
       let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
-      modifyRef' buildSignatureCache $ const $ Just sig
+      liftIO $ writeIORef (cacheRef h) $ Just sig
       return sig
 
 getClangOption :: Target.Target -> Module -> EIO CL.ClangOption
@@ -212,79 +233,84 @@ getClangOption t baseModule =
     Target.PeripheralSingle _ ->
       return CL.empty
 
-getArtifactDir :: Target.Target -> Module -> App (Path Abs Dir)
-getArtifactDir t baseModule = do
-  buildDir <- getBuildDir t baseModule
+getArtifactDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
+getArtifactDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
   return $ buildDir </> artifactRelDir
 
-getForeignDir :: Target.Target -> Module -> App (Path Abs Dir)
-getForeignDir t baseModule = do
-  buildDir <- getBuildDir t baseModule
+getForeignDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
+getForeignDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
   let foreignDir = buildDir </> foreignRelDir
-  ensureDir foreignDir
+  P.ensureDir foreignDir
   return foreignDir
 
-getEntryDir :: Target.Target -> Module -> App (Path Abs Dir)
-getEntryDir t baseModule = do
-  buildDir <- getBuildDir t baseModule
+getEntryDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
+getEntryDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
   return $ buildDir </> entryRelDir
 
-getExecutableDir :: Target.Target -> Module -> App (Path Abs Dir)
-getExecutableDir t baseModule = do
-  buildDir <- getBuildDir t baseModule
+getExecutableDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
+getExecutableDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
   return $ buildDir </> executableRelDir
 
-getZenExecutableDir :: Target.Target -> Module -> App (Path Abs Dir)
-getZenExecutableDir t baseModule = do
-  buildDir <- getBuildDir t baseModule
+getZenExecutableDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
+getZenExecutableDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
   return $ buildDir </> zenRelDir </> executableRelDir
 
-getZenEntryDir :: Target.Target -> Module -> App (Path Abs Dir)
-getZenEntryDir t baseModule = do
-  buildDir <- getBuildDir t baseModule
+getZenEntryDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
+getZenEntryDir h t baseModule = do
+  buildDir <- getBuildDir h t baseModule
   return $ buildDir </> zenRelDir </> entryRelDir
 
-sourceToOutputPath :: Target.Target -> OK.OutputKind -> Src.Source -> App (Path Abs File)
-sourceToOutputPath t kind source = do
-  artifactDir <- getArtifactDir t $ Src.sourceModule source
+sourceToOutputPath :: Handle -> Target.Target -> OK.OutputKind -> Src.Source -> EIO (Path Abs File)
+sourceToOutputPath h t kind source = do
+  artifactDir <- getArtifactDir h t $ Src.sourceModule source
   relPath <- Src.getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- P.splitExtension relPath
   Src.attachExtension (artifactDir </> relPathWithoutExtension) kind
 
-getSourceCachePath :: Target.Target -> Src.Source -> App (Path Abs File)
-getSourceCachePath t =
-  getCachePath t ".def"
+getSourceCachePath :: Handle -> Target.Target -> Src.Source -> EIO (Path Abs File)
+getSourceCachePath h t =
+  getCachePath h t ".def"
 
-getSourceCompletionCachePath :: Target.Target -> Src.Source -> App (Path Abs File)
-getSourceCompletionCachePath t =
-  getCachePath t ".cmp"
+getSourceCompletionCachePath :: Handle -> Target.Target -> Src.Source -> EIO (Path Abs File)
+getSourceCompletionCachePath h t =
+  getCachePath h t ".cmp"
 
-getSourceLocationCachePath :: Target.Target -> Src.Source -> App (Path Abs File)
-getSourceLocationCachePath t =
-  getCachePath t ".loc"
+getSourceLocationCachePath :: Handle -> Target.Target -> Src.Source -> EIO (Path Abs File)
+getSourceLocationCachePath h t =
+  getCachePath h t ".loc"
 
-getCachePath :: Target.Target -> String -> Src.Source -> App (Path Abs File)
-getCachePath t extension source = do
-  artifactDir <- getArtifactDir t $ Src.sourceModule source
+getCachePath :: Handle -> Target.Target -> String -> Src.Source -> EIO (Path Abs File)
+getCachePath h t extension source = do
+  artifactDir <- getArtifactDir h t $ Src.sourceModule source
   relPath <- Src.getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- P.splitExtension relPath
   P.addExtension extension (artifactDir </> relPathWithoutExtension)
 
-attachOutputPath :: Target.Target -> OK.OutputKind -> Src.Source -> App (OK.OutputKind, Path Abs File)
-attachOutputPath t outputKind source = do
-  outputPath <- sourceToOutputPath t outputKind source
+attachOutputPath :: Handle -> Target.Target -> OK.OutputKind -> Src.Source -> EIO (OK.OutputKind, Path Abs File)
+attachOutputPath h t outputKind source = do
+  outputPath <- sourceToOutputPath h t outputKind source
   return (outputKind, outputPath)
 
-getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.MainTarget -> App (OK.OutputKind, Path Abs File)
-getOutputPathForEntryPoint baseModule kind mainTarget = do
+getOutputPathForEntryPoint ::
+  Handle ->
+  Module ->
+  OK.OutputKind ->
+  Target.MainTarget ->
+  EIO (OK.OutputKind, Path Abs File)
+getOutputPathForEntryPoint h baseModule kind mainTarget = do
   case mainTarget of
     Target.Named target _ -> do
-      entryDir <- getEntryDir (Target.Main mainTarget) baseModule
-      relPath <- parseRelFile $ T.unpack target
+      entryDir <- getEntryDir h (Target.Main mainTarget) baseModule
+      relPath <- P.parseRelFile $ T.unpack target
       outputPath <- Src.attachExtension (entryDir </> relPath) kind
       return (kind, outputPath)
     Target.Zen path _ -> do
-      zenEntryDir <- getZenEntryDir (Target.Main mainTarget) baseModule
+      zenEntryDir <- getZenEntryDir h (Target.Main mainTarget) baseModule
       relPath <- getRelPathFromSourceDir baseModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       outputPath <- Src.attachExtension (zenEntryDir </> relPathWithoutExtension) kind

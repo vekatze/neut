@@ -17,6 +17,8 @@ module Move.Console.Report
     printWarning,
     getColorSpecStdOut,
     getColorSpecStdErr,
+    printStdOut,
+    printStdErr,
   )
 where
 

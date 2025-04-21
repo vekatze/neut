@@ -2,34 +2,28 @@ module Move.Context.External
   ( run,
     runOrFail,
     runOrFail',
-    getClang,
-    getClangDigest,
-    ensureExecutables,
     expandText,
+    ensureExecutable,
     raiseIfProcessFailed,
-    calculateClangDigest,
     ExternalError (..),
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.Debug (report)
-import Move.Context.Throw (liftEither)
-import Move.Context.Throw qualified as Throw
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Rule.Const (envVarClang)
-import Rule.Digest
+import GHC.IO.Handle
+import Move.Context.App
+import Move.Context.Debug (report)
+import Move.Context.EIO (toApp)
+import Move.Context.Throw (liftEither)
+import Move.Context.Throw qualified as Throw
+import Path
 import Rule.Error
 import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
 import Rule.ProcessRunner.Rule qualified as ProcessRunner
-import GHC.IO.Handle
-import Path
 import System.Directory
-import System.Environment (lookupEnv)
 import System.Exit
 import System.Process
 
@@ -39,7 +33,7 @@ run procName optionList = do
 
 runOrFail :: String -> [String] -> App (Either Error ())
 runOrFail procName optionList = do
-  report $ "Executing: " <> T.pack (show (procName, optionList))
+  toApp $ report $ "Executing: " <> T.pack (show (procName, optionList))
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
   value <- liftIO $ run00 spec
@@ -57,7 +51,7 @@ data ExternalError = ExternalError
 
 runOrFail' :: Path Abs Dir -> String -> App (Either ExternalError ())
 runOrFail' cwd cmd = do
-  report $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
+  toApp $ report $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
   value <- liftIO $ run00 spec
@@ -67,49 +61,16 @@ runOrFail' cwd cmd = do
     Left err ->
       Throw.throw $ ProcessRunner.toCompilerError err
 
-getClang :: IO String
-getClang = do
-  mClang <- lookupEnv envVarClang
-  case mClang of
-    Just clang -> do
-      return clang
-    Nothing -> do
-      return "clang"
-
-getClangDigest :: App T.Text
-getClangDigest = do
-  digestOrNone <- readRefMaybe clangDigest
-  case digestOrNone of
-    Just digest -> do
-      return digest
-    Nothing -> do
-      digest <- calculateClangDigest
-      writeRef clangDigest digest
-      return digest
-
-calculateClangDigest :: App T.Text
-calculateClangDigest = do
-  clang <- liftIO getClang
-  let ProcessRunner.Runner {run01} = ProcessRunner.ioRunner
-  let spec = ProcessRunner.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
-  output <- liftIO $ run01 spec
-  case output of
-    Right value -> do
-      report $ "Clang info:\n" <> decodeUtf8 value
-      return $ decodeUtf8 $ hashAndEncode value
-    Left err ->
-      Throw.throw $ ProcessRunner.toCompilerError err
-
-ensureExecutables :: App ()
-ensureExecutables = do
-  clang <- liftIO getClang
-  mapM_
-    ensureExecutable
-    [ clang,
-      "curl",
-      "tar",
-      "zstd"
-    ]
+-- ensureExecutables :: App ()
+-- ensureExecutables = do
+--   clang <- liftIO getClang
+--   mapM_
+--     ensureExecutable
+--     [ clang,
+--       "curl",
+--       "tar",
+--       "zstd"
+--     ]
 
 ensureExecutable :: String -> App ()
 ensureExecutable name = do

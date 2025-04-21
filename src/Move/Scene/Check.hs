@@ -49,7 +49,7 @@ _check target baseModule = do
     contentSeq <- Load.load target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      report $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
+      toApp $ report $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
       void $ Parse.parse target source cacheOrContent >>= Elaborate.elaborate target
 
 checkAll :: App [Remark]
