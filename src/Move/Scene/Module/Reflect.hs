@@ -7,15 +7,22 @@ module Move.Scene.Module.Reflect
   )
 where
 
-import Move.Context.App
-import Move.Context.Module qualified as Module
-import Move.Context.Path qualified as Path
-import Move.Context.Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (toApp)
+import Move.Context.Module qualified as Module
+import Move.Context.Path qualified as Path
+import Move.Context.Throw
+import Move.Scene.Ens.Reflect (Handle (Handle))
+import Move.Scene.Ens.Reflect qualified as Ens
+import Path
+import Path.IO
 import Rule.BaseName (isCapitalized)
 import Rule.BaseName qualified as BN
 import Rule.ClangOption qualified as CL
@@ -34,9 +41,6 @@ import Rule.SourceLocator qualified as SL
 import Rule.Syntax.Series qualified as SE
 import Rule.Target
 import Rule.ZenConfig (ZenConfig (..))
-import Path
-import Path.IO
-import Move.Scene.Ens.Reflect qualified as Ens
 
 getModule ::
   H.Hint ->
@@ -62,7 +66,9 @@ getModule m moduleID locatorText = do
 
 fromFilePath :: Path Abs File -> App Module
 fromFilePath moduleFilePath = do
-  (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
+  counter <- asks App.counter
+  let h = Handle {counter}
+  (_, (ens@(m :< _), _)) <- toApp $ Ens.fromFilePath h moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- interpretTarget targetEns
   zenConfigEns <- liftEither (E.access' keyZen E.emptyDict ens) >>= interpretZenConfig

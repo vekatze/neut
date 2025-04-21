@@ -1,14 +1,21 @@
 module Move.Scene.Module.MakeArchiveEns (makeArchiveEns) where
 
-import Move.Context.App
-import Move.Context.Fetch (getHandleContents)
-import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Reader (asks)
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (toApp)
+import Move.Context.Fetch (getHandleContents)
+import Move.Context.Path qualified as Path
+import Move.Context.Throw qualified as Throw
+import Move.Scene.Ens.Reflect (Handle (Handle))
+import Move.Scene.Ens.Reflect qualified as Ens
+import Move.Scene.Module.GetExistingVersions
+import Path
 import Rule.Const
 import Rule.Ens qualified as E
 import Rule.Hint
@@ -18,9 +25,6 @@ import Rule.ModuleDigest qualified as MD
 import Rule.PackageVersion qualified as PV
 import Rule.Syntax.Series (Series (hasOptionalSeparator))
 import Rule.Syntax.Series qualified as SE
-import Path
-import Move.Scene.Ens.Reflect qualified as Ens
-import Move.Scene.Module.GetExistingVersions
 import System.IO
 import Prelude hiding (log)
 
@@ -29,7 +33,9 @@ makeArchiveEns newVersion targetModule = do
   existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
   antecedentList <- ListUtils.nubOrd <$> mapM (getDigest targetModule) antecedents
-  (c1, (baseEns@(m :< _), c2)) <- Ens.fromFilePath (moduleLocation targetModule)
+  counter <- asks App.counter
+  let h = Handle {counter}
+  (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation targetModule)
   let antecedentEns = makeAntecedentEns m antecedentList
   mergedEns <- Throw.liftEither $ E.merge baseEns antecedentEns
   return (c1, (mergedEns, c2))

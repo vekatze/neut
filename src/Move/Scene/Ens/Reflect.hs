@@ -1,20 +1,19 @@
 module Move.Scene.Ens.Reflect
-  ( fromFilePath,
+  ( Handle (..),
+    fromFilePath,
     fromFilePath',
   )
 where
 
 import Control.Comonad.Cofree
 import Control.Monad.Except (MonadError (throwError))
-import Control.Monad.Reader (asks)
 import Control.Monad.Trans
+import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Parse
-import Move.Scene.Parse.Core
+import Move.Scene.Parse.Core qualified as P
 import Path
 import Rule.C
 import Rule.Ens qualified as E
@@ -23,20 +22,24 @@ import Rule.Hint
 import Rule.Syntax.Series qualified as SE
 import Text.Megaparsec hiding (parse)
 
-fromFilePath :: Path Abs File -> App (C, (E.Ens, C))
-fromFilePath path = do
+newtype Handle
+  = Handle
+  { counter :: IORef Int
+  }
+
+fromFilePath :: Handle -> Path Abs File -> EIO (C, (E.Ens, C))
+fromFilePath h path = do
   fileContent <- liftIO $ readTextFile path
-  fromFilePath' path fileContent
+  fromFilePath' h path fileContent
 
-fromFilePath' :: Path Abs File -> T.Text -> App (C, (E.Ens, C))
-fromFilePath' filePath fileContent = do
-  counter <- asks App.counter
-  let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
-  toApp $ parseFile h (const parseEns)
+fromFilePath' :: Handle -> Path Abs File -> T.Text -> EIO (C, (E.Ens, C))
+fromFilePath' h filePath fileContent = do
+  let h' = P.Handle {counter = counter h, filePath, fileContent, mustParseWholeFile = True}
+  P.parseFile h' (const parseEns)
 
-parseEns :: Parser (E.Ens, C)
+parseEns :: P.Parser (E.Ens, C)
 parseEns = do
-  m <- getCurrentHint
+  m <- P.getCurrentHint
   choice
     [ parseDictionary m,
       parseList m,
@@ -46,42 +49,42 @@ parseEns = do
       parseFloat m
     ]
 
-parseInt :: Hint -> Parser (E.Ens, C)
+parseInt :: Hint -> P.Parser (E.Ens, C)
 parseInt m = do
-  (x, c) <- integer
+  (x, c) <- P.integer
   return (m :< E.Int (fromInteger x), c)
 
-parseFloat :: Hint -> Parser (E.Ens, C)
+parseFloat :: Hint -> P.Parser (E.Ens, C)
 parseFloat m = do
-  (x, c) <- float
+  (x, c) <- P.float
   return (m :< E.Float x, c)
 
-parseBool :: Hint -> Parser (E.Ens, C)
+parseBool :: Hint -> P.Parser (E.Ens, C)
 parseBool m = do
-  (x, c) <- bool
+  (x, c) <- P.bool
   return (m :< E.Bool x, c)
 
-parseString :: Hint -> Parser (E.Ens, C)
+parseString :: Hint -> P.Parser (E.Ens, C)
 parseString m = do
-  (x, c) <- string
+  (x, c) <- P.string
   return (m :< E.String x, c)
 
-parseList :: Hint -> Parser (E.Ens, C)
+parseList :: Hint -> P.Parser (E.Ens, C)
 parseList m = do
-  (ensSeries, c) <- seriesBracket parseEns
+  (ensSeries, c) <- P.seriesBracket parseEns
   return (m :< E.List ensSeries, c)
 
-parseDictionary :: Hint -> Parser (E.Ens, C)
+parseDictionary :: Hint -> P.Parser (E.Ens, C)
 parseDictionary m = do
-  (kvs, c) <- seriesBrace parseKeyValuePair
+  (kvs, c) <- P.seriesBrace parseKeyValuePair
   let kvs' = SE.joinC kvs
   lift $ ensureKeyLinearity (SE.extract kvs') S.empty
   return (m :< E.Dictionary (fmap snd kvs'), c)
 
-parseKeyValuePair :: Parser ((C, (Hint, (T.Text, E.Ens))), C)
+parseKeyValuePair :: P.Parser ((C, (Hint, (T.Text, E.Ens))), C)
 parseKeyValuePair = do
-  m <- getCurrentHint
-  (k, cLead) <- symbol
+  m <- P.getCurrentHint
+  (k, cLead) <- P.symbol
   (v, cTrail) <- parseEns
   return ((cLead, (m, (k, v))), cTrail)
 

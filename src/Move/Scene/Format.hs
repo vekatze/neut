@@ -33,7 +33,10 @@ format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App
 format shouldMinimizeImports fileType path content = do
   case fileType of
     FT.Ens -> do
-      Ens.pp <$> Ens.fromFilePath' path content
+      counter <- asks App.counter
+      let h = Ens.Handle {counter}
+      ens <- toApp $ Ens.fromFilePath' h path content
+      return $ Ens.pp ens
     FT.Source -> do
       _formatSource shouldMinimizeImports path content
 
