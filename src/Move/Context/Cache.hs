@@ -124,17 +124,16 @@ needsCompilation outputKindList source = do
   artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
   return $ not $ Source.isCompilationSkippable artifactTime outputKindList
 
-isEntryPointCompilationSkippable :: MainModule -> MainTarget -> [OK.OutputKind] -> App Bool
-isEntryPointCompilationSkippable mainModule target outputKindList = do
+isEntryPointCompilationSkippable :: Path.Handle -> MainModule -> MainTarget -> [OK.OutputKind] -> EIO Bool
+isEntryPointCompilationSkippable h mainModule target outputKindList = do
   case outputKindList of
     [] ->
       return True
     kind : rest -> do
-      h <- Path.new
-      (_, outputPath) <- toApp $ Path.getOutputPathForEntryPoint h (extractModule mainModule) kind target
+      (_, outputPath) <- Path.getOutputPathForEntryPoint h (extractModule mainModule) kind target
       b <- doesFileExist outputPath
       if b
-        then isEntryPointCompilationSkippable mainModule target rest
+        then isEntryPointCompilationSkippable h mainModule target rest
         else return False
 
 invalidate :: Path.Handle -> Target -> Source.Source -> EIO ()

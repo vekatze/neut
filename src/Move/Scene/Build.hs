@@ -160,7 +160,8 @@ getEntryPointCompilationCount mainModule target outputKindList = do
     PeripheralSingle {} ->
       return 0
     Main t -> do
-      b <- Cache.isEntryPointCompilationSkippable mainModule t outputKindList
+      h <- Path.new
+      b <- toApp $ Cache.isEntryPointCompilationSkippable h mainModule t outputKindList
       return $ if b then 0 else 1
 
 compileEntryPoint :: M.MainModule -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
@@ -171,7 +172,8 @@ compileEntryPoint mainModule target outputKindList = do
     PeripheralSingle {} ->
       return []
     Main t -> do
-      b <- Cache.isEntryPointCompilationSkippable mainModule t outputKindList
+      h <- Path.new
+      b <- toApp $ Cache.isEntryPointCompilationSkippable h mainModule t outputKindList
       if b
         then return []
         else do
