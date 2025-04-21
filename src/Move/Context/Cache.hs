@@ -16,7 +16,7 @@ where
 import Control.Monad.IO.Class
 import Data.Binary
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Path (getSourceLocationCachePath)
 import Move.Context.Path qualified as Path
@@ -29,24 +29,21 @@ import Rule.OutputKind qualified as OK
 import Rule.Source qualified as Source
 import Rule.Target
 
-saveCache :: Target -> Source.Source -> Cache.Cache -> App ()
-saveCache t source cache = do
-  h <- Path.new
-  cachePath <- toApp $ Path.getSourceCachePath h t source
+saveCache :: Path.Handle -> Target -> Source.Source -> Cache.Cache -> EIO ()
+saveCache h t source cache = do
+  cachePath <- Path.getSourceCachePath h t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) $ Cache.compress cache
 
-saveCompletionCache :: Target -> Source.Source -> Cache.CompletionCache -> App ()
-saveCompletionCache t source cache = do
-  h <- Path.new
-  cachePath <- toApp $ Path.getSourceCompletionCachePath h t source
+saveCompletionCache :: Path.Handle -> Target -> Source.Source -> Cache.CompletionCache -> EIO ()
+saveCompletionCache h t source cache = do
+  cachePath <- Path.getSourceCompletionCachePath h t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
-saveLocationCache :: Target -> Source.Source -> Cache.LocationCache -> App ()
-saveLocationCache t source cache = do
-  h <- Path.new
-  cachePath <- toApp $ Path.getSourceLocationCachePath h t source
+saveLocationCache :: Path.Handle -> Target -> Source.Source -> Cache.LocationCache -> EIO ()
+saveLocationCache h t source cache = do
+  cachePath <- Path.getSourceLocationCachePath h t source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 

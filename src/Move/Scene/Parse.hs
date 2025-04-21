@@ -14,6 +14,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
+import Move.Context.Path qualified as Path
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedPreset qualified as UnusedPreset
@@ -53,7 +54,8 @@ parseSource t source cacheOrContent = do
       prog <- toApp $ P.parseFile h Parse.parseProgram
       prog' <- interpret source (snd prog)
       tmap <- Env.getTagMap
-      Cache.saveLocationCache t source $ Cache.LocationCache tmap
+      h' <- Path.new
+      toApp $ Cache.saveLocationCache h' t source $ Cache.LocationCache tmap
       return $ Right prog'
 
 parseCachedStmtList :: [Stmt] -> App ()

@@ -1,21 +1,5 @@
 module Move.Scene.Elaborate (elaborate, elaborate') where
 
-import Move.Context.App
-import Move.Context.Cache qualified as Cache
-import Move.Context.DataDefinition qualified as DataDefinition
-import Move.Context.Decl qualified as Decl
-import Move.Context.Definition qualified as Definition
-import Move.Context.Elaborate
-import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
-import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.RawImportSummary qualified as RawImportSummary
-import Move.Context.Remark qualified as Remark
-import Move.Context.SymLoc qualified as SymLoc
-import Move.Context.Throw qualified as Throw
-import Move.Context.TopCandidate qualified as TopCandidate
-import Move.Context.Type qualified as Type
-import Move.Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Bifunctor
@@ -23,6 +7,28 @@ import Data.Bitraversable (bimapM)
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.Cache qualified as Cache
+import Move.Context.DataDefinition qualified as DataDefinition
+import Move.Context.Decl qualified as Decl
+import Move.Context.Definition qualified as Definition
+import Move.Context.EIO (toApp)
+import Move.Context.Elaborate
+import Move.Context.Env qualified as Env
+import Move.Context.Gensym qualified as Gensym
+import Move.Context.KeyArg qualified as KeyArg
+import Move.Context.Path qualified as Path
+import Move.Context.RawImportSummary qualified as RawImportSummary
+import Move.Context.Remark qualified as Remark
+import Move.Context.SymLoc qualified as SymLoc
+import Move.Context.Throw qualified as Throw
+import Move.Context.TopCandidate qualified as TopCandidate
+import Move.Context.Type qualified as Type
+import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Scene.Elaborate.EnsureAffinity
+import Move.Scene.Elaborate.Infer qualified as Infer
+import Move.Scene.Elaborate.Unify qualified as Unify
+import Move.Scene.Term.Inline qualified as TM
 import Rule.Annotation qualified as AN
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -58,10 +64,6 @@ import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText
-import Move.Scene.Elaborate.EnsureAffinity
-import Move.Scene.Elaborate.Infer qualified as Infer
-import Move.Scene.Elaborate.Unify qualified as Unify
-import Move.Scene.Term.Inline qualified as TM
 
 elaborate :: Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate t cacheOrStmt = do
@@ -99,18 +101,21 @@ synthesizeStmtList t stmtList = do
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
   countSnapshot <- Gensym.getCount
-  Cache.saveCache t source $
-    Cache.Cache
-      { Cache.stmtList = stmtList',
-        Cache.remarkList = remarkList,
-        Cache.countSnapshot = countSnapshot
-      }
-  Cache.saveCompletionCache t source $
-    Cache.CompletionCache
-      { Cache.localVarTree = localVarTree,
-        Cache.topCandidate = topCandidate,
-        Cache.rawImportSummary = rawImportSummary
-      }
+  h <- Path.new
+  toApp $
+    Cache.saveCache h t source $
+      Cache.Cache
+        { Cache.stmtList = stmtList',
+          Cache.remarkList = remarkList,
+          Cache.countSnapshot = countSnapshot
+        }
+  toApp $
+    Cache.saveCompletionCache h t source $
+      Cache.CompletionCache
+        { Cache.localVarTree = localVarTree,
+          Cache.topCandidate = topCandidate,
+          Cache.rawImportSummary = rawImportSummary
+        }
   Remark.insertToGlobalRemarkList remarkList
   return stmtList'
 
