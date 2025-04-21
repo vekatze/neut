@@ -33,11 +33,6 @@ module Move.Context.Path
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.Env qualified as Env
-import Move.Context.External (getClangDigest)
-import Move.Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
@@ -48,6 +43,16 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
 import Data.Version qualified as V
+import Move.Context.App
+import Move.Context.App.Internal
+import Move.Context.EIO (EIO)
+import Move.Context.Env qualified as Env
+import Move.Context.External (getClangDigest)
+import Move.Context.Throw qualified as Throw
+import Path (Abs, Dir, File, Path, Rel, (</>))
+import Path qualified as P
+import Path.IO qualified as P
+import Paths_neut
 import Rule.ClangOption qualified as CL
 import Rule.Const
 import Rule.Digest
@@ -60,10 +65,6 @@ import Rule.OutputKind qualified as OK
 import Rule.Platform as TP
 import Rule.Source qualified as Src
 import Rule.Target qualified as Target
-import Path (Abs, Dir, File, Path, Rel, (</>))
-import Path qualified as P
-import Path.IO qualified as P
-import Paths_neut
 
 getCurrentDir :: App (Path Abs Dir)
 getCurrentDir =
@@ -123,19 +124,18 @@ removeDirRecur :: Path Abs Dir -> App ()
 removeDirRecur =
   P.removeDirRecur
 
-returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
+returnDirectory :: Path Abs Dir -> EIO (Path Abs Dir)
 returnDirectory path =
-  ensureDir path >> return path
+  P.ensureDir path >> return path
 
-getDependencyDirPath :: App (Path Abs Dir)
-getDependencyDirPath = do
-  mainModule <- Env.getMainModule
-  let moduleRootDir = getModuleRootDir mainModule
-  case moduleID mainModule of
+getDependencyDirPath :: Module -> EIO (Path Abs Dir)
+getDependencyDirPath baseModule = do
+  let moduleRootDir = getModuleRootDir baseModule
+  case moduleID baseModule of
     MID.Library _ ->
       returnDirectory $ P.parent moduleRootDir
     _ -> do
-      returnDirectory $ moduleRootDir </> moduleCacheDir mainModule </> $(P.mkRelDir "dependency")
+      returnDirectory $ moduleRootDir </> moduleCacheDir baseModule </> $(P.mkRelDir "dependency")
 
 ensureNotInDependencyDir :: App ()
 ensureNotInDependencyDir = do

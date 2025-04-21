@@ -12,16 +12,19 @@ module Move.Context.Module
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.Debug (report)
-import Move.Context.Env
-import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.App.Internal
+import Move.Context.Debug (report)
+import Move.Context.EIO (toApp)
+import Move.Context.Env
+import Move.Context.Path qualified as Path
+import Move.Context.Throw qualified as Throw
+import Path
+import Path.IO
 import Rule.Const
 import Rule.Ens
 import Rule.Ens.Reify qualified as Ens
@@ -32,8 +35,6 @@ import Rule.ModuleDigest qualified as MD
 import Rule.ModuleID qualified as MID
 import Rule.ModuleURL
 import Rule.Source qualified as Source
-import Path
-import Path.IO
 import System.Environment
 
 getModuleFilePath :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
@@ -63,7 +64,7 @@ getModuleDirByID mHint moduleID = do
     MID.Main ->
       return $ getModuleRootDir mainModule
     MID.Library (MD.ModuleDigest digest) -> do
-      dependencyDir <- Path.getDependencyDirPath
+      dependencyDir <- toApp $ Path.getDependencyDirPath mainModule
       resolveDir dependencyDir $ T.unpack digest
 
 saveEns :: Path Abs File -> FullEns -> App ()
