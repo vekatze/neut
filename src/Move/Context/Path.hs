@@ -2,20 +2,10 @@ module Move.Context.Path
   ( Handle (..),
     new,
     getDependencyDirPath,
-    getCurrentDir,
     ensureNotInDependencyDir,
-    resolveDir,
-    resolveFile,
-    doesDirExist,
-    doesFileExist,
-    getModificationTime,
-    setModificationTime,
-    ensureDir,
     writeByteString,
     writeText,
     getBaseName,
-    parseRelFile,
-    removeDirRecur,
     getExecutableOutputPath,
     getBaseBuildDir,
     getForeignDir,
@@ -84,38 +74,6 @@ new = do
   mainModule <- getMainModule
   return $ Handle {..}
 
-getCurrentDir :: App (Path Abs Dir)
-getCurrentDir =
-  P.getCurrentDir
-
-resolveDir :: Path Abs Dir -> FilePath -> App (Path Abs Dir)
-resolveDir =
-  P.resolveDir
-
-resolveFile :: Path Abs Dir -> FilePath -> App (Path Abs File)
-resolveFile =
-  P.resolveFile
-
-doesDirExist :: Path Abs Dir -> App Bool
-doesDirExist =
-  P.doesDirExist
-
-doesFileExist :: Path Abs File -> App Bool
-doesFileExist =
-  P.doesFileExist
-
-getModificationTime :: Path Abs File -> App UTCTime
-getModificationTime =
-  P.getModificationTime
-
-setModificationTime :: Path Abs File -> UTCTime -> App ()
-setModificationTime =
-  P.setModificationTime
-
-ensureDir :: Path Abs Dir -> App ()
-ensureDir =
-  P.ensureDir
-
 getBaseName :: Path Abs File -> EIO T.Text
 getBaseName path = do
   let dirPath = P.parent path
@@ -129,14 +87,6 @@ writeByteString path content =
 writeText :: Path Abs File -> T.Text -> App ()
 writeText path text =
   liftIO $ B.writeFile (P.toFilePath path) $ encodeUtf8 text
-
-parseRelFile :: FilePath -> App (Path Rel File)
-parseRelFile =
-  P.parseRelFile
-
-removeDirRecur :: Path Abs Dir -> App ()
-removeDirRecur =
-  P.removeDirRecur
 
 returnDirectory :: Path Abs Dir -> EIO (Path Abs Dir)
 returnDirectory path =

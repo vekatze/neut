@@ -6,7 +6,6 @@ import Move.Context.App
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Module qualified as Module
-import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Path
 import Path.IO
@@ -52,9 +51,9 @@ makeReadOnly tempRootDir = do
 getArchiveFilePath :: MainModule -> T.Text -> App (Path Abs File)
 getArchiveFilePath (MainModule mainModule) versionText = do
   let archiveDir = getArchiveDir mainModule
-  Path.ensureDir archiveDir
-  archiveFile <- Path.resolveFile archiveDir $ T.unpack $ versionText <> packageFileExtension
-  archiveExists <- Path.doesFileExist archiveFile
+  ensureDir archiveDir
+  archiveFile <- resolveFile archiveDir $ T.unpack $ versionText <> packageFileExtension
+  archiveExists <- doesFileExist archiveFile
   when archiveExists $ do
     Throw.raiseError' $ "The archive `" <> versionText <> "` already exists"
   return archiveFile

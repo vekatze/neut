@@ -5,17 +5,17 @@ module Move.Scene.Source.ShiftToLatest
   )
 where
 
-import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App
-import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Move.Context.Antecedent qualified as Antecedent
+import Move.Context.App
+import Move.Context.Throw qualified as Throw
+import Path
+import Path.IO
 import Rule.Module
 import Rule.ModuleID qualified as MID
 import Rule.Source (Source (sourceModule))
 import Rule.Source qualified as Source
-import Path
 
 type ShiftMap = Map.HashMap MID.ModuleID Module
 
@@ -47,7 +47,7 @@ getNewerSource source newModule = do
             sourceModule = newModule,
             sourceHint = Source.sourceHint source
           }
-  b <- Path.doesFileExist newSourceFilePath
+  b <- doesFileExist newSourceFilePath
   if b
     then return newSource
     else do

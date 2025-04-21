@@ -17,15 +17,15 @@ import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
-import Move.Context.Fetch
+import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
-import Move.Context.Path qualified as Path
 import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Ens.Reflect (Handle (Handle))
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Module.Reflect qualified as Module
 import Path
+import Path.IO
 import Rule.BaseName (isCapitalized)
 import Rule.BaseName qualified as BN
 import Rule.Ens qualified as E
@@ -67,9 +67,9 @@ insertDependency aliasName url = do
   when (isCapitalized aliasName') $ do
     Throw.raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
   let alias = ModuleAlias aliasName'
-  withTempFile $ \tempFilePath tempFileHandle -> do
+  Fetch.withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias [url]
-    archive <- getHandleContents tempFileHandle
+    archive <- Fetch.getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
     mainModule <- getMainModule
     case Map.lookup alias (M.moduleDependency $ M.extractModule mainModule) of
@@ -79,7 +79,7 @@ insertDependency aliasName url = do
             if url `elem` M.dependencyMirrorList dep
               then do
                 moduleDirPath <- toApp $ Module.getModuleDirByID mainModule Nothing (MID.Library digest)
-                dependencyDirExists <- Path.doesDirExist moduleDirPath
+                dependencyDirExists <- doesDirExist moduleDirPath
                 if dependencyDirExists
                   then do
                     Remark.printNote' $ "Already installed: " <> MD.reify digest
@@ -126,9 +126,9 @@ insertCoreDependency = do
 installModule :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule alias mirrorList digest = do
   printInstallationRemark alias digest
-  withTempFile $ \tempFilePath tempFileHandle -> do
+  Fetch.withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias mirrorList
-    archive <- getHandleContents tempFileHandle
+    archive <- Fetch.getHandleContents tempFileHandle
     let archiveModuleDigest = MD.fromByteString archive
     when (digest /= archiveModuleDigest) $
       Throw.raiseError' $
@@ -160,13 +160,13 @@ collectDependency baseModule = do
 checkIfInstalled :: MD.ModuleDigest -> App Bool
 checkIfInstalled digest = do
   mainModule <- getMainModule
-  toApp (Module.getModuleFilePath mainModule Nothing (MID.Library digest)) >>= Path.doesFileExist
+  toApp (Module.getModuleFilePath mainModule Nothing (MID.Library digest)) >>= doesFileExist
 
 getLibraryModule :: ModuleAlias -> MD.ModuleDigest -> App M.Module
 getLibraryModule alias digest = do
   mainModule <- getMainModule
   moduleFilePath <- toApp $ Module.getModuleFilePath mainModule Nothing (MID.Library digest)
-  moduleFileExists <- Path.doesFileExist moduleFilePath
+  moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
     then do
       counter <- asks App.counter
@@ -199,7 +199,7 @@ extractToDependencyDir :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App
 extractToDependencyDir archivePath _ digest = do
   mainModule <- getMainModule
   moduleDirPath <- toApp $ Module.getModuleDirByID mainModule Nothing (MID.Library digest)
-  Path.ensureDir moduleDirPath
+  ensureDir moduleDirPath
   External.run "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
 addDependencyToModuleFile :: ModuleAlias -> M.Dependency -> App ()

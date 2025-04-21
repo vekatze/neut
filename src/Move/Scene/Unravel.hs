@@ -38,6 +38,7 @@ import Move.Scene.Parse.Import (interpretImport)
 import Move.Scene.Parse.Program (parseImport)
 import Move.Scene.Source.ShiftToLatest
 import Path
+import Path.IO
 import Rule.Artifact qualified as A
 import Rule.Hint
 import Rule.Import
@@ -160,7 +161,7 @@ unravelModule' axis currentModule = do
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- toApp $ Module.getModuleFilePath mainModule Nothing moduleID
-        b <- Path.doesFileExist path'
+        b <- doesFileExist path'
         if b
           then do
             counter <- asks counter
@@ -203,7 +204,7 @@ unravelImportItem t importItem = do
       let pathList = map snd staticFileList
       itemModTime <- forM pathList $ \(m, p) -> do
         toApp $ ensureExistence' p (Just m)
-        Path.getModificationTime p
+        getModificationTime p
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
 
@@ -275,12 +276,12 @@ getFreshObjectTime t source = do
 
 getFreshTime :: Source.Source -> Path Abs File -> App (Maybe UTCTime)
 getFreshTime source itemPath = do
-  existsItem <- Path.doesFileExist itemPath
+  existsItem <- doesFileExist itemPath
   if not existsItem
     then return Nothing
     else do
-      srcModTime <- Path.getModificationTime $ Source.sourceFilePath source
-      itemModTime <- Path.getModificationTime itemPath
+      srcModTime <- getModificationTime $ Source.sourceFilePath source
+      itemModTime <- getModificationTime itemPath
       if itemModTime > srcModTime
         then return $ Just itemModTime
         else return Nothing

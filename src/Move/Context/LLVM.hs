@@ -46,17 +46,17 @@ emit target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
   case sourceOrNone of
     Right source -> do
       kindPathList <- toApp $ zipWithM (Path.attachOutputPath h target) outputKindList (repeat source)
-      forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
+      forM_ kindPathList $ \(_, outputPath) -> ensureDir $ parent outputPath
       emitAll clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
-        Path.setModificationTime path timeStamp
+        setModificationTime path timeStamp
     Left t -> do
       MainModule mainModule <- getMainModule
       kindPathList <- toApp $ zipWithM (Path.getOutputPathForEntryPoint h mainModule) outputKindList (repeat t)
-      forM_ kindPathList $ \(_, path) -> Path.ensureDir $ parent path
+      forM_ kindPathList $ \(_, path) -> ensureDir $ parent path
       emitAll clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
-        Path.setModificationTime path timeStamp
+        setModificationTime path timeStamp
 
 emitAll :: [ClangOption] -> LLVMCode -> [(OK.OutputKind, Path Abs File)] -> App ()
 emitAll clangOptions llvmCode kindPathList = do

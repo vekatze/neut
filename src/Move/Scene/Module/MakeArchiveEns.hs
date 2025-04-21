@@ -10,12 +10,12 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (toApp)
 import Move.Context.Fetch (getHandleContents)
-import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Ens.Reflect (Handle (Handle))
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Module.GetExistingVersions
 import Path
+import Path.IO
 import Rule.Const
 import Rule.Ens qualified as E
 import Rule.Hint
@@ -44,7 +44,7 @@ getPackagePath :: Module -> PV.PackageVersion -> App (Path Abs File)
 getPackagePath targetModule ver = do
   let archiveDir = getArchiveDir targetModule
   let archiveName = PV.reify ver
-  Path.resolveFile archiveDir $ T.unpack $ archiveName <> packageFileExtension
+  resolveFile archiveDir $ T.unpack $ archiveName <> packageFileExtension
 
 getDigest :: Module -> PV.PackageVersion -> App ModuleDigest
 getDigest targetModule ver = do

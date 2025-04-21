@@ -40,6 +40,7 @@ import Move.Scene.Parse qualified as Parse
 import Move.Scene.ShowProgress qualified as ProgressBar
 import Move.Scene.Unravel qualified as Unravel
 import Path
+import Path.IO
 import Rule.Cache
 import Rule.ClangOption qualified as CL
 import Rule.LowComp qualified as LC
@@ -203,7 +204,7 @@ compileForeign' t currentTime m = do
   inputPathList <- fmap concat $ mapM (toApp . getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
-    Path.ensureDir $ parent outputPath
+    ensureDir $ parent outputPath
   inputTime <- toApp $ Path.getLastModifiedSup inputPathList
   outputTime <- toApp $ Path.getLastModifiedInf outputPathList
   case (inputTime, outputTime) of
@@ -230,9 +231,9 @@ compileForeign' t currentTime m = do
                 <> "):\n"
                 <> errStr
       forM_ outputPathList $ \outputPath -> do
-        b <- Path.doesFileExist outputPath
+        b <- doesFileExist outputPath
         if b
-          then Path.setModificationTime outputPath currentTime
+          then setModificationTime outputPath currentTime
           else Throw.raiseError' $ "Missing foreign output: " <> T.pack (toFilePath outputPath)
       return $ not $ null cmdList
 

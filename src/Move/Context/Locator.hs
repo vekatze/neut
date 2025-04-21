@@ -27,10 +27,10 @@ import Data.Text.Encoding
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.Env (getCurrentSource, getMainModule)
-import Move.Context.Path (doesFileExist)
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Path
+import Path.IO
 import Rule.AliasInfo (MustUpdateTag)
 import Rule.BaseName qualified as BN
 import Rule.DefiniteDescription qualified as DD

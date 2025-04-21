@@ -135,7 +135,7 @@ isEntryPointCompilationSkippable mainModule target outputKindList = do
     kind : rest -> do
       h <- Path.new
       (_, outputPath) <- toApp $ Path.getOutputPathForEntryPoint h (extractModule mainModule) kind target
-      b <- Path.doesFileExist outputPath
+      b <- doesFileExist outputPath
       if b
         then isEntryPointCompilationSkippable mainModule target rest
         else return False

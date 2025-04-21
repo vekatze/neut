@@ -14,7 +14,8 @@ import Move.Context.Module qualified as Module
 import Move.Context.Path qualified as Path
 import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
-import Path (parent, (</>))
+import Path
+import Path.IO
 import Rule.ClangOption qualified as CL
 import Rule.Const
 import Rule.Module
@@ -26,7 +27,7 @@ import Rule.ZenConfig
 createNewProject :: T.Text -> Module -> App ()
 createNewProject moduleName newModule = do
   let moduleDir = parent $ moduleLocation newModule
-  moduleDirExists <- Path.doesDirExist moduleDir
+  moduleDirExists <- doesDirExist moduleDir
   if moduleDirExists
     then Throw.raiseError' $ "The directory `" <> moduleName <> "` already exists"
     else do
@@ -37,9 +38,9 @@ createNewProject moduleName newModule = do
 constructDefaultModule :: T.Text -> Maybe T.Text -> App Module
 constructDefaultModule moduleName mTargetName = do
   let targetName = fromMaybe moduleName mTargetName
-  currentDir <- Path.getCurrentDir
-  moduleRootDir <- Path.resolveDir currentDir $ T.unpack moduleName
-  mainFile <- Path.parseRelFile $ T.unpack targetName <> sourceFileExtension
+  currentDir <- getCurrentDir
+  moduleRootDir <- resolveDir currentDir $ T.unpack moduleName
+  mainFile <- parseRelFile $ T.unpack targetName <> sourceFileExtension
   return $
     Module
       { moduleID = MID.Main,
@@ -69,13 +70,13 @@ constructDefaultModule moduleName mTargetName = do
 
 createModuleFile :: Module -> App ()
 createModuleFile newModule = do
-  Path.ensureDir $ parent $ moduleLocation newModule
+  ensureDir $ parent $ moduleLocation newModule
   Module.saveEns (moduleLocation newModule) ([], (toDefaultEns newModule, []))
   buildDir <- toApp $ Path.getBaseBuildDir newModule
-  Path.ensureDir buildDir
+  ensureDir buildDir
 
 createMainFile :: Module -> App ()
 createMainFile newModule = do
-  Path.ensureDir $ getSourceDir newModule
+  ensureDir $ getSourceDir newModule
   forM_ (getTargetPathList newModule) $ \mainFilePath -> do
     Path.writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"
