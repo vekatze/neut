@@ -1,16 +1,16 @@
 module Move.Act.Build (build) where
 
+import Control.Monad
 import Move.Context.App
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
-import Control.Monad
-import Rule.Config.Build
-import Rule.Target
 import Move.Scene.Build qualified as Build
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Initialize qualified as Initialize
+import Rule.Config.Build
+import Rule.Target
 import Prelude hiding (log)
 
 build :: Config -> App ()

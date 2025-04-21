@@ -25,6 +25,7 @@ import Move.Scene.Unravel qualified as Unravel
 import Path
 import Rule.Ens.Reify qualified as Ens
 import Rule.FileType qualified as FT
+import Rule.Module (MainModule (MainModule))
 import Rule.RawProgram.Decode qualified as RawProgram
 import Rule.Target
 import Prelude hiding (log)
@@ -46,7 +47,7 @@ type ShouldMinimizeImports =
 _formatSource :: ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
 _formatSource shouldMinimizeImports filePath fileContent = do
   Initialize.initializeForTarget
-  mainModule <- getMainModule
+  MainModule mainModule <- getMainModule
   if shouldMinimizeImports
     then do
       (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen filePath)

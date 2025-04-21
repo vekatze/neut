@@ -26,7 +26,7 @@ getModule :: Path Abs File -> App Module
 getModule srcPath = do
   let srcDir = parent srcPath
   moduleFilePath <- Module.findModuleFile srcDir srcDir
-  mainModule <- getMainModule
+  MainModule mainModule <- getMainModule
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
     else do

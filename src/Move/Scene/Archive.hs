@@ -1,19 +1,19 @@
 module Move.Scene.Archive (archive) where
 
+import Control.Monad
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Module qualified as Module
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
-import Control.Monad
-import Data.Text qualified as T
+import Path
+import Path.IO
 import Rule.Const
 import Rule.Ens qualified as E
 import Rule.Module
 import Rule.PackageVersion qualified as PV
-import Path
-import Path.IO
 import Prelude hiding (log)
 
 archive :: PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> App ()
@@ -49,9 +49,9 @@ makeReadOnly tempRootDir = do
     p <- getPermissions filePath
     setPermissions filePath $ p {writable = False}
 
-getArchiveFilePath :: Module -> T.Text -> App (Path Abs File)
-getArchiveFilePath targetModule versionText = do
-  let archiveDir = getArchiveDir targetModule
+getArchiveFilePath :: MainModule -> T.Text -> App (Path Abs File)
+getArchiveFilePath (MainModule mainModule) versionText = do
+  let archiveDir = getArchiveDir mainModule
   Path.ensureDir archiveDir
   archiveFile <- Path.resolveFile archiveDir $ T.unpack $ versionText <> packageFileExtension
   archiveExists <- Path.doesFileExist archiveFile

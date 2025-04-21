@@ -5,6 +5,14 @@ module Move.Scene.Build
   )
 where
 
+import Control.Monad
+import Control.Monad.IO.Class
+import Data.Containers.ListUtils (nubOrdOn)
+import Data.Either (isLeft)
+import Data.Foldable
+import Data.Maybe
+import Data.Text qualified as T
+import Data.Time
 import Move.Context.App
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
@@ -16,24 +24,6 @@ import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
 import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.Containers.ListUtils (nubOrdOn)
-import Data.Either (isLeft)
-import Data.Foldable
-import Data.Maybe
-import Data.Text qualified as T
-import Data.Time
-import Rule.Cache
-import Rule.ClangOption qualified as CL
-import Rule.LowComp qualified as LC
-import Rule.Module qualified as M
-import Rule.ModuleID qualified as MID
-import Rule.OutputKind
-import Rule.Source
-import Rule.Stmt (getStmtName)
-import Rule.Target
-import Path
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
@@ -47,6 +37,16 @@ import Move.Scene.Lower qualified as Lower
 import Move.Scene.Parse qualified as Parse
 import Move.Scene.ShowProgress qualified as ProgressBar
 import Move.Scene.Unravel qualified as Unravel
+import Path
+import Rule.Cache
+import Rule.ClangOption qualified as CL
+import Rule.LowComp qualified as LC
+import Rule.Module qualified as M
+import Rule.ModuleID qualified as MID
+import Rule.OutputKind
+import Rule.Source
+import Rule.Stmt (getStmtName)
+import Rule.Target
 import System.Console.ANSI
 import UnliftIO.Async
 import Prelude hiding (log)
@@ -59,8 +59,8 @@ data Axis = Axis
     _executeArgs :: [String]
   }
 
-buildTarget :: Axis -> M.Module -> Target -> App ()
-buildTarget axis baseModule target = do
+buildTarget :: Axis -> M.MainModule -> Target -> App ()
+buildTarget axis (M.MainModule baseModule) target = do
   report $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
   Initialize.initializeForTarget
@@ -147,7 +147,7 @@ emit progressBar currentTime target outputKindList src code = do
   LLVM.emit target clangOptions currentTime src outputKindList llvmIR'
   ProgressBar.increment progressBar
 
-getEntryPointCompilationCount :: M.Module -> Target -> [OutputKind] -> App Int
+getEntryPointCompilationCount :: M.MainModule -> Target -> [OutputKind] -> App Int
 getEntryPointCompilationCount mainModule target outputKindList = do
   case target of
     Peripheral {} ->
@@ -158,7 +158,7 @@ getEntryPointCompilationCount mainModule target outputKindList = do
       b <- Cache.isEntryPointCompilationSkippable mainModule t outputKindList
       return $ if b then 0 else 1
 
-compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
+compileEntryPoint :: M.MainModule -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint mainModule target outputKindList = do
   case target of
     Peripheral {} ->

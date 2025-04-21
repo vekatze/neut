@@ -1,5 +1,6 @@
 module Rule.Module
   ( Module (..),
+    MainModule (..),
     SomePath,
     LocatorName,
     AliasPresetMap,
@@ -47,6 +48,7 @@ module Rule.Module
     getModuleRootDir,
     getTarget,
     stylize,
+    extractModule,
   )
 where
 
@@ -59,6 +61,7 @@ import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
+import Path
 import Rule.BaseName qualified as BN
 import Rule.ClangOption qualified as CL
 import Rule.Const
@@ -74,7 +77,6 @@ import Rule.SourceLocator qualified as SL
 import Rule.Syntax.Series qualified as SE
 import Rule.Target qualified as Target
 import Rule.ZenConfig
-import Path
 import System.FilePath qualified as FP
 
 type SomePath a =
@@ -124,6 +126,14 @@ data Module = Module
     modulePresetMap :: PresetMap
   }
   deriving (Show)
+
+newtype MainModule
+  = MainModule Module
+  deriving (Show)
+
+extractModule :: MainModule -> Module
+extractModule (MainModule m) =
+  m
 
 keyArchive :: T.Text
 keyArchive =

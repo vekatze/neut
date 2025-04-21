@@ -6,27 +6,28 @@ module Move.Scene.Check
   )
 where
 
+import Control.Monad
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Debug (report)
 import Move.Context.Env (getMainModule)
 import Move.Context.Throw qualified as Throw
-import Control.Monad
-import Data.Text qualified as T
-import Rule.Module qualified as M
-import Rule.Remark
-import Rule.Source (Source (sourceFilePath))
-import Rule.Target
-import Path
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.Reflect (getAllDependencies)
 import Move.Scene.Parse qualified as Parse
 import Move.Scene.Unravel qualified as Unravel
+import Path
+import Rule.Module qualified as M
+import Rule.Remark
+import Rule.Source (Source (sourceFilePath))
+import Rule.Target
 
 check :: App [Remark]
 check = do
-  getMainModule >>= _check Peripheral
+  M.MainModule mainModule <- getMainModule
+  _check Peripheral mainModule
 
 checkSingle :: M.Module -> Path Abs File -> App [Remark]
 checkSingle baseModule path = do
@@ -49,7 +50,7 @@ _check target baseModule = do
 
 checkAll :: App [Remark]
 checkAll = do
-  mainModule <- getMainModule
+  M.MainModule mainModule <- getMainModule
   deps <- getAllDependencies mainModule
   forM_ deps $ \(_, m) -> checkModule m
   checkModule mainModule

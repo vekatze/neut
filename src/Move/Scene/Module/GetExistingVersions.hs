@@ -1,15 +1,15 @@
 module Move.Scene.Module.GetExistingVersions (getExistingVersions) where
 
-import Move.Context.App
-import Move.Context.Path (getBaseName)
 import Data.List qualified as List
 import Data.Maybe
+import Move.Context.App
+import Move.Context.Path (getBaseName)
+import Path.IO
 import Rule.Module
 import Rule.PackageVersion qualified as PV
-import Path.IO
 
-getExistingVersions :: Module -> App [PV.PackageVersion]
-getExistingVersions targetModule = do
+getExistingVersions :: MainModule -> App [PV.PackageVersion]
+getExistingVersions (MainModule targetModule) = do
   let archiveDir = getArchiveDir targetModule
   b <- doesDirExist archiveDir
   if not b

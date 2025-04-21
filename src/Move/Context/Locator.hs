@@ -16,12 +16,6 @@ module Move.Context.Locator
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.Env (getCurrentSource, getMainModule)
-import Move.Context.Path (doesFileExist)
-import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString qualified as B
@@ -30,12 +24,20 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Move.Context.App
+import Move.Context.App.Internal
+import Move.Context.Env (getCurrentSource, getMainModule)
+import Move.Context.Path (doesFileExist)
+import Move.Context.Tag qualified as Tag
+import Move.Context.Throw qualified as Throw
+import Path
 import Rule.AliasInfo (MustUpdateTag)
 import Rule.BaseName qualified as BN
 import Rule.DefiniteDescription qualified as DD
 import Rule.GlobalName qualified as GN
 import Rule.Hint
 import Rule.LocalLocator qualified as LL
+import Rule.Module (extractModule)
 import Rule.Module qualified as Module
 import Rule.ModuleID qualified as MID
 import Rule.Source qualified as Source
@@ -43,7 +45,6 @@ import Rule.SourceLocator qualified as SL
 import Rule.StrictGlobalLocator qualified as SGL
 import Rule.Target qualified as Target
 import Rule.TopNameMap (TopNameMap)
-import Path
 
 -- the structure of a name of a global variable:
 --
@@ -188,13 +189,13 @@ getMainDefiniteDescriptionByTarget targetOrZen = do
   mainModule <- getMainModule
   case targetOrZen of
     Target.Named target _ -> do
-      case Map.lookup target (Module.moduleTarget mainModule) of
+      case Map.lookup target (Module.moduleTarget $ extractModule mainModule) of
         Nothing ->
           Throw.raiseError' $ "No such target is defined: " <> target
         Just targetSummary -> do
           relPathToDD (SL.reify $ Target.entryPoint targetSummary) BN.mainName
     Target.Zen path _ -> do
-      relPath <- Module.getRelPathFromSourceDir mainModule path
+      relPath <- Module.getRelPathFromSourceDir (extractModule mainModule) path
       relPathToDD relPath BN.zenName
 
 relPathToDD :: Path Rel File -> BN.BaseName -> App DD.DefiniteDescription
@@ -215,4 +216,4 @@ checkIfEntryPointIsNecessary target source = do
 getReadableDD :: DD.DefiniteDescription -> App T.Text
 getReadableDD dd = do
   mainModule <- getMainModule
-  return $ DD.getReadableDD mainModule dd
+  return $ DD.getReadableDD (extractModule mainModule) dd

@@ -38,7 +38,7 @@ import Rule.ModuleURL
 import Rule.Source qualified as Source
 import System.Environment
 
-getModuleFilePath :: Module -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs File)
+getModuleFilePath :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs File)
 getModuleFilePath mainModule mHint moduleID = do
   moduleDir <- getModuleDirByID mainModule mHint moduleID
   return $ moduleDir </> moduleFile
@@ -51,8 +51,8 @@ insertToModuleCacheMap :: Path Abs File -> Module -> App ()
 insertToModuleCacheMap k v =
   modifyRef' moduleCacheMap $ Map.insert k v
 
-getModuleDirByID :: Module -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs Dir)
-getModuleDirByID pivotModule mHint moduleID = do
+getModuleDirByID :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs Dir)
+getModuleDirByID (MainModule pivotModule) mHint moduleID = do
   case moduleID of
     MID.Base -> do
       let message = "The base module cannot be used here"

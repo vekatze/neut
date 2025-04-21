@@ -96,7 +96,7 @@ unravel' t source = do
 registerShiftMap :: App ()
 registerShiftMap = do
   axis <- newAxis
-  arrowList <- Env.getMainModule >>= unravelAntecedentArrow axis
+  arrowList <- Env.getMainModule >>= \(MainModule m) -> unravelAntecedentArrow axis m
   cAxis <- newCAxis
   compressMap cAxis (Map.fromList arrowList) arrowList >>= Antecedent.setMap
 

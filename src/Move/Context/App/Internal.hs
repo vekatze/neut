@@ -11,6 +11,7 @@ import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Time (UTCTime, getCurrentTime)
+import Path
 import Rule.ArgNum qualified as AN
 import Rule.Artifact qualified as AR
 import Rule.Binder
@@ -50,7 +51,6 @@ import Rule.TopNameMap
 import Rule.VarDefKind
 import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
-import Path
 import System.IO
 
 data Env = Env
@@ -109,7 +109,7 @@ data Env = Env
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
     currentSource :: Ref Source.Source,
     clangDigest :: Ref T.Text,
-    mainModule :: Ref Module.Module
+    mainModule :: Ref Module.MainModule
   }
 
 type Ref a = IORef (Maybe a)

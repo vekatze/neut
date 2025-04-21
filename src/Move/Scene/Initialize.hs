@@ -65,7 +65,7 @@ initializeCompilerWithPath path cfg = do
 
 initializeCompilerWithModule :: Module -> App ()
 initializeCompilerWithModule newModule = do
-  Env.setMainModule newModule
+  Env.setMainModule (MainModule newModule)
 
 initializeForTarget :: App ()
 initializeForTarget = do

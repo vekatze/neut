@@ -1,19 +1,19 @@
 module Move.Act.Zen (zen) where
 
+import Control.Monad
+import Data.Maybe
 import Move.Context.App
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
-import Control.Monad
-import Data.Maybe
-import Rule.Config.Zen
-import Rule.Module (Module (moduleZenConfig))
-import Rule.OutputKind
-import Rule.Target
-import Rule.ZenConfig qualified as Z
-import Path.IO (resolveFile')
 import Move.Scene.Build (Axis (..), buildTarget)
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Initialize qualified as Initialize
+import Path.IO (resolveFile')
+import Rule.Config.Zen
+import Rule.Module (Module (moduleZenConfig), extractModule)
+import Rule.OutputKind
+import Rule.Target
+import Rule.ZenConfig qualified as Z
 import Prelude hiding (log)
 
 zen :: Config -> App ()
@@ -25,7 +25,7 @@ zen cfg = do
     Main $
       Zen path $
         Z.clangOption $
-          moduleZenConfig mainModule
+          moduleZenConfig (extractModule mainModule)
 
 fromConfig :: Config -> Axis
 fromConfig cfg =

@@ -13,20 +13,20 @@ module Move.Context.Cache
   )
 where
 
+import Control.Monad.IO.Class
+import Data.Binary
 import Move.Context.App
 import Move.Context.Env qualified as Env
 import Move.Context.Path (getSourceLocationCachePath)
 import Move.Context.Path qualified as Path
-import Control.Monad.IO.Class
-import Data.Binary
+import Path
+import Path.IO
 import Rule.Artifact qualified as A
 import Rule.Cache qualified as Cache
 import Rule.Module
 import Rule.OutputKind qualified as OK
 import Rule.Source qualified as Source
 import Rule.Target
-import Path
-import Path.IO
 
 saveCache :: Target -> Source.Source -> Cache.Cache -> App ()
 saveCache t source cache = do
@@ -121,16 +121,16 @@ needsCompilation outputKindList source = do
   artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
   return $ not $ Source.isCompilationSkippable artifactTime outputKindList
 
-isEntryPointCompilationSkippable :: Module -> MainTarget -> [OK.OutputKind] -> App Bool
-isEntryPointCompilationSkippable baseModule target outputKindList = do
+isEntryPointCompilationSkippable :: MainModule -> MainTarget -> [OK.OutputKind] -> App Bool
+isEntryPointCompilationSkippable mainModule target outputKindList = do
   case outputKindList of
     [] ->
       return True
     kind : rest -> do
-      (_, outputPath) <- Path.getOutputPathForEntryPoint baseModule kind target
+      (_, outputPath) <- Path.getOutputPathForEntryPoint (extractModule mainModule) kind target
       b <- Path.doesFileExist outputPath
       if b
-        then isEntryPointCompilationSkippable baseModule target rest
+        then isEntryPointCompilationSkippable mainModule target rest
         else return False
 
 invalidate :: Target -> Source.Source -> App ()

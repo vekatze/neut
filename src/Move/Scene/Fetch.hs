@@ -42,8 +42,8 @@ import Rule.Syntax.Series (Series (hasOptionalSeparator))
 import Rule.Syntax.Series qualified as SE
 import UnliftIO.Async
 
-fetch :: M.Module -> App ()
-fetch baseModule = do
+fetch :: M.MainModule -> App ()
+fetch (M.MainModule baseModule) = do
   fetchDeps $ collectDependency baseModule
 
 fetchDeps :: [(ModuleAlias, M.Dependency)] -> App ()
@@ -72,7 +72,7 @@ insertDependency aliasName url = do
     archive <- getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
     mainModule <- getMainModule
-    case Map.lookup alias (M.moduleDependency mainModule) of
+    case Map.lookup alias (M.moduleDependency $ M.extractModule mainModule) of
       Just dep -> do
         if M.dependencyDigest dep == digest
           then do
@@ -100,7 +100,7 @@ insertDependency aliasName url = do
                 <> MD.reify digest
             installModule' tempFilePath alias digest >>= fetchDeps
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
-            updateDependencyInModuleFile (moduleLocation mainModule) alias dep'
+            updateDependencyInModuleFile (moduleLocation $ M.extractModule mainModule) alias dep'
       Nothing -> do
         printInstallationRemark alias digest
         installModule' tempFilePath alias digest >>= fetchDeps
@@ -204,7 +204,7 @@ extractToDependencyDir archivePath _ digest = do
 
 addDependencyToModuleFile :: ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile alias dep = do
-  mainModule <- getMainModule
+  M.MainModule mainModule <- getMainModule
   counter <- asks App.counter
   let h = Handle {counter}
   (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation mainModule)

@@ -140,7 +140,7 @@ getDependencyDirPath baseModule = do
 ensureNotInDependencyDir :: App ()
 ensureNotInDependencyDir = do
   mainModule <- Env.getMainModule
-  case moduleID mainModule of
+  case moduleID (extractModule mainModule) of
     MID.Library _ ->
       Throw.raiseError'
         "This command cannot be used under a dependency directory"
@@ -186,7 +186,7 @@ getBuildSignature t = do
       return sig
     Nothing -> do
       clangDigest <- getClangDigest
-      mainModule <- Env.getMainModule
+      MainModule mainModule <- Env.getMainModule
       clangOption <- getClangOption t mainModule
       moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation mainModule
       let moduleEns' = decodeUtf8 moduleEns

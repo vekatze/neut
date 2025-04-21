@@ -3,36 +3,36 @@ module Move.Scene.Link
   )
 where
 
+import Data.Containers.ListUtils (nubOrdOn)
+import Data.Maybe
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug (report)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
-import Data.Containers.ListUtils (nubOrdOn)
-import Data.Maybe
-import Data.Text qualified as T
+import Move.Scene.ShowProgress qualified as ProgressBar
+import Path
+import Path.IO
 import Rule.Artifact qualified as A
 import Rule.Module
 import Rule.OutputKind qualified as OK
 import Rule.Source qualified as Source
 import Rule.Target
-import Path
-import Path.IO
-import Move.Scene.ShowProgress qualified as ProgressBar
 import System.Console.ANSI
 
 link :: MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
   mainModule <- Env.getMainModule
-  isExecutableAvailable <- Path.getExecutableOutputPath target mainModule >>= Path.doesFileExist
+  isExecutableAvailable <- Path.getExecutableOutputPath target (extractModule mainModule) >>= Path.doesFileExist
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
   if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
     then report "Skipped linking object files"
     else link' target mainModule sourceList
 
-link' :: MainTarget -> Module -> [Source.Source] -> App ()
-link' target mainModule sourceList = do
+link' :: MainTarget -> MainModule -> [Source.Source] -> App ()
+link' target (MainModule mainModule) sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   outputPath <- Path.getExecutableOutputPath target mainModule
   objectPathList <- mapM (Path.sourceToOutputPath (Main target) OK.Object) sourceList

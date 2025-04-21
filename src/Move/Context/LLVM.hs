@@ -5,25 +5,26 @@ module Move.Context.LLVM
   )
 where
 
+import Control.Monad
+import Control.Monad.IO.Class
+import Data.ByteString.Lazy qualified as L
+import Data.Text qualified as T
+import Data.Time.Clock
 import Move.Context.App
 import Move.Context.Debug (report)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
-import Control.Monad
-import Control.Monad.IO.Class
-import Data.ByteString.Lazy qualified as L
-import Data.Text qualified as T
-import Data.Time.Clock
+import Path
+import Path.IO
 import Rule.Config.Build
+import Rule.Module (MainModule (MainModule))
 import Rule.OutputKind qualified as OK
 import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
 import Rule.ProcessRunner.Rule qualified as ProcessRunner
 import Rule.Source
 import Rule.Target
-import Path
-import Path.IO
 import System.Process (CmdSpec (RawCommand))
 
 type ClangOption = String
@@ -47,7 +48,7 @@ emit target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
       forM_ (map snd kindPathList) $ \path -> do
         Path.setModificationTime path timeStamp
     Left t -> do
-      mainModule <- getMainModule
+      MainModule mainModule <- getMainModule
       kindPathList <- zipWithM (Path.getOutputPathForEntryPoint mainModule) outputKindList (repeat t)
       forM_ kindPathList $ \(_, path) -> Path.ensureDir $ parent path
       emitAll clangOptions llvmCode kindPathList

@@ -23,12 +23,13 @@ module Move.Context.Env
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Data.Time
+import Move.Context.App
+import Move.Context.App.Internal
+import Move.Context.Throw qualified as Throw
+import Path
 import Rule.Arch qualified as Arch
 import Rule.Artifact qualified as A
 import Rule.BuildMode qualified as BM
@@ -39,14 +40,13 @@ import Rule.Module
 import Rule.OS qualified as O
 import Rule.Platform
 import Rule.Source qualified as Source
-import Path
 import System.Info qualified as SI
 
-getMainModule :: App Module
+getMainModule :: App MainModule
 getMainModule =
   readRef "mainModule" mainModule
 
-setMainModule :: Module -> App ()
+setMainModule :: MainModule -> App ()
 setMainModule =
   writeRef mainModule
 

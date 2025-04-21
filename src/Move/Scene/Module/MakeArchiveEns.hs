@@ -28,14 +28,14 @@ import Rule.Syntax.Series qualified as SE
 import System.IO
 import Prelude hiding (log)
 
-makeArchiveEns :: PV.PackageVersion -> Module -> App E.FullEns
+makeArchiveEns :: PV.PackageVersion -> MainModule -> App E.FullEns
 makeArchiveEns newVersion targetModule = do
   existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
-  antecedentList <- ListUtils.nubOrd <$> mapM (getDigest targetModule) antecedents
+  antecedentList <- ListUtils.nubOrd <$> mapM (getDigest $ extractModule targetModule) antecedents
   counter <- asks App.counter
   let h = Handle {counter}
-  (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation targetModule)
+  (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation $ extractModule targetModule)
   let antecedentEns = makeAntecedentEns m antecedentList
   mergedEns <- Throw.liftEither $ E.merge baseEns antecedentEns
   return (c1, (mergedEns, c2))
