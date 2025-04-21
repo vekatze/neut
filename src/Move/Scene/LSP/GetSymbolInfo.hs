@@ -1,25 +1,27 @@
 module Move.Scene.LSP.GetSymbolInfo (getSymbolInfo) where
 
-import Move.Context.AppM
-import Move.Context.Cache (invalidate)
-import Move.Context.Elaborate
-import Move.Context.Throw qualified as Throw
-import Move.Context.Type
 import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Text qualified as T
+import Language.LSP.Protocol.Lens qualified as J
+import Language.LSP.Protocol.Types
+import Move.Context.AppM
+import Move.Context.Cache (invalidate)
+import Move.Context.EIO (toApp)
+import Move.Context.Elaborate
+import Move.Context.Path qualified as Path
+import Move.Context.Throw qualified as Throw
+import Move.Context.Type
+import Move.Scene.Check qualified as Check
+import Move.Scene.Elaborate
+import Move.Scene.LSP.FindDefinition qualified as LSP
+import Move.Scene.LSP.GetSource qualified as LSP
 import Rule.LocationTree qualified as LT
 import Rule.Source (Source (sourceFilePath, sourceModule))
 import Rule.Target (Target (Peripheral))
 import Rule.Term.Weaken (weaken)
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText
-import Language.LSP.Protocol.Lens qualified as J
-import Language.LSP.Protocol.Types
-import Move.Scene.Check qualified as Check
-import Move.Scene.Elaborate
-import Move.Scene.LSP.FindDefinition qualified as LSP
-import Move.Scene.LSP.GetSource qualified as LSP
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
@@ -27,7 +29,8 @@ getSymbolInfo ::
   AppM T.Text
 getSymbolInfo params = do
   source <- LSP.getSource params
-  lift $ invalidate Peripheral source
+  h <- lift Path.new
+  lift $ toApp $ invalidate h Peripheral source
   lift $ Check.checkSingle (sourceModule source) (sourceFilePath source)
   ((locType, _), _) <- LSP.findDefinition params
   _getSymbolInfo locType

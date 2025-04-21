@@ -137,10 +137,9 @@ isEntryPointCompilationSkippable mainModule target outputKindList = do
         then isEntryPointCompilationSkippable mainModule target rest
         else return False
 
-invalidate :: Target -> Source.Source -> App ()
-invalidate t source = do
-  h <- Path.new
-  cachePath <- toApp $ Path.getSourceCachePath h t source
+invalidate :: Path.Handle -> Target -> Source.Source -> EIO ()
+invalidate h t source = do
+  cachePath <- Path.getSourceCachePath h t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return ()
