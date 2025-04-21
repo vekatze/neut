@@ -13,10 +13,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
-import Move.Context.Path qualified as Path
-import Move.Context.Throw hiding (liftEither)
+import Move.Context.EIO (EIO)
 import Move.Scene.Ens.Reflect qualified as Ens
 import Path
 import Path.IO
@@ -92,9 +89,9 @@ fromFilePath h moduleFilePath = do
         modulePresetMap = presetMap
       }
 
-fromCurrentPath :: Handle -> App Module
+fromCurrentPath :: Handle -> EIO Module
 fromCurrentPath h = do
-  getCurrentModuleFilePath >>= toApp . fromFilePath h
+  getCurrentModuleFilePath >>= fromFilePath h
 
 interpretPrefixMap ::
   H.Hint ->
@@ -252,21 +249,21 @@ ensureExistence m moduleRootDir path existenceChecker kindText = do
   unless b $ do
     throwError $ newError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
 
-findModuleFile :: Path Abs Dir -> Path Abs Dir -> App (Path Abs File)
+findModuleFile :: Path Abs Dir -> Path Abs Dir -> EIO (Path Abs File)
 findModuleFile baseDir moduleRootDirCandidate = do
   let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
-  moduleFileExists <- Path.doesFileExist moduleFileCandidate
+  moduleFileExists <- doesFileExist moduleFileCandidate
   case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
     (True, _) ->
       return moduleFileCandidate
     (_, True) ->
       findModuleFile baseDir $ parent moduleRootDirCandidate
     _ ->
-      raiseError' $ "Could not find a module file (Context: " <> T.pack (toFilePath baseDir) <> ")"
+      throwError $ newError' $ "Could not find a module file (Context: " <> T.pack (toFilePath baseDir) <> ")"
 
-getCurrentModuleFilePath :: App (Path Abs File)
+getCurrentModuleFilePath :: EIO (Path Abs File)
 getCurrentModuleFilePath = do
-  baseDir <- Path.getCurrentDir
+  baseDir <- getCurrentDir
   findModuleFile baseDir baseDir
 
 rightToMaybe :: Either a b -> Maybe b

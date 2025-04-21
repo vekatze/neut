@@ -52,7 +52,7 @@ initializeCompiler cfg = do
   initializeLogger cfg
   counter <- asks App.counter
   let h = Module.Handle {counter}
-  mainModule <- Module.fromCurrentPath h
+  mainModule <- toApp $ Module.fromCurrentPath h
   initializeCompilerWithModule mainModule
 
 initializeCompilerWithPath :: Path Abs File -> Remark.Config -> App ()

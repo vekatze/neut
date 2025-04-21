@@ -25,7 +25,7 @@ reflect srcPath = do
 getModule :: Path Abs File -> App Module
 getModule srcPath = do
   let srcDir = parent srcPath
-  moduleFilePath <- Module.findModuleFile srcDir srcDir
+  moduleFilePath <- toApp $ Module.findModuleFile srcDir srcDir
   MainModule mainModule <- getMainModule
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
