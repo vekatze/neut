@@ -29,9 +29,9 @@ isStdin :: Path Abs File -> Bool
 isStdin path =
   toFilePath (filename path) == "-"
 
-writeTextFile :: Path Abs File -> T.Text -> App ()
+writeTextFile :: Path Abs File -> T.Text -> IO ()
 writeTextFile path content = do
-  liftIO $ B.writeFile (toFilePath path) $ encodeUtf8 content
+  B.writeFile (toFilePath path) $ encodeUtf8 content
 
 printTextFile :: T.Text -> App ()
 printTextFile content = do

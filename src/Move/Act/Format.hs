@@ -19,5 +19,5 @@ format cfg = do
   content <- liftIO $ readTextFile path
   content' <- Format.format (shouldMinimizeImports cfg) (inputFileType cfg) path content
   if mustUpdateInPlace cfg
-    then Write.write path content'
+    then liftIO $ Write.write path content'
     else Parse.printTextFile content'
