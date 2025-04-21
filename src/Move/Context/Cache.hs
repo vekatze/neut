@@ -3,7 +3,6 @@ module Move.Context.Cache
     saveCompletionCache,
     saveLocationCache,
     loadCache,
-    loadCacheOptimistically,
     loadCompletionCacheOptimistically,
     loadLocationCache,
     whenCompilationNecessary,
@@ -67,20 +66,6 @@ loadCache t source = do
               return Nothing
             Right content ->
               return $ Just $ Cache.extend content
-
-loadCacheOptimistically :: Path Abs File -> App (Maybe Cache.Cache)
-loadCacheOptimistically cachePath = do
-  hasCache <- doesFileExist cachePath
-  if not hasCache
-    then return Nothing
-    else do
-      dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
-      case dataOrErr of
-        Left _ -> do
-          removeFile cachePath
-          return Nothing
-        Right content ->
-          return $ Just $ Cache.extend content
 
 loadCompletionCacheOptimistically :: Path Abs File -> EIO (Maybe Cache.CompletionCache)
 loadCompletionCacheOptimistically cachePath = do
