@@ -97,7 +97,7 @@ ensureDir :: Path Abs Dir -> App ()
 ensureDir =
   P.ensureDir
 
-getBaseName :: Path Abs File -> App T.Text
+getBaseName :: Path Abs File -> EIO T.Text
 getBaseName path = do
   let dirPath = P.parent path
   filename <- P.stripProperPrefix dirPath path

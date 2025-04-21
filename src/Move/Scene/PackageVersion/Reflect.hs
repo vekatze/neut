@@ -1,28 +1,28 @@
 module Move.Scene.PackageVersion.Reflect (reflect) where
 
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Data.Maybe
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.Env qualified as Env
-import Move.Context.Throw qualified as Throw
+import Move.Context.EIO (EIO)
 import Move.Scene.Module.GetExistingVersions
+import Rule.Error (newError')
 import Rule.Module
 import Rule.PackageVersion qualified as PV
 import Prelude hiding (log)
 
-reflect :: T.Text -> App PV.PackageVersion
-reflect versionText = do
+reflect :: MainModule -> T.Text -> EIO PV.PackageVersion
+reflect mainModule versionText = do
   case PV.reflect versionText of
     Nothing ->
-      Throw.raiseError' "The version must be something like X-Y-Z"
+      throwError $ newError' "The version must be something like X-Y-Z"
     Just packageVersion -> do
-      mainModule <- Env.getMainModule
       ensureNewVersionSanity mainModule packageVersion
       return packageVersion
 
-ensureNewVersionSanity :: MainModule -> PV.PackageVersion -> App ()
+ensureNewVersionSanity :: MainModule -> PV.PackageVersion -> EIO ()
 ensureNewVersionSanity targetModule newVersion = do
   existingVersions <- getExistingVersions targetModule
   unless (PV.isValidNewVersion newVersion existingVersions) $
-    Throw.raiseError' "A new version must be the newest one in a major release"
+    throwError $
+      newError' "A new version must be the newest one in a major release"

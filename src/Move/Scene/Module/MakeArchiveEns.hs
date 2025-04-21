@@ -30,7 +30,7 @@ import Prelude hiding (log)
 
 makeArchiveEns :: PV.PackageVersion -> MainModule -> App E.FullEns
 makeArchiveEns newVersion targetModule = do
-  existingVersions <- getExistingVersions targetModule
+  existingVersions <- toApp $ getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
   antecedentList <- ListUtils.nubOrd <$> mapM (getDigest $ extractModule targetModule) antecedents
   counter <- asks App.counter

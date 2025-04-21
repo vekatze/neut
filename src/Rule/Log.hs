@@ -1,9 +1,11 @@
 module Rule.Log
   ( Log (..),
+    ColorSpec (..),
     pack,
     pack',
     unpackWithSGR,
     unpackWithoutSGR,
+    unpack,
   )
 where
 
@@ -31,6 +33,10 @@ instance IsString Log where
   fromString s =
     Cons [] (T.pack s) Nil
 
+data ColorSpec
+  = Colorful
+  | Colorless
+
 pack :: [SGR] -> T.Text -> Log
 pack color t =
   Cons color t Nil
@@ -54,3 +60,11 @@ unpackWithoutSGR l = do
       ""
     Cons _ t rest -> do
       t <> unpackWithoutSGR rest
+
+unpack :: ColorSpec -> Log -> T.Text
+unpack c l =
+  case c of
+    Colorful ->
+      unpackWithSGR l
+    Colorless ->
+      unpackWithoutSGR l
