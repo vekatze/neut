@@ -1,11 +1,14 @@
 module Move.Scene.Source.Reflect (reflect) where
 
+import Control.Monad.Reader (asks)
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
+import Move.Scene.Module.Reflect qualified as Module
+import Path
 import Rule.Module
 import Rule.Source
-import Path
-import Move.Scene.Module.Reflect qualified as Module
 
 reflect :: FilePath -> App (Maybe Source)
 reflect srcPath = do
@@ -26,4 +29,7 @@ getModule srcPath = do
   mainModule <- getMainModule
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
-    else Module.fromFilePath moduleFilePath
+    else do
+      counter <- asks App.counter
+      let h = Module.Handle {counter}
+      toApp $ Module.fromFilePath h moduleFilePath

@@ -8,12 +8,15 @@ module Move.Scene.Initialize
   )
 where
 
+import Control.Monad.Reader (asks)
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.Decl qualified as Decl
 import Move.Context.Definition qualified as Definition
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
@@ -29,12 +32,12 @@ import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Scene.Clarify qualified as Clarify
+import Move.Scene.Module.Reflect qualified as Module
+import Path
 import Rule.Config.Remark qualified as Remark
 import Rule.Module
 import Rule.Source qualified as Source
-import Path
-import Move.Scene.Clarify qualified as Clarify
-import Move.Scene.Module.Reflect qualified as Module
 
 initializeLogger :: Remark.Config -> App ()
 initializeLogger cfg = do
@@ -47,13 +50,17 @@ initializeLogger cfg = do
 initializeCompiler :: Remark.Config -> App ()
 initializeCompiler cfg = do
   initializeLogger cfg
-  mainModule <- Module.fromCurrentPath
+  counter <- asks App.counter
+  let h = Module.Handle {counter}
+  mainModule <- Module.fromCurrentPath h
   initializeCompilerWithModule mainModule
 
 initializeCompilerWithPath :: Path Abs File -> Remark.Config -> App ()
 initializeCompilerWithPath path cfg = do
   initializeLogger cfg
-  mainModule <- Module.fromFilePath path
+  counter <- asks App.counter
+  let h = Module.Handle {counter}
+  mainModule <- toApp $ Module.fromFilePath h path
   initializeCompilerWithModule mainModule
 
 initializeCompilerWithModule :: Module -> App ()

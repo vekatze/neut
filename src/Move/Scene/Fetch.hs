@@ -166,7 +166,10 @@ getLibraryModule alias digest = do
   moduleFilePath <- Module.getModuleFilePath Nothing (MID.Library digest)
   moduleFileExists <- Path.doesFileExist moduleFilePath
   if moduleFileExists
-    then Module.fromFilePath moduleFilePath
+    then do
+      counter <- asks App.counter
+      let h = Module.Handle {counter}
+      toApp $ Module.fromFilePath h moduleFilePath
     else
       Throw.raiseError' $
         "Could not find the module file for `"

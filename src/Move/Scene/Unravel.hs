@@ -129,7 +129,9 @@ unravelAntecedentArrow axis currentModule = do
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath Nothing moduleID
-        Module.fromFilePath path' >>= unravelAntecedentArrow axis
+        counter <- asks counter
+        let h = Module.Handle {counter = counter}
+        toApp (Module.fromFilePath h path') >>= unravelAntecedentArrow axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
       return $ getAntecedentArrow currentModule ++ arrows
@@ -157,7 +159,10 @@ unravelModule' axis currentModule = do
         path' <- Module.getModuleFilePath Nothing moduleID
         b <- Path.doesFileExist path'
         if b
-          then Module.fromFilePath path' >>= unravelModule' axis
+          then do
+            counter <- asks counter
+            let h = Module.Handle {counter = counter}
+            toApp (Module.fromFilePath h path') >>= unravelModule' axis
           else return []
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail

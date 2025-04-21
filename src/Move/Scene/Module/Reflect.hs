@@ -1,5 +1,6 @@
 module Move.Scene.Module.Reflect
-  ( getModule,
+  ( Handle (..),
+    getModule,
     fromFilePath,
     fromCurrentPath,
     findModuleFile,
@@ -9,17 +10,18 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Module qualified as Module
 import Move.Context.Path qualified as Path
-import Move.Context.Throw
-import Move.Scene.Ens.Reflect (Handle (Handle))
+import Move.Context.Throw hiding (liftEither)
 import Move.Scene.Ens.Reflect qualified as Ens
 import Path
 import Path.IO
@@ -42,6 +44,11 @@ import Rule.Syntax.Series qualified as SE
 import Rule.Target
 import Rule.ZenConfig (ZenConfig (..))
 
+newtype Handle
+  = Handle
+  { counter :: IORef Int
+  }
+
 getModule ::
   H.Hint ->
   MID.ModuleID ->
@@ -60,15 +67,16 @@ getModule m moduleID locatorText = do
           T.pack "Could not find the module file for `"
             <> locatorText
             <> "`"
-      nextModule <- fromFilePath nextModuleFilePath
+      counter <- asks App.counter
+      let h = Handle {counter}
+      nextModule <- toApp $ fromFilePath h nextModuleFilePath
       Module.insertToModuleCacheMap nextModuleFilePath nextModule
       return nextModule
 
-fromFilePath :: Path Abs File -> App Module
-fromFilePath moduleFilePath = do
-  counter <- asks App.counter
-  let h = Handle {counter}
-  (_, (ens@(m :< _), _)) <- toApp $ Ens.fromFilePath h moduleFilePath
+fromFilePath :: Handle -> Path Abs File -> EIO Module
+fromFilePath h moduleFilePath = do
+  let h' = Ens.Handle {counter = counter h}
+  (_, (ens@(m :< _), _)) <- Ens.fromFilePath h' moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- interpretTarget targetEns
   zenConfigEns <- liftEither (E.access' keyZen E.emptyDict ens) >>= interpretZenConfig
@@ -122,9 +130,9 @@ getAllDependencies baseModule =
     dep <- getModule m moduleID (MID.reify moduleID)
     return (alias, dep)
 
-fromCurrentPath :: App Module
-fromCurrentPath = do
-  getCurrentModuleFilePath >>= fromFilePath
+fromCurrentPath :: Handle -> App Module
+fromCurrentPath h = do
+  getCurrentModuleFilePath >>= toApp . fromFilePath h
 
 interpretPrefixMap ::
   H.Hint ->
@@ -150,7 +158,7 @@ interpretPresetMap _ ens = do
     return (k, v')
   return $ Map.fromList kvs
 
-interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap TargetName TargetSummary)
+interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> EIO (Map.HashMap TargetName TargetSummary)
 interpretTarget (_, targetDict) = do
   kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
     entryPoint <- liftEither (E.access keyMain v) >>= interpretSourceLocator
@@ -158,12 +166,12 @@ interpretTarget (_, targetDict) = do
     return (k, TargetSummary {entryPoint, clangOption})
   return $ Map.fromList kvs
 
-interpretZenConfig :: E.Ens -> App ZenConfig
+interpretZenConfig :: E.Ens -> EIO ZenConfig
 interpretZenConfig zenDict = do
   clangOption <- interpretClangOption zenDict
   return $ ZenConfig {clangOption}
 
-interpretClangOption :: E.Ens -> App CL.ClangOption
+interpretClangOption :: E.Ens -> EIO CL.ClangOption
 interpretClangOption v = do
   (_, buildOptEnsSeries) <- liftEither $ E.access' keyBuildOption E.emptyList v >>= E.toList
   buildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
@@ -173,7 +181,7 @@ interpretClangOption v = do
   linkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
   return $ CL.new buildOption compileOption linkOption
 
-interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> App (Map.HashMap T.Text (Path Rel File))
+interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> EIO (Map.HashMap T.Text (Path Rel File))
 interpretStaticFiles staticFileDict = do
   kvs <- forM (SE.extract staticFileDict) $ \(staticFileKey, staticFilePathEns) -> do
     (_, staticFilePathText) <- liftEither $ E.toString staticFilePathEns
@@ -181,37 +189,38 @@ interpretStaticFiles staticFileDict = do
     return (staticFileKey, staticFilePath)
   return $ Map.fromList kvs
 
-interpretSourceLocator :: E.Ens -> App SL.SourceLocator
+interpretSourceLocator :: E.Ens -> EIO SL.SourceLocator
 interpretSourceLocator ens = do
   (m, pathString) <- liftEither $ E.toString ens
   case parseRelFile $ T.unpack pathString of
     Just relPath ->
       return $ SL.SourceLocator relPath
     Nothing ->
-      raiseError m $ "Invalid file path: " <> pathString
+      throwError $ newError m $ "Invalid file path: " <> pathString
 
-interpretRelFilePath :: E.Ens -> App (Path Rel File)
+interpretRelFilePath :: E.Ens -> EIO (Path Rel File)
 interpretRelFilePath ens = do
   (m, pathString) <- liftEither $ E.toString ens
   case parseRelFile $ T.unpack pathString of
     Just relPath ->
       return relPath
     Nothing ->
-      raiseError m $ "Invalid file path: " <> pathString
+      throwError $ newError m $ "Invalid file path: " <> pathString
 
 interpretDependencyDict ::
   (H.Hint, SE.Series (T.Text, E.Ens)) ->
-  App (Map.HashMap ModuleAlias Dependency)
+  EIO (Map.HashMap ModuleAlias Dependency)
 interpretDependencyDict (m, dep) = do
   items <- forM dep $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
     when (BN.isCapitalized k') $ do
-      raiseError m $ "Module aliases cannot be capitalized, but found: " <> BN.reify k'
+      throwError $ newError m $ "Module aliases cannot be capitalized, but found: " <> BN.reify k'
     when (S.member k' BN.reservedAlias) $
-      raiseError m $
-        "The reserved name `"
-          <> BN.reify k'
-          <> "` cannot be used as an alias of a module"
+      throwError $
+        newError m $
+          "The reserved name `"
+            <> BN.reify k'
+            <> "` cannot be used as an alias of a module"
     (_, urlEnsSeries) <- liftEither $ E.access keyMirror ens >>= E.toList
     urlList <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract urlEnsSeries
     (_, digest) <- liftEither $ E.access keyDigest ens >>= E.toString
@@ -228,23 +237,23 @@ interpretDependencyDict (m, dep) = do
       )
   return $ Map.fromList $ SE.extract items
 
-interpretExtraPath :: Path Abs Dir -> E.Ens -> App (SomePath Rel)
+interpretExtraPath :: Path Abs Dir -> E.Ens -> EIO (SomePath Rel)
 interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- liftEither $ E.toString entity
   if T.last itemPathText == '/'
     then do
       dirPath <- parseRelDir $ T.unpack itemPathText
-      ensureExistence m moduleRootDir dirPath Path.doesDirExist "directory"
+      ensureExistence m moduleRootDir dirPath doesDirExist "directory"
       return $ Left dirPath
     else do
       filePath <- parseRelFile $ T.unpack itemPathText
-      ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
+      ensureExistence m moduleRootDir filePath doesFileExist "file"
       return $ Right filePath
 
 interpretForeignDict ::
   Path Abs Dir ->
   E.Ens ->
-  App Foreign
+  EIO Foreign
 interpretForeignDict moduleRootDir ens = do
   (_, input) <- liftEither $ E.access keyForeignInput ens >>= E.toList
   (_, output) <- liftEither $ E.access keyForeignOutput ens >>= E.toList
@@ -254,12 +263,12 @@ interpretForeignDict moduleRootDir ens = do
   script' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString script
   return $ Foreign {input = input', script = script', output = output'}
 
-interpretAntecedent :: E.Ens -> App ModuleDigest
+interpretAntecedent :: E.Ens -> EIO ModuleDigest
 interpretAntecedent ens = do
   (_, digestText) <- liftEither $ E.toString ens
   return $ ModuleDigest digestText
 
-interpretDirPath :: E.Ens -> App (Path Rel Dir)
+interpretDirPath :: E.Ens -> EIO (Path Rel Dir)
 interpretDirPath ens = do
   (_, pathText) <- liftEither $ E.toString ens
   parseRelDir $ T.unpack pathText
@@ -273,13 +282,13 @@ ensureExistence ::
   H.Hint ->
   Path Abs Dir ->
   Path Rel t ->
-  (Path Abs t -> App Bool) ->
+  (Path Abs t -> EIO Bool) ->
   T.Text ->
-  App ()
+  EIO ()
 ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker (moduleRootDir </> path)
   unless b $ do
-    raiseError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
+    throwError $ newError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
 
 findModuleFile :: Path Abs Dir -> Path Abs Dir -> App (Path Abs File)
 findModuleFile baseDir moduleRootDirCandidate = do
