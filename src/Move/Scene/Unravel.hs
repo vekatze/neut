@@ -19,6 +19,7 @@ import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Debug (report)
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
@@ -85,7 +86,7 @@ unravel' t source = do
   registerShiftMap
   (artifactTime, sourceSeq) <- unravel'' t source
   let sourceList = toList sourceSeq
-  forM_ sourceSeq Parse.ensureExistence
+  forM_ sourceSeq $ toApp . Parse.ensureExistence
   return (artifactTime, sourceList)
 
 registerShiftMap :: App ()
@@ -190,7 +191,7 @@ unravelImportItem t importItem = do
     StaticKey staticFileList -> do
       let pathList = map snd staticFileList
       itemModTime <- forM pathList $ \(m, p) -> do
-        ensureExistence' p (Just m)
+        toApp $ ensureExistence' p (Just m)
         Path.getModificationTime p
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
@@ -313,7 +314,7 @@ getChildren currentSource = do
 parseSourceHeader :: Source.Source -> App [ImportItem]
 parseSourceHeader currentSource = do
   Locator.initialize
-  Parse.ensureExistence currentSource
+  toApp $ Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
   fileContent <- liftIO $ Parse.readTextFile path
   (_, importList) <- ParseCore.parseFile False parseImport path fileContent

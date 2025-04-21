@@ -7,14 +7,14 @@ module Move.Context.Parse
   )
 where
 
-import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Move.Context.App
-import Move.Context.Throw qualified as Throw
+import Move.Context.EIO (EIO)
 import Path
 import Path.IO
+import Rule.Error qualified as E
 import Rule.Hint
 import Rule.Source
 
@@ -36,18 +36,20 @@ printTextFile :: T.Text -> IO ()
 printTextFile content = do
   B.putStr $ encodeUtf8 content
 
-ensureExistence :: Source -> App ()
+ensureExistence :: Source -> EIO ()
 ensureExistence source = do
   let path = sourceFilePath source
   ensureExistence' path (sourceHint source)
 
-ensureExistence' :: Path Abs File -> Maybe Hint -> App ()
+ensureExistence' :: Path Abs File -> Maybe Hint -> EIO ()
 ensureExistence' path mHint = do
   fileExists <- doesFileExist path
-  unless fileExists $ do
-    let message = T.pack $ "No such file exists: " <> toFilePath path
-    case mHint of
-      Just m ->
-        Throw.raiseError m message
-      Nothing ->
-        Throw.raiseError' message
+  if fileExists
+    then return ()
+    else do
+      let message = T.pack $ "No such file exists: " <> toFilePath path
+      case mHint of
+        Just m ->
+          throwError $ E.newError m message
+        Nothing ->
+          throwError $ E.newError' message
