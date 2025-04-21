@@ -65,7 +65,7 @@ getLocalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getLocalCompletionItems source loc = do
   h <- Path.new
   cachePath <- toApp $ Path.getSourceCompletionCachePath h Peripheral source
-  cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
+  cacheOrNone <- toApp $ Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->
       return []
@@ -81,7 +81,7 @@ getGlobalCompletionItems currentSource loc = do
   h <- Path.new
   baseCacheOrNone <-
     toApp (Path.getSourceCompletionCachePath h Peripheral currentSource)
-      >>= Cache.loadCompletionCacheOptimistically
+      >>= toApp . Cache.loadCompletionCacheOptimistically
   let importSummaryOrNone = baseCacheOrNone >>= Cache.rawImportSummary
   let impLoc = getImportLoc importSummaryOrNone
   if loc < impLoc

@@ -44,7 +44,7 @@ getCompletionCache baseModule filePath = do
   source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
   h <- Path.new
   cachePath <- toApp (Path.getSourceCompletionCachePath h Peripheral source)
-  cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
+  cacheOrNone <- toApp $ Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->
       return Nothing

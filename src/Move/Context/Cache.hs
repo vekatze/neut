@@ -82,7 +82,7 @@ loadCacheOptimistically cachePath = do
         Right content ->
           return $ Just $ Cache.extend content
 
-loadCompletionCacheOptimistically :: Path Abs File -> App (Maybe Cache.CompletionCache)
+loadCompletionCacheOptimistically :: Path Abs File -> EIO (Maybe Cache.CompletionCache)
 loadCompletionCacheOptimistically cachePath = do
   hasCache <- doesFileExist cachePath
   if not hasCache
