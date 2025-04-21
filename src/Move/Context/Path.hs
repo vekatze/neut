@@ -44,7 +44,7 @@ import Data.Time
 import Data.Version qualified as V
 import Move.Context.App
 import Move.Context.App.Internal
-import Move.Context.EIO (EIO)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External (getClangDigest)
 import Move.Context.Throw qualified as Throw
@@ -142,7 +142,7 @@ ensureNotInDependencyDir = do
     _ ->
       return ()
 
-getPlatformPrefix :: App (Path Rel Dir)
+getPlatformPrefix :: EIO (Path Rel Dir)
 getPlatformPrefix = do
   p <- Env.getPlatform Nothing
   P.parseRelDir $ T.unpack $ TP.reify p
@@ -159,7 +159,7 @@ getExecutableOutputPath targetOrZen mainModule = do
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       return $ zenExecutableDir </> relPathWithoutExtension
 
-getBaseBuildDir :: Module -> App (Path Abs Dir)
+getBaseBuildDir :: Module -> EIO (Path Abs Dir)
 getBaseBuildDir baseModule = do
   platformPrefix <- getPlatformPrefix
   versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
@@ -168,7 +168,7 @@ getBaseBuildDir baseModule = do
 
 getBuildDir :: Target.Target -> Module -> App (Path Abs Dir)
 getBuildDir t baseModule = do
-  baseBuildDir <- getBaseBuildDir baseModule
+  baseBuildDir <- toApp $ getBaseBuildDir baseModule
   buildSignature <- getBuildSignature t
   buildPrefix <- P.parseRelDir $ "build-" ++ buildSignature
   return $ baseBuildDir </> buildPrefix

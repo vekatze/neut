@@ -1,8 +1,5 @@
 module Move.Scene.Emit (emit) where
 
-import Move.Context.App
-import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Builder
@@ -14,6 +11,11 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Move.Context.App
+import Move.Context.EIO (toApp)
+import Move.Context.Env qualified as Env
+import Move.Context.Gensym qualified as Gensym
+import Move.Scene.LowComp.Reduce qualified as LowComp
 import Rule.BaseLowType qualified as BLT
 import Rule.Builder
 import Rule.Const
@@ -32,7 +34,6 @@ import Rule.LowType.FromBaseLowType qualified as LT
 import Rule.PrimNumSize
 import Rule.PrimType qualified as PT
 import Rule.PrimType.EmitPrimType (emitPrimType)
-import Move.Scene.LowComp.Reduce qualified as LowComp
 
 emit :: LC.LowCode -> App L.ByteString
 emit lowCode = do
@@ -49,7 +50,7 @@ emit lowCode = do
 
 emitLowCodeInfo :: LC.LowCodeInfo -> App ([Builder], [Builder])
 emitLowCodeInfo (declEnv, defList, staticTextList) = do
-  baseSize <- Env.getBaseSize'
+  baseSize <- toApp Env.getBaseSize'
   let declStrList = emitDeclarations declEnv
   let staticTextList' = map (emitStaticText baseSize) staticTextList
   defStrList <- concat <$> mapM emitDefinitions defList
@@ -124,7 +125,7 @@ emitDefinitions (name, (args, body)) = do
 
 getMainType :: App Builder
 getMainType = do
-  dataSize <- Env.getDataSize'
+  dataSize <- toApp Env.getDataSize'
   return $ emitPrimType $ PT.Int (IntSize $ DS.reify dataSize)
 
 emitMain :: LC.DefContent -> App [Builder]
@@ -170,7 +171,7 @@ data EmitCtx = EmitCtx
 newCtx :: Builder -> App EmitCtx
 newCtx retTypeBuilder = do
   emptyMapRef <- liftIO $ newIORef IntMap.empty
-  baseSize <- Env.getBaseSize'
+  baseSize <- toApp Env.getBaseSize'
   let lowInt = LT.PrimNum $ PT.Int $ IntSize baseSize
   return
     EmitCtx

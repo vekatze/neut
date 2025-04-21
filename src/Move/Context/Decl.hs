@@ -7,12 +7,13 @@ module Move.Context.Decl
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.Env qualified as Env
-import Move.Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
+import Move.Context.App
+import Move.Context.App.Internal
+import Move.Context.EIO (toApp)
+import Move.Context.Env qualified as Env
+import Move.Context.Throw qualified as Throw
 import Rule.DeclarationName qualified as DN
 import Rule.ExternalName qualified as EN
 import Rule.Foreign qualified as F
@@ -25,7 +26,7 @@ initialize :: App ()
 initialize = do
   writeRef' preDeclEnv Map.empty
   writeRef' weakDeclEnv Map.empty
-  arch <- Env.getArch Nothing
+  arch <- toApp $ Env.getArch Nothing
   forM_ (F.defaultWeakForeignList arch) $ \(F.Foreign _ name domList cod) -> do
     insWeakDeclEnv (DN.Ext name) domList cod
 

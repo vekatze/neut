@@ -13,8 +13,12 @@ module Move.Context.Global
   )
 where
 
+import Control.Monad
+import Data.HashMap.Strict qualified as Map
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -23,9 +27,7 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedPreset qualified as UnusedPreset
-import Control.Monad
-import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
+import Path
 import Rule.ArgNum qualified as AN
 import Rule.DefiniteDescription qualified as DD
 import Rule.Discriminant qualified as D
@@ -43,7 +45,6 @@ import Rule.RawTerm qualified as RT
 import Rule.Remark (Remark, RemarkLevel (Error), newRemark)
 import Rule.StmtKind qualified as SK
 import Rule.TopNameMap
-import Path
 import Prelude hiding (lookup)
 
 registerStmtDefine ::
@@ -150,7 +151,7 @@ toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, disc
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
 lookup m name = do
   nameMap <- readRef' nameMap
-  dataSize <- Env.getDataSize m
+  dataSize <- toApp $ Env.getDataSize m
   case Map.lookup name nameMap of
     Just kind -> do
       UnusedGlobalLocator.delete $ DD.globalLocator name

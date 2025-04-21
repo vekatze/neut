@@ -4,8 +4,14 @@
 
 module Move.Scene.Elaborate.Infer (inferStmt) where
 
+import Control.Comonad.Cofree
+import Control.Monad
+import Data.HashMap.Strict qualified as Map
+import Data.IntMap qualified as IntMap
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Decl qualified as Decl
+import Move.Context.EIO (toApp)
 import Move.Context.Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
@@ -15,11 +21,11 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Control.Comonad.Cofree
-import Control.Monad
-import Data.HashMap.Strict qualified as Map
-import Data.IntMap qualified as IntMap
-import Data.Text qualified as T
+import Move.Scene.Elaborate.Unify (unifyCurrentConstraints)
+import Move.Scene.Parse.Discern.Name qualified as N
+import Move.Scene.WeakTerm.Reduce qualified as WT
+import Move.Scene.WeakTerm.Subst qualified as Subst
+import Move.Scene.WeakTerm.Subst qualified as WT
 import Rule.Annotation qualified as Annotation
 import Rule.ArgNum qualified as AN
 import Rule.Attr.Data qualified as AttrD
@@ -56,11 +62,6 @@ import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText (toText)
-import Move.Scene.Elaborate.Unify (unifyCurrentConstraints)
-import Move.Scene.Parse.Discern.Name qualified as N
-import Move.Scene.WeakTerm.Reduce qualified as WT
-import Move.Scene.WeakTerm.Subst qualified as Subst
-import Move.Scene.WeakTerm.Subst qualified as WT
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -126,7 +127,7 @@ inferStmtKind stmtKind =
 
 getIntType :: Hint -> App WT.WeakTerm
 getIntType m = do
-  baseSize <- Env.getBaseSize m
+  baseSize <- toApp $ Env.getBaseSize m
   return $ WT.intTypeBySize m baseSize
 
 getUnitType :: Hint -> App WT.WeakTerm

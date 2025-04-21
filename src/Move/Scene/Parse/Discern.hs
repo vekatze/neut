@@ -1,7 +1,16 @@
 module Move.Scene.Parse.Discern (discernStmtList) where
 
+import Control.Comonad.Cofree hiding (section)
+import Control.Monad
+import Data.Containers.ListUtils qualified as ListUtils
+import Data.HashMap.Strict qualified as Map
+import Data.List qualified as List
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Data.Vector qualified as V
 import Move.Context.App
 import Move.Context.Decl qualified as Decl
+import Move.Context.EIO (toApp)
 import Move.Context.Env (getPlatform)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
@@ -14,14 +23,14 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
-import Control.Comonad.Cofree hiding (section)
-import Control.Monad
-import Data.Containers.ListUtils qualified as ListUtils
-import Data.HashMap.Strict qualified as Map
-import Data.List qualified as List
-import Data.Set qualified as S
-import Data.Text qualified as T
-import Data.Vector qualified as V
+import Move.Scene.Parse.Discern.Data
+import Move.Scene.Parse.Discern.Name
+import Move.Scene.Parse.Discern.Noema
+import Move.Scene.Parse.Discern.NominalEnv
+import Move.Scene.Parse.Discern.PatternMatrix
+import Move.Scene.Parse.Discern.Struct
+import Move.Scene.Parse.Foreign
+import Move.Scene.Parse.Util
 import Rule.Annotation qualified as AN
 import Rule.Arch qualified as Arch
 import Rule.ArgNum qualified as AN
@@ -73,14 +82,6 @@ import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.FreeVars (freeVars)
-import Move.Scene.Parse.Discern.Data
-import Move.Scene.Parse.Discern.Name
-import Move.Scene.Parse.Discern.Noema
-import Move.Scene.Parse.Discern.NominalEnv
-import Move.Scene.Parse.Discern.PatternMatrix
-import Move.Scene.Parse.Discern.Struct
-import Move.Scene.Parse.Foreign
-import Move.Scene.Parse.Util
 import Text.Read qualified as R
 
 discernStmtList :: Module -> [RawStmt] -> App [WeakStmt]
@@ -714,7 +715,7 @@ lookupIntrospectiveClause m value clauseList =
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
 getIntrospectiveValue m key = do
   bm <- Env.getBuildMode
-  p <- getPlatform (Just m)
+  p <- toApp $ getPlatform (Just m)
   case key of
     "architecture" ->
       return $ Arch.reify (Platform.arch p)

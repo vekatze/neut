@@ -9,10 +9,6 @@ module Move.Scene.Lower
 where
 
 import Codec.Binary.UTF8.String
-import Move.Context.App
-import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
-import Move.Context.Locator qualified as Locator
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import Data.ByteString.Builder
@@ -22,6 +18,14 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.EIO (toApp)
+import Move.Context.Env qualified as Env
+import Move.Context.Gensym qualified as Gensym
+import Move.Context.Locator qualified as Locator
+import Move.Scene.Cancel
+import Move.Scene.Comp.Reduce qualified as C
+import Move.Scene.Comp.Subst qualified as C
 import Rule.ArgNum qualified as AN
 import Rule.BaseLowType qualified as BLT
 import Rule.BaseName qualified as BN
@@ -44,9 +48,6 @@ import Rule.PrimNumSize.ToInt
 import Rule.PrimOp
 import Rule.PrimType qualified as PT
 import Rule.Target
-import Move.Scene.Cancel
-import Move.Scene.Comp.Reduce qualified as C
-import Move.Scene.Comp.Subst qualified as C
 
 type Lower = WriterT Cont App
 
@@ -87,7 +88,7 @@ new stmtList = do
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
   let h = Handle {..}
-  arch <- Env.getArch Nothing
+  arch <- toApp $ Env.getArch Nothing
   forM_ (F.defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
     insDeclEnv' h (DN.Ext name) domList cod
   registerInternalNames h stmtList
@@ -193,7 +194,7 @@ lowerComp h term =
         _ -> do
           (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
           runLowerComp $ do
-            baseSize <- lift Env.getBaseSize'
+            baseSize <- lift $ toApp Env.getBaseSize'
             let t = LT.PrimNum $ PT.Int $ IntSize baseSize
             castedValue <- lowerValueLetCast h v t
             (phi, phiVar) <- lift $ newValueLocal "phi"
@@ -258,7 +259,7 @@ lowerCompPrimitive h codeOp =
           uncast result valueLowType'
         M.Alloca t size -> do
           let t' = LT.fromBaseLowType t
-          baseSize <- lift Env.getBaseSize'
+          baseSize <- lift $ toApp Env.getBaseSize'
           let indexType = LT.PrimNum $ PT.Int $ IntSize baseSize
           castedSize <- lowerValueLetCast h size indexType
           result <- reflect $ LC.StackAlloc t' indexType castedSize
@@ -443,7 +444,7 @@ allocateBasePointer aggType = do
       let (elemType, len) = getSizeInfoOf aggType
       sizePointer <- getElemPtr LC.Null elemType [toInteger len]
       allocID <- lift Gensym.newCount
-      baseSize <- lift Env.getBaseSize'
+      baseSize <- lift $ toApp Env.getBaseSize'
       let lowInt = LT.PrimNum $ PT.Int $ IntSize baseSize
       size <- cast sizePointer lowInt
       reflect $ LC.Alloc size len allocID

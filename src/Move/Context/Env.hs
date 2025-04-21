@@ -28,6 +28,7 @@ import Data.Text qualified as T
 import Data.Time
 import Move.Context.App
 import Move.Context.App.Internal
+import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Throw qualified as Throw
 import Path
 import Rule.Arch qualified as Arch
@@ -89,27 +90,27 @@ insertToArtifactMap :: Path Abs File -> A.ArtifactTime -> App ()
 insertToArtifactMap path artifactTime =
   modifyRef' artifactMap $ Map.insert path artifactTime
 
-getDataSize :: Hint -> App DS.DataSize
+getDataSize :: Hint -> EIO DS.DataSize
 getDataSize m = do
   getDataSize'' (Just m)
 
-getDataSize' :: App DS.DataSize
+getDataSize' :: EIO DS.DataSize
 getDataSize' = do
   getDataSize'' Nothing
 
-getDataSize'' :: Maybe Hint -> App DS.DataSize
+getDataSize'' :: Maybe Hint -> EIO DS.DataSize
 getDataSize'' mm = do
   Arch.dataSizeOf <$> getArch mm
 
-getBaseSize :: Hint -> App Int
+getBaseSize :: Hint -> EIO Int
 getBaseSize m = do
   DS.reify <$> getDataSize m
 
-getBaseSize' :: App Int
+getBaseSize' :: EIO Int
 getBaseSize' = do
   DS.reify <$> getDataSize'
 
-getArch :: Maybe Hint -> App Arch.Arch
+getArch :: Maybe Hint -> EIO Arch.Arch
 getArch mm = do
   case SI.arch of
     "amd64" ->
@@ -123,11 +124,11 @@ getArch mm = do
     arch ->
       case mm of
         Just m ->
-          Throw.raiseError m $ "Unknown architecture: " <> T.pack arch
+          raiseError m $ "Unknown architecture: " <> T.pack arch
         Nothing ->
-          Throw.raiseError' $ "Unknown architecture: " <> T.pack arch
+          raiseError' $ "Unknown architecture: " <> T.pack arch
 
-getOS :: Maybe Hint -> App O.OS
+getOS :: Maybe Hint -> EIO O.OS
 getOS mm = do
   case SI.os of
     "linux" ->
@@ -137,11 +138,11 @@ getOS mm = do
     os ->
       case mm of
         Just m ->
-          Throw.raiseError m $ "Unknown OS: " <> T.pack os
+          raiseError m $ "Unknown OS: " <> T.pack os
         Nothing ->
-          Throw.raiseError' $ "Unknown OS: " <> T.pack os
+          raiseError' $ "Unknown OS: " <> T.pack os
 
-getPlatform :: Maybe Hint -> App Platform
+getPlatform :: Maybe Hint -> EIO Platform
 getPlatform mm = do
   arch <- getArch mm
   os <- getOS mm

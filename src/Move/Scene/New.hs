@@ -4,15 +4,17 @@ module Move.Scene.New
   )
 where
 
-import Move.Context.App
-import Move.Context.Module qualified as Module
-import Move.Context.Path qualified as Path
-import Move.Context.Remark qualified as Remark
-import Move.Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.EIO (toApp)
+import Move.Context.Module qualified as Module
+import Move.Context.Path qualified as Path
+import Move.Context.Remark qualified as Remark
+import Move.Context.Throw qualified as Throw
+import Path (parent, (</>))
 import Rule.ClangOption qualified as CL
 import Rule.Const
 import Rule.Module
@@ -20,7 +22,6 @@ import Rule.ModuleID qualified as MID
 import Rule.SourceLocator qualified as SL
 import Rule.Target
 import Rule.ZenConfig
-import Path (parent, (</>))
 
 createNewProject :: T.Text -> Module -> App ()
 createNewProject moduleName newModule = do
@@ -70,7 +71,7 @@ createModuleFile :: Module -> App ()
 createModuleFile newModule = do
   Path.ensureDir $ parent $ moduleLocation newModule
   Module.saveEns (moduleLocation newModule) ([], (toDefaultEns newModule, []))
-  buildDir <- Path.getBaseBuildDir newModule
+  buildDir <- toApp $ Path.getBaseBuildDir newModule
   Path.ensureDir buildDir
 
 createMainFile :: Module -> App ()

@@ -5,20 +5,26 @@ module Move.Scene.Clarify
   )
 where
 
-import Move.Context.App
-import Move.Context.Clarify qualified as Clarify
-import Move.Context.CompDefinition qualified as CompDefinition
-import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Move.Context.App
+import Move.Context.Clarify qualified as Clarify
+import Move.Context.CompDefinition qualified as CompDefinition
+import Move.Context.EIO (toApp)
+import Move.Context.Env qualified as Env
+import Move.Context.Gensym qualified as Gensym
+import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
+import Move.Context.Throw qualified as Throw
+import Move.Scene.Clarify.Linearize
+import Move.Scene.Clarify.Sigma
+import Move.Scene.Clarify.Utility
+import Move.Scene.Comp.Reduce qualified as Reduce
+import Move.Scene.Term.Subst qualified as TM
 import Rule.ArgNum qualified as AN
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
@@ -53,11 +59,6 @@ import Rule.Term qualified as TM
 import Rule.Term.Chain (nubFreeVariables)
 import Rule.Term.Chain qualified as TM
 import Rule.Term.FromPrimNum
-import Move.Scene.Clarify.Linearize
-import Move.Scene.Clarify.Sigma
-import Move.Scene.Clarify.Utility
-import Move.Scene.Comp.Reduce qualified as Reduce
-import Move.Scene.Term.Subst qualified as TM
 
 clarify :: [Stmt] -> App [C.CompStmt]
 clarify stmtList = do
@@ -201,7 +202,7 @@ clarifyTerm tenv term =
           C.PiElimDownElim (C.VarGlobal name (AN.fromInt (length dataArgs))) xs
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- OptimizableData.lookup consName
-      baseSize <- Env.getBaseSize m
+      baseSize <- toApp $ Env.getBaseSize m
       case od of
         Just OD.Enum ->
           return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify discriminant)
@@ -281,7 +282,7 @@ embody tenv xets cont =
       (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
       (valueVarName, value, valueVar) <- clarifyPlus tenv e
       cont' <- embody (TM.insTypeEnv [mxt] tenv) rest cont
-      baseSize <- Env.getBaseSize m
+      baseSize <- toApp $ Env.getBaseSize m
       cont'' <- linearize [(x, typeExp)] cont'
       return $
         bindLet
