@@ -96,10 +96,9 @@ loadCompletionCacheOptimistically cachePath = do
         Right content ->
           return $ Just content
 
-loadLocationCache :: Target -> Source.Source -> App (Maybe Cache.LocationCache)
-loadLocationCache t source = do
-  h <- Path.new
-  cachePath <- toApp $ getSourceLocationCachePath h t source
+loadLocationCache :: Path.Handle -> Target -> Source.Source -> EIO (Maybe Cache.LocationCache)
+loadLocationCache h t source = do
+  cachePath <- getSourceLocationCachePath h t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing

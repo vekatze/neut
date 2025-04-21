@@ -3,9 +3,11 @@ module Move.Scene.LSP.GetLocationTree
   )
 where
 
+import Control.Monad.Trans
 import Move.Context.AppM
 import Move.Context.Cache qualified as Cache
-import Control.Monad.Trans
+import Move.Context.EIO (toApp)
+import Move.Context.Path qualified as Path
 import Rule.Cache qualified as Cache
 import Rule.LocationTree qualified as LT
 import Rule.Source
@@ -15,5 +17,6 @@ getLocationTree ::
   Source ->
   AppM LT.LocationTree
 getLocationTree src = do
-  cache <- lift (Cache.loadLocationCache Peripheral src) >>= liftMaybe
+  h <- lift Path.new
+  cache <- lift (toApp $ Cache.loadLocationCache h Peripheral src) >>= liftMaybe
   return $ Cache.locationTree cache

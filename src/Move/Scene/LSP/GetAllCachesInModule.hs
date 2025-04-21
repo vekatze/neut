@@ -26,7 +26,8 @@ getAllLocationCachesInModule baseModule = do
 getLocationCache :: Module -> Path Abs File -> App (Maybe (Source, LocationCache))
 getLocationCache baseModule filePath = do
   source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cacheOrNone <- Cache.loadLocationCache Peripheral source
+  h <- Path.new
+  cacheOrNone <- toApp $ Cache.loadLocationCache h Peripheral source
   case cacheOrNone of
     Nothing ->
       return Nothing
