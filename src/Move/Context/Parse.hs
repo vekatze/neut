@@ -8,7 +8,6 @@ module Move.Context.Parse
 where
 
 import Control.Monad
-import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
@@ -33,9 +32,9 @@ writeTextFile :: Path Abs File -> T.Text -> IO ()
 writeTextFile path content = do
   B.writeFile (toFilePath path) $ encodeUtf8 content
 
-printTextFile :: T.Text -> App ()
+printTextFile :: T.Text -> IO ()
 printTextFile content = do
-  liftIO $ B.putStr $ encodeUtf8 content
+  B.putStr $ encodeUtf8 content
 
 ensureExistence :: Source -> App ()
 ensureExistence source = do

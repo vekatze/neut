@@ -20,4 +20,4 @@ format cfg = do
   content' <- Format.format (shouldMinimizeImports cfg) (inputFileType cfg) path content
   if mustUpdateInPlace cfg
     then liftIO $ Write.write path content'
-    else Parse.printTextFile content'
+    else liftIO $ Parse.printTextFile content'
