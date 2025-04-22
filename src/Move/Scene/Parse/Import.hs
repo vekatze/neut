@@ -7,6 +7,7 @@ module Move.Scene.Parse.Import
 where
 
 import Control.Monad
+import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
@@ -15,13 +16,11 @@ import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
-import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
@@ -40,6 +39,7 @@ import Rule.LocalLocator qualified as LL
 import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.ModuleAlias (ModuleAlias (ModuleAlias))
+import Rule.RawImportSummary qualified as RIS
 import Rule.RawProgram
 import Rule.Source qualified as Source
 import Rule.SourceLocator qualified as SL
@@ -54,6 +54,10 @@ data Handle
   { counter :: IORef Int,
     mainModule :: MainModule,
     moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
+    unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
+    unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]),
+    unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
+    importEnvRef :: IORef (Maybe RIS.RawImportSummary),
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     shiftToLatestHandle :: STL.Handle,
     locatorHandle :: Locator.Handle,
@@ -66,6 +70,10 @@ new = do
   counter <- asks App.counter
   mainModule <- getMainModule
   moduleCacheMapRef <- asks App.moduleCacheMap
+  unusedStaticFileMapRef <- asks App.unusedStaticFileMap
+  unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
+  unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
+  importEnvRef <- asks App.importEnv
   getEnabledPresetHandle <- GetEnabledPreset.new
   shiftToLatestHandle <- STL.new
   locatorHandle <- Locator.new
@@ -87,14 +95,14 @@ activateImport h m sourceInfoList = do
         forM_ pathList $ \(key, (mKey, path)) -> do
           toApp $ Locator.activateStaticFile (locatorHandle h) mKey key path
 
-interpretImport :: Handle -> Hint -> Source.Source -> [(RawImport, C)] -> App [ImportItem]
+interpretImport :: Handle -> Hint -> Source.Source -> [(RawImport, C)] -> EIO [ImportItem]
 interpretImport h m currentSource importList = do
   presetImportList <- interpretPreset h m (Source.sourceModule currentSource)
   let (importList'@((RawImport _ _ importItemList _)), _) = mergeImportList m importList
   if SE.isEmpty importItemList
     then return presetImportList
     else do
-      RawImportSummary.set importList'
+      liftIO $ writeIORef (importEnvRef h) $ Just $ RIS.fromRawImport importList'
       importItemList' <- fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
         case rawImportItem of
           RawImportItem mItem (locatorText, _) localLocatorList -> do
@@ -109,19 +117,19 @@ interpretImportItemStatic ::
   Handle ->
   Module ->
   [(Hint, T.Text)] ->
-  App [ImportItem]
+  EIO [ImportItem]
 interpretImportItemStatic h currentModule keyList = do
-  currentModule' <- toApp $ STL.shiftToLatestModule (shiftToLatestHandle h) currentModule
+  currentModule' <- STL.shiftToLatestModule (shiftToLatestHandle h) currentModule
   let moduleRootDir = getModuleRootDir currentModule'
   pathList <- forM keyList $ \(mKey, key) -> do
     case Map.lookup key (moduleStaticFiles currentModule') of
       Just path -> do
         let fullPath = moduleRootDir </> path
-        Tag.insertFileLoc mKey (T.length key) (newSourceHint fullPath)
-        UnusedStaticFile.insert key mKey
+        liftIO $ Tag.insertFileLocIO (tagMapRef h) mKey (T.length key) (newSourceHint fullPath)
+        liftIO $ UnusedStaticFile.insertIO (unusedStaticFileMapRef h) key mKey
         return (key, (mKey, fullPath))
       Nothing ->
-        Throw.raiseError mKey $ "No such static file is defined: " <> key
+        raiseError mKey $ "No such static file is defined: " <> key
   return [StaticKey pathList]
 
 interpretImportItem ::
@@ -131,34 +139,36 @@ interpretImportItem ::
   Hint ->
   LocatorText ->
   [(Hint, LL.LocalLocator)] ->
-  App [ImportItem]
+  EIO [ImportItem]
 interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList = do
-  baseNameList <- Throw.liftEither $ BN.bySplit m locatorText
+  baseNameList <- liftEither $ BN.bySplit m locatorText
   case baseNameList of
     [] ->
-      Throw.raiseCritical m "Scene.Parse.Import: empty parse locator"
+      raiseCritical m "Scene.Parse.Import: empty parse locator"
     [baseName]
       | Just (moduleAlias, sourceLocator) <- Map.lookup baseName (modulePrefixMap currentModule) -> do
-          sgl <- toApp $ Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
-          source <- toApp $ getSource h mustUpdateTag m sgl locatorText
+          sgl <- Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
+          source <- getSource h mustUpdateTag m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
           when mustUpdateTag $ do
-            UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
-            forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
+            liftIO $ UnusedGlobalLocator.insertIO (unusedGlobalLocatorMapRef h) (SGL.reify sgl) m locatorText
+            forM_ localLocatorList $ \(ml, ll) ->
+              liftIO $ UnusedLocalLocator.insertIO (unusedLocalLocatorMapRef h) ll ml
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl]]
       | otherwise ->
-          Throw.raiseError m $ "No such prefix is defined: " <> BN.reify baseName
+          raiseError m $ "No such prefix is defined: " <> BN.reify baseName
     aliasText : locator ->
       case SL.fromBaseNameList locator of
         Nothing ->
-          Throw.raiseError m $ "Could not parse the locator: " <> locatorText
+          raiseError m $ "Could not parse the locator: " <> locatorText
         Just sourceLocator -> do
           let moduleAlias = ModuleAlias aliasText
-          sgl <- toApp $ Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
+          sgl <- Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
           when mustUpdateTag $ do
-            UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
-            forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
-          source <- toApp $ getSource h mustUpdateTag m sgl locatorText
+            liftIO $ UnusedGlobalLocator.insertIO (unusedGlobalLocatorMapRef h) (SGL.reify sgl) m locatorText
+            forM_ localLocatorList $ \(ml, ll) ->
+              liftIO $ UnusedLocalLocator.insertIO (unusedLocalLocatorMapRef h) ll ml
+          source <- getSource h mustUpdateTag m sgl locatorText
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
 
 getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> EIO Source.Source
@@ -178,9 +188,9 @@ getSource h mustUpdateTag m sgl locatorText = do
         Source.sourceHint = Just m
       }
 
-interpretPreset :: Handle -> Hint -> Module -> App [ImportItem]
+interpretPreset :: Handle -> Hint -> Module -> EIO [ImportItem]
 interpretPreset h m currentModule = do
-  presetInfo <- toApp $ GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
+  presetInfo <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
   fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do
     let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
     interpretImportItem h False currentModule m locatorText presetLocalLocatorList'

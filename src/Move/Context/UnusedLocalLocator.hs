@@ -4,14 +4,16 @@ module Move.Context.UnusedLocalLocator
     delete,
     registerRemarks,
     get,
+    insertIO,
   )
 where
 
+import Control.Monad
+import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.Remark qualified as Remark
-import Control.Monad
-import Data.HashMap.Strict qualified as Map
 import Rule.Hint
 import Rule.LocalLocator qualified as LL
 import Rule.Remark
@@ -40,3 +42,7 @@ registerRemarks = do
   unusedLocalLocators <- get
   forM_ unusedLocalLocators $ \(ll, m) ->
     Remark.insertRemark $ newRemark m Warning $ "Imported but not used: `" <> LL.reify ll <> "`"
+
+insertIO :: IORef (Map.HashMap LL.LocalLocator Hint) -> LL.LocalLocator -> Hint -> IO ()
+insertIO ref ll m =
+  modifyIORef' ref $ Map.insert ll m

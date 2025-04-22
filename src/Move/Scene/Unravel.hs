@@ -352,7 +352,7 @@ parseSourceHeader currentSource = do
   (_, importList) <- toApp $ ParseCore.parseFile h (const parseImport)
   let m = newSourceHint filePath
   h' <- Import.new
-  Import.interpretImport h' m currentSource importList
+  toApp $ Import.interpretImport h' m currentSource importList
 
 getAntecedentArrow :: Module -> [(MID.ModuleID, Module)]
 getAntecedentArrow baseModule = do
