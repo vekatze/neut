@@ -21,7 +21,7 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
-import Move.Scene.Module.GetEnabledPreset
+import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as Module
 import Move.Scene.Source.ShiftToLatest
 import Path
@@ -150,7 +150,8 @@ getSource mustUpdateTag m sgl locatorText = do
 
 interpretPreset :: Hint -> Module -> App [ImportItem]
 interpretPreset m currentModule = do
-  presetInfo <- getEnabledPreset currentModule
+  h <- GetEnabledPreset.new
+  presetInfo <- toApp $ GetEnabledPreset.getEnabledPreset h currentModule
   fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do
     let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
     interpretImportItem False currentModule m locatorText presetLocalLocatorList'

@@ -1,25 +1,43 @@
-module Move.Scene.Module.GetEnabledPreset (getEnabledPreset) where
+module Move.Scene.Module.GetEnabledPreset
+  ( Handle,
+    new,
+    getEnabledPreset,
+  )
+where
 
 import Control.Monad.Reader (asks)
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env (getMainModule)
 import Move.Scene.Module.GetModule qualified as Module
+import Path
 import Rule.BaseName qualified as BN
 import Rule.Module
 import Rule.ModuleAlias qualified as MA
 
-getEnabledPreset :: Module -> App [(T.Text, [BN.BaseName])]
-getEnabledPreset baseModule = do
-  mainModule <- getMainModule
+data Handle
+  = Handle
+  { counter :: IORef Int,
+    moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
+    mainModule :: MainModule
+  }
+
+new :: App Handle
+new = do
   counter <- asks App.counter
-  mcm <- asks App.moduleCacheMap
-  let h = Module.Handle {counter, mcm}
-  dependencies <- toApp $ Module.getAllDependencies h mainModule baseModule
+  moduleCacheMapRef <- asks App.moduleCacheMap
+  mainModule <- getMainModule
+  return $ Handle {..}
+
+getEnabledPreset :: Handle -> Module -> EIO [(T.Text, [BN.BaseName])]
+getEnabledPreset h baseModule = do
+  let h' = Module.Handle {counter = counter h, mcm = moduleCacheMapRef h}
+  dependencies <- Module.getAllDependencies h' (mainModule h) baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   let aliasPresetInfo = map getAllTopCandidate' visibleModuleList
   let aliasList = getAliasListWithEnabledPresets baseModule

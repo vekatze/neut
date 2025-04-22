@@ -16,7 +16,7 @@ import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
-import Move.Scene.Module.GetEnabledPreset
+import Move.Scene.Module.GetEnabledPreset qualified as Module
 import Move.Scene.Parse qualified as Parse
 import Move.Scene.Parse.Core (Handle (Handle))
 import Move.Scene.Parse.Core qualified as P
@@ -63,14 +63,16 @@ _formatSource shouldMinimizeImports filePath fileContent = do
       counter <- asks App.counter
       let h'' = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
       program <- toApp $ P.parseFile h'' Parse.parseProgram
-      presetNames <- getEnabledPreset mainModule
+      hMod <- Module.new
+      presetNames <- toApp $ Module.getEnabledPreset hMod mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
       return $ RawProgram.pp importInfo program
     else do
       counter <- asks App.counter
       let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
       program <- toApp $ P.parseFile h Parse.parseProgram
-      presetNames <- getEnabledPreset mainModule
+      hMod <- Module.new
+      presetNames <- toApp $ Module.getEnabledPreset hMod mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators = [], unusedLocalLocators = []}
       return $ RawProgram.pp importInfo program
 
