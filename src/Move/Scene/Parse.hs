@@ -23,7 +23,7 @@ import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Scene.Parse.Core (Handle (Handle))
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
-import Move.Scene.Parse.Import
+import Move.Scene.Parse.Import qualified as Import
 import Move.Scene.Parse.Program qualified as Parse
 import Rule.ArgNum qualified as AN
 import Rule.Cache qualified as Cache
@@ -71,7 +71,8 @@ parseCachedStmtList stmtList = do
 
 interpret :: Source.Source -> RawProgram -> App [WeakStmt]
 interpret currentSource (RawProgram m importList stmtList) = do
-  interpretImport m currentSource importList >>= activateImport m
+  h <- Import.new
+  Import.interpretImport h m currentSource importList >>= Import.activateImport m
   stmtList' <- Discern.discernStmtList (Source.sourceModule currentSource) $ map fst stmtList
   Global.reportMissingDefinitions
   saveTopLevelNames currentSource $ getWeakStmtName stmtList'

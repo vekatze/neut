@@ -4,7 +4,7 @@ module Rule.Hint
     Line,
     Column,
     Loc,
-    new,
+    newHint,
     blur,
     internalHint,
     newSourceHint,
@@ -61,8 +61,8 @@ instance Binary SavedHint where
   get = do
     SavedHint <$> (Hint <$> get <*> get <*> get)
 
-new :: Int -> Int -> FilePath -> Hint
-new l c path =
+newHint :: Int -> Int -> FilePath -> Hint
+newHint l c path =
   Hint
     { metaFileName = path,
       metaLocation = (l, c),
@@ -83,7 +83,7 @@ internalHint =
 
 newSourceHint :: Path Abs File -> Hint
 newSourceHint path =
-  new 1 1 $ toFilePath path
+  newHint 1 1 $ toFilePath path
 
 fakeLoc :: Loc
 fakeLoc =

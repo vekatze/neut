@@ -24,7 +24,7 @@ import Rule.ArgNum qualified as AN
 import Rule.DefiniteDescription qualified as DD
 import Rule.Discriminant qualified as D
 import Rule.Error
-import Rule.Hint hiding (new)
+import Rule.Hint
 import Rule.Ident
 import Rule.IsConstLike
 import Rule.Literal qualified as L

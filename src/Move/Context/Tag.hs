@@ -7,13 +7,15 @@ module Move.Context.Tag
     insertFileLoc,
     insertBinder,
     get,
+    insertFileLocIO,
   )
 where
 
+import Control.Monad (unless, when)
+import Data.IORef (IORef, modifyIORef')
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
-import Control.Monad (unless, when)
-import Data.Text qualified as T
 import Rule.Binder
 import Rule.DefiniteDescription qualified as DD
 import Rule.ExternalName qualified as EN
@@ -69,3 +71,9 @@ insertFileLoc mUse nameLength mDef = do
 insertBinder :: BinderF a -> App ()
 insertBinder (m, ident, _) =
   insertLocalVar m ident m
+
+insertFileLocIO :: IORef LT.LocationTree -> Hint -> Int -> Hint -> IO ()
+insertFileLocIO ref mUse nameLength mDef = do
+  when (metaShouldSaveLocation mUse) $ do
+    let (l, c) = metaLocation mUse
+    modifyIORef' ref $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef

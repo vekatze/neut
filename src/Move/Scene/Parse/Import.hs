@@ -1,17 +1,21 @@
 module Move.Scene.Parse.Import
-  ( activateImport,
+  ( Handle,
+    new,
+    activateImport,
     interpretImport,
   )
 where
 
 import Control.Monad
+import Control.Monad.IO.Class
 import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
@@ -23,7 +27,7 @@ import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as Module
-import Move.Scene.Source.ShiftToLatest
+import Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
 import Rule.AliasInfo qualified as AI
 import Rule.BaseName qualified as BN
@@ -33,6 +37,7 @@ import Rule.GlobalLocatorAlias qualified as GLA
 import Rule.Hint
 import Rule.Import (ImportItem (..))
 import Rule.LocalLocator qualified as LL
+import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Rule.RawProgram
@@ -43,6 +48,26 @@ import Rule.Syntax.Series qualified as SE
 
 type LocatorText =
   T.Text
+
+data Handle
+  = Handle
+  { counter :: IORef Int,
+    mainModule :: MainModule,
+    moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
+    getEnabledPresetHandle :: GetEnabledPreset.Handle,
+    shiftToLatestHandle :: STL.Handle,
+    tagMapRef :: IORef LT.LocationTree
+  }
+
+new :: App Handle
+new = do
+  counter <- asks App.counter
+  mainModule <- getMainModule
+  moduleCacheMapRef <- asks App.moduleCacheMap
+  getEnabledPresetHandle <- GetEnabledPreset.new
+  shiftToLatestHandle <- STL.new
+  tagMapRef <- asks App.tagMap
+  return $ Handle {..}
 
 activateImport :: Hint -> [ImportItem] -> App ()
 activateImport m sourceInfoList = do
@@ -58,9 +83,9 @@ activateImport m sourceInfoList = do
         forM_ pathList $ \(key, (mKey, path)) -> do
           Locator.activateStaticFile mKey key path
 
-interpretImport :: Hint -> Source.Source -> [(RawImport, C)] -> App [ImportItem]
-interpretImport m currentSource importList = do
-  presetImportList <- interpretPreset m (Source.sourceModule currentSource)
+interpretImport :: Handle -> Hint -> Source.Source -> [(RawImport, C)] -> App [ImportItem]
+interpretImport h m currentSource importList = do
+  presetImportList <- interpretPreset h m (Source.sourceModule currentSource)
   let (importList'@((RawImport _ _ importItemList _)), _) = mergeImportList m importList
   if SE.isEmpty importItemList
     then return presetImportList
@@ -70,18 +95,19 @@ interpretImport m currentSource importList = do
         case rawImportItem of
           RawImportItem mItem (locatorText, _) localLocatorList -> do
             let localLocatorList' = SE.extract localLocatorList
-            interpretImportItem True (Source.sourceModule currentSource) mItem locatorText localLocatorList'
+            interpretImportItem h True (Source.sourceModule currentSource) mItem locatorText localLocatorList'
           RawStaticKey _ _ keys -> do
             let keys' = SE.extract keys
-            interpretImportItemStatic (Source.sourceModule currentSource) keys'
+            interpretImportItemStatic h (Source.sourceModule currentSource) keys'
       return $ presetImportList ++ importItemList'
 
 interpretImportItemStatic ::
+  Handle ->
   Module ->
   [(Hint, T.Text)] ->
   App [ImportItem]
-interpretImportItemStatic currentModule keyList = do
-  currentModule' <- shiftToLatestModule currentModule
+interpretImportItemStatic h currentModule keyList = do
+  currentModule' <- toApp $ STL.shiftToLatestModule (shiftToLatestHandle h) currentModule
   let moduleRootDir = getModuleRootDir currentModule'
   pathList <- forM keyList $ \(mKey, key) -> do
     case Map.lookup key (moduleStaticFiles currentModule') of
@@ -95,13 +121,14 @@ interpretImportItemStatic currentModule keyList = do
   return [StaticKey pathList]
 
 interpretImportItem ::
+  Handle ->
   AI.MustUpdateTag ->
   Module ->
   Hint ->
   LocatorText ->
   [(Hint, LL.LocalLocator)] ->
   App [ImportItem]
-interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList = do
+interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList = do
   baseNameList <- Throw.liftEither $ BN.bySplit m locatorText
   case baseNameList of
     [] ->
@@ -109,7 +136,7 @@ interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList =
     [baseName]
       | Just (moduleAlias, sourceLocator) <- Map.lookup baseName (modulePrefixMap currentModule) -> do
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
-          source <- getSource mustUpdateTag m sgl locatorText
+          source <- toApp $ getSource h mustUpdateTag m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
           when mustUpdateTag $ do
             UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
@@ -127,31 +154,29 @@ interpretImportItem mustUpdateTag currentModule m locatorText localLocatorList =
           when mustUpdateTag $ do
             UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
-          source <- getSource mustUpdateTag m sgl locatorText
+          source <- toApp $ getSource h mustUpdateTag m sgl locatorText
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
 
-getSource :: AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
-getSource mustUpdateTag m sgl locatorText = do
-  mainModule <- getMainModule
-  counter <- asks App.counter
-  mcm <- asks App.moduleCacheMap
-  let h = Module.Handle {counter, mcm}
-  nextModule <- toApp $ Module.getModule h mainModule m (SGL.moduleID sgl) locatorText
+getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> EIO Source.Source
+getSource h mustUpdateTag m sgl locatorText = do
+  let h' = Module.Handle {counter = counter h, mcm = moduleCacheMapRef h}
+  nextModule <- Module.getModule h' (mainModule h) m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $
-    Tag.insertFileLoc m (T.length locatorText) (newSourceHint nextPath)
-  shiftToLatest
+    liftIO $
+      Tag.insertFileLocIO (tagMapRef h) m (T.length locatorText) (newSourceHint nextPath)
+  STL.shiftToLatest
+    (shiftToLatestHandle h)
     Source.Source
       { Source.sourceModule = nextModule,
         Source.sourceFilePath = nextPath,
         Source.sourceHint = Just m
       }
 
-interpretPreset :: Hint -> Module -> App [ImportItem]
-interpretPreset m currentModule = do
-  h <- GetEnabledPreset.new
-  presetInfo <- toApp $ GetEnabledPreset.getEnabledPreset h currentModule
+interpretPreset :: Handle -> Hint -> Module -> App [ImportItem]
+interpretPreset h m currentModule = do
+  presetInfo <- toApp $ GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
   fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do
     let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
-    interpretImportItem False currentModule m locatorText presetLocalLocatorList'
+    interpretImportItem h False currentModule m locatorText presetLocalLocatorList'

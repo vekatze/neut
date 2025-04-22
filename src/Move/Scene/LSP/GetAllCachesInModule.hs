@@ -10,7 +10,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (toApp)
 import Move.Context.Module (getAllSourcePathInModule)
 import Move.Context.Path qualified as Path
-import Move.Scene.Source.ShiftToLatest (shiftToLatest)
+import Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
 import Rule.Cache
 import Rule.Module
@@ -25,9 +25,13 @@ getAllLocationCachesInModule baseModule = do
 
 getLocationCache :: Module -> Path Abs File -> App (Maybe (Source, LocationCache))
 getLocationCache baseModule filePath = do
-  source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  h <- Path.new
-  cacheOrNone <- toApp $ Cache.loadLocationCache h Peripheral source
+  h <- STL.new
+  source <-
+    toApp $
+      STL.shiftToLatest h $
+        Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
+  h' <- Path.new
+  cacheOrNone <- toApp $ Cache.loadLocationCache h' Peripheral source
   case cacheOrNone of
     Nothing ->
       return Nothing
@@ -41,9 +45,13 @@ getAllCompletionCachesInModule baseModule = do
 
 getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache baseModule filePath = do
-  source <- shiftToLatest $ Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  h <- Path.new
-  cachePath <- toApp (Path.getSourceCompletionCachePath h Peripheral source)
+  h <- STL.new
+  source <-
+    toApp $
+      STL.shiftToLatest h $
+        Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
+  h' <- Path.new
+  cachePath <- toApp (Path.getSourceCompletionCachePath h' Peripheral source)
   cacheOrNone <- toApp $ Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->

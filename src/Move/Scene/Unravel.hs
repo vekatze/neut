@@ -35,13 +35,13 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.Unravel qualified as Unravel
 import Move.Scene.Module.Reflect qualified as Module
 import Move.Scene.Parse.Core qualified as ParseCore
-import Move.Scene.Parse.Import (interpretImport)
+import Move.Scene.Parse.Import qualified as Import
 import Move.Scene.Parse.Program (parseImport)
-import Move.Scene.Source.ShiftToLatest
+import Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
 import Path.IO
 import Rule.Artifact qualified as A
-import Rule.Hint hiding (new)
+import Rule.Hint
 import Rule.Import
 import Rule.Module
 import Rule.ModuleID qualified as MID
@@ -63,6 +63,7 @@ data Handle
   = Handle
   { debugHandle :: Debug.Handle,
     pathHandle :: Path.Handle,
+    shiftToLatestHandle :: STL.Handle,
     artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
   }
 
@@ -70,6 +71,7 @@ new :: App Handle
 new = do
   debugHandle <- Debug.new
   pathHandle <- Path.new
+  shiftToLatestHandle <- STL.new
   artifactMapRef <- asks App.artifactMap
   return $ Handle {..}
 
@@ -227,7 +229,7 @@ unravelImportItem h t importItem = do
 unravelFoundational :: Handle -> Target -> Module -> App (A.ArtifactTime, [Source.Source])
 unravelFoundational h t baseModule = do
   children <- Module.getAllSourceInModule baseModule
-  children' <- mapM shiftToLatest children
+  children' <- toApp $ mapM (STL.shiftToLatest (shiftToLatestHandle h)) children
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
   baseArtifactTime <- liftIO artifactTimeFromCurrentTime
   artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
@@ -349,7 +351,8 @@ parseSourceHeader currentSource = do
   let h = ParseCore.Handle {counter, filePath, fileContent, mustParseWholeFile = False}
   (_, importList) <- toApp $ ParseCore.parseFile h (const parseImport)
   let m = newSourceHint filePath
-  interpretImport m currentSource importList
+  h' <- Import.new
+  Import.interpretImport h' m currentSource importList
 
 getAntecedentArrow :: Module -> [(MID.ModuleID, Module)]
 getAntecedentArrow baseModule = do
@@ -357,7 +360,7 @@ getAntecedentArrow baseModule = do
   map (\antecedent -> (MID.Library antecedent, baseModule)) antecedents
 
 newtype CAxis = CAxis
-  { cacheMapRef :: IORef ShiftMap
+  { cacheMapRef :: IORef STL.ShiftMap
   }
 
 newCAxis :: IO CAxis
@@ -365,7 +368,7 @@ newCAxis = do
   cacheMapRef <- newIORef Map.empty
   return $ CAxis {..}
 
-compressMap :: CAxis -> ShiftMap -> [(MID.ModuleID, Module)] -> EIO ShiftMap
+compressMap :: CAxis -> STL.ShiftMap -> [(MID.ModuleID, Module)] -> EIO STL.ShiftMap
 compressMap axis baseMap arrowList =
   case arrowList of
     [] ->
@@ -387,7 +390,7 @@ compressMap axis baseMap arrowList =
         _ ->
           return $ Map.insert from to' restMap
 
-chase :: CAxis -> ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> EIO Module
+chase :: CAxis -> STL.ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> EIO Module
 chase axis baseMap found k i = do
   cacheMap <- liftIO $ readIORef $ cacheMapRef axis
   case Map.lookup (moduleID i) cacheMap of
@@ -396,7 +399,7 @@ chase axis baseMap found k i = do
     Nothing -> do
       chase' axis baseMap found k i
 
-chase' :: CAxis -> ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> EIO Module
+chase' :: CAxis -> STL.ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> EIO Module
 chase' axis baseMap found k i = do
   case Map.lookup (moduleID i) baseMap of
     Nothing -> do
