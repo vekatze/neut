@@ -74,7 +74,7 @@ parseCachedStmtList stmtList = do
 interpret :: Source.Source -> RawProgram -> App [WeakStmt]
 interpret currentSource (RawProgram m importList stmtList) = do
   h <- Import.new
-  toApp (Import.interpretImport h m currentSource importList) >>= Import.activateImport h m
+  toApp $ Import.interpretImport h m currentSource importList >>= Import.activateImport h m
   stmtList' <- Discern.discernStmtList (Source.sourceModule currentSource) $ map fst stmtList
   h' <- Global.new
   toApp $ Global.reportMissingDefinitions h'

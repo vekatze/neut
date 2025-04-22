@@ -16,7 +16,7 @@ import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
@@ -83,19 +83,19 @@ new = do
   globalHandle <- Global.new
   return $ Handle {..}
 
-activateImport :: Handle -> Hint -> [ImportItem] -> App ()
+activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
 activateImport h m sourceInfoList = do
   forM_ sourceInfoList $ \importItem -> do
     case importItem of
       ImportItem source aliasInfoList -> do
         let path = Source.sourceFilePath source
-        namesInSource <- toApp $ Global.lookupSourceNameMap (globalHandle h) m path
+        namesInSource <- Global.lookupSourceNameMap (globalHandle h) m path
         liftIO $ Global.activateTopLevelNames (globalHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
-          toApp $ Alias.activateAliasInfo (aliasHandle h) namesInSource aliasInfo
+          Alias.activateAliasInfo (aliasHandle h) namesInSource aliasInfo
       StaticKey pathList -> do
         forM_ pathList $ \(key, (mKey, path)) -> do
-          toApp $ Locator.activateStaticFile (locatorHandle h) mKey key path
+          Locator.activateStaticFile (locatorHandle h) mKey key path
 
 interpretImport :: Handle -> Hint -> Source.Source -> [(RawImport, C)] -> EIO [ImportItem]
 interpretImport h m currentSource importList = do
