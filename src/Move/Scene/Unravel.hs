@@ -102,7 +102,7 @@ unravelFromFile ::
   Path Abs File ->
   App (A.ArtifactTime, [Source.Source])
 unravelFromFile h t baseModule path = do
-  Module.sourceFromPath baseModule path >>= unravel' h t
+  toApp (Module.sourceFromPath baseModule path) >>= unravel' h t
 
 unravel' :: Handle -> Target -> Source.Source -> App (A.ArtifactTime, [Source.Source])
 unravel' h t source = do
@@ -228,7 +228,7 @@ unravelImportItem h t importItem = do
 
 unravelFoundational :: Handle -> Target -> Module -> App (A.ArtifactTime, [Source.Source])
 unravelFoundational h t baseModule = do
-  children <- Module.getAllSourceInModule baseModule
+  children <- toApp $ Module.getAllSourceInModule baseModule
   children' <- toApp $ mapM (STL.shiftToLatest (shiftToLatestHandle h)) children
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
   baseArtifactTime <- liftIO artifactTimeFromCurrentTime

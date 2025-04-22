@@ -20,7 +20,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Path
@@ -92,7 +92,7 @@ getCoreModuleDigest = do
     Nothing ->
       Throw.raiseError' $ "The digest of the core module is not specified; set it via " <> T.pack envVarCoreModuleDigest
 
-sourceFromPath :: Module -> Path Abs File -> App Source.Source
+sourceFromPath :: Module -> Path Abs File -> EIO Source.Source
 sourceFromPath baseModule path = do
   ensureFileModuleSanity path baseModule
   return $
@@ -102,20 +102,20 @@ sourceFromPath baseModule path = do
         Source.sourceHint = Nothing
       }
 
-ensureFileModuleSanity :: Path Abs File -> Module -> App ()
+ensureFileModuleSanity :: Path Abs File -> Module -> EIO ()
 ensureFileModuleSanity filePath mainModule = do
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
-    Throw.raiseError' $
+    raiseError' $
       "The file `"
         <> T.pack (toFilePath filePath)
         <> "` is not in the source directory of current module"
 
-getAllSourcePathInModule :: Module -> App [Path Abs File]
+getAllSourcePathInModule :: Module -> EIO [Path Abs File]
 getAllSourcePathInModule baseModule = do
   (_, filePathList) <- listDirRecur (getSourceDir baseModule)
   return $ filter hasSourceExtension filePathList
 
-getAllSourceInModule :: Module -> App [Source.Source]
+getAllSourceInModule :: Module -> EIO [Source.Source]
 getAllSourceInModule baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
   mapM (sourceFromPath baseModule) sourcePathList
