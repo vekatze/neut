@@ -13,6 +13,7 @@ import Move.Context.App
 import Move.Context.Decl qualified as Decl
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate
+import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.KeyArg qualified as KeyArg
@@ -562,7 +563,8 @@ ensureArityCorrectness function expected found = do
   when (expected /= found) $ do
     case function of
       m :< WT.VarGlobal _ name -> do
-        name' <- Locator.getReadableDD name
+        mainModule <- getMainModule
+        let name' = Locator.getReadableDD mainModule name
         Throw.raiseError m $
           "The function `"
             <> name'

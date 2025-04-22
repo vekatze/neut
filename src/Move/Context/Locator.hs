@@ -254,7 +254,6 @@ checkIfEntryPointIsNecessary target source = do
     Target.Zen path _ -> do
       Source.sourceFilePath source == path
 
-getReadableDD :: DD.DefiniteDescription -> App T.Text
-getReadableDD dd = do
-  mainModule <- getMainModule
-  return $ DD.getReadableDD (extractModule mainModule) dd
+getReadableDD :: MainModule -> DD.DefiniteDescription -> T.Text
+getReadableDD mainModule dd = do
+  DD.getReadableDD (extractModule mainModule) dd

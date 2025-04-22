@@ -6,12 +6,13 @@ module Move.Context.KeyArg
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.Locator qualified as Locator
-import Move.Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.App.Internal
+import Move.Context.Env (getMainModule)
+import Move.Context.Locator qualified as Locator
+import Move.Context.Throw qualified as Throw
 import Rule.ArgNum qualified as AN
 import Rule.Const (holeVarPrefix)
 import Rule.DefiniteDescription qualified as DD
@@ -29,20 +30,23 @@ insert m funcName isConstLike argNum keys = do
     Just (isConstLike', (argNum', keys'))
       | isConstLike,
         not isConstLike' -> do
-          funcName' <- Locator.getReadableDD funcName
+          mainModule <- getMainModule
+          let funcName' = Locator.getReadableDD mainModule funcName
           Throw.raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a function, but defined as a constant-like term."
       | not isConstLike,
         isConstLike' -> do
-          funcName' <- Locator.getReadableDD funcName
+          mainModule <- getMainModule
+          let funcName' = Locator.getReadableDD mainModule funcName
           Throw.raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a constant-like term, but defined as a function."
       | argNum /= argNum' -> do
-          funcName' <- Locator.getReadableDD funcName
+          mainModule <- getMainModule
+          let funcName' = Locator.getReadableDD mainModule funcName
           Throw.raiseError m $
             "The arity of `"
               <> funcName'
@@ -52,7 +56,8 @@ insert m funcName isConstLike argNum keys = do
               <> T.pack (show $ AN.reify argNum)
               <> "."
       | not $ eqKeys keys keys' -> do
-          funcName' <- Locator.getReadableDD funcName
+          mainModule <- getMainModule
+          let funcName' = Locator.getReadableDD mainModule funcName
           Throw.raiseError m $
             "The explicit key sequence of `"
               <> funcName'
@@ -115,7 +120,8 @@ lookup m dataName = do
     Just (_, value) ->
       return value
     Nothing -> do
-      dataName' <- Locator.getReadableDD dataName
+      mainModule <- getMainModule
+      let dataName' = Locator.getReadableDD mainModule dataName
       Throw.raiseError m $ "No such function is defined: " <> dataName'
 
 lookupMaybe :: DD.DefiniteDescription -> App (Maybe (IsConstLike, [Key]))

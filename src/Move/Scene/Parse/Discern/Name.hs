@@ -14,6 +14,7 @@ import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.EIO (toApp)
+import Move.Context.Env (getMainModule)
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
@@ -74,7 +75,8 @@ resolveVarOrErr m name = do
       UnusedLocalLocator.delete localLocator
       return $ Right globalVar
     _ -> do
-      foundNameList' <- mapM (Locator.getReadableDD . fst) foundNameList
+      mainModule <- getMainModule
+      let foundNameList' = map (Locator.getReadableDD mainModule . fst) foundNameList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 

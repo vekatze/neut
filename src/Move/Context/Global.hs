@@ -20,6 +20,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.EIO (toApp)
+import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -174,7 +175,8 @@ lookup' m name = do
     Just gn ->
       return gn
     Nothing -> do
-      name' <- Locator.getReadableDD name
+      mainModule <- getMainModule
+      let name' = Locator.getReadableDD mainModule name
       Throw.raiseError m $ "No such top-level name is defined: " <> name'
 
 initialize :: App ()
@@ -188,14 +190,16 @@ ensureDefFreshness m name = do
   topNameMap <- readRef' nameMap
   case (Map.lookup name gmap, Map.member name topNameMap) of
     (Just _, False) -> do
-      name' <- Locator.getReadableDD name
+      mainModule <- getMainModule
+      let name' = Locator.getReadableDD mainModule name
       Throw.raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
     (Just (mGeist, isConstLike), True) -> do
       removeFromGeistMap name
       removeFromDefNameMap name
       Tag.insertGlobalVar mGeist name isConstLike m
     (Nothing, True) -> do
-      name' <- Locator.getReadableDD name
+      mainModule <- getMainModule
+      let name' = Locator.getReadableDD mainModule name
       Throw.raiseError m $ "`" <> name' <> "` is already defined"
     (Nothing, False) ->
       return ()
@@ -204,7 +208,8 @@ ensureGeistFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
 ensureGeistFreshness m name = do
   gmap <- readRef' geistMap
   when (Map.member name gmap) $ do
-    name' <- Locator.getReadableDD name
+    mainModule <- getMainModule
+    let name' = Locator.getReadableDD mainModule name
     Throw.raiseError m $ "`" <> name' <> "` is already defined"
 
 reportMissingDefinitions :: App ()

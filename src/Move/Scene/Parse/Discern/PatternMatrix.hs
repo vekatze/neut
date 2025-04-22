@@ -4,15 +4,20 @@ module Move.Scene.Parse.Discern.PatternMatrix
   )
 where
 
-import Move.Context.App
-import Move.Context.Gensym qualified as Gensym
-import Move.Context.Locator qualified as Locator
-import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Move.Context.App
+import Move.Context.Env (getMainModule)
+import Move.Context.Gensym qualified as Gensym
+import Move.Context.Locator qualified as Locator
+import Move.Context.Tag qualified as Tag
+import Move.Context.Throw qualified as Throw
+import Move.Scene.Parse.Discern.Fallback qualified as PATF
+import Move.Scene.Parse.Discern.Noema
+import Move.Scene.Parse.Discern.NominalEnv
+import Move.Scene.Parse.Discern.Specialize qualified as PATS
 import Rule.ArgNum qualified as AN
 import Rule.Binder
 import Rule.DecisionTree qualified as DT
@@ -24,10 +29,6 @@ import Rule.NominalEnv
 import Rule.Pattern qualified as PAT
 import Rule.Vector qualified as V
 import Rule.WeakTerm qualified as WT
-import Move.Scene.Parse.Discern.Fallback qualified as PATF
-import Move.Scene.Parse.Discern.Noema
-import Move.Scene.Parse.Discern.NominalEnv
-import Move.Scene.Parse.Discern.Specialize qualified as PATS
 
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311
@@ -146,7 +147,8 @@ ensurePatternSanity (m, pat) =
     PAT.Cons consInfo -> do
       let argNum = length (PAT.args consInfo)
       when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
-        consDD' <- Locator.getReadableDD $ PAT.consDD consInfo
+        mainModule <- getMainModule
+        let consDD' = Locator.getReadableDD mainModule $ PAT.consDD consInfo
         Throw.raiseError m $
           "The constructor `"
             <> consDD'
