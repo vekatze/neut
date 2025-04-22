@@ -23,7 +23,7 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -112,8 +112,8 @@ registerShiftMap :: App ()
 registerShiftMap = do
   axis <- newAxis
   arrowList <- Env.getMainModule >>= \(MainModule m) -> unravelAntecedentArrow axis m
-  cAxis <- newCAxis
-  compressMap cAxis (Map.fromList arrowList) arrowList >>= Antecedent.setMap
+  cAxis <- liftIO newCAxis
+  toApp (compressMap cAxis (Map.fromList arrowList) arrowList) >>= Antecedent.setMap
 
 type VisitMap =
   Map.HashMap (Path Abs File) VI.VisitInfo
@@ -361,12 +361,12 @@ newtype CAxis = CAxis
   { cacheMapRef :: IORef ShiftMap
   }
 
-newCAxis :: App CAxis
+newCAxis :: IO CAxis
 newCAxis = do
-  cacheMapRef <- liftIO $ newIORef Map.empty
+  cacheMapRef <- newIORef Map.empty
   return $ CAxis {..}
 
-compressMap :: CAxis -> ShiftMap -> [(MID.ModuleID, Module)] -> App ShiftMap
+compressMap :: CAxis -> ShiftMap -> [(MID.ModuleID, Module)] -> EIO ShiftMap
 compressMap axis baseMap arrowList =
   case arrowList of
     [] ->
@@ -377,7 +377,7 @@ compressMap axis baseMap arrowList =
       case Map.lookup from restMap of
         Just to''
           | moduleID to' /= moduleID to'' -> do
-              Throw.raiseError' $
+              raiseError' $
                 "Found a non-confluent antecedent graph:\n"
                   <> MID.reify from
                   <> " ~> {"
@@ -388,7 +388,7 @@ compressMap axis baseMap arrowList =
         _ ->
           return $ Map.insert from to' restMap
 
-chase :: CAxis -> ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> App Module
+chase :: CAxis -> ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> EIO Module
 chase axis baseMap found k i = do
   cacheMap <- liftIO $ readIORef $ cacheMapRef axis
   case Map.lookup (moduleID i) cacheMap of
@@ -397,7 +397,7 @@ chase axis baseMap found k i = do
     Nothing -> do
       chase' axis baseMap found k i
 
-chase' :: CAxis -> ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> App Module
+chase' :: CAxis -> ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> EIO Module
 chase' axis baseMap found k i = do
   case Map.lookup (moduleID i) baseMap of
     Nothing -> do
@@ -407,7 +407,7 @@ chase' axis baseMap found k i = do
       let j' = moduleID j
       if j' `elem` found
         then
-          Throw.raiseError' $
+          raiseError' $
             "Found a cycle in given antecedent graph:\n" <> showCycle (map MID.reify $ j' : found)
         else chase axis baseMap (j' : found) k j
 
