@@ -1,6 +1,5 @@
 module Move.Scene.Parse.Discern.Data (defineData) where
 
-import Move.Context.App
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe
 import Rule.Attr.Data qualified as AttrD
@@ -23,7 +22,7 @@ defineData ::
   Maybe (RT.Args RT.RawTerm) ->
   [RawConsInfo BN.BaseName] ->
   Loc ->
-  App [RawStmt]
+  [RawStmt]
 defineData m dataName dataArgsOrNone consInfoList loc = do
   let dataArgs = modifyDataArgs dataArgsOrNone
   let dataArgs' = fromMaybe RT.emptyArgs dataArgsOrNone
@@ -53,8 +52,8 @@ defineData m dataName dataArgsOrNone consInfoList loc = do
                 endLoc = loc
               }
           )
-  introRuleList <- parseDefineDataConstructor dataType dataName dataArgs' consInfoList D.zero
-  return $ formRule : introRuleList
+  let introRuleList = parseDefineDataConstructor dataType dataName dataArgs' consInfoList D.zero
+  formRule : introRuleList
 
 modifyDataArgs :: Maybe (RT.Args RT.RawTerm) -> [RawBinder RT.RawTerm]
 modifyDataArgs =
@@ -77,11 +76,11 @@ parseDefineDataConstructor ::
   RT.Args RT.RawTerm ->
   [RawConsInfo BN.BaseName] ->
   D.Discriminant ->
-  App [RawStmt]
+  [RawStmt]
 parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
-      return []
+      []
     (m, consName, isConstLike, consArgs, loc) : rest -> do
       let dataArgs' = RT.extractArgs dataArgs
       let consArgs' = SE.extract consArgs
@@ -109,8 +108,8 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                     endLoc = loc
                   }
               )
-      introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
-      return $ introRule : introRuleList
+      let introRuleList = parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
+      introRule : introRuleList
 
 constructDataType ::
   Hint ->

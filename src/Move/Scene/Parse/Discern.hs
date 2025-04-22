@@ -111,7 +111,7 @@ discernStmt mo stmt = do
       forM_ expArgs' Tag.insertBinder
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
-      stmtList <- defineData m dd args (SE.extract consInfo) loc
+      let stmtList = defineData m dd args (SE.extract consInfo) loc
       discernStmtList mo stmtList
     RawStmtDefineResource _ m (name, _) (_, discarder) (_, copier) _ -> do
       let dd = nameLifter name
@@ -173,7 +173,7 @@ registerTopLevelName nameLifter stmt = do
     RawStmtNominal {} -> do
       return ()
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
-      stmtList <- defineData m dd args (SE.extract consInfo) loc
+      let stmtList = defineData m dd args (SE.extract consInfo) loc
       mapM_ (registerTopLevelName nameLifter) stmtList
     RawStmtDefineResource _ m (name, _) _ _ _ -> do
       toApp $ Global.registerStmtDefine h True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
