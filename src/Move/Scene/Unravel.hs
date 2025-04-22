@@ -227,7 +227,7 @@ unravelFoundational h t baseModule = do
   children <- Module.getAllSourceInModule baseModule
   children' <- mapM shiftToLatest children
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
-  baseArtifactTime <- artifactTimeFromCurrentTime
+  baseArtifactTime <- liftIO artifactTimeFromCurrentTime
   artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
   return (artifactTime, toList $ foldl' (><) Seq.empty seqList)
 
@@ -411,9 +411,9 @@ chase' axis baseMap found k i = do
             "Found a cycle in given antecedent graph:\n" <> showCycle (map MID.reify $ j' : found)
         else chase axis baseMap (j' : found) k j
 
-artifactTimeFromCurrentTime :: App A.ArtifactTime
+artifactTimeFromCurrentTime :: IO A.ArtifactTime
 artifactTimeFromCurrentTime = do
-  now <- liftIO getCurrentTime
+  now <- getCurrentTime
   return
     A.ArtifactTime
       { cacheTime = Just now,
