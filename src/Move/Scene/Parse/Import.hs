@@ -56,6 +56,8 @@ data Handle
     moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     shiftToLatestHandle :: STL.Handle,
+    locatorHandle :: Locator.Handle,
+    aliasHandle :: Alias.Handle,
     tagMapRef :: IORef LT.LocationTree
   }
 
@@ -66,11 +68,13 @@ new = do
   moduleCacheMapRef <- asks App.moduleCacheMap
   getEnabledPresetHandle <- GetEnabledPreset.new
   shiftToLatestHandle <- STL.new
+  locatorHandle <- Locator.new
+  aliasHandle <- Alias.new
   tagMapRef <- asks App.tagMap
   return $ Handle {..}
 
-activateImport :: Hint -> [ImportItem] -> App ()
-activateImport m sourceInfoList = do
+activateImport :: Handle -> Hint -> [ImportItem] -> App ()
+activateImport h m sourceInfoList = do
   forM_ sourceInfoList $ \importItem -> do
     case importItem of
       ImportItem source aliasInfoList -> do
@@ -78,10 +82,10 @@ activateImport m sourceInfoList = do
         namesInSource <- Global.lookupSourceNameMap m path
         Global.activateTopLevelNames namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
-          Alias.activateAliasInfo namesInSource aliasInfo
+          toApp $ Alias.activateAliasInfo (aliasHandle h) namesInSource aliasInfo
       StaticKey pathList -> do
         forM_ pathList $ \(key, (mKey, path)) -> do
-          Locator.activateStaticFile mKey key path
+          toApp $ Locator.activateStaticFile (locatorHandle h) mKey key path
 
 interpretImport :: Handle -> Hint -> Source.Source -> [(RawImport, C)] -> App [ImportItem]
 interpretImport h m currentSource importList = do
@@ -135,7 +139,7 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
       Throw.raiseCritical m "Scene.Parse.Import: empty parse locator"
     [baseName]
       | Just (moduleAlias, sourceLocator) <- Map.lookup baseName (modulePrefixMap currentModule) -> do
-          sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
+          sgl <- toApp $ Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
           source <- toApp $ getSource h mustUpdateTag m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
           when mustUpdateTag $ do
@@ -150,7 +154,7 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
           Throw.raiseError m $ "Could not parse the locator: " <> locatorText
         Just sourceLocator -> do
           let moduleAlias = ModuleAlias aliasText
-          sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
+          sgl <- toApp $ Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
           when mustUpdateTag $ do
             UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml

@@ -1,10 +1,11 @@
 module Move.Scene.EnsureMain (ensureMain) where
 
-import Move.Context.App
-import Move.Context.Locator qualified as Locator
-import Move.Context.Throw qualified as Throw
 import Control.Monad
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.EIO (toApp)
+import Move.Context.Locator qualified as Locator
+import Move.Context.Throw qualified as Throw
 import Rule.BaseName qualified as BN
 import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
@@ -15,9 +16,10 @@ ensureMain :: Target -> Source -> [DD.DefiniteDescription] -> App ()
 ensureMain t source topLevelNameList = do
   case t of
     Main target -> do
-      mainDD <- Locator.getMainDefiniteDescriptionByTarget target
+      h <- Locator.new
+      mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget h target
       let hasEntryPoint = mainDD `elem` topLevelNameList
-      entryPointIsNecessary <- Locator.checkIfEntryPointIsNecessary target source
+      let entryPointIsNecessary = Locator.checkIfEntryPointIsNecessary target source
       when (entryPointIsNecessary && not hasEntryPoint) $ do
         let entryPointName = getEntryPointName target
         let m = newSourceHint $ sourceFilePath source

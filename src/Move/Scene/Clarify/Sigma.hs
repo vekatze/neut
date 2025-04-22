@@ -9,10 +9,13 @@ module Move.Scene.Clarify.Sigma
   )
 where
 
+import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
-import Control.Monad
+import Move.Scene.Clarify.Linearize
+import Move.Scene.Clarify.Utility
 import Rule.ArgNum qualified as AN
 import Rule.BaseLowType qualified as BLT
 import Rule.BaseName qualified as BN
@@ -23,8 +26,6 @@ import Rule.EnumCase qualified as EC
 import Rule.Ident
 import Rule.Magic qualified as M
 import Rule.Opacity qualified as O
-import Move.Scene.Clarify.Linearize
-import Move.Scene.Clarify.Utility
 
 registerImmediateS4 :: App ()
 registerImmediateS4 = do
@@ -131,7 +132,8 @@ closureEnvS4 mxts =
       return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount
-      name <- Locator.attachCurrentLocator $ BN.sigmaName i
+      h <- Locator.new
+      name <- liftIO $ Locator.attachCurrentLocator h $ BN.sigmaName i
       registerSwitcher O.Clear name (sigmaT mxts) (sigma4 mxts)
       return $ C.VarGlobal name AN.argNumS4
 

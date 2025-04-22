@@ -2,6 +2,7 @@ module Move.Scene.Parse.Discern (discernStmtList) where
 
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List qualified as List
@@ -90,7 +91,7 @@ discernStmtList mo =
 
 discernStmt :: Module -> RawStmt -> App [WeakStmt]
 discernStmt mo stmt = do
-  nameLifter <- Locator.getNameLifter
+  nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
   case stmt of
     RawStmtDefine _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
       registerTopLevelName nameLifter stmt
@@ -133,7 +134,7 @@ discernStmt mo stmt = do
 
 discernGeist :: Module -> Loc -> RT.TopGeist -> App (G.Geist WT.WeakTerm)
 discernGeist mo endLoc geist = do
-  nameLifter <- Locator.getNameLifter
+  nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
   let impArgs = RT.extractArgs $ RT.impArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
   (impArgs', axis) <- discernBinder (emptyAxis mo 0) impArgs endLoc
@@ -183,13 +184,13 @@ liftStmtKind stmtKind = do
     SK.Normal opacity ->
       return $ SK.Normal opacity
     SK.Data dataName dataArgs consInfoList -> do
-      nameLifter <- Locator.getNameLifter
+      nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
       let consNameList' = map nameLifter consNameList
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList discriminantList
       return $ SK.Data (nameLifter dataName) dataArgs consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
-      nameLifter <- Locator.getNameLifter
+      nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
       return $ SK.DataIntro (nameLifter dataName) dataArgs consArgs discriminant
 
 discernStmtKind :: Axis -> SK.RawStmtKind BN.BaseName -> App (SK.StmtKind WT.WeakTerm)
@@ -198,7 +199,7 @@ discernStmtKind ax stmtKind =
     SK.Normal opacity ->
       return $ SK.Normal opacity
     SK.Data dataName dataArgs consInfoList -> do
-      nameLifter <- Locator.getNameLifter
+      nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
       (dataArgs', axis) <- discernBinder' ax dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
       (consArgsList', axisList) <- mapAndUnzipM (discernBinder' axis) consArgsList
@@ -208,7 +209,7 @@ discernStmtKind ax stmtKind =
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
       return $ SK.Data (nameLifter dataName) dataArgs' consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
-      nameLifter <- Locator.getNameLifter
+      nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
       (dataArgs', axis) <- discernBinder' ax dataArgs
       (consArgs', axis') <- discernBinder' axis consArgs
       forM_ (_nenv axis') $ \(_, (_, newVar, _)) -> do
@@ -321,12 +322,13 @@ discern axis term =
       e' <- discern axis e
       return $ m :< WT.PiElimExact e'
     m :< RT.Data attr dataName es -> do
-      nameLifter <- Locator.getNameLifter
-      dataName' <- Locator.attachCurrentLocator dataName
+      h <- Locator.new
+      nameLifter <- liftIO $ Locator.getNameLifter h
+      dataName' <- liftIO $ Locator.attachCurrentLocator h dataName
       es' <- mapM (discern axis) es
       return $ m :< WT.Data (fmap nameLifter attr) dataName' es'
     m :< RT.DataIntro attr consName dataArgs consArgs -> do
-      nameLifter <- Locator.getNameLifter
+      nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
       dataArgs' <- mapM (discern axis) dataArgs
       consArgs' <- mapM (discern axis) consArgs
       return $ m :< WT.DataIntro (fmap nameLifter attr) (nameLifter consName) dataArgs' consArgs'
@@ -507,7 +509,8 @@ discern axis term =
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern axis clause
     m :< RT.IncludeText _ _ mKey (key, _) -> do
-      contentOrNone <- Locator.getStaticFileContent key
+      h <- Locator.new
+      contentOrNone <- liftIO $ Locator.getStaticFileContent h key
       case contentOrNone of
         Just (path, content) -> do
           UnusedStaticFile.delete key

@@ -14,6 +14,7 @@ module Move.Context.Global
 where
 
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.App
@@ -107,7 +108,8 @@ registerGeist RT.RawGeist {..} = do
   let impArgs' = RT.extractArgs impArgs
   let expArgNames = map (\(_, x, _, _, _) -> x) expArgs'
   let argNum = AN.fromInt $ length $ impArgs' ++ expArgs'
-  nameLifter <- Locator.getNameLifter
+  h <- Locator.new
+  nameLifter <- liftIO $ Locator.getNameLifter h
   let name' = nameLifter $ fst name
   ensureGeistFreshness loc name'
   ensureDefFreshness loc name'

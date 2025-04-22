@@ -6,7 +6,7 @@ module Rule.RawPattern
 where
 
 import Rule.C
-import Rule.Hint hiding (new)
+import Rule.Hint
 import Rule.Key
 import Rule.Name
 import Rule.Rune qualified as RU

@@ -107,7 +107,8 @@ lower stmtList = do
 lowerEntryPoint :: MainTarget -> [C.CompStmt] -> App LC.LowCode
 lowerEntryPoint target stmtList = do
   h <- new stmtList
-  mainDD <- Locator.getMainDefiniteDescriptionByTarget target
+  locatorHandle <- Locator.new
+  mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget locatorHandle target
   insDeclEnv h (DN.In mainDD) AN.zero
   mainDef <- constructMainTerm mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
@@ -360,9 +361,9 @@ lowerValue h v =
       let i8s = encode $ T.unpack text
       let len = length i8s
       i <- lift Gensym.newCount
-      name <- lift $ Locator.attachCurrentLocator $ BN.textName i
+      locatorHandle <- lift Locator.new
+      name <- lift $ liftIO $ Locator.attachCurrentLocator locatorHandle $ BN.textName i
       let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
-      -- lift $ StaticText.insert name encodedText len
       lift $ insertStaticText h name encodedText len
       uncast (LC.VarGlobal name) LT.Pointer
     C.SigmaIntro ds -> do

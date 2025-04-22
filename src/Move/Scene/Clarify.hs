@@ -7,6 +7,7 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
@@ -260,7 +261,8 @@ clarifyTerm tenv term =
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
     m :< TM.Resource _ resourceID _ discarder copier -> do
-      liftedName <- Locator.attachCurrentLocator $ BN.resourceName resourceID
+      h <- Locator.new
+      liftedName <- liftIO $ Locator.attachCurrentLocator h $ BN.resourceName resourceID
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
       discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce
@@ -491,7 +493,8 @@ clarifyLambda ::
 clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
   case lamKind of
     LK.Fix (_, recFuncName, codType) -> do
-      liftedName <- Locator.attachCurrentLocator $ BN.muName identity
+      h <- Locator.new
+      liftedName <- liftIO $ Locator.attachCurrentLocator h $ BN.muName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
@@ -558,7 +561,8 @@ returnClosure tenv lamID opacity fvs xts e = do
   fvEnvSigma <- closureEnvS4 $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 1 -- argNum == count(xts) + env
-  name <- Locator.attachCurrentLocator $ BN.lambdaName lamID
+  h <- Locator.new
+  name <- liftIO $ Locator.attachCurrentLocator h $ BN.lambdaName lamID
   isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered name
   unless isAlreadyRegistered $ do
     registerClosure name opacity xts'' fvs'' e

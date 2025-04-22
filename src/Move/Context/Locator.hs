@@ -1,8 +1,9 @@
 module Move.Context.Locator
-  ( initialize,
+  ( Handle,
+    new,
+    initialize,
     attachCurrentLocator,
     attachPublicCurrentLocator,
-    getCurrentGlobalLocator,
     activateSpecifiedNames,
     getStaticFileContent,
     activateStaticFile,
@@ -18,17 +19,19 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (EIO, raiseError, raiseError', toApp)
 import Move.Context.Env (getCurrentSource, getMainModule)
 import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
 import Path
 import Path.IO
 import Rule.AliasInfo (MustUpdateTag)
@@ -37,7 +40,8 @@ import Rule.DefiniteDescription qualified as DD
 import Rule.GlobalName qualified as GN
 import Rule.Hint
 import Rule.LocalLocator qualified as LL
-import Rule.Module (extractModule)
+import Rule.LocationTree qualified as LT
+import Rule.Module (MainModule, extractModule)
 import Rule.Module qualified as Module
 import Rule.ModuleID qualified as MID
 import Rule.Source qualified as Source
@@ -54,33 +58,62 @@ import Rule.TopNameMap (TopNameMap)
 --     ------------------------------------------------
 --     ↑ the definite description of a global variable `some-function` (up-to module alias)
 
+data Handle
+  = Handle
+  { tagMapRef :: IORef LT.LocationTree,
+    mainModule :: MainModule,
+    activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
+    activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
+    activeGlobalLocatorListRef :: IORef [SGL.StrictGlobalLocator],
+    currentGlobalLocator :: IORef (Maybe SGL.StrictGlobalLocator),
+    currentSource :: Source.Source
+  }
+
+new :: App Handle
+new = do
+  tagMapRef <- asks App.tagMap
+  mainModule <- getMainModule
+  activeDefiniteDescriptionListRef <- asks App.activeDefiniteDescriptionList
+  activeStaticFileListRef <- asks App.activeStaticFileList
+  activeGlobalLocatorListRef <- asks App.activeGlobalLocatorList
+  currentGlobalLocator <- asks App.currentGlobalLocator
+  currentSource <- getCurrentSource
+  return $ Handle {..}
+
 initialize :: App ()
 initialize = do
-  currentSource <- readRef "currentSource" currentSource
-  cgl <- constructGlobalLocator currentSource
-  writeRef currentGlobalLocator cgl
-  writeRef' activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
-  writeRef' activeDefiniteDescriptionList Map.empty
-  writeRef' activeStaticFileList Map.empty
+  currentSource <- readRef "currentSource" App.currentSource
+  cgl <- toApp $ constructGlobalLocator currentSource
+  writeRef App.currentGlobalLocator cgl
+  writeRef' App.activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
+  writeRef' App.activeDefiniteDescriptionList Map.empty
+  writeRef' App.activeStaticFileList Map.empty
 
-activateSpecifiedNames :: TopNameMap -> MustUpdateTag -> SGL.StrictGlobalLocator -> [(Hint, LL.LocalLocator)] -> App ()
-activateSpecifiedNames topNameMap mustUpdateTag sgl lls = do
+activateSpecifiedNames ::
+  Handle ->
+  TopNameMap ->
+  MustUpdateTag ->
+  SGL.StrictGlobalLocator ->
+  [(Hint, LL.LocalLocator)] ->
+  EIO ()
+activateSpecifiedNames h topNameMap mustUpdateTag sgl lls = do
   forM_ lls $ \(m, ll) -> do
     let dd = DD.new sgl ll
     case Map.lookup dd topNameMap of
       Nothing ->
-        Throw.raiseError m $ "The name `" <> LL.reify ll <> "` is not defined in the module"
+        raiseError m $ "The name `" <> LL.reify ll <> "` is not defined in the module"
       Just (mDef, gn) -> do
         when mustUpdateTag $
-          Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
-        aenv <- readRef' activeDefiniteDescriptionList
-        case Map.lookup ll aenv of
+          liftIO $
+            Tag.insertGlobalVarIO (tagMapRef h) m dd (GN.getIsConstLike gn) mDef
+        activeDefiniteDescriptionList <- liftIO $ readIORef (activeDefiniteDescriptionListRef h)
+        case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                current <- getCurrentSource
+                let current = currentSource h
                 let dd' = DD.getReadableDD (Source.sourceModule current) dd
                 let existingDD' = DD.getReadableDD (Source.sourceModule current) existingDD
-                Throw.raiseError m $
+                raiseError m $
                   "This `"
                     <> LL.reify ll
                     <> "` is ambiguous since it could refer to:\n- "
@@ -88,62 +121,71 @@ activateSpecifiedNames topNameMap mustUpdateTag sgl lls = do
                     <> "\n- "
                     <> existingDD'
           _ ->
-            modifyRef' activeDefiniteDescriptionList $ Map.insert ll dd
+            liftIO $ modifyIORef' (activeDefiniteDescriptionListRef h) $ Map.insert ll dd
 
-activateStaticFile :: Hint -> T.Text -> Path Abs File -> App ()
-activateStaticFile m key path = do
+activateStaticFile :: Handle -> Hint -> T.Text -> Path Abs File -> EIO ()
+activateStaticFile h m key path = do
   b <- doesFileExist path
   if b
     then do
       content <- liftIO $ fmap decodeUtf8 $ B.readFile $ toFilePath path
-      modifyRef' activeStaticFileList $ Map.insert key (path, content)
+      liftIO $ modifyIORef' (activeStaticFileListRef h) $ Map.insert key (path, content)
     else
-      Throw.raiseError m $
+      raiseError m $
         "The static file `" <> key <> "` does not exist at: " <> T.pack (toFilePath path)
 
-getStaticFileContent :: T.Text -> App (Maybe (Path Abs File, T.Text))
-getStaticFileContent key = do
-  env <- readRef' activeStaticFileList
-  return $ Map.lookup key env
+getStaticFileContent :: Handle -> T.Text -> IO (Maybe (Path Abs File, T.Text))
+getStaticFileContent h key = do
+  activeStaticFileList <- readIORef (activeStaticFileListRef h)
+  return $ Map.lookup key activeStaticFileList
 
 attachCurrentLocator ::
+  Handle ->
   BN.BaseName ->
-  App DD.DefiniteDescription
-attachCurrentLocator name = do
-  cgl <- getCurrentGlobalLocator
+  IO DD.DefiniteDescription
+attachCurrentLocator h name = do
+  cgl <- getCurrentGlobalLocator h
   return $ DD.new cgl $ LL.new name
 
 getNameLifter ::
-  App (BN.BaseName -> DD.DefiniteDescription)
-getNameLifter = do
-  cgl <- getCurrentGlobalLocator
+  Handle ->
+  IO (BN.BaseName -> DD.DefiniteDescription)
+getNameLifter h = do
+  cgl <- getCurrentGlobalLocator h
   return $ \name -> DD.new cgl $ LL.new name
 
 attachPublicCurrentLocator ::
+  Handle ->
   BN.BaseName ->
-  App DD.DefiniteDescription
-attachPublicCurrentLocator name = do
-  cgl <- getCurrentGlobalLocator
+  IO DD.DefiniteDescription
+attachPublicCurrentLocator h name = do
+  cgl <- getCurrentGlobalLocator h
   return $ DD.new cgl $ LL.new name
 
-getCurrentGlobalLocator :: App SGL.StrictGlobalLocator
-getCurrentGlobalLocator =
-  readRef "currentGlobalLocator" currentGlobalLocator
+getCurrentGlobalLocator :: Handle -> IO SGL.StrictGlobalLocator
+getCurrentGlobalLocator h = do
+  sglOrNone <- readIORef (currentGlobalLocator h)
+  case sglOrNone of
+    Just sgl ->
+      return sgl
+    Nothing ->
+      error $ T.unpack "[compiler bug] `currentGlobalLocator` is uninitialized"
 
-getPossibleReferents :: LL.LocalLocator -> App [DD.DefiniteDescription]
-getPossibleReferents localLocator = do
-  cgl <- getCurrentGlobalLocator
-  agls <- readRef' activeGlobalLocatorList
-  importedDDs <- getImportedReferents localLocator
+getPossibleReferents :: Handle -> LL.LocalLocator -> IO [DD.DefiniteDescription]
+getPossibleReferents h localLocator = do
+  cgl <- getCurrentGlobalLocator h
+  agls <- readIORef (activeGlobalLocatorListRef h)
+  importedDDs <- getImportedReferents h localLocator
   let dds = map (`DD.new` localLocator) agls
   let dd = DD.new cgl localLocator
   return $ ListUtils.nubOrd $ dd : dds ++ importedDDs
 
-getImportedReferents :: LL.LocalLocator -> App [DD.DefiniteDescription]
-getImportedReferents ll = do
-  maybeToList . Map.lookup ll <$> readRef' activeDefiniteDescriptionList
+getImportedReferents :: Handle -> LL.LocalLocator -> IO [DD.DefiniteDescription]
+getImportedReferents h ll = do
+  activeDefiniteDescriptionList <- readIORef (activeDefiniteDescriptionListRef h)
+  return $ maybeToList $ Map.lookup ll activeDefiniteDescriptionList
 
-constructGlobalLocator :: Source.Source -> App SGL.StrictGlobalLocator
+constructGlobalLocator :: Source.Source -> EIO SGL.StrictGlobalLocator
 constructGlobalLocator source = do
   sourceLocator <- getSourceLocator source
   return $
@@ -152,66 +194,65 @@ constructGlobalLocator source = do
         SGL.sourceLocator = sourceLocator
       }
 
-getSourceLocator :: Source.Source -> App SL.SourceLocator
+getSourceLocator :: Source.Source -> EIO SL.SourceLocator
 getSourceLocator source = do
   relFilePath <- stripProperPrefix (Module.getSourceDir $ Source.sourceModule source) $ Source.sourceFilePath source
   relFilePath' <- removeExtension relFilePath
   return $ SL.SourceLocator relFilePath'
 
-removeExtension :: Path a File -> App (Path a File)
+removeExtension :: Path a File -> EIO (Path a File)
 removeExtension path =
   case splitExtension path of
     Just (path', _) ->
       return path'
     Nothing ->
-      Throw.raiseError' $ "File extension is missing in `" <> T.pack (toFilePath path) <> "`"
+      raiseError' $ "File extension is missing in `" <> T.pack (toFilePath path) <> "`"
 
 getMainDefiniteDescription ::
+  Handle ->
   Source.Source ->
-  App (Maybe DD.DefiniteDescription)
-getMainDefiniteDescription source = do
-  b <- isMainFile source
-  if b
-    then Just <$> attachCurrentLocator BN.mainName
+  IO (Maybe DD.DefiniteDescription)
+getMainDefiniteDescription h source = do
+  if isMainFile source
+    then Just <$> attachCurrentLocator h BN.mainName
     else return Nothing
 
-isMainFile :: Source.Source -> App Bool
+isMainFile :: Source.Source -> Bool
 isMainFile source = do
   case Module.moduleID $ Source.sourceModule source of
     MID.Main -> do
       let sourcePathList = Module.getTargetPathList $ Source.sourceModule source
-      return $ elem (Source.sourceFilePath source) sourcePathList
+      Source.sourceFilePath source `elem` sourcePathList
     _ ->
-      return False
+      False
 
-getMainDefiniteDescriptionByTarget :: Target.MainTarget -> App DD.DefiniteDescription
-getMainDefiniteDescriptionByTarget targetOrZen = do
-  mainModule <- getMainModule
+getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> EIO DD.DefiniteDescription
+getMainDefiniteDescriptionByTarget h targetOrZen = do
   case targetOrZen of
     Target.Named target _ -> do
-      case Map.lookup target (Module.moduleTarget $ extractModule mainModule) of
+      case Map.lookup target (Module.moduleTarget $ extractModule $ mainModule h) of
         Nothing ->
-          Throw.raiseError' $ "No such target is defined: " <> target
+          raiseError' $ "No such target is defined: " <> target
         Just targetSummary -> do
           relPathToDD (SL.reify $ Target.entryPoint targetSummary) BN.mainName
     Target.Zen path _ -> do
-      relPath <- Module.getRelPathFromSourceDir (extractModule mainModule) path
+      relPath <- Module.getRelPathFromSourceDir (extractModule $ mainModule h) path
       relPathToDD relPath BN.zenName
 
-relPathToDD :: Path Rel File -> BN.BaseName -> App DD.DefiniteDescription
+relPathToDD :: Path Rel File -> BN.BaseName -> EIO DD.DefiniteDescription
 relPathToDD relPath baseName = do
   sourceLocator <- SL.SourceLocator <$> removeExtension relPath
   let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator}
   let ll = LL.new baseName
   return $ DD.new sgl ll
 
-checkIfEntryPointIsNecessary :: Target.MainTarget -> Source.Source -> App Bool
+checkIfEntryPointIsNecessary :: Target.MainTarget -> Source.Source -> Bool
 checkIfEntryPointIsNecessary target source = do
   case target of
     Target.Named {} -> do
       isMainFile source
     Target.Zen path _ -> do
-      return $ Source.sourceFilePath source == path
+      Source.sourceFilePath source == path
 
 getReadableDD :: DD.DefiniteDescription -> App T.Text
 getReadableDD dd = do

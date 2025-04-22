@@ -72,7 +72,7 @@ parseCachedStmtList stmtList = do
 interpret :: Source.Source -> RawProgram -> App [WeakStmt]
 interpret currentSource (RawProgram m importList stmtList) = do
   h <- Import.new
-  Import.interpretImport h m currentSource importList >>= Import.activateImport m
+  Import.interpretImport h m currentSource importList >>= Import.activateImport h m
   stmtList' <- Discern.discernStmtList (Source.sourceModule currentSource) $ map fst stmtList
   Global.reportMissingDefinitions
   saveTopLevelNames currentSource $ getWeakStmtName stmtList'

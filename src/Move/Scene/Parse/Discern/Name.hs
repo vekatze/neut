@@ -6,18 +6,20 @@ module Move.Scene.Parse.Discern.Name
   )
 where
 
+import Control.Comonad.Cofree hiding (section)
+import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Maybe qualified as Maybe
+import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
+import Move.Context.EIO (toApp)
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
-import Control.Comonad.Cofree hiding (section)
-import Control.Monad
-import Data.Maybe qualified as Maybe
-import Data.Text qualified as T
 import Rule.ArgNum qualified as AN
 import Rule.Attr.VarGlobal qualified as AttrVG
 import Rule.Const qualified as C
@@ -60,7 +62,8 @@ resolveNameOrError m name =
 resolveVarOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveVarOrErr m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
-  candList <- Locator.getPossibleReferents localLocator
+  h <- Locator.new
+  candList <- liftIO $ Locator.getPossibleReferents h localLocator
   candList' <- mapM (Global.lookup m) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
@@ -81,7 +84,8 @@ resolveLocator ::
   Bool ->
   App (DD.DefiniteDescription, (Hint, GN.GlobalName))
 resolveLocator m (gl, ll) shouldInsertTag = do
-  sgl <- Alias.resolveAlias m gl
+  h <- Alias.new
+  sgl <- toApp $ Alias.resolveAlias h m gl
   let cand = DD.new sgl ll
   cand' <- Global.lookup m cand
   let foundName = candFilter (cand, cand')
