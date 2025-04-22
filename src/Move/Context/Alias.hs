@@ -16,8 +16,8 @@ import Data.IORef
 import Data.Maybe qualified as Maybe
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, raiseError, toApp)
-import Move.Context.Env (getCurrentSource)
+import Move.Context.EIO (EIO, raiseError)
+import Move.Context.Env (getCurrentSource')
 import Move.Context.Locator qualified as Locator
 import Rule.AliasInfo
 import Rule.BaseName qualified as BN
@@ -40,7 +40,7 @@ data Handle
     moduleAliasMapRef :: IORef (Map.HashMap ModuleAlias ModuleDigest),
     antecedentMapRef :: IORef (Map.HashMap MID.ModuleID Module),
     locatorHandle :: Locator.Handle,
-    currentSource :: Source
+    currentSourceRef :: IORef (Maybe Source)
   }
 
 new :: App Handle
@@ -49,7 +49,7 @@ new = do
   moduleAliasMapRef <- asks App.moduleAliasMap
   antecedentMapRef <- asks App.antecedentMap
   locatorHandle <- Locator.new
-  currentSource <- getCurrentSource
+  currentSourceRef <- asks App.currentSource
   return $ Handle {..}
 
 registerGlobalLocatorAlias ::
@@ -146,15 +146,14 @@ activateAliasInfo h topNameMap aliasInfo =
     Use shouldUpdateTag strictGlobalLocator localLocatorList ->
       Locator.activateSpecifiedNames (locatorHandle h) topNameMap shouldUpdateTag strictGlobalLocator localLocatorList
 
-initializeAliasMap :: App ()
-initializeAliasMap = do
-  currentModule <- Source.sourceModule <$> readRef "currentSource" App.currentSource
+initializeAliasMap :: Handle -> EIO ()
+initializeAliasMap h = do
+  currentModule <- Source.sourceModule <$> getCurrentSource' (currentSourceRef h)
   let additionalDigestAlias = getAlias currentModule
-  h <- new
-  currentAliasList <- toApp $ getModuleDigestAliasList h currentModule
+  currentAliasList <- getModuleDigestAliasList h currentModule
   let aliasMap = Map.fromList $ Maybe.catMaybes [additionalDigestAlias] ++ currentAliasList
-  writeRef' App.moduleAliasMap aliasMap
-  writeRef' App.locatorAliasMap Map.empty
+  liftIO $ writeIORef (moduleAliasMapRef h) aliasMap
+  liftIO $ writeIORef (locatorAliasMapRef h) Map.empty
 
 getAlias :: Module -> Maybe (ModuleAlias, ModuleDigest)
 getAlias currentModule = do

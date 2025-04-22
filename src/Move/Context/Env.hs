@@ -6,6 +6,7 @@ module Move.Context.Env
     getBaseSize',
     getBuildMode,
     getCurrentSource,
+    getCurrentSource',
     getDataSize,
     getDataSize',
     getDataSize'',
@@ -67,6 +68,15 @@ setCurrentSource =
 getCurrentSource :: App Source.Source
 getCurrentSource =
   readRef "currentSource" currentSource
+
+getCurrentSource' :: IORef (Maybe Source.Source) -> EIO Source.Source
+getCurrentSource' ref = do
+  sourceOrNone <- liftIO $ readIORef ref
+  case sourceOrNone of
+    Nothing ->
+      raiseCritical' "[compiler bug] `currentSource` is uninitialized"
+    Just source ->
+      return source
 
 getTagMap :: App LT.LocationTree
 getTagMap =

@@ -1,17 +1,18 @@
 module Move.Scene.LSP.References (references) where
 
-import Move.Context.AppM
 import Control.Monad.Trans
-import Rule.Cache qualified as Cache
-import Rule.Source (Source (sourceFilePath, sourceModule))
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Path
+import Move.Context.AppM
+import Move.Context.EIO (toApp)
 import Move.Scene.LSP.FindDefinition qualified as LSP
 import Move.Scene.LSP.FindReferences qualified as LSP
 import Move.Scene.LSP.GetAllCachesInModule qualified as LSP
 import Move.Scene.LSP.GetSource qualified as LSP
-import Move.Scene.Unravel (registerShiftMap)
+import Move.Scene.Unravel qualified as Unravel
+import Path
+import Rule.Cache qualified as Cache
+import Rule.Source (Source (sourceFilePath, sourceModule))
 import UnliftIO.Async (pooledForConcurrently)
 
 references ::
@@ -19,7 +20,9 @@ references ::
   p ->
   AppM [Location]
 references params = do
-  lift registerShiftMap
+  lift $ do
+    h <- Unravel.new
+    toApp $ Unravel.registerShiftMap h
   currentSource <- LSP.getSource params
   ((_, defLink), _) <- LSP.findDefinition params
   cacheSeq <- lift $ LSP.getAllLocationCachesInModule $ sourceModule currentSource

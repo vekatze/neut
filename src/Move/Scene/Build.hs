@@ -69,7 +69,7 @@ buildTarget axis (M.MainModule baseModule) target = do
   target' <- expandClangOptions target
   Initialize.initializeForTarget
   h' <- Unravel.new
-  (artifactTime, dependenceSeq) <- Unravel.unravel h' baseModule target'
+  (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel h' baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign target moduleList
   h'' <- Load.new

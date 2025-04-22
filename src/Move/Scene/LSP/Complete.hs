@@ -25,7 +25,7 @@ import Move.Context.Throw qualified as Throw
 import Move.Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
 import Move.Scene.Module.GetModule qualified as Module
 import Move.Scene.Source.Reflect qualified as Source
-import Move.Scene.Unravel (registerShiftMap)
+import Move.Scene.Unravel qualified as Unravel
 import Rule.BaseName qualified as BN
 import Rule.Cache qualified as Cache
 import Rule.Const (nsSep)
@@ -45,7 +45,9 @@ import UnliftIO.Async
 
 complete :: Uri -> Position -> AppM [CompletionItem]
 complete uri pos = do
-  lift registerShiftMap
+  lift $ do
+    h <- Unravel.new
+    toApp $ Unravel.registerShiftMap h
   pathString <- liftMaybe $ uriToFilePath uri
   currentSource <- lift (Source.reflect pathString) >>= liftMaybe
   h <- lift Clang.new

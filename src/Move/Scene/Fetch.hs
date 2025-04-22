@@ -169,8 +169,7 @@ getLibraryModule alias digest = do
   moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
     then do
-      counter <- asks App.counter
-      let h = Module.Handle {counter}
+      h <- Module.new
       toApp $ Module.fromFilePath h moduleFilePath
     else
       Throw.raiseError' $

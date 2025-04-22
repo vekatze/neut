@@ -1,6 +1,7 @@
 module Move.Scene.Parse.Core
   ( Handle (..),
     Parser,
+    new,
     parseFile,
     getCurrentHint,
     getCurrentLoc,
@@ -34,12 +35,15 @@ where
 
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.Reader (asks)
 import Control.Monad.Trans
 import Data.IORef
 import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
+import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Move.Context.EIO
 import Move.Language.Utility.Gensym (newTextForHole)
 import Path
@@ -59,25 +63,27 @@ import Text.Read qualified as R
 type MustParseWholeFile =
   Bool
 
-data Handle
+newtype Handle
   = Handle
-  { counter :: IORef Int,
-    filePath :: Path Abs File,
-    fileContent :: T.Text,
-    mustParseWholeFile :: MustParseWholeFile
+  { counter :: IORef Int
   }
 
 type Parser a = ParsecT Void T.Text EIO a
 
-parseFile :: Handle -> (Handle -> Parser a) -> EIO (C, a)
-parseFile h parser = do
+new :: App Handle
+new = do
+  counter <- asks App.counter
+  return $ Handle {..}
+
+parseFile :: Handle -> Path Abs File -> T.Text -> MustParseWholeFile -> (Handle -> Parser a) -> EIO (C, a)
+parseFile h filePath fileContent mustParseWholeFile parser = do
   let fileParser = do
         leadingComments <- spaceConsumer
         value <- parser h
-        when (mustParseWholeFile h) eof
+        when mustParseWholeFile eof
         return (leadingComments, value)
-  let path = toFilePath (filePath h)
-  result <- runParserT fileParser path (fileContent h)
+  let path = toFilePath filePath
+  result <- runParserT fileParser path fileContent
   case result of
     Right v ->
       return v

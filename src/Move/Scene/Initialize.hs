@@ -51,16 +51,14 @@ initializeLogger cfg = do
 initializeCompiler :: Remark.Config -> App ()
 initializeCompiler cfg = do
   initializeLogger cfg
-  counter <- asks App.counter
-  let h = Module.Handle {counter}
+  h <- Module.new
   mainModule <- toApp $ Module.fromCurrentPath h
   initializeCompilerWithModule mainModule
 
 initializeCompilerWithPath :: Path Abs File -> Remark.Config -> App ()
 initializeCompilerWithPath path cfg = do
   initializeLogger cfg
-  counter <- asks App.counter
-  let h = Module.Handle {counter}
+  h <- Module.new
   mainModule <- toApp $ Module.fromFilePath h path
   initializeCompilerWithModule mainModule
 
@@ -87,8 +85,8 @@ initializeForSource source = do
   Remark.initialize
   Global.initialize
   Env.setCurrentSource source
-  Alias.initializeAliasMap
-  Locator.initialize
+  Alias.new >>= toApp . Alias.initializeAliasMap
+  Locator.new >>= toApp . Locator.initialize
   Tag.initialize
   RawImportSummary.initialize
   SymLoc.initialize

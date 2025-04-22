@@ -51,7 +51,7 @@ _formatSource shouldMinimizeImports filePath fileContent = do
   if shouldMinimizeImports
     then do
       h <- Unravel.new
-      (_, dependenceSeq) <- Unravel.unravel h mainModule $ Main (emptyZen filePath)
+      (_, dependenceSeq) <- toApp $ Unravel.unravel h mainModule $ Main (emptyZen filePath)
       h' <- Load.new
       contentSeq <- toApp $ Load.load h' Peripheral dependenceSeq
       let contentSeq' = _replaceLast fileContent contentSeq
@@ -61,16 +61,16 @@ _formatSource shouldMinimizeImports filePath fileContent = do
       unusedGlobalLocators <- UnusedGlobalLocator.get
       unusedLocalLocators <- UnusedLocalLocator.get
       counter <- asks App.counter
-      let h'' = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
-      program <- toApp $ P.parseFile h'' Parse.parseProgram
+      let h'' = Handle {counter}
+      program <- toApp $ P.parseFile h'' filePath fileContent True Parse.parseProgram
       hMod <- Module.new
       presetNames <- toApp $ Module.getEnabledPreset hMod mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
       return $ RawProgram.pp importInfo program
     else do
       counter <- asks App.counter
-      let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
-      program <- toApp $ P.parseFile h Parse.parseProgram
+      let h = Handle {counter}
+      program <- toApp $ P.parseFile h filePath fileContent True Parse.parseProgram
       hMod <- Module.new
       presetNames <- toApp $ Module.getEnabledPreset hMod mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators = [], unusedLocalLocators = []}

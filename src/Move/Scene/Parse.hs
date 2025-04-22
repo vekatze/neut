@@ -51,8 +51,8 @@ parseSource t source cacheOrContent = do
       return $ Left cache
     Right fileContent -> do
       counter <- asks counter
-      let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
-      prog <- toApp $ P.parseFile h Parse.parseProgram
+      let h = Handle {counter}
+      prog <- toApp $ P.parseFile h filePath fileContent True Parse.parseProgram
       prog' <- interpret source (snd prog)
       tmap <- Env.getTagMap
       h' <- Path.new

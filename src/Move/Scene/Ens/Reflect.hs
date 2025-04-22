@@ -34,8 +34,8 @@ fromFilePath h path = do
 
 fromFilePath' :: Handle -> Path Abs File -> T.Text -> EIO (C, (E.Ens, C))
 fromFilePath' h filePath fileContent = do
-  let h' = P.Handle {counter = counter h, filePath, fileContent, mustParseWholeFile = True}
-  P.parseFile h' (const parseEns)
+  let h' = P.Handle {counter = counter h}
+  P.parseFile h' filePath fileContent True (const parseEns)
 
 parseEns :: P.Parser (E.Ens, C)
 parseEns = do

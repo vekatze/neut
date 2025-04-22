@@ -1,5 +1,6 @@
 module Move.Scene.Module.Reflect
   ( Handle (..),
+    new,
     fromFilePath,
     fromCurrentPath,
     findModuleFile,
@@ -9,10 +10,13 @@ where
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO)
 import Move.Scene.Ens.Reflect qualified as Ens
 import Path
@@ -40,6 +44,11 @@ newtype Handle
   = Handle
   { counter :: IORef Int
   }
+
+new :: App Handle
+new = do
+  counter <- asks App.counter
+  return $ Handle {..}
 
 fromFilePath :: Handle -> Path Abs File -> EIO Module
 fromFilePath h moduleFilePath = do

@@ -29,8 +29,8 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, raiseError, raiseError', toApp)
-import Move.Context.Env (getCurrentSource, getMainModule)
+import Move.Context.EIO (EIO, raiseError, raiseError')
+import Move.Context.Env (getCurrentSource', getMainModule)
 import Move.Context.Tag qualified as Tag
 import Path
 import Path.IO
@@ -66,7 +66,7 @@ data Handle
     activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
     activeGlobalLocatorListRef :: IORef [SGL.StrictGlobalLocator],
     currentGlobalLocator :: IORef (Maybe SGL.StrictGlobalLocator),
-    currentSource :: Source.Source
+    currentSourceRef :: IORef (Maybe Source.Source)
   }
 
 new :: App Handle
@@ -77,17 +77,17 @@ new = do
   activeStaticFileListRef <- asks App.activeStaticFileList
   activeGlobalLocatorListRef <- asks App.activeGlobalLocatorList
   currentGlobalLocator <- asks App.currentGlobalLocator
-  currentSource <- getCurrentSource
+  currentSourceRef <- asks App.currentSource
   return $ Handle {..}
 
-initialize :: App ()
-initialize = do
-  currentSource <- readRef "currentSource" App.currentSource
-  cgl <- toApp $ constructGlobalLocator currentSource
-  writeRef App.currentGlobalLocator cgl
-  writeRef' App.activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
-  writeRef' App.activeDefiniteDescriptionList Map.empty
-  writeRef' App.activeStaticFileList Map.empty
+initialize :: Handle -> EIO ()
+initialize h = do
+  currentSource <- getCurrentSource' (currentSourceRef h)
+  cgl <- constructGlobalLocator currentSource
+  liftIO $ writeIORef (currentGlobalLocator h) (Just cgl)
+  liftIO $ writeIORef (activeGlobalLocatorListRef h) [cgl, SGL.llvmGlobalLocator]
+  liftIO $ writeIORef (activeDefiniteDescriptionListRef h) Map.empty
+  liftIO $ writeIORef (activeStaticFileListRef h) Map.empty
 
 activateSpecifiedNames ::
   Handle ->
@@ -110,7 +110,7 @@ activateSpecifiedNames h topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                let current = currentSource h
+                current <- getCurrentSource' (currentSourceRef h)
                 let dd' = DD.getReadableDD (Source.sourceModule current) dd
                 let existingDD' = DD.getReadableDD (Source.sourceModule current) existingDD
                 raiseError m $

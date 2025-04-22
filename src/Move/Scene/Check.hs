@@ -46,7 +46,7 @@ _check target baseModule = do
   Throw.collectLogs $ do
     Initialize.initializeForTarget
     h <- Unravel.new
-    (_, dependenceSeq) <- Unravel.unravel h baseModule target
+    (_, dependenceSeq) <- toApp $ Unravel.unravel h baseModule target
     h' <- Load.new
     contentSeq <- toApp $ Load.load h' target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
