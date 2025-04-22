@@ -68,7 +68,8 @@ buildTarget axis (M.MainModule baseModule) target = do
   toApp $ Debug.report h $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
   Initialize.initializeForTarget
-  (artifactTime, dependenceSeq) <- Unravel.unravel baseModule target'
+  h' <- Unravel.new
+  (artifactTime, dependenceSeq) <- Unravel.unravel h' baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign target moduleList
   contentSeq <- Load.load target dependenceSeq
@@ -97,7 +98,8 @@ abstractAxis =
 compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile target outputKindList contentSeq = do
   mainModule <- Env.getMainModule
-  bs <- mapM (needsCompilation outputKindList . fst) contentSeq
+  hCache <- Cache.new
+  bs <- mapM (needsCompilation hCache outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount mainModule target outputKindList
   let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
@@ -117,7 +119,7 @@ compile target outputKindList contentSeq = do
     cacheOrStmtList <- Parse.parse target source cacheOrContent
     stmtList <- Elaborate.elaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
-    Cache.whenCompilationNecessary outputKindList source $ do
+    Cache.whenCompilationNecessary hCache outputKindList source $ do
       stmtList' <- Clarify.clarify stmtList
       async $ do
         virtualCode <- Lower.lower stmtList'

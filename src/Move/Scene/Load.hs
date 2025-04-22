@@ -21,7 +21,8 @@ load target dependenceSeq = do
 
 _load :: Target -> Source.Source -> App (Either Cache.Cache T.Text)
 _load t source = do
-  mCache <- Cache.loadCache t source
+  h <- Cache.new
+  mCache <- toApp $ Cache.loadCache h t source
   case mCache of
     Just cache -> do
       return $ Left cache

@@ -1,5 +1,7 @@
 module Move.Scene.Unravel
-  ( unravel,
+  ( Handle,
+    new,
+    unravel,
     unravelFromFile,
     registerShiftMap,
     unravel',
@@ -19,7 +21,7 @@ import Data.Time
 import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.App.Internal (counter)
+import Move.Context.App.Internal qualified as App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
@@ -32,7 +34,6 @@ import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Context.Unravel qualified as Unravel
 import Move.Scene.Module.Reflect qualified as Module
-import Move.Scene.Parse.Core (Handle (Handle))
 import Move.Scene.Parse.Core qualified as ParseCore
 import Move.Scene.Parse.Import (interpretImport)
 import Move.Scene.Parse.Program (parseImport)
@@ -40,7 +41,7 @@ import Move.Scene.Source.ShiftToLatest
 import Path
 import Path.IO
 import Rule.Artifact qualified as A
-import Rule.Hint
+import Rule.Hint hiding (new)
 import Rule.Import
 import Rule.Module
 import Rule.ModuleID qualified as MID
@@ -58,39 +59,51 @@ type LLVMTime =
 type ObjectTime =
   Maybe UTCTime
 
-unravel :: Module -> Target -> App (A.ArtifactTime, [Source.Source])
-unravel baseModule t = do
-  h <- Debug.new
-  toApp $ Debug.report h "Resolving file dependencies"
+data Handle
+  = Handle
+  { debugHandle :: Debug.Handle,
+    artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
+  }
+
+new :: App Handle
+new = do
+  debugHandle <- Debug.new
+  artifactMapRef <- asks App.artifactMap
+  return $ Handle {..}
+
+unravel :: Handle -> Module -> Target -> App (A.ArtifactTime, [Source.Source])
+unravel h baseModule t = do
+  toApp $ Debug.report (debugHandle h) "Resolving file dependencies"
   case t of
     Main t' -> do
       case t' of
         Zen path _ ->
-          unravelFromFile t baseModule path
+          unravelFromFile h t baseModule path
         Named targetName _ -> do
           case getTargetPath baseModule targetName of
             Nothing ->
               Throw.raiseError' $ "No such target is defined: `" <> targetName <> "`"
             Just path -> do
-              unravelFromFile t baseModule path
+              unravelFromFile h t baseModule path
     Peripheral -> do
       registerShiftMap
-      unravelFoundational t baseModule
+      unravelFoundational h t baseModule
     PeripheralSingle path -> do
-      unravelFromFile t baseModule path
+      unravelFromFile h t baseModule path
 
 unravelFromFile ::
+  Handle ->
   Target ->
   Module ->
   Path Abs File ->
   App (A.ArtifactTime, [Source.Source])
-unravelFromFile t baseModule path = do
-  Module.sourceFromPath baseModule path >>= unravel' t
+unravelFromFile h t baseModule path = do
+  Module.sourceFromPath baseModule path >>= unravel' h t
 
-unravel' :: Target -> Source.Source -> App (A.ArtifactTime, [Source.Source])
-unravel' t source = do
+unravel' :: Handle -> Target -> Source.Source -> App (A.ArtifactTime, [Source.Source])
+unravel' h t source = do
   registerShiftMap
-  (artifactTime, sourceSeq) <- unravel'' t source
+  (artifactTime, sourceSeq) <- unravel'' h t source
   let sourceList = toList sourceSeq
   forM_ sourceSeq $ toApp . Parse.ensureExistence
   return (artifactTime, sourceList)
@@ -133,7 +146,7 @@ unravelAntecedentArrow axis currentModule = do
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- toApp $ Module.getModuleFilePath mainModule Nothing moduleID
-        counter <- asks counter
+        counter <- asks App.counter
         let h = Module.Handle {counter = counter}
         toApp (Module.fromFilePath h path') >>= unravelAntecedentArrow axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
@@ -165,7 +178,7 @@ unravelModule' axis currentModule = do
         b <- doesFileExist path'
         if b
           then do
-            counter <- asks counter
+            counter <- asks App.counter
             let h = Module.Handle {counter = counter}
             toApp (Module.fromFilePath h path') >>= unravelModule' axis
           else return []
@@ -173,8 +186,8 @@ unravelModule' axis currentModule = do
       liftIO $ modifyIORef' (traceListRef axis) tail
       return $ currentModule : arrows
 
-unravel'' :: Target -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
-unravel'' t source = do
+unravel'' :: Handle -> Target -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
+unravel'' h t source = do
   visitEnv <- Unravel.getVisitEnv
   let path = Source.sourceFilePath source
   case Map.lookup path visitEnv of
@@ -182,13 +195,13 @@ unravel'' t source = do
       traceSourceList <- Unravel.getTraceSourceList
       raiseCyclicPath path (map Source.sourceFilePath traceSourceList)
     Just VI.Finish -> do
-      artifactTime <- Env.lookupArtifactTime path
+      artifactTime <- toApp $ Env.lookupArtifactTime (artifactMapRef h) path
       return (artifactTime, Seq.empty)
     Nothing -> do
       Unravel.insertToVisitEnv path VI.Active
       Unravel.pushToTraceSourceList source
       children <- getChildren source
-      (artifactTimeList, seqList) <- mapAndUnzipM (unravelImportItem t) children
+      (artifactTimeList, seqList) <- mapAndUnzipM (unravelImportItem h t) children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
       baseArtifactTime <- getBaseArtifactTime t source
@@ -196,11 +209,11 @@ unravel'' t source = do
       Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source)
 
-unravelImportItem :: Target -> ImportItem -> App (A.ArtifactTime, Seq Source.Source)
-unravelImportItem t importItem = do
+unravelImportItem :: Handle -> Target -> ImportItem -> App (A.ArtifactTime, Seq Source.Source)
+unravelImportItem h t importItem = do
   case importItem of
     ImportItem source _ ->
-      unravel'' t source
+      unravel'' h t source
     StaticKey staticFileList -> do
       let pathList = map snd staticFileList
       itemModTime <- forM pathList $ \(m, p) -> do
@@ -209,11 +222,11 @@ unravelImportItem t importItem = do
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
 
-unravelFoundational :: Target -> Module -> App (A.ArtifactTime, [Source.Source])
-unravelFoundational t baseModule = do
+unravelFoundational :: Handle -> Target -> Module -> App (A.ArtifactTime, [Source.Source])
+unravelFoundational h t baseModule = do
   children <- Module.getAllSourceInModule baseModule
   children' <- mapM shiftToLatest children
-  (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' t) children'
+  (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
   baseArtifactTime <- artifactTimeFromCurrentTime
   artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
   return (artifactTime, toList $ foldl' (><) Seq.empty seqList)
@@ -333,8 +346,8 @@ parseSourceHeader currentSource = do
   toApp $ Parse.ensureExistence currentSource
   let filePath = Source.sourceFilePath currentSource
   fileContent <- liftIO $ Parse.readTextFile filePath
-  counter <- asks counter
-  let h = Handle {counter, filePath, fileContent, mustParseWholeFile = False}
+  counter <- asks App.counter
+  let h = ParseCore.Handle {counter, filePath, fileContent, mustParseWholeFile = False}
   (_, importList) <- toApp $ ParseCore.parseFile h (const parseImport)
   let m = newSourceHint filePath
   interpretImport m currentSource importList

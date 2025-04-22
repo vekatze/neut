@@ -3,6 +3,8 @@ module Move.Context.EIO
     toApp,
     raiseError,
     raiseError',
+    raiseCritical,
+    raiseCritical',
   )
 where
 
@@ -33,3 +35,11 @@ raiseError m t =
 raiseError' :: T.Text -> EIO a
 raiseError' t =
   throwError $ E.newError' t
+
+raiseCritical :: Hint -> T.Text -> EIO a
+raiseCritical m t =
+  throwError $ E.newCritical m t
+
+raiseCritical' :: T.Text -> EIO a
+raiseCritical' t =
+  throwError $ E.newCritical' t

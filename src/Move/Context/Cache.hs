@@ -1,5 +1,7 @@
 module Move.Context.Cache
-  ( saveCache,
+  ( Handle,
+    new,
+    saveCache,
     saveCompletionCache,
     saveLocationCache,
     loadCache,
@@ -13,8 +15,12 @@ module Move.Context.Cache
 where
 
 import Control.Monad.IO.Class
+import Control.Monad.Reader (asks)
 import Data.Binary
+import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Path (getSourceLocationCachePath)
@@ -22,6 +28,7 @@ import Move.Context.Path qualified as Path
 import Path
 import Path.IO
 import Rule.Artifact qualified as A
+import Rule.Artifact qualified as AR
 import Rule.Cache qualified as Cache
 import Rule.Module
 import Rule.OutputKind qualified as OK
@@ -46,15 +53,26 @@ saveLocationCache h t source cache = do
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
-loadCache :: Target -> Source.Source -> App (Maybe Cache.Cache)
-loadCache t source = do
-  h <- Path.new
-  cachePath <- toApp $ Path.getSourceCachePath h t source
+data Handle
+  = Handle
+  { pathHandle :: Path.Handle,
+    artifactMapRef :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime)
+  }
+
+new :: App Handle
+new = do
+  pathHandle <- Path.new
+  artifactMapRef <- asks App.artifactMap
+  return $ Handle {..}
+
+loadCache :: Handle -> Target -> Source.Source -> EIO (Maybe Cache.Cache)
+loadCache h t source = do
+  cachePath <- Path.getSourceCachePath (pathHandle h) t source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
     else do
-      artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
+      artifactTime <- Env.lookupArtifactTime (artifactMapRef h) (Source.sourceFilePath source)
       case A.cacheTime artifactTime of
         Nothing ->
           return Nothing
@@ -96,16 +114,16 @@ loadLocationCache h t source = do
         Right content ->
           return $ Just content
 
-whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
-whenCompilationNecessary outputKindList source comp = do
-  artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
+whenCompilationNecessary :: Handle -> [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
+whenCompilationNecessary h outputKindList source comp = do
+  artifactTime <- toApp $ Env.lookupArtifactTime (artifactMapRef h) (Source.sourceFilePath source)
   if Source.isCompilationSkippable artifactTime outputKindList
     then return Nothing
     else Just <$> comp
 
-needsCompilation :: [OK.OutputKind] -> Source.Source -> App Bool
-needsCompilation outputKindList source = do
-  artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
+needsCompilation :: Handle -> [OK.OutputKind] -> Source.Source -> App Bool
+needsCompilation h outputKindList source = do
+  artifactTime <- toApp $ Env.lookupArtifactTime (artifactMapRef h) (Source.sourceFilePath source)
   return $ not $ Source.isCompilationSkippable artifactTime outputKindList
 
 isEntryPointCompilationSkippable :: Path.Handle -> MainModule -> MainTarget -> [OK.OutputKind] -> EIO Bool

@@ -50,7 +50,8 @@ _formatSource shouldMinimizeImports filePath fileContent = do
   MainModule mainModule <- getMainModule
   if shouldMinimizeImports
     then do
-      (_, dependenceSeq) <- Unravel.unravel mainModule $ Main (emptyZen filePath)
+      h <- Unravel.new
+      (_, dependenceSeq) <- Unravel.unravel h mainModule $ Main (emptyZen filePath)
       contentSeq <- Load.load Peripheral dependenceSeq
       let contentSeq' = _replaceLast fileContent contentSeq
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
@@ -59,8 +60,8 @@ _formatSource shouldMinimizeImports filePath fileContent = do
       unusedGlobalLocators <- UnusedGlobalLocator.get
       unusedLocalLocators <- UnusedLocalLocator.get
       counter <- asks App.counter
-      let h = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
-      program <- toApp $ P.parseFile h Parse.parseProgram
+      let h' = Handle {counter, filePath, fileContent, mustParseWholeFile = True}
+      program <- toApp $ P.parseFile h' Parse.parseProgram
       presetNames <- getEnabledPreset mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
       return $ RawProgram.pp importInfo program

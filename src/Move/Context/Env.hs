@@ -23,13 +23,14 @@ module Move.Context.Env
   )
 where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Text qualified as T
 import Data.Time
 import Move.Context.App
 import Move.Context.App.Internal
-import Move.Context.EIO (EIO, raiseError, raiseError')
-import Move.Context.Throw qualified as Throw
+import Move.Context.EIO (EIO, raiseCritical', raiseError, raiseError')
 import Path
 import Rule.Arch qualified as Arch
 import Rule.Artifact qualified as A
@@ -73,14 +74,17 @@ getTagMap =
 
 type PathMap = Map.HashMap (Path Abs File) UTCTime
 
-lookupArtifactTime :: Path Abs File -> App A.ArtifactTime
-lookupArtifactTime path = do
-  amap <- readRef' artifactMap
+type ArtifactTimeRef =
+  IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
+
+lookupArtifactTime :: ArtifactTimeRef -> Path Abs File -> EIO A.ArtifactTime
+lookupArtifactTime ref path = do
+  amap <- liftIO $ readIORef ref
   case Map.lookup path amap of
     Just artifactTime ->
       return artifactTime
     Nothing ->
-      Throw.raiseCritical' $ "No artifact time is registered for the source: " <> T.pack (toFilePath path)
+      raiseCritical' $ "No artifact time is registered for the source: " <> T.pack (toFilePath path)
 
 getArtifactMap :: App (Map.HashMap (Path Abs File) A.ArtifactTime)
 getArtifactMap =
