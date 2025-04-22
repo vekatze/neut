@@ -65,7 +65,8 @@ resolveVarOrErr m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
   h <- Locator.new
   candList <- liftIO $ Locator.getPossibleReferents h localLocator
-  candList' <- mapM (Global.lookup m) candList
+  h' <- Global.new
+  candList' <- toApp $ mapM (Global.lookup h' m) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
@@ -89,7 +90,8 @@ resolveLocator m (gl, ll) shouldInsertTag = do
   h <- Alias.new
   sgl <- toApp $ Alias.resolveAlias h m gl
   let cand = DD.new sgl ll
-  cand' <- Global.lookup m cand
+  h' <- Global.new
+  cand' <- toApp $ Global.lookup h' m cand
   let foundName = candFilter (cand, cand')
   case foundName of
     Nothing ->

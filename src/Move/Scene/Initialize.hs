@@ -8,6 +8,7 @@ module Move.Scene.Initialize
   )
 where
 
+import Control.Monad.IO.Class
 import Control.Monad.Reader (asks)
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
@@ -72,7 +73,7 @@ initializeForTarget = do
   Clarify.registerFoundationalTypes
   Unravel.initialize
   Remark.setGlobalRemarkList []
-  Global.clearSourceNameMap
+  asks App.sourceNameMap >>= liftIO . Global.clearSourceNameMap
   WeakDefinition.initialize
   Definition.initialize
   Type.initialize

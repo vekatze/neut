@@ -62,6 +62,7 @@ data Handle
     shiftToLatestHandle :: STL.Handle,
     locatorHandle :: Locator.Handle,
     aliasHandle :: Alias.Handle,
+    globalHandle :: Global.Handle,
     tagMapRef :: IORef LT.LocationTree
   }
 
@@ -79,6 +80,7 @@ new = do
   locatorHandle <- Locator.new
   aliasHandle <- Alias.new
   tagMapRef <- asks App.tagMap
+  globalHandle <- Global.new
   return $ Handle {..}
 
 activateImport :: Handle -> Hint -> [ImportItem] -> App ()
@@ -87,8 +89,8 @@ activateImport h m sourceInfoList = do
     case importItem of
       ImportItem source aliasInfoList -> do
         let path = Source.sourceFilePath source
-        namesInSource <- Global.lookupSourceNameMap m path
-        Global.activateTopLevelNames namesInSource
+        namesInSource <- toApp $ Global.lookupSourceNameMap (globalHandle h) m path
+        liftIO $ Global.activateTopLevelNames (globalHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
           toApp $ Alias.activateAliasInfo (aliasHandle h) namesInSource aliasInfo
       StaticKey pathList -> do

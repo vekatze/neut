@@ -122,8 +122,9 @@ discernStmt mo stmt = do
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
     RawStmtNominal _ m geistList -> do
+      h <- Global.new
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
-        Global.registerGeist geist
+        toApp $ Global.registerGeist h geist
         discernGeist mo endLoc geist
       return [WeakStmtNominal m geistList']
     RawStmtForeign _ foreignList -> do
@@ -156,7 +157,8 @@ discernGeist mo endLoc geist = do
       }
 
 registerTopLevelName :: (BN.BaseName -> DD.DefiniteDescription) -> RawStmt -> App ()
-registerTopLevelName nameLifter stmt =
+registerTopLevelName nameLifter stmt = do
+  h <- Global.new
   case stmt of
     RawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
@@ -167,14 +169,14 @@ registerTopLevelName nameLifter stmt =
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
       let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
       stmtKind' <- liftStmtKind stmtKind
-      Global.registerStmtDefine isConstLike m stmtKind' functionName allArgNum expArgNames
+      toApp $ Global.registerStmtDefine h isConstLike m stmtKind' functionName allArgNum expArgNames
     RawStmtNominal {} -> do
       return ()
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       stmtList <- defineData m dd args (SE.extract consInfo) loc
       mapM_ (registerTopLevelName nameLifter) stmtList
     RawStmtDefineResource _ m (name, _) _ _ _ -> do
-      Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
+      toApp $ Global.registerStmtDefine h True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
     RawStmtForeign {} ->
       return ()
 
@@ -313,9 +315,10 @@ discern axis term =
       (dd, _) <- resolveName m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       ensureFieldLinearity m ks S.empty S.empty
-      (argNum, keyList) <- KeyArg.lookup m dd
+      h <- KeyArg.new
+      (argNum, keyList) <- toApp $ KeyArg.lookup h m dd
       vs' <- mapM (discern axis) vs
-      args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
+      args <- toApp $ KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
       return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.PiElimExact _ e -> do
@@ -1035,11 +1038,12 @@ discernPattern layer (m, pat) = do
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
           ensureFieldLinearity m ks S.empty S.empty
-          (_, keyList) <- KeyArg.lookup m consName
+          h <- KeyArg.new
+          (_, keyList) <- toApp $ KeyArg.lookup h m consName
           defaultKeyMap <- constructDefaultKeyMap m keyList
           let specifiedKeyMap = Map.fromList $ zip ks mvs
           let keyMap = Map.union specifiedKeyMap defaultKeyMap
-          reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
+          reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
           (patList', axisList) <- mapAndUnzipM (discernPattern layer) reorderedArgs
           let consInfo =
                 PAT.ConsInfo

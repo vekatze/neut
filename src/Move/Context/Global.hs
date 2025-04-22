@@ -1,12 +1,13 @@
 module Move.Context.Global
-  ( registerStmtDefine,
+  ( Handle,
+    new,
+    registerStmtDefine,
     registerGeist,
     reportMissingDefinitions,
     lookup,
     initialize,
     activateTopLevelNames,
     clearSourceNameMap,
-    getSourceNameMap,
     saveCurrentNameSet,
     lookupSourceNameMap,
     lookup',
@@ -14,19 +15,21 @@ module Move.Context.Global
 where
 
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.EIO (toApp)
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedPreset qualified as UnusedPreset
 import Path
@@ -40,6 +43,8 @@ import Rule.Hint
 import Rule.Hint qualified as Hint
 import Rule.IsConstLike
 import Rule.Key
+import Rule.LocationTree qualified as LT
+import Rule.Module (MainModule)
 import Rule.OptimizableData qualified as OD
 import Rule.PrimOp.FromText qualified as PrimOp
 import Rule.PrimType.FromText qualified as PT
@@ -49,49 +54,82 @@ import Rule.StmtKind qualified as SK
 import Rule.TopNameMap
 import Prelude hiding (lookup)
 
+data Handle
+  = Handle
+  { mainModule :: MainModule,
+    locatorHandle :: Locator.Handle,
+    keyArgHandle :: KeyArg.Handle,
+    nameMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
+    geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
+    tagMapRef :: IORef LT.LocationTree,
+    unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]),
+    unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint),
+    optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OD.OptimizableData),
+    sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
+  }
+
+new :: App Handle
+new = do
+  mainModule <- getMainModule
+  locatorHandle <- Locator.new
+  keyArgHandle <- KeyArg.new
+  nameMapRef <- asks App.nameMap
+  geistMapRef <- asks App.geistMap
+  tagMapRef <- asks App.tagMap
+  sourceNameMapRef <- asks App.sourceNameMap
+  optDataMapRef <- asks App.optDataMap
+  unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
+  unusedPresetMapRef <- asks App.unusedPresetMap
+  return $ Handle {..}
+
 registerStmtDefine ::
+  Handle ->
   IsConstLike ->
   Hint ->
   SK.BaseStmtKind DD.DefiniteDescription x t ->
   DD.DefiniteDescription ->
   AN.ArgNum ->
   [Key] ->
-  App ()
-registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames = do
+  EIO ()
+registerStmtDefine h isConstLike m stmtKind name allArgNum expArgNames = do
   case stmtKind of
     SK.Normal _ ->
-      registerTopLevelFunc isConstLike m name allArgNum
+      registerTopLevelFunc h isConstLike m name allArgNum
     SK.Data dataName dataArgs consInfoList -> do
-      registerData isConstLike m dataName dataArgs consInfoList
-      registerAsUnaryIfNecessary dataName consInfoList
-      registerAsEnumIfNecessary dataName dataArgs consInfoList
+      registerData h isConstLike m dataName dataArgs consInfoList
+      liftIO $ registerAsUnaryIfNecessary h dataName consInfoList
+      liftIO $ registerAsEnumIfNecessary h dataName dataArgs consInfoList
     SK.DataIntro {} ->
       return ()
-  KeyArg.insert m name isConstLike allArgNum expArgNames
+  KeyArg.insert (keyArgHandle h) m name isConstLike allArgNum expArgNames
 
 registerAsEnumIfNecessary ::
+  Handle ->
   DD.DefiniteDescription ->
   [a] ->
   [(SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
-  App ()
-registerAsEnumIfNecessary dataName dataArgs consInfoList =
+  IO ()
+registerAsEnumIfNecessary h dataName dataArgs consInfoList =
   when (hasNoArgs dataArgs consInfoList) $ do
-    OptimizableData.insert dataName OD.Enum
-    mapM_ (flip OptimizableData.insert OD.Enum . (\(_, consName, _, _, _) -> consName)) consInfoList
+    OptimizableData.insertIO (optDataMapRef h) dataName OD.Enum
+    forM_ consInfoList $ \(_, consName, _, _, _) -> do
+      OptimizableData.insertIO (optDataMapRef h) consName OD.Enum
 
 hasNoArgs :: [a] -> [(c, DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =
   null dataArgs && all (null . (\(_, _, _, consArgs, _) -> consArgs)) consInfoList
 
 registerAsUnaryIfNecessary ::
+  Handle ->
   DD.DefiniteDescription ->
   [(b, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
-  App ()
-registerAsUnaryIfNecessary dataName consInfoList = do
+  IO ()
+registerAsUnaryIfNecessary h dataName consInfoList = do
   case (isUnary consInfoList, length consInfoList == 1) of
     (True, _) -> do
-      OptimizableData.insert dataName OD.Unary
-      mapM_ (flip OptimizableData.insert OD.Unary . (\(_, consName, _, _, _) -> consName)) consInfoList
+      OptimizableData.insertIO (optDataMapRef h) dataName OD.Unary
+      forM_ consInfoList $ \(_, consName, _, _, _) -> do
+        OptimizableData.insertIO (optDataMapRef h) consName OD.Unary
     _ ->
       return ()
 
@@ -103,45 +141,45 @@ isUnary consInfoList =
     _ ->
       False
 
-registerGeist :: RT.TopGeist -> App ()
-registerGeist RT.RawGeist {..} = do
+registerGeist :: Handle -> RT.TopGeist -> EIO ()
+registerGeist h RT.RawGeist {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractArgs impArgs
   let expArgNames = map (\(_, x, _, _, _) -> x) expArgs'
   let argNum = AN.fromInt $ length $ impArgs' ++ expArgs'
-  h <- Locator.new
-  nameLifter <- liftIO $ Locator.getNameLifter h
+  nameLifter <- liftIO $ Locator.getNameLifter (locatorHandle h)
   let name' = nameLifter $ fst name
-  ensureGeistFreshness loc name'
-  ensureDefFreshness loc name'
-  KeyArg.insert loc name' isConstLike argNum expArgNames
-  insertToGeistMap name' loc isConstLike
-  insertToNameMap name' loc $ GN.TopLevelFunc argNum isConstLike
+  ensureGeistFreshness h loc name'
+  ensureDefFreshness h loc name'
+  KeyArg.insert (keyArgHandle h) loc name' isConstLike argNum expArgNames
+  liftIO $ insertToGeistMap h name' loc isConstLike
+  liftIO $ insertToNameMap h name' loc $ GN.TopLevelFunc argNum isConstLike
 
-registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> App ()
-registerTopLevelFunc isConstLike m topLevelName allArgNum = do
-  registerTopLevelFunc' m topLevelName $ GN.TopLevelFunc allArgNum isConstLike
+registerTopLevelFunc :: Handle -> IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> EIO ()
+registerTopLevelFunc h isConstLike m topLevelName allArgNum = do
+  registerTopLevelFunc' h m topLevelName $ GN.TopLevelFunc allArgNum isConstLike
 
-registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App ()
-registerTopLevelFunc' m topLevelName gn = do
-  ensureDefFreshness m topLevelName
-  insertToNameMap topLevelName m gn
+registerTopLevelFunc' :: Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> EIO ()
+registerTopLevelFunc' h m topLevelName gn = do
+  ensureDefFreshness h m topLevelName
+  liftIO $ insertToNameMap h topLevelName m gn
 
 registerData ::
+  Handle ->
   IsConstLike ->
   Hint ->
   DD.DefiniteDescription ->
   [a] ->
   [(SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
-  App ()
-registerData isConstLike m dataName dataArgs consInfoList = do
-  ensureDefFreshness m dataName
+  EIO ()
+registerData h isConstLike m dataName dataArgs consInfoList = do
+  ensureDefFreshness h m dataName
   let dataArgNum = AN.fromInt $ length dataArgs
   let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
-  insertToNameMap dataName m $ GN.Data dataArgNum consNameArrowList isConstLike
-  forM_ consNameArrowList $ \(consDD, consGN@(mCons, _)) -> do
-    ensureDefFreshness mCons consDD
-    uncurry (insertToNameMap consDD) consGN
+  liftIO $ insertToNameMap h dataName m $ GN.Data dataArgNum consNameArrowList isConstLike
+  forM_ consNameArrowList $ \(consDD, (mCons, gn)) -> do
+    ensureDefFreshness h mCons consDD
+    liftIO $ insertToNameMap h consDD mCons gn
 
 toConsNameArrow ::
   AN.ArgNum ->
@@ -151,14 +189,14 @@ toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, disc
   let consArgNum = AN.fromInt $ length consArgs
   (consDD, (m, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
 
-lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
-lookup m name = do
-  nameMap <- readRef' nameMap
-  dataSize <- toApp $ Env.getDataSize m
+lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO (Maybe (Hint, GlobalName))
+lookup h m name = do
+  nameMap <- liftIO $ readIORef (nameMapRef h)
+  dataSize <- Env.getDataSize m
   case Map.lookup name nameMap of
     Just kind -> do
-      UnusedGlobalLocator.delete $ DD.globalLocator name
-      UnusedPreset.delete $ DD.moduleID name
+      liftIO $ UnusedGlobalLocator.deleteIO (unusedGlobalLocatorMapRef h) $ DD.globalLocator name
+      liftIO $ UnusedPreset.deleteIO (unusedPresetMapRef h) $ DD.moduleID name
       return $ Just kind
     Nothing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->
@@ -168,100 +206,93 @@ lookup m name = do
       | otherwise -> do
           return Nothing
 
-lookup' :: Hint.Hint -> DD.DefiniteDescription -> App (Hint, GlobalName)
-lookup' m name = do
-  mgn <- lookup m name
+lookup' :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO (Hint, GlobalName)
+lookup' h m name = do
+  mgn <- lookup h m name
   case mgn of
     Just gn ->
       return gn
     Nothing -> do
-      mainModule <- getMainModule
-      let name' = Locator.getReadableDD mainModule name
-      Throw.raiseError m $ "No such top-level name is defined: " <> name'
+      let name' = Locator.getReadableDD (mainModule h) name
+      raiseError m $ "No such top-level name is defined: " <> name'
 
 initialize :: App ()
 initialize = do
-  writeRef' nameMap Map.empty
-  writeRef' geistMap Map.empty
+  writeRef' App.nameMap Map.empty
+  writeRef' App.geistMap Map.empty
 
-ensureDefFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
-ensureDefFreshness m name = do
-  gmap <- readRef' geistMap
-  topNameMap <- readRef' nameMap
+ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
+ensureDefFreshness h m name = do
+  gmap <- liftIO $ readIORef (geistMapRef h)
+  topNameMap <- liftIO $ readIORef (nameMapRef h)
   case (Map.lookup name gmap, Map.member name topNameMap) of
     (Just _, False) -> do
-      mainModule <- getMainModule
-      let name' = Locator.getReadableDD mainModule name
-      Throw.raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
+      let name' = Locator.getReadableDD (mainModule h) name
+      raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
     (Just (mGeist, isConstLike), True) -> do
-      removeFromGeistMap name
-      removeFromDefNameMap name
-      Tag.insertGlobalVar mGeist name isConstLike m
+      liftIO $ removeFromGeistMap h name
+      liftIO $ removeFromDefNameMap h name
+      liftIO $ Tag.insertGlobalVarIO (tagMapRef h) mGeist name isConstLike m
     (Nothing, True) -> do
-      mainModule <- getMainModule
-      let name' = Locator.getReadableDD mainModule name
-      Throw.raiseError m $ "`" <> name' <> "` is already defined"
+      let name' = Locator.getReadableDD (mainModule h) name
+      raiseError m $ "`" <> name' <> "` is already defined"
     (Nothing, False) ->
       return ()
 
-ensureGeistFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
-ensureGeistFreshness m name = do
-  gmap <- readRef' geistMap
-  when (Map.member name gmap) $ do
-    mainModule <- getMainModule
-    let name' = Locator.getReadableDD mainModule name
-    Throw.raiseError m $ "`" <> name' <> "` is already defined"
+ensureGeistFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
+ensureGeistFreshness h m name = do
+  geistMap <- liftIO $ readIORef (geistMapRef h)
+  when (Map.member name geistMap) $ do
+    let name' = Locator.getReadableDD (mainModule h) name
+    raiseError m $ "`" <> name' <> "` is already defined"
 
-reportMissingDefinitions :: App ()
-reportMissingDefinitions = do
-  geistNameToHint <- Map.toList <$> readRef' geistMap
+reportMissingDefinitions :: Handle -> EIO ()
+reportMissingDefinitions h = do
+  geistMap <- liftIO $ readIORef (geistMapRef h)
+  let geistNameToHint = Map.toList geistMap
   let errorList = map (uncurry geistToRemark) geistNameToHint
   if null errorList
     then return ()
-    else Throw.throw $ MakeError errorList
+    else throwError $ MakeError errorList
 
 geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Remark
 geistToRemark dd (m, _) =
   newRemark m Error $ "This nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"
 
-insertToNameMap :: DD.DefiniteDescription -> Hint -> GN.GlobalName -> App ()
-insertToNameMap dd m gn = do
-  modifyRef' nameMap $ Map.insert dd (m, gn)
+insertToNameMap :: Handle -> DD.DefiniteDescription -> Hint -> GN.GlobalName -> IO ()
+insertToNameMap h dd m gn = do
+  modifyIORef' (nameMapRef h) $ Map.insert dd (m, gn)
 
-insertToGeistMap :: DD.DefiniteDescription -> Hint -> IsConstLike -> App ()
-insertToGeistMap dd m isConstLike = do
-  modifyRef' geistMap $ Map.insert dd (m, isConstLike)
+insertToGeistMap :: Handle -> DD.DefiniteDescription -> Hint -> IsConstLike -> IO ()
+insertToGeistMap h dd m isConstLike = do
+  modifyIORef' (geistMapRef h) $ Map.insert dd (m, isConstLike)
 
-removeFromGeistMap :: DD.DefiniteDescription -> App ()
-removeFromGeistMap dd = do
-  modifyRef' geistMap $ Map.delete dd
+removeFromGeistMap :: Handle -> DD.DefiniteDescription -> IO ()
+removeFromGeistMap h dd = do
+  modifyIORef' (geistMapRef h) $ Map.delete dd
 
-removeFromDefNameMap :: DD.DefiniteDescription -> App ()
-removeFromDefNameMap dd = do
-  modifyRef' nameMap $ Map.delete dd
+removeFromDefNameMap :: Handle -> DD.DefiniteDescription -> IO ()
+removeFromDefNameMap h dd = do
+  modifyIORef' (nameMapRef h) $ Map.delete dd
 
-clearSourceNameMap :: App ()
-clearSourceNameMap =
-  writeRef' sourceNameMap Map.empty
+clearSourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap) -> IO ()
+clearSourceNameMap ref =
+  writeIORef ref Map.empty
 
-getSourceNameMap :: App (Map.HashMap (Path Abs File) TopNameMap)
-getSourceNameMap =
-  readRef' sourceNameMap
-
-lookupSourceNameMap :: Hint.Hint -> Path Abs File -> App TopNameMap
-lookupSourceNameMap m sourcePath = do
-  smap <- readRef' sourceNameMap
+lookupSourceNameMap :: Handle -> Hint.Hint -> Path Abs File -> EIO TopNameMap
+lookupSourceNameMap h m sourcePath = do
+  smap <- liftIO $ readIORef (sourceNameMapRef h)
   case Map.lookup sourcePath smap of
     Just topLevelNameInfo -> do
       return topLevelNameInfo
     Nothing ->
-      Throw.raiseCritical m $ "Top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
+      raiseCritical m $ "Top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
 
-activateTopLevelNames :: TopNameMap -> App ()
-activateTopLevelNames namesInSource = do
+activateTopLevelNames :: Handle -> TopNameMap -> IO ()
+activateTopLevelNames h namesInSource = do
   forM_ (Map.toList namesInSource) $ \(dd, (mDef, gn)) ->
-    insertToNameMap dd mDef gn
+    insertToNameMap h dd mDef gn
 
-saveCurrentNameSet :: Path Abs File -> TopNameMap -> App ()
-saveCurrentNameSet currentPath nameMap = do
-  modifyRef' sourceNameMap $ Map.insert currentPath nameMap
+saveCurrentNameSet :: Handle -> Path Abs File -> TopNameMap -> IO ()
+saveCurrentNameSet h currentPath nameMap = do
+  modifyIORef' (sourceNameMapRef h) $ Map.insert currentPath nameMap

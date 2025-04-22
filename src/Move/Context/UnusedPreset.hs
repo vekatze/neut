@@ -3,15 +3,17 @@ module Move.Context.UnusedPreset
     insert,
     delete,
     registerRemarks,
+    deleteIO,
   )
 where
 
+import Control.Monad
+import Data.HashMap.Strict qualified as Map
+import Data.IORef
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.Remark qualified as Remark
-import Control.Monad
-import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
 import Rule.Hint
 import Rule.Remark
 import Prelude hiding (lookup, read)
@@ -41,3 +43,7 @@ registerRemarks = do
   unusedPresets <- get
   forM_ unusedPresets $ \(presetName, m) ->
     Remark.insertRemark $ newRemark m Warning $ "Imported but not used: `" <> presetName <> "`"
+
+deleteIO :: IORef (Map.HashMap T.Text Hint) -> ModuleIDText -> IO ()
+deleteIO ref presetName =
+  modifyIORef' ref $ Map.delete presetName

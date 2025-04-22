@@ -1,53 +1,68 @@
 module Move.Context.KeyArg
-  ( insert,
+  ( Handle,
+    new,
+    insert,
     lookup,
     lookupMaybe,
     reorderArgs,
   )
 where
 
+import Control.Monad.IO.Class
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Env (getMainModule)
 import Move.Context.Locator qualified as Locator
-import Move.Context.Throw qualified as Throw
 import Rule.ArgNum qualified as AN
 import Rule.Const (holeVarPrefix)
 import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
 import Rule.IsConstLike
 import Rule.Key
+import Rule.Module (MainModule)
 import Prelude hiding (lookup, read)
 
-insert :: Hint -> DD.DefiniteDescription -> IsConstLike -> AN.ArgNum -> [Key] -> App ()
-insert m funcName isConstLike argNum keys = do
-  kmap <- readRef' keyArgMap
+data Handle
+  = Handle
+  { mainModule :: MainModule,
+    keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key])))
+  }
+
+new :: App Handle
+new = do
+  mainModule <- getMainModule
+  keyArgMapRef <- asks App.keyArgMap
+  return $ Handle {..}
+
+insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> AN.ArgNum -> [Key] -> EIO ()
+insert h m funcName isConstLike argNum keys = do
+  kmap <- liftIO $ readIORef (keyArgMapRef h)
   case Map.lookup funcName kmap of
     Nothing ->
       return ()
     Just (isConstLike', (argNum', keys'))
       | isConstLike,
         not isConstLike' -> do
-          mainModule <- getMainModule
-          let funcName' = Locator.getReadableDD mainModule funcName
-          Throw.raiseError m $
+          let funcName' = Locator.getReadableDD (mainModule h) funcName
+          raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a function, but defined as a constant-like term."
       | not isConstLike,
         isConstLike' -> do
-          mainModule <- getMainModule
-          let funcName' = Locator.getReadableDD mainModule funcName
-          Throw.raiseError m $
+          let funcName' = Locator.getReadableDD (mainModule h) funcName
+          raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a constant-like term, but defined as a function."
       | argNum /= argNum' -> do
-          mainModule <- getMainModule
-          let funcName' = Locator.getReadableDD mainModule funcName
-          Throw.raiseError m $
+          let funcName' = Locator.getReadableDD (mainModule h) funcName
+          raiseError m $
             "The arity of `"
               <> funcName'
               <> "` is declared as "
@@ -56,9 +71,8 @@ insert m funcName isConstLike argNum keys = do
               <> T.pack (show $ AN.reify argNum)
               <> "."
       | not $ eqKeys keys keys' -> do
-          mainModule <- getMainModule
-          let funcName' = Locator.getReadableDD mainModule funcName
-          Throw.raiseError m $
+          let funcName' = Locator.getReadableDD (mainModule h) funcName
+          raiseError m $
             "The explicit key sequence of `"
               <> funcName'
               <> "` is declared as `"
@@ -68,7 +82,7 @@ insert m funcName isConstLike argNum keys = do
               <> "`."
       | otherwise ->
           return ()
-  modifyRef' keyArgMap $ Map.insert funcName (isConstLike, (argNum, keys))
+  liftIO $ modifyIORef' (keyArgMapRef h) $ Map.insert funcName (isConstLike, (argNum, keys))
 
 isHole :: Key -> Bool
 isHole =
@@ -113,27 +127,26 @@ showKey k =
     then "_"
     else k
 
-lookup :: Hint -> DD.DefiniteDescription -> App (AN.ArgNum, [Key])
-lookup m dataName = do
-  mValue <- Map.lookup dataName <$> readRef' keyArgMap
-  case mValue of
+lookup :: Handle -> Hint -> DD.DefiniteDescription -> EIO (AN.ArgNum, [Key])
+lookup h m dataName = do
+  keyArgMap <- liftIO $ readIORef (keyArgMapRef h)
+  case Map.lookup dataName keyArgMap of
     Just (_, value) ->
       return value
     Nothing -> do
-      mainModule <- getMainModule
-      let dataName' = Locator.getReadableDD mainModule dataName
-      Throw.raiseError m $ "No such function is defined: " <> dataName'
+      let dataName' = Locator.getReadableDD (mainModule h) dataName
+      raiseError m $ "No such function is defined: " <> dataName'
 
-lookupMaybe :: DD.DefiniteDescription -> App (Maybe (IsConstLike, [Key]))
-lookupMaybe dataName = do
-  mValue <- Map.lookup dataName <$> readRef' keyArgMap
-  case mValue of
+lookupMaybe :: Handle -> DD.DefiniteDescription -> IO (Maybe (IsConstLike, [Key]))
+lookupMaybe h dataName = do
+  keyArgMap <- liftIO $ readIORef (keyArgMapRef h)
+  case Map.lookup dataName keyArgMap of
     Just (isConstLike, (_, keyList)) ->
       return $ Just (isConstLike, keyList)
     _ ->
       return Nothing
 
-reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> App [a]
+reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> EIO [a]
 reorderArgs m keyList kvs =
   case keyList of
     []
@@ -141,13 +154,13 @@ reorderArgs m keyList kvs =
           return []
       | otherwise -> do
           let ks = map fst $ Map.toList kvs
-          Throw.raiseError m $ "The following fields are redundant:\n" <> showKeyList ks
+          raiseError m $ "The following fields are redundant:\n" <> showKeyList ks
     key : keyRest
       | Just v <- Map.lookup key kvs -> do
           vs <- reorderArgs m keyRest (Map.delete key kvs)
           return $ v : vs
       | otherwise ->
-          Throw.raiseError m $ "The field `" <> key <> "` is missing"
+          raiseError m $ "The field `" <> key <> "` is missing"
 
 showKeyList :: [Key] -> T.Text
 showKeyList ks =

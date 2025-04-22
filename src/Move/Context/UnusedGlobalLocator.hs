@@ -5,6 +5,7 @@ module Move.Context.UnusedGlobalLocator
     registerRemarks,
     get,
     insertIO,
+    deleteIO,
   )
 where
 
@@ -46,3 +47,7 @@ registerRemarks = do
 insertIO :: IORef (Map.HashMap T.Text [(Hint, T.Text)]) -> T.Text -> Hint -> T.Text -> IO ()
 insertIO ref sglText m locatorText =
   modifyIORef' ref $ Map.insertWith (++) sglText [(m, locatorText)]
+
+deleteIO :: IORef (Map.HashMap T.Text [(Hint, T.Text)]) -> T.Text -> IO ()
+deleteIO ref sglText =
+  modifyIORef' ref $ Map.delete sglText

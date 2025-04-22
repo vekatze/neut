@@ -368,11 +368,12 @@ infer axis term =
         _ :< WT.Data attr _ dataArgs
           | AttrD.Attr {..} <- attr,
             [(consDD, isConstLike')] <- consNameList -> do
-              (_, keyList) <- KeyArg.lookup m consDD
+              h <- KeyArg.new
+              (_, keyList) <- toApp $ KeyArg.lookup h m consDD
               defaultKeyMap <- constructDefaultKeyMap axis m keyList
               let specifiedKeyMap = Map.fromList $ flip map xts $ \(mx, x, t) -> (Ident.toText x, (mx, x, t))
               let keyMap = Map.union specifiedKeyMap defaultKeyMap
-              reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
+              reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
               dataArgs' <- mapM (const $ newTypedHole m (varEnv axis)) [1 .. length dataArgs]
               cursor <- Gensym.newIdentFromText "cursor"
               od <- OptimizableData.lookup consDD

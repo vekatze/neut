@@ -5,6 +5,7 @@ module Move.Scene.Parse
 where
 
 import Control.Monad
+import Control.Monad.IO.Class
 import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -60,12 +61,13 @@ parseSource t source cacheOrContent = do
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
+  h <- Global.new
   forM_ stmtList $ \stmt -> do
     case stmt of
       StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
         let expArgNames = map (\(_, x, _) -> toText x) expArgs
         let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
-        Global.registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames
+        toApp $ Global.registerStmtDefine h isConstLike m stmtKind name allArgNum expArgNames
       StmtForeign {} ->
         return ()
 
@@ -74,7 +76,8 @@ interpret currentSource (RawProgram m importList stmtList) = do
   h <- Import.new
   toApp (Import.interpretImport h m currentSource importList) >>= Import.activateImport h m
   stmtList' <- Discern.discernStmtList (Source.sourceModule currentSource) $ map fst stmtList
-  Global.reportMissingDefinitions
+  h' <- Global.new
+  toApp $ Global.reportMissingDefinitions h'
   saveTopLevelNames currentSource $ getWeakStmtName stmtList'
   UnusedVariable.registerRemarks
   UnusedGlobalLocator.registerRemarks
@@ -85,6 +88,7 @@ interpret currentSource (RawProgram m importList stmtList) = do
 
 saveTopLevelNames :: Source.Source -> [(Hint, DD.DefiniteDescription)] -> App ()
 saveTopLevelNames source topNameList = do
-  globalNameList <- mapM (uncurry Global.lookup') topNameList
+  h <- Global.new
+  globalNameList <- toApp $ mapM (uncurry $ Global.lookup' h) topNameList
   let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
-  Global.saveCurrentNameSet (Source.sourceFilePath source) nameMap
+  liftIO $ Global.saveCurrentNameSet h (Source.sourceFilePath source) nameMap
