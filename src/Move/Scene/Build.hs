@@ -72,7 +72,8 @@ buildTarget axis (M.MainModule baseModule) target = do
   (artifactTime, dependenceSeq) <- Unravel.unravel h' baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign target moduleList
-  contentSeq <- Load.load target dependenceSeq
+  h'' <- Load.new
+  contentSeq <- toApp $ Load.load h'' target dependenceSeq
   compile target' (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
   case target' of

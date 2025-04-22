@@ -47,11 +47,12 @@ _check target baseModule = do
     Initialize.initializeForTarget
     h <- Unravel.new
     (_, dependenceSeq) <- Unravel.unravel h baseModule target
-    contentSeq <- Load.load target dependenceSeq
+    h' <- Load.new
+    contentSeq <- toApp $ Load.load h' target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      h' <- Debug.new
-      toApp $ Debug.report h' $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
+      h'' <- Debug.new
+      toApp $ Debug.report h'' $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
       void $ Parse.parse target source cacheOrContent >>= Elaborate.elaborate target
 
 checkAll :: App [Remark]

@@ -14,7 +14,7 @@ import Rule.Remark
 
 newtype Error
   = MakeError [Remark]
-  deriving (Show)
+  deriving (Show, Semigroup)
 
 instance Exception Error
 

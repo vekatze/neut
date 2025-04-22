@@ -1,28 +1,43 @@
-module Move.Scene.Load (load) where
+module Move.Scene.Load
+  ( Handle,
+    load,
+    new,
+  )
+where
 
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, forP)
 import Move.Context.Parse (readTextFile)
 import Rule.Cache qualified as Cache
 import Rule.Source qualified as Source
 import Rule.Target
-import UnliftIO (MonadIO (liftIO), pooledForConcurrently)
+import UnliftIO (MonadIO (liftIO))
 
-load :: Target -> [Source.Source] -> App [(Source.Source, Either Cache.Cache T.Text)]
-load target dependenceSeq = do
-  h <- Debug.new
-  toApp $ Debug.report h "Loading source files and caches"
-  pooledForConcurrently dependenceSeq $ \source -> do
-    cacheOrContent <- _load target source
+data Handle
+  = Handle
+  { debugHandle :: Debug.Handle,
+    cacheHandle :: Cache.Handle
+  }
+
+new :: App Handle
+new = do
+  debugHandle <- Debug.new
+  cacheHandle <- Cache.new
+  return $ Handle {..}
+
+load :: Handle -> Target -> [Source.Source] -> EIO [(Source.Source, Either Cache.Cache T.Text)]
+load h target dependenceSeq = do
+  Debug.report (debugHandle h) "Loading source files and caches"
+  forP dependenceSeq $ \source -> do
+    cacheOrContent <- _load (cacheHandle h) target source
     return (source, cacheOrContent)
 
-_load :: Target -> Source.Source -> App (Either Cache.Cache T.Text)
-_load t source = do
-  h <- Cache.new
-  mCache <- toApp $ Cache.loadCache h t source
+_load :: Cache.Handle -> Target -> Source.Source -> EIO (Either Cache.Cache T.Text)
+_load h t source = do
+  mCache <- Cache.loadCache h t source
   case mCache of
     Just cache -> do
       return $ Left cache

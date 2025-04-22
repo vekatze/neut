@@ -1,6 +1,8 @@
 module Move.Context.EIO
   ( EIO,
+    runEIO,
     toApp,
+    forP,
     raiseError,
     raiseError',
     raiseCritical,
@@ -10,11 +12,13 @@ where
 
 import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Either (partitionEithers)
 import Data.Text qualified as T
 import Move.Context.App (App)
 import Move.Context.Throw (throw)
 import Rule.Error qualified as E
 import Rule.Hint (Hint)
+import UnliftIO.Async (pooledForConcurrently)
 
 type EIO = ExceptT E.Error IO
 
@@ -27,6 +31,18 @@ toApp comp = do
       throw err
     Right result ->
       return result
+
+runEIO :: EIO a -> IO (Either E.Error a)
+runEIO =
+  runExceptT
+
+forP :: [a] -> (a -> EIO b) -> EIO [b]
+forP xs f = do
+  ys' <- liftIO $ pooledForConcurrently xs (runEIO . f)
+  let (errors, results) = partitionEithers ys'
+  if null errors
+    then return results
+    else throwError $ foldl (<>) (E.MakeError []) errors
 
 raiseError :: Hint -> T.Text -> EIO a
 raiseError m t =
