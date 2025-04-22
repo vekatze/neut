@@ -62,12 +62,14 @@ type ObjectTime =
 data Handle
   = Handle
   { debugHandle :: Debug.Handle,
+    pathHandle :: Path.Handle,
     artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
   }
 
 new :: App Handle
 new = do
   debugHandle <- Debug.new
+  pathHandle <- Path.new
   artifactMapRef <- asks App.artifactMap
   return $ Handle {..}
 
@@ -204,7 +206,7 @@ unravel'' h t source = do
       (artifactTimeList, seqList) <- mapAndUnzipM (unravelImportItem h t) children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
-      baseArtifactTime <- getBaseArtifactTime t source
+      baseArtifactTime <- toApp $ getBaseArtifactTime (pathHandle h) t source
       artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
       Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source)
@@ -238,11 +240,11 @@ getArtifactTime artifactTimeList artifactTime = do
   objectTime <- getItemTime' (map A.objectTime artifactTimeList) $ A.objectTime artifactTime
   return A.ArtifactTime {cacheTime, llvmTime, objectTime}
 
-getBaseArtifactTime :: Target -> Source.Source -> App A.ArtifactTime
-getBaseArtifactTime t source = do
-  cacheTime <- getFreshCacheTime t source
-  llvmTime <- getFreshLLVMTime t source
-  objectTime <- getFreshObjectTime t source
+getBaseArtifactTime :: Path.Handle -> Target -> Source.Source -> EIO A.ArtifactTime
+getBaseArtifactTime h t source = do
+  cacheTime <- getFreshCacheTime h t source
+  llvmTime <- getFreshLLVMTime h t source
+  objectTime <- getFreshObjectTime h t source
   return A.ArtifactTime {cacheTime, llvmTime, objectTime}
 
 getItemTime' ::
@@ -270,25 +272,22 @@ distributeMaybe xs =
       rest' <- distributeMaybe rest
       return $ y : rest'
 
-getFreshCacheTime :: Target -> Source.Source -> App CacheTime
-getFreshCacheTime t source = do
-  h <- Path.new
-  cachePath <- toApp $ Path.getSourceCachePath h t source
-  getFreshTime source cachePath
+getFreshCacheTime :: Path.Handle -> Target -> Source.Source -> EIO CacheTime
+getFreshCacheTime h t source = do
+  cachePath <- Path.getSourceCachePath h t source
+  liftIO $ getFreshTime source cachePath
 
-getFreshLLVMTime :: Target -> Source.Source -> App LLVMTime
-getFreshLLVMTime t source = do
-  h <- Path.new
-  llvmPath <- toApp $ Path.sourceToOutputPath h t OK.LLVM source
-  getFreshTime source llvmPath
+getFreshLLVMTime :: Path.Handle -> Target -> Source.Source -> EIO LLVMTime
+getFreshLLVMTime h t source = do
+  llvmPath <- Path.sourceToOutputPath h t OK.LLVM source
+  liftIO $ getFreshTime source llvmPath
 
-getFreshObjectTime :: Target -> Source.Source -> App ObjectTime
-getFreshObjectTime t source = do
-  h <- Path.new
-  objectPath <- toApp $ Path.sourceToOutputPath h t OK.Object source
-  getFreshTime source objectPath
+getFreshObjectTime :: Path.Handle -> Target -> Source.Source -> EIO ObjectTime
+getFreshObjectTime h t source = do
+  objectPath <- Path.sourceToOutputPath h t OK.Object source
+  liftIO $ getFreshTime source objectPath
 
-getFreshTime :: Source.Source -> Path Abs File -> App (Maybe UTCTime)
+getFreshTime :: Source.Source -> Path Abs File -> IO (Maybe UTCTime)
 getFreshTime source itemPath = do
   existsItem <- doesFileExist itemPath
   if not existsItem
