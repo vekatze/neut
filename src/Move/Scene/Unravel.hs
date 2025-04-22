@@ -78,10 +78,6 @@ data Handle
     artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
   }
 
--- writeRef' antecedentMap Map.empty
--- writeRef' reverseAntecedentMap Map.empty
--- writeRef' antecedentDigestCache Nothing
-
 new :: App Handle
 new = do
   mainModule <- getMainModule
@@ -171,7 +167,6 @@ data Axis = Axis
 unravelAntecedentArrow :: Handle -> Axis -> Module -> EIO [(MID.ModuleID, Module)]
 unravelAntecedentArrow h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  -- mainModule <- getMainModule
   path <- Module.getModuleFilePath (mainModule h) Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
