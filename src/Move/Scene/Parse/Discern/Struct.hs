@@ -3,10 +3,9 @@ module Move.Scene.Parse.Discern.Struct
   )
 where
 
-import Move.Context.App
-import Move.Context.Throw qualified as Throw
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.EIO (EIO, raiseError)
 import Rule.Hint
 import Rule.Key
 
@@ -15,14 +14,14 @@ ensureFieldLinearity ::
   [Key] ->
   S.Set Key ->
   S.Set Key ->
-  App ()
+  EIO ()
 ensureFieldLinearity m ks found nonLinear =
   case ks of
     [] ->
       if S.null nonLinear
         then return ()
         else
-          Throw.raiseError m $
+          raiseError m $
             "The following fields are defined more than once:\n"
               <> T.intercalate "\n" (map ("- " <>) (S.toList nonLinear))
     k : rest -> do

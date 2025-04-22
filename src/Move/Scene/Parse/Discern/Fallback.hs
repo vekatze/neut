@@ -1,16 +1,16 @@
 module Move.Scene.Parse.Discern.Fallback (getFallbackMatrix) where
 
+import Control.Comonad.Cofree
+import Data.Vector qualified as V
 import Move.Context.App
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Throw qualified as Throw
-import Control.Comonad.Cofree
-import Data.Vector qualified as V
+import Move.Scene.Parse.Discern.Noema
 import Rule.Binder
 import Rule.Ident
 import Rule.Noema qualified as N
 import Rule.Pattern
 import Rule.WeakTerm qualified as WT
-import Move.Scene.Parse.Discern.Noema
 
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 getFallbackMatrix ::

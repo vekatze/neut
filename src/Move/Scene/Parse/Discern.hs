@@ -314,7 +314,7 @@ discern axis term =
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, _) <- resolveName m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
-      ensureFieldLinearity m ks S.empty S.empty
+      toApp $ ensureFieldLinearity m ks S.empty S.empty
       h <- KeyArg.new
       (argNum, keyList) <- toApp $ KeyArg.lookup h m dd
       vs' <- mapM (discern axis) vs
@@ -1037,7 +1037,7 @@ discernPattern layer (m, pat) = do
         RP.Of mkvs -> do
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
-          ensureFieldLinearity m ks S.empty S.empty
+          toApp $ ensureFieldLinearity m ks S.empty S.empty
           h <- KeyArg.new
           (_, keyList) <- toApp $ KeyArg.lookup h m consName
           defaultKeyMap <- constructDefaultKeyMap m keyList
