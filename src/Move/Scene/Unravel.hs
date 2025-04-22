@@ -23,7 +23,7 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.EIO (EIO, raiseError, raiseError', toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -139,7 +139,7 @@ unravelAntecedentArrow axis currentModule = do
   case Map.lookup path visitMap of
     Just VI.Active -> do
       pathList <- liftIO $ readIORef $ traceListRef axis
-      raiseCyclicPath path pathList
+      toApp $ raiseCyclicPath path pathList
     Just VI.Finish ->
       return []
     Nothing -> do
@@ -168,7 +168,7 @@ unravelModule' axis currentModule = do
   case Map.lookup path visitMap of
     Just VI.Active -> do
       pathList <- liftIO $ readIORef $ traceListRef axis
-      raiseCyclicPath path pathList
+      toApp $ raiseCyclicPath path pathList
     Just VI.Finish ->
       return []
     Nothing -> do
@@ -195,7 +195,7 @@ unravel'' h t source = do
   case Map.lookup path visitEnv of
     Just VI.Active -> do
       traceSourceList <- Unravel.getTraceSourceList
-      raiseCyclicPath path (map Source.sourceFilePath traceSourceList)
+      toApp $ raiseCyclicPath path (map Source.sourceFilePath traceSourceList)
     Just VI.Finish -> do
       artifactTime <- toApp $ Env.lookupArtifactTime (artifactMapRef h) path
       return (artifactTime, Seq.empty)
@@ -299,11 +299,11 @@ getFreshTime source itemPath = do
         then return $ Just itemModTime
         else return Nothing
 
-raiseCyclicPath :: Path Abs File -> [Path Abs File] -> App a
+raiseCyclicPath :: Path Abs File -> [Path Abs File] -> EIO a
 raiseCyclicPath path pathList = do
   let m = newSourceHint path
   let cyclicPathList = reverse $ path : pathList
-  Throw.raiseError m $ "Found a cyclic import:\n" <> showCycle (map (T.pack . toFilePath) cyclicPathList)
+  raiseError m $ "Found a cyclic import:\n" <> showCycle (map (T.pack . toFilePath) cyclicPathList)
 
 showCycle :: [T.Text] -> T.Text
 showCycle textList =
