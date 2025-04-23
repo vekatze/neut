@@ -14,7 +14,7 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Scene.WeakTerm.Reduce
+import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -57,7 +57,7 @@ ensureAffinity e = do
   defMap <- WeakDefinition.read
   substHandle <- Subst.new
   axis <- liftIO $ createNewAxis substHandle defMap
-  cs <- analyze axis e
+  cs <- toApp $ analyze axis e
   synthesize axis $ map (bimap weaken weaken) cs
 
 createNewAxis :: Subst.Handle -> WeakDefinition.DefMap -> IO Axis
@@ -132,13 +132,13 @@ analyzeVar axis m x = do
               _ :< t <- lookupTypeEnv (varEnv axis) m x
               return [(m :< t, m :< t)]
 
-analyze :: Axis -> TM.Term -> App [AffineConstraint]
+analyze :: Axis -> TM.Term -> EIO [AffineConstraint]
 analyze axis term = do
   case term of
     _ :< TM.Tau ->
       return []
     m :< TM.Var x -> do
-      toApp $ analyzeVar axis m x
+      analyzeVar axis m x
     _ :< TM.VarGlobal {} -> do
       return []
     _ :< TM.Pi impArgs expArgs t -> do
@@ -155,8 +155,7 @@ analyze axis term = do
           let piType = m :< TM.Pi impArgs expArgs codType
           liftIO $ insertRelevantVar x axis''
           cs4 <- analyze (extendAxis (mx, x, piType) axis'') e
-          css <- forM (S.toList $ freeVarsWithHints term) $ \(my, y) -> do
-            toApp $ analyzeVar axis my y
+          css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar axis)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
         LK.Normal codType -> do
           (cs1, axis') <- analyzeBinder axis impArgs
@@ -234,7 +233,7 @@ analyze axis term = do
 analyzeBinder ::
   Axis ->
   [BinderF TM.Term] ->
-  App ([AffineConstraint], Axis)
+  EIO ([AffineConstraint], Axis)
 analyzeBinder axis binder =
   case binder of
     [] -> do
@@ -247,7 +246,7 @@ analyzeBinder axis binder =
 analyzeLet ::
   Axis ->
   [(BinderF TM.Term, TM.Term)] ->
-  App ([AffineConstraint], Axis)
+  EIO ([AffineConstraint], Axis)
 analyzeLet axis xtes =
   case xtes of
     [] ->
@@ -272,7 +271,7 @@ lookupTypeEnv varEnv m x =
 analyzeDecisionTree ::
   Axis ->
   DT.DecisionTree TM.Term ->
-  App [AffineConstraint]
+  EIO [AffineConstraint]
 analyzeDecisionTree axis tree =
   case tree of
     DT.Leaf _ letSeq body -> do
@@ -289,7 +288,7 @@ analyzeDecisionTree axis tree =
 analyzeClauseList ::
   Axis ->
   DT.CaseList TM.Term ->
-  App [AffineConstraint]
+  EIO [AffineConstraint]
 analyzeClauseList axis (fallbackClause, caseList) = do
   newVarSetRef <- liftIO $ newIORef IntMap.empty
   css <- forM caseList $ \c -> do
@@ -308,7 +307,7 @@ analyzeClauseList axis (fallbackClause, caseList) = do
 analyzeCase ::
   Axis ->
   DT.Case TM.Term ->
-  App [AffineConstraint]
+  EIO [AffineConstraint]
 analyzeCase axis decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
@@ -340,7 +339,7 @@ simplifyAffine ::
   WeakAffineConstraint ->
   App [AffineConstraintError]
 simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
-  t' <- reduce t
+  t' <- Reduce.reduce t
   case t' of
     _ :< WT.Tau -> do
       return []
