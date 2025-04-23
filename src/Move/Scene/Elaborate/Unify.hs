@@ -178,7 +178,7 @@ simplify h susList constraintList =
     [] ->
       return susList
     (C.Actual t, orig) : cs -> do
-      susList' <- simplifyActual h (WT.metaOf t) S.empty t orig
+      susList' <- toApp $ simplifyActual h (WT.metaOf t) S.empty t orig
       simplify h (susList' ++ susList) cs
     (C.Integer t, orig) : cs -> do
       susList' <- toApp $ simplifyInteger h (WT.metaOf t) t orig
@@ -403,10 +403,10 @@ simplifyActual ::
   S.Set DD.DefiniteDescription ->
   WT.WeakTerm ->
   C.Constraint ->
-  App [SuspendedConstraint]
+  EIO [SuspendedConstraint]
 simplifyActual h m dataNameSet t orig = do
-  toApp $ detectPossibleInfiniteLoop h orig
-  t' <- toApp $ Reduce.reduce (reduceHandle h) t
+  detectPossibleInfiniteLoop h orig
+  t' <- Reduce.reduce (reduceHandle h) t
   case t' of
     _ :< WT.Tau -> do
       return []
@@ -417,9 +417,9 @@ simplifyActual h m dataNameSet t orig = do
       dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
-          else mapM (toApp . getConsArgTypes h m . fst) consNameList
+          else mapM (getConsArgTypes h m . fst) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        dataConsArgs' <- toApp $ substConsArgs h IntMap.empty dataConsArgs
+        dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual h m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
@@ -437,7 +437,7 @@ simplifyActual h m dataNameSet t orig = do
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
           let s = HS.singleton hole xs body
-          t'' <- toApp $ Fill.fill (fillHandle h) s t'
+          t'' <- Fill.fill (fillHandle h) s t'
           simplifyActual h m dataNameSet t'' orig
         Nothing -> do
           case Stuck.asStuckedTerm t' of
