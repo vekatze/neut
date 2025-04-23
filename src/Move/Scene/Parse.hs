@@ -1,5 +1,7 @@
 module Move.Scene.Parse
-  ( parse,
+  ( Handle,
+    new,
+    parse,
     parseCachedStmtList,
   )
 where
@@ -21,6 +23,7 @@ import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
+import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Import qualified as Import
 import Move.Scene.Parse.Program qualified as Parse
 import Rule.ArgNum qualified as AN
@@ -33,12 +36,30 @@ import Rule.Source qualified as Source
 import Rule.Stmt
 import Rule.Target
 
-parse :: Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
-parse t source cacheOrContent = do
-  parseSource t source cacheOrContent
+data Handle
+  = Handle
+  { parseHandle :: P.Handle,
+    discernHandle :: Discern.Handle,
+    pathHandle :: Path.Handle,
+    importHandle :: Import.Handle,
+    globalHandle :: Global.Handle
+  }
 
-parseSource :: Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
-parseSource t source cacheOrContent = do
+new :: App Handle
+new = do
+  parseHandle <- P.new
+  discernHandle <- Discern.new
+  pathHandle <- Path.new
+  importHandle <- Import.new
+  globalHandle <- Global.new
+  return $ Handle {..}
+
+parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
+parse h t source cacheOrContent = do
+  parseSource h t source cacheOrContent
+
+parseSource :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
+parseSource h t source cacheOrContent = do
   let filePath = Source.sourceFilePath source
   case cacheOrContent of
     Left cache -> do
@@ -47,12 +68,10 @@ parseSource t source cacheOrContent = do
       saveTopLevelNames source $ getStmtName stmtList
       return $ Left cache
     Right fileContent -> do
-      h <- P.new
-      prog <- toApp $ P.parseFile h filePath fileContent True Parse.parseProgram
-      prog' <- interpret source (snd prog)
+      prog <- toApp $ P.parseFile (parseHandle h) filePath fileContent True Parse.parseProgram
+      prog' <- interpret h source (snd prog)
       tmap <- Env.getTagMap
-      h' <- Path.new
-      toApp $ Cache.saveLocationCache h' t source $ Cache.LocationCache tmap
+      toApp $ Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap
       return $ Right prog'
 
 parseCachedStmtList :: [Stmt] -> App ()
@@ -67,13 +86,12 @@ parseCachedStmtList stmtList = do
       StmtForeign {} ->
         return ()
 
-interpret :: Source.Source -> RawProgram -> App [WeakStmt]
-interpret currentSource (RawProgram m importList stmtList) = do
-  h <- Import.new
-  toApp $ Import.interpretImport h m currentSource importList >>= Import.activateImport h m
-  stmtList' <- Discern.discernStmtList (Source.sourceModule currentSource) $ map fst stmtList
-  h' <- Global.new
-  toApp $ Global.reportMissingDefinitions h'
+interpret :: Handle -> Source.Source -> RawProgram -> App [WeakStmt]
+interpret h currentSource (RawProgram m importList stmtList) = do
+  toApp $ do
+    Import.interpretImport (importHandle h) m currentSource importList >>= Import.activateImport (importHandle h) m
+  stmtList' <- Discern.discernStmtList (discernHandle h) (Source.sourceModule currentSource) $ map fst stmtList
+  toApp $ Global.reportMissingDefinitions (globalHandle h)
   saveTopLevelNames currentSource $ getWeakStmtName stmtList'
   UnusedVariable.registerRemarks
   UnusedGlobalLocator.registerRemarks

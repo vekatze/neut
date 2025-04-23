@@ -51,7 +51,8 @@ _check target baseModule = do
       Initialize.initializeForSource source
       h'' <- Debug.new
       toApp $ Debug.report h'' $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-      void $ Parse.parse target source cacheOrContent >>= Elaborate.elaborate target
+      hParse <- Parse.new
+      void $ Parse.parse hParse target source cacheOrContent >>= Elaborate.elaborate target
 
 checkAll :: App [Remark]
 checkAll = do
