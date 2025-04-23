@@ -348,7 +348,7 @@ discern h term =
       patternMatrix' <- discernPatternMatrix h $ SE.extract patternMatrix
       toApp $ ensurePatternMatrixSanity h patternMatrix'
       let os' = zip ms os
-      decisionTree <- compilePatternMatrix h isNoetic (V.fromList os') patternMatrix'
+      decisionTree <- toApp $ compilePatternMatrix h isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
     m :< RT.Box t -> do
       t' <- discern h t
