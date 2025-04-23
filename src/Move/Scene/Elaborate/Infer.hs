@@ -86,6 +86,7 @@ data Handle
     constraintHandle :: Constraint.Handle,
     weakTypeHandle :: WeakType.Handle,
     weakDeclHandle :: WeakDecl.Handle,
+    keyArgHandle :: KeyArg.Handle,
     holeHandle :: Hole.Handle,
     typeHandle :: Type.Handle,
     varEnv :: BoundVarEnv,
@@ -100,6 +101,7 @@ new = do
   unifyHandle <- Unify.new
   gensymHandle <- Gensym.new
   discernHandle <- Discern.new
+  keyArgHandle <- KeyArg.new
   constraintHandle <- Constraint.new
   weakTypeHandle <- WeakType.new
   weakDeclHandle <- WeakDecl.new
@@ -311,19 +313,16 @@ infer h term =
       | WP.Value primValue <- prim ->
           case primValue of
             WPV.Int t v -> do
-              empty <- new
-              t' <- inferType empty t
+              t' <- inferType (h {varEnv = []}) t
               return (m :< WT.Prim (WP.Value (WPV.Int t' v)), t')
             WPV.Float t v -> do
-              empty <- new
-              t' <- inferType empty t
+              t' <- inferType (h {varEnv = []}) t
               return (m :< WT.Prim (WP.Value (WPV.Float t' v)), t')
             WPV.Op op -> do
               primOpType <- liftIO $ primOpToType h m op
               return (term, weaken primOpType)
             WPV.StaticText t text -> do
-              empty <- new
-              t' <- inferType empty t
+              t' <- inferType (h {varEnv = []}) t
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.BoxNoema t')
             WPV.Rune _ -> do
               return (m :< WT.Prim prim, m :< WT.Prim (WP.Type PT.Rune))
@@ -383,10 +382,8 @@ infer h term =
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
     m :< WT.Resource dd resourceID unitType discarder copier -> do
       unitType' <- inferType h unitType
-      empty1 <- new
-      (discarder', td) <- infer empty1 discarder
-      empty2 <- new
-      (copier', tc) <- infer empty2 copier
+      (discarder', td) <- infer (h {varEnv = []}) discarder
+      (copier', tc) <- infer (h {varEnv = []}) copier
       x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "_"
       resourceType <- liftIO $ newHole h m []
       let tDiscard = m :< WT.Pi [] [(m, x, resourceType)] unitType'
@@ -401,8 +398,7 @@ infer h term =
         _ :< WT.Data attr _ dataArgs
           | AttrD.Attr {..} <- attr,
             [(consDD, isConstLike')] <- consNameList -> do
-              hKeyArg <- KeyArg.new
-              (_, keyList) <- toApp $ KeyArg.lookup hKeyArg m consDD
+              (_, keyList) <- toApp $ KeyArg.lookup (keyArgHandle h) m consDD
               defaultKeyMap <- liftIO $ constructDefaultKeyMap h m keyList
               let specifiedKeyMap = Map.fromList $ flip map xts $ \(mx, x, t) -> (Ident.toText x, (mx, x, t))
               let keyMap = Map.union specifiedKeyMap defaultKeyMap
