@@ -17,7 +17,6 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Decl qualified as Decl
 import Move.Context.EIO (EIO, raiseError, toApp)
-import Move.Context.Elaborate
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -29,6 +28,7 @@ import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
+import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Discern.Name qualified as N
@@ -84,6 +84,7 @@ data Handle
     gensymHandle :: Gensym.Handle,
     discernHandle :: Discern.Handle,
     constraintHandle :: Constraint.Handle,
+    weakTypeHandle :: WeakType.Handle,
     holeHandle :: Hole.Handle,
     typeHandle :: Type.Handle,
     varEnv :: BoundVarEnv,
@@ -99,6 +100,7 @@ new = do
   gensymHandle <- Gensym.new
   discernHandle <- Discern.new
   constraintHandle <- Constraint.new
+  weakTypeHandle <- WeakType.new
   holeHandle <- Hole.new
   typeHandle <- Type.new
   let varEnv = []
@@ -191,7 +193,7 @@ infer h term =
     _ :< WT.Tau ->
       return (term, term)
     m :< WT.Var x -> do
-      _ :< t <- lookupWeakTypeEnv m x
+      _ :< t <- toApp $ WeakType.lookup (weakTypeHandle h) m x
       return (term, m :< t)
     m :< WT.VarGlobal _ name -> do
       _ :< t <- Type.lookup m name
@@ -208,7 +210,7 @@ infer h term =
           (expArgs', h'') <- inferBinder' h' expArgs
           codType' <- inferType h'' codType
           let piType = m :< WT.Pi impArgs' expArgs' codType'
-          insWeakTypeEnv x piType
+          liftIO $ WeakType.insert (weakTypeHandle h) x piType
           (e', tBody) <- infer h'' e
           liftIO $ Constraint.insert (constraintHandle h'') codType' tBody
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e'
@@ -250,7 +252,7 @@ infer h term =
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer h) es
-      forM_ (zip os ts') $ uncurry insWeakTypeEnv
+      liftIO $ forM_ (zip os ts') $ uncurry $ WeakType.insert (weakTypeHandle h)
       (tree', treeType) <- inferDecisionTree m h tree
       return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', treeType)
     m :< WT.Box t -> do
@@ -282,7 +284,7 @@ infer h term =
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer h e1
       t' <- inferType h t >>= toApp . resolveType h
-      insWeakTypeEnv x t'
+      liftIO $ WeakType.insert (weakTypeHandle h) x t'
       case opacity of
         WT.Noetic ->
           liftIO $ Constraint.insertActualityConstraint (constraintHandle h) t'
@@ -409,7 +411,7 @@ infer h term =
               cursor <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "cursor"
               od <- OptimizableData.lookup consDD
               let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
-              insWeakTypeEnv cursor t''
+              liftIO $ WeakType.insert (weakTypeHandle h) cursor t''
               (tree', _ :< treeType) <-
                 inferDecisionTree m h $
                   DT.Switch
@@ -519,7 +521,7 @@ inferPiBinder h binder =
       return ([], h)
     ((mx, x, t) : xts) -> do
       t' <- inferType h t
-      insWeakTypeEnv x t'
+      liftIO $ WeakType.insert (weakTypeHandle h) x t'
       (xtls', h') <- inferPiBinder (extendHandle (mx, x, t') h) xts
       return ((mx, x, t') : xtls', h')
 
@@ -533,7 +535,7 @@ inferBinder' h binder =
       return ([], h)
     ((mx, x, t) : xts) -> do
       t' <- inferType h t
-      insWeakTypeEnv x t'
+      liftIO $ WeakType.insert (weakTypeHandle h) x t'
       (xts', h') <- inferBinder' (extendHandle' (mx, x, t') h) xts
       return ((mx, x, t') : xts', h')
 
@@ -543,7 +545,7 @@ inferBinder1 ::
   App (BinderF WT.WeakTerm, Handle)
 inferBinder1 h (mx, x, t) = do
   t' <- inferType h t
-  insWeakTypeEnv x t'
+  liftIO $ WeakType.insert (weakTypeHandle h) x t'
   return ((mx, x, t'), extendHandle' (mx, x, t') h)
 
 inferPiElim ::
@@ -630,7 +632,7 @@ inferLet ::
 inferLet h ((mx, x, t), e1) = do
   (e1', t1') <- infer h e1
   t' <- inferType h t >>= toApp . resolveType h
-  insWeakTypeEnv x t'
+  liftIO $ WeakType.insert (weakTypeHandle h) x t'
   liftIO $ Constraint.insert (constraintHandle h) t' t1'
   return ((mx, x, t'), e1')
 
@@ -649,7 +651,7 @@ inferDecisionTree m h tree =
       hole <- liftIO $ newHole h m (varEnv h)
       return (DT.Unreachable, hole)
     DT.Switch (cursor, _) clauseList -> do
-      _ :< cursorType <- lookupWeakTypeEnv m cursor
+      _ :< cursorType <- toApp $ WeakType.lookup (weakTypeHandle h) m cursor
       let cursorType' = m :< cursorType
       (clauseList', answerType) <- inferClauseList m h cursorType' clauseList
       return (DT.Switch (cursor, cursorType') clauseList', answerType)

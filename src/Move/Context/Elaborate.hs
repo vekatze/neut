@@ -4,8 +4,6 @@ module Move.Context.Elaborate
     getConstraintEnv,
     setSuspendedEnv,
     getSuspendedEnv,
-    insWeakTypeEnv,
-    lookupWeakTypeEnv,
     lookupWeakTypeEnvMaybe,
     getHoleSubst,
     setHoleSubst,
@@ -28,7 +26,6 @@ import Rule.Constraint qualified as C
 import Rule.Hint
 import Rule.HoleID qualified as HID
 import Rule.HoleSubst qualified as HS
-import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.WeakTerm
 import Rule.WeakTerm qualified as WT
@@ -56,20 +53,6 @@ getSuspendedEnv =
 setSuspendedEnv :: [C.SuspendedConstraint] -> App ()
 setSuspendedEnv =
   writeRef' suspendedEnv
-
-insWeakTypeEnv :: Ident -> WeakTerm -> App ()
-insWeakTypeEnv k v =
-  modifyRef' weakTypeEnv $ IntMap.insert (Ident.toInt k) v
-
-lookupWeakTypeEnv :: Hint -> Ident -> App WeakTerm
-lookupWeakTypeEnv m k = do
-  wtenv <- readRef' weakTypeEnv
-  case IntMap.lookup (Ident.toInt k) wtenv of
-    Just t ->
-      return t
-    Nothing ->
-      Throw.raiseCritical m $
-        "`" <> Ident.toText' k <> "` is not found in the weak type environment."
 
 lookupWeakTypeEnvMaybe :: Int -> App (Maybe WeakTerm)
 lookupWeakTypeEnvMaybe k = do
