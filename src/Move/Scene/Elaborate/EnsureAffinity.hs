@@ -77,7 +77,7 @@ ensureAffinity :: TM.Term -> App [R.Remark]
 ensureAffinity e = do
   h <- new
   cs <- toApp $ analyze h e
-  synthesize h $ map (bimap weaken weaken) cs
+  toApp $ synthesize h $ map (bimap weaken weaken) cs
 
 extendHandle :: BinderF TM.Term -> Handle -> Handle
 extendHandle (_, x, t) h = do
@@ -324,9 +324,9 @@ analyzeCase h decisionCase = do
       cs3 <- analyzeDecisionTree h' cont
       return $ cs1 ++ cs2 ++ cs3
 
-synthesize :: Handle -> [WeakAffineConstraint] -> App [R.Remark]
+synthesize :: Handle -> [WeakAffineConstraint] -> EIO [R.Remark]
 synthesize h cs = do
-  errorList <- toApp $ concat <$> mapM (simplifyAffine h S.empty) cs
+  errorList <- concat <$> mapM (simplifyAffine h S.empty) cs
   return $ map constructErrorMessageAffine errorList
 
 newtype AffineConstraintError
