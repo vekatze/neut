@@ -515,7 +515,7 @@ discern h term =
             [mText :< RT.StaticText textType fullMessage, RT.lam fakeLoc mCond [] cod e]
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue m key
-      clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
+      clause <- toApp $ lookupIntrospectiveClause m value $ SE.extract clauseList
       discern h clause
     m :< RT.IncludeText _ _ mKey (key, _) -> do
       hLoc <- Locator.new
@@ -711,11 +711,11 @@ foldListApp m listNil listCons es =
     e : rest ->
       m :< RT.piElim listCons [e, foldListApp m listNil listCons rest]
 
-lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, RT.RawTerm)] -> App RT.RawTerm
+lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, RT.RawTerm)] -> EIO RT.RawTerm
 lookupIntrospectiveClause m value clauseList =
   case clauseList of
     [] ->
-      Throw.raiseError m $ "This term does not support `" <> value <> "`."
+      raiseError m $ "This term does not support `" <> value <> "`."
     (Just key, _, clause) : rest
       | key == value ->
           return clause
