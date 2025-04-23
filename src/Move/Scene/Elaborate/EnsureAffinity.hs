@@ -1,14 +1,21 @@
-module Move.Scene.Elaborate.EnsureAffinity (ensureAffinity) where
+module Move.Scene.Elaborate.EnsureAffinity
+  ( Handle,
+    new,
+    ensureAffinity,
+  )
+where
 
 import Control.Comonad.Cofree
 import Control.Lens (Bifunctor (bimap))
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Move.Context.App (App)
+import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical, toApp)
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
@@ -43,8 +50,8 @@ type WeakAffineConstraint =
 
 type VarEnv = IntMap.IntMap TM.Term
 
-data Axis
-  = Axis
+data Handle
+  = Handle
   { reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     varEnv :: VarEnv,
@@ -53,212 +60,213 @@ data Axis
     defMap :: WeakDefinition.DefMap
   }
 
-ensureAffinity :: TM.Term -> App [R.Remark]
-ensureAffinity e = do
-  defMap <- WeakDefinition.read
+new :: App Handle
+new = do
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
-  axis <- liftIO $ createNewAxis reduceHandle substHandle defMap
-  cs <- toApp $ analyze axis e
-  synthesize axis $ map (bimap weaken weaken) cs
-
-createNewAxis :: Reduce.Handle -> Subst.Handle -> WeakDefinition.DefMap -> IO Axis
-createNewAxis reduceHandle substHandle defMap = do
   let varEnv = IntMap.empty
-  foundVarSetRef <- newIORef IntMap.empty
+  foundVarSetRef <- liftIO $ newIORef IntMap.empty
+  weakDefMapRef <- asks App.weakDefMap
+  defMap <- liftIO $ readIORef weakDefMapRef
   let mustPerformExpCheck = True
-  return Axis {..}
+  return $ Handle {..}
 
-extendAxis :: BinderF TM.Term -> Axis -> Axis
-extendAxis (_, x, t) axis = do
-  axis {varEnv = IntMap.insert (toInt x) t (varEnv axis)}
+ensureAffinity :: TM.Term -> App [R.Remark]
+ensureAffinity e = do
+  h <- new
+  cs <- toApp $ analyze h e
+  synthesize h $ map (bimap weaken weaken) cs
 
-extendAxis' :: [BinderF TM.Term] -> Axis -> Axis
-extendAxis' mxts axis = do
+extendHandle :: BinderF TM.Term -> Handle -> Handle
+extendHandle (_, x, t) h = do
+  h {varEnv = IntMap.insert (toInt x) t (varEnv h)}
+
+extendHandle' :: [BinderF TM.Term] -> Handle -> Handle
+extendHandle' mxts h = do
   case mxts of
     [] ->
-      axis
+      h
     mxt : rest ->
-      extendAxis mxt (extendAxis' rest axis)
+      extendHandle mxt (extendHandle' rest h)
 
 mergeVarSet :: IntMap.IntMap Bool -> IntMap.IntMap Bool -> IntMap.IntMap Bool
 mergeVarSet set1 set2 = do
   IntMap.unionWith (||) set1 set2
 
-isExistingVar :: Ident -> Axis -> IO (Maybe Bool)
-isExistingVar i axis = do
-  foundVarSet <- readIORef $ foundVarSetRef axis
+isExistingVar :: Ident -> Handle -> IO (Maybe Bool)
+isExistingVar i h = do
+  foundVarSet <- readIORef $ foundVarSetRef h
   return $ IntMap.lookup (toInt i) foundVarSet
 
-insertVar :: Ident -> Axis -> IO ()
-insertVar i axis = do
-  modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) False
+insertVar :: Ident -> Handle -> IO ()
+insertVar i h = do
+  modifyIORef' (foundVarSetRef h) $ IntMap.insert (toInt i) False
 
-insertRelevantVar :: Ident -> Axis -> IO ()
-insertRelevantVar i axis = do
-  modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) True
+insertRelevantVar :: Ident -> Handle -> IO ()
+insertRelevantVar i h = do
+  modifyIORef' (foundVarSetRef h) $ IntMap.insert (toInt i) True
 
-cloneAxis :: Axis -> IO Axis
-cloneAxis axis = do
-  foundVarSet <- readIORef $ foundVarSetRef axis
+cloneHandle :: Handle -> IO Handle
+cloneHandle h = do
+  foundVarSet <- readIORef $ foundVarSetRef h
   foundVarSetRef <- newIORef foundVarSet
   let mustPerformExpCheck = True
   return $
-    Axis
-      { varEnv = varEnv axis,
+    Handle
+      { varEnv = varEnv h,
         foundVarSetRef,
         mustPerformExpCheck,
-        defMap = defMap axis,
-        substHandle = substHandle axis,
-        reduceHandle = reduceHandle axis
+        defMap = defMap h,
+        substHandle = substHandle h,
+        reduceHandle = reduceHandle h
       }
 
-deactivateExpCheck :: Axis -> Axis
-deactivateExpCheck axis =
-  axis {mustPerformExpCheck = False}
+deactivateExpCheck :: Handle -> Handle
+deactivateExpCheck h =
+  h {mustPerformExpCheck = False}
 
-analyzeVar :: Axis -> Hint -> Ident -> EIO [AffineConstraint]
-analyzeVar axis m x = do
-  if isCartesian x || not (mustPerformExpCheck axis)
+analyzeVar :: Handle -> Hint -> Ident -> EIO [AffineConstraint]
+analyzeVar h m x = do
+  if isCartesian x || not (mustPerformExpCheck h)
     then return []
     else do
-      boolOrNone <- liftIO $ isExistingVar x axis
+      boolOrNone <- liftIO $ isExistingVar x h
       case boolOrNone of
         Nothing -> do
-          liftIO $ insertVar x axis
+          liftIO $ insertVar x h
           return []
         Just alreadyRegistered ->
           if alreadyRegistered
             then return []
             else do
-              liftIO $ insertRelevantVar x axis
-              _ :< t <- lookupTypeEnv (varEnv axis) m x
+              liftIO $ insertRelevantVar x h
+              _ :< t <- lookupTypeEnv (varEnv h) m x
               return [(m :< t, m :< t)]
 
-analyze :: Axis -> TM.Term -> EIO [AffineConstraint]
-analyze axis term = do
+analyze :: Handle -> TM.Term -> EIO [AffineConstraint]
+analyze h term = do
   case term of
     _ :< TM.Tau ->
       return []
     m :< TM.Var x -> do
-      analyzeVar axis m x
+      analyzeVar h m x
     _ :< TM.VarGlobal {} -> do
       return []
     _ :< TM.Pi impArgs expArgs t -> do
-      (cs1, axis') <- analyzeBinder axis impArgs
-      (cs2, axis'') <- analyzeBinder axis' expArgs
-      cs3 <- analyze axis'' t
+      (cs1, h') <- analyzeBinder h impArgs
+      (cs2, h'') <- analyzeBinder h' expArgs
+      cs3 <- analyze h'' t
       return $ cs1 ++ cs2 ++ cs3
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
-          (cs1, axis') <- analyzeBinder axis impArgs
-          (cs2, axis'') <- analyzeBinder axis' expArgs
-          cs3 <- analyze axis'' codType
+          (cs1, h') <- analyzeBinder h impArgs
+          (cs2, h'') <- analyzeBinder h' expArgs
+          cs3 <- analyze h'' codType
           let piType = m :< TM.Pi impArgs expArgs codType
-          liftIO $ insertRelevantVar x axis''
-          cs4 <- analyze (extendAxis (mx, x, piType) axis'') e
-          css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar axis)
+          liftIO $ insertRelevantVar x h''
+          cs4 <- analyze (extendHandle (mx, x, piType) h'') e
+          css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
         LK.Normal codType -> do
-          (cs1, axis') <- analyzeBinder axis impArgs
-          (cs2, axis'') <- analyzeBinder axis' expArgs
-          cs3 <- analyze axis'' codType
-          cs4 <- analyze axis'' e
+          (cs1, h') <- analyzeBinder h impArgs
+          (cs2, h'') <- analyzeBinder h' expArgs
+          cs3 <- analyze h'' codType
+          cs4 <- analyze h'' e
           return $ cs1 ++ cs2 ++ cs3 ++ cs4
     _ :< TM.PiElim e es -> do
-      cs <- analyze axis e
-      css <- mapM (analyze axis) es
+      cs <- analyze h e
+      css <- mapM (analyze h) es
       return $ cs ++ concat css
     _ :< TM.Data _ _ es -> do
-      css <- mapM (analyze $ deactivateExpCheck axis) es
+      css <- mapM (analyze $ deactivateExpCheck h) es
       return $ concat css
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      css1 <- mapM (analyze $ deactivateExpCheck axis) dataArgs
-      css2 <- mapM (analyze $ deactivateExpCheck axis) consArgs
+      css1 <- mapM (analyze $ deactivateExpCheck h) dataArgs
+      css2 <- mapM (analyze $ deactivateExpCheck h) consArgs
       return $ concat css1 ++ concat css2
     m :< TM.DataElim _ oets tree -> do
       let (os, es, ts) = unzip3 oets
-      cs1 <- concat <$> mapM (analyze axis) es
-      cs2 <- concat <$> mapM (analyze axis) ts
+      cs1 <- concat <$> mapM (analyze h) es
+      cs2 <- concat <$> mapM (analyze h) ts
       let mots = zipWith (\o t -> (m, o, t)) os ts
-      cs3 <- analyzeDecisionTree (extendAxis' mots axis) tree
+      cs3 <- analyzeDecisionTree (extendHandle' mots h) tree
       return $ cs1 ++ cs2 ++ cs3
     _ :< TM.Box t -> do
-      analyze axis t
+      analyze h t
     _ :< TM.BoxNoema t -> do
-      analyze axis t
+      analyze h t
     _ :< TM.BoxIntro letSeq e -> do
-      (cs1, axis') <- analyzeLet axis letSeq
-      cs2 <- analyze axis' e
+      (cs1, h') <- analyzeLet h letSeq
+      cs2 <- analyze h' e
       return $ cs1 ++ cs2
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
-      (cs, axis') <- analyzeLet axis $ castSeq ++ [(mxt, e1)] ++ uncastSeq
-      cs' <- analyze axis' e2
+      (cs, h') <- analyzeLet h $ castSeq ++ [(mxt, e1)] ++ uncastSeq
+      cs' <- analyze h' e2
       return $ cs ++ cs'
     _ :< TM.Let _ mxt e1 e2 -> do
-      (cs1, axis') <- analyzeLet axis [(mxt, e1)]
-      cs2 <- analyze axis' e2
+      (cs1, h') <- analyzeLet h [(mxt, e1)]
+      cs2 <- analyze h' e2
       return $ cs1 ++ cs2
     _ :< TM.Prim {} -> do
       return []
     _ :< TM.Magic magic -> do
       case magic of
         M.Cast from to value -> do
-          cs0 <- analyze axis from
-          cs1 <- analyze axis to
-          cs2 <- analyze axis value
+          cs0 <- analyze h from
+          cs1 <- analyze h to
+          cs2 <- analyze h value
           return $ cs0 ++ cs1 ++ cs2
         M.Store _ unit e1 e2 -> do
-          cs1 <- analyze axis unit
-          cs2 <- analyze axis e1
-          cs3 <- analyze axis e2
+          cs1 <- analyze h unit
+          cs2 <- analyze h e1
+          cs3 <- analyze h e2
           return $ cs1 ++ cs2 ++ cs3
         M.Load _ e -> do
-          analyze axis e
+          analyze h e
         M.Alloca _ size -> do
-          analyze axis size
+          analyze h size
         M.External _ _ _ es ets -> do
           let args = es ++ map fst ets
-          concat <$> mapM (analyze axis) args
+          concat <$> mapM (analyze h) args
         M.Global _ _ ->
           return []
         M.OpaqueValue e ->
-          analyze axis e
+          analyze h e
     _ :< TM.Resource _ _ unitType discarder copier -> do
-      cs1 <- analyze axis unitType
-      cs2 <- analyze axis discarder
-      cs3 <- analyze axis copier
+      cs1 <- analyze h unitType
+      cs2 <- analyze h discarder
+      cs3 <- analyze h copier
       return $ cs1 ++ cs2 ++ cs3
     _ :< TM.Void ->
       return []
 
 analyzeBinder ::
-  Axis ->
+  Handle ->
   [BinderF TM.Term] ->
-  EIO ([AffineConstraint], Axis)
-analyzeBinder axis binder =
+  EIO ([AffineConstraint], Handle)
+analyzeBinder h binder =
   case binder of
     [] -> do
-      return ([], axis)
+      return ([], h)
     ((mx, x, t) : xts) -> do
-      cs <- analyze axis t
-      (cs', axis') <- analyzeBinder (extendAxis (mx, x, t) axis) xts
-      return (cs ++ cs', axis')
+      cs <- analyze h t
+      (cs', h') <- analyzeBinder (extendHandle (mx, x, t) h) xts
+      return (cs ++ cs', h')
 
 analyzeLet ::
-  Axis ->
+  Handle ->
   [(BinderF TM.Term, TM.Term)] ->
-  EIO ([AffineConstraint], Axis)
-analyzeLet axis xtes =
+  EIO ([AffineConstraint], Handle)
+analyzeLet h xtes =
   case xtes of
     [] ->
-      return ([], axis)
+      return ([], h)
     ((m, x, t), e) : rest -> do
-      cs0 <- analyze axis t
-      cs1 <- analyze axis e
-      (cs', axis') <- analyzeLet (extendAxis (m, x, t) axis) rest
-      return (cs0 ++ cs1 ++ cs', axis')
+      cs0 <- analyze h t
+      cs1 <- analyze h e
+      (cs', h') <- analyzeLet (extendHandle (m, x, t) h) rest
+      return (cs0 ++ cs1 ++ cs', h')
 
 lookupTypeEnv :: VarEnv -> Hint -> Ident -> EIO TM.Term
 lookupTypeEnv varEnv m x =
@@ -272,57 +280,57 @@ lookupTypeEnv varEnv m x =
           <> "` is not registered in the type environment"
 
 analyzeDecisionTree ::
-  Axis ->
+  Handle ->
   DT.DecisionTree TM.Term ->
   EIO [AffineConstraint]
-analyzeDecisionTree axis tree =
+analyzeDecisionTree h tree =
   case tree of
     DT.Leaf _ letSeq body -> do
-      (cs1, axis') <- analyzeLet axis letSeq
-      cs2 <- analyze axis' body
+      (cs1, h') <- analyzeLet h letSeq
+      cs2 <- analyze h' body
       return $ cs1 ++ cs2
     DT.Unreachable -> do
       return []
     DT.Switch (_, cursorType) caseList -> do
-      cs1 <- analyze axis cursorType
-      cs2 <- analyzeClauseList axis caseList
+      cs1 <- analyze h cursorType
+      cs2 <- analyzeClauseList h caseList
       return $ cs1 ++ cs2
 
 analyzeClauseList ::
-  Axis ->
+  Handle ->
   DT.CaseList TM.Term ->
   EIO [AffineConstraint]
-analyzeClauseList axis (fallbackClause, caseList) = do
+analyzeClauseList h (fallbackClause, caseList) = do
   newVarSetRef <- liftIO $ newIORef IntMap.empty
   css <- forM caseList $ \c -> do
-    axis' <- liftIO $ cloneAxis axis
-    cs <- analyzeCase axis' c
-    branchVarSet <- liftIO $ readIORef $ foundVarSetRef axis'
+    h' <- liftIO $ cloneHandle h
+    cs <- analyzeCase h' c
+    branchVarSet <- liftIO $ readIORef $ foundVarSetRef h'
     liftIO $ modifyIORef' newVarSetRef $ mergeVarSet branchVarSet
     return cs
-  cs <- analyzeDecisionTree axis fallbackClause
-  fallbackVarSet <- liftIO $ readIORef $ foundVarSetRef axis
+  cs <- analyzeDecisionTree h fallbackClause
+  fallbackVarSet <- liftIO $ readIORef $ foundVarSetRef h
   liftIO $ modifyIORef' newVarSetRef $ mergeVarSet fallbackVarSet
   newVarSet <- liftIO $ readIORef newVarSetRef
-  liftIO $ writeIORef (foundVarSetRef axis) newVarSet
+  liftIO $ writeIORef (foundVarSetRef h) newVarSet
   return $ cs ++ concat css
 
 analyzeCase ::
-  Axis ->
+  Handle ->
   DT.Case TM.Term ->
   EIO [AffineConstraint]
-analyzeCase axis decisionCase = do
+analyzeCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
-      analyzeDecisionTree axis cont
+      analyzeDecisionTree h cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (es1, ts1) = unzip dataArgs
-      cs1 <- concat <$> mapM (analyze axis) (es1 ++ ts1)
-      (cs2, axis') <- analyzeBinder axis consArgs
-      cs3 <- analyzeDecisionTree axis' cont
+      cs1 <- concat <$> mapM (analyze h) (es1 ++ ts1)
+      (cs2, h') <- analyzeBinder h consArgs
+      cs3 <- analyzeDecisionTree h' cont
       return $ cs1 ++ cs2 ++ cs3
 
-synthesize :: Axis -> [WeakAffineConstraint] -> App [R.Remark]
+synthesize :: Handle -> [WeakAffineConstraint] -> App [R.Remark]
 synthesize h cs = do
   errorList <- concat <$> mapM (simplifyAffine h S.empty) cs
   return $ map constructErrorMessageAffine errorList
@@ -337,7 +345,7 @@ constructErrorMessageAffine (AffineConstraintError t) =
       <> WT.toText t
 
 simplifyAffine ::
-  Axis ->
+  Handle ->
   S.Set DD.DefiniteDescription ->
   WeakAffineConstraint ->
   App [AffineConstraintError]
@@ -379,7 +387,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
         _ -> do
           return [AffineConstraintError orig]
 
-substConsArgs :: Axis -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> EIO [BinderF WT.WeakTerm]
+substConsArgs :: Handle -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> EIO [BinderF WT.WeakTerm]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->
