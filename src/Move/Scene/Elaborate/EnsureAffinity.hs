@@ -82,9 +82,9 @@ insertVar :: Ident -> Axis -> App ()
 insertVar i axis = do
   liftIO $ modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) False
 
-insertRelevantVar :: Ident -> Axis -> App ()
+insertRelevantVar :: Ident -> Axis -> IO ()
 insertRelevantVar i axis = do
-  liftIO $ modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) True
+  modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) True
 
 ensureAffinity :: TM.Term -> App [R.Remark]
 ensureAffinity e = do
@@ -118,7 +118,7 @@ analyzeVar axis m x = do
           if alreadyRegistered
             then return []
             else do
-              insertRelevantVar x axis
+              liftIO $ insertRelevantVar x axis
               _ :< t <- toApp $ lookupTypeEnv (varEnv axis) m x
               return [(m :< t, m :< t)]
 
@@ -143,7 +143,7 @@ analyze axis term = do
           (cs2, axis'') <- analyzeBinder axis' expArgs
           cs3 <- analyze axis'' codType
           let piType = m :< TM.Pi impArgs expArgs codType
-          insertRelevantVar x axis''
+          liftIO $ insertRelevantVar x axis''
           cs4 <- analyze (extendAxis (mx, x, piType) axis'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ \(my, y) -> do
             analyzeVar axis my y
