@@ -11,7 +11,7 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Move.Context.App
 import Move.Context.Decl qualified as Decl
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env (getPlatform)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
@@ -262,7 +262,7 @@ discern h term =
                   Tag.insertLocalVar m name' mDef
                   return $ m :< WT.Var name'
                 else
-                  raiseLayerError m (H.currentLayer h) layer
+                  toApp $ raiseLayerError m (H.currentLayer h) layer
         _ -> do
           (dd, (_, gn)) <- toApp $ resolveName h m name
           toApp $ interpretGlobalName h m dd gn
@@ -1129,9 +1129,9 @@ ensureLayerClosedness mClosure h e = do
           <> T.pack (show (H.currentLayer h))
           <> ")"
 
-raiseLayerError :: Hint -> Layer -> Layer -> App a
+raiseLayerError :: Hint -> Layer -> Layer -> EIO a
 raiseLayerError m expected found = do
-  Throw.raiseError m $
+  raiseError m $
     "Expected layer:\n  "
       <> T.pack (show expected)
       <> "\nFound layer:\n  "
