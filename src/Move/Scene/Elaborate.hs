@@ -81,9 +81,9 @@ elaborate t cacheOrStmt = do
 
 analyzeStmtList :: [WeakStmt] -> App [WeakStmt]
 analyzeStmtList stmtList = do
-  -- mapM_ viewStmt stmtList
   forM stmtList $ \stmt -> do
-    stmt' <- Infer.inferStmt stmt
+    h <- Infer.new
+    stmt' <- toApp $ Infer.inferStmt h stmt
     insertWeakStmt stmt'
     return stmt'
 
