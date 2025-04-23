@@ -1,4 +1,10 @@
-module Move.Scene.WeakTerm.Reduce (reduce) where
+module Move.Scene.WeakTerm.Reduce
+  ( Handle,
+    new,
+    reduce,
+    reduce',
+  )
+where
 
 import Control.Comonad.Cofree
 import Control.Monad

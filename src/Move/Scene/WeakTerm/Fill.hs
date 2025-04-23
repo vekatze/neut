@@ -11,13 +11,14 @@ import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Annotation qualified as AN
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
 import Rule.DecisionTree qualified as DT
+import Rule.Hint qualified as H
 import Rule.HoleSubst
 import Rule.Ident.Reify qualified as Ident
 import Rule.LamKind qualified as LK
@@ -28,15 +29,17 @@ import Prelude hiding (lookup)
 data Handle
   = Handle
   { holeSubst :: HoleSubst,
-    substHandle :: Subst.Handle
+    substHandle :: Subst.Handle,
+    reduceHandle :: Reduce.Handle
   }
 
-new :: HoleSubst -> App Handle
-new holeSubst = do
+new :: H.Hint -> HoleSubst -> App Handle
+new m holeSubst = do
   substHandle <- Subst.new
+  reduceHandle <- Reduce.new m
   return $ Handle {..}
 
-fill :: Handle -> WT.WeakTerm -> App WT.WeakTerm
+fill :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 fill h term =
   case term of
     _ :< WT.Tau ->
@@ -119,8 +122,8 @@ fill h term =
         Just (xs, body)
           | length xs == length es -> do
               let varList = map Ident.toInt xs
-              toApp (Subst.subst (substHandle h) (IntMap.fromList $ zip varList (map Right es')) body)
-                >>= Reduce.reduce
+              Subst.subst (substHandle h) (IntMap.fromList $ zip varList (map Right es')) body
+                >>= Reduce.reduce' (reduceHandle h)
           | otherwise -> do
               error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\n" ++ show (map toText es') ++ "\nhole id = " ++ show i
         Nothing ->
@@ -150,7 +153,7 @@ fill h term =
 fillBinder ::
   Handle ->
   [BinderF WT.WeakTerm] ->
-  App [BinderF WT.WeakTerm]
+  EIO [BinderF WT.WeakTerm]
 fillBinder h binder =
   case binder of
     [] -> do
@@ -163,7 +166,7 @@ fillBinder h binder =
 fillLet ::
   Handle ->
   (BinderF WT.WeakTerm, WT.WeakTerm) ->
-  App (BinderF WT.WeakTerm, WT.WeakTerm)
+  EIO (BinderF WT.WeakTerm, WT.WeakTerm)
 fillLet h ((m, x, t), e) = do
   e' <- fill h e
   t' <- fill h t
@@ -172,7 +175,7 @@ fillLet h ((m, x, t), e) = do
 fillLetSeq ::
   Handle ->
   [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
-  App [(BinderF WT.WeakTerm, WT.WeakTerm)]
+  EIO [(BinderF WT.WeakTerm, WT.WeakTerm)]
 fillLetSeq h letSeq = do
   case letSeq of
     [] ->
@@ -185,7 +188,7 @@ fillLetSeq h letSeq = do
 fillSingleBinder ::
   Handle ->
   BinderF WT.WeakTerm ->
-  App (BinderF WT.WeakTerm)
+  EIO (BinderF WT.WeakTerm)
 fillSingleBinder h (m, x, t) = do
   t' <- fill h t
   return (m, x, t')
@@ -194,7 +197,7 @@ fill' ::
   Handle ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  App ([BinderF WT.WeakTerm], WT.WeakTerm)
+  EIO ([BinderF WT.WeakTerm], WT.WeakTerm)
 fill' h binder e =
   case binder of
     [] -> do
@@ -210,7 +213,7 @@ fill'' ::
   BinderF WT.WeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
+  EIO (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 fill'' h (m, x, t) binder e = do
   (xts', e') <- fill' h binder e
   t' <- fill h t
@@ -220,7 +223,7 @@ fill''' ::
   Handle ->
   [BinderF WT.WeakTerm] ->
   DT.DecisionTree WT.WeakTerm ->
-  App ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
+  EIO ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
 fill''' h binder decisionTree =
   case binder of
     [] -> do
@@ -234,7 +237,7 @@ fill''' h binder decisionTree =
 fillDecisionTree ::
   Handle ->
   DT.DecisionTree WT.WeakTerm ->
-  App (DT.DecisionTree WT.WeakTerm)
+  EIO (DT.DecisionTree WT.WeakTerm)
 fillDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -251,7 +254,7 @@ fillDecisionTree h tree =
 fillCaseList ::
   Handle ->
   DT.CaseList WT.WeakTerm ->
-  App (DT.CaseList WT.WeakTerm)
+  EIO (DT.CaseList WT.WeakTerm)
 fillCaseList h (fallbackClause, clauseList) = do
   fallbackClause' <- fillDecisionTree h fallbackClause
   clauseList' <- mapM (fillCase h) clauseList
@@ -260,7 +263,7 @@ fillCaseList h (fallbackClause, clauseList) = do
 fillCase ::
   Handle ->
   DT.Case WT.WeakTerm ->
-  App (DT.Case WT.WeakTerm)
+  EIO (DT.Case WT.WeakTerm)
 fillCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do

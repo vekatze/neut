@@ -101,8 +101,8 @@ fillAsMuchAsPossible sub e = do
   e' <- reduce e
   if HS.fillable e' sub
     then do
-      h <- Fill.new sub
-      Fill.fill h e' >>= fillAsMuchAsPossible sub
+      h <- Fill.new (WT.metaOf e') sub
+      toApp (Fill.fill h e') >>= fillAsMuchAsPossible sub
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
@@ -247,20 +247,20 @@ simplify ax susList constraintList =
                 (Just (hole1, (xs1, body1)), Just (hole2, (xs2, body2))) -> do
                   let s1 = HS.singleton hole1 xs1 body1
                   let s2 = HS.singleton hole2 xs2 body2
-                  h1 <- Fill.new s1
-                  h2 <- Fill.new s2
-                  e1' <- Fill.fill h1 e1
-                  e2' <- Fill.fill h2 e2
+                  h1 <- Fill.new (WT.metaOf e1) s1
+                  h2 <- Fill.new (WT.metaOf e2) s2
+                  e1' <- toApp $ Fill.fill h1 e1
+                  e2' <- toApp $ Fill.fill h2 e2
                   simplify ax susList $ (C.Eq e1' e2', orig) : cs
                 (Just (hole1, (xs1, body1)), Nothing) -> do
                   let s1 = HS.singleton hole1 xs1 body1
-                  h1 <- Fill.new s1
-                  e1' <- Fill.fill h1 e1
+                  h1 <- Fill.new (WT.metaOf e1) s1
+                  e1' <- toApp $ Fill.fill h1 e1
                   simplify ax susList $ (C.Eq e1' e2, orig) : cs
                 (Nothing, Just (hole2, (xs2, body2))) -> do
                   let s2 = HS.singleton hole2 xs2 body2
-                  h2 <- Fill.new s2
-                  e2' <- Fill.fill h2 e2
+                  h2 <- Fill.new (WT.metaOf e2) s2
+                  e2' <- toApp $ Fill.fill h2 e2
                   simplify ax susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
@@ -432,8 +432,8 @@ simplifyActual ax m dataNameSet t orig = do
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
           let s = HS.singleton hole xs body
-          h <- Fill.new s
-          t'' <- Fill.fill h t'
+          h <- Fill.new (WT.metaOf t') s
+          t'' <- toApp $ Fill.fill h t'
           simplifyActual ax m dataNameSet t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
@@ -485,8 +485,8 @@ simplifyInteger ax m t orig = do
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
-          h <- Fill.new $ HS.singleton hole xs body
-          t'' <- Fill.fill h t'
+          h <- Fill.new (WT.metaOf t') $ HS.singleton hole xs body
+          t'' <- toApp $ Fill.fill h t'
           simplifyInteger ax m t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
