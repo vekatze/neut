@@ -25,7 +25,7 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Scene.Elaborate.EnsureAffinity
+import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as TM
@@ -129,7 +129,8 @@ elaborateStmt stmt = do
       expArgs' <- mapM elaborateWeakBinder expArgs
       codType' <- elaborate' codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
-      remarks <- ensureAffinity $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
+      h <- EnsureAffinity.new
+      remarks <- toApp $ EnsureAffinity.ensureAffinity h $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
       e'' <- TM.inline m e'
       codType'' <- TM.inline m codType'
       when isConstLike $ do

@@ -16,7 +16,7 @@ import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Move.Context.App (App)
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, raiseCritical, toApp)
+import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -73,11 +73,10 @@ new = do
   optDataMap <- asks App.optDataMap >>= liftIO . readIORef
   return $ Handle {..}
 
-ensureAffinity :: TM.Term -> App [R.Remark]
-ensureAffinity e = do
-  h <- new
-  cs <- toApp $ analyze h e
-  toApp $ synthesize h $ map (bimap weaken weaken) cs
+ensureAffinity :: Handle -> TM.Term -> EIO [R.Remark]
+ensureAffinity h e = do
+  cs <- analyze h e
+  synthesize h $ map (bimap weaken weaken) cs
 
 extendHandle :: BinderF TM.Term -> Handle -> Handle
 extendHandle (_, x, t) h = do
