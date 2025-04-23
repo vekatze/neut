@@ -7,10 +7,8 @@ module Move.Scene.Check
 where
 
 import Control.Monad
-import Control.Monad.Reader (asks)
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
@@ -58,9 +56,7 @@ _check target baseModule = do
 checkAll :: App [Remark]
 checkAll = do
   mainModule <- getMainModule
-  counter <- asks App.counter
-  mcm <- asks App.moduleCacheMap
-  let h = Module.Handle {counter, mcm}
+  h <- Module.new
   deps <- toApp $ Module.getAllDependencies h mainModule (extractModule mainModule)
   forM_ deps $ \(_, m) -> checkModule m
   checkModule (extractModule mainModule)

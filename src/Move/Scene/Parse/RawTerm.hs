@@ -277,7 +277,7 @@ rawTermLetVarAscription h m = do
     Just tc ->
       return (c, tc)
     Nothing -> do
-      t <- liftIO $ newPreHole (counter h) m
+      t <- liftIO $ newPreHole (gensymHandle h) m
       return (c, (t, []))
 
 rawTermLetVarAscription' :: Handle -> Parser (C, Maybe (RT.RawTerm, C))
@@ -335,7 +335,7 @@ rawTermHole :: Handle -> Parser (RT.RawTerm, C)
 rawTermHole h = do
   m <- getCurrentHint
   c <- keyword "_"
-  hole <- liftIO $ newPreHole (counter h) m
+  hole <- liftIO $ newPreHole (gensymHandle h) m
   return (hole, c)
 
 parseDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
@@ -400,7 +400,7 @@ parseDefInfoCod h m =
         t <- rawTerm h
         return (c, t),
       do
-        hole <- liftIO $ newPreHole (counter h) m
+        hole <- liftIO $ newPreHole (gensymHandle h) m
         return ([], (hole, []))
     ]
 
@@ -419,7 +419,7 @@ adjustHoleVar h bn = do
   let bn' = BN.reify bn
   if bn' /= "_"
     then return bn'
-    else newTextForHole (counter h)
+    else newTextForHole (gensymHandle h)
 
 rawTermMagic :: Handle -> Parser (RT.RawTerm, C)
 rawTermMagic h = do
@@ -771,13 +771,13 @@ preAscription h ((m, x), c1) = do
 
 preAscription' :: Handle -> ((Hint, T.Text), C) -> Parser (RawBinder RT.RawTerm, C)
 preAscription' h ((m, x), c) = do
-  hole <- liftIO $ newPreHole (counter h) m
+  hole <- liftIO $ newPreHole (gensymHandle h) m
   return ((m, x, c, [], hole), [])
 
 typeWithoutIdent :: Handle -> Parser (RawBinder RT.RawTerm, C)
 typeWithoutIdent h = do
   m <- getCurrentHint
-  x <- liftIO $ newTextForHole (counter h)
+  x <- liftIO $ newTextForHole (gensymHandle h)
   (t, c) <- rawTerm h
   return ((m, x, [], [], t), c)
 

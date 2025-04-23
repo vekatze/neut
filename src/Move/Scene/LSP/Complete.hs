@@ -1,7 +1,6 @@
 module Move.Scene.LSP.Complete (complete) where
 
 import Control.Monad
-import Control.Monad.Reader (asks)
 import Control.Monad.Trans
 import Data.Bifunctor (second)
 import Data.Containers.ListUtils (nubOrd)
@@ -14,7 +13,6 @@ import Data.Text qualified as T
 import Language.LSP.Protocol.Types
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.AppM
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
@@ -290,9 +288,7 @@ locToPosition (line, character) =
 
 getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], FastPresetSummary)
 getAllTopCandidate baseModule = do
-  counter <- asks App.counter
-  mcm <- asks App.moduleCacheMap
-  let h = Module.Handle {counter, mcm}
+  h <- Module.new
   mainModule <- getMainModule
   dependencies <- toApp $ Module.getAllDependencies h mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies

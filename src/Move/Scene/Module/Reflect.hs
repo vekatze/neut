@@ -10,14 +10,12 @@ where
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
-import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO)
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Ens.Reflect qualified as Ens
 import Path
 import Path.IO
@@ -42,17 +40,17 @@ import Rule.ZenConfig (ZenConfig (..))
 
 newtype Handle
   = Handle
-  { counter :: IORef Int
+  { gensymHandle :: Gensym.Handle
   }
 
 new :: App Handle
 new = do
-  counter <- asks App.counter
+  gensymHandle <- Gensym.new
   return $ Handle {..}
 
 fromFilePath :: Handle -> Path Abs File -> EIO Module
 fromFilePath h moduleFilePath = do
-  let h' = Ens.Handle {counter = counter h}
+  let h' = Ens.Handle {gensymHandle = gensymHandle h}
   (_, (ens@(m :< _), _)) <- Ens.fromFilePath h' moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- interpretTarget targetEns

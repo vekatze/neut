@@ -24,6 +24,7 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as Module
 import Move.Scene.Source.ShiftToLatest qualified as STL
@@ -51,8 +52,7 @@ type LocatorText =
 
 data Handle
   = Handle
-  { counter :: IORef Int,
-    mainModule :: MainModule,
+  { mainModule :: MainModule,
     moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
     unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]),
@@ -63,12 +63,12 @@ data Handle
     locatorHandle :: Locator.Handle,
     aliasHandle :: Alias.Handle,
     globalHandle :: Global.Handle,
+    gensymHandle :: Gensym.Handle,
     tagMapRef :: IORef LT.LocationTree
   }
 
 new :: App Handle
 new = do
-  counter <- asks App.counter
   mainModule <- getMainModule
   moduleCacheMapRef <- asks App.moduleCacheMap
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
@@ -81,6 +81,7 @@ new = do
   aliasHandle <- Alias.new
   tagMapRef <- asks App.tagMap
   globalHandle <- Global.new
+  gensymHandle <- Gensym.new
   return $ Handle {..}
 
 activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
@@ -175,7 +176,7 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
 
 getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> EIO Source.Source
 getSource h mustUpdateTag m sgl locatorText = do
-  let h' = Module.Handle {counter = counter h, mcm = moduleCacheMapRef h}
+  let h' = Module.Handle {gensymHandle = gensymHandle h, mcm = moduleCacheMapRef h}
   nextModule <- Module.getModule h' (mainModule h) m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath

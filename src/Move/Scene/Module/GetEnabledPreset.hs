@@ -14,6 +14,7 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO)
 import Move.Context.Env (getMainModule)
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.GetModule qualified as Module
 import Path
 import Rule.BaseName qualified as BN
@@ -22,21 +23,21 @@ import Rule.ModuleAlias qualified as MA
 
 data Handle
   = Handle
-  { counter :: IORef Int,
+  { gensymHandle :: Gensym.Handle,
     moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
     mainModule :: MainModule
   }
 
 new :: App Handle
 new = do
-  counter <- asks App.counter
+  gensymHandle <- Gensym.new
   moduleCacheMapRef <- asks App.moduleCacheMap
   mainModule <- getMainModule
   return $ Handle {..}
 
 getEnabledPreset :: Handle -> Module -> EIO [(T.Text, [BN.BaseName])]
 getEnabledPreset h baseModule = do
-  let h' = Module.Handle {counter = counter h, mcm = moduleCacheMapRef h}
+  let h' = Module.Handle {gensymHandle = gensymHandle h, mcm = moduleCacheMapRef h}
   dependencies <- Module.getAllDependencies h' (mainModule h) baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   let aliasPresetInfo = map getAllTopCandidate' visibleModuleList

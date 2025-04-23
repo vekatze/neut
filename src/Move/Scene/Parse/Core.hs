@@ -35,17 +35,15 @@ where
 
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
-import Control.Monad.Reader (asks)
 import Control.Monad.Trans
-import Data.IORef
 import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO
 import Move.Language.Utility.Gensym (newTextForHole)
+import Move.Language.Utility.Gensym qualified as Gensym
 import Path
 import Rule.BaseName qualified as BN
 import Rule.C
@@ -65,14 +63,14 @@ type MustParseWholeFile =
 
 newtype Handle
   = Handle
-  { counter :: IORef Int
+  { gensymHandle :: Gensym.Handle
   }
 
 type Parser a = ParsecT Void T.Text EIO a
 
 new :: App Handle
 new = do
-  counter <- asks App.counter
+  gensymHandle <- Gensym.new
   return $ Handle {..}
 
 parseFile :: Handle -> Path Abs File -> T.Text -> MustParseWholeFile -> (Handle -> Parser a) -> EIO (C, a)
@@ -389,7 +387,7 @@ var h = do
   if x /= "_"
     then return ((m, x), c)
     else do
-      unusedVar <- liftIO $ newTextForHole (counter h)
+      unusedVar <- liftIO $ newTextForHole (gensymHandle h)
       return ((m, unusedVar), c)
 
 {-# INLINE nonSymbolCharSet #-}

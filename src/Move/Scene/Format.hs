@@ -5,10 +5,8 @@ module Move.Scene.Format
 where
 
 import Control.Monad
-import Control.Monad.Reader (asks)
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
@@ -18,7 +16,6 @@ import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetEnabledPreset qualified as Module
 import Move.Scene.Parse qualified as Parse
-import Move.Scene.Parse.Core (Handle (Handle))
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Program qualified as Parse
 import Move.Scene.Unravel qualified as Unravel
@@ -34,8 +31,7 @@ format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App
 format shouldMinimizeImports fileType path content = do
   case fileType of
     FT.Ens -> do
-      counter <- asks App.counter
-      let h = Ens.Handle {counter}
+      h <- Ens.new
       ens <- toApp $ Ens.fromFilePath' h path content
       return $ Ens.pp ens
     FT.Source -> do
@@ -60,16 +56,14 @@ _formatSource shouldMinimizeImports filePath fileContent = do
         void $ Parse.parse Peripheral source cacheOrContent
       unusedGlobalLocators <- UnusedGlobalLocator.get
       unusedLocalLocators <- UnusedLocalLocator.get
-      counter <- asks App.counter
-      let h'' = Handle {counter}
+      h'' <- P.new
       program <- toApp $ P.parseFile h'' filePath fileContent True Parse.parseProgram
       hMod <- Module.new
       presetNames <- toApp $ Module.getEnabledPreset hMod mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
       return $ RawProgram.pp importInfo program
     else do
-      counter <- asks App.counter
-      let h = Handle {counter}
+      h <- P.new
       program <- toApp $ P.parseFile h filePath fileContent True Parse.parseProgram
       hMod <- Module.new
       presetNames <- toApp $ Module.getEnabledPreset hMod mainModule

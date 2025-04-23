@@ -6,11 +6,9 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal (counter)
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -21,7 +19,6 @@ import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedPreset qualified as UnusedPreset
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
-import Move.Scene.Parse.Core (Handle (Handle))
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Import qualified as Import
@@ -50,8 +47,7 @@ parseSource t source cacheOrContent = do
       saveTopLevelNames source $ getStmtName stmtList
       return $ Left cache
     Right fileContent -> do
-      counter <- asks counter
-      let h = Handle {counter}
+      h <- P.new
       prog <- toApp $ P.parseFile h filePath fileContent True Parse.parseProgram
       prog' <- interpret source (snd prog)
       tmap <- Env.getTagMap

@@ -3,15 +3,12 @@ module Move.Scene.Module.MakeArchiveEns (makeArchiveEns) where
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (toApp)
 import Move.Context.Fetch (getHandleContents)
 import Move.Context.Throw qualified as Throw
-import Move.Scene.Ens.Reflect (Handle (Handle))
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Module.GetExistingVersions
 import Path
@@ -33,8 +30,7 @@ makeArchiveEns newVersion targetModule = do
   existingVersions <- toApp $ getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
   antecedentList <- ListUtils.nubOrd <$> mapM (getDigest $ extractModule targetModule) antecedents
-  counter <- asks App.counter
-  let h = Handle {counter}
+  h <- Ens.new
   (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation $ extractModule targetModule)
   let antecedentEns = makeAntecedentEns m antecedentList
   mergedEns <- Throw.liftEither $ E.merge baseEns antecedentEns

@@ -1,5 +1,6 @@
 module Move.Scene.Ens.Reflect
   ( Handle (..),
+    new,
     fromFilePath,
     fromFilePath',
   )
@@ -8,11 +9,12 @@ where
 import Control.Comonad.Cofree
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.Trans
-import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Parse
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Core qualified as P
 import Path
 import Rule.C
@@ -24,8 +26,13 @@ import Text.Megaparsec hiding (parse)
 
 newtype Handle
   = Handle
-  { counter :: IORef Int
+  { gensymHandle :: Gensym.Handle
   }
+
+new :: App Handle
+new = do
+  gensymHandle <- Gensym.new
+  return $ Handle {..}
 
 fromFilePath :: Handle -> Path Abs File -> EIO (C, (E.Ens, C))
 fromFilePath h path = do
@@ -34,7 +41,7 @@ fromFilePath h path = do
 
 fromFilePath' :: Handle -> Path Abs File -> T.Text -> EIO (C, (E.Ens, C))
 fromFilePath' h filePath fileContent = do
-  let h' = P.Handle {counter = counter h}
+  let h' = P.Handle {gensymHandle = gensymHandle h}
   P.parseFile h' filePath fileContent True (const parseEns)
 
 parseEns :: P.Parser (E.Ens, C)

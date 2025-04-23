@@ -7,13 +7,11 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Reader (asks)
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
@@ -21,7 +19,6 @@ import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
 import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
-import Move.Scene.Ens.Reflect (Handle (Handle))
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Module.Reflect qualified as Module
 import Path
@@ -204,8 +201,7 @@ extractToDependencyDir archivePath _ digest = do
 addDependencyToModuleFile :: ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile alias dep = do
   M.MainModule mainModule <- getMainModule
-  counter <- asks App.counter
-  let h = Handle {counter}
+  h <- Ens.new
   (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation mainModule)
   let depEns = makeDependencyEns m alias dep
   mergedEns <- Throw.liftEither $ E.merge baseEns depEns
@@ -238,8 +234,7 @@ makeDependencyEns m alias dep = do
 
 updateDependencyInModuleFile :: Path Abs File -> ModuleAlias -> M.Dependency -> App ()
 updateDependencyInModuleFile mainModuleFileLoc alias dep = do
-  counter <- asks App.counter
-  let h = Handle {counter}
+  h <- Ens.new
   (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h mainModuleFileLoc
   let depEns = makeDependencyEns' m dep
   mergedEns <- Throw.liftEither $ E.conservativeUpdate [keyDependency, BN.reify (extract alias)] depEns baseEns
