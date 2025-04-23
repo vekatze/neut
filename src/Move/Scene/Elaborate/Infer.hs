@@ -405,7 +405,7 @@ infer h term =
               let specifiedKeyMap = Map.fromList $ flip map xts $ \(mx, x, t) -> (Ident.toText x, (mx, x, t))
               let keyMap = Map.union specifiedKeyMap defaultKeyMap
               reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
-              dataArgs' <- mapM (const $ newTypedHole h m (varEnv h)) [1 .. length dataArgs]
+              dataArgs' <- mapM (const $ liftIO $ newTypedHole h m (varEnv h)) [1 .. length dataArgs]
               cursor <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "cursor"
               od <- OptimizableData.lookup consDD
               let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
@@ -557,7 +557,7 @@ inferPiElim h m (e, t) expArgs = do
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       toApp $ ensureArityCorrectness h e (length expPiArgs) (length expArgs)
-      impArgs <- mapM (const $ newTypedHole h m $ varEnv h) [1 .. length impPiArgs]
+      impArgs <- mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impPiArgs]
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
@@ -582,14 +582,14 @@ inferPiElimExplicit h m (e, t) args = do
     _ ->
       Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
 
-newTypedHole :: Handle -> Hint -> BoundVarEnv -> App (WT.WeakTerm, WT.WeakTerm)
+newTypedHole :: Handle -> Hint -> BoundVarEnv -> IO (WT.WeakTerm, WT.WeakTerm)
 newTypedHole h m varEnv = do
-  i <- liftIO $ HID.HoleID <$> Gensym.newCount (gensymHandle h)
-  j <- liftIO $ HID.HoleID <$> Gensym.newCount (gensymHandle h)
+  i <- HID.HoleID <$> Gensym.newCount (gensymHandle h)
+  j <- HID.HoleID <$> Gensym.newCount (gensymHandle h)
   let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) varEnv
   let holeTerm = m :< WT.Hole i holeArgs
   let holeType = m :< WT.Hole j holeArgs
-  liftIO $ Hole.insert (holeHandle h) (HID.reify i) holeTerm holeType
+  Hole.insert (holeHandle h) (HID.reify i) holeTerm holeType
   return (holeTerm, holeType)
 
 ensureArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> EIO ()
