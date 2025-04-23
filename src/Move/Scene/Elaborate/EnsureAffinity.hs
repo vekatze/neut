@@ -104,7 +104,7 @@ deactivateExpCheck :: Axis -> Axis
 deactivateExpCheck axis =
   axis {mustPerformExpCheck = False}
 
-analyzeVar :: Axis -> Hint -> Ident -> App [AffineConstraint]
+analyzeVar :: Axis -> Hint -> Ident -> EIO [AffineConstraint]
 analyzeVar axis m x = do
   if isCartesian x || not (mustPerformExpCheck axis)
     then return []
@@ -119,7 +119,7 @@ analyzeVar axis m x = do
             then return []
             else do
               liftIO $ insertRelevantVar x axis
-              _ :< t <- toApp $ lookupTypeEnv (varEnv axis) m x
+              _ :< t <- lookupTypeEnv (varEnv axis) m x
               return [(m :< t, m :< t)]
 
 analyze :: Axis -> TM.Term -> App [AffineConstraint]
@@ -128,7 +128,7 @@ analyze axis term = do
     _ :< TM.Tau ->
       return []
     m :< TM.Var x -> do
-      analyzeVar axis m x
+      toApp $ analyzeVar axis m x
     _ :< TM.VarGlobal {} -> do
       return []
     _ :< TM.Pi impArgs expArgs t -> do
@@ -146,7 +146,7 @@ analyze axis term = do
           liftIO $ insertRelevantVar x axis''
           cs4 <- analyze (extendAxis (mx, x, piType) axis'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ \(my, y) -> do
-            analyzeVar axis my y
+            toApp $ analyzeVar axis my y
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
         LK.Normal codType -> do
           (cs1, axis') <- analyzeBinder axis impArgs
