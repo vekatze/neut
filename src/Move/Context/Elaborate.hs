@@ -7,8 +7,6 @@ module Move.Context.Elaborate
     insWeakTypeEnv,
     lookupWeakTypeEnv,
     lookupWeakTypeEnvMaybe,
-    lookupHoleEnv,
-    insHoleEnv,
     getHoleSubst,
     setHoleSubst,
     fillHole,
@@ -77,14 +75,6 @@ lookupWeakTypeEnvMaybe :: Int -> App (Maybe WeakTerm)
 lookupWeakTypeEnvMaybe k = do
   wtenv <- readRef' weakTypeEnv
   return $ IntMap.lookup k wtenv
-
-lookupHoleEnv :: Int -> App (Maybe (WeakTerm, WeakTerm))
-lookupHoleEnv i =
-  IntMap.lookup i <$> readRef' holeEnv
-
-insHoleEnv :: Int -> WeakTerm -> WeakTerm -> App ()
-insHoleEnv i e1 e2 =
-  modifyRef' holeEnv $ IntMap.insert i (e1, e2)
 
 getHoleSubst :: App HS.HoleSubst
 getHoleSubst =

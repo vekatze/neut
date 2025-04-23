@@ -28,6 +28,7 @@ import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
+import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Discern.Name qualified as N
@@ -83,6 +84,7 @@ data Handle
     gensymHandle :: Gensym.Handle,
     discernHandle :: Discern.Handle,
     constraintHandle :: Constraint.Handle,
+    holeHandle :: Hole.Handle,
     typeHandle :: Type.Handle,
     varEnv :: BoundVarEnv,
     defMap :: WeakDefinition.DefMap
@@ -97,6 +99,7 @@ new = do
   gensymHandle <- Gensym.new
   discernHandle <- Discern.new
   constraintHandle <- Constraint.new
+  holeHandle <- Hole.new
   typeHandle <- Type.new
   let varEnv = []
   defMap <- asks App.weakDefMap >>= liftIO . readIORef
@@ -290,7 +293,7 @@ infer h term =
       return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
     m :< WT.Hole holeID _ -> do
       let rawHoleID = HID.reify holeID
-      mHoleInfo <- lookupHoleEnv rawHoleID
+      mHoleInfo <- liftIO $ Hole.lookup (holeHandle h) rawHoleID
       case mHoleInfo of
         Just (_ :< holeTerm, _ :< holeType) -> do
           return (m :< holeTerm, m :< holeType)
@@ -298,7 +301,7 @@ infer h term =
           let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) (varEnv h)
           let holeTerm = m :< WT.Hole holeID holeArgs
           holeType <- liftIO $ Gensym.newHole (gensymHandle h) m holeArgs
-          insHoleEnv rawHoleID holeTerm holeType
+          liftIO $ Hole.insert (holeHandle h) rawHoleID holeTerm holeType
           return (holeTerm, holeType)
     m :< WT.Prim prim
       | WP.Type _ <- prim ->
@@ -586,7 +589,7 @@ newTypedHole h m varEnv = do
   let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) varEnv
   let holeTerm = m :< WT.Hole i holeArgs
   let holeType = m :< WT.Hole j holeArgs
-  insHoleEnv (HID.reify i) holeTerm holeType
+  liftIO $ Hole.insert (holeHandle h) (HID.reify i) holeTerm holeType
   return (holeTerm, holeType)
 
 ensureArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> EIO ()
