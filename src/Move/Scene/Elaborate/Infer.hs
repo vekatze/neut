@@ -56,6 +56,7 @@ import Rule.Key (Key)
 import Rule.LamKind qualified as LK
 import Rule.Literal qualified as L
 import Rule.Magic qualified as M
+import Rule.Module qualified as M
 import Rule.Name qualified as N
 import Rule.OptimizableData qualified as OD
 import Rule.PrimOp
@@ -74,7 +75,8 @@ type BoundVarEnv = [BinderF WT.WeakTerm]
 
 data Handle
   = Handle
-  { substHandle :: Subst.Handle,
+  { mainModule :: M.MainModule,
+    substHandle :: Subst.Handle,
     reduceHandle :: Reduce.Handle,
     unifyHandle :: Unify.Handle,
     gensymHandle :: GensymNew.Handle,
@@ -84,6 +86,7 @@ data Handle
 
 new :: App Handle
 new = do
+  mainModule <- getMainModule
   substHandle <- Subst.new
   reduceHandle <- Reduce.new
   unifyHandle <- Unify.new
@@ -341,7 +344,7 @@ infer h term =
           return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), m :< WT.Prim (WP.Type PT.Pointer))
         M.External _ _ funcName args varArgs -> do
           (domList, cod) <- Decl.lookupWeakDeclEnv m (DN.Ext funcName)
-          ensureArityCorrectness term (length domList) (length args)
+          toApp $ ensureArityCorrectness h term (length domList) (length args)
           (args', argTypes) <- mapAndUnzipM (infer h) args
           forM_ (zip domList argTypes) $ uncurry insConstraintEnv
           varArgs' <- forM varArgs $ \(e, t) -> do
@@ -544,7 +547,7 @@ inferPiElim h m (e, t) expArgs = do
   t' <- toApp $ resolveType h t
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
-      ensureArityCorrectness e (length expPiArgs) (length expArgs)
+      toApp $ ensureArityCorrectness h e (length expPiArgs) (length expArgs)
       impArgs <- mapM (const $ newTypedHole m $ varEnv h) [1 .. length impPiArgs]
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
@@ -564,7 +567,7 @@ inferPiElimExplicit h m (e, t) args = do
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       let piArgs = impPiArgs ++ expPiArgs
-      ensureArityCorrectness e (length piArgs) (length args)
+      toApp $ ensureArityCorrectness h e (length piArgs) (length args)
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
       return (m :< WT.PiElim e (map fst args), m :< cod')
     _ ->
@@ -580,14 +583,13 @@ newTypedHole m varEnv = do
   insHoleEnv (HID.reify i) holeTerm holeType
   return (holeTerm, holeType)
 
-ensureArityCorrectness :: WT.WeakTerm -> Int -> Int -> App ()
-ensureArityCorrectness function expected found = do
+ensureArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> EIO ()
+ensureArityCorrectness h function expected found = do
   when (expected /= found) $ do
     case function of
       m :< WT.VarGlobal _ name -> do
-        mainModule <- getMainModule
-        let name' = Locator.getReadableDD mainModule name
-        Throw.raiseError m $
+        let name' = Locator.getReadableDD (mainModule h) name
+        raiseError m $
           "The function `"
             <> name'
             <> "` expects "
@@ -596,7 +598,7 @@ ensureArityCorrectness function expected found = do
             <> T.pack (show found)
             <> "."
       m :< _ ->
-        Throw.raiseError m $
+        raiseError m $
           "This function expects "
             <> T.pack (show expected)
             <> " arguments, but found "
