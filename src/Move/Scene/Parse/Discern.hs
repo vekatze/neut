@@ -25,6 +25,7 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
+import Move.Language.Utility.Gensym qualified as GensymNew
 import Move.Scene.Parse.Discern.Data
 import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Name
@@ -1046,7 +1047,7 @@ discernPattern h layer (m, pat) = do
           toApp $ ensureFieldLinearity m ks S.empty S.empty
           hKeyArg <- KeyArg.new
           (_, keyList) <- toApp $ KeyArg.lookup hKeyArg m consName
-          defaultKeyMap <- constructDefaultKeyMap m keyList
+          defaultKeyMap <- liftIO $ constructDefaultKeyMap h m keyList
           let specifiedKeyMap = Map.fromList $ zip ks mvs
           let keyMap = Map.union specifiedKeyMap defaultKeyMap
           reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
@@ -1083,9 +1084,9 @@ foldListAppPat m listNil listCons es =
       let rest' = foldListAppPat m listNil listCons rest
       (m, RP.Cons listCons [] (RP.Paren (SE.fromList' [pat, rest'])))
 
-constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPattern))
-constructDefaultKeyMap m keyList = do
-  names <- mapM (const Gensym.newTextForHole) keyList
+constructDefaultKeyMap :: H.Handle -> Hint -> [Key] -> IO (Map.HashMap Key (Hint, RP.RawPattern))
+constructDefaultKeyMap h m keyList = do
+  names <- mapM (const $ GensymNew.newTextForHole (H.gensymHandle h)) keyList
   return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var (Var v)))) keyList names
 
 locatorToName :: Hint -> T.Text -> Either E.Error Name
