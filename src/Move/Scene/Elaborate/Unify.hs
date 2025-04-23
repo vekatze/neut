@@ -21,7 +21,7 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.WeakTerm.Fill qualified as Fill
-import Move.Scene.WeakTerm.Reduce
+import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -98,11 +98,12 @@ constraintToRemark sub c = do
 
 fillAsMuchAsPossible :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fillAsMuchAsPossible sub e = do
-  e' <- reduce e
+  h <- Reduce.new
+  e' <- toApp $ Reduce.reduce h e
   if HS.fillable e' sub
     then do
-      h <- Fill.new (WT.metaOf e') sub
-      toApp (Fill.fill h e') >>= fillAsMuchAsPossible sub
+      hole <- Fill.new sub
+      toApp (Fill.fill hole e') >>= fillAsMuchAsPossible sub
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
@@ -125,7 +126,8 @@ constructErrorMessageInteger t =
     <> toText t
 
 data Axis = Axis
-  { substHandle :: Subst.Handle,
+  { reduceHandle :: Reduce.Handle,
+    substHandle :: Subst.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
     defMap :: WeakDefinition.DefMap
@@ -133,17 +135,13 @@ data Axis = Axis
 
 newAxis :: App Axis
 newAxis = do
+  reduceHandle <- Reduce.new
   substHandle <- Subst.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   defMap <- WeakDefinition.read
-  return
-    Axis
-      { substHandle = substHandle,
-        inlineLimit = inlineLimit,
-        currentStep = 0,
-        defMap = defMap
-      }
+  let currentStep = 0
+  return $ Axis {..}
 
 increment :: Axis -> Axis
 increment ax = do
@@ -176,8 +174,8 @@ simplify ax susList constraintList =
       simplify ax (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       detectPossibleInfiniteLoop ax orig
-      expected' <- reduce expected
-      actual' <- reduce actual
+      expected' <- toApp $ Reduce.reduce (reduceHandle ax) expected
+      actual' <- toApp $ Reduce.reduce (reduceHandle ax) actual
       if WT.eq expected' actual'
         then simplify ax susList cs
         else do
@@ -247,19 +245,19 @@ simplify ax susList constraintList =
                 (Just (hole1, (xs1, body1)), Just (hole2, (xs2, body2))) -> do
                   let s1 = HS.singleton hole1 xs1 body1
                   let s2 = HS.singleton hole2 xs2 body2
-                  h1 <- Fill.new (WT.metaOf e1) s1
-                  h2 <- Fill.new (WT.metaOf e2) s2
+                  h1 <- Fill.new s1
+                  h2 <- Fill.new s2
                   e1' <- toApp $ Fill.fill h1 e1
                   e2' <- toApp $ Fill.fill h2 e2
                   simplify ax susList $ (C.Eq e1' e2', orig) : cs
                 (Just (hole1, (xs1, body1)), Nothing) -> do
                   let s1 = HS.singleton hole1 xs1 body1
-                  h1 <- Fill.new (WT.metaOf e1) s1
+                  h1 <- Fill.new s1
                   e1' <- toApp $ Fill.fill h1 e1
                   simplify ax susList $ (C.Eq e1' e2, orig) : cs
                 (Nothing, Just (hole2, (xs2, body2))) -> do
                   let s2 = HS.singleton hole2 xs2 body2
-                  h2 <- Fill.new (WT.metaOf e2) s2
+                  h2 <- Fill.new s2
                   e2' <- toApp $ Fill.fill h2 e2
                   simplify ax susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
@@ -401,7 +399,7 @@ simplifyActual ::
   App [SuspendedConstraint]
 simplifyActual ax m dataNameSet t orig = do
   detectPossibleInfiniteLoop ax orig
-  t' <- reduce t
+  t' <- toApp $ Reduce.reduce (reduceHandle ax) t
   case t' of
     _ :< WT.Tau -> do
       return []
@@ -432,7 +430,7 @@ simplifyActual ax m dataNameSet t orig = do
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
           let s = HS.singleton hole xs body
-          h <- Fill.new (WT.metaOf t') s
+          h <- Fill.new s
           t'' <- toApp $ Fill.fill h t'
           simplifyActual ax m dataNameSet t'' orig
         Nothing -> do
@@ -476,7 +474,7 @@ simplifyInteger ::
   App [SuspendedConstraint]
 simplifyInteger ax m t orig = do
   detectPossibleInfiniteLoop ax orig
-  t' <- reduce t
+  t' <- toApp $ Reduce.reduce (reduceHandle ax) t
   case t' of
     _ :< WT.Prim (WP.Type (PT.Int _)) -> do
       return []
@@ -485,7 +483,7 @@ simplifyInteger ax m t orig = do
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
-          h <- Fill.new (WT.metaOf t') $ HS.singleton hole xs body
+          h <- Fill.new $ HS.singleton hole xs body
           t'' <- toApp $ Fill.fill h t'
           simplifyInteger ax m t'' orig
         Nothing -> do

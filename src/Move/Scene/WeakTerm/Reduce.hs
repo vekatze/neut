@@ -2,7 +2,6 @@ module Move.Scene.WeakTerm.Reduce
   ( Handle,
     new,
     reduce,
-    reduce',
   )
 where
 
@@ -15,7 +14,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -42,25 +41,30 @@ type CurrentStep =
 
 data Handle = Handle
   { substHandle :: Subst.Handle,
+    inlineLimit :: InlineLimit
+  }
+
+data InnerHandle = InnerHandle
+  { _handle :: Handle,
     currentStepRef :: IORef CurrentStep,
-    inlineLimit :: InlineLimit,
     location :: H.Hint
   }
 
-reduce :: WT.WeakTerm -> App WT.WeakTerm
-reduce term@(m :< _) = do
-  h <- new m
-  toApp $ reduce' h term
+reduce :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+reduce _handle e = do
+  currentStepRef <- liftIO $ newIORef 0
+  let location = WT.metaOf e
+  let h' = InnerHandle {..}
+  reduce' h' e
 
-new :: H.Hint -> App Handle
-new location = do
+new :: App Handle
+new = do
   substHandle <- Subst.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  currentStepRef <- liftIO $ newIORef 0
   return Handle {..}
 
-reduce' :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+reduce' :: InnerHandle -> WT.WeakTerm -> EIO WT.WeakTerm
 reduce' h term = do
   detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
@@ -101,7 +105,7 @@ reduce' h term = do
             length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')
-              Subst.subst (substHandle h) sub body >>= reduce' h
+              Subst.subst (substHandle (_handle h)) sub body >>= reduce' h
         (_ :< WT.Prim (WP.Value (WPV.Op op)))
           | Just (op', cod) <- WPV.reflectFloatUnaryOp op,
             [Just value] <- map asPrimFloatValue es' -> do
@@ -149,7 +153,7 @@ reduce' h term = do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              Subst.subst (substHandle h) sub (WT.fromLetSeq letSeq e) >>= reduce' h
+              Subst.subst (substHandle (_handle h)) sub (WT.fromLetSeq letSeq e) >>= reduce' h
             DT.Unreachable ->
               return $ m :< WT.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -158,7 +162,7 @@ reduce' h term = do
                   | (newBaseCursorList, cont) <- findClause discriminant fallbackTree caseList -> do
                       let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                       let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                      cont' <- Subst.substDecisionTree (substHandle h) sub cont
+                      cont' <- Subst.substDecisionTree (substHandle (_handle h)) sub cont
                       reduce' h $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
                 _ -> do
                   decisionTree' <- reduceDecisionTree h decisionTree
@@ -181,7 +185,7 @@ reduce' h term = do
         WT.Clear -> do
           detectPossibleInfiniteLoop h
           let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
-          Subst.subst (substHandle h) sub e2 >>= reduce' h
+          Subst.subst (substHandle (_handle h)) sub e2 >>= reduce' h
         _ -> do
           e2' <- reduce' h e2
           return $ m :< WT.Let opacity mxt e1' e2'
@@ -194,13 +198,13 @@ reduce' h term = do
     _ ->
       return term
 
-reduceBinder :: Handle -> BinderF WT.WeakTerm -> EIO (BinderF WT.WeakTerm)
+reduceBinder :: InnerHandle -> BinderF WT.WeakTerm -> EIO (BinderF WT.WeakTerm)
 reduceBinder h (m, x, t) = do
   t' <- reduce' h t
   return (m, x, t')
 
 reduceDecisionTree ::
-  Handle ->
+  InnerHandle ->
   DT.DecisionTree WT.WeakTerm ->
   EIO (DT.DecisionTree WT.WeakTerm)
 reduceDecisionTree h tree =
@@ -217,7 +221,7 @@ reduceDecisionTree h tree =
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 reduceCaseList ::
-  Handle ->
+  InnerHandle ->
   DT.CaseList WT.WeakTerm ->
   EIO (DT.CaseList WT.WeakTerm)
 reduceCaseList h (fallbackTree, clauseList) = do
@@ -226,7 +230,7 @@ reduceCaseList h (fallbackTree, clauseList) = do
   return (fallbackTree', clauseList')
 
 reduceCase ::
-  Handle ->
+  InnerHandle ->
   DT.Case WT.WeakTerm ->
   EIO (DT.Case WT.WeakTerm)
 reduceCase h decisionCase = do
@@ -298,14 +302,15 @@ asPrimFloatValue term = do
     _ ->
       Nothing
 
-detectPossibleInfiniteLoop :: Handle -> EIO ()
+detectPossibleInfiniteLoop :: InnerHandle -> EIO ()
 detectPossibleInfiniteLoop h = do
-  let Handle {inlineLimit, currentStepRef, location} = h
+  let InnerHandle {_handle, location, currentStepRef} = h
+  let Handle {inlineLimit} = _handle
   currentStep <- liftIO $ readIORef currentStepRef
   when (inlineLimit < currentStep) $ do
     raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
 
-incrementStep :: Handle -> IO ()
+incrementStep :: InnerHandle -> IO ()
 incrementStep h = do
-  let Handle {currentStepRef} = h
+  let InnerHandle {currentStepRef} = h
   modifyIORef' currentStepRef (+ 1)

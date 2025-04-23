@@ -45,7 +45,8 @@ type VarEnv = IntMap.IntMap TM.Term
 
 data Axis
   = Axis
-  { substHandle :: Subst.Handle,
+  { reduceHandle :: Reduce.Handle,
+    substHandle :: Subst.Handle,
     varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
     mustPerformExpCheck :: Bool,
@@ -55,13 +56,14 @@ data Axis
 ensureAffinity :: TM.Term -> App [R.Remark]
 ensureAffinity e = do
   defMap <- WeakDefinition.read
+  reduceHandle <- Reduce.new
   substHandle <- Subst.new
-  axis <- liftIO $ createNewAxis substHandle defMap
+  axis <- liftIO $ createNewAxis reduceHandle substHandle defMap
   cs <- toApp $ analyze axis e
   synthesize axis $ map (bimap weaken weaken) cs
 
-createNewAxis :: Subst.Handle -> WeakDefinition.DefMap -> IO Axis
-createNewAxis substHandle defMap = do
+createNewAxis :: Reduce.Handle -> Subst.Handle -> WeakDefinition.DefMap -> IO Axis
+createNewAxis reduceHandle substHandle defMap = do
   let varEnv = IntMap.empty
   foundVarSetRef <- newIORef IntMap.empty
   let mustPerformExpCheck = True
@@ -107,7 +109,8 @@ cloneAxis axis = do
         foundVarSetRef,
         mustPerformExpCheck,
         defMap = defMap axis,
-        substHandle = substHandle axis
+        substHandle = substHandle axis,
+        reduceHandle = reduceHandle axis
       }
 
 deactivateExpCheck :: Axis -> Axis
@@ -339,7 +342,7 @@ simplifyAffine ::
   WeakAffineConstraint ->
   App [AffineConstraintError]
 simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
-  t' <- Reduce.reduce t
+  t' <- toApp $ Reduce.reduce (reduceHandle h) t
   case t' of
     _ :< WT.Tau -> do
       return []

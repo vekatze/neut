@@ -25,7 +25,7 @@ import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Elaborate.Unify (unifyCurrentConstraints)
 import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Name qualified as N
-import Move.Scene.WeakTerm.Reduce qualified as WT
+import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.Scene.WeakTerm.Subst qualified as WT
 import Rule.Annotation qualified as Annotation
@@ -695,10 +695,11 @@ resolveType ax t = do
 
 reduceWeakType' :: Axis -> HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 reduceWeakType' ax sub e = do
-  e' <- WT.reduce e
+  h <- Reduce.new
+  e' <- toApp $ Reduce.reduce h e
   case e' of
-    m :< WT.Hole h es ->
-      case HS.lookup h sub of
+    m :< WT.Hole hole es ->
+      case HS.lookup hole sub of
         Nothing ->
           return e'
         Just (xs, body)

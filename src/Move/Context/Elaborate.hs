@@ -151,7 +151,8 @@ newTypeHoleList varEnv ids =
 
 reduceWeakType :: WT.WeakTerm -> App WT.WeakTerm
 reduceWeakType e = do
-  e' <- Reduce.reduce e
+  h <- Reduce.new
+  e' <- toApp $ Reduce.reduce h e
   case e' of
     m :< WT.Hole hole es ->
       fillHole m hole es >>= reduceWeakType

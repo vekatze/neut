@@ -18,7 +18,6 @@ import Rule.Annotation qualified as AN
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
 import Rule.DecisionTree qualified as DT
-import Rule.Hint qualified as H
 import Rule.HoleSubst
 import Rule.Ident.Reify qualified as Ident
 import Rule.LamKind qualified as LK
@@ -33,10 +32,10 @@ data Handle
     reduceHandle :: Reduce.Handle
   }
 
-new :: H.Hint -> HoleSubst -> App Handle
-new m holeSubst = do
+new :: HoleSubst -> App Handle
+new holeSubst = do
   substHandle <- Subst.new
-  reduceHandle <- Reduce.new m
+  reduceHandle <- Reduce.new
   return $ Handle {..}
 
 fill :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
@@ -123,7 +122,7 @@ fill h term =
           | length xs == length es -> do
               let varList = map Ident.toInt xs
               Subst.subst (substHandle h) (IntMap.fromList $ zip varList (map Right es')) body
-                >>= Reduce.reduce' (reduceHandle h)
+                >>= Reduce.reduce (reduceHandle h)
           | otherwise -> do
               error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\n" ++ show (map toText es') ++ "\nhole id = " ++ show i
         Nothing ->
