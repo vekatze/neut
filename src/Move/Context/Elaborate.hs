@@ -13,8 +13,6 @@ module Move.Context.Elaborate
     lookupWeakTypeEnvMaybe,
     lookupHoleEnv,
     insHoleEnv,
-    newHole,
-    newTypeHoleList,
     getHoleSubst,
     setHoleSubst,
     fillHole,
@@ -28,12 +26,10 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.EIO (toApp)
-import Move.Context.Gensym qualified as Gensym
 import Move.Context.Throw qualified as Throw
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
-import Rule.Binder
 import Rule.Constraint qualified as C
 import Rule.Hint
 import Rule.HoleID qualified as HID
@@ -42,8 +38,6 @@ import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.WeakTerm
 import Rule.WeakTerm qualified as WT
-
-type BoundVarEnv = [BinderF WT.WeakTerm]
 
 initialize :: App ()
 initialize = do
@@ -119,30 +113,6 @@ getHoleSubst =
 setHoleSubst :: HS.HoleSubst -> App ()
 setHoleSubst =
   writeRef' holeSubst
-
-newHole :: Hint -> BoundVarEnv -> App WT.WeakTerm
-newHole m varEnv = do
-  Gensym.newHole m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
-
--- In context varEnv == [x1, ..., xn], `newTypeHoleList varEnv [y1, ..., ym]` generates
--- the following list:
---
---   [(y1,   ?M1   @ (x1, ..., xn)),
---    (y2,   ?M2   @ (x1, ..., xn, y1),
---    ...,
---    (y{m}, ?M{m} @ (x1, ..., xn, y1, ..., y{m-1}))]
---
--- inserting type information `yi : ?Mi @ (x1, ..., xn, y1, ..., y{i-1})
-newTypeHoleList :: BoundVarEnv -> [(Ident, Hint)] -> App [BinderF WT.WeakTerm]
-newTypeHoleList varEnv ids =
-  case ids of
-    [] ->
-      return []
-    ((x, m) : rest) -> do
-      t <- newHole m varEnv
-      insWeakTypeEnv x t
-      ts <- newTypeHoleList ((m, x, t) : varEnv) rest
-      return $ (m, x, t) : ts
 
 reduceWeakType :: WT.WeakTerm -> App WT.WeakTerm
 reduceWeakType e = do

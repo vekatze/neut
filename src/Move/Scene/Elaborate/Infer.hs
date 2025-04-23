@@ -221,7 +221,7 @@ infer h term =
       t' <- toApp $ resolveType h t
       case t' of
         _ :< WT.Pi impArgs expArgs codType -> do
-          holes <- mapM (const $ newHole m $ varEnv h) impArgs
+          holes <- liftIO $ mapM (const $ newHole h m $ varEnv h) impArgs
           let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impArgs) (map Right holes)
           (expArgs', _) <- toApp $ Subst.subst' (substHandle h) sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
@@ -377,7 +377,7 @@ infer h term =
       empty2 <- new
       (copier', tc) <- infer empty2 copier
       x <- Gensym.newIdentFromText "_"
-      resourceType <- newHole m []
+      resourceType <- liftIO $ newHole h m []
       let tDiscard = m :< WT.Pi [] [(m, x, resourceType)] unitType'
       let tCopy = m :< WT.Pi [] [(m, x, resourceType)] resourceType
       insConstraintEnv tDiscard td
@@ -392,7 +392,7 @@ infer h term =
             [(consDD, isConstLike')] <- consNameList -> do
               hKeyArg <- KeyArg.new
               (_, keyList) <- toApp $ KeyArg.lookup hKeyArg m consDD
-              defaultKeyMap <- constructDefaultKeyMap h m keyList
+              defaultKeyMap <- liftIO $ constructDefaultKeyMap h m keyList
               let specifiedKeyMap = Map.fromList $ flip map xts $ \(mx, x, t) -> (Ident.toText x, (mx, x, t))
               let keyMap = Map.union specifiedKeyMap defaultKeyMap
               reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
@@ -469,10 +469,10 @@ ignoreUse :: Ident -> Ident
 ignoreUse (I (x, i)) =
   I (expVarPrefix <> x, i)
 
-constructDefaultKeyMap :: Handle -> Hint -> [Key] -> App (Map.HashMap Key (BinderF WT.WeakTerm))
+constructDefaultKeyMap :: Handle -> Hint -> [Key] -> IO (Map.HashMap Key (BinderF WT.WeakTerm))
 constructDefaultKeyMap h m keyList = do
-  names <- mapM (const Gensym.newIdentForHole) keyList
-  ts <- mapM (const $ newHole m $ varEnv h) names
+  names <- mapM (const $ GensymNew.newIdentForHole (gensymHandle h)) keyList
+  ts <- mapM (const $ newHole h m $ varEnv h) names
   return $ Map.fromList $ zipWith (\k (v, t) -> (k, (m, v, t))) keyList $ zip names ts
 
 inferArgs ::
@@ -637,7 +637,7 @@ inferDecisionTree m h tree =
       (body', answerType) <- infer h body
       return (DT.Leaf ys letSeq' body', answerType)
     DT.Unreachable -> do
-      hole <- newHole m (varEnv h)
+      hole <- liftIO $ newHole h m (varEnv h)
       return (DT.Unreachable, hole)
     DT.Switch (cursor, _) clauseList -> do
       _ :< cursorType <- lookupWeakTypeEnv m cursor
@@ -654,7 +654,7 @@ inferClauseList ::
 inferClauseList m h cursorType (fallbackClause, clauseList) = do
   (clauseList', answerTypeList) <- flip mapAndUnzipM clauseList $ inferClause h cursorType
   let mAns = getClauseHint answerTypeList m
-  hole <- newHole mAns (varEnv h)
+  hole <- liftIO $ newHole h mAns (varEnv h)
   (fallbackClause', fallbackAnswerType) <- inferDecisionTree mAns h fallbackClause
   forM_ (answerTypeList ++ [fallbackAnswerType]) $ insConstraintEnv hole
   return ((fallbackClause', clauseList'), fallbackAnswerType)
@@ -734,3 +734,7 @@ reduceWeakType' h sub e = do
 lookupDefinition :: Handle -> DD.DefiniteDescription -> Maybe WT.WeakTerm
 lookupDefinition h name = do
   Map.lookup name (defMap h)
+
+newHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakTerm
+newHole h m varEnv = do
+  GensymNew.newHole (gensymHandle h) m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
