@@ -20,7 +20,7 @@ import Move.Context.Gensym qualified as Gensym
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Scene.WeakTerm.Fill
+import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
@@ -100,7 +100,9 @@ fillAsMuchAsPossible :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fillAsMuchAsPossible sub e = do
   e' <- reduce e
   if HS.fillable e' sub
-    then fill sub e' >>= fillAsMuchAsPossible sub
+    then do
+      h <- Fill.new sub
+      Fill.fill h e' >>= fillAsMuchAsPossible sub
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
@@ -242,19 +244,23 @@ simplify ax susList constraintList =
               let fmvs1 = holes e1 -- fmvs: free meta-variables
               let fmvs2 = holes e2
               case (lookupAny (S.toList fmvs1) sub, lookupAny (S.toList fmvs2) sub) of
-                (Just (h1, (xs1, body1)), Just (h2, (xs2, body2))) -> do
-                  let s1 = HS.singleton h1 xs1 body1
-                  let s2 = HS.singleton h2 xs2 body2
-                  e1' <- fill s1 e1
-                  e2' <- fill s2 e2
+                (Just (hole1, (xs1, body1)), Just (hole2, (xs2, body2))) -> do
+                  let s1 = HS.singleton hole1 xs1 body1
+                  let s2 = HS.singleton hole2 xs2 body2
+                  h1 <- Fill.new s1
+                  h2 <- Fill.new s2
+                  e1' <- Fill.fill h1 e1
+                  e2' <- Fill.fill h2 e2
                   simplify ax susList $ (C.Eq e1' e2', orig) : cs
-                (Just (h1, (xs1, body1)), Nothing) -> do
-                  let s1 = HS.singleton h1 xs1 body1
-                  e1' <- fill s1 e1
+                (Just (hole1, (xs1, body1)), Nothing) -> do
+                  let s1 = HS.singleton hole1 xs1 body1
+                  h1 <- Fill.new s1
+                  e1' <- Fill.fill h1 e1
                   simplify ax susList $ (C.Eq e1' e2, orig) : cs
-                (Nothing, Just (h2, (xs2, body2))) -> do
-                  let s2 = HS.singleton h2 xs2 body2
-                  e2' <- fill s2 e2
+                (Nothing, Just (hole2, (xs2, body2))) -> do
+                  let s2 = HS.singleton hole2 xs2 body2
+                  h2 <- Fill.new s2
+                  e2' <- Fill.fill h2 e2
                   simplify ax susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
@@ -424,9 +430,10 @@ simplifyActual ax m dataNameSet t orig = do
       sub <- getHoleSubst
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
-        Just (h, (xs, body)) -> do
-          let s = HS.singleton h xs body
-          t'' <- fill s t'
+        Just (hole, (xs, body)) -> do
+          let s = HS.singleton hole xs body
+          h <- Fill.new s
+          t'' <- Fill.fill h t'
           simplifyActual ax m dataNameSet t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
@@ -477,9 +484,9 @@ simplifyInteger ax m t orig = do
       sub <- getHoleSubst
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
-        Just (h, (xs, body)) -> do
-          let s = HS.singleton h xs body
-          t'' <- fill s t'
+        Just (hole, (xs, body)) -> do
+          h <- Fill.new $ HS.singleton hole xs body
+          t'' <- Fill.fill h t'
           simplifyInteger ax m t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read

@@ -32,8 +32,8 @@ import Move.Context.EIO (toApp)
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Throw qualified as Throw
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Scene.WeakTerm.Reduce qualified as WT
-import Move.Scene.WeakTerm.Subst qualified as WT
+import Move.Scene.WeakTerm.Reduce qualified as Reduce
+import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Binder
 import Rule.Constraint qualified as C
 import Rule.Hint
@@ -151,10 +151,10 @@ newTypeHoleList varEnv ids =
 
 reduceWeakType :: WT.WeakTerm -> App WT.WeakTerm
 reduceWeakType e = do
-  e' <- WT.reduce e
+  e' <- Reduce.reduce e
   case e' of
-    m :< WT.Hole h es ->
-      fillHole m h es >>= reduceWeakType
+    m :< WT.Hole hole es ->
+      fillHole m hole es >>= reduceWeakType
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
       mLam <- WeakDefinition.lookup name
       case mLam of
@@ -172,13 +172,13 @@ fillHole ::
   App WT.WeakTerm
 fillHole m h es = do
   holeSubst <- getHoleSubst
-  substHandle <- WT.new
+  substHandle <- Subst.new
   case HS.lookup h holeSubst of
     Nothing ->
       Throw.raiseError m $ "Could not instantiate the hole here: " <> T.pack (show h)
     Just (xs, e)
       | length xs == length es -> do
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-          toApp $ WT.subst substHandle s e
+          toApp $ Subst.subst substHandle s e
       | otherwise ->
           Throw.raiseError m "Arity mismatch"

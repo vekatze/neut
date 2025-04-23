@@ -9,9 +9,8 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Throw qualified as Throw
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
@@ -35,80 +34,68 @@ type InlineLimit =
 type CurrentStep =
   Int
 
-data Axis = Axis
+data Handle = Handle
   { substHandle :: Subst.Handle,
     currentStepRef :: IORef CurrentStep,
     inlineLimit :: InlineLimit,
     location :: H.Hint
   }
 
-new :: H.Hint -> App Axis
+reduce :: WT.WeakTerm -> App WT.WeakTerm
+reduce term@(m :< _) = do
+  h <- new m
+  toApp $ reduce' h term
+
+new :: H.Hint -> App Handle
 new location = do
   substHandle <- Subst.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   currentStepRef <- liftIO $ newIORef 0
-  return Axis {..}
+  return Handle {..}
 
-detectPossibleInfiniteLoop :: Axis -> App ()
-detectPossibleInfiniteLoop axis = do
-  let Axis {inlineLimit, currentStepRef, location} = axis
-  currentStep <- liftIO $ readIORef currentStepRef
-  when (inlineLimit < currentStep) $ do
-    Throw.raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
-
-incrementStep :: Axis -> App ()
-incrementStep axis = do
-  let Axis {currentStepRef} = axis
-  liftIO $ modifyIORef' currentStepRef (+ 1)
-
-reduce :: WT.WeakTerm -> App WT.WeakTerm
-reduce term@(m :< _) = do
-  ax <- new m
-  reduce' ax term
-
-reduce' :: Axis -> WT.WeakTerm -> App WT.WeakTerm
-reduce' ax term = do
-  detectPossibleInfiniteLoop ax
-  incrementStep ax
+reduce' :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+reduce' h term = do
+  detectPossibleInfiniteLoop h
+  liftIO $ incrementStep h
   case term of
     m :< WT.Pi impArgs expArgs cod -> do
       impArgs' <- do
         let (ms, xs, ts) = unzip3 impArgs
-        ts' <- mapM (reduce' ax) ts
+        ts' <- mapM (reduce' h) ts
         return $ zip3 ms xs ts'
       expArgs' <- do
         let (ms, xs, ts) = unzip3 expArgs
-        ts' <- mapM (reduce' ax) ts
+        ts' <- mapM (reduce' h) ts
         return $ zip3 ms xs ts'
-      cod' <- reduce' ax cod
+      cod' <- reduce' h cod
       return $ m :< WT.Pi impArgs' expArgs' cod'
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       impArgs' <- do
         let (ms, xs, ts) = unzip3 impArgs
-        ts' <- mapM (reduce' ax) ts
+        ts' <- mapM (reduce' h) ts
         return $ zip3 ms xs ts'
       expArgs' <- do
         let (ms, xs, ts) = unzip3 expArgs
-        ts' <- mapM (reduce' ax) ts
+        ts' <- mapM (reduce' h) ts
         return $ zip3 ms xs ts'
-      e' <- reduce' ax e
+      e' <- reduce' h e
       case lamKind of
         LK.Fix (mx, x, t) -> do
-          t' <- reduce' ax t
+          t' <- reduce' h t
           return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' expArgs' e')
         _ ->
           return (m :< WT.PiIntro attr impArgs' expArgs' e')
     m :< WT.PiElim e es -> do
-      e' <- reduce' ax e
-      es' <- mapM (reduce' ax) es
+      e' <- reduce' h e
+      es' <- mapM (reduce' h) es
       case e' of
         (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal _} impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')
-              toApp (Subst.subst (substHandle ax) sub body) >>= reduce' ax
+              Subst.subst (substHandle h) sub body >>= reduce' h
         (_ :< WT.Prim (WP.Value (WPV.Op op)))
           | Just (op', cod) <- WPV.reflectFloatUnaryOp op,
             [Just value] <- map asPrimFloatValue es' -> do
@@ -133,30 +120,30 @@ reduce' ax term = do
         _ ->
           return $ m :< WT.PiElim e' es'
     m :< WT.PiElimExact e -> do
-      e' <- reduce' ax e
+      e' <- reduce' h e
       return $ m :< WT.PiElimExact e'
     m :< WT.Data attr name es -> do
-      es' <- mapM (reduce' ax) es
+      es' <- mapM (reduce' h) es
       return $ m :< WT.Data attr name es'
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
-      dataArgs' <- mapM (reduce' ax) dataArgs
-      consArgs' <- mapM (reduce' ax) consArgs
+      dataArgs' <- mapM (reduce' h) dataArgs
+      consArgs' <- mapM (reduce' h) consArgs
       return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
-      detectPossibleInfiniteLoop ax
+      detectPossibleInfiniteLoop h
       let (os, es, ts) = unzip3 oets
-      es' <- mapM (reduce' ax) es
-      ts' <- mapM (reduce' ax) ts
+      es' <- mapM (reduce' h) es
+      ts' <- mapM (reduce' h) ts
       let oets' = zip3 os es' ts'
       if isNoetic
         then do
-          decisionTree' <- reduceDecisionTree ax decisionTree
+          decisionTree' <- reduceDecisionTree h decisionTree
           return $ m :< WT.DataElim isNoetic oets' decisionTree'
         else do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              toApp (Subst.subst (substHandle ax) sub (WT.fromLetSeq letSeq e)) >>= reduce' ax
+              Subst.subst (substHandle h) sub (WT.fromLetSeq letSeq e) >>= reduce' h
             DT.Unreachable ->
               return $ m :< WT.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -165,89 +152,89 @@ reduce' ax term = do
                   | (newBaseCursorList, cont) <- findClause discriminant fallbackTree caseList -> do
                       let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                       let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                      cont' <- toApp $ Subst.substDecisionTree (substHandle ax) sub cont
-                      reduce' ax $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
+                      cont' <- Subst.substDecisionTree (substHandle h) sub cont
+                      reduce' h $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
                 _ -> do
-                  decisionTree' <- reduceDecisionTree ax decisionTree
+                  decisionTree' <- reduceDecisionTree h decisionTree
                   return $ m :< WT.DataElim isNoetic oets' decisionTree'
     m :< WT.Box t -> do
-      t' <- reduce t
+      t' <- reduce' h t
       return $ m :< WT.Box t'
     m :< WT.BoxNoema t -> do
-      t' <- reduce' ax t
+      t' <- reduce' h t
       return $ m :< WT.BoxNoema t'
     m :< WT.BoxIntro letSeq e -> do
       let (xts, es) = unzip letSeq
-      xts' <- mapM (reduceBinder ax) xts
-      es' <- mapM (reduce' ax) es
-      e' <- reduce e
+      xts' <- mapM (reduceBinder h) xts
+      es' <- mapM (reduce' h) es
+      e' <- reduce' h e
       return $ m :< WT.BoxIntro (zip xts' es') e'
     m :< WT.Let opacity mxt@(_, x, _) e1 e2 -> do
-      e1' <- reduce' ax e1
+      e1' <- reduce' h e1
       case opacity of
         WT.Clear -> do
-          detectPossibleInfiniteLoop ax
+          detectPossibleInfiniteLoop h
           let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
-          toApp (Subst.subst (substHandle ax) sub e2) >>= reduce' ax
+          Subst.subst (substHandle h) sub e2 >>= reduce' h
         _ -> do
-          e2' <- reduce' ax e2
+          e2' <- reduce' h e2
           return $ m :< WT.Let opacity mxt e1' e2'
     m :< WT.Magic der -> do
-      der' <- mapM (reduce' ax) der
+      der' <- mapM (reduce' h) der
       return $ m :< WT.Magic der'
     m :< WT.Prim prim -> do
-      prim' <- mapM (reduce' ax) prim
+      prim' <- mapM (reduce' h) prim
       return $ m :< WT.Prim prim'
     _ ->
       return term
 
-reduceBinder :: Axis -> BinderF WT.WeakTerm -> App (BinderF WT.WeakTerm)
-reduceBinder ax (m, x, t) = do
-  t' <- reduce' ax t
+reduceBinder :: Handle -> BinderF WT.WeakTerm -> EIO (BinderF WT.WeakTerm)
+reduceBinder h (m, x, t) = do
+  t' <- reduce' h t
   return (m, x, t')
 
 reduceDecisionTree ::
-  Axis ->
+  Handle ->
   DT.DecisionTree WT.WeakTerm ->
-  App (DT.DecisionTree WT.WeakTerm)
-reduceDecisionTree ax tree =
+  EIO (DT.DecisionTree WT.WeakTerm)
+reduceDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
-      letSeq' <- mapM (bimapM (reduceBinder ax) (reduce' ax)) letSeq
-      e' <- reduce' ax e
+      letSeq' <- mapM (bimapM (reduceBinder h) (reduce' h)) letSeq
+      e' <- reduce' h e
       return $ DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do
-      cursor' <- reduce' ax cursor
-      clauseList' <- reduceCaseList ax clauseList
+      cursor' <- reduce' h cursor
+      clauseList' <- reduceCaseList h clauseList
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 reduceCaseList ::
-  Axis ->
+  Handle ->
   DT.CaseList WT.WeakTerm ->
-  App (DT.CaseList WT.WeakTerm)
-reduceCaseList ax (fallbackTree, clauseList) = do
-  fallbackTree' <- reduceDecisionTree ax fallbackTree
-  clauseList' <- mapM (reduceCase ax) clauseList
+  EIO (DT.CaseList WT.WeakTerm)
+reduceCaseList h (fallbackTree, clauseList) = do
+  fallbackTree' <- reduceDecisionTree h fallbackTree
+  clauseList' <- mapM (reduceCase h) clauseList
   return (fallbackTree', clauseList')
 
 reduceCase ::
-  Axis ->
+  Handle ->
   DT.Case WT.WeakTerm ->
-  App (DT.Case WT.WeakTerm)
-reduceCase axis decisionCase = do
+  EIO (DT.Case WT.WeakTerm)
+reduceCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
-      cont' <- reduceDecisionTree axis cont
+      cont' <- reduceDecisionTree h cont
       return $ DT.LiteralCase mPat i cont'
     DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM (reduce' axis) dataTerms
-      dataTypes' <- mapM (reduce' axis) dataTypes
+      dataTerms' <- mapM (reduce' h) dataTerms
+      dataTypes' <- mapM (reduce' h) dataTypes
       let (ms, xs, ts) = unzip3 consArgs
-      ts' <- mapM (reduce' axis) ts
-      cont' <- reduceDecisionTree axis cont
+      ts' <- mapM (reduce' h) ts
+      cont' <- reduceDecisionTree h cont
       return $
         DT.ConsCase
           record
@@ -304,3 +291,15 @@ asPrimFloatValue term = do
       return value
     _ ->
       Nothing
+
+detectPossibleInfiniteLoop :: Handle -> EIO ()
+detectPossibleInfiniteLoop h = do
+  let Handle {inlineLimit, currentStepRef, location} = h
+  currentStep <- liftIO $ readIORef currentStepRef
+  when (inlineLimit < currentStep) $ do
+    raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
+
+incrementStep :: Handle -> IO ()
+incrementStep h = do
+  let Handle {currentStepRef} = h
+  modifyIORef' currentStepRef (+ 1)
