@@ -1,20 +1,26 @@
 module Move.Scene.Elaborate.Unify
-  ( unify,
+  ( Handle,
+    new,
+    unify,
     unifyCurrentConstraints,
   )
 where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (toApp)
-import Move.Context.Elaborate
+import Move.Context.Elaborate hiding (getHoleSubst)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Throw qualified as Throw
@@ -56,6 +62,7 @@ data Handle = Handle
     substHandle :: Subst.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
+    holeSubstRef :: IORef HS.HoleSubst,
     defMap :: WeakDefinition.DefMap
   }
 
@@ -67,16 +74,17 @@ new = do
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   defMap <- WeakDefinition.read
   let currentStep = 0
+  holeSubstRef <- asks App.holeSubst
   return $ Handle {..}
 
-unify :: [C.Constraint] -> App HS.HoleSubst
-unify constraintList = do
+unify :: Handle -> [C.Constraint] -> App HS.HoleSubst
+unify h constraintList = do
   susList <- unify' (reverse constraintList)
   case susList of
     [] ->
-      getHoleSubst
+      liftIO $ getHoleSubst h
     _ ->
-      throwTypeErrors susList
+      throwTypeErrors h susList
 
 unifyCurrentConstraints :: App HS.HoleSubst
 unifyCurrentConstraints = do
@@ -86,7 +94,7 @@ unifyCurrentConstraints = do
   susList' <- simplify h susList $ zip cs cs
   setConstraintEnv []
   setSuspendedEnv susList'
-  getHoleSubst
+  liftIO $ getHoleSubst h
 
 unify' :: [C.Constraint] -> App [SuspendedConstraint]
 unify' constraintList = do
@@ -94,9 +102,9 @@ unify' constraintList = do
   h <- new
   simplify h susList $ zip constraintList constraintList
 
-throwTypeErrors :: [SuspendedConstraint] -> App a
-throwTypeErrors susList = do
-  sub <- getHoleSubst
+throwTypeErrors :: Handle -> [SuspendedConstraint] -> App a
+throwTypeErrors h susList = do
+  sub <- liftIO $ getHoleSubst h
   errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark sub c) susList
   Throw.throw $ E.MakeError errorList
 
@@ -151,7 +159,7 @@ detectPossibleInfiniteLoop :: Handle -> C.Constraint -> App ()
 detectPossibleInfiniteLoop h c = do
   let Handle {inlineLimit, currentStep} = h
   when (inlineLimit < currentStep) $ do
-    sub <- getHoleSubst
+    sub <- liftIO $ getHoleSubst h
     r <- constraintToRemark sub c
     Throw.throw $
       E.MakeError
@@ -236,7 +244,7 @@ simplify h susList constraintList =
             (e1, _ :< WT.Annotation _ _ e2) ->
               simplify h susList $ (C.Eq e1 e2, orig) : cs
             (e1, e2) -> do
-              sub <- getHoleSubst
+              sub <- liftIO $ getHoleSubst h
               let fvs1 = freeVars e1
               let fvs2 = freeVars e2
               let fmvs1 = holes e1 -- fmvs: free meta-variables
@@ -425,7 +433,7 @@ simplifyActual h m dataNameSet t orig = do
     _ :< WT.Resource {} -> do
       return []
     _ -> do
-      sub <- getHoleSubst
+      sub <- liftIO $ getHoleSubst h
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
@@ -434,10 +442,9 @@ simplifyActual h m dataNameSet t orig = do
           t'' <- toApp $ Fill.fill hFill t'
           simplifyActual h m dataNameSet t'' orig
         Nothing -> do
-          defMap <- WeakDefinition.read
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
-              | Just lam <- Map.lookup dd defMap -> do
+              | Just lam <- Map.lookup dd (defMap h) -> do
                   simplifyActual (increment h) m dataNameSet (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
@@ -479,7 +486,7 @@ simplifyInteger h m t orig = do
     _ :< WT.Prim (WP.Type (PT.Int _)) -> do
       return []
     _ -> do
-      sub <- getHoleSubst
+      sub <- liftIO $ getHoleSubst h
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
@@ -487,10 +494,13 @@ simplifyInteger h m t orig = do
           t'' <- toApp $ Fill.fill hFill t'
           simplifyInteger h m t'' orig
         Nothing -> do
-          defMap <- WeakDefinition.read
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
-              | Just lam <- Map.lookup dd defMap -> do
+              | Just lam <- Map.lookup dd (defMap h) -> do
                   simplifyInteger (increment h) m (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
+
+getHoleSubst :: Handle -> IO HS.HoleSubst
+getHoleSubst h =
+  readIORef (holeSubstRef h)

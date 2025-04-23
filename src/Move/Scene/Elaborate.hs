@@ -90,7 +90,8 @@ analyzeStmtList stmtList = do
 synthesizeStmtList :: Target -> [WeakStmt] -> App [Stmt]
 synthesizeStmtList t stmtList = do
   -- mapM_ viewStmt stmtList
-  getConstraintEnv >>= Unify.unify >>= setHoleSubst
+  hUnify <- Unify.new
+  getConstraintEnv >>= Unify.unify hUnify >>= setHoleSubst
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM elaborateStmt stmtList
   unless (null affineErrorList) $ do
     Throw.throw $ E.MakeError affineErrorList
