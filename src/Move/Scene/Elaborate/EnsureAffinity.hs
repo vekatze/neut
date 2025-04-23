@@ -78,9 +78,9 @@ isExistingVar i axis = do
   foundVarSet <- liftIO $ readIORef $ foundVarSetRef axis
   return $ IntMap.lookup (toInt i) foundVarSet
 
-insertVar :: Ident -> Axis -> App ()
+insertVar :: Ident -> Axis -> IO ()
 insertVar i axis = do
-  liftIO $ modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) False
+  modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) False
 
 insertRelevantVar :: Ident -> Axis -> IO ()
 insertRelevantVar i axis = do
@@ -112,7 +112,7 @@ analyzeVar axis m x = do
       boolOrNone <- isExistingVar x axis
       case boolOrNone of
         Nothing -> do
-          insertVar x axis
+          liftIO $ insertVar x axis
           return []
         Just alreadyRegistered ->
           if alreadyRegistered
