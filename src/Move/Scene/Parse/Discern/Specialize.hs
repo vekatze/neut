@@ -4,12 +4,15 @@ module Move.Scene.Parse.Discern.Specialize
   )
 where
 
+import Control.Comonad.Cofree
+import Control.Monad.IO.Class
+import Data.Vector qualified as V
 import Move.Context.App
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
-import Control.Comonad.Cofree
-import Data.Vector qualified as V
+import Move.Scene.Parse.Discern.Handle qualified as H
+import Move.Scene.Parse.Discern.Noema
 import Rule.ArgNum qualified as AN
 import Rule.Binder
 import Rule.Ident
@@ -17,25 +20,26 @@ import Rule.Noema qualified as N
 import Rule.OptimizableData qualified as OD
 import Rule.Pattern
 import Rule.WeakTerm qualified as WT
-import Move.Scene.Parse.Discern.Noema
 
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 specialize ::
+  H.Handle ->
   N.IsNoetic ->
   Ident ->
   Specializer ->
   PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
   App (PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
-specialize isNoetic cursor cons mat = do
-  mapMaybeRowM (specializeRow isNoetic cursor cons) mat
+specialize h isNoetic cursor cons mat = do
+  mapMaybeRowM (specializeRow h isNoetic cursor cons) mat
 
 specializeRow ::
+  H.Handle ->
   N.IsNoetic ->
   Ident ->
   Specializer ->
   PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
   App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm)))
-specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
+specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
       Throw.raiseCritical' "Specialization against the empty pattern matrix should not happen"
@@ -49,14 +53,14 @@ specializeRow isNoetic cursor specializer (patternVector, (freedVars, baseSeq, b
     Just ((_, Var x), rest) -> do
       case specializer of
         LiteralSpecializer _ -> do
-          h <- Gensym.newHole mBody []
-          adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
-          return $ Just (rest, (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
+          hole <- Gensym.newHole mBody []
+          adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
+          return $ Just (rest, (freedVars, ((mBody, x, hole), adjustedCursor) : baseSeq, body))
         ConsSpecializer (ConsInfo {consArgNum}) -> do
           let wildcards = V.fromList $ replicate (AN.reify consArgNum) (mBody, WildcardVar)
-          h <- Gensym.newHole mBody []
-          adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
-          return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, x, h), adjustedCursor) : baseSeq, body))
+          hole <- Gensym.newHole mBody []
+          adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
+          return $ Just (V.concat [wildcards, rest], (freedVars, ((mBody, x, hole), adjustedCursor) : baseSeq, body))
     Just ((_, Cons (ConsInfo {..})), rest) -> do
       case specializer of
         LiteralSpecializer {} ->

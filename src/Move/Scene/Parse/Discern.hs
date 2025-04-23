@@ -343,7 +343,7 @@ discern h term =
       let es' = SE.extract es
       let ms = map (\(me :< _) -> me) es'
       os <- mapM (const $ Gensym.newIdentFromText "match") es' -- os: occurrences
-      es'' <- mapM (discern h >=> castFromNoemaIfNecessary isNoetic) es'
+      es'' <- mapM (discern h >=> liftIO . castFromNoemaIfNecessary h isNoetic) es'
       ts <- mapM (const $ Gensym.newHole m []) es''
       patternMatrix' <- discernPatternMatrix h $ SE.extract patternMatrix
       ensurePatternMatrixSanity patternMatrix'

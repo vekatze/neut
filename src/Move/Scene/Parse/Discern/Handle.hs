@@ -13,6 +13,7 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
+import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
@@ -22,7 +23,8 @@ import Rule.NominalEnv
 import Rule.VarDefKind
 
 data Handle = Handle
-  { nameEnv :: NominalEnv,
+  { gensymHandle :: Gensym.Handle,
+    nameEnv :: NominalEnv,
     currentModule :: Module,
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind))
@@ -30,6 +32,7 @@ data Handle = Handle
 
 new :: Module -> App Handle
 new currentModule = do
+  gensymHandle <- Gensym.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
   let currentLayer = 0

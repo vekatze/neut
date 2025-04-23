@@ -6,6 +6,7 @@ where
 
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Move.Context.App
@@ -44,7 +45,7 @@ compilePatternMatrix h isNoetic occurrences mat =
       case PAT.getClauseBody row of
         Right (usedVars, (freedVars, innerLetSeq, body)) -> do
           let occurrences' = map (\(mo, o) -> mo :< WT.Var o) $ V.toList occurrences
-          cursorVars <- mapM (castToNoemaIfNecessary isNoetic) occurrences'
+          cursorVars <- liftIO $ mapM (castToNoemaIfNecessary h isNoetic) occurrences'
           letSeq <- asLetSeq $ zip usedVars cursorVars
           return $ DT.Leaf freedVars (letSeq ++ innerLetSeq) body
         Left (mCol, i) -> do
@@ -60,7 +61,7 @@ compilePatternMatrix h isNoetic occurrences mat =
                 case specializer of
                   PAT.LiteralSpecializer literal -> do
                     let occurrences' = V.tail occurrences
-                    specialMatrix <- PATS.specialize isNoetic cursor specializer mat
+                    specialMatrix <- PATS.specialize h isNoetic cursor specializer mat
                     cont <- compilePatternMatrix h isNoetic occurrences' specialMatrix
                     return $ DT.LiteralCase mPat literal cont
                   PAT.ConsSpecializer (PAT.ConsInfo {..}) -> do
@@ -69,10 +70,9 @@ compilePatternMatrix h isNoetic occurrences mat =
                     consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
                     let ms = map fst args
                     let consVars' = zip ms consVars
-                    -- (consArgs', nenv') <- alignConsArgs l nenv consVars'
                     (consArgs', h') <- alignConsArgs h consVars'
                     let occurrences' = V.fromList consVars' <> V.tail occurrences
-                    specialMatrix <- PATS.specialize isNoetic cursor specializer mat
+                    specialMatrix <- PATS.specialize h isNoetic cursor specializer mat
                     specialDecisionTree <- compilePatternMatrix h' isNoetic occurrences' specialMatrix
                     let dataArgs' = zip dataHoles dataTypeHoles
                     return $
@@ -86,7 +86,7 @@ compilePatternMatrix h isNoetic occurrences mat =
                             consArgs = consArgs',
                             cont = specialDecisionTree
                           }
-              fallbackMatrix <- PATF.getFallbackMatrix isNoetic cursor mat
+              fallbackMatrix <- PATF.getFallbackMatrix h isNoetic cursor mat
               fallbackClause <- compilePatternMatrix h isNoetic (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCursor []
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)

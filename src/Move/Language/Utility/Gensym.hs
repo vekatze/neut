@@ -4,6 +4,7 @@ module Move.Language.Utility.Gensym
     newCount,
     newTextForHole,
     newPreHole,
+    newHole,
   )
 where
 
@@ -17,6 +18,7 @@ import Rule.Const
 import Rule.Hint (Hint)
 import Rule.HoleID (HoleID (HoleID))
 import Rule.RawTerm qualified as RT
+import Rule.WeakTerm qualified as WT
 
 newtype Handle
   = Handle
@@ -44,3 +46,9 @@ newPreHole :: Handle -> Hint -> IO RT.RawTerm
 newPreHole h m = do
   i <- HoleID <$> newCount h
   return $ m :< RT.Hole i
+
+{-# INLINE newHole #-}
+newHole :: Handle -> Hint -> [WT.WeakTerm] -> IO WT.WeakTerm
+newHole h m varSeq = do
+  i <- HoleID <$> newCount h
+  return $ m :< WT.Hole i varSeq
