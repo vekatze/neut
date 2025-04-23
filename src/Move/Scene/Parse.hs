@@ -82,7 +82,7 @@ parseSource h t source cacheOrContent = do
   case cacheOrContent of
     Left cache -> do
       let stmtList = Cache.stmtList cache
-      parseCachedStmtList stmtList
+      toApp $ parseCachedStmtList h stmtList
       toApp $ saveTopLevelNames h source $ getStmtName stmtList
       return $ Left cache
     Right fileContent -> do
@@ -92,15 +92,14 @@ parseSource h t source cacheOrContent = do
       toApp $ Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap
       return $ Right prog'
 
-parseCachedStmtList :: [Stmt] -> App ()
-parseCachedStmtList stmtList = do
-  h <- Global.new
+parseCachedStmtList :: Handle -> [Stmt] -> EIO ()
+parseCachedStmtList h stmtList = do
   forM_ stmtList $ \stmt -> do
     case stmt of
       StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
         let expArgNames = map (\(_, x, _) -> toText x) expArgs
         let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
-        toApp $ Global.registerStmtDefine h isConstLike m stmtKind name allArgNum expArgNames
+        Global.registerStmtDefine (globalHandle h) isConstLike m stmtKind name allArgNum expArgNames
       StmtForeign {} ->
         return ()
 
