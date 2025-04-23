@@ -22,7 +22,7 @@ import Rule.NominalEnv
 import Rule.VarDefKind
 
 data Handle = Handle
-  { _nenv :: NominalEnv,
+  { nameEnv :: NominalEnv,
     currentModule :: Module,
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind))
@@ -30,7 +30,7 @@ data Handle = Handle
 
 new :: Module -> App Handle
 new currentModule = do
-  let _nenv = empty
+  let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
   let currentLayer = 0
   return $ Handle {..}
@@ -38,7 +38,7 @@ new currentModule = do
 extend :: Handle -> Hint -> Ident -> Layer -> VarDefKind -> IO Handle
 extend h m newVar l k = do
   insertUnusedVariable h m newVar k
-  return $ h {_nenv = (Ident.toText newVar, (m, newVar, l)) : _nenv h}
+  return $ h {nameEnv = (Ident.toText newVar, (m, newVar, l)) : nameEnv h}
 
 extend' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle
 extend' h m newVar k = do
@@ -46,7 +46,7 @@ extend' h m newVar k = do
 
 extendWithoutInsert :: Handle -> Hint -> Ident -> Handle
 extendWithoutInsert h m newVar = do
-  h {_nenv = (Ident.toText newVar, (m, newVar, currentLayer h)) : _nenv h}
+  h {nameEnv = (Ident.toText newVar, (m, newVar, currentLayer h)) : nameEnv h}
 
 extendByNominalEnv :: Handle -> VarDefKind -> NominalEnv -> IO Handle
 extendByNominalEnv h k newNominalEnv = do

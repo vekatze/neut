@@ -209,7 +209,7 @@ discernStmtKind ax stmtKind =
       (dataArgs', h) <- discernBinder' ax dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
       (consArgsList', hList) <- mapAndUnzipM (discernBinder' h) consArgsList
-      forM_ (concatMap H._nenv hList) $ \(_, (_, newVar, _)) -> do
+      forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _)) -> do
         UnusedVariable.delete newVar
       let consNameList' = map nameLifter consNameList
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
@@ -218,7 +218,7 @@ discernStmtKind ax stmtKind =
       nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
       (dataArgs', h) <- discernBinder' ax dataArgs
       (consArgs', h') <- discernBinder' h consArgs
-      forM_ (H._nenv h') $ \(_, (_, newVar, _)) -> do
+      forM_ (H.nameEnv h') $ \(_, (_, newVar, _)) -> do
         UnusedVariable.delete newVar
       return $ SK.DataIntro (nameLifter dataName) dataArgs' consArgs' discriminant
 
@@ -255,7 +255,7 @@ discern h term =
           | Just x <- R.readMaybe (T.unpack s) -> do
               hole <- Gensym.newHole m []
               return $ m :< WT.Prim (WP.Value $ WPV.Float hole x)
-          | Just (mDef, name', layer) <- lookup s (H._nenv h) -> do
+          | Just (mDef, name', layer) <- lookup s (H.nameEnv h) -> do
               if layer == H.currentLayer h
                 then do
                   UnusedVariable.delete name'
@@ -863,7 +863,7 @@ constructEitherBinder m mx m1 pat tmpVar cont endLoc = do
 
 discernIdent :: Hint -> H.Handle -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent mUse h x =
-  case lookup x (H._nenv h) of
+  case lookup x (H.nameEnv h) of
     Nothing ->
       Throw.raiseError mUse $ "Undefined variable: " <> x
     Just (mDef, x', _) -> do
@@ -1098,7 +1098,7 @@ locatorToVarGlobal m text = do
 
 getLayer :: Hint -> H.Handle -> Ident -> App Layer
 getLayer m h x =
-  case lookup (Ident.toText x) (H._nenv h) of
+  case lookup (Ident.toText x) (H.nameEnv h) of
     Nothing ->
       Throw.raiseCritical m $ "Scene.Parse.Discern.getLayer: Undefined variable: " <> Ident.toText x
     Just (_, _, l) -> do
