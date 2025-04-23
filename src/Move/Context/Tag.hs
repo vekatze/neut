@@ -8,7 +8,9 @@ module Move.Context.Tag
     insertBinder,
     get,
     insertFileLocIO,
+    insertLocalVarIO,
     insertGlobalVarIO,
+    insertBinderIO,
   )
 where
 
@@ -78,6 +80,17 @@ insertFileLocIO ref mUse nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
     modifyIORef' ref $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
+
+insertLocalVarIO :: IORef LT.LocationTree -> Hint -> Ident -> Hint -> IO ()
+insertLocalVarIO ref mUse ident@(I (var, varID)) mDef = do
+  unless (isHole ident) $ do
+    let nameLength = T.length var
+    let symbolLoc = LT.SymbolLoc (LT.Local varID nameLength)
+    insertIO ref mUse symbolLoc nameLength mDef
+
+insertBinderIO :: IORef LT.LocationTree -> BinderF a -> IO ()
+insertBinderIO h (m, ident, _) =
+  insertLocalVarIO h m ident m
 
 insertGlobalVarIO :: IORef LT.LocationTree -> Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> IO ()
 insertGlobalVarIO ref mUse dd isConstLike mDef = do

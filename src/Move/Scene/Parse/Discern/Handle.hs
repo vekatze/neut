@@ -15,32 +15,38 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
+import Move.Context.Env (getMainModule)
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.Layer
+import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.NominalEnv
 import Rule.OptimizableData
 import Rule.VarDefKind
 
 data Handle = Handle
-  { gensymHandle :: Gensym.Handle,
+  { mainModule :: MainModule,
+    gensymHandle :: Gensym.Handle,
     nameEnv :: NominalEnv,
     currentModule :: Module,
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
-    optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData)
+    optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
+    tagMapRef :: IORef LT.LocationTree
   }
 
 new :: Module -> App Handle
 new currentModule = do
+  mainModule <- getMainModule
   gensymHandle <- Gensym.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
   optDataMapRef <- asks App.optDataMap
+  tagMapRef <- asks App.tagMap
   let currentLayer = 0
   return $ Handle {..}
 

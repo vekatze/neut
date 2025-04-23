@@ -346,7 +346,7 @@ discern h term =
       es'' <- mapM (discern h >=> liftIO . castFromNoemaIfNecessary h isNoetic) es'
       ts <- mapM (const $ Gensym.newHole m []) es''
       patternMatrix' <- discernPatternMatrix h $ SE.extract patternMatrix
-      ensurePatternMatrixSanity patternMatrix'
+      toApp $ ensurePatternMatrixSanity h patternMatrix'
       let os' = zip ms os
       decisionTree <- compilePatternMatrix h isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree

@@ -10,8 +10,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Move.Context.App
-import Move.Context.EIO (toApp)
-import Move.Context.Env (getMainModule)
+import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
@@ -120,24 +119,24 @@ asLetSeq binder =
       cont' <- asLetSeq xes
       return $ ((m, from, h), to) : cont'
 
-ensurePatternMatrixSanity :: PAT.PatternMatrix a -> App ()
-ensurePatternMatrixSanity mat =
+ensurePatternMatrixSanity :: H.Handle -> PAT.PatternMatrix a -> EIO ()
+ensurePatternMatrixSanity h mat =
   case PAT.unconsRow mat of
     Nothing ->
       return ()
     Just (row, rest) -> do
-      ensurePatternRowSanity row
-      ensurePatternMatrixSanity rest
+      ensurePatternRowSanity h row
+      ensurePatternMatrixSanity h rest
 
-ensurePatternRowSanity :: PAT.PatternRow a -> App ()
-ensurePatternRowSanity (patternVector, _) = do
-  mapM_ ensurePatternSanity $ V.toList patternVector
+ensurePatternRowSanity :: H.Handle -> PAT.PatternRow a -> EIO ()
+ensurePatternRowSanity h (patternVector, _) = do
+  mapM_ (ensurePatternSanity h) $ V.toList patternVector
 
-ensurePatternSanity :: (Hint, PAT.Pattern) -> App ()
-ensurePatternSanity (m, pat) =
+ensurePatternSanity :: H.Handle -> (Hint, PAT.Pattern) -> EIO ()
+ensurePatternSanity h (m, pat) =
   case pat of
     PAT.Var v -> do
-      Tag.insertBinder (m, v, ())
+      liftIO $ Tag.insertBinderIO (H.tagMapRef h) (m, v, ())
     PAT.Literal _ -> do
       return ()
     PAT.WildcardVar {} ->
@@ -145,9 +144,8 @@ ensurePatternSanity (m, pat) =
     PAT.Cons consInfo -> do
       let argNum = length (PAT.args consInfo)
       when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
-        mainModule <- getMainModule
-        let consDD' = Locator.getReadableDD mainModule $ PAT.consDD consInfo
-        Throw.raiseError m $
+        let consDD' = Locator.getReadableDD (H.mainModule h) $ PAT.consDD consInfo
+        raiseError m $
           "The constructor `"
             <> consDD'
             <> "` expects "
@@ -155,4 +153,4 @@ ensurePatternSanity (m, pat) =
             <> " arguments, but found "
             <> T.pack (show argNum)
             <> "."
-      mapM_ ensurePatternSanity (PAT.args consInfo)
+      mapM_ (ensurePatternSanity h) (PAT.args consInfo)
