@@ -257,10 +257,11 @@ elaborate' term =
           switchSpec <- getSwitchSpec m t'
           case switchSpec of
             LiteralSwitch -> do
-              raiseEmptyNonExhaustivePatternMatching m
+              toApp $ raiseEmptyNonExhaustivePatternMatching m
             ConsSwitch consList -> do
               unless (null consList) $
-                raiseEmptyNonExhaustivePatternMatching m
+                toApp $
+                  raiseEmptyNonExhaustivePatternMatching m
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     m :< WT.Box t -> do
       t' <- elaborate' t
@@ -608,9 +609,9 @@ raiseLiteralNonExhaustivePatternMatching :: Hint -> EIO a
 raiseLiteralNonExhaustivePatternMatching m =
   raiseError m "Pattern matching on literals must have a fallback clause"
 
-raiseEmptyNonExhaustivePatternMatching :: Hint -> App a
+raiseEmptyNonExhaustivePatternMatching :: Hint -> EIO a
 raiseEmptyNonExhaustivePatternMatching m =
-  Throw.raiseError m "Empty pattern matching can only be performed on empty ADT values"
+  raiseError m "Empty pattern matching can only be performed on empty ADT values"
 
 reduceType :: WT.WeakTerm -> App TM.Term
 reduceType e = do
