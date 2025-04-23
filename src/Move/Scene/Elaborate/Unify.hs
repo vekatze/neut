@@ -19,7 +19,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Elaborate hiding (getHoleSubst)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
@@ -420,7 +420,7 @@ simplifyActual h m dataNameSet t orig = do
           then return []
           else mapM (getConsArgTypes m . fst) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
+        dataConsArgs' <- toApp $ substConsArgs h IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual h m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
@@ -449,13 +449,13 @@ simplifyActual h m dataNameSet t orig = do
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
 
-substConsArgs :: Handle -> Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
+substConsArgs :: Handle -> Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> EIO [BinderF WT.WeakTerm]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- toApp $ Subst.subst (substHandle h) sub t
+      t' <- Subst.subst (substHandle h) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (Ident.toInt x) (Right opaque) sub
       rest' <- substConsArgs h sub' rest
