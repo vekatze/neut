@@ -1,6 +1,6 @@
 module Move.Scene.Parse.Discern.Handle
   ( Handle (..),
-    emptyHandle,
+    new,
     extendHandle,
     extendHandleByNominalEnv,
     extendNominalEnvWithoutInsert,
@@ -23,9 +23,9 @@ data Handle = Handle
     currentLayer :: Layer
   }
 
-emptyHandle :: Module -> Layer -> Handle
-emptyHandle m l =
-  Handle {_nenv = empty, currentModule = m, currentLayer = l}
+new :: Module -> App Handle
+new currentModule = do
+  return $ Handle {_nenv = empty, currentModule, currentLayer = 0}
 
 extendHandle :: Hint -> Ident -> VarDefKind -> Handle -> App Handle
 extendHandle m newVar k axis = do

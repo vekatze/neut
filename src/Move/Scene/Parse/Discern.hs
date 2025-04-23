@@ -101,10 +101,11 @@ discernStmt mo stmt = do
       let m = RT.loc geist
       let functionName = nameLifter $ fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      (impArgs', nenv) <- discernBinder (emptyHandle mo 0) impArgs endLoc
+      h <- new mo
+      (impArgs', nenv) <- discernBinder h impArgs endLoc
       (expArgs', nenv') <- discernBinder nenv expArgs endLoc
       codType' <- discern nenv' codType
-      stmtKind' <- discernStmtKind (emptyHandle mo 0) stmtKind
+      stmtKind' <- discernStmtKind h stmtKind
       body' <- discern nenv' body
       Tag.insertGlobalVar m functionName isConstLike m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
@@ -116,8 +117,9 @@ discernStmt mo stmt = do
     RawStmtDefineResource _ m (name, _) (_, discarder) (_, copier) _ -> do
       let dd = nameLifter name
       registerTopLevelName nameLifter stmt
-      t' <- discern (emptyHandle mo 0) $ m :< RT.Tau
-      e' <- discern (emptyHandle mo 0) $ m :< RT.Resource dd [] (discarder, []) (copier, [])
+      h <- new mo
+      t' <- discern h $ m :< RT.Tau
+      e' <- discern h $ m :< RT.Resource dd [] (discarder, []) (copier, [])
       Tag.insertGlobalVar m dd True m
       TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
@@ -129,7 +131,8 @@ discernStmt mo stmt = do
       return [WeakStmtNominal m geistList']
     RawStmtForeign _ foreignList -> do
       let foreignList' = SE.extract foreignList
-      foreignList'' <- mapM (mapM (discern (emptyHandle mo 0))) foreignList'
+      h <- new mo
+      foreignList'' <- mapM (mapM (discern h)) foreignList'
       foreign' <- interpretForeign foreignList''
       return [WeakStmtForeign foreign']
 
@@ -138,7 +141,8 @@ discernGeist mo endLoc geist = do
   nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
   let impArgs = RT.extractArgs $ RT.impArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
-  (impArgs', axis) <- discernBinder (emptyHandle mo 0) impArgs endLoc
+  h <- new mo
+  (impArgs', axis) <- discernBinder h impArgs endLoc
   (expArgs', axis') <- discernBinder axis expArgs endLoc
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
   cod' <- discern axis' $ snd $ RT.cod geist
