@@ -457,8 +457,8 @@ discern h term =
       return $ m :< WT.Use e' xs' cont'
     m :< RT.If ifClause elseIfClauseList (_, (elseBody, _)) -> do
       let (ifCond, ifBody) = RT.extractFromKeywordClause ifClause
-      boolTrue <- locatorToName (blur m) coreBoolTrue
-      boolFalse <- locatorToName (blur m) coreBoolFalse
+      boolTrue <- toApp $ liftEither $ locatorToName (blur m) coreBoolTrue
+      boolFalse <- toApp $ liftEither $ locatorToName (blur m) coreBoolFalse
       discern h $ foldIf m boolTrue boolFalse ifCond ifBody elseIfClauseList elseBody
     m :< RT.Seq (e1, _) _ e2 -> do
       hole <- Gensym.newTextForHole
@@ -466,8 +466,8 @@ discern h term =
       discern h $ bind fakeLoc fakeLoc (m, hole, [], [], unit) e1 e2
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
-      boolTrue <- locatorToName (blur m) coreBoolTrue
-      boolFalse <- locatorToName (blur m) coreBoolFalse
+      boolTrue <- toApp $ liftEither $ locatorToName (blur m) coreBoolTrue
+      boolFalse <- toApp $ liftEither $ locatorToName (blur m) coreBoolFalse
       unitUnit <- toApp $ liftEither $ locatorToVarGlobal m coreUnitUnit
       discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
     m :< RT.ListIntro es -> do
@@ -839,8 +839,8 @@ constructEitherBinder m mx m1 pat tmpVar cont endLoc = do
   let mx' = blur mx
   let m1' = blur m1
   earlyRetVar <- Gensym.newText
-  eitherL <- locatorToName m1 coreEitherLeft
-  eitherR <- locatorToName m1 coreEitherRight
+  eitherL <- toApp $ liftEither $ locatorToName m1 coreEitherLeft
+  eitherR <- toApp $ liftEither $ locatorToName m1 coreEitherRight
   eitherVarL <- toApp $ liftEither $ locatorToVarGlobal m1 coreEitherLeft
   let longClause =
         ( SE.fromList'' [(mx', RP.Cons eitherR [] (RP.Paren (SE.fromList' [(mx, pat)])))],
@@ -1064,7 +1064,7 @@ discernPattern h layer (m, pat) = do
     RP.ListIntro patList -> do
       let m' = m {metaShouldSaveLocation = False}
       listNil <- Throw.liftEither $ DD.getLocatorPair m' coreListNil
-      listCons <- locatorToName m' coreListCons
+      listCons <- toApp $ liftEither $ locatorToName m' coreListCons
       discernPattern h layer $ foldListAppPat m' listNil listCons $ SE.extract patList
     RP.RuneIntro r -> do
       return ((m, PAT.Literal (LI.Rune r)), [])
@@ -1088,9 +1088,9 @@ constructDefaultKeyMap m keyList = do
   names <- mapM (const Gensym.newTextForHole) keyList
   return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var (Var v)))) keyList names
 
-locatorToName :: Hint -> T.Text -> App Name
+locatorToName :: Hint -> T.Text -> Either E.Error Name
 locatorToName m text = do
-  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
+  (gl, ll) <- DD.getLocatorPair m text
   return $ Locator (gl, ll)
 
 locatorToVarGlobal :: Hint -> T.Text -> Either E.Error RT.RawTerm
