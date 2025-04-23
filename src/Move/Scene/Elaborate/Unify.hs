@@ -105,31 +105,30 @@ unify' constraintList = do
 throwTypeErrors :: Handle -> [SuspendedConstraint] -> App a
 throwTypeErrors h susList = do
   sub <- liftIO $ getHoleSubst h
-  errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark sub c) susList
+  errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark h sub c) susList
   Throw.throw $ E.MakeError errorList
 
-constraintToRemark :: HS.HoleSubst -> C.Constraint -> App R.Remark
-constraintToRemark sub c = do
+constraintToRemark :: Handle -> HS.HoleSubst -> C.Constraint -> App R.Remark
+constraintToRemark h sub c = do
   case c of
     C.Actual t -> do
-      t' <- fillAsMuchAsPossible sub t
+      t' <- fillAsMuchAsPossible h sub t
       return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
     C.Integer t -> do
-      t' <- fillAsMuchAsPossible sub t
+      t' <- fillAsMuchAsPossible h sub t
       return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageInteger t'
     C.Eq expected actual -> do
-      expected' <- fillAsMuchAsPossible sub expected
-      actual' <- fillAsMuchAsPossible sub actual
+      expected' <- fillAsMuchAsPossible h sub expected
+      actual' <- fillAsMuchAsPossible h sub actual
       return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMessageEq actual' expected'
 
-fillAsMuchAsPossible :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
-fillAsMuchAsPossible sub e = do
-  h <- Reduce.new
-  e' <- toApp $ Reduce.reduce h e
+fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
+fillAsMuchAsPossible h sub e = do
+  e' <- toApp $ Reduce.reduce (reduceHandle h) e
   if HS.fillable e' sub
     then do
-      hole <- Fill.new sub
-      toApp (Fill.fill hole e') >>= fillAsMuchAsPossible sub
+      hole <- Fill.new
+      toApp (Fill.fill hole sub e') >>= fillAsMuchAsPossible h sub
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
@@ -160,7 +159,7 @@ detectPossibleInfiniteLoop h c = do
   let Handle {inlineLimit, currentStep} = h
   when (inlineLimit < currentStep) $ do
     sub <- liftIO $ getHoleSubst h
-    r <- constraintToRemark sub c
+    r <- constraintToRemark h sub c
     Throw.throw $
       E.MakeError
         [ R.attachSuffix r $
@@ -253,20 +252,20 @@ simplify h susList constraintList =
                 (Just (hole1, (xs1, body1)), Just (hole2, (xs2, body2))) -> do
                   let s1 = HS.singleton hole1 xs1 body1
                   let s2 = HS.singleton hole2 xs2 body2
-                  h1 <- Fill.new s1
-                  h2 <- Fill.new s2
-                  e1' <- toApp $ Fill.fill h1 e1
-                  e2' <- toApp $ Fill.fill h2 e2
+                  h1 <- Fill.new
+                  h2 <- Fill.new
+                  e1' <- toApp $ Fill.fill h1 s1 e1
+                  e2' <- toApp $ Fill.fill h2 s2 e2
                   simplify h susList $ (C.Eq e1' e2', orig) : cs
                 (Just (hole1, (xs1, body1)), Nothing) -> do
                   let s1 = HS.singleton hole1 xs1 body1
-                  h1 <- Fill.new s1
-                  e1' <- toApp $ Fill.fill h1 e1
+                  h1 <- Fill.new
+                  e1' <- toApp $ Fill.fill h1 s1 e1
                   simplify h susList $ (C.Eq e1' e2, orig) : cs
                 (Nothing, Just (hole2, (xs2, body2))) -> do
                   let s2 = HS.singleton hole2 xs2 body2
-                  h2 <- Fill.new s2
-                  e2' <- toApp $ Fill.fill h2 e2
+                  h2 <- Fill.new
+                  e2' <- toApp $ Fill.fill h2 s2 e2
                   simplify h susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
@@ -438,8 +437,8 @@ simplifyActual h m dataNameSet t orig = do
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
           let s = HS.singleton hole xs body
-          hFill <- Fill.new s
-          t'' <- toApp $ Fill.fill hFill t'
+          hFill <- Fill.new
+          t'' <- toApp $ Fill.fill hFill s t'
           simplifyActual h m dataNameSet t'' orig
         Nothing -> do
           case Stuck.asStuckedTerm t' of
@@ -490,8 +489,8 @@ simplifyInteger h m t orig = do
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
-          hFill <- Fill.new $ HS.singleton hole xs body
-          t'' <- toApp $ Fill.fill hFill t'
+          hFill <- Fill.new
+          t'' <- toApp $ Fill.fill hFill (HS.singleton hole xs body) t'
           simplifyInteger h m t'' orig
         Nothing -> do
           case Stuck.asStuckedTerm t' of
