@@ -15,8 +15,8 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Parse.Discern.Fallback qualified as PATF
+import Move.Scene.Parse.Discern.Handle
 import Move.Scene.Parse.Discern.Noema
-import Move.Scene.Parse.Discern.NominalEnv
 import Move.Scene.Parse.Discern.Specialize qualified as PATS
 import Rule.ArgNum qualified as AN
 import Rule.Binder

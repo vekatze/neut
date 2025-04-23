@@ -1,8 +1,8 @@
-module Move.Scene.Parse.Discern.NominalEnv
-  ( Axis (..),
-    emptyAxis,
-    extendAxis,
-    extendAxisByNominalEnv,
+module Move.Scene.Parse.Discern.Handle
+  ( Handle (..),
+    emptyHandle,
+    extendHandle,
+    extendHandleByNominalEnv,
     extendNominalEnvWithoutInsert,
   )
 where
@@ -17,25 +17,25 @@ import Rule.Module
 import Rule.NominalEnv
 import Rule.VarDefKind
 
-data Axis = Axis
+data Handle = Handle
   { _nenv :: NominalEnv,
     currentModule :: Module,
     currentLayer :: Layer
   }
 
-emptyAxis :: Module -> Layer -> Axis
-emptyAxis m l =
-  Axis {_nenv = empty, currentModule = m, currentLayer = l}
+emptyHandle :: Module -> Layer -> Handle
+emptyHandle m l =
+  Handle {_nenv = empty, currentModule = m, currentLayer = l}
 
-extendAxis :: Hint -> Ident -> VarDefKind -> Axis -> App Axis
-extendAxis m newVar k axis = do
+extendHandle :: Hint -> Ident -> VarDefKind -> Handle -> App Handle
+extendHandle m newVar k axis = do
   nenv' <- extendNominalEnv m newVar (currentLayer axis) k (_nenv axis)
   return $ axis {_nenv = nenv'}
 
-extendAxisByNominalEnv :: VarDefKind -> NominalEnv -> Axis -> App Axis
-extendAxisByNominalEnv k newNominalEnv oldAxis = do
-  nenv' <- joinNominalEnv k newNominalEnv (_nenv oldAxis)
-  return $ oldAxis {_nenv = nenv'}
+extendHandleByNominalEnv :: VarDefKind -> NominalEnv -> Handle -> App Handle
+extendHandleByNominalEnv k newNominalEnv oldHandle = do
+  nenv' <- joinNominalEnv k newNominalEnv (_nenv oldHandle)
+  return $ oldHandle {_nenv = nenv'}
 
 extendNominalEnv :: Hint -> Ident -> Layer -> VarDefKind -> NominalEnv -> App NominalEnv
 extendNominalEnv m newVar l k nenv = do
