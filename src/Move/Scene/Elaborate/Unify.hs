@@ -60,6 +60,7 @@ import Rule.WeakTerm.ToText
 data Handle = Handle
   { reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
+    fillHandle :: Fill.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
@@ -70,6 +71,7 @@ new :: App Handle
 new = do
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
+  fillHandle <- Fill.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   defMap <- WeakDefinition.read
@@ -126,9 +128,7 @@ fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fillAsMuchAsPossible h sub e = do
   e' <- toApp $ Reduce.reduce (reduceHandle h) e
   if HS.fillable e' sub
-    then do
-      hole <- Fill.new
-      toApp (Fill.fill hole sub e') >>= fillAsMuchAsPossible h sub
+    then toApp (Fill.fill (fillHandle h) sub e') >>= fillAsMuchAsPossible h sub
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
@@ -252,20 +252,16 @@ simplify h susList constraintList =
                 (Just (hole1, (xs1, body1)), Just (hole2, (xs2, body2))) -> do
                   let s1 = HS.singleton hole1 xs1 body1
                   let s2 = HS.singleton hole2 xs2 body2
-                  h1 <- Fill.new
-                  h2 <- Fill.new
-                  e1' <- toApp $ Fill.fill h1 s1 e1
-                  e2' <- toApp $ Fill.fill h2 s2 e2
+                  e1' <- toApp $ Fill.fill (fillHandle h) s1 e1
+                  e2' <- toApp $ Fill.fill (fillHandle h) s2 e2
                   simplify h susList $ (C.Eq e1' e2', orig) : cs
                 (Just (hole1, (xs1, body1)), Nothing) -> do
                   let s1 = HS.singleton hole1 xs1 body1
-                  h1 <- Fill.new
-                  e1' <- toApp $ Fill.fill h1 s1 e1
+                  e1' <- toApp $ Fill.fill (fillHandle h) s1 e1
                   simplify h susList $ (C.Eq e1' e2, orig) : cs
                 (Nothing, Just (hole2, (xs2, body2))) -> do
                   let s2 = HS.singleton hole2 xs2 body2
-                  h2 <- Fill.new
-                  e2' <- toApp $ Fill.fill h2 s2 e2
+                  e2' <- toApp $ Fill.fill (fillHandle h) s2 e2
                   simplify h susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
@@ -437,8 +433,7 @@ simplifyActual h m dataNameSet t orig = do
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
           let s = HS.singleton hole xs body
-          hFill <- Fill.new
-          t'' <- toApp $ Fill.fill hFill s t'
+          t'' <- toApp $ Fill.fill (fillHandle h) s t'
           simplifyActual h m dataNameSet t'' orig
         Nothing -> do
           case Stuck.asStuckedTerm t' of
@@ -489,8 +484,7 @@ simplifyInteger h m t orig = do
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
-          hFill <- Fill.new
-          t'' <- toApp $ Fill.fill hFill (HS.singleton hole xs body) t'
+          t'' <- toApp $ Fill.fill (fillHandle h) (HS.singleton hole xs body) t'
           simplifyInteger h m t'' orig
         Nothing -> do
           case Stuck.asStuckedTerm t' of
