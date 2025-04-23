@@ -6,12 +6,16 @@ module Move.Scene.Elaborate.Infer (inferStmt) where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Move.Context.Decl qualified as Decl
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Elaborate
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
@@ -143,7 +147,9 @@ getUnitType m = do
 createNewAxis :: App Axis
 createNewAxis = do
   substHandle <- Subst.new
+  reduceHandle <- Reduce.new
   let varEnv = []
+  defMap <- asks App.weakDefMap >>= liftIO . readIORef
   return Axis {..}
 
 extendAxis :: BinderF WT.WeakTerm -> Axis -> Axis
@@ -157,7 +163,9 @@ extendAxis' (mx, x, t) axis = do
 data Axis
   = Axis
   { substHandle :: Subst.Handle,
-    varEnv :: BoundVarEnv
+    reduceHandle :: Reduce.Handle,
+    varEnv :: BoundVarEnv,
+    defMap :: WeakDefinition.DefMap
   }
 
 infer :: Axis -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
@@ -691,12 +699,11 @@ inferClause axis cursorType@(_ :< cursorTypeInner) decisionCase = do
 resolveType :: Axis -> WT.WeakTerm -> App WT.WeakTerm
 resolveType ax t = do
   sub <- unifyCurrentConstraints
-  reduceWeakType' ax sub t
+  toApp $ reduceWeakType' ax sub t
 
-reduceWeakType' :: Axis -> HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
-reduceWeakType' ax sub e = do
-  h <- Reduce.new
-  e' <- toApp $ Reduce.reduce h e
+reduceWeakType' :: Axis -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
+reduceWeakType' h sub e = do
+  e' <- Reduce.reduce (reduceHandle h) e
   case e' of
     m :< WT.Hole hole es ->
       case HS.lookup hole sub of
@@ -705,15 +712,18 @@ reduceWeakType' ax sub e = do
         Just (xs, body)
           | length xs == length es -> do
               let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-              toApp (WT.subst (substHandle ax) s body) >>= reduceWeakType' ax sub
+              WT.subst (substHandle h) s body >>= reduceWeakType' h sub
           | otherwise ->
-              Throw.raiseError m "Arity mismatch"
+              raiseError m "Arity mismatch"
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
-      mLam <- WeakDefinition.lookup name
-      case mLam of
+      case lookupDefinition h name of
         Just lam ->
-          reduceWeakType' ax sub $ m :< WT.PiElim lam args
+          reduceWeakType' h sub $ m :< WT.PiElim lam args
         Nothing -> do
           return e'
     _ ->
       return e'
+
+lookupDefinition :: Axis -> DD.DefiniteDescription -> Maybe WT.WeakTerm
+lookupDefinition h name = do
+  Map.lookup name (defMap h)
