@@ -17,7 +17,6 @@ import Data.Set qualified as S
 import Move.Context.App (App)
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical, toApp)
-import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -31,6 +30,7 @@ import Rule.Ident
 import Rule.Ident.Reify
 import Rule.LamKind qualified as LK
 import Rule.Magic qualified as M
+import Rule.OptimizableData
 import Rule.OptimizableData qualified as OD
 import Rule.Remark qualified as R
 import Rule.Stuck qualified as Stuck
@@ -56,6 +56,7 @@ data Handle
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
     mustPerformExpCheck :: Bool,
     typeEnv :: Map.HashMap DD.DefiniteDescription WT.WeakTerm,
+    optDataMap :: Map.HashMap DD.DefiniteDescription OptimizableData,
     defMap :: WeakDefinition.DefMap
   }
 
@@ -69,6 +70,7 @@ new = do
   defMap <- liftIO $ readIORef weakDefMapRef
   let mustPerformExpCheck = True
   typeEnv <- asks App.typeEnv >>= liftIO . readIORef
+  optDataMap <- asks App.optDataMap >>= liftIO . readIORef
   return $ Handle {..}
 
 ensureAffinity :: TM.Term -> App [R.Remark]
@@ -324,7 +326,7 @@ analyzeCase h decisionCase = do
 
 synthesize :: Handle -> [WeakAffineConstraint] -> App [R.Remark]
 synthesize h cs = do
-  errorList <- concat <$> mapM (simplifyAffine h S.empty) cs
+  errorList <- toApp $ concat <$> mapM (simplifyAffine h S.empty) cs
   return $ map constructErrorMessageAffine errorList
 
 newtype AffineConstraintError
@@ -340,15 +342,14 @@ simplifyAffine ::
   Handle ->
   S.Set DD.DefiniteDescription ->
   WeakAffineConstraint ->
-  App [AffineConstraintError]
+  EIO [AffineConstraintError]
 simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
-  t' <- toApp $ Reduce.reduce (reduceHandle h) t
+  t' <- Reduce.reduce (reduceHandle h) t
   case t' of
     _ :< WT.Tau -> do
       return []
     _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
-      od <- OptimizableData.lookup dataName
-      case od of
+      case lookupOptimizableData h dataName of
         Just OD.Enum -> do
           return []
         Just OD.Unary -> do
@@ -358,9 +359,9 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
           dataConsArgsList <-
             if S.member dataName dataNameSet
               then return []
-              else toApp $ mapM (getConsArgTypes h m . fst) consNameList
+              else mapM (getConsArgTypes h m . fst) consNameList
           constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-            dataConsArgs' <- toApp $ substConsArgs h IntMap.empty dataConsArgs
+            dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
             fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
               simplifyAffine h dataNameSet' (consArg, orig)
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
@@ -371,10 +372,9 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
     _ :< WT.Prim {} -> do
       return []
     _ -> do
-      defMap <- WeakDefinition.read
       case Stuck.asStuckedTerm t' of
         Just (Stuck.VarGlobal dd, evalCtx)
-          | Just lam <- Map.lookup dd defMap -> do
+          | Just lam <- Map.lookup dd (defMap h) -> do
               simplifyAffine h dataNameSet (Stuck.resume lam evalCtx, orig)
         _ -> do
           return [AffineConstraintError orig]
@@ -411,3 +411,7 @@ lookupType h m k = do
       return value
     Nothing ->
       raiseCritical m $ "`" <> DD.reify k <> "` is not found in the term type environment."
+
+lookupOptimizableData :: Handle -> DD.DefiniteDescription -> Maybe OptimizableData
+lookupOptimizableData h dd = do
+  Map.lookup dd (optDataMap h)
