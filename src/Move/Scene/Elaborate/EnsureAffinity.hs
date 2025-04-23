@@ -50,10 +50,10 @@ data Axis
     mustPerformExpCheck :: Bool
   }
 
-createNewAxis :: App Axis
+createNewAxis :: IO Axis
 createNewAxis = do
   let varEnv = IntMap.empty
-  foundVarSetRef <- liftIO $ newIORef IntMap.empty
+  foundVarSetRef <- newIORef IntMap.empty
   let mustPerformExpCheck = True
   return Axis {varEnv, foundVarSetRef, mustPerformExpCheck}
 
@@ -88,7 +88,7 @@ insertRelevantVar i axis = do
 
 ensureAffinity :: TM.Term -> App [R.Remark]
 ensureAffinity e = do
-  axis <- createNewAxis
+  axis <- liftIO createNewAxis
   cs <- analyze axis e
   synthesize $ map (bimap weaken weaken) cs
 
