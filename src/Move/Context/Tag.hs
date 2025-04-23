@@ -12,6 +12,7 @@ module Move.Context.Tag
     insertGlobalVarIO,
     insertBinderIO,
     insertLocatorIO,
+    insertExternalNameIO,
   )
 where
 
@@ -108,3 +109,9 @@ insertIO ref mUse locType nameLength mDef = do
 insertLocatorIO :: IORef LT.LocationTree -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> IO ()
 insertLocatorIO ref mUse dd isConstLike nameLength mDef = do
   insertIO ref mUse (LT.SymbolLoc (LT.Global dd isConstLike)) nameLength mDef
+
+insertExternalNameIO :: IORef LT.LocationTree -> Hint -> EN.ExternalName -> Hint -> IO ()
+insertExternalNameIO ref mUse externalName mDef = do
+  let symbolLoc = LT.SymbolLoc (LT.Foreign externalName)
+  let nameLength = T.length $ EN.reify externalName
+  insertIO ref mUse symbolLoc nameLength mDef

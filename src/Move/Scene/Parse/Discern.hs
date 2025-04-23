@@ -10,29 +10,20 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Move.Context.App
-import Move.Context.Decl qualified as Decl
-import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env (getPlatform)
-import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
-import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
-import Move.Context.TopCandidate qualified as TopCandidate
-import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
-import Move.Context.UnusedVariable qualified as UnusedVariable
-import Move.Language.Utility.Gensym qualified as GensymNew
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Data
+import Move.Scene.Parse.Discern.Handle (Handle (tagMapRef))
 import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Name
 import Move.Scene.Parse.Discern.Noema
 import Move.Scene.Parse.Discern.PatternMatrix
 import Move.Scene.Parse.Discern.Struct
-import Move.Scene.Parse.Foreign
 import Move.Scene.Parse.Util
 import Rule.Annotation qualified as AN
 import Rule.Arch qualified as Arch
@@ -46,6 +37,7 @@ import Rule.C
 import Rule.Const
 import Rule.DefiniteDescription qualified as DD
 import Rule.Error qualified as E
+import Rule.Foreign qualified as F
 import Rule.ForeignCodType qualified as FCT
 import Rule.Geist qualified as G
 import Rule.GlobalName qualified as GN
@@ -87,68 +79,68 @@ import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.FreeVars (freeVars)
 import Text.Read qualified as R
 
-discernStmtList :: H.Handle -> Module -> [RawStmt] -> App [WeakStmt]
+discernStmtList :: H.Handle -> Module -> [RawStmt] -> EIO [WeakStmt]
 discernStmtList h mo =
   fmap concat . mapM (discernStmt h mo)
 
-discernStmt :: H.Handle -> Module -> RawStmt -> App [WeakStmt]
+discernStmt :: H.Handle -> Module -> RawStmt -> EIO [WeakStmt]
 discernStmt h mo stmt = do
-  nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
+  nameLifter <- liftIO $ Locator.getNameLifter (H.locatorHandle h)
   case stmt of
     RawStmtDefine _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
-      toApp $ registerTopLevelName h nameLifter stmt
+      registerTopLevelName h nameLifter stmt
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let (_, codType) = RT.cod geist
       let m = RT.loc geist
       let functionName = nameLifter $ fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      -- h <- H.new
       (impArgs', nenv) <- discernBinder h impArgs endLoc
       (expArgs', nenv') <- discernBinder nenv expArgs endLoc
       codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind h stmtKind
       body' <- discern nenv' body
-      Tag.insertGlobalVar m functionName isConstLike m
-      TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
-      forM_ expArgs' Tag.insertBinder
+      liftIO $ Tag.insertGlobalVarIO (H.tagMapRef h) m functionName isConstLike m
+      liftIO $ H.insertTopCandidate h $ do
+        TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
+      liftIO $ forM_ expArgs' $ Tag.insertBinderIO (H.tagMapRef h)
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       let stmtList = defineData m dd args (SE.extract consInfo) loc
       discernStmtList h mo stmtList
     RawStmtDefineResource _ m (name, _) (_, discarder) (_, copier) _ -> do
       let dd = nameLifter name
-      toApp $ registerTopLevelName h nameLifter stmt
+      registerTopLevelName h nameLifter stmt
       t' <- discern h $ m :< RT.Tau
       e' <- discern h $ m :< RT.Resource dd [] (discarder, []) (copier, [])
-      Tag.insertGlobalVar m dd True m
-      TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
+      liftIO $ Tag.insertGlobalVarIO (H.tagMapRef h) m dd True m
+      liftIO $ H.insertTopCandidate h $ do
+        TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
     RawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
-        toApp $ Global.registerGeist (H.globalHandle h) geist
-        discernGeist endLoc geist
+        Global.registerGeist (H.globalHandle h) geist
+        discernGeist h endLoc geist
       return [WeakStmtNominal m geistList']
     RawStmtForeign _ foreignList -> do
       let foreignList' = SE.extract foreignList
       foreignList'' <- mapM (mapM (discern h)) foreignList'
-      foreign' <- interpretForeign foreignList''
+      foreign' <- liftIO $ interpretForeign h foreignList''
       return [WeakStmtForeign foreign']
 
-discernGeist :: Loc -> RT.TopGeist -> App (G.Geist WT.WeakTerm)
-discernGeist endLoc geist = do
-  nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
+discernGeist :: H.Handle -> Loc -> RT.TopGeist -> EIO (G.Geist WT.WeakTerm)
+discernGeist h endLoc geist = do
+  nameLifter <- liftIO $ Locator.getNameLifter (H.locatorHandle h)
   let impArgs = RT.extractArgs $ RT.impArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
-  h <- H.new
   (impArgs', h') <- discernBinder h impArgs endLoc
   (expArgs', h'') <- discernBinder h' expArgs endLoc
-  forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
+  forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO $ H.deleteUnusedVariable h x
   cod' <- discern h'' $ snd $ RT.cod geist
   let m = RT.loc geist
   let dd = nameLifter $ fst $ RT.name geist
   let kind = if RT.isConstLike geist then Constant else Function
-  TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = kind}
+  liftIO $ H.insertTopCandidate h $ TopCandidate {loc = metaLocation m, dd = dd, kind = kind}
   return $
     G.Geist
       { loc = m,
@@ -197,27 +189,27 @@ liftStmtKind h stmtKind = do
       nameLifter <- Locator.getNameLifter (H.locatorHandle h)
       return $ SK.DataIntro (nameLifter dataName) dataArgs consArgs discriminant
 
-discernStmtKind :: H.Handle -> SK.RawStmtKind BN.BaseName -> App (SK.StmtKind WT.WeakTerm)
-discernStmtKind ax stmtKind =
+discernStmtKind :: H.Handle -> SK.RawStmtKind BN.BaseName -> EIO (SK.StmtKind WT.WeakTerm)
+discernStmtKind h stmtKind =
   case stmtKind of
     SK.Normal opacity ->
       return $ SK.Normal opacity
     SK.Data dataName dataArgs consInfoList -> do
-      nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
-      (dataArgs', h) <- discernBinder' ax dataArgs
+      nameLifter <- liftIO $ Locator.getNameLifter (H.locatorHandle h)
+      (dataArgs', h') <- discernBinder' h dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
-      (consArgsList', hList) <- mapAndUnzipM (discernBinder' h) consArgsList
+      (consArgsList', hList) <- mapAndUnzipM (discernBinder' h') consArgsList
       forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _)) -> do
-        UnusedVariable.delete newVar
+        liftIO $ H.deleteUnusedVariable h' newVar
       let consNameList' = map nameLifter consNameList
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
       return $ SK.Data (nameLifter dataName) dataArgs' consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
-      nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
-      (dataArgs', h) <- discernBinder' ax dataArgs
-      (consArgs', h') <- discernBinder' h consArgs
-      forM_ (H.nameEnv h') $ \(_, (_, newVar, _)) -> do
-        UnusedVariable.delete newVar
+      nameLifter <- liftIO $ Locator.getNameLifter (H.locatorHandle h)
+      (dataArgs', h') <- discernBinder' h dataArgs
+      (consArgs', h'') <- discernBinder' h' consArgs
+      forM_ (H.nameEnv h'') $ \(_, (_, newVar, _)) -> do
+        liftIO $ H.deleteUnusedVariable h newVar
       return $ SK.DataIntro (nameLifter dataName) dataArgs' consArgs' discriminant
 
 toCandidateKind :: SK.StmtKind a -> CandidateKind
@@ -230,7 +222,7 @@ toCandidateKind stmtKind =
     SK.DataIntro {} ->
       Constructor
 
-discern :: H.Handle -> RT.RawTerm -> App WT.WeakTerm
+discern :: H.Handle -> RT.RawTerm -> EIO WT.WeakTerm
 discern h term =
   case term of
     m :< RT.Tau ->
@@ -239,46 +231,46 @@ discern h term =
       case name of
         Var s
           | Just x <- readIntDecimalMaybe s -> do
-              hole <- Gensym.newHole m []
+              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int hole x)
           | Just x <- readIntBinaryMaybe s -> do
-              hole <- Gensym.newHole m []
+              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int hole x)
           | Just x <- readIntOctalMaybe s -> do
-              hole <- Gensym.newHole m []
+              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int hole x)
           | Just x <- readIntHexadecimalMaybe s -> do
-              hole <- Gensym.newHole m []
+              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int hole x)
           | Just x <- R.readMaybe (T.unpack s) -> do
-              hole <- Gensym.newHole m []
+              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Float hole x)
           | Just (mDef, name', layer) <- lookup s (H.nameEnv h) -> do
               if layer == H.currentLayer h
                 then do
-                  UnusedVariable.delete name'
-                  Tag.insertLocalVar m name' mDef
+                  liftIO $ H.deleteUnusedVariable h name'
+                  liftIO $ Tag.insertLocalVarIO (tagMapRef h) m name' mDef
                   return $ m :< WT.Var name'
                 else
-                  toApp $ raiseLayerError m (H.currentLayer h) layer
+                  raiseLayerError m (H.currentLayer h) layer
         _ -> do
-          (dd, (_, gn)) <- toApp $ resolveName h m name
-          toApp $ interpretGlobalName h m dd gn
+          (dd, (_, gn)) <- resolveName h m name
+          interpretGlobalName h m dd gn
     m :< RT.Pi impArgs expArgs _ t endLoc -> do
       (impArgs', h') <- discernBinder h (RT.extractArgs impArgs) endLoc
       (expArgs', h'') <- discernBinder h' (RT.extractArgs expArgs) endLoc
       t' <- discern h'' t
-      forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
+      forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO (H.deleteUnusedVariable h x)
       return $ m :< WT.Pi impArgs' expArgs' t'
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
-      lamID <- Gensym.newCount
+      lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       (impArgs', h') <- discernBinder h impArgs endLoc
       (expArgs', h'') <- discernBinder h' expArgs endLoc
       codType' <- discern h'' $ snd $ RT.cod geist
       body' <- discern h'' body
-      toApp $ ensureLayerClosedness m h'' body'
+      ensureLayerClosedness m h'' body'
       return $ m :< WT.PiIntro (AttrL.normal lamID codType') impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
@@ -288,25 +280,25 @@ discern h term =
       (impArgs', h') <- discernBinder h impArgs endLoc
       (expArgs', h'') <- discernBinder h' expArgs endLoc
       codType' <- discern h'' $ snd $ RT.cod geist
-      x' <- Gensym.newIdentFromText x
+      x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h''' <- liftIO $ H.extend' h'' mx x' VDK.Normal
       body' <- discern h''' body
       let mxt' = (mx, x', codType')
-      Tag.insertBinder mxt'
-      lamID <- Gensym.newCount
-      toApp $ ensureLayerClosedness m h''' body'
+      liftIO $ Tag.insertBinderIO (H.tagMapRef h) mxt'
+      lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
+      ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
     m :< RT.PiElim e _ es -> do
       case e of
         _ :< RT.Var (Var c)
           | c == "new-cell",
             [arg] <- SE.extract es -> do
-              newCellDD <- toApp $ liftEither $ locatorToVarGlobal m coreCellNewCell
+              newCellDD <- liftEither $ locatorToVarGlobal m coreCellNewCell
               e' <- discern h $ m :< RT.piElim newCellDD [arg]
               return $ m :< WT.Actual e'
           | c == "new-channel",
             [] <- SE.extract es -> do
-              newChannelDD <- toApp $ liftEither $ locatorToVarGlobal m coreChannelNewChannel
+              newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelNewChannel
               e' <- discern h $ m :< RT.piElim newChannelDD []
               return $ m :< WT.Actual e'
         _ -> do
@@ -314,39 +306,37 @@ discern h term =
           es' <- mapM (discern h) $ SE.extract es
           return $ m :< WT.PiElim e' es'
     m :< RT.PiElimByKey name _ kvs -> do
-      (dd, _) <- toApp $ resolveName h m name
+      (dd, _) <- resolveName h m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
-      toApp $ ensureFieldLinearity m ks S.empty S.empty
-      hKeyArg <- KeyArg.new
-      (argNum, keyList) <- toApp $ KeyArg.lookup hKeyArg m dd
+      ensureFieldLinearity m ks S.empty S.empty
+      (argNum, keyList) <- KeyArg.lookup (H.keyArgHandle h) m dd
       vs' <- mapM (discern h) vs
-      args <- toApp $ KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
+      args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
       return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
     m :< RT.Data attr dataName es -> do
-      hLoc <- Locator.new
-      nameLifter <- liftIO $ Locator.getNameLifter hLoc
-      dataName' <- liftIO $ Locator.attachCurrentLocator hLoc dataName
+      nameLifter <- liftIO $ Locator.getNameLifter (H.locatorHandle h)
+      dataName' <- liftIO $ Locator.attachCurrentLocator (H.locatorHandle h) dataName
       es' <- mapM (discern h) es
       return $ m :< WT.Data (fmap nameLifter attr) dataName' es'
     m :< RT.DataIntro attr consName dataArgs consArgs -> do
-      nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
+      nameLifter <- liftIO $ Locator.getNameLifter (H.locatorHandle h)
       dataArgs' <- mapM (discern h) dataArgs
       consArgs' <- mapM (discern h) consArgs
       return $ m :< WT.DataIntro (fmap nameLifter attr) (nameLifter consName) dataArgs' consArgs'
     m :< RT.DataElim _ isNoetic es patternMatrix -> do
       let es' = SE.extract es
       let ms = map (\(me :< _) -> me) es'
-      os <- mapM (const $ Gensym.newIdentFromText "match") es' -- os: occurrences
+      os <- liftIO $ mapM (const $ Gensym.newIdentFromText (H.gensymHandle h) "match") es' -- os: occurrences
       es'' <- mapM (discern h >=> liftIO . castFromNoemaIfNecessary h isNoetic) es'
-      ts <- mapM (const $ Gensym.newHole m []) es''
+      ts <- liftIO $ mapM (const $ Gensym.newHole (H.gensymHandle h) m []) es''
       patternMatrix' <- discernPatternMatrix h $ SE.extract patternMatrix
-      toApp $ ensurePatternMatrixSanity h patternMatrix'
+      ensurePatternMatrixSanity h patternMatrix'
       let os' = zip ms os
-      decisionTree <- toApp $ compilePatternMatrix h isNoetic (V.fromList os') patternMatrix'
+      decisionTree <- compilePatternMatrix h isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
     m :< RT.Box t -> do
       t' <- discern h t
@@ -355,7 +345,7 @@ discern h term =
       t' <- discern h t
       return $ m :< WT.BoxNoema t'
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
-      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> toApp (discernIdent mx h x)
+      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx h x
       xets <- liftIO $ discernNoeticVarList h True xsOuter
       let innerLayer = H.currentLayer h - 1
       let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
@@ -367,13 +357,13 @@ discern h term =
       body' <- discern h body
       return $ m :< WT.BoxIntroQuote body'
     m :< RT.BoxElim nv mustIgnoreRelayedVars _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
-      tmp <- Gensym.newTextFromText "tmp"
+      tmp <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) "tmp"
       let mxt = (mx, tmp, c1, c2, t)
       let m' = blur m
       let patParam = (mx, pat, [], [], t)
       let e2' = m' :< RT.Let (RT.Plain False) [] patParam [] [] (m' :< RT.Var (Var tmp)) [] startLoc [] e2 endLoc
       -- inner
-      ysOuter <- forM (SE.extract mys) $ \(my, y) -> toApp (discernIdent my h y)
+      ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my h y
       yetsInner <- liftIO $ discernNoeticVarList h True ysOuter
       let innerLayer = H.currentLayer h + layerOffset nv
       let ysInner = map (\((myUse, y, myDef :< _), _) -> (myDef, (myUse, y))) yetsInner
@@ -388,14 +378,14 @@ discern h term =
       (mxt', e2'') <- discernBinderWithBody' hCont mxt startLoc endLoc e2'
       case pat of
         RP.Var _ ->
-          Tag.insertBinder mxt'
+          liftIO $ Tag.insertBinderIO (H.tagMapRef h) mxt'
         _ ->
           return ()
       when mustIgnoreRelayedVars $ do
-        forM_ ysCont $ UnusedVariable.delete . snd
+        forM_ ysCont $ \(_, y) -> liftIO (H.deleteUnusedVariable h y)
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
     m :< RT.Embody e -> do
-      embodyVar <- toApp $ liftEither $ locatorToVarGlobal m coreBoxEmbody
+      embodyVar <- liftEither $ locatorToVarGlobal m coreBoxEmbody
       discern h $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
@@ -405,8 +395,8 @@ discern h term =
     m :< RT.Pin _ mxt@(mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       let m2' = blur m2
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
-      resultType <- Gensym.newPreHole m2'
-      resultVar <- Var <$> Gensym.newTextFromText "tmp-pin"
+      resultType <- liftIO $ Gensym.newPreHole (H.gensymHandle h) m2'
+      resultVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-pin"
       let resultParam = (m2', RP.Var resultVar, [], [], resultType)
       let isNoetic = not $ null $ SE.extract mys
       if isNoetic
@@ -424,7 +414,7 @@ discern h term =
       s' <- discern h s
       case parseText str of
         Left reason ->
-          Throw.raiseError m $ "Could not interpret the following as a text: " <> str <> "\nReason: " <> reason
+          raiseError m $ "Could not interpret the following as a text: " <> str <> "\nReason: " <> reason
         Right str' -> do
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
     m :< RT.Rune -> do
@@ -442,8 +432,8 @@ discern h term =
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
     m :< RT.Resource dd _ (discarder, _) (copier, _) -> do
-      unitType <- toApp (liftEither $ locatorToVarGlobal m coreUnit) >>= discern h
-      resourceID <- Gensym.newCount
+      unitType <- liftEither (locatorToVarGlobal m coreUnit) >>= discern h
+      resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       discarder' <- discern h discarder
       copier' <- discern h copier
       return $ m :< WT.Resource dd resourceID unitType discarder' copier'
@@ -454,27 +444,27 @@ discern h term =
       return $ m :< WT.Use e' xs' cont'
     m :< RT.If ifClause elseIfClauseList (_, (elseBody, _)) -> do
       let (ifCond, ifBody) = RT.extractFromKeywordClause ifClause
-      boolTrue <- toApp $ liftEither $ locatorToName (blur m) coreBoolTrue
-      boolFalse <- toApp $ liftEither $ locatorToName (blur m) coreBoolFalse
+      boolTrue <- liftEither $ locatorToName (blur m) coreBoolTrue
+      boolFalse <- liftEither $ locatorToName (blur m) coreBoolFalse
       discern h $ foldIf m boolTrue boolFalse ifCond ifBody elseIfClauseList elseBody
     m :< RT.Seq (e1, _) _ e2 -> do
-      hole <- Gensym.newTextForHole
-      unit <- toApp $ liftEither $ locatorToVarGlobal m coreUnit
+      hole <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
+      unit <- liftEither $ locatorToVarGlobal m coreUnit
       discern h $ bind fakeLoc fakeLoc (m, hole, [], [], unit) e1 e2
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
-      boolTrue <- toApp $ liftEither $ locatorToName (blur m) coreBoolTrue
-      boolFalse <- toApp $ liftEither $ locatorToName (blur m) coreBoolFalse
-      unitUnit <- toApp $ liftEither $ locatorToVarGlobal m coreUnitUnit
+      boolTrue <- liftEither $ locatorToName (blur m) coreBoolTrue
+      boolFalse <- liftEither $ locatorToName (blur m) coreBoolFalse
+      unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
       discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
     m :< RT.ListIntro es -> do
       let m' = m {metaShouldSaveLocation = False}
-      listNil <- toApp $ liftEither $ locatorToVarGlobal m' coreListNil
-      listCons <- toApp $ liftEither $ locatorToVarGlobal m' coreListCons
+      listNil <- liftEither $ locatorToVarGlobal m' coreListNil
+      listCons <- liftEither $ locatorToVarGlobal m' coreListCons
       discern h $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
-      panic <- toApp $ liftEither $ locatorToVarGlobal m coreTrickUnsafePanic
-      textType <- toApp $ liftEither $ locatorToVarGlobal m coreText
+      panic <- liftEither $ locatorToVarGlobal m coreTrickUnsafePanic
+      textType <- liftEither $ locatorToVarGlobal m coreText
       discern h $
         asOpaqueValue $
           m
@@ -487,43 +477,42 @@ discern h term =
                     [m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
               )
     m :< RT.Detach _ _ (e, _) -> do
-      t <- Gensym.newPreHole (blur m)
-      detachVar <- toApp $ liftEither $ locatorToVarGlobal m coreThreadDetach
-      cod <- Gensym.newPreHole (blur m)
+      t <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur m)
+      detachVar <- liftEither $ locatorToVarGlobal m coreThreadDetach
+      cod <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur m)
       discern h $ m :< RT.piElim detachVar [t, RT.lam fakeLoc m [] cod e]
     m :< RT.Attach _ _ (e, _) -> do
-      t <- Gensym.newPreHole (blur m)
-      attachVar <- toApp $ liftEither $ locatorToVarGlobal m coreThreadAttach
+      t <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur m)
+      attachVar <- liftEither $ locatorToVarGlobal m coreThreadAttach
       discern h $ m :< RT.piElim attachVar [t, e]
     m :< RT.Option t -> do
-      eitherVar <- toApp $ liftEither $ locatorToVarGlobal m coreEither
-      unit <- toApp $ liftEither $ locatorToVarGlobal m coreUnit
+      eitherVar <- liftEither $ locatorToVarGlobal m coreEither
+      unit <- liftEither $ locatorToVarGlobal m coreUnit
       discern h $ m :< RT.piElim eitherVar [unit, t]
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
-      assert <- toApp $ liftEither $ locatorToVarGlobal m coreTrickAssert
-      textType <- toApp $ liftEither $ locatorToVarGlobal m coreText
+      assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
+      textType <- liftEither $ locatorToVarGlobal m coreText
       let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
-      cod <- Gensym.newPreHole (blur m)
+      cod <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur m)
       discern h $
         m
           :< RT.piElim
             assert
             [mText :< RT.StaticText textType fullMessage, RT.lam fakeLoc mCond [] cod e]
     m :< RT.Introspect _ key _ clauseList -> do
-      value <- getIntrospectiveValue m key
-      clause <- toApp $ lookupIntrospectiveClause m value $ SE.extract clauseList
+      value <- getIntrospectiveValue h m key
+      clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern h clause
     m :< RT.IncludeText _ _ mKey (key, _) -> do
-      hLoc <- Locator.new
-      contentOrNone <- liftIO $ Locator.getStaticFileContent hLoc key
+      contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
       case contentOrNone of
         Just (path, content) -> do
-          UnusedStaticFile.delete key
-          textType <- toApp (liftEither $ locatorToVarGlobal m coreText) >>= discern h
-          Tag.insertFileLoc mKey (T.length key) (newSourceHint path)
+          liftIO $ H.deleteUnusedStaticFile h key
+          textType <- liftEither (locatorToVarGlobal m coreText) >>= discern h
+          liftIO $ Tag.insertFileLocIO (H.tagMapRef h) mKey (T.length key) (newSourceHint path)
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText textType content)
         Nothing ->
-          Throw.raiseError m $ "No such static file is defined: `" <> key <> "`"
+          raiseError m $ "No such static file is defined: `" <> key <> "`"
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
@@ -532,11 +521,11 @@ discern h term =
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
           case letKind of
             RT.Bind -> do
-              tmpVar <- Gensym.newText
-              (x, e2'') <- toApp $ modifyLetContinuation h (mPat, pat) endLoc False e2'
+              tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
+              (x, e2'') <- modifyLetContinuation h (mPat, pat) endLoc False e2'
               let m' = blur m
-              dom <- Gensym.newPreHole m'
-              cod <- Gensym.newPreHole m'
+              dom <- liftIO $ Gensym.newPreHole (H.gensymHandle h) m'
+              cod <- liftIO $ Gensym.newPreHole (H.gensymHandle h) m'
               discern h $
                 bind'
                   False
@@ -581,7 +570,7 @@ discern h term =
         _ ->
           discern h body
     _ :< RT.Projection e (mProj, proj) loc -> do
-      t <- Gensym.newPreHole (blur mProj)
+      t <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur mProj)
       let args = (SE.fromList SE.Brace SE.Comma [(mProj, proj, [], [], t)], [])
       let var = mProj :< RT.Var (Var proj)
       discern h $ mProj :< RT.Use [] e [] args [] var loc
@@ -602,13 +591,13 @@ discernNoeticVarList ::
   IO [(BinderF WT.WeakTerm, WT.WeakTerm)]
 discernNoeticVarList h mustInsertTagInfo xsOuter = do
   forM xsOuter $ \(mDef, (mUse, outerVar)) -> do
-    xInner <- GensymNew.newIdentFromIdent (H.gensymHandle h) outerVar
-    t <- GensymNew.newHole (H.gensymHandle h) mUse []
+    xInner <- Gensym.newIdentFromIdent (H.gensymHandle h) outerVar
+    t <- Gensym.newHole (H.gensymHandle h) mUse []
     when mustInsertTagInfo $ do
       Tag.insertLocalVarIO (H.tagMapRef h) mUse outerVar mDef
     return ((mUse, xInner, t), mDef :< WT.Var outerVar)
 
-discernMagic :: H.Handle -> Hint -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
+discernMagic :: H.Handle -> Hint -> RT.RawMagic -> EIO (M.WeakMagic WT.WeakTerm)
 discernMagic h m magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
@@ -618,7 +607,7 @@ discernMagic h m magic =
       return $ M.WeakMagic $ M.Cast from' to' e'
     RT.Store _ (_, (t, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
       t' <- discern h t
-      unit <- toApp (liftEither $ locatorToVarGlobal m coreUnit) >>= discern h
+      unit <- liftEither (locatorToVarGlobal m coreUnit) >>= discern h
       value' <- discern h value
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.Store t' unit value' pointer'
@@ -631,8 +620,8 @@ discernMagic h m magic =
       size' <- discern h size
       return $ M.WeakMagic $ M.Alloca t' size'
     RT.External _ mUse funcName _ args varArgsOrNone -> do
-      mDef <- Decl.lookupPreDeclEnv m funcName
-      Tag.insertExternalName mUse funcName mDef
+      mDef <- H.lookupExternalName h m funcName
+      liftIO $ Tag.insertExternalNameIO (H.tagMapRef h) mUse funcName mDef
       let domList = []
       let cod = FCT.Void
       args' <- mapM (discern h) $ SE.extract args
@@ -665,7 +654,7 @@ modifyLetContinuation h pat endLoc isNoetic cont@(mCont :< _) =
       | not (isConsName x) ->
           return (x, cont)
     _ -> do
-      tmp <- liftIO $ GensymNew.newTextForHole (H.gensymHandle h)
+      tmp <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
       return
         ( tmp,
           mCont
@@ -730,10 +719,10 @@ lookupIntrospectiveClause m value clauseList =
     (Nothing, _, clause) : _ ->
       return clause
 
-getIntrospectiveValue :: Hint -> T.Text -> App T.Text
-getIntrospectiveValue m key = do
-  bm <- Env.getBuildMode
-  p <- toApp $ getPlatform (Just m)
+getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> EIO T.Text
+getIntrospectiveValue h m key = do
+  bm <- liftIO $ H.getBuildMode h
+  p <- getPlatform (Just m)
   case key of
     "architecture" ->
       return $ Arch.reify (Platform.arch p)
@@ -742,7 +731,7 @@ getIntrospectiveValue m key = do
     "build-mode" ->
       return $ BM.reify bm
     _ ->
-      Throw.raiseError m $ "No such introspective value is defined: " <> key
+      raiseError m $ "No such introspective value is defined: " <> key
 
 foldIf ::
   Hint ->
@@ -805,14 +794,14 @@ discernLet ::
   RT.RawTerm ->
   Loc ->
   Loc ->
-  App WT.WeakTerm
+  EIO WT.WeakTerm
 discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
   let opacity = WT.Clear
   let discernLet' isNoetic = do
         e1' <- discern h e1
-        (x, e2') <- toApp $ modifyLetContinuation h (mx, pat) endLoc isNoetic e2
+        (x, e2') <- modifyLetContinuation h (mx, pat) endLoc isNoetic e2
         (mxt', e2'') <- discernBinderWithBody' h (mx, x, c1, c2, t) startLoc endLoc e2'
-        Tag.insertBinder mxt'
+        liftIO $ Tag.insertBinderIO (H.tagMapRef h) mxt'
         return $ m :< WT.Let opacity mxt' e1' e2''
   case letKind of
     RT.Plain _ -> do
@@ -820,15 +809,15 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
     RT.Noetic -> do
       discernLet' True
     RT.Bind -> do
-      Throw.raiseError m "`bind` can only be used inside `with`"
+      raiseError m "`bind` can only be used inside `with`"
     RT.Try -> do
       let m' = blur m
-      eitherTypeInner <- toApp $ liftEither $ locatorToVarGlobal m' coreEither
-      leftType <- Gensym.newPreHole m'
+      eitherTypeInner <- liftEither $ locatorToVarGlobal m' coreEither
+      leftType <- liftIO $ Gensym.newPreHole (H.gensymHandle h) m'
       let eitherType = m' :< RT.piElim eitherTypeInner [leftType, t]
       e1' <- discern h e1
-      tmpVar <- Gensym.newText
-      eitherCont <- toApp $ constructEitherBinder h m mx m1 pat tmpVar e2 endLoc
+      tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
+      eitherCont <- constructEitherBinder h m mx m1 pat tmpVar e2 endLoc
       (mxt', eitherCont') <- discernBinderWithBody' h (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
       return $ m :< WT.Let opacity mxt' e1' eitherCont'
 
@@ -846,7 +835,7 @@ constructEitherBinder h m mx m1 pat tmpVar cont endLoc = do
   let m' = blur m
   let mx' = blur mx
   let m1' = blur m1
-  earlyRetVar <- liftIO $ GensymNew.newText (H.gensymHandle h)
+  earlyRetVar <- liftIO $ Gensym.newText (H.gensymHandle h)
   eitherL <- liftEither $ locatorToName m1 coreEitherLeft
   eitherR <- liftEither $ locatorToName m1 coreEitherRight
   eitherVarL <- liftEither $ locatorToVarGlobal m1 coreEitherLeft
@@ -883,34 +872,34 @@ discernBinder ::
   H.Handle ->
   [RawBinder RT.RawTerm] ->
   Loc ->
-  App ([BinderF WT.WeakTerm], H.Handle)
+  EIO ([BinderF WT.WeakTerm], H.Handle)
 discernBinder h binder endLoc =
   case binder of
     [] -> do
       return ([], h)
     (mx, x, _, _, t) : xts -> do
       t' <- discern h t
-      x' <- Gensym.newIdentFromText x
+      x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinder h' xts endLoc
-      Tag.insertBinder (mx, x', t')
-      SymLoc.insert x' (metaLocation mx) endLoc
+      liftIO $ Tag.insertBinderIO (H.tagMapRef h'') (mx, x', t')
+      liftIO $ H.insertSymLoc h'' x' (metaLocation mx) endLoc
       return ((mx, x', t') : xts', h'')
 
 discernBinder' ::
   H.Handle ->
   [RawBinder RT.RawTerm] ->
-  App ([BinderF WT.WeakTerm], H.Handle)
+  EIO ([BinderF WT.WeakTerm], H.Handle)
 discernBinder' h binder =
   case binder of
     [] -> do
       return ([], h)
     (mx, x, _, _, t) : xts -> do
       t' <- discern h t
-      x' <- Gensym.newIdentFromText x
+      x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinder' h' xts
-      Tag.insertBinder (mx, x', t')
+      liftIO $ Tag.insertBinderIO (H.tagMapRef h) (mx, x', t')
       return ((mx, x', t') : xts', h'')
 
 discernBinderWithBody' ::
@@ -919,19 +908,19 @@ discernBinderWithBody' ::
   Loc ->
   Loc ->
   RT.RawTerm ->
-  App (BinderF WT.WeakTerm, WT.WeakTerm)
+  EIO (BinderF WT.WeakTerm, WT.WeakTerm)
 discernBinderWithBody' h (mx, x, _, _, codType) startLoc endLoc e = do
   codType' <- discern h codType
-  x' <- Gensym.newIdentFromText x
+  x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
   h'' <- liftIO $ H.extend' h mx x' VDK.Normal
   e' <- discern h'' e
-  SymLoc.insert x' startLoc endLoc
+  liftIO $ H.insertSymLoc h'' x' startLoc endLoc
   return ((mx, x', codType'), e')
 
 discernPatternMatrix ::
   H.Handle ->
   [RP.RawPatternRow RT.RawTerm] ->
-  App (PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  EIO (PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternMatrix h patternMatrix =
   case List.uncons patternMatrix of
     Nothing ->
@@ -944,7 +933,7 @@ discernPatternMatrix h patternMatrix =
 discernPatternRow ::
   H.Handle ->
   RP.RawPatternRow RT.RawTerm ->
-  App (PAT.PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  EIO (PAT.PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternRow h (patList, _, body, _) = do
   (patList', body') <- discernPatternRow' h (SE.extract patList) [] body
   return (V.fromList patList', body')
@@ -954,16 +943,16 @@ discernPatternRow' ::
   [(Hint, RP.RawPattern)] ->
   NominalEnv ->
   RT.RawTerm ->
-  App ([(Hint, PAT.Pattern)], ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  EIO ([(Hint, PAT.Pattern)], ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternRow' h patList newVarList body = do
   case patList of
     [] -> do
-      toApp $ ensureVariableLinearity newVarList
+      ensureVariableLinearity newVarList
       h' <- liftIO $ H.extendByNominalEnv h VDK.Normal newVarList
       body' <- discern h' body
       return ([], ([], [], body'))
     pat : rest -> do
-      (pat', varsInPat) <- toApp $ discernPattern h (H.currentLayer h) pat
+      (pat', varsInPat) <- discernPattern h (H.currentLayer h) pat
       (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
 
@@ -1008,7 +997,7 @@ discernPattern h layer (m, pat) = do
                   "The constructor `" <> consDD' <> "` cannot be used as a constant"
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
           | otherwise -> do
-              x' <- liftIO $ GensymNew.newIdentFromText (H.gensymHandle h) x
+              x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
               return ((m, PAT.Var x'), [(x, (m, x', layer))])
         Locator l -> do
           (dd, gn) <- resolveName h m $ Locator l
@@ -1090,7 +1079,7 @@ foldListAppPat m listNil listCons es =
 
 constructDefaultKeyMap :: H.Handle -> Hint -> [Key] -> IO (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap h m keyList = do
-  names <- mapM (const $ GensymNew.newTextForHole (H.gensymHandle h)) keyList
+  names <- mapM (const $ Gensym.newTextForHole (H.gensymHandle h)) keyList
   return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var (Var v)))) keyList names
 
 locatorToName :: Hint -> T.Text -> Either E.Error Name
@@ -1146,3 +1135,14 @@ raiseLayerError m expected found = do
 asOpaqueValue :: RT.RawTerm -> RT.RawTerm
 asOpaqueValue e@(m :< _) =
   m :< RT.Magic [] (RT.OpaqueValue [] ([], (e, [])))
+
+interpretForeign :: H.Handle -> [RawForeignItemF WT.WeakTerm] -> IO [F.WeakForeign]
+interpretForeign h foreignItemList = do
+  mapM (interpretForeignItem h) foreignItemList
+
+interpretForeignItem :: H.Handle -> RawForeignItemF WT.WeakTerm -> IO F.WeakForeign
+interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
+  let lts' = SE.extract lts
+  Tag.insertExternalNameIO (H.tagMapRef h) m name m
+  H.insertExternalName h name m
+  return $ F.Foreign m name lts' cod

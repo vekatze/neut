@@ -90,7 +90,7 @@ interpret :: Handle -> Source.Source -> RawProgram -> App [WeakStmt]
 interpret h currentSource (RawProgram m importList stmtList) = do
   toApp $ do
     Import.interpretImport (importHandle h) m currentSource importList >>= Import.activateImport (importHandle h) m
-  stmtList' <- Discern.discernStmtList (discernHandle h) (Source.sourceModule currentSource) $ map fst stmtList
+  stmtList' <- toApp $ Discern.discernStmtList (discernHandle h) (Source.sourceModule currentSource) $ map fst stmtList
   toApp $ Global.reportMissingDefinitions (globalHandle h)
   saveTopLevelNames currentSource $ getWeakStmtName stmtList'
   UnusedVariable.registerRemarks

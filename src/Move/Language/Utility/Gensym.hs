@@ -8,6 +8,7 @@ module Move.Language.Utility.Gensym
     newIdentFromText,
     newText,
     newIdentFromIdent,
+    newTextFromText,
   )
 where
 
@@ -74,3 +75,9 @@ newText h = do
 newIdentFromIdent :: Handle -> Ident -> IO Ident
 newIdentFromIdent h x =
   newIdentFromText h (Ident.toText x)
+
+{-# INLINE newTextFromText #-}
+newTextFromText :: Handle -> T.Text -> IO T.Text
+newTextFromText h base = do
+  i <- newCount h
+  return $ ";" <> base <> T.pack (show i)

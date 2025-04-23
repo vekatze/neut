@@ -7,32 +7,46 @@ module Move.Scene.Parse.Discern.Handle
     extendByNominalEnv,
     lookupOD,
     deleteUnusedVariable,
+    insertSymLoc,
+    insertTopCandidate,
+    insertExternalName,
+    lookupExternalName,
+    deleteUnusedStaticFile,
+    getBuildMode,
   )
 where
 
+import Control.Monad
+import Control.Monad.IO.Class
 import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
+import Rule.BuildMode qualified as BM
 import Rule.DefiniteDescription qualified as DD
+import Rule.ExternalName qualified as EN
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.Layer
 import Rule.LocalLocator qualified as LL
+import Rule.LocalVarTree qualified as LVT
 import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.NominalEnv
 import Rule.OptimizableData
+import Rule.TopCandidate
 import Rule.VarDefKind
 
 data Handle = Handle
@@ -47,7 +61,12 @@ data Handle = Handle
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
     usedVariableSetRef :: IORef (S.Set Int),
+    topCandidateEnvRef :: IORef [TopCandidate],
     optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
+    localVarMapRef :: IORef LVT.LocalVarTree,
+    preDeclEnvRef :: IORef (Map.HashMap EN.ExternalName Hint),
+    unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
+    buildModeRef :: IORef BM.BuildMode,
     tagMapRef :: IORef LT.LocationTree
   }
 
@@ -64,7 +83,12 @@ new = do
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
   usedVariableSetRef <- asks App.usedVariableSet
   optDataMapRef <- asks App.optDataMap
+  localVarMapRef <- asks App.localVarMap
+  topCandidateEnvRef <- asks App.topCandidateEnv
+  preDeclEnvRef <- asks App.preDeclEnv
+  unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   tagMapRef <- asks App.tagMap
+  buildModeRef <- asks App.buildMode
   let currentLayer = 0
   return $ Handle {..}
 
@@ -102,3 +126,33 @@ lookupOD :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOD h dd = do
   optDataMap <- readIORef (optDataMapRef h)
   return $ Map.lookup dd optDataMap
+
+insertSymLoc :: Handle -> Ident -> Loc -> Loc -> IO ()
+insertSymLoc h x startLoc endLoc = do
+  unless (isHole x) $ do
+    modifyIORef' (localVarMapRef h) $ LVT.insert startLoc endLoc x
+
+insertTopCandidate :: Handle -> TopCandidate -> IO ()
+insertTopCandidate h cand = do
+  modifyIORef' (topCandidateEnvRef h) $ (:) cand
+
+insertExternalName :: Handle -> EN.ExternalName -> Hint -> IO ()
+insertExternalName h k m =
+  modifyIORef' (preDeclEnvRef h) $ Map.insert k m
+
+lookupExternalName :: Handle -> Hint -> EN.ExternalName -> EIO Hint
+lookupExternalName h m name = do
+  preDeclEnv <- liftIO $ readIORef (preDeclEnvRef h)
+  case Map.lookup name preDeclEnv of
+    Just typeInfo ->
+      return typeInfo
+    Nothing -> do
+      raiseError m $ "Undeclared function: " <> EN.reify name
+
+deleteUnusedStaticFile :: Handle -> T.Text -> IO ()
+deleteUnusedStaticFile h ll =
+  modifyIORef' (unusedStaticFileMapRef h) $ Map.delete ll
+
+getBuildMode :: Handle -> IO BM.BuildMode
+getBuildMode h = do
+  readIORef (buildModeRef h)
