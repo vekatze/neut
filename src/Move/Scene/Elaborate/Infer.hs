@@ -20,14 +20,13 @@ import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Elaborate
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Language.Utility.Gensym qualified as GensymNew
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -81,7 +80,7 @@ data Handle
     substHandle :: Subst.Handle,
     reduceHandle :: Reduce.Handle,
     unifyHandle :: Unify.Handle,
-    gensymHandle :: GensymNew.Handle,
+    gensymHandle :: Gensym.Handle,
     discernHandle :: Discern.Handle,
     constraintHandle :: Constraint.Handle,
     typeHandle :: Type.Handle,
@@ -95,7 +94,7 @@ new = do
   substHandle <- Subst.new
   reduceHandle <- Reduce.new
   unifyHandle <- Unify.new
-  gensymHandle <- GensymNew.new
+  gensymHandle <- Gensym.new
   discernHandle <- Discern.new
   constraintHandle <- Constraint.new
   typeHandle <- Type.new
@@ -233,7 +232,7 @@ infer h term =
           (expArgs', _) <- toApp $ Subst.subst' (substHandle h) sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
           codType' <- toApp $ Subst.subst (substHandle h) sub codType
-          lamID <- Gensym.newCount
+          lamID <- liftIO $ Gensym.newCount (gensymHandle h)
           infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim e' expArgs'')
         _ ->
           Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
@@ -298,7 +297,7 @@ infer h term =
         Nothing -> do
           let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) (varEnv h)
           let holeTerm = m :< WT.Hole holeID holeArgs
-          holeType <- Gensym.newHole m holeArgs
+          holeType <- liftIO $ Gensym.newHole (gensymHandle h) m holeArgs
           insHoleEnv rawHoleID holeTerm holeType
           return (holeTerm, holeType)
     m :< WT.Prim prim
@@ -383,7 +382,7 @@ infer h term =
       (discarder', td) <- infer empty1 discarder
       empty2 <- new
       (copier', tc) <- infer empty2 copier
-      x <- Gensym.newIdentFromText "_"
+      x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "_"
       resourceType <- liftIO $ newHole h m []
       let tDiscard = m :< WT.Pi [] [(m, x, resourceType)] unitType'
       let tCopy = m :< WT.Pi [] [(m, x, resourceType)] resourceType
@@ -403,8 +402,8 @@ infer h term =
               let specifiedKeyMap = Map.fromList $ flip map xts $ \(mx, x, t) -> (Ident.toText x, (mx, x, t))
               let keyMap = Map.union specifiedKeyMap defaultKeyMap
               reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
-              dataArgs' <- mapM (const $ newTypedHole m (varEnv h)) [1 .. length dataArgs]
-              cursor <- Gensym.newIdentFromText "cursor"
+              dataArgs' <- mapM (const $ newTypedHole h m (varEnv h)) [1 .. length dataArgs]
+              cursor <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "cursor"
               od <- OptimizableData.lookup consDD
               let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
               insWeakTypeEnv cursor t''
@@ -478,7 +477,7 @@ ignoreUse (I (x, i)) =
 
 constructDefaultKeyMap :: Handle -> Hint -> [Key] -> IO (Map.HashMap Key (BinderF WT.WeakTerm))
 constructDefaultKeyMap h m keyList = do
-  names <- mapM (const $ GensymNew.newIdentForHole (gensymHandle h)) keyList
+  names <- mapM (const $ Gensym.newIdentForHole (gensymHandle h)) keyList
   ts <- mapM (const $ newHole h m $ varEnv h) names
   return $ Map.fromList $ zipWith (\k (v, t) -> (k, (m, v, t))) keyList $ zip names ts
 
@@ -555,7 +554,7 @@ inferPiElim h m (e, t) expArgs = do
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       toApp $ ensureArityCorrectness h e (length expPiArgs) (length expArgs)
-      impArgs <- mapM (const $ newTypedHole m $ varEnv h) [1 .. length impPiArgs]
+      impArgs <- mapM (const $ newTypedHole h m $ varEnv h) [1 .. length impPiArgs]
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
@@ -580,10 +579,10 @@ inferPiElimExplicit h m (e, t) args = do
     _ ->
       Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
 
-newTypedHole :: Hint -> BoundVarEnv -> App (WT.WeakTerm, WT.WeakTerm)
-newTypedHole m varEnv = do
-  i <- HID.HoleID <$> Gensym.newCount
-  j <- HID.HoleID <$> Gensym.newCount
+newTypedHole :: Handle -> Hint -> BoundVarEnv -> App (WT.WeakTerm, WT.WeakTerm)
+newTypedHole h m varEnv = do
+  i <- liftIO $ HID.HoleID <$> Gensym.newCount (gensymHandle h)
+  j <- liftIO $ HID.HoleID <$> Gensym.newCount (gensymHandle h)
   let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) varEnv
   let holeTerm = m :< WT.Hole i holeArgs
   let holeType = m :< WT.Hole j holeArgs
@@ -616,7 +615,7 @@ primOpToType :: Handle -> Hint -> PrimOp -> IO TM.Term
 primOpToType h m op = do
   let (domList, cod) = getTypeInfo op
   let domList' = map (Term.fromPrimNum m) domList
-  xs <- mapM (const (GensymNew.newIdentFromText (gensymHandle h) "_")) domList'
+  xs <- mapM (const (Gensym.newIdentFromText (gensymHandle h) "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   let cod' = Term.fromPrimNum m cod
   return $ m :< TM.Pi [] xts cod'
@@ -744,4 +743,4 @@ lookupDefinition h name = do
 
 newHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakTerm
 newHole h m varEnv = do
-  GensymNew.newHole (gensymHandle h) m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
+  Gensym.newHole (gensymHandle h) m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
