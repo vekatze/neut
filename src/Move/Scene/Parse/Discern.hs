@@ -2,7 +2,7 @@ module Move.Scene.Parse.Discern (discernStmtList) where
 
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
-import Control.Monad.Except (liftEither)
+import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
@@ -951,7 +951,7 @@ discernPatternRow' ::
 discernPatternRow' h patList newVarList body = do
   case patList of
     [] -> do
-      ensureVariableLinearity newVarList
+      toApp $ ensureVariableLinearity newVarList
       h' <- liftIO $ H.extendByNominalEnv h VDK.Normal newVarList
       body' <- discern h' body
       return ([], ([], [], body'))
@@ -960,10 +960,10 @@ discernPatternRow' h patList newVarList body = do
       (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
 
-ensureVariableLinearity :: NominalEnv -> App ()
+ensureVariableLinearity :: NominalEnv -> EIO ()
 ensureVariableLinearity vars = do
   let linearityErrors = getNonLinearOccurrences vars S.empty []
-  unless (null linearityErrors) $ Throw.throw $ E.MakeError linearityErrors
+  unless (null linearityErrors) $ throwError $ E.MakeError linearityErrors
 
 getNonLinearOccurrences :: NominalEnv -> S.Set T.Text -> [(Hint, T.Text)] -> [R.Remark]
 getNonLinearOccurrences vars found nonLinear =
