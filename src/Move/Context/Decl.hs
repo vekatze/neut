@@ -1,7 +1,6 @@
 module Move.Context.Decl
   ( initialize,
     insWeakDeclEnv,
-    lookupWeakDeclEnv,
   )
 where
 
@@ -11,11 +10,9 @@ import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Throw qualified as Throw
 import Rule.DeclarationName qualified as DN
 import Rule.Foreign qualified as F
 import Rule.ForeignCodType qualified as FCT
-import Rule.Hint
 import Rule.WeakTerm qualified as WT
 import Prelude hiding (lookup, read)
 
@@ -30,12 +27,3 @@ initialize = do
 insWeakDeclEnv :: DN.DeclarationName -> [WT.WeakTerm] -> FCT.ForeignCodType WT.WeakTerm -> App ()
 insWeakDeclEnv k domList cod =
   modifyRef' weakDeclEnv $ Map.insert k (domList, cod)
-
-lookupWeakDeclEnv :: Hint -> DN.DeclarationName -> App ([WT.WeakTerm], FCT.ForeignCodType WT.WeakTerm)
-lookupWeakDeclEnv m name = do
-  denv <- readRef' weakDeclEnv
-  case Map.lookup name denv of
-    Just typeInfo ->
-      return typeInfo
-    Nothing -> do
-      Throw.raiseError m $ "Undeclared function: " <> DN.reify name

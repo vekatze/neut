@@ -15,7 +15,6 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.Decl qualified as Decl
 import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
@@ -28,6 +27,7 @@ import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
+import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -85,6 +85,7 @@ data Handle
     discernHandle :: Discern.Handle,
     constraintHandle :: Constraint.Handle,
     weakTypeHandle :: WeakType.Handle,
+    weakDeclHandle :: WeakDecl.Handle,
     holeHandle :: Hole.Handle,
     typeHandle :: Type.Handle,
     varEnv :: BoundVarEnv,
@@ -101,6 +102,7 @@ new = do
   discernHandle <- Discern.new
   constraintHandle <- Constraint.new
   weakTypeHandle <- WeakType.new
+  weakDeclHandle <- WeakDecl.new
   holeHandle <- Hole.new
   typeHandle <- Type.new
   let varEnv = []
@@ -354,7 +356,7 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h) intType sizeType
           return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), m :< WT.Prim (WP.Type PT.Pointer))
         M.External _ _ funcName args varArgs -> do
-          (domList, cod) <- Decl.lookupWeakDeclEnv m (DN.Ext funcName)
+          (domList, cod) <- toApp $ WeakDecl.lookup (weakDeclHandle h) m (DN.Ext funcName)
           toApp $ ensureArityCorrectness h term (length domList) (length args)
           (args', argTypes) <- mapAndUnzipM (infer h) args
           liftIO $ forM_ (zip domList argTypes) $ uncurry $ Constraint.insert (constraintHandle h)
