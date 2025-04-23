@@ -75,15 +75,25 @@ data Handle
   = Handle
   { substHandle :: Subst.Handle,
     reduceHandle :: Reduce.Handle,
+    unifyHandle :: Unify.Handle,
     varEnv :: BoundVarEnv,
     defMap :: WeakDefinition.DefMap
   }
+
+new :: App Handle
+new = do
+  substHandle <- Subst.new
+  reduceHandle <- Reduce.new
+  unifyHandle <- Unify.new
+  let varEnv = []
+  defMap <- asks App.weakDefMap >>= liftIO . readIORef
+  return Handle {..}
 
 inferStmt :: WeakStmt -> App WeakStmt
 inferStmt stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
-      axis <- createNewHandle
+      axis <- new
       (impArgs', axis') <- inferBinder' axis impArgs
       (expArgs', axis'') <- inferBinder' axis' expArgs
       codType' <- inferType axis'' codType
@@ -104,7 +114,7 @@ inferStmt stmt =
 
 inferGeist :: G.Geist WT.WeakTerm -> App (G.Geist WT.WeakTerm)
 inferGeist G.Geist {..} = do
-  axis <- createNewHandle
+  axis <- new
   (impArgs', axis') <- inferBinder' axis impArgs
   (expArgs', axis'') <- inferBinder' axis' expArgs
   cod' <- inferType axis'' cod
@@ -127,14 +137,14 @@ inferStmtKind stmtKind =
     Normal {} ->
       return stmtKind
     Data dataName dataArgs consInfoList -> do
-      empty <- createNewHandle
+      empty <- new
       (dataArgs', varEnv) <- inferBinder' empty dataArgs
       consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
         (consArgs', _) <- inferBinder' varEnv consArgs
         return (m, dd, constLike, consArgs', discriminant)
       return $ Data dataName dataArgs' consInfoList'
     DataIntro consName dataArgs consArgs discriminant -> do
-      empty <- createNewHandle
+      empty <- new
       (dataArgs', varEnv) <- inferBinder' empty dataArgs
       (consArgs', _) <- inferBinder' varEnv consArgs
       return $ DataIntro consName dataArgs' consArgs' discriminant
@@ -151,14 +161,6 @@ getUnitType m = do
   (unitDD, _) <- toApp $ N.resolveName h m (N.Locator locator)
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
   return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
-
-createNewHandle :: App Handle
-createNewHandle = do
-  substHandle <- Subst.new
-  reduceHandle <- Reduce.new
-  let varEnv = []
-  defMap <- asks App.weakDefMap >>= liftIO . readIORef
-  return Handle {..}
 
 extendHandle :: BinderF WT.WeakTerm -> Handle -> Handle
 extendHandle (mx, x, t) h = do
@@ -210,7 +212,7 @@ infer h term =
       inferPiElim h m etl etls
     m :< WT.PiElimExact e -> do
       (e', t) <- infer h e
-      t' <- resolveType h t
+      t' <- toApp $ resolveType h t
       case t' of
         _ :< WT.Pi impArgs expArgs codType -> do
           holes <- mapM (const $ newHole m $ varEnv h) impArgs
@@ -264,7 +266,7 @@ infer h term =
       return (e', t')
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer h e1
-      t' <- inferType h t >>= resolveType h
+      t' <- inferType h t >>= toApp . resolveType h
       insWeakTypeEnv x t'
       case opacity of
         WT.Noetic ->
@@ -292,18 +294,18 @@ infer h term =
       | WP.Value primValue <- prim ->
           case primValue of
             WPV.Int t v -> do
-              empty <- createNewHandle
+              empty <- new
               t' <- inferType empty t
               return (m :< WT.Prim (WP.Value (WPV.Int t' v)), t')
             WPV.Float t v -> do
-              empty <- createNewHandle
+              empty <- new
               t' <- inferType empty t
               return (m :< WT.Prim (WP.Value (WPV.Float t' v)), t')
             WPV.Op op -> do
               primOpType <- primOpToType m op
               return (term, weaken primOpType)
             WPV.StaticText t text -> do
-              empty <- createNewHandle
+              empty <- new
               t' <- inferType empty t
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.BoxNoema t')
             WPV.Rune _ -> do
@@ -364,9 +366,9 @@ infer h term =
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
     m :< WT.Resource dd resourceID unitType discarder copier -> do
       unitType' <- inferType h unitType
-      empty1 <- createNewHandle
+      empty1 <- new
       (discarder', td) <- infer empty1 discarder
-      empty2 <- createNewHandle
+      empty2 <- new
       (copier', tc) <- infer empty2 copier
       x <- Gensym.newIdentFromText "_"
       resourceType <- newHole m []
@@ -377,7 +379,7 @@ infer h term =
       return (m :< WT.Resource dd resourceID unitType' discarder' copier', m :< WT.Tau)
     m :< WT.Use e@(mt :< _) xts cont -> do
       (e', t') <- infer h e
-      t'' <- resolveType h t'
+      t'' <- toApp $ resolveType h t'
       case t'' of
         _ :< WT.Data attr _ dataArgs
           | AttrD.Attr {..} <- attr,
@@ -536,7 +538,7 @@ inferPiElim ::
   [(WT.WeakTerm, WT.WeakTerm)] ->
   App (WT.WeakTerm, WT.WeakTerm)
 inferPiElim h m (e, t) expArgs = do
-  t' <- resolveType h t
+  t' <- toApp $ resolveType h t
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       ensureArityCorrectness e (length expPiArgs) (length expArgs)
@@ -555,7 +557,7 @@ inferPiElimExplicit ::
   [(WT.WeakTerm, WT.WeakTerm)] ->
   App (WT.WeakTerm, WT.WeakTerm)
 inferPiElimExplicit h m (e, t) args = do
-  t' <- resolveType h t
+  t' <- toApp $ resolveType h t
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       let piArgs = impPiArgs ++ expPiArgs
@@ -613,7 +615,7 @@ inferLet ::
   App (BinderF WT.WeakTerm, WT.WeakTerm)
 inferLet ax ((mx, x, t), e1) = do
   (e1', t1') <- infer ax e1
-  t' <- inferType ax t >>= resolveType ax
+  t' <- inferType ax t >>= toApp . resolveType ax
   insWeakTypeEnv x t'
   insConstraintEnv t' t1'
   return ((mx, x, t'), e1')
@@ -696,10 +698,10 @@ inferClause h cursorType@(_ :< cursorTypeInner) decisionCase = do
           tCont
         )
 
-resolveType :: Handle -> WT.WeakTerm -> App WT.WeakTerm
+resolveType :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 resolveType h t = do
-  sub <- Unify.new >>= toApp . Unify.unifyCurrentConstraints
-  toApp $ reduceWeakType' h sub t
+  sub <- Unify.unifyCurrentConstraints (unifyHandle h)
+  reduceWeakType' h sub t
 
 reduceWeakType' :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 reduceWeakType' h sub e = do
