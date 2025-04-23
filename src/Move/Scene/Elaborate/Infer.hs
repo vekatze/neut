@@ -26,6 +26,7 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Language.Utility.Gensym qualified as GensymNew
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Name qualified as N
@@ -76,6 +77,7 @@ data Handle
   { substHandle :: Subst.Handle,
     reduceHandle :: Reduce.Handle,
     unifyHandle :: Unify.Handle,
+    gensymHandle :: GensymNew.Handle,
     varEnv :: BoundVarEnv,
     defMap :: WeakDefinition.DefMap
   }
@@ -85,6 +87,7 @@ new = do
   substHandle <- Subst.new
   reduceHandle <- Reduce.new
   unifyHandle <- Unify.new
+  gensymHandle <- GensymNew.new
   let varEnv = []
   defMap <- asks App.weakDefMap >>= liftIO . readIORef
   return Handle {..}
@@ -302,7 +305,7 @@ infer h term =
               t' <- inferType empty t
               return (m :< WT.Prim (WP.Value (WPV.Float t' v)), t')
             WPV.Op op -> do
-              primOpType <- primOpToType m op
+              primOpType <- liftIO $ primOpToType h m op
               return (term, weaken primOpType)
             WPV.StaticText t text -> do
               empty <- new
@@ -600,11 +603,11 @@ ensureArityCorrectness function expected found = do
             <> T.pack (show found)
             <> "."
 
-primOpToType :: Hint -> PrimOp -> App TM.Term
-primOpToType m op = do
+primOpToType :: Handle -> Hint -> PrimOp -> IO TM.Term
+primOpToType h m op = do
   let (domList, cod) = getTypeInfo op
   let domList' = map (Term.fromPrimNum m) domList
-  xs <- mapM (const (Gensym.newIdentFromText "_")) domList'
+  xs <- mapM (const (GensymNew.newIdentFromText (gensymHandle h) "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   let cod' = Term.fromPrimNum m cod
   return $ m :< TM.Pi [] xts cod'
