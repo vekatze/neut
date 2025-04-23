@@ -20,8 +20,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, raiseCritical, toApp)
-import Move.Context.Elaborate hiding (getHoleSubst)
+import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.Env qualified as Env
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
@@ -66,6 +65,7 @@ data Handle = Handle
     inlineLimit :: Int,
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
+    constraintEnvRef :: IORef [C.Constraint],
     suspendedEnvRef :: IORef [C.SuspendedConstraint],
     typeEnv :: Map.HashMap DD.DefiniteDescription WT.WeakTerm,
     defMap :: WeakDefinition.DefMap
@@ -84,6 +84,7 @@ new = do
   let currentStep = 0
   holeSubstRef <- asks App.holeSubst
   suspendedEnvRef <- asks App.suspendedEnv
+  constraintEnvRef <- asks App.constraintEnv
   typeEnv <- asks App.typeEnv >>= liftIO . readIORef
   return $ Handle {..}
 
@@ -96,14 +97,13 @@ unify h constraintList = do
     _ ->
       throwTypeErrors h susList
 
-unifyCurrentConstraints :: App HS.HoleSubst
-unifyCurrentConstraints = do
-  susList <- getSuspendedEnv
-  cs <- getConstraintEnv
-  h <- new
-  susList' <- toApp $ simplify h susList $ zip cs cs
-  setConstraintEnv []
-  setSuspendedEnv susList'
+unifyCurrentConstraints :: Handle -> EIO HS.HoleSubst
+unifyCurrentConstraints h = do
+  susList <- liftIO $ readIORef (suspendedEnvRef h)
+  cs <- liftIO $ readIORef (constraintEnvRef h)
+  susList' <- simplify h susList $ zip cs cs
+  liftIO $ writeIORef (constraintEnvRef h) []
+  liftIO $ writeIORef (suspendedEnvRef h) susList'
   liftIO $ getHoleSubst h
 
 unify' :: Handle -> [C.Constraint] -> EIO [SuspendedConstraint]

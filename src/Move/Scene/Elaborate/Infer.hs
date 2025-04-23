@@ -26,7 +26,7 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Scene.Elaborate.Unify (unifyCurrentConstraints)
+import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Name qualified as N
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
@@ -698,7 +698,7 @@ inferClause h cursorType@(_ :< cursorTypeInner) decisionCase = do
 
 resolveType :: Handle -> WT.WeakTerm -> App WT.WeakTerm
 resolveType h t = do
-  sub <- unifyCurrentConstraints
+  sub <- Unify.new >>= toApp . Unify.unifyCurrentConstraints
   toApp $ reduceWeakType' h sub t
 
 reduceWeakType' :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
