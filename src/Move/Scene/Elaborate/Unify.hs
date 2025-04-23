@@ -65,6 +65,7 @@ data Handle = Handle
     inlineLimit :: Int,
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
+    typeEnv :: Map.HashMap DD.DefiniteDescription WT.WeakTerm,
     defMap :: WeakDefinition.DefMap
   }
 
@@ -78,6 +79,7 @@ new = do
   defMap <- WeakDefinition.read
   let currentStep = 0
   holeSubstRef <- asks App.holeSubst
+  typeEnv <- asks App.typeEnv >>= liftIO . readIORef
   return $ Handle {..}
 
 unify :: Handle -> [C.Constraint] -> App HS.HoleSubst
