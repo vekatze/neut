@@ -360,7 +360,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
               then return []
               else mapM (getConsArgTypes m . fst) consNameList
           constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-            dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
+            dataConsArgs' <- toApp $ substConsArgs h IntMap.empty dataConsArgs
             fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
               simplifyAffine h dataNameSet' (consArg, orig)
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
@@ -379,13 +379,13 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
         _ -> do
           return [AffineConstraintError orig]
 
-substConsArgs :: Axis -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
+substConsArgs :: Axis -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> EIO [BinderF WT.WeakTerm]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- toApp $ Subst.subst (substHandle h) sub t
+      t' <- Subst.subst (substHandle h) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (toInt x) (Right opaque) sub
       rest' <- substConsArgs h sub' rest
