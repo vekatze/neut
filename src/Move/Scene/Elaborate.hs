@@ -414,17 +414,9 @@ strictifyDecimalType m x t = do
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictifyDecimalType m x arg
         _ ->
-          raiseNonDecimalType m x (weaken t')
+          toApp $ raiseNonDecimalType m x (weaken t')
     _ :< _ ->
-      raiseNonDecimalType m x (weaken t')
-
-raiseNonDecimalType :: Hint -> Integer -> WT.WeakTerm -> App a
-raiseNonDecimalType m x t = do
-  Throw.raiseError m $
-    "The term `"
-      <> T.pack (show x)
-      <> "` is an integer, but its type is: "
-      <> toText t
+      toApp $ raiseNonDecimalType m x (weaken t')
 
 strictifyFloatType :: Hint -> Double -> WT.WeakTerm -> App (FloatSize, TM.Term)
 strictifyFloatType m x t = do
@@ -596,6 +588,14 @@ elaborateClause mOrig cursor ctx decisionCase = do
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
+
+raiseNonDecimalType :: Hint -> Integer -> WT.WeakTerm -> EIO a
+raiseNonDecimalType m x t = do
+  raiseError m $
+    "The term `"
+      <> T.pack (show x)
+      <> "` is an integer, but its type is: "
+      <> toText t
 
 raiseNonFloatType :: Hint -> Double -> WT.WeakTerm -> EIO a
 raiseNonFloatType m x t = do
