@@ -17,6 +17,7 @@ import Data.Set qualified as S
 import Move.Context.App (App)
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical)
+import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -52,6 +53,7 @@ data Handle
   = Handle
   { reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
+    typeHandle :: Type.Handle,
     varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
     mustPerformExpCheck :: Bool,
@@ -64,6 +66,7 @@ new :: App Handle
 new = do
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
+  typeHandle <- Type.new
   let varEnv = IntMap.empty
   foundVarSetRef <- liftIO $ newIORef IntMap.empty
   weakDefMapRef <- asks App.weakDefMap
@@ -396,20 +399,12 @@ getConsArgTypes ::
   DD.DefiniteDescription ->
   EIO [BinderF WT.WeakTerm]
 getConsArgTypes h m consName = do
-  t <- lookupType h m consName
+  t <- Type.lookup' (typeHandle h) m consName
   case t of
     _ :< WT.Pi impArgs expArgs _ -> do
       return $ impArgs ++ expArgs
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
-
-lookupType :: Handle -> Hint -> DD.DefiniteDescription -> EIO WT.WeakTerm
-lookupType h m k = do
-  case Map.lookup k (typeEnv h) of
-    Just value ->
-      return value
-    Nothing ->
-      raiseCritical m $ "`" <> DD.reify k <> "` is not found in the term type environment."
 
 lookupOptimizableData :: Handle -> DD.DefiniteDescription -> Maybe OptimizableData
 lookupOptimizableData h dd = do

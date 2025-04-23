@@ -20,11 +20,10 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseCritical, toApp)
 import Move.Context.Elaborate hiding (getHoleSubst)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
-import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.WeakTerm.Fill qualified as Fill
@@ -62,6 +61,7 @@ data Handle = Handle
   { reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     fillHandle :: Fill.Handle,
+    typeHandle :: Type.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
@@ -74,6 +74,7 @@ new = do
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
   fillHandle <- Fill.new
+  typeHandle <- Type.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   defMap <- WeakDefinition.read
@@ -416,7 +417,7 @@ simplifyActual h m dataNameSet t orig = do
       dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
-          else mapM (getConsArgTypes m . fst) consNameList
+          else mapM (toApp . getConsArgTypes h m . fst) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
         dataConsArgs' <- toApp $ substConsArgs h IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
@@ -459,16 +460,17 @@ substConsArgs h sub consArgs =
       return $ (m, x, t') : rest'
 
 getConsArgTypes ::
+  Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  App [BinderF WT.WeakTerm]
-getConsArgTypes m consName = do
-  t <- Type.lookup m consName
+  EIO [BinderF WT.WeakTerm]
+getConsArgTypes h m consName = do
+  t <- Type.lookup' (typeHandle h) m consName
   case t of
     _ :< WT.Pi impArgs expArgs _ -> do
       return $ impArgs ++ expArgs
     _ ->
-      Throw.raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
+      raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
 
 simplifyInteger ::
   Handle ->
