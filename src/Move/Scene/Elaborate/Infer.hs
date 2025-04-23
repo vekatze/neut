@@ -6,6 +6,7 @@ module Move.Scene.Elaborate.Infer (inferStmt) where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
@@ -28,7 +29,7 @@ import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as GensymNew
 import Move.Scene.Elaborate.Unify qualified as Unify
-import Move.Scene.Parse.Discern.Handle qualified as H
+import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Discern.Name qualified as N
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -80,6 +81,7 @@ data Handle
     reduceHandle :: Reduce.Handle,
     unifyHandle :: Unify.Handle,
     gensymHandle :: GensymNew.Handle,
+    discernHandle :: Discern.Handle,
     varEnv :: BoundVarEnv,
     defMap :: WeakDefinition.DefMap
   }
@@ -91,6 +93,7 @@ new = do
   reduceHandle <- Reduce.new
   unifyHandle <- Unify.new
   gensymHandle <- GensymNew.new
+  discernHandle <- Discern.new
   let varEnv = []
   defMap <- asks App.weakDefMap >>= liftIO . readIORef
   return Handle {..}
@@ -99,17 +102,17 @@ inferStmt :: WeakStmt -> App WeakStmt
 inferStmt stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
-      axis <- new
-      (impArgs', axis') <- inferBinder' axis impArgs
-      (expArgs', axis'') <- inferBinder' axis' expArgs
-      codType' <- inferType axis'' codType
+      h <- new
+      (impArgs', h') <- inferBinder' h impArgs
+      (expArgs', h'') <- inferBinder' h' expArgs
+      codType' <- inferType h'' codType
       insertType x $ m :< WT.Pi impArgs' expArgs' codType'
       stmtKind' <- inferStmtKind stmtKind
-      (e', te) <- infer axis'' e
+      (e', te) <- infer h'' e
       insConstraintEnv codType' te
       when (DD.isEntryPoint x) $ do
         let _m = m {metaShouldSaveLocation = False}
-        unitType <- getUnitType _m
+        unitType <- toApp $ getUnitType h'' _m
         insConstraintEnv (m :< WT.Pi [] [] unitType) (m :< WT.Pi impArgs' expArgs' codType')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgs' expArgs' codType' e'
     WeakStmtNominal m geistList -> do
@@ -120,10 +123,10 @@ inferStmt stmt =
 
 inferGeist :: G.Geist WT.WeakTerm -> App (G.Geist WT.WeakTerm)
 inferGeist G.Geist {..} = do
-  axis <- new
-  (impArgs', axis') <- inferBinder' axis impArgs
-  (expArgs', axis'') <- inferBinder' axis' expArgs
-  cod' <- inferType axis'' cod
+  h <- new
+  (impArgs', h') <- inferBinder' h impArgs
+  (expArgs', h'') <- inferBinder' h' expArgs
+  cod' <- inferType h'' cod
   insertType name $ loc :< WT.Pi impArgs' expArgs' cod'
   return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
@@ -160,11 +163,10 @@ getIntType m = do
   baseSize <- toApp $ Env.getBaseSize m
   return $ WT.intTypeBySize m baseSize
 
-getUnitType :: Hint -> App WT.WeakTerm
-getUnitType m = do
-  locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
-  h <- H.new
-  (unitDD, _) <- toApp $ N.resolveName h m (N.Locator locator)
+getUnitType :: Handle -> Hint -> EIO WT.WeakTerm
+getUnitType h m = do
+  locator <- liftEither $ DD.getLocatorPair m coreUnit
+  (unitDD, _) <- N.resolveName (discernHandle h) m (N.Locator locator)
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
   return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
 
