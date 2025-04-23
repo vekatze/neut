@@ -87,14 +87,14 @@ new = do
   typeEnv <- asks App.typeEnv >>= liftIO . readIORef
   return $ Handle {..}
 
-unify :: Handle -> [C.Constraint] -> App HS.HoleSubst
+unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
 unify h constraintList = do
-  susList <- toApp $ unify' h (reverse constraintList)
+  susList <- unify' h (reverse constraintList)
   case susList of
     [] ->
       liftIO $ getHoleSubst h
     _ ->
-      toApp $ throwTypeErrors h susList
+      throwTypeErrors h susList
 
 unifyCurrentConstraints :: App HS.HoleSubst
 unifyCurrentConstraints = do
