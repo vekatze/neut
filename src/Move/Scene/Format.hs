@@ -54,7 +54,7 @@ _formatSource shouldMinimizeImports filePath fileContent = do
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
         Initialize.initializeForSource source
         hParse <- Parse.new
-        void $ Parse.parse hParse Peripheral source cacheOrContent
+        void $ toApp $ Parse.parse hParse Peripheral source cacheOrContent
       unusedGlobalLocators <- UnusedGlobalLocator.get
       unusedLocalLocators <- UnusedLocalLocator.get
       h'' <- P.new

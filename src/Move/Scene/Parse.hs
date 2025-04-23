@@ -17,8 +17,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Cache qualified as Cache
-import Move.Context.EIO (EIO, toApp)
-import Move.Context.Env qualified as Env
+import Move.Context.EIO (EIO)
 import Move.Context.Global qualified as Global
 import Move.Context.Path qualified as Path
 import Move.Scene.Parse.Core qualified as P
@@ -72,24 +71,24 @@ new = do
   remarkListRef <- asks App.remarkList
   return $ Handle {..}
 
-parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
+parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])
 parse h t source cacheOrContent = do
   parseSource h t source cacheOrContent
 
-parseSource :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
+parseSource :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])
 parseSource h t source cacheOrContent = do
   let filePath = Source.sourceFilePath source
   case cacheOrContent of
     Left cache -> do
       let stmtList = Cache.stmtList cache
-      toApp $ parseCachedStmtList h stmtList
-      toApp $ saveTopLevelNames h source $ getStmtName stmtList
+      parseCachedStmtList h stmtList
+      saveTopLevelNames h source $ getStmtName stmtList
       return $ Left cache
     Right fileContent -> do
-      prog <- toApp $ P.parseFile (parseHandle h) filePath fileContent True Parse.parseProgram
-      prog' <- toApp $ interpret h source (snd prog)
-      tmap <- Env.getTagMap
-      toApp $ Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap
+      prog <- P.parseFile (parseHandle h) filePath fileContent True Parse.parseProgram
+      prog' <- interpret h source (snd prog)
+      tmap <- liftIO $ readIORef $ Discern.tagMapRef (discernHandle h)
+      Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap
       return $ Right prog'
 
 parseCachedStmtList :: Handle -> [Stmt] -> EIO ()
