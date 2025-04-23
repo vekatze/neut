@@ -66,6 +66,7 @@ data Handle = Handle
     inlineLimit :: Int,
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
+    suspendedEnvRef :: IORef [C.SuspendedConstraint],
     typeEnv :: Map.HashMap DD.DefiniteDescription WT.WeakTerm,
     defMap :: WeakDefinition.DefMap
   }
@@ -82,12 +83,13 @@ new = do
   defMap <- WeakDefinition.read
   let currentStep = 0
   holeSubstRef <- asks App.holeSubst
+  suspendedEnvRef <- asks App.suspendedEnv
   typeEnv <- asks App.typeEnv >>= liftIO . readIORef
   return $ Handle {..}
 
 unify :: Handle -> [C.Constraint] -> App HS.HoleSubst
 unify h constraintList = do
-  susList <- unify' (reverse constraintList)
+  susList <- toApp $ unify' h (reverse constraintList)
   case susList of
     [] ->
       liftIO $ getHoleSubst h
@@ -104,11 +106,10 @@ unifyCurrentConstraints = do
   setSuspendedEnv susList'
   liftIO $ getHoleSubst h
 
-unify' :: [C.Constraint] -> App [SuspendedConstraint]
-unify' constraintList = do
-  susList <- getSuspendedEnv
-  h <- new
-  toApp $ simplify h susList $ zip constraintList constraintList
+unify' :: Handle -> [C.Constraint] -> EIO [SuspendedConstraint]
+unify' h constraintList = do
+  susList <- liftIO $ readIORef (suspendedEnvRef h)
+  simplify h susList $ zip constraintList constraintList
 
 throwTypeErrors :: Handle -> [SuspendedConstraint] -> EIO a
 throwTypeErrors h susList = do
