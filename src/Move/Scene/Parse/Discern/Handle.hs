@@ -5,21 +5,25 @@ module Move.Scene.Parse.Discern.Handle
     extend',
     extendWithoutInsert,
     extendByNominalEnv,
+    lookupOD,
   )
 where
 
 import Control.Monad.Reader (asks)
+import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Language.Utility.Gensym qualified as Gensym
+import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.Layer
 import Rule.Module
 import Rule.NominalEnv
+import Rule.OptimizableData
 import Rule.VarDefKind
 
 data Handle = Handle
@@ -27,7 +31,8 @@ data Handle = Handle
     nameEnv :: NominalEnv,
     currentModule :: Module,
     currentLayer :: Layer,
-    unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind))
+    unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
+    optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData)
   }
 
 new :: Module -> App Handle
@@ -35,6 +40,7 @@ new currentModule = do
   gensymHandle <- Gensym.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
+  optDataMapRef <- asks App.optDataMap
   let currentLayer = 0
   return $ Handle {..}
 
@@ -63,3 +69,8 @@ extendByNominalEnv h k newNominalEnv = do
 insertUnusedVariable :: Handle -> Hint -> Ident -> VarDefKind -> IO ()
 insertUnusedVariable h m x k =
   modifyIORef' (unusedVariableMapRef h) $ IntMap.insert (Ident.toInt x) (m, x, k)
+
+lookupOD :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
+lookupOD h dd = do
+  optDataMap <- readIORef (optDataMapRef h)
+  return $ Map.lookup dd optDataMap

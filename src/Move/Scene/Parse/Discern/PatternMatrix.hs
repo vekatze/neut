@@ -10,6 +10,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Move.Context.App
+import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
@@ -61,7 +62,7 @@ compilePatternMatrix h isNoetic occurrences mat =
                 case specializer of
                   PAT.LiteralSpecializer literal -> do
                     let occurrences' = V.tail occurrences
-                    specialMatrix <- PATS.specialize h isNoetic cursor specializer mat
+                    specialMatrix <- toApp $ PATS.specialize h isNoetic cursor specializer mat
                     cont <- compilePatternMatrix h isNoetic occurrences' specialMatrix
                     return $ DT.LiteralCase mPat literal cont
                   PAT.ConsSpecializer (PAT.ConsInfo {..}) -> do
@@ -72,7 +73,7 @@ compilePatternMatrix h isNoetic occurrences mat =
                     let consVars' = zip ms consVars
                     (consArgs', h') <- alignConsArgs h consVars'
                     let occurrences' = V.fromList consVars' <> V.tail occurrences
-                    specialMatrix <- PATS.specialize h isNoetic cursor specializer mat
+                    specialMatrix <- toApp $ PATS.specialize h isNoetic cursor specializer mat
                     specialDecisionTree <- compilePatternMatrix h' isNoetic occurrences' specialMatrix
                     let dataArgs' = zip dataHoles dataTypeHoles
                     return $
