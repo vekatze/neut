@@ -178,7 +178,7 @@ simplify h susList constraintList =
       susList' <- simplifyActual h (WT.metaOf t) S.empty t orig
       simplify h (susList' ++ susList) cs
     (C.Integer t, orig) : cs -> do
-      susList' <- simplifyInteger h (WT.metaOf t) t orig
+      susList' <- toApp $ simplifyInteger h (WT.metaOf t) t orig
       simplify h (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       toApp $ detectPossibleInfiniteLoop h orig
@@ -473,10 +473,10 @@ simplifyInteger ::
   Hint ->
   WT.WeakTerm ->
   C.Constraint ->
-  App [SuspendedConstraint]
+  EIO [SuspendedConstraint]
 simplifyInteger h m t orig = do
-  toApp $ detectPossibleInfiniteLoop h orig
-  t' <- toApp $ Reduce.reduce (reduceHandle h) t
+  detectPossibleInfiniteLoop h orig
+  t' <- Reduce.reduce (reduceHandle h) t
   case t' of
     _ :< WT.Prim (WP.Type (PT.Int _)) -> do
       return []
@@ -485,7 +485,7 @@ simplifyInteger h m t orig = do
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
-          t'' <- toApp $ Fill.fill (fillHandle h) (HS.singleton hole xs body) t'
+          t'' <- Fill.fill (fillHandle h) (HS.singleton hole xs body) t'
           simplifyInteger h m t'' orig
         Nothing -> do
           case Stuck.asStuckedTerm t' of
