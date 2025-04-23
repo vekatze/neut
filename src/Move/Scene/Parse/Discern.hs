@@ -11,7 +11,7 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Move.Context.App
 import Move.Context.Decl qualified as Decl
-import Move.Context.EIO (EIO, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Env (getPlatform)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
@@ -280,7 +280,7 @@ discern h term =
       (expArgs', h'') <- discernBinder h' expArgs endLoc
       codType' <- discern h'' $ snd $ RT.cod geist
       body' <- discern h'' body
-      ensureLayerClosedness m h'' body'
+      toApp $ ensureLayerClosedness m h'' body'
       return $ m :< WT.PiIntro (AttrL.normal lamID codType') impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
@@ -296,7 +296,7 @@ discern h term =
       let mxt' = (mx, x', codType')
       Tag.insertBinder mxt'
       lamID <- Gensym.newCount
-      ensureLayerClosedness m h''' body'
+      toApp $ ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
     m :< RT.PiElim e _ es -> do
       case e of
@@ -1097,28 +1097,28 @@ locatorToVarGlobal m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair (blur m) text
   return $ blur m :< RT.Var (Locator (gl, ll))
 
-getLayer :: Hint -> H.Handle -> Ident -> App Layer
+getLayer :: Hint -> H.Handle -> Ident -> EIO Layer
 getLayer m h x =
   case lookup (Ident.toText x) (H.nameEnv h) of
     Nothing ->
-      Throw.raiseCritical m $ "Scene.Parse.Discern.getLayer: Undefined variable: " <> Ident.toText x
+      raiseCritical m $ "Scene.Parse.Discern.getLayer: Undefined variable: " <> Ident.toText x
     Just (_, _, l) -> do
       return l
 
-findExternalVariable :: Hint -> H.Handle -> WT.WeakTerm -> App (Maybe (Ident, Layer))
+findExternalVariable :: Hint -> H.Handle -> WT.WeakTerm -> EIO (Maybe (Ident, Layer))
 findExternalVariable m h e = do
   let fvs = S.toList $ freeVars e
   ls <- mapM (getLayer m h) fvs
   return $ List.find (\(_, l) -> l > H.currentLayer h) $ zip fvs ls
 
-ensureLayerClosedness :: Hint -> H.Handle -> WT.WeakTerm -> App ()
+ensureLayerClosedness :: Hint -> H.Handle -> WT.WeakTerm -> EIO ()
 ensureLayerClosedness mClosure h e = do
   mvar <- findExternalVariable mClosure h e
   case mvar of
     Nothing ->
       return ()
     Just (x, l) -> do
-      Throw.raiseError mClosure $
+      raiseError mClosure $
         "This function is at the layer "
           <> T.pack (show (H.currentLayer h))
           <> ", but the free variable `"
