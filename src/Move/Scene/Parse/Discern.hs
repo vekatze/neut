@@ -537,7 +537,7 @@ discern h term =
           case letKind of
             RT.Bind -> do
               tmpVar <- Gensym.newText
-              (x, e2'') <- modifyLetContinuation (mPat, pat) endLoc False e2'
+              (x, e2'') <- toApp $ modifyLetContinuation h (mPat, pat) endLoc False e2'
               let m' = blur m
               dom <- Gensym.newPreHole m'
               cod <- Gensym.newPreHole m'
@@ -652,14 +652,20 @@ discernMagic h m magic =
       e' <- discern h e
       return $ M.WeakMagic $ M.OpaqueValue e'
 
-modifyLetContinuation :: (Hint, RP.RawPattern) -> Loc -> N.IsNoetic -> RT.RawTerm -> App (RawIdent, RT.RawTerm)
-modifyLetContinuation pat endLoc isNoetic cont@(mCont :< _) =
+modifyLetContinuation ::
+  H.Handle ->
+  (Hint, RP.RawPattern) ->
+  Loc ->
+  N.IsNoetic ->
+  RT.RawTerm ->
+  EIO (RawIdent, RT.RawTerm)
+modifyLetContinuation h pat endLoc isNoetic cont@(mCont :< _) =
   case pat of
     (_, RP.Var (Var x))
       | not (isConsName x) ->
           return (x, cont)
     _ -> do
-      tmp <- Gensym.newTextForHole
+      tmp <- liftIO $ GensymNew.newTextForHole (H.gensymHandle h)
       return
         ( tmp,
           mCont
@@ -804,7 +810,7 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
   let opacity = WT.Clear
   let discernLet' isNoetic = do
         e1' <- discern h e1
-        (x, e2') <- modifyLetContinuation (mx, pat) endLoc isNoetic e2
+        (x, e2') <- toApp $ modifyLetContinuation h (mx, pat) endLoc isNoetic e2
         (mxt', e2'') <- discernBinderWithBody' h (mx, x, c1, c2, t) startLoc endLoc e2'
         Tag.insertBinder mxt'
         return $ m :< WT.Let opacity mxt' e1' e2''
