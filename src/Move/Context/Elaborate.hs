@@ -13,7 +13,6 @@ module Move.Context.Elaborate
     lookupWeakTypeEnvMaybe,
     lookupHoleEnv,
     insHoleEnv,
-    insertSubst,
     newHole,
     newTypeHoleList,
     getHoleSubst,
@@ -112,10 +111,6 @@ lookupHoleEnv i =
 insHoleEnv :: Int -> WeakTerm -> WeakTerm -> App ()
 insHoleEnv i e1 e2 =
   modifyRef' holeEnv $ IntMap.insert i (e1, e2)
-
-insertSubst :: HID.HoleID -> [Ident] -> WT.WeakTerm -> App ()
-insertSubst holeID xs e =
-  modifyRef' holeSubst $ HS.insert holeID xs e
 
 getHoleSubst :: App HS.HoleSubst
 getHoleSubst =

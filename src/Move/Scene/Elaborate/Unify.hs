@@ -325,7 +325,7 @@ resolveHole ::
   [(C.Constraint, C.Constraint)] ->
   App [SuspendedConstraint]
 resolveHole h susList hole1 xs e2' cs = do
-  insertSubst hole1 xs e2'
+  liftIO $ insertSubst h hole1 xs e2'
   let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member hole1 hs) susList
   let susList1' = map (\(C.SuspendedConstraint (_, c)) -> c) susList1
   simplify h susList2 $ reverse susList1' ++ cs
@@ -502,3 +502,7 @@ simplifyInteger h m t orig = do
 getHoleSubst :: Handle -> IO HS.HoleSubst
 getHoleSubst h =
   readIORef (holeSubstRef h)
+
+insertSubst :: Handle -> HID.HoleID -> [Ident] -> WT.WeakTerm -> IO ()
+insertSubst h holeID xs e =
+  modifyIORef' (holeSubstRef h) $ HS.insert holeID xs e
