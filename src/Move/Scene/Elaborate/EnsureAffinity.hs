@@ -92,13 +92,12 @@ ensureAffinity e = do
   cs <- analyze axis e
   synthesize $ map (bimap weaken weaken) cs
 
-cloneAxis :: Axis -> App Axis
+cloneAxis :: Axis -> IO Axis
 cloneAxis axis = do
-  liftIO $ do
-    foundVarSet <- readIORef $ foundVarSetRef axis
-    foundVarSetRef <- newIORef foundVarSet
-    let mustPerformExpCheck = True
-    return Axis {varEnv = varEnv axis, foundVarSetRef, mustPerformExpCheck}
+  foundVarSet <- readIORef $ foundVarSetRef axis
+  foundVarSetRef <- newIORef foundVarSet
+  let mustPerformExpCheck = True
+  return Axis {varEnv = varEnv axis, foundVarSetRef, mustPerformExpCheck}
 
 deactivateExpCheck :: Axis -> Axis
 deactivateExpCheck axis =
@@ -283,7 +282,7 @@ analyzeClauseList ::
 analyzeClauseList axis (fallbackClause, caseList) = do
   newVarSetRef <- liftIO $ newIORef IntMap.empty
   css <- forM caseList $ \c -> do
-    axis' <- cloneAxis axis
+    axis' <- liftIO $ cloneAxis axis
     cs <- analyzeCase axis' c
     branchVarSet <- liftIO $ readIORef $ foundVarSetRef axis'
     liftIO $ modifyIORef' newVarSetRef $ mergeVarSet branchVarSet
