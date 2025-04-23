@@ -8,6 +8,7 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
@@ -86,7 +87,7 @@ unify h constraintList = do
     [] ->
       liftIO $ getHoleSubst h
     _ ->
-      throwTypeErrors h susList
+      toApp $ throwTypeErrors h susList
 
 unifyCurrentConstraints :: App HS.HoleSubst
 unifyCurrentConstraints = do
@@ -104,13 +105,13 @@ unify' constraintList = do
   h <- new
   simplify h susList $ zip constraintList constraintList
 
-throwTypeErrors :: Handle -> [SuspendedConstraint] -> App a
+throwTypeErrors :: Handle -> [SuspendedConstraint] -> EIO a
 throwTypeErrors h susList = do
   sub <- liftIO $ getHoleSubst h
   errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark h sub c) susList
-  Throw.throw $ E.MakeError errorList
+  throwError $ E.MakeError errorList
 
-constraintToRemark :: Handle -> HS.HoleSubst -> C.Constraint -> App R.Remark
+constraintToRemark :: Handle -> HS.HoleSubst -> C.Constraint -> EIO R.Remark
 constraintToRemark h sub c = do
   case c of
     C.Actual t -> do
@@ -124,11 +125,11 @@ constraintToRemark h sub c = do
       actual' <- fillAsMuchAsPossible h sub actual
       return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMessageEq actual' expected'
 
-fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
+fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 fillAsMuchAsPossible h sub e = do
-  e' <- toApp $ Reduce.reduce (reduceHandle h) e
+  e' <- Reduce.reduce (reduceHandle h) e
   if HS.fillable e' sub
-    then toApp (Fill.fill (fillHandle h) sub e') >>= fillAsMuchAsPossible h sub
+    then Fill.fill (fillHandle h) sub e' >>= fillAsMuchAsPossible h sub
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
@@ -159,7 +160,7 @@ detectPossibleInfiniteLoop h c = do
   let Handle {inlineLimit, currentStep} = h
   when (inlineLimit < currentStep) $ do
     sub <- liftIO $ getHoleSubst h
-    r <- constraintToRemark h sub c
+    r <- toApp $ constraintToRemark h sub c
     Throw.throw $
       E.MakeError
         [ R.attachSuffix r $
