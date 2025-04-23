@@ -439,17 +439,9 @@ strictifyFloatType m x t = do
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictifyFloatType m x arg
         _ ->
-          raiseNonFloatType m x (weaken t')
+          toApp $ raiseNonFloatType m x (weaken t')
     _ :< _ ->
-      raiseNonFloatType m x (weaken t')
-
-raiseNonFloatType :: Hint -> Double -> WT.WeakTerm -> App a
-raiseNonFloatType m x t = do
-  Throw.raiseError m $
-    "The term `"
-      <> T.pack (show x)
-      <> "` is a float, but its type is: "
-      <> toText t
+      toApp $ raiseNonFloatType m x (weaken t')
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
@@ -604,6 +596,14 @@ elaborateClause mOrig cursor ctx decisionCase = do
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
+
+raiseNonFloatType :: Hint -> Double -> WT.WeakTerm -> EIO a
+raiseNonFloatType m x t = do
+  raiseError m $
+    "The term `"
+      <> T.pack (show x)
+      <> "` is a float, but its type is: "
+      <> toText t
 
 raiseLiteralNonExhaustivePatternMatching :: Hint -> EIO a
 raiseLiteralNonExhaustivePatternMatching m =
