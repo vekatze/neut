@@ -155,13 +155,13 @@ increment :: Handle -> Handle
 increment h = do
   h {currentStep = currentStep h + 1}
 
-detectPossibleInfiniteLoop :: Handle -> C.Constraint -> App ()
+detectPossibleInfiniteLoop :: Handle -> C.Constraint -> EIO ()
 detectPossibleInfiniteLoop h c = do
   let Handle {inlineLimit, currentStep} = h
   when (inlineLimit < currentStep) $ do
     sub <- liftIO $ getHoleSubst h
-    r <- toApp $ constraintToRemark h sub c
-    Throw.throw $
+    r <- constraintToRemark h sub c
+    throwError $
       E.MakeError
         [ R.attachSuffix r $
             "\n(Exceeded max recursion depth of "
@@ -181,7 +181,7 @@ simplify h susList constraintList =
       susList' <- simplifyInteger h (WT.metaOf t) t orig
       simplify h (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
-      detectPossibleInfiniteLoop h orig
+      toApp $ detectPossibleInfiniteLoop h orig
       expected' <- toApp $ Reduce.reduce (reduceHandle h) expected
       actual' <- toApp $ Reduce.reduce (reduceHandle h) actual
       if WT.eq expected' actual'
@@ -402,7 +402,7 @@ simplifyActual ::
   C.Constraint ->
   App [SuspendedConstraint]
 simplifyActual h m dataNameSet t orig = do
-  detectPossibleInfiniteLoop h orig
+  toApp $ detectPossibleInfiniteLoop h orig
   t' <- toApp $ Reduce.reduce (reduceHandle h) t
   case t' of
     _ :< WT.Tau -> do
@@ -475,7 +475,7 @@ simplifyInteger ::
   C.Constraint ->
   App [SuspendedConstraint]
 simplifyInteger h m t orig = do
-  detectPossibleInfiniteLoop h orig
+  toApp $ detectPossibleInfiniteLoop h orig
   t' <- toApp $ Reduce.reduce (reduceHandle h) t
   case t' of
     _ :< WT.Prim (WP.Type (PT.Int _)) -> do
