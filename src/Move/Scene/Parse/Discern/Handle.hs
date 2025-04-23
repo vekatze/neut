@@ -13,15 +13,19 @@ import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Env (getMainModule)
+import Move.Context.Global qualified as Global
+import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.Layer
+import Rule.LocalLocator qualified as LL
 import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.NominalEnv
@@ -31,20 +35,27 @@ import Rule.VarDefKind
 data Handle = Handle
   { mainModule :: MainModule,
     gensymHandle :: Gensym.Handle,
+    locatorHandle :: Locator.Handle,
+    globalHandle :: Global.Handle,
+    aliasHandle :: Alias.Handle,
     nameEnv :: NominalEnv,
-    currentModule :: Module,
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
+    unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
     optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     tagMapRef :: IORef LT.LocationTree
   }
 
-new :: Module -> App Handle
-new currentModule = do
+new :: App Handle
+new = do
   mainModule <- getMainModule
   gensymHandle <- Gensym.new
+  locatorHandle <- Locator.new
+  globalHandle <- Global.new
+  aliasHandle <- Alias.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
+  unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
   optDataMapRef <- asks App.optDataMap
   tagMapRef <- asks App.tagMap
   let currentLayer = 0

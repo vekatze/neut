@@ -5,6 +5,7 @@ module Move.Context.UnusedLocalLocator
     registerRemarks,
     get,
     insertIO,
+    deleteIO,
   )
 where
 
@@ -46,3 +47,7 @@ registerRemarks = do
 insertIO :: IORef (Map.HashMap LL.LocalLocator Hint) -> LL.LocalLocator -> Hint -> IO ()
 insertIO ref ll m =
   modifyIORef' ref $ Map.insert ll m
+
+deleteIO :: IORef (Map.HashMap LL.LocalLocator Hint) -> LL.LocalLocator -> IO ()
+deleteIO ref ll =
+  modifyIORef' ref $ Map.delete ll

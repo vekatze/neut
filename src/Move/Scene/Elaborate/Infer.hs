@@ -23,6 +23,7 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Elaborate.Unify (unifyCurrentConstraints)
+import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Name qualified as N
 import Move.Scene.WeakTerm.Reduce qualified as WT
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -134,7 +135,8 @@ getIntType m = do
 getUnitType :: Hint -> App WT.WeakTerm
 getUnitType m = do
   locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
-  (unitDD, _) <- N.resolveName m (N.Locator locator)
+  h <- H.new
+  (unitDD, _) <- toApp $ N.resolveName h m (N.Locator locator)
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
   return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
 

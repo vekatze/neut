@@ -8,19 +8,18 @@ where
 
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
-import Move.Context.App
-import Move.Context.EIO (toApp)
-import Move.Context.Env (getMainModule)
-import Move.Context.Gensym qualified as Gensym
+import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Parse.Discern.Handle qualified as H
 import Rule.ArgNum qualified as AN
 import Rule.Attr.VarGlobal qualified as AttrVG
 import Rule.Const qualified as C
@@ -42,99 +41,95 @@ import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
 
 {-# INLINE resolveName #-}
-resolveName :: Hint -> Name -> App (DD.DefiniteDescription, (Hint, GN.GlobalName))
-resolveName m name = do
-  nameOrErr <- resolveNameOrError m name
+resolveName :: H.Handle -> Hint -> Name -> EIO (DD.DefiniteDescription, (Hint, GN.GlobalName))
+resolveName h m name = do
+  nameOrErr <- resolveNameOrError h m name
   case nameOrErr of
     Left err ->
-      Throw.raiseError m err
+      raiseError m err
     Right pair ->
       return pair
 
 {-# INLINE resolveNameOrError #-}
-resolveNameOrError :: Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
-resolveNameOrError m name =
+resolveNameOrError :: H.Handle -> Hint -> Name -> EIO (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveNameOrError h m name =
   case name of
     Var var -> do
-      resolveVarOrErr m var
+      resolveVarOrErr h m var
     Locator l -> do
-      Right <$> resolveLocator m l True
+      Right <$> resolveLocator h m l True
 
-resolveVarOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
-resolveVarOrErr m name = do
-  localLocator <- Throw.liftEither $ LL.reflect m name
-  h <- Locator.new
-  candList <- liftIO $ Locator.getPossibleReferents h localLocator
-  h' <- Global.new
-  candList' <- toApp $ mapM (Global.lookup h' m) candList
+resolveVarOrErr :: H.Handle -> Hint -> T.Text -> EIO (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveVarOrErr h m name = do
+  localLocator <- liftEither $ LL.reflect m name
+  candList <- liftIO $ Locator.getPossibleReferents (H.locatorHandle h) localLocator
+  candList' <- mapM (Global.lookup (H.globalHandle h) m) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
       return $ Left $ "Undefined symbol: " <> name
     [globalVar@(dd, (mDef, gn))] -> do
-      Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
-      UnusedLocalLocator.delete localLocator
+      liftIO $ Tag.insertGlobalVarIO (H.tagMapRef h) m dd (GN.getIsConstLike gn) mDef
+      liftIO $ UnusedLocalLocator.deleteIO (H.unusedLocalLocatorMapRef h) localLocator
       return $ Right globalVar
     _ -> do
-      mainModule <- getMainModule
-      let foundNameList' = map (Locator.getReadableDD mainModule . fst) foundNameList
+      let foundNameList' = map (Locator.getReadableDD (H.mainModule h) . fst) foundNameList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
 resolveLocator ::
+  H.Handle ->
   Hint ->
   L.Locator ->
   Bool ->
-  App (DD.DefiniteDescription, (Hint, GN.GlobalName))
-resolveLocator m (gl, ll) shouldInsertTag = do
-  h <- Alias.new
-  sgl <- toApp $ Alias.resolveAlias h m gl
+  EIO (DD.DefiniteDescription, (Hint, GN.GlobalName))
+resolveLocator h m (gl, ll) shouldInsertTag = do
+  sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
   let cand = DD.new sgl ll
-  h' <- Global.new
-  cand' <- toApp $ Global.lookup h' m cand
+  cand' <- Global.lookup (H.globalHandle h) m cand
   let foundName = candFilter (cand, cand')
   case foundName of
     Nothing ->
-      Throw.raiseError m $ "Undefined constant: " <> L.reify (gl, ll)
+      raiseError m $ "Undefined constant: " <> L.reify (gl, ll)
     Just globalVar@(dd, (mDef, gn)) -> do
       when shouldInsertTag $ do
         let glLen = T.length $ GL.reify gl
         let llLen = T.length $ LL.reify ll
         let sepLen = T.length C.nsSep
-        Tag.insertLocator m dd (GN.getIsConstLike gn) (glLen + llLen + sepLen) mDef
+        liftIO $ Tag.insertLocatorIO (H.tagMapRef h) m dd (GN.getIsConstLike gn) (glLen + llLen + sepLen) mDef
       return globalVar
 
 resolveConstructor ::
+  H.Handle ->
   Hint ->
   Name ->
-  App (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
-resolveConstructor m s = do
-  (dd, (_, gn)) <- resolveName m s
-  mCons <- resolveConstructorMaybe dd gn
-  case mCons of
+  EIO (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
+resolveConstructor h m s = do
+  (dd, (_, gn)) <- resolveName h m s
+  case resolveConstructorMaybe dd gn of
     Just v ->
       return v
     Nothing ->
-      Throw.raiseError m $ "`" <> DD.reify dd <> "` is not a constructor"
+      raiseError m $ "`" <> DD.reify dd <> "` is not a constructor"
 
 resolveConstructorMaybe ::
   DD.DefiniteDescription ->
   GN.GlobalName ->
-  App (Maybe (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName))
+  Maybe (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
 resolveConstructorMaybe dd gn = do
   case gn of
     GN.DataIntro dataArgNum consArgNum disc isConstLike ->
-      return $ Just (dd, dataArgNum, consArgNum, disc, isConstLike, Nothing)
+      Just (dd, dataArgNum, consArgNum, disc, isConstLike, Nothing)
     _ ->
-      return Nothing
+      Nothing
 
-interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
-interpretGlobalName m dd gn = do
+interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> EIO WT.WeakTerm
+interpretGlobalName h m dd gn = do
   case gn of
     GN.TopLevelFunc argNum isConstLike ->
-      interpretTopLevelFunc m dd argNum isConstLike
+      return $ interpretTopLevelFunc m dd argNum isConstLike
     GN.Data argNum _ isConstLike ->
-      interpretTopLevelFunc m dd argNum isConstLike
+      return $ interpretTopLevelFunc m dd argNum isConstLike
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
@@ -147,7 +142,7 @@ interpretGlobalName m dd gn = do
     GN.PrimOp primOp ->
       case primOp of
         PO.PrimCmpOp {} ->
-          castFromIntToBool $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
+          castFromIntToBool h $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
         _ ->
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
 
@@ -156,22 +151,22 @@ interpretTopLevelFunc ::
   DD.DefiniteDescription ->
   AN.ArgNum ->
   IsConstLike ->
-  App WT.WeakTerm
+  WT.WeakTerm
 interpretTopLevelFunc m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then return $ m :< WT.piElim (m :< WT.VarGlobal attr dd) []
-    else return $ m :< WT.VarGlobal attr dd
+    then m :< WT.piElim (m :< WT.VarGlobal attr dd) []
+    else m :< WT.VarGlobal attr dd
 
-castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
-castFromIntToBool e@(m :< _) = do
+castFromIntToBool :: H.Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+castFromIntToBool h e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
-  l <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
-  (dd, (_, gn)) <- resolveLocator m l False
-  bool <- interpretGlobalName m dd gn
-  t <- Gensym.newHole m []
-  x1 <- Gensym.newIdentFromText "arg"
-  x2 <- Gensym.newIdentFromText "arg"
+  l <- liftEither $ DD.getLocatorPair m C.coreBool
+  (dd, (_, gn)) <- resolveLocator h m l False
+  bool <- interpretGlobalName h m dd gn
+  t <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
+  x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
+  x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   let cmpOpType cod = m :< WT.Pi [] [(m, x1, t), (m, x2, t)] cod
   return $ m :< WT.Magic (M.WeakMagic $ M.Cast (cmpOpType i1) (cmpOpType bool) e)
 

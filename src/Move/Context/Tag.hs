@@ -11,6 +11,7 @@ module Move.Context.Tag
     insertLocalVarIO,
     insertGlobalVarIO,
     insertBinderIO,
+    insertLocatorIO,
   )
 where
 
@@ -103,3 +104,7 @@ insertIO ref mUse locType nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
     modifyIORef' ref $ LT.insert locType (l, (c, c + nameLength)) mDef
+
+insertLocatorIO :: IORef LT.LocationTree -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> IO ()
+insertLocatorIO ref mUse dd isConstLike nameLength mDef = do
+  insertIO ref mUse (LT.SymbolLoc (LT.Global dd isConstLike)) nameLength mDef

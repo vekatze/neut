@@ -101,7 +101,7 @@ discernStmt mo stmt = do
       let m = RT.loc geist
       let functionName = nameLifter $ fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      h <- H.new mo
+      h <- H.new
       (impArgs', nenv) <- discernBinder h impArgs endLoc
       (expArgs', nenv') <- discernBinder nenv expArgs endLoc
       codType' <- discern nenv' codType
@@ -117,7 +117,7 @@ discernStmt mo stmt = do
     RawStmtDefineResource _ m (name, _) (_, discarder) (_, copier) _ -> do
       let dd = nameLifter name
       registerTopLevelName nameLifter stmt
-      h <- H.new mo
+      h <- H.new
       t' <- discern h $ m :< RT.Tau
       e' <- discern h $ m :< RT.Resource dd [] (discarder, []) (copier, [])
       Tag.insertGlobalVar m dd True m
@@ -127,21 +127,21 @@ discernStmt mo stmt = do
       h <- Global.new
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
         toApp $ Global.registerGeist h geist
-        discernGeist mo endLoc geist
+        discernGeist endLoc geist
       return [WeakStmtNominal m geistList']
     RawStmtForeign _ foreignList -> do
       let foreignList' = SE.extract foreignList
-      h <- H.new mo
+      h <- H.new
       foreignList'' <- mapM (mapM (discern h)) foreignList'
       foreign' <- interpretForeign foreignList''
       return [WeakStmtForeign foreign']
 
-discernGeist :: Module -> Loc -> RT.TopGeist -> App (G.Geist WT.WeakTerm)
-discernGeist mo endLoc geist = do
+discernGeist :: Loc -> RT.TopGeist -> App (G.Geist WT.WeakTerm)
+discernGeist endLoc geist = do
   nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
   let impArgs = RT.extractArgs $ RT.impArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
-  h <- H.new mo
+  h <- H.new
   (impArgs', h') <- discernBinder h impArgs endLoc
   (expArgs', h'') <- discernBinder h' expArgs endLoc
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
@@ -264,8 +264,8 @@ discern h term =
                 else
                   raiseLayerError m (H.currentLayer h) layer
         _ -> do
-          (dd, (_, gn)) <- resolveName m name
-          interpretGlobalName m dd gn
+          (dd, (_, gn)) <- toApp $ resolveName h m name
+          toApp $ interpretGlobalName h m dd gn
     m :< RT.Pi impArgs expArgs _ t endLoc -> do
       (impArgs', h') <- discernBinder h (RT.extractArgs impArgs) endLoc
       (expArgs', h'') <- discernBinder h' (RT.extractArgs expArgs) endLoc
@@ -316,7 +316,7 @@ discern h term =
           es' <- mapM (discern h) $ SE.extract es
           return $ m :< WT.PiElim e' es'
     m :< RT.PiElimByKey name _ kvs -> do
-      (dd, _) <- resolveName m name
+      (dd, _) <- toApp $ resolveName h m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       toApp $ ensureFieldLinearity m ks S.empty S.empty
       hKeyArg <- KeyArg.new
@@ -954,7 +954,7 @@ discernPatternRow' h patList newVarList body = do
       body' <- discern h' body
       return ([], ([], [], body'))
     pat : rest -> do
-      (pat', varsInPat) <- discernPattern (H.currentLayer h) pat
+      (pat', varsInPat) <- discernPattern h (H.currentLayer h) pat
       (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
 
@@ -980,10 +980,11 @@ getNonLinearOccurrences vars found nonLinear =
           getNonLinearOccurrences rest (S.insert from found) nonLinear
 
 discernPattern ::
+  H.Handle ->
   Layer ->
   (Hint, RP.RawPattern) ->
   App ((Hint, PAT.Pattern), NominalEnv)
-discernPattern layer (m, pat) = do
+discernPattern h layer (m, pat) = do
   case pat of
     RP.Var name -> do
       case name of
@@ -991,7 +992,7 @@ discernPattern layer (m, pat) = do
           | Just i <- R.readMaybe (T.unpack x) -> do
               return ((m, PAT.Literal (LI.Int i)), [])
           | isConsName x -> do
-              (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m $ Var x
+              (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- toApp $ resolveConstructor h m $ Var x
               unless isConstLike $ do
                 mainModule <- Env.getMainModule
                 let consDD' = Locator.getReadableDD mainModule consDD
@@ -1002,7 +1003,7 @@ discernPattern layer (m, pat) = do
               x' <- Gensym.newIdentFromText x
               return ((m, PAT.Var x'), [(x, (m, x', layer))])
         Locator l -> do
-          (dd, gn) <- resolveName m $ Locator l
+          (dd, gn) <- toApp $ resolveName h m $ Locator l
           case gn of
             (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
               let consInfo =
@@ -1021,13 +1022,13 @@ discernPattern layer (m, pat) = do
               Throw.raiseError m $
                 "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mArgs -> do
-      (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m cons
+      (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- toApp $ resolveConstructor h m cons
       when isConstLike $
         Throw.raiseError m $
           "The constructor `" <> showName cons <> "` cannot have any arguments"
       case mArgs of
         RP.Paren args -> do
-          (args', hList) <- mapAndUnzipM (discernPattern layer) $ SE.extract args
+          (args', hList) <- mapAndUnzipM (discernPattern h layer) $ SE.extract args
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -1042,13 +1043,13 @@ discernPattern layer (m, pat) = do
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
           toApp $ ensureFieldLinearity m ks S.empty S.empty
-          h <- KeyArg.new
-          (_, keyList) <- toApp $ KeyArg.lookup h m consName
+          hKeyArg <- KeyArg.new
+          (_, keyList) <- toApp $ KeyArg.lookup hKeyArg m consName
           defaultKeyMap <- constructDefaultKeyMap m keyList
           let specifiedKeyMap = Map.fromList $ zip ks mvs
           let keyMap = Map.union specifiedKeyMap defaultKeyMap
           reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
-          (patList', hList) <- mapAndUnzipM (discernPattern layer) reorderedArgs
+          (patList', hList) <- mapAndUnzipM (discernPattern h layer) reorderedArgs
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -1063,7 +1064,7 @@ discernPattern layer (m, pat) = do
       let m' = m {metaShouldSaveLocation = False}
       listNil <- Throw.liftEither $ DD.getLocatorPair m' coreListNil
       listCons <- locatorToName m' coreListCons
-      discernPattern layer $ foldListAppPat m' listNil listCons $ SE.extract patList
+      discernPattern h layer $ foldListAppPat m' listNil listCons $ SE.extract patList
     RP.RuneIntro r -> do
       return ((m, PAT.Literal (LI.Rune r)), [])
 
