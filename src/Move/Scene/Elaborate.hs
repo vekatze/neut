@@ -12,7 +12,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.DataDefinition qualified as DataDefinition
 import Move.Context.Decl qualified as Decl
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (EIO, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
@@ -506,11 +506,11 @@ suppress' :: Ident -> Ident
 suppress' (I (_, i)) =
   I (holeLiteral, i)
 
-makeTree :: Hint -> ClauseContext -> App (Ident, PatternTree)
+makeTree :: Hint -> ClauseContext -> EIO (Ident, PatternTree)
 makeTree m ctx =
   case ctx of
     [] ->
-      Throw.raiseCritical m "Scene.Elaborate.makeTree: invalid argument (empty context)"
+      raiseCritical m "Scene.Elaborate.makeTree: invalid argument (empty context)"
     [(v, (mDD, isConstLike, args))] ->
       return (v, Node (DD.localLocator <$> mDD) isConstLike (map (,Leaf) args))
     (v, (dd, isConstLike, args)) : rest -> do
@@ -566,7 +566,7 @@ elaborateDecisionTree ctx mOrig m tree =
             else do
               case fallbackClause of
                 DT.Unreachable -> do
-                  (rootIdent, tBase) <- makeTree mOrig ctx
+                  (rootIdent, tBase) <- toApp $ makeTree mOrig ctx
                   uncoveredPatterns <- forM (S.toList diff) $ \(consDD, isConstLike) -> do
                     h <- KeyArg.new
                     (_, keys) <- toApp $ KeyArg.lookup h m consDD
