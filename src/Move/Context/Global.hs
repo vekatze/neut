@@ -59,12 +59,12 @@ data Handle
   { mainModule :: MainModule,
     locatorHandle :: Locator.Handle,
     keyArgHandle :: KeyArg.Handle,
+    optDataHandle :: OptimizableData.Handle,
     nameMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
     tagMapRef :: IORef LT.LocationTree,
     unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]),
     unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint),
-    optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OD.OptimizableData),
     sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
   }
 
@@ -73,11 +73,11 @@ new = do
   mainModule <- getMainModule
   locatorHandle <- Locator.new
   keyArgHandle <- KeyArg.new
+  optDataHandle <- OptimizableData.new
   nameMapRef <- asks App.nameMap
   geistMapRef <- asks App.geistMap
   tagMapRef <- asks App.tagMap
   sourceNameMapRef <- asks App.sourceNameMap
-  optDataMapRef <- asks App.optDataMap
   unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
   unusedPresetMapRef <- asks App.unusedPresetMap
   return $ Handle {..}
@@ -111,9 +111,9 @@ registerAsEnumIfNecessary ::
   IO ()
 registerAsEnumIfNecessary h dataName dataArgs consInfoList =
   when (hasNoArgs dataArgs consInfoList) $ do
-    OptimizableData.insertIO (optDataMapRef h) dataName OD.Enum
+    OptimizableData.insert (optDataHandle h) dataName OD.Enum
     forM_ consInfoList $ \(_, consName, _, _, _) -> do
-      OptimizableData.insertIO (optDataMapRef h) consName OD.Enum
+      OptimizableData.insert (optDataHandle h) consName OD.Enum
 
 hasNoArgs :: [a] -> [(c, DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =
@@ -127,9 +127,9 @@ registerAsUnaryIfNecessary ::
 registerAsUnaryIfNecessary h dataName consInfoList = do
   case (isUnary consInfoList, length consInfoList == 1) of
     (True, _) -> do
-      OptimizableData.insertIO (optDataMapRef h) dataName OD.Unary
+      OptimizableData.insert (optDataHandle h) dataName OD.Unary
       forM_ consInfoList $ \(_, consName, _, _, _) -> do
-        OptimizableData.insertIO (optDataMapRef h) consName OD.Unary
+        OptimizableData.insert (optDataHandle h) consName OD.Unary
     _ ->
       return ()
 

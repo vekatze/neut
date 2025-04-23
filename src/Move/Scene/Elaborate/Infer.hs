@@ -89,6 +89,7 @@ data Handle
     keyArgHandle :: KeyArg.Handle,
     holeHandle :: Hole.Handle,
     typeHandle :: Type.Handle,
+    optDataHandle :: OptimizableData.Handle,
     varEnv :: BoundVarEnv,
     defMap :: WeakDefinition.DefMap
   }
@@ -105,6 +106,7 @@ new = do
   constraintHandle <- Constraint.new
   weakTypeHandle <- WeakType.new
   weakDeclHandle <- WeakDecl.new
+  optDataHandle <- OptimizableData.new
   holeHandle <- Hole.new
   typeHandle <- Type.new
   let varEnv = []
@@ -405,7 +407,7 @@ infer h term =
               reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
               dataArgs' <- mapM (const $ liftIO $ newTypedHole h m (varEnv h)) [1 .. length dataArgs]
               cursor <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "cursor"
-              od <- OptimizableData.lookup consDD
+              od <- liftIO $ OptimizableData.lookupH (optDataHandle h) consDD
               let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
               liftIO $ WeakType.insert (weakTypeHandle h) cursor t''
               (tree', _ :< treeType) <-
