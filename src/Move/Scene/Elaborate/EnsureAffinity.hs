@@ -73,9 +73,9 @@ mergeVarSet :: IntMap.IntMap Bool -> IntMap.IntMap Bool -> IntMap.IntMap Bool
 mergeVarSet set1 set2 = do
   IntMap.unionWith (||) set1 set2
 
-isExistingVar :: Ident -> Axis -> App (Maybe Bool)
+isExistingVar :: Ident -> Axis -> IO (Maybe Bool)
 isExistingVar i axis = do
-  foundVarSet <- liftIO $ readIORef $ foundVarSetRef axis
+  foundVarSet <- readIORef $ foundVarSetRef axis
   return $ IntMap.lookup (toInt i) foundVarSet
 
 insertVar :: Ident -> Axis -> IO ()
@@ -109,7 +109,7 @@ analyzeVar axis m x = do
   if isCartesian x || not (mustPerformExpCheck axis)
     then return []
     else do
-      boolOrNone <- isExistingVar x axis
+      boolOrNone <- liftIO $ isExistingVar x axis
       case boolOrNone of
         Nothing -> do
           liftIO $ insertVar x axis
