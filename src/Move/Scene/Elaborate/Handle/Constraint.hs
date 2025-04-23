@@ -3,7 +3,7 @@ module Move.Scene.Elaborate.Handle.Constraint
     new,
     get,
     set,
-    insertEqualityConstraint,
+    insert,
     insertActualityConstraint,
     insertIntegerConstraint,
   )
@@ -25,8 +25,8 @@ new = do
   constraintEnvRef <- asks App.constraintEnv
   return $ Handle {..}
 
-insertEqualityConstraint :: Handle -> WT.WeakTerm -> WT.WeakTerm -> IO ()
-insertEqualityConstraint h expected actual = do
+insert :: Handle -> WT.WeakTerm -> WT.WeakTerm -> IO ()
+insert h expected actual = do
   modifyIORef' (constraintEnvRef h) $ (:) (C.Eq expected actual)
 
 insertActualityConstraint :: Handle -> WT.WeakTerm -> IO ()

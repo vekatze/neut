@@ -1,9 +1,6 @@
 module Move.Context.Elaborate
   ( initialize,
     initializeInferenceEnv,
-    insConstraintEnv,
-    insertActualityConstraint,
-    insertIntegerConstraint,
     getConstraintEnv,
     setSuspendedEnv,
     getSuspendedEnv,
@@ -49,18 +46,6 @@ initializeInferenceEnv = do
   writeRef' constraintEnv []
   writeRef' suspendedEnv []
   writeRef' holeEnv IntMap.empty
-
-insConstraintEnv :: WeakTerm -> WeakTerm -> App ()
-insConstraintEnv expected actual = do
-  modifyRef' constraintEnv $ (:) (C.Eq expected actual)
-
-insertActualityConstraint :: WeakTerm -> App ()
-insertActualityConstraint t = do
-  modifyRef' constraintEnv $ (:) (C.Actual t)
-
-insertIntegerConstraint :: WeakTerm -> App ()
-insertIntegerConstraint t = do
-  modifyRef' constraintEnv $ (:) (C.Integer t)
 
 getConstraintEnv :: App [C.Constraint]
 getConstraintEnv =
