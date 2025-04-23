@@ -18,8 +18,6 @@ import Move.Context.App (App)
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical, toApp)
 import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Throw qualified as Throw
-import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -57,6 +55,7 @@ data Handle
     varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
     mustPerformExpCheck :: Bool,
+    typeEnv :: Map.HashMap DD.DefiniteDescription WT.WeakTerm,
     defMap :: WeakDefinition.DefMap
   }
 
@@ -69,6 +68,7 @@ new = do
   weakDefMapRef <- asks App.weakDefMap
   defMap <- liftIO $ readIORef weakDefMapRef
   let mustPerformExpCheck = True
+  typeEnv <- asks App.typeEnv >>= liftIO . readIORef
   return $ Handle {..}
 
 ensureAffinity :: TM.Term -> App [R.Remark]
@@ -111,15 +111,7 @@ cloneHandle h = do
   foundVarSet <- readIORef $ foundVarSetRef h
   foundVarSetRef <- newIORef foundVarSet
   let mustPerformExpCheck = True
-  return $
-    Handle
-      { varEnv = varEnv h,
-        foundVarSetRef,
-        mustPerformExpCheck,
-        defMap = defMap h,
-        substHandle = substHandle h,
-        reduceHandle = reduceHandle h
-      }
+  return $ h {foundVarSetRef, mustPerformExpCheck}
 
 deactivateExpCheck :: Handle -> Handle
 deactivateExpCheck h =
@@ -366,7 +358,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
           dataConsArgsList <-
             if S.member dataName dataNameSet
               then return []
-              else mapM (getConsArgTypes m . fst) consNameList
+              else toApp $ mapM (getConsArgTypes h m . fst) consNameList
           constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
             dataConsArgs' <- toApp $ substConsArgs h IntMap.empty dataConsArgs
             fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
@@ -400,13 +392,22 @@ substConsArgs h sub consArgs =
       return $ (m, x, t') : rest'
 
 getConsArgTypes ::
+  Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  App [BinderF WT.WeakTerm]
-getConsArgTypes m consName = do
-  t <- Type.lookup m consName
+  EIO [BinderF WT.WeakTerm]
+getConsArgTypes h m consName = do
+  t <- lookupType h m consName
   case t of
     _ :< WT.Pi impArgs expArgs _ -> do
       return $ impArgs ++ expArgs
     _ ->
-      Throw.raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
+      raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
+
+lookupType :: Handle -> Hint -> DD.DefiniteDescription -> EIO WT.WeakTerm
+lookupType h m k = do
+  case Map.lookup k (typeEnv h) of
+    Just value ->
+      return value
+    Nothing ->
+      raiseCritical m $ "`" <> DD.reify k <> "` is not found in the term type environment."
