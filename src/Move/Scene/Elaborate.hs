@@ -12,7 +12,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.DataDefinition qualified as DataDefinition
 import Move.Context.Decl qualified as Decl
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
@@ -551,7 +551,7 @@ elaborateDecisionTree ctx mOrig m tree =
       case switchSpec of
         LiteralSwitch -> do
           when (DT.isUnreachable fallbackClause) $ do
-            raiseLiteralNonExhaustivePatternMatching m
+            toApp $ raiseLiteralNonExhaustivePatternMatching m
           fallbackClause' <- elaborateDecisionTree ctx mOrig m fallbackClause
           clauseList' <- mapM (elaborateClause mOrig cursor ctx) clauseList
           return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
@@ -604,9 +604,9 @@ elaborateClause mOrig cursor ctx decisionCase = do
               DT.cont = cont'
             }
 
-raiseLiteralNonExhaustivePatternMatching :: Hint -> App a
+raiseLiteralNonExhaustivePatternMatching :: Hint -> EIO a
 raiseLiteralNonExhaustivePatternMatching m =
-  Throw.raiseError m "Pattern matching on literals must have a fallback clause"
+  raiseError m "Pattern matching on literals must have a fallback clause"
 
 raiseEmptyNonExhaustivePatternMatching :: Hint -> App a
 raiseEmptyNonExhaustivePatternMatching m =
