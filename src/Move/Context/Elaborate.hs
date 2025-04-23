@@ -4,7 +4,6 @@ module Move.Context.Elaborate
     insConstraintEnv,
     insertActualityConstraint,
     insertIntegerConstraint,
-    setConstraintEnv,
     getConstraintEnv,
     setSuspendedEnv,
     getSuspendedEnv,
@@ -66,10 +65,6 @@ insertIntegerConstraint t = do
 getConstraintEnv :: App [C.Constraint]
 getConstraintEnv =
   readRef' constraintEnv
-
-setConstraintEnv :: [C.Constraint] -> App ()
-setConstraintEnv =
-  writeRef' constraintEnv
 
 getSuspendedEnv :: App [C.SuspendedConstraint]
 getSuspendedEnv =

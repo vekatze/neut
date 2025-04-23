@@ -25,6 +25,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -62,10 +63,10 @@ data Handle = Handle
     fillHandle :: Fill.Handle,
     typeHandle :: Type.Handle,
     gensymHandle :: Gensym.Handle,
+    constraintHandle :: Constraint.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
-    constraintEnvRef :: IORef [C.Constraint],
     suspendedEnvRef :: IORef [C.SuspendedConstraint],
     typeEnv :: Map.HashMap DD.DefiniteDescription WT.WeakTerm,
     defMap :: WeakDefinition.DefMap
@@ -78,13 +79,13 @@ new = do
   fillHandle <- Fill.new
   typeHandle <- Type.new
   gensymHandle <- Gensym.new
+  constraintHandle <- Constraint.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   defMap <- WeakDefinition.read
   let currentStep = 0
   holeSubstRef <- asks App.holeSubst
   suspendedEnvRef <- asks App.suspendedEnv
-  constraintEnvRef <- asks App.constraintEnv
   typeEnv <- asks App.typeEnv >>= liftIO . readIORef
   return $ Handle {..}
 
@@ -100,9 +101,9 @@ unify h constraintList = do
 unifyCurrentConstraints :: Handle -> EIO HS.HoleSubst
 unifyCurrentConstraints h = do
   susList <- liftIO $ readIORef (suspendedEnvRef h)
-  cs <- liftIO $ readIORef (constraintEnvRef h)
+  cs <- liftIO $ Constraint.get (constraintHandle h)
   susList' <- simplify h susList $ zip cs cs
-  liftIO $ writeIORef (constraintEnvRef h) []
+  liftIO $ Constraint.set (constraintHandle h) []
   liftIO $ writeIORef (suspendedEnvRef h) susList'
   liftIO $ getHoleSubst h
 
