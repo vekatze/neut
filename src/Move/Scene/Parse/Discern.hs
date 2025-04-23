@@ -359,7 +359,7 @@ discern h term =
       t' <- discern h t
       return $ m :< WT.BoxNoema t'
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
-      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx h x
+      xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> toApp (discernIdent mx h x)
       xets <- discernNoeticVarList True xsOuter
       let innerLayer = H.currentLayer h - 1
       let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
@@ -377,7 +377,7 @@ discern h term =
       let patParam = (mx, pat, [], [], t)
       let e2' = m' :< RT.Let (RT.Plain False) [] patParam [] [] (m' :< RT.Var (Var tmp)) [] startLoc [] e2 endLoc
       -- inner
-      ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my h y
+      ysOuter <- forM (SE.extract mys) $ \(my, y) -> toApp (discernIdent my h y)
       yetsInner <- discernNoeticVarList True ysOuter
       let innerLayer = H.currentLayer h + layerOffset nv
       let ysInner = map (\((myUse, y, myDef :< _), _) -> (myDef, (myUse, y))) yetsInner
@@ -870,13 +870,13 @@ constructEitherBinder h m mx m1 pat tmpVar cont endLoc = do
         (SE.fromList'' [m1' :< RT.Var (Var tmpVar)])
         (SE.fromList SE.Brace SE.Bar [longClause, shortClause])
 
-discernIdent :: Hint -> H.Handle -> RawIdent -> App (Hint, (Hint, Ident))
+discernIdent :: Hint -> H.Handle -> RawIdent -> EIO (Hint, (Hint, Ident))
 discernIdent mUse h x =
   case lookup x (H.nameEnv h) of
     Nothing ->
-      Throw.raiseError mUse $ "Undefined variable: " <> x
+      raiseError mUse $ "Undefined variable: " <> x
     Just (mDef, x', _) -> do
-      UnusedVariable.delete x'
+      liftIO $ H.deleteUnusedVariable h x'
       return (mDef, (mUse, x'))
 
 discernBinder ::

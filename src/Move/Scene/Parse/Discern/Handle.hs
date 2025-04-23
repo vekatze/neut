@@ -6,6 +6,7 @@ module Move.Scene.Parse.Discern.Handle
     extendWithoutInsert,
     extendByNominalEnv,
     lookupOD,
+    deleteUnusedVariable,
   )
 where
 
@@ -13,6 +14,7 @@ import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Data.Set qualified as S
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
@@ -44,6 +46,7 @@ data Handle = Handle
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
+    usedVariableSetRef :: IORef (S.Set Int),
     optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     tagMapRef :: IORef LT.LocationTree
   }
@@ -59,6 +62,7 @@ new = do
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
+  usedVariableSetRef <- asks App.usedVariableSet
   optDataMapRef <- asks App.optDataMap
   tagMapRef <- asks App.tagMap
   let currentLayer = 0
@@ -89,6 +93,10 @@ extendByNominalEnv h k newNominalEnv = do
 insertUnusedVariable :: Handle -> Hint -> Ident -> VarDefKind -> IO ()
 insertUnusedVariable h m x k =
   modifyIORef' (unusedVariableMapRef h) $ IntMap.insert (Ident.toInt x) (m, x, k)
+
+deleteUnusedVariable :: Handle -> Ident -> IO ()
+deleteUnusedVariable h x =
+  modifyIORef' (usedVariableSetRef h) $ S.insert (Ident.toInt x)
 
 lookupOD :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOD h dd = do
