@@ -1,8 +1,5 @@
 module Move.Scene.WeakTerm.Reduce (reduce) where
 
-import Move.Context.App
-import Move.Context.Env qualified as Env
-import Move.Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
@@ -11,6 +8,11 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.EIO (toApp)
+import Move.Context.Env qualified as Env
+import Move.Context.Throw qualified as Throw
+import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
@@ -26,7 +28,6 @@ import Rule.Source
 import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
-import Move.Scene.WeakTerm.Subst qualified as Subst
 
 type InlineLimit =
   Int
@@ -35,17 +36,19 @@ type CurrentStep =
   Int
 
 data Axis = Axis
-  { currentStepRef :: IORef CurrentStep,
+  { substHandle :: Subst.Handle,
+    currentStepRef :: IORef CurrentStep,
     inlineLimit :: InlineLimit,
     location :: H.Hint
   }
 
 new :: H.Hint -> App Axis
-new m = do
+new location = do
+  substHandle <- Subst.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   currentStepRef <- liftIO $ newIORef 0
-  return Axis {currentStepRef = currentStepRef, inlineLimit, location = m}
+  return Axis {..}
 
 detectPossibleInfiniteLoop :: Axis -> App ()
 detectPossibleInfiniteLoop axis = do
@@ -105,7 +108,7 @@ reduce' ax term = do
             length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')
-              Subst.subst sub body >>= reduce' ax
+              toApp (Subst.subst (substHandle ax) sub body) >>= reduce' ax
         (_ :< WT.Prim (WP.Value (WPV.Op op)))
           | Just (op', cod) <- WPV.reflectFloatUnaryOp op,
             [Just value] <- map asPrimFloatValue es' -> do
@@ -153,7 +156,7 @@ reduce' ax term = do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              Subst.subst sub (WT.fromLetSeq letSeq e) >>= reduce' ax
+              toApp (Subst.subst (substHandle ax) sub (WT.fromLetSeq letSeq e)) >>= reduce' ax
             DT.Unreachable ->
               return $ m :< WT.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -162,7 +165,7 @@ reduce' ax term = do
                   | (newBaseCursorList, cont) <- findClause discriminant fallbackTree caseList -> do
                       let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                       let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                      cont' <- Subst.substDecisionTree sub cont
+                      cont' <- toApp $ Subst.substDecisionTree (substHandle ax) sub cont
                       reduce' ax $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
                 _ -> do
                   decisionTree' <- reduceDecisionTree ax decisionTree
@@ -185,7 +188,7 @@ reduce' ax term = do
         WT.Clear -> do
           detectPossibleInfiniteLoop ax
           let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
-          Subst.subst sub e2 >>= reduce' ax
+          toApp (Subst.subst (substHandle ax) sub e2) >>= reduce' ax
         _ -> do
           e2' <- reduce' ax e2
           return $ m :< WT.Let opacity mxt e1' e2'

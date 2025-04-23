@@ -45,7 +45,8 @@ type VarEnv = IntMap.IntMap TM.Term
 
 data Axis
   = Axis
-  { varEnv :: VarEnv,
+  { substHandle :: Subst.Handle,
+    varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
     mustPerformExpCheck :: Bool,
     defMap :: WeakDefinition.DefMap
@@ -54,12 +55,13 @@ data Axis
 ensureAffinity :: TM.Term -> App [R.Remark]
 ensureAffinity e = do
   defMap <- WeakDefinition.read
-  axis <- liftIO $ createNewAxis defMap
+  substHandle <- Subst.new
+  axis <- liftIO $ createNewAxis substHandle defMap
   cs <- analyze axis e
   synthesize axis $ map (bimap weaken weaken) cs
 
-createNewAxis :: WeakDefinition.DefMap -> IO Axis
-createNewAxis defMap = do
+createNewAxis :: Subst.Handle -> WeakDefinition.DefMap -> IO Axis
+createNewAxis substHandle defMap = do
   let varEnv = IntMap.empty
   foundVarSetRef <- newIORef IntMap.empty
   let mustPerformExpCheck = True
@@ -99,7 +101,14 @@ cloneAxis axis = do
   foundVarSet <- readIORef $ foundVarSetRef axis
   foundVarSetRef <- newIORef foundVarSet
   let mustPerformExpCheck = True
-  return $ Axis {varEnv = varEnv axis, foundVarSetRef, mustPerformExpCheck, defMap = defMap axis}
+  return $
+    Axis
+      { varEnv = varEnv axis,
+        foundVarSetRef,
+        mustPerformExpCheck,
+        defMap = defMap axis,
+        substHandle = substHandle axis
+      }
 
 deactivateExpCheck :: Axis -> Axis
 deactivateExpCheck axis =
@@ -349,7 +358,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
               then return []
               else mapM (getConsArgTypes m . fst) consNameList
           constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-            dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
+            dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
             fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
               simplifyAffine h dataNameSet' (consArg, orig)
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
@@ -368,16 +377,16 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
         _ -> do
           return [AffineConstraintError orig]
 
-substConsArgs :: WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
-substConsArgs sub consArgs =
+substConsArgs :: Axis -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
+substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- Subst.subst sub t
+      t' <- toApp $ Subst.subst (substHandle h) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (toInt x) (Right opaque) sub
-      rest' <- substConsArgs sub' rest
+      rest' <- substConsArgs h sub' rest
       return $ (m, x, t') : rest'
 
 getConsArgTypes ::

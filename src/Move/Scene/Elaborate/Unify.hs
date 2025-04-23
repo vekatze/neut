@@ -4,13 +4,6 @@ module Move.Scene.Elaborate.Unify
   )
 where
 
-import Move.Context.App
-import Move.Context.Elaborate
-import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
-import Move.Context.Throw qualified as Throw
-import Move.Context.Type qualified as Type
-import Move.Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -19,6 +12,17 @@ import Data.List (partition)
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.EIO (toApp)
+import Move.Context.Elaborate
+import Move.Context.Env qualified as Env
+import Move.Context.Gensym qualified as Gensym
+import Move.Context.Throw qualified as Throw
+import Move.Context.Type qualified as Type
+import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Scene.WeakTerm.Fill
+import Move.Scene.WeakTerm.Reduce
+import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
@@ -46,9 +50,6 @@ import Rule.WeakTerm.Eq qualified as WT
 import Rule.WeakTerm.FreeVars
 import Rule.WeakTerm.Holes
 import Rule.WeakTerm.ToText
-import Move.Scene.WeakTerm.Fill
-import Move.Scene.WeakTerm.Reduce
-import Move.Scene.WeakTerm.Subst qualified as Subst
 
 unify :: [C.Constraint] -> App HS.HoleSubst
 unify constraintList = do
@@ -122,19 +123,22 @@ constructErrorMessageInteger t =
     <> toText t
 
 data Axis = Axis
-  { inlineLimit :: Int,
+  { substHandle :: Subst.Handle,
+    inlineLimit :: Int,
     currentStep :: Int,
     defMap :: WeakDefinition.DefMap
   }
 
 newAxis :: App Axis
 newAxis = do
+  substHandle <- Subst.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   defMap <- WeakDefinition.read
   return
     Axis
-      { inlineLimit = inlineLimit,
+      { substHandle = substHandle,
+        inlineLimit = inlineLimit,
         currentStep = 0,
         defMap = defMap
       }
@@ -181,7 +185,7 @@ simplify ax susList constraintList =
                 length expArgs1 == length expArgs2 -> do
                   xt1 <- asWeakBinder m1 cod1
                   xt2 <- asWeakBinder m2 cod2
-                  cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
+                  cs' <- simplifyBinder ax orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
                   simplify ax susList $ cs' ++ cs
             (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
               | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
@@ -191,7 +195,7 @@ simplify ax susList constraintList =
                 length expArgs1 == length expArgs2 -> do
                   yt1 <- asWeakBinder m1 e1
                   yt2 <- asWeakBinder m2 e2
-                  cs' <- simplifyBinder orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
+                  cs' <- simplifyBinder ax orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
                   simplify ax susList $ cs' ++ cs
               | AttrL.Attr {lamKind = LK.Normal codType1} <- kind1,
                 AttrL.Attr {lamKind = LK.Normal codType2} <- kind2,
@@ -201,7 +205,7 @@ simplify ax susList constraintList =
                   xt1 <- asWeakBinder m1 e1
                   cod2 <- asWeakBinder m2 codType2
                   xt2 <- asWeakBinder m2 e2
-                  cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
+                  cs' <- simplifyBinder ax orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
                   simplify ax susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,
@@ -224,7 +228,7 @@ simplify ax susList constraintList =
               | length letSeq1 == length letSeq2 -> do
                   let (xts1, es1) = unzip letSeq1
                   let (xts2, es2) = unzip letSeq2
-                  cs' <- simplifyBinder orig xts1 xts2
+                  cs' <- simplifyBinder ax orig xts1 xts2
                   let cs'' = map (orig,) $ zipWith C.Eq es1 es2
                   simplify ax susList $ (C.Eq e1 e2, orig) : cs' ++ cs'' ++ cs
             (_ :< WT.Annotation _ _ e1, e2) ->
@@ -316,25 +320,27 @@ resolveHole ax susList h1 xs e2' cs = do
   simplify ax susList2 $ reverse susList1' ++ cs
 
 simplifyBinder ::
+  Axis ->
   C.Constraint ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
   App [(C.Constraint, C.Constraint)]
-simplifyBinder orig =
-  simplifyBinder' orig IntMap.empty
+simplifyBinder h orig =
+  simplifyBinder' h orig IntMap.empty
 
 simplifyBinder' ::
+  Axis ->
   C.Constraint ->
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
   App [(C.Constraint, C.Constraint)]
-simplifyBinder' orig sub args1 args2 =
+simplifyBinder' h orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
-      t2' <- Subst.subst sub t2
+      t2' <- toApp $ Subst.subst (substHandle h) sub t2
       let sub' = IntMap.insert (Ident.toInt x2) (Right (m1 :< WT.Var x1)) sub
-      rest <- simplifyBinder' orig sub' xts1 xts2
+      rest <- simplifyBinder' h orig sub' xts1 xts2
       return $ (C.Eq t1 t2', orig) : rest
     _ ->
       return []
@@ -402,7 +408,7 @@ simplifyActual ax m dataNameSet t orig = do
           then return []
           else mapM (getConsArgTypes m . fst) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
+        dataConsArgs' <- substConsArgs ax IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual ax m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
@@ -431,16 +437,16 @@ simplifyActual ax m dataNameSet t orig = do
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
 
-substConsArgs :: Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
-substConsArgs sub consArgs =
+substConsArgs :: Axis -> Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
+substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- Subst.subst sub t
+      t' <- toApp $ Subst.subst (substHandle h) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (Ident.toInt x) (Right opaque) sub
-      rest' <- substConsArgs sub' rest
+      rest' <- substConsArgs h sub' rest
       return $ (m, x, t') : rest'
 
 getConsArgTypes ::

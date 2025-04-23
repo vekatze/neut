@@ -23,14 +23,17 @@ module Move.Context.Elaborate
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
-import Move.Context.Gensym qualified as Gensym
-import Move.Context.Throw qualified as Throw
-import Move.Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.App.Internal
+import Move.Context.EIO (toApp)
+import Move.Context.Gensym qualified as Gensym
+import Move.Context.Throw qualified as Throw
+import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Scene.WeakTerm.Reduce qualified as WT
+import Move.Scene.WeakTerm.Subst qualified as WT
 import Rule.Binder
 import Rule.Constraint qualified as C
 import Rule.Hint
@@ -40,8 +43,6 @@ import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.WeakTerm
 import Rule.WeakTerm qualified as WT
-import Move.Scene.WeakTerm.Reduce qualified as WT
-import Move.Scene.WeakTerm.Subst qualified as WT
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -171,12 +172,13 @@ fillHole ::
   App WT.WeakTerm
 fillHole m h es = do
   holeSubst <- getHoleSubst
+  substHandle <- WT.new
   case HS.lookup h holeSubst of
     Nothing ->
       Throw.raiseError m $ "Could not instantiate the hole here: " <> T.pack (show h)
     Just (xs, e)
       | length xs == length es -> do
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-          WT.subst s e
+          toApp $ WT.subst substHandle s e
       | otherwise ->
           Throw.raiseError m "Arity mismatch"

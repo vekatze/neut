@@ -3,12 +3,15 @@ module Move.Scene.WeakTerm.Fill
   )
 where
 
-import Move.Context.App
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Move.Context.App
+import Move.Context.EIO (toApp)
+import Move.Scene.WeakTerm.Reduce
+import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Annotation qualified as AN
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
@@ -18,8 +21,6 @@ import Rule.Ident.Reify qualified as Ident
 import Rule.LamKind qualified as LK
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText (toText)
-import Move.Scene.WeakTerm.Reduce
-import Move.Scene.WeakTerm.Subst
 import Prelude hiding (lookup)
 
 fill :: HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
@@ -105,7 +106,8 @@ fill sub term =
         Just (xs, body)
           | length xs == length es -> do
               let varList = map Ident.toInt xs
-              subst (IntMap.fromList $ zip varList (map Right es')) body >>= reduce
+              h <- Subst.new
+              toApp (Subst.subst h (IntMap.fromList $ zip varList (map Right es')) body) >>= reduce
           | otherwise -> do
               error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\n" ++ show (map toText es') ++ "\nhole id = " ++ show i
         Nothing ->

@@ -142,8 +142,9 @@ getUnitType m = do
 
 createNewAxis :: App Axis
 createNewAxis = do
+  substHandle <- Subst.new
   let varEnv = []
-  return Axis {varEnv}
+  return Axis {..}
 
 extendAxis :: BinderF WT.WeakTerm -> Axis -> Axis
 extendAxis (mx, x, t) axis = do
@@ -153,8 +154,11 @@ extendAxis' :: BinderF WT.WeakTerm -> Axis -> Axis
 extendAxis' (mx, x, t) axis = do
   axis {varEnv = (mx, x, t) : varEnv axis}
 
-newtype Axis
-  = Axis {varEnv :: BoundVarEnv}
+data Axis
+  = Axis
+  { substHandle :: Subst.Handle,
+    varEnv :: BoundVarEnv
+  }
 
 infer :: Axis -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer axis term =
@@ -198,14 +202,14 @@ infer axis term =
       inferPiElim axis m etl etls
     m :< WT.PiElimExact e -> do
       (e', t) <- infer axis e
-      t' <- resolveType t
+      t' <- resolveType axis t
       case t' of
         _ :< WT.Pi impArgs expArgs codType -> do
           holes <- mapM (const $ newHole m $ varEnv axis) impArgs
           let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impArgs) (map Right holes)
-          (expArgs', _) <- Subst.subst' sub expArgs
+          (expArgs', _) <- toApp $ Subst.subst' (substHandle axis) sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
-          codType' <- Subst.subst sub codType
+          codType' <- toApp $ Subst.subst (substHandle axis) sub codType
           lamID <- Gensym.newCount
           infer axis $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim e' expArgs'')
         _ ->
@@ -252,7 +256,7 @@ infer axis term =
       return (e', t')
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer axis e1
-      t' <- inferType axis t >>= resolveType
+      t' <- inferType axis t >>= resolveType axis
       insWeakTypeEnv x t'
       case opacity of
         WT.Noetic ->
@@ -365,7 +369,7 @@ infer axis term =
       return (m :< WT.Resource dd resourceID unitType' discarder' copier', m :< WT.Tau)
     m :< WT.Use e@(mt :< _) xts cont -> do
       (e', t') <- infer axis e
-      t'' <- resolveType t'
+      t'' <- resolveType axis t'
       case t'' of
         _ :< WT.Data attr _ dataArgs
           | AttrD.Attr {..} <- attr,
@@ -456,20 +460,21 @@ constructDefaultKeyMap axis m keyList = do
   return $ Map.fromList $ zipWith (\k (v, t) -> (k, (m, v, t))) keyList $ zip names ts
 
 inferArgs ::
+  Axis ->
   WT.SubstWeakTerm ->
   Hint ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
   App WT.WeakTerm
-inferArgs sub m args1 args2 cod =
+inferArgs ax sub m args1 args2 cod =
   case (args1, args2) of
     ([], []) ->
-      Subst.subst sub cod
+      toApp $ Subst.subst (substHandle ax) sub cod
     ((e, t) : ets, (_, x, tx) : xts) -> do
-      tx' <- Subst.subst sub tx
+      tx' <- toApp $ Subst.subst (substHandle ax) sub tx
       insConstraintEnv tx' t
-      inferArgs (IntMap.insert (Ident.toInt x) (Right e) sub) m ets xts cod
+      inferArgs ax (IntMap.insert (Ident.toInt x) (Right e) sub) m ets xts cod
     _ ->
       Throw.raiseCritical m "Invalid argument passed to inferArgs"
 
@@ -523,30 +528,31 @@ inferPiElim ::
   [(WT.WeakTerm, WT.WeakTerm)] ->
   App (WT.WeakTerm, WT.WeakTerm)
 inferPiElim axis m (e, t) expArgs = do
-  t' <- resolveType t
+  t' <- resolveType axis t
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       ensureArityCorrectness e (length expPiArgs) (length expArgs)
       impArgs <- mapM (const $ newTypedHole m $ varEnv axis) [1 .. length impPiArgs]
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
-      _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
+      _ :< cod' <- inferArgs axis IntMap.empty m args piArgs cod
       return (m :< WT.PiElim e (map fst args), m :< cod')
     _ ->
       Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
 
 inferPiElimExplicit ::
+  Axis ->
   Hint ->
   (WT.WeakTerm, WT.WeakTerm) ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
   App (WT.WeakTerm, WT.WeakTerm)
-inferPiElimExplicit m (e, t) args = do
-  t' <- resolveType t
+inferPiElimExplicit axis m (e, t) args = do
+  t' <- resolveType axis t
   case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       let piArgs = impPiArgs ++ expPiArgs
       ensureArityCorrectness e (length piArgs) (length args)
-      _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
+      _ :< cod' <- inferArgs axis IntMap.empty m args piArgs cod
       return (m :< WT.PiElim e (map fst args), m :< cod')
     _ ->
       Throw.raiseError m $ "Expected a function type, but got: " <> toText t'
@@ -597,9 +603,9 @@ inferLet ::
   Axis ->
   (BinderF WT.WeakTerm, WT.WeakTerm) ->
   App (BinderF WT.WeakTerm, WT.WeakTerm)
-inferLet varEnv ((mx, x, t), e1) = do
-  (e1', t1') <- infer varEnv e1
-  t' <- inferType varEnv t >>= resolveType
+inferLet ax ((mx, x, t), e1) = do
+  (e1', t1') <- infer ax e1
+  t' <- inferType ax t >>= resolveType ax
   insWeakTypeEnv x t'
   insConstraintEnv t' t1'
   return ((mx, x, t'), e1')
@@ -669,7 +675,7 @@ inferClause axis cursorType@(_ :< cursorTypeInner) decisionCase = do
       let argNum = AN.fromInt $ length dataArgs + length consArgs
       let attr = AttrVG.Attr {..}
       consTerm <- infer axis $ m :< WT.VarGlobal attr consDD
-      (_, tPat) <- inferPiElimExplicit m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+      (_, tPat) <- inferPiElimExplicit axis m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
       insConstraintEnv cursorType tPat
       (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
       return
@@ -682,13 +688,13 @@ inferClause axis cursorType@(_ :< cursorTypeInner) decisionCase = do
           tCont
         )
 
-resolveType :: WT.WeakTerm -> App WT.WeakTerm
-resolveType t = do
+resolveType :: Axis -> WT.WeakTerm -> App WT.WeakTerm
+resolveType ax t = do
   sub <- unifyCurrentConstraints
-  reduceWeakType' sub t
+  reduceWeakType' ax sub t
 
-reduceWeakType' :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
-reduceWeakType' sub e = do
+reduceWeakType' :: Axis -> HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
+reduceWeakType' ax sub e = do
   e' <- WT.reduce e
   case e' of
     m :< WT.Hole h es ->
@@ -698,14 +704,14 @@ reduceWeakType' sub e = do
         Just (xs, body)
           | length xs == length es -> do
               let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-              WT.subst s body >>= reduceWeakType' sub
+              toApp (WT.subst (substHandle ax) s body) >>= reduceWeakType' ax sub
           | otherwise ->
               Throw.raiseError m "Arity mismatch"
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
       mLam <- WeakDefinition.lookup name
       case mLam of
         Just lam ->
-          reduceWeakType' sub $ m :< WT.PiElim lam args
+          reduceWeakType' ax sub $ m :< WT.PiElim lam args
         Nothing -> do
           return e'
     _ ->
