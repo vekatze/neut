@@ -1,7 +1,5 @@
 module Move.Context.Decl
   ( initialize,
-    insPreDeclEnv,
-    lookupPreDeclEnv,
     insWeakDeclEnv,
     lookupWeakDeclEnv,
   )
@@ -15,7 +13,6 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Throw qualified as Throw
 import Rule.DeclarationName qualified as DN
-import Rule.ExternalName qualified as EN
 import Rule.Foreign qualified as F
 import Rule.ForeignCodType qualified as FCT
 import Rule.Hint
@@ -29,19 +26,6 @@ initialize = do
   arch <- toApp $ Env.getArch Nothing
   forM_ (F.defaultWeakForeignList arch) $ \(F.Foreign _ name domList cod) -> do
     insWeakDeclEnv (DN.Ext name) domList cod
-
-insPreDeclEnv :: EN.ExternalName -> Hint -> App ()
-insPreDeclEnv k m =
-  modifyRef' preDeclEnv $ Map.insert k m
-
-lookupPreDeclEnv :: Hint -> EN.ExternalName -> App Hint
-lookupPreDeclEnv m name = do
-  denv <- readRef' preDeclEnv
-  case Map.lookup name denv of
-    Just typeInfo ->
-      return typeInfo
-    Nothing -> do
-      Throw.raiseError m $ "Undeclared function: " <> EN.reify name
 
 insWeakDeclEnv :: DN.DeclarationName -> [WT.WeakTerm] -> FCT.ForeignCodType WT.WeakTerm -> App ()
 insWeakDeclEnv k domList cod =
