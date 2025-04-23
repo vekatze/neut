@@ -2,6 +2,7 @@ module Move.Scene.Parse.Discern (discernStmtList) where
 
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
@@ -303,12 +304,12 @@ discern h term =
         _ :< RT.Var (Var c)
           | c == "new-cell",
             [arg] <- SE.extract es -> do
-              newCellDD <- locatorToVarGlobal m coreCellNewCell
+              newCellDD <- toApp $ liftEither $ locatorToVarGlobal m coreCellNewCell
               e' <- discern h $ m :< RT.piElim newCellDD [arg]
               return $ m :< WT.Actual e'
           | c == "new-channel",
             [] <- SE.extract es -> do
-              newChannelDD <- locatorToVarGlobal m coreChannelNewChannel
+              newChannelDD <- toApp $ liftEither $ locatorToVarGlobal m coreChannelNewChannel
               e' <- discern h $ m :< RT.piElim newChannelDD []
               return $ m :< WT.Actual e'
         _ -> do
@@ -397,7 +398,7 @@ discern h term =
         forM_ ysCont $ UnusedVariable.delete . snd
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
     m :< RT.Embody e -> do
-      embodyVar <- locatorToVarGlobal m coreBoxEmbody
+      embodyVar <- toApp $ liftEither $ locatorToVarGlobal m coreBoxEmbody
       discern h $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
@@ -444,7 +445,7 @@ discern h term =
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
     m :< RT.Resource dd _ (discarder, _) (copier, _) -> do
-      unitType <- locatorToVarGlobal m coreUnit >>= discern h
+      unitType <- toApp (liftEither $ locatorToVarGlobal m coreUnit) >>= discern h
       resourceID <- Gensym.newCount
       discarder' <- discern h discarder
       copier' <- discern h copier
@@ -461,22 +462,22 @@ discern h term =
       discern h $ foldIf m boolTrue boolFalse ifCond ifBody elseIfClauseList elseBody
     m :< RT.Seq (e1, _) _ e2 -> do
       hole <- Gensym.newTextForHole
-      unit <- locatorToVarGlobal m coreUnit
+      unit <- toApp $ liftEither $ locatorToVarGlobal m coreUnit
       discern h $ bind fakeLoc fakeLoc (m, hole, [], [], unit) e1 e2
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
-      unitUnit <- locatorToVarGlobal m coreUnitUnit
+      unitUnit <- toApp $ liftEither $ locatorToVarGlobal m coreUnitUnit
       discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
     m :< RT.ListIntro es -> do
       let m' = m {metaShouldSaveLocation = False}
-      listNil <- locatorToVarGlobal m' coreListNil
-      listCons <- locatorToVarGlobal m' coreListCons
+      listNil <- toApp $ liftEither $ locatorToVarGlobal m' coreListNil
+      listCons <- toApp $ liftEither $ locatorToVarGlobal m' coreListCons
       discern h $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
-      panic <- locatorToVarGlobal m coreTrickUnsafePanic
-      textType <- locatorToVarGlobal m coreText
+      panic <- toApp $ liftEither $ locatorToVarGlobal m coreTrickUnsafePanic
+      textType <- toApp $ liftEither $ locatorToVarGlobal m coreText
       discern h $
         asOpaqueValue $
           m
@@ -490,20 +491,20 @@ discern h term =
               )
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
-      detachVar <- locatorToVarGlobal m coreThreadDetach
+      detachVar <- toApp $ liftEither $ locatorToVarGlobal m coreThreadDetach
       cod <- Gensym.newPreHole (blur m)
       discern h $ m :< RT.piElim detachVar [t, RT.lam fakeLoc m [] cod e]
     m :< RT.Attach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
-      attachVar <- locatorToVarGlobal m coreThreadAttach
+      attachVar <- toApp $ liftEither $ locatorToVarGlobal m coreThreadAttach
       discern h $ m :< RT.piElim attachVar [t, e]
     m :< RT.Option t -> do
-      eitherVar <- locatorToVarGlobal m coreEither
-      unit <- locatorToVarGlobal m coreUnit
+      eitherVar <- toApp $ liftEither $ locatorToVarGlobal m coreEither
+      unit <- toApp $ liftEither $ locatorToVarGlobal m coreUnit
       discern h $ m :< RT.piElim eitherVar [unit, t]
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
-      assert <- locatorToVarGlobal m coreTrickAssert
-      textType <- locatorToVarGlobal m coreText
+      assert <- toApp $ liftEither $ locatorToVarGlobal m coreTrickAssert
+      textType <- toApp $ liftEither $ locatorToVarGlobal m coreText
       let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
       cod <- Gensym.newPreHole (blur m)
       discern h $
@@ -521,7 +522,7 @@ discern h term =
       case contentOrNone of
         Just (path, content) -> do
           UnusedStaticFile.delete key
-          textType <- locatorToVarGlobal m coreText >>= discern h
+          textType <- toApp (liftEither $ locatorToVarGlobal m coreText) >>= discern h
           Tag.insertFileLoc mKey (T.length key) (newSourceHint path)
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText textType content)
         Nothing ->
@@ -616,7 +617,7 @@ discernMagic h m magic =
       return $ M.WeakMagic $ M.Cast from' to' e'
     RT.Store _ (_, (t, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
       t' <- discern h t
-      unit <- locatorToVarGlobal m coreUnit >>= discern h
+      unit <- toApp (liftEither $ locatorToVarGlobal m coreUnit) >>= discern h
       value' <- discern h value
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.Store t' unit value' pointer'
@@ -815,7 +816,7 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
       Throw.raiseError m "`bind` can only be used inside `with`"
     RT.Try -> do
       let m' = blur m
-      eitherTypeInner <- locatorToVarGlobal m' coreEither
+      eitherTypeInner <- toApp $ liftEither $ locatorToVarGlobal m' coreEither
       leftType <- Gensym.newPreHole m'
       let eitherType = m' :< RT.piElim eitherTypeInner [leftType, t]
       e1' <- discern h e1
@@ -840,7 +841,7 @@ constructEitherBinder m mx m1 pat tmpVar cont endLoc = do
   earlyRetVar <- Gensym.newText
   eitherL <- locatorToName m1 coreEitherLeft
   eitherR <- locatorToName m1 coreEitherRight
-  eitherVarL <- locatorToVarGlobal m1 coreEitherLeft
+  eitherVarL <- toApp $ liftEither $ locatorToVarGlobal m1 coreEitherLeft
   let longClause =
         ( SE.fromList'' [(mx', RP.Cons eitherR [] (RP.Paren (SE.fromList' [(mx, pat)])))],
           [],
@@ -1092,9 +1093,9 @@ locatorToName m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
   return $ Locator (gl, ll)
 
-locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
+locatorToVarGlobal :: Hint -> T.Text -> Either E.Error RT.RawTerm
 locatorToVarGlobal m text = do
-  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair (blur m) text
+  (gl, ll) <- DD.getLocatorPair (blur m) text
   return $ blur m :< RT.Var (Locator (gl, ll))
 
 getLayer :: Hint -> H.Handle -> Ident -> EIO Layer
