@@ -51,6 +51,24 @@ import Rule.WeakTerm.FreeVars
 import Rule.WeakTerm.Holes
 import Rule.WeakTerm.ToText
 
+data Handle = Handle
+  { reduceHandle :: Reduce.Handle,
+    substHandle :: Subst.Handle,
+    inlineLimit :: Int,
+    currentStep :: Int,
+    defMap :: WeakDefinition.DefMap
+  }
+
+new :: App Handle
+new = do
+  reduceHandle <- Reduce.new
+  substHandle <- Subst.new
+  source <- Env.getCurrentSource
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
+  defMap <- WeakDefinition.read
+  let currentStep = 0
+  return $ Handle {..}
+
 unify :: [C.Constraint] -> App HS.HoleSubst
 unify constraintList = do
   susList <- unify' (reverse constraintList)
@@ -64,8 +82,8 @@ unifyCurrentConstraints :: App HS.HoleSubst
 unifyCurrentConstraints = do
   susList <- getSuspendedEnv
   cs <- getConstraintEnv
-  ax <- newAxis
-  susList' <- simplify ax susList $ zip cs cs
+  h <- new
+  susList' <- simplify h susList $ zip cs cs
   setConstraintEnv []
   setSuspendedEnv susList'
   getHoleSubst
@@ -73,8 +91,8 @@ unifyCurrentConstraints = do
 unify' :: [C.Constraint] -> App [SuspendedConstraint]
 unify' constraintList = do
   susList <- getSuspendedEnv
-  ax <- newAxis
-  simplify ax susList $ zip constraintList constraintList
+  h <- new
+  simplify h susList $ zip constraintList constraintList
 
 throwTypeErrors :: [SuspendedConstraint] -> App a
 throwTypeErrors susList = do
@@ -125,31 +143,13 @@ constructErrorMessageInteger t =
     <> "\nFound:\n  "
     <> toText t
 
-data Axis = Axis
-  { reduceHandle :: Reduce.Handle,
-    substHandle :: Subst.Handle,
-    inlineLimit :: Int,
-    currentStep :: Int,
-    defMap :: WeakDefinition.DefMap
-  }
+increment :: Handle -> Handle
+increment h = do
+  h {currentStep = currentStep h + 1}
 
-newAxis :: App Axis
-newAxis = do
-  reduceHandle <- Reduce.new
-  substHandle <- Subst.new
-  source <- Env.getCurrentSource
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  defMap <- WeakDefinition.read
-  let currentStep = 0
-  return $ Axis {..}
-
-increment :: Axis -> Axis
-increment ax = do
-  ax {currentStep = currentStep ax + 1}
-
-detectPossibleInfiniteLoop :: Axis -> C.Constraint -> App ()
-detectPossibleInfiniteLoop axis c = do
-  let Axis {inlineLimit, currentStep} = axis
+detectPossibleInfiniteLoop :: Handle -> C.Constraint -> App ()
+detectPossibleInfiniteLoop h c = do
+  let Handle {inlineLimit, currentStep} = h
   when (inlineLimit < currentStep) $ do
     sub <- getHoleSubst
     r <- constraintToRemark sub c
@@ -161,23 +161,23 @@ detectPossibleInfiniteLoop axis c = do
               <> " during unification)"
         ]
 
-simplify :: Axis -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> App [SuspendedConstraint]
-simplify ax susList constraintList =
+simplify :: Handle -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> App [SuspendedConstraint]
+simplify h susList constraintList =
   case constraintList of
     [] ->
       return susList
     (C.Actual t, orig) : cs -> do
-      susList' <- simplifyActual ax (WT.metaOf t) S.empty t orig
-      simplify ax (susList' ++ susList) cs
+      susList' <- simplifyActual h (WT.metaOf t) S.empty t orig
+      simplify h (susList' ++ susList) cs
     (C.Integer t, orig) : cs -> do
-      susList' <- simplifyInteger ax (WT.metaOf t) t orig
-      simplify ax (susList' ++ susList) cs
+      susList' <- simplifyInteger h (WT.metaOf t) t orig
+      simplify h (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
-      detectPossibleInfiniteLoop ax orig
-      expected' <- toApp $ Reduce.reduce (reduceHandle ax) expected
-      actual' <- toApp $ Reduce.reduce (reduceHandle ax) actual
+      detectPossibleInfiniteLoop h orig
+      expected' <- toApp $ Reduce.reduce (reduceHandle h) expected
+      actual' <- toApp $ Reduce.reduce (reduceHandle h) actual
       if WT.eq expected' actual'
-        then simplify ax susList cs
+        then simplify h susList cs
         else do
           case (expected', actual') of
             (m1 :< WT.Pi impArgs1 expArgs1 cod1, m2 :< WT.Pi impArgs2 expArgs2 cod2)
@@ -185,8 +185,8 @@ simplify ax susList constraintList =
                 length expArgs1 == length expArgs2 -> do
                   xt1 <- asWeakBinder m1 cod1
                   xt2 <- asWeakBinder m2 cod2
-                  cs' <- simplifyBinder ax orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
-                  simplify ax susList $ cs' ++ cs
+                  cs' <- simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
+                  simplify h susList $ cs' ++ cs
             (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
               | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
                 AttrL.Attr {lamKind = LK.Fix xt2@(_, x2, _)} <- kind2,
@@ -195,8 +195,8 @@ simplify ax susList constraintList =
                 length expArgs1 == length expArgs2 -> do
                   yt1 <- asWeakBinder m1 e1
                   yt2 <- asWeakBinder m2 e2
-                  cs' <- simplifyBinder ax orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
-                  simplify ax susList $ cs' ++ cs
+                  cs' <- simplifyBinder h orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
+                  simplify h susList $ cs' ++ cs
               | AttrL.Attr {lamKind = LK.Normal codType1} <- kind1,
                 AttrL.Attr {lamKind = LK.Normal codType2} <- kind2,
                 length impArgs1 == length impArgs2,
@@ -205,13 +205,13 @@ simplify ax susList constraintList =
                   xt1 <- asWeakBinder m1 e1
                   cod2 <- asWeakBinder m2 codType2
                   xt2 <- asWeakBinder m2 e2
-                  cs' <- simplifyBinder ax orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
-                  simplify ax susList $ cs' ++ cs
+                  cs' <- simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
+                  simplify h susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,
                 length es1 == length es2 -> do
                   let cs' = map (,orig) (zipWith C.Eq es1 es2)
-                  simplify ax susList $ cs' ++ cs
+                  simplify h susList $ cs' ++ cs
             (_ :< WT.DataIntro _ consName1 dataArgs1 consArgs1, _ :< WT.DataIntro _ consName2 dataArgs2 consArgs2)
               | consName1 == consName2,
                 length dataArgs1 == length dataArgs2,
@@ -219,22 +219,22 @@ simplify ax susList constraintList =
                   let es1 = dataArgs1 ++ consArgs1
                   let es2 = dataArgs2 ++ consArgs2
                   let cs' = map (,orig) (zipWith C.Eq es1 es2)
-                  simplify ax susList $ cs' ++ cs
+                  simplify h susList $ cs' ++ cs
             (_ :< WT.Box t1, _ :< WT.Box t2) ->
-              simplify ax susList $ (C.Eq t1 t2, orig) : cs
+              simplify h susList $ (C.Eq t1 t2, orig) : cs
             (_ :< WT.BoxNoema t1, _ :< WT.BoxNoema t2) ->
-              simplify ax susList $ (C.Eq t1 t2, orig) : cs
+              simplify h susList $ (C.Eq t1 t2, orig) : cs
             (_ :< WT.BoxIntro letSeq1 e1, _ :< WT.BoxIntro letSeq2 e2)
               | length letSeq1 == length letSeq2 -> do
                   let (xts1, es1) = unzip letSeq1
                   let (xts2, es2) = unzip letSeq2
-                  cs' <- simplifyBinder ax orig xts1 xts2
+                  cs' <- simplifyBinder h orig xts1 xts2
                   let cs'' = map (orig,) $ zipWith C.Eq es1 es2
-                  simplify ax susList $ (C.Eq e1 e2, orig) : cs' ++ cs'' ++ cs
+                  simplify h susList $ (C.Eq e1 e2, orig) : cs' ++ cs'' ++ cs
             (_ :< WT.Annotation _ _ e1, e2) ->
-              simplify ax susList $ (C.Eq e1 e2, orig) : cs
+              simplify h susList $ (C.Eq e1 e2, orig) : cs
             (e1, _ :< WT.Annotation _ _ e2) ->
-              simplify ax susList $ (C.Eq e1 e2, orig) : cs
+              simplify h susList $ (C.Eq e1 e2, orig) : cs
             (e1, e2) -> do
               sub <- getHoleSubst
               let fvs1 = freeVars e1
@@ -249,82 +249,82 @@ simplify ax susList constraintList =
                   h2 <- Fill.new s2
                   e1' <- toApp $ Fill.fill h1 e1
                   e2' <- toApp $ Fill.fill h2 e2
-                  simplify ax susList $ (C.Eq e1' e2', orig) : cs
+                  simplify h susList $ (C.Eq e1' e2', orig) : cs
                 (Just (hole1, (xs1, body1)), Nothing) -> do
                   let s1 = HS.singleton hole1 xs1 body1
                   h1 <- Fill.new s1
                   e1' <- toApp $ Fill.fill h1 e1
-                  simplify ax susList $ (C.Eq e1' e2, orig) : cs
+                  simplify h susList $ (C.Eq e1' e2, orig) : cs
                 (Nothing, Just (hole2, (xs2, body2))) -> do
                   let s2 = HS.singleton hole2 xs2 body2
                   h2 <- Fill.new s2
                   e2' <- toApp $ Fill.fill h2 e2
-                  simplify ax susList $ (C.Eq e1 e2', orig) : cs
+                  simplify h susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
                   case (Stuck.asStuckedTerm e1, Stuck.asStuckedTerm e2) of
-                    (Just (Stuck.Hole h1 ies1, _ :< Stuck.Base), _)
+                    (Just (Stuck.Hole hole1 ies1, _ :< Stuck.Base), _)
                       | Just xss1 <- mapM asIdent ies1,
                         Just argSet1 <- toLinearIdentSet xss1,
-                        h1 `S.notMember` fmvs2,
+                        hole1 `S.notMember` fmvs2,
                         fvs2 `S.isSubsetOf` argSet1 ->
-                          resolveHole ax susList h1 xss1 e2 cs
-                    (_, Just (Stuck.Hole h2 ies2, _ :< Stuck.Base))
+                          resolveHole h susList hole1 xss1 e2 cs
+                    (_, Just (Stuck.Hole hole2 ies2, _ :< Stuck.Base))
                       | Just xss2 <- mapM asIdent ies2,
                         Just argSet2 <- toLinearIdentSet xss2,
-                        h2 `S.notMember` fmvs1,
+                        hole2 `S.notMember` fmvs1,
                         fvs1 `S.isSubsetOf` argSet2 ->
-                          resolveHole ax susList h2 xss2 e1 cs
+                          resolveHole h susList hole2 xss2 e1 cs
                     (Just (Stuck.VarLocal x1, ctx1), Just (Stuck.VarLocal x2, ctx2))
                       | x1 == x2,
                         Just pairList <- Stuck.asPairList ctx1 ctx2 ->
-                          simplify ax susList $ map (,orig) pairList ++ cs
+                          simplify h susList $ map (,orig) pairList ++ cs
                     (Just (Stuck.VarGlobal g1, ctx1), Just (Stuck.VarGlobal g2, ctx2))
                       | g1 == g2,
-                        Nothing <- Map.lookup g1 (defMap ax),
+                        Nothing <- Map.lookup g1 (defMap h),
                         Just pairList <- Stuck.asPairList ctx1 ctx2 ->
-                          simplify ax susList $ map (,orig) pairList ++ cs
+                          simplify h susList $ map (,orig) pairList ++ cs
                       | g1 == g2,
-                        Just lam <- Map.lookup g1 (defMap ax) -> do
-                          let ax' = increment ax
-                          simplify ax' susList $ (C.Eq (Stuck.resume lam ctx1) (Stuck.resume lam ctx2), orig) : cs
-                      | Just lam1 <- Map.lookup g1 (defMap ax),
-                        Just lam2 <- Map.lookup g2 (defMap ax) -> do
-                          let ax' = increment ax
-                          simplify ax' susList $ (C.Eq (Stuck.resume lam1 ctx1) (Stuck.resume lam2 ctx2), orig) : cs
+                        Just lam <- Map.lookup g1 (defMap h) -> do
+                          let h' = increment h
+                          simplify h' susList $ (C.Eq (Stuck.resume lam ctx1) (Stuck.resume lam ctx2), orig) : cs
+                      | Just lam1 <- Map.lookup g1 (defMap h),
+                        Just lam2 <- Map.lookup g2 (defMap h) -> do
+                          let h' = increment h
+                          simplify h' susList $ (C.Eq (Stuck.resume lam1 ctx1) (Stuck.resume lam2 ctx2), orig) : cs
                     (Just (Stuck.VarGlobal g1, ctx1), _)
-                      | Just lam <- Map.lookup g1 (defMap ax) -> do
-                          let ax' = increment ax
-                          simplify ax' susList $ (C.Eq (Stuck.resume lam ctx1) e2, orig) : cs
+                      | Just lam <- Map.lookup g1 (defMap h) -> do
+                          let h' = increment h
+                          simplify h' susList $ (C.Eq (Stuck.resume lam ctx1) e2, orig) : cs
                     (_, Just (Stuck.VarGlobal g2, ctx2))
-                      | Just lam <- Map.lookup g2 (defMap ax) -> do
-                          let ax' = increment ax
-                          simplify ax' susList $ (C.Eq e1 (Stuck.resume lam ctx2), orig) : cs
+                      | Just lam <- Map.lookup g2 (defMap h) -> do
+                          let h' = increment h
+                          simplify h' susList $ (C.Eq e1 (Stuck.resume lam ctx2), orig) : cs
                     (Just (Stuck.Prim (WP.Value (WPV.Op op1)), ctx1), Just (Stuck.Prim (WP.Value (WPV.Op op2)), ctx2))
                       | op1 == op2,
                         Just pairList <- Stuck.asPairList ctx1 ctx2 ->
-                          simplify ax susList $ map (,orig) pairList ++ cs
+                          simplify h susList $ map (,orig) pairList ++ cs
                     _ -> do
                       let uc = C.SuspendedConstraint (fmvs, headConstraint)
-                      simplify ax (uc : susList) cs
+                      simplify h (uc : susList) cs
 
 {-# INLINE resolveHole #-}
 resolveHole ::
-  Axis ->
+  Handle ->
   [SuspendedConstraint] ->
   HID.HoleID ->
   [Ident] ->
   WT.WeakTerm ->
   [(C.Constraint, C.Constraint)] ->
   App [SuspendedConstraint]
-resolveHole ax susList h1 xs e2' cs = do
-  insertSubst h1 xs e2'
-  let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member h1 hs) susList
+resolveHole h susList hole1 xs e2' cs = do
+  insertSubst hole1 xs e2'
+  let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member hole1 hs) susList
   let susList1' = map (\(C.SuspendedConstraint (_, c)) -> c) susList1
-  simplify ax susList2 $ reverse susList1' ++ cs
+  simplify h susList2 $ reverse susList1' ++ cs
 
 simplifyBinder ::
-  Axis ->
+  Handle ->
   C.Constraint ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
@@ -333,7 +333,7 @@ simplifyBinder h orig =
   simplifyBinder' h orig IntMap.empty
 
 simplifyBinder' ::
-  Axis ->
+  Handle ->
   C.Constraint ->
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
@@ -391,33 +391,33 @@ lookupAny is sub =
           lookupAny js sub
 
 simplifyActual ::
-  Axis ->
+  Handle ->
   Hint ->
   S.Set DD.DefiniteDescription ->
   WT.WeakTerm ->
   C.Constraint ->
   App [SuspendedConstraint]
-simplifyActual ax m dataNameSet t orig = do
-  detectPossibleInfiniteLoop ax orig
-  t' <- toApp $ Reduce.reduce (reduceHandle ax) t
+simplifyActual h m dataNameSet t orig = do
+  detectPossibleInfiniteLoop h orig
+  t' <- toApp $ Reduce.reduce (reduceHandle h) t
   case t' of
     _ :< WT.Tau -> do
       return []
     _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
       let dataNameSet' = S.insert dataName dataNameSet
       constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
-        simplifyActual ax m dataNameSet' dataArg orig
+        simplifyActual h m dataNameSet' dataArg orig
       dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
           else mapM (getConsArgTypes m . fst) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        dataConsArgs' <- substConsArgs ax IntMap.empty dataConsArgs
+        dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
-          simplifyActual ax m dataNameSet' consArg orig
+          simplifyActual h m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
     _ :< WT.Box t'' -> do
-      simplifyActual ax m dataNameSet t'' orig
+      simplifyActual h m dataNameSet t'' orig
     _ :< WT.Prim {} -> do
       return []
     _ :< WT.Void -> do
@@ -430,19 +430,19 @@ simplifyActual ax m dataNameSet t orig = do
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
           let s = HS.singleton hole xs body
-          h <- Fill.new s
-          t'' <- toApp $ Fill.fill h t'
-          simplifyActual ax m dataNameSet t'' orig
+          hFill <- Fill.new s
+          t'' <- toApp $ Fill.fill hFill t'
+          simplifyActual h m dataNameSet t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
-                  simplifyActual (increment ax) m dataNameSet (Stuck.resume lam evalCtx) orig
+                  simplifyActual (increment h) m dataNameSet (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
 
-substConsArgs :: Axis -> Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
+substConsArgs :: Handle -> Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->
@@ -467,14 +467,14 @@ getConsArgTypes m consName = do
       Throw.raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
 
 simplifyInteger ::
-  Axis ->
+  Handle ->
   Hint ->
   WT.WeakTerm ->
   C.Constraint ->
   App [SuspendedConstraint]
-simplifyInteger ax m t orig = do
-  detectPossibleInfiniteLoop ax orig
-  t' <- toApp $ Reduce.reduce (reduceHandle ax) t
+simplifyInteger h m t orig = do
+  detectPossibleInfiniteLoop h orig
+  t' <- toApp $ Reduce.reduce (reduceHandle h) t
   case t' of
     _ :< WT.Prim (WP.Type (PT.Int _)) -> do
       return []
@@ -483,14 +483,14 @@ simplifyInteger ax m t orig = do
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
-          h <- Fill.new $ HS.singleton hole xs body
-          t'' <- toApp $ Fill.fill h t'
-          simplifyInteger ax m t'' orig
+          hFill <- Fill.new $ HS.singleton hole xs body
+          t'' <- toApp $ Fill.fill hFill t'
+          simplifyInteger h m t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
-                  simplifyInteger (increment ax) m (Stuck.resume lam evalCtx) orig
+                  simplifyInteger (increment h) m (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
