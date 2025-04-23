@@ -18,6 +18,7 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
+import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.DefiniteDescription qualified as DD
@@ -38,6 +39,7 @@ data Handle = Handle
     locatorHandle :: Locator.Handle,
     globalHandle :: Global.Handle,
     aliasHandle :: Alias.Handle,
+    keyArgHandle :: KeyArg.Handle,
     nameEnv :: NominalEnv,
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
@@ -53,6 +55,7 @@ new = do
   locatorHandle <- Locator.new
   globalHandle <- Global.new
   aliasHandle <- Alias.new
+  keyArgHandle <- KeyArg.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap

@@ -956,7 +956,7 @@ discernPatternRow' h patList newVarList body = do
       body' <- discern h' body
       return ([], ([], [], body'))
     pat : rest -> do
-      (pat', varsInPat) <- discernPattern h (H.currentLayer h) pat
+      (pat', varsInPat) <- toApp $ discernPattern h (H.currentLayer h) pat
       (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
 
@@ -985,7 +985,7 @@ discernPattern ::
   H.Handle ->
   Layer ->
   (Hint, RP.RawPattern) ->
-  App ((Hint, PAT.Pattern), NominalEnv)
+  EIO ((Hint, PAT.Pattern), NominalEnv)
 discernPattern h layer (m, pat) = do
   case pat of
     RP.Var name -> do
@@ -994,18 +994,17 @@ discernPattern h layer (m, pat) = do
           | Just i <- R.readMaybe (T.unpack x) -> do
               return ((m, PAT.Literal (LI.Int i)), [])
           | isConsName x -> do
-              (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- toApp $ resolveConstructor h m $ Var x
+              (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
               unless isConstLike $ do
-                mainModule <- Env.getMainModule
-                let consDD' = Locator.getReadableDD mainModule consDD
-                Throw.raiseError m $
+                let consDD' = Locator.getReadableDD (H.mainModule h) consDD
+                raiseError m $
                   "The constructor `" <> consDD' <> "` cannot be used as a constant"
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
           | otherwise -> do
-              x' <- Gensym.newIdentFromText x
+              x' <- liftIO $ GensymNew.newIdentFromText (H.gensymHandle h) x
               return ((m, PAT.Var x'), [(x, (m, x', layer))])
         Locator l -> do
-          (dd, gn) <- toApp $ resolveName h m $ Locator l
+          (dd, gn) <- resolveName h m $ Locator l
           case gn of
             (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
               let consInfo =
@@ -1019,14 +1018,13 @@ discernPattern h layer (m, pat) = do
                       }
               return ((m, PAT.Cons consInfo), [])
             _ -> do
-              mainModule <- Env.getMainModule
-              let dd' = Locator.getReadableDD mainModule dd
-              Throw.raiseError m $
+              let dd' = Locator.getReadableDD (H.mainModule h) dd
+              raiseError m $
                 "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mArgs -> do
-      (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- toApp $ resolveConstructor h m cons
+      (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m cons
       when isConstLike $
-        Throw.raiseError m $
+        raiseError m $
           "The constructor `" <> showName cons <> "` cannot have any arguments"
       case mArgs of
         RP.Paren args -> do
@@ -1044,13 +1042,12 @@ discernPattern h layer (m, pat) = do
         RP.Of mkvs -> do
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
-          toApp $ ensureFieldLinearity m ks S.empty S.empty
-          hKeyArg <- KeyArg.new
-          (_, keyList) <- toApp $ KeyArg.lookup hKeyArg m consName
+          ensureFieldLinearity m ks S.empty S.empty
+          (_, keyList) <- KeyArg.lookup (H.keyArgHandle h) m consName
           defaultKeyMap <- liftIO $ constructDefaultKeyMap h m keyList
           let specifiedKeyMap = Map.fromList $ zip ks mvs
           let keyMap = Map.union specifiedKeyMap defaultKeyMap
-          reorderedArgs <- toApp $ KeyArg.reorderArgs m keyList keyMap
+          reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
           (patList', hList) <- mapAndUnzipM (discernPattern h layer) reorderedArgs
           let consInfo =
                 PAT.ConsInfo
@@ -1064,8 +1061,8 @@ discernPattern h layer (m, pat) = do
           return ((m, PAT.Cons consInfo), concat hList)
     RP.ListIntro patList -> do
       let m' = m {metaShouldSaveLocation = False}
-      listNil <- Throw.liftEither $ DD.getLocatorPair m' coreListNil
-      listCons <- toApp $ liftEither $ locatorToName m' coreListCons
+      listNil <- liftEither $ DD.getLocatorPair m' coreListNil
+      listCons <- liftEither $ locatorToName m' coreListCons
       discernPattern h layer $ foldListAppPat m' listNil listCons $ SE.extract patList
     RP.RuneIntro r -> do
       return ((m, PAT.Literal (LI.Rune r)), [])
