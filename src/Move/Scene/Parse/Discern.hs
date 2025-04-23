@@ -96,7 +96,7 @@ discernStmt h mo stmt = do
   nameLifter <- Locator.new >>= liftIO . Locator.getNameLifter
   case stmt of
     RawStmtDefine _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
-      registerTopLevelName h nameLifter stmt
+      toApp $ registerTopLevelName h nameLifter stmt
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let (_, codType) = RT.cod geist
@@ -118,7 +118,7 @@ discernStmt h mo stmt = do
       discernStmtList h mo stmtList
     RawStmtDefineResource _ m (name, _) (_, discarder) (_, copier) _ -> do
       let dd = nameLifter name
-      registerTopLevelName h nameLifter stmt
+      toApp $ registerTopLevelName h nameLifter stmt
       t' <- discern h $ m :< RT.Tau
       e' <- discern h $ m :< RT.Resource dd [] (discarder, []) (copier, [])
       Tag.insertGlobalVar m dd True m
@@ -159,7 +159,7 @@ discernGeist endLoc geist = do
         cod = cod'
       }
 
-registerTopLevelName :: H.Handle -> (BN.BaseName -> DD.DefiniteDescription) -> RawStmt -> App ()
+registerTopLevelName :: H.Handle -> (BN.BaseName -> DD.DefiniteDescription) -> RawStmt -> EIO ()
 registerTopLevelName h nameLifter stmt = do
   case stmt of
     RawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
@@ -171,14 +171,14 @@ registerTopLevelName h nameLifter stmt = do
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
       let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
       stmtKind' <- liftIO $ liftStmtKind h stmtKind
-      toApp $ Global.registerStmtDefine (H.globalHandle h) isConstLike m stmtKind' functionName allArgNum expArgNames
+      Global.registerStmtDefine (H.globalHandle h) isConstLike m stmtKind' functionName allArgNum expArgNames
     RawStmtNominal {} -> do
       return ()
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       let stmtList = defineData m dd args (SE.extract consInfo) loc
       mapM_ (registerTopLevelName h nameLifter) stmtList
     RawStmtDefineResource _ m (name, _) _ _ _ -> do
-      toApp $ Global.registerStmtDefine (H.globalHandle h) True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
+      Global.registerStmtDefine (H.globalHandle h) True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
     RawStmtForeign {} ->
       return ()
 
