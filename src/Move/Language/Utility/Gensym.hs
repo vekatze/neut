@@ -6,6 +6,7 @@ module Move.Language.Utility.Gensym
     newPreHole,
     newHole,
     newIdentFromText,
+    newText,
   )
 where
 
@@ -60,3 +61,9 @@ newIdentFromText :: Handle -> T.Text -> IO Ident
 newIdentFromText h s = do
   i <- newCount h
   return $ I (s, i)
+
+{-# INLINE newText #-}
+newText :: Handle -> IO T.Text
+newText h = do
+  i <- newCount h
+  return $ ";" <> T.pack (show i)

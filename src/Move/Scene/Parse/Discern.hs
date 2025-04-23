@@ -822,11 +822,12 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
       let eitherType = m' :< RT.piElim eitherTypeInner [leftType, t]
       e1' <- discern h e1
       tmpVar <- Gensym.newText
-      eitherCont <- constructEitherBinder m mx m1 pat tmpVar e2 endLoc
+      eitherCont <- toApp $ constructEitherBinder h m mx m1 pat tmpVar e2 endLoc
       (mxt', eitherCont') <- discernBinderWithBody' h (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
       return $ m :< WT.Let opacity mxt' e1' eitherCont'
 
 constructEitherBinder ::
+  H.Handle ->
   Hint ->
   Hint ->
   Hint ->
@@ -834,15 +835,15 @@ constructEitherBinder ::
   RawIdent ->
   Cofree RT.RawTermF Hint ->
   Loc ->
-  App RT.RawTerm
-constructEitherBinder m mx m1 pat tmpVar cont endLoc = do
+  EIO RT.RawTerm
+constructEitherBinder h m mx m1 pat tmpVar cont endLoc = do
   let m' = blur m
   let mx' = blur mx
   let m1' = blur m1
-  earlyRetVar <- Gensym.newText
-  eitherL <- toApp $ liftEither $ locatorToName m1 coreEitherLeft
-  eitherR <- toApp $ liftEither $ locatorToName m1 coreEitherRight
-  eitherVarL <- toApp $ liftEither $ locatorToVarGlobal m1 coreEitherLeft
+  earlyRetVar <- liftIO $ GensymNew.newText (H.gensymHandle h)
+  eitherL <- liftEither $ locatorToName m1 coreEitherLeft
+  eitherR <- liftEither $ locatorToName m1 coreEitherRight
+  eitherVarL <- liftEither $ locatorToVarGlobal m1 coreEitherLeft
   let longClause =
         ( SE.fromList'' [(mx', RP.Cons eitherR [] (RP.Paren (SE.fromList' [(mx, pat)])))],
           [],
