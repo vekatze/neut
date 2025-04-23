@@ -15,7 +15,7 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Parse.Discern.Fallback qualified as PATF
-import Move.Scene.Parse.Discern.Handle
+import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Noema
 import Move.Scene.Parse.Discern.Specialize qualified as PATS
 import Rule.ArgNum qualified as AN
@@ -23,9 +23,7 @@ import Rule.Binder
 import Rule.DecisionTree qualified as DT
 import Rule.Hint
 import Rule.Ident
-import Rule.Layer
 import Rule.Noema qualified as N
-import Rule.NominalEnv
 import Rule.Pattern qualified as PAT
 import Rule.Vector qualified as V
 import Rule.WeakTerm qualified as WT
@@ -33,13 +31,12 @@ import Rule.WeakTerm qualified as WT
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311
 compilePatternMatrix ::
-  Layer ->
-  NominalEnv ->
+  H.Handle ->
   N.IsNoetic ->
   V.Vector (Hint, Ident) ->
   PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
   App (DT.DecisionTree WT.WeakTerm)
-compilePatternMatrix l nenv isNoetic occurrences mat =
+compilePatternMatrix h isNoetic occurrences mat =
   case PAT.unconsRow mat of
     Nothing ->
       return DT.Unreachable
@@ -55,7 +52,7 @@ compilePatternMatrix l nenv isNoetic occurrences mat =
             then do
               occurrences' <- Throw.liftEither $ V.swap mCol i occurrences
               mat' <- Throw.liftEither $ PAT.swapColumn mCol i mat
-              compilePatternMatrix l nenv isNoetic occurrences' mat'
+              compilePatternMatrix h isNoetic occurrences' mat'
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let (mCursor, cursor) = V.head occurrences
@@ -64,7 +61,7 @@ compilePatternMatrix l nenv isNoetic occurrences mat =
                   PAT.LiteralSpecializer literal -> do
                     let occurrences' = V.tail occurrences
                     specialMatrix <- PATS.specialize isNoetic cursor specializer mat
-                    cont <- compilePatternMatrix l nenv isNoetic occurrences' specialMatrix
+                    cont <- compilePatternMatrix h isNoetic occurrences' specialMatrix
                     return $ DT.LiteralCase mPat literal cont
                   PAT.ConsSpecializer (PAT.ConsInfo {..}) -> do
                     dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
@@ -72,10 +69,11 @@ compilePatternMatrix l nenv isNoetic occurrences mat =
                     consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
                     let ms = map fst args
                     let consVars' = zip ms consVars
-                    (consArgs', nenv') <- alignConsArgs l nenv consVars'
+                    -- (consArgs', nenv') <- alignConsArgs l nenv consVars'
+                    (consArgs', h') <- alignConsArgs h consVars'
                     let occurrences' = V.fromList consVars' <> V.tail occurrences
                     specialMatrix <- PATS.specialize isNoetic cursor specializer mat
-                    specialDecisionTree <- compilePatternMatrix l nenv' isNoetic occurrences' specialMatrix
+                    specialDecisionTree <- compilePatternMatrix h' isNoetic occurrences' specialMatrix
                     let dataArgs' = zip dataHoles dataTypeHoles
                     return $
                       DT.ConsCase $
@@ -89,24 +87,23 @@ compilePatternMatrix l nenv isNoetic occurrences mat =
                             cont = specialDecisionTree
                           }
               fallbackMatrix <- PATF.getFallbackMatrix isNoetic cursor mat
-              fallbackClause <- compilePatternMatrix l nenv isNoetic (V.tail occurrences) fallbackMatrix
+              fallbackClause <- compilePatternMatrix h isNoetic (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCursor []
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
 alignConsArgs ::
-  Layer ->
-  NominalEnv ->
+  H.Handle ->
   [(Hint, Ident)] ->
-  App ([BinderF WT.WeakTerm], NominalEnv)
-alignConsArgs l nenv binder =
+  App ([BinderF WT.WeakTerm], H.Handle)
+alignConsArgs h binder =
   case binder of
     [] -> do
-      return ([], nenv)
+      return ([], h)
     (mx, x) : xts -> do
       t <- Gensym.newHole mx []
-      let nenv' = extendNominalEnvWithoutInsert mx x l nenv
-      (xts', nenv'') <- alignConsArgs l nenv' xts
-      return ((mx, x, t) : xts', nenv'')
+      let h' = H.extendWithoutInsert h mx x
+      (xts', h'') <- alignConsArgs h' xts
+      return ((mx, x, t) : xts', h'')
 
 asLetSeq ::
   [(Maybe (Hint, Ident), WT.WeakTerm)] ->

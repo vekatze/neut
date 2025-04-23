@@ -1,14 +1,18 @@
 module Move.Scene.Parse.Discern.Handle
   ( Handle (..),
     new,
-    extendHandle,
-    extendHandleByNominalEnv,
-    extendNominalEnvWithoutInsert,
+    extend,
+    extend',
+    extendWithoutInsert,
+    extendByNominalEnv,
   )
 where
 
+import Control.Monad.Reader (asks)
+import Data.IORef
+import Data.IntMap qualified as IntMap
 import Move.Context.App
-import Move.Context.UnusedVariable qualified as UnusedVariable
+import Move.Context.App.Internal qualified as App
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
@@ -20,37 +24,39 @@ import Rule.VarDefKind
 data Handle = Handle
   { _nenv :: NominalEnv,
     currentModule :: Module,
-    currentLayer :: Layer
+    currentLayer :: Layer,
+    unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind))
   }
 
 new :: Module -> App Handle
 new currentModule = do
-  return $ Handle {_nenv = empty, currentModule, currentLayer = 0}
+  let _nenv = empty
+  unusedVariableMapRef <- asks App.unusedVariableMap
+  let currentLayer = 0
+  return $ Handle {..}
 
-extendHandle :: Hint -> Ident -> VarDefKind -> Handle -> App Handle
-extendHandle m newVar k axis = do
-  nenv' <- extendNominalEnv m newVar (currentLayer axis) k (_nenv axis)
-  return $ axis {_nenv = nenv'}
+extend :: Handle -> Hint -> Ident -> Layer -> VarDefKind -> IO Handle
+extend h m newVar l k = do
+  insertUnusedVariable h m newVar k
+  return $ h {_nenv = (Ident.toText newVar, (m, newVar, l)) : _nenv h}
 
-extendHandleByNominalEnv :: VarDefKind -> NominalEnv -> Handle -> App Handle
-extendHandleByNominalEnv k newNominalEnv oldHandle = do
-  nenv' <- joinNominalEnv k newNominalEnv (_nenv oldHandle)
-  return $ oldHandle {_nenv = nenv'}
+extend' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle
+extend' h m newVar k = do
+  extend h m newVar (currentLayer h) k
 
-extendNominalEnv :: Hint -> Ident -> Layer -> VarDefKind -> NominalEnv -> App NominalEnv
-extendNominalEnv m newVar l k nenv = do
-  UnusedVariable.insert m newVar k
-  return $ (Ident.toText newVar, (m, newVar, l)) : nenv
+extendWithoutInsert :: Handle -> Hint -> Ident -> Handle
+extendWithoutInsert h m newVar = do
+  h {_nenv = (Ident.toText newVar, (m, newVar, currentLayer h)) : _nenv h}
 
-extendNominalEnvWithoutInsert :: Hint -> Ident -> Layer -> NominalEnv -> NominalEnv
-extendNominalEnvWithoutInsert m newVar l nenv = do
-  (Ident.toText newVar, (m, newVar, l)) : nenv
-
-joinNominalEnv :: VarDefKind -> NominalEnv -> NominalEnv -> App NominalEnv
-joinNominalEnv k newNominalEnv oldNominalEnv = do
+extendByNominalEnv :: Handle -> VarDefKind -> NominalEnv -> IO Handle
+extendByNominalEnv h k newNominalEnv = do
   case newNominalEnv of
     [] ->
-      return oldNominalEnv
+      return h
     (_, (m, x, l)) : rest -> do
-      oldNominalEnv' <- extendNominalEnv m x l k oldNominalEnv
-      joinNominalEnv k rest oldNominalEnv'
+      h' <- extend h m x l k
+      extendByNominalEnv h' k rest
+
+insertUnusedVariable :: Handle -> Hint -> Ident -> VarDefKind -> IO ()
+insertUnusedVariable h m x k =
+  modifyIORef' (unusedVariableMapRef h) $ IntMap.insert (Ident.toInt x) (m, x, k)
