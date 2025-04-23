@@ -254,7 +254,7 @@ elaborate' term =
       when (DT.isUnreachable tree') $ do
         forM_ ts' $ \t -> do
           t' <- reduceType (weaken t)
-          switchSpec <- getSwitchSpec m t'
+          switchSpec <- toApp $ getSwitchSpec m t'
           case switchSpec of
             LiteralSwitch -> do
               toApp $ raiseEmptyNonExhaustivePatternMatching m
@@ -548,7 +548,7 @@ elaborateDecisionTree ctx mOrig m tree =
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
       cursorType' <- reduceWeakType cursorType >>= elaborate'
-      switchSpec <- getSwitchSpec m cursorType'
+      switchSpec <- toApp $ getSwitchSpec m cursorType'
       case switchSpec of
         LiteralSwitch -> do
           when (DT.isUnreachable fallbackClause) $ do
@@ -621,7 +621,7 @@ data SwitchSpec
   = LiteralSwitch
   | ConsSwitch [(DD.DefiniteDescription, IsConstLike)]
 
-getSwitchSpec :: Hint -> TM.Term -> App SwitchSpec
+getSwitchSpec :: Hint -> TM.Term -> EIO SwitchSpec
 getSwitchSpec m cursorType = do
   case cursorType of
     _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
@@ -631,6 +631,6 @@ getSwitchSpec m cursorType = do
     _ :< TM.Prim (P.Type PT.Rune) -> do
       return LiteralSwitch
     _ ->
-      Throw.raiseError m $
+      raiseError m $
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toText (weaken cursorType)
