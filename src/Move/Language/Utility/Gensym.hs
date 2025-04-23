@@ -7,6 +7,7 @@ module Move.Language.Utility.Gensym
     newHole,
     newIdentFromText,
     newText,
+    newIdentFromIdent,
   )
 where
 
@@ -20,6 +21,7 @@ import Rule.Const
 import Rule.Hint (Hint)
 import Rule.HoleID (HoleID (HoleID))
 import Rule.Ident
+import Rule.Ident.Reify qualified as Ident
 import Rule.RawTerm qualified as RT
 import Rule.WeakTerm qualified as WT
 
@@ -67,3 +69,8 @@ newText :: Handle -> IO T.Text
 newText h = do
   i <- newCount h
   return $ ";" <> T.pack (show i)
+
+{-# INLINE newIdentFromIdent #-}
+newIdentFromIdent :: Handle -> Ident -> IO Ident
+newIdentFromIdent h x =
+  newIdentFromText h (Ident.toText x)

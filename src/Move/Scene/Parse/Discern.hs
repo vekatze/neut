@@ -360,7 +360,7 @@ discern h term =
       return $ m :< WT.BoxNoema t'
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
       xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> toApp (discernIdent mx h x)
-      xets <- discernNoeticVarList True xsOuter
+      xets <- liftIO $ discernNoeticVarList h True xsOuter
       let innerLayer = H.currentLayer h - 1
       let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
       let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer))) xsInner
@@ -378,14 +378,14 @@ discern h term =
       let e2' = m' :< RT.Let (RT.Plain False) [] patParam [] [] (m' :< RT.Var (Var tmp)) [] startLoc [] e2 endLoc
       -- inner
       ysOuter <- forM (SE.extract mys) $ \(my, y) -> toApp (discernIdent my h y)
-      yetsInner <- discernNoeticVarList True ysOuter
+      yetsInner <- liftIO $ discernNoeticVarList h True ysOuter
       let innerLayer = H.currentLayer h + layerOffset nv
       let ysInner = map (\((myUse, y, myDef :< _), _) -> (myDef, (myUse, y))) yetsInner
       let innerAddition = map (\(_, (myUse, y)) -> (Ident.toText y, (myUse, y, innerLayer))) ysInner
       hInner <- liftIO $ H.extendByNominalEnv (h {H.currentLayer = innerLayer}) VDK.Borrowed innerAddition
       e1' <- discern hInner e1
       -- cont
-      yetsCont <- discernNoeticVarList False ysInner
+      yetsCont <- liftIO $ discernNoeticVarList h False ysInner
       let ysCont = map (\((myUse, y, _), _) -> (myUse, y)) yetsCont
       let contAddition = map (\(myUse, y) -> (Ident.toText y, (myUse, y, H.currentLayer h))) ysCont
       hCont <- liftIO $ H.extendByNominalEnv h VDK.Relayed contAddition
@@ -599,13 +599,17 @@ discern h term =
 type ShouldInsertTagInfo =
   Bool
 
-discernNoeticVarList :: ShouldInsertTagInfo -> [(Hint, (Hint, Ident))] -> App [(BinderF WT.WeakTerm, WT.WeakTerm)]
-discernNoeticVarList mustInsertTagInfo xsOuter = do
+discernNoeticVarList ::
+  H.Handle ->
+  ShouldInsertTagInfo ->
+  [(Hint, (Hint, Ident))] ->
+  IO [(BinderF WT.WeakTerm, WT.WeakTerm)]
+discernNoeticVarList h mustInsertTagInfo xsOuter = do
   forM xsOuter $ \(mDef, (mUse, outerVar)) -> do
-    xInner <- Gensym.newIdentFromIdent outerVar
-    t <- Gensym.newHole mUse []
+    xInner <- GensymNew.newIdentFromIdent (H.gensymHandle h) outerVar
+    t <- GensymNew.newHole (H.gensymHandle h) mUse []
     when mustInsertTagInfo $ do
-      Tag.insertLocalVar mUse outerVar mDef
+      Tag.insertLocalVarIO (H.tagMapRef h) mUse outerVar mDef
     return ((mUse, xInner, t), mDef :< WT.Var outerVar)
 
 discernMagic :: H.Handle -> Hint -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
