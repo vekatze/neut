@@ -1,10 +1,5 @@
 module Move.Scene.Elaborate.EnsureAffinity (ensureAffinity) where
 
-import Move.Context.App (App)
-import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Throw qualified as Throw
-import Move.Context.Type qualified as Type
-import Move.Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Lens (Bifunctor (bimap))
 import Control.Monad
@@ -13,6 +8,14 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
+import Move.Context.App (App)
+import Move.Context.EIO (EIO, raiseCritical, toApp)
+import Move.Context.OptimizableData qualified as OptimizableData
+import Move.Context.Throw qualified as Throw
+import Move.Context.Type qualified as Type
+import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Scene.WeakTerm.Reduce
+import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
@@ -31,8 +34,6 @@ import Rule.Term.FreeVarsWithHints (freeVarsWithHints)
 import Rule.Term.Weaken (weaken)
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText qualified as WT
-import Move.Scene.WeakTerm.Reduce
-import Move.Scene.WeakTerm.Subst qualified as Subst
 
 type AffineConstraint =
   (TM.Term, TM.Term)
@@ -118,7 +119,7 @@ analyzeVar axis m x = do
             then return []
             else do
               insertRelevantVar x axis
-              _ :< t <- lookupTypeEnv (varEnv axis) m x
+              _ :< t <- toApp $ lookupTypeEnv (varEnv axis) m x
               return [(m :< t, m :< t)]
 
 analyze :: Axis -> TM.Term -> App [AffineConstraint]
@@ -247,13 +248,13 @@ analyzeLet axis xtes =
       (cs', axis') <- analyzeLet (extendAxis (m, x, t) axis) rest
       return (cs0 ++ cs1 ++ cs', axis')
 
-lookupTypeEnv :: VarEnv -> Hint -> Ident -> App TM.Term
+lookupTypeEnv :: VarEnv -> Hint -> Ident -> EIO TM.Term
 lookupTypeEnv varEnv m x =
   case IntMap.lookup (toInt x) varEnv of
     Just t ->
       return t
     Nothing ->
-      Throw.raiseCritical m $
+      raiseCritical m $
         "Scene.Elaborate.EnsureAffinity: the type of the variable `"
           <> toText' x
           <> "` is not registered in the type environment"
