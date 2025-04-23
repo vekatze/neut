@@ -82,6 +82,7 @@ data Handle
     unifyHandle :: Unify.Handle,
     gensymHandle :: GensymNew.Handle,
     discernHandle :: Discern.Handle,
+    typeHandle :: Type.Handle,
     varEnv :: BoundVarEnv,
     defMap :: WeakDefinition.DefMap
   }
@@ -94,6 +95,7 @@ new = do
   unifyHandle <- Unify.new
   gensymHandle <- GensymNew.new
   discernHandle <- Discern.new
+  typeHandle <- Type.new
   let varEnv = []
   defMap <- asks App.weakDefMap >>= liftIO . readIORef
   return Handle {..}
@@ -106,7 +108,7 @@ inferStmt stmt =
       (impArgs', h') <- inferBinder' h impArgs
       (expArgs', h'') <- inferBinder' h' expArgs
       codType' <- inferType h'' codType
-      insertType x $ m :< WT.Pi impArgs' expArgs' codType'
+      insertType h'' x $ m :< WT.Pi impArgs' expArgs' codType'
       stmtKind' <- inferStmtKind stmtKind
       (e', te) <- infer h'' e
       insConstraintEnv codType' te
@@ -127,18 +129,18 @@ inferGeist G.Geist {..} = do
   (impArgs', h') <- inferBinder' h impArgs
   (expArgs', h'') <- inferBinder' h' expArgs
   cod' <- inferType h'' cod
-  insertType name $ loc :< WT.Pi impArgs' expArgs' cod'
+  insertType h'' name $ loc :< WT.Pi impArgs' expArgs' cod'
   return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
-insertType :: DD.DefiniteDescription -> WT.WeakTerm -> App ()
-insertType dd t = do
-  typeOrNone <- Type.lookupMaybe dd
+insertType :: Handle -> DD.DefiniteDescription -> WT.WeakTerm -> App ()
+insertType h dd t = do
+  typeOrNone <- liftIO $ Type.lookupMaybe' (typeHandle h) dd
   case typeOrNone of
     Nothing ->
       return ()
     Just declaredType ->
       insConstraintEnv declaredType t
-  Type.insert dd t
+  liftIO $ Type.insert' (typeHandle h) dd t
 
 inferStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 inferStmtKind stmtKind =
