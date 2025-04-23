@@ -47,15 +47,23 @@ data Axis
   = Axis
   { varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
-    mustPerformExpCheck :: Bool
+    mustPerformExpCheck :: Bool,
+    defMap :: WeakDefinition.DefMap
   }
 
-createNewAxis :: IO Axis
-createNewAxis = do
+ensureAffinity :: TM.Term -> App [R.Remark]
+ensureAffinity e = do
+  defMap <- WeakDefinition.read
+  axis <- liftIO $ createNewAxis defMap
+  cs <- analyze axis e
+  synthesize axis $ map (bimap weaken weaken) cs
+
+createNewAxis :: WeakDefinition.DefMap -> IO Axis
+createNewAxis defMap = do
   let varEnv = IntMap.empty
   foundVarSetRef <- newIORef IntMap.empty
   let mustPerformExpCheck = True
-  return Axis {varEnv, foundVarSetRef, mustPerformExpCheck}
+  return Axis {..}
 
 extendAxis :: BinderF TM.Term -> Axis -> Axis
 extendAxis (_, x, t) axis = do
@@ -86,18 +94,12 @@ insertRelevantVar :: Ident -> Axis -> IO ()
 insertRelevantVar i axis = do
   modifyIORef' (foundVarSetRef axis) $ IntMap.insert (toInt i) True
 
-ensureAffinity :: TM.Term -> App [R.Remark]
-ensureAffinity e = do
-  axis <- liftIO createNewAxis
-  cs <- analyze axis e
-  synthesize $ map (bimap weaken weaken) cs
-
 cloneAxis :: Axis -> IO Axis
 cloneAxis axis = do
   foundVarSet <- readIORef $ foundVarSetRef axis
   foundVarSetRef <- newIORef foundVarSet
   let mustPerformExpCheck = True
-  return Axis {varEnv = varEnv axis, foundVarSetRef, mustPerformExpCheck}
+  return $ Axis {varEnv = varEnv axis, foundVarSetRef, mustPerformExpCheck, defMap = defMap axis}
 
 deactivateExpCheck :: Axis -> Axis
 deactivateExpCheck axis =
@@ -309,9 +311,9 @@ analyzeCase axis decisionCase = do
       cs3 <- analyzeDecisionTree axis' cont
       return $ cs1 ++ cs2 ++ cs3
 
-synthesize :: [WeakAffineConstraint] -> App [R.Remark]
-synthesize cs = do
-  errorList <- concat <$> mapM (simplifyAffine S.empty) cs
+synthesize :: Axis -> [WeakAffineConstraint] -> App [R.Remark]
+synthesize h cs = do
+  errorList <- concat <$> mapM (simplifyAffine h S.empty) cs
   return $ map constructErrorMessageAffine errorList
 
 newtype AffineConstraintError
@@ -324,10 +326,11 @@ constructErrorMessageAffine (AffineConstraintError t) =
       <> WT.toText t
 
 simplifyAffine ::
+  Axis ->
   S.Set DD.DefiniteDescription ->
   WeakAffineConstraint ->
   App [AffineConstraintError]
-simplifyAffine dataNameSet (t, orig@(m :< _)) = do
+simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
   t' <- reduce t
   case t' of
     _ :< WT.Tau -> do
@@ -340,7 +343,7 @@ simplifyAffine dataNameSet (t, orig@(m :< _)) = do
         Just OD.Unary -> do
           let dataNameSet' = S.insert dataName dataNameSet
           constraintsFromDataArgs <- fmap concat $ forM dataArgs $ \dataArg ->
-            simplifyAffine dataNameSet' (dataArg, orig)
+            simplifyAffine h dataNameSet' (dataArg, orig)
           dataConsArgsList <-
             if S.member dataName dataNameSet
               then return []
@@ -348,7 +351,7 @@ simplifyAffine dataNameSet (t, orig@(m :< _)) = do
           constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
             dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
             fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
-              simplifyAffine dataNameSet' (consArg, orig)
+              simplifyAffine h dataNameSet' (consArg, orig)
           return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
         _ -> do
           return [AffineConstraintError orig]
@@ -361,7 +364,7 @@ simplifyAffine dataNameSet (t, orig@(m :< _)) = do
       case Stuck.asStuckedTerm t' of
         Just (Stuck.VarGlobal dd, evalCtx)
           | Just lam <- Map.lookup dd defMap -> do
-              simplifyAffine dataNameSet (Stuck.resume lam evalCtx, orig)
+              simplifyAffine h dataNameSet (Stuck.resume lam evalCtx, orig)
         _ -> do
           return [AffineConstraintError orig]
 
