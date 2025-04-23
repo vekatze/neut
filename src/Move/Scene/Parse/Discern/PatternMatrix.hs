@@ -87,7 +87,7 @@ compilePatternMatrix h isNoetic occurrences mat =
                             consArgs = consArgs',
                             cont = specialDecisionTree
                           }
-              fallbackMatrix <- PATF.getFallbackMatrix h isNoetic cursor mat
+              fallbackMatrix <- toApp $ PATF.getFallbackMatrix h isNoetic cursor mat
               fallbackClause <- compilePatternMatrix h isNoetic (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCursor []
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
