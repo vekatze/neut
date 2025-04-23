@@ -99,7 +99,7 @@ unifyCurrentConstraints = do
   susList <- getSuspendedEnv
   cs <- getConstraintEnv
   h <- new
-  susList' <- simplify h susList $ zip cs cs
+  susList' <- toApp $ simplify h susList $ zip cs cs
   setConstraintEnv []
   setSuspendedEnv susList'
   liftIO $ getHoleSubst h
@@ -108,7 +108,7 @@ unify' :: [C.Constraint] -> App [SuspendedConstraint]
 unify' constraintList = do
   susList <- getSuspendedEnv
   h <- new
-  simplify h susList $ zip constraintList constraintList
+  toApp $ simplify h susList $ zip constraintList constraintList
 
 throwTypeErrors :: Handle -> [SuspendedConstraint] -> EIO a
 throwTypeErrors h susList = do
@@ -174,21 +174,21 @@ detectPossibleInfiniteLoop h c = do
               <> " during unification)"
         ]
 
-simplify :: Handle -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> App [SuspendedConstraint]
+simplify :: Handle -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> EIO [SuspendedConstraint]
 simplify h susList constraintList =
   case constraintList of
     [] ->
       return susList
     (C.Actual t, orig) : cs -> do
-      susList' <- toApp $ simplifyActual h (WT.metaOf t) S.empty t orig
+      susList' <- simplifyActual h (WT.metaOf t) S.empty t orig
       simplify h (susList' ++ susList) cs
     (C.Integer t, orig) : cs -> do
-      susList' <- toApp $ simplifyInteger h (WT.metaOf t) t orig
+      susList' <- simplifyInteger h (WT.metaOf t) t orig
       simplify h (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
-      toApp $ detectPossibleInfiniteLoop h orig
-      expected' <- toApp $ Reduce.reduce (reduceHandle h) expected
-      actual' <- toApp $ Reduce.reduce (reduceHandle h) actual
+      detectPossibleInfiniteLoop h orig
+      expected' <- Reduce.reduce (reduceHandle h) expected
+      actual' <- Reduce.reduce (reduceHandle h) actual
       if WT.eq expected' actual'
         then simplify h susList cs
         else do
@@ -258,16 +258,16 @@ simplify h susList constraintList =
                 (Just (hole1, (xs1, body1)), Just (hole2, (xs2, body2))) -> do
                   let s1 = HS.singleton hole1 xs1 body1
                   let s2 = HS.singleton hole2 xs2 body2
-                  e1' <- toApp $ Fill.fill (fillHandle h) s1 e1
-                  e2' <- toApp $ Fill.fill (fillHandle h) s2 e2
+                  e1' <- Fill.fill (fillHandle h) s1 e1
+                  e2' <- Fill.fill (fillHandle h) s2 e2
                   simplify h susList $ (C.Eq e1' e2', orig) : cs
                 (Just (hole1, (xs1, body1)), Nothing) -> do
                   let s1 = HS.singleton hole1 xs1 body1
-                  e1' <- toApp $ Fill.fill (fillHandle h) s1 e1
+                  e1' <- Fill.fill (fillHandle h) s1 e1
                   simplify h susList $ (C.Eq e1' e2, orig) : cs
                 (Nothing, Just (hole2, (xs2, body2))) -> do
                   let s2 = HS.singleton hole2 xs2 body2
-                  e2' <- toApp $ Fill.fill (fillHandle h) s2 e2
+                  e2' <- Fill.fill (fillHandle h) s2 e2
                   simplify h susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
@@ -325,7 +325,7 @@ resolveHole ::
   [Ident] ->
   WT.WeakTerm ->
   [(C.Constraint, C.Constraint)] ->
-  App [SuspendedConstraint]
+  EIO [SuspendedConstraint]
 resolveHole h susList hole1 xs e2' cs = do
   liftIO $ insertSubst h hole1 xs e2'
   let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member hole1 hs) susList
@@ -337,7 +337,7 @@ simplifyBinder ::
   C.Constraint ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
-  App [(C.Constraint, C.Constraint)]
+  EIO [(C.Constraint, C.Constraint)]
 simplifyBinder h orig =
   simplifyBinder' h orig IntMap.empty
 
@@ -347,11 +347,11 @@ simplifyBinder' ::
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
-  App [(C.Constraint, C.Constraint)]
+  EIO [(C.Constraint, C.Constraint)]
 simplifyBinder' h orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
-      t2' <- toApp $ Subst.subst (substHandle h) sub t2
+      t2' <- Subst.subst (substHandle h) sub t2
       let sub' = IntMap.insert (Ident.toInt x2) (Right (m1 :< WT.Var x1)) sub
       rest <- simplifyBinder' h orig sub' xts1 xts2
       return $ (C.Eq t1 t2', orig) : rest
