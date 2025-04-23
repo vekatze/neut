@@ -23,9 +23,9 @@ import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical, toApp)
 import Move.Context.Elaborate hiding (getHoleSubst)
 import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -62,6 +62,7 @@ data Handle = Handle
     substHandle :: Subst.Handle,
     fillHandle :: Fill.Handle,
     typeHandle :: Type.Handle,
+    gensymHandle :: Gensym.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
@@ -75,6 +76,7 @@ new = do
   substHandle <- Subst.new
   fillHandle <- Fill.new
   typeHandle <- Type.new
+  gensymHandle <- Gensym.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   defMap <- WeakDefinition.read
@@ -194,8 +196,8 @@ simplify h susList constraintList =
             (m1 :< WT.Pi impArgs1 expArgs1 cod1, m2 :< WT.Pi impArgs2 expArgs2 cod2)
               | length impArgs1 == length impArgs2,
                 length expArgs1 == length expArgs2 -> do
-                  xt1 <- asWeakBinder m1 cod1
-                  xt2 <- asWeakBinder m2 cod2
+                  xt1 <- liftIO $ asWeakBinder h m1 cod1
+                  xt2 <- liftIO $ asWeakBinder h m2 cod2
                   cs' <- simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
                   simplify h susList $ cs' ++ cs
             (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
@@ -204,18 +206,18 @@ simplify h susList constraintList =
                 x1 == x2,
                 length impArgs1 == length impArgs2,
                 length expArgs1 == length expArgs2 -> do
-                  yt1 <- asWeakBinder m1 e1
-                  yt2 <- asWeakBinder m2 e2
+                  yt1 <- liftIO $ asWeakBinder h m1 e1
+                  yt2 <- liftIO $ asWeakBinder h m2 e2
                   cs' <- simplifyBinder h orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
                   simplify h susList $ cs' ++ cs
               | AttrL.Attr {lamKind = LK.Normal codType1} <- kind1,
                 AttrL.Attr {lamKind = LK.Normal codType2} <- kind2,
                 length impArgs1 == length impArgs2,
                 length expArgs1 == length expArgs2 -> do
-                  cod1 <- asWeakBinder m1 codType1
-                  xt1 <- asWeakBinder m1 e1
-                  cod2 <- asWeakBinder m2 codType2
-                  xt2 <- asWeakBinder m2 e2
+                  cod1 <- liftIO $ asWeakBinder h m1 codType1
+                  xt1 <- liftIO $ asWeakBinder h m1 e1
+                  cod2 <- liftIO $ asWeakBinder h m2 codType2
+                  xt2 <- liftIO $ asWeakBinder h m2 e2
                   cs' <- simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
                   simplify h susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
@@ -356,10 +358,10 @@ simplifyBinder' h orig sub args1 args2 =
     _ ->
       return []
 
-asWeakBinder :: Hint -> WT.WeakTerm -> App (BinderF WT.WeakTerm)
-asWeakBinder m t = do
-  h <- Gensym.newIdentFromText "hole"
-  return (m, h, t)
+asWeakBinder :: Handle -> Hint -> WT.WeakTerm -> IO (BinderF WT.WeakTerm)
+asWeakBinder h m t = do
+  x <- Gensym.newIdentFromText (gensymHandle h) "hole"
+  return (m, x, t)
 
 asIdent :: WT.WeakTerm -> Maybe Ident
 asIdent e =
