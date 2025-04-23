@@ -118,7 +118,7 @@ inferStmt stmt =
       (expArgs', h'') <- inferBinder' h' expArgs
       codType' <- inferType h'' codType
       liftIO $ insertType h'' x $ m :< WT.Pi impArgs' expArgs' codType'
-      stmtKind' <- inferStmtKind stmtKind
+      stmtKind' <- inferStmtKind h'' stmtKind
       (e', te) <- infer h'' e
       liftIO $ Constraint.insert (constraintHandle h'') codType' te
       when (DD.isEntryPoint x) $ do
@@ -151,21 +151,19 @@ insertType h dd t = do
       Constraint.insert (constraintHandle h) declaredType t
   Type.insert' (typeHandle h) dd t
 
-inferStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
-inferStmtKind stmtKind =
+inferStmtKind :: Handle -> StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
+inferStmtKind h stmtKind =
   case stmtKind of
     Normal {} ->
       return stmtKind
     Data dataName dataArgs consInfoList -> do
-      empty <- new
-      (dataArgs', varEnv) <- inferBinder' empty dataArgs
+      (dataArgs', varEnv) <- inferBinder' h dataArgs
       consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
         (consArgs', _) <- inferBinder' varEnv consArgs
         return (m, dd, constLike, consArgs', discriminant)
       return $ Data dataName dataArgs' consInfoList'
     DataIntro consName dataArgs consArgs discriminant -> do
-      empty <- new
-      (dataArgs', varEnv) <- inferBinder' empty dataArgs
+      (dataArgs', varEnv) <- inferBinder' h dataArgs
       (consArgs', _) <- inferBinder' varEnv consArgs
       return $ DataIntro consName dataArgs' consArgs' discriminant
 
