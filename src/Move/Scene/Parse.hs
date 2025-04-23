@@ -12,7 +12,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Path qualified as Path
@@ -65,7 +65,7 @@ parseSource h t source cacheOrContent = do
     Left cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
-      saveTopLevelNames source $ getStmtName stmtList
+      toApp $ saveTopLevelNames h source $ getStmtName stmtList
       return $ Left cache
     Right fileContent -> do
       prog <- toApp $ P.parseFile (parseHandle h) filePath fileContent True Parse.parseProgram
@@ -92,7 +92,7 @@ interpret h currentSource (RawProgram m importList stmtList) = do
     Import.interpretImport (importHandle h) m currentSource importList >>= Import.activateImport (importHandle h) m
   stmtList' <- toApp $ Discern.discernStmtList (discernHandle h) (Source.sourceModule currentSource) $ map fst stmtList
   toApp $ Global.reportMissingDefinitions (globalHandle h)
-  saveTopLevelNames currentSource $ getWeakStmtName stmtList'
+  toApp $ saveTopLevelNames h currentSource $ getWeakStmtName stmtList'
   UnusedVariable.registerRemarks
   UnusedGlobalLocator.registerRemarks
   UnusedLocalLocator.registerRemarks
@@ -100,9 +100,8 @@ interpret h currentSource (RawProgram m importList stmtList) = do
   UnusedStaticFile.registerRemarks
   return stmtList'
 
-saveTopLevelNames :: Source.Source -> [(Hint, DD.DefiniteDescription)] -> App ()
-saveTopLevelNames source topNameList = do
-  h <- Global.new
-  globalNameList <- toApp $ mapM (uncurry $ Global.lookup' h) topNameList
+saveTopLevelNames :: Handle -> Source.Source -> [(Hint, DD.DefiniteDescription)] -> EIO ()
+saveTopLevelNames h source topNameList = do
+  globalNameList <- mapM (uncurry $ Global.lookup' (globalHandle h)) topNameList
   let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
-  liftIO $ Global.saveCurrentNameSet h (Source.sourceFilePath source) nameMap
+  liftIO $ Global.saveCurrentNameSet (globalHandle h) (Source.sourceFilePath source) nameMap
