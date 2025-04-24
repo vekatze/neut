@@ -8,12 +8,12 @@ import Language.LSP.Protocol.Types
 import Move.Context.AppM
 import Move.Context.Cache (invalidate)
 import Move.Context.EIO (toApp)
-import Move.Context.Elaborate
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type
 import Move.Scene.Check qualified as Check
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.LSP.FindDefinition qualified as LSP
 import Move.Scene.LSP.GetSource qualified as LSP
 import Rule.LocationTree qualified as LT
@@ -40,7 +40,8 @@ _getSymbolInfo locType = do
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
     LT.Local varID _ -> do
-      t <- lift (lookupWeakTypeEnvMaybe varID) >>= liftMaybe
+      hWT <- lift WeakType.new
+      t <- lift (liftIO $ WeakType.lookupMaybe hWT varID) >>= liftMaybe
       h <- lift Elaborate.new
       t' <- lift (Throw.runMaybe $ Elaborate.elaborate' h t) >>= liftMaybe
       return $ toText $ weaken t'

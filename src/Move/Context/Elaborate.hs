@@ -4,7 +4,6 @@ module Move.Context.Elaborate
     getConstraintEnv,
     setSuspendedEnv,
     getSuspendedEnv,
-    lookupWeakTypeEnvMaybe,
     getHoleSubst,
     setHoleSubst,
   )
@@ -15,7 +14,6 @@ import Move.Context.App
 import Move.Context.App.Internal
 import Rule.Constraint qualified as C
 import Rule.HoleSubst qualified as HS
-import Rule.WeakTerm
 
 initialize :: App ()
 initialize = do
@@ -40,11 +38,6 @@ getSuspendedEnv =
 setSuspendedEnv :: [C.SuspendedConstraint] -> App ()
 setSuspendedEnv =
   writeRef' suspendedEnv
-
-lookupWeakTypeEnvMaybe :: Int -> App (Maybe WeakTerm)
-lookupWeakTypeEnvMaybe k = do
-  wtenv <- readRef' weakTypeEnv
-  return $ IntMap.lookup k wtenv
 
 getHoleSubst :: App HS.HoleSubst
 getHoleSubst =
