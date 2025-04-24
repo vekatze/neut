@@ -70,7 +70,7 @@ data Handle = Handle
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
     suspendedEnvRef :: IORef [C.SuspendedConstraint],
-    defMap :: WeakDefinition.DefMap
+    weakDefHandle :: WeakDefinition.Handle
   }
 
 new :: App Handle
@@ -84,7 +84,7 @@ new = do
   constraintHandle <- Constraint.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  defMap <- WeakDefinition.read
+  weakDefHandle <- WeakDefinition.new
   let currentStep = 0
   holeSubstRef <- asks App.holeSubst
   suspendedEnvRef <- asks App.suspendedEnv
@@ -274,6 +274,7 @@ simplify h susList constraintList =
                   simplify h susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
+                  defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)
                   case (Stuck.asStuckedTerm e1, Stuck.asStuckedTerm e2) of
                     (Just (Stuck.Hole hole1 ies1, _ :< Stuck.Base), _)
                       | Just xss1 <- mapM asIdent ies1,
@@ -293,23 +294,23 @@ simplify h susList constraintList =
                           simplify h susList $ map (,orig) pairList ++ cs
                     (Just (Stuck.VarGlobal g1, ctx1), Just (Stuck.VarGlobal g2, ctx2))
                       | g1 == g2,
-                        Nothing <- Map.lookup g1 (defMap h),
+                        Nothing <- Map.lookup g1 defMap,
                         Just pairList <- Stuck.asPairList ctx1 ctx2 ->
                           simplify h susList $ map (,orig) pairList ++ cs
                       | g1 == g2,
-                        Just lam <- Map.lookup g1 (defMap h) -> do
+                        Just lam <- Map.lookup g1 defMap -> do
                           let h' = increment h
                           simplify h' susList $ (C.Eq (Stuck.resume lam ctx1) (Stuck.resume lam ctx2), orig) : cs
-                      | Just lam1 <- Map.lookup g1 (defMap h),
-                        Just lam2 <- Map.lookup g2 (defMap h) -> do
+                      | Just lam1 <- Map.lookup g1 defMap,
+                        Just lam2 <- Map.lookup g2 defMap -> do
                           let h' = increment h
                           simplify h' susList $ (C.Eq (Stuck.resume lam1 ctx1) (Stuck.resume lam2 ctx2), orig) : cs
                     (Just (Stuck.VarGlobal g1, ctx1), _)
-                      | Just lam <- Map.lookup g1 (defMap h) -> do
+                      | Just lam <- Map.lookup g1 defMap -> do
                           let h' = increment h
                           simplify h' susList $ (C.Eq (Stuck.resume lam ctx1) e2, orig) : cs
                     (_, Just (Stuck.VarGlobal g2, ctx2))
-                      | Just lam <- Map.lookup g2 (defMap h) -> do
+                      | Just lam <- Map.lookup g2 defMap -> do
                           let h' = increment h
                           simplify h' susList $ (C.Eq e1 (Stuck.resume lam ctx2), orig) : cs
                     (Just (Stuck.Prim (WP.Value (WPV.Op op1)), ctx1), Just (Stuck.Prim (WP.Value (WPV.Op op2)), ctx2))
@@ -445,9 +446,10 @@ simplifyActual h m dataNameSet t orig = do
           t'' <- Fill.fill (fillHandle h) s t'
           simplifyActual h m dataNameSet t'' orig
         Nothing -> do
+          defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
-              | Just lam <- Map.lookup dd (defMap h) -> do
+              | Just lam <- Map.lookup dd defMap -> do
                   simplifyActual (increment h) m dataNameSet (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
@@ -497,9 +499,10 @@ simplifyInteger h m t orig = do
           t'' <- Fill.fill (fillHandle h) (HS.singleton hole xs body) t'
           simplifyInteger h m t'' orig
         Nothing -> do
+          defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
-              | Just lam <- Map.lookup dd (defMap h) -> do
+              | Just lam <- Map.lookup dd defMap -> do
                   simplifyInteger (increment h) m (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
