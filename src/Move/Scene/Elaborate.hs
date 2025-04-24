@@ -423,15 +423,9 @@ strictify' h m t = do
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictify' h m arg
         _ ->
-          raiseNonStrictType m (weaken t')
+          toApp $ raiseNonStrictType m (weaken t')
     _ :< _ ->
-      raiseNonStrictType m (weaken t')
-
-raiseNonStrictType :: Hint -> WT.WeakTerm -> App a
-raiseNonStrictType m t = do
-  Throw.raiseError m $
-    "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
-      <> toText t
+      toApp $ raiseNonStrictType m (weaken t')
 
 strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakTerm -> App (Either FloatSize IntSize, TM.Term)
 strictifyDecimalType h m x t = do
@@ -623,6 +617,12 @@ elaborateClause h mOrig cursor ctx decisionCase = do
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
+
+raiseNonStrictType :: Hint -> WT.WeakTerm -> EIO a
+raiseNonStrictType m t = do
+  raiseError m $
+    "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
+      <> toText t
 
 raiseNonDecimalType :: Hint -> Integer -> WT.WeakTerm -> EIO a
 raiseNonDecimalType m x t = do
