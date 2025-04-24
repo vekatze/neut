@@ -114,22 +114,26 @@ inline' h term = do
                 then do
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
-                  _ :< body' <- Subst.subst sub body
+                  hSub <- Subst.new
+                  _ :< body' <- Subst.subst hSub sub body
                   inline' h $ m :< body'
                 else do
-                  (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
+                  hSub <- Subst.new
+                  (xts', _ :< body') <- Subst.subst' hSub IntMap.empty xts body
                   inline' h $ bind (zip xts' es') (m :< body')
         (_ :< TM.VarGlobal _ dd)
           | Just (xts, body) <- Map.lookup dd dmap -> do
               if all TM.isValue es'
                 then do
                   let (_, xs, _) = unzip3 xts
+                  hSub <- Subst.new
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
-                  _ :< body' <- Subst.subst sub body
+                  _ :< body' <- Subst.subst hSub sub body
                   body'' <- refresh $ m :< body'
                   inline' h body''
                 else do
-                  (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
+                  hSub <- Subst.new
+                  (xts', _ :< body') <- Subst.subst' hSub IntMap.empty xts body
                   body'' <- refresh $ m :< body'
                   inline' h $ bind (zip xts' es') body''
         _ ->
@@ -154,7 +158,8 @@ inline' h term = do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              Subst.subst sub (TM.fromLetSeq letSeq e) >>= inline' h
+              hSub <- Subst.new
+              Subst.subst hSub sub (TM.fromLetSeq letSeq e) >>= inline' h
             DT.Unreachable ->
               return $ m :< TM.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -163,7 +168,8 @@ inline' h term = do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                   let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                  dataElim' <- Subst.subst sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
+                  hSub <- Subst.new
+                  dataElim' <- Subst.subst hSub sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
                   inline' h dataElim'
                 _ -> do
                   decisionTree' <- inlineDecisionTree h decisionTree
@@ -183,7 +189,8 @@ inline' h term = do
         O.Clear
           | TM.isValue e1' -> do
               let sub = IntMap.singleton (Ident.toInt x) (Right e1')
-              Subst.subst sub e2 >>= inline' h
+              hSub <- Subst.new
+              Subst.subst hSub sub e2 >>= inline' h
         _ -> do
           t' <- inline' h t
           e2' <- inline' h e2
