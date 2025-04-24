@@ -88,6 +88,8 @@ data Handle
     substHandle :: Subst.Handle,
     typeHandle :: Type.Handle,
     weakDeclHandle :: WeakDecl.Handle,
+    defHandle :: Definition.Handle,
+    dataDefHandle :: DataDefinition.Handle,
     gensymHandle :: Gensym.Handle
   }
 
@@ -101,6 +103,8 @@ new = do
   typeHandle <- Type.new
   weakDeclHandle <- WeakDecl.new
   gensymHandle <- Gensym.new
+  defHandle <- Definition.new
+  dataDefHandle <- DataDefinition.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -200,11 +204,11 @@ insertStmt h stmt = do
   case stmt of
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs t e -> do
       liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi impArgs expArgs t
-      Definition.insert (toOpacity stmtKind) f (impArgs ++ expArgs) e
+      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (impArgs ++ expArgs) e
     StmtForeign _ -> do
       return ()
   insertWeakStmt h $ weakenStmt stmt
-  insertStmtKindInfo stmt
+  liftIO $ insertStmtKindInfo h stmt
 
 insertWeakStmt :: Handle -> WeakStmt -> App ()
 insertWeakStmt h stmt = do
@@ -219,15 +223,15 @@ insertWeakStmt h stmt = do
         cod' <- mapM (elaborate' h >=> return . weaken) cod
         liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList' cod'
 
-insertStmtKindInfo :: Stmt -> App ()
-insertStmtKindInfo stmt = do
+insertStmtKindInfo :: Handle -> Stmt -> IO ()
+insertStmtKindInfo h stmt = do
   case stmt of
     StmtDefine _ stmtKind _ _ _ _ _ _ -> do
       case stmtKind of
         Normal _ ->
           return ()
         Data dataName dataArgs consInfoList -> do
-          DataDefinition.insert dataName dataArgs consInfoList
+          DataDefinition.insert' (dataDefHandle h) dataName dataArgs consInfoList
         DataIntro {} ->
           return ()
     StmtForeign {} ->
