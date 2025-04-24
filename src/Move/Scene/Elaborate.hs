@@ -8,8 +8,10 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
+import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -36,6 +38,7 @@ import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as TM
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
+import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Annotation qualified as AN
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -51,6 +54,8 @@ import Rule.Error qualified as E
 import Rule.Foreign qualified as F
 import Rule.Geist qualified as G
 import Rule.Hint
+import Rule.HoleID qualified as HID
+import Rule.HoleSubst qualified as HS
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.IsConstLike (IsConstLike)
@@ -72,14 +77,16 @@ import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText
 
-newtype Handle
+data Handle
   = Handle
-  { reduceHandle :: Reduce.Handle
+  { reduceHandle :: Reduce.Handle,
+    weakDefHandle :: WeakDefinition.Handle
   }
 
 new :: App Handle
 new = do
   reduceHandle <- Reduce.new
+  weakDefHandle <- WeakDefinition.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -307,7 +314,7 @@ elaborate' h term =
       e2' <- elaborate' h e2
       return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
     m :< WT.Hole hole es -> do
-      fillHole m hole es >>= elaborate' h
+      fillHole h m hole es >>= elaborate' h
     m :< WT.Prim prim ->
       case prim of
         WP.Type t ->
@@ -658,9 +665,9 @@ reduceWeakType h e = do
   e' <- toApp $ Reduce.reduce (reduceHandle h) e
   case e' of
     m :< WT.Hole hole es ->
-      fillHole m hole es >>= reduceWeakType h
+      fillHole h m hole es >>= reduceWeakType h
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
-      mLam <- WeakDefinition.lookup name
+      mLam <- liftIO $ WeakDefinition.lookup' (weakDefHandle h) name
       case mLam of
         Just lam ->
           reduceWeakType h $ m :< WT.PiElim lam args
@@ -668,3 +675,22 @@ reduceWeakType h e = do
           return e'
     _ ->
       return e'
+
+fillHole ::
+  Handle ->
+  Hint ->
+  HID.HoleID ->
+  [WT.WeakTerm] ->
+  App WT.WeakTerm
+fillHole _ m holeID es = do
+  holeSubst <- getHoleSubst
+  substHandle <- Subst.new
+  case HS.lookup holeID holeSubst of
+    Nothing ->
+      Throw.raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
+    Just (xs, e)
+      | length xs == length es -> do
+          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
+          toApp $ Subst.subst substHandle s e
+      | otherwise ->
+          Throw.raiseError m "Arity mismatch"
