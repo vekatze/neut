@@ -9,14 +9,13 @@ import Control.Comonad.Cofree
 import Control.Lens (Bifunctor (bimap))
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Move.Context.App (App)
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical)
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
@@ -54,12 +53,11 @@ data Handle
   { reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     typeHandle :: Type.Handle,
+    weakDefHandle :: WeakDefinition.Handle,
+    optDataHandle :: OptimizableData.Handle,
     varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
-    mustPerformExpCheck :: Bool,
-    typeEnv :: Map.HashMap DD.DefiniteDescription WT.WeakTerm,
-    optDataMap :: Map.HashMap DD.DefiniteDescription OptimizableData,
-    defMap :: WeakDefinition.DefMap
+    mustPerformExpCheck :: Bool
   }
 
 new :: App Handle
@@ -67,13 +65,11 @@ new = do
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
   typeHandle <- Type.new
+  weakDefHandle <- WeakDefinition.new
+  optDataHandle <- OptimizableData.new
   let varEnv = IntMap.empty
   foundVarSetRef <- liftIO $ newIORef IntMap.empty
-  weakDefMapRef <- asks App.weakDefMap
-  defMap <- liftIO $ readIORef weakDefMapRef
   let mustPerformExpCheck = True
-  typeEnv <- asks App.typeEnv >>= liftIO . readIORef
-  optDataMap <- asks App.optDataMap >>= liftIO . readIORef
   return $ Handle {..}
 
 ensureAffinity :: Handle -> TM.Term -> EIO [R.Remark]
@@ -351,7 +347,8 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
     _ :< WT.Tau -> do
       return []
     _ :< WT.Data (AttrD.Attr {consNameList}) dataName dataArgs -> do
-      case lookupOptimizableData h dataName of
+      optDataOrNone <- liftIO $ lookupOptimizableData h dataName
+      case optDataOrNone of
         Just OD.Enum -> do
           return []
         Just OD.Unary -> do
@@ -374,9 +371,10 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
     _ :< WT.Prim {} -> do
       return []
     _ -> do
+      defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)
       case Stuck.asStuckedTerm t' of
         Just (Stuck.VarGlobal dd, evalCtx)
-          | Just lam <- Map.lookup dd (defMap h) -> do
+          | Just lam <- Map.lookup dd defMap -> do
               simplifyAffine h dataNameSet (Stuck.resume lam evalCtx, orig)
         _ -> do
           return [AffineConstraintError orig]
@@ -406,6 +404,6 @@ getConsArgTypes h m consName = do
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
 
-lookupOptimizableData :: Handle -> DD.DefiniteDescription -> Maybe OptimizableData
+lookupOptimizableData :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOptimizableData h dd = do
-  Map.lookup dd (optDataMap h)
+  OptimizableData.lookupH (optDataHandle h) dd
