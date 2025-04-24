@@ -66,11 +66,11 @@ detectPossibleInfiniteLoop h = do
 inline :: Hint -> TM.Term -> App TM.Term
 inline m e = do
   h <- new m
-  inline' h e
+  toApp $ inline' h e
 
-inline' :: Handle -> TM.Term -> App TM.Term
+inline' :: Handle -> TM.Term -> EIO TM.Term
 inline' h term = do
-  toApp $ detectPossibleInfiniteLoop h
+  detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
   case term of
     m :< TM.Pi impArgs expArgs cod -> do
@@ -196,7 +196,7 @@ inline' h term = do
     _ ->
       return term
 
-inlineBinder :: Handle -> BinderF TM.Term -> App (BinderF TM.Term)
+inlineBinder :: Handle -> BinderF TM.Term -> EIO (BinderF TM.Term)
 inlineBinder h (m, x, t) = do
   t' <- inline' h t
   return (m, x, t')
@@ -204,7 +204,7 @@ inlineBinder h (m, x, t) = do
 inlineDecisionTree ::
   Handle ->
   DT.DecisionTree TM.Term ->
-  App (DT.DecisionTree TM.Term)
+  EIO (DT.DecisionTree TM.Term)
 inlineDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -221,7 +221,7 @@ inlineDecisionTree h tree =
 inlineCaseList ::
   Handle ->
   DT.CaseList TM.Term ->
-  App (DT.CaseList TM.Term)
+  EIO (DT.CaseList TM.Term)
 inlineCaseList h (fallbackTree, clauseList) = do
   fallbackTree' <- inlineDecisionTree h fallbackTree
   clauseList' <- mapM (inlineCase h) clauseList
@@ -230,7 +230,7 @@ inlineCaseList h (fallbackTree, clauseList) = do
 inlineCase ::
   Handle ->
   DT.Case TM.Term ->
-  App (DT.Case TM.Term)
+  EIO (DT.Case TM.Term)
 inlineCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
