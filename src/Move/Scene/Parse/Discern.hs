@@ -15,6 +15,7 @@ import Move.Context.Env (getPlatform)
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Data
@@ -883,7 +884,7 @@ discernBinder h binder endLoc =
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinder h' xts endLoc
       liftIO $ Tag.insertBinderIO (H.tagMapRef h'') (mx, x', t')
-      liftIO $ H.insertSymLoc h'' x' (metaLocation mx) endLoc
+      liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
       return ((mx, x', t') : xts', h'')
 
 discernBinder' ::
@@ -914,7 +915,7 @@ discernBinderWithBody' h (mx, x, _, _, codType) startLoc endLoc e = do
   x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
   h'' <- liftIO $ H.extend' h mx x' VDK.Normal
   e' <- discern h'' e
-  liftIO $ H.insertSymLoc h'' x' startLoc endLoc
+  liftIO $ SymLoc.insert (H.symLocHandle h'') x' startLoc endLoc
   return ((mx, x', codType'), e')
 
 discernPatternMatrix ::

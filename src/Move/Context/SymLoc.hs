@@ -1,26 +1,40 @@
 module Move.Context.SymLoc
-  ( initialize,
+  ( Handle,
+    new,
+    initialize,
     insert,
     get,
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
 import Control.Monad (unless)
+import Control.Monad.Reader (asks)
+import Data.IORef
+import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Rule.Hint
 import Rule.Ident
 import Rule.LocalVarTree qualified as LVT
 
+newtype Handle
+  = Handle
+  { localVarMapRef :: IORef LVT.LocalVarTree
+  }
+
+new :: App Handle
+new = do
+  localVarMapRef <- asks App.localVarMap
+  return $ Handle {..}
+
 initialize :: App ()
 initialize =
-  writeRef' localVarMap LVT.empty
+  writeRef' App.localVarMap LVT.empty
 
-insert :: Ident -> Loc -> Loc -> App ()
-insert x startLoc endLoc = do
+insert :: Handle -> Ident -> Loc -> Loc -> IO ()
+insert h x startLoc endLoc = do
   unless (isHole x) $ do
-    modifyRef' localVarMap $ LVT.insert startLoc endLoc x
+    modifyIORef' (localVarMapRef h) $ LVT.insert startLoc endLoc x
 
-get :: App LVT.LocalVarTree
-get =
-  readRef' localVarMap
+get :: Handle -> IO LVT.LocalVarTree
+get h =
+  readIORef (localVarMapRef h)

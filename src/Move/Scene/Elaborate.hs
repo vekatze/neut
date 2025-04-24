@@ -98,7 +98,8 @@ data Handle
     affHandle :: EnsureAffinity.Handle,
     inferHandle :: Infer.Handle,
     unifyHandle :: Unify.Handle,
-    pathHandle :: Path.Handle
+    pathHandle :: Path.Handle,
+    symLocHandle :: SymLoc.Handle
   }
 
 new :: App Handle
@@ -120,6 +121,7 @@ new = do
   inferHandle <- Infer.new
   unifyHandle <- Unify.new
   pathHandle <- Path.new
+  symLocHandle <- SymLoc.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -153,7 +155,7 @@ synthesizeStmtList h t stmtList = do
   -- mapM_ (viewStmt . weakenStmt) stmtList'
   source <- Env.getCurrentSource
   remarkList <- liftIO $ LocalRemark.get (localRemarkHandle h)
-  localVarTree <- SymLoc.get
+  localVarTree <- liftIO $ SymLoc.get (symLocHandle h)
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
