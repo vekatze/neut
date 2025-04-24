@@ -124,11 +124,11 @@ inline' h term = do
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
                   _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                  body'' <- Refresh.refresh (refreshHandle h) $ m :< body'
+                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                   inline' h body''
                 else do
                   (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
-                  body'' <- Refresh.refresh (refreshHandle h) $ m :< body'
+                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                   inline' h $ bind (zip xts' es') body''
         _ ->
           return (m :< TM.PiElim e' es')

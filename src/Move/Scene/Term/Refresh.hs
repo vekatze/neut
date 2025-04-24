@@ -6,22 +6,26 @@ module Move.Scene.Term.Refresh
 where
 
 import Control.Comonad.Cofree
+import Control.Monad.IO.Class
 import Move.Context.App
-import Move.Context.Gensym qualified as Gensym
+import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
 import Rule.DecisionTree qualified as DT
 import Rule.LamKind qualified as LK
 import Rule.Term qualified as TM
 
-data Handle
-  = Handle {}
+newtype Handle
+  = Handle
+  { gensymHandle :: Gensym.Handle
+  }
 
 new :: App Handle
 new = do
-  return $ Handle {}
+  gensymHandle <- Gensym.new
+  return $ Handle {..}
 
-refresh :: Handle -> TM.Term -> App TM.Term
+refresh :: Handle -> TM.Term -> IO TM.Term
 refresh h term =
   case term of
     _ :< TM.Tau ->
@@ -36,7 +40,7 @@ refresh h term =
       t' <- refresh h t
       return (m :< TM.Pi impArgs' expArgs' t')
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      newLamID <- Gensym.newCount
+      newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
       case lamKind of
         LK.Fix xt -> do
           impArgs' <- refreshBinder h impArgs
@@ -106,7 +110,7 @@ refresh h term =
 refreshBinder ::
   Handle ->
   [BinderF TM.Term] ->
-  App [BinderF TM.Term]
+  IO [BinderF TM.Term]
 refreshBinder h binder =
   case binder of
     [] -> do
@@ -119,7 +123,7 @@ refreshBinder h binder =
 refreshLet ::
   Handle ->
   (BinderF TM.Term, TM.Term) ->
-  App (BinderF TM.Term, TM.Term)
+  IO (BinderF TM.Term, TM.Term)
 refreshLet h ((m, x, t), e) = do
   t' <- refresh h t
   e' <- refresh h e
@@ -129,7 +133,7 @@ refresh' ::
   Handle ->
   [BinderF TM.Term] ->
   TM.Term ->
-  App ([BinderF TM.Term], TM.Term)
+  IO ([BinderF TM.Term], TM.Term)
 refresh' h binder e =
   case binder of
     [] -> do
@@ -144,7 +148,7 @@ refresh'' ::
   Handle ->
   [BinderF TM.Term] ->
   DT.DecisionTree TM.Term ->
-  App ([BinderF TM.Term], DT.DecisionTree TM.Term)
+  IO ([BinderF TM.Term], DT.DecisionTree TM.Term)
 refresh'' h binder decisionTree =
   case binder of
     [] -> do
@@ -158,7 +162,7 @@ refresh'' h binder decisionTree =
 refreshBinder1 ::
   Handle ->
   (BinderF TM.Term, TM.Term) ->
-  App (BinderF TM.Term, TM.Term)
+  IO (BinderF TM.Term, TM.Term)
 refreshBinder1 h ((m, x, t), e) = do
   e' <- refresh h e
   t' <- refresh h t
@@ -167,7 +171,7 @@ refreshBinder1 h ((m, x, t), e) = do
 refreshLetSeq ::
   Handle ->
   [(BinderF TM.Term, TM.Term)] ->
-  App [(BinderF TM.Term, TM.Term)]
+  IO [(BinderF TM.Term, TM.Term)]
 refreshLetSeq h letSeq = do
   case letSeq of
     [] ->
@@ -180,7 +184,7 @@ refreshLetSeq h letSeq = do
 refreshDecisionTree ::
   Handle ->
   DT.DecisionTree TM.Term ->
-  App (DT.DecisionTree TM.Term)
+  IO (DT.DecisionTree TM.Term)
 refreshDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -197,7 +201,7 @@ refreshDecisionTree h tree =
 refreshCaseList ::
   Handle ->
   DT.CaseList TM.Term ->
-  App (DT.CaseList TM.Term)
+  IO (DT.CaseList TM.Term)
 refreshCaseList h (fallbackClause, clauseList) = do
   fallbackClause' <- refreshDecisionTree h fallbackClause
   clauseList' <- mapM (refreshCase h) clauseList
@@ -206,7 +210,7 @@ refreshCaseList h (fallbackClause, clauseList) = do
 refreshCase ::
   Handle ->
   DT.Case TM.Term ->
-  App (DT.Case TM.Term)
+  IO (DT.Case TM.Term)
 refreshCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
