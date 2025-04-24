@@ -4,15 +4,13 @@ module Move.Scene.Elaborate.Handle.WeakType
     insert,
     lookup,
     lookupMaybe,
+    get,
   )
 where
 
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical)
 import Rule.Hint
 import Rule.Ident
@@ -24,9 +22,9 @@ newtype Handle = Handle
   { weakTypeEnvRef :: IORef (IntMap.IntMap WT.WeakTerm)
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  weakTypeEnvRef <- asks App.weakTypeEnv
+  weakTypeEnvRef <- newIORef IntMap.empty
   return $ Handle {..}
 
 insert :: Handle -> Ident -> WT.WeakTerm -> IO ()
@@ -47,3 +45,7 @@ lookupMaybe :: Handle -> Int -> IO (Maybe WT.WeakTerm)
 lookupMaybe h k = do
   weakTypeEnv <- readIORef (weakTypeEnvRef h)
   return $ IntMap.lookup k weakTypeEnv
+
+get :: Handle -> IO (IntMap.IntMap WT.WeakTerm)
+get h =
+  readIORef (weakTypeEnvRef h)

@@ -133,7 +133,6 @@ new handleEnv@(Elaborate.HandleEnv {..}) = do
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate h t cacheOrStmt = do
-  Elaborate.initialize
   case cacheOrStmt of
     Left cache -> do
       let stmtList = Cache.stmtList cache

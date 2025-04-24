@@ -84,7 +84,6 @@ data Env = Env
     buildSignatureCache :: IORef (Maybe String), -- only for memoization
     sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
     traceSourceList :: IORef [Source.Source],
-    weakTypeEnv :: IORef (IntMap.IntMap WT.WeakTerm),
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     visitEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
@@ -145,7 +144,6 @@ newEnv = do
   antecedentDigestCache <- newRef
   buildSignatureCache <- newIORef Nothing
   sourceChildrenMap <- newIORef Map.empty
-  weakTypeEnv <- newIORef IntMap.empty
   traceSourceList <- newIORef []
   artifactMap <- newIORef Map.empty
   visitEnv <- newIORef Map.empty

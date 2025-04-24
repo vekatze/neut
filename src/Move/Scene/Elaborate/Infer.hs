@@ -105,7 +105,6 @@ new handleEnv@(Elaborate.HandleEnv {..}) = do
   gensymHandle <- Gensym.new
   discernHandle <- Discern.new
   keyArgHandle <- KeyArg.new
-  weakTypeHandle <- WeakType.new
   weakDeclHandle <- WeakDecl.new
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new

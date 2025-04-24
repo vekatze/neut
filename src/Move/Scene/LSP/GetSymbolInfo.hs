@@ -2,6 +2,7 @@ module Move.Scene.LSP.GetSymbolInfo (getSymbolInfo) where
 
 import Control.Comonad.Cofree
 import Control.Monad.Trans
+import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -31,18 +32,19 @@ getSymbolInfo ::
 getSymbolInfo params = do
   source <- LSP.getSource params
   h <- lift Path.new
+  hEnv <- liftIO Elaborate.createNewEnv
   lift $ toApp $ invalidate h Peripheral source
-  lift $ Check.checkSingle (sourceModule source) (sourceFilePath source)
+  lift $ Check.checkSingle hEnv (sourceModule source) (sourceFilePath source)
+  weakTypeEnv <- lift $ liftIO $ WeakType.get (Elaborate.weakTypeHandle hEnv)
   ((locType, _), _) <- LSP.findDefinition params
-  _getSymbolInfo locType
+  _getSymbolInfo weakTypeEnv locType
 
-_getSymbolInfo :: LT.LocType -> AppM T.Text
-_getSymbolInfo locType = do
+_getSymbolInfo :: IntMap.IntMap WT.WeakTerm -> LT.LocType -> AppM T.Text
+_getSymbolInfo weakTypeEnv locType = do
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
     LT.Local varID _ -> do
-      hWT <- lift WeakType.new
-      t <- lift (liftIO $ WeakType.lookupMaybe hWT varID) >>= liftMaybe
+      t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
       hEnv <- liftIO Elaborate.createNewEnv
       h <- lift $ Elaborate.new hEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' h t) >>= liftMaybe
