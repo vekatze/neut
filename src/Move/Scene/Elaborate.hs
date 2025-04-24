@@ -96,7 +96,9 @@ data Handle
     localRemarkHandle :: LocalRemark.Handle,
     inlineHandle :: Inline.Handle,
     affHandle :: EnsureAffinity.Handle,
-    inferHandle :: Infer.Handle
+    inferHandle :: Infer.Handle,
+    unifyHandle :: Unify.Handle,
+    pathHandle :: Path.Handle
   }
 
 new :: App Handle
@@ -116,6 +118,8 @@ new = do
   inlineHandle <- Inline.new
   affHandle <- EnsureAffinity.new
   inferHandle <- Infer.new
+  unifyHandle <- Unify.new
+  pathHandle <- Path.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -142,8 +146,7 @@ analyzeStmtList h stmtList = do
 synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> App [Stmt]
 synthesizeStmtList h t stmtList = do
   -- mapM_ viewStmt stmtList
-  hUnify <- Unify.new
-  liftIO (Constraint.get (constraintHandle h)) >>= toApp . Unify.unify hUnify >>= liftIO . Hole.setSubst (holeHandle h)
+  liftIO (Constraint.get (constraintHandle h)) >>= toApp . Unify.unify (unifyHandle h) >>= liftIO . Hole.setSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (toApp . elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     Throw.throw $ E.MakeError affineErrorList
@@ -154,16 +157,15 @@ synthesizeStmtList h t stmtList = do
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
-  hPath <- Path.new
   toApp $
-    Cache.saveCache hPath t source $
+    Cache.saveCache (pathHandle h) t source $
       Cache.Cache
         { Cache.stmtList = stmtList',
           Cache.remarkList = remarkList,
           Cache.countSnapshot = countSnapshot
         }
   toApp $
-    Cache.saveCompletionCache hPath t source $
+    Cache.saveCompletionCache (pathHandle h) t source $
       Cache.CompletionCache
         { Cache.localVarTree = localVarTree,
           Cache.topCandidate = topCandidate,
