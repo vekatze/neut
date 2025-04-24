@@ -13,7 +13,7 @@ import Move.Context.App
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env qualified as Env
-import Move.Scene.Term.Refresh (refresh)
+import Move.Scene.Term.Refresh qualified as Refresh
 import Move.Scene.Term.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
@@ -34,6 +34,7 @@ import Rule.Term qualified as TM
 
 data Handle = Handle
   { substHandle :: Subst.Handle,
+    refreshHandle :: Refresh.Handle,
     dmap :: Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term),
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
@@ -43,6 +44,7 @@ data Handle = Handle
 new :: Hint -> App Handle
 new location = do
   substHandle <- Subst.new
+  refreshHandle <- Refresh.new
   source <- Env.getCurrentSource
   dmap <- Definition.get
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
@@ -122,11 +124,11 @@ inline' h term = do
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
                   _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                  body'' <- refresh $ m :< body'
+                  body'' <- Refresh.refresh (refreshHandle h) $ m :< body'
                   inline' h body''
                 else do
                   (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
-                  body'' <- refresh $ m :< body'
+                  body'' <- Refresh.refresh (refreshHandle h) $ m :< body'
                   inline' h $ bind (zip xts' es') body''
         _ ->
           return (m :< TM.PiElim e' es')
