@@ -20,6 +20,7 @@ import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
+import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -40,7 +41,6 @@ import Rule.LocalLocator qualified as LL
 import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.ModuleAlias (ModuleAlias (ModuleAlias))
-import Rule.RawImportSummary qualified as RIS
 import Rule.RawProgram
 import Rule.Source qualified as Source
 import Rule.SourceLocator qualified as SL
@@ -57,13 +57,13 @@ data Handle
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
     unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]),
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
-    importEnvRef :: IORef (Maybe RIS.RawImportSummary),
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     shiftToLatestHandle :: STL.Handle,
     locatorHandle :: Locator.Handle,
     aliasHandle :: Alias.Handle,
     globalHandle :: Global.Handle,
     gensymHandle :: Gensym.Handle,
+    rawImportSummaryHandle :: RawImportSummary.Handle,
     tagMapRef :: IORef LT.LocationTree
   }
 
@@ -74,7 +74,6 @@ new = do
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
-  importEnvRef <- asks App.importEnv
   getEnabledPresetHandle <- GetEnabledPreset.new
   shiftToLatestHandle <- STL.new
   locatorHandle <- Locator.new
@@ -82,6 +81,7 @@ new = do
   tagMapRef <- asks App.tagMap
   globalHandle <- Global.new
   gensymHandle <- Gensym.new
+  rawImportSummaryHandle <- RawImportSummary.new
   return $ Handle {..}
 
 activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
@@ -105,7 +105,7 @@ interpretImport h m currentSource importList = do
   if SE.isEmpty importItemList
     then return presetImportList
     else do
-      liftIO $ writeIORef (importEnvRef h) $ Just $ RIS.fromRawImport importList'
+      liftIO $ RawImportSummary.set (rawImportSummaryHandle h) importList'
       importItemList' <- fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
         case rawImportItem of
           RawImportItem mItem (locatorText, _) localLocatorList -> do

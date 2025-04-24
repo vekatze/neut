@@ -1,23 +1,36 @@
 module Move.Context.RawImportSummary
-  ( initialize,
+  ( Handle,
+    new,
+    initialize,
     set,
     get,
   )
 where
 
+import Control.Monad.Reader (asks)
+import Data.IORef
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
 import Rule.RawImportSummary qualified as RIS
 import Rule.RawProgram (RawImport)
 
+newtype Handle = Handle
+  { importEnvRef :: IORef (Maybe RIS.RawImportSummary)
+  }
+
+new :: App Handle
+new = do
+  importEnvRef <- asks App.importEnv
+  return $ Handle {..}
+
 initialize :: App ()
 initialize =
-  writeRef' importEnv Nothing
+  writeRef' App.importEnv Nothing
 
-set :: RawImport -> App ()
-set rawImport = do
-  writeRef' importEnv $ Just (RIS.fromRawImport rawImport)
+set :: Handle -> RawImport -> IO ()
+set h rawImport = do
+  writeIORef (importEnvRef h) $ Just (RIS.fromRawImport rawImport)
 
-get :: App (Maybe RIS.RawImportSummary)
-get =
-  readRef' importEnv
+get :: Handle -> IO (Maybe RIS.RawImportSummary)
+get h =
+  readIORef (importEnvRef h)

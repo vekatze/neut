@@ -100,7 +100,8 @@ data Handle
     unifyHandle :: Unify.Handle,
     pathHandle :: Path.Handle,
     symLocHandle :: SymLoc.Handle,
-    topCandidateHandle :: TopCandidate.Handle
+    topCandidateHandle :: TopCandidate.Handle,
+    rawImportSummaryHandle :: RawImportSummary.Handle
   }
 
 new :: App Handle
@@ -124,6 +125,7 @@ new = do
   pathHandle <- Path.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
+  rawImportSummaryHandle <- RawImportSummary.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -159,7 +161,7 @@ synthesizeStmtList h t stmtList = do
   remarkList <- liftIO $ LocalRemark.get (localRemarkHandle h)
   localVarTree <- liftIO $ SymLoc.get (symLocHandle h)
   topCandidate <- liftIO $ TopCandidate.get (topCandidateHandle h)
-  rawImportSummary <- RawImportSummary.get
+  rawImportSummary <- liftIO $ RawImportSummary.get (rawImportSummaryHandle h)
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   toApp $
     Cache.saveCache (pathHandle h) t source $
