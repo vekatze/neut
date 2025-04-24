@@ -17,6 +17,7 @@ import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
+import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Data
 import Move.Scene.Parse.Discern.Handle (Handle (tagMapRef))
@@ -102,7 +103,7 @@ discernStmt h mo stmt = do
       stmtKind' <- discernStmtKind h stmtKind
       body' <- discern nenv' body
       liftIO $ Tag.insertGlobalVarIO (H.tagMapRef h) m functionName isConstLike m
-      liftIO $ H.insertTopCandidate h $ do
+      liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
       liftIO $ forM_ expArgs' $ Tag.insertBinderIO (H.tagMapRef h)
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
@@ -115,7 +116,7 @@ discernStmt h mo stmt = do
       t' <- discern h $ m :< RT.Tau
       e' <- discern h $ m :< RT.Resource dd [] (discarder, []) (copier, [])
       liftIO $ Tag.insertGlobalVarIO (H.tagMapRef h) m dd True m
-      liftIO $ H.insertTopCandidate h $ do
+      liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
     RawStmtNominal _ m geistList -> do
@@ -141,7 +142,7 @@ discernGeist h endLoc geist = do
   let m = RT.loc geist
   let dd = nameLifter $ fst $ RT.name geist
   let kind = if RT.isConstLike geist then Constant else Function
-  liftIO $ H.insertTopCandidate h $ TopCandidate {loc = metaLocation m, dd = dd, kind = kind}
+  liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ TopCandidate {loc = metaLocation m, dd = dd, kind = kind}
   return $
     G.Geist
       { loc = m,

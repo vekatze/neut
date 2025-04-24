@@ -1,22 +1,35 @@
 module Move.Context.TopCandidate
-  ( initialize,
+  ( Handle,
+    new,
+    initialize,
     insert,
     get,
   )
 where
 
+import Control.Monad.Reader (asks)
+import Data.IORef
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
 import Rule.TopCandidate
+
+newtype Handle = Handle
+  { topCandidateEnvRef :: IORef [TopCandidate]
+  }
+
+new :: App Handle
+new = do
+  topCandidateEnvRef <- asks App.topCandidateEnv
+  return $ Handle {..}
 
 initialize :: App ()
 initialize =
-  writeRef' topCandidateEnv []
+  writeRef' App.topCandidateEnv []
 
-insert :: TopCandidate -> App ()
-insert cand = do
-  modifyRef' topCandidateEnv $ (:) cand
+insert :: Handle -> TopCandidate -> IO ()
+insert h cand = do
+  modifyIORef' (topCandidateEnvRef h) $ (:) cand
 
-get :: App [TopCandidate]
-get =
-  readRef' topCandidateEnv
+get :: Handle -> IO [TopCandidate]
+get h =
+  readIORef (topCandidateEnvRef h)

@@ -7,7 +7,6 @@ module Move.Scene.Parse.Discern.Handle
     extendByNominalEnv,
     lookupOD,
     deleteUnusedVariable,
-    insertTopCandidate,
     insertExternalName,
     lookupExternalName,
     deleteUnusedStaticFile,
@@ -31,6 +30,7 @@ import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.SymLoc qualified as SymLoc
+import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.BuildMode qualified as BM
 import Rule.DefiniteDescription qualified as DD
@@ -44,7 +44,6 @@ import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.NominalEnv
 import Rule.OptimizableData
-import Rule.TopCandidate
 import Rule.VarDefKind
 
 data Handle = Handle
@@ -55,12 +54,12 @@ data Handle = Handle
     aliasHandle :: Alias.Handle,
     keyArgHandle :: KeyArg.Handle,
     symLocHandle :: SymLoc.Handle,
+    topCandidateHandle :: TopCandidate.Handle,
     nameEnv :: NominalEnv,
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
     usedVariableSetRef :: IORef (S.Set Int),
-    topCandidateEnvRef :: IORef [TopCandidate],
     optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     preDeclEnvRef :: IORef (Map.HashMap EN.ExternalName Hint),
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
@@ -77,12 +76,12 @@ new = do
   aliasHandle <- Alias.new
   keyArgHandle <- KeyArg.new
   symLocHandle <- SymLoc.new
+  topCandidateHandle <- TopCandidate.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
   usedVariableSetRef <- asks App.usedVariableSet
   optDataMapRef <- asks App.optDataMap
-  topCandidateEnvRef <- asks App.topCandidateEnv
   preDeclEnvRef <- asks App.preDeclEnv
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   tagMapRef <- asks App.tagMap
@@ -124,10 +123,6 @@ lookupOD :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOD h dd = do
   optDataMap <- readIORef (optDataMapRef h)
   return $ Map.lookup dd optDataMap
-
-insertTopCandidate :: Handle -> TopCandidate -> IO ()
-insertTopCandidate h cand = do
-  modifyIORef' (topCandidateEnvRef h) $ (:) cand
 
 insertExternalName :: Handle -> EN.ExternalName -> Hint -> IO ()
 insertExternalName h k m =
