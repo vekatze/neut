@@ -35,6 +35,7 @@ import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Module.Reflect qualified as Module
+import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
 import Rule.Config.Remark qualified as Remark
 import Rule.Module
@@ -70,7 +71,8 @@ initializeForTarget :: App ()
 initializeForTarget = do
   Clarify.registerFoundationalTypes
   Unravel.initialize
-  Remark.setGlobalRemarkList []
+  h <- GlobalRemark.new
+  liftIO $ GlobalRemark.set h []
   asks App.sourceNameMap >>= liftIO . Global.clearSourceNameMap
   WeakDefinition.initialize
   Definition.initialize

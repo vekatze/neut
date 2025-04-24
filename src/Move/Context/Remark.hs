@@ -3,9 +3,6 @@ module Move.Context.Remark
     insertRemark,
     getRemarkList,
     setRemarkList,
-    insertToGlobalRemarkList,
-    setGlobalRemarkList,
-    getGlobalRemarkList,
     printString,
     printRemark,
     printRemarkList,
@@ -27,11 +24,11 @@ module Move.Context.Remark
   )
 where
 
+import Control.Monad.IO.Class
+import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.Color qualified as Color
-import Control.Monad.IO.Class
-import Data.Text qualified as T
 import Rule.FilePos
 import Rule.FilePos qualified as FilePos
 import Rule.Hint
@@ -187,15 +184,3 @@ getRemarkList = do
 setRemarkList :: [R.Remark] -> App ()
 setRemarkList = do
   writeRef' remarkList
-
-insertToGlobalRemarkList :: [R.Remark] -> App ()
-insertToGlobalRemarkList remarkList = do
-  modifyRef' globalRemarkList $ (++) remarkList
-
-setGlobalRemarkList :: [R.Remark] -> App ()
-setGlobalRemarkList = do
-  writeRef' globalRemarkList
-
-getGlobalRemarkList :: App [R.Remark]
-getGlobalRemarkList = do
-  readRef' globalRemarkList

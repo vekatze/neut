@@ -14,12 +14,13 @@ module Move.Context.Throw
   )
 where
 
-import Move.Context.App
-import Move.Context.Remark qualified as Remark
 import Control.Exception.Safe qualified as Safe
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.Remark qualified as Remark
+import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Rule.Error qualified as E
 import Rule.Hint
 import Rule.Remark qualified as R
@@ -55,7 +56,8 @@ runMaybe c = do
 runEither :: App a -> App (Either [R.Remark] a)
 runEither c = do
   resultOrErr <- execute c
-  remarkList <- Remark.getGlobalRemarkList
+  h <- GlobalRemark.new
+  remarkList <- liftIO $ GlobalRemark.get h
   case resultOrErr of
     Left (E.MakeError logList) ->
       return $ Left $ logList ++ remarkList
@@ -65,7 +67,8 @@ runEither c = do
 collectLogs :: App () -> App [R.Remark]
 collectLogs c = do
   resultOrErr <- execute c
-  remarkList <- Remark.getGlobalRemarkList
+  h <- GlobalRemark.new
+  remarkList <- liftIO $ GlobalRemark.get h
   case resultOrErr of
     Left (E.MakeError logList) ->
       return $ logList ++ remarkList

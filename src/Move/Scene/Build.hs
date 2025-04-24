@@ -39,6 +39,7 @@ import Move.Scene.Lower qualified as Lower
 import Move.Scene.Parse qualified as Parse
 import Move.Scene.ShowProgress qualified as ProgressBar
 import Move.Scene.Unravel qualified as Unravel
+import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
 import Path.IO
 import Rule.Cache
@@ -75,7 +76,8 @@ buildTarget axis (M.MainModule baseModule) target = do
   h'' <- Load.new
   contentSeq <- toApp $ Load.load h'' target dependenceSeq
   compile target' (_outputKindList axis) contentSeq
-  Remark.getGlobalRemarkList >>= Remark.printRemarkList
+  hgl <- GlobalRemark.new
+  liftIO (GlobalRemark.get hgl) >>= Remark.printRemarkList
   case target' of
     Peripheral {} ->
       return ()

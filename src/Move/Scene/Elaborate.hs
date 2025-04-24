@@ -25,7 +25,6 @@ import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Path qualified as Path
 import Move.Context.RawImportSummary qualified as RawImportSummary
-import Move.Context.Remark qualified as Remark
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Throw qualified as Throw
 import Move.Context.TopCandidate qualified as TopCandidate
@@ -41,6 +40,7 @@ import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as Inline
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
+import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Rule.Annotation qualified as AN
 import Rule.Attr.Data qualified as AttrD
@@ -103,6 +103,7 @@ data Handle
     symLocHandle :: SymLoc.Handle,
     topCandidateHandle :: TopCandidate.Handle,
     rawImportSummaryHandle :: RawImportSummary.Handle,
+    globalRemarkHandle :: GlobalRemark.Handle,
     currentSource :: Source
   }
 
@@ -128,6 +129,7 @@ new = do
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   rawImportSummaryHandle <- RawImportSummary.new
+  globalRemarkHandle <- GlobalRemark.new
   currentSource <- Env.getCurrentSource
   return $ Handle {..}
 
@@ -139,7 +141,7 @@ elaborate h t cacheOrStmt = do
       let stmtList = Cache.stmtList cache
       toApp $ forM_ stmtList $ insertStmt h
       let remarkList = Cache.remarkList cache
-      Remark.insertToGlobalRemarkList remarkList
+      liftIO $ GlobalRemark.insert (globalRemarkHandle h) remarkList
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
@@ -179,7 +181,7 @@ synthesizeStmtList h t stmtList = do
           Cache.topCandidate = topCandidate,
           Cache.rawImportSummary = rawImportSummary
         }
-  Remark.insertToGlobalRemarkList remarkList
+  liftIO $ GlobalRemark.insert (globalRemarkHandle h) remarkList
   return stmtList'
 
 elaborateStmt :: Handle -> WeakStmt -> EIO ([Stmt], [R.Remark])
