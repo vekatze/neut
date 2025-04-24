@@ -240,9 +240,9 @@ infer h term =
         _ :< WT.Pi impArgs expArgs codType -> do
           holes <- liftIO $ mapM (const $ newHole h m $ varEnv h) impArgs
           let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impArgs) (map Right holes)
-          (expArgs', _) <- Subst.subst' (substHandle h) sub expArgs
+          (expArgs', _) <- liftIO $ Subst.subst' (substHandle h) sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
-          codType' <- Subst.subst (substHandle h) sub codType
+          codType' <- liftIO $ Subst.subst (substHandle h) sub codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
           infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim e' expArgs'')
         _ ->
@@ -497,9 +497,9 @@ inferArgs ::
 inferArgs h sub m args1 args2 cod =
   case (args1, args2) of
     ([], []) ->
-      Subst.subst (substHandle h) sub cod
+      liftIO $ Subst.subst (substHandle h) sub cod
     ((e, t) : ets, (_, x, tx) : xts) -> do
-      tx' <- Subst.subst (substHandle h) sub tx
+      tx' <- liftIO $ Subst.subst (substHandle h) sub tx
       liftIO $ Constraint.insert (constraintHandle h) tx' t
       inferArgs h (IntMap.insert (Ident.toInt x) (Right e) sub) m ets xts cod
     _ ->
@@ -730,7 +730,7 @@ reduceWeakType' h sub e = do
         Just (xs, body)
           | length xs == length es -> do
               let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-              WT.subst (substHandle h) s body >>= reduceWeakType' h sub
+              liftIO (WT.subst (substHandle h) s body) >>= reduceWeakType' h sub
           | otherwise ->
               raiseError m "Arity mismatch"
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do

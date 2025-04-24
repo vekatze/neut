@@ -7,6 +7,7 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
@@ -120,7 +121,7 @@ fill h holeSubst term =
         Just (xs, body)
           | length xs == length es -> do
               let varList = map Ident.toInt xs
-              Subst.subst (substHandle h) (IntMap.fromList $ zip varList (map Right es')) body
+              liftIO (Subst.subst (substHandle h) (IntMap.fromList $ zip varList (map Right es')) body)
                 >>= Reduce.reduce (reduceHandle h)
           | otherwise -> do
               error $ "Rule.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\n" ++ show (map toText es') ++ "\nhole id = " ++ show i

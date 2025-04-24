@@ -203,7 +203,7 @@ simplify h susList constraintList =
                 length expArgs1 == length expArgs2 -> do
                   xt1 <- liftIO $ asWeakBinder h m1 cod1
                   xt2 <- liftIO $ asWeakBinder h m2 cod2
-                  cs' <- simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
+                  cs' <- liftIO $ simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
                   simplify h susList $ cs' ++ cs
             (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
               | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
@@ -213,7 +213,7 @@ simplify h susList constraintList =
                 length expArgs1 == length expArgs2 -> do
                   yt1 <- liftIO $ asWeakBinder h m1 e1
                   yt2 <- liftIO $ asWeakBinder h m2 e2
-                  cs' <- simplifyBinder h orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
+                  cs' <- liftIO $ simplifyBinder h orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
                   simplify h susList $ cs' ++ cs
               | AttrL.Attr {lamKind = LK.Normal codType1} <- kind1,
                 AttrL.Attr {lamKind = LK.Normal codType2} <- kind2,
@@ -223,7 +223,7 @@ simplify h susList constraintList =
                   xt1 <- liftIO $ asWeakBinder h m1 e1
                   cod2 <- liftIO $ asWeakBinder h m2 codType2
                   xt2 <- liftIO $ asWeakBinder h m2 e2
-                  cs' <- simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
+                  cs' <- liftIO $ simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
                   simplify h susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,
@@ -246,7 +246,7 @@ simplify h susList constraintList =
               | length letSeq1 == length letSeq2 -> do
                   let (xts1, es1) = unzip letSeq1
                   let (xts2, es2) = unzip letSeq2
-                  cs' <- simplifyBinder h orig xts1 xts2
+                  cs' <- liftIO $ simplifyBinder h orig xts1 xts2
                   let cs'' = map (orig,) $ zipWith C.Eq es1 es2
                   simplify h susList $ (C.Eq e1 e2, orig) : cs' ++ cs'' ++ cs
             (_ :< WT.Annotation _ _ e1, e2) ->
@@ -342,7 +342,7 @@ simplifyBinder ::
   C.Constraint ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
-  EIO [(C.Constraint, C.Constraint)]
+  IO [(C.Constraint, C.Constraint)]
 simplifyBinder h orig =
   simplifyBinder' h orig IntMap.empty
 
@@ -352,11 +352,11 @@ simplifyBinder' ::
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
-  EIO [(C.Constraint, C.Constraint)]
+  IO [(C.Constraint, C.Constraint)]
 simplifyBinder' h orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
-      t2' <- Subst.subst (substHandle h) sub t2
+      t2' <- liftIO $ Subst.subst (substHandle h) sub t2
       let sub' = IntMap.insert (Ident.toInt x2) (Right (m1 :< WT.Var x1)) sub
       rest <- simplifyBinder' h orig sub' xts1 xts2
       return $ (C.Eq t1 t2', orig) : rest
@@ -426,7 +426,7 @@ simplifyActual h m dataNameSet t orig = do
           then return []
           else mapM (getConsArgTypes h m . fst) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
-        dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
+        dataConsArgs' <- liftIO $ substConsArgs h IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual h m dataNameSet' consArg orig
       return $ constraintsFromDataArgs ++ constraintsFromDataConsArgs
@@ -454,7 +454,7 @@ simplifyActual h m dataNameSet t orig = do
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Actual t', orig))]
 
-substConsArgs :: Handle -> Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> EIO [BinderF WT.WeakTerm]
+substConsArgs :: Handle -> Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> IO [BinderF WT.WeakTerm]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->

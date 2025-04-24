@@ -37,7 +37,7 @@ new = do
   gensymHandle <- Gensym.new
   return $ Handle {..}
 
-subst :: Handle -> SubstTerm -> TM.Term -> App TM.Term
+subst :: Handle -> SubstTerm -> TM.Term -> IO TM.Term
 subst h sub term =
   case term of
     _ :< TM.Tau ->
@@ -135,7 +135,7 @@ substBinder ::
   Handle ->
   SubstTerm ->
   [BinderF TM.Term] ->
-  App ([BinderF TM.Term], SubstTerm)
+  IO ([BinderF TM.Term], SubstTerm)
 substBinder h sub binder =
   case binder of
     [] -> do
@@ -152,7 +152,7 @@ subst' ::
   SubstTerm ->
   [BinderF TM.Term] ->
   TM.Term ->
-  App ([BinderF TM.Term], TM.Term)
+  IO ([BinderF TM.Term], TM.Term)
 subst' h sub binder e =
   case binder of
     [] -> do
@@ -170,7 +170,7 @@ subst'' ::
   SubstTerm ->
   [BinderF TM.Term] ->
   DT.DecisionTree TM.Term ->
-  App ([BinderF TM.Term], DT.DecisionTree TM.Term)
+  IO ([BinderF TM.Term], DT.DecisionTree TM.Term)
 subst'' h sub binder decisionTree =
   case binder of
     [] -> do
@@ -187,7 +187,7 @@ substLet ::
   Handle ->
   SubstTerm ->
   (BinderF TM.Term, TM.Term) ->
-  App ((BinderF TM.Term, TM.Term), SubstTerm)
+  IO ((BinderF TM.Term, TM.Term), SubstTerm)
 substLet h sub ((m, x, t), e) = do
   e' <- subst h sub e
   t' <- subst h sub t
@@ -199,7 +199,7 @@ substLetSeq ::
   Handle ->
   SubstTerm ->
   [(BinderF TM.Term, TM.Term)] ->
-  App ([(BinderF TM.Term, TM.Term)], SubstTerm)
+  IO ([(BinderF TM.Term, TM.Term)], SubstTerm)
 substLetSeq h sub letSeq = do
   case letSeq of
     [] ->
@@ -213,7 +213,7 @@ substDecisionTree ::
   Handle ->
   SubstTerm ->
   DT.DecisionTree TM.Term ->
-  App (DT.DecisionTree TM.Term)
+  IO (DT.DecisionTree TM.Term)
 substDecisionTree h sub tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -233,7 +233,7 @@ substCaseList ::
   Handle ->
   SubstTerm ->
   DT.CaseList TM.Term ->
-  App (DT.CaseList TM.Term)
+  IO (DT.CaseList TM.Term)
 substCaseList h sub (fallbackClause, clauseList) = do
   fallbackClause' <- substDecisionTree h sub fallbackClause
   clauseList' <- mapM (substCase h sub) clauseList
@@ -243,7 +243,7 @@ substCase ::
   Handle ->
   SubstTerm ->
   DT.Case TM.Term ->
-  App (DT.Case TM.Term)
+  IO (DT.Case TM.Term)
 substCase h sub decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do

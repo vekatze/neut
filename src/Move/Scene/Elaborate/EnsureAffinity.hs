@@ -391,7 +391,7 @@ substConsArgs h sub consArgs =
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- Subst.subst (substHandle (handle h)) sub t
+      t' <- liftIO $ Subst.subst (substHandle (handle h)) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (toInt x) (Right opaque) sub
       rest' <- substConsArgs h sub' rest

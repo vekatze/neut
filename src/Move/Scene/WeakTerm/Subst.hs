@@ -13,7 +13,6 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Move.Context.App
-import Move.Context.EIO (EIO)
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Annotation qualified as AN
 import Rule.Attr.Lam qualified as AttrL
@@ -35,7 +34,7 @@ new = do
   gensymHandle <- Gensym.new
   return $ Handle {..}
 
-subst :: Handle -> WT.SubstWeakTerm -> WT.WeakTerm -> EIO WT.WeakTerm
+subst :: Handle -> WT.SubstWeakTerm -> WT.WeakTerm -> IO WT.WeakTerm
 subst h sub term =
   case term of
     _ :< WT.Tau ->
@@ -158,7 +157,7 @@ substBinder ::
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  EIO ([BinderF WT.WeakTerm], WT.WeakTerm)
+  IO ([BinderF WT.WeakTerm], WT.WeakTerm)
 substBinder h sub binder e =
   case binder of
     [] -> do
@@ -175,7 +174,7 @@ subst' ::
   Handle ->
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
-  EIO ([BinderF WT.WeakTerm], WT.SubstWeakTerm)
+  IO ([BinderF WT.WeakTerm], WT.SubstWeakTerm)
 subst' h sub binder =
   case binder of
     [] -> do
@@ -193,7 +192,7 @@ subst'' ::
   BinderF WT.WeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  EIO (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
+  IO (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 subst'' h sub (m, x, t) binder e = do
   t' <- subst h sub t
   x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
@@ -206,7 +205,7 @@ subst''' ::
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   DT.DecisionTree WT.WeakTerm ->
-  EIO ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
+  IO ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
 subst''' h sub binder decisionTree =
   case binder of
     [] -> do
@@ -223,7 +222,7 @@ substLet ::
   Handle ->
   WT.SubstWeakTerm ->
   (BinderF WT.WeakTerm, WT.WeakTerm) ->
-  EIO ((BinderF WT.WeakTerm, WT.WeakTerm), WT.SubstWeakTerm)
+  IO ((BinderF WT.WeakTerm, WT.WeakTerm), WT.SubstWeakTerm)
 substLet h sub ((m, x, t), e) = do
   e' <- subst h sub e
   t' <- subst h sub t
@@ -235,7 +234,7 @@ substLetSeq ::
   Handle ->
   WT.SubstWeakTerm ->
   [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
-  EIO ([(BinderF WT.WeakTerm, WT.WeakTerm)], WT.SubstWeakTerm)
+  IO ([(BinderF WT.WeakTerm, WT.WeakTerm)], WT.SubstWeakTerm)
 substLetSeq h sub letSeq = do
   case letSeq of
     [] ->
@@ -249,7 +248,7 @@ substDecisionTree ::
   Handle ->
   WT.SubstWeakTerm ->
   DT.DecisionTree WT.WeakTerm ->
-  EIO (DT.DecisionTree WT.WeakTerm)
+  IO (DT.DecisionTree WT.WeakTerm)
 substDecisionTree h sub tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -269,7 +268,7 @@ substCaseList ::
   Handle ->
   WT.SubstWeakTerm ->
   DT.CaseList WT.WeakTerm ->
-  EIO (DT.CaseList WT.WeakTerm)
+  IO (DT.CaseList WT.WeakTerm)
 substCaseList h sub (fallbackClause, clauseList) = do
   fallbackClause' <- substDecisionTree h sub fallbackClause
   clauseList' <- mapM (substCase h sub) clauseList
@@ -279,7 +278,7 @@ substCase ::
   Handle ->
   WT.SubstWeakTerm ->
   DT.Case WT.WeakTerm ->
-  EIO (DT.Case WT.WeakTerm)
+  IO (DT.Case WT.WeakTerm)
 substCase h sub decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do

@@ -506,7 +506,7 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
       isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered liftedName
       unless isAlreadyRegistered $ do
         hsubst <- TM.new
-        liftedBody <- TM.subst hsubst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
+        liftedBody <- liftIO $ TM.subst hsubst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
         (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
         liftedBody'' <- linearize liftedArgs liftedBody'
         Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody'')

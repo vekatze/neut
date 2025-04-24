@@ -105,7 +105,7 @@ reduce' h term = do
             length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')
-              Subst.subst (substHandle (_handle h)) sub body >>= reduce' h
+              liftIO (Subst.subst (substHandle (_handle h)) sub body) >>= reduce' h
         (_ :< WT.Prim (WP.Value (WPV.Op op)))
           | Just (op', cod) <- WPV.reflectFloatUnaryOp op,
             [Just value] <- map asPrimFloatValue es' -> do
@@ -153,7 +153,7 @@ reduce' h term = do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              Subst.subst (substHandle (_handle h)) sub (WT.fromLetSeq letSeq e) >>= reduce' h
+              liftIO (Subst.subst (substHandle (_handle h)) sub (WT.fromLetSeq letSeq e)) >>= reduce' h
             DT.Unreachable ->
               return $ m :< WT.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -162,7 +162,7 @@ reduce' h term = do
                   | (newBaseCursorList, cont) <- findClause discriminant fallbackTree caseList -> do
                       let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                       let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                      cont' <- Subst.substDecisionTree (substHandle (_handle h)) sub cont
+                      cont' <- liftIO $ Subst.substDecisionTree (substHandle (_handle h)) sub cont
                       reduce' h $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
                 _ -> do
                   decisionTree' <- reduceDecisionTree h decisionTree
@@ -185,7 +185,7 @@ reduce' h term = do
         WT.Clear -> do
           detectPossibleInfiniteLoop h
           let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
-          Subst.subst (substHandle (_handle h)) sub e2 >>= reduce' h
+          liftIO (Subst.subst (substHandle (_handle h)) sub e2) >>= reduce' h
         _ -> do
           e2' <- reduce' h e2
           return $ m :< WT.Let opacity mxt e1' e2'

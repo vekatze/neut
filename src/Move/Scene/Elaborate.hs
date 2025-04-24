@@ -711,6 +711,6 @@ fillHole h m holeID es = do
     Just (xs, e)
       | length xs == length es -> do
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-          Subst.subst (substHandle h) s e
+          liftIO $ Subst.subst (substHandle h) s e
       | otherwise ->
           raiseError m "Arity mismatch"
