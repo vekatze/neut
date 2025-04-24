@@ -17,7 +17,6 @@ import Rule.Artifact qualified as AR
 import Rule.Binder
 import Rule.BuildMode qualified as BM
 import Rule.Comp
-import Rule.Constraint qualified as C
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
 import Rule.Discriminant qualified as D
@@ -70,7 +69,6 @@ data Env = Env
     antecedentMap :: IORef (Map.HashMap MID.ModuleID M.Module),
     reverseAntecedentMap :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
     antecedentDigestCache :: Ref T.Text,
-    suspendedEnv :: IORef [C.SuspendedConstraint],
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     tagMap :: IORef LT.LocationTree,
@@ -145,7 +143,6 @@ newEnv = do
   antecedentMap <- newIORef Map.empty
   reverseAntecedentMap <- newIORef Map.empty
   antecedentDigestCache <- newRef
-  suspendedEnv <- newIORef []
   buildSignatureCache <- newIORef Nothing
   sourceChildrenMap <- newIORef Map.empty
   weakTypeEnv <- newIORef IntMap.empty

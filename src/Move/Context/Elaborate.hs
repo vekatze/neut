@@ -13,7 +13,6 @@ import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 
 initialize :: App ()
 initialize = do
-  writeRef' suspendedEnv []
   writeRef' weakTypeEnv IntMap.empty
 
 data HandleEnv

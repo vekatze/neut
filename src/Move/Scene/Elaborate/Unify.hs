@@ -10,16 +10,13 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
-import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
@@ -69,7 +66,6 @@ data Handle = Handle
     holeHandle :: Hole.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
-    suspendedEnvRef :: IORef [C.SuspendedConstraint],
     weakDefHandle :: WeakDefinition.Handle
   }
 
@@ -84,7 +80,6 @@ new Elaborate.HandleEnv {..} = do
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   weakDefHandle <- WeakDefinition.new
   let currentStep = 0
-  suspendedEnvRef <- asks App.suspendedEnv
   return $ Handle {..}
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
@@ -98,16 +93,19 @@ unify h constraintList = do
 
 unifyCurrentConstraints :: Handle -> EIO HS.HoleSubst
 unifyCurrentConstraints h = do
-  susList <- liftIO $ readIORef (suspendedEnvRef h)
+  -- susList <- liftIO $ readIORef (suspendedEnvRef h)
+  susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
   cs <- liftIO $ Constraint.get (constraintHandle h)
   susList' <- simplify h susList $ zip cs cs
   liftIO $ Constraint.set (constraintHandle h) []
-  liftIO $ writeIORef (suspendedEnvRef h) susList'
+  -- liftIO $ writeIORef (suspendedEnvRef h) susList'
+  liftIO $ Constraint.setSuspendedConstraints (constraintHandle h) susList'
   liftIO $ Hole.getSubst (holeHandle h)
 
 unify' :: Handle -> [C.Constraint] -> EIO [SuspendedConstraint]
 unify' h constraintList = do
-  susList <- liftIO $ readIORef (suspendedEnvRef h)
+  susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
+  -- susList <- liftIO $ readIORef (suspendedEnvRef h)
   simplify h susList $ zip constraintList constraintList
 
 throwTypeErrors :: Handle -> [SuspendedConstraint] -> EIO a

@@ -6,6 +6,8 @@ module Move.Scene.Elaborate.Handle.Constraint
     insert,
     insertActualityConstraint,
     insertIntegerConstraint,
+    getSuspendedConstraints,
+    setSuspendedConstraints,
   )
 where
 
@@ -13,13 +15,15 @@ import Data.IORef
 import Rule.Constraint qualified as C
 import Rule.WeakTerm qualified as WT
 
-newtype Handle = Handle
-  { constraintEnvRef :: IORef [C.Constraint]
+data Handle = Handle
+  { constraintEnvRef :: IORef [C.Constraint],
+    suspendedEnvRef :: IORef [C.SuspendedConstraint]
   }
 
 new :: IO Handle
 new = do
   constraintEnvRef <- newIORef []
+  suspendedEnvRef <- newIORef []
   return $ Handle {..}
 
 insert :: Handle -> WT.WeakTerm -> WT.WeakTerm -> IO ()
@@ -41,3 +45,11 @@ get h = do
 set :: Handle -> [C.Constraint] -> IO ()
 set h cs = do
   writeIORef (constraintEnvRef h) cs
+
+getSuspendedConstraints :: Handle -> IO [C.SuspendedConstraint]
+getSuspendedConstraints h = do
+  readIORef (suspendedEnvRef h)
+
+setSuspendedConstraints :: Handle -> [C.SuspendedConstraint] -> IO ()
+setSuspendedConstraints h cs = do
+  writeIORef (suspendedEnvRef h) cs
