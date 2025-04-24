@@ -33,25 +33,21 @@ import Rule.Source (sourceModule)
 import Rule.Term qualified as TM
 
 data Handle = Handle
-  { dmap :: Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term),
+  { substHandle :: Subst.Handle,
+    dmap :: Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term),
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint
   }
 
 new :: Hint -> App Handle
-new m = do
+new location = do
+  substHandle <- Subst.new
   source <- Env.getCurrentSource
   dmap <- Definition.get
-  let limit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   currentStepRef <- liftIO $ newIORef 0
-  return
-    Handle
-      { dmap = dmap,
-        inlineLimit = limit,
-        currentStepRef = currentStepRef,
-        location = m
-      }
+  return $ Handle {..}
 
 incrementStep :: Handle -> IO ()
 incrementStep h = do
@@ -114,26 +110,22 @@ inline' h term = do
                 then do
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
-                  hSub <- Subst.new
-                  _ :< body' <- liftIO $ Subst.subst hSub sub body
+                  _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                   inline' h $ m :< body'
                 else do
-                  hSub <- Subst.new
-                  (xts', _ :< body') <- liftIO $ Subst.subst' hSub IntMap.empty xts body
+                  (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
                   inline' h $ bind (zip xts' es') (m :< body')
         (_ :< TM.VarGlobal _ dd)
           | Just (xts, body) <- Map.lookup dd dmap -> do
               if all TM.isValue es'
                 then do
                   let (_, xs, _) = unzip3 xts
-                  hSub <- Subst.new
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
-                  _ :< body' <- liftIO $ Subst.subst hSub sub body
+                  _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                   body'' <- refresh $ m :< body'
                   inline' h body''
                 else do
-                  hSub <- Subst.new
-                  (xts', _ :< body') <- liftIO $ Subst.subst' hSub IntMap.empty xts body
+                  (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
                   body'' <- refresh $ m :< body'
                   inline' h $ bind (zip xts' es') body''
         _ ->
@@ -158,8 +150,7 @@ inline' h term = do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              hSub <- Subst.new
-              liftIO (Subst.subst hSub sub (TM.fromLetSeq letSeq e)) >>= inline' h
+              liftIO (Subst.subst (substHandle h) sub (TM.fromLetSeq letSeq e)) >>= inline' h
             DT.Unreachable ->
               return $ m :< TM.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -168,8 +159,7 @@ inline' h term = do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                   let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                  hSub <- Subst.new
-                  dataElim' <- liftIO $ Subst.subst hSub sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
+                  dataElim' <- liftIO $ Subst.subst (substHandle h) sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
                   inline' h dataElim'
                 _ -> do
                   decisionTree' <- inlineDecisionTree h decisionTree
@@ -189,8 +179,7 @@ inline' h term = do
         O.Clear
           | TM.isValue e1' -> do
               let sub = IntMap.singleton (Ident.toInt x) (Right e1')
-              hSub <- Subst.new
-              liftIO (Subst.subst hSub sub e2) >>= inline' h
+              liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
           t' <- inline' h t
           e2' <- inline' h e2
