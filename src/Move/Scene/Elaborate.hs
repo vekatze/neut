@@ -70,6 +70,7 @@ import Rule.PrimType qualified as PT
 import Rule.PrimValue qualified as PV
 import Rule.Remark qualified as R
 import Rule.Remark qualified as Remark
+import Rule.Source
 import Rule.Stmt
 import Rule.StmtKind
 import Rule.Target
@@ -101,7 +102,8 @@ data Handle
     pathHandle :: Path.Handle,
     symLocHandle :: SymLoc.Handle,
     topCandidateHandle :: TopCandidate.Handle,
-    rawImportSummaryHandle :: RawImportSummary.Handle
+    rawImportSummaryHandle :: RawImportSummary.Handle,
+    currentSource :: Source
   }
 
 new :: App Handle
@@ -126,6 +128,7 @@ new = do
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   rawImportSummaryHandle <- RawImportSummary.new
+  currentSource <- Env.getCurrentSource
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -157,21 +160,20 @@ synthesizeStmtList h t stmtList = do
   unless (null affineErrorList) $ do
     Throw.throw $ E.MakeError affineErrorList
   -- mapM_ (viewStmt . weakenStmt) stmtList'
-  source <- Env.getCurrentSource
   remarkList <- liftIO $ LocalRemark.get (localRemarkHandle h)
   localVarTree <- liftIO $ SymLoc.get (symLocHandle h)
   topCandidate <- liftIO $ TopCandidate.get (topCandidateHandle h)
   rawImportSummary <- liftIO $ RawImportSummary.get (rawImportSummaryHandle h)
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   toApp $
-    Cache.saveCache (pathHandle h) t source $
+    Cache.saveCache (pathHandle h) t (currentSource h) $
       Cache.Cache
         { Cache.stmtList = stmtList',
           Cache.remarkList = remarkList,
           Cache.countSnapshot = countSnapshot
         }
   toApp $
-    Cache.saveCompletionCache (pathHandle h) t source $
+    Cache.saveCompletionCache (pathHandle h) t (currentSource h) $
       Cache.CompletionCache
         { Cache.localVarTree = localVarTree,
           Cache.topCandidate = topCandidate,
