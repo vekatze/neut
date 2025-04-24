@@ -70,7 +70,6 @@ data Handle = Handle
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
     suspendedEnvRef :: IORef [C.SuspendedConstraint],
-    typeEnv :: Map.HashMap DD.DefiniteDescription WT.WeakTerm,
     defMap :: WeakDefinition.DefMap
   }
 
@@ -89,7 +88,6 @@ new = do
   let currentStep = 0
   holeSubstRef <- asks App.holeSubst
   suspendedEnvRef <- asks App.suspendedEnv
-  typeEnv <- asks App.typeEnv >>= liftIO . readIORef
   return $ Handle {..}
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
