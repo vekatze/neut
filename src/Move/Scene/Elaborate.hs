@@ -85,7 +85,8 @@ data Handle
     weakDefHandle :: WeakDefinition.Handle,
     constraintHandle :: Constraint.Handle,
     holeHandle :: Hole.Handle,
-    substHandle :: Subst.Handle
+    substHandle :: Subst.Handle,
+    typeHandle :: Type.Handle
   }
 
 new :: App Handle
@@ -95,6 +96,7 @@ new = do
   constraintHandle <- Constraint.new
   holeHandle <- Hole.new
   substHandle <- Subst.new
+  typeHandle <- Type.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -193,7 +195,7 @@ insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
   case stmt of
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs t e -> do
-      Type.insert f $ weaken $ m :< TM.Pi impArgs expArgs t
+      liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi impArgs expArgs t
       Definition.insert (toOpacity stmtKind) f (impArgs ++ expArgs) e
     StmtForeign _ -> do
       return ()
@@ -415,7 +417,7 @@ strictify' h m t = do
     _ :< TM.Prim (P.Type PT.Pointer) ->
       return BLT.Pointer
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
-      consType <- Type.lookup m consName
+      consType <- toApp $ Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
@@ -440,7 +442,7 @@ strictifyDecimalType h m x t = do
     _ :< TM.Prim (P.Type (PT.Float size)) ->
       return (Left size, t')
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
-      consType <- Type.lookup m consName
+      consType <- toApp $ Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
@@ -457,7 +459,7 @@ strictifyFloatType h m x t = do
     _ :< TM.Prim (P.Type (PT.Float size)) ->
       return (size, t')
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
-      consType <- Type.lookup m consName
+      consType <- toApp $ Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
