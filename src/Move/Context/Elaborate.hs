@@ -1,16 +1,29 @@
 module Move.Context.Elaborate
-  ( initialize,
+  ( HandleEnv (..),
+    createNewEnv,
+    initialize,
   )
 where
 
 import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.App.Internal
-import Rule.HoleSubst qualified as HS
+import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
+import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 
 initialize :: App ()
 initialize = do
   writeRef' suspendedEnv []
-  writeRef' holeEnv IntMap.empty
   writeRef' weakTypeEnv IntMap.empty
-  writeRef' holeSubst HS.empty
+
+data HandleEnv
+  = HandleEnv
+  { constraintHandle :: Constraint.Handle,
+    holeHandle :: Hole.Handle
+  }
+
+createNewEnv :: IO HandleEnv
+createNewEnv = do
+  constraintHandle <- Constraint.new
+  holeHandle <- Hole.new
+  return $ HandleEnv {..}

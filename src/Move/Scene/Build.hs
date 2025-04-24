@@ -20,6 +20,7 @@ import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
@@ -28,7 +29,6 @@ import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
-import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.EnsureMain qualified as EnsureMain
 import Move.Scene.Execute qualified as Execute
@@ -122,8 +122,8 @@ compile target outputKindList contentSeq = do
     toApp $ Debug.report h' $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     hParse <- Parse.new
     cacheOrStmtList <- toApp $ Parse.parse hParse target source cacheOrContent
-    hConstraint <- liftIO Constraint.new
-    hElaborate <- Elaborate.new hConstraint
+    hEnv <- liftIO Elaborate.createNewEnv
+    hElaborate <- Elaborate.new hEnv
     stmtList <- Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary hCache outputKindList source $ do

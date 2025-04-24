@@ -8,12 +8,12 @@ import Language.LSP.Protocol.Types
 import Move.Context.AppM
 import Move.Context.Cache (invalidate)
 import Move.Context.EIO (toApp)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type
 import Move.Scene.Check qualified as Check
 import Move.Scene.Elaborate qualified as Elaborate
-import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.LSP.FindDefinition qualified as LSP
 import Move.Scene.LSP.GetSource qualified as LSP
@@ -43,8 +43,8 @@ _getSymbolInfo locType = do
     LT.Local varID _ -> do
       hWT <- lift WeakType.new
       t <- lift (liftIO $ WeakType.lookupMaybe hWT varID) >>= liftMaybe
-      hConstraint <- lift $ liftIO Constraint.new
-      h <- lift $ Elaborate.new hConstraint
+      hEnv <- liftIO Elaborate.createNewEnv
+      h <- lift $ Elaborate.new hEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' h t) >>= liftMaybe
       return $ toText $ weaken t'
     LT.Global dd isConstLike -> do

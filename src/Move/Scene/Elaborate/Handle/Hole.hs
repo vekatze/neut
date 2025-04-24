@@ -9,11 +9,8 @@ module Move.Scene.Elaborate.Handle.Hole
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.HoleID qualified as HID
 import Rule.HoleSubst qualified as HS
 import Rule.Ident
@@ -25,10 +22,10 @@ data Handle = Handle
     holeSubstRef :: IORef HS.HoleSubst
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  holeEnvRef <- asks App.holeEnv
-  holeSubstRef <- asks App.holeSubst
+  holeEnvRef <- newIORef IntMap.empty
+  holeSubstRef <- newIORef HS.empty
   return $ Handle {..}
 
 insert :: Handle -> Int -> WT.WeakTerm -> WT.WeakTerm -> IO ()

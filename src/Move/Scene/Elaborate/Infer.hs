@@ -18,6 +18,7 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -95,19 +96,18 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: Constraint.Handle -> App Handle
-new constraintHandle = do
+new :: Elaborate.HandleEnv -> App Handle
+new handleEnv@(Elaborate.HandleEnv {..}) = do
   mainModule <- getMainModule
   substHandle <- Subst.new
   reduceHandle <- Reduce.new
-  unifyHandle <- Unify.new constraintHandle
+  unifyHandle <- Unify.new handleEnv
   gensymHandle <- Gensym.new
   discernHandle <- Discern.new
   keyArgHandle <- KeyArg.new
   weakTypeHandle <- WeakType.new
   weakDeclHandle <- WeakDecl.new
   optDataHandle <- OptimizableData.new
-  holeHandle <- Hole.new
   typeHandle <- Type.new
   weakDefHandle <- WeakDefinition.new
   let varEnv = []

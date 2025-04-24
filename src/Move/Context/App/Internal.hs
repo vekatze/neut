@@ -26,7 +26,6 @@ import Rule.ForeignCodType qualified as F
 import Rule.GlobalLocatorAlias qualified as GLA
 import Rule.GlobalName qualified as GN
 import Rule.Hint
-import Rule.HoleSubst qualified as HS
 import Rule.Ident
 import Rule.Import
 import Rule.IsConstLike
@@ -85,11 +84,9 @@ data Env = Env
     unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
     unusedStaticFileMap :: IORef (Map.HashMap T.Text Hint),
     buildSignatureCache :: IORef (Maybe String), -- only for memoization
-    holeSubst :: IORef HS.HoleSubst,
     sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
     traceSourceList :: IORef [Source.Source],
     weakTypeEnv :: IORef (IntMap.IntMap WT.WeakTerm),
-    holeEnv :: IORef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     visitEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
@@ -150,10 +147,8 @@ newEnv = do
   antecedentDigestCache <- newRef
   suspendedEnv <- newIORef []
   buildSignatureCache <- newIORef Nothing
-  holeSubst <- newIORef HS.empty
   sourceChildrenMap <- newIORef Map.empty
   weakTypeEnv <- newIORef IntMap.empty
-  holeEnv <- newIORef IntMap.empty
   traceSourceList <- newIORef []
   artifactMap <- newIORef Map.empty
   visitEnv <- newIORef Map.empty

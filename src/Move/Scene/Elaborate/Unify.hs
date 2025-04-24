@@ -21,6 +21,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
@@ -68,24 +69,21 @@ data Handle = Handle
     holeHandle :: Hole.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
-    holeSubstRef :: IORef HS.HoleSubst,
     suspendedEnvRef :: IORef [C.SuspendedConstraint],
     weakDefHandle :: WeakDefinition.Handle
   }
 
-new :: Constraint.Handle -> App Handle
-new constraintHandle = do
+new :: Elaborate.HandleEnv -> App Handle
+new Elaborate.HandleEnv {..} = do
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
   fillHandle <- Fill.new
   typeHandle <- Type.new
   gensymHandle <- Gensym.new
-  holeHandle <- Hole.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   weakDefHandle <- WeakDefinition.new
   let currentStep = 0
-  holeSubstRef <- asks App.holeSubst
   suspendedEnvRef <- asks App.suspendedEnv
   return $ Handle {..}
 

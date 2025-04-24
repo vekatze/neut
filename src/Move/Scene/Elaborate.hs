@@ -21,7 +21,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.DataDefinition qualified as DataDefinition
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
-import Move.Context.Elaborate
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Path qualified as Path
@@ -107,12 +107,10 @@ data Handle
     currentSource :: Source
   }
 
-new :: Constraint.Handle -> App Handle
-new constraintHandle = do
+new :: Elaborate.HandleEnv -> App Handle
+new handleEnv@(Elaborate.HandleEnv {..}) = do
   reduceHandle <- Reduce.new
   weakDefHandle <- WeakDefinition.new
-  -- constraintHandle <- Constraint.new
-  holeHandle <- Hole.new
   substHandle <- Subst.new
   typeHandle <- Type.new
   weakDeclHandle <- WeakDecl.new
@@ -123,8 +121,8 @@ new constraintHandle = do
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new
   affHandle <- EnsureAffinity.new
-  inferHandle <- Infer.new constraintHandle
-  unifyHandle <- Unify.new constraintHandle
+  inferHandle <- Infer.new handleEnv
+  unifyHandle <- Unify.new handleEnv
   pathHandle <- Path.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
@@ -135,7 +133,7 @@ new constraintHandle = do
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate h t cacheOrStmt = do
-  initialize
+  Elaborate.initialize
   case cacheOrStmt of
     Left cache -> do
       let stmtList = Cache.stmtList cache
