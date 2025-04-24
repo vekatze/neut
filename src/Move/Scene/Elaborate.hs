@@ -206,7 +206,7 @@ insertWeakStmt :: Handle -> WeakStmt -> App ()
 insertWeakStmt h stmt = do
   case stmt of
     WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
-      WeakDefinition.insert (toOpacity stmtKind) m f impArgs expArgs codType e
+      liftIO $ WeakDefinition.insert' (weakDefHandle h) (toOpacity stmtKind) m f impArgs expArgs codType e
     WeakStmtNominal {} -> do
       return ()
     WeakStmtForeign foreignList ->
