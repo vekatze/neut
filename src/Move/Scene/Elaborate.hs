@@ -90,7 +90,8 @@ data Handle
     weakDeclHandle :: WeakDecl.Handle,
     defHandle :: Definition.Handle,
     dataDefHandle :: DataDefinition.Handle,
-    gensymHandle :: Gensym.Handle
+    gensymHandle :: Gensym.Handle,
+    keyArgHandle :: KeyArg.Handle
   }
 
 new :: App Handle
@@ -105,6 +106,7 @@ new = do
   gensymHandle <- Gensym.new
   defHandle <- Definition.new
   dataDefHandle <- DataDefinition.new
+  keyArgHandle <- KeyArg.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -589,8 +591,7 @@ elaborateDecisionTree h ctx mOrig m tree =
                 DT.Unreachable -> do
                   (rootIdent, tBase) <- toApp $ makeTree mOrig ctx
                   uncoveredPatterns <- forM (S.toList diff) $ \(consDD, isConstLike) -> do
-                    hKeyArg <- KeyArg.new
-                    (_, keys) <- toApp $ KeyArg.lookup hKeyArg m consDD
+                    (_, keys) <- toApp $ KeyArg.lookup (keyArgHandle h) m consDD
                     let expArgNum = length keys
                     let args = map (const (holeIdent, Node (Just holeLiteral) True [])) [1 .. expArgNum]
                     let tBase' = graft cursor (Node (Just $ DD.localLocator consDD) isConstLike args) tBase
