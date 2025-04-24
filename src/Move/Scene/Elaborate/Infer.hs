@@ -13,13 +13,10 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
-import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
@@ -90,12 +87,12 @@ data Handle
     constraintHandle :: Constraint.Handle,
     weakTypeHandle :: WeakType.Handle,
     weakDeclHandle :: WeakDecl.Handle,
+    weakDefHandle :: WeakDefinition.Handle,
     keyArgHandle :: KeyArg.Handle,
     holeHandle :: Hole.Handle,
     typeHandle :: Type.Handle,
     optDataHandle :: OptimizableData.Handle,
-    varEnv :: BoundVarEnv,
-    defMap :: WeakDefinition.DefMap
+    varEnv :: BoundVarEnv
   }
 
 new :: App Handle
@@ -113,8 +110,8 @@ new = do
   optDataHandle <- OptimizableData.new
   holeHandle <- Hole.new
   typeHandle <- Type.new
+  weakDefHandle <- WeakDefinition.new
   let varEnv = []
-  defMap <- asks App.weakDefMap >>= liftIO . readIORef
   return Handle {..}
 
 inferStmt :: Handle -> WeakStmt -> EIO WeakStmt
@@ -734,7 +731,8 @@ reduceWeakType' h sub e = do
           | otherwise ->
               raiseError m "Arity mismatch"
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
-      case lookupDefinition h name of
+      lamOrNone <- liftIO $ lookupDefinition h name
+      case lamOrNone of
         Just lam ->
           reduceWeakType' h sub $ m :< WT.PiElim lam args
         Nothing -> do
@@ -742,9 +740,9 @@ reduceWeakType' h sub e = do
     _ ->
       return e'
 
-lookupDefinition :: Handle -> DD.DefiniteDescription -> Maybe WT.WeakTerm
+lookupDefinition :: Handle -> DD.DefiniteDescription -> IO (Maybe WT.WeakTerm)
 lookupDefinition h name = do
-  Map.lookup name (defMap h)
+  WeakDefinition.lookup' (weakDefHandle h) name
 
 newHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakTerm
 newHole h m varEnv = do
