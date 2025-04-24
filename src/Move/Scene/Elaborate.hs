@@ -406,7 +406,7 @@ strictify h t@(mt :< _) =
 
 strictify' :: Handle -> Hint -> WT.WeakTerm -> App BLT.BaseLowType
 strictify' h m t = do
-  t' <- reduceWeakType h t >>= elaborate' h
+  t' <- toApp (reduceWeakType h t) >>= elaborate' h
   case t' of
     _ :< TM.Prim (P.Type (PT.Int size)) ->
       return $ BLT.PrimNum $ BPT.Int $ BPT.Explicit size
@@ -433,7 +433,7 @@ raiseNonStrictType m t = do
 
 strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakTerm -> App (Either FloatSize IntSize, TM.Term)
 strictifyDecimalType h m x t = do
-  t' <- reduceWeakType h t >>= elaborate' h
+  t' <- toApp (reduceWeakType h t) >>= elaborate' h
   case t' of
     _ :< TM.Prim (P.Type (PT.Int size)) ->
       return (Right size, t')
@@ -452,7 +452,7 @@ strictifyDecimalType h m x t = do
 
 strictifyFloatType :: Handle -> Hint -> Double -> WT.WeakTerm -> App (FloatSize, TM.Term)
 strictifyFloatType h m x t = do
-  t' <- reduceWeakType h t >>= elaborate' h
+  t' <- toApp (reduceWeakType h t) >>= elaborate' h
   case t' of
     _ :< TM.Prim (P.Type (PT.Float size)) ->
       return (size, t')
@@ -564,7 +564,7 @@ elaborateDecisionTree h ctx mOrig m tree =
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
-      cursorType' <- reduceWeakType h cursorType >>= elaborate' h
+      cursorType' <- toApp (reduceWeakType h cursorType) >>= elaborate' h
       switchSpec <- toApp $ getSwitchSpec m cursorType'
       case switchSpec of
         LiteralSwitch -> do
@@ -648,7 +648,7 @@ raiseEmptyNonExhaustivePatternMatching m =
 
 reduceType :: Handle -> WT.WeakTerm -> App TM.Term
 reduceType h e = do
-  reduceWeakType h e >>= elaborate' h
+  toApp (reduceWeakType h e) >>= elaborate' h
 
 data SwitchSpec
   = LiteralSwitch
@@ -668,12 +668,12 @@ getSwitchSpec m cursorType = do
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toText (weaken cursorType)
 
-reduceWeakType :: Handle -> WT.WeakTerm -> App WT.WeakTerm
+reduceWeakType :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 reduceWeakType h e = do
-  e' <- toApp $ Reduce.reduce (reduceHandle h) e
+  e' <- Reduce.reduce (reduceHandle h) e
   case e' of
     m :< WT.Hole hole es ->
-      toApp (fillHole h m hole es) >>= reduceWeakType h
+      fillHole h m hole es >>= reduceWeakType h
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
       mLam <- liftIO $ WeakDefinition.lookup' (weakDefHandle h) name
       case mLam of
