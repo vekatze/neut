@@ -143,7 +143,7 @@ synthesizeStmtList h t stmtList = do
   -- mapM_ viewStmt stmtList
   hUnify <- Unify.new
   liftIO (Constraint.get (constraintHandle h)) >>= toApp . Unify.unify hUnify >>= liftIO . Hole.setSubst (holeHandle h)
-  (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
+  (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (toApp . elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     Throw.throw $ E.MakeError affineErrorList
   -- mapM_ (viewStmt . weakenStmt) stmtList'
@@ -171,32 +171,32 @@ synthesizeStmtList h t stmtList = do
   Remark.insertToGlobalRemarkList remarkList
   return stmtList'
 
-elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [R.Remark])
+elaborateStmt :: Handle -> WeakStmt -> EIO ([Stmt], [R.Remark])
 elaborateStmt h stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
-      stmtKind' <- toApp $ elaborateStmtKind h stmtKind
-      e' <- toApp $ elaborate' h e
-      impArgs' <- toApp $ mapM (elaborateWeakBinder h) impArgs
-      expArgs' <- toApp $ mapM (elaborateWeakBinder h) expArgs
-      codType' <- toApp $ elaborate' h codType
+      stmtKind' <- elaborateStmtKind h stmtKind
+      e' <- elaborate' h e
+      impArgs' <- mapM (elaborateWeakBinder h) impArgs
+      expArgs' <- mapM (elaborateWeakBinder h) expArgs
+      codType' <- elaborate' h codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
-      remarks <- toApp $ EnsureAffinity.ensureAffinity (affHandle h) $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
-      e'' <- toApp $ Inline.inline (inlineHandle h) m e'
-      codType'' <- toApp $ Inline.inline (inlineHandle h) m codType'
+      remarks <- EnsureAffinity.ensureAffinity (affHandle h) $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
+      e'' <- Inline.inline (inlineHandle h) m e'
+      codType'' <- Inline.inline (inlineHandle h) m codType'
       when isConstLike $ do
         unless (TM.isValue e'') $ do
-          Throw.raiseError m "Could not reduce the body of this definition into a constant"
+          raiseError m "Could not reduce the body of this definition into a constant"
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType'' e''
-      toApp $ insertStmt h result
+      insertStmt h result
       return ([result], remarks)
     WeakStmtNominal _ geistList -> do
-      toApp $ mapM_ (elaborateGeist h) geistList
+      mapM_ (elaborateGeist h) geistList
       return ([], [])
     WeakStmtForeign foreignList -> do
       foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
-        domList' <- mapM (toApp . strictify h) domList
-        cod' <- mapM (toApp . strictify h) cod
+        domList' <- mapM (strictify h) domList
+        cod' <- mapM (strictify h) cod
         return $ F.Foreign m externalName domList' cod'
       return ([StmtForeign foreignList'], [])
 
