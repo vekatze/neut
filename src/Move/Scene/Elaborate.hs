@@ -118,7 +118,7 @@ elaborate h t cacheOrStmt = do
   case cacheOrStmt of
     Left cache -> do
       let stmtList = Cache.stmtList cache
-      forM_ stmtList $ insertStmt h
+      toApp $ forM_ stmtList $ insertStmt h
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
@@ -131,7 +131,7 @@ analyzeStmtList h stmtList = do
   forM stmtList $ \stmt -> do
     hInfer <- Infer.new
     stmt' <- toApp $ Infer.inferStmt hInfer stmt
-    insertWeakStmt h stmt'
+    toApp $ insertWeakStmt h stmt'
     return stmt'
 
 synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> App [Stmt]
@@ -171,11 +171,11 @@ elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [R.Remark])
 elaborateStmt h stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
-      stmtKind' <- elaborateStmtKind h stmtKind
-      e' <- elaborate' h e
-      impArgs' <- mapM (elaborateWeakBinder h) impArgs
-      expArgs' <- mapM (elaborateWeakBinder h) expArgs
-      codType' <- elaborate' h codType
+      stmtKind' <- toApp $ elaborateStmtKind h stmtKind
+      e' <- toApp $ elaborate' h e
+      impArgs' <- toApp $ mapM (elaborateWeakBinder h) impArgs
+      expArgs' <- toApp $ mapM (elaborateWeakBinder h) expArgs
+      codType' <- toApp $ elaborate' h codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
       hAff <- EnsureAffinity.new
       remarks <- toApp $ EnsureAffinity.ensureAffinity hAff $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
@@ -185,26 +185,26 @@ elaborateStmt h stmt = do
         unless (TM.isValue e'') $ do
           Throw.raiseError m "Could not reduce the body of this definition into a constant"
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType'' e''
-      insertStmt h result
+      toApp $ insertStmt h result
       return ([result], remarks)
     WeakStmtNominal _ geistList -> do
-      mapM_ (elaborateGeist h) geistList
+      toApp $ mapM_ (elaborateGeist h) geistList
       return ([], [])
     WeakStmtForeign foreignList -> do
       foreignList' <- forM foreignList $ \(F.Foreign m externalName domList cod) -> do
-        domList' <- mapM (strictify h) domList
-        cod' <- mapM (strictify h) cod
+        domList' <- mapM (toApp . strictify h) domList
+        cod' <- mapM (toApp . strictify h) cod
         return $ F.Foreign m externalName domList' cod'
       return ([StmtForeign foreignList'], [])
 
-elaborateGeist :: Handle -> G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
+elaborateGeist :: Handle -> G.Geist WT.WeakTerm -> EIO (G.Geist TM.Term)
 elaborateGeist h (G.Geist {..}) = do
   impArgs' <- mapM (elaborateWeakBinder h) impArgs
   expArgs' <- mapM (elaborateWeakBinder h) expArgs
   cod' <- elaborate' h cod
   return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
-insertStmt :: Handle -> Stmt -> App ()
+insertStmt :: Handle -> Stmt -> EIO ()
 insertStmt h stmt = do
   case stmt of
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs t e -> do
@@ -215,7 +215,7 @@ insertStmt h stmt = do
   insertWeakStmt h $ weakenStmt stmt
   liftIO $ insertStmtKindInfo h stmt
 
-insertWeakStmt :: Handle -> WeakStmt -> App ()
+insertWeakStmt :: Handle -> WeakStmt -> EIO ()
 insertWeakStmt h stmt = do
   case stmt of
     WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
@@ -242,7 +242,7 @@ insertStmtKindInfo h stmt = do
     StmtForeign {} ->
       return ()
 
-elaborateStmtKind :: Handle -> StmtKind WT.WeakTerm -> App (StmtKind TM.Term)
+elaborateStmtKind :: Handle -> StmtKind WT.WeakTerm -> EIO (StmtKind TM.Term)
 elaborateStmtKind h stmtKind =
   case stmtKind of
     Normal opacity ->
@@ -258,7 +258,7 @@ elaborateStmtKind h stmtKind =
       consArgs' <- mapM (elaborateWeakBinder h) consArgs
       return $ DataIntro dataName dataArgs' consArgs' discriminant
 
-elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
+elaborate' :: Handle -> WT.WeakTerm -> EIO TM.Term
 elaborate' h term =
   case term of
     m :< WT.Tau ->
@@ -283,7 +283,7 @@ elaborate' h term =
       es' <- mapM (elaborate' h) es
       return $ m :< TM.PiElim e' es'
     m :< WT.PiElimExact {} -> do
-      Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
+      raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.Data attr name es -> do
       es' <- mapM (elaborate' h) es
       return $ m :< TM.Data attr name es'
@@ -301,14 +301,13 @@ elaborate' h term =
       when (DT.isUnreachable tree') $ do
         forM_ ts' $ \t -> do
           t' <- reduceType h (weaken t)
-          switchSpec <- toApp $ getSwitchSpec m t'
+          switchSpec <- getSwitchSpec m t'
           case switchSpec of
             LiteralSwitch -> do
-              toApp $ raiseEmptyNonExhaustivePatternMatching m
+              raiseEmptyNonExhaustivePatternMatching m
             ConsSwitch consList -> do
               unless (null consList) $
-                toApp $
-                  raiseEmptyNonExhaustivePatternMatching m
+                raiseEmptyNonExhaustivePatternMatching m
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     m :< WT.Box t -> do
       t' <- elaborate' h t
@@ -337,7 +336,7 @@ elaborate' h term =
       e2' <- elaborate' h e2
       return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
     m :< WT.Hole hole es -> do
-      toApp (fillHole h m hole es) >>= elaborate' h
+      fillHole h m hole es >>= elaborate' h
     m :< WT.Prim prim ->
       case prim of
         WP.Type t ->
@@ -411,17 +410,17 @@ elaborate' h term =
       copier' <- elaborate' h copier
       return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
     m :< WT.Use {} -> do
-      Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
+      raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
     m :< WT.Void ->
       return $ m :< TM.Void
 
-strictify :: Handle -> WT.WeakTerm -> App BLT.BaseLowType
+strictify :: Handle -> WT.WeakTerm -> EIO BLT.BaseLowType
 strictify h t@(mt :< _) =
   strictify' h mt t
 
-strictify' :: Handle -> Hint -> WT.WeakTerm -> App BLT.BaseLowType
+strictify' :: Handle -> Hint -> WT.WeakTerm -> EIO BLT.BaseLowType
 strictify' h m t = do
-  t' <- toApp (reduceWeakType h t) >>= elaborate' h
+  t' <- reduceWeakType h t >>= elaborate' h
   case t' of
     _ :< TM.Prim (P.Type (PT.Int size)) ->
       return $ BLT.PrimNum $ BPT.Int $ BPT.Explicit size
@@ -430,64 +429,64 @@ strictify' h m t = do
     _ :< TM.Prim (P.Type PT.Pointer) ->
       return BLT.Pointer
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
-      consType <- toApp $ Type.lookup' (typeHandle h) m consName
+      consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictify' h m arg
         _ ->
-          toApp $ raiseNonStrictType m (weaken t')
+          raiseNonStrictType m (weaken t')
     _ :< _ ->
-      toApp $ raiseNonStrictType m (weaken t')
+      raiseNonStrictType m (weaken t')
 
-strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakTerm -> App (Either FloatSize IntSize, TM.Term)
+strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakTerm -> EIO (Either FloatSize IntSize, TM.Term)
 strictifyDecimalType h m x t = do
-  t' <- toApp (reduceWeakType h t) >>= elaborate' h
+  t' <- reduceWeakType h t >>= elaborate' h
   case t' of
     _ :< TM.Prim (P.Type (PT.Int size)) ->
       return (Right size, t')
     _ :< TM.Prim (P.Type (PT.Float size)) ->
       return (Left size, t')
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
-      consType <- toApp $ Type.lookup' (typeHandle h) m consName
+      consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictifyDecimalType h m x arg
         _ ->
-          toApp $ raiseNonDecimalType m x (weaken t')
+          raiseNonDecimalType m x (weaken t')
     _ :< _ ->
-      toApp $ raiseNonDecimalType m x (weaken t')
+      raiseNonDecimalType m x (weaken t')
 
-strictifyFloatType :: Handle -> Hint -> Double -> WT.WeakTerm -> App (FloatSize, TM.Term)
+strictifyFloatType :: Handle -> Hint -> Double -> WT.WeakTerm -> EIO (FloatSize, TM.Term)
 strictifyFloatType h m x t = do
-  t' <- toApp (reduceWeakType h t) >>= elaborate' h
+  t' <- reduceWeakType h t >>= elaborate' h
   case t' of
     _ :< TM.Prim (P.Type (PT.Float size)) ->
       return (size, t')
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
-      consType <- toApp $ Type.lookup' (typeHandle h) m consName
+      consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictifyFloatType h m x arg
         _ ->
-          toApp $ raiseNonFloatType m x (weaken t')
+          raiseNonFloatType m x (weaken t')
     _ :< _ ->
-      toApp $ raiseNonFloatType m x (weaken t')
+      raiseNonFloatType m x (weaken t')
 
-elaborateWeakBinder :: Handle -> BinderF WT.WeakTerm -> App (BinderF TM.Term)
+elaborateWeakBinder :: Handle -> BinderF WT.WeakTerm -> EIO (BinderF TM.Term)
 elaborateWeakBinder h (m, x, t) = do
   t' <- elaborate' h t
   return (m, x, t')
 
-elaborateLet :: Handle -> (BinderF WT.WeakTerm, WT.WeakTerm) -> App (BinderF TM.Term, TM.Term)
+elaborateLet :: Handle -> (BinderF WT.WeakTerm, WT.WeakTerm) -> EIO (BinderF TM.Term, TM.Term)
 elaborateLet h (xt, e) = do
   xt' <- elaborateWeakBinder h xt
   e' <- elaborate' h e
   return (xt', e')
 
-elaborateLamAttr :: Handle -> AttrL.Attr WT.WeakTerm -> App (AttrL.Attr TM.Term)
+elaborateLamAttr :: Handle -> AttrL.Attr WT.WeakTerm -> EIO (AttrL.Attr TM.Term)
 elaborateLamAttr h (AttrL.Attr {lamKind, identity}) =
   case lamKind of
     LK.Normal codType -> do
@@ -563,7 +562,7 @@ elaborateDecisionTree ::
   Hint ->
   Hint ->
   DT.DecisionTree WT.WeakTerm ->
-  App (DT.DecisionTree TM.Term)
+  EIO (DT.DecisionTree TM.Term)
 elaborateDecisionTree h ctx mOrig m tree =
   case tree of
     DT.Leaf xs letSeq body -> do
@@ -573,12 +572,12 @@ elaborateDecisionTree h ctx mOrig m tree =
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
-      cursorType' <- toApp (reduceWeakType h cursorType) >>= elaborate' h
-      switchSpec <- toApp $ getSwitchSpec m cursorType'
+      cursorType' <- reduceWeakType h cursorType >>= elaborate' h
+      switchSpec <- getSwitchSpec m cursorType'
       case switchSpec of
         LiteralSwitch -> do
           when (DT.isUnreachable fallbackClause) $ do
-            toApp $ raiseLiteralNonExhaustivePatternMatching m
+            raiseLiteralNonExhaustivePatternMatching m
           fallbackClause' <- elaborateDecisionTree h ctx mOrig m fallbackClause
           clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
           return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
@@ -592,23 +591,23 @@ elaborateDecisionTree h ctx mOrig m tree =
             else do
               case fallbackClause of
                 DT.Unreachable -> do
-                  (rootIdent, tBase) <- toApp $ makeTree mOrig ctx
+                  (rootIdent, tBase) <- makeTree mOrig ctx
                   uncoveredPatterns <- forM (S.toList diff) $ \(consDD, isConstLike) -> do
-                    (_, keys) <- toApp $ KeyArg.lookup (keyArgHandle h) m consDD
+                    (_, keys) <- KeyArg.lookup (keyArgHandle h) m consDD
                     let expArgNum = length keys
                     let args = map (const (holeIdent, Node (Just holeLiteral) True [])) [1 .. expArgNum]
                     let tBase' = graft cursor (Node (Just $ DD.localLocator consDD) isConstLike args) tBase
                     return $ patternTreeToText $ suppress (rootIdent, tBase')
                   let uncoveredPatterns' = T.concat $ flip map uncoveredPatterns $ \ex -> do
                         "| " <> ex <> " => ...\n"
-                  Throw.raiseError mOrig $
+                  raiseError mOrig $
                     "This pattern matching does not cover the following:\n" <> uncoveredPatterns'
                 _ -> do
                   fallbackClause' <- elaborateDecisionTree h ctx mOrig m fallbackClause
                   clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
                   return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: Handle -> Hint -> Ident -> ClauseContext -> DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
+elaborateClause :: Handle -> Hint -> Ident -> ClauseContext -> DT.Case WT.WeakTerm -> EIO (DT.Case TM.Term)
 elaborateClause h mOrig cursor ctx decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
@@ -660,9 +659,9 @@ raiseEmptyNonExhaustivePatternMatching :: Hint -> EIO a
 raiseEmptyNonExhaustivePatternMatching m =
   raiseError m "Empty pattern matching can only be performed on empty ADT values"
 
-reduceType :: Handle -> WT.WeakTerm -> App TM.Term
+reduceType :: Handle -> WT.WeakTerm -> EIO TM.Term
 reduceType h e = do
-  toApp (reduceWeakType h e) >>= elaborate' h
+  reduceWeakType h e >>= elaborate' h
 
 data SwitchSpec
   = LiteralSwitch

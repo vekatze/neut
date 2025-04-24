@@ -43,7 +43,7 @@ _getSymbolInfo locType = do
       hWT <- lift WeakType.new
       t <- lift (liftIO $ WeakType.lookupMaybe hWT varID) >>= liftMaybe
       h <- lift Elaborate.new
-      t' <- lift (Throw.runMaybe $ Elaborate.elaborate' h t) >>= liftMaybe
+      t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' h t) >>= liftMaybe
       return $ toText $ weaken t'
     LT.Global dd isConstLike -> do
       t <- lift (lookupMaybe dd) >>= liftMaybe
