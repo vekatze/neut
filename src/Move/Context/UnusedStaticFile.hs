@@ -2,7 +2,6 @@ module Move.Context.UnusedStaticFile
   ( initialize,
     insert,
     delete,
-    registerRemarks,
     get,
     insertIO,
   )
@@ -14,9 +13,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
-import Move.Context.Remark qualified as Remark
 import Rule.Hint
-import Rule.Remark
 import Prelude hiding (lookup, read)
 
 initialize :: App ()
@@ -35,12 +32,6 @@ get :: App [(T.Text, Hint)]
 get = do
   uenv <- readRef' unusedStaticFileMap
   return $ Map.toList uenv
-
-registerRemarks :: App ()
-registerRemarks = do
-  unusedStaticFiles <- get
-  forM_ unusedStaticFiles $ \(k, m) ->
-    Remark.insertRemark $ newRemark m Warning $ "Imported but not used: `" <> k <> "`"
 
 insertIO :: IORef (Map.HashMap T.Text Hint) -> T.Text -> Hint -> IO ()
 insertIO ref ll m =

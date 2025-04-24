@@ -1,7 +1,5 @@
 module Move.Context.Remark
   ( initialize,
-    insertRemark,
-    getRemarkList,
     setRemarkList,
     printString,
     printRemark,
@@ -172,14 +170,6 @@ setEndOfEntry =
 getEndOfEntry :: App T.Text
 getEndOfEntry =
   readRef' endOfEntry
-
-insertRemark :: R.Remark -> App ()
-insertRemark r = do
-  modifyRef' remarkList $ (:) r
-
-getRemarkList :: App [R.Remark]
-getRemarkList = do
-  readRef' remarkList
 
 setRemarkList :: [R.Remark] -> App ()
 setRemarkList = do

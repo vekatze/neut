@@ -2,7 +2,6 @@ module Move.Context.UnusedGlobalLocator
   ( initialize,
     insert,
     delete,
-    registerRemarks,
     get,
     insertIO,
     deleteIO,
@@ -15,9 +14,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
-import Move.Context.Remark qualified as Remark
 import Rule.Hint
-import Rule.Remark
 import Rule.UnusedGlobalLocators (UnusedGlobalLocators)
 import Prelude hiding (lookup, read)
 
@@ -37,12 +34,6 @@ get :: App UnusedGlobalLocators
 get = do
   uenv <- readRef' unusedGlobalLocatorMap
   return $ Map.toList uenv
-
-registerRemarks :: App ()
-registerRemarks = do
-  unusedGlobalLocators <- concatMap snd <$> get
-  forM_ unusedGlobalLocators $ \(m, locatorText) ->
-    Remark.insertRemark $ newRemark m Warning $ "Imported but not used: `" <> locatorText <> "`"
 
 insertIO :: IORef (Map.HashMap T.Text [(Hint, T.Text)]) -> T.Text -> Hint -> T.Text -> IO ()
 insertIO ref sglText m locatorText =
