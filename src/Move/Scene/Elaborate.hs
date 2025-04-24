@@ -22,7 +22,6 @@ import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Elaborate
 import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Path qualified as Path
 import Move.Context.RawImportSummary qualified as RawImportSummary
@@ -32,6 +31,7 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
@@ -87,7 +87,8 @@ data Handle
     holeHandle :: Hole.Handle,
     substHandle :: Subst.Handle,
     typeHandle :: Type.Handle,
-    weakDeclHandle :: WeakDecl.Handle
+    weakDeclHandle :: WeakDecl.Handle,
+    gensymHandle :: Gensym.Handle
   }
 
 new :: App Handle
@@ -99,6 +100,7 @@ new = do
   substHandle <- Subst.new
   typeHandle <- Type.new
   weakDeclHandle <- WeakDecl.new
+  gensymHandle <- Gensym.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -110,7 +112,7 @@ elaborate h t cacheOrStmt = do
       forM_ stmtList $ insertStmt h
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
-      Gensym.setCount $ Cache.countSnapshot cache
+      liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
       analyzeStmtList h stmtList >>= synthesizeStmtList h t
@@ -137,7 +139,7 @@ synthesizeStmtList h t stmtList = do
   localVarTree <- SymLoc.get
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
-  countSnapshot <- Gensym.getCount
+  countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   hPath <- Path.new
   toApp $
     Cache.saveCache hPath t source $
@@ -284,7 +286,7 @@ elaborate' h term =
       let (os, es, ts) = unzip3 oets
       es' <- mapM (elaborate' h) es
       ts' <- mapM (elaborate' h) ts
-      rootCursor <- Gensym.newIdentForHole
+      rootCursor <- liftIO $ Gensym.newIdentForHole (gensymHandle h)
       let rootElem = (rootCursor, (Nothing, True, os))
       tree' <- elaborateDecisionTree h [rootElem] m m tree
       when (DT.isUnreachable tree') $ do

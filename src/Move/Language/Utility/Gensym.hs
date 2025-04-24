@@ -10,12 +10,14 @@ module Move.Language.Utility.Gensym
     newIdentFromIdent,
     newTextFromText,
     newIdentForHole,
+    setCount,
+    getCount,
   )
 where
 
 import Control.Comonad.Cofree
 import Control.Monad.Reader (asks)
-import Data.IORef (IORef, atomicModifyIORef')
+import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App (App)
 import Move.Context.App.Internal qualified as App
@@ -89,3 +91,11 @@ newIdentForHole h = do
   text <- newTextForHole h
   i <- newCount h
   return $ I (text, i)
+
+setCount :: Handle -> Int -> IO ()
+setCount h countSnapshot = do
+  atomicModifyIORef' (counterRef h) (\x -> (max x countSnapshot, ()))
+
+getCount :: Handle -> IO Int
+getCount h =
+  readIORef (counterRef h)
