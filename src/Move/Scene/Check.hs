@@ -86,7 +86,7 @@ checkSource hEnv target source cacheOrContent = do
   toApp $ Debug.report h'' $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   hParse <- Parse.new
   hElaborate <- Elaborate.new hEnv
-  void $ toApp (Parse.parse hParse target source cacheOrContent) >>= Elaborate.elaborate hElaborate target
+  void $ toApp $ Parse.parse hParse target source cacheOrContent >>= Elaborate.elaborate hElaborate target
 
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc =

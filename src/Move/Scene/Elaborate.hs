@@ -20,7 +20,7 @@ import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.DataDefinition qualified as DataDefinition
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -131,18 +131,18 @@ new handleEnv@(Elaborate.HandleEnv {..}) = do
   currentSource <- Env.getCurrentSource
   return $ Handle {..}
 
-elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
+elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> EIO [Stmt]
 elaborate h t cacheOrStmt = do
   case cacheOrStmt of
     Left cache -> do
       let stmtList = Cache.stmtList cache
-      toApp $ forM_ stmtList $ insertStmt h
+      forM_ stmtList $ insertStmt h
       let remarkList = Cache.remarkList cache
       liftIO $ GlobalRemark.insert (globalRemarkHandle h) remarkList
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
-      toApp (analyzeStmtList h stmtList) >>= toApp . synthesizeStmtList h t
+      analyzeStmtList h stmtList >>= synthesizeStmtList h t
 
 analyzeStmtList :: Handle -> [WeakStmt] -> EIO [WeakStmt]
 analyzeStmtList h stmtList = do

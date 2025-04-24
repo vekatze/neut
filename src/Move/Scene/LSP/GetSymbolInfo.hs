@@ -35,17 +35,16 @@ getSymbolInfo params = do
   hEnv <- liftIO Elaborate.createNewEnv
   lift $ toApp $ invalidate h Peripheral source
   lift $ Check.checkSingle hEnv (sourceModule source) (sourceFilePath source)
-  weakTypeEnv <- lift $ liftIO $ WeakType.get (Elaborate.weakTypeHandle hEnv)
   ((locType, _), _) <- LSP.findDefinition params
-  _getSymbolInfo weakTypeEnv locType
+  _getSymbolInfo hEnv locType
 
-_getSymbolInfo :: IntMap.IntMap WT.WeakTerm -> LT.LocType -> AppM T.Text
-_getSymbolInfo weakTypeEnv locType = do
+_getSymbolInfo :: Elaborate.HandleEnv -> LT.LocType -> AppM T.Text
+_getSymbolInfo hEnv locType = do
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
     LT.Local varID _ -> do
+      weakTypeEnv <- lift $ liftIO $ WeakType.get (Elaborate.weakTypeHandle hEnv)
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      hEnv <- liftIO Elaborate.createNewEnv
       h <- lift $ Elaborate.new hEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' h t) >>= liftMaybe
       return $ toText $ weaken t'

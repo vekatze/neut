@@ -124,7 +124,7 @@ compile target outputKindList contentSeq = do
     cacheOrStmtList <- toApp $ Parse.parse hParse target source cacheOrContent
     hEnv <- liftIO Elaborate.createNewEnv
     hElaborate <- Elaborate.new hEnv
-    stmtList <- Elaborate.elaborate hElaborate target cacheOrStmtList
+    stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary hCache outputKindList source $ do
       stmtList' <- Clarify.clarify stmtList
