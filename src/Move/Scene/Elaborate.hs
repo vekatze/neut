@@ -1,4 +1,10 @@
-module Move.Scene.Elaborate (elaborate, elaborate') where
+module Move.Scene.Elaborate
+  ( Handle,
+    new,
+    elaborate,
+    elaborate',
+  )
+where
 
 import Control.Comonad.Cofree
 import Control.Monad
@@ -29,6 +35,7 @@ import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as TM
+import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Rule.Annotation qualified as AN
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -64,6 +71,16 @@ import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText
+
+newtype Handle
+  = Handle
+  { reduceHandle :: Reduce.Handle
+  }
+
+new :: App Handle
+new = do
+  reduceHandle <- Reduce.new
+  return $ Handle {..}
 
 elaborate :: Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate t cacheOrStmt = do
@@ -634,3 +651,20 @@ getSwitchSpec m cursorType = do
       raiseError m $
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toText (weaken cursorType)
+
+reduceWeakType :: WT.WeakTerm -> App WT.WeakTerm
+reduceWeakType e = do
+  h <- Reduce.new
+  e' <- toApp $ Reduce.reduce h e
+  case e' of
+    m :< WT.Hole hole es ->
+      fillHole m hole es >>= reduceWeakType
+    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
+      mLam <- WeakDefinition.lookup name
+      case mLam of
+        Just lam ->
+          reduceWeakType $ m :< WT.PiElim lam args
+        Nothing -> do
+          return e'
+    _ ->
+      return e'

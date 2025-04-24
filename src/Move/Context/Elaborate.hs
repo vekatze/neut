@@ -8,19 +8,15 @@ module Move.Context.Elaborate
     getHoleSubst,
     setHoleSubst,
     fillHole,
-    reduceWeakType,
   )
 where
 
-import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.EIO (toApp)
 import Move.Context.Throw qualified as Throw
-import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Constraint qualified as C
 import Rule.Hint
@@ -66,23 +62,6 @@ getHoleSubst =
 setHoleSubst :: HS.HoleSubst -> App ()
 setHoleSubst =
   writeRef' holeSubst
-
-reduceWeakType :: WT.WeakTerm -> App WT.WeakTerm
-reduceWeakType e = do
-  h <- Reduce.new
-  e' <- toApp $ Reduce.reduce h e
-  case e' of
-    m :< WT.Hole hole es ->
-      fillHole m hole es >>= reduceWeakType
-    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
-      mLam <- WeakDefinition.lookup name
-      case mLam of
-        Just lam ->
-          reduceWeakType $ m :< WT.PiElim lam args
-        Nothing -> do
-          return e'
-    _ ->
-      return e'
 
 fillHole ::
   Hint ->
