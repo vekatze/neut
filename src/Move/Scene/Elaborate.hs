@@ -41,6 +41,7 @@ import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as TM
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
+import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Rule.Annotation qualified as AN
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -91,7 +92,8 @@ data Handle
     defHandle :: Definition.Handle,
     dataDefHandle :: DataDefinition.Handle,
     gensymHandle :: Gensym.Handle,
-    keyArgHandle :: KeyArg.Handle
+    keyArgHandle :: KeyArg.Handle,
+    localRemarkHandle :: LocalRemark.Handle
   }
 
 new :: App Handle
@@ -107,6 +109,7 @@ new = do
   defHandle <- Definition.new
   dataDefHandle <- DataDefinition.new
   keyArgHandle <- KeyArg.new
+  localRemarkHandle <- LocalRemark.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -141,7 +144,7 @@ synthesizeStmtList h t stmtList = do
     Throw.throw $ E.MakeError affineErrorList
   -- mapM_ (viewStmt . weakenStmt) stmtList'
   source <- Env.getCurrentSource
-  remarkList <- Remark.getRemarkList
+  remarkList <- liftIO $ LocalRemark.get (localRemarkHandle h)
   localVarTree <- SymLoc.get
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
@@ -400,7 +403,7 @@ elaborate' h term =
           t' <- elaborate' h t
           let message = "Admitted: `" <> toText (weaken t') <> "`"
           let typeRemark = Remark.newRemark m remarkLevel message
-          Remark.insertRemark typeRemark
+          liftIO $ LocalRemark.insert (localRemarkHandle h) typeRemark
           return e'
     m :< WT.Resource dd resourceID unitType discarder copier -> do
       unitType' <- elaborate' h unitType
