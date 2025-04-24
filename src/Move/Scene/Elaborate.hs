@@ -95,7 +95,8 @@ data Handle
     keyArgHandle :: KeyArg.Handle,
     localRemarkHandle :: LocalRemark.Handle,
     inlineHandle :: Inline.Handle,
-    affHandle :: EnsureAffinity.Handle
+    affHandle :: EnsureAffinity.Handle,
+    inferHandle :: Infer.Handle
   }
 
 new :: App Handle
@@ -114,6 +115,7 @@ new = do
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new
   affHandle <- EnsureAffinity.new
+  inferHandle <- Infer.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -128,14 +130,13 @@ elaborate h t cacheOrStmt = do
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
-      analyzeStmtList h stmtList >>= synthesizeStmtList h t
+      toApp (analyzeStmtList h stmtList) >>= synthesizeStmtList h t
 
-analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
+analyzeStmtList :: Handle -> [WeakStmt] -> EIO [WeakStmt]
 analyzeStmtList h stmtList = do
   forM stmtList $ \stmt -> do
-    hInfer <- Infer.new
-    stmt' <- toApp $ Infer.inferStmt hInfer stmt
-    toApp $ insertWeakStmt h stmt'
+    stmt' <- Infer.inferStmt (inferHandle h) stmt
+    insertWeakStmt h stmt'
     return stmt'
 
 synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> App [Stmt]
