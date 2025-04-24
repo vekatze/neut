@@ -7,6 +7,7 @@ module Move.Scene.Check
 where
 
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Debug qualified as Debug
@@ -14,6 +15,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetModule qualified as Module
@@ -52,7 +54,8 @@ _check target baseModule = do
       h'' <- Debug.new
       toApp $ Debug.report h'' $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
       hParse <- Parse.new
-      hElaborate <- Elaborate.new
+      hConstraint <- liftIO Constraint.new
+      hElaborate <- Elaborate.new hConstraint
       void $ toApp (Parse.parse hParse target source cacheOrContent) >>= Elaborate.elaborate hElaborate target
 
 checkAll :: App [Remark]

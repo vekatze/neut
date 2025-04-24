@@ -9,10 +9,7 @@ module Move.Scene.Elaborate.Handle.Constraint
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Constraint qualified as C
 import Rule.WeakTerm qualified as WT
 
@@ -20,9 +17,9 @@ newtype Handle = Handle
   { constraintEnvRef :: IORef [C.Constraint]
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  constraintEnvRef <- asks App.constraintEnv
+  constraintEnvRef <- newIORef []
   return $ Handle {..}
 
 insert :: Handle -> WT.WeakTerm -> WT.WeakTerm -> IO ()

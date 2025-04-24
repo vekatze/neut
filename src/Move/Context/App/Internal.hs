@@ -71,7 +71,6 @@ data Env = Env
     antecedentMap :: IORef (Map.HashMap MID.ModuleID M.Module),
     reverseAntecedentMap :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
     antecedentDigestCache :: Ref T.Text,
-    constraintEnv :: IORef [C.Constraint],
     suspendedEnv :: IORef [C.SuspendedConstraint],
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
@@ -149,7 +148,6 @@ newEnv = do
   antecedentMap <- newIORef Map.empty
   reverseAntecedentMap <- newIORef Map.empty
   antecedentDigestCache <- newRef
-  constraintEnv <- newIORef []
   suspendedEnv <- newIORef []
   buildSignatureCache <- newIORef Nothing
   holeSubst <- newIORef HS.empty

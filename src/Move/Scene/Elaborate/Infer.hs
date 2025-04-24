@@ -95,16 +95,15 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: App Handle
-new = do
+new :: Constraint.Handle -> App Handle
+new constraintHandle = do
   mainModule <- getMainModule
   substHandle <- Subst.new
   reduceHandle <- Reduce.new
-  unifyHandle <- Unify.new
+  unifyHandle <- Unify.new constraintHandle
   gensymHandle <- Gensym.new
   discernHandle <- Discern.new
   keyArgHandle <- KeyArg.new
-  constraintHandle <- Constraint.new
   weakTypeHandle <- WeakType.new
   weakDeclHandle <- WeakDecl.new
   optDataHandle <- OptimizableData.new

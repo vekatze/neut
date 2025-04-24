@@ -28,6 +28,7 @@ import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.EnsureMain qualified as EnsureMain
 import Move.Scene.Execute qualified as Execute
@@ -121,7 +122,8 @@ compile target outputKindList contentSeq = do
     toApp $ Debug.report h' $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     hParse <- Parse.new
     cacheOrStmtList <- toApp $ Parse.parse hParse target source cacheOrContent
-    hElaborate <- Elaborate.new
+    hConstraint <- liftIO Constraint.new
+    hElaborate <- Elaborate.new hConstraint
     stmtList <- Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary hCache outputKindList source $ do

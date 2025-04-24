@@ -73,15 +73,14 @@ data Handle = Handle
     weakDefHandle :: WeakDefinition.Handle
   }
 
-new :: App Handle
-new = do
+new :: Constraint.Handle -> App Handle
+new constraintHandle = do
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
   fillHandle <- Fill.new
   typeHandle <- Type.new
   gensymHandle <- Gensym.new
   holeHandle <- Hole.new
-  constraintHandle <- Constraint.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   weakDefHandle <- WeakDefinition.new

@@ -107,11 +107,11 @@ data Handle
     currentSource :: Source
   }
 
-new :: App Handle
-new = do
+new :: Constraint.Handle -> App Handle
+new constraintHandle = do
   reduceHandle <- Reduce.new
   weakDefHandle <- WeakDefinition.new
-  constraintHandle <- Constraint.new
+  -- constraintHandle <- Constraint.new
   holeHandle <- Hole.new
   substHandle <- Subst.new
   typeHandle <- Type.new
@@ -123,8 +123,8 @@ new = do
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new
   affHandle <- EnsureAffinity.new
-  inferHandle <- Infer.new
-  unifyHandle <- Unify.new
+  inferHandle <- Infer.new constraintHandle
+  unifyHandle <- Unify.new constraintHandle
   pathHandle <- Path.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
