@@ -94,7 +94,8 @@ data Handle
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
     localRemarkHandle :: LocalRemark.Handle,
-    inlineHandle :: Inline.Handle
+    inlineHandle :: Inline.Handle,
+    affHandle :: EnsureAffinity.Handle
   }
 
 new :: App Handle
@@ -112,6 +113,7 @@ new = do
   keyArgHandle <- KeyArg.new
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new
+  affHandle <- EnsureAffinity.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -179,8 +181,7 @@ elaborateStmt h stmt = do
       expArgs' <- toApp $ mapM (elaborateWeakBinder h) expArgs
       codType' <- toApp $ elaborate' h codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
-      hAff <- EnsureAffinity.new
-      remarks <- toApp $ EnsureAffinity.ensureAffinity hAff $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
+      remarks <- toApp $ EnsureAffinity.ensureAffinity (affHandle h) $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
       e'' <- toApp $ Inline.inline (inlineHandle h) m e'
       codType'' <- toApp $ Inline.inline (inlineHandle h) m codType'
       when isConstLike $ do
