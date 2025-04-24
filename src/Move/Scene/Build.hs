@@ -119,7 +119,8 @@ compile target outputKindList contentSeq = do
     toApp $ Debug.report h' $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     hParse <- Parse.new
     cacheOrStmtList <- toApp $ Parse.parse hParse target source cacheOrContent
-    stmtList <- Elaborate.elaborate target cacheOrStmtList
+    hElaborate <- Elaborate.new
+    stmtList <- Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary hCache outputKindList source $ do
       stmtList' <- Clarify.clarify stmtList

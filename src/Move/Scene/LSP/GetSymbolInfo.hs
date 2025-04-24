@@ -13,7 +13,7 @@ import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type
 import Move.Scene.Check qualified as Check
-import Move.Scene.Elaborate
+import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.LSP.FindDefinition qualified as LSP
 import Move.Scene.LSP.GetSource qualified as LSP
 import Rule.LocationTree qualified as LT
@@ -41,7 +41,8 @@ _getSymbolInfo locType = do
   case symbolName of
     LT.Local varID _ -> do
       t <- lift (lookupWeakTypeEnvMaybe varID) >>= liftMaybe
-      t' <- lift (Throw.runMaybe $ elaborate' t) >>= liftMaybe
+      h <- lift Elaborate.new
+      t' <- lift (Throw.runMaybe $ Elaborate.elaborate' h t) >>= liftMaybe
       return $ toText $ weaken t'
     LT.Global dd isConstLike -> do
       t <- lift (lookupMaybe dd) >>= liftMaybe
