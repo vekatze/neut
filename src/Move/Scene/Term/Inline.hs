@@ -11,8 +11,8 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Definition qualified as Definition
+import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Throw qualified as Throw
 import Move.Scene.Term.Refresh (refresh)
 import Move.Scene.Term.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -58,12 +58,12 @@ incrementStep h = do
   let Handle {currentStepRef} = h
   modifyIORef' currentStepRef (+ 1)
 
-detectPossibleInfiniteLoop :: Handle -> App ()
+detectPossibleInfiniteLoop :: Handle -> EIO ()
 detectPossibleInfiniteLoop h = do
   let Handle {inlineLimit, currentStepRef, location} = h
   currentStep <- liftIO $ readIORef currentStepRef
   when (inlineLimit < currentStep) $ do
-    Throw.raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
+    raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
 
 inline :: Hint -> TM.Term -> App TM.Term
 inline m e = do
@@ -72,7 +72,7 @@ inline m e = do
 
 inline' :: Handle -> TM.Term -> App TM.Term
 inline' h term = do
-  detectPossibleInfiniteLoop h
+  toApp $ detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
   case term of
     m :< TM.Pi impArgs expArgs cod -> do
