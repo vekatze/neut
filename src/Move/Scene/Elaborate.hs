@@ -8,6 +8,7 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Bifunctor
 import Data.Bitraversable (bimapM)
@@ -26,7 +27,6 @@ import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Path qualified as Path
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
-import Move.Context.Throw qualified as Throw
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
@@ -145,7 +145,7 @@ elaborate h t cacheOrStmt = do
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
-      toApp (analyzeStmtList h stmtList) >>= synthesizeStmtList h t
+      toApp (analyzeStmtList h stmtList) >>= toApp . synthesizeStmtList h t
 
 analyzeStmtList :: Handle -> [WeakStmt] -> EIO [WeakStmt]
 analyzeStmtList h stmtList = do
@@ -154,33 +154,31 @@ analyzeStmtList h stmtList = do
     insertWeakStmt h stmt'
     return stmt'
 
-synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> App [Stmt]
+synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> EIO [Stmt]
 synthesizeStmtList h t stmtList = do
   -- mapM_ viewStmt stmtList
-  liftIO (Constraint.get (constraintHandle h)) >>= toApp . Unify.unify (unifyHandle h) >>= liftIO . Hole.setSubst (holeHandle h)
-  (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (toApp . elaborateStmt h) stmtList
+  liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify (unifyHandle h) >>= liftIO . Hole.setSubst (holeHandle h)
+  (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
-    Throw.throw $ E.MakeError affineErrorList
+    throwError $ E.MakeError affineErrorList
   -- mapM_ (viewStmt . weakenStmt) stmtList'
   remarkList <- liftIO $ LocalRemark.get (localRemarkHandle h)
   localVarTree <- liftIO $ SymLoc.get (symLocHandle h)
   topCandidate <- liftIO $ TopCandidate.get (topCandidateHandle h)
   rawImportSummary <- liftIO $ RawImportSummary.get (rawImportSummaryHandle h)
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
-  toApp $
-    Cache.saveCache (pathHandle h) t (currentSource h) $
-      Cache.Cache
-        { Cache.stmtList = stmtList',
-          Cache.remarkList = remarkList,
-          Cache.countSnapshot = countSnapshot
-        }
-  toApp $
-    Cache.saveCompletionCache (pathHandle h) t (currentSource h) $
-      Cache.CompletionCache
-        { Cache.localVarTree = localVarTree,
-          Cache.topCandidate = topCandidate,
-          Cache.rawImportSummary = rawImportSummary
-        }
+  Cache.saveCache (pathHandle h) t (currentSource h) $
+    Cache.Cache
+      { Cache.stmtList = stmtList',
+        Cache.remarkList = remarkList,
+        Cache.countSnapshot = countSnapshot
+      }
+  Cache.saveCompletionCache (pathHandle h) t (currentSource h) $
+    Cache.CompletionCache
+      { Cache.localVarTree = localVarTree,
+        Cache.topCandidate = topCandidate,
+        Cache.rawImportSummary = rawImportSummary
+      }
   liftIO $ GlobalRemark.insert (globalRemarkHandle h) remarkList
   return stmtList'
 
