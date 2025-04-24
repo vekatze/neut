@@ -18,7 +18,6 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.DataDefinition qualified as DataDefinition
-import Move.Context.Decl qualified as Decl
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Elaborate
@@ -36,6 +35,7 @@ import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
+import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as TM
@@ -86,7 +86,8 @@ data Handle
     constraintHandle :: Constraint.Handle,
     holeHandle :: Hole.Handle,
     substHandle :: Subst.Handle,
-    typeHandle :: Type.Handle
+    typeHandle :: Type.Handle,
+    weakDeclHandle :: WeakDecl.Handle
   }
 
 new :: App Handle
@@ -97,6 +98,7 @@ new = do
   holeHandle <- Hole.new
   substHandle <- Subst.new
   typeHandle <- Type.new
+  weakDeclHandle <- WeakDecl.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -213,7 +215,7 @@ insertWeakStmt h stmt = do
       forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
         domList' <- mapM (elaborate' h >=> return . weaken) domList
         cod' <- mapM (elaborate' h >=> return . weaken) cod
-        Decl.insWeakDeclEnv (DN.Ext externalName) domList' cod'
+        liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList' cod'
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
