@@ -322,7 +322,7 @@ elaborate' h term =
       e2' <- elaborate' h e2
       return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
     m :< WT.Hole hole es -> do
-      fillHole h m hole es >>= elaborate' h
+      toApp (fillHole h m hole es) >>= elaborate' h
     m :< WT.Prim prim ->
       case prim of
         WP.Type t ->
@@ -673,7 +673,7 @@ reduceWeakType h e = do
   e' <- toApp $ Reduce.reduce (reduceHandle h) e
   case e' of
     m :< WT.Hole hole es ->
-      fillHole h m hole es >>= reduceWeakType h
+      toApp (fillHole h m hole es) >>= reduceWeakType h
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
       mLam <- liftIO $ WeakDefinition.lookup' (weakDefHandle h) name
       case mLam of
@@ -689,15 +689,15 @@ fillHole ::
   Hint ->
   HID.HoleID ->
   [WT.WeakTerm] ->
-  App WT.WeakTerm
+  EIO WT.WeakTerm
 fillHole h m holeID es = do
   holeSubst <- liftIO $ Hole.getSubst (holeHandle h)
   case HS.lookup holeID holeSubst of
     Nothing ->
-      Throw.raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
+      raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
     Just (xs, e)
       | length xs == length es -> do
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-          toApp $ Subst.subst (substHandle h) s e
+          Subst.subst (substHandle h) s e
       | otherwise ->
-          Throw.raiseError m "Arity mismatch"
+          raiseError m "Arity mismatch"
