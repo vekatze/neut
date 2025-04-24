@@ -38,7 +38,7 @@ import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
-import Move.Scene.Term.Inline qualified as TM
+import Move.Scene.Term.Inline qualified as Inline
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
@@ -93,7 +93,8 @@ data Handle
     dataDefHandle :: DataDefinition.Handle,
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
-    localRemarkHandle :: LocalRemark.Handle
+    localRemarkHandle :: LocalRemark.Handle,
+    inlineHandle :: Inline.Handle
   }
 
 new :: App Handle
@@ -110,6 +111,7 @@ new = do
   dataDefHandle <- DataDefinition.new
   keyArgHandle <- KeyArg.new
   localRemarkHandle <- LocalRemark.new
+  inlineHandle <- Inline.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -179,8 +181,8 @@ elaborateStmt h stmt = do
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
       hAff <- EnsureAffinity.new
       remarks <- toApp $ EnsureAffinity.ensureAffinity hAff $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
-      e'' <- TM.inline m e'
-      codType'' <- TM.inline m codType'
+      e'' <- toApp $ Inline.inline (inlineHandle h) m e'
+      codType'' <- toApp $ Inline.inline (inlineHandle h) m codType'
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           Throw.raiseError m "Could not reduce the body of this definition into a constant"

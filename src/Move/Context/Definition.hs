@@ -1,6 +1,7 @@
 module Move.Context.Definition
   ( Handle,
     new,
+    DefMap,
     initialize,
     insert,
     get,
@@ -20,6 +21,9 @@ import Rule.DefiniteDescription qualified as DD
 import Rule.Opacity qualified as O
 import Rule.Term qualified as TM
 import Prelude hiding (lookup, read)
+
+type DefMap =
+  Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)
 
 newtype Handle
   = Handle
