@@ -34,6 +34,7 @@ import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
+import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as TM
@@ -80,13 +81,15 @@ import Rule.WeakTerm.ToText
 data Handle
   = Handle
   { reduceHandle :: Reduce.Handle,
-    weakDefHandle :: WeakDefinition.Handle
+    weakDefHandle :: WeakDefinition.Handle,
+    constraintHandle :: Constraint.Handle
   }
 
 new :: App Handle
 new = do
   reduceHandle <- Reduce.new
   weakDefHandle <- WeakDefinition.new
+  constraintHandle <- Constraint.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -115,7 +118,7 @@ synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> App [Stmt]
 synthesizeStmtList h t stmtList = do
   -- mapM_ viewStmt stmtList
   hUnify <- Unify.new
-  getConstraintEnv >>= toApp . Unify.unify hUnify >>= setHoleSubst
+  liftIO (Constraint.get (constraintHandle h)) >>= toApp . Unify.unify hUnify >>= setHoleSubst
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     Throw.throw $ E.MakeError affineErrorList
