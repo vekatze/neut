@@ -35,6 +35,7 @@ import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
+import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as TM
@@ -82,7 +83,9 @@ data Handle
   = Handle
   { reduceHandle :: Reduce.Handle,
     weakDefHandle :: WeakDefinition.Handle,
-    constraintHandle :: Constraint.Handle
+    constraintHandle :: Constraint.Handle,
+    holeHandle :: Hole.Handle,
+    substHandle :: Subst.Handle
   }
 
 new :: App Handle
@@ -90,6 +93,8 @@ new = do
   reduceHandle <- Reduce.new
   weakDefHandle <- WeakDefinition.new
   constraintHandle <- Constraint.new
+  holeHandle <- Hole.new
+  substHandle <- Subst.new
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> App [Stmt]
@@ -118,7 +123,7 @@ synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> App [Stmt]
 synthesizeStmtList h t stmtList = do
   -- mapM_ viewStmt stmtList
   hUnify <- Unify.new
-  liftIO (Constraint.get (constraintHandle h)) >>= toApp . Unify.unify hUnify >>= setHoleSubst
+  liftIO (Constraint.get (constraintHandle h)) >>= toApp . Unify.unify hUnify >>= liftIO . Hole.setSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     Throw.throw $ E.MakeError affineErrorList
@@ -685,15 +690,14 @@ fillHole ::
   HID.HoleID ->
   [WT.WeakTerm] ->
   App WT.WeakTerm
-fillHole _ m holeID es = do
-  holeSubst <- getHoleSubst
-  substHandle <- Subst.new
+fillHole h m holeID es = do
+  holeSubst <- liftIO $ Hole.getSubst (holeHandle h)
   case HS.lookup holeID holeSubst of
     Nothing ->
       Throw.raiseError m $ "Could not instantiate the hole here: " <> T.pack (show holeID)
     Just (xs, e)
       | length xs == length es -> do
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-          toApp $ Subst.subst substHandle s e
+          toApp $ Subst.subst (substHandle h) s e
       | otherwise ->
           Throw.raiseError m "Arity mismatch"

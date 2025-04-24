@@ -1,8 +1,6 @@
 module Move.Context.Elaborate
   ( initialize,
     initializeInferenceEnv,
-    getHoleSubst,
-    setHoleSubst,
   )
 where
 
@@ -15,18 +13,10 @@ initialize :: App ()
 initialize = do
   initializeInferenceEnv
   writeRef' weakTypeEnv IntMap.empty
-  setHoleSubst HS.empty
+  writeRef' holeSubst HS.empty
 
 initializeInferenceEnv :: App ()
 initializeInferenceEnv = do
   writeRef' constraintEnv []
   writeRef' suspendedEnv []
   writeRef' holeEnv IntMap.empty
-
-getHoleSubst :: App HS.HoleSubst
-getHoleSubst =
-  readRef' holeSubst
-
-setHoleSubst :: HS.HoleSubst -> App ()
-setHoleSubst =
-  writeRef' holeSubst

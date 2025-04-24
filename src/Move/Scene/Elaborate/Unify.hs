@@ -26,6 +26,7 @@ import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
+import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -64,6 +65,7 @@ data Handle = Handle
     typeHandle :: Type.Handle,
     gensymHandle :: Gensym.Handle,
     constraintHandle :: Constraint.Handle,
+    holeHandle :: Hole.Handle,
     inlineLimit :: Int,
     currentStep :: Int,
     holeSubstRef :: IORef HS.HoleSubst,
@@ -79,6 +81,7 @@ new = do
   fillHandle <- Fill.new
   typeHandle <- Type.new
   gensymHandle <- Gensym.new
+  holeHandle <- Hole.new
   constraintHandle <- Constraint.new
   source <- Env.getCurrentSource
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
@@ -94,7 +97,7 @@ unify h constraintList = do
   susList <- unify' h (reverse constraintList)
   case susList of
     [] ->
-      liftIO $ getHoleSubst h
+      liftIO $ Hole.getSubst (holeHandle h)
     _ ->
       throwTypeErrors h susList
 
@@ -105,7 +108,7 @@ unifyCurrentConstraints h = do
   susList' <- simplify h susList $ zip cs cs
   liftIO $ Constraint.set (constraintHandle h) []
   liftIO $ writeIORef (suspendedEnvRef h) susList'
-  liftIO $ getHoleSubst h
+  liftIO $ Hole.getSubst (holeHandle h)
 
 unify' :: Handle -> [C.Constraint] -> EIO [SuspendedConstraint]
 unify' h constraintList = do
@@ -114,7 +117,7 @@ unify' h constraintList = do
 
 throwTypeErrors :: Handle -> [SuspendedConstraint] -> EIO a
 throwTypeErrors h susList = do
-  sub <- liftIO $ getHoleSubst h
+  sub <- liftIO $ Hole.getSubst (holeHandle h)
   errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark h sub c) susList
   throwError $ E.MakeError errorList
 
@@ -166,7 +169,7 @@ detectPossibleInfiniteLoop :: Handle -> C.Constraint -> EIO ()
 detectPossibleInfiniteLoop h c = do
   let Handle {inlineLimit, currentStep} = h
   when (inlineLimit < currentStep) $ do
-    sub <- liftIO $ getHoleSubst h
+    sub <- liftIO $ Hole.getSubst (holeHandle h)
     r <- constraintToRemark h sub c
     throwError $
       E.MakeError
@@ -251,7 +254,7 @@ simplify h susList constraintList =
             (e1, _ :< WT.Annotation _ _ e2) ->
               simplify h susList $ (C.Eq e1 e2, orig) : cs
             (e1, e2) -> do
-              sub <- liftIO $ getHoleSubst h
+              sub <- liftIO $ Hole.getSubst (holeHandle h)
               let fvs1 = freeVars e1
               let fvs2 = freeVars e2
               let fmvs1 = holes e1 -- fmvs: free meta-variables
@@ -329,7 +332,7 @@ resolveHole ::
   [(C.Constraint, C.Constraint)] ->
   EIO [SuspendedConstraint]
 resolveHole h susList hole1 xs e2' cs = do
-  liftIO $ insertSubst h hole1 xs e2'
+  liftIO $ Hole.insertSubst (holeHandle h) hole1 xs e2'
   let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member hole1 hs) susList
   let susList1' = map (\(C.SuspendedConstraint (_, c)) -> c) susList1
   simplify h susList2 $ reverse susList1' ++ cs
@@ -436,7 +439,7 @@ simplifyActual h m dataNameSet t orig = do
     _ :< WT.Resource {} -> do
       return []
     _ -> do
-      sub <- liftIO $ getHoleSubst h
+      sub <- liftIO $ Hole.getSubst (holeHandle h)
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
@@ -489,7 +492,7 @@ simplifyInteger h m t orig = do
     _ :< WT.Prim (WP.Type (PT.Int _)) -> do
       return []
     _ -> do
-      sub <- liftIO $ getHoleSubst h
+      sub <- liftIO $ Hole.getSubst (holeHandle h)
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
@@ -502,11 +505,3 @@ simplifyInteger h m t orig = do
                   simplifyInteger (increment h) m (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
-
-getHoleSubst :: Handle -> IO HS.HoleSubst
-getHoleSubst h =
-  readIORef (holeSubstRef h)
-
-insertSubst :: Handle -> HID.HoleID -> [Ident] -> WT.WeakTerm -> IO ()
-insertSubst h holeID xs e =
-  modifyIORef' (holeSubstRef h) $ HS.insert holeID xs e
