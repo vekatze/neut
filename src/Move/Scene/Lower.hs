@@ -79,11 +79,6 @@ runLower m = do
   (a, Cont b) <- runWriterT m
   b $ LC.Return a
 
-runLowerComp :: Lower LC.Comp -> App LC.Comp
-runLowerComp m = do
-  (a, Cont b) <- runWriterT m
-  b a
-
 new :: [C.CompStmt] -> App Handle
 new stmtList = do
   declEnv <- liftIO $ newIORef Map.empty
@@ -206,11 +201,11 @@ lowerComp h term =
           lowerValueLetCast' h castVar v t
             =<< return (LC.Switch (castValue, t) defaultCase caseList (phiVar, LC.Return phi))
     C.Free x size cont -> do
-      cont' <- lowerComp h cont
-      runLowerComp $ do
-        x' <- lowerValue h x
-        freeID <- lift Gensym.newCount
-        return $ LC.Cont (LC.Free x' size freeID) cont'
+      freeID <- Gensym.newCount
+      (ptrVar, ptr) <- newValueLocal "ptr"
+      lowerValue' h ptrVar x
+        =<< return . LC.Cont (LC.Free ptr size freeID)
+        =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
 
