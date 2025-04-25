@@ -3,6 +3,7 @@ module Move.Scene.Clarify.Handle.AuxEnv
     new,
     insert,
     get,
+    clear,
     checkIfAlreadyRegistered,
     toCompStmtList,
   )
@@ -45,3 +46,7 @@ checkIfAlreadyRegistered h k = do
 toCompStmtList :: CompDefinition.DefMap -> [CompStmt]
 toCompStmtList defMap = do
   map fromDefTuple $ Map.toList defMap
+
+clear :: Handle -> IO ()
+clear h = do
+  writeIORef (compAuxEnvRef h) mempty

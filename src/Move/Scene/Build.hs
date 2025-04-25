@@ -127,7 +127,8 @@ compile target outputKindList contentSeq = do
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary hCache outputKindList source $ do
-      stmtList' <- Clarify.clarify stmtList
+      hc <- Clarify.new
+      stmtList' <- Clarify.clarify hc stmtList
       async $ do
         virtualCode <- Lower.lower stmtList'
         emit h currentTime target outputKindList (Right source) virtualCode
@@ -186,7 +187,8 @@ compileEntryPoint mainModule target outputKindList = do
       if b
         then return []
         else do
-          mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint t
+          hc <- Clarify.new
+          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint hc) >>= Lower.lowerEntryPoint t
           return [(Left t, mainVirtualCode)]
 
 execute :: Bool -> MainTarget -> [String] -> App ()

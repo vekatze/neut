@@ -1,5 +1,7 @@
 module Move.Scene.Clarify
-  ( clarify,
+  ( Handle,
+    new,
+    clarify,
     clarifyEntryPoint,
     registerFoundationalTypes,
   )
@@ -91,12 +93,11 @@ new = do
   baseSize <- toApp Env.getBaseSize'
   return $ Handle {..}
 
-clarify :: [Stmt] -> App [C.CompStmt]
-clarify stmtList = do
-  h <- new
-  Clarify.clearAuxEnv
+clarify :: Handle -> [Stmt] -> App [C.CompStmt]
+clarify h stmtList = do
+  liftIO $ AuxEnv.clear (auxEnvHandle h)
   baseAuxEnv <- Clarify.toCompStmtList <$> liftIO (getBaseAuxEnv h)
-  Clarify.clearAuxEnv
+  liftIO $ AuxEnv.clear (auxEnvHandle h)
   stmtList' <- do
     stmtList' <- mapM (toApp . clarifyStmt h) stmtList
     auxEnv <- Clarify.toCompStmtList <$> Clarify.getAuxEnv
@@ -119,22 +120,20 @@ clarify stmtList = do
       C.Foreign {} ->
         return stmt
 
-clarifyEntryPoint :: App [C.CompStmt]
-clarifyEntryPoint = do
-  h <- new
-  Clarify.clearAuxEnv
-  baseAuxEnv <- liftIO $ getBaseAuxEnv h
+clarifyEntryPoint :: Handle -> IO [C.CompStmt]
+clarifyEntryPoint h = do
+  AuxEnv.clear (auxEnvHandle h)
+  baseAuxEnv <- getBaseAuxEnv h
   forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
-    e' <- liftIO $ Reduce.reduce (reduceHandle h) e
+    e' <- Reduce.reduce (reduceHandle h) e
     return $ C.Def x opacity args e'
 
 registerFoundationalTypes :: App ()
 registerFoundationalTypes = do
   h <- new
-  Clarify.clearAuxEnv
+  liftIO $ AuxEnv.clear (auxEnvHandle h)
   auxEnv <- liftIO $ getBaseAuxEnv h
-  hc <- CompDefinition.new
-  liftIO $ forM_ (Map.toList auxEnv) $ uncurry $ CompDefinition.insert hc
+  liftIO $ forM_ (Map.toList auxEnv) $ uncurry $ CompDefinition.insert (compDefHandle h)
 
 getBaseAuxEnv :: Handle -> IO CompDefinition.DefMap
 getBaseAuxEnv h = do
