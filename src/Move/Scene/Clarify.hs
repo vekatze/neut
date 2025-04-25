@@ -285,8 +285,9 @@ clarifyTerm tenv term =
               return $ C.UpIntro (C.Int size l)
             PV.Float _ size l ->
               return $ C.UpIntro (C.Float size l)
-            PV.Op op ->
-              clarifyPrimOp tenv op m
+            PV.Op op -> do
+              h <- new
+              clarifyPrimOp h tenv op m
             PV.StaticText _ text ->
               return $ C.UpIntro $ C.VarStaticText text
             PV.Rune r -> do
@@ -574,14 +575,13 @@ clarifyBinder tenv binder =
       xts' <- clarifyBinder (IntMap.insert (Ident.toInt x) t tenv) xts
       return $ (m, x, t') : xts'
 
-clarifyPrimOp :: TM.TypeEnv -> PrimOp -> Hint -> App C.Comp
-clarifyPrimOp tenv op m = do
+clarifyPrimOp :: Handle -> TM.TypeEnv -> PrimOp -> Hint -> App C.Comp
+clarifyPrimOp h tenv op m = do
   let (domList, _) = getTypeInfo op
   let argTypeList = map (fromPrimNum m) domList
-  (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
+  (xs, varList) <- liftIO $ mapAndUnzipM (const (GensymN.newValueVarLocalWith (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  lamID <- Gensym.newCount
-  h <- new
+  lamID <- liftIO $ GensymN.newCount (gensymHandle h)
   returnClosure h tenv lamID O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
