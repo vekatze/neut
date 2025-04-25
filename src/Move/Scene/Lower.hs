@@ -88,8 +88,7 @@ lower stmtList = do
 lowerEntryPoint :: MainTarget -> [C.CompStmt] -> App LC.LowCode
 lowerEntryPoint target stmtList = do
   h <- new stmtList
-  locatorHandle <- Locator.new
-  mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget locatorHandle target
+  mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget (locatorHandle h) target
   liftIO $ insDeclEnv h (DN.In mainDD) AN.zero
   mainDef <- constructMainTerm mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
