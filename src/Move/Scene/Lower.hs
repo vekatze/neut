@@ -221,8 +221,7 @@ lowerCompPrimitive h resultVar codeOp cont =
             =<< uncast h resultVar tmp valueLowType' cont
         M.Alloca t size -> do
           let t' = LT.fromBaseLowType t
-          baseSize <- toApp Env.getBaseSize'
-          let indexType = LT.PrimNum $ PT.Int $ IntSize baseSize
+          let indexType = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
           (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
           (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h sizeVar size indexType
