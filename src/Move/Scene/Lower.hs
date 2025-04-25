@@ -229,7 +229,7 @@ lowerCompPrimitive h resultVar codeOp cont =
             =<< return . LC.Let ptrVar (LC.StackAlloc t' indexType sizeValue)
             =<< uncast h resultVar ptrValue LT.Pointer cont
         M.External domList cod name fixedArgs varArgAndTypeList -> do
-          alreadyRegistered <- member h (DN.Ext name)
+          alreadyRegistered <- liftIO $ member h (DN.Ext name)
           unless alreadyRegistered $ do
             liftIO $ insDeclEnv' h (DN.Ext name) domList cod
           let (varArgs, varTypes) = unzip varArgAndTypeList
@@ -464,9 +464,9 @@ insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignC
 insDeclEnv' h k domList cod = do
   modifyIORef' (declEnv h) $ Map.insert k (domList, cod)
 
-member :: Handle -> DN.DeclarationName -> App Bool
+member :: Handle -> DN.DeclarationName -> IO Bool
 member h k = do
-  denv <- liftIO $ readIORef (declEnv h)
+  denv <- readIORef (declEnv h)
   return $ Map.member k denv
 
 insertStaticText :: Handle -> DD.DefiniteDescription -> Builder -> Int -> IO ()
