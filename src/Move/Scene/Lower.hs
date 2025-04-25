@@ -21,7 +21,7 @@ import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as GensymN
@@ -87,7 +87,7 @@ lower stmtList = do
   h <- new stmtList
   liftIO $ insDeclEnv h (DN.In DD.imm) AN.argNumS4
   liftIO $ insDeclEnv h (DN.In DD.cls) AN.argNumS4
-  stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
+  stmtList' <- catMaybes <$> mapM (toApp . lowerStmt h) stmtList
   LC.LowCodeNormal <$> liftIO (summarize h stmtList')
 
 lowerEntryPoint :: MainTarget -> [C.CompStmt] -> App LC.LowCode
@@ -96,7 +96,7 @@ lowerEntryPoint target stmtList = do
   mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget (locatorHandle h) target
   liftIO $ insDeclEnv h (DN.In mainDD) AN.zero
   mainDef <- liftIO $ constructMainTerm h mainDD
-  stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
+  stmtList' <- catMaybes <$> mapM (toApp . lowerStmt h) stmtList
   LC.LowCodeMain mainDef <$> liftIO (summarize h stmtList')
 
 summarize :: Handle -> [LC.Def] -> IO LC.LowCodeInfo
@@ -105,7 +105,7 @@ summarize h stmtList = do
   staticTextList <- readIORef $ staticTextList h
   return (declEnv, stmtList, staticTextList)
 
-lowerStmt :: Handle -> C.CompStmt -> App (Maybe (DD.DefiniteDescription, ([Ident], LC.Comp)))
+lowerStmt :: Handle -> C.CompStmt -> EIO (Maybe (DD.DefiniteDescription, ([Ident], LC.Comp)))
 lowerStmt h stmt = do
   case stmt of
     C.Def name _ args e -> do
@@ -137,7 +137,7 @@ constructMainTerm h mainName = do
               LC.Return (LC.Int 0)
   return ([argc, argv], mainTerm)
 
-lowerComp :: Handle -> C.Comp -> App LC.Comp
+lowerComp :: Handle -> C.Comp -> EIO LC.Comp
 lowerComp h term =
   case term of
     C.Primitive theta -> do
@@ -195,7 +195,7 @@ lowerComp h term =
     C.Unreachable ->
       return LC.Unreachable
 
-lowerCompPrimitive :: Handle -> Ident -> C.Primitive -> LC.Comp -> App LC.Comp
+lowerCompPrimitive :: Handle -> Ident -> C.Primitive -> LC.Comp -> EIO LC.Comp
 lowerCompPrimitive h resultVar codeOp cont =
   case codeOp of
     C.PrimOp op vs ->
@@ -255,7 +255,7 @@ lowerCompPrimitive h resultVar codeOp cont =
         M.OpaqueValue e ->
           lowerValue h resultVar e cont
 
-lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> App LC.Comp
+lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> EIO LC.Comp
 lowerCompPrimOp h resultVar op vs cont = do
   let (domList, cod) = getTypeInfo op
   (argVars, args) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") vs
@@ -264,7 +264,7 @@ lowerCompPrimOp h resultVar op vs cont = do
     =<< return . LC.Let tmpVar (LC.PrimOp op args)
     =<< uncast h resultVar tmp (LT.PrimNum cod) cont
 
-lowerValueLetCastPrimArgs :: Handle -> [(Ident, (C.Value, PT.PrimType))] -> LC.Comp -> App LC.Comp
+lowerValueLetCastPrimArgs :: Handle -> [(Ident, (C.Value, PT.PrimType))] -> LC.Comp -> EIO LC.Comp
 lowerValueLetCastPrimArgs h xdts cont =
   case xdts of
     [] ->
@@ -273,7 +273,7 @@ lowerValueLetCastPrimArgs h xdts cont =
       lowerValueLetCast h x d (LT.PrimNum t)
         =<< lowerValueLetCastPrimArgs h rest cont
 
-cast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
+cast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
 cast h var v lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) -> do
@@ -288,7 +288,7 @@ cast h var v lowType cont = do
     _ -> do
       return $ LC.Let var (LC.Bitcast v LT.Pointer lowType) cont
 
-uncast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
+uncast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
 uncast h var castedValue lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) ->
@@ -303,7 +303,7 @@ uncast h var castedValue lowType cont = do
     _ ->
       return $ LC.Let var (LC.Bitcast castedValue lowType LT.Pointer) cont
 
-allocateBasePointer :: Handle -> Ident -> AggType -> LC.Comp -> App LC.Comp
+allocateBasePointer :: Handle -> Ident -> AggType -> LC.Comp -> EIO LC.Comp
 allocateBasePointer h resultVar aggType cont = do
   let lt = toLowType aggType
   case lt of
@@ -327,7 +327,7 @@ createAggData ::
   AggType -> -- the type of the base pointer
   [(C.Value, LT.LowType)] ->
   LC.Comp ->
-  App LC.Comp
+  EIO LC.Comp
 createAggData h resultVar aggType dts cont = do
   (xs, vs) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "item") dts
   let baseType = toLowType aggType
@@ -340,7 +340,7 @@ storeElements ::
   LC.Value -> -- base pointer
   [(LC.Value, (C.Value, LT.LowType))] ->
   LC.Comp ->
-  App LC.Comp
+  EIO LC.Comp
 storeElements h basePointer values cont =
   case values of
     [] ->
@@ -355,7 +355,7 @@ store :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> LC.Comp
 store lowType value pointer =
   LC.Cont (LC.Store lowType value pointer)
 
-load :: Handle -> Ident -> LT.LowType -> LC.Value -> LC.Comp -> App LC.Comp
+load :: Handle -> Ident -> LT.LowType -> LC.Value -> LC.Comp -> EIO LC.Comp
 load h resultVar elemType pointer cont = do
   (tmpVar, tmpValue) <- liftIO $ newValueLocal h "tmp"
   (loadedVar, loadedValue) <- liftIO $ newValueLocal h "loaded"
@@ -368,7 +368,7 @@ loadElements ::
   LC.Value -> -- base pointer
   [(Ident, (LC.Value, LT.LowType))] ->
   LC.Comp ->
-  App LC.Comp
+  EIO LC.Comp
 loadElements h basePointer values cont =
   case values of
     [] -> do
@@ -379,7 +379,7 @@ loadElements h basePointer values cont =
         =<< load h targetVar valueType castPtrValue
         =<< loadElements h basePointer rest cont
 
-lowerValue :: Handle -> Ident -> C.Value -> LC.Comp -> App LC.Comp
+lowerValue :: Handle -> Ident -> C.Value -> LC.Comp -> EIO LC.Comp
 lowerValue h resultVar v cont =
   case v of
     C.VarGlobal globalName argNum -> do
@@ -405,7 +405,7 @@ lowerValue h resultVar v cont =
     C.Float size f -> do
       uncast h resultVar (LC.Float size f) (LT.PrimNum $ PT.Float size) cont
 
-lowerValues :: Handle -> [(Ident, C.Value)] -> LC.Comp -> App LC.Comp
+lowerValues :: Handle -> [(Ident, C.Value)] -> LC.Comp -> EIO LC.Comp
 lowerValues h xvs cont =
   case xvs of
     [] ->
@@ -414,7 +414,7 @@ lowerValues h xvs cont =
       lowerValue h x v
         =<< lowerValues h rest cont
 
-lowerAndCastValues :: Handle -> [(Ident, (C.Value, LT.LowType))] -> LC.Comp -> App LC.Comp
+lowerAndCastValues :: Handle -> [(Ident, (C.Value, LT.LowType))] -> LC.Comp -> EIO LC.Comp
 lowerAndCastValues h xvs cont =
   case xvs of
     [] ->
@@ -423,7 +423,7 @@ lowerAndCastValues h xvs cont =
       lowerValueLetCast h x v t
         =<< lowerAndCastValues h rest cont
 
-lowerValueLetCast :: Handle -> Ident -> C.Value -> LT.LowType -> LC.Comp -> App LC.Comp
+lowerValueLetCast :: Handle -> Ident -> C.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
 lowerValueLetCast h resultVar v lowType cont = do
   (tmpVar, tmpValue) <- liftIO $ newValueLocal h "tmp"
   lowerValue h tmpVar v
@@ -439,7 +439,7 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
       return cont
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: Handle -> C.Comp -> [(EC.EnumCase, C.Comp)] -> App (LC.Comp, [(Integer, LC.Comp)])
+constructSwitch :: Handle -> C.Comp -> [(EC.EnumCase, C.Comp)] -> EIO (LC.Comp, [(Integer, LC.Comp)])
 constructSwitch h defaultBranch switch =
   case switch of
     [] -> do
