@@ -1,21 +1,35 @@
-module Rule.LowComp.EmitOp (emitLowOp, Axis (..)) where
+module Rule.LowComp.EmitOp
+  ( Handle,
+    new,
+    emitLowOp,
+  )
+where
 
 import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Move.Context.EIO (EIO)
+import Move.Context.Env qualified as Env
 import Rule.LowComp qualified as LC
 import Rule.LowComp.EmitValue
 import Rule.LowType qualified as LT
 import Rule.LowType.EmitLowType
+import Rule.PrimNumSize
 import Rule.PrimOp
 import Rule.PrimType qualified as PT
 import Rule.PrimType.EmitPrimType
 
-newtype Axis = Axis
+newtype Handle = Handle
   { intType :: LT.LowType
   }
 
-emitLowOp :: Axis -> LC.Op -> Builder
+new :: EIO Handle
+new = do
+  baseSize <- Env.getBaseSize'
+  let intType = LT.PrimNum $ PT.Int $ IntSize baseSize
+  return $ Handle {..}
+
+emitLowOp :: Handle -> LC.Op -> Builder
 emitLowOp ax lowOp =
   case lowOp of
     LC.Call codType d ds ->
