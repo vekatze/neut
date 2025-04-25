@@ -99,8 +99,8 @@ lower ::
   App LC.LowCode
 lower stmtList = do
   h <- new stmtList
-  insDeclEnv h (DN.In DD.imm) AN.argNumS4
-  insDeclEnv h (DN.In DD.cls) AN.argNumS4
+  liftIO $ insDeclEnv h (DN.In DD.imm) AN.argNumS4
+  liftIO $ insDeclEnv h (DN.In DD.cls) AN.argNumS4
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeNormal <$> summarize h stmtList'
 
@@ -109,7 +109,7 @@ lowerEntryPoint target stmtList = do
   h <- new stmtList
   locatorHandle <- Locator.new
   mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget locatorHandle target
-  insDeclEnv h (DN.In mainDD) AN.zero
+  liftIO $ insDeclEnv h (DN.In mainDD) AN.zero
   mainDef <- constructMainTerm mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeMain mainDef <$> summarize h stmtList'
@@ -354,7 +354,7 @@ lowerValue h v =
     C.VarGlobal globalName argNum -> do
       lowNameSet <- lift $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
-        lift $ insDeclEnv h (DN.In globalName) argNum
+        liftIO $ insDeclEnv h (DN.In globalName) argNum
       uncast (LC.VarGlobal globalName) LT.Pointer
     C.VarLocal y ->
       return $ LC.VarLocal y
@@ -493,9 +493,9 @@ commConv x lowComp cont2 =
     LC.Unreachable ->
       LC.Unreachable
 
-insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> App ()
+insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> IO ()
 insDeclEnv h k argNum = do
-  liftIO $ modifyIORef' (declEnv h) $ Map.insert k (BLT.toVoidPtrSeq argNum, FCT.Void)
+  modifyIORef' (declEnv h) $ Map.insert k (BLT.toVoidPtrSeq argNum, FCT.Void)
 
 insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> App ()
 insDeclEnv' h k domList cod = do
