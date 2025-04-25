@@ -3,14 +3,13 @@ module Move.Context.CompDefinition
     DefValue,
     DefMap,
     insert,
-    union,
     lookup,
   )
 where
 
+import Data.HashMap.Strict qualified as Map
 import Move.Context.App
 import Move.Context.App.Internal
-import Data.HashMap.Strict qualified as Map
 import Rule.Comp
 import Rule.DefiniteDescription qualified as DD
 import Rule.Ident
@@ -26,10 +25,6 @@ type DefMap = Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)
 insert :: DefKey -> DefValue -> App ()
 insert k v =
   modifyRef' compEnv $ Map.insert k v
-
-union :: DefMap -> App ()
-union otherEnv =
-  modifyRef' compEnv $ Map.union otherEnv
 
 lookup :: DefKey -> App (Maybe DefValue)
 lookup k = do
