@@ -202,7 +202,7 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyPlus tenv) es
       case e of
         _ :< TM.Prim (P.Value (PV.Op op)) ->
-          callPrimOp op es'
+          return $ callPrimOp op es'
         _ -> do
           e' <- clarifyTerm tenv e
           callClosure e' es'
@@ -619,10 +619,10 @@ callClosure e zexes = do
           (C.PiElimDownElim lamVar (xs ++ [envVar]))
       )
 
-callPrimOp :: PrimOp -> [(Ident, C.Comp, C.Value)] -> App C.Comp
+callPrimOp :: PrimOp -> [(Ident, C.Comp, C.Value)] -> C.Comp
 callPrimOp op zexes = do
   let (zs, es', xs) = unzip3 zexes
-  return $ Utility.bindLet (zip zs es') (C.Primitive (C.PrimOp op xs))
+  Utility.bindLet (zip zs es') (C.Primitive (C.PrimOp op xs))
 
 dropFst :: [(a, b, c)] -> [(b, c)]
 dropFst xyzs = do
