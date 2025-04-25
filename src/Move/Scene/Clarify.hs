@@ -128,12 +128,11 @@ clarifyEntryPoint h = do
     e' <- Reduce.reduce (reduceHandle h) e
     return $ C.Def x opacity args e'
 
-registerFoundationalTypes :: App ()
-registerFoundationalTypes = do
-  h <- new
-  liftIO $ AuxEnv.clear (auxEnvHandle h)
-  auxEnv <- liftIO $ getBaseAuxEnv h
-  liftIO $ forM_ (Map.toList auxEnv) $ uncurry $ CompDefinition.insert (compDefHandle h)
+registerFoundationalTypes :: Handle -> IO ()
+registerFoundationalTypes h = do
+  AuxEnv.clear (auxEnvHandle h)
+  auxEnv <- getBaseAuxEnv h
+  forM_ (Map.toList auxEnv) $ uncurry $ CompDefinition.insert (compDefHandle h)
 
 getBaseAuxEnv :: Handle -> IO CompDefinition.DefMap
 getBaseAuxEnv h = do

@@ -69,7 +69,8 @@ initializeCompilerWithModule newModule = do
 
 initializeForTarget :: App ()
 initializeForTarget = do
-  Clarify.registerFoundationalTypes
+  hc <- Clarify.new
+  liftIO $ Clarify.registerFoundationalTypes hc
   Unravel.initialize
   h <- GlobalRemark.new
   liftIO $ GlobalRemark.set h []
