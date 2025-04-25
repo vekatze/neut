@@ -90,7 +90,7 @@ new stmtList = do
   let h = Handle {..}
   arch <- toApp $ Env.getArch Nothing
   forM_ (F.defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
-    insDeclEnv' h (DN.Ext name) domList cod
+    liftIO $ insDeclEnv' h (DN.Ext name) domList cod
   registerInternalNames h stmtList
   return h
 
@@ -137,7 +137,7 @@ registerInternalNames h stmtList =
         liftIO $ modifyIORef' (definedNameSet h) $ S.insert name
       C.Foreign foreignList ->
         forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
-          insDeclEnv' h (DN.Ext name) domList cod
+          liftIO $ insDeclEnv' h (DN.Ext name) domList cod
 
 constructMainTerm :: DD.DefiniteDescription -> App LC.DefContent
 constructMainTerm mainName = do
@@ -270,7 +270,7 @@ lowerCompPrimitive h codeOp =
         M.External domList cod name args varArgAndTypeList -> do
           alreadyRegistered <- lift $ member h (DN.Ext name)
           unless alreadyRegistered $ do
-            lift $ insDeclEnv' h (DN.Ext name) domList cod
+            liftIO $ insDeclEnv' h (DN.Ext name) domList cod
           let (varArgs, varTypes) = unzip varArgAndTypeList
           let argCaster = map LT.fromBaseLowType $ domList ++ varTypes
           castedArgs <- zipWithM (lowerValueLetCast h) (args ++ varArgs) argCaster
@@ -497,9 +497,9 @@ insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> IO ()
 insDeclEnv h k argNum = do
   modifyIORef' (declEnv h) $ Map.insert k (BLT.toVoidPtrSeq argNum, FCT.Void)
 
-insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> App ()
+insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
 insDeclEnv' h k domList cod = do
-  liftIO $ modifyIORef' (declEnv h) $ Map.insert k (domList, cod)
+  modifyIORef' (declEnv h) $ Map.insert k (domList, cod)
 
 member :: Handle -> DN.DeclarationName -> App Bool
 member h k = do
