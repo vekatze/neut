@@ -73,7 +73,8 @@ data Handle
     locatorHandle :: Locator.Handle,
     optDataHandle :: OptimizableData.Handle,
     reduceHandle :: Reduce.Handle,
-    substHandle :: Subst.Handle
+    substHandle :: Subst.Handle,
+    baseSize :: Int
   }
 
 new :: App Handle
@@ -87,6 +88,7 @@ new = do
   optDataHandle <- OptimizableData.new
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
+  baseSize <- toApp Env.getBaseSize'
   return $ Handle {..}
 
 clarify :: [Stmt] -> App [C.CompStmt]
@@ -273,7 +275,8 @@ clarifyTerm tenv term =
     _ :< TM.BoxNoema {} ->
       return Sigma.returnImmediateS4
     _ :< TM.BoxIntro letSeq e -> do
-      embody tenv letSeq e
+      h <- new
+      embody h tenv letSeq e
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       clarifyTerm tenv $
         TM.fromLetSeqOpaque castSeq $
@@ -322,23 +325,21 @@ clarifyTerm tenv term =
     _ :< TM.Void ->
       return Sigma.returnImmediateS4
 
-embody :: TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> App C.Comp
-embody tenv xets cont =
+embody :: Handle -> TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> App C.Comp
+embody h tenv xets cont =
   case xets of
     [] ->
       clarifyTerm tenv cont
-    (mxt@(m, x, t), e) : rest -> do
-      h <- new
+    (mxt@(_, x, t), e) : rest -> do
       (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus h tenv t
       (valueVarName, value, valueVar) <- clarifyPlus h tenv e
-      cont' <- embody (TM.insTypeEnv [mxt] tenv) rest cont
-      baseSize <- toApp $ Env.getBaseSize m
+      cont' <- embody h (TM.insTypeEnv [mxt] tenv) rest cont
       cont'' <- liftIO $ Linearize.linearize (linearizeHandle h) [(x, typeExp)] cont'
       return $
         Utility.bindLet
           [ (typeExpVarName, typeExp),
             (valueVarName, value),
-            (x, C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, valueVar])
+            (x, C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize (baseSize h)) 1, valueVar])
           ]
           cont''
 
