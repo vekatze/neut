@@ -12,8 +12,7 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.EIO (toApp)
-import Move.Context.Gensym qualified as Gensym
-import Move.Language.Utility.Gensym qualified as GensymN
+import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Builder
 import Rule.Ident
 import Rule.Ident.Reify
@@ -28,7 +27,7 @@ type Label =
 
 -- per-function handle
 data Handle = Handle
-  { gensymHandle :: GensymN.Handle,
+  { gensymHandle :: Gensym.Handle,
     emitOpHandle :: EmitOp.Handle,
     phiInfo :: Maybe (Ident, Label),
     currentLabel :: Maybe Label,
@@ -38,7 +37,7 @@ data Handle = Handle
 
 new :: Builder -> App Handle
 new retTypeBuilder = do
-  gensymHandle <- GensymN.new
+  gensymHandle <- Gensym.new
   emitOpHandle <- toApp EmitOp.new
   emptyMapRef <- liftIO $ newIORef IntMap.empty
   return
@@ -51,7 +50,7 @@ new retTypeBuilder = do
         labelMap = emptyMapRef
       }
 
-emitLowComp :: Handle -> LC.Comp -> App [Builder]
+emitLowComp :: Handle -> LC.Comp -> IO [Builder]
 emitLowComp h lowComp =
   case lowComp of
     LC.Return d ->
@@ -63,7 +62,7 @@ emitLowComp h lowComp =
           let brOp = emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal rendezvous)]
           return $ lowOp <> brOp
     LC.TailCall codType f args -> do
-      tmp <- Gensym.newIdentFromText "tmp"
+      tmp <- Gensym.newIdentFromText (gensymHandle h) "tmp"
       let op =
             emitOp $
               unwordsL
@@ -76,7 +75,7 @@ emitLowComp h lowComp =
       ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
       return $ op <> ret
     LC.Switch (d, lowType) defaultBranch branchList (phiTgt, cont) -> do
-      defaultLabel <- Gensym.newIdentFromText "default"
+      defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
       labelList <- liftIO $ constructLabelList h branchList
       let switchOpStr =
             emitOp $
@@ -89,14 +88,14 @@ emitLowComp h lowComp =
                   showBranchList lowType $ zip (map fst branchList) labelList
                 ]
       let labelBranchList = zip labelList (map snd branchList) <> [(defaultLabel, defaultBranch)]
-      confluenceLabel <- Gensym.newIdentFromText "confluence"
+      confluenceLabel <- Gensym.newIdentFromText (gensymHandle h) "confluence"
       case currentLabel h of
         Nothing ->
           return ()
         Just current -> do
           -- bypass switch clauses and get the confluence block
           liftIO $ modifyIORef' (labelMap h) $ IntMap.insert (toInt current) confluenceLabel
-      phiSrcVarList <- mapM (const $ Gensym.newIdentFromText "phi") labelBranchList
+      phiSrcVarList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "phi") labelBranchList
       blockAsmList <-
         forM (zip labelBranchList phiSrcVarList) $ \((label, branch), phiSrcVar) -> do
           let newPhiInfo = Just (phiSrcVar, confluenceLabel)
@@ -171,7 +170,7 @@ constructLabelList h input =
     [] ->
       return []
     (_ : rest) -> do
-      label <- GensymN.newIdentFromText (gensymHandle h) "case"
+      label <- Gensym.newIdentFromText (gensymHandle h) "case"
       labelList <- constructLabelList h rest
       return $ label : labelList
 
