@@ -8,6 +8,7 @@ module Rule.LowComp
     LowCodeInfo,
     Def,
     DefContent,
+    nop,
   )
 where
 
@@ -97,3 +98,7 @@ data LowCode
   | LowCodeNormal LowCodeInfo
 
 type StaticTextInfo = (DD.DefiniteDescription, (Builder, Int))
+
+nop :: Value -> Op
+nop v =
+  Bitcast v Pointer Pointer
