@@ -25,7 +25,7 @@ import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
 import Move.Scene.Cancel
 import Move.Scene.Comp.Reduce qualified as C
-import Move.Scene.Comp.Subst qualified as C
+import Move.Scene.Comp.Subst qualified as Subst
 import Rule.ArgNum qualified as AN
 import Rule.BaseLowType qualified as BLT
 import Rule.BaseName qualified as BN
@@ -183,10 +183,11 @@ lowerComp h term =
       return $ commConv x e1' e2'
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let sub = IntMap.fromList fvInfo
-      hsub <- C.new
-      defaultBranch' <- liftIO (C.subst hsub sub defaultBranch) >>= C.reduce
+      hred <- C.new
+      hsub <- Subst.new
+      defaultBranch' <- liftIO (Subst.subst hsub sub defaultBranch) >>= C.reduce hred
       let (keys, clauses) = unzip branchList
-      clauses' <- mapM (liftIO . C.subst hsub sub >=> C.reduce) clauses
+      clauses' <- mapM (liftIO . Subst.subst hsub sub >=> C.reduce hred) clauses
       let branchList' = zip keys clauses'
       case (defaultBranch', clauses') of
         (C.Unreachable, [clause]) ->
