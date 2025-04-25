@@ -12,9 +12,10 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
+import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Utility
 import Rule.ArgNum qualified as AN
@@ -61,7 +62,7 @@ registerSigmaS4 ::
   App ()
 registerSigmaS4 name opacity mxts = do
   h <- Linearize.new
-  registerSwitcher opacity name (sigmaT h mxts) (sigma4 h mxts)
+  registerSwitcher opacity name (sigmaT h mxts) (toApp . sigma4 h mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -84,9 +85,10 @@ sigmaT ::
   C.Value ->
   App C.Comp
 sigmaT h mxts argVar = do
-  xts <- mapM supplyName mxts
+  let h' = Linearize.gensymHandle h
+  xts <- liftIO $ mapM (supplyName h') mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- toApp $ forM xts $ uncurry $ toAffineApp (Linearize.gensymHandle h)
+  as <- toApp $ forM xts $ uncurry $ toAffineApp h'
   ys <- mapM (const $ Gensym.newIdentFromText "arg") xts
   body' <- toApp $ Linearize.linearize h xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
   return $ C.SigmaElim True (map fst xts) argVar body'
@@ -109,22 +111,23 @@ sigma4 ::
   Linearize.Handle ->
   [Either C.Comp (Ident, C.Comp)] ->
   C.Value ->
-  App C.Comp
+  EIO C.Comp
 sigma4 h mxts argVar = do
-  xts <- mapM supplyName mxts
+  let h' = Linearize.gensymHandle h
+  xts <- liftIO $ mapM (supplyName h') mxts
   -- as == [APP-1, ..., APP-n]
-  as <- toApp $ forM xts $ uncurry $ toRelevantApp (Linearize.gensymHandle h)
-  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.newValueVarLocalWith "pair") xts
-  body' <- toApp $ Linearize.linearize h xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
+  as <- forM xts $ uncurry $ toRelevantApp h'
+  (varNameList, varList) <- liftIO $ mapAndUnzipM (const $ GensymN.newValueVarLocalWith h' "pair") xts
+  body' <- Linearize.linearize h xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
-supplyName :: Either b (Ident, b) -> App (Ident, b)
-supplyName mName =
+supplyName :: GensymN.Handle -> Either b (Ident, b) -> IO (Ident, b)
+supplyName h mName =
   case mName of
     Right (x, t) ->
       return (x, t)
     Left t -> do
-      x <- Gensym.newIdentFromText "unused-sigarg"
+      x <- GensymN.newIdentFromText h "unused-sigarg"
       return (x, t)
 
 closureEnvS4 ::
@@ -139,7 +142,7 @@ closureEnvS4 mxts =
       h <- Locator.new
       name <- liftIO $ Locator.attachCurrentLocator h $ BN.sigmaName i
       h' <- Linearize.new
-      registerSwitcher O.Clear name (sigmaT h' mxts) (sigma4 h' mxts)
+      registerSwitcher O.Clear name (sigmaT h' mxts) (toApp . sigma4 h' mxts)
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
@@ -161,7 +164,7 @@ sigmaData4 = do
 sigmaBinder4 :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
 sigmaBinder4 xts v = do
   h <- Linearize.new
-  sigma4 h (Left returnImmediateS4 : map Right xts) v
+  toApp $ sigma4 h (Left returnImmediateS4 : map Right xts) v
 
 sigmaDataT :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp
 sigmaDataT = do
