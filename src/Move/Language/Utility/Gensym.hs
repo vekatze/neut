@@ -10,6 +10,7 @@ module Move.Language.Utility.Gensym
     newIdentFromIdent,
     newTextFromText,
     newIdentForHole,
+    newValueVarLocalWith,
     setCount,
     getCount,
   )
@@ -21,6 +22,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App (App)
 import Move.Context.App.Internal qualified as App
+import Rule.Comp qualified as C
 import Rule.Const
 import Rule.Hint (Hint)
 import Rule.HoleID (HoleID (HoleID))
@@ -99,3 +101,9 @@ setCount h countSnapshot = do
 getCount :: Handle -> IO Int
 getCount h =
   readIORef (counterRef h)
+
+{-# INLINE newValueVarLocalWith #-}
+newValueVarLocalWith :: Handle -> T.Text -> IO (Ident, C.Value)
+newValueVarLocalWith h name = do
+  x <- newIdentFromText h name
+  return (x, C.VarLocal x)

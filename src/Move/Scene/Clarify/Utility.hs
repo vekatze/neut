@@ -10,12 +10,14 @@ module Move.Scene.Clarify.Utility
   )
 where
 
+import Control.Monad.IO.Class
 import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.Clarify
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
+import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Comp.Subst qualified as C
 import Rule.Comp qualified as C
 import Rule.DefiniteDescription qualified as DD
@@ -29,19 +31,19 @@ import Rule.PrimNumSize
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Ident -> C.Comp -> App C.Comp
-toAffineApp x t = do
-  (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  baseSize <- toApp Env.getBaseSize'
+toAffineApp :: GensymN.Handle -> Ident -> C.Comp -> EIO C.Comp
+toAffineApp h x t = do
+  (expVarName, expVar) <- liftIO $ GensymN.newValueVarLocalWith h "exp"
+  baseSize <- Env.getBaseSize'
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize baseSize) 0, C.VarLocal x])
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Ident -> C.Comp -> App C.Comp
-toRelevantApp x t = do
-  (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  baseSize <- toApp Env.getBaseSize'
+toRelevantApp :: GensymN.Handle -> Ident -> C.Comp -> EIO C.Comp
+toRelevantApp h x t = do
+  (expVarName, expVar) <- liftIO $ GensymN.newValueVarLocalWith h "exp"
+  baseSize <- Env.getBaseSize'
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize baseSize) 1, C.VarLocal x])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
