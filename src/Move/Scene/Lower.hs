@@ -348,12 +348,12 @@ storeElements h basePointer values cont =
     (elemPtr, (value, valueType)) : ids -> do
       (castVar, castValue) <- liftIO $ newValueLocal h "base"
       lowerValueLetCast h castVar value valueType
-        =<< store valueType castValue elemPtr
+        =<< return . store valueType castValue elemPtr
         =<< storeElements h basePointer ids cont
 
-store :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> App LC.Comp
-store lowType value pointer cont =
-  return $ LC.Cont (LC.Store lowType value pointer) cont
+store :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> LC.Comp
+store lowType value pointer =
+  LC.Cont (LC.Store lowType value pointer)
 
 load :: Handle -> Ident -> LT.LowType -> LC.Value -> LC.Comp -> App LC.Comp
 load h resultVar elemType pointer cont = do
