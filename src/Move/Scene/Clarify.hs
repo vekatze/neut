@@ -17,11 +17,10 @@ import Move.Context.Clarify qualified as Clarify
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
-import Move.Language.Utility.Gensym qualified as GensymN
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Sigma qualified as Sigma
@@ -65,7 +64,7 @@ import Rule.Term.FromPrimNum
 
 data Handle
   = Handle
-  { gensymHandle :: GensymN.Handle,
+  { gensymHandle :: Gensym.Handle,
     linearizeHandle :: Linearize.Handle,
     utilityHandle :: Utility.Handle,
     auxEnvHandle :: AuxEnv.Handle,
@@ -80,7 +79,7 @@ data Handle
 
 new :: App Handle
 new = do
-  gensymHandle <- GensymN.new
+  gensymHandle <- Gensym.new
   linearizeHandle <- Linearize.new
   utilityHandle <- Utility.new
   auxEnvHandle <- AuxEnv.new
@@ -306,8 +305,8 @@ clarifyTerm h tenv term =
       clarifyMagic tenv der
     m :< TM.Resource _ resourceID _ discarder copier -> do
       liftedName <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
-      switchValue <- Gensym.newIdentFromText "switchValue"
-      value <- Gensym.newIdentFromText "value"
+      switchValue <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switchValue"
+      value <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "value"
       discarder' <-
         clarifyTerm h IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value])
           >>= liftIO . Reduce.reduce (reduceHandle h)
@@ -392,7 +391,7 @@ clarifyDecisionTree h tenv isNoetic dataArgsMap tree =
         Just OD.Unary -> do
           return (getFirstClause fallbackClause' clauseList'', newChain)
         _ -> do
-          (disc, discVar) <- liftIO $ GensymN.newValueVarLocalWith (gensymHandle h) "disc"
+          (disc, discVar) <- liftIO $ Gensym.newValueVarLocalWith (gensymHandle h) "disc"
           enumElim <- liftIO $ Utility.getEnumElim (utilityHandle h) idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return
             ( C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal cursor)))) enumElim,
@@ -458,7 +457,7 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
           return (EC.Int (RU.asInt r), body', contChain)
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (_, dataTypes) = unzip dataArgs
-      dataArgVars <- liftIO $ mapM (const $ GensymN.newIdentFromText (gensymHandle h) "dataArg") dataTypes
+      dataArgVars <- liftIO $ mapM (const $ Gensym.newIdentFromText (gensymHandle h) "dataArg") dataTypes
       let cursorSize = 1 + length dataArgVars + length consArgs
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
@@ -479,7 +478,7 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
           | otherwise ->
               Throw.raiseCritical' "Found a non-unary consArgs for unary ADT"
         _ -> do
-          discriminantVar <- liftIO $ GensymN.newIdentFromText (gensymHandle h) "discriminant"
+          discriminantVar <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "discriminant"
           return
             ( EC.Int (D.reify disc),
               C.SigmaElim
@@ -552,7 +551,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
       lamAttr <- do
-        c <- liftIO $ GensymN.newCount (gensymHandle h)
+        c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $ AttrL.normal c codType
       let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
@@ -569,7 +568,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
 clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus h tenv e = do
   e' <- clarifyTerm h tenv e
-  (varName, var) <- liftIO $ GensymN.newValueVarLocalWith (gensymHandle h) "var"
+  (varName, var) <- liftIO $ Gensym.newValueVarLocalWith (gensymHandle h) "var"
   return (varName, e', var)
 
 clarifyBinder :: Handle -> TM.TypeEnv -> [BinderF TM.Term] -> App [(Hint, Ident, C.Comp)]
@@ -586,9 +585,9 @@ clarifyPrimOp :: Handle -> TM.TypeEnv -> PrimOp -> Hint -> App C.Comp
 clarifyPrimOp h tenv op m = do
   let (domList, _) = getTypeInfo op
   let argTypeList = map (fromPrimNum m) domList
-  (xs, varList) <- liftIO $ mapAndUnzipM (const (GensymN.newValueVarLocalWith (gensymHandle h) "prim")) domList
+  (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.newValueVarLocalWith (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  lamID <- liftIO $ GensymN.newCount (gensymHandle h)
+  lamID <- liftIO $ Gensym.newCount (gensymHandle h)
   returnClosure h tenv lamID O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
@@ -622,7 +621,7 @@ registerClosure ::
   IO ()
 registerClosure h name opacity xts1 xts2 e = do
   e' <- liftIO $ Linearize.linearize (linearizeHandle h) (xts2 ++ xts1) e
-  (envVarName, envVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "env"
+  (envVarName, envVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "env"
   let args = map fst xts1 ++ [envVarName]
   body <- liftIO $ Reduce.reduce (reduceHandle h) $ C.SigmaElim True (map fst xts2) envVar e'
   AuxEnv.insert (auxEnvHandle h) name (opacity, args, body)
@@ -643,10 +642,10 @@ callClosure h e zexes = do
 
 newClosureNames :: Handle -> IO ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames h = do
-  closureVarInfo <- GensymN.newValueVarLocalWith (gensymHandle h) "closure"
-  typeVarName <- GensymN.newIdentFromText (gensymHandle h) "exp"
-  envVarInfo <- GensymN.newValueVarLocalWith (gensymHandle h) "env"
-  lamVarInfo <- GensymN.newValueVarLocalWith (gensymHandle h) "thunk"
+  closureVarInfo <- Gensym.newValueVarLocalWith (gensymHandle h) "closure"
+  typeVarName <- Gensym.newIdentFromText (gensymHandle h) "exp"
+  envVarInfo <- Gensym.newValueVarLocalWith (gensymHandle h) "env"
+  lamVarInfo <- Gensym.newValueVarLocalWith (gensymHandle h) "thunk"
   return (closureVarInfo, typeVarName, envVarInfo, lamVarInfo)
 
 callPrimOp :: PrimOp -> [(Ident, C.Comp, C.Value)] -> C.Comp
