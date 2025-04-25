@@ -54,7 +54,8 @@ import Rule.Target
 
 data Handle
   = Handle
-  { gensymHandle :: GensymN.Handle,
+  { baseSize :: Int,
+    gensymHandle :: GensymN.Handle,
     locatorHandle :: Locator.Handle,
     declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
@@ -63,6 +64,7 @@ data Handle
 
 new :: [C.CompStmt] -> App Handle
 new stmtList = do
+  baseSize <- toApp Env.getBaseSize'
   gensymHandle <- GensymN.new
   locatorHandle <- Locator.new
   declEnv <- liftIO $ newIORef Map.empty
@@ -314,9 +316,8 @@ allocateBasePointer h resultVar aggType cont = do
       let (elemType, len) = getSizeInfoOf aggType
       (sizeVar, sizeValue) <- liftIO $ newValueLocal h "result"
       (castVar, castValue) <- liftIO $ newValueLocal h "result"
-      allocID <- Gensym.newCount
-      baseSize <- toApp Env.getBaseSize'
-      let lowInt = LT.PrimNum $ PT.Int $ IntSize baseSize
+      allocID <- liftIO $ GensymN.newCount (gensymHandle h)
+      let lowInt = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
       return . getElemPtr sizeVar LC.Null elemType [toInteger len]
         =<< cast h castVar sizeValue lowInt
         =<< return (LC.Let resultVar (LC.Alloc castValue len allocID) cont)
