@@ -216,7 +216,8 @@ clarifyTerm tenv term =
           return $ callPrimOp op es'
         _ -> do
           e' <- clarifyTerm tenv e
-          callClosure e' es'
+          h <- new
+          liftIO $ callClosure h e' es'
     _ :< TM.Data _ name dataArgs -> do
       (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus tenv) dataArgs
       return $
@@ -608,11 +609,10 @@ registerClosure name opacity xts1 xts2 e = do
   body <- liftIO $ Reduce.reduce h' $ C.SigmaElim True (map fst xts2) envVar e'
   Clarify.insertToAuxEnv name (opacity, args, body)
 
-callClosure :: C.Comp -> [(Ident, C.Comp, C.Value)] -> App C.Comp
-callClosure e zexes = do
+callClosure :: Handle -> C.Comp -> [(Ident, C.Comp, C.Value)] -> IO C.Comp
+callClosure h e zexes = do
   let (zs, es', xs) = unzip3 zexes
-  h <- new
-  ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- liftIO $ newClosureNames h
+  ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames h
   return $
     Utility.bindLet
       ((closureVarName, e) : zip zs es')
