@@ -62,7 +62,7 @@ registerSigmaS4 ::
   App ()
 registerSigmaS4 name opacity mxts = do
   h <- Linearize.new
-  registerSwitcher opacity name (sigmaT h mxts) (toApp . sigma4 h mxts)
+  registerSwitcher opacity name (toApp . sigmaT h mxts) (toApp . sigma4 h mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -83,14 +83,14 @@ sigmaT ::
   Linearize.Handle ->
   [Either C.Comp (Ident, C.Comp)] ->
   C.Value ->
-  App C.Comp
+  EIO C.Comp
 sigmaT h mxts argVar = do
   let h' = Linearize.gensymHandle h
   xts <- liftIO $ mapM (supplyName h') mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- toApp $ forM xts $ uncurry $ toAffineApp h'
-  ys <- mapM (const $ Gensym.newIdentFromText "arg") xts
-  body' <- toApp $ Linearize.linearize h xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
+  as <- forM xts $ uncurry $ toAffineApp h'
+  ys <- liftIO $ mapM (const $ GensymN.newIdentFromText h' "arg") xts
+  body' <- Linearize.linearize h xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
   return $ C.SigmaElim True (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -142,7 +142,7 @@ closureEnvS4 mxts =
       h <- Locator.new
       name <- liftIO $ Locator.attachCurrentLocator h $ BN.sigmaName i
       h' <- Linearize.new
-      registerSwitcher O.Clear name (sigmaT h' mxts) (toApp . sigma4 h' mxts)
+      registerSwitcher O.Clear name (toApp . sigmaT h' mxts) (toApp . sigma4 h' mxts)
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
@@ -193,7 +193,7 @@ sigmaData resourceHandler dataInfo arg = do
 sigmaBinderT :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
 sigmaBinderT xts v = do
   h <- Linearize.new
-  sigmaT h (Left returnImmediateS4 : map Right xts) v
+  toApp $ sigmaT h (Left returnImmediateS4 : map Right xts) v
 
 discriminantToEnumCase :: D.Discriminant -> EC.EnumCase
 discriminantToEnumCase discriminant =
