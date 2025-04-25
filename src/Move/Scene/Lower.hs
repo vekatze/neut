@@ -27,7 +27,7 @@ import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Cancel
-import Move.Scene.Comp.Reduce qualified as C
+import Move.Scene.Comp.Reduce qualified as Reduce
 import Move.Scene.Comp.Subst qualified as Subst
 import Rule.ArgNum qualified as AN
 import Rule.BaseLowType qualified as BLT
@@ -57,6 +57,8 @@ data Handle
   { baseSize :: Int,
     gensymHandle :: GensymN.Handle,
     locatorHandle :: Locator.Handle,
+    reduceHandle :: Reduce.Handle,
+    substHandle :: Subst.Handle,
     declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
@@ -67,6 +69,8 @@ new stmtList = do
   baseSize <- toApp Env.getBaseSize'
   gensymHandle <- GensymN.new
   locatorHandle <- Locator.new
+  reduceHandle <- Reduce.new
+  substHandle <- Subst.new
   declEnv <- liftIO $ newIORef Map.empty
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
@@ -167,11 +171,9 @@ lowerComp h term =
       return $ commConv x e1' e2'
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let sub = IntMap.fromList fvInfo
-      hred <- C.new
-      hsub <- Subst.new
-      defaultBranch' <- liftIO $ Subst.subst hsub sub defaultBranch >>= C.reduce hred
+      defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
-      clauses' <- liftIO $ mapM (Subst.subst hsub sub >=> C.reduce hred) clauses
+      clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
       let branchList' = zip keys clauses'
       case (defaultBranch', clauses') of
         (C.Unreachable, [clause]) ->
@@ -180,14 +182,13 @@ lowerComp h term =
           lowerComp h defaultBranch'
         _ -> do
           (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
-          baseSize <- toApp Env.getBaseSize'
-          let t = LT.PrimNum $ PT.Int $ IntSize baseSize
+          let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
           (castVar, castValue) <- liftIO $ newValueLocal h "cast"
           (phiVar, phi) <- liftIO $ newValueLocal h "phi"
           lowerValueLetCast h castVar v t
             =<< return (LC.Switch (castValue, t) defaultCase caseList (phiVar, LC.Return phi))
     C.Free x size cont -> do
-      freeID <- Gensym.newCount
+      freeID <- liftIO $ GensymN.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
         =<< return . LC.Cont (LC.Free ptr size freeID)
