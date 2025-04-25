@@ -88,7 +88,7 @@ lower stmtList = do
   liftIO $ insDeclEnv h (DN.In DD.imm) AN.argNumS4
   liftIO $ insDeclEnv h (DN.In DD.cls) AN.argNumS4
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
-  LC.LowCodeNormal <$> summarize h stmtList'
+  LC.LowCodeNormal <$> liftIO (summarize h stmtList')
 
 lowerEntryPoint :: MainTarget -> [C.CompStmt] -> App LC.LowCode
 lowerEntryPoint target stmtList = do
@@ -97,12 +97,12 @@ lowerEntryPoint target stmtList = do
   liftIO $ insDeclEnv h (DN.In mainDD) AN.zero
   mainDef <- liftIO $ constructMainTerm h mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
-  LC.LowCodeMain mainDef <$> summarize h stmtList'
+  LC.LowCodeMain mainDef <$> liftIO (summarize h stmtList')
 
-summarize :: Handle -> [LC.Def] -> App LC.LowCodeInfo
+summarize :: Handle -> [LC.Def] -> IO LC.LowCodeInfo
 summarize h stmtList = do
-  declEnv <- liftIO $ readIORef $ declEnv h
-  staticTextList <- liftIO $ readIORef $ staticTextList h
+  declEnv <- readIORef $ declEnv h
+  staticTextList <- readIORef $ staticTextList h
   return (declEnv, stmtList, staticTextList)
 
 lowerStmt :: Handle -> C.CompStmt -> App (Maybe (DD.DefiniteDescription, ([Ident], LC.Comp)))
