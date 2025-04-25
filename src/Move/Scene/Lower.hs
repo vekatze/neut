@@ -153,7 +153,7 @@ lowerComp h term =
       lowerValue h sigmaVar v
         =<< return . getElemPtrList sigma elemVars baseType
         =<< loadElements h sigma (zip xs (map (,LT.Pointer) elems))
-        =<< freeOrNop shouldDeallocate sigma (length xs)
+        =<< liftIO . freeIfNecessary h shouldDeallocate sigma (length xs)
         =<< lowerComp h e
     C.UpIntro d -> do
       (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
@@ -429,11 +429,11 @@ lowerValueLetCast h resultVar v lowType cont = do
   lowerValue h tmpVar v
     =<< cast h resultVar tmpValue lowType cont
 
-freeOrNop :: Bool -> LC.Value -> Int -> LC.Comp -> App LC.Comp
-freeOrNop shouldDeallocate pointer len cont = do
+freeIfNecessary :: Handle -> Bool -> LC.Value -> Int -> LC.Comp -> IO LC.Comp
+freeIfNecessary h shouldDeallocate pointer len cont = do
   if shouldDeallocate
     then do
-      freeID <- Gensym.newCount
+      freeID <- GensymN.newCount (gensymHandle h)
       return $ LC.Cont (LC.Free pointer len freeID) cont
     else do
       return cont
