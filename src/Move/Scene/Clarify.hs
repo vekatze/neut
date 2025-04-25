@@ -366,7 +366,8 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       if isNoetic
         then return (cont', chain)
         else do
-          cont'' <- tidyCursorList tenv dataArgsMap consumedCursorList cont'
+          h <- new
+          cont'' <- tidyCursorList h tenv dataArgsMap consumedCursorList cont'
           return (cont'', chain)
     DT.Unreachable -> do
       return (C.Unreachable, [])
@@ -380,7 +381,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       clauseList'' <- mapM aligner clauseList'
       let newChain = (m, cursor, m :< TM.Tau) : chain
       let idents = nubOrd $ map (\(_, x, _) -> x) newChain
-      ck <- getClauseDataGroup t
+      ck <- getClauseDataGroup h t
       case ck of
         Just OD.Enum -> do
           hu <- Utility.new
@@ -405,15 +406,15 @@ getFirstClause fallbackClause clauseList =
     clause : _ ->
       clause
 
-getClauseDataGroup :: TM.Term -> App (Maybe OD.OptimizableData)
-getClauseDataGroup term =
+getClauseDataGroup :: Handle -> TM.Term -> App (Maybe OD.OptimizableData)
+getClauseDataGroup h term =
   case term of
     _ :< TM.Data _ dataName _ -> do
-      OptimizableData.lookup dataName
+      liftIO $ OptimizableData.lookupH (optDataHandle h) dataName
     _ :< TM.PiElim (_ :< TM.Data _ dataName _) _ -> do
-      OptimizableData.lookup dataName
+      liftIO $ OptimizableData.lookupH (optDataHandle h) dataName
     _ :< TM.PiElim (_ :< TM.VarGlobal _ dataName) _ -> do
-      OptimizableData.lookup dataName
+      liftIO $ OptimizableData.lookupH (optDataHandle h) dataName
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
       return $ Just OD.Enum
     _ :< TM.Prim (P.Type PT.Rune) -> do
@@ -421,8 +422,8 @@ getClauseDataGroup term =
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"
 
-tidyCursorList :: TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> App C.Comp
-tidyCursorList tenv dataArgsMap consumedCursorList cont =
+tidyCursorList :: Handle -> TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> App C.Comp
+tidyCursorList h tenv dataArgsMap consumedCursorList cont =
   case consumedCursorList of
     [] ->
       return cont
@@ -433,9 +434,8 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
         Just (dataArgs, cursorSize) -> do
           let (dataArgVars, dataTypes) = unzip dataArgs
           dataTypes' <- mapM (clarifyTerm tenv) dataTypes
-          cont' <- tidyCursorList tenv dataArgsMap rest cont
-          h <- Linearize.new
-          liftIO $ Linearize.linearize h (zip dataArgVars dataTypes') $ do
+          cont' <- tidyCursorList h tenv dataArgsMap rest cont
+          liftIO $ Linearize.linearize (linearizeHandle h) (zip dataArgVars dataTypes') $ do
             C.Free (C.VarLocal cursor) cursorSize cont'
 
 clarifyCase ::
