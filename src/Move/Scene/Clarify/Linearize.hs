@@ -40,7 +40,7 @@ linearize h binder e =
       return e
     (x, t) : xts -> do
       e' <- linearize h xts e
-      (newNameList, e'') <- distinguishComp h x e'
+      (newNameList, e'') <- toApp $ distinguishComp h x e'
       case newNameList of
         [] -> do
           hole <- newIdentFromText "unit"
@@ -77,11 +77,11 @@ distinguishVar h z x =
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       return ([x'], x')
 
-distinguishValue :: Handle -> Ident -> C.Value -> App ([Occurrence], C.Value)
+distinguishValue :: Handle -> Ident -> C.Value -> EIO ([Occurrence], C.Value)
 distinguishValue h z term =
   case term of
     C.VarLocal x -> do
-      (vs, x') <- toApp $ distinguishVar h z x
+      (vs, x') <- distinguishVar h z x
       return (vs, C.VarLocal x')
     C.SigmaIntro ds -> do
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
@@ -89,7 +89,7 @@ distinguishValue h z term =
     _ ->
       return ([], term)
 
-distinguishComp :: Handle -> Ident -> C.Comp -> App ([Occurrence], C.Comp)
+distinguishComp :: Handle -> Ident -> C.Comp -> EIO ([Occurrence], C.Comp)
 distinguishComp h z term =
   case term of
     C.Primitive theta -> do
@@ -129,7 +129,7 @@ distinguishComp h z term =
     C.Unreachable ->
       return ([], term)
 
-distinguishPrimitive :: Handle -> Ident -> C.Primitive -> App ([Occurrence], C.Primitive)
+distinguishPrimitive :: Handle -> Ident -> C.Primitive -> EIO ([Occurrence], C.Primitive)
 distinguishPrimitive h z term =
   case term of
     C.PrimOp op ds -> do
