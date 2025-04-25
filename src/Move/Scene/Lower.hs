@@ -338,7 +338,7 @@ createAggData h resultVar aggType dts cont = do
 storeElements ::
   Handle ->
   LC.Value -> -- base pointer
-  [(LC.Value, (C.Value, LT.LowType))] -> -- [(the index of an element, the element to be stored)]
+  [(LC.Value, (C.Value, LT.LowType))] ->
   LC.Comp ->
   App LC.Comp
 storeElements h basePointer values cont =
