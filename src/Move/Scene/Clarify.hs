@@ -27,7 +27,7 @@ import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Sigma qualified as Sigma
 import Move.Scene.Clarify.Utility qualified as Utility
 import Move.Scene.Comp.Reduce qualified as Reduce
-import Move.Scene.Term.Subst qualified as TM
+import Move.Scene.Term.Subst qualified as Subst
 import Rule.ArgNum qualified as AN
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
@@ -70,7 +70,8 @@ data Handle
     auxEnvHandle :: AuxEnv.Handle,
     sigmaHandle :: Sigma.Handle,
     locatorHandle :: Locator.Handle,
-    reduceHandle :: Reduce.Handle
+    reduceHandle :: Reduce.Handle,
+    substHandle :: Subst.Handle
   }
 
 new :: App Handle
@@ -81,6 +82,7 @@ new = do
   sigmaHandle <- Sigma.new
   locatorHandle <- Locator.new
   reduceHandle <- Reduce.new
+  substHandle <- Subst.new
   return $ Handle {..}
 
 clarify :: [Stmt] -> App [C.CompStmt]
@@ -219,7 +221,8 @@ clarifyTerm tenv term =
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
     _ :< TM.PiIntro attr impArgs expArgs e -> do
-      clarifyLambda tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs) e
+      h <- new
+      clarifyLambda h tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs) e
     _ :< TM.PiElim e es -> do
       h <- new
       es' <- mapM (clarifyPlus h tenv) es
@@ -529,37 +532,35 @@ clarifyMagic tenv der = do
       clarifyTerm tenv e
 
 clarifyLambda ::
+  Handle ->
   TM.TypeEnv ->
   AttrL.Attr TM.Term ->
   [BinderF TM.Term] ->
   [BinderF TM.Term] ->
   TM.Term ->
   App C.Comp
-clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
+clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
   case lamKind of
     LK.Fix (_, recFuncName, codType) -> do
-      h <- Locator.new
-      liftedName <- liftIO $ Locator.attachCurrentLocator h $ BN.muName identity
+      liftedName <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.muName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
       lamAttr <- do
-        c <- Gensym.newCount
+        c <- liftIO $ GensymN.newCount (gensymHandle h)
         return $ AttrL.normal c codType
       let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
-      isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered liftedName
+      isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
-        hsubst <- TM.new
-        liftedBody <- liftIO $ TM.subst hsubst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
+        -- hsubst <- TM.new
+        liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
         (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
-        hLin <- Linearize.new
-        liftedBody'' <- liftIO $ Linearize.linearize hLin liftedArgs liftedBody'
-        Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody'')
+        liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
+        liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (O.Opaque, map fst liftedArgs, liftedBody'')
       clarifyTerm tenv lamApp
     LK.Normal _ -> do
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
-      h <- new
       returnClosure h tenv identity O.Clear fvs mxts e'
 
 clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
