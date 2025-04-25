@@ -14,7 +14,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
-import Move.Scene.Clarify.Linearize
+import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Utility
 import Rule.ArgNum qualified as AN
 import Rule.BaseLowType qualified as BLT
@@ -85,7 +85,8 @@ sigmaT mxts argVar = do
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
   as <- forM xts $ uncurry toAffineApp
   ys <- mapM (const $ Gensym.newIdentFromText "arg") xts
-  body' <- linearize xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
+  h <- Linearize.new
+  body' <- Linearize.linearize h xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
   return $ C.SigmaElim True (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -111,7 +112,8 @@ sigma4 mxts argVar = do
   -- as == [APP-1, ..., APP-n]
   as <- forM xts $ uncurry toRelevantApp
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.newValueVarLocalWith "pair") xts
-  body' <- linearize xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
+  h <- Linearize.new
+  body' <- Linearize.linearize h xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
 supplyName :: Either b (Ident, b) -> App (Ident, b)

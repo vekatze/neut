@@ -21,7 +21,7 @@ import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
-import Move.Scene.Clarify.Linearize
+import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Sigma
 import Move.Scene.Clarify.Utility
 import Move.Scene.Comp.Reduce qualified as Reduce
@@ -158,7 +158,8 @@ clarifyStmtDefineBody ::
   TM.Term ->
   App C.Comp
 clarifyStmtDefineBody tenv xts e = do
-  clarifyTerm tenv e >>= linearize xts >>= Reduce.reduce
+  h <- Linearize.new
+  clarifyTerm tenv e >>= Linearize.linearize h xts >>= Reduce.reduce
 
 clarifyStmtDefineBody' ::
   DD.DefiniteDescription ->
@@ -166,7 +167,8 @@ clarifyStmtDefineBody' ::
   C.Comp ->
   App C.CompStmt
 clarifyStmtDefineBody' name xts' dataType = do
-  dataType' <- linearize xts' dataType >>= Reduce.reduce
+  h <- Linearize.new
+  dataType' <- Linearize.linearize h xts' dataType >>= Reduce.reduce
   return $ C.Def name O.Clear (map fst xts') dataType'
 
 clarifyTerm :: TM.TypeEnv -> TM.Term -> App C.Comp
@@ -238,7 +240,8 @@ clarifyTerm tenv term =
     _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e2' <- clarifyTerm (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder tenv [mxt]
-      e2'' <- linearize mxts' e2'
+      h <- Linearize.new
+      e2'' <- Linearize.linearize h mxts' e2'
       e1' <- clarifyTerm tenv e1
       return $ bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
     m :< TM.Prim prim ->
@@ -285,7 +288,8 @@ embody tenv xets cont =
       (valueVarName, value, valueVar) <- clarifyPlus tenv e
       cont' <- embody (TM.insTypeEnv [mxt] tenv) rest cont
       baseSize <- toApp $ Env.getBaseSize m
-      cont'' <- linearize [(x, typeExp)] cont'
+      h <- Linearize.new
+      cont'' <- Linearize.linearize h [(x, typeExp)] cont'
       return $
         bindLet
           [ (typeExpVarName, typeExp),
@@ -386,7 +390,8 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
           let (dataArgVars, dataTypes) = unzip dataArgs
           dataTypes' <- mapM (clarifyTerm tenv) dataTypes
           cont' <- tidyCursorList tenv dataArgsMap rest cont
-          linearize (zip dataArgVars dataTypes') $ do
+          h <- Linearize.new
+          Linearize.linearize h (zip dataArgVars dataTypes') $ do
             C.Free (C.VarLocal cursor) cursorSize cont'
 
 clarifyCase ::
@@ -442,7 +447,8 @@ clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
 alignFreeVariable :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
 alignFreeVariable tenv fvs e = do
   fvs' <- dropFst <$> clarifyBinder tenv fvs
-  linearize fvs' e
+  h <- Linearize.new
+  Linearize.linearize h fvs' e
 
 clarifyMagic :: TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Term -> App C.Comp
 clarifyMagic tenv der =
@@ -508,7 +514,8 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
         hsubst <- TM.new
         liftedBody <- liftIO $ TM.subst hsubst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
         (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
-        liftedBody'' <- linearize liftedArgs liftedBody'
+        hLin <- Linearize.new
+        liftedBody'' <- Linearize.linearize hLin liftedArgs liftedBody'
         Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody'')
       clarifyTerm tenv lamApp
     LK.Normal _ -> do
@@ -577,7 +584,8 @@ registerClosure ::
   C.Comp ->
   App ()
 registerClosure name opacity xts1 xts2 e = do
-  e' <- linearize (xts2 ++ xts1) e
+  h <- Linearize.new
+  e' <- Linearize.linearize h (xts2 ++ xts1) e
   (envVarName, envVar) <- Gensym.newValueVarLocalWith "env"
   let args = map fst xts1 ++ [envVarName]
   body <- Reduce.reduce $ C.SigmaElim True (map fst xts2) envVar e'
