@@ -128,7 +128,7 @@ compile target outputKindList contentSeq = do
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary hCache outputKindList source $ do
       hc <- Clarify.new
-      stmtList' <- Clarify.clarify hc stmtList
+      stmtList' <- toApp $ Clarify.clarify hc stmtList
       async $ do
         virtualCode <- Lower.lower stmtList'
         emit h currentTime target outputKindList (Right source) virtualCode

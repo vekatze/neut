@@ -93,14 +93,14 @@ new = do
   baseSize <- toApp Env.getBaseSize'
   return $ Handle {..}
 
-clarify :: Handle -> [Stmt] -> App [C.CompStmt]
+clarify :: Handle -> [Stmt] -> EIO [C.CompStmt]
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   baseAuxEnv <- Clarify.toCompStmtList <$> liftIO (getBaseAuxEnv h)
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   stmtList' <- do
-    stmtList' <- mapM (toApp . clarifyStmt h) stmtList
-    auxEnv <- Clarify.toCompStmtList <$> Clarify.getAuxEnv
+    stmtList' <- mapM (clarifyStmt h) stmtList
+    auxEnv <- liftIO $ Clarify.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return $ stmtList' ++ auxEnv
   forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
     case stmt of
