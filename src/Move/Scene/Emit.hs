@@ -1,4 +1,9 @@
-module Move.Scene.Emit (emit) where
+module Move.Scene.Emit
+  ( Handle,
+    new,
+    emit,
+  )
+where
 
 import Control.Monad.IO.Class
 import Data.ByteString.Builder
@@ -13,6 +18,7 @@ import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
+import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Move.Scene.LowComp.Reduce qualified as LowComp
 import Rule.BaseLowType qualified as BLT
@@ -32,25 +38,38 @@ import Rule.PrimNumSize
 import Rule.PrimType qualified as PT
 import Rule.PrimType.EmitPrimType (emitPrimType)
 
+data Handle
+  = Handle
+  { gensymHandle :: GensymN.Handle,
+    emitLowCompHandle :: EmitLowComp.Handle
+  }
+
+new :: App Handle
+new = do
+  gensymHandle <- GensymN.new
+  emitLowCompHandle <- EmitLowComp.new
+  return $ Handle {..}
+
 emit :: LC.LowCode -> App L.ByteString
 emit lowCode = do
+  h <- new
   case lowCode of
     LC.LowCodeMain mainDef lowCodeInfo -> do
-      main <- emitMain mainDef
+      main <- emitMain h mainDef
       let argDef = emitArgDef
-      (header, body) <- emitLowCodeInfo lowCodeInfo
+      (header, body) <- emitLowCodeInfo h lowCodeInfo
       return $ buildByteString $ header ++ argDef ++ main ++ body
     LC.LowCodeNormal lowCodeInfo -> do
       let argDecl = emitArgDecl
-      (header, body) <- emitLowCodeInfo lowCodeInfo
+      (header, body) <- emitLowCodeInfo h lowCodeInfo
       return $ buildByteString $ header ++ argDecl ++ body
 
-emitLowCodeInfo :: LC.LowCodeInfo -> App ([Builder], [Builder])
-emitLowCodeInfo (declEnv, defList, staticTextList) = do
+emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> App ([Builder], [Builder])
+emitLowCodeInfo h (declEnv, defList, staticTextList) = do
   baseSize <- toApp Env.getBaseSize'
   let declStrList = emitDeclarations declEnv
   let staticTextList' = map (emitStaticText baseSize) staticTextList
-  defStrList <- concat <$> mapM emitDefinitions defList
+  defStrList <- concat <$> mapM (emitDefinitions h) defList
   return (declStrList <> staticTextList', defStrList)
 
 emitArgDecl :: [Builder]
@@ -112,24 +131,24 @@ emitDeclarations :: DN.DeclEnv -> [Builder]
 emitDeclarations declEnv = do
   map declToBuilder $ List.sort $ HashMap.toList declEnv
 
-emitDefinitions :: LC.Def -> App [Builder]
-emitDefinitions (name, (args, body)) = do
+emitDefinitions :: Handle -> LC.Def -> App [Builder]
+emitDefinitions h (name, (args, body)) = do
   args' <- mapM Gensym.newIdentFromIdent args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
   body' <- LowComp.reduce sub body
   let args'' = map (emitValue . LC.VarLocal) args'
-  emitDefinition "ptr" (DD.toBuilder name) args'' body'
+  liftIO $ emitDefinition h "ptr" (DD.toBuilder name) args'' body'
 
 getMainType :: App Builder
 getMainType = do
   dataSize <- toApp Env.getDataSize'
   return $ emitPrimType $ PT.Int (IntSize $ DS.reify dataSize)
 
-emitMain :: LC.DefContent -> App [Builder]
-emitMain (args, body) = do
+emitMain :: Handle -> LC.DefContent -> App [Builder]
+emitMain h (args, body) = do
   mainType <- getMainType
   let args' = map (emitValue . LC.VarLocal) args
-  emitDefinition mainType "main" args' body
+  liftIO $ emitDefinition h mainType "main" args' body
 
 declToBuilder :: (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
@@ -142,11 +161,10 @@ declToBuilder (name, (dom, cod)) = do
     <> unwordsC (map (emitLowType . LT.fromBaseLowType) dom)
     <> ")"
 
-emitDefinition :: Builder -> Builder -> [Builder] -> LC.Comp -> App [Builder]
-emitDefinition retType name args asm = do
+emitDefinition :: Handle -> Builder -> Builder -> [Builder] -> LC.Comp -> IO [Builder]
+emitDefinition h retType name args asm = do
   let header = sig retType name args <> " {"
-  h <- EmitLowComp.new
-  content <- liftIO $ EmitLowComp.emitLowComp h retType asm
+  content <- EmitLowComp.emitLowComp (emitLowCompHandle h) retType asm
   let footer = "}"
   return $ [header] <> content <> [footer]
 
