@@ -67,7 +67,7 @@ new stmtList = do
   arch <- toApp $ Env.getArch Nothing
   forM_ (F.defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
     liftIO $ insDeclEnv' h (DN.Ext name) domList cod
-  registerInternalNames h stmtList
+  liftIO $ registerInternalNames h stmtList
   return h
 
 lower ::
@@ -105,15 +105,15 @@ lowerStmt h stmt = do
     C.Foreign {} -> do
       return Nothing
 
-registerInternalNames :: Handle -> [C.CompStmt] -> App ()
+registerInternalNames :: Handle -> [C.CompStmt] -> IO ()
 registerInternalNames h stmtList =
   forM_ stmtList $ \stmt -> do
     case stmt of
       C.Def name _ _ _ -> do
-        liftIO $ modifyIORef' (definedNameSet h) $ S.insert name
+        modifyIORef' (definedNameSet h) $ S.insert name
       C.Foreign foreignList ->
         forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
-          liftIO $ insDeclEnv' h (DN.Ext name) domList cod
+          insDeclEnv' h (DN.Ext name) domList cod
 
 constructMainTerm :: DD.DefiniteDescription -> App LC.DefContent
 constructMainTerm mainName = do
