@@ -24,6 +24,7 @@ import Move.Scene.LowComp.Reduce qualified as LowComp
 import Rule.BaseLowType qualified as BLT
 import Rule.Builder
 import Rule.Const
+import Rule.DataSize (DataSize)
 import Rule.DataSize qualified as DS
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
@@ -41,13 +42,15 @@ import Rule.PrimType.EmitPrimType (emitPrimType)
 data Handle
   = Handle
   { gensymHandle :: GensymN.Handle,
-    emitLowCompHandle :: EmitLowComp.Handle
+    emitLowCompHandle :: EmitLowComp.Handle,
+    dataSize :: DataSize
   }
 
 new :: App Handle
 new = do
   gensymHandle <- GensymN.new
   emitLowCompHandle <- EmitLowComp.new
+  dataSize <- toApp Env.getDataSize'
   return $ Handle {..}
 
 emit :: LC.LowCode -> App L.ByteString
@@ -55,7 +58,7 @@ emit lowCode = do
   h <- new
   case lowCode of
     LC.LowCodeMain mainDef lowCodeInfo -> do
-      main <- emitMain h mainDef
+      main <- liftIO $ emitMain h mainDef
       let argDef = emitArgDef
       (header, body) <- emitLowCodeInfo h lowCodeInfo
       return $ buildByteString $ header ++ argDef ++ main ++ body
@@ -139,16 +142,11 @@ emitDefinitions h (name, (args, body)) = do
   let args'' = map (emitValue . LC.VarLocal) args'
   liftIO $ emitDefinition h "ptr" (DD.toBuilder name) args'' body'
 
-getMainType :: App Builder
-getMainType = do
-  dataSize <- toApp Env.getDataSize'
-  return $ emitPrimType $ PT.Int (IntSize $ DS.reify dataSize)
-
-emitMain :: Handle -> LC.DefContent -> App [Builder]
+emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (args, body) = do
-  mainType <- getMainType
+  let mainType = emitPrimType $ PT.Int (IntSize $ DS.reify (dataSize h))
   let args' = map (emitValue . LC.VarLocal) args
-  liftIO $ emitDefinition h mainType "main" args' body
+  emitDefinition h mainType "main" args' body
 
 declToBuilder :: (DN.DeclarationName, ([BLT.BaseLowType], FCT.ForeignCodType BLT.BaseLowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
