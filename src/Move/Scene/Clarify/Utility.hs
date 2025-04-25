@@ -87,9 +87,10 @@ getEnumElim :: [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> App C.Com
 getEnumElim idents d defaultBranch branchList = do
   (newToOld, oldToNew) <- getSub idents
   let sub = IntMap.fromList oldToNew
-  defaultBranch' <- C.subst sub defaultBranch
+  h <- C.new
+  defaultBranch' <- liftIO $ C.subst h sub defaultBranch
   let (labels, clauses) = unzip branchList
-  clauses' <- mapM (C.subst sub) clauses
+  clauses' <- liftIO $ mapM (C.subst h sub) clauses
   return $ C.EnumElim newToOld d defaultBranch' (zip labels clauses')
 
 getSub :: [Ident] -> App ([(Int, C.Value)], [(Int, C.Value)])

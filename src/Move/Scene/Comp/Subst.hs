@@ -1,17 +1,32 @@
-module Move.Scene.Comp.Subst (subst) where
+module Move.Scene.Comp.Subst
+  ( Handle,
+    new,
+    subst,
+  )
+where
 
-import Move.Context.App
-import Move.Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
+import Move.Context.App
+import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Comp qualified as C
 import Rule.Ident.Reify qualified as Ident
 
-subst :: C.SubstValue -> C.Comp -> App C.Comp
+newtype Handle
+  = Handle
+  { gensymHandle :: Gensym.Handle
+  }
+
+new :: App Handle
+new = do
+  gensymHandle <- Gensym.new
+  return $ Handle {..}
+
+subst :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
 subst =
   substComp
 
-substComp :: C.SubstValue -> C.Comp -> App C.Comp
-substComp sub term =
+substComp :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
+substComp h sub term =
   case term of
     C.PiElimDownElim v ds -> do
       let v' = substValue sub v
@@ -19,18 +34,18 @@ substComp sub term =
       return $ C.PiElimDownElim v' ds'
     C.SigmaElim b xs v e -> do
       let v' = substValue sub v
-      xs' <- mapM Gensym.newIdentFromIdent xs
+      xs' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) xs
       let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs'))) sub
-      e' <- substComp sub' e
+      e' <- substComp h sub' e
       return $ C.SigmaElim b xs' v' e'
     C.UpIntro v -> do
       let v' = substValue sub v
       return $ C.UpIntro v'
     C.UpElim isReducible x e1 e2 -> do
-      e1' <- substComp sub e1
-      x' <- Gensym.newIdentFromIdent x
+      e1' <- substComp h sub e1
+      x' <- Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
-      e2' <- substComp sub' e2
+      e2' <- substComp h sub' e2
       return $ C.UpElim isReducible x' e1' e2'
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let (is, ds) = unzip fvInfo
@@ -42,7 +57,7 @@ substComp sub term =
       return $ C.Primitive theta'
     C.Free x size cont -> do
       let x' = substValue sub x
-      cont' <- substComp sub cont
+      cont' <- substComp h sub cont
       return $ C.Free x' size cont'
     C.Unreachable ->
       return term

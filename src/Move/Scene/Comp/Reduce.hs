@@ -3,17 +3,18 @@ module Move.Scene.Comp.Reduce
   )
 where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.Gensym qualified as Gensym
-import Data.IntMap qualified as IntMap
+import Move.Scene.Comp.Subst qualified as Subst
 import Rule.Comp qualified as C
 import Rule.EnumCase qualified as EC
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.Magic qualified as M
 import Rule.Opacity qualified as O
-import Move.Scene.Comp.Subst
 
 reduce :: C.Comp -> App C.Comp
 reduce term =
@@ -31,7 +32,8 @@ reduce term =
           case mDefValue of
             Just (O.Clear, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-              subst sub body >>= reduce
+              h <- Subst.new
+              liftIO (Subst.subst h sub body) >>= reduce
             _ ->
               return term
         _ ->
@@ -46,7 +48,8 @@ reduce term =
             C.SigmaIntro ds
               | length ds == length xs -> do
                   let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-                  subst sub e >>= reduce
+                  h <- Subst.new
+                  liftIO (Subst.subst h sub e) >>= reduce
             _ -> do
               e' <- reduce e
               case e' of
@@ -70,17 +73,20 @@ reduce term =
         C.UpIntro v
           | isReducible -> do
               let sub = IntMap.fromList [(Ident.toInt x, v)]
-              subst sub e2 >>= reduce
+              h <- Subst.new
+              liftIO (Subst.subst h sub e2) >>= reduce
         C.UpElim isReducible' y ey1 ey2 -> do
           y' <- Gensym.newIdentFromIdent y
           let sub = IntMap.fromList [(Ident.toInt y, C.VarLocal y')]
-          ey2' <- subst sub ey2
+          h <- Subst.new
+          ey2' <- liftIO $ Subst.subst h sub ey2
           reduce $ C.UpElim isReducible' y' ey1 $ C.UpElim isReducible x ey2' e2 -- commutative conversion
         C.SigmaElim b ys vy ey -> do
           ys' <- mapM Gensym.newIdentFromIdent ys
           let intList = map Ident.toInt ys
           let sub = IntMap.fromList $ zip intList (map C.VarLocal ys')
-          ey' <- subst sub ey
+          h <- Subst.new
+          ey' <- liftIO $ Subst.subst h sub ey
           reduce $ C.SigmaElim b ys' vy $ C.UpElim isReducible x ey' e2 -- commutative conversion
         _ -> do
           e2' <- reduce e2
@@ -94,14 +100,17 @@ reduce term =
             _ ->
               return $ C.UpElim isReducible x e1' e2'
     C.EnumElim fvInfo _ defaultBranch [] -> do
-      subst (IntMap.fromList fvInfo) defaultBranch >>= reduce
+      h <- Subst.new
+      liftIO (Subst.subst h (IntMap.fromList fvInfo) defaultBranch) >>= reduce
     C.EnumElim fvInfo v defaultBranch les -> do
       case v of
         C.Int _ l
-          | Just body <- lookup (EC.Int (fromInteger l)) les ->
-              subst (IntMap.fromList fvInfo) body >>= reduce
-          | otherwise ->
-              subst (IntMap.fromList fvInfo) defaultBranch >>= reduce
+          | Just body <- lookup (EC.Int (fromInteger l)) les -> do
+              h <- Subst.new
+              liftIO (Subst.subst h (IntMap.fromList fvInfo) body) >>= reduce
+          | otherwise -> do
+              h <- Subst.new
+              liftIO (Subst.subst h (IntMap.fromList fvInfo) defaultBranch) >>= reduce
         _ -> do
           let (ls, es) = unzip les
           defaultBranch' <- reduce defaultBranch

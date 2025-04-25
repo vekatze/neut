@@ -183,9 +183,10 @@ lowerComp h term =
       return $ commConv x e1' e2'
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let sub = IntMap.fromList fvInfo
-      defaultBranch' <- C.subst sub defaultBranch >>= C.reduce
+      hsub <- C.new
+      defaultBranch' <- liftIO (C.subst hsub sub defaultBranch) >>= C.reduce
       let (keys, clauses) = unzip branchList
-      clauses' <- mapM (C.subst sub >=> C.reduce) clauses
+      clauses' <- mapM (liftIO . C.subst hsub sub >=> C.reduce) clauses
       let branchList' = zip keys clauses'
       case (defaultBranch', clauses') of
         (C.Unreachable, [clause]) ->
