@@ -4,7 +4,6 @@ module Move.Scene.Clarify.Utility
     bindLet,
     bindLetWithReducibility,
     irreducibleBindLet,
-    makeSwitcher,
     registerSwitcher,
     getEnumElim,
   )
