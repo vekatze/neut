@@ -365,7 +365,7 @@ lowerValue h v =
       locatorHandle <- lift Locator.new
       name <- lift $ liftIO $ Locator.attachCurrentLocator locatorHandle $ BN.textName i
       let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
-      lift $ insertStaticText h name encodedText len
+      liftIO $ insertStaticText h name encodedText len
       uncast (LC.VarGlobal name) LT.Pointer
     C.SigmaIntro ds -> do
       let arrayType = AggTypeArray (length ds) LT.Pointer
@@ -506,9 +506,9 @@ member h k = do
   denv <- liftIO $ readIORef (declEnv h)
   return $ Map.member k denv
 
-insertStaticText :: Handle -> DD.DefiniteDescription -> Builder -> Int -> App ()
+insertStaticText :: Handle -> DD.DefiniteDescription -> Builder -> Int -> IO ()
 insertStaticText h name text len =
-  liftIO $ modifyIORef' (staticTextList h) $ (:) (name, (text, len))
+  modifyIORef' (staticTextList h) $ (:) (name, (text, len))
 
 getDefinedNameSet :: Handle -> App (S.Set DD.DefiniteDescription)
 getDefinedNameSet h = do
