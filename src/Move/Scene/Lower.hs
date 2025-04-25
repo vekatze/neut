@@ -168,17 +168,15 @@ lowerComp h term =
         =<< cast' castFuncVar func LT.Pointer
         =<< return (LC.TailCall LT.Pointer castFunc (map (LT.Pointer,) argValues))
     C.SigmaElim shouldDeallocate xs v e -> do
+      (sigmaVar, sigma) <- newValueLocal "sigma"
+      (elemVars, elems) <- mapAndUnzipM (const $ newValueLocal "elem") xs
       let numOfElems = length xs
       let baseType = LT.Array numOfElems LT.Pointer
-      runLowerComp $ do
-        basePointer <- lowerValue h v
-        valuePointerList <- getElemPtrList basePointer baseType numOfElems
-        ds <- loadElements basePointer $ map (,LT.Pointer) valuePointerList
-        when shouldDeallocate $ do
-          free basePointer (length xs)
-        forM_ (zip xs ds) $ \(x, d) -> do
-          extend $ return . LC.Let x (LC.Bitcast d LT.Pointer LT.Pointer)
-        lift $ lowerComp h e
+      lowerValue' h sigmaVar v
+        =<< return . getElemPtrList' sigma elemVars baseType
+        =<< loadElements' sigma (zip xs (map (,LT.Pointer) elems))
+        =<< freeOrNop shouldDeallocate sigma (length xs)
+        =<< lowerComp h e
     C.UpIntro d -> do
       (result, resultVar) <- newValueLocal "result"
       lowerValue' h result d (LC.Return resultVar)
@@ -616,6 +614,43 @@ store' :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> App LC.Comp
 store' lowType value pointer cont =
   return $ LC.Cont (LC.Store lowType value pointer) cont
 
+-- load :: LT.LowType -> LC.Value -> Lower LC.Value
+-- load elemType pointer = do
+--   tmp <- reflect $ LC.Bitcast pointer LT.Pointer LT.Pointer
+--   loaded <- reflect $ LC.Load tmp elemType
+--   uncast loaded elemType
+load' :: Ident -> LT.LowType -> LC.Value -> LC.Comp -> App LC.Comp
+load' resultVar elemType pointer cont = do
+  (tmpVar, tmpValue) <- newValueLocal "tmp"
+  (loadedVar, loadedValue) <- newValueLocal "loaded"
+  return . LC.Let tmpVar (LC.Bitcast pointer LT.Pointer LT.Pointer)
+    =<< return . LC.Let loadedVar (LC.Load tmpValue elemType)
+    =<< uncast' resultVar loadedValue elemType cont
+
+-- tmp <- reflect $ LC.Bitcast pointer LT.Pointer LT.Pointer
+-- loaded <- reflect $ LC.Load tmp elemType
+-- uncast loaded elemType
+
+loadElements' ::
+  LC.Value -> -- base pointer
+  [(Ident, (LC.Value, LT.LowType))] ->
+  LC.Comp ->
+  App LC.Comp
+loadElements' basePointer values cont =
+  case values of
+    [] -> do
+      return cont
+    (targetVar, (valuePointer, valueType)) : rest -> do
+      (castPtrVar, castPtrValue) <- newValueLocal "castptr"
+      uncast' castPtrVar valuePointer valueType
+        =<< load' targetVar valueType castPtrValue
+        =<< loadElements' basePointer rest cont
+
+-- uncastedValuePointer <- uncast valuePointer valueType
+-- x <- load valueType uncastedValuePointer
+-- xs <- loadElements basePointer xis
+-- return $ x : xs
+
 lowerValue' :: Handle -> Ident -> C.Value -> LC.Comp -> App LC.Comp
 lowerValue' h resultVar v cont =
   case v of
@@ -657,3 +692,12 @@ lowerValueLetCast' h resultVar v lowType cont = do
   (tmpVar, tmpValue) <- newValueLocal "tmp"
   lowerValue' h tmpVar v
     =<< cast' resultVar tmpValue lowType cont
+
+freeOrNop :: Bool -> LC.Value -> Int -> LC.Comp -> App LC.Comp
+freeOrNop shouldDeallocate pointer len cont = do
+  if shouldDeallocate
+    then do
+      freeID <- Gensym.newCount
+      return $ LC.Cont (LC.Free pointer len freeID) cont
+    else do
+      return cont
