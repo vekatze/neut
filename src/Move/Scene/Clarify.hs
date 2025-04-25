@@ -73,7 +73,8 @@ clarify stmtList = do
   forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
-        CompDefinition.insert x (opacity, args, e)
+        hc <- CompDefinition.new
+        liftIO $ CompDefinition.insert hc x (opacity, args, e)
       C.Foreign {} ->
         return ()
   forM stmtList' $ \stmt -> do
@@ -100,7 +101,8 @@ registerFoundationalTypes :: App ()
 registerFoundationalTypes = do
   Clarify.clearAuxEnv
   auxEnv <- getBaseAuxEnv
-  forM_ (Map.toList auxEnv) $ uncurry CompDefinition.insert
+  hc <- CompDefinition.new
+  liftIO $ forM_ (Map.toList auxEnv) $ uncurry $ CompDefinition.insert hc
 
 getBaseAuxEnv :: App CompDefinition.DefMap
 getBaseAuxEnv = do

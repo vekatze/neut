@@ -28,7 +28,8 @@ reduce term =
     C.PiElimDownElim v ds -> do
       case v of
         C.VarGlobal x _ -> do
-          mDefValue <- CompDefinition.lookup x
+          hc <- CompDefinition.new
+          mDefValue <- liftIO $ CompDefinition.lookup hc x
           case mDefValue of
             Just (O.Clear, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
