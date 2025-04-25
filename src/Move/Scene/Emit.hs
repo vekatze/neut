@@ -12,7 +12,7 @@ import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
 import Move.Scene.LowComp.Reduce qualified as LowComp
@@ -148,7 +148,7 @@ declToBuilder (name, (dom, cod)) = do
 emitDefinition :: Builder -> Builder -> [Builder] -> LC.Comp -> App [Builder]
 emitDefinition retType name args asm = do
   let header = sig retType name args <> " {"
-  ctx <- newCtx retType
+  ctx <- toApp $ newCtx retType
   content <- emitLowComp ctx asm
   let footer = "}"
   return $ [header] <> content <> [footer]
@@ -169,9 +169,9 @@ data LocalHandle = LocalHandle
     labelMap :: IORef (IntMap.IntMap Ident)
   }
 
-newCtx :: Builder -> App LocalHandle
+newCtx :: Builder -> EIO LocalHandle
 newCtx retTypeBuilder = do
-  emitOpHandle <- toApp EmitOp.new
+  emitOpHandle <- EmitOp.new
   emptyMapRef <- liftIO $ newIORef IntMap.empty
   return
     LocalHandle
