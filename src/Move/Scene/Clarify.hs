@@ -21,6 +21,7 @@ import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
+import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Sigma qualified as Sigma
 import Move.Scene.Clarify.Utility qualified as Utility
@@ -60,6 +61,16 @@ import Rule.Term qualified as TM
 import Rule.Term.Chain (nubFreeVariables)
 import Rule.Term.Chain qualified as TM
 import Rule.Term.FromPrimNum
+
+newtype Handle
+  = Handle
+  { gensymHandle :: GensymN.Handle
+  }
+
+new :: App Handle
+new = do
+  gensymHandle <- GensymN.new
+  return $ Handle {..}
 
 clarify :: [Stmt] -> App [C.CompStmt]
 clarify stmtList = do
@@ -534,14 +545,6 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
       returnClosure tenv identity O.Clear fvs mxts e'
 
-newClosureNames :: App ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
-newClosureNames = do
-  closureVarInfo <- Gensym.newValueVarLocalWith "closure"
-  typeVarName <- Gensym.newIdentFromText "exp"
-  envVarInfo <- Gensym.newValueVarLocalWith "env"
-  lamVarInfo <- Gensym.newValueVarLocalWith "thunk"
-  return (closureVarInfo, typeVarName, envVarInfo, lamVarInfo)
-
 clarifyPlus :: TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus tenv e = do
   e' <- clarifyTerm tenv e
@@ -608,7 +611,8 @@ registerClosure name opacity xts1 xts2 e = do
 callClosure :: C.Comp -> [(Ident, C.Comp, C.Value)] -> App C.Comp
 callClosure e zexes = do
   let (zs, es', xs) = unzip3 zexes
-  ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames
+  h <- new
+  ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- liftIO $ newClosureNames h
   return $
     Utility.bindLet
       ((closureVarName, e) : zip zs es')
@@ -618,6 +622,14 @@ callClosure e zexes = do
           closureVar
           (C.PiElimDownElim lamVar (xs ++ [envVar]))
       )
+
+newClosureNames :: Handle -> IO ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
+newClosureNames h = do
+  closureVarInfo <- GensymN.newValueVarLocalWith (gensymHandle h) "closure"
+  typeVarName <- GensymN.newIdentFromText (gensymHandle h) "exp"
+  envVarInfo <- GensymN.newValueVarLocalWith (gensymHandle h) "env"
+  lamVarInfo <- GensymN.newValueVarLocalWith (gensymHandle h) "thunk"
+  return (closureVarInfo, typeVarName, envVarInfo, lamVarInfo)
 
 callPrimOp :: PrimOp -> [(Ident, C.Comp, C.Value)] -> C.Comp
 callPrimOp op zexes = do
