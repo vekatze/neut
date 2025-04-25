@@ -221,16 +221,17 @@ clarifyTerm tenv term =
     _ :< TM.PiIntro attr impArgs expArgs e -> do
       clarifyLambda tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs) e
     _ :< TM.PiElim e es -> do
-      es' <- mapM (clarifyPlus tenv) es
+      h <- new
+      es' <- mapM (clarifyPlus h tenv) es
       case e of
         _ :< TM.Prim (P.Value (PV.Op op)) ->
           return $ callPrimOp op es'
         _ -> do
           e' <- clarifyTerm tenv e
-          h <- new
           liftIO $ callClosure h e' es'
     _ :< TM.Data _ name dataArgs -> do
-      (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus tenv) dataArgs
+      h <- new
+      (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus h tenv) dataArgs
       return $
         Utility.bindLet (zip zs dataArgs') $
           C.PiElimDownElim (C.VarGlobal name (AN.fromInt (length dataArgs))) xs
@@ -246,7 +247,8 @@ clarifyTerm tenv term =
           | otherwise ->
               Throw.raiseCritical m "Found a malformed unary data in Scene.Clarify.clarifyTerm"
         _ -> do
-          (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
+          h <- new
+          (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus h tenv) $ dataArgs ++ consArgs
           return $
             Utility.bindLet (zip zs es) $
               C.UpIntro $
@@ -318,12 +320,12 @@ embody tenv xets cont =
     [] ->
       clarifyTerm tenv cont
     (mxt@(m, x, t), e) : rest -> do
-      (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
-      (valueVarName, value, valueVar) <- clarifyPlus tenv e
+      h <- new
+      (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus h tenv t
+      (valueVarName, value, valueVar) <- clarifyPlus h tenv e
       cont' <- embody (TM.insTypeEnv [mxt] tenv) rest cont
       baseSize <- toApp $ Env.getBaseSize m
-      h <- Linearize.new
-      cont'' <- liftIO $ Linearize.linearize h [(x, typeExp)] cont'
+      cont'' <- liftIO $ Linearize.linearize (linearizeHandle h) [(x, typeExp)] cont'
       return $
         Utility.bindLet
           [ (typeExpVarName, typeExp),
@@ -487,36 +489,37 @@ alignFreeVariable tenv fvs e = do
   liftIO $ Linearize.linearize h fvs' e
 
 clarifyMagic :: TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Term -> App C.Comp
-clarifyMagic tenv der =
+clarifyMagic tenv der = do
+  h <- new
   case der of
     M.Cast from to value -> do
-      (fromVarName, from', fromVar) <- clarifyPlus tenv from
-      (toVarName, to', toVar) <- clarifyPlus tenv to
-      (valueVarName, value', valueVar) <- clarifyPlus tenv value
+      (fromVarName, from', fromVar) <- clarifyPlus h tenv from
+      (toVarName, to', toVar) <- clarifyPlus h tenv to
+      (valueVarName, value', valueVar) <- clarifyPlus h tenv value
       return $
         Utility.bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
           C.Primitive (C.Magic (M.Cast fromVar toVar valueVar))
     M.Store lt _ value pointer -> do
       let doNotCare = C.SigmaIntro []
-      (valueVarName, value', valueVar) <- clarifyPlus tenv value
-      (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
+      (valueVarName, value', valueVar) <- clarifyPlus h tenv value
+      (pointerVarName, pointer', pointerVar) <- clarifyPlus h tenv pointer
       return $
         Utility.bindLet [(valueVarName, value'), (pointerVarName, pointer')] $
           C.Primitive (C.Magic (M.Store lt doNotCare valueVar pointerVar))
     M.Load lt pointer -> do
-      (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
+      (pointerVarName, pointer', pointerVar) <- clarifyPlus h tenv pointer
       return $
         Utility.bindLet [(pointerVarName, pointer')] $
           C.Primitive (C.Magic (M.Load lt pointerVar))
     M.Alloca lt size -> do
-      (sizeVarName, size', sizeVar) <- clarifyPlus tenv size
+      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
       return $
         Utility.bindLet [(sizeVarName, size')] $
           C.Primitive (C.Magic (M.Alloca lt sizeVar))
     M.External domList cod extFunName args varArgAndTypeList -> do
-      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
+      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus h tenv) args
       let (varArgs, varTypes) = unzip varArgAndTypeList
-      (ys, varArgs', ysAsVarArgs) <- unzip3 <$> mapM (clarifyPlus tenv) varArgs
+      (ys, varArgs', ysAsVarArgs) <- unzip3 <$> mapM (clarifyPlus h tenv) varArgs
       return $
         Utility.bindLet (zip xs args' ++ zip ys varArgs') $
           C.Primitive (C.Magic (M.External domList cod extFunName xsAsVars (zip ysAsVarArgs varTypes)))
@@ -559,10 +562,10 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
       h <- new
       returnClosure h tenv identity O.Clear fvs mxts e'
 
-clarifyPlus :: TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
-clarifyPlus tenv e = do
+clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
+clarifyPlus h tenv e = do
   e' <- clarifyTerm tenv e
-  (varName, var) <- Gensym.newValueVarLocalWith "var"
+  (varName, var) <- liftIO $ GensymN.newValueVarLocalWith (gensymHandle h) "var"
   return (varName, e', var)
 
 clarifyBinder :: TM.TypeEnv -> [BinderF TM.Term] -> App [(Hint, Ident, C.Comp)]
