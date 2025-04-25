@@ -22,6 +22,7 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as GensymN
+import Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Sigma qualified as Sigma
 import Move.Scene.Clarify.Utility qualified as Utility
@@ -62,14 +63,20 @@ import Rule.Term.Chain (nubFreeVariables)
 import Rule.Term.Chain qualified as TM
 import Rule.Term.FromPrimNum
 
-newtype Handle
+data Handle
   = Handle
-  { gensymHandle :: GensymN.Handle
+  { gensymHandle :: GensymN.Handle,
+    linearizeHandle :: Linearize.Handle,
+    auxEnvHandle :: AuxEnv.Handle,
+    reduceHandle :: Reduce.Handle
   }
 
 new :: App Handle
 new = do
   gensymHandle <- GensymN.new
+  linearizeHandle <- Linearize.new
+  auxEnvHandle <- AuxEnv.new
+  reduceHandle <- Reduce.new
   return $ Handle {..}
 
 clarify :: [Stmt] -> App [C.CompStmt]
@@ -590,24 +597,24 @@ returnClosure tenv lamID opacity fvs xts e = do
   name <- liftIO $ Locator.attachCurrentLocator h' $ BN.lambdaName lamID
   isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered name
   unless isAlreadyRegistered $ do
-    registerClosure name opacity xts'' fvs'' e
+    h'' <- new
+    liftIO $ registerClosure h'' name opacity xts'' fvs'' e
   return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum]
 
 registerClosure ::
+  Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
   [(Ident, C.Comp)] ->
   [(Ident, C.Comp)] ->
   C.Comp ->
-  App ()
-registerClosure name opacity xts1 xts2 e = do
-  h <- Linearize.new
-  e' <- liftIO $ Linearize.linearize h (xts2 ++ xts1) e
-  (envVarName, envVar) <- Gensym.newValueVarLocalWith "env"
+  IO ()
+registerClosure h name opacity xts1 xts2 e = do
+  e' <- liftIO $ Linearize.linearize (linearizeHandle h) (xts2 ++ xts1) e
+  (envVarName, envVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "env"
   let args = map fst xts1 ++ [envVarName]
-  h' <- Reduce.new
-  body <- liftIO $ Reduce.reduce h' $ C.SigmaElim True (map fst xts2) envVar e'
-  Clarify.insertToAuxEnv name (opacity, args, body)
+  body <- liftIO $ Reduce.reduce (reduceHandle h) $ C.SigmaElim True (map fst xts2) envVar e'
+  AuxEnv.insert (auxEnvHandle h) name (opacity, args, body)
 
 callClosure :: Handle -> C.Comp -> [(Ident, C.Comp, C.Value)] -> IO C.Comp
 callClosure h e zexes = do
