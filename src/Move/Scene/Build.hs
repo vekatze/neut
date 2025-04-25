@@ -130,7 +130,8 @@ compile target outputKindList contentSeq = do
       hc <- Clarify.new
       stmtList' <- toApp $ Clarify.clarify hc stmtList
       async $ do
-        virtualCode <- Lower.lower stmtList'
+        hl <- Lower.new
+        virtualCode <- toApp $ Lower.lower hl stmtList'
         emit h currentTime target outputKindList (Right source) virtualCode
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
@@ -188,7 +189,8 @@ compileEntryPoint mainModule target outputKindList = do
         then return []
         else do
           hc <- Clarify.new
-          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint hc) >>= Lower.lowerEntryPoint t
+          hl <- Lower.new
+          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint hc) >>= toApp . Lower.lowerEntryPoint hl t
           return [(Left t, mainVirtualCode)]
 
 execute :: Bool -> MainTarget -> [String] -> App ()

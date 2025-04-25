@@ -5,7 +5,9 @@
 {-# HLINT ignore "Monad law, left identity" #-}
 
 module Move.Scene.Lower
-  ( lower,
+  ( Handle,
+    new,
+    lower,
     lowerEntryPoint,
   )
 where
@@ -28,6 +30,7 @@ import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Cancel
 import Move.Scene.Comp.Reduce qualified as Reduce
 import Move.Scene.Comp.Subst qualified as Subst
+import Rule.Arch
 import Rule.ArgNum qualified as AN
 import Rule.BaseLowType qualified as BLT
 import Rule.BaseName qualified as BN
@@ -53,7 +56,8 @@ import Rule.Target
 
 data Handle
   = Handle
-  { baseSize :: Int,
+  { arch :: Arch,
+    baseSize :: Int,
     gensymHandle :: GensymN.Handle,
     locatorHandle :: Locator.Handle,
     reduceHandle :: Reduce.Handle,
@@ -63,40 +67,39 @@ data Handle
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: [C.CompStmt] -> App Handle
-new stmtList = do
+new :: App Handle
+new = do
+  arch <- toApp $ Env.getArch Nothing
   baseSize <- toApp Env.getBaseSize'
   gensymHandle <- GensymN.new
   locatorHandle <- Locator.new
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
-  declEnv <- liftIO $ newIORef Map.empty
+  declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
-  let h = Handle {..}
-  arch <- toApp $ Env.getArch Nothing
-  forM_ (F.defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
-    liftIO $ insDeclEnv' h (DN.Ext name) domList cod
-  liftIO $ registerInternalNames h stmtList
-  return h
+  return $ Handle {..}
 
-lower ::
-  [C.CompStmt] ->
-  App LC.LowCode
-lower stmtList = do
-  h <- new stmtList
+makeBaseDeclEnv :: Arch -> DN.DeclEnv
+makeBaseDeclEnv arch = do
+  Map.fromList $ flip map (F.defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
+    (DN.Ext name, (domList, cod))
+
+lower :: Handle -> [C.CompStmt] -> EIO LC.LowCode
+lower h stmtList = do
+  liftIO $ registerInternalNames h stmtList
   liftIO $ insDeclEnv h (DN.In DD.imm) AN.argNumS4
   liftIO $ insDeclEnv h (DN.In DD.cls) AN.argNumS4
-  stmtList' <- catMaybes <$> mapM (toApp . lowerStmt h) stmtList
+  stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeNormal <$> liftIO (summarize h stmtList')
 
-lowerEntryPoint :: MainTarget -> [C.CompStmt] -> App LC.LowCode
-lowerEntryPoint target stmtList = do
-  h <- new stmtList
-  mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget (locatorHandle h) target
+lowerEntryPoint :: Handle -> MainTarget -> [C.CompStmt] -> EIO LC.LowCode
+lowerEntryPoint h target stmtList = do
+  liftIO $ registerInternalNames h stmtList
+  mainDD <- Locator.getMainDefiniteDescriptionByTarget (locatorHandle h) target
   liftIO $ insDeclEnv h (DN.In mainDD) AN.zero
   mainDef <- liftIO $ constructMainTerm h mainDD
-  stmtList' <- catMaybes <$> mapM (toApp . lowerStmt h) stmtList
+  stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeMain mainDef <$> liftIO (summarize h stmtList')
 
 summarize :: Handle -> [LC.Def] -> IO LC.LowCodeInfo
