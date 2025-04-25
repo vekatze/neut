@@ -55,6 +55,7 @@ import Rule.Target
 data Handle
   = Handle
   { gensymHandle :: GensymN.Handle,
+    locatorHandle :: Locator.Handle,
     declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
@@ -63,6 +64,7 @@ data Handle
 new :: [C.CompStmt] -> App Handle
 new stmtList = do
   gensymHandle <- GensymN.new
+  locatorHandle <- Locator.new
   declEnv <- liftIO $ newIORef Map.empty
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
@@ -391,9 +393,8 @@ lowerValue h resultVar v cont =
     C.VarStaticText text -> do
       let i8s = encode $ T.unpack text
       let len = length i8s
-      i <- Gensym.newCount
-      locatorHandle <- Locator.new
-      name <- lift $ liftIO $ Locator.attachCurrentLocator locatorHandle $ BN.textName i
+      i <- liftIO $ GensymN.newCount (gensymHandle h)
+      name <- lift $ liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.textName i
       let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
       liftIO $ insertStaticText h name encodedText len
       uncast h resultVar (LC.VarGlobal name) LT.Pointer cont
