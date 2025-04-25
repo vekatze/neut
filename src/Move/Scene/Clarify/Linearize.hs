@@ -1,5 +1,5 @@
 module Move.Scene.Clarify.Linearize
-  ( Handle,
+  ( Handle (..),
     new,
     linearize,
   )
