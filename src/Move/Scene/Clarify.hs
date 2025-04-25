@@ -68,6 +68,8 @@ data Handle
   { gensymHandle :: GensymN.Handle,
     linearizeHandle :: Linearize.Handle,
     auxEnvHandle :: AuxEnv.Handle,
+    sigmaHandle :: Sigma.Handle,
+    locatorHandle :: Locator.Handle,
     reduceHandle :: Reduce.Handle
   }
 
@@ -76,6 +78,8 @@ new = do
   gensymHandle <- GensymN.new
   linearizeHandle <- Linearize.new
   auxEnvHandle <- AuxEnv.new
+  sigmaHandle <- Sigma.new
+  locatorHandle <- Locator.new
   reduceHandle <- Reduce.new
   return $ Handle {..}
 
@@ -551,7 +555,8 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
       clarifyTerm tenv lamApp
     LK.Normal _ -> do
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
-      returnClosure tenv identity O.Clear fvs mxts e'
+      h <- new
+      returnClosure h tenv identity O.Clear fvs mxts e'
 
 clarifyPlus :: TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus tenv e = do
@@ -576,9 +581,11 @@ clarifyPrimOp tenv op m = do
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
   lamID <- Gensym.newCount
-  returnClosure tenv lamID O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
+  h <- new
+  returnClosure h tenv lamID O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
+  Handle ->
   TM.TypeEnv ->
   Int ->
   O.Opacity ->
@@ -586,19 +593,16 @@ returnClosure ::
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   App C.Comp
-returnClosure tenv lamID opacity fvs xts e = do
+returnClosure h tenv lamID opacity fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder tenv fvs
   xts'' <- dropFst <$> clarifyBinder tenv xts
-  h <- Sigma.new
-  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 h $ map Right fvs''
+  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 1 -- argNum == count(xts) + env
-  h' <- Locator.new
-  name <- liftIO $ Locator.attachCurrentLocator h' $ BN.lambdaName lamID
-  isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered name
+  name <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName lamID
+  isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
-    h'' <- new
-    liftIO $ registerClosure h'' name opacity xts'' fvs'' e
+    liftIO $ registerClosure h name opacity xts'' fvs'' e
   return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum]
 
 registerClosure ::
