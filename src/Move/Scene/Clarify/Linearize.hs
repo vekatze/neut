@@ -8,7 +8,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Utility
 import Rule.Comp qualified as C
@@ -32,24 +32,24 @@ linearize ::
   Handle ->
   [(Ident, C.Comp)] -> -- [(x1, t1), ..., (xn, tn)]  (closed chain)
   C.Comp -> -- a term that can contain non-linear occurrences of xi
-  App C.Comp -- a term in which all the variables in the closed chain occur linearly
+  EIO C.Comp -- a term in which all the variables in the closed chain occur linearly
 linearize h binder e =
   case binder of
     [] ->
       return e
     (x, t) : xts -> do
       e' <- linearize h xts e
-      (newNameList, e'') <- toApp $ distinguishComp h x e'
+      (newNameList, e'') <- distinguishComp h x e'
       case newNameList of
         [] -> do
           hole <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "unit"
-          discardUnusedVar <- toApp $ toAffineApp (gensymHandle h) x t
+          discardUnusedVar <- toAffineApp (gensymHandle h) x t
           return $ C.UpElim True hole discardUnusedVar e''
         [z] ->
           return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
         z : zs -> do
           localName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) $ toText x <> "-local"
-          e''' <- toApp $ insertHeader h localName z zs t e''
+          e''' <- insertHeader h localName z zs t e''
           return $ C.UpElim False localName (C.UpIntro (C.VarLocal x)) e'''
 
 insertHeader ::

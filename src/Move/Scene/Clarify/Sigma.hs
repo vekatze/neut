@@ -88,7 +88,7 @@ sigmaT h mxts argVar = do
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
   as <- toApp $ forM xts $ uncurry $ toAffineApp (Linearize.gensymHandle h)
   ys <- mapM (const $ Gensym.newIdentFromText "arg") xts
-  body' <- Linearize.linearize h xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
+  body' <- toApp $ Linearize.linearize h xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
   return $ C.SigmaElim True (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -115,7 +115,7 @@ sigma4 h mxts argVar = do
   -- as == [APP-1, ..., APP-n]
   as <- toApp $ forM xts $ uncurry $ toRelevantApp (Linearize.gensymHandle h)
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.newValueVarLocalWith "pair") xts
-  body' <- Linearize.linearize h xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
+  body' <- toApp $ Linearize.linearize h xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
 supplyName :: Either b (Ident, b) -> App (Ident, b)
