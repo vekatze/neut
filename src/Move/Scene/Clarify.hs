@@ -373,7 +373,8 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       tmp <- mapM (clarifyCase tenv isNoetic dataArgsMap cursor) clauseList
       let (enumCaseList, clauseList', clauseChainList) = unzip3 tmp
       let chain = nubFreeVariables $ fallbackChain ++ concat clauseChainList
-      let aligner = alignFreeVariable tenv chain
+      h <- new
+      let aligner = alignFreeVariable h tenv chain
       clauseList'' <- mapM aligner clauseList'
       let newChain = (m, cursor, m :< TM.Tau) : chain
       let idents = nubOrd $ map (\(_, x, _) -> x) newChain
@@ -485,11 +486,10 @@ clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
               chain
             )
 
-alignFreeVariable :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
-alignFreeVariable tenv fvs e = do
+alignFreeVariable :: Handle -> TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
+alignFreeVariable h tenv fvs e = do
   fvs' <- dropFst <$> clarifyBinder tenv fvs
-  h <- Linearize.new
-  liftIO $ Linearize.linearize h fvs' e
+  liftIO $ Linearize.linearize (linearizeHandle h) fvs' e
 
 clarifyMagic :: TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Term -> App C.Comp
 clarifyMagic tenv der = do
