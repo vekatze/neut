@@ -85,7 +85,8 @@ registerSwitcher opacity name aff rel = do
 
 getEnumElim :: [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> App C.Comp
 getEnumElim idents d defaultBranch branchList = do
-  (newToOld, oldToNew) <- getSub idents
+  hgen <- GensymN.new
+  (newToOld, oldToNew) <- liftIO $ getSub hgen idents
   let sub = IntMap.fromList oldToNew
   h <- C.new
   defaultBranch' <- liftIO $ C.subst h sub defaultBranch
@@ -93,9 +94,9 @@ getEnumElim idents d defaultBranch branchList = do
   clauses' <- liftIO $ mapM (C.subst h sub) clauses
   return $ C.EnumElim newToOld d defaultBranch' (zip labels clauses')
 
-getSub :: [Ident] -> App ([(Int, C.Value)], [(Int, C.Value)])
-getSub idents = do
-  newIdents <- mapM Gensym.newIdentFromIdent idents
+getSub :: GensymN.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
+getSub h idents = do
+  newIdents <- mapM (GensymN.newIdentFromIdent h) idents
   let newToOld = zip (map toInt newIdents) (map C.VarLocal idents)
   let oldToNew = zip (map toInt idents) (map C.VarLocal newIdents)
   return (newToOld, oldToNew)
