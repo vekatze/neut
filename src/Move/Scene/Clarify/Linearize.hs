@@ -49,7 +49,7 @@ linearize h binder e =
           return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
         z : zs -> do
           localName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) $ toText x <> "-local"
-          e''' <- insertHeader h localName z zs t e''
+          e''' <- toApp $ insertHeader h localName z zs t e''
           return $ C.UpElim False localName (C.UpIntro (C.VarLocal x)) e'''
 
 insertHeader ::
@@ -59,14 +59,14 @@ insertHeader ::
   [Occurrence] ->
   C.Comp ->
   C.Comp ->
-  App C.Comp
+  EIO C.Comp
 insertHeader h localName z1 zs t e = do
   case zs of
     [] ->
       return $ C.UpElim True z1 (C.UpIntro (C.VarLocal localName)) e
     z2 : rest -> do
       e' <- insertHeader h localName z2 rest t e
-      copyRelevantVar <- toApp $ toRelevantApp (gensymHandle h) localName t
+      copyRelevantVar <- toRelevantApp (gensymHandle h) localName t
       return $ C.UpElim True z1 copyRelevantVar e'
 
 distinguishVar :: Handle -> Ident -> Ident -> EIO ([Occurrence], Ident)
