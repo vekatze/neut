@@ -354,7 +354,6 @@ lowerValue h v =
     C.VarGlobal globalName argNum -> do
       lowNameSet <- lift $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
-        -- lift $ Decl.insDeclEnv (DN.In globalName) argNum
         lift $ insDeclEnv h (DN.In globalName) argNum
       uncast (LC.VarGlobal globalName) LT.Pointer
     C.VarLocal y ->
