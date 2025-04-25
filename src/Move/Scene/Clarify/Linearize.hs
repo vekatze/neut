@@ -9,7 +9,6 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Move.Context.App
 import Move.Context.EIO (EIO, toApp)
-import Move.Context.Gensym
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Utility
 import Rule.Comp qualified as C
@@ -43,13 +42,13 @@ linearize h binder e =
       (newNameList, e'') <- toApp $ distinguishComp h x e'
       case newNameList of
         [] -> do
-          hole <- newIdentFromText "unit"
+          hole <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "unit"
           discardUnusedVar <- toAffineApp x t
           return $ C.UpElim True hole discardUnusedVar e''
         [z] ->
           return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
         z : zs -> do
-          localName <- newIdentFromText $ toText x <> "-local"
+          localName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) $ toText x <> "-local"
           e''' <- insertHeader localName z zs t e''
           return $ C.UpElim False localName (C.UpIntro (C.VarLocal x)) e'''
 
