@@ -352,7 +352,7 @@ lowerValue :: Handle -> C.Value -> Lower LC.Value
 lowerValue h v =
   case v of
     C.VarGlobal globalName argNum -> do
-      lowNameSet <- lift $ getDefinedNameSet h
+      lowNameSet <- liftIO $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
         liftIO $ insDeclEnv h (DN.In globalName) argNum
       uncast (LC.VarGlobal globalName) LT.Pointer
@@ -510,6 +510,6 @@ insertStaticText :: Handle -> DD.DefiniteDescription -> Builder -> Int -> IO ()
 insertStaticText h name text len =
   modifyIORef' (staticTextList h) $ (:) (name, (text, len))
 
-getDefinedNameSet :: Handle -> App (S.Set DD.DefiniteDescription)
+getDefinedNameSet :: Handle -> IO (S.Set DD.DefiniteDescription)
 getDefinedNameSet h = do
-  liftIO $ readIORef (definedNameSet h)
+  readIORef (definedNameSet h)
