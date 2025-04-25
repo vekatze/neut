@@ -199,12 +199,12 @@ lowerComp h term =
           lowerComp h defaultBranch'
         _ -> do
           (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
-          runLowerComp $ do
-            baseSize <- lift $ toApp Env.getBaseSize'
-            let t = LT.PrimNum $ PT.Int $ IntSize baseSize
-            castedValue <- lowerValueLetCast h v t
-            (phi, phiVar) <- lift $ newValueLocal "phi"
-            return $ LC.Switch (castedValue, t) defaultCase caseList (phi, LC.Return phiVar)
+          baseSize <- toApp Env.getBaseSize'
+          let t = LT.PrimNum $ PT.Int $ IntSize baseSize
+          (castVar, castValue) <- newValueLocal "cast"
+          (phiVar, phi) <- newValueLocal "phi"
+          lowerValueLetCast' h castVar v t
+            =<< return (LC.Switch (castValue, t) defaultCase caseList (phiVar, LC.Return phi))
     C.Free x size cont -> do
       cont' <- lowerComp h cont
       runLowerComp $ do
