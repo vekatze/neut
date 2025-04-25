@@ -8,9 +8,8 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Move.Context.App
-import Move.Context.EIO (EIO)
 import Move.Language.Utility.Gensym qualified as Gensym
-import Move.Scene.Clarify.Utility
+import Move.Scene.Clarify.Utility qualified as Utility
 import Rule.Comp qualified as C
 import Rule.Ident
 import Rule.Ident.Reify
@@ -18,21 +17,23 @@ import Rule.Magic qualified as M
 
 type Occurrence = Ident
 
-newtype Handle
+data Handle
   = Handle
-  { gensymHandle :: Gensym.Handle
+  { gensymHandle :: Gensym.Handle,
+    utilityHandle :: Utility.Handle
   }
 
 new :: App Handle
 new = do
   gensymHandle <- Gensym.new
+  utilityHandle <- Utility.new
   return $ Handle {..}
 
 linearize ::
   Handle ->
   [(Ident, C.Comp)] -> -- [(x1, t1), ..., (xn, tn)]  (closed chain)
   C.Comp -> -- a term that can contain non-linear occurrences of xi
-  EIO C.Comp -- a term in which all the variables in the closed chain occur linearly
+  IO C.Comp -- a term in which all the variables in the closed chain occur linearly
 linearize h binder e =
   case binder of
     [] ->
@@ -43,7 +44,7 @@ linearize h binder e =
       case newNameList of
         [] -> do
           hole <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "unit"
-          discardUnusedVar <- toAffineApp (gensymHandle h) x t
+          discardUnusedVar <- Utility.toAffineApp (utilityHandle h) x t
           return $ C.UpElim True hole discardUnusedVar e''
         [z] ->
           return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
@@ -59,25 +60,25 @@ insertHeader ::
   [Occurrence] ->
   C.Comp ->
   C.Comp ->
-  EIO C.Comp
+  IO C.Comp
 insertHeader h localName z1 zs t e = do
   case zs of
     [] ->
       return $ C.UpElim True z1 (C.UpIntro (C.VarLocal localName)) e
     z2 : rest -> do
       e' <- insertHeader h localName z2 rest t e
-      copyRelevantVar <- toRelevantApp (gensymHandle h) localName t
+      copyRelevantVar <- Utility.toRelevantApp (utilityHandle h) localName t
       return $ C.UpElim True z1 copyRelevantVar e'
 
-distinguishVar :: Handle -> Ident -> Ident -> EIO ([Occurrence], Ident)
+distinguishVar :: Handle -> Ident -> Ident -> IO ([Occurrence], Ident)
 distinguishVar h z x =
   if x /= z
     then return ([], x)
     else do
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      x' <- Gensym.newIdentFromIdent (gensymHandle h) x
       return ([x'], x')
 
-distinguishValue :: Handle -> Ident -> C.Value -> EIO ([Occurrence], C.Value)
+distinguishValue :: Handle -> Ident -> C.Value -> IO ([Occurrence], C.Value)
 distinguishValue h z term =
   case term of
     C.VarLocal x -> do
@@ -89,7 +90,7 @@ distinguishValue h z term =
     _ ->
       return ([], term)
 
-distinguishComp :: Handle -> Ident -> C.Comp -> EIO ([Occurrence], C.Comp)
+distinguishComp :: Handle -> Ident -> C.Comp -> IO ([Occurrence], C.Comp)
 distinguishComp h z term =
   case term of
     C.Primitive theta -> do
@@ -129,7 +130,7 @@ distinguishComp h z term =
     C.Unreachable ->
       return ([], term)
 
-distinguishPrimitive :: Handle -> Ident -> C.Primitive -> EIO ([Occurrence], C.Primitive)
+distinguishPrimitive :: Handle -> Ident -> C.Primitive -> IO ([Occurrence], C.Primitive)
 distinguishPrimitive h z term =
   case term of
     C.PrimOp op ds -> do

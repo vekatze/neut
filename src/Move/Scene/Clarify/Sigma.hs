@@ -1,5 +1,7 @@
 module Move.Scene.Clarify.Sigma
-  ( registerImmediateS4,
+  ( Handle,
+    new,
+    registerImmediateS4,
     registerClosureS4,
     immediateS4,
     returnImmediateS4,
@@ -12,12 +14,10 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
-import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Clarify.Linearize qualified as Linearize
-import Move.Scene.Clarify.Utility
+import Move.Scene.Clarify.Utility qualified as Utility
 import Rule.ArgNum qualified as AN
 import Rule.BaseLowType qualified as BLT
 import Rule.BaseName qualified as BN
@@ -29,16 +29,33 @@ import Rule.Ident
 import Rule.Magic qualified as M
 import Rule.Opacity qualified as O
 
-registerImmediateS4 :: App ()
-registerImmediateS4 = do
+data Handle
+  = Handle
+  { gensymHandle :: GensymN.Handle,
+    linearizeHandle :: Linearize.Handle,
+    locatorHandle :: Locator.Handle,
+    utilityHandle :: Utility.Handle
+  }
+
+new :: App Handle
+new = do
+  gensymHandle <- GensymN.new
+  linearizeHandle <- Linearize.new
+  locatorHandle <- Locator.new
+  utilityHandle <- Utility.new
+  return $ Handle {..}
+
+registerImmediateS4 :: Handle -> IO ()
+registerImmediateS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
-  registerSwitcher O.Clear DD.imm immediateT immediate4
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm immediateT immediate4
 
-registerClosureS4 :: App ()
-registerClosureS4 = do
-  (env, envVar) <- Gensym.newValueVarLocalWith "env"
+registerClosureS4 :: Handle -> IO ()
+registerClosureS4 h = do
+  (env, envVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "env"
   registerSigmaS4
+    h
     DD.cls
     O.Clear
     [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
@@ -56,13 +73,13 @@ immediateS4 = do
   C.VarGlobal DD.imm AN.argNumS4
 
 registerSigmaS4 ::
+  Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
   [Either C.Comp (Ident, C.Comp)] ->
-  App ()
-registerSigmaS4 name opacity mxts = do
-  h <- Linearize.new
-  registerSwitcher opacity name (toApp . sigmaT h mxts) (toApp . sigma4 h mxts)
+  IO ()
+registerSigmaS4 h name opacity mxts = do
+  Utility.registerSwitcher (utilityHandle h) opacity name (sigmaT h mxts) (sigma4 h mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -80,17 +97,16 @@ registerSigmaS4 name opacity mxts = do
 --     return ()                                     ---        ---
 --
 sigmaT ::
-  Linearize.Handle ->
+  Handle ->
   [Either C.Comp (Ident, C.Comp)] ->
   C.Value ->
-  EIO C.Comp
+  IO C.Comp
 sigmaT h mxts argVar = do
-  let h' = Linearize.gensymHandle h
-  xts <- liftIO $ mapM (supplyName h') mxts
+  xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- forM xts $ uncurry $ toAffineApp h'
-  ys <- liftIO $ mapM (const $ GensymN.newIdentFromText h' "arg") xts
-  body' <- Linearize.linearize h xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
+  as <- forM xts $ uncurry $ Utility.toAffineApp (utilityHandle h)
+  ys <- mapM (const $ GensymN.newIdentFromText (gensymHandle h) "arg") xts
+  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
   return $ C.SigmaElim True (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -108,17 +124,16 @@ sigmaT h mxts argVar = do
 --       fn @ (1, xn) in              ---  APP-n                       ---       ---
 --     return (x1', ..., xn')
 sigma4 ::
-  Linearize.Handle ->
+  Handle ->
   [Either C.Comp (Ident, C.Comp)] ->
   C.Value ->
-  EIO C.Comp
+  IO C.Comp
 sigma4 h mxts argVar = do
-  let h' = Linearize.gensymHandle h
-  xts <- liftIO $ mapM (supplyName h') mxts
+  xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
   -- as == [APP-1, ..., APP-n]
-  as <- forM xts $ uncurry $ toRelevantApp h'
-  (varNameList, varList) <- liftIO $ mapAndUnzipM (const $ GensymN.newValueVarLocalWith h' "pair") xts
-  body' <- Linearize.linearize h xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
+  as <- forM xts $ uncurry $ Utility.toRelevantApp (utilityHandle h)
+  (varNameList, varList) <- mapAndUnzipM (const $ GensymN.newValueVarLocalWith (gensymHandle h) "pair") xts
+  body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
 supplyName :: GensymN.Handle -> Either b (Ident, b) -> IO (Ident, b)
@@ -131,69 +146,68 @@ supplyName h mName =
       return (x, t)
 
 closureEnvS4 ::
+  Handle ->
   [Either C.Comp (Ident, C.Comp)] ->
-  App C.Value
-closureEnvS4 mxts =
+  IO C.Value
+closureEnvS4 h mxts =
   case mxts of
     [] ->
       return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
-      i <- Gensym.newCount
-      h <- Locator.new
-      name <- liftIO $ Locator.attachCurrentLocator h $ BN.sigmaName i
-      h' <- Linearize.new
-      registerSwitcher O.Clear name (toApp . sigmaT h' mxts) (toApp . sigma4 h' mxts)
+      i <- GensymN.newCount (gensymHandle h)
+      name <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.sigmaName i
+      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name (sigmaT h mxts) (sigma4 h mxts)
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
+  Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
   [(D.Discriminant, [(Ident, C.Comp)])] ->
-  App C.Comp
-returnSigmaDataS4 dataName opacity dataInfo = do
-  let aff = sigmaDataT dataInfo
-  let rel = sigmaData4 dataInfo
+  IO C.Comp
+returnSigmaDataS4 h dataName opacity dataInfo = do
+  let aff = sigmaDataT h dataInfo
+  let rel = sigmaData4 h dataInfo
   let dataName' = DD.getFormDD dataName
-  registerSwitcher opacity dataName' aff rel
+  Utility.registerSwitcher (utilityHandle h) opacity dataName' aff rel
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
-sigmaData4 :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp
-sigmaData4 = do
-  sigmaData sigmaBinder4
+sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
+sigmaData4 h = do
+  sigmaData h (sigmaBinder4 h)
 
-sigmaBinder4 :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
-sigmaBinder4 xts v = do
-  h <- Linearize.new
-  toApp $ sigma4 h (Left returnImmediateS4 : map Right xts) v
+sigmaBinder4 :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
+sigmaBinder4 h xts v = do
+  sigma4 h (Left returnImmediateS4 : map Right xts) v
 
-sigmaDataT :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp
-sigmaDataT = do
-  sigmaData sigmaBinderT
+sigmaDataT :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
+sigmaDataT h = do
+  sigmaData h (sigmaBinderT h)
 
 sigmaData ::
-  ([(Ident, C.Comp)] -> C.Value -> App C.Comp) ->
+  Handle ->
+  ([(Ident, C.Comp)] -> C.Value -> IO C.Comp) ->
   [(D.Discriminant, [(Ident, C.Comp)])] ->
   C.Value ->
-  App C.Comp
-sigmaData resourceHandler dataInfo arg = do
+  IO C.Comp
+sigmaData h resourceHandler dataInfo arg = do
   case dataInfo of
     [] ->
       return $ C.UpIntro arg
     _ -> do
       let (discList, binderList) = unzip dataInfo
       let discList' = map discriminantToEnumCase discList
-      localName <- Gensym.newIdentFromText "local"
+      localName <- GensymN.newIdentFromText (gensymHandle h) "local"
       binderList' <- mapM (`resourceHandler` C.VarLocal localName) binderList
-      (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
-      enumElim <- getEnumElim [localName] discVar (last binderList') (zip discList' (init binderList'))
+      (disc, discVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "disc"
+      enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $
           C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal localName)))) enumElim
 
-sigmaBinderT :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
-sigmaBinderT xts v = do
-  h <- Linearize.new
-  toApp $ sigmaT h (Left returnImmediateS4 : map Right xts) v
+sigmaBinderT :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
+sigmaBinderT h xts v = do
+  sigmaT h (Left returnImmediateS4 : map Right xts) v
 
 discriminantToEnumCase :: D.Discriminant -> EC.EnumCase
 discriminantToEnumCase discriminant =
