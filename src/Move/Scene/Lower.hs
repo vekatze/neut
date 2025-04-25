@@ -185,9 +185,9 @@ lowerComp h term =
       let sub = IntMap.fromList fvInfo
       hred <- C.new
       hsub <- Subst.new
-      defaultBranch' <- liftIO (Subst.subst hsub sub defaultBranch) >>= C.reduce hred
+      defaultBranch' <- liftIO $ Subst.subst hsub sub defaultBranch >>= C.reduce hred
       let (keys, clauses) = unzip branchList
-      clauses' <- mapM (liftIO . Subst.subst hsub sub >=> C.reduce hred) clauses
+      clauses' <- liftIO $ mapM (Subst.subst hsub sub >=> C.reduce hred) clauses
       let branchList' = zip keys clauses'
       case (defaultBranch', clauses') of
         (C.Unreachable, [clause]) ->

@@ -5,11 +5,10 @@ module Move.Scene.Comp.Reduce
   )
 where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.CompDefinition qualified as CompDefinition
-import Move.Context.Gensym qualified as Gensym
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Comp.Subst qualified as Subst
 import Rule.Comp qualified as C
 import Rule.EnumCase qualified as EC
@@ -21,16 +20,18 @@ import Rule.Opacity qualified as O
 data Handle
   = Handle
   { compDefinitionHandle :: CompDefinition.Handle,
-    substHandle :: Subst.Handle
+    substHandle :: Subst.Handle,
+    gensymHandle :: Gensym.Handle
   }
 
 new :: App Handle
 new = do
   compDefinitionHandle <- CompDefinition.new
   substHandle <- Subst.new
+  gensymHandle <- Gensym.new
   return $ Handle {..}
 
-reduce :: Handle -> C.Comp -> App C.Comp
+reduce :: Handle -> C.Comp -> IO C.Comp
 reduce h term =
   case term of
     C.Primitive prim ->
@@ -42,12 +43,11 @@ reduce h term =
     C.PiElimDownElim v ds -> do
       case v of
         C.VarGlobal x _ -> do
-          hc <- CompDefinition.new
-          mDefValue <- liftIO $ CompDefinition.lookup hc x
+          mDefValue <- CompDefinition.lookup (compDefinitionHandle h) x
           case mDefValue of
             Just (O.Clear, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-              liftIO (Subst.subst (substHandle h) sub body) >>= reduce h
+              Subst.subst (substHandle h) sub body >>= reduce h
             _ ->
               return term
         _ ->
@@ -62,7 +62,7 @@ reduce h term =
             C.SigmaIntro ds
               | length ds == length xs -> do
                   let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-                  liftIO (Subst.subst (substHandle h) sub e) >>= reduce h
+                  Subst.subst (substHandle h) sub e >>= reduce h
             _ -> do
               e' <- reduce h e
               case e' of
@@ -86,17 +86,17 @@ reduce h term =
         C.UpIntro v
           | isReducible -> do
               let sub = IntMap.fromList [(Ident.toInt x, v)]
-              liftIO (Subst.subst (substHandle h) sub e2) >>= reduce h
+              Subst.subst (substHandle h) sub e2 >>= reduce h
         C.UpElim isReducible' y ey1 ey2 -> do
-          y' <- Gensym.newIdentFromIdent y
+          y' <- Gensym.newIdentFromIdent (gensymHandle h) y
           let sub = IntMap.fromList [(Ident.toInt y, C.VarLocal y')]
-          ey2' <- liftIO $ Subst.subst (substHandle h) sub ey2
+          ey2' <- Subst.subst (substHandle h) sub ey2
           reduce h $ C.UpElim isReducible' y' ey1 $ C.UpElim isReducible x ey2' e2 -- commutative conversion
         C.SigmaElim b ys vy ey -> do
-          ys' <- mapM Gensym.newIdentFromIdent ys
+          ys' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) ys
           let intList = map Ident.toInt ys
           let sub = IntMap.fromList $ zip intList (map C.VarLocal ys')
-          ey' <- liftIO $ Subst.subst (substHandle h) sub ey
+          ey' <- Subst.subst (substHandle h) sub ey
           reduce h $ C.SigmaElim b ys' vy $ C.UpElim isReducible x ey' e2 -- commutative conversion
         _ -> do
           e2' <- reduce h e2
@@ -110,14 +110,14 @@ reduce h term =
             _ ->
               return $ C.UpElim isReducible x e1' e2'
     C.EnumElim fvInfo _ defaultBranch [] -> do
-      liftIO (Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch) >>= reduce h
+      Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch >>= reduce h
     C.EnumElim fvInfo v defaultBranch les -> do
       case v of
         C.Int _ l
           | Just body <- lookup (EC.Int (fromInteger l)) les -> do
-              liftIO (Subst.subst (substHandle h) (IntMap.fromList fvInfo) body) >>= reduce h
+              Subst.subst (substHandle h) (IntMap.fromList fvInfo) body >>= reduce h
           | otherwise -> do
-              liftIO (Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch) >>= reduce h
+              Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch >>= reduce h
         _ -> do
           let (ls, es) = unzip les
           defaultBranch' <- reduce h defaultBranch

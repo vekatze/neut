@@ -81,7 +81,7 @@ clarify stmtList = do
   forM stmtList' $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
-        e' <- Reduce.reduce h e
+        e' <- liftIO $ Reduce.reduce h e
         -- printNote' "==================="
         -- printNote' $ DD.reify x
         -- printNote' $ T.pack $ show args
@@ -96,7 +96,7 @@ clarifyEntryPoint = do
   baseAuxEnv <- getBaseAuxEnv
   h <- Reduce.new
   forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
-    e' <- Reduce.reduce h e
+    e' <- liftIO $ Reduce.reduce h e
     return $ C.Def x opacity args e'
 
 registerFoundationalTypes :: App ()
@@ -164,7 +164,7 @@ clarifyStmtDefineBody ::
 clarifyStmtDefineBody tenv xts e = do
   h <- Linearize.new
   h' <- Reduce.new
-  clarifyTerm tenv e >>= toApp . Linearize.linearize h xts >>= Reduce.reduce h'
+  clarifyTerm tenv e >>= toApp . Linearize.linearize h xts >>= liftIO . Reduce.reduce h'
 
 clarifyStmtDefineBody' ::
   DD.DefiniteDescription ->
@@ -174,7 +174,7 @@ clarifyStmtDefineBody' ::
 clarifyStmtDefineBody' name xts' dataType = do
   h <- Linearize.new
   h' <- Reduce.new
-  dataType' <- toApp (Linearize.linearize h xts' dataType) >>= Reduce.reduce h'
+  dataType' <- toApp (Linearize.linearize h xts' dataType) >>= liftIO . Reduce.reduce h'
   return $ C.Def name O.Clear (map fst xts') dataType'
 
 clarifyTerm :: TM.TypeEnv -> TM.Term -> App C.Comp
@@ -275,8 +275,8 @@ clarifyTerm tenv term =
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
       h' <- Reduce.new
-      discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce h'
-      copier' <- clarifyTerm IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value]) >>= Reduce.reduce h'
+      discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= liftIO . Reduce.reduce h'
+      copier' <- clarifyTerm IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value]) >>= liftIO . Reduce.reduce h'
       enumElim <- getEnumElim [value] (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
       isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered liftedName
       unless isAlreadyRegistered $ do
@@ -596,7 +596,7 @@ registerClosure name opacity xts1 xts2 e = do
   (envVarName, envVar) <- Gensym.newValueVarLocalWith "env"
   let args = map fst xts1 ++ [envVarName]
   h' <- Reduce.new
-  body <- Reduce.reduce h' $ C.SigmaElim True (map fst xts2) envVar e'
+  body <- liftIO $ Reduce.reduce h' $ C.SigmaElim True (map fst xts2) envVar e'
   Clarify.insertToAuxEnv name (opacity, args, body)
 
 callClosure :: C.Comp -> [(Ident, C.Comp, C.Value)] -> App C.Comp
