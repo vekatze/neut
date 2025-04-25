@@ -23,7 +23,6 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Cancel
@@ -96,7 +95,7 @@ lowerEntryPoint target stmtList = do
   h <- new stmtList
   mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget (locatorHandle h) target
   liftIO $ insDeclEnv h (DN.In mainDD) AN.zero
-  mainDef <- constructMainTerm mainDD
+  mainDef <- liftIO $ constructMainTerm h mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeMain mainDef <$> summarize h stmtList'
 
@@ -125,10 +124,10 @@ registerInternalNames h stmtList =
         forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
           insDeclEnv' h (DN.Ext name) domList cod
 
-constructMainTerm :: DD.DefiniteDescription -> App LC.DefContent
-constructMainTerm mainName = do
-  argc <- Gensym.newIdentFromText "argc"
-  argv <- Gensym.newIdentFromText "argv"
+constructMainTerm :: Handle -> DD.DefiniteDescription -> IO LC.DefContent
+constructMainTerm h mainName = do
+  argc <- GensymN.newIdentFromText (gensymHandle h) "argc"
+  argv <- GensymN.newIdentFromText (gensymHandle h) "argv"
   let argcGlobal = LC.VarExternal (EN.ExternalName unsafeArgcName)
   let argvGlobal = LC.VarExternal (EN.ExternalName unsafeArgvName)
   let mainTerm =
