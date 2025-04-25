@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Use list comprehension" #-}
+{-# HLINT ignore "Use <$>" #-}
+{-# HLINT ignore "Monad law, left identity" #-}
 
 module Move.Scene.Lower
   ( lower,
@@ -158,11 +160,13 @@ lowerComp h term =
     C.Primitive theta ->
       runLower $ lowerCompPrimitive h theta
     C.PiElimDownElim v ds -> do
-      runLowerComp $ do
-        v' <- lowerValue h v
-        ds' <- mapM (lowerValue h) ds
-        v'' <- cast v' LT.Pointer
-        return $ LC.TailCall LT.Pointer v'' (map (LT.Pointer,) ds')
+      (funcVar, func) <- newValueLocal "func"
+      (castFuncVar, castFunc) <- newValueLocal "func"
+      (argVars, argValues) <- mapAndUnzipM (const $ newValueLocal "arg") ds
+      lowerValue' h funcVar v
+        =<< lowerValues h (zip argVars ds)
+        =<< cast' castFuncVar func LT.Pointer
+        =<< return (LC.TailCall LT.Pointer castFunc (map (LT.Pointer,) argValues))
     C.SigmaElim shouldDeallocate xs v e -> do
       let numOfElems = length xs
       let baseType = LT.Array numOfElems LT.Pointer
@@ -175,8 +179,9 @@ lowerComp h term =
         forM_ (zip xs ds) $ \(x, d) -> do
           extend $ return . LC.Let x (LC.Bitcast d LT.Pointer LT.Pointer)
         lift $ lowerComp h e
-    C.UpIntro d ->
-      runLower $ lowerValue h d
+    C.UpIntro d -> do
+      (result, resultVar) <- newValueLocal "result"
+      lowerValue' h result d (LC.Return resultVar)
     C.UpElim _ x e1 e2 -> do
       e1' <- lowerComp h e1
       e2' <- lowerComp h e2
@@ -517,47 +522,16 @@ getDefinedNameSet h = do
 --
 --
 
-data ValueVar = ValueVar
-  { value :: LC.Value,
-    var :: Ident
-  }
-
--- getElemPtr :: LC.Value -> LT.LowType -> [Integer] -> Lower LC.Value
--- getElemPtr value valueType indexList = do
---   let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int intSize32)) indexList
---   reflect $ LC.GetElementPtr (value, valueType) indexList'
-
 getElemPtr' :: Ident -> LC.Value -> LT.LowType -> [Integer] -> LC.Comp -> LC.Comp
 getElemPtr' var value valueType indexList cont = do
   let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int intSize32)) indexList
   LC.Let var (LC.GetElementPtr (value, valueType) indexList') cont
-
--- getElemPtrList' :: LC.Value -> LT.LowType -> Int -> Lower [LC.Value]
--- getElemPtrList' basePointer baseType numOfElems =
---   forM [0 .. numOfElems - 1] $ \i -> getElemPtr basePointer baseType [0, toInteger i]
 
 getElemPtrList' :: LC.Value -> [Ident] -> LT.LowType -> LC.Comp -> LC.Comp
 getElemPtrList' basePointer vars baseType cont = do
   let f c (var, i) = getElemPtr' var basePointer baseType [0, toInteger i] c
   foldl f cont (zip vars [0 :: Int ..])
 
--- cast :: LC.Value -> LT.LowType -> Lower LC.Value
--- cast v lowType = do
---   (result, resultVar) <- lift $ newValueLocal "result"
---   case lowType of
---     LT.PrimNum (PT.Int _) -> do
---       extend $ return . LC.Let result (LC.PointerToInt v LT.Pointer lowType)
---     LT.PrimNum (PT.Float size) -> do
---       let floatType = LT.PrimNum $ PT.Float size
---       let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt size
---       (tmp, tmpVar) <- lift $ newValueLocal "tmp"
---       extend $
---         return
---           . LC.Let tmp (LC.PointerToInt v LT.Pointer intType)
---           . LC.Let result (LC.Bitcast tmpVar intType floatType)
---     _ -> do
---       extend $ return . LC.Let result (LC.Bitcast v LT.Pointer lowType)
---   return resultVar
 cast' :: Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
 cast' var v lowType cont = do
   case lowType of
@@ -573,23 +547,6 @@ cast' var v lowType cont = do
     _ -> do
       return $ LC.Let var (LC.Bitcast v LT.Pointer lowType) cont
 
--- uncast :: LC.Value -> LT.LowType -> Lower LC.Value
--- uncast castedValue lowType = do
---   (result, resultVar) <- lift $ newValueLocal "uncast"
---   case lowType of
---     LT.PrimNum (PT.Int _) ->
---       extend $ return . LC.Let result (LC.IntToPointer castedValue lowType LT.Pointer)
---     LT.PrimNum (PT.Float i) -> do
---       let floatType = LT.PrimNum $ PT.Float i
---       let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt i
---       (tmp, tmpVar) <- lift $ newValueLocal "tmp"
---       extend $
---         return
---           . LC.Let tmp (LC.Bitcast castedValue floatType intType)
---           . LC.Let result (LC.IntToPointer tmpVar intType LT.Pointer)
---     _ ->
---       extend $ return . LC.Let result (LC.Bitcast castedValue lowType LT.Pointer)
---   return resultVar
 uncast' :: Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
 uncast' var castedValue lowType cont = do
   case lowType of
@@ -605,22 +562,6 @@ uncast' var castedValue lowType cont = do
     _ ->
       return $ LC.Let var (LC.Bitcast castedValue lowType LT.Pointer) cont
 
--- allocateBasePointer :: AggType -> Lower LC.Value
--- allocateBasePointer aggType = do
---   let lt = toLowType aggType
---   case lt of
---     LT.Array 0 _ ->
---       return LC.Null
---     LT.Struct [] ->
---       return LC.Null
---     _ -> do
---       let (elemType, len) = getSizeInfoOf aggType
---       sizePointer <- getElemPtr LC.Null elemType [toInteger len]
---       allocID <- lift Gensym.newCount
---       baseSize <- lift $ toApp Env.getBaseSize'
---       let lowInt = LT.PrimNum $ PT.Int $ IntSize baseSize
---       size <- cast sizePointer lowInt
---       reflect $ LC.Alloc size len allocID
 allocateBasePointer' :: Ident -> AggType -> LC.Comp -> App LC.Comp
 allocateBasePointer' resultVar aggType cont = do
   let lt = toLowType aggType
@@ -636,12 +577,83 @@ allocateBasePointer' resultVar aggType cont = do
       allocID <- Gensym.newCount
       baseSize <- toApp Env.getBaseSize'
       let lowInt = LT.PrimNum $ PT.Int $ IntSize baseSize
-      fmap (getElemPtr' sizeVar LC.Null elemType [toInteger len]) $
-        cast' castVar sizeValue lowInt $
-          LC.Let resultVar (LC.Alloc castValue len allocID) cont
+      return . getElemPtr' sizeVar LC.Null elemType [toInteger len]
+        =<< cast' castVar sizeValue lowInt
+        =<< return (LC.Let resultVar (LC.Alloc castValue len allocID) cont)
 
--- reflect :: LC.Op -> Lower LC.Value
--- reflect op = do
---   (result, resultVar) <- lift $ newValueLocal "result"
---   extend $ return . LC.Let result op
---   return resultVar
+-- getElemPtrList' :: LC.Value -> [Ident] -> LT.LowType -> LC.Comp -> LC.Comp
+createAggData' ::
+  Handle ->
+  Ident ->
+  AggType -> -- the type of the base pointer
+  [(C.Value, LT.LowType)] ->
+  LC.Comp ->
+  App LC.Comp
+createAggData' h resultVar aggType dts cont = do
+  (xs, vs) <- mapAndUnzipM (const $ newValueLocal "item") dts
+  let baseType = toLowType aggType
+  allocateBasePointer' resultVar aggType
+    =<< return . getElemPtrList' (LC.VarLocal resultVar) xs baseType
+    =<< storeElements' h (LC.VarLocal resultVar) (zip vs dts) cont
+
+storeElements' ::
+  Handle ->
+  LC.Value -> -- base pointer
+  [(LC.Value, (C.Value, LT.LowType))] -> -- [(the index of an element, the element to be stored)]
+  LC.Comp ->
+  App LC.Comp
+storeElements' h basePointer values cont =
+  case values of
+    [] ->
+      return cont
+    (elemPtr, (value, valueType)) : ids -> do
+      (castVar, castValue) <- newValueLocal "base"
+      lowerValueLetCast' h castVar value valueType
+        =<< store' valueType castValue elemPtr
+        =<< storeElements' h basePointer ids cont
+
+store' :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> App LC.Comp
+store' lowType value pointer cont =
+  return $ LC.Cont (LC.Store lowType value pointer) cont
+
+lowerValue' :: Handle -> Ident -> C.Value -> LC.Comp -> App LC.Comp
+lowerValue' h resultVar v cont =
+  case v of
+    C.VarGlobal globalName argNum -> do
+      lowNameSet <- liftIO $ getDefinedNameSet h
+      unless (S.member globalName lowNameSet) $ do
+        liftIO $ insDeclEnv h (DN.In globalName) argNum
+      uncast' resultVar (LC.VarGlobal globalName) LT.Pointer cont
+    C.VarLocal y ->
+      return $ LC.Let resultVar (LC.nop $ LC.VarLocal y) cont
+    C.VarStaticText text -> do
+      let i8s = encode $ T.unpack text
+      let len = length i8s
+      i <- Gensym.newCount
+      locatorHandle <- Locator.new
+      name <- lift $ liftIO $ Locator.attachCurrentLocator locatorHandle $ BN.textName i
+      let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
+      liftIO $ insertStaticText h name encodedText len
+      uncast' resultVar (LC.VarGlobal name) LT.Pointer cont
+    C.SigmaIntro ds -> do
+      let arrayType = AggTypeArray (length ds) LT.Pointer
+      createAggData' h resultVar arrayType (map (,LT.Pointer) ds) cont
+    C.Int size l -> do
+      uncast' resultVar (LC.Int l) (LT.PrimNum $ PT.Int size) cont
+    C.Float size f -> do
+      uncast' resultVar (LC.Float size f) (LT.PrimNum $ PT.Float size) cont
+
+lowerValues :: Handle -> [(Ident, C.Value)] -> LC.Comp -> App LC.Comp
+lowerValues h xvs cont =
+  case xvs of
+    [] ->
+      return cont
+    (x, v) : rest -> do
+      lowerValue' h x v
+        =<< lowerValues h rest cont
+
+lowerValueLetCast' :: Handle -> Ident -> C.Value -> LT.LowType -> LC.Comp -> App LC.Comp
+lowerValueLetCast' h resultVar v lowType cont = do
+  (tmpVar, tmpValue) <- newValueLocal "tmp"
+  lowerValue' h tmpVar v
+    =<< cast' resultVar tmpValue lowType cont
