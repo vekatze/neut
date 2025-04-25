@@ -214,34 +214,9 @@ lowerComp h term =
     C.Unreachable ->
       return LC.Unreachable
 
-load :: LT.LowType -> LC.Value -> Lower LC.Value
-load elemType pointer = do
-  tmp <- reflect $ LC.Bitcast pointer LT.Pointer LT.Pointer
-  loaded <- reflect $ LC.Load tmp elemType
-  uncast loaded elemType
-
 store :: LT.LowType -> LC.Value -> LC.Value -> Lower ()
 store lowType value pointer =
   reflectCont $ LC.Store lowType value pointer
-
-loadElements ::
-  LC.Value -> -- base pointer
-  [(LC.Value, LT.LowType)] -> -- [(the index of an element, the variable to keep the loaded content)]
-  Lower [LC.Value]
-loadElements basePointer values =
-  case values of
-    [] -> do
-      return []
-    (valuePointer, valueType) : xis -> do
-      uncastedValuePointer <- uncast valuePointer valueType
-      x <- load valueType uncastedValuePointer
-      xs <- loadElements basePointer xis
-      return $ x : xs
-
-free :: LC.Value -> Int -> Lower ()
-free pointer len = do
-  freeID <- lift Gensym.newCount
-  reflectCont $ LC.Free pointer len freeID
 
 lowerCompPrimitive :: Handle -> C.Primitive -> Lower LC.Value
 lowerCompPrimitive h codeOp =
