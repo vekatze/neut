@@ -95,7 +95,7 @@ clarify :: [Stmt] -> App [C.CompStmt]
 clarify stmtList = do
   h <- new
   Clarify.clearAuxEnv
-  baseAuxEnv <- Clarify.toCompStmtList <$> getBaseAuxEnv
+  baseAuxEnv <- Clarify.toCompStmtList <$> liftIO (getBaseAuxEnv h)
   Clarify.clearAuxEnv
   stmtList' <- do
     stmtList' <- mapM (toApp . clarifyStmt h) stmtList
@@ -121,26 +121,26 @@ clarify stmtList = do
 
 clarifyEntryPoint :: App [C.CompStmt]
 clarifyEntryPoint = do
+  h <- new
   Clarify.clearAuxEnv
-  baseAuxEnv <- getBaseAuxEnv
-  h <- Reduce.new
+  baseAuxEnv <- liftIO $ getBaseAuxEnv h
   forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
-    e' <- liftIO $ Reduce.reduce h e
+    e' <- liftIO $ Reduce.reduce (reduceHandle h) e
     return $ C.Def x opacity args e'
 
 registerFoundationalTypes :: App ()
 registerFoundationalTypes = do
+  h <- new
   Clarify.clearAuxEnv
-  auxEnv <- getBaseAuxEnv
+  auxEnv <- liftIO $ getBaseAuxEnv h
   hc <- CompDefinition.new
   liftIO $ forM_ (Map.toList auxEnv) $ uncurry $ CompDefinition.insert hc
 
-getBaseAuxEnv :: App CompDefinition.DefMap
-getBaseAuxEnv = do
-  h <- Sigma.new
-  liftIO $ Sigma.registerImmediateS4 h
-  liftIO $ Sigma.registerClosureS4 h
-  Clarify.getAuxEnv
+getBaseAuxEnv :: Handle -> IO CompDefinition.DefMap
+getBaseAuxEnv h = do
+  Sigma.registerImmediateS4 (sigmaHandle h)
+  Sigma.registerClosureS4 (sigmaHandle h)
+  AuxEnv.get (auxEnvHandle h)
 
 clarifyStmt :: Handle -> Stmt -> EIO C.CompStmt
 clarifyStmt h stmt =
