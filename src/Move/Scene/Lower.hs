@@ -25,6 +25,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Gensym qualified as Gensym
 import Move.Context.Locator qualified as Locator
+import Move.Language.Utility.Gensym qualified as GensymN
 import Move.Scene.Cancel
 import Move.Scene.Comp.Reduce qualified as C
 import Move.Scene.Comp.Subst qualified as Subst
@@ -53,13 +54,15 @@ import Rule.Target
 
 data Handle
   = Handle
-  { declEnv :: IORef DN.DeclEnv,
+  { gensymHandle :: GensymN.Handle,
+    declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
 new :: [C.CompStmt] -> App Handle
 new stmtList = do
+  gensymHandle <- GensymN.new
   declEnv <- liftIO $ newIORef Map.empty
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty
@@ -132,28 +135,28 @@ lowerComp :: Handle -> C.Comp -> App LC.Comp
 lowerComp h term =
   case term of
     C.Primitive theta -> do
-      (resultVar, resultValue) <- newValueLocal "result"
+      (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       lowerCompPrimitive h resultVar theta (LC.Return resultValue)
     C.PiElimDownElim v ds -> do
-      (funcVar, func) <- newValueLocal "func"
-      (castFuncVar, castFunc) <- newValueLocal "func"
-      (argVars, argValues) <- mapAndUnzipM (const $ newValueLocal "arg") ds
+      (funcVar, func) <- liftIO $ newValueLocal h "func"
+      (castFuncVar, castFunc) <- liftIO $ newValueLocal h "func"
+      (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
       lowerValue h funcVar v
         =<< lowerValues h (zip argVars ds)
-        =<< cast castFuncVar func LT.Pointer
+        =<< cast h castFuncVar func LT.Pointer
         =<< return (LC.TailCall LT.Pointer castFunc (map (LT.Pointer,) argValues))
     C.SigmaElim shouldDeallocate xs v e -> do
-      (sigmaVar, sigma) <- newValueLocal "sigma"
-      (elemVars, elems) <- mapAndUnzipM (const $ newValueLocal "elem") xs
+      (sigmaVar, sigma) <- liftIO $ newValueLocal h "sigma"
+      (elemVars, elems) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "elem") xs
       let numOfElems = length xs
       let baseType = LT.Array numOfElems LT.Pointer
       lowerValue h sigmaVar v
         =<< return . getElemPtrList sigma elemVars baseType
-        =<< loadElements' sigma (zip xs (map (,LT.Pointer) elems))
+        =<< loadElements h sigma (zip xs (map (,LT.Pointer) elems))
         =<< freeOrNop shouldDeallocate sigma (length xs)
         =<< lowerComp h e
     C.UpIntro d -> do
-      (resultVar, resultValue) <- newValueLocal "result"
+      (resultVar, resultValue) <- liftIO $ newValueLocal h "result"
       lowerValue h resultVar d (LC.Return resultValue)
     C.UpElim _ x e1 e2 -> do
       e1' <- lowerComp h e1
@@ -176,13 +179,13 @@ lowerComp h term =
           (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
           baseSize <- toApp Env.getBaseSize'
           let t = LT.PrimNum $ PT.Int $ IntSize baseSize
-          (castVar, castValue) <- newValueLocal "cast"
-          (phiVar, phi) <- newValueLocal "phi"
+          (castVar, castValue) <- liftIO $ newValueLocal h "cast"
+          (phiVar, phi) <- liftIO $ newValueLocal h "phi"
           lowerValueLetCast h castVar v t
             =<< return (LC.Switch (castValue, t) defaultCase caseList (phiVar, LC.Return phi))
     C.Free x size cont -> do
       freeID <- Gensym.newCount
-      (ptrVar, ptr) <- newValueLocal "ptr"
+      (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
         =<< return . LC.Cont (LC.Free ptr size freeID)
         =<< lowerComp h cont
@@ -200,28 +203,28 @@ lowerCompPrimitive h resultVar codeOp cont =
           lowerValue h resultVar value cont
         M.Store valueLowType _ value pointer -> do
           let valueLowType' = LT.fromBaseLowType valueLowType
-          (valVar, val) <- newValueLocal "val"
-          (ptrVar, ptr) <- newValueLocal "ptr"
+          (valVar, val) <- liftIO $ newValueLocal h "val"
+          (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h valVar value valueLowType'
             =<< lowerValueLetCast h ptrVar pointer LT.Pointer
             =<< return . LC.Let resultVar (LC.nop LC.Null)
             =<< return (LC.Cont (LC.Store valueLowType' val ptr) cont)
         M.Load valueLowType pointer -> do
           let valueLowType' = LT.fromBaseLowType valueLowType
-          (tmpVar, tmp) <- newValueLocal "tmp"
-          (ptrVar, ptrValue) <- newValueLocal "ptr"
+          (tmpVar, tmp) <- liftIO $ newValueLocal h "tmp"
+          (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h ptrVar pointer LT.Pointer
             =<< return . LC.Let tmpVar (LC.Load ptrValue valueLowType')
-            =<< uncast resultVar tmp valueLowType' cont
+            =<< uncast h resultVar tmp valueLowType' cont
         M.Alloca t size -> do
           let t' = LT.fromBaseLowType t
           baseSize <- toApp Env.getBaseSize'
           let indexType = LT.PrimNum $ PT.Int $ IntSize baseSize
-          (sizeVar, sizeValue) <- newValueLocal "size"
-          (ptrVar, ptrValue) <- newValueLocal "ptr"
+          (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
+          (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h sizeVar size indexType
             =<< return . LC.Let ptrVar (LC.StackAlloc t' indexType sizeValue)
-            =<< uncast resultVar ptrValue LT.Pointer cont
+            =<< uncast h resultVar ptrValue LT.Pointer cont
         M.External domList cod name fixedArgs varArgAndTypeList -> do
           alreadyRegistered <- member h (DN.Ext name)
           unless alreadyRegistered $ do
@@ -234,30 +237,30 @@ lowerCompPrimitive h resultVar codeOp cont =
           let args = fixedArgs ++ varArgs
           case lowCod of
             LT.Void -> do
-              (argVars, argValues) <- mapAndUnzipM (const $ newValueLocal "arg") args
+              (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") args
               lowerAndCastValues h (zip argVars (zip args argCaster))
                 =<< return . LC.Let resultVar (LC.nop LC.Null)
                 =<< return (LC.Cont (LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster argValues) cont)
             _ -> do
-              (tmpVar, tmpValue) <- newValueLocal "tmp"
-              (argVars, argValues) <- mapAndUnzipM (const $ newValueLocal "arg") args
+              (tmpVar, tmpValue) <- liftIO $ newValueLocal h "tmp"
+              (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") args
               lowerAndCastValues h (zip argVars (zip args argCaster))
                 =<< return . LC.Let tmpVar (LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster argValues)
-                =<< uncast resultVar tmpValue lowCod cont
+                =<< uncast h resultVar tmpValue lowCod cont
         M.Global name t -> do
           let t' = LT.fromBaseLowType t
-          uncast resultVar (LC.VarExternal name) t' cont
+          uncast h resultVar (LC.VarExternal name) t' cont
         M.OpaqueValue e ->
           lowerValue h resultVar e cont
 
 lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> App LC.Comp
 lowerCompPrimOp h resultVar op vs cont = do
   let (domList, cod) = getTypeInfo op
-  (argVars, args) <- mapAndUnzipM (const $ newValueLocal "arg") vs
-  (tmpVar, tmp) <- newValueLocal "tmp"
+  (argVars, args) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") vs
+  (tmpVar, tmp) <- liftIO $ newValueLocal h "tmp"
   lowerValueLetCastPrimArgs h (zip argVars (zip vs domList))
     =<< return . LC.Let tmpVar (LC.PrimOp op args)
-    =<< uncast resultVar tmp (LT.PrimNum cod) cont
+    =<< uncast h resultVar tmp (LT.PrimNum cod) cont
 
 lowerValueLetCastPrimArgs :: Handle -> [(Ident, (C.Value, PT.PrimType))] -> LC.Comp -> App LC.Comp
 lowerValueLetCastPrimArgs h xdts cont =
@@ -268,38 +271,38 @@ lowerValueLetCastPrimArgs h xdts cont =
       lowerValueLetCast h x d (LT.PrimNum t)
         =<< lowerValueLetCastPrimArgs h rest cont
 
-cast :: Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
-cast var v lowType cont = do
+cast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
+cast h var v lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) -> do
       return $ LC.Let var (LC.PointerToInt v LT.Pointer lowType) cont
     LT.PrimNum (PT.Float size) -> do
       let floatType = LT.PrimNum $ PT.Float size
       let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt size
-      (tmp, tmpVar) <- newValueLocal "tmp"
+      (tmp, tmpVar) <- liftIO $ newValueLocal h "tmp"
       return $
         LC.Let tmp (LC.PointerToInt v LT.Pointer intType) $
           LC.Let var (LC.Bitcast tmpVar intType floatType) cont
     _ -> do
       return $ LC.Let var (LC.Bitcast v LT.Pointer lowType) cont
 
-uncast :: Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
-uncast var castedValue lowType cont = do
+uncast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> App LC.Comp
+uncast h var castedValue lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) ->
       return $ LC.Let var (LC.IntToPointer castedValue lowType LT.Pointer) cont
     LT.PrimNum (PT.Float i) -> do
       let floatType = LT.PrimNum $ PT.Float i
       let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt i
-      (tmp, tmpVar) <- newValueLocal "tmp"
+      (tmp, tmpVar) <- liftIO $ newValueLocal h "tmp"
       return $
         LC.Let tmp (LC.Bitcast castedValue floatType intType) $
           LC.Let var (LC.IntToPointer tmpVar intType LT.Pointer) cont
     _ ->
       return $ LC.Let var (LC.Bitcast castedValue lowType LT.Pointer) cont
 
-allocateBasePointer' :: Ident -> AggType -> LC.Comp -> App LC.Comp
-allocateBasePointer' resultVar aggType cont = do
+allocateBasePointer :: Handle -> Ident -> AggType -> LC.Comp -> App LC.Comp
+allocateBasePointer h resultVar aggType cont = do
   let lt = toLowType aggType
   case lt of
     LT.Array 0 _ ->
@@ -308,13 +311,13 @@ allocateBasePointer' resultVar aggType cont = do
       return $ LC.Let resultVar (LC.nop LC.Null) cont
     _ -> do
       let (elemType, len) = getSizeInfoOf aggType
-      (sizeVar, sizeValue) <- newValueLocal "result"
-      (castVar, castValue) <- newValueLocal "result"
+      (sizeVar, sizeValue) <- liftIO $ newValueLocal h "result"
+      (castVar, castValue) <- liftIO $ newValueLocal h "result"
       allocID <- Gensym.newCount
       baseSize <- toApp Env.getBaseSize'
       let lowInt = LT.PrimNum $ PT.Int $ IntSize baseSize
       return . getElemPtr sizeVar LC.Null elemType [toInteger len]
-        =<< cast castVar sizeValue lowInt
+        =<< cast h castVar sizeValue lowInt
         =<< return (LC.Let resultVar (LC.Alloc castValue len allocID) cont)
 
 createAggData ::
@@ -325,9 +328,9 @@ createAggData ::
   LC.Comp ->
   App LC.Comp
 createAggData h resultVar aggType dts cont = do
-  (xs, vs) <- mapAndUnzipM (const $ newValueLocal "item") dts
+  (xs, vs) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "item") dts
   let baseType = toLowType aggType
-  allocateBasePointer' resultVar aggType
+  allocateBasePointer h resultVar aggType
     =<< return . getElemPtrList (LC.VarLocal resultVar) xs baseType
     =<< storeElements h (LC.VarLocal resultVar) (zip vs dts) cont
 
@@ -342,37 +345,38 @@ storeElements h basePointer values cont =
     [] ->
       return cont
     (elemPtr, (value, valueType)) : ids -> do
-      (castVar, castValue) <- newValueLocal "base"
+      (castVar, castValue) <- liftIO $ newValueLocal h "base"
       lowerValueLetCast h castVar value valueType
-        =<< store' valueType castValue elemPtr
+        =<< store valueType castValue elemPtr
         =<< storeElements h basePointer ids cont
 
-store' :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> App LC.Comp
-store' lowType value pointer cont =
+store :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> App LC.Comp
+store lowType value pointer cont =
   return $ LC.Cont (LC.Store lowType value pointer) cont
 
-load' :: Ident -> LT.LowType -> LC.Value -> LC.Comp -> App LC.Comp
-load' resultVar elemType pointer cont = do
-  (tmpVar, tmpValue) <- newValueLocal "tmp"
-  (loadedVar, loadedValue) <- newValueLocal "loaded"
+load :: Handle -> Ident -> LT.LowType -> LC.Value -> LC.Comp -> App LC.Comp
+load h resultVar elemType pointer cont = do
+  (tmpVar, tmpValue) <- liftIO $ newValueLocal h "tmp"
+  (loadedVar, loadedValue) <- liftIO $ newValueLocal h "loaded"
   return . LC.Let tmpVar (LC.Bitcast pointer LT.Pointer LT.Pointer)
     =<< return . LC.Let loadedVar (LC.Load tmpValue elemType)
-    =<< uncast resultVar loadedValue elemType cont
+    =<< uncast h resultVar loadedValue elemType cont
 
-loadElements' ::
+loadElements ::
+  Handle ->
   LC.Value -> -- base pointer
   [(Ident, (LC.Value, LT.LowType))] ->
   LC.Comp ->
   App LC.Comp
-loadElements' basePointer values cont =
+loadElements h basePointer values cont =
   case values of
     [] -> do
       return cont
     (targetVar, (valuePointer, valueType)) : rest -> do
-      (castPtrVar, castPtrValue) <- newValueLocal "castptr"
-      uncast castPtrVar valuePointer valueType
-        =<< load' targetVar valueType castPtrValue
-        =<< loadElements' basePointer rest cont
+      (castPtrVar, castPtrValue) <- liftIO $ newValueLocal h "castptr"
+      uncast h castPtrVar valuePointer valueType
+        =<< load h targetVar valueType castPtrValue
+        =<< loadElements h basePointer rest cont
 
 lowerValue :: Handle -> Ident -> C.Value -> LC.Comp -> App LC.Comp
 lowerValue h resultVar v cont =
@@ -381,7 +385,7 @@ lowerValue h resultVar v cont =
       lowNameSet <- liftIO $ getDefinedNameSet h
       unless (S.member globalName lowNameSet) $ do
         liftIO $ insDeclEnv h (DN.In globalName) argNum
-      uncast resultVar (LC.VarGlobal globalName) LT.Pointer cont
+      uncast h resultVar (LC.VarGlobal globalName) LT.Pointer cont
     C.VarLocal y ->
       return $ LC.Let resultVar (LC.nop $ LC.VarLocal y) cont
     C.VarStaticText text -> do
@@ -392,14 +396,14 @@ lowerValue h resultVar v cont =
       name <- lift $ liftIO $ Locator.attachCurrentLocator locatorHandle $ BN.textName i
       let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
       liftIO $ insertStaticText h name encodedText len
-      uncast resultVar (LC.VarGlobal name) LT.Pointer cont
+      uncast h resultVar (LC.VarGlobal name) LT.Pointer cont
     C.SigmaIntro ds -> do
       let arrayType = AggTypeArray (length ds) LT.Pointer
       createAggData h resultVar arrayType (map (,LT.Pointer) ds) cont
     C.Int size l -> do
-      uncast resultVar (LC.Int l) (LT.PrimNum $ PT.Int size) cont
+      uncast h resultVar (LC.Int l) (LT.PrimNum $ PT.Int size) cont
     C.Float size f -> do
-      uncast resultVar (LC.Float size f) (LT.PrimNum $ PT.Float size) cont
+      uncast h resultVar (LC.Float size f) (LT.PrimNum $ PT.Float size) cont
 
 lowerValues :: Handle -> [(Ident, C.Value)] -> LC.Comp -> App LC.Comp
 lowerValues h xvs cont =
@@ -421,9 +425,9 @@ lowerAndCastValues h xvs cont =
 
 lowerValueLetCast :: Handle -> Ident -> C.Value -> LT.LowType -> LC.Comp -> App LC.Comp
 lowerValueLetCast h resultVar v lowType cont = do
-  (tmpVar, tmpValue) <- newValueLocal "tmp"
+  (tmpVar, tmpValue) <- liftIO $ newValueLocal h "tmp"
   lowerValue h tmpVar v
-    =<< cast resultVar tmpValue lowType cont
+    =<< cast h resultVar tmpValue lowType cont
 
 freeOrNop :: Bool -> LC.Value -> Int -> LC.Comp -> App LC.Comp
 freeOrNop shouldDeallocate pointer len cont = do
@@ -446,9 +450,9 @@ constructSwitch h defaultBranch switch =
       (defaultBranch', caseList) <- constructSwitch h defaultBranch rest
       return (defaultBranch', (i, code') : caseList)
 
-newValueLocal :: T.Text -> App (Ident, LC.Value)
-newValueLocal name = do
-  x <- Gensym.newIdentFromText name
+newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
+newValueLocal h name = do
+  x <- GensymN.newIdentFromText (gensymHandle h) name
   return (x, LC.VarLocal x)
 
 insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> IO ()
