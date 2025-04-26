@@ -3,11 +3,10 @@ module Move.Scene.Archive (archive) where
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Module qualified as Module
-import Move.Context.Throw qualified as Throw
 import Path
 import Path.IO
 import Rule.Const
@@ -29,7 +28,7 @@ makeArchiveFromTempDir packageVersion tempRootDir = do
   (_, files) <- listDirRecurRel tempRootDir
   let newContents = map toFilePath files
   mainModule <- Env.getMainModule
-  outputPath <- toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
+  outputPath <- toApp $ toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
   h <- External.new
   toApp $ External.run h "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
 
@@ -50,12 +49,12 @@ makeReadOnly tempRootDir = do
     p <- getPermissions filePath
     setPermissions filePath $ p {writable = False}
 
-getArchiveFilePath :: MainModule -> T.Text -> App (Path Abs File)
+getArchiveFilePath :: MainModule -> T.Text -> EIO (Path Abs File)
 getArchiveFilePath (MainModule mainModule) versionText = do
   let archiveDir = getArchiveDir mainModule
   ensureDir archiveDir
   archiveFile <- resolveFile archiveDir $ T.unpack $ versionText <> packageFileExtension
   archiveExists <- doesFileExist archiveFile
   when archiveExists $ do
-    Throw.raiseError' $ "The archive `" <> versionText <> "` already exists"
+    raiseError' $ "The archive `" <> versionText <> "` already exists"
   return archiveFile
