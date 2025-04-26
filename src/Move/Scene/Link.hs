@@ -52,7 +52,8 @@ link' target (MainModule mainModule) sourceList = do
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
   progressBarHandle <- ProgressBar.new Nothing workingTitle completedTitle color
-  LLVM.link clangOptions objects outputPath
+  h' <- LLVM.new
+  toApp $ LLVM.link h' clangOptions objects outputPath
   ProgressBar.close progressBarHandle
 
 getWorkingTitle :: Int -> T.Text

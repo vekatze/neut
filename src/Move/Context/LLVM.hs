@@ -1,5 +1,7 @@
 module Move.Context.LLVM
-  ( emit,
+  ( Handle,
+    new,
+    emit,
     link,
     ensureSetupSanity,
   )
@@ -13,7 +15,7 @@ import Data.Time.Clock
 import Move.Context.App
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
@@ -28,6 +30,16 @@ import Rule.ProcessRunner.Rule qualified as ProcessRunner
 import Rule.Source
 import Rule.Target
 import System.Process (CmdSpec (RawCommand))
+
+data Handle
+  = Handle
+  { externalHandle :: External.Handle
+  }
+
+new :: App Handle
+new = do
+  externalHandle <- External.new
+  return $ Handle {..}
 
 type ClangOption = String
 
@@ -108,12 +120,11 @@ clangBaseOpt outputPath =
     toFilePath outputPath
   ]
 
-link :: [String] -> [Path Abs File] -> Path Abs File -> App ()
-link clangOptions objectPathList outputPath = do
+link :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> EIO ()
+link h clangOptions objectPathList outputPath = do
   clang <- liftIO Clang.getClang
   ensureDir $ parent outputPath
-  h <- External.new
-  toApp $ External.run h clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
+  External.run (externalHandle h) clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
 
 clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
 clangLinkOpt objectPathList outputPath additionalOptionStr = do
