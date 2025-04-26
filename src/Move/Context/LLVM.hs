@@ -8,6 +8,7 @@ module Move.Context.LLVM
 where
 
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
@@ -15,15 +16,14 @@ import Data.Time.Clock
 import Move.Context.App
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Path
 import Path.IO
 import Rule.Config.Build
-import Rule.Module (MainModule (MainModule))
+import Rule.Module (MainModule, extractModule)
 import Rule.OutputKind qualified as OK
 import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
 import Rule.ProcessRunner.Rule qualified as ProcessRunner
@@ -33,64 +33,76 @@ import System.Process (CmdSpec (RawCommand))
 
 data Handle
   = Handle
-  { externalHandle :: External.Handle
+  { debugHandle :: Debug.Handle,
+    pathHandle :: Path.Handle,
+    externalHandle :: External.Handle,
+    mainModule :: MainModule
   }
 
 new :: App Handle
 new = do
+  debugHandle <- Debug.new
+  pathHandle <- Path.new
   externalHandle <- External.new
+  mainModule <- getMainModule
   return $ Handle {..}
 
 type ClangOption = String
 
 type LLVMCode = L.ByteString
 
-ensureSetupSanity :: Config -> App ()
+ensureSetupSanity :: Config -> EIO ()
 ensureSetupSanity cfg = do
   let willBuildObjects = OK.Object `elem` outputKindList cfg
   let willLink = not $ shouldSkipLink cfg
   when (not willBuildObjects && willLink) $
-    Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` does not contain `object`"
+    raiseError' "`--skip-link` must be set explicitly when `--emit` does not contain `object`"
 
-emit :: Target -> [ClangOption] -> UTCTime -> Either MainTarget Source -> [OK.OutputKind] -> L.ByteString -> App ()
-emit target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
-  h <- Path.new
+emit ::
+  Handle ->
+  Target ->
+  [ClangOption] ->
+  UTCTime ->
+  Either MainTarget Source ->
+  [OK.OutputKind] ->
+  L.ByteString ->
+  EIO ()
+emit h target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
   case sourceOrNone of
     Right source -> do
-      kindPathList <- toApp $ zipWithM (Path.attachOutputPath h target) outputKindList (repeat source)
+      kindPathList <- zipWithM (Path.attachOutputPath (pathHandle h) target) outputKindList (repeat source)
       forM_ kindPathList $ \(_, outputPath) -> ensureDir $ parent outputPath
-      emitAll clangOptions llvmCode kindPathList
+      emitAll h clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
         setModificationTime path timeStamp
     Left t -> do
-      MainModule mainModule <- getMainModule
-      kindPathList <- toApp $ zipWithM (Path.getOutputPathForEntryPoint h mainModule) outputKindList (repeat t)
+      let mm = extractModule $ mainModule h
+      kindPathList <- zipWithM (Path.getOutputPathForEntryPoint (pathHandle h) mm) outputKindList (repeat t)
       forM_ kindPathList $ \(_, path) -> ensureDir $ parent path
-      emitAll clangOptions llvmCode kindPathList
+      emitAll h clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
         setModificationTime path timeStamp
 
-emitAll :: [ClangOption] -> LLVMCode -> [(OK.OutputKind, Path Abs File)] -> App ()
-emitAll clangOptions llvmCode kindPathList = do
+emitAll :: Handle -> [ClangOption] -> LLVMCode -> [(OK.OutputKind, Path Abs File)] -> EIO ()
+emitAll h clangOptions llvmCode kindPathList = do
   case kindPathList of
     [] ->
       return ()
     (kind, path) : rest -> do
-      emit' clangOptions llvmCode kind path
-      emitAll clangOptions llvmCode rest
+      emit' h clangOptions llvmCode kind path
+      emitAll h clangOptions llvmCode rest
 
-emit' :: [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -> App ()
-emit' clangOptString llvmCode kind path = do
+emit' :: Handle -> [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -> EIO ()
+emit' h clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
-      h <- Debug.new
-      toApp $ Debug.report h $ "Saving: " <> T.pack (toFilePath path)
+      Debug.report (debugHandle h) $ "Saving: " <> T.pack (toFilePath path)
       liftIO $ Path.writeByteString path llvmCode
     OK.Object ->
-      emitInner clangOptString llvmCode path
+      emitInner h clangOptString llvmCode path
 
-emitInner :: [ClangOption] -> L.ByteString -> Path Abs File -> App ()
-emitInner additionalClangOptions llvm outputPath = do
+emitInner :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> EIO ()
+emitInner h additionalClangOptions llvm outputPath = do
   clang <- liftIO Clang.getClang
   let optionList = clangBaseOpt outputPath ++ additionalClangOptions
   let ProcessRunner.Runner {run10} = ProcessRunner.ioRunner
@@ -99,14 +111,13 @@ emitInner additionalClangOptions llvm outputPath = do
           { cmdspec = RawCommand clang optionList,
             cwd = Nothing
           }
-  h <- Debug.new
-  toApp $ Debug.report h $ "Executing: " <> T.pack (show (clang, optionList))
+  Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (clang, optionList))
   value <- liftIO $ run10 spec (ProcessRunner.Lazy llvm)
   case value of
     Right _ ->
       return ()
     Left err ->
-      Throw.throw $ ProcessRunner.toCompilerError err
+      throwError $ ProcessRunner.toCompilerError err
 
 clangBaseOpt :: Path Abs File -> [String]
 clangBaseOpt outputPath =

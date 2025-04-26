@@ -23,7 +23,7 @@ build cfg = do
 
 setup :: Config -> App ()
 setup cfg = do
-  LLVM.ensureSetupSanity cfg
+  toApp $ LLVM.ensureSetupSanity cfg
   Initialize.initializeCompiler (remarkCfg cfg)
   mainModule <- Env.getMainModule
   toApp $ Path.ensureNotInDependencyDir mainModule
