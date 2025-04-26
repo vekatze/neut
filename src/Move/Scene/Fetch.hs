@@ -138,19 +138,17 @@ insertDependency h aliasName url = do
                 dependencyPresetEnabled = False
               }
 
-insertCoreDependency :: App ()
-insertCoreDependency = do
-  coreModuleURL <- toApp Module.getCoreModuleURL
-  digest <- toApp Module.getCoreModuleDigest
-  h <- new
-  _ <- toApp $ installModule h coreModuleAlias [coreModuleURL] digest
-  toApp $
-    addDependencyToModuleFile h coreModuleAlias $
-      M.Dependency
-        { dependencyMirrorList = [coreModuleURL],
-          dependencyDigest = digest,
-          dependencyPresetEnabled = True
-        }
+insertCoreDependency :: Handle -> EIO ()
+insertCoreDependency h = do
+  coreModuleURL <- Module.getCoreModuleURL
+  digest <- Module.getCoreModuleDigest
+  _ <- installModule h coreModuleAlias [coreModuleURL] digest
+  addDependencyToModuleFile h coreModuleAlias $
+    M.Dependency
+      { dependencyMirrorList = [coreModuleURL],
+        dependencyDigest = digest,
+        dependencyPresetEnabled = True
+      }
 
 installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> EIO [(ModuleAlias, M.Dependency)]
 installModule h alias mirrorList digest = do
