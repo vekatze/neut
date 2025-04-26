@@ -43,7 +43,8 @@ data Handle
   { gensymHandle :: Gensym.Handle,
     emitLowCompHandle :: EmitLowComp.Handle,
     reduceHandle :: Reduce.Handle,
-    dataSize :: DataSize
+    dataSize :: DataSize,
+    baseSize :: Int
   }
 
 new :: App Handle
@@ -52,6 +53,7 @@ new = do
   emitLowCompHandle <- EmitLowComp.new
   reduceHandle <- Reduce.new
   dataSize <- toApp Env.getDataSize'
+  baseSize <- toApp Env.getBaseSize'
   return $ Handle {..}
 
 emit :: LC.LowCode -> App L.ByteString
@@ -61,19 +63,18 @@ emit lowCode = do
     LC.LowCodeMain mainDef lowCodeInfo -> do
       main <- liftIO $ emitMain h mainDef
       let argDef = emitArgDef
-      (header, body) <- emitLowCodeInfo h lowCodeInfo
+      (header, body) <- liftIO $ emitLowCodeInfo h lowCodeInfo
       return $ buildByteString $ header ++ argDef ++ main ++ body
     LC.LowCodeNormal lowCodeInfo -> do
       let argDecl = emitArgDecl
-      (header, body) <- emitLowCodeInfo h lowCodeInfo
+      (header, body) <- liftIO $ emitLowCodeInfo h lowCodeInfo
       return $ buildByteString $ header ++ argDecl ++ body
 
-emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> App ([Builder], [Builder])
+emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList) = do
-  baseSize <- toApp Env.getBaseSize'
   let declStrList = emitDeclarations declEnv
-  let staticTextList' = map (emitStaticText baseSize) staticTextList
-  defStrList <- concat <$> mapM (liftIO . emitDefinitions h) defList
+  let staticTextList' = map (emitStaticText (baseSize h)) staticTextList
+  defStrList <- concat <$> mapM (emitDefinitions h) defList
   return (declStrList <> staticTextList', defStrList)
 
 emitArgDecl :: [Builder]
