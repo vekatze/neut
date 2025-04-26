@@ -92,7 +92,7 @@ initializeForSource source = do
   Env.setCurrentSource source
   Alias.new >>= toApp . Alias.initializeAliasMap
   Locator.new >>= toApp . Locator.initialize
-  Tag.initialize
+  Tag.new >>= liftIO . Tag.initialize
   RawImportSummary.initialize
   SymLoc.initialize
   TopCandidate.initialize

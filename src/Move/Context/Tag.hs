@@ -14,7 +14,7 @@ where
 
 import Control.Monad (unless, when)
 import Control.Monad.Reader (asks)
-import Data.IORef (IORef, modifyIORef', readIORef)
+import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
@@ -37,9 +37,9 @@ new = do
   tagMapRef <- asks App.tagMap
   return $ Handle {..}
 
-initialize :: App ()
-initialize =
-  writeRef' App.tagMap LT.empty
+initialize :: Handle -> IO ()
+initialize h =
+  writeIORef (tagMapRef h) LT.empty
 
 get :: Handle -> IO LT.LocationTree
 get h =
