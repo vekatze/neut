@@ -76,7 +76,8 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       contentSeq <- toApp $ Load.load (loadHandle h) Peripheral dependenceSeq
       let contentSeq' = _replaceLast fileContent contentSeq
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
-        Initialize.initializeForSource source
+        hInit <- Initialize.new
+        toApp $ Initialize.initializeForSource hInit source
         void $ toApp $ Parse.parse (parseHandle h) Peripheral source cacheOrContent
       unusedGlobalLocators <- liftIO $ UnusedGlobalLocator.get (unusedGlobalLocatorHandle h)
       unusedLocalLocators <- liftIO $ UnusedLocalLocator.get (unusedLocalLocatorHandle h)

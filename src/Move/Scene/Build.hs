@@ -120,7 +120,8 @@ compile target outputKindList contentSeq = do
   hEmit <- Emit.new
   hLLVM <- LLVM.new
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
-    Initialize.initializeForSource source
+    hInit <- Initialize.new
+    toApp $ Initialize.initializeForSource hInit source
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     h' <- Debug.new
     toApp $ Debug.report h' $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix

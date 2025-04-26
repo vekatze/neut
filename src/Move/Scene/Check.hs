@@ -98,7 +98,8 @@ _check' h hRootEnv target baseModule = do
 
 checkSource :: Handle -> Elaborate.HandleEnv -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h hEnv target source cacheOrContent = do
-  Initialize.initializeForSource source
+  hInit <- Initialize.new
+  toApp $ Initialize.initializeForSource hInit source
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   hElaborate <- Elaborate.new hEnv
   void $

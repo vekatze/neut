@@ -54,7 +54,8 @@ data InnerHandle = InnerHandle
 
 new :: App Handle
 new = do
-  currentSource <- Env.getCurrentSource
+  envHandle <- Env.new
+  currentSource <- liftIO $ Env.getCurrentSource envHandle
   substHandle <- Subst.new
   refreshHandle <- Refresh.new
   defMapHandle <- Definition.new

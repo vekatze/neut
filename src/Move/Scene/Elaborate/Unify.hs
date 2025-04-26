@@ -76,7 +76,8 @@ new Elaborate.HandleEnv {..} = do
   fillHandle <- Fill.new
   typeHandle <- Type.new
   gensymHandle <- Gensym.new
-  source <- Env.getCurrentSource
+  envHandle <- Env.new
+  source <- liftIO $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   weakDefHandle <- WeakDefinition.new
   let currentStep = 0

@@ -60,7 +60,8 @@ reduce _handle e = do
 new :: App Handle
 new = do
   substHandle <- Subst.new
-  source <- Env.getCurrentSource
+  envHandle <- Env.new
+  source <- liftIO $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   return Handle {..}
 

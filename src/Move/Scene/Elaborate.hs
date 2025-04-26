@@ -125,7 +125,8 @@ new handleEnv@(Elaborate.HandleEnv {..}) = do
   topCandidateHandle <- TopCandidate.new
   rawImportSummaryHandle <- RawImportSummary.new
   globalRemarkHandle <- GlobalRemark.new
-  currentSource <- Env.getCurrentSource
+  envHandle <- Env.new
+  currentSource <- liftIO $ Env.getCurrentSource envHandle
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> EIO [Stmt]

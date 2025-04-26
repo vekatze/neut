@@ -1,5 +1,7 @@
 module Move.Scene.Initialize
-  ( initializeCompiler,
+  ( Handle,
+    new,
+    initializeCompiler,
     initializeCompilerWithModule,
     initializeCompilerWithPath,
     initializeLogger,
@@ -16,7 +18,7 @@ import Move.Context.App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
@@ -81,20 +83,57 @@ initializeForTarget = do
   Definition.initialize
   Type.initialize
 
-initializeForSource :: Source.Source -> App ()
-initializeForSource source = do
-  UnusedVariable.new >>= liftIO . UnusedVariable.initialize
-  UnusedGlobalLocator.new >>= liftIO . UnusedGlobalLocator.initialize
-  UnusedLocalLocator.new >>= liftIO . UnusedLocalLocator.initialize
-  UnusedStaticFile.new >>= liftIO . UnusedStaticFile.initialize
-  LocalRemark.new >>= liftIO . LocalRemark.initialize
-  Global.new >>= liftIO . Global.initialize
-  Env.setCurrentSource source
-  Alias.new >>= toApp . Alias.initializeAliasMap
-  Locator.new >>= toApp . Locator.initialize
-  Tag.new >>= liftIO . Tag.initialize
-  RawImportSummary.new >>= liftIO . RawImportSummary.initialize
-  SymLoc.new >>= liftIO . SymLoc.initialize
-  TopCandidate.new >>= liftIO . TopCandidate.initialize
-  PreDecl.new >>= liftIO . PreDecl.initialize
-  WeakDecl.new >>= toApp . WeakDecl.initialize
+data Handle = Handle
+  { unusedVariableHandle :: UnusedVariable.Handle,
+    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
+    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
+    unusedStaticFileHandle :: UnusedStaticFile.Handle,
+    localRemarkHandle :: LocalRemark.Handle,
+    globalHandle :: Global.Handle,
+    envHandle :: Env.Handle,
+    aliasHandle :: Alias.Handle,
+    locatorHandle :: Locator.Handle,
+    tagHandle :: Tag.Handle,
+    rawImportSummaryHandle :: RawImportSummary.Handle,
+    symLocHandle :: SymLoc.Handle,
+    topCandidateHandle :: TopCandidate.Handle,
+    preDeclHandle :: PreDecl.Handle,
+    weakDeclHandle :: WeakDecl.Handle
+  }
+
+new :: App Handle
+new = do
+  unusedVariableHandle <- UnusedVariable.new
+  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
+  unusedLocalLocatorHandle <- UnusedLocalLocator.new
+  unusedStaticFileHandle <- UnusedStaticFile.new
+  localRemarkHandle <- LocalRemark.new
+  globalHandle <- Global.new
+  envHandle <- Env.new
+  aliasHandle <- Alias.new
+  locatorHandle <- Locator.new
+  tagHandle <- Tag.new
+  rawImportSummaryHandle <- RawImportSummary.new
+  symLocHandle <- SymLoc.new
+  topCandidateHandle <- TopCandidate.new
+  preDeclHandle <- PreDecl.new
+  weakDeclHandle <- WeakDecl.new
+  return $ Handle {..}
+
+initializeForSource :: Handle -> Source.Source -> EIO ()
+initializeForSource h source = do
+  liftIO $ UnusedVariable.initialize (unusedVariableHandle h)
+  liftIO $ UnusedGlobalLocator.initialize (unusedGlobalLocatorHandle h)
+  liftIO $ UnusedLocalLocator.initialize (unusedLocalLocatorHandle h)
+  liftIO $ UnusedStaticFile.initialize (unusedStaticFileHandle h)
+  liftIO $ LocalRemark.initialize (localRemarkHandle h)
+  liftIO $ Global.initialize (globalHandle h)
+  liftIO $ Env.setCurrentSource (envHandle h) source
+  Alias.initializeAliasMap (aliasHandle h)
+  Locator.initialize (locatorHandle h)
+  liftIO $ Tag.initialize (tagHandle h)
+  liftIO $ RawImportSummary.initialize (rawImportSummaryHandle h)
+  liftIO $ SymLoc.initialize (symLocHandle h)
+  liftIO $ TopCandidate.initialize (topCandidateHandle h)
+  liftIO $ PreDecl.initialize (preDeclHandle h)
+  WeakDecl.initialize (weakDeclHandle h)
