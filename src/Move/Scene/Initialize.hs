@@ -9,12 +9,10 @@ module Move.Scene.Initialize
 where
 
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Move.Console.Report qualified as Report
 import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
@@ -81,7 +79,6 @@ initializeForTarget = do
   Antecedent.initialize
   h <- GlobalRemark.new
   liftIO $ GlobalRemark.set h []
-  asks App.sourceNameMap >>= liftIO . Global.clearSourceNameMap
   WeakDefinition.initialize
   Definition.initialize
   Type.initialize
