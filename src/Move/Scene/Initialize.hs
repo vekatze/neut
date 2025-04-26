@@ -95,6 +95,6 @@ initializeForSource source = do
   Tag.new >>= liftIO . Tag.initialize
   RawImportSummary.new >>= liftIO . RawImportSummary.initialize
   SymLoc.new >>= liftIO . SymLoc.initialize
-  TopCandidate.initialize
+  TopCandidate.new >>= liftIO . TopCandidate.initialize
   PreDecl.initialize
   WeakDecl.initialize

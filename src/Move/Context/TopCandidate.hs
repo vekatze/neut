@@ -22,9 +22,9 @@ new = do
   topCandidateEnvRef <- asks App.topCandidateEnv
   return $ Handle {..}
 
-initialize :: App ()
-initialize =
-  writeRef' App.topCandidateEnv []
+initialize :: Handle -> IO ()
+initialize h =
+  writeIORef (topCandidateEnvRef h) []
 
 insert :: Handle -> TopCandidate -> IO ()
 insert h cand = do
