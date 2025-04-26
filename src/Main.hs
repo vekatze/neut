@@ -1,5 +1,6 @@
 module Main (main) where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Act.Archive qualified as Archive
 import Move.Act.Build qualified as Build
 import Move.Act.Check qualified as Check
@@ -46,6 +47,6 @@ execute = do
         C.LSP ->
           LSP.lsp
         C.ShowVersion cfg ->
-          Version.showVersion cfg
+          liftIO $ Version.showVersion cfg
         C.Zen cfg ->
           Zen.zen cfg

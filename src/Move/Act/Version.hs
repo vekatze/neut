@@ -1,11 +1,10 @@
 module Move.Act.Version (showVersion) where
 
-import Move.Context.App
-import Move.Context.Remark qualified as Remark
 import Data.Version qualified as V
-import Rule.Config.Version
+import Move.Console.Report
 import Paths_neut
+import Rule.Config.Version
 
-showVersion :: Config -> App ()
+showVersion :: Config -> IO ()
 showVersion _ = do
-  Remark.printString $ V.showVersion version
+  printString $ V.showVersion version
