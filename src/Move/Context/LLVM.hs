@@ -112,7 +112,8 @@ link :: [String] -> [Path Abs File] -> Path Abs File -> App ()
 link clangOptions objectPathList outputPath = do
   clang <- liftIO Clang.getClang
   ensureDir $ parent outputPath
-  External.run clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
+  h <- External.new
+  toApp $ External.run h clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
 
 clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
 clangLinkOpt objectPathList outputPath additionalOptionStr = do

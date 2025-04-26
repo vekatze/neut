@@ -10,14 +10,13 @@ module Move.Context.External
   )
 where
 
-import Control.Monad.Except (MonadError (throwError))
+import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, raiseError', toApp)
-import Move.Context.Throw qualified as Throw
+import Move.Context.EIO (EIO, raiseError')
 import Path
 import Rule.Error
 import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
@@ -35,10 +34,9 @@ new = do
   debugHandle <- Debug.new
   return $ Handle {..}
 
-run :: String -> [String] -> App ()
-run procName optionList = do
-  h <- new
-  toApp (runOrFail h procName optionList) >>= Throw.liftEither
+run :: Handle -> String -> [String] -> EIO ()
+run h procName optionList = do
+  runOrFail h procName optionList >>= liftEither
 
 runOrFail :: Handle -> String -> [String] -> EIO (Either Error ())
 runOrFail h procName optionList = do

@@ -14,4 +14,5 @@ execute target args = do
   MainModule mainModule <- Env.getMainModule
   h <- Path.new
   outputPath <- toApp $ Path.getExecutableOutputPath h target mainModule
-  External.run (toFilePath outputPath) args
+  h' <- External.new
+  toApp $ External.run h' (toFilePath outputPath) args

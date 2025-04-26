@@ -3,6 +3,7 @@ module Move.Scene.Archive (archive) where
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Module qualified as Module
@@ -29,7 +30,8 @@ makeArchiveFromTempDir packageVersion tempRootDir = do
   let newContents = map toFilePath files
   mainModule <- Env.getMainModule
   outputPath <- toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
-  External.run "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
+  h <- External.new
+  toApp $ External.run h "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
 
 copyModuleContents :: Path Abs Dir -> Path Abs Dir -> [SomePath Rel] -> App ()
 copyModuleContents tempRootDir moduleRootDir contents = do

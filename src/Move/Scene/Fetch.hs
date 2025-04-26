@@ -198,7 +198,8 @@ extractToDependencyDir archivePath _ digest = do
   mainModule <- getMainModule
   moduleDirPath <- toApp $ Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   ensureDir moduleDirPath
-  External.run "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
+  h <- External.new
+  toApp $ External.run h "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
 addDependencyToModuleFile :: ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile alias dep = do
