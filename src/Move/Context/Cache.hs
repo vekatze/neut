@@ -7,7 +7,6 @@ module Move.Context.Cache
     loadCache,
     loadCompletionCacheOptimistically,
     loadLocationCache,
-    whenCompilationNecessary,
     isEntryPointCompilationSkippable,
     needsCompilation,
     invalidate,
@@ -21,7 +20,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path (getSourceLocationCachePath)
 import Move.Context.Path qualified as Path
@@ -114,16 +113,9 @@ loadLocationCache h t source = do
         Right content ->
           return $ Just content
 
-whenCompilationNecessary :: Handle -> [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
-whenCompilationNecessary h outputKindList source comp = do
-  artifactTime <- toApp $ Env.lookupArtifactTime (artifactMapRef h) (Source.sourceFilePath source)
-  if Source.isCompilationSkippable artifactTime outputKindList
-    then return Nothing
-    else Just <$> comp
-
-needsCompilation :: Handle -> [OK.OutputKind] -> Source.Source -> App Bool
+needsCompilation :: Handle -> [OK.OutputKind] -> Source.Source -> EIO Bool
 needsCompilation h outputKindList source = do
-  artifactTime <- toApp $ Env.lookupArtifactTime (artifactMapRef h) (Source.sourceFilePath source)
+  artifactTime <- Env.lookupArtifactTime (artifactMapRef h) (Source.sourceFilePath source)
   return $ not $ Source.isCompilationSkippable artifactTime outputKindList
 
 isEntryPointCompilationSkippable :: Path.Handle -> MainModule -> MainTarget -> [OK.OutputKind] -> EIO Bool

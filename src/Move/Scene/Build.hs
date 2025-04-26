@@ -103,7 +103,7 @@ compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile target outputKindList contentSeq = do
   mainModule <- Env.getMainModule
   hCache <- Cache.new
-  bs <- mapM (needsCompilation hCache outputKindList . fst) contentSeq
+  bs <- toApp $ mapM (needsCompilation hCache outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount mainModule target outputKindList
   let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
@@ -130,11 +130,14 @@ compile target outputKindList contentSeq = do
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     hc <- Clarify.new
     hl <- Lower.new
-    Cache.whenCompilationNecessary hCache outputKindList source $ do
-      stmtList' <- toApp $ Clarify.clarify hc stmtList
-      async $ toApp $ do
-        virtualCode <- Lower.lower hl stmtList'
-        emit hEmit hLLVM h currentTime target outputKindList (Right source) virtualCode
+    b <- toApp $ Cache.needsCompilation hCache outputKindList source
+    if b
+      then do
+        stmtList' <- toApp $ Clarify.clarify hc stmtList
+        fmap Just $ async $ toApp $ do
+          virtualCode <- Lower.lower hl stmtList'
+          emit hEmit hLLVM h currentTime target outputKindList (Right source) virtualCode
+      else return Nothing
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
     toApp $ emit hEmit hLLVM h currentTime target outputKindList src code
