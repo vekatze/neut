@@ -48,6 +48,7 @@ data Handle
   = Handle
   { ensReflectHandle :: EnsReflect.Handle,
     moduleSaveHandle :: ModuleSave.Handle,
+    externalHandle :: External.Handle,
     mainModule :: M.MainModule
   }
 
@@ -55,6 +56,7 @@ new :: App Handle
 new = do
   ensReflectHandle <- EnsReflect.new
   moduleSaveHandle <- ModuleSave.new
+  externalHandle <- External.new
   mainModule <- getMainModule
   return $ Handle {..}
 
@@ -68,8 +70,9 @@ fetchDeps deps = do
   if null deps'
     then return ()
     else do
+      h <- new
       next <- fmap concat $ pooledForConcurrently deps' $ \(alias, dep) -> do
-        installModule alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
+        installModule h alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
       fetchDeps next
 
 tidy :: [(ModuleAlias, M.Dependency)] -> App [(ModuleAlias, M.Dependency)]
@@ -101,7 +104,7 @@ insertDependency h aliasName url = do
                     Remark.printNote' $ "Already installed: " <> MD.reify digest
                   else do
                     printInstallationRemark alias digest
-                    installModule' tempFilePath alias digest >>= fetchDeps
+                    installModule' h tempFilePath alias digest >>= fetchDeps
               else do
                 Remark.printNote' $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
@@ -114,12 +117,12 @@ insertDependency h aliasName url = do
                 <> MD.reify (M.dependencyDigest dep)
                 <> "\n- new: "
                 <> MD.reify digest
-            installModule' tempFilePath alias digest >>= fetchDeps
+            installModule' h tempFilePath alias digest >>= fetchDeps
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
             toApp $ updateDependencyInModuleFile h (moduleLocation $ M.extractModule mainModule) alias dep'
       Nothing -> do
         printInstallationRemark alias digest
-        installModule' tempFilePath alias digest >>= fetchDeps
+        installModule' h tempFilePath alias digest >>= fetchDeps
         toApp $
           addDependencyToModuleFile h alias $
             M.Dependency
@@ -132,8 +135,8 @@ insertCoreDependency :: App ()
 insertCoreDependency = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
-  _ <- installModule coreModuleAlias [coreModuleURL] digest
   h <- new
+  _ <- installModule h coreModuleAlias [coreModuleURL] digest
   toApp $
     addDependencyToModuleFile h coreModuleAlias $
       M.Dependency
@@ -142,8 +145,8 @@ insertCoreDependency = do
           dependencyPresetEnabled = True
         }
 
-installModule :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
-installModule alias mirrorList digest = do
+installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
+installModule h alias mirrorList digest = do
   printInstallationRemark alias digest
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias mirrorList
@@ -160,11 +163,11 @@ installModule alias mirrorList digest = do
           <> "\n- "
           <> MD.reify archiveModuleDigest
           <> " (actual)"
-    installModule' tempFilePath alias digest
+    installModule' h tempFilePath alias digest
 
-installModule' :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
-installModule' archivePath alias digest = do
-  extractToDependencyDir archivePath alias digest
+installModule' :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
+installModule' h archivePath alias digest = do
+  toApp $ extractToDependencyDir h archivePath alias digest
   libModule <- getLibraryModule alias digest
   return $ collectDependency libModule
 
@@ -214,13 +217,11 @@ download tempFilePath ma@(ModuleAlias alias) mirrorList = do
           forM_ errorList Remark.printRemark
           download tempFilePath ma rest
 
-extractToDependencyDir :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
-extractToDependencyDir archivePath _ digest = do
-  mainModule <- getMainModule
-  moduleDirPath <- toApp $ Module.getModuleDirByID mainModule Nothing (MID.Library digest)
+extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO ()
+extractToDependencyDir h archivePath _ digest = do
+  moduleDirPath <- Module.getModuleDirByID (mainModule h) Nothing (MID.Library digest)
   ensureDir moduleDirPath
-  h <- External.new
-  toApp $ External.run h "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
+  External.run (externalHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
 addDependencyToModuleFile h alias dep = do
