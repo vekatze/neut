@@ -111,7 +111,7 @@ insertDependency h aliasName url = do
                     Remark.printNote' $ "Already installed: " <> MD.reify digest
                   else do
                     liftIO $ printInstallationRemark h alias digest
-                    installModule' h tempFilePath alias digest >>= fetchDeps
+                    toApp (installModule' h tempFilePath alias digest) >>= fetchDeps
               else do
                 Remark.printNote' $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
@@ -124,12 +124,12 @@ insertDependency h aliasName url = do
                 <> MD.reify (M.dependencyDigest dep)
                 <> "\n- new: "
                 <> MD.reify digest
-            installModule' h tempFilePath alias digest >>= fetchDeps
+            toApp (installModule' h tempFilePath alias digest) >>= fetchDeps
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
             toApp $ updateDependencyInModuleFile h (moduleLocation $ M.extractModule mainModule) alias dep'
       Nothing -> do
         liftIO $ printInstallationRemark h alias digest
-        installModule' h tempFilePath alias digest >>= fetchDeps
+        toApp (installModule' h tempFilePath alias digest) >>= fetchDeps
         toApp $
           addDependencyToModuleFile h alias $
             M.Dependency
@@ -170,12 +170,12 @@ installModule h alias mirrorList digest = do
           <> "\n- "
           <> MD.reify archiveModuleDigest
           <> " (actual)"
-    installModule' h tempFilePath alias digest
+    toApp $ installModule' h tempFilePath alias digest
 
-installModule' :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
+installModule' :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO [(ModuleAlias, M.Dependency)]
 installModule' h archivePath alias digest = do
-  toApp $ extractToDependencyDir h archivePath alias digest
-  libModule <- toApp $ getLibraryModule h alias digest
+  extractToDependencyDir h archivePath alias digest
+  libModule <- getLibraryModule h alias digest
   return $ collectDependency libModule
 
 printInstallationRemark :: Handle -> ModuleAlias -> MD.ModuleDigest -> IO ()
