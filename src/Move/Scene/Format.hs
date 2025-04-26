@@ -10,7 +10,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -60,15 +60,14 @@ new = do
   initSourceHandle <- InitSource.new
   return $ Handle {..}
 
-format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App T.Text
-format shouldMinimizeImports fileType path content = do
-  h <- new
+format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> EIO T.Text
+format h shouldMinimizeImports fileType path content = do
   case fileType of
     FT.Ens -> do
-      ens <- toApp $ EnsReflect.fromFilePath' (ensReflectHandle h) path content
+      ens <- EnsReflect.fromFilePath' (ensReflectHandle h) path content
       return $ Ens.pp ens
     FT.Source -> do
-      toApp $ _formatSource h shouldMinimizeImports path content
+      _formatSource h shouldMinimizeImports path content
 
 type ShouldMinimizeImports =
   Bool

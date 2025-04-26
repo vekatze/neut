@@ -1,20 +1,21 @@
 module Move.Scene.LSP.Format (format) where
 
-import Move.Context.AppM
-import Move.Context.Throw qualified as Throw
 import Control.Monad.Trans
 import Data.Maybe
 import Data.Text qualified as T
-import Rule.AppLsp
-import Rule.Const
-import Rule.FileType qualified as FT
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Language.LSP.VFS
-import Path
-import Path.IO
+import Move.Context.AppM
+import Move.Context.EIO (toApp)
+import Move.Context.Throw qualified as Throw
 import Move.Scene.Format qualified as Format
 import Move.Scene.LSP.Util (liftAppM)
+import Path
+import Path.IO
+import Rule.AppLsp
+import Rule.Const
+import Rule.FileType qualified as FT
 
 format :: Format.ShouldMinimizeImports -> Uri -> AppLsp a [TextEdit]
 format shouldMinimizeImports uri = do
@@ -50,8 +51,14 @@ getFormattedContent shouldMinimizeImports file path = do
   (_, ext) <- liftMaybe $ splitExtension path
   case (ext == sourceFileExtension, ext == ensFileExtension) of
     (True, _) -> do
-      lift (Throw.runMaybe $ Format.format shouldMinimizeImports FT.Source path (virtualFileText file)) >>= liftMaybe
+      hFormat <- lift Format.new
+      formattedContentOrNone <- lift $ Throw.runMaybe $ toApp $ do
+        Format.format hFormat shouldMinimizeImports FT.Source path (virtualFileText file)
+      liftMaybe formattedContentOrNone
     (_, True) -> do
-      lift (Throw.runMaybe $ Format.format shouldMinimizeImports FT.Ens path (virtualFileText file)) >>= liftMaybe
+      hFormat <- lift Format.new
+      formattedContentOrNone <- lift $ Throw.runMaybe $ toApp $ do
+        Format.format hFormat shouldMinimizeImports FT.Ens path (virtualFileText file)
+      liftMaybe formattedContentOrNone
     _ ->
       liftMaybe Nothing

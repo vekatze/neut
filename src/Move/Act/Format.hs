@@ -20,7 +20,8 @@ format cfg = do
   path <- resolveFile' $ filePathString cfg
   toApp $ ensureExistence' path Nothing
   content <- liftIO $ readTextFile path
-  content' <- Format.format (shouldMinimizeImports cfg) (inputFileType cfg) path content
+  hFormat <- Format.new
+  content' <- toApp $ Format.format hFormat (shouldMinimizeImports cfg) (inputFileType cfg) path content
   if mustUpdateInPlace cfg
     then liftIO $ Write.write path content'
     else liftIO $ Parse.printTextFile content'
