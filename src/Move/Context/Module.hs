@@ -20,7 +20,6 @@ import Move.Context.App
 import Move.Context.App.Internal
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Path
 import Path.IO
 import Rule.Const
@@ -72,14 +71,14 @@ getCoreModuleURL = do
     Nothing ->
       raiseError' $ "The URL of the core module is not specified; set it via " <> T.pack envVarCoreModuleURL
 
-getCoreModuleDigest :: App ModuleDigest
+getCoreModuleDigest :: EIO ModuleDigest
 getCoreModuleDigest = do
   mCoreModuleDigest <- liftIO $ lookupEnv envVarCoreModuleDigest
   case mCoreModuleDigest of
     Just coreModuleDigest ->
       return $ ModuleDigest $ T.pack coreModuleDigest
     Nothing ->
-      Throw.raiseError' $ "The digest of the core module is not specified; set it via " <> T.pack envVarCoreModuleDigest
+      raiseError' $ "The digest of the core module is not specified; set it via " <> T.pack envVarCoreModuleDigest
 
 sourceFromPath :: Module -> Path Abs File -> EIO Source.Source
 sourceFromPath baseModule path = do

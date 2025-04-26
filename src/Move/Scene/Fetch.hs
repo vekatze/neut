@@ -141,7 +141,7 @@ insertDependency h aliasName url = do
 insertCoreDependency :: App ()
 insertCoreDependency = do
   coreModuleURL <- toApp Module.getCoreModuleURL
-  digest <- Module.getCoreModuleDigest
+  digest <- toApp Module.getCoreModuleDigest
   h <- new
   _ <- toApp $ installModule h coreModuleAlias [coreModuleURL] digest
   toApp $
