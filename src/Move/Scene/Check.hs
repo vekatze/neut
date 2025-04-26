@@ -38,6 +38,7 @@ data Handle
     loadHandle :: Load.Handle,
     unravelHandle :: Unravel.Handle,
     parseHandle :: Parse.Handle,
+    moduleHandle :: Module.Handle,
     envHandle :: Env.Handle
   }
 
@@ -48,6 +49,7 @@ new = do
   unravelHandle <- Unravel.new
   parseHandle <- Parse.new
   envHandle <- Env.new
+  moduleHandle <- Module.new
   return $ Handle {..}
 
 check :: App [Remark]
@@ -56,19 +58,17 @@ check = do
   M.MainModule mainModule <- toApp $ Env.getMainModule (envHandle h)
   _check h Peripheral mainModule
 
-checkModule :: M.Module -> App [Remark]
-checkModule baseModule = do
-  h <- new
+checkModule :: Handle -> M.Module -> App [Remark]
+checkModule h baseModule = do
   _check h Peripheral baseModule
 
 checkAll :: App [Remark]
 checkAll = do
-  he <- Env.new
-  mainModule <- toApp $ Env.getMainModule he
-  hm <- Module.new
-  deps <- toApp $ Module.getAllDependencies hm mainModule (extractModule mainModule)
-  forM_ deps $ \(_, m) -> checkModule m
-  checkModule (extractModule mainModule)
+  h <- new
+  mainModule <- toApp $ Env.getMainModule (envHandle h)
+  deps <- toApp $ Module.getAllDependencies (moduleHandle h) mainModule (extractModule mainModule)
+  forM_ deps $ \(_, m) -> checkModule h m
+  checkModule h (extractModule mainModule)
 
 checkSingle :: Elaborate.HandleEnv -> M.Module -> Path Abs File -> App [Remark]
 checkSingle hRootEnv baseModule path = do
