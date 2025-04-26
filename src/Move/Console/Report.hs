@@ -1,5 +1,7 @@
 module Move.Console.Report
-  ( printCritical',
+  ( Handle,
+    new,
+    printCritical',
     printCritical,
     printError',
     printError,
@@ -15,128 +17,128 @@ module Move.Console.Report
     printString,
     printWarning',
     printWarning,
-    getColorSpecStdOut,
-    getColorSpecStdErr,
     printStdOut,
     printStdErr,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
+import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
 import Rule.FilePos
 import Rule.FilePos qualified as FilePos
 import Rule.Hint
 import Rule.Log qualified as L
 import Rule.Remark qualified as R
 import System.Console.ANSI.Codes
-import System.IO
+import System.IO hiding (Handle)
 
--- temporary
-getColorSpecStdOut :: App L.ColorSpec
-getColorSpecStdOut = do
-  b <- readRef' shouldColorizeStdout
-  if b
-    then return L.Colorful
-    else return L.Colorless
+data Handle
+  = Handle
+  { shouldColorizeStdoutRef :: IORef Bool,
+    shouldColorizeStderrRef :: IORef Bool
+  }
 
--- temporary
-getColorSpecStdErr :: App L.ColorSpec
-getColorSpecStdErr = do
-  b <- readRef' shouldColorizeStderr
-  if b
-    then return L.Colorful
-    else return L.Colorless
+new :: App Handle
+new = do
+  shouldColorizeStdoutRef <- asks App.shouldColorizeStdout
+  shouldColorizeStderrRef <- asks App.shouldColorizeStderr
+  return $ Handle {..}
 
 printString :: String -> IO ()
 printString =
   liftIO . putStrLn
 
-printRemark :: L.ColorSpec -> R.Remark -> IO ()
+printRemark :: Handle -> R.Remark -> IO ()
 printRemark =
   printRemarkIO
 
-printRemarkList :: L.ColorSpec -> [R.Remark] -> IO ()
-printRemarkList c remarkList = do
-  foldr ((>>) . printRemark c) (return ()) remarkList
+printRemarkList :: Handle -> [R.Remark] -> IO ()
+printRemarkList h remarkList = do
+  foldr ((>>) . printRemark h) (return ()) remarkList
 
-printErrorList :: L.ColorSpec -> [R.Remark] -> IO ()
-printErrorList c remarkList = do
-  foldr ((>>) . printErrorIO c) (return ()) remarkList
+printErrorList :: Handle -> [R.Remark] -> IO ()
+printErrorList h remarkList = do
+  foldr ((>>) . printErrorIO h) (return ()) remarkList
 
-printNote :: L.ColorSpec -> Hint -> T.Text -> IO ()
-printNote c =
-  printRemarkWithFilePos c R.Note
+printNote :: Handle -> Hint -> T.Text -> IO ()
+printNote h =
+  printRemarkWithFilePos h R.Note
 
-printNote' :: L.ColorSpec -> T.Text -> IO ()
-printNote' c =
-  printRemarkWithoutFilePos c R.Note
+printNote' :: Handle -> T.Text -> IO ()
+printNote' h =
+  printRemarkWithoutFilePos h R.Note
 
-printWarning :: L.ColorSpec -> Hint -> T.Text -> IO ()
-printWarning c =
-  printRemarkWithFilePos c R.Warning
+printWarning :: Handle -> Hint -> T.Text -> IO ()
+printWarning h =
+  printRemarkWithFilePos h R.Warning
 
-printWarning' :: L.ColorSpec -> T.Text -> IO ()
-printWarning' c =
-  printRemarkWithoutFilePos c R.Warning
+printWarning' :: Handle -> T.Text -> IO ()
+printWarning' h =
+  printRemarkWithoutFilePos h R.Warning
 
-printError :: L.ColorSpec -> Hint -> T.Text -> IO ()
-printError c =
-  printRemarkWithFilePos c R.Error
+printError :: Handle -> Hint -> T.Text -> IO ()
+printError h =
+  printRemarkWithFilePos h R.Error
 
-printError' :: L.ColorSpec -> T.Text -> IO ()
-printError' c =
-  printRemarkWithoutFilePos c R.Error
+printError' :: Handle -> T.Text -> IO ()
+printError' h =
+  printRemarkWithoutFilePos h R.Error
 
-printCritical :: L.ColorSpec -> Hint -> T.Text -> IO ()
-printCritical c =
-  printRemarkWithFilePos c R.Critical
+printCritical :: Handle -> Hint -> T.Text -> IO ()
+printCritical h =
+  printRemarkWithFilePos h R.Critical
 
-printCritical' :: L.ColorSpec -> T.Text -> IO ()
-printCritical' c =
-  printRemarkWithoutFilePos c R.Critical
+printCritical' :: Handle -> T.Text -> IO ()
+printCritical' h =
+  printRemarkWithoutFilePos h R.Critical
 
-printPass :: L.ColorSpec -> Hint -> T.Text -> IO ()
-printPass c =
-  printRemarkWithFilePos c R.Pass
+printPass :: Handle -> Hint -> T.Text -> IO ()
+printPass h =
+  printRemarkWithFilePos h R.Pass
 
-printPass' :: L.ColorSpec -> T.Text -> IO ()
-printPass' c =
-  printRemarkWithoutFilePos c R.Pass
+printPass' :: Handle -> T.Text -> IO ()
+printPass' h =
+  printRemarkWithoutFilePos h R.Pass
 
-printFail :: L.ColorSpec -> Hint -> T.Text -> IO ()
-printFail c =
-  printRemarkWithFilePos c R.Fail
+printFail :: Handle -> Hint -> T.Text -> IO ()
+printFail h =
+  printRemarkWithFilePos h R.Fail
 
-printFail' :: L.ColorSpec -> T.Text -> IO ()
-printFail' c =
-  printRemarkWithoutFilePos c R.Fail
+printFail' :: Handle -> T.Text -> IO ()
+printFail' h =
+  printRemarkWithoutFilePos h R.Fail
 
-printRemarkWithFilePos :: L.ColorSpec -> R.RemarkLevel -> Hint -> T.Text -> IO ()
-printRemarkWithFilePos c level m txt = do
-  printRemark c (FilePos.fromHint m, True, level, txt)
+printRemarkWithFilePos :: Handle -> R.RemarkLevel -> Hint -> T.Text -> IO ()
+printRemarkWithFilePos h level m txt = do
+  printRemark h (FilePos.fromHint m, True, level, txt)
 
-printRemarkWithoutFilePos :: L.ColorSpec -> R.RemarkLevel -> T.Text -> IO ()
-printRemarkWithoutFilePos c level txt =
-  printRemark c (Nothing, True, level, txt)
+printRemarkWithoutFilePos :: Handle -> R.RemarkLevel -> T.Text -> IO ()
+printRemarkWithoutFilePos h level txt =
+  printRemark h (Nothing, True, level, txt)
 
-printRemarkIO :: L.ColorSpec -> R.Remark -> IO ()
-printRemarkIO c (mpos, shouldInsertPadding, l, t) = do
+printRemarkIO :: Handle -> R.Remark -> IO ()
+printRemarkIO h (mpos, shouldInsertPadding, l, t) = do
   let locText = getRemarkLocation mpos
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  printStdOut c $ locText <> levelText <> remarkText
+  b <- readIORef $ shouldColorizeStdoutRef h
+  let colorSpec = if b then L.Colorful else L.Colorless
+  printStdOut colorSpec $ locText <> levelText <> remarkText
 
-printErrorIO :: L.ColorSpec -> R.Remark -> IO ()
-printErrorIO c (mpos, shouldInsertPadding, l, t) = do
+printErrorIO :: Handle -> R.Remark -> IO ()
+printErrorIO h (mpos, shouldInsertPadding, l, t) = do
   let locText = getRemarkLocation mpos
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  printStdErr c $ locText <> levelText <> remarkText
+  b <- readIORef $ shouldColorizeStderrRef h
+  let colorSpec = if b then L.Colorful else L.Colorless
+  printStdErr colorSpec $ locText <> levelText <> remarkText
 
 getRemarkLocation :: Maybe FilePos -> L.Log
 getRemarkLocation mpos = do

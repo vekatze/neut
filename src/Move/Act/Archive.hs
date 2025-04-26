@@ -1,6 +1,5 @@
 module Move.Act.Archive (archive) where
 
-import Move.Console.Report (getColorSpecStdOut)
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
@@ -19,8 +18,8 @@ archive cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
   mainModule <- getMainModule
   toApp $ Path.ensureNotInDependencyDir mainModule
-  c <- getColorSpecStdOut
-  packageVersion <- toApp $ maybe (PV.chooseNewVersion c mainModule) (PV.reflect mainModule) (getArchiveName cfg)
+  hp <- PV.new
+  packageVersion <- toApp $ maybe (PV.chooseNewVersion hp mainModule) (PV.reflect mainModule) (getArchiveName cfg)
   h <- EnsReflect.new
   archiveEns <- getMainModule >>= toApp . makeArchiveEns h packageVersion
   let (moduleRootDir, contents) = Collect.collectModuleFiles mainModule

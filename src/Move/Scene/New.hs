@@ -11,7 +11,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Move.Console.Report
+import Move.Console.Report qualified as Report
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
@@ -20,7 +20,6 @@ import Path
 import Path.IO
 import Rule.ClangOption qualified as CL
 import Rule.Const
-import Rule.Log (ColorSpec)
 import Rule.Module
 import Rule.ModuleID qualified as MID
 import Rule.SourceLocator qualified as SL
@@ -30,13 +29,13 @@ import Rule.ZenConfig
 data Handle
   = Handle
   { moduleSaveHandle :: ModuleSave.Handle,
-    stdOutColorSpec :: ColorSpec
+    reportHandle :: Report.Handle
   }
 
 new :: App Handle
 new = do
   moduleSaveHandle <- ModuleSave.new
-  stdOutColorSpec <- getColorSpecStdOut
+  reportHandle <- Report.new
   return $ Handle {..}
 
 createNewProject :: Handle -> T.Text -> Module -> EIO ()
@@ -48,7 +47,7 @@ createNewProject h moduleName newModule = do
     else do
       createModuleFile h newModule
       liftIO $ createMainFile newModule
-      liftIO $ printNote' (stdOutColorSpec h) $ "Created a module: " <> moduleName
+      liftIO $ Report.printNote' (reportHandle h) $ "Created a module: " <> moduleName
 
 constructDefaultModule :: T.Text -> Maybe T.Text -> EIO Module
 constructDefaultModule moduleName mTargetName = do

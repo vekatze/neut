@@ -15,7 +15,7 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
-import Move.Console.Report
+import Move.Console.Report qualified as Report
 import Move.Context.App
 import Move.Context.EIO (EIO, forP, raiseError')
 import Move.Context.Env (getMainModule)
@@ -33,7 +33,6 @@ import Rule.Ens qualified as E
 import Rule.Ens qualified as SE
 import Rule.Error (Error (MakeError))
 import Rule.Hint
-import Rule.Log (ColorSpec)
 import Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Rule.Module qualified as M
 import Rule.ModuleAlias
@@ -49,8 +48,8 @@ data Handle
     moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,
     moduleHandle :: ModuleReflect.Handle,
-    mainModule :: M.MainModule,
-    stdOutColorSpec :: ColorSpec
+    reportHandle :: Report.Handle,
+    mainModule :: M.MainModule
   }
 
 new :: App Handle
@@ -59,8 +58,8 @@ new = do
   moduleSaveHandle <- ModuleSave.new
   externalHandle <- External.new
   moduleHandle <- ModuleReflect.new
+  reportHandle <- Report.new
   mainModule <- getMainModule
-  stdOutColorSpec <- getColorSpecStdOut
   return $ Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()
@@ -102,17 +101,17 @@ insertDependency h aliasName url = do
                 dependencyDirExists <- doesDirExist moduleDirPath
                 if dependencyDirExists
                   then do
-                    liftIO $ printNote' (stdOutColorSpec h) $ "Already installed: " <> MD.reify digest
+                    liftIO $ Report.printNote' (reportHandle h) $ "Already installed: " <> MD.reify digest
                   else do
                     liftIO $ printInstallationRemark h alias digest
                     installModule' h tempFilePath alias digest >>= fetchDeps h
               else do
-                liftIO $ printNote' (stdOutColorSpec h) $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
+                liftIO $ Report.printNote' (reportHandle h) $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
                 addDependencyToModuleFile h alias dep'
           else do
             liftIO $
-              printNote' (stdOutColorSpec h) $
+              Report.printNote' (reportHandle h) $
                 "Replacing a dependency: "
                   <> BN.reify (extract alias)
                   <> "\n- old: "
@@ -172,7 +171,7 @@ installModule' h archivePath alias digest = do
 
 printInstallationRemark :: Handle -> ModuleAlias -> MD.ModuleDigest -> IO ()
 printInstallationRemark h alias digest = do
-  printNote' (stdOutColorSpec h) $ "Install: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
+  Report.printNote' (reportHandle h) $ "Install: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
 
 collectDependency :: M.Module -> [(ModuleAlias, M.Dependency)]
 collectDependency baseModule = do
@@ -208,8 +207,8 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
         Right () ->
           return ()
         Left (MakeError errorList) -> do
-          liftIO $ printWarning' (stdOutColorSpec h) $ "Could not process the module at: " <> mirror
-          liftIO $ forM_ errorList $ printRemark (stdOutColorSpec h)
+          liftIO $ Report.printWarning' (reportHandle h) $ "Could not process the module at: " <> mirror
+          liftIO $ forM_ errorList $ Report.printRemark (reportHandle h)
           download h tempFilePath ma rest
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO ()
