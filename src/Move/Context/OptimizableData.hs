@@ -2,7 +2,7 @@ module Move.Context.OptimizableData
   ( Handle,
     new,
     insert,
-    lookupH,
+    lookup,
   )
 where
 
@@ -29,7 +29,7 @@ insert :: Handle -> DD.DefiniteDescription -> OptimizableData -> IO ()
 insert h dd grp = do
   modifyIORef' (optDataMapRef h) $ Map.insert dd grp
 
-lookupH :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
-lookupH h dd = do
+lookup :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
+lookup h dd = do
   optDataMap <- readIORef (optDataMapRef h)
   return $ Map.lookup dd optDataMap

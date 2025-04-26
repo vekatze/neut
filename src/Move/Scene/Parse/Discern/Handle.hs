@@ -5,7 +5,6 @@ module Move.Scene.Parse.Discern.Handle
     extend',
     extendWithoutInsert,
     extendByNominalEnv,
-    lookupOD,
     deleteUnusedVariable,
     deleteUnusedStaticFile,
     getBuildMode,
@@ -25,12 +24,12 @@ import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.BuildMode qualified as BM
-import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
@@ -39,7 +38,6 @@ import Rule.LocalLocator qualified as LL
 import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.NominalEnv
-import Rule.OptimizableData
 import Rule.VarDefKind
 
 data Handle = Handle
@@ -52,12 +50,12 @@ data Handle = Handle
     symLocHandle :: SymLoc.Handle,
     topCandidateHandle :: TopCandidate.Handle,
     preDeclHandle :: PreDecl.Handle,
+    optDataHandle :: OptimizableData.Handle,
     nameEnv :: NominalEnv,
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
     usedVariableSetRef :: IORef (S.Set Int),
-    optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
     buildModeRef :: IORef BM.BuildMode,
     tagMapRef :: IORef LT.LocationTree
@@ -74,11 +72,11 @@ new = do
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   preDeclHandle <- PreDecl.new
+  optDataHandle <- OptimizableData.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
   usedVariableSetRef <- asks App.usedVariableSet
-  optDataMapRef <- asks App.optDataMap
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   tagMapRef <- asks App.tagMap
   buildModeRef <- asks App.buildMode
@@ -114,11 +112,6 @@ insertUnusedVariable h m x k =
 deleteUnusedVariable :: Handle -> Ident -> IO ()
 deleteUnusedVariable h x =
   modifyIORef' (usedVariableSetRef h) $ S.insert (Ident.toInt x)
-
-lookupOD :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
-lookupOD h dd = do
-  optDataMap <- readIORef (optDataMapRef h)
-  return $ Map.lookup dd optDataMap
 
 deleteUnusedStaticFile :: Handle -> T.Text -> IO ()
 deleteUnusedStaticFile h ll =

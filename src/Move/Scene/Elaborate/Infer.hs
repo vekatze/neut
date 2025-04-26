@@ -404,7 +404,7 @@ infer h term =
               reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
               dataArgs' <- mapM (const $ liftIO $ newTypedHole h m (varEnv h)) [1 .. length dataArgs]
               cursor <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "cursor"
-              od <- liftIO $ OptimizableData.lookupH (optDataHandle h) consDD
+              od <- liftIO $ OptimizableData.lookup (optDataHandle h) consDD
               let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
               liftIO $ WeakType.insert (weakTypeHandle h) cursor t''
               (tree', _ :< treeType) <-

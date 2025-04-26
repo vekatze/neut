@@ -8,6 +8,7 @@ import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.Vector qualified as V
 import Move.Context.EIO (EIO, raiseCritical')
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Noema
@@ -66,7 +67,7 @@ specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq,
         ConsSpecializer (ConsInfo {consDD = dd}) -> do
           if dd == consDD
             then do
-              od <- liftIO $ H.lookupOD h consDD
+              od <- liftIO $ OptimizableData.lookup (H.optDataHandle h) consDD
               case od of
                 Just OD.Enum ->
                   return $ Just (V.concat [V.fromList args, rest], (freedVars, baseSeq, body))

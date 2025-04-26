@@ -148,7 +148,7 @@ clarifyStmt h stmt =
       let tenv = TM.insTypeEnv xts IntMap.empty
       case stmtKind of
         Data name dataArgs consInfoList -> do
-          od <- liftIO $ OptimizableData.lookupH (optDataHandle h) name
+          od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
           case od of
             Just OD.Enum -> do
               clarifyStmtDefineBody' h name xts' Sigma.returnImmediateS4
@@ -239,7 +239,7 @@ clarifyTerm h tenv term =
         Utility.bindLet (zip zs dataArgs') $
           C.PiElimDownElim (C.VarGlobal name (AN.fromInt (length dataArgs))) xs
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
-      od <- liftIO $ OptimizableData.lookupH (optDataHandle h) consName
+      od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
           return $ C.UpIntro $ C.Int (PNS.IntSize (baseSize h)) (D.reify discriminant)
@@ -403,11 +403,11 @@ getClauseDataGroup :: Handle -> TM.Term -> EIO (Maybe OD.OptimizableData)
 getClauseDataGroup h term =
   case term of
     _ :< TM.Data _ dataName _ -> do
-      liftIO $ OptimizableData.lookupH (optDataHandle h) dataName
+      liftIO $ OptimizableData.lookup (optDataHandle h) dataName
     _ :< TM.PiElim (_ :< TM.Data _ dataName _) _ -> do
-      liftIO $ OptimizableData.lookupH (optDataHandle h) dataName
+      liftIO $ OptimizableData.lookup (optDataHandle h) dataName
     _ :< TM.PiElim (_ :< TM.VarGlobal _ dataName) _ -> do
-      liftIO $ OptimizableData.lookupH (optDataHandle h) dataName
+      liftIO $ OptimizableData.lookup (optDataHandle h) dataName
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
       return $ Just OD.Enum
     _ :< TM.Prim (P.Type PT.Rune) -> do
@@ -457,7 +457,7 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
       let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
       (body', contChain) <- clarifyDecisionTree h (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
       let chain = prefixChain ++ contChain
-      od <- liftIO $ OptimizableData.lookupH (optDataHandle h) consDD
+      od <- liftIO $ OptimizableData.lookup (optDataHandle h) consDD
       case od of
         Just OD.Enum -> do
           return (EC.Int (D.reify disc), body', chain)

@@ -412,4 +412,4 @@ getConsArgTypes h m consName = do
 
 lookupOptimizableData :: InnerHandle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOptimizableData h dd = do
-  OptimizableData.lookupH (optDataHandle (handle h)) dd
+  OptimizableData.lookup (optDataHandle (handle h)) dd
