@@ -20,6 +20,7 @@ import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
+import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Data
 import Move.Scene.Parse.Discern.Handle qualified as H
@@ -138,7 +139,7 @@ discernGeist h endLoc geist = do
   let expArgs = RT.extractArgs $ RT.expArgs geist
   (impArgs', h') <- discernBinder h impArgs endLoc
   (expArgs', h'') <- discernBinder h' expArgs endLoc
-  forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO $ H.deleteUnusedVariable h x
+  forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO $ UnusedVariable.delete (H.unusedVariableHandle h) x
   cod' <- discern h'' $ snd $ RT.cod geist
   let m = RT.loc geist
   let dd = nameLifter $ fst $ RT.name geist
@@ -203,7 +204,7 @@ discernStmtKind h stmtKind =
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
       (consArgsList', hList) <- mapAndUnzipM (discernBinder' h') consArgsList
       forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _)) -> do
-        liftIO $ H.deleteUnusedVariable h' newVar
+        liftIO $ UnusedVariable.delete (H.unusedVariableHandle h') newVar
       let consNameList' = map nameLifter consNameList
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
       return $ SK.Data (nameLifter dataName) dataArgs' consInfoList'
@@ -212,7 +213,7 @@ discernStmtKind h stmtKind =
       (dataArgs', h') <- discernBinder' h dataArgs
       (consArgs', h'') <- discernBinder' h' consArgs
       forM_ (H.nameEnv h'') $ \(_, (_, newVar, _)) -> do
-        liftIO $ H.deleteUnusedVariable h newVar
+        liftIO $ UnusedVariable.delete (H.unusedVariableHandle h'') newVar
       return $ SK.DataIntro (nameLifter dataName) dataArgs' consArgs' discriminant
 
 toCandidateKind :: SK.StmtKind a -> CandidateKind
@@ -251,7 +252,7 @@ discern h term =
           | Just (mDef, name', layer) <- lookup s (H.nameEnv h) -> do
               if layer == H.currentLayer h
                 then do
-                  liftIO $ H.deleteUnusedVariable h name'
+                  liftIO $ UnusedVariable.delete (H.unusedVariableHandle h) name'
                   liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
                   return $ m :< WT.Var name'
                 else
@@ -263,7 +264,7 @@ discern h term =
       (impArgs', h') <- discernBinder h (RT.extractArgs impArgs) endLoc
       (expArgs', h'') <- discernBinder h' (RT.extractArgs expArgs) endLoc
       t' <- discern h'' t
-      forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO (H.deleteUnusedVariable h x)
+      forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO (UnusedVariable.delete (H.unusedVariableHandle h'') x)
       return $ m :< WT.Pi impArgs' expArgs' t'
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
@@ -385,7 +386,7 @@ discern h term =
         _ ->
           return ()
       when mustIgnoreRelayedVars $ do
-        forM_ ysCont $ \(_, y) -> liftIO (H.deleteUnusedVariable h y)
+        forM_ ysCont $ \(_, y) -> liftIO (UnusedVariable.delete (H.unusedVariableHandle h) y)
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
     m :< RT.Embody e -> do
       embodyVar <- liftEither $ locatorToVarGlobal m coreBoxEmbody
@@ -868,7 +869,7 @@ discernIdent mUse h x =
     Nothing ->
       raiseError mUse $ "Undefined variable: " <> x
     Just (mDef, x', _) -> do
-      liftIO $ H.deleteUnusedVariable h x'
+      liftIO $ UnusedVariable.delete (H.unusedVariableHandle h) x'
       return (mDef, (mUse, x'))
 
 discernBinder ::

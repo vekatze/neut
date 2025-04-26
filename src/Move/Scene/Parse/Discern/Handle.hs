@@ -5,15 +5,12 @@ module Move.Scene.Parse.Discern.Handle
     extend',
     extendWithoutInsert,
     extendByNominalEnv,
-    deleteUnusedVariable,
     getBuildMode,
   )
 where
 
 import Control.Monad.Reader (asks)
 import Data.IORef
-import Data.IntMap qualified as IntMap
-import Data.Set qualified as S
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
@@ -28,6 +25,7 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
+import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.BuildMode qualified as BM
 import Rule.Hint
@@ -50,12 +48,11 @@ data Handle = Handle
     topCandidateHandle :: TopCandidate.Handle,
     preDeclHandle :: PreDecl.Handle,
     optDataHandle :: OptimizableData.Handle,
+    unusedVariableHandle :: UnusedVariable.Handle,
+    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
+    unusedStaticFileHandle :: UnusedStaticFile.Handle,
     nameEnv :: NominalEnv,
     currentLayer :: Layer,
-    unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
-    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
-    usedVariableSetRef :: IORef (S.Set Int),
-    unusedStaticFileHandle :: UnusedStaticFile.Handle,
     buildModeRef :: IORef BM.BuildMode
   }
 
@@ -73,17 +70,16 @@ new = do
   preDeclHandle <- PreDecl.new
   optDataHandle <- OptimizableData.new
   unusedStaticFileHandle <- UnusedStaticFile.new
-  let nameEnv = empty
-  unusedVariableMapRef <- asks App.unusedVariableMap
+  unusedVariableHandle <- UnusedVariable.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  usedVariableSetRef <- asks App.usedVariableSet
+  let nameEnv = empty
   buildModeRef <- asks App.buildMode
   let currentLayer = 0
   return $ Handle {..}
 
 extend :: Handle -> Hint -> Ident -> Layer -> VarDefKind -> IO Handle
 extend h m newVar l k = do
-  insertUnusedVariable h m newVar k
+  UnusedVariable.insert (unusedVariableHandle h) m newVar k
   return $ h {nameEnv = (Ident.toText newVar, (m, newVar, l)) : nameEnv h}
 
 extend' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle
@@ -102,14 +98,6 @@ extendByNominalEnv h k newNominalEnv = do
     (_, (m, x, l)) : rest -> do
       h' <- extend h m x l k
       extendByNominalEnv h' k rest
-
-insertUnusedVariable :: Handle -> Hint -> Ident -> VarDefKind -> IO ()
-insertUnusedVariable h m x k =
-  modifyIORef' (unusedVariableMapRef h) $ IntMap.insert (Ident.toInt x) (m, x, k)
-
-deleteUnusedVariable :: Handle -> Ident -> IO ()
-deleteUnusedVariable h x =
-  modifyIORef' (usedVariableSetRef h) $ S.insert (Ident.toInt x)
 
 getBuildMode :: Handle -> IO BM.BuildMode
 getBuildMode h = do

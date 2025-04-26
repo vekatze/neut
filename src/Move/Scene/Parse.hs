@@ -8,14 +8,9 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
-import Data.IORef
-import Data.IntMap qualified as IntMap
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO)
 import Move.Context.Global qualified as Global
@@ -25,6 +20,7 @@ import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedPreset qualified as UnusedPreset
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
+import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -35,7 +31,6 @@ import Rule.ArgNum qualified as AN
 import Rule.Cache qualified as Cache
 import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
-import Rule.Ident
 import Rule.Ident.Reify
 import Rule.LocalLocator qualified as LL
 import Rule.RawProgram
@@ -55,10 +50,9 @@ data Handle
     localRemarkHandle :: LocalRemark.Handle, -- per file
     unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
     unusedPresetHandle :: UnusedPreset.Handle, -- (ModuleID ~> Hint)
-    unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
     unusedStaticFileHandle :: UnusedStaticFile.Handle,
-    usedVariableSetRef :: IORef (S.Set Int)
+    unusedVariableHandle :: UnusedVariable.Handle
   }
 
 new :: App Handle
@@ -69,12 +63,11 @@ new = do
   importHandle <- Import.new
   globalHandle <- Global.new
   localRemarkHandle <- LocalRemark.new
-  unusedVariableMapRef <- asks App.unusedVariableMap
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   unusedPresetHandle <- UnusedPreset.new
   unusedStaticFileHandle <- UnusedStaticFile.new
-  usedVariableSetRef <- asks App.usedVariableSet
+  unusedVariableHandle <- UnusedVariable.new
   return $ Handle {..}
 
 parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])
@@ -129,9 +122,7 @@ saveTopLevelNames h source topNameList = do
 
 registerUnusedVariableRemarks :: Handle -> IO ()
 registerUnusedVariableRemarks h = do
-  vars <- readIORef (unusedVariableMapRef h)
-  usedVarSet <- readIORef (usedVariableSetRef h)
-  let unusedVars = filter (\(_, var, _) -> not (isHole var) && S.notMember (toInt var) usedVarSet) $ IntMap.elems vars
+  unusedVars <- UnusedVariable.get (unusedVariableHandle h)
   forM_ unusedVars $ \(mx, x, k) ->
     case k of
       Normal ->
