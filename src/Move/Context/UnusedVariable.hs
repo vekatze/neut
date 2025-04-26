@@ -32,10 +32,10 @@ new = do
   usedVariableSetRef <- asks App.usedVariableSet
   return $ Handle {..}
 
-initialize :: App ()
-initialize = do
-  writeRef' App.unusedVariableMap IntMap.empty
-  writeRef' App.usedVariableSet S.empty
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (unusedVariableMapRef h) IntMap.empty
+  writeIORef (usedVariableSetRef h) S.empty
 
 insert :: Handle -> Hint -> Ident -> VarDefKind -> IO ()
 insert h m x k =

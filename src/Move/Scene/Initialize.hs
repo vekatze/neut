@@ -83,7 +83,7 @@ initializeForTarget = do
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
-  UnusedVariable.initialize
+  UnusedVariable.new >>= liftIO . UnusedVariable.initialize
   UnusedGlobalLocator.initialize
   UnusedLocalLocator.initialize
   UnusedStaticFile.initialize
