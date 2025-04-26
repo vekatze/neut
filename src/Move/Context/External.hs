@@ -46,10 +46,9 @@ data ExternalError = ExternalError
     errStr :: T.Text
   }
 
-runOrFail' :: Path Abs Dir -> String -> App (Either ExternalError ())
-runOrFail' cwd cmd = do
-  h <- Debug.new
-  toApp $ Debug.report h $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
+runOrFail' :: Debug.Handle -> Path Abs Dir -> String -> EIO (Either ExternalError ())
+runOrFail' h cwd cmd = do
+  Debug.report h $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
   value <- liftIO $ run00 spec
@@ -57,7 +56,7 @@ runOrFail' cwd cmd = do
     Right _ ->
       return $ Right ()
     Left err ->
-      Throw.throw $ ProcessRunner.toCompilerError err
+      throwError $ ProcessRunner.toCompilerError err
 
 ensureExecutable :: String -> EIO ()
 ensureExecutable name = do
