@@ -137,7 +137,8 @@ emitDefinitions :: Handle -> LC.Def -> App [Builder]
 emitDefinitions h (name, (args, body)) = do
   args' <- liftIO $ mapM (Gensym.newIdentFromIdent (gensymHandle h)) args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
-  body' <- LowComp.reduce sub body
+  h' <- LowComp.new
+  body' <- liftIO $ LowComp.reduce h' sub body
   let args'' = map (emitValue . LC.VarLocal) args'
   liftIO $ emitDefinition h "ptr" (DD.toBuilder name) args'' body'
 
