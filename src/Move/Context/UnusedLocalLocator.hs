@@ -29,9 +29,9 @@ new = do
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
   return $ Handle {..}
 
-initialize :: App ()
-initialize =
-  writeRef' App.unusedLocalLocatorMap Map.empty
+initialize :: Handle -> IO ()
+initialize h =
+  writeIORef (unusedLocalLocatorMapRef h) Map.empty
 
 get :: Handle -> IO UnusedLocalLocators
 get h = do

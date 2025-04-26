@@ -85,7 +85,7 @@ initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
   UnusedVariable.new >>= liftIO . UnusedVariable.initialize
   UnusedGlobalLocator.new >>= liftIO . UnusedGlobalLocator.initialize
-  UnusedLocalLocator.initialize
+  UnusedLocalLocator.new >>= liftIO . UnusedLocalLocator.initialize
   UnusedStaticFile.initialize
   LocalRemark.initialize
   Global.initialize
