@@ -26,9 +26,9 @@ new = do
   localVarMapRef <- asks App.localVarMap
   return $ Handle {..}
 
-initialize :: App ()
-initialize =
-  writeRef' App.localVarMap LVT.empty
+initialize :: Handle -> IO ()
+initialize h =
+  writeIORef (localVarMapRef h) LVT.empty
 
 insert :: Handle -> Ident -> Loc -> Loc -> IO ()
 insert h x startLoc endLoc = do

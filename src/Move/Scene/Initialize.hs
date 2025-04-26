@@ -94,7 +94,7 @@ initializeForSource source = do
   Locator.new >>= toApp . Locator.initialize
   Tag.new >>= liftIO . Tag.initialize
   RawImportSummary.new >>= liftIO . RawImportSummary.initialize
-  SymLoc.initialize
+  SymLoc.new >>= liftIO . SymLoc.initialize
   TopCandidate.initialize
   PreDecl.initialize
   WeakDecl.initialize
