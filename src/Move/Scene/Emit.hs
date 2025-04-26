@@ -17,8 +17,7 @@ import Data.Text.Encoding qualified as TE
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Gensym qualified as Gensym
-import Move.Language.Utility.Gensym qualified as GensymN
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Move.Scene.LowComp.Reduce qualified as LowComp
 import Rule.BaseLowType qualified as BLT
@@ -41,14 +40,14 @@ import Rule.PrimType.EmitPrimType (emitPrimType)
 
 data Handle
   = Handle
-  { gensymHandle :: GensymN.Handle,
+  { gensymHandle :: Gensym.Handle,
     emitLowCompHandle :: EmitLowComp.Handle,
     dataSize :: DataSize
   }
 
 new :: App Handle
 new = do
-  gensymHandle <- GensymN.new
+  gensymHandle <- Gensym.new
   emitLowCompHandle <- EmitLowComp.new
   dataSize <- toApp Env.getDataSize'
   return $ Handle {..}
@@ -136,7 +135,7 @@ emitDeclarations declEnv = do
 
 emitDefinitions :: Handle -> LC.Def -> App [Builder]
 emitDefinitions h (name, (args, body)) = do
-  args' <- mapM Gensym.newIdentFromIdent args
+  args' <- liftIO $ mapM (Gensym.newIdentFromIdent (gensymHandle h)) args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
   body' <- LowComp.reduce sub body
   let args'' = map (emitValue . LC.VarLocal) args'
