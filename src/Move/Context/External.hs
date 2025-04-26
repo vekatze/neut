@@ -1,5 +1,7 @@
 module Move.Context.External
-  ( run,
+  ( Handle,
+    new,
+    run,
     runOrFail,
     runOrFail',
     expandText,
@@ -23,14 +25,24 @@ import Rule.ProcessRunner.Rule qualified as ProcessRunner
 import System.Directory
 import System.Process
 
+newtype Handle
+  = Handle
+  { debugHandle :: Debug.Handle
+  }
+
+new :: App Handle
+new = do
+  debugHandle <- Debug.new
+  return $ Handle {..}
+
 run :: String -> [String] -> App ()
 run procName optionList = do
-  h <- Debug.new
+  h <- new
   toApp (runOrFail h procName optionList) >>= Throw.liftEither
 
-runOrFail :: Debug.Handle -> String -> [String] -> EIO (Either Error ())
+runOrFail :: Handle -> String -> [String] -> EIO (Either Error ())
 runOrFail h procName optionList = do
-  Debug.report h $ "Executing: " <> T.pack (show (procName, optionList))
+  Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (procName, optionList))
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
   value <- liftIO $ run00 spec
@@ -46,9 +58,9 @@ data ExternalError = ExternalError
     errStr :: T.Text
   }
 
-runOrFail' :: Debug.Handle -> Path Abs Dir -> String -> EIO (Either ExternalError ())
+runOrFail' :: Handle -> Path Abs Dir -> String -> EIO (Either ExternalError ())
 runOrFail' h cwd cmd = do
-  Debug.report h $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
+  Debug.report (debugHandle h) $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
   value <- liftIO $ run00 spec

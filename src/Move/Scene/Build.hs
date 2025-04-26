@@ -237,8 +237,8 @@ compileForeign' t currentTime m = do
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
       forM_ cmdList' $ \c -> do
-        hd <- Debug.new
-        result <- toApp $ External.runOrFail' hd moduleRootDir $ T.unpack c
+        h' <- External.new
+        result <- toApp $ External.runOrFail' h' moduleRootDir $ T.unpack c
         case result of
           Right _ ->
             return ()
