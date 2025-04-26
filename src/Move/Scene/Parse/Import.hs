@@ -39,7 +39,6 @@ import Rule.GlobalLocatorAlias qualified as GLA
 import Rule.Hint
 import Rule.Import (ImportItem (..))
 import Rule.LocalLocator qualified as LL
-import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Rule.RawProgram
@@ -65,7 +64,7 @@ data Handle
     gensymHandle :: Gensym.Handle,
     rawImportSummaryHandle :: RawImportSummary.Handle,
     moduleHandle :: Module.Handle,
-    tagMapRef :: IORef LT.LocationTree
+    tagHandle :: Tag.Handle
   }
 
 new :: App Handle
@@ -78,11 +77,11 @@ new = do
   shiftToLatestHandle <- STL.new
   locatorHandle <- Locator.new
   aliasHandle <- Alias.new
-  tagMapRef <- asks App.tagMap
   globalHandle <- Global.new
   gensymHandle <- Gensym.new
   moduleHandle <- Module.new
   rawImportSummaryHandle <- RawImportSummary.new
+  tagHandle <- Tag.new
   return $ Handle {..}
 
 activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
@@ -129,7 +128,7 @@ interpretImportItemStatic h currentModule keyList = do
     case Map.lookup key (moduleStaticFiles currentModule') of
       Just path -> do
         let fullPath = moduleRootDir </> path
-        liftIO $ Tag.insertFileLocIO (tagMapRef h) mKey (T.length key) (newSourceHint fullPath)
+        liftIO $ Tag.insertFileLoc (tagHandle h) mKey (T.length key) (newSourceHint fullPath)
         liftIO $ UnusedStaticFile.insertIO (unusedStaticFileMapRef h) key mKey
         return (key, (mKey, fullPath))
       Nothing ->
@@ -183,7 +182,7 @@ getSource h mustUpdateTag m sgl locatorText = do
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $
     liftIO $
-      Tag.insertFileLocIO (tagMapRef h) m (T.length locatorText) (newSourceHint nextPath)
+      Tag.insertFileLoc (tagHandle h) m (T.length locatorText) (newSourceHint nextPath)
   STL.shiftToLatest
     (shiftToLatestHandle h)
     Source.Source

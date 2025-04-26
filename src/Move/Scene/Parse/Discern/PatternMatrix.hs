@@ -137,7 +137,7 @@ ensurePatternSanity :: H.Handle -> (Hint, PAT.Pattern) -> EIO ()
 ensurePatternSanity h (m, pat) =
   case pat of
     PAT.Var v -> do
-      liftIO $ Tag.insertBinderIO (H.tagMapRef h) (m, v, ())
+      liftIO $ Tag.insertBinder (H.tagHandle h) (m, v, ())
     PAT.Literal _ -> do
       return ()
     PAT.WildcardVar {} ->

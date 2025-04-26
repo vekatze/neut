@@ -40,7 +40,6 @@ import Rule.DefiniteDescription qualified as DD
 import Rule.GlobalName qualified as GN
 import Rule.Hint
 import Rule.LocalLocator qualified as LL
-import Rule.LocationTree qualified as LT
 import Rule.Module (MainModule, extractModule)
 import Rule.Module qualified as Module
 import Rule.ModuleID qualified as MID
@@ -60,7 +59,7 @@ import Rule.TopNameMap (TopNameMap)
 
 data Handle
   = Handle
-  { tagMapRef :: IORef LT.LocationTree,
+  { tagHandle :: Tag.Handle,
     mainModule :: MainModule,
     activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
@@ -71,7 +70,7 @@ data Handle
 
 new :: App Handle
 new = do
-  tagMapRef <- asks App.tagMap
+  tagHandle <- Tag.new
   mainModule <- getMainModule
   activeDefiniteDescriptionListRef <- asks App.activeDefiniteDescriptionList
   activeStaticFileListRef <- asks App.activeStaticFileList
@@ -105,7 +104,7 @@ activateSpecifiedNames h topNameMap mustUpdateTag sgl lls = do
       Just (mDef, gn) -> do
         when mustUpdateTag $
           liftIO $
-            Tag.insertGlobalVarIO (tagMapRef h) m dd (GN.getIsConstLike gn) mDef
+            Tag.insertGlobalVar (tagHandle h) m dd (GN.getIsConstLike gn) mDef
         activeDefiniteDescriptionList <- liftIO $ readIORef (activeDefiniteDescriptionListRef h)
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD

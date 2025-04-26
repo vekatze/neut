@@ -20,6 +20,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO)
 import Move.Context.Global qualified as Global
 import Move.Context.Path qualified as Path
+import Move.Context.Tag qualified as Tag
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -88,7 +89,7 @@ parseSource h t source cacheOrContent = do
     Right fileContent -> do
       prog <- P.parseFile (parseHandle h) filePath fileContent True Parse.parseProgram
       prog' <- interpret h source (snd prog)
-      tmap <- liftIO $ readIORef $ Discern.tagMapRef (discernHandle h)
+      tmap <- liftIO $ Tag.get (Discern.tagHandle (discernHandle h))
       Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap
       return $ Right prog'
 

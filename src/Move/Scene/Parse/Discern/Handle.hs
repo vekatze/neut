@@ -27,6 +27,7 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
+import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.BuildMode qualified as BM
@@ -35,7 +36,6 @@ import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.Layer
 import Rule.LocalLocator qualified as LL
-import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.NominalEnv
 import Rule.VarDefKind
@@ -46,6 +46,7 @@ data Handle = Handle
     locatorHandle :: Locator.Handle,
     globalHandle :: Global.Handle,
     aliasHandle :: Alias.Handle,
+    tagHandle :: Tag.Handle,
     keyArgHandle :: KeyArg.Handle,
     symLocHandle :: SymLoc.Handle,
     topCandidateHandle :: TopCandidate.Handle,
@@ -57,8 +58,7 @@ data Handle = Handle
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
     usedVariableSetRef :: IORef (S.Set Int),
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
-    buildModeRef :: IORef BM.BuildMode,
-    tagMapRef :: IORef LT.LocationTree
+    buildModeRef :: IORef BM.BuildMode
   }
 
 new :: App Handle
@@ -71,6 +71,7 @@ new = do
   keyArgHandle <- KeyArg.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
+  tagHandle <- Tag.new
   preDeclHandle <- PreDecl.new
   optDataHandle <- OptimizableData.new
   let nameEnv = empty
@@ -78,7 +79,6 @@ new = do
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
   usedVariableSetRef <- asks App.usedVariableSet
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
-  tagMapRef <- asks App.tagMap
   buildModeRef <- asks App.buildMode
   let currentLayer = 0
   return $ Handle {..}

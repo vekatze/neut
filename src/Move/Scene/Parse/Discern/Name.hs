@@ -69,7 +69,7 @@ resolveVarOrErr h m name = do
     [] ->
       return $ Left $ "Undefined symbol: " <> name
     [globalVar@(dd, (mDef, gn))] -> do
-      liftIO $ Tag.insertGlobalVarIO (H.tagMapRef h) m dd (GN.getIsConstLike gn) mDef
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd (GN.getIsConstLike gn) mDef
       liftIO $ UnusedLocalLocator.deleteIO (H.unusedLocalLocatorMapRef h) localLocator
       return $ Right globalVar
     _ -> do
@@ -96,7 +96,7 @@ resolveLocator h m (gl, ll) shouldInsertTag = do
         let glLen = T.length $ GL.reify gl
         let llLen = T.length $ LL.reify ll
         let sepLen = T.length C.nsSep
-        liftIO $ Tag.insertLocatorIO (H.tagMapRef h) m dd (GN.getIsConstLike gn) (glLen + llLen + sepLen) mDef
+        liftIO $ Tag.insertLocator (H.tagHandle h) m dd (GN.getIsConstLike gn) (glLen + llLen + sepLen) mDef
       return globalVar
 
 resolveConstructor ::

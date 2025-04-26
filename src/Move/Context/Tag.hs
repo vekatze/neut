@@ -1,19 +1,23 @@
 module Move.Context.Tag
-  ( initialize,
-    insertFileLocIO,
-    insertLocalVarIO,
-    insertGlobalVarIO,
-    insertBinderIO,
-    insertLocatorIO,
-    insertExternalNameIO,
+  ( Handle,
+    new,
+    initialize,
+    get,
+    insertFileLoc,
+    insertLocalVar,
+    insertGlobalVar,
+    insertBinder,
+    insertLocator,
+    insertExternalName,
   )
 where
 
 import Control.Monad (unless, when)
-import Data.IORef (IORef, modifyIORef')
+import Control.Monad.Reader (asks)
+import Data.IORef (IORef, modifyIORef', readIORef)
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
 import Rule.Binder
 import Rule.DefiniteDescription qualified as DD
 import Rule.ExternalName qualified as EN
@@ -23,45 +27,59 @@ import Rule.IsConstLike
 import Rule.LocationTree qualified as LT
 import Prelude hiding (lookup, read)
 
+newtype Handle
+  = Handle
+  { tagMapRef :: IORef LT.LocationTree
+  }
+
+new :: App Handle
+new = do
+  tagMapRef <- asks App.tagMap
+  return $ Handle {..}
+
 initialize :: App ()
 initialize =
-  writeRef' tagMap LT.empty
+  writeRef' App.tagMap LT.empty
 
-insertFileLocIO :: IORef LT.LocationTree -> Hint -> Int -> Hint -> IO ()
-insertFileLocIO ref mUse nameLength mDef = do
+get :: Handle -> IO LT.LocationTree
+get h =
+  readIORef $ tagMapRef h
+
+insertFileLoc :: Handle -> Hint -> Int -> Hint -> IO ()
+insertFileLoc h mUse nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
-    modifyIORef' ref $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
+    modifyIORef' (tagMapRef h) $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
 
-insertLocalVarIO :: IORef LT.LocationTree -> Hint -> Ident -> Hint -> IO ()
-insertLocalVarIO ref mUse ident@(I (var, varID)) mDef = do
+insertLocalVar :: Handle -> Hint -> Ident -> Hint -> IO ()
+insertLocalVar h mUse ident@(I (var, varID)) mDef = do
   unless (isHole ident) $ do
     let nameLength = T.length var
     let symbolLoc = LT.SymbolLoc (LT.Local varID nameLength)
-    insertIO ref mUse symbolLoc nameLength mDef
+    insert h mUse symbolLoc nameLength mDef
 
-insertBinderIO :: IORef LT.LocationTree -> BinderF a -> IO ()
-insertBinderIO h (m, ident, _) =
-  insertLocalVarIO h m ident m
+insertBinder :: Handle -> BinderF a -> IO ()
+insertBinder h (m, ident, _) =
+  insertLocalVar h m ident m
 
-insertGlobalVarIO :: IORef LT.LocationTree -> Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> IO ()
-insertGlobalVarIO ref mUse dd isConstLike mDef = do
+insertGlobalVar :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> IO ()
+insertGlobalVar h mUse dd isConstLike mDef = do
   let nameLength = T.length (DD.localLocator dd)
   let symbolLoc = LT.SymbolLoc (LT.Global dd isConstLike)
-  insertIO ref mUse symbolLoc nameLength mDef
+  insert h mUse symbolLoc nameLength mDef
 
-insertIO :: IORef LT.LocationTree -> Hint -> LT.LocType -> Int -> Hint -> IO ()
-insertIO ref mUse locType nameLength mDef = do
+insert :: Handle -> Hint -> LT.LocType -> Int -> Hint -> IO ()
+insert h mUse locType nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
-    modifyIORef' ref $ LT.insert locType (l, (c, c + nameLength)) mDef
+    modifyIORef' (tagMapRef h) $ LT.insert locType (l, (c, c + nameLength)) mDef
 
-insertLocatorIO :: IORef LT.LocationTree -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> IO ()
-insertLocatorIO ref mUse dd isConstLike nameLength mDef = do
-  insertIO ref mUse (LT.SymbolLoc (LT.Global dd isConstLike)) nameLength mDef
+insertLocator :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> IO ()
+insertLocator h mUse dd isConstLike nameLength mDef = do
+  insert h mUse (LT.SymbolLoc (LT.Global dd isConstLike)) nameLength mDef
 
-insertExternalNameIO :: IORef LT.LocationTree -> Hint -> EN.ExternalName -> Hint -> IO ()
-insertExternalNameIO ref mUse externalName mDef = do
+insertExternalName :: Handle -> Hint -> EN.ExternalName -> Hint -> IO ()
+insertExternalName h mUse externalName mDef = do
   let symbolLoc = LT.SymbolLoc (LT.Foreign externalName)
   let nameLength = T.length $ EN.reify externalName
-  insertIO ref mUse symbolLoc nameLength mDef
+  insert h mUse symbolLoc nameLength mDef

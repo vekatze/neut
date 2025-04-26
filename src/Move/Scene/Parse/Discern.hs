@@ -21,7 +21,6 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Data
-import Move.Scene.Parse.Discern.Handle (Handle (tagMapRef))
 import Move.Scene.Parse.Discern.Handle qualified as H
 import Move.Scene.Parse.Discern.Name
 import Move.Scene.Parse.Discern.Noema
@@ -103,10 +102,10 @@ discernStmt h mo stmt = do
       codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind h stmtKind
       body' <- discern nenv' body
-      liftIO $ Tag.insertGlobalVarIO (H.tagMapRef h) m functionName isConstLike m
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m functionName isConstLike m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
-      liftIO $ forM_ expArgs' $ Tag.insertBinderIO (H.tagMapRef h)
+      liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       let stmtList = defineData m dd args (SE.extract consInfo) loc
@@ -116,7 +115,7 @@ discernStmt h mo stmt = do
       registerTopLevelName h nameLifter stmt
       t' <- discern h $ m :< RT.Tau
       e' <- discern h $ m :< RT.Resource dd [] (discarder, []) (copier, [])
-      liftIO $ Tag.insertGlobalVarIO (H.tagMapRef h) m dd True m
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
@@ -252,7 +251,7 @@ discern h term =
               if layer == H.currentLayer h
                 then do
                   liftIO $ H.deleteUnusedVariable h name'
-                  liftIO $ Tag.insertLocalVarIO (tagMapRef h) m name' mDef
+                  liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
                   return $ m :< WT.Var name'
                 else
                   raiseLayerError m (H.currentLayer h) layer
@@ -287,7 +286,7 @@ discern h term =
       h''' <- liftIO $ H.extend' h'' mx x' VDK.Normal
       body' <- discern h''' body
       let mxt' = (mx, x', codType')
-      liftIO $ Tag.insertBinderIO (H.tagMapRef h) mxt'
+      liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
@@ -381,7 +380,7 @@ discern h term =
       (mxt', e2'') <- discernBinderWithBody' hCont mxt startLoc endLoc e2'
       case pat of
         RP.Var _ ->
-          liftIO $ Tag.insertBinderIO (H.tagMapRef h) mxt'
+          liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
         _ ->
           return ()
       when mustIgnoreRelayedVars $ do
@@ -512,7 +511,7 @@ discern h term =
         Just (path, content) -> do
           liftIO $ H.deleteUnusedStaticFile h key
           textType <- liftEither (locatorToVarGlobal m coreText) >>= discern h
-          liftIO $ Tag.insertFileLocIO (H.tagMapRef h) mKey (T.length key) (newSourceHint path)
+          liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText textType content)
         Nothing ->
           raiseError m $ "No such static file is defined: `" <> key <> "`"
@@ -597,7 +596,7 @@ discernNoeticVarList h mustInsertTagInfo xsOuter = do
     xInner <- Gensym.newIdentFromIdent (H.gensymHandle h) outerVar
     t <- Gensym.newHole (H.gensymHandle h) mUse []
     when mustInsertTagInfo $ do
-      Tag.insertLocalVarIO (H.tagMapRef h) mUse outerVar mDef
+      Tag.insertLocalVar (H.tagHandle h) mUse outerVar mDef
     return ((mUse, xInner, t), mDef :< WT.Var outerVar)
 
 discernMagic :: H.Handle -> Hint -> RT.RawMagic -> EIO (M.WeakMagic WT.WeakTerm)
@@ -624,7 +623,7 @@ discernMagic h m magic =
       return $ M.WeakMagic $ M.Alloca t' size'
     RT.External _ mUse funcName _ args varArgsOrNone -> do
       mDef <- PreDecl.lookup (H.preDeclHandle h) m funcName
-      liftIO $ Tag.insertExternalNameIO (H.tagMapRef h) mUse funcName mDef
+      liftIO $ Tag.insertExternalName (H.tagHandle h) mUse funcName mDef
       let domList = []
       let cod = FCT.Void
       args' <- mapM (discern h) $ SE.extract args
@@ -804,7 +803,7 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
         e1' <- discern h e1
         (x, e2') <- modifyLetContinuation h (mx, pat) endLoc isNoetic e2
         (mxt', e2'') <- discernBinderWithBody' h (mx, x, c1, c2, t) startLoc endLoc e2'
-        liftIO $ Tag.insertBinderIO (H.tagMapRef h) mxt'
+        liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
         return $ m :< WT.Let opacity mxt' e1' e2''
   case letKind of
     RT.Plain _ -> do
@@ -885,7 +884,7 @@ discernBinder h binder endLoc =
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinder h' xts endLoc
-      liftIO $ Tag.insertBinderIO (H.tagMapRef h'') (mx, x', t')
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
       return ((mx, x', t') : xts', h'')
 
@@ -902,7 +901,7 @@ discernBinder' h binder =
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinder' h' xts
-      liftIO $ Tag.insertBinderIO (H.tagMapRef h) (mx, x', t')
+      liftIO $ Tag.insertBinder (H.tagHandle h) (mx, x', t')
       return ((mx, x', t') : xts', h'')
 
 discernBinderWithBody' ::
@@ -1146,6 +1145,6 @@ interpretForeign h foreignItemList = do
 interpretForeignItem :: H.Handle -> RawForeignItemF WT.WeakTerm -> IO F.WeakForeign
 interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
   let lts' = SE.extract lts
-  Tag.insertExternalNameIO (H.tagMapRef h) m name m
+  Tag.insertExternalName (H.tagHandle h) m name m
   PreDecl.insert (H.preDeclHandle h) name m
   return $ F.Foreign m name lts' cod

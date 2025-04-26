@@ -43,7 +43,6 @@ import Rule.Hint
 import Rule.Hint qualified as Hint
 import Rule.IsConstLike
 import Rule.Key
-import Rule.LocationTree qualified as LT
 import Rule.Module (MainModule)
 import Rule.OptimizableData qualified as OD
 import Rule.PrimOp.FromText qualified as PrimOp
@@ -60,9 +59,9 @@ data Handle
     locatorHandle :: Locator.Handle,
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle,
+    tagHandle :: Tag.Handle,
     nameMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
-    tagMapRef :: IORef LT.LocationTree,
     unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]),
     unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint),
     sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
@@ -74,9 +73,9 @@ new = do
   locatorHandle <- Locator.new
   keyArgHandle <- KeyArg.new
   optDataHandle <- OptimizableData.new
+  tagHandle <- Tag.new
   nameMapRef <- asks App.nameMap
   geistMapRef <- asks App.geistMap
-  tagMapRef <- asks App.tagMap
   sourceNameMapRef <- asks App.sourceNameMap
   unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
   unusedPresetMapRef <- asks App.unusedPresetMap
@@ -232,7 +231,7 @@ ensureDefFreshness h m name = do
     (Just (mGeist, isConstLike), True) -> do
       liftIO $ removeFromGeistMap h name
       liftIO $ removeFromDefNameMap h name
-      liftIO $ Tag.insertGlobalVarIO (tagMapRef h) mGeist name isConstLike m
+      liftIO $ Tag.insertGlobalVar (tagHandle h) mGeist name isConstLike m
     (Nothing, True) -> do
       let name' = Locator.getReadableDD (mainModule h) name
       raiseError m $ "`" <> name' <> "` is already defined"
