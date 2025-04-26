@@ -5,7 +5,6 @@ module Move.Context.Module
     getCoreModuleURL,
     getCoreModuleDigest,
     insertToModuleCacheMap,
-    saveEns,
     sourceFromPath,
     getAllSourcePathInModule,
     getAllSourceInModule,
@@ -19,15 +18,12 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal
-import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Path
 import Path.IO
 import Rule.Const
-import Rule.Ens
-import Rule.Ens.Reify qualified as Ens
 import Rule.Error (newError, newError')
 import Rule.Hint qualified as H
 import Rule.Module
@@ -66,13 +62,6 @@ getModuleDirByID (MainModule pivotModule) mHint moduleID = do
     MID.Library (MD.ModuleDigest digest) -> do
       dependencyDir <- Path.getDependencyDirPath pivotModule
       resolveDir dependencyDir $ T.unpack digest
-
-saveEns :: Path Abs File -> FullEns -> App ()
-saveEns path (c1, (ens, c2)) = do
-  h <- Debug.new
-  toApp $ Debug.report h $ "Saving ens file to: " <> T.pack (toFilePath path)
-  ens' <- Throw.liftEither $ stylize ens
-  liftIO $ Path.writeText path $ Ens.pp (c1, (ens', c2))
 
 getCoreModuleURL :: App ModuleURL
 getCoreModuleURL = do

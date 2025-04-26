@@ -22,6 +22,7 @@ import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Module.Reflect qualified as Module
+import Move.Scene.Module.Save qualified as ModuleSave
 import Path
 import Path.IO
 import Rule.BaseName (isCapitalized)
@@ -208,7 +209,8 @@ addDependencyToModuleFile alias dep = do
   (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation mainModule)
   let depEns = makeDependencyEns m alias dep
   mergedEns <- Throw.liftEither $ E.merge baseEns depEns
-  Module.saveEns (M.moduleLocation mainModule) (c1, (mergedEns, c2))
+  h' <- ModuleSave.new
+  toApp $ ModuleSave.save h' (M.moduleLocation mainModule) (c1, (mergedEns, c2))
 
 makeDependencyEns :: Hint -> ModuleAlias -> M.Dependency -> E.Ens
 makeDependencyEns m alias dep = do
@@ -241,7 +243,8 @@ updateDependencyInModuleFile mainModuleFileLoc alias dep = do
   (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h mainModuleFileLoc
   let depEns = makeDependencyEns' m dep
   mergedEns <- Throw.liftEither $ E.conservativeUpdate [keyDependency, BN.reify (extract alias)] depEns baseEns
-  Module.saveEns mainModuleFileLoc (c1, (mergedEns, c2))
+  h' <- ModuleSave.new
+  toApp $ ModuleSave.save h' mainModuleFileLoc (c1, (mergedEns, c2))
 
 makeDependencyEns' :: Hint -> M.Dependency -> E.Ens
 makeDependencyEns' m dep = do

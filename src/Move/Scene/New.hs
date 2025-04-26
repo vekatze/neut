@@ -11,10 +11,10 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (toApp)
-import Move.Context.Module qualified as Module
 import Move.Context.Path qualified as Path
 import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
+import Move.Scene.Module.Save qualified as ModuleSave
 import Path
 import Path.IO
 import Rule.ClangOption qualified as CL
@@ -72,7 +72,8 @@ constructDefaultModule moduleName mTargetName = do
 createModuleFile :: Module -> App ()
 createModuleFile newModule = do
   ensureDir $ parent $ moduleLocation newModule
-  Module.saveEns (moduleLocation newModule) ([], (toDefaultEns newModule, []))
+  h <- ModuleSave.new
+  toApp $ ModuleSave.save h (moduleLocation newModule) ([], (toDefaultEns newModule, []))
   buildDir <- toApp $ Path.getBaseBuildDir newModule
   ensureDir buildDir
 
