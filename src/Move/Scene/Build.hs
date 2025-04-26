@@ -32,8 +32,8 @@ import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.EnsureMain qualified as EnsureMain
 import Move.Scene.Execute qualified as Execute
+import Move.Scene.Init.Source qualified as InitSource
 import Move.Scene.Init.Target qualified as InitTarget
-import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Install qualified as Install
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
@@ -121,8 +121,7 @@ compile target outputKindList contentSeq = do
   hEmit <- Emit.new
   hLLVM <- LLVM.new
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
-    hInit <- Initialize.new
-    toApp $ Initialize.initializeForSource hInit source
+    InitSource.new >>= \hInit -> toApp (InitSource.initializeForSource hInit source)
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     h' <- Debug.new
     toApp $ Debug.report h' $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix

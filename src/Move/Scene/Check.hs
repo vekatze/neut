@@ -18,8 +18,8 @@ import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env (getMainModule)
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Init.Source qualified as InitSource
 import Move.Scene.Init.Target qualified as InitTarget
-import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetModule qualified as Module
 import Move.Scene.Parse qualified as Parse
@@ -99,8 +99,7 @@ _check' h hRootEnv target baseModule = do
 
 checkSource :: Handle -> Elaborate.HandleEnv -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h hEnv target source cacheOrContent = do
-  hInit <- Initialize.new
-  toApp $ Initialize.initializeForSource hInit source
+  InitSource.new >>= \hInit -> toApp (InitSource.initializeForSource hInit source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   hElaborate <- Elaborate.new hEnv
   void $

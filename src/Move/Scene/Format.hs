@@ -15,8 +15,8 @@ import Move.Context.Env (getMainModule)
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Scene.Ens.Reflect qualified as EnsReflect
+import Move.Scene.Init.Source qualified as InitSource
 import Move.Scene.Init.Target qualified as InitTarget
-import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Parse qualified as Parse
@@ -77,8 +77,7 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       contentSeq <- toApp $ Load.load (loadHandle h) Peripheral dependenceSeq
       let contentSeq' = _replaceLast fileContent contentSeq
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
-        hInit <- Initialize.new
-        toApp $ Initialize.initializeForSource hInit source
+        InitSource.new >>= \hInit -> toApp (InitSource.initializeForSource hInit source)
         void $ toApp $ Parse.parse (parseHandle h) Peripheral source cacheOrContent
       unusedGlobalLocators <- liftIO $ UnusedGlobalLocator.get (unusedGlobalLocatorHandle h)
       unusedLocalLocators <- liftIO $ UnusedLocalLocator.get (unusedLocalLocatorHandle h)
