@@ -21,6 +21,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
+import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Remark qualified as Remark
 import Move.Context.SymLoc qualified as SymLoc
@@ -96,4 +97,5 @@ initializeForSource source = do
   SymLoc.initialize
   TopCandidate.initialize
   Remark.setRemarkList []
+  PreDecl.initialize
   Decl.initialize

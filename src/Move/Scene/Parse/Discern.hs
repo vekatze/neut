@@ -15,6 +15,7 @@ import Move.Context.Env (getPlatform)
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
@@ -622,7 +623,7 @@ discernMagic h m magic =
       size' <- discern h size
       return $ M.WeakMagic $ M.Alloca t' size'
     RT.External _ mUse funcName _ args varArgsOrNone -> do
-      mDef <- H.lookupExternalName h m funcName
+      mDef <- PreDecl.lookup (H.preDeclHandle h) m funcName
       liftIO $ Tag.insertExternalNameIO (H.tagMapRef h) mUse funcName mDef
       let domList = []
       let cod = FCT.Void
@@ -1146,5 +1147,5 @@ interpretForeignItem :: H.Handle -> RawForeignItemF WT.WeakTerm -> IO F.WeakFore
 interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
   let lts' = SE.extract lts
   Tag.insertExternalNameIO (H.tagMapRef h) m name m
-  H.insertExternalName h name m
+  PreDecl.insert (H.preDeclHandle h) name m
   return $ F.Foreign m name lts' cod

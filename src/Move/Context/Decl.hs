@@ -18,7 +18,6 @@ import Prelude hiding (lookup, read)
 
 initialize :: App ()
 initialize = do
-  writeRef' preDeclEnv Map.empty
   writeRef' weakDeclEnv Map.empty
   arch <- toApp $ Env.getArch Nothing
   forM_ (F.defaultWeakForeignList arch) $ \(F.Foreign _ name domList cod) -> do
