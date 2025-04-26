@@ -51,6 +51,7 @@ data Handle
   { ensReflectHandle :: EnsReflect.Handle,
     moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,
+    moduleHandle :: Module.Handle,
     mainModule :: M.MainModule,
     stdOutColorSpec :: ColorSpec
   }
@@ -60,6 +61,7 @@ new = do
   ensReflectHandle <- EnsReflect.new
   moduleSaveHandle <- ModuleSave.new
   externalHandle <- External.new
+  moduleHandle <- Module.new
   mainModule <- getMainModule
   stdOutColorSpec <- getColorSpecStdOut
   return $ Handle {..}
@@ -172,7 +174,7 @@ installModule h alias mirrorList digest = do
 installModule' :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule' h archivePath alias digest = do
   toApp $ extractToDependencyDir h archivePath alias digest
-  libModule <- getLibraryModule alias digest
+  libModule <- toApp $ getLibraryModule h alias digest
   return $ collectDependency libModule
 
 printInstallationRemark :: Handle -> ModuleAlias -> MD.ModuleDigest -> IO ()
@@ -188,17 +190,15 @@ checkIfInstalled digest = do
   mainModule <- getMainModule
   toApp (Module.getModuleFilePath mainModule Nothing (MID.Library digest)) >>= doesFileExist
 
-getLibraryModule :: ModuleAlias -> MD.ModuleDigest -> App M.Module
-getLibraryModule alias digest = do
-  mainModule <- getMainModule
-  moduleFilePath <- toApp $ Module.getModuleFilePath mainModule Nothing (MID.Library digest)
+getLibraryModule :: Handle -> ModuleAlias -> MD.ModuleDigest -> EIO M.Module
+getLibraryModule h alias digest = do
+  moduleFilePath <- Module.getModuleFilePath (mainModule h) Nothing (MID.Library digest)
   moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
     then do
-      h <- Module.new
-      toApp $ Module.fromFilePath h moduleFilePath
+      Module.fromFilePath (moduleHandle h) moduleFilePath
     else
-      Throw.raiseError' $
+      raiseError' $
         "Could not find the module file for `"
           <> BN.reify (extract alias)
           <> "` ("
