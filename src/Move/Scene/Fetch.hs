@@ -47,13 +47,15 @@ import UnliftIO.Async
 data Handle
   = Handle
   { ensReflectHandle :: EnsReflect.Handle,
-    moduleSaveHandle :: ModuleSave.Handle
+    moduleSaveHandle :: ModuleSave.Handle,
+    mainModule :: M.MainModule
   }
 
 new :: App Handle
 new = do
   ensReflectHandle <- EnsReflect.new
   moduleSaveHandle <- ModuleSave.new
+  mainModule <- getMainModule
   return $ Handle {..}
 
 fetch :: M.MainModule -> App ()
@@ -103,7 +105,7 @@ insertDependency h aliasName url = do
               else do
                 Remark.printNote' $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
-                addDependencyToModuleFile alias dep'
+                toApp $ addDependencyToModuleFile h alias dep'
           else do
             Remark.printNote' $
               "Replacing a dependency: "
@@ -118,24 +120,27 @@ insertDependency h aliasName url = do
       Nothing -> do
         printInstallationRemark alias digest
         installModule' tempFilePath alias digest >>= fetchDeps
-        addDependencyToModuleFile alias $
-          M.Dependency
-            { dependencyMirrorList = [url],
-              dependencyDigest = digest,
-              dependencyPresetEnabled = False
-            }
+        toApp $
+          addDependencyToModuleFile h alias $
+            M.Dependency
+              { dependencyMirrorList = [url],
+                dependencyDigest = digest,
+                dependencyPresetEnabled = False
+              }
 
 insertCoreDependency :: App ()
 insertCoreDependency = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
   _ <- installModule coreModuleAlias [coreModuleURL] digest
-  addDependencyToModuleFile coreModuleAlias $
-    M.Dependency
-      { dependencyMirrorList = [coreModuleURL],
-        dependencyDigest = digest,
-        dependencyPresetEnabled = True
-      }
+  h <- new
+  toApp $
+    addDependencyToModuleFile h coreModuleAlias $
+      M.Dependency
+        { dependencyMirrorList = [coreModuleURL],
+          dependencyDigest = digest,
+          dependencyPresetEnabled = True
+        }
 
 installModule :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule alias mirrorList digest = do
@@ -217,15 +222,13 @@ extractToDependencyDir archivePath _ digest = do
   h <- External.new
   toApp $ External.run h "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
-addDependencyToModuleFile :: ModuleAlias -> M.Dependency -> App ()
-addDependencyToModuleFile alias dep = do
-  M.MainModule mainModule <- getMainModule
-  h <- EnsReflect.new
-  (c1, (baseEns@(m :< _), c2)) <- toApp $ EnsReflect.fromFilePath h (moduleLocation mainModule)
+addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
+addDependencyToModuleFile h alias dep = do
+  let mm = M.extractModule (mainModule h)
+  (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath (ensReflectHandle h) (moduleLocation mm)
   let depEns = makeDependencyEns m alias dep
-  mergedEns <- Throw.liftEither $ E.merge baseEns depEns
-  h' <- ModuleSave.new
-  toApp $ ModuleSave.save h' (M.moduleLocation mainModule) (c1, (mergedEns, c2))
+  mergedEns <- liftEither $ E.merge baseEns depEns
+  ModuleSave.save (moduleSaveHandle h) (M.moduleLocation mm) (c1, (mergedEns, c2))
 
 makeDependencyEns :: Hint -> ModuleAlias -> M.Dependency -> E.Ens
 makeDependencyEns m alias dep = do
