@@ -31,9 +31,9 @@ new = do
   typeEnvRef <- asks App.typeEnv
   return $ Handle {..}
 
-initialize :: App ()
-initialize = do
-  writeRef' App.typeEnv Map.empty
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (typeEnvRef h) Map.empty
 
 lookupMaybe :: DD.DefiniteDescription -> App (Maybe WeakTerm)
 lookupMaybe k = do

@@ -38,11 +38,11 @@ new = do
   antecedentDigestCacheRef <- asks App.antecedentDigestCache
   return $ Handle {..}
 
-initialize :: App ()
-initialize = do
-  writeRef' App.antecedentMap Map.empty
-  writeRef' App.reverseAntecedentMap Map.empty
-  writeRef' App.antecedentDigestCache Nothing
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (antecedentMapRef h) Map.empty
+  writeIORef (reverseAntecedentMapRef h) Map.empty
+  writeIORef (antecedentDigestCacheRef h) Nothing
 
 get :: Handle -> IO (Map.HashMap MID.ModuleID M.Module)
 get h =

@@ -15,6 +15,7 @@ import Move.Context.Env (getMainModule)
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Scene.Ens.Reflect qualified as EnsReflect
+import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
@@ -68,7 +69,7 @@ type ShouldMinimizeImports =
 
 _formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
-  Initialize.initializeForTarget
+  InitTarget.new >>= liftIO . InitTarget.initializeForTarget
   MainModule mainModule <- getMainModule
   if shouldMinimizeImports
     then do

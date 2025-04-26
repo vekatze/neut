@@ -32,6 +32,7 @@ import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.EnsureMain qualified as EnsureMain
 import Move.Scene.Execute qualified as Execute
+import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Install qualified as Install
 import Move.Scene.Link qualified as Link
@@ -69,7 +70,7 @@ buildTarget axis (M.MainModule baseModule) target = do
   h <- Debug.new
   toApp $ Debug.report h $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
-  Initialize.initializeForTarget
+  InitTarget.new >>= liftIO . InitTarget.initializeForTarget
   h' <- Unravel.new
   (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel h' baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq

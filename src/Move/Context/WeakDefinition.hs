@@ -35,9 +35,9 @@ data Handle
     weakDefMapRef :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm)
   }
 
-initialize :: App ()
-initialize = do
-  writeRef' App.weakDefMap Map.empty
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (weakDefMapRef h) Map.empty
 
 new :: App Handle
 new = do

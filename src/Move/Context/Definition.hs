@@ -33,9 +33,9 @@ new = do
   defMapRef <- asks App.defMap
   return $ Handle {..}
 
-initialize :: App ()
-initialize = do
-  writeRef' App.defMap Map.empty
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (defMapRef h) Map.empty
 
 insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Term] -> TM.Term -> IO ()
 insert' h opacity name xts e =

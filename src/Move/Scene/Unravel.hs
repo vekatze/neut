@@ -96,10 +96,10 @@ new = do
   currentSourceRef <- asks App.currentSource
   return $ Handle {..}
 
-initialize :: App ()
-initialize = do
-  writeRef' App.visitEnv Map.empty
-  writeRef' App.sourceChildrenMap Map.empty
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (visitEnvRef h) Map.empty
+  writeIORef (sourceChildrenMapRef h) Map.empty
 
 unravel :: Handle -> Module -> Target -> EIO (A.ArtifactTime, [Source.Source])
 unravel h baseModule t = do

@@ -18,6 +18,7 @@ import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env (getMainModule)
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetModule qualified as Module
@@ -74,7 +75,7 @@ checkSingle hRootEnv baseModule path = do
 _check :: Handle -> Target -> M.Module -> App [Remark]
 _check h target baseModule = do
   Throw.collectLogs $ do
-    Initialize.initializeForTarget
+    InitTarget.new >>= liftIO . InitTarget.initializeForTarget
     (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
     contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
@@ -84,7 +85,7 @@ _check h target baseModule = do
 _check' :: Handle -> Elaborate.HandleEnv -> Target -> M.Module -> App [Remark]
 _check' h hRootEnv target baseModule = do
   Throw.collectLogs $ do
-    Initialize.initializeForTarget
+    InitTarget.new >>= liftIO . InitTarget.initializeForTarget
     (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
     contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
     case unsnoc contentSeq of
