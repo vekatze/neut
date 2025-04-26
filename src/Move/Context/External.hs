@@ -14,7 +14,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Throw qualified as Throw
 import Path
 import Rule.Error
@@ -59,14 +59,14 @@ runOrFail' cwd cmd = do
     Left err ->
       Throw.throw $ ProcessRunner.toCompilerError err
 
-ensureExecutable :: String -> App ()
+ensureExecutable :: String -> EIO ()
 ensureExecutable name = do
   mPath <- liftIO $ findExecutable name
   case mPath of
     Just _ ->
       return ()
     Nothing ->
-      Throw.raiseError' $ "Command not found: " <> T.pack name
+      raiseError' $ "Command not found: " <> T.pack name
 
 expandText :: T.Text -> EIO T.Text
 expandText t = do
