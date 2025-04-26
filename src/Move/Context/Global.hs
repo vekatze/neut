@@ -61,9 +61,9 @@ data Handle
     optDataHandle :: OptimizableData.Handle,
     tagHandle :: Tag.Handle,
     unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
+    unusedPresetHandle :: UnusedPreset.Handle,
     nameMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
-    unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint),
     sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
   }
 
@@ -78,7 +78,7 @@ new = do
   nameMapRef <- asks App.nameMap
   geistMapRef <- asks App.geistMap
   sourceNameMapRef <- asks App.sourceNameMap
-  unusedPresetMapRef <- asks App.unusedPresetMap
+  unusedPresetHandle <- UnusedPreset.new
   return $ Handle {..}
 
 registerStmtDefine ::
@@ -195,7 +195,7 @@ lookup h m name = do
   case Map.lookup name nameMap of
     Just kind -> do
       liftIO $ UnusedGlobalLocator.delete (unusedGlobalLocatorHandle h) $ DD.globalLocator name
-      liftIO $ UnusedPreset.deleteIO (unusedPresetMapRef h) $ DD.moduleID name
+      liftIO $ UnusedPreset.delete (unusedPresetHandle h) $ DD.moduleID name
       return $ Just kind
     Nothing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->

@@ -23,6 +23,7 @@ import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Move.Context.UnusedPreset qualified as UnusedPreset
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -52,9 +53,9 @@ data Handle
     globalHandle :: Global.Handle,
     localRemarkHandle :: LocalRemark.Handle, -- per file
     unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
+    unusedPresetHandle :: UnusedPreset.Handle, -- (ModuleID ~> Hint)
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
-    unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
     usedVariableSetRef :: IORef (S.Set Int)
   }
@@ -70,7 +71,7 @@ new = do
   unusedVariableMapRef <- asks App.unusedVariableMap
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  unusedPresetMapRef <- asks App.unusedPresetMap
+  unusedPresetHandle <- UnusedPreset.new
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   usedVariableSetRef <- asks App.usedVariableSet
   return $ Handle {..}
@@ -164,7 +165,7 @@ registerUnusedLocalLocatorRemarks h = do
 
 registerUnusedPresetRemarks :: Handle -> IO ()
 registerUnusedPresetRemarks h = do
-  unusedPresets <- readIORef (unusedPresetMapRef h)
+  unusedPresets <- UnusedPreset.get (unusedPresetHandle h)
   forM_ (Map.toList unusedPresets) $ \(presetName, m) ->
     LocalRemark.insert (localRemarkHandle h) $
       R.newRemark m R.Warning $
