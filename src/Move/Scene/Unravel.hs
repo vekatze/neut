@@ -22,10 +22,10 @@ import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
+import Move.Context.Artifact qualified as Artifact
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env (getMainModule)
-import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
 import Move.Context.Parse (ensureExistence')
@@ -69,11 +69,11 @@ data Handle
     locatorHandle :: Locator.Handle,
     aliasHandle :: Alias.Handle,
     antecedentHandle :: Antecedent.Handle,
+    artifactHandle :: Artifact.Handle,
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
-    currentSourceRef :: IORef (Maybe Source.Source),
-    artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
+    currentSourceRef :: IORef (Maybe Source.Source)
   }
 
 new :: App Handle
@@ -88,10 +88,10 @@ new = do
   locatorHandle <- Locator.new
   aliasHandle <- Alias.new
   antecedentHandle <- Antecedent.new
+  artifactHandle <- Artifact.new
   visitEnvRef <- asks App.visitEnv
   traceSourceListRef <- asks App.traceSourceList
   sourceChildrenMapRef <- asks App.sourceChildrenMap
-  artifactMapRef <- asks App.artifactMap
   currentSourceRef <- asks App.currentSource
   return $ Handle {..}
 
@@ -214,7 +214,7 @@ unravel'' h t source = do
       traceSourceList <- liftIO $ readIORef (traceSourceListRef h)
       raiseCyclicPath path (map Source.sourceFilePath traceSourceList)
     Just VI.Finish -> do
-      artifactTime <- Env.lookupArtifactTime (artifactMapRef h) path
+      artifactTime <- Artifact.lookup (artifactHandle h) path
       return (artifactTime, Seq.empty)
     Nothing -> do
       liftIO $ insertToVisitEnv h path VI.Active
@@ -225,7 +225,7 @@ unravel'' h t source = do
       liftIO $ insertToVisitEnv h path VI.Finish
       baseArtifactTime <- getBaseArtifactTime (pathHandle h) t source
       let artifactTime = getArtifactTime artifactTimeList baseArtifactTime
-      liftIO $ insertToArtifactMap h (Source.sourceFilePath source) artifactTime
+      liftIO $ Artifact.insert (artifactHandle h) (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source)
 
 insertToVisitEnv :: Handle -> Path Abs File -> VI.VisitInfo -> IO ()
@@ -239,10 +239,6 @@ pushToTraceSourceList h source =
 popFromTraceSourceList :: Handle -> IO ()
 popFromTraceSourceList h =
   modifyIORef' (traceSourceListRef h) tail
-
-insertToArtifactMap :: Handle -> Path Abs File -> A.ArtifactTime -> IO ()
-insertToArtifactMap h path artifactTime =
-  modifyIORef' (artifactMapRef h) $ Map.insert path artifactTime
 
 unravelImportItem :: Handle -> Target -> ImportItem -> EIO (A.ArtifactTime, Seq Source.Source)
 unravelImportItem h t importItem = do

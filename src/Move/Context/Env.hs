@@ -12,7 +12,6 @@ module Move.Context.Env
     getMainModule,
     getOS,
     getPlatform,
-    lookupArtifactTime,
     setBuildMode,
     setCurrentSource,
     setMainModule,
@@ -31,7 +30,6 @@ import Move.Context.App.Internal
 import Move.Context.EIO (EIO, raiseCritical', raiseError, raiseError')
 import Path
 import Rule.Arch qualified as Arch
-import Rule.Artifact qualified as A
 import Rule.BuildMode qualified as BM
 import Rule.DataSize qualified as DS
 import Rule.Hint
@@ -75,18 +73,6 @@ getCurrentSource' ref = do
       return source
 
 type PathMap = Map.HashMap (Path Abs File) UTCTime
-
-type ArtifactTimeRef =
-  IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
-
-lookupArtifactTime :: ArtifactTimeRef -> Path Abs File -> EIO A.ArtifactTime
-lookupArtifactTime ref path = do
-  amap <- liftIO $ readIORef ref
-  case Map.lookup path amap of
-    Just artifactTime ->
-      return artifactTime
-    Nothing ->
-      raiseCritical' $ "No artifact time is registered for the source: " <> T.pack (toFilePath path)
 
 getDataSize :: Hint -> EIO DS.DataSize
 getDataSize m = do
