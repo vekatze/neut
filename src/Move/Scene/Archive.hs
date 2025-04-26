@@ -8,7 +8,7 @@ where
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -34,14 +34,13 @@ new = do
   mainModule <- Env.getMainModule
   return $ Handle {..}
 
-archive :: PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> App ()
-archive packageVersion fullEns moduleRootDir contents = do
+archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()
+archive h packageVersion fullEns moduleRootDir contents = do
   withSystemTempDir "archive" $ \tempRootDir -> do
-    h <- new
-    toApp $ ModuleSave.save (moduleSaveHandle h) (tempRootDir </> moduleFile) fullEns
-    toApp $ copyModuleContents tempRootDir moduleRootDir contents
-    toApp $ makeReadOnly tempRootDir
-    toApp $ makeArchiveFromTempDir h packageVersion tempRootDir
+    ModuleSave.save (moduleSaveHandle h) (tempRootDir </> moduleFile) fullEns
+    copyModuleContents tempRootDir moduleRootDir contents
+    makeReadOnly tempRootDir
+    makeArchiveFromTempDir h packageVersion tempRootDir
 
 makeArchiveFromTempDir :: Handle -> PV.PackageVersion -> Path Abs Dir -> EIO ()
 makeArchiveFromTempDir h packageVersion tempRootDir = do

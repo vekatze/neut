@@ -24,4 +24,5 @@ archive cfg = do
   h <- EnsReflect.new
   archiveEns <- getMainModule >>= toApp . makeArchiveEns h packageVersion
   let (moduleRootDir, contents) = Collect.collectModuleFiles mainModule
-  Archive.archive packageVersion archiveEns moduleRootDir contents
+  h' <- Archive.new
+  toApp $ Archive.archive h' packageVersion archiveEns moduleRootDir contents
