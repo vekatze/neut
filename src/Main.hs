@@ -13,6 +13,7 @@ import Move.Act.Version qualified as Version
 import Move.Act.Zen qualified as Zen
 import Move.Console.EnsureExecutables (ensureExecutables)
 import Move.Context.App
+import Move.Context.EIO (toApp)
 import Move.Context.OptParse qualified as OptParse
 import Move.Context.Throw qualified as Throw
 import Rule.Command qualified as C
@@ -36,8 +37,9 @@ execute = do
           Check.check cfg
         C.Clean cfg ->
           Clean.clean cfg
-        C.Archive cfg ->
-          Archive.archive cfg
+        C.Archive cfg -> do
+          h <- Archive.new
+          toApp $ Archive.archive h cfg
         C.Create cfg ->
           Create.create cfg
         C.Get cfg ->

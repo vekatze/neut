@@ -1,7 +1,12 @@
-module Move.Act.Archive (archive) where
+module Move.Act.Archive
+  ( Handle,
+    new,
+    archive,
+  )
+where
 
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Scene.Archive qualified as Archive
@@ -13,17 +18,31 @@ import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
 import Move.Scene.PackageVersion.Reflect qualified as PV
 import Rule.Config.Archive
 
-archive :: Config -> App ()
-archive cfg = do
-  h <- InitCompiler.new
-  toApp $ InitCompiler.initializeCompiler h (remarkCfg cfg)
+data Handle
+  = Handle
+  { initCompilerHandle :: InitCompiler.Handle,
+    envHandle :: Env.Handle,
+    packageVersionHandle :: PV.Handle,
+    ensReflectHandle :: EnsReflect.Handle,
+    archiveHandle :: Archive.Handle
+  }
+
+new :: App Handle
+new = do
+  initCompilerHandle <- InitCompiler.new
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
-  toApp $ Path.ensureNotInDependencyDir mainModule
-  hp <- PV.new
-  packageVersion <- toApp $ maybe (PV.chooseNewVersion hp mainModule) (PV.reflect mainModule) (getArchiveName cfg)
-  h' <- EnsReflect.new
-  archiveEns <- toApp $ makeArchiveEns h' packageVersion mainModule
+  packageVersionHandle <- PV.new
+  ensReflectHandle <- EnsReflect.new
+  archiveHandle <- Archive.new
+  return $ Handle {..}
+
+archive :: Handle -> Config -> EIO ()
+archive h cfg = do
+  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+  mainModule <- Env.getMainModule (envHandle h)
+  Path.ensureNotInDependencyDir mainModule
+  packageVersion <-
+    maybe (PV.chooseNewVersion (packageVersionHandle h) mainModule) (PV.reflect mainModule) (getArchiveName cfg)
+  archiveEns <- makeArchiveEns (ensReflectHandle h) packageVersion mainModule
   let (moduleRootDir, contents) = Collect.collectModuleFiles mainModule
-  h'' <- Archive.new
-  toApp $ Archive.archive h'' packageVersion archiveEns moduleRootDir contents
+  Archive.archive (archiveHandle h) packageVersion archiveEns moduleRootDir contents
