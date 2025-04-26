@@ -15,7 +15,6 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
-import Move.Context.Decl qualified as Decl
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -35,6 +34,7 @@ import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Clarify qualified as Clarify
+import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Module.Reflect qualified as Module
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
@@ -98,4 +98,4 @@ initializeForSource source = do
   TopCandidate.initialize
   Remark.setRemarkList []
   PreDecl.initialize
-  Decl.initialize
+  WeakDecl.initialize
