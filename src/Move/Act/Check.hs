@@ -8,6 +8,7 @@ import Move.Context.Env qualified as Env
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Initialize qualified as Initialize
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Rule.Config.Check
 import Rule.Remark qualified as Remark
 
@@ -25,6 +26,7 @@ check cfg = do
 
 setup :: Config -> App ()
 setup cfg = do
-  Initialize.initializeCompiler (remarkCfg cfg)
+  hm <- ModuleReflect.new
+  Initialize.initializeCompiler hm (remarkCfg cfg)
   h <- Fetch.new
   Env.getMainModule >>= toApp . Fetch.fetch h

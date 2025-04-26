@@ -5,19 +5,21 @@ module Move.Context.AppM
   )
 where
 
+import Control.Monad.Trans.Except
 import Move.Context.App
 import Move.Context.Throw qualified as Throw
-import Control.Monad.Trans.Except
+import Move.Scene.Initialize qualified as Initialize
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Rule.Config.Remark qualified as Remark
 import Rule.Remark qualified as R
-import Move.Scene.Initialize qualified as Initialize
 
 type AppM =
   ExceptT [R.Remark] App
 
 runAppM :: AppM a -> App (Either [R.Remark] a)
 runAppM action = do
-  unitOrNone <- Throw.runEither (Initialize.initializeCompiler Remark.lspConfig)
+  hm <- ModuleReflect.new
+  unitOrNone <- Throw.runEither (Initialize.initializeCompiler hm Remark.lspConfig)
   case unitOrNone of
     Right _ ->
       runExceptT action

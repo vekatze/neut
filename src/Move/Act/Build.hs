@@ -9,6 +9,7 @@ import Move.Scene.Build qualified as Build
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Initialize qualified as Initialize
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Rule.Config.Build
 import Rule.Target
 import Prelude hiding (log)
@@ -24,7 +25,8 @@ build cfg = do
 setup :: Config -> App ()
 setup cfg = do
   toApp $ LLVM.ensureSetupSanity cfg
-  Initialize.initializeCompiler (remarkCfg cfg)
+  hm <- ModuleReflect.new
+  Initialize.initializeCompiler hm (remarkCfg cfg)
   mainModule <- Env.getMainModule
   toApp $ Path.ensureNotInDependencyDir mainModule
   Env.setBuildMode $ buildMode cfg

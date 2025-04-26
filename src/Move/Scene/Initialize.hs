@@ -33,7 +33,7 @@ import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
-import Move.Scene.Module.Reflect qualified as Module
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Unravel qualified as Unravel
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
@@ -53,18 +53,16 @@ initializeLogger cfg = do
   hd <- Debug.new
   liftIO $ Debug.setDebugMode hd $ Remark.enableDebugMode cfg
 
-initializeCompiler :: Remark.Config -> App ()
-initializeCompiler cfg = do
+initializeCompiler :: ModuleReflect.Handle -> Remark.Config -> App ()
+initializeCompiler h cfg = do
   initializeLogger cfg
-  h <- Module.new
-  mainModule <- toApp $ Module.fromCurrentPath h
+  mainModule <- toApp $ ModuleReflect.fromCurrentPath h
   initializeCompilerWithModule mainModule
 
-initializeCompilerWithPath :: Path Abs File -> Remark.Config -> App ()
-initializeCompilerWithPath path cfg = do
+initializeCompilerWithPath :: ModuleReflect.Handle -> Path Abs File -> Remark.Config -> App ()
+initializeCompilerWithPath h path cfg = do
   initializeLogger cfg
-  h <- Module.new
-  mainModule <- toApp $ Module.fromFilePath h path
+  mainModule <- toApp $ ModuleReflect.fromFilePath h path
   initializeCompilerWithModule mainModule
 
 initializeCompilerWithModule :: Module -> App ()

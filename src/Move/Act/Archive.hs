@@ -9,13 +9,15 @@ import Move.Scene.Collect qualified as Collect
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Module.MakeArchiveEns
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
 import Move.Scene.PackageVersion.Reflect qualified as PV
 import Rule.Config.Archive
 
 archive :: Config -> App ()
 archive cfg = do
-  Initialize.initializeCompiler (remarkCfg cfg)
+  hm <- ModuleReflect.new
+  Initialize.initializeCompiler hm (remarkCfg cfg)
   mainModule <- getMainModule
   toApp $ Path.ensureNotInDependencyDir mainModule
   hp <- PV.new

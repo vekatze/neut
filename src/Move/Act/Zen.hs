@@ -8,6 +8,7 @@ import Move.Context.Path qualified as Path
 import Move.Scene.Build (Axis (..), buildTarget)
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Initialize qualified as Initialize
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Path.IO (resolveFile')
 import Rule.Config.Zen
 import Rule.Module (Module (moduleZenConfig), extractModule)
@@ -39,7 +40,8 @@ fromConfig cfg =
 
 setup :: Config -> App ()
 setup cfg = do
-  Initialize.initializeCompiler (remarkCfg cfg)
+  hm <- ModuleReflect.new
+  Initialize.initializeCompiler hm (remarkCfg cfg)
   mainModule <- Env.getMainModule
   toApp $ Path.ensureNotInDependencyDir mainModule
   Env.setBuildMode $ buildMode cfg
