@@ -106,7 +106,8 @@ adjustTopCandidate ::
   App [CompletionItem]
 adjustTopCandidate summaryOrNone currentSource loc prefixSummary candInfo = do
   fmap concat $ forM candInfo $ \(candSource, candList) -> do
-    revMap <- Antecedent.getReverseMap
+    h <- Antecedent.new
+    revMap <- liftIO $ Antecedent.getReverseMap h
     locatorOrNone <- getHumanReadableLocator revMap (sourceModule currentSource) candSource
     case locatorOrNone of
       Nothing ->
@@ -341,7 +342,8 @@ getPrefixList baseModule source = do
   if moduleID baseModule /= moduleID (sourceModule source)
     then return []
     else do
-      revMap <- Antecedent.getReverseMap
+      h <- Antecedent.new
+      revMap <- liftIO $ Antecedent.getReverseMap h
       locatorList <- maybeToList <$> getHumanReadableLocator revMap baseModule source
       let prefixInfo = Map.toList $ modulePrefixMap baseModule
       return $ map (BN.reify . fst) $ filter (\(_, cod) -> uncurry reifyPrefixCod cod `elem` locatorList) prefixInfo

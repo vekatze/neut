@@ -16,10 +16,10 @@ import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Time
 import Move.Context.Alias qualified as Alias
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Debug qualified as Debug
@@ -68,13 +68,11 @@ data Handle
     parseHandle :: ParseCore.Handle,
     locatorHandle :: Locator.Handle,
     aliasHandle :: Alias.Handle,
+    antecedentHandle :: Antecedent.Handle,
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
     currentSourceRef :: IORef (Maybe Source.Source),
-    antecedentMapRef :: IORef (Map.HashMap MID.ModuleID Module),
-    reverseAntecedentMapRef :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
-    antecedentDigestCacheRef :: IORef (Maybe T.Text),
     artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
   }
 
@@ -89,14 +87,12 @@ new = do
   parseHandle <- ParseCore.new
   locatorHandle <- Locator.new
   aliasHandle <- Alias.new
+  antecedentHandle <- Antecedent.new
   visitEnvRef <- asks App.visitEnv
   traceSourceListRef <- asks App.traceSourceList
   sourceChildrenMapRef <- asks App.sourceChildrenMap
   artifactMapRef <- asks App.artifactMap
   currentSourceRef <- asks App.currentSource
-  antecedentMapRef <- asks App.antecedentMap
-  reverseAntecedentMapRef <- asks App.reverseAntecedentMap
-  antecedentDigestCacheRef <- asks App.antecedentDigestCache
   return $ Handle {..}
 
 unravel :: Handle -> Module -> Target -> EIO (A.ArtifactTime, [Source.Source])
@@ -142,13 +138,7 @@ registerShiftMap h = do
   let m = extractModule $ mainModule h
   arrowList <- unravelAntecedentArrow h axis m
   cAxis <- liftIO newCAxis
-  compressMap cAxis (Map.fromList arrowList) arrowList >>= liftIO . setMap h
-
-setMap :: Handle -> Map.HashMap MID.ModuleID Module -> IO ()
-setMap h mp = do
-  writeIORef (antecedentMapRef h) mp
-  forM_ (Map.toList mp) $ \(mid, m) -> do
-    modifyIORef' (reverseAntecedentMapRef h) $ Map.insertWith S.union (moduleID m) (S.singleton mid)
+  compressMap cAxis (Map.fromList arrowList) arrowList >>= liftIO . Antecedent.set (antecedentHandle h)
 
 type VisitMap =
   Map.HashMap (Path Abs File) VI.VisitInfo

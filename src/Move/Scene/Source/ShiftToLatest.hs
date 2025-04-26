@@ -8,12 +8,10 @@ module Move.Scene.Source.ShiftToLatest
 where
 
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
-import Data.IORef
 import Data.Text qualified as T
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Path
 import Path.IO
@@ -26,17 +24,17 @@ type ShiftMap = Map.HashMap MID.ModuleID Module
 
 newtype Handle
   = Handle
-  { shiftMapRef :: IORef (Map.HashMap MID.ModuleID Module)
+  { antecedentHandle :: Antecedent.Handle
   }
 
 new :: App Handle
 new = do
-  shiftMapRef <- asks App.antecedentMap
+  antecedentHandle <- Antecedent.new
   return $ Handle {..}
 
 shiftToLatest :: Handle -> Source.Source -> EIO Source.Source
 shiftToLatest h source = do
-  shiftMap <- liftIO $ readIORef (shiftMapRef h)
+  shiftMap <- liftIO $ Antecedent.get (antecedentHandle h)
   case Map.lookup (moduleID $ sourceModule source) shiftMap of
     Nothing ->
       return source
@@ -45,7 +43,7 @@ shiftToLatest h source = do
 
 shiftToLatestModule :: Handle -> Module -> EIO Module
 shiftToLatestModule h m = do
-  shiftMap <- liftIO $ readIORef (shiftMapRef h)
+  shiftMap <- liftIO $ Antecedent.get (antecedentHandle h)
   case Map.lookup (moduleID m) shiftMap of
     Nothing ->
       return m

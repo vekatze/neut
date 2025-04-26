@@ -14,6 +14,7 @@ import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError)
@@ -36,19 +37,19 @@ import Rule.TopNameMap
 
 data Handle
   = Handle
-  { locatorAliasMapRef :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
+  { antecedentHandle :: Antecedent.Handle,
+    locatorAliasMapRef :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     moduleAliasMapRef :: IORef (Map.HashMap ModuleAlias ModuleDigest),
-    antecedentMapRef :: IORef (Map.HashMap MID.ModuleID Module),
     locatorHandle :: Locator.Handle,
     currentSourceRef :: IORef (Maybe Source)
   }
 
 new :: App Handle
 new = do
+  antecedentHandle <- Antecedent.new
+  locatorHandle <- Locator.new
   locatorAliasMapRef <- asks App.locatorAliasMap
   moduleAliasMapRef <- asks App.moduleAliasMap
-  antecedentMapRef <- asks App.antecedentMap
-  locatorHandle <- Locator.new
   currentSourceRef <- asks App.currentSource
   return $ Handle {..}
 
@@ -127,7 +128,7 @@ getModuleDigestAliasList h baseModule = do
 
 getLatestCompatibleDigest :: Handle -> ModuleDigest -> EIO ModuleDigest
 getLatestCompatibleDigest h mc = do
-  antecedentMap <- liftIO $ readIORef (antecedentMapRef h)
+  antecedentMap <- liftIO $ Antecedent.get (antecedentHandle h)
   case Map.lookup (MID.Library mc) antecedentMap of
     Just newerModule ->
       case moduleID newerModule of
