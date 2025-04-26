@@ -45,8 +45,9 @@ execute = do
           Create.create cfg
         C.Get cfg ->
           Get.get cfg
-        C.Format cfg ->
-          Format.format cfg
+        C.Format cfg -> do
+          h <- Format.new
+          toApp $ Format.format h cfg
         C.LSP ->
           LSP.lsp
         C.ShowVersion cfg ->

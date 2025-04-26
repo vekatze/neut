@@ -1,8 +1,13 @@
-module Move.Act.Format (format) where
+module Move.Act.Format
+  ( Handle,
+    new,
+    format,
+  )
+where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
 import Move.Scene.Format qualified as Format
@@ -12,16 +17,28 @@ import Move.Scene.Write qualified as Write
 import Path.IO
 import Rule.Config.Format
 
-format :: Config -> App ()
-format cfg = do
-  h <- InitCompiler.new
-  toApp $ InitCompiler.initializeCompiler h (remarkCfg cfg)
-  InitTarget.new >>= liftIO . InitTarget.initializeForTarget
+data Handle
+  = Handle
+  { initCompilerHandle :: InitCompiler.Handle,
+    initTargetHandle :: InitTarget.Handle,
+    formatHandle :: Format.Handle
+  }
+
+new :: App Handle
+new = do
+  initCompilerHandle <- InitCompiler.new
+  initTargetHandle <- InitTarget.new
+  formatHandle <- Format.new
+  return $ Handle {..}
+
+format :: Handle -> Config -> EIO ()
+format h cfg = do
+  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+  liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
   path <- resolveFile' $ filePathString cfg
-  toApp $ ensureExistence' path Nothing
+  ensureExistence' path Nothing
   content <- liftIO $ readTextFile path
-  hFormat <- Format.new
-  content' <- toApp $ Format.format hFormat (shouldMinimizeImports cfg) (inputFileType cfg) path content
+  content' <- Format.format (formatHandle h) (shouldMinimizeImports cfg) (inputFileType cfg) path content
   if mustUpdateInPlace cfg
     then liftIO $ Write.write path content'
     else liftIO $ Parse.printTextFile content'
