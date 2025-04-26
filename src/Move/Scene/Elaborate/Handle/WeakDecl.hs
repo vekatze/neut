@@ -14,7 +14,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Env qualified as Env
 import Rule.DeclarationName qualified as DN
 import Rule.Foreign qualified as F
@@ -33,12 +33,12 @@ new = do
   weakDeclEnvRef <- asks App.weakDeclEnv
   return $ Handle {..}
 
-initialize :: App ()
-initialize = do
-  writeRef' App.weakDeclEnv Map.empty
-  arch <- toApp $ Env.getArch Nothing
+initialize :: Handle -> EIO ()
+initialize h = do
+  liftIO $ writeIORef (weakDeclEnvRef h) Map.empty
+  arch <- Env.getArch Nothing
   forM_ (F.defaultWeakForeignList arch) $ \(F.Foreign _ name domList cod) -> do
-    modifyRef' App.weakDeclEnv $ Map.insert (DN.Ext name) (domList, cod)
+    liftIO $ modifyIORef' (weakDeclEnvRef h) $ Map.insert (DN.Ext name) (domList, cod)
 
 insert :: Handle -> DN.DeclarationName -> [WT.WeakTerm] -> F.ForeignCodType WT.WeakTerm -> IO ()
 insert h k domList cod =

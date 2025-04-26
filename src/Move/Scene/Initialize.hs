@@ -97,4 +97,4 @@ initializeForSource source = do
   SymLoc.new >>= liftIO . SymLoc.initialize
   TopCandidate.new >>= liftIO . TopCandidate.initialize
   PreDecl.new >>= liftIO . PreDecl.initialize
-  WeakDecl.initialize
+  WeakDecl.new >>= toApp . WeakDecl.initialize
