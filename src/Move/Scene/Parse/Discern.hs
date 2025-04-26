@@ -11,7 +11,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
-import Move.Context.Env (getPlatform)
+import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -725,8 +725,8 @@ lookupIntrospectiveClause m value clauseList =
 
 getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> EIO T.Text
 getIntrospectiveValue h m key = do
-  bm <- liftIO $ H.getBuildMode h
-  p <- getPlatform (Just m)
+  bm <- liftIO $ Env.getBuildMode (H.envHandle h)
+  p <- Env.getPlatform (Just m)
   case key of
     "architecture" ->
       return $ Arch.reify (Platform.arch p)

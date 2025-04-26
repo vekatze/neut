@@ -43,13 +43,15 @@ import System.Info qualified as SI
 
 data Handle
   = Handle
-  { currentSourceRef :: IORef (Maybe Source.Source),
+  { buildModeRef :: IORef BM.BuildMode,
+    currentSourceRef :: IORef (Maybe Source.Source),
     enableSilentModeRef :: IORef Bool,
     mainModuleRef :: IORef (Maybe MainModule)
   }
 
 new :: App Handle
 new = do
+  buildModeRef <- asks App.buildMode
   currentSourceRef <- asks App.currentSource
   enableSilentModeRef <- asks App.enableSilentMode
   mainModuleRef <- asks App.mainModule
@@ -63,13 +65,13 @@ setMainModule :: Handle -> MainModule -> IO ()
 setMainModule h m =
   writeIORef (mainModuleRef h) (Just m)
 
-setBuildMode :: BM.BuildMode -> App ()
-setBuildMode =
-  writeRef' App.buildMode
+setBuildMode :: Handle -> BM.BuildMode -> IO ()
+setBuildMode h =
+  writeIORef (buildModeRef h)
 
-getBuildMode :: App BM.BuildMode
-getBuildMode =
-  readRef' App.buildMode
+getBuildMode :: Handle -> IO BM.BuildMode
+getBuildMode h =
+  readIORef (buildModeRef h)
 
 setCurrentSource :: Handle -> Source.Source -> IO ()
 setCurrentSource h s =

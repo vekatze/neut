@@ -1,5 +1,6 @@
 module Move.Act.Zen (zen) where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
 import Move.Context.App
 import Move.Context.EIO (toApp)
@@ -45,6 +46,6 @@ setup cfg = do
   envHandle <- Env.new
   mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
-  Env.setBuildMode $ buildMode cfg
+  liftIO $ Env.setBuildMode envHandle $ buildMode cfg
   h <- Fetch.new
   toApp $ Fetch.fetch h mainModule

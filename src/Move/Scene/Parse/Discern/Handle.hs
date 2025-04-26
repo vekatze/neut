@@ -5,15 +5,11 @@ module Move.Scene.Parse.Discern.Handle
     extend',
     extendWithoutInsert,
     extendByNominalEnv,
-    getBuildMode,
   )
 where
 
-import Control.Monad.Reader (asks)
-import Data.IORef
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
@@ -28,7 +24,6 @@ import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
 import Move.Language.Utility.Gensym qualified as Gensym
-import Rule.BuildMode qualified as BM
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
@@ -52,9 +47,9 @@ data Handle = Handle
     unusedVariableHandle :: UnusedVariable.Handle,
     unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
     unusedStaticFileHandle :: UnusedStaticFile.Handle,
+    envHandle :: Env.Handle,
     nameEnv :: NominalEnv,
-    currentLayer :: Layer,
-    buildModeRef :: IORef BM.BuildMode
+    currentLayer :: Layer
   }
 
 new :: App Handle
@@ -75,7 +70,6 @@ new = do
   unusedVariableHandle <- UnusedVariable.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   let nameEnv = empty
-  buildModeRef <- asks App.buildMode
   let currentLayer = 0
   return $ Handle {..}
 
@@ -100,7 +94,3 @@ extendByNominalEnv h k newNominalEnv = do
     (_, (m, x, l)) : rest -> do
       h' <- extend h m x l k
       extendByNominalEnv h' k rest
-
-getBuildMode :: Handle -> IO BM.BuildMode
-getBuildMode h = do
-  readIORef (buildModeRef h)

@@ -1,5 +1,6 @@
 module Move.Act.Build (build) where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -30,7 +31,7 @@ setup cfg = do
   envHandle <- Env.new
   mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
-  Env.setBuildMode $ buildMode cfg
+  liftIO $ Env.setBuildMode envHandle $ buildMode cfg
   h <- Fetch.new
   toApp $ Fetch.fetch h mainModule
 
