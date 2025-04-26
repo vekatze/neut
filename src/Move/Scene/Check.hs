@@ -1,5 +1,7 @@
 module Move.Scene.Check
-  ( check,
+  ( Handle,
+    new,
+    check,
     checkModule,
     checkSingle,
     checkAll,
@@ -29,14 +31,32 @@ import Rule.Remark
 import Rule.Source (Source (sourceFilePath))
 import Rule.Target
 
+data Handle
+  = Handle
+  { debugHandle :: Debug.Handle,
+    loadHandle :: Load.Handle,
+    unravelHandle :: Unravel.Handle,
+    parseHandle :: Parse.Handle
+  }
+
+new :: App Handle
+new = do
+  debugHandle <- Debug.new
+  loadHandle <- Load.new
+  unravelHandle <- Unravel.new
+  parseHandle <- Parse.new
+  return $ Handle {..}
+
 check :: App [Remark]
 check = do
   M.MainModule mainModule <- getMainModule
-  _check Peripheral mainModule
+  h <- new
+  _check h Peripheral mainModule
 
 checkModule :: M.Module -> App [Remark]
 checkModule baseModule = do
-  _check Peripheral baseModule
+  h <- new
+  _check h Peripheral baseModule
 
 checkAll :: App [Remark]
 checkAll = do
@@ -47,46 +67,44 @@ checkAll = do
   checkModule (extractModule mainModule)
 
 checkSingle :: Elaborate.HandleEnv -> M.Module -> Path Abs File -> App [Remark]
-checkSingle h baseModule path = do
-  _check' h (PeripheralSingle path) baseModule
+checkSingle hRootEnv baseModule path = do
+  h <- new
+  _check' h hRootEnv (PeripheralSingle path) baseModule
 
-_check :: Target -> M.Module -> App [Remark]
-_check target baseModule = do
+_check :: Handle -> Target -> M.Module -> App [Remark]
+_check h target baseModule = do
   Throw.collectLogs $ do
     Initialize.initializeForTarget
-    h <- Unravel.new
-    (_, dependenceSeq) <- toApp $ Unravel.unravel h baseModule target
-    h' <- Load.new
-    contentSeq <- toApp $ Load.load h' target dependenceSeq
+    (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
+    contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       hEnv <- liftIO Elaborate.createNewEnv
-      checkSource hEnv target source cacheOrContent
+      checkSource h hEnv target source cacheOrContent
 
-_check' :: Elaborate.HandleEnv -> Target -> M.Module -> App [Remark]
-_check' hRootEnv target baseModule = do
+_check' :: Handle -> Elaborate.HandleEnv -> Target -> M.Module -> App [Remark]
+_check' h hRootEnv target baseModule = do
   Throw.collectLogs $ do
     Initialize.initializeForTarget
-    h <- Unravel.new
-    (_, dependenceSeq) <- toApp $ Unravel.unravel h baseModule target
-    h' <- Load.new
-    contentSeq <- toApp $ Load.load h' target dependenceSeq
+    (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
+    contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
     case unsnoc contentSeq of
       Nothing ->
         return ()
       Just (deps, (rootSource, rootCacheOrContent)) -> do
         forM_ deps $ \(source, cacheOrContent) -> do
           hEnv <- liftIO Elaborate.createNewEnv
-          checkSource hEnv target source cacheOrContent
-        checkSource hRootEnv target rootSource rootCacheOrContent
+          checkSource h hEnv target source cacheOrContent
+        checkSource h hRootEnv target rootSource rootCacheOrContent
 
-checkSource :: Elaborate.HandleEnv -> Target -> Source -> Either Cache T.Text -> App ()
-checkSource hEnv target source cacheOrContent = do
+checkSource :: Handle -> Elaborate.HandleEnv -> Target -> Source -> Either Cache T.Text -> App ()
+checkSource h hEnv target source cacheOrContent = do
   Initialize.initializeForSource source
-  h'' <- Debug.new
-  toApp $ Debug.report h'' $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hParse <- Parse.new
+  toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   hElaborate <- Elaborate.new hEnv
-  void $ toApp $ Parse.parse hParse target source cacheOrContent >>= Elaborate.elaborate hElaborate target
+  void $
+    toApp $
+      Parse.parse (parseHandle h) target source cacheOrContent
+        >>= Elaborate.elaborate hElaborate target
 
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc =
