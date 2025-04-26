@@ -1,7 +1,6 @@
 module Move.Context.UnusedPreset
   ( initialize,
     insert,
-    delete,
     deleteIO,
   )
 where
@@ -24,10 +23,6 @@ initialize =
 insert :: ModuleIDText -> Hint -> App ()
 insert presetName m =
   modifyRef' unusedPresetMap $ Map.insert presetName m
-
-delete :: ModuleIDText -> App ()
-delete presetName =
-  modifyRef' unusedPresetMap $ Map.delete presetName
 
 deleteIO :: IORef (Map.HashMap T.Text Hint) -> ModuleIDText -> IO ()
 deleteIO ref presetName =

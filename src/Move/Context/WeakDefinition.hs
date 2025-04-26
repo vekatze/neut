@@ -2,8 +2,6 @@ module Move.Context.WeakDefinition
   ( Handle,
     new,
     initialize,
-    read,
-    lookup,
     DefMap,
     insert',
     read',
@@ -46,15 +44,6 @@ new = do
   gensymHandle <- GensymNew.new
   weakDefMapRef <- asks App.weakDefMap
   return $ Handle {..}
-
-read :: App DefMap
-read =
-  readRef' App.weakDefMap
-
-lookup :: DD.DefiniteDescription -> App (Maybe WeakTerm)
-lookup name = do
-  denv <- readRef' App.weakDefMap
-  return $ Map.lookup name denv
 
 insert' ::
   Handle ->

@@ -3,7 +3,6 @@ module Move.Context.OptimizableData
     new,
     insert,
     lookupH,
-    lookup,
   )
 where
 
@@ -29,10 +28,6 @@ new = do
 insert :: Handle -> DD.DefiniteDescription -> OptimizableData -> IO ()
 insert h dd grp = do
   modifyIORef' (optDataMapRef h) $ Map.insert dd grp
-
-lookup :: DD.DefiniteDescription -> App (Maybe OptimizableData)
-lookup dd =
-  Map.lookup dd <$> readRef' App.optDataMap
 
 lookupH :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupH h dd = do

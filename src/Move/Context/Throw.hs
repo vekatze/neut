@@ -8,9 +8,6 @@ module Move.Context.Throw
     raiseError,
     raiseError',
     raiseCritical,
-    raiseCritical',
-    raiseSyntaxError,
-    liftEither,
   )
 where
 
@@ -96,19 +93,3 @@ raiseError' text =
 raiseCritical :: Hint -> T.Text -> App a
 raiseCritical m text =
   throw $ E.newCritical m text
-
-raiseCritical' :: T.Text -> App a
-raiseCritical' text =
-  throw $ E.newCritical' text
-
-raiseSyntaxError :: Hint -> T.Text -> App a
-raiseSyntaxError m form =
-  raiseError m $ "Could not match the input with the expected form: " <> form
-
-liftEither :: Either E.Error a -> App a
-liftEither errOrResult =
-  case errOrResult of
-    Left err ->
-      throw err
-    Right result ->
-      return result

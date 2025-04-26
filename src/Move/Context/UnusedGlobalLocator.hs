@@ -1,7 +1,5 @@
 module Move.Context.UnusedGlobalLocator
   ( initialize,
-    insert,
-    delete,
     get,
     insertIO,
     deleteIO,
@@ -21,14 +19,6 @@ import Prelude hiding (lookup, read)
 initialize :: App ()
 initialize =
   writeRef' unusedGlobalLocatorMap Map.empty
-
-insert :: T.Text -> Hint -> T.Text -> App ()
-insert sglText m locatorText =
-  modifyRef' unusedGlobalLocatorMap $ Map.insertWith (++) sglText [(m, locatorText)]
-
-delete :: T.Text -> App ()
-delete sglText =
-  modifyRef' unusedGlobalLocatorMap $ Map.delete sglText
 
 get :: App UnusedGlobalLocators
 get = do

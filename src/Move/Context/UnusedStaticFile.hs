@@ -1,6 +1,5 @@
 module Move.Context.UnusedStaticFile
   ( initialize,
-    insert,
     delete,
     get,
     insertIO,
@@ -19,10 +18,6 @@ import Prelude hiding (lookup, read)
 initialize :: App ()
 initialize =
   writeRef' unusedStaticFileMap Map.empty
-
-insert :: T.Text -> Hint -> App ()
-insert ll m =
-  modifyRef' unusedStaticFileMap $ Map.insert ll m
 
 delete :: T.Text -> App ()
 delete ll =

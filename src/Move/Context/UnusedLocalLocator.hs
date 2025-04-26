@@ -1,7 +1,5 @@
 module Move.Context.UnusedLocalLocator
   ( initialize,
-    insert,
-    delete,
     get,
     insertIO,
     deleteIO,
@@ -21,14 +19,6 @@ import Prelude hiding (lookup, read)
 initialize :: App ()
 initialize =
   writeRef' unusedLocalLocatorMap Map.empty
-
-insert :: LL.LocalLocator -> Hint -> App ()
-insert ll m =
-  modifyRef' unusedLocalLocatorMap $ Map.insert ll m
-
-delete :: LL.LocalLocator -> App ()
-delete ll =
-  modifyRef' unusedLocalLocatorMap $ Map.delete ll
 
 get :: App UnusedLocalLocators
 get = do
