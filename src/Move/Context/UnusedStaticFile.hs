@@ -28,9 +28,9 @@ new = do
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   return $ Handle {..}
 
-initialize :: App ()
-initialize =
-  writeRef' App.unusedStaticFileMap Map.empty
+initialize :: Handle -> IO ()
+initialize h =
+  writeIORef (unusedStaticFileMapRef h) Map.empty
 
 delete :: Handle -> T.Text -> IO ()
 delete h ll =
