@@ -2,7 +2,6 @@ module Move.Context.Debug
   ( Handle,
     new,
     report,
-    enableDebugMode,
     setDebugMode,
   )
 where
@@ -10,6 +9,7 @@ where
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (asks)
+import Data.IORef
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, UTCTime, diffUTCTime, getCurrentTime)
 import Move.Console.Report (printStdErr)
@@ -22,30 +22,33 @@ import Text.Printf (printf)
 
 data Handle
   = Handle
-  { enableDebugMode :: Bool,
-    colorSpec :: L.ColorSpec,
+  { enableDebugModeRef :: IORef Bool,
+    shouldColorizeStderrRef :: IORef Bool,
     baseTime :: UTCTime
   }
 
 new :: App Handle
 new = do
-  enableDebugMode <- readRef' App.enableDebugMode
-  shouldColorize <- readRef' App.shouldColorizeStderr
-  let colorSpec = if shouldColorize then L.Colorful else L.Colorless
+  enableDebugModeRef <- asks App.enableDebugMode
+  shouldColorizeStderrRef <- asks App.shouldColorizeStderr
   baseTime <- asks App.startTime
   return $ Handle {..}
 
 report :: Handle -> T.Text -> EIO ()
 report h message = do
-  when (enableDebugMode h) $ do
+  enableDebugMode <- liftIO $ readIORef (enableDebugModeRef h)
+  when enableDebugMode $ do
     currentTime <- liftIO getCurrentTime
     let elapsedTime = diffUTCTime currentTime (baseTime h)
     let elapsedTime' = L.pack [SetColor Foreground Vivid Black] (T.pack $ formatNominalDiffTime elapsedTime)
-    liftIO $ printStdErr (colorSpec h) $ elapsedTime' <> " " <> L.pack' message <> "\n"
+    shouldColorize <- liftIO $ readIORef (shouldColorizeStderrRef h)
+    let colorSpec = if shouldColorize then L.Colorful else L.Colorless
+    liftIO $ printStdErr colorSpec $ elapsedTime' <> " " <> L.pack' message <> "\n"
 
-setDebugMode :: Bool -> App ()
-setDebugMode =
-  writeRef' App.enableDebugMode
+setDebugMode :: Handle -> Bool -> IO ()
+setDebugMode h =
+  writeIORef (enableDebugModeRef h)
 
 formatNominalDiffTime :: NominalDiffTime -> String
-formatNominalDiffTime t = printf "%.6f" (realToFrac t :: Double)
+formatNominalDiffTime t =
+  printf "%.6f" (realToFrac t :: Double)
