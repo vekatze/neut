@@ -11,7 +11,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
-import Move.Context.Module qualified as Module
+import Move.Scene.Module.Save qualified as ModuleSave
 import Path
 import Path.IO
 import Rule.Const
@@ -23,22 +23,24 @@ import Prelude hiding (log)
 data Handle
   = Handle
   { externalHandle :: External.Handle,
+    moduleSaveHandle :: ModuleSave.Handle,
     mainModule :: MainModule
   }
 
 new :: App Handle
 new = do
   externalHandle <- External.new
+  moduleSaveHandle <- ModuleSave.new
   mainModule <- Env.getMainModule
   return $ Handle {..}
 
 archive :: PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> App ()
 archive packageVersion fullEns moduleRootDir contents = do
   withSystemTempDir "archive" $ \tempRootDir -> do
-    Module.saveEns (tempRootDir </> moduleFile) fullEns
+    h <- new
+    toApp $ ModuleSave.save (moduleSaveHandle h) (tempRootDir </> moduleFile) fullEns
     toApp $ copyModuleContents tempRootDir moduleRootDir contents
     toApp $ makeReadOnly tempRootDir
-    h <- new
     toApp $ makeArchiveFromTempDir h packageVersion tempRootDir
 
 makeArchiveFromTempDir :: Handle -> PV.PackageVersion -> Path Abs Dir -> EIO ()
