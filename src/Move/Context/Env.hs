@@ -42,14 +42,16 @@ import Rule.Platform
 import Rule.Source qualified as Source
 import System.Info qualified as SI
 
-newtype Handle
+data Handle
   = Handle
-  { currentSourceRef :: IORef (Maybe Source.Source)
+  { currentSourceRef :: IORef (Maybe Source.Source),
+    enableSilentModeRef :: IORef Bool
   }
 
 new :: App Handle
 new = do
   currentSourceRef <- asks App.currentSource
+  enableSilentModeRef <- asks App.enableSilentMode
   return $ Handle {..}
 
 getMainModule :: App MainModule
@@ -150,10 +152,10 @@ getPlatform mm = do
   os <- getOS mm
   return $ Platform {arch, os}
 
-setSilentMode :: Bool -> App ()
-setSilentMode =
-  writeRef' App.enableSilentMode
+setSilentMode :: Handle -> Bool -> IO ()
+setSilentMode h =
+  writeIORef (enableSilentModeRef h)
 
-getSilentMode :: App Bool
-getSilentMode =
-  readRef' App.enableSilentMode
+getSilentMode :: Handle -> IO Bool
+getSilentMode h =
+  readIORef (enableSilentModeRef h)

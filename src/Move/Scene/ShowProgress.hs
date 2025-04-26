@@ -12,7 +12,7 @@ import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Color qualified as Color
-import Move.Context.Env (getSilentMode)
+import Move.Context.Env qualified as Env
 import Rule.Log qualified as L
 import Rule.ProgressBar (Frame, ProgressBar (..), next, renderFinished, renderInProgress)
 import System.Console.ANSI
@@ -31,7 +31,8 @@ data InnerHandle
 
 new :: Maybe Int -> T.Text -> T.Text -> [SGR] -> App Handle
 new numOfItems workingTitle completedTitle color = do
-  silentMode <- getSilentMode
+  he <- Env.new
+  silentMode <- liftIO $ Env.getSilentMode he
   case (silentMode, numOfItems) of
     (True, _) ->
       return Nothing
