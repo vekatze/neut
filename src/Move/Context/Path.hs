@@ -63,7 +63,7 @@ import Rule.Target qualified as Target
 data Handle
   = Handle
   { cacheRef :: IORef (Maybe String),
-    clangDigest :: IORef (Maybe T.Text),
+    clangHandle :: Clang.Handle,
     debugHandle :: Debug.Handle,
     mainModule :: M.MainModule
   }
@@ -72,7 +72,7 @@ data Handle
 new :: App Handle
 new = do
   cacheRef <- asks App.buildSignatureCache
-  clangDigest <- asks App.clangDigest
+  clangHandle <- Clang.new
   mainModule <- getMainModule
   debugHandle <- Debug.new
   return $ Handle {..}
@@ -150,8 +150,7 @@ getBuildSignature h t = do
     Just sig -> do
       return sig
     Nothing -> do
-      let h' = Clang.Handle {clangRef = clangDigest h, debugHandle = debugHandle h}
-      clangDigest <- Clang.getClangDigest h'
+      clangDigest <- Clang.getClangDigest (clangHandle h)
       let MainModule m = mainModule h
       clangOption <- getClangOption t m
       moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation m
