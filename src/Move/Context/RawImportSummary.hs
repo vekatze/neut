@@ -23,9 +23,9 @@ new = do
   importEnvRef <- asks App.importEnv
   return $ Handle {..}
 
-initialize :: App ()
-initialize =
-  writeRef' App.importEnv Nothing
+initialize :: Handle -> IO ()
+initialize h =
+  writeIORef (importEnvRef h) Nothing
 
 set :: Handle -> RawImport -> IO ()
 set h rawImport = do

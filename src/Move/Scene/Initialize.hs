@@ -93,7 +93,7 @@ initializeForSource source = do
   Alias.new >>= toApp . Alias.initializeAliasMap
   Locator.new >>= toApp . Locator.initialize
   Tag.new >>= liftIO . Tag.initialize
-  RawImportSummary.initialize
+  RawImportSummary.new >>= liftIO . RawImportSummary.initialize
   SymLoc.initialize
   TopCandidate.initialize
   PreDecl.initialize
