@@ -19,7 +19,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Emit.LowComp qualified as EmitLowComp
-import Move.Scene.LowComp.Reduce qualified as LowComp
+import Move.Scene.LowComp.Reduce qualified as Reduce
 import Rule.BaseLowType qualified as BLT
 import Rule.Builder
 import Rule.Const
@@ -42,6 +42,7 @@ data Handle
   = Handle
   { gensymHandle :: Gensym.Handle,
     emitLowCompHandle :: EmitLowComp.Handle,
+    reduceHandle :: Reduce.Handle,
     dataSize :: DataSize
   }
 
@@ -49,6 +50,7 @@ new :: App Handle
 new = do
   gensymHandle <- Gensym.new
   emitLowCompHandle <- EmitLowComp.new
+  reduceHandle <- Reduce.new
   dataSize <- toApp Env.getDataSize'
   return $ Handle {..}
 
@@ -71,7 +73,7 @@ emitLowCodeInfo h (declEnv, defList, staticTextList) = do
   baseSize <- toApp Env.getBaseSize'
   let declStrList = emitDeclarations declEnv
   let staticTextList' = map (emitStaticText baseSize) staticTextList
-  defStrList <- concat <$> mapM (emitDefinitions h) defList
+  defStrList <- concat <$> mapM (liftIO . emitDefinitions h) defList
   return (declStrList <> staticTextList', defStrList)
 
 emitArgDecl :: [Builder]
@@ -133,14 +135,13 @@ emitDeclarations :: DN.DeclEnv -> [Builder]
 emitDeclarations declEnv = do
   map declToBuilder $ List.sort $ HashMap.toList declEnv
 
-emitDefinitions :: Handle -> LC.Def -> App [Builder]
+emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, (args, body)) = do
-  args' <- liftIO $ mapM (Gensym.newIdentFromIdent (gensymHandle h)) args
+  args' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
-  h' <- LowComp.new
-  body' <- liftIO $ LowComp.reduce h' sub body
+  body' <- Reduce.reduce (reduceHandle h) sub body
   let args'' = map (emitValue . LC.VarLocal) args'
-  liftIO $ emitDefinition h "ptr" (DD.toBuilder name) args'' body'
+  emitDefinition h "ptr" (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (args, body) = do
