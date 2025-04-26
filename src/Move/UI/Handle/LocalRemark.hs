@@ -23,9 +23,9 @@ new = do
   remarkListRef <- asks App.remarkList
   return $ Handle {..}
 
-initialize :: App ()
-initialize = do
-  writeRef' App.remarkList []
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (remarkListRef h) []
 
 insert :: Handle -> R.Remark -> IO ()
 insert h r = do
