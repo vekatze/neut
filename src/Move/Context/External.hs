@@ -25,12 +25,12 @@ import System.Process
 
 run :: String -> [String] -> App ()
 run procName optionList = do
-  runOrFail procName optionList >>= Throw.liftEither
-
-runOrFail :: String -> [String] -> App (Either Error ())
-runOrFail procName optionList = do
   h <- Debug.new
-  toApp $ Debug.report h $ "Executing: " <> T.pack (show (procName, optionList))
+  toApp (runOrFail h procName optionList) >>= Throw.liftEither
+
+runOrFail :: Debug.Handle -> String -> [String] -> EIO (Either Error ())
+runOrFail h procName optionList = do
+  Debug.report h $ "Executing: " <> T.pack (show (procName, optionList))
   let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
   value <- liftIO $ run00 spec
@@ -38,7 +38,7 @@ runOrFail procName optionList = do
     Right _ ->
       return $ Right ()
     Left err ->
-      Throw.throw $ ProcessRunner.toCompilerError err
+      throwError $ ProcessRunner.toCompilerError err
 
 data ExternalError = ExternalError
   { cmd :: String,

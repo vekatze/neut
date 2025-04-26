@@ -13,6 +13,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
@@ -183,7 +184,8 @@ download tempFilePath ma@(ModuleAlias alias) mirrorList = do
     [] ->
       Throw.raiseError' $ "Could not obtain the module `" <> BN.reify alias <> "`."
     ModuleURL mirror : rest -> do
-      errOrUnit <- External.runOrFail "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror]
+      hd <- Debug.new
+      errOrUnit <- toApp $ External.runOrFail hd "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror]
       case errOrUnit of
         Right () ->
           return ()
