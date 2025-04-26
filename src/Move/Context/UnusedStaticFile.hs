@@ -1,33 +1,46 @@
 module Move.Context.UnusedStaticFile
-  ( initialize,
+  ( Handle,
+    new,
+    initialize,
     delete,
     get,
-    insertIO,
+    insert,
   )
 where
 
 import Control.Monad
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
 import Rule.Hint
 import Prelude hiding (lookup, read)
 
+newtype Handle
+  = Handle
+  { unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint)
+  }
+
+new :: App Handle
+new = do
+  unusedStaticFileMapRef <- asks App.unusedStaticFileMap
+  return $ Handle {..}
+
 initialize :: App ()
 initialize =
-  writeRef' unusedStaticFileMap Map.empty
+  writeRef' App.unusedStaticFileMap Map.empty
 
-delete :: T.Text -> App ()
-delete ll =
-  modifyRef' unusedStaticFileMap $ Map.delete ll
+delete :: Handle -> T.Text -> IO ()
+delete h ll =
+  modifyIORef' (unusedStaticFileMapRef h) $ Map.delete ll
 
-get :: App [(T.Text, Hint)]
-get = do
-  uenv <- readRef' unusedStaticFileMap
+get :: Handle -> IO [(T.Text, Hint)]
+get h = do
+  uenv <- readIORef (unusedStaticFileMapRef h)
   return $ Map.toList uenv
 
-insertIO :: IORef (Map.HashMap T.Text Hint) -> T.Text -> Hint -> IO ()
-insertIO ref ll m =
-  modifyIORef' ref $ Map.insert ll m
+insert :: Handle -> T.Text -> Hint -> IO ()
+insert h ll m =
+  modifyIORef' (unusedStaticFileMapRef h) $ Map.insert ll m

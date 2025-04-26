@@ -19,6 +19,7 @@ import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
+import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Data
 import Move.Scene.Parse.Discern.Handle qualified as H
@@ -509,7 +510,7 @@ discern h term =
       contentOrNone <- liftIO $ Locator.getStaticFileContent (H.locatorHandle h) key
       case contentOrNone of
         Just (path, content) -> do
-          liftIO $ H.deleteUnusedStaticFile h key
+          liftIO $ UnusedStaticFile.delete (H.unusedStaticFileHandle h) key
           textType <- liftEither (locatorToVarGlobal m coreText) >>= discern h
           liftIO $ Tag.insertFileLoc (H.tagHandle h) mKey (T.length key) (newSourceHint path)
           return $ m :< WT.Prim (WP.Value $ WPV.StaticText textType content)

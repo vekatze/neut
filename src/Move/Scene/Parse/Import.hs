@@ -9,13 +9,10 @@ where
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
-import Data.IORef
 import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
@@ -53,7 +50,7 @@ type LocatorText =
 data Handle
   = Handle
   { mainModule :: MainModule,
-    unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
+    unusedStaticFileHandle :: UnusedStaticFile.Handle,
     unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     shiftToLatestHandle :: STL.Handle,
@@ -70,7 +67,7 @@ data Handle
 new :: App Handle
 new = do
   mainModule <- getMainModule
-  unusedStaticFileMapRef <- asks App.unusedStaticFileMap
+  unusedStaticFileHandle <- UnusedStaticFile.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   getEnabledPresetHandle <- GetEnabledPreset.new
@@ -129,7 +126,7 @@ interpretImportItemStatic h currentModule keyList = do
       Just path -> do
         let fullPath = moduleRootDir </> path
         liftIO $ Tag.insertFileLoc (tagHandle h) mKey (T.length key) (newSourceHint fullPath)
-        liftIO $ UnusedStaticFile.insertIO (unusedStaticFileMapRef h) key mKey
+        liftIO $ UnusedStaticFile.insert (unusedStaticFileHandle h) key mKey
         return (key, (mKey, fullPath))
       Nothing ->
         raiseError mKey $ "No such static file is defined: " <> key

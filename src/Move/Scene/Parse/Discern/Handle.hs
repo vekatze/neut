@@ -6,17 +6,14 @@ module Move.Scene.Parse.Discern.Handle
     extendWithoutInsert,
     extendByNominalEnv,
     deleteUnusedVariable,
-    deleteUnusedStaticFile,
     getBuildMode,
   )
 where
 
 import Control.Monad.Reader (asks)
-import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
-import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
@@ -30,6 +27,7 @@ import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.BuildMode qualified as BM
 import Rule.Hint
@@ -57,7 +55,7 @@ data Handle = Handle
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
     usedVariableSetRef :: IORef (S.Set Int),
-    unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
+    unusedStaticFileHandle :: UnusedStaticFile.Handle,
     buildModeRef :: IORef BM.BuildMode
   }
 
@@ -74,11 +72,11 @@ new = do
   tagHandle <- Tag.new
   preDeclHandle <- PreDecl.new
   optDataHandle <- OptimizableData.new
+  unusedStaticFileHandle <- UnusedStaticFile.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   usedVariableSetRef <- asks App.usedVariableSet
-  unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   buildModeRef <- asks App.buildMode
   let currentLayer = 0
   return $ Handle {..}
@@ -112,10 +110,6 @@ insertUnusedVariable h m x k =
 deleteUnusedVariable :: Handle -> Ident -> IO ()
 deleteUnusedVariable h x =
   modifyIORef' (usedVariableSetRef h) $ S.insert (Ident.toInt x)
-
-deleteUnusedStaticFile :: Handle -> T.Text -> IO ()
-deleteUnusedStaticFile h ll =
-  modifyIORef' (unusedStaticFileMapRef h) $ Map.delete ll
 
 getBuildMode :: Handle -> IO BM.BuildMode
 getBuildMode h = do

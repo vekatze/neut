@@ -24,6 +24,7 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedPreset qualified as UnusedPreset
+import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -56,7 +57,7 @@ data Handle
     unusedPresetHandle :: UnusedPreset.Handle, -- (ModuleID ~> Hint)
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
-    unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
+    unusedStaticFileHandle :: UnusedStaticFile.Handle,
     usedVariableSetRef :: IORef (S.Set Int)
   }
 
@@ -72,7 +73,7 @@ new = do
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   unusedPresetHandle <- UnusedPreset.new
-  unusedStaticFileMapRef <- asks App.unusedStaticFileMap
+  unusedStaticFileHandle <- UnusedStaticFile.new
   usedVariableSetRef <- asks App.usedVariableSet
   return $ Handle {..}
 
@@ -173,8 +174,8 @@ registerUnusedPresetRemarks h = do
 
 registerUnusedStaticFileRemarks :: Handle -> IO ()
 registerUnusedStaticFileRemarks h = do
-  unusedStaticFiles <- readIORef (unusedStaticFileMapRef h)
-  forM_ (Map.toList unusedStaticFiles) $ \(k, m) ->
+  unusedStaticFiles <- UnusedStaticFile.get (unusedStaticFileHandle h)
+  forM_ unusedStaticFiles $ \(k, m) ->
     LocalRemark.insert (localRemarkHandle h) $
       R.newRemark m R.Warning $
         "Imported but not used: `" <> k <> "`"
