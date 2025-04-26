@@ -15,7 +15,8 @@ create cfg = do
   newModule <- toApp $ New.constructDefaultModule (moduleName cfg) (targetName cfg)
   Initialize.initializeLogger (remarkCfg cfg)
   Initialize.initializeCompilerWithModule newModule
-  New.createNewProject (moduleName cfg) newModule
+  h <- New.new
+  toApp $ New.createNewProject h (moduleName cfg) newModule
   Fetch.insertCoreDependency
   Initialize.initializeCompilerWithPath (moduleLocation newModule) (remarkCfg cfg)
   void Check.checkAll

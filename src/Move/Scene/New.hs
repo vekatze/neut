@@ -11,43 +11,44 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Move.Console.Report
 import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
-import Move.Context.Remark qualified as Remark
-import Move.Context.Throw qualified as Throw
 import Move.Scene.Module.Save qualified as ModuleSave
 import Path
 import Path.IO
 import Rule.ClangOption qualified as CL
 import Rule.Const
+import Rule.Log (ColorSpec)
 import Rule.Module
 import Rule.ModuleID qualified as MID
 import Rule.SourceLocator qualified as SL
 import Rule.Target
 import Rule.ZenConfig
 
-newtype Handle
+data Handle
   = Handle
-  { moduleSaveHandle :: ModuleSave.Handle
+  { moduleSaveHandle :: ModuleSave.Handle,
+    stdOutColorSpec :: ColorSpec
   }
 
 new :: App Handle
 new = do
   moduleSaveHandle <- ModuleSave.new
+  stdOutColorSpec <- getColorSpecStdOut
   return $ Handle {..}
 
-createNewProject :: T.Text -> Module -> App ()
-createNewProject moduleName newModule = do
+createNewProject :: Handle -> T.Text -> Module -> EIO ()
+createNewProject h moduleName newModule = do
   let moduleDir = parent $ moduleLocation newModule
   moduleDirExists <- doesDirExist moduleDir
   if moduleDirExists
-    then Throw.raiseError' $ "The directory `" <> moduleName <> "` already exists"
+    then raiseError' $ "The directory `" <> moduleName <> "` already exists"
     else do
-      h <- new
-      toApp $ createModuleFile h newModule
+      createModuleFile h newModule
       liftIO $ createMainFile newModule
-      Remark.printNote' $ "Created a module: " <> moduleName
+      liftIO $ printNote' (stdOutColorSpec h) $ "Created a module: " <> moduleName
 
 constructDefaultModule :: T.Text -> Maybe T.Text -> EIO Module
 constructDefaultModule moduleName mTargetName = do
