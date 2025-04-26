@@ -78,7 +78,7 @@ fetchDeps deps = do
     else do
       h <- new
       next <- fmap concat $ pooledForConcurrently deps' $ \(alias, dep) -> do
-        installModule h alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
+        toApp $ installModule h alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
       fetchDeps next
 
 tidy :: [(ModuleAlias, M.Dependency)] -> App [(ModuleAlias, M.Dependency)]
@@ -143,7 +143,7 @@ insertCoreDependency = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
   h <- new
-  _ <- installModule h coreModuleAlias [coreModuleURL] digest
+  _ <- toApp $ installModule h coreModuleAlias [coreModuleURL] digest
   toApp $
     addDependencyToModuleFile h coreModuleAlias $
       M.Dependency
@@ -152,15 +152,15 @@ insertCoreDependency = do
           dependencyPresetEnabled = True
         }
 
-installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
+installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> EIO [(ModuleAlias, M.Dependency)]
 installModule h alias mirrorList digest = do
   liftIO $ printInstallationRemark h alias digest
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
-    toApp $ download h tempFilePath alias mirrorList
+    download h tempFilePath alias mirrorList
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let archiveModuleDigest = MD.fromByteString archive
     when (digest /= archiveModuleDigest) $
-      Throw.raiseError' $
+      raiseError' $
         "The digest of the module `"
           <> BN.reify (extract alias)
           <> "` is different from the expected one:"
@@ -170,7 +170,7 @@ installModule h alias mirrorList digest = do
           <> "\n- "
           <> MD.reify archiveModuleDigest
           <> " (actual)"
-    toApp $ installModule' h tempFilePath alias digest
+    installModule' h tempFilePath alias digest
 
 installModule' :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO [(ModuleAlias, M.Dependency)]
 installModule' h archivePath alias digest = do
