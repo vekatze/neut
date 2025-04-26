@@ -1,5 +1,7 @@
 module Move.Scene.New
-  ( createNewProject,
+  ( Handle,
+    new,
+    createNewProject,
     constructDefaultModule,
   )
 where
@@ -10,7 +12,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Path qualified as Path
 import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
@@ -25,6 +27,16 @@ import Rule.SourceLocator qualified as SL
 import Rule.Target
 import Rule.ZenConfig
 
+newtype Handle
+  = Handle
+  { moduleSaveHandle :: ModuleSave.Handle
+  }
+
+new :: App Handle
+new = do
+  moduleSaveHandle <- ModuleSave.new
+  return $ Handle {..}
+
 createNewProject :: T.Text -> Module -> App ()
 createNewProject moduleName newModule = do
   let moduleDir = parent $ moduleLocation newModule
@@ -32,7 +44,8 @@ createNewProject moduleName newModule = do
   if moduleDirExists
     then Throw.raiseError' $ "The directory `" <> moduleName <> "` already exists"
     else do
-      createModuleFile newModule
+      h <- new
+      toApp $ createModuleFile h newModule
       liftIO $ createMainFile newModule
       Remark.printNote' $ "Created a module: " <> moduleName
 
@@ -69,12 +82,11 @@ constructDefaultModule moduleName mTargetName = do
         modulePresetMap = Map.empty
       }
 
-createModuleFile :: Module -> App ()
-createModuleFile newModule = do
+createModuleFile :: Handle -> Module -> EIO ()
+createModuleFile h newModule = do
   ensureDir $ parent $ moduleLocation newModule
-  h <- ModuleSave.new
-  toApp $ ModuleSave.save h (moduleLocation newModule) ([], (toDefaultEns newModule, []))
-  buildDir <- toApp $ Path.getBaseBuildDir newModule
+  ModuleSave.save (moduleSaveHandle h) (moduleLocation newModule) ([], (toDefaultEns newModule, []))
+  buildDir <- Path.getBaseBuildDir newModule
   ensureDir buildDir
 
 createMainFile :: Module -> IO ()
