@@ -3,19 +3,17 @@ module Move.Context.App
     runApp,
     runAppInEnv,
     readRef,
-    readRefMaybe,
     writeRef,
     readRef',
     writeRef',
     modifyRef',
-    getEnv,
   )
 where
 
-import Move.Context.App.Internal
 import Control.Monad.Reader
 import Data.IORef
 import Data.Text qualified as T
+import Move.Context.App.Internal
 
 type App = ReaderT Env IO
 
@@ -36,15 +34,6 @@ readRef name accessor = do
     Nothing ->
       error $ T.unpack $ "[compiler bug] `" <> name <> "` is uninitialized"
 
-readRefMaybe :: (Env -> Ref a) -> App (Maybe a)
-readRefMaybe accessor = do
-  mValue <- asks accessor >>= liftIO . readIORef
-  case mValue of
-    Just a ->
-      return (Just a)
-    Nothing ->
-      return Nothing
-
 writeRef :: (Env -> Ref a) -> a -> App ()
 writeRef accessor value = do
   ref <- asks accessor
@@ -64,7 +53,3 @@ modifyRef' accessor modifier = do
   ref <- asks accessor
   value <- liftIO $ readIORef ref
   liftIO $ writeIORef ref $ modifier value
-
-getEnv :: App Env
-getEnv =
-  ask

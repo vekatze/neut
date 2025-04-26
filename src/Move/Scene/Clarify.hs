@@ -15,7 +15,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Move.Context.App
-import Move.Context.Clarify qualified as Clarify
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.EIO (EIO, raiseCritical, raiseCritical', toApp)
 import Move.Context.Env qualified as Env
@@ -96,11 +95,11 @@ new = do
 clarify :: Handle -> [Stmt] -> EIO [C.CompStmt]
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
-  baseAuxEnv <- Clarify.toCompStmtList <$> liftIO (getBaseAuxEnv h)
+  baseAuxEnv <- AuxEnv.toCompStmtList <$> liftIO (getBaseAuxEnv h)
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   stmtList' <- do
     stmtList' <- mapM (clarifyStmt h) stmtList
-    auxEnv <- liftIO $ Clarify.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
+    auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return $ stmtList' ++ auxEnv
   forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
     case stmt of
