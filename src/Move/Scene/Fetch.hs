@@ -1,5 +1,7 @@
 module Move.Scene.Fetch
-  ( fetch,
+  ( Handle,
+    new,
+    fetch,
     insertDependency,
     insertCoreDependency,
   )
@@ -7,20 +9,21 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
 import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
-import Move.Scene.Ens.Reflect qualified as Ens
+import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Module.Reflect qualified as Module
 import Move.Scene.Module.Save qualified as ModuleSave
 import Path
@@ -41,6 +44,18 @@ import Rule.Syntax.Series (Series (hasOptionalSeparator))
 import Rule.Syntax.Series qualified as SE
 import UnliftIO.Async
 
+data Handle
+  = Handle
+  { ensReflectHandle :: EnsReflect.Handle,
+    moduleSaveHandle :: ModuleSave.Handle
+  }
+
+new :: App Handle
+new = do
+  ensReflectHandle <- EnsReflect.new
+  moduleSaveHandle <- ModuleSave.new
+  return $ Handle {..}
+
 fetch :: M.MainModule -> App ()
 fetch (M.MainModule baseModule) = do
   fetchDeps $ collectDependency baseModule
@@ -60,8 +75,8 @@ tidy deps = do
   let deps' = nubOrdOn (M.dependencyDigest . snd) deps
   filterM (fmap not . checkIfInstalled . M.dependencyDigest . snd) deps'
 
-insertDependency :: T.Text -> ModuleURL -> App ()
-insertDependency aliasName url = do
+insertDependency :: Handle -> T.Text -> ModuleURL -> App ()
+insertDependency h aliasName url = do
   aliasName' <- Throw.liftEither (BN.reflect' aliasName)
   when (isCapitalized aliasName') $ do
     Throw.raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
@@ -99,7 +114,7 @@ insertDependency aliasName url = do
                 <> MD.reify digest
             installModule' tempFilePath alias digest >>= fetchDeps
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
-            updateDependencyInModuleFile (moduleLocation $ M.extractModule mainModule) alias dep'
+            toApp $ updateDependencyInModuleFile h (moduleLocation $ M.extractModule mainModule) alias dep'
       Nothing -> do
         printInstallationRemark alias digest
         installModule' tempFilePath alias digest >>= fetchDeps
@@ -205,8 +220,8 @@ extractToDependencyDir archivePath _ digest = do
 addDependencyToModuleFile :: ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile alias dep = do
   M.MainModule mainModule <- getMainModule
-  h <- Ens.new
-  (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation mainModule)
+  h <- EnsReflect.new
+  (c1, (baseEns@(m :< _), c2)) <- toApp $ EnsReflect.fromFilePath h (moduleLocation mainModule)
   let depEns = makeDependencyEns m alias dep
   mergedEns <- Throw.liftEither $ E.merge baseEns depEns
   h' <- ModuleSave.new
@@ -237,14 +252,12 @@ makeDependencyEns m alias dep = do
       )
     ]
 
-updateDependencyInModuleFile :: Path Abs File -> ModuleAlias -> M.Dependency -> App ()
-updateDependencyInModuleFile mainModuleFileLoc alias dep = do
-  h <- Ens.new
-  (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h mainModuleFileLoc
+updateDependencyInModuleFile :: Handle -> Path Abs File -> ModuleAlias -> M.Dependency -> EIO ()
+updateDependencyInModuleFile h mainModuleFileLoc alias dep = do
+  (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath (ensReflectHandle h) mainModuleFileLoc
   let depEns = makeDependencyEns' m dep
-  mergedEns <- Throw.liftEither $ E.conservativeUpdate [keyDependency, BN.reify (extract alias)] depEns baseEns
-  h' <- ModuleSave.new
-  toApp $ ModuleSave.save h' mainModuleFileLoc (c1, (mergedEns, c2))
+  mergedEns <- liftEither $ E.conservativeUpdate [keyDependency, BN.reify (extract alias)] depEns baseEns
+  ModuleSave.save (moduleSaveHandle h) mainModuleFileLoc (c1, (mergedEns, c2))
 
 makeDependencyEns' :: Hint -> M.Dependency -> E.Ens
 makeDependencyEns' m dep = do
