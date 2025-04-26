@@ -16,7 +16,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (EIO, raiseError)
+import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env qualified as Env
 import Move.Scene.Term.Refresh qualified as Refresh
 import Move.Scene.Term.Subst qualified as Subst
@@ -55,7 +55,7 @@ data InnerHandle = InnerHandle
 new :: App Handle
 new = do
   envHandle <- Env.new
-  currentSource <- liftIO $ Env.getCurrentSource envHandle
+  currentSource <- toApp $ Env.getCurrentSource envHandle
   substHandle <- Subst.new
   refreshHandle <- Refresh.new
   defMapHandle <- Definition.new

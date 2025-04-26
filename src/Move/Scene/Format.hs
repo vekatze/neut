@@ -72,7 +72,7 @@ type ShouldMinimizeImports =
 _formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
   InitTarget.new >>= liftIO . InitTarget.initializeForTarget
-  MainModule mainModule <- liftIO $ Env.getMainModule (envHandle h)
+  MainModule mainModule <- toApp $ Env.getMainModule (envHandle h)
   if shouldMinimizeImports
     then do
       (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) mainModule $ Main (emptyZen filePath)

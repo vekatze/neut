@@ -60,29 +60,26 @@ import Rule.TopNameMap (TopNameMap)
 data Handle
   = Handle
   { tagHandle :: Tag.Handle,
-    mainModule :: MainModule,
+    envHandle :: Env.Handle,
     activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
     activeGlobalLocatorListRef :: IORef [SGL.StrictGlobalLocator],
-    currentGlobalLocator :: IORef (Maybe SGL.StrictGlobalLocator),
-    currentSourceRef :: IORef (Maybe Source.Source)
+    currentGlobalLocator :: IORef (Maybe SGL.StrictGlobalLocator)
   }
 
 new :: App Handle
 new = do
   tagHandle <- Tag.new
-  he <- Env.new
-  mainModule <- liftIO $ Env.getMainModule he
+  envHandle <- Env.new
   activeDefiniteDescriptionListRef <- asks App.activeDefiniteDescriptionList
   activeStaticFileListRef <- asks App.activeStaticFileList
   activeGlobalLocatorListRef <- asks App.activeGlobalLocatorList
   currentGlobalLocator <- asks App.currentGlobalLocator
-  currentSourceRef <- asks App.currentSource
   return $ Handle {..}
 
 initialize :: Handle -> EIO ()
 initialize h = do
-  currentSource <- Env.getCurrentSource' (currentSourceRef h)
+  currentSource <- Env.getCurrentSource (envHandle h)
   cgl <- constructGlobalLocator currentSource
   liftIO $ writeIORef (currentGlobalLocator h) (Just cgl)
   liftIO $ writeIORef (activeGlobalLocatorListRef h) [cgl, SGL.llvmGlobalLocator]
@@ -110,7 +107,7 @@ activateSpecifiedNames h topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                current <- Env.getCurrentSource' (currentSourceRef h)
+                current <- Env.getCurrentSource (envHandle h)
                 let dd' = DD.getReadableDD (Source.sourceModule current) dd
                 let existingDD' = DD.getReadableDD (Source.sourceModule current) existingDD
                 raiseError m $
@@ -228,15 +225,16 @@ isMainFile source = do
 
 getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> EIO DD.DefiniteDescription
 getMainDefiniteDescriptionByTarget h targetOrZen = do
+  mainModule <- Env.getMainModule (envHandle h)
   case targetOrZen of
     Target.Named target _ -> do
-      case Map.lookup target (Module.moduleTarget $ extractModule $ mainModule h) of
+      case Map.lookup target (Module.moduleTarget $ extractModule mainModule) of
         Nothing ->
           raiseError' $ "No such target is defined: " <> target
         Just targetSummary -> do
           relPathToDD (SL.reify $ Target.entryPoint targetSummary) BN.mainName
     Target.Zen path _ -> do
-      relPath <- Module.getRelPathFromSourceDir (extractModule $ mainModule h) path
+      relPath <- Module.getRelPathFromSourceDir (extractModule mainModule) path
       relPathToDD relPath BN.zenName
 
 relPathToDD :: Path Rel File -> BN.BaseName -> EIO DD.DefiniteDescription

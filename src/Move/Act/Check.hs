@@ -29,4 +29,4 @@ setup cfg = do
   toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
   h <- Fetch.new
   he <- Env.new
-  liftIO (Env.getMainModule he) >>= toApp . Fetch.fetch h
+  toApp (Env.getMainModule he) >>= toApp . Fetch.fetch h

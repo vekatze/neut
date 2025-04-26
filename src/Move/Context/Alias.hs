@@ -18,7 +18,7 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError)
-import Move.Context.Env (getCurrentSource')
+import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Rule.AliasInfo
 import Rule.BaseName qualified as BN
@@ -29,7 +29,6 @@ import Rule.Module
 import Rule.ModuleAlias
 import Rule.ModuleDigest
 import Rule.ModuleID qualified as MID
-import Rule.Source (Source)
 import Rule.Source qualified as Source
 import Rule.SourceLocator qualified as SL
 import Rule.StrictGlobalLocator qualified as SGL
@@ -38,19 +37,19 @@ import Rule.TopNameMap
 data Handle
   = Handle
   { antecedentHandle :: Antecedent.Handle,
-    locatorAliasMapRef :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
-    moduleAliasMapRef :: IORef (Map.HashMap ModuleAlias ModuleDigest),
     locatorHandle :: Locator.Handle,
-    currentSourceRef :: IORef (Maybe Source)
+    envHandle :: Env.Handle,
+    locatorAliasMapRef :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
+    moduleAliasMapRef :: IORef (Map.HashMap ModuleAlias ModuleDigest)
   }
 
 new :: App Handle
 new = do
   antecedentHandle <- Antecedent.new
   locatorHandle <- Locator.new
+  envHandle <- Env.new
   locatorAliasMapRef <- asks App.locatorAliasMap
   moduleAliasMapRef <- asks App.moduleAliasMap
-  currentSourceRef <- asks App.currentSource
   return $ Handle {..}
 
 registerGlobalLocatorAlias ::
@@ -149,7 +148,7 @@ activateAliasInfo h topNameMap aliasInfo =
 
 initializeAliasMap :: Handle -> EIO ()
 initializeAliasMap h = do
-  currentModule <- Source.sourceModule <$> getCurrentSource' (currentSourceRef h)
+  currentModule <- Source.sourceModule <$> Env.getCurrentSource (envHandle h)
   let additionalDigestAlias = getAlias currentModule
   currentAliasList <- getModuleDigestAliasList h currentModule
   let aliasMap = Map.fromList $ Maybe.catMaybes [additionalDigestAlias] ++ currentAliasList

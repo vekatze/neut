@@ -1,6 +1,5 @@
 module Move.Scene.Source.Reflect (reflect) where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -26,7 +25,7 @@ getModule srcPath = do
   let srcDir = parent srcPath
   moduleFilePath <- toApp $ Module.findModuleFile srcDir srcDir
   he <- Env.new
-  MainModule mainModule <- liftIO $ Env.getMainModule he
+  MainModule mainModule <- toApp $ Env.getMainModule he
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
     else do

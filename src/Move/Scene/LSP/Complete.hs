@@ -291,7 +291,7 @@ getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], FastPresetSumma
 getAllTopCandidate baseModule = do
   h <- Module.new
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   dependencies <- toApp $ Module.getAllDependencies h mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   (candListList, aliasPresetInfo) <- unzip <$> pooledMapConcurrently getAllTopCandidate' visibleModuleList

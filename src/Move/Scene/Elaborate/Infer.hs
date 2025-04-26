@@ -17,7 +17,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseCritical, raiseError)
+import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -98,7 +98,7 @@ data Handle
 new :: Elaborate.HandleEnv -> App Handle
 new handleEnv@(Elaborate.HandleEnv {..}) = do
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   substHandle <- Subst.new
   reduceHandle <- Reduce.new
   unifyHandle <- Unify.new handleEnv

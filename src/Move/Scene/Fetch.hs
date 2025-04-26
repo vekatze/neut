@@ -17,7 +17,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.EIO (EIO, forP, raiseError')
+import Move.Context.EIO (EIO, forP, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
@@ -60,7 +60,7 @@ new = do
   moduleHandle <- ModuleReflect.new
   reportHandle <- Report.new
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   return $ Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()

@@ -104,7 +104,7 @@ abstractAxis =
 compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile target outputKindList contentSeq = do
   he <- Env.new
-  mainModule <- liftIO $ Env.getMainModule he
+  mainModule <- toApp $ Env.getMainModule he
   hCache <- Cache.new
   bs <- toApp $ mapM (needsCompilation hCache outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount mainModule target outputKindList

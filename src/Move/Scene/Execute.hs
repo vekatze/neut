@@ -1,6 +1,5 @@
 module Move.Scene.Execute (execute) where
 
-import Control.Monad.IO.Class
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -13,7 +12,7 @@ import Rule.Target
 execute :: MainTarget -> [String] -> App ()
 execute target args = do
   envHandle <- Env.new
-  MainModule mainModule <- liftIO $ Env.getMainModule envHandle
+  MainModule mainModule <- toApp $ Env.getMainModule envHandle
   h <- Path.new
   outputPath <- toApp $ Path.getExecutableOutputPath h target mainModule
   h' <- External.new

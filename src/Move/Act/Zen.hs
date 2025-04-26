@@ -1,6 +1,5 @@
 module Move.Act.Zen (zen) where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
 import Move.Context.App
 import Move.Context.EIO (toApp)
@@ -22,7 +21,7 @@ zen cfg = do
   setup cfg
   path <- resolveFile' (filePathString cfg)
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   buildTarget (fromConfig cfg) mainModule $
     Main $
       Zen path $
@@ -44,7 +43,7 @@ setup cfg = do
   hc <- InitCompiler.new
   toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
   Env.setBuildMode $ buildMode cfg
   h <- Fetch.new

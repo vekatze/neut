@@ -19,7 +19,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (EIO, raiseCritical, raiseError)
+import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -126,7 +126,7 @@ new handleEnv@(Elaborate.HandleEnv {..}) = do
   rawImportSummaryHandle <- RawImportSummary.new
   globalRemarkHandle <- GlobalRemark.new
   envHandle <- Env.new
-  currentSource <- liftIO $ Env.getCurrentSource envHandle
+  currentSource <- toApp $ Env.getCurrentSource envHandle
   return $ Handle {..}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> EIO [Stmt]

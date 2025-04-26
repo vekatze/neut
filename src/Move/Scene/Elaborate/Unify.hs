@@ -17,7 +17,7 @@ import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseCritical)
+import Move.Context.EIO (EIO, raiseCritical, toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Type qualified as Type
@@ -77,7 +77,7 @@ new Elaborate.HandleEnv {..} = do
   typeHandle <- Type.new
   gensymHandle <- Gensym.new
   envHandle <- Env.new
-  source <- liftIO $ Env.getCurrentSource envHandle
+  source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   weakDefHandle <- WeakDefinition.new
   let currentStep = 0

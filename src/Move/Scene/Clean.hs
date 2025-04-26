@@ -6,9 +6,8 @@ module Move.Scene.Clean
 where
 
 import Control.Monad
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
-import Move.Context.EIO (EIO)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Scene.Unravel qualified as Unravel
@@ -24,7 +23,7 @@ data Handle = Handle
 new :: App Handle
 new = do
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   unravelHandle <- Unravel.new
   return $ Handle {..}
 

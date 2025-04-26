@@ -7,7 +7,6 @@ module Move.Context.Env
     getBaseSize',
     getBuildMode,
     getCurrentSource,
-    getCurrentSource',
     getDataSize,
     getDataSize',
     getDataSize'',
@@ -56,7 +55,7 @@ new = do
   mainModuleRef <- asks App.mainModule
   return $ Handle {..}
 
-getMainModule :: Handle -> IO MainModule
+getMainModule :: Handle -> EIO MainModule
 getMainModule h =
   readIORefOrFail "mainModule" (mainModuleRef h)
 
@@ -76,23 +75,9 @@ setCurrentSource :: Handle -> Source.Source -> IO ()
 setCurrentSource h s =
   writeIORef (currentSourceRef h) (Just s)
 
-getCurrentSource :: Handle -> IO Source.Source
+getCurrentSource :: Handle -> EIO Source.Source
 getCurrentSource h = do
-  mValue <- readIORef $ currentSourceRef h
-  case mValue of
-    Just a ->
-      return a
-    Nothing ->
-      error $ T.unpack "[compiler bug] `currentSource` is uninitialized"
-
-getCurrentSource' :: IORef (Maybe Source.Source) -> EIO Source.Source
-getCurrentSource' ref = do
-  sourceOrNone <- liftIO $ readIORef ref
-  case sourceOrNone of
-    Nothing ->
-      raiseCritical' "[compiler bug] `currentSource` is uninitialized"
-    Just source ->
-      return source
+  readIORefOrFail "currentSource" (currentSourceRef h)
 
 type PathMap = Map.HashMap (Path Abs File) UTCTime
 
@@ -162,11 +147,11 @@ getSilentMode :: Handle -> IO Bool
 getSilentMode h =
   readIORef (enableSilentModeRef h)
 
-readIORefOrFail :: T.Text -> IORef (Maybe a) -> IO a
+readIORefOrFail :: T.Text -> IORef (Maybe a) -> EIO a
 readIORefOrFail name ref = do
-  mValue <- readIORef ref
+  mValue <- liftIO $ readIORef ref
   case mValue of
     Just a ->
       return a
     Nothing ->
-      error $ T.unpack $ "[compiler bug] `" <> name <> "` is uninitialized"
+      raiseCritical' $ "[compiler bug] `" <> name <> "` is uninitialized"

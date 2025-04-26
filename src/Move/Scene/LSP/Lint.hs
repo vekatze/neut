@@ -22,4 +22,4 @@ lintM :: AppM [R.Remark]
 lintM = do
   h <- lift Fetch.new
   envHandle <- lift Env.new
-  lift $ lift (Env.getMainModule envHandle) >>= toApp . Fetch.fetch h >> Check.check
+  lift $ toApp (Env.getMainModule envHandle) >>= toApp . Fetch.fetch h >> Check.check

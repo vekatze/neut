@@ -1,7 +1,6 @@
 module Move.Act.Get (get) where
 
 import Control.Monad
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -19,7 +18,7 @@ get cfg = do
   hc <- InitCompiler.new
   toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
   cleanHandle <- Clean.new
   toApp $ Clean.clean cleanHandle

@@ -14,7 +14,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError)
+import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env qualified as Env
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -61,7 +61,7 @@ new :: App Handle
 new = do
   substHandle <- Subst.new
   envHandle <- Env.new
-  source <- liftIO $ Env.getCurrentSource envHandle
+  source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   return Handle {..}
 

@@ -9,12 +9,12 @@ module Move.Scene.Parse.Discern.Handle
   )
 where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (asks)
 import Data.IORef
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
+import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
@@ -60,7 +60,7 @@ data Handle = Handle
 new :: App Handle
 new = do
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   gensymHandle <- Gensym.new
   locatorHandle <- Locator.new
   globalHandle <- Global.new

@@ -53,7 +53,7 @@ new = do
 check :: App [Remark]
 check = do
   h <- new
-  M.MainModule mainModule <- liftIO $ Env.getMainModule (envHandle h)
+  M.MainModule mainModule <- toApp $ Env.getMainModule (envHandle h)
   _check h Peripheral mainModule
 
 checkModule :: M.Module -> App [Remark]
@@ -64,7 +64,7 @@ checkModule baseModule = do
 checkAll :: App [Remark]
 checkAll = do
   he <- Env.new
-  mainModule <- liftIO $ Env.getMainModule he
+  mainModule <- toApp $ Env.getMainModule he
   hm <- Module.new
   deps <- toApp $ Module.getAllDependencies hm mainModule (extractModule mainModule)
   forM_ deps $ \(_, m) -> checkModule m

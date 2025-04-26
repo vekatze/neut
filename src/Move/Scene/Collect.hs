@@ -6,12 +6,11 @@ module Move.Scene.Collect
   )
 where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError')
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Path
 import Rule.Module
@@ -26,7 +25,7 @@ newtype Handle
 new :: App Handle
 new = do
   he <- Env.new
-  mainModule <- liftIO $ Env.getMainModule he
+  mainModule <- toApp $ Env.getMainModule he
   return $ Handle {..}
 
 getMainTarget :: Handle -> T.Text -> EIO MainTarget

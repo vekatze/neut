@@ -6,10 +6,9 @@ module Move.Scene.Archive
 where
 
 import Control.Monad
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError')
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -33,7 +32,7 @@ new = do
   externalHandle <- External.new
   moduleSaveHandle <- ModuleSave.new
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   return $ Handle {..}
 
 archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()

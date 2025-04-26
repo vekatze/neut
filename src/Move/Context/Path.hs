@@ -40,7 +40,7 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, raiseError')
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
@@ -73,7 +73,7 @@ new = do
   cacheRef <- asks App.buildSignatureCache
   clangHandle <- Clang.new
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   debugHandle <- Debug.new
   return $ Handle {..}
 

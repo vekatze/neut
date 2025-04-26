@@ -25,7 +25,7 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, raiseError, raiseError')
+import Move.Context.EIO (EIO, raiseError, raiseError', toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -72,16 +72,16 @@ data Handle
     aliasHandle :: Alias.Handle,
     antecedentHandle :: Antecedent.Handle,
     artifactHandle :: Artifact.Handle,
+    envHandle :: Env.Handle,
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],
-    sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
-    currentSourceRef :: IORef (Maybe Source.Source)
+    sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
   }
 
 new :: App Handle
 new = do
   he <- Env.new
-  mainModule <- liftIO $ getMainModule he
+  mainModule <- toApp $ getMainModule he
   debugHandle <- Debug.new
   pathHandle <- Path.new
   moduleHandle <- ModuleReflect.new
@@ -92,10 +92,10 @@ new = do
   aliasHandle <- Alias.new
   antecedentHandle <- Antecedent.new
   artifactHandle <- Artifact.new
+  envHandle <- Env.new
   visitEnvRef <- asks App.visitEnv
   traceSourceListRef <- asks App.traceSourceList
   sourceChildrenMapRef <- asks App.sourceChildrenMap
-  currentSourceRef <- asks App.currentSource
   return $ Handle {..}
 
 initialize :: Handle -> IO ()
@@ -364,7 +364,7 @@ showCycle' textList =
 
 getChildren :: Handle -> Source.Source -> EIO [ImportItem]
 getChildren h currentSource = do
-  liftIO $ setCurrentSource h currentSource
+  liftIO $ Env.setCurrentSource (envHandle h) currentSource
   Alias.initializeAliasMap (aliasHandle h)
   sourceChildrenMap <- liftIO $ getSourceChildrenMap h
   let currentSourceFilePath = Source.sourceFilePath currentSource
@@ -375,10 +375,6 @@ getChildren h currentSource = do
       sourceAliasList <- parseSourceHeader h currentSource
       liftIO $ insertToSourceChildrenMap h currentSourceFilePath sourceAliasList
       return sourceAliasList
-
-setCurrentSource :: Handle -> Source.Source -> IO ()
-setCurrentSource h source =
-  writeIORef (currentSourceRef h) (Just source)
 
 parseSourceHeader :: Handle -> Source.Source -> EIO [ImportItem]
 parseSourceHeader h currentSource = do

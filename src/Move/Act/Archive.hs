@@ -1,6 +1,5 @@
 module Move.Act.Archive (archive) where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -19,7 +18,7 @@ archive cfg = do
   h <- InitCompiler.new
   toApp $ InitCompiler.initializeCompiler h (remarkCfg cfg)
   envHandle <- Env.new
-  mainModule <- liftIO $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
   hp <- PV.new
   packageVersion <- toApp $ maybe (PV.chooseNewVersion hp mainModule) (PV.reflect mainModule) (getArchiveName cfg)
