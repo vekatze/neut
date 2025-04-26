@@ -19,7 +19,6 @@ import Rule.BuildMode qualified as BM
 import Rule.Comp
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
-import Rule.Discriminant qualified as D
 import Rule.ExternalName qualified as EN
 import Rule.ForeignCodType qualified as F
 import Rule.GlobalLocatorAlias qualified as GLA
@@ -89,7 +88,6 @@ data Env = Env
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
-    dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
@@ -150,7 +148,6 @@ newEnv = do
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
   compAuxEnv <- newIORef Map.empty
-  dataDefMap <- newIORef Map.empty
   keyArgMap <- newIORef Map.empty
   optDataMap <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty

@@ -18,7 +18,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
-import Move.Context.DataDefinition qualified as DataDefinition
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Elaborate qualified as Elaborate
@@ -91,7 +90,6 @@ data Handle
     typeHandle :: Type.Handle,
     weakDeclHandle :: WeakDecl.Handle,
     defHandle :: Definition.Handle,
-    dataDefHandle :: DataDefinition.Handle,
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
     localRemarkHandle :: LocalRemark.Handle,
@@ -116,7 +114,6 @@ new handleEnv@(Elaborate.HandleEnv {..}) = do
   weakDeclHandle <- WeakDecl.new
   gensymHandle <- Gensym.new
   defHandle <- Definition.new
-  dataDefHandle <- DataDefinition.new
   keyArgHandle <- KeyArg.new
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new
@@ -224,7 +221,6 @@ insertStmt h stmt = do
     StmtForeign _ -> do
       return ()
   insertWeakStmt h $ weakenStmt stmt
-  liftIO $ insertStmtKindInfo h stmt
 
 insertWeakStmt :: Handle -> WeakStmt -> EIO ()
 insertWeakStmt h stmt = do
@@ -238,20 +234,6 @@ insertWeakStmt h stmt = do
         domList' <- mapM (elaborate' h >=> return . weaken) domList
         cod' <- mapM (elaborate' h >=> return . weaken) cod
         liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList' cod'
-
-insertStmtKindInfo :: Handle -> Stmt -> IO ()
-insertStmtKindInfo h stmt = do
-  case stmt of
-    StmtDefine _ stmtKind _ _ _ _ _ _ -> do
-      case stmtKind of
-        Normal _ ->
-          return ()
-        Data dataName dataArgs consInfoList -> do
-          DataDefinition.insert' (dataDefHandle h) dataName dataArgs consInfoList
-        DataIntro {} ->
-          return ()
-    StmtForeign {} ->
-      return ()
 
 elaborateStmtKind :: Handle -> StmtKind WT.WeakTerm -> EIO (StmtKind TM.Term)
 elaborateStmtKind h stmtKind =
