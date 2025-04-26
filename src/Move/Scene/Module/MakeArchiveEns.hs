@@ -2,13 +2,12 @@ module Move.Scene.Module.MakeArchiveEns (makeArchiveEns) where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Fetch (getHandleContents)
-import Move.Context.Throw qualified as Throw
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Module.GetExistingVersions
 import Path
@@ -25,15 +24,14 @@ import Rule.Syntax.Series qualified as SE
 import System.IO
 import Prelude hiding (log)
 
-makeArchiveEns :: PV.PackageVersion -> MainModule -> App E.FullEns
-makeArchiveEns newVersion targetModule = do
-  existingVersions <- toApp $ getExistingVersions targetModule
+makeArchiveEns :: Ens.Handle -> PV.PackageVersion -> MainModule -> EIO E.FullEns
+makeArchiveEns h newVersion targetModule = do
+  existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
-  antecedentList <- toApp $ ListUtils.nubOrd <$> mapM (getDigest $ extractModule targetModule) antecedents
-  h <- Ens.new
-  (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation $ extractModule targetModule)
+  antecedentList <- ListUtils.nubOrd <$> mapM (getDigest $ extractModule targetModule) antecedents
+  (c1, (baseEns@(m :< _), c2)) <- Ens.fromFilePath h (moduleLocation $ extractModule targetModule)
   let antecedentEns = makeAntecedentEns m antecedentList
-  mergedEns <- Throw.liftEither $ E.merge baseEns antecedentEns
+  mergedEns <- liftEither $ E.merge baseEns antecedentEns
   return (c1, (mergedEns, c2))
 
 getPackagePath :: Module -> PV.PackageVersion -> EIO (Path Abs File)

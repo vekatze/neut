@@ -7,6 +7,7 @@ import Move.Context.Env (getMainModule)
 import Move.Context.Path qualified as Path
 import Move.Scene.Archive qualified as Archive
 import Move.Scene.Collect qualified as Collect
+import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Initialize qualified as Initialize
 import Move.Scene.Module.MakeArchiveEns
 import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
@@ -20,6 +21,7 @@ archive cfg = do
   toApp $ Path.ensureNotInDependencyDir mainModule
   c <- getColorSpecStdOut
   packageVersion <- toApp $ maybe (PV.chooseNewVersion c mainModule) (PV.reflect mainModule) (getArchiveName cfg)
-  archiveEns <- getMainModule >>= makeArchiveEns packageVersion
+  h <- EnsReflect.new
+  archiveEns <- getMainModule >>= toApp . makeArchiveEns h packageVersion
   let (moduleRootDir, contents) = Collect.collectModuleFiles mainModule
   Archive.archive packageVersion archiveEns moduleRootDir contents
