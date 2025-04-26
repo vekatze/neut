@@ -12,6 +12,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Reader (asks)
 import Move.Console.Report qualified as Report
 import Move.Context.Alias qualified as Alias
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Color qualified as Color
@@ -27,7 +28,6 @@ import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
-import Move.Context.Unravel qualified as Unravel
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
@@ -36,6 +36,7 @@ import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Module.Reflect qualified as Module
+import Move.Scene.Unravel qualified as Unravel
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Path
@@ -77,6 +78,7 @@ initializeForTarget = do
   hc <- Clarify.new
   liftIO $ Clarify.registerFoundationalTypes hc
   Unravel.initialize
+  Antecedent.initialize
   h <- GlobalRemark.new
   liftIO $ GlobalRemark.set h []
   asks App.sourceNameMap >>= liftIO . Global.clearSourceNameMap

@@ -1,6 +1,7 @@
 module Move.Scene.Unravel
   ( Handle,
     new,
+    initialize,
     unravel,
     unravelFromFile,
     registerShiftMap,
@@ -94,6 +95,11 @@ new = do
   sourceChildrenMapRef <- asks App.sourceChildrenMap
   currentSourceRef <- asks App.currentSource
   return $ Handle {..}
+
+initialize :: App ()
+initialize = do
+  writeRef' App.visitEnv Map.empty
+  writeRef' App.sourceChildrenMap Map.empty
 
 unravel :: Handle -> Module -> Target -> EIO (A.ArtifactTime, [Source.Source])
 unravel h baseModule t = do
