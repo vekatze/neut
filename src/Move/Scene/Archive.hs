@@ -1,4 +1,9 @@
-module Move.Scene.Archive (archive) where
+module Move.Scene.Archive
+  ( Handle,
+    new,
+    archive,
+  )
+where
 
 import Control.Monad
 import Data.Text qualified as T
@@ -15,22 +20,34 @@ import Rule.Module
 import Rule.PackageVersion qualified as PV
 import Prelude hiding (log)
 
+data Handle
+  = Handle
+  { externalHandle :: External.Handle,
+    mainModule :: MainModule
+  }
+
+new :: App Handle
+new = do
+  externalHandle <- External.new
+  mainModule <- Env.getMainModule
+  return $ Handle {..}
+
 archive :: PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> App ()
 archive packageVersion fullEns moduleRootDir contents = do
   withSystemTempDir "archive" $ \tempRootDir -> do
     Module.saveEns (tempRootDir </> moduleFile) fullEns
     toApp $ copyModuleContents tempRootDir moduleRootDir contents
     toApp $ makeReadOnly tempRootDir
-    makeArchiveFromTempDir packageVersion tempRootDir
+    h <- new
+    toApp $ makeArchiveFromTempDir h packageVersion tempRootDir
 
-makeArchiveFromTempDir :: PV.PackageVersion -> Path Abs Dir -> App ()
-makeArchiveFromTempDir packageVersion tempRootDir = do
+makeArchiveFromTempDir :: Handle -> PV.PackageVersion -> Path Abs Dir -> EIO ()
+makeArchiveFromTempDir h packageVersion tempRootDir = do
   (_, files) <- listDirRecurRel tempRootDir
   let newContents = map toFilePath files
-  mainModule <- Env.getMainModule
-  outputPath <- toApp $ toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
-  h <- External.new
-  toApp $ External.run h "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
+  outputPath <- toFilePath <$> getArchiveFilePath (mainModule h) (PV.reify packageVersion)
+  External.run (externalHandle h) "tar" $
+    ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
 
 copyModuleContents :: Path Abs Dir -> Path Abs Dir -> [SomePath Rel] -> EIO ()
 copyModuleContents tempRootDir moduleRootDir contents = do
