@@ -84,7 +84,8 @@ fetchDeps deps = do
 tidy :: [(ModuleAlias, M.Dependency)] -> App [(ModuleAlias, M.Dependency)]
 tidy deps = do
   let deps' = nubOrdOn (M.dependencyDigest . snd) deps
-  filterM (fmap not . checkIfInstalled . M.dependencyDigest . snd) deps'
+  h <- new
+  toApp $ filterM (fmap not . checkIfInstalled h . M.dependencyDigest . snd) deps'
 
 insertDependency :: Handle -> T.Text -> ModuleURL -> App ()
 insertDependency h aliasName url = do
@@ -185,10 +186,9 @@ collectDependency :: M.Module -> [(ModuleAlias, M.Dependency)]
 collectDependency baseModule = do
   Map.toList $ M.moduleDependency baseModule
 
-checkIfInstalled :: MD.ModuleDigest -> App Bool
-checkIfInstalled digest = do
-  mainModule <- getMainModule
-  toApp (Module.getModuleFilePath mainModule Nothing (MID.Library digest)) >>= doesFileExist
+checkIfInstalled :: Handle -> MD.ModuleDigest -> EIO Bool
+checkIfInstalled h digest = do
+  Module.getModuleFilePath (mainModule h) Nothing (MID.Library digest) >>= doesFileExist
 
 getLibraryModule :: Handle -> ModuleAlias -> MD.ModuleDigest -> EIO M.Module
 getLibraryModule h alias digest = do
