@@ -29,9 +29,9 @@ new = do
   unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
   return $ Handle {..}
 
-initialize :: App ()
-initialize =
-  writeRef' App.unusedGlobalLocatorMap Map.empty
+initialize :: Handle -> IO ()
+initialize h =
+  writeIORef (unusedGlobalLocatorMapRef h) Map.empty
 
 get :: Handle -> IO UnusedGlobalLocators
 get h = do
