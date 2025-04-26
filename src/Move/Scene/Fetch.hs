@@ -65,7 +65,7 @@ insertDependency aliasName url = do
   when (isCapitalized aliasName') $ do
     Throw.raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
   let alias = ModuleAlias aliasName'
-  Fetch.withTempFile $ \tempFilePath tempFileHandle -> do
+  withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias [url]
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
@@ -124,7 +124,7 @@ insertCoreDependency = do
 installModule :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule alias mirrorList digest = do
   printInstallationRemark alias digest
-  Fetch.withTempFile $ \tempFilePath tempFileHandle -> do
+  withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias mirrorList
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let archiveModuleDigest = MD.fromByteString archive
