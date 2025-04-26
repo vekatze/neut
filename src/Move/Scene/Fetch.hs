@@ -107,7 +107,7 @@ insertDependency h aliasName url = do
                   then do
                     Remark.printNote' $ "Already installed: " <> MD.reify digest
                   else do
-                    printInstallationRemark alias digest
+                    liftIO $ printInstallationRemark h alias digest
                     installModule' h tempFilePath alias digest >>= fetchDeps
               else do
                 Remark.printNote' $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
@@ -125,7 +125,7 @@ insertDependency h aliasName url = do
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
             toApp $ updateDependencyInModuleFile h (moduleLocation $ M.extractModule mainModule) alias dep'
       Nothing -> do
-        printInstallationRemark alias digest
+        liftIO $ printInstallationRemark h alias digest
         installModule' h tempFilePath alias digest >>= fetchDeps
         toApp $
           addDependencyToModuleFile h alias $
@@ -151,7 +151,7 @@ insertCoreDependency = do
 
 installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule h alias mirrorList digest = do
-  printInstallationRemark alias digest
+  liftIO $ printInstallationRemark h alias digest
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     toApp $ download h tempFilePath alias mirrorList
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
@@ -175,9 +175,9 @@ installModule' h archivePath alias digest = do
   libModule <- getLibraryModule alias digest
   return $ collectDependency libModule
 
-printInstallationRemark :: ModuleAlias -> MD.ModuleDigest -> App ()
-printInstallationRemark alias digest = do
-  Remark.printNote' $ "Install: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
+printInstallationRemark :: Handle -> ModuleAlias -> MD.ModuleDigest -> IO ()
+printInstallationRemark h alias digest = do
+  printNote' (stdOutColorSpec h) $ "Install: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
 
 collectDependency :: M.Module -> [(ModuleAlias, M.Dependency)]
 collectDependency baseModule = do
