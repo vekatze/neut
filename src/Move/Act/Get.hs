@@ -20,6 +20,6 @@ get cfg = do
   toApp $ Path.ensureNotInDependencyDir mainModule
   Clean.clean
   h <- Fetch.new
-  Fetch.insertDependency h (moduleAliasText cfg) (moduleURL cfg)
+  toApp $ Fetch.insertDependency h (moduleAliasText cfg) (moduleURL cfg)
   Initialize.initializeCompilerWithPath (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
   void Check.checkAll

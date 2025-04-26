@@ -17,13 +17,11 @@ import Data.Maybe
 import Data.Text qualified as T
 import Move.Console.Report
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.EIO (EIO, forP, raiseError')
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
-import Move.Context.Remark qualified as Remark
-import Move.Context.Throw qualified as Throw
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Module.Reflect qualified as Module
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -44,7 +42,6 @@ import Rule.ModuleID qualified as MID
 import Rule.ModuleURL
 import Rule.Syntax.Series (Series (hasOptionalSeparator))
 import Rule.Syntax.Series qualified as SE
-import UnliftIO.Async
 
 data Handle
   = Handle
@@ -66,77 +63,74 @@ new = do
   stdOutColorSpec <- getColorSpecStdOut
   return $ Handle {..}
 
-fetch :: M.MainModule -> App ()
-fetch (M.MainModule baseModule) = do
-  fetchDeps $ collectDependency baseModule
+fetch :: Handle -> M.MainModule -> EIO ()
+fetch h (M.MainModule baseModule) = do
+  fetchDeps h $ collectDependency baseModule
 
-fetchDeps :: [(ModuleAlias, M.Dependency)] -> App ()
-fetchDeps deps = do
-  deps' <- tidy deps
+fetchDeps :: Handle -> [(ModuleAlias, M.Dependency)] -> EIO ()
+fetchDeps h deps = do
+  deps' <- tidy h deps
   if null deps'
     then return ()
     else do
-      h <- new
-      next <- fmap concat $ pooledForConcurrently deps' $ \(alias, dep) -> do
-        toApp $ installModule h alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
-      fetchDeps next
+      next <- fmap concat $ forP deps' $ \(alias, dep) -> do
+        installModule h alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
+      fetchDeps h next
 
-tidy :: [(ModuleAlias, M.Dependency)] -> App [(ModuleAlias, M.Dependency)]
-tidy deps = do
+tidy :: Handle -> [(ModuleAlias, M.Dependency)] -> EIO [(ModuleAlias, M.Dependency)]
+tidy h deps = do
   let deps' = nubOrdOn (M.dependencyDigest . snd) deps
-  h <- new
-  toApp $ filterM (fmap not . checkIfInstalled h . M.dependencyDigest . snd) deps'
+  filterM (fmap not . checkIfInstalled h . M.dependencyDigest . snd) deps'
 
-insertDependency :: Handle -> T.Text -> ModuleURL -> App ()
+insertDependency :: Handle -> T.Text -> ModuleURL -> EIO ()
 insertDependency h aliasName url = do
-  aliasName' <- Throw.liftEither (BN.reflect' aliasName)
+  aliasName' <- liftEither (BN.reflect' aliasName)
   when (isCapitalized aliasName') $ do
-    Throw.raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
+    raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
   let alias = ModuleAlias aliasName'
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
-    toApp $ download h tempFilePath alias [url]
+    download h tempFilePath alias [url]
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
-    mainModule <- getMainModule
-    case Map.lookup alias (M.moduleDependency $ M.extractModule mainModule) of
+    case Map.lookup alias (M.moduleDependency $ M.extractModule (mainModule h)) of
       Just dep -> do
         if M.dependencyDigest dep == digest
           then do
             if url `elem` M.dependencyMirrorList dep
               then do
-                moduleDirPath <- toApp $ Module.getModuleDirByID mainModule Nothing (MID.Library digest)
+                moduleDirPath <- Module.getModuleDirByID (mainModule h) Nothing (MID.Library digest)
                 dependencyDirExists <- doesDirExist moduleDirPath
                 if dependencyDirExists
                   then do
-                    Remark.printNote' $ "Already installed: " <> MD.reify digest
+                    liftIO $ printNote' (stdOutColorSpec h) $ "Already installed: " <> MD.reify digest
                   else do
                     liftIO $ printInstallationRemark h alias digest
-                    toApp (installModule' h tempFilePath alias digest) >>= fetchDeps
+                    installModule' h tempFilePath alias digest >>= fetchDeps h
               else do
-                Remark.printNote' $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
+                liftIO $ printNote' (stdOutColorSpec h) $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
-                toApp $ addDependencyToModuleFile h alias dep'
+                addDependencyToModuleFile h alias dep'
           else do
-            Remark.printNote' $
-              "Replacing a dependency: "
-                <> BN.reify (extract alias)
-                <> "\n- old: "
-                <> MD.reify (M.dependencyDigest dep)
-                <> "\n- new: "
-                <> MD.reify digest
-            toApp (installModule' h tempFilePath alias digest) >>= fetchDeps
+            liftIO $
+              printNote' (stdOutColorSpec h) $
+                "Replacing a dependency: "
+                  <> BN.reify (extract alias)
+                  <> "\n- old: "
+                  <> MD.reify (M.dependencyDigest dep)
+                  <> "\n- new: "
+                  <> MD.reify digest
+            installModule' h tempFilePath alias digest >>= fetchDeps h
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
-            toApp $ updateDependencyInModuleFile h (moduleLocation $ M.extractModule mainModule) alias dep'
+            updateDependencyInModuleFile h (moduleLocation $ M.extractModule (mainModule h)) alias dep'
       Nothing -> do
         liftIO $ printInstallationRemark h alias digest
-        toApp (installModule' h tempFilePath alias digest) >>= fetchDeps
-        toApp $
-          addDependencyToModuleFile h alias $
-            M.Dependency
-              { dependencyMirrorList = [url],
-                dependencyDigest = digest,
-                dependencyPresetEnabled = False
-              }
+        installModule' h tempFilePath alias digest >>= fetchDeps h
+        addDependencyToModuleFile h alias $
+          M.Dependency
+            { dependencyMirrorList = [url],
+              dependencyDigest = digest,
+              dependencyPresetEnabled = False
+            }
 
 insertCoreDependency :: Handle -> EIO ()
 insertCoreDependency h = do

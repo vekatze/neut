@@ -28,7 +28,8 @@ setup cfg = do
   mainModule <- Env.getMainModule
   toApp $ Path.ensureNotInDependencyDir mainModule
   Env.setBuildMode $ buildMode cfg
-  Fetch.fetch mainModule
+  h <- Fetch.new
+  toApp $ Fetch.fetch h mainModule
 
 fromConfig :: Config -> Build.Axis
 fromConfig cfg =
