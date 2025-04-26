@@ -5,7 +5,6 @@ module Move.Scene.Emit
   )
 where
 
-import Control.Monad.IO.Class
 import Data.ByteString.Builder
 import Data.ByteString.Builder qualified as L
 import Data.ByteString.Lazy qualified as L
@@ -56,18 +55,17 @@ new = do
   baseSize <- toApp Env.getBaseSize'
   return $ Handle {..}
 
-emit :: LC.LowCode -> App L.ByteString
-emit lowCode = do
-  h <- new
+emit :: Handle -> LC.LowCode -> IO L.ByteString
+emit h lowCode = do
   case lowCode of
     LC.LowCodeMain mainDef lowCodeInfo -> do
-      main <- liftIO $ emitMain h mainDef
+      main <- emitMain h mainDef
       let argDef = emitArgDef
-      (header, body) <- liftIO $ emitLowCodeInfo h lowCodeInfo
+      (header, body) <- emitLowCodeInfo h lowCodeInfo
       return $ buildByteString $ header ++ argDef ++ main ++ body
     LC.LowCodeNormal lowCodeInfo -> do
       let argDecl = emitArgDecl
-      (header, body) <- liftIO $ emitLowCodeInfo h lowCodeInfo
+      (header, body) <- emitLowCodeInfo h lowCodeInfo
       return $ buildByteString $ header ++ argDecl ++ body
 
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])

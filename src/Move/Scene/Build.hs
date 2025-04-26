@@ -159,7 +159,8 @@ emit ::
   App ()
 emit progressBar currentTime target outputKindList src code = do
   let clangOptions = getCompileOption target
-  llvmIR' <- Emit.emit code
+  h <- Emit.new
+  llvmIR' <- liftIO $ Emit.emit h code
   LLVM.emit target clangOptions currentTime src outputKindList llvmIR'
   ProgressBar.increment progressBar
 
