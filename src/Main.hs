@@ -26,7 +26,7 @@ main = do
 execute :: IO ()
 execute = do
   runApp $ do
-    c <- OptParse.parseCommand
+    c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables
       case c of

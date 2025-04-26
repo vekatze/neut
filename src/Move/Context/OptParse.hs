@@ -1,8 +1,7 @@
 module Move.Context.OptParse (parseCommand) where
 
-import Move.Context.App
-import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Options.Applicative
 import Rule.BuildMode qualified as BM
 import Rule.Command
 import Rule.Config.Archive qualified as Archive
@@ -18,12 +17,10 @@ import Rule.Config.Zen qualified as Zen
 import Rule.FileType qualified as FT
 import Rule.ModuleURL
 import Rule.OutputKind qualified as OK
-import Options.Applicative
 
-parseCommand :: App Command
+parseCommand :: IO Command
 parseCommand =
-  liftIO $
-    execParser (info (helper <*> parseOpt) fullDesc)
+  execParser (info (helper <*> parseOpt) fullDesc)
 
 parseOpt :: Parser Command
 parseOpt = do
