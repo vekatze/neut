@@ -21,7 +21,7 @@ archive packageVersion fullEns moduleRootDir contents = do
   withSystemTempDir "archive" $ \tempRootDir -> do
     Module.saveEns (tempRootDir </> moduleFile) fullEns
     toApp $ copyModuleContents tempRootDir moduleRootDir contents
-    makeReadOnly tempRootDir
+    toApp $ makeReadOnly tempRootDir
     makeArchiveFromTempDir packageVersion tempRootDir
 
 makeArchiveFromTempDir :: PV.PackageVersion -> Path Abs Dir -> App ()
@@ -43,7 +43,7 @@ copyModuleContents tempRootDir moduleRootDir contents = do
         ensureDir $ parent $ tempRootDir </> filePath
         copyFile (moduleRootDir </> filePath) (tempRootDir </> filePath)
 
-makeReadOnly :: Path Abs Dir -> App ()
+makeReadOnly :: Path Abs Dir -> EIO ()
 makeReadOnly tempRootDir = do
   (_, filePathList) <- listDirRecur tempRootDir
   forM_ filePathList $ \filePath -> do
