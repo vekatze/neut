@@ -49,7 +49,7 @@ createNewProject moduleName newModule = do
       liftIO $ createMainFile newModule
       Remark.printNote' $ "Created a module: " <> moduleName
 
-constructDefaultModule :: T.Text -> Maybe T.Text -> App Module
+constructDefaultModule :: T.Text -> Maybe T.Text -> EIO Module
 constructDefaultModule moduleName mTargetName = do
   let targetName = fromMaybe moduleName mTargetName
   currentDir <- getCurrentDir
