@@ -3,7 +3,7 @@ module Move.Scene.Archive (archive) where
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Module qualified as Module
@@ -20,7 +20,7 @@ archive :: PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> A
 archive packageVersion fullEns moduleRootDir contents = do
   withSystemTempDir "archive" $ \tempRootDir -> do
     Module.saveEns (tempRootDir </> moduleFile) fullEns
-    copyModuleContents tempRootDir moduleRootDir contents
+    toApp $ copyModuleContents tempRootDir moduleRootDir contents
     makeReadOnly tempRootDir
     makeArchiveFromTempDir packageVersion tempRootDir
 
@@ -33,7 +33,7 @@ makeArchiveFromTempDir packageVersion tempRootDir = do
   h <- External.new
   toApp $ External.run h "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
 
-copyModuleContents :: Path Abs Dir -> Path Abs Dir -> [SomePath Rel] -> App ()
+copyModuleContents :: Path Abs Dir -> Path Abs Dir -> [SomePath Rel] -> EIO ()
 copyModuleContents tempRootDir moduleRootDir contents = do
   forM_ contents $ \content -> do
     case content of
