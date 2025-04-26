@@ -1,5 +1,7 @@
 module Move.Context.Color
-  ( setShouldColorizeStdout,
+  ( Handle,
+    new,
+    setShouldColorizeStdout,
     setShouldColorizeStderr,
     getShouldColorizeStdout,
     getShouldColorizeStderr,
@@ -8,40 +10,54 @@ module Move.Context.Color
   )
 where
 
-import Move.Context.App
-import Move.Context.App.Internal
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
+import Data.IORef
 import Data.Text.Encoding
+import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Rule.Log qualified as L
-import System.IO
+import System.IO hiding (Handle)
 
-setShouldColorizeStdout :: Bool -> App ()
-setShouldColorizeStdout b = do
-  b' <- getShouldColorizeStdout
-  writeRef' shouldColorizeStdout $ b && b'
+data Handle
+  = Handle
+  { shouldColorizeStdoutRef :: IORef Bool,
+    shouldColorizeStderrRef :: IORef Bool
+  }
 
-setShouldColorizeStderr :: Bool -> App ()
-setShouldColorizeStderr b = do
-  b' <- getShouldColorizeStderr
-  writeRef' shouldColorizeStderr $ b && b'
+new :: App Handle
+new = do
+  shouldColorizeStdoutRef <- asks App.shouldColorizeStdout
+  shouldColorizeStderrRef <- asks App.shouldColorizeStderr
+  return $ Handle {..}
 
-getShouldColorizeStdout :: App Bool
-getShouldColorizeStdout = do
-  readRef' shouldColorizeStdout
+setShouldColorizeStdout :: Handle -> Bool -> IO ()
+setShouldColorizeStdout h b = do
+  orig <- getShouldColorizeStdout h
+  writeIORef (shouldColorizeStdoutRef h) $ b && orig
 
-getShouldColorizeStderr :: App Bool
-getShouldColorizeStderr = do
-  readRef' shouldColorizeStderr
+setShouldColorizeStderr :: Handle -> Bool -> IO ()
+setShouldColorizeStderr h b = do
+  orig <- getShouldColorizeStderr h
+  writeIORef (shouldColorizeStderrRef h) $ b && orig
 
-printStdOut :: L.Log -> App ()
-printStdOut l = do
-  b <- getShouldColorizeStdout
+getShouldColorizeStdout :: Handle -> IO Bool
+getShouldColorizeStdout h = do
+  readIORef (shouldColorizeStdoutRef h)
+
+getShouldColorizeStderr :: Handle -> IO Bool
+getShouldColorizeStderr h = do
+  readIORef (shouldColorizeStderrRef h)
+
+printStdOut :: Handle -> L.Log -> IO ()
+printStdOut h l = do
+  b <- getShouldColorizeStdout h
   let l' = if b then L.unpackWithSGR l else L.unpackWithoutSGR l
   liftIO $ B.hPutStr stdout $ encodeUtf8 l'
 
-printStdErr :: L.Log -> App ()
-printStdErr l = do
-  b <- getShouldColorizeStderr
+printStdErr :: Handle -> L.Log -> IO ()
+printStdErr h l = do
+  b <- getShouldColorizeStderr h
   let l' = if b then L.unpackWithSGR l else L.unpackWithoutSGR l
   liftIO $ B.hPutStr stderr $ encodeUtf8 l'

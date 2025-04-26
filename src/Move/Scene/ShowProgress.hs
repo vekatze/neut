@@ -62,7 +62,8 @@ increment mh = do
 render :: Frame -> IORef ProgressBar -> App ()
 render i ref = do
   progressBar <- liftIO $ readIORef ref
-  Color.printStdOut $ renderInProgress i progressBar <> L.pack' "\n"
+  hc <- Color.new
+  liftIO $ Color.printStdOut hc $ renderInProgress i progressBar <> L.pack' "\n"
   threadDelay 33333 -- 2F
   liftIO $ clear ref
   render (i + 1) ref
@@ -90,4 +91,5 @@ close mh = do
       forM_ (renderThread h) cancel
       liftIO $ clear (progressBarRef h)
       progressBar <- liftIO $ readIORef (progressBarRef h)
-      Color.printStdOut $ renderFinished progressBar
+      hc <- Color.new
+      liftIO $ Color.printStdOut hc $ renderFinished progressBar

@@ -116,7 +116,8 @@ printRemarkIO (mpos, shouldInsertPadding, l, t) = do
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
   footerText <- L.pack' <$> getFooter
-  Color.printStdOut $ locText <> levelText <> remarkText <> footerText
+  h <- Color.new
+  liftIO $ Color.printStdOut h $ locText <> levelText <> remarkText <> footerText
 
 printErrorIO :: R.Remark -> App ()
 printErrorIO (mpos, shouldInsertPadding, l, t) = do
@@ -124,7 +125,8 @@ printErrorIO (mpos, shouldInsertPadding, l, t) = do
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
   footerText <- L.pack' <$> getFooter
-  Color.printStdErr $ locText <> levelText <> remarkText <> footerText
+  h <- Color.new
+  liftIO $ Color.printStdErr h $ locText <> levelText <> remarkText <> footerText
 
 getRemarkLocation :: Maybe FilePos -> L.Log
 getRemarkLocation mpos = do

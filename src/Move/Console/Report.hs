@@ -23,13 +23,11 @@ module Move.Console.Report
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
-import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
-import Move.Context.App.Internal qualified as App
+import Move.Context.Color qualified as Color
 import Rule.FilePos
 import Rule.FilePos qualified as FilePos
 import Rule.Hint
@@ -38,16 +36,14 @@ import Rule.Remark qualified as R
 import System.Console.ANSI.Codes
 import System.IO hiding (Handle)
 
-data Handle
+newtype Handle
   = Handle
-  { shouldColorizeStdoutRef :: IORef Bool,
-    shouldColorizeStderrRef :: IORef Bool
+  { colorHandle :: Color.Handle
   }
 
 new :: App Handle
 new = do
-  shouldColorizeStdoutRef <- asks App.shouldColorizeStdout
-  shouldColorizeStderrRef <- asks App.shouldColorizeStderr
+  colorHandle <- Color.new
   return $ Handle {..}
 
 printString :: String -> IO ()
@@ -127,7 +123,7 @@ printRemarkIO h (mpos, shouldInsertPadding, l, t) = do
   let locText = getRemarkLocation mpos
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  b <- readIORef $ shouldColorizeStdoutRef h
+  b <- Color.getShouldColorizeStdout (colorHandle h)
   let colorSpec = if b then L.Colorful else L.Colorless
   printStdOut colorSpec $ locText <> levelText <> remarkText
 
@@ -136,7 +132,7 @@ printErrorIO h (mpos, shouldInsertPadding, l, t) = do
   let locText = getRemarkLocation mpos
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  b <- readIORef $ shouldColorizeStderrRef h
+  b <- Color.getShouldColorizeStderr (colorHandle h)
   let colorSpec = if b then L.Colorful else L.Colorless
   printStdErr colorSpec $ locText <> levelText <> remarkText
 

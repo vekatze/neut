@@ -44,8 +44,9 @@ import Rule.Source qualified as Source
 
 initializeLogger :: Remark.Config -> App ()
 initializeLogger cfg = do
-  Color.setShouldColorizeStdout $ Remark.shouldColorize cfg
-  Color.setShouldColorizeStderr $ Remark.shouldColorize cfg
+  h <- Color.new
+  liftIO $ Color.setShouldColorizeStdout h $ Remark.shouldColorize cfg
+  liftIO $ Color.setShouldColorizeStderr h $ Remark.shouldColorize cfg
   Remark.setEndOfEntry $ Remark.endOfEntry cfg
   Env.setSilentMode $ Remark.enableSilentMode cfg
   hd <- Debug.new

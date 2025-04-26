@@ -3,6 +3,7 @@ module Move.Scene.Link
   )
 where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
@@ -68,7 +69,8 @@ getCompletedTitle numOfObjects = do
 
 getColor :: App [SGR]
 getColor = do
-  shouldColorize <- Color.getShouldColorizeStdout
+  hc <- Color.new
+  shouldColorize <- liftIO $ Color.getShouldColorizeStdout hc
   if shouldColorize
     then return [SetColor Foreground Vivid Green]
     else return []

@@ -15,6 +15,8 @@ import Data.Time (NominalDiffTime, UTCTime, diffUTCTime, getCurrentTime)
 import Move.Console.Report (printStdErr)
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
+import Move.Context.Color (getShouldColorizeStderr)
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO)
 import Rule.Log qualified as L
 import System.Console.ANSI
@@ -22,15 +24,15 @@ import Text.Printf (printf)
 
 data Handle
   = Handle
-  { enableDebugModeRef :: IORef Bool,
-    shouldColorizeStderrRef :: IORef Bool,
+  { colorHandle :: Color.Handle,
+    enableDebugModeRef :: IORef Bool,
     baseTime :: UTCTime
   }
 
 new :: App Handle
 new = do
+  colorHandle <- Color.new
   enableDebugModeRef <- asks App.enableDebugMode
-  shouldColorizeStderrRef <- asks App.shouldColorizeStderr
   baseTime <- asks App.startTime
   return $ Handle {..}
 
@@ -41,7 +43,7 @@ report h message = do
     currentTime <- liftIO getCurrentTime
     let elapsedTime = diffUTCTime currentTime (baseTime h)
     let elapsedTime' = L.pack [SetColor Foreground Vivid Black] (T.pack $ formatNominalDiffTime elapsedTime)
-    shouldColorize <- liftIO $ readIORef (shouldColorizeStderrRef h)
+    shouldColorize <- liftIO $ getShouldColorizeStderr (colorHandle h)
     let colorSpec = if shouldColorize then L.Colorful else L.Colorless
     liftIO $ printStdErr colorSpec $ elapsedTime' <> " " <> L.pack' message <> "\n"
 

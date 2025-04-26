@@ -108,7 +108,8 @@ compile target outputKindList contentSeq = do
   let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
   color <- do
-    shouldColorize <- Color.getShouldColorizeStdout
+    hc <- Color.new
+    shouldColorize <- liftIO $ Color.getShouldColorizeStdout hc
     if shouldColorize
       then return [SetColor Foreground Vivid Green]
       else return []
