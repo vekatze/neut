@@ -88,7 +88,7 @@ initializeForSource source = do
   UnusedLocalLocator.new >>= liftIO . UnusedLocalLocator.initialize
   UnusedStaticFile.new >>= liftIO . UnusedStaticFile.initialize
   LocalRemark.new >>= liftIO . LocalRemark.initialize
-  Global.initialize
+  Global.new >>= liftIO . Global.initialize
   Env.setCurrentSource source
   Alias.new >>= toApp . Alias.initializeAliasMap
   Locator.new >>= toApp . Locator.initialize

@@ -81,6 +81,11 @@ new = do
   unusedPresetHandle <- UnusedPreset.new
   return $ Handle {..}
 
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (nameMapRef h) Map.empty
+  writeIORef (geistMapRef h) Map.empty
+
 registerStmtDefine ::
   Handle ->
   IsConstLike ->
@@ -214,11 +219,6 @@ lookup' h m name = do
     Nothing -> do
       let name' = Locator.getReadableDD (mainModule h) name
       raiseError m $ "No such top-level name is defined: " <> name'
-
-initialize :: App ()
-initialize = do
-  writeRef' App.nameMap Map.empty
-  writeRef' App.geistMap Map.empty
 
 ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
 ensureDefFreshness h m name = do
