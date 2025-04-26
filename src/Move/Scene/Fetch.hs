@@ -15,8 +15,9 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
+import Move.Console.Report
 import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, raiseError', toApp)
 import Move.Context.Env (getMainModule)
 import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
@@ -34,6 +35,7 @@ import Rule.Ens qualified as E
 import Rule.Ens qualified as SE
 import Rule.Error (Error (MakeError))
 import Rule.Hint
+import Rule.Log (ColorSpec)
 import Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Rule.Module qualified as M
 import Rule.ModuleAlias
@@ -49,7 +51,8 @@ data Handle
   { ensReflectHandle :: EnsReflect.Handle,
     moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,
-    mainModule :: M.MainModule
+    mainModule :: M.MainModule,
+    stdOutColorSpec :: ColorSpec
   }
 
 new :: App Handle
@@ -58,6 +61,7 @@ new = do
   moduleSaveHandle <- ModuleSave.new
   externalHandle <- External.new
   mainModule <- getMainModule
+  stdOutColorSpec <- getColorSpecStdOut
   return $ Handle {..}
 
 fetch :: M.MainModule -> App ()
@@ -87,7 +91,7 @@ insertDependency h aliasName url = do
     Throw.raiseError' $ "Module aliases must not be capitalized, but found: " <> BN.reify aliasName'
   let alias = ModuleAlias aliasName'
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
-    download tempFilePath alias [url]
+    toApp $ download h tempFilePath alias [url]
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
     mainModule <- getMainModule
@@ -149,7 +153,7 @@ installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App 
 installModule h alias mirrorList digest = do
   printInstallationRemark alias digest
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
-    download tempFilePath alias mirrorList
+    toApp $ download h tempFilePath alias mirrorList
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let archiveModuleDigest = MD.fromByteString archive
     when (digest /= archiveModuleDigest) $
@@ -201,21 +205,20 @@ getLibraryModule alias digest = do
           <> MD.reify digest
           <> ")."
 
-download :: Path Abs File -> ModuleAlias -> [ModuleURL] -> App ()
-download tempFilePath ma@(ModuleAlias alias) mirrorList = do
+download :: Handle -> Path Abs File -> ModuleAlias -> [ModuleURL] -> EIO ()
+download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
   case mirrorList of
     [] ->
-      Throw.raiseError' $ "Could not obtain the module `" <> BN.reify alias <> "`."
+      raiseError' $ "Could not obtain the module `" <> BN.reify alias <> "`."
     ModuleURL mirror : rest -> do
-      h <- External.new
-      errOrUnit <- toApp $ External.runOrFail h "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror]
+      errOrUnit <- External.runOrFail (externalHandle h) "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror]
       case errOrUnit of
         Right () ->
           return ()
         Left (MakeError errorList) -> do
-          Remark.printWarning' $ "Could not process the module at: " <> mirror
-          forM_ errorList Remark.printRemark
-          download tempFilePath ma rest
+          liftIO $ printWarning' (stdOutColorSpec h) $ "Could not process the module at: " <> mirror
+          liftIO $ forM_ errorList $ printRemark (stdOutColorSpec h)
+          download h tempFilePath ma rest
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO ()
 extractToDependencyDir h archivePath _ digest = do
