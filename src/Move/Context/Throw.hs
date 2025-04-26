@@ -15,8 +15,8 @@ import Control.Exception.Safe qualified as Safe
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.Remark qualified as Remark
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Rule.Error qualified as E
 import Rule.Hint
@@ -36,7 +36,8 @@ run c = do
   resultOrErr <- execute c
   case resultOrErr of
     Left (E.MakeError err) -> do
-      Remark.printErrorList err
+      hr <- Report.new
+      liftIO $ Report.printErrorList hr err
       liftIO $ exitWith (ExitFailure 1)
     Right result ->
       return result

@@ -10,6 +10,7 @@ where
 
 import Control.Monad.IO.Class
 import Control.Monad.Reader (asks)
+import Move.Console.Report qualified as Report
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
@@ -22,7 +23,6 @@ import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.RawImportSummary qualified as RawImportSummary
-import Move.Context.Remark qualified as Remark
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
@@ -37,6 +37,7 @@ import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Module.Reflect qualified as Module
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
+import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Path
 import Rule.Config.Remark qualified as Remark
 import Rule.Module
@@ -47,7 +48,8 @@ initializeLogger cfg = do
   h <- Color.new
   liftIO $ Color.setShouldColorizeStdout h $ Remark.shouldColorize cfg
   liftIO $ Color.setShouldColorizeStderr h $ Remark.shouldColorize cfg
-  Remark.setEndOfEntry $ Remark.endOfEntry cfg
+  hr <- Report.new
+  liftIO $ Report.setEndOfEntry hr $ Remark.endOfEntry cfg
   Env.setSilentMode $ Remark.enableSilentMode cfg
   hd <- Debug.new
   liftIO $ Debug.setDebugMode hd $ Remark.enableDebugMode cfg
@@ -88,7 +90,7 @@ initializeForSource source = do
   UnusedGlobalLocator.initialize
   UnusedLocalLocator.initialize
   UnusedStaticFile.initialize
-  Remark.initialize
+  LocalRemark.initialize
   Global.initialize
   Env.setCurrentSource source
   Alias.new >>= toApp . Alias.initializeAliasMap
@@ -97,6 +99,5 @@ initializeForSource source = do
   RawImportSummary.initialize
   SymLoc.initialize
   TopCandidate.initialize
-  Remark.setRemarkList []
   PreDecl.initialize
   WeakDecl.initialize

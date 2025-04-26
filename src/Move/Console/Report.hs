@@ -19,14 +19,19 @@ module Move.Console.Report
     printWarning,
     printStdOut,
     printStdErr,
+    setEndOfEntry,
+    getEndOfEntry,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
+import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
+import Move.Context.App.Internal qualified as App
 import Move.Context.Color qualified as Color
 import Rule.FilePos
 import Rule.FilePos qualified as FilePos
@@ -36,14 +41,16 @@ import Rule.Remark qualified as R
 import System.Console.ANSI.Codes
 import System.IO hiding (Handle)
 
-newtype Handle
+data Handle
   = Handle
-  { colorHandle :: Color.Handle
+  { colorHandle :: Color.Handle,
+    endOfEntryRef :: IORef T.Text
   }
 
 new :: App Handle
 new = do
   colorHandle <- Color.new
+  endOfEntryRef <- asks App.endOfEntry
   return $ Handle {..}
 
 printString :: String -> IO ()
@@ -123,18 +130,20 @@ printRemarkIO h (mpos, shouldInsertPadding, l, t) = do
   let locText = getRemarkLocation mpos
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
+  footerText <- L.pack' <$> getFooter h
   b <- Color.getShouldColorizeStdout (colorHandle h)
   let colorSpec = if b then L.Colorful else L.Colorless
-  printStdOut colorSpec $ locText <> levelText <> remarkText
+  printStdOut colorSpec $ locText <> levelText <> remarkText <> footerText
 
 printErrorIO :: Handle -> R.Remark -> IO ()
 printErrorIO h (mpos, shouldInsertPadding, l, t) = do
   let locText = getRemarkLocation mpos
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
+  footerText <- L.pack' <$> getFooter h
   b <- Color.getShouldColorizeStderr (colorHandle h)
   let colorSpec = if b then L.Colorful else L.Colorless
-  printStdErr colorSpec $ locText <> levelText <> remarkText
+  printStdErr colorSpec $ locText <> levelText <> remarkText <> footerText
 
 getRemarkLocation :: Maybe FilePos -> L.Log
 getRemarkLocation mpos = do
@@ -143,6 +152,13 @@ getRemarkLocation mpos = do
       L.pack [SetConsoleIntensity BoldIntensity] $ T.pack (showFilePos pos ++ "\n")
     _ ->
       L.Nil
+
+getFooter :: Handle -> IO T.Text
+getFooter h = do
+  eoe <- getEndOfEntry h
+  if eoe == ""
+    then return ""
+    else return $ eoe <> "\n"
 
 getRemarkLevel :: R.RemarkLevel -> L.Log
 getRemarkLevel l =
@@ -173,3 +189,11 @@ printStdOut c l = do
 printStdErr :: L.ColorSpec -> L.Log -> IO ()
 printStdErr c l = do
   B.hPutStr stderr $ encodeUtf8 $ L.unpack c l
+
+setEndOfEntry :: Handle -> T.Text -> IO ()
+setEndOfEntry h =
+  writeIORef (endOfEntryRef h)
+
+getEndOfEntry :: Handle -> IO T.Text
+getEndOfEntry h =
+  readIORef (endOfEntryRef h)

@@ -13,6 +13,7 @@ import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
+import Move.Console.Report qualified as Report
 import Move.Context.App
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
@@ -25,7 +26,6 @@ import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
-import Move.Context.Remark qualified as Remark
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
@@ -78,7 +78,8 @@ buildTarget axis (M.MainModule baseModule) target = do
   contentSeq <- toApp $ Load.load h'' target dependenceSeq
   compile target' (_outputKindList axis) contentSeq
   hgl <- GlobalRemark.new
-  liftIO (GlobalRemark.get hgl) >>= Remark.printRemarkList
+  hr <- Report.new
+  liftIO (GlobalRemark.get hgl) >>= liftIO . Report.printRemarkList hr
   case target' of
     Peripheral {} ->
       return ()
