@@ -16,7 +16,8 @@ import Prelude hiding (log)
 build :: Config -> App ()
 build cfg = do
   setup cfg
-  target <- Collect.getMainTarget $ targetName cfg
+  h <- Collect.new
+  target <- toApp $ Collect.getMainTarget h $ targetName cfg
   mainModule <- Env.getMainModule
   Build.buildTarget (fromConfig cfg) mainModule (Main target)
 

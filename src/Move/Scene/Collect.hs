@@ -1,5 +1,7 @@
 module Move.Scene.Collect
-  ( getMainTarget,
+  ( Handle,
+    new,
+    getMainTarget,
     collectModuleFiles,
   )
 where
@@ -8,21 +10,30 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
-import Move.Context.Throw qualified as Throw
 import Path
 import Rule.Module
 import Rule.Target
 import Prelude hiding (log)
 
-getMainTarget :: T.Text -> App MainTarget
-getMainTarget targetName = do
+newtype Handle
+  = Handle
+  { mainModule :: MainModule
+  }
+
+new :: App Handle
+new = do
   mainModule <- Env.getMainModule
-  case getTarget (extractModule mainModule) targetName of
+  return $ Handle {..}
+
+getMainTarget :: Handle -> T.Text -> EIO MainTarget
+getMainTarget h targetName = do
+  case getTarget (extractModule (mainModule h)) targetName of
     Just target ->
       return target
     Nothing ->
-      Throw.raiseError' $ "No such target exists: " <> targetName
+      raiseError' $ "No such target exists: " <> targetName
 
 collectModuleFiles :: MainModule -> (Path Abs Dir, [SomePath Rel])
 collectModuleFiles (MainModule baseModule) = do
