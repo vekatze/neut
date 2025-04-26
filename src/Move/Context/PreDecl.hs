@@ -24,14 +24,14 @@ newtype Handle
   { preDeclEnvRef :: IORef (Map.HashMap EN.ExternalName Hint)
   }
 
-initialize :: App ()
-initialize = do
-  writeRef' App.preDeclEnv Map.empty
-
 new :: App Handle
 new = do
   preDeclEnvRef <- asks App.preDeclEnv
   return $ Handle {..}
+
+initialize :: Handle -> IO ()
+initialize h = do
+  writeIORef (preDeclEnvRef h) Map.empty
 
 insert :: Handle -> EN.ExternalName -> Hint -> IO ()
 insert h k m =

@@ -96,5 +96,5 @@ initializeForSource source = do
   RawImportSummary.new >>= liftIO . RawImportSummary.initialize
   SymLoc.new >>= liftIO . SymLoc.initialize
   TopCandidate.new >>= liftIO . TopCandidate.initialize
-  PreDecl.initialize
+  PreDecl.new >>= liftIO . PreDecl.initialize
   WeakDecl.initialize
