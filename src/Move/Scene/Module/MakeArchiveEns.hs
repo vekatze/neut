@@ -6,7 +6,7 @@ import Control.Monad.IO.Class
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Fetch (getHandleContents)
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Ens.Reflect qualified as Ens
@@ -29,20 +29,20 @@ makeArchiveEns :: PV.PackageVersion -> MainModule -> App E.FullEns
 makeArchiveEns newVersion targetModule = do
   existingVersions <- toApp $ getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
-  antecedentList <- ListUtils.nubOrd <$> mapM (getDigest $ extractModule targetModule) antecedents
+  antecedentList <- toApp $ ListUtils.nubOrd <$> mapM (getDigest $ extractModule targetModule) antecedents
   h <- Ens.new
   (c1, (baseEns@(m :< _), c2)) <- toApp $ Ens.fromFilePath h (moduleLocation $ extractModule targetModule)
   let antecedentEns = makeAntecedentEns m antecedentList
   mergedEns <- Throw.liftEither $ E.merge baseEns antecedentEns
   return (c1, (mergedEns, c2))
 
-getPackagePath :: Module -> PV.PackageVersion -> App (Path Abs File)
+getPackagePath :: Module -> PV.PackageVersion -> EIO (Path Abs File)
 getPackagePath targetModule ver = do
   let archiveDir = getArchiveDir targetModule
   let archiveName = PV.reify ver
   resolveFile archiveDir $ T.unpack $ archiveName <> packageFileExtension
 
-getDigest :: Module -> PV.PackageVersion -> App ModuleDigest
+getDigest :: Module -> PV.PackageVersion -> EIO ModuleDigest
 getDigest targetModule ver = do
   path <- getPackagePath targetModule ver
   handle <- liftIO $ openFile (toFilePath path) ReadMode
