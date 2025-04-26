@@ -10,7 +10,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -40,7 +40,9 @@ data Handle = Handle
     ensReflectHandle :: EnsReflect.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
-    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle
+    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
+    initTargetHandle :: InitTarget.Handle,
+    initSourceHandle :: InitSource.Handle
   }
 
 new :: App Handle
@@ -54,6 +56,8 @@ new = do
   getEnabledPresetHandle <- GetEnabledPreset.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
+  initTargetHandle <- InitTarget.new
+  initSourceHandle <- InitSource.new
   return $ Handle {..}
 
 format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App T.Text
@@ -64,32 +68,32 @@ format shouldMinimizeImports fileType path content = do
       ens <- toApp $ EnsReflect.fromFilePath' (ensReflectHandle h) path content
       return $ Ens.pp ens
     FT.Source -> do
-      _formatSource h shouldMinimizeImports path content
+      toApp $ _formatSource h shouldMinimizeImports path content
 
 type ShouldMinimizeImports =
   Bool
 
-_formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
+_formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> EIO T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
-  InitTarget.new >>= liftIO . InitTarget.initializeForTarget
-  MainModule mainModule <- toApp $ Env.getMainModule (envHandle h)
+  liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
+  MainModule mainModule <- Env.getMainModule (envHandle h)
   if shouldMinimizeImports
     then do
-      (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) mainModule $ Main (emptyZen filePath)
-      contentSeq <- toApp $ Load.load (loadHandle h) Peripheral dependenceSeq
+      (_, dependenceSeq) <- Unravel.unravel (unravelHandle h) mainModule $ Main (emptyZen filePath)
+      contentSeq <- Load.load (loadHandle h) Peripheral dependenceSeq
       let contentSeq' = _replaceLast fileContent contentSeq
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
-        InitSource.new >>= \hInit -> toApp (InitSource.initializeForSource hInit source)
-        void $ toApp $ Parse.parse (parseHandle h) Peripheral source cacheOrContent
+        InitSource.initializeForSource (initSourceHandle h) source
+        void $ Parse.parse (parseHandle h) Peripheral source cacheOrContent
       unusedGlobalLocators <- liftIO $ UnusedGlobalLocator.get (unusedGlobalLocatorHandle h)
       unusedLocalLocators <- liftIO $ UnusedLocalLocator.get (unusedLocalLocatorHandle h)
-      program <- toApp $ ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
-      presetNames <- toApp $ GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule
+      program <- ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
+      presetNames <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
       return $ RawProgram.pp importInfo program
     else do
-      program <- toApp $ ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
-      presetNames <- toApp $ GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule
+      program <- ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
+      presetNames <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators = [], unusedLocalLocators = []}
       return $ RawProgram.pp importInfo program
 
