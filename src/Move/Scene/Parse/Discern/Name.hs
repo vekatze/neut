@@ -70,7 +70,7 @@ resolveVarOrErr h m name = do
       return $ Left $ "Undefined symbol: " <> name
     [globalVar@(dd, (mDef, gn))] -> do
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd (GN.getIsConstLike gn) mDef
-      liftIO $ UnusedLocalLocator.deleteIO (H.unusedLocalLocatorMapRef h) localLocator
+      liftIO $ UnusedLocalLocator.delete (H.unusedLocalLocatorHandle h) localLocator
       return $ Right globalVar
     _ -> do
       let foundNameList' = map (Locator.getReadableDD (H.mainModule h) . fst) foundNameList

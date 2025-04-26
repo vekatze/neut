@@ -54,7 +54,7 @@ data Handle
   = Handle
   { mainModule :: MainModule,
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
-    unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
+    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     shiftToLatestHandle :: STL.Handle,
     unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
@@ -72,7 +72,7 @@ new = do
   mainModule <- getMainModule
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
-  unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
+  unusedLocalLocatorHandle <- UnusedLocalLocator.new
   getEnabledPresetHandle <- GetEnabledPreset.new
   shiftToLatestHandle <- STL.new
   locatorHandle <- Locator.new
@@ -156,7 +156,7 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
           when mustUpdateTag $ do
             liftIO $ UnusedGlobalLocator.insert (unusedGlobalLocatorHandle h) (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) ->
-              liftIO $ UnusedLocalLocator.insertIO (unusedLocalLocatorMapRef h) ll ml
+              liftIO $ UnusedLocalLocator.insert (unusedLocalLocatorHandle h) ll ml
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl]]
       | otherwise ->
           raiseError m $ "No such prefix is defined: " <> BN.reify baseName
@@ -170,7 +170,7 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
           when mustUpdateTag $ do
             liftIO $ UnusedGlobalLocator.insert (unusedGlobalLocatorHandle h) (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) ->
-              liftIO $ UnusedLocalLocator.insertIO (unusedLocalLocatorMapRef h) ll ml
+              liftIO $ UnusedLocalLocator.insert (unusedLocalLocatorHandle h) ll ml
           source <- getSource h mustUpdateTag m sgl locatorText
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
 

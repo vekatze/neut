@@ -22,6 +22,7 @@ import Move.Context.Global qualified as Global
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
+import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -52,7 +53,7 @@ data Handle
     localRemarkHandle :: LocalRemark.Handle, -- per file
     unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
-    unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
+    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
     unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
     usedVariableSetRef :: IORef (S.Set Int)
@@ -68,7 +69,7 @@ new = do
   localRemarkHandle <- LocalRemark.new
   unusedVariableMapRef <- asks App.unusedVariableMap
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
-  unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
+  unusedLocalLocatorHandle <- UnusedLocalLocator.new
   unusedPresetMapRef <- asks App.unusedPresetMap
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   usedVariableSetRef <- asks App.usedVariableSet
@@ -155,8 +156,8 @@ registerUnusedGlobalLocatorRemarks h = do
 
 registerUnusedLocalLocatorRemarks :: Handle -> IO ()
 registerUnusedLocalLocatorRemarks h = do
-  unusedLocalLocatorMap <- readIORef (unusedLocalLocatorMapRef h)
-  forM_ (Map.toList unusedLocalLocatorMap) $ \(ll, m) ->
+  unusedLocalLocatorMap <- UnusedLocalLocator.get (unusedLocalLocatorHandle h)
+  forM_ unusedLocalLocatorMap $ \(ll, m) ->
     LocalRemark.insert (localRemarkHandle h) $
       R.newRemark m R.Warning $
         "Imported but not used: `" <> LL.reify ll <> "`"

@@ -37,7 +37,8 @@ data Handle = Handle
     parseHandle :: Parse.Handle,
     ensReflectHandle :: EnsReflect.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
-    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle
+    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
+    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle
   }
 
 new :: App Handle
@@ -49,6 +50,7 @@ new = do
   ensReflectHandle <- EnsReflect.new
   getEnabledPresetHandle <- GetEnabledPreset.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
+  unusedLocalLocatorHandle <- UnusedLocalLocator.new
   return $ Handle {..}
 
 format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App T.Text
@@ -77,7 +79,7 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
         Initialize.initializeForSource source
         void $ toApp $ Parse.parse (parseHandle h) Peripheral source cacheOrContent
       unusedGlobalLocators <- liftIO $ UnusedGlobalLocator.get (unusedGlobalLocatorHandle h)
-      unusedLocalLocators <- UnusedLocalLocator.get
+      unusedLocalLocators <- liftIO $ UnusedLocalLocator.get (unusedLocalLocatorHandle h)
       program <- toApp $ ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
       presetNames <- toApp $ GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}

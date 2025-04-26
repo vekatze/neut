@@ -29,13 +29,13 @@ import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
+import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.BuildMode qualified as BM
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.Layer
-import Rule.LocalLocator qualified as LL
 import Rule.Module
 import Rule.NominalEnv
 import Rule.VarDefKind
@@ -55,7 +55,7 @@ data Handle = Handle
     nameEnv :: NominalEnv,
     currentLayer :: Layer,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
-    unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
+    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
     usedVariableSetRef :: IORef (S.Set Int),
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
     buildModeRef :: IORef BM.BuildMode
@@ -76,7 +76,7 @@ new = do
   optDataHandle <- OptimizableData.new
   let nameEnv = empty
   unusedVariableMapRef <- asks App.unusedVariableMap
-  unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
+  unusedLocalLocatorHandle <- UnusedLocalLocator.new
   usedVariableSetRef <- asks App.usedVariableSet
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   buildModeRef <- asks App.buildMode
