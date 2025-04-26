@@ -2,7 +2,6 @@ module Move.Context.WeakDefinition
   ( Handle,
     new,
     initialize,
-    insert,
     read,
     lookup,
     DefMap,
@@ -19,7 +18,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.Gensym qualified as Gensym
 import Move.Language.Utility.Gensym qualified as GensymNew
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
@@ -48,21 +46,6 @@ new = do
   gensymHandle <- GensymNew.new
   weakDefMapRef <- asks App.weakDefMap
   return $ Handle {..}
-
-insert ::
-  O.Opacity ->
-  Hint ->
-  DD.DefiniteDescription ->
-  [BinderF WeakTerm] ->
-  [BinderF WeakTerm] ->
-  WeakTerm ->
-  WeakTerm ->
-  App ()
-insert opacity m name impArgs expArgs codType e =
-  when (opacity == O.Clear) $ do
-    i <- Gensym.newCount
-    modifyRef' App.weakDefMap $
-      Map.insert name (m :< WT.PiIntro (AttrL.normal i codType) impArgs expArgs e)
 
 read :: App DefMap
 read =
