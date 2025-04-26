@@ -6,13 +6,13 @@ module Move.Scene.ShowProgress
   )
 where
 
-import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Env (getSilentMode)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
+import Move.Context.App
+import Move.Context.Color qualified as Color
+import Move.Context.Env (getSilentMode)
 import Rule.Log qualified as L
 import Rule.ProgressBar (Frame, ProgressBar (..), next, renderFinished, renderInProgress)
 import System.Console.ANSI
@@ -50,13 +50,13 @@ new numOfItems workingTitle completedTitle color = do
       renderThread <- Just <$> async (render 0 progressBarRef)
       return $ Just $ Handle {progressBarRef, renderThread}
 
-increment :: Handle -> App ()
+increment :: Handle -> IO ()
 increment mh = do
   case mh of
     Nothing ->
       return ()
     Just h -> do
-      liftIO $ atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
+      atomicModifyIORef' (progressBarRef h) $ \progressBar -> do
         (next progressBar, ())
 
 render :: Frame -> IORef ProgressBar -> App ()

@@ -115,6 +115,8 @@ compile target outputKindList contentSeq = do
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
   h <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
+  hEmit <- Emit.new
+  hLLVM <- LLVM.new
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
@@ -126,16 +128,16 @@ compile target outputKindList contentSeq = do
     hElaborate <- Elaborate.new hEnv
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
+    hc <- Clarify.new
+    hl <- Lower.new
     Cache.whenCompilationNecessary hCache outputKindList source $ do
-      hc <- Clarify.new
       stmtList' <- toApp $ Clarify.clarify hc stmtList
-      async $ do
-        hl <- Lower.new
-        virtualCode <- toApp $ Lower.lower hl stmtList'
-        emit h currentTime target outputKindList (Right source) virtualCode
+      async $ toApp $ do
+        virtualCode <- Lower.lower hl stmtList'
+        emit hEmit hLLVM h currentTime target outputKindList (Right source) virtualCode
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-    emit h currentTime target outputKindList src code
+    toApp $ emit hEmit hLLVM h currentTime target outputKindList src code
   mapM_ wait $ entryPointAsync ++ contentAsync
   ProgressBar.close h
 
@@ -150,20 +152,20 @@ getWorkingTitle numOfItems = do
   "Compiling " <> T.pack (show numOfItems) <> " file" <> suffix
 
 emit ::
+  Emit.Handle ->
+  LLVM.Handle ->
   ProgressBar.Handle ->
   UTCTime ->
   Target ->
   [OutputKind] ->
   Either MainTarget Source ->
   LC.LowCode ->
-  App ()
-emit progressBar currentTime target outputKindList src code = do
+  EIO ()
+emit h he progressBar currentTime target outputKindList src code = do
   let clangOptions = getCompileOption target
-  h <- Emit.new
   llvmIR' <- liftIO $ Emit.emit h code
-  he <- LLVM.new
-  toApp $ LLVM.emit he target clangOptions currentTime src outputKindList llvmIR'
-  ProgressBar.increment progressBar
+  LLVM.emit he target clangOptions currentTime src outputKindList llvmIR'
+  liftIO $ ProgressBar.increment progressBar
 
 getEntryPointCompilationCount :: M.MainModule -> Target -> [OutputKind] -> App Int
 getEntryPointCompilationCount mainModule target outputKindList = do
