@@ -35,8 +35,9 @@ execute = do
           Build.build cfg
         C.Check cfg -> do
           Check.check cfg
-        C.Clean cfg ->
-          Clean.clean cfg
+        C.Clean cfg -> do
+          h <- Clean.new
+          toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           h <- Archive.new
           toApp $ Archive.archive h cfg
