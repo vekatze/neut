@@ -322,4 +322,4 @@ expandClangOptions target =
 
 expandOptions :: [T.Text] -> App [T.Text]
 expandOptions foo =
-  map T.strip <$> mapM External.expandText foo
+  map T.strip <$> mapM (toApp . External.expandText) foo

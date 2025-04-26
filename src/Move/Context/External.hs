@@ -8,12 +8,13 @@ module Move.Context.External
   )
 where
 
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Throw qualified as Throw
 import Path
 import Rule.Error
@@ -67,7 +68,7 @@ ensureExecutable name = do
     Nothing ->
       Throw.raiseError' $ "Command not found: " <> T.pack name
 
-expandText :: T.Text -> App T.Text
+expandText :: T.Text -> EIO T.Text
 expandText t = do
   let ProcessRunner.Runner {run01} = ProcessRunner.ioRunner
   let spec =
@@ -80,4 +81,4 @@ expandText t = do
     Right value ->
       return $ decodeUtf8 value
     Left err ->
-      Throw.throw $ ProcessRunner.toCompilerError err
+      throwError $ ProcessRunner.toCompilerError err
