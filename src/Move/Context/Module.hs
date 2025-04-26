@@ -63,14 +63,14 @@ getModuleDirByID (MainModule pivotModule) mHint moduleID = do
       dependencyDir <- Path.getDependencyDirPath pivotModule
       resolveDir dependencyDir $ T.unpack digest
 
-getCoreModuleURL :: App ModuleURL
+getCoreModuleURL :: EIO ModuleURL
 getCoreModuleURL = do
   mCoreModuleURL <- liftIO $ lookupEnv envVarCoreModuleURL
   case mCoreModuleURL of
     Just coreModuleURL ->
       return $ ModuleURL $ T.pack coreModuleURL
     Nothing ->
-      Throw.raiseError' $ "The URL of the core module is not specified; set it via " <> T.pack envVarCoreModuleURL
+      raiseError' $ "The URL of the core module is not specified; set it via " <> T.pack envVarCoreModuleURL
 
 getCoreModuleDigest :: App ModuleDigest
 getCoreModuleDigest = do
