@@ -30,7 +30,7 @@ import Data.Text.Encoding
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError, raiseError')
-import Move.Context.Env (getCurrentSource', getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.Tag qualified as Tag
 import Path
 import Path.IO
@@ -71,7 +71,8 @@ data Handle
 new :: App Handle
 new = do
   tagHandle <- Tag.new
-  mainModule <- getMainModule
+  he <- Env.new
+  mainModule <- liftIO $ Env.getMainModule he
   activeDefiniteDescriptionListRef <- asks App.activeDefiniteDescriptionList
   activeStaticFileListRef <- asks App.activeStaticFileList
   activeGlobalLocatorListRef <- asks App.activeGlobalLocatorList
@@ -81,7 +82,7 @@ new = do
 
 initialize :: Handle -> EIO ()
 initialize h = do
-  currentSource <- getCurrentSource' (currentSourceRef h)
+  currentSource <- Env.getCurrentSource' (currentSourceRef h)
   cgl <- constructGlobalLocator currentSource
   liftIO $ writeIORef (currentGlobalLocator h) (Just cgl)
   liftIO $ writeIORef (activeGlobalLocatorListRef h) [cgl, SGL.llvmGlobalLocator]
@@ -109,7 +110,7 @@ activateSpecifiedNames h topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                current <- getCurrentSource' (currentSourceRef h)
+                current <- Env.getCurrentSource' (currentSourceRef h)
                 let dd' = DD.getReadableDD (Source.sourceModule current) dd
                 let existingDD' = DD.getReadableDD (Source.sourceModule current) existingDD
                 raiseError m $

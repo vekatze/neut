@@ -17,7 +17,7 @@ import Move.Context.AppM
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
 import Move.Context.EIO (toApp)
-import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
@@ -290,7 +290,8 @@ locToPosition (line, character) =
 getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], FastPresetSummary)
 getAllTopCandidate baseModule = do
   h <- Module.new
-  mainModule <- getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   dependencies <- toApp $ Module.getAllDependencies h mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   (candListList, aliasPresetInfo) <- unzip <$> pooledMapConcurrently getAllTopCandidate' visibleModuleList

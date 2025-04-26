@@ -14,7 +14,7 @@ import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
-import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
@@ -66,7 +66,8 @@ data Handle
 
 new :: App Handle
 new = do
-  mainModule <- getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   unusedStaticFileHandle <- UnusedStaticFile.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new

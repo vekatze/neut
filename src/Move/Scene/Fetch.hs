@@ -18,7 +18,7 @@ import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.App
 import Move.Context.EIO (EIO, forP, raiseError')
-import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
@@ -59,7 +59,8 @@ new = do
   externalHandle <- External.new
   moduleHandle <- ModuleReflect.new
   reportHandle <- Report.new
-  mainModule <- getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   return $ Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()

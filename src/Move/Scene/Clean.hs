@@ -6,6 +6,7 @@ module Move.Scene.Clean
 where
 
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -22,7 +23,8 @@ data Handle = Handle
 
 new :: App Handle
 new = do
-  mainModule <- Env.getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   unravelHandle <- Unravel.new
   return $ Handle {..}
 

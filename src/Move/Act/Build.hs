@@ -1,5 +1,6 @@
 module Move.Act.Build (build) where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -8,8 +9,7 @@ import Move.Context.Path qualified as Path
 import Move.Scene.Build qualified as Build
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Fetch qualified as Fetch
-import Move.Scene.Initialize qualified as Initialize
-import Move.Scene.Module.Reflect qualified as ModuleReflect
+import Move.Scene.Init.Compiler qualified as InitCompiler
 import Rule.Config.Build
 import Rule.Target
 import Prelude hiding (log)
@@ -19,15 +19,17 @@ build cfg = do
   setup cfg
   h <- Collect.new
   target <- toApp $ Collect.getMainTarget h $ targetName cfg
-  mainModule <- Env.getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   Build.buildTarget (fromConfig cfg) mainModule (Main target)
 
 setup :: Config -> App ()
 setup cfg = do
   toApp $ LLVM.ensureSetupSanity cfg
-  hm <- ModuleReflect.new
-  Initialize.initializeCompiler hm (remarkCfg cfg)
-  mainModule <- Env.getMainModule
+  hc <- InitCompiler.new
+  toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
   Env.setBuildMode $ buildMode cfg
   h <- Fetch.new

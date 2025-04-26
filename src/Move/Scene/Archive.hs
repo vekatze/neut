@@ -6,6 +6,7 @@ module Move.Scene.Archive
 where
 
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseError')
@@ -31,7 +32,8 @@ new :: App Handle
 new = do
   externalHandle <- External.new
   moduleSaveHandle <- ModuleSave.new
-  mainModule <- Env.getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   return $ Handle {..}
 
 archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()

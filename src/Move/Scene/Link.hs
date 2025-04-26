@@ -26,7 +26,8 @@ import System.Console.ANSI
 
 link :: MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
-  mainModule <- Env.getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   h <- Path.new
   executablePath <- toApp $ Path.getExecutableOutputPath h target (extractModule mainModule)
   isExecutableAvailable <- doesFileExist executablePath

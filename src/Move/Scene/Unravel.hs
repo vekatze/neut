@@ -27,6 +27,7 @@ import Move.Context.Artifact qualified as Artifact
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
 import Move.Context.Parse (ensureExistence')
@@ -79,7 +80,8 @@ data Handle
 
 new :: App Handle
 new = do
-  mainModule <- getMainModule
+  he <- Env.new
+  mainModule <- liftIO $ getMainModule he
   debugHandle <- Debug.new
   pathHandle <- Path.new
   moduleHandle <- ModuleReflect.new

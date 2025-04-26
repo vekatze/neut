@@ -5,12 +5,13 @@ module Move.Scene.Module.GetEnabledPreset
   )
 where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (EIO)
-import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.Module qualified as Module
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.GetModule qualified as GetModule
@@ -27,9 +28,10 @@ data Handle
 
 new :: App Handle
 new = do
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   gensymHandle <- Gensym.new
   moduleHandle <- Module.new
-  mainModule <- getMainModule
   return $ Handle {..}
 
 getEnabledPreset :: Handle -> Module -> EIO [(T.Text, [BN.BaseName])]

@@ -1,6 +1,7 @@
 module Move.Scene.Install (install) where
 
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (toApp)
@@ -14,7 +15,8 @@ import Prelude hiding (log)
 
 install :: Target.MainTarget -> Path Abs Dir -> App ()
 install targetOrZen dir = do
-  mainModule <- Env.getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   h <- Path.new
   execPath <- toApp $ Path.getExecutableOutputPath h targetOrZen (extractModule mainModule)
   case targetOrZen of

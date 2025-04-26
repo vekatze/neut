@@ -16,7 +16,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError)
-import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Rule.ArgNum qualified as AN
 import Rule.Const (holeVarPrefix)
@@ -35,7 +35,8 @@ data Handle
 
 new :: App Handle
 new = do
-  mainModule <- getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   keyArgMapRef <- asks App.keyArgMap
   return $ Handle {..}
 

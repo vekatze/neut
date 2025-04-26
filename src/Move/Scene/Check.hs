@@ -15,7 +15,7 @@ import Move.Context.App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
-import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Init.Source qualified as InitSource
@@ -37,7 +37,8 @@ data Handle
   { debugHandle :: Debug.Handle,
     loadHandle :: Load.Handle,
     unravelHandle :: Unravel.Handle,
-    parseHandle :: Parse.Handle
+    parseHandle :: Parse.Handle,
+    envHandle :: Env.Handle
   }
 
 new :: App Handle
@@ -46,12 +47,13 @@ new = do
   loadHandle <- Load.new
   unravelHandle <- Unravel.new
   parseHandle <- Parse.new
+  envHandle <- Env.new
   return $ Handle {..}
 
 check :: App [Remark]
 check = do
-  M.MainModule mainModule <- getMainModule
   h <- new
+  M.MainModule mainModule <- liftIO $ Env.getMainModule (envHandle h)
   _check h Peripheral mainModule
 
 checkModule :: M.Module -> App [Remark]
@@ -61,9 +63,10 @@ checkModule baseModule = do
 
 checkAll :: App [Remark]
 checkAll = do
-  mainModule <- getMainModule
-  h <- Module.new
-  deps <- toApp $ Module.getAllDependencies h mainModule (extractModule mainModule)
+  he <- Env.new
+  mainModule <- liftIO $ Env.getMainModule he
+  hm <- Module.new
+  deps <- toApp $ Module.getAllDependencies hm mainModule (extractModule mainModule)
   forM_ deps $ \(_, m) -> checkModule m
   checkModule (extractModule mainModule)
 

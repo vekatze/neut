@@ -17,7 +17,7 @@ import Move.Context.App
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
-import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
 import Path
@@ -44,7 +44,8 @@ new = do
   debugHandle <- Debug.new
   pathHandle <- Path.new
   externalHandle <- External.new
-  mainModule <- getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   return $ Handle {..}
 
 type ClangOption = String

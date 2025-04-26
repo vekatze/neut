@@ -11,7 +11,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (toApp)
-import Move.Context.Env (getMainModule)
+import Move.Context.Env qualified as Env
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Scene.Ens.Reflect qualified as EnsReflect
@@ -36,6 +36,7 @@ data Handle = Handle
     loadHandle :: Load.Handle,
     parseCoreHandle :: ParseCore.Handle,
     parseHandle :: Parse.Handle,
+    envHandle :: Env.Handle,
     ensReflectHandle :: EnsReflect.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
@@ -48,6 +49,7 @@ new = do
   loadHandle <- Load.new
   parseCoreHandle <- ParseCore.new
   parseHandle <- Parse.new
+  envHandle <- Env.new
   ensReflectHandle <- EnsReflect.new
   getEnabledPresetHandle <- GetEnabledPreset.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
@@ -70,7 +72,7 @@ type ShouldMinimizeImports =
 _formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
   InitTarget.new >>= liftIO . InitTarget.initializeForTarget
-  MainModule mainModule <- getMainModule
+  MainModule mainModule <- liftIO $ Env.getMainModule (envHandle h)
   if shouldMinimizeImports
     then do
       (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) mainModule $ Main (emptyZen filePath)

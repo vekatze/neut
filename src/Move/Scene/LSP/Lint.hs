@@ -21,4 +21,5 @@ lint = do
 lintM :: AppM [R.Remark]
 lintM = do
   h <- lift Fetch.new
-  lift $ Env.getMainModule >>= toApp . Fetch.fetch h >> Check.check
+  envHandle <- lift Env.new
+  lift $ lift (Env.getMainModule envHandle) >>= toApp . Fetch.fetch h >> Check.check

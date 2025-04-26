@@ -19,7 +19,6 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Elaborate qualified as Elaborate
-import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -98,7 +97,8 @@ data Handle
 
 new :: Elaborate.HandleEnv -> App Handle
 new handleEnv@(Elaborate.HandleEnv {..}) = do
-  mainModule <- getMainModule
+  envHandle <- Env.new
+  mainModule <- liftIO $ Env.getMainModule envHandle
   substHandle <- Subst.new
   reduceHandle <- Reduce.new
   unifyHandle <- Unify.new handleEnv

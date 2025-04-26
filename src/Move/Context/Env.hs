@@ -45,22 +45,24 @@ import System.Info qualified as SI
 data Handle
   = Handle
   { currentSourceRef :: IORef (Maybe Source.Source),
-    enableSilentModeRef :: IORef Bool
+    enableSilentModeRef :: IORef Bool,
+    mainModuleRef :: IORef (Maybe MainModule)
   }
 
 new :: App Handle
 new = do
   currentSourceRef <- asks App.currentSource
   enableSilentModeRef <- asks App.enableSilentMode
+  mainModuleRef <- asks App.mainModule
   return $ Handle {..}
 
-getMainModule :: App MainModule
-getMainModule =
-  readRef "mainModule" App.mainModule
+getMainModule :: Handle -> IO MainModule
+getMainModule h =
+  readIORefOrFail "mainModule" (mainModuleRef h)
 
-setMainModule :: MainModule -> App ()
-setMainModule =
-  writeRef App.mainModule
+setMainModule :: Handle -> MainModule -> IO ()
+setMainModule h m =
+  writeIORef (mainModuleRef h) (Just m)
 
 setBuildMode :: BM.BuildMode -> App ()
 setBuildMode =
@@ -159,3 +161,12 @@ setSilentMode h =
 getSilentMode :: Handle -> IO Bool
 getSilentMode h =
   readIORef (enableSilentModeRef h)
+
+readIORefOrFail :: T.Text -> IORef (Maybe a) -> IO a
+readIORefOrFail name ref = do
+  mValue <- readIORef ref
+  case mValue of
+    Just a ->
+      return a
+    Nothing ->
+      error $ T.unpack $ "[compiler bug] `" <> name <> "` is uninitialized"
