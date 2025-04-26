@@ -18,7 +18,8 @@ get cfg = do
   Initialize.initializeCompiler (remarkCfg cfg)
   mainModule <- getMainModule
   toApp $ Path.ensureNotInDependencyDir mainModule
-  Clean.clean
+  hc <- Clean.new
+  toApp $ Clean.clean hc
   h <- Fetch.new
   toApp $ Fetch.insertDependency h (moduleAliasText cfg) (moduleURL cfg)
   Initialize.initializeCompilerWithPath (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
