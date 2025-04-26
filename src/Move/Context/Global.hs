@@ -60,9 +60,9 @@ data Handle
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle,
     tagHandle :: Tag.Handle,
+    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
     nameMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
-    unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]),
     unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint),
     sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
   }
@@ -74,10 +74,10 @@ new = do
   keyArgHandle <- KeyArg.new
   optDataHandle <- OptimizableData.new
   tagHandle <- Tag.new
+  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   nameMapRef <- asks App.nameMap
   geistMapRef <- asks App.geistMap
   sourceNameMapRef <- asks App.sourceNameMap
-  unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
   unusedPresetMapRef <- asks App.unusedPresetMap
   return $ Handle {..}
 
@@ -194,7 +194,7 @@ lookup h m name = do
   dataSize <- Env.getDataSize m
   case Map.lookup name nameMap of
     Just kind -> do
-      liftIO $ UnusedGlobalLocator.deleteIO (unusedGlobalLocatorMapRef h) $ DD.globalLocator name
+      liftIO $ UnusedGlobalLocator.delete (unusedGlobalLocatorHandle h) $ DD.globalLocator name
       liftIO $ UnusedPreset.deleteIO (unusedPresetMapRef h) $ DD.moduleID name
       return $ Just kind
     Nothing

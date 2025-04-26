@@ -1,34 +1,47 @@
 module Move.Context.UnusedGlobalLocator
-  ( initialize,
+  ( Handle,
+    new,
+    initialize,
     get,
-    insertIO,
-    deleteIO,
+    insert,
+    delete,
   )
 where
 
 import Control.Monad
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
 import Rule.Hint
 import Rule.UnusedGlobalLocators (UnusedGlobalLocators)
 import Prelude hiding (lookup, read)
 
+newtype Handle
+  = Handle
+  { unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]) -- (SGL ~> [(hint, locatorText)])
+  }
+
+new :: App Handle
+new = do
+  unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
+  return $ Handle {..}
+
 initialize :: App ()
 initialize =
-  writeRef' unusedGlobalLocatorMap Map.empty
+  writeRef' App.unusedGlobalLocatorMap Map.empty
 
-get :: App UnusedGlobalLocators
-get = do
-  uenv <- readRef' unusedGlobalLocatorMap
+get :: Handle -> IO UnusedGlobalLocators
+get h = do
+  uenv <- readIORef (unusedGlobalLocatorMapRef h)
   return $ Map.toList uenv
 
-insertIO :: IORef (Map.HashMap T.Text [(Hint, T.Text)]) -> T.Text -> Hint -> T.Text -> IO ()
-insertIO ref sglText m locatorText =
-  modifyIORef' ref $ Map.insertWith (++) sglText [(m, locatorText)]
+insert :: Handle -> T.Text -> Hint -> T.Text -> IO ()
+insert h sglText m locatorText =
+  modifyIORef' (unusedGlobalLocatorMapRef h) $ Map.insertWith (++) sglText [(m, locatorText)]
 
-deleteIO :: IORef (Map.HashMap T.Text [(Hint, T.Text)]) -> T.Text -> IO ()
-deleteIO ref sglText =
-  modifyIORef' ref $ Map.delete sglText
+delete :: Handle -> T.Text -> IO ()
+delete h sglText =
+  modifyIORef' (unusedGlobalLocatorMapRef h) $ Map.delete sglText

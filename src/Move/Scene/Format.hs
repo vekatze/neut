@@ -7,6 +7,7 @@ module Move.Scene.Format
 where
 
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (toApp)
@@ -35,7 +36,8 @@ data Handle = Handle
     parseCoreHandle :: ParseCore.Handle,
     parseHandle :: Parse.Handle,
     ensReflectHandle :: EnsReflect.Handle,
-    getEnabledPresetHandle :: GetEnabledPreset.Handle
+    getEnabledPresetHandle :: GetEnabledPreset.Handle,
+    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle
   }
 
 new :: App Handle
@@ -46,6 +48,7 @@ new = do
   parseHandle <- Parse.new
   ensReflectHandle <- EnsReflect.new
   getEnabledPresetHandle <- GetEnabledPreset.new
+  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   return $ Handle {..}
 
 format :: ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> App T.Text
@@ -73,7 +76,7 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
         Initialize.initializeForSource source
         void $ toApp $ Parse.parse (parseHandle h) Peripheral source cacheOrContent
-      unusedGlobalLocators <- UnusedGlobalLocator.get
+      unusedGlobalLocators <- liftIO $ UnusedGlobalLocator.get (unusedGlobalLocatorHandle h)
       unusedLocalLocators <- UnusedLocalLocator.get
       program <- toApp $ ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
       presetNames <- toApp $ GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule

@@ -21,6 +21,7 @@ import Move.Context.EIO (EIO)
 import Move.Context.Global qualified as Global
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
+import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -49,8 +50,8 @@ data Handle
     importHandle :: Import.Handle,
     globalHandle :: Global.Handle,
     localRemarkHandle :: LocalRemark.Handle, -- per file
+    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
-    unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
@@ -66,7 +67,7 @@ new = do
   globalHandle <- Global.new
   localRemarkHandle <- LocalRemark.new
   unusedVariableMapRef <- asks App.unusedVariableMap
-  unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
+  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
   unusedPresetMapRef <- asks App.unusedPresetMap
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
@@ -145,8 +146,8 @@ registerUnusedVariableRemarks h = do
 
 registerUnusedGlobalLocatorRemarks :: Handle -> IO ()
 registerUnusedGlobalLocatorRemarks h = do
-  unusedGlobalLocatorMap <- readIORef (unusedGlobalLocatorMapRef h)
-  let unusedGlobalLocators = concatMap snd $ Map.toList unusedGlobalLocatorMap
+  unusedGlobalLocatorMap <- UnusedGlobalLocator.get (unusedGlobalLocatorHandle h)
+  let unusedGlobalLocators = concatMap snd unusedGlobalLocatorMap
   forM_ unusedGlobalLocators $ \(m, locatorText) ->
     LocalRemark.insert (localRemarkHandle h) $
       R.newRemark m R.Warning $
