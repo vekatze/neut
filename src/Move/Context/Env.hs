@@ -1,7 +1,6 @@
 module Move.Context.Env
   ( PathMap,
     getArch,
-    getArtifactMap,
     getBaseSize,
     getBaseSize',
     getBuildMode,
@@ -13,8 +12,6 @@ module Move.Context.Env
     getMainModule,
     getOS,
     getPlatform,
-    getTagMap,
-    insertToArtifactMap,
     lookupArtifactTime,
     setBuildMode,
     setCurrentSource,
@@ -38,7 +35,6 @@ import Rule.Artifact qualified as A
 import Rule.BuildMode qualified as BM
 import Rule.DataSize qualified as DS
 import Rule.Hint
-import Rule.LocationTree qualified as LT
 import Rule.Module
 import Rule.OS qualified as O
 import Rule.Platform
@@ -78,10 +74,6 @@ getCurrentSource' ref = do
     Just source ->
       return source
 
-getTagMap :: App LT.LocationTree
-getTagMap =
-  readRef' tagMap
-
 type PathMap = Map.HashMap (Path Abs File) UTCTime
 
 type ArtifactTimeRef =
@@ -95,14 +87,6 @@ lookupArtifactTime ref path = do
       return artifactTime
     Nothing ->
       raiseCritical' $ "No artifact time is registered for the source: " <> T.pack (toFilePath path)
-
-getArtifactMap :: App (Map.HashMap (Path Abs File) A.ArtifactTime)
-getArtifactMap =
-  readRef' artifactMap
-
-insertToArtifactMap :: Path Abs File -> A.ArtifactTime -> App ()
-insertToArtifactMap path artifactTime =
-  modifyRef' artifactMap $ Map.insert path artifactTime
 
 getDataSize :: Hint -> EIO DS.DataSize
 getDataSize m = do

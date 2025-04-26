@@ -1,8 +1,6 @@
 module Move.Context.DataDefinition
   ( Handle,
     new,
-    insert,
-    lookup,
     insert',
     lookup',
   )
@@ -30,19 +28,6 @@ new :: App Handle
 new = do
   dataDefMapRef <- asks App.dataDefMap
   return $ Handle {..}
-
-insert ::
-  DD.DefiniteDescription ->
-  [BinderF Term] ->
-  [(SavedHint, DD.DefiniteDescription, IsConstLike, [BinderF Term], D.Discriminant)] ->
-  App ()
-insert dataName dataArgs consInfoList = do
-  let value = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
-  modifyRef' App.dataDefMap $ Map.insert dataName value
-
-lookup :: DD.DefiniteDescription -> App (Maybe [(D.Discriminant, [BinderF Term], [BinderF Term])])
-lookup dataName = do
-  Map.lookup dataName <$> readRef' App.dataDefMap
 
 insert' ::
   Handle ->

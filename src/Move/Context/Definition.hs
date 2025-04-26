@@ -3,8 +3,6 @@ module Move.Context.Definition
     new,
     DefMap,
     initialize,
-    insert,
-    get,
     insert',
     get',
   )
@@ -38,16 +36,6 @@ new = do
 initialize :: App ()
 initialize = do
   writeRef' App.defMap Map.empty
-
-insert :: O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Term] -> TM.Term -> App ()
-insert opacity name xts e =
-  when (opacity == O.Clear) $
-    modifyRef' App.defMap $
-      Map.insert name (xts, e)
-
-get :: App (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term))
-get =
-  readRef' App.defMap
 
 insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Term] -> TM.Term -> IO ()
 insert' h opacity name xts e =
