@@ -23,7 +23,7 @@ import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
 import Move.Scene.Ens.Reflect qualified as EnsReflect
-import Move.Scene.Module.Reflect qualified as Module
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Module.Save qualified as ModuleSave
 import Path
 import Path.IO
@@ -48,7 +48,7 @@ data Handle
   { ensReflectHandle :: EnsReflect.Handle,
     moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,
-    moduleHandle :: Module.Handle,
+    moduleHandle :: ModuleReflect.Handle,
     mainModule :: M.MainModule,
     stdOutColorSpec :: ColorSpec
   }
@@ -58,7 +58,7 @@ new = do
   ensReflectHandle <- EnsReflect.new
   moduleSaveHandle <- ModuleSave.new
   externalHandle <- External.new
-  moduleHandle <- Module.new
+  moduleHandle <- ModuleReflect.new
   mainModule <- getMainModule
   stdOutColorSpec <- getColorSpecStdOut
   return $ Handle {..}
@@ -188,7 +188,7 @@ getLibraryModule h alias digest = do
   moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
     then do
-      Module.fromFilePath (moduleHandle h) moduleFilePath
+      ModuleReflect.fromFilePath (moduleHandle h) moduleFilePath
     else
       raiseError' $
         "Could not find the module file for `"

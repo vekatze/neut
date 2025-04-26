@@ -20,6 +20,7 @@ import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env (getMainModule)
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
+import Move.Context.Module qualified as Module
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
@@ -27,7 +28,7 @@ import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
-import Move.Scene.Module.GetModule qualified as Module
+import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
 import Rule.AliasInfo qualified as AI
@@ -53,7 +54,6 @@ type LocatorText =
 data Handle
   = Handle
   { mainModule :: MainModule,
-    moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module),
     unusedStaticFileMapRef :: IORef (Map.HashMap T.Text Hint),
     unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]),
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
@@ -64,13 +64,13 @@ data Handle
     globalHandle :: Global.Handle,
     gensymHandle :: Gensym.Handle,
     rawImportSummaryHandle :: RawImportSummary.Handle,
+    moduleHandle :: Module.Handle,
     tagMapRef :: IORef LT.LocationTree
   }
 
 new :: App Handle
 new = do
   mainModule <- getMainModule
-  moduleCacheMapRef <- asks App.moduleCacheMap
   unusedStaticFileMapRef <- asks App.unusedStaticFileMap
   unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
   unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
@@ -81,6 +81,7 @@ new = do
   tagMapRef <- asks App.tagMap
   globalHandle <- Global.new
   gensymHandle <- Gensym.new
+  moduleHandle <- Module.new
   rawImportSummaryHandle <- RawImportSummary.new
   return $ Handle {..}
 
@@ -176,8 +177,8 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
 
 getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> EIO Source.Source
 getSource h mustUpdateTag m sgl locatorText = do
-  let h' = Module.Handle {gensymHandle = gensymHandle h, mcm = moduleCacheMapRef h}
-  nextModule <- Module.getModule h' (mainModule h) m (SGL.moduleID sgl) locatorText
+  let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
+  nextModule <- GetModule.getModule h' (mainModule h) m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $

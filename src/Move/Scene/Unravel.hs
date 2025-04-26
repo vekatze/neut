@@ -31,7 +31,7 @@ import Move.Context.Module qualified as Module
 import Move.Context.Parse (ensureExistence')
 import Move.Context.Parse qualified as Parse
 import Move.Context.Path qualified as Path
-import Move.Scene.Module.Reflect qualified as Module
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Parse.Core qualified as ParseCore
 import Move.Scene.Parse.Import qualified as Import
 import Move.Scene.Parse.Program (parseImport)
@@ -61,7 +61,7 @@ data Handle
   = Handle
   { mainModule :: MainModule,
     debugHandle :: Debug.Handle,
-    moduleHandle :: Module.Handle,
+    moduleHandle :: ModuleReflect.Handle,
     pathHandle :: Path.Handle,
     shiftToLatestHandle :: STL.Handle,
     importHandle :: Import.Handle,
@@ -81,7 +81,7 @@ new = do
   mainModule <- getMainModule
   debugHandle <- Debug.new
   pathHandle <- Path.new
-  moduleHandle <- Module.new
+  moduleHandle <- ModuleReflect.new
   shiftToLatestHandle <- STL.new
   importHandle <- Import.new
   parseHandle <- ParseCore.new
@@ -170,7 +170,7 @@ unravelAntecedentArrow h axis currentModule = do
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath (mainModule h) Nothing moduleID
-        Module.fromFilePath (moduleHandle h) path' >>= unravelAntecedentArrow h axis
+        ModuleReflect.fromFilePath (moduleHandle h) path' >>= unravelAntecedentArrow h axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
       return $ getAntecedentArrow currentModule ++ arrows
@@ -199,7 +199,7 @@ unravelModule' h axis currentModule = do
         b <- doesFileExist path'
         if b
           then do
-            Module.fromFilePath (moduleHandle h) path' >>= unravelModule' h axis
+            ModuleReflect.fromFilePath (moduleHandle h) path' >>= unravelModule' h axis
           else return []
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail

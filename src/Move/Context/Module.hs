@@ -1,5 +1,7 @@
 module Move.Context.Module
-  ( getModuleFilePath,
+  ( Handle,
+    new,
+    getModuleFilePath,
     getModuleDirByID,
     getModuleCacheMap,
     getCoreModuleURL,
@@ -14,10 +16,12 @@ where
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
+import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
+import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.App.Internal
+import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
 import Path
@@ -33,18 +37,28 @@ import Rule.ModuleURL
 import Rule.Source qualified as Source
 import System.Environment
 
+newtype Handle
+  = Handle
+  { moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
+  }
+
+new :: App Handle
+new = do
+  moduleCacheMapRef <- asks App.moduleCacheMap
+  return $ Handle {..}
+
 getModuleFilePath :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs File)
 getModuleFilePath mainModule mHint moduleID = do
   moduleDir <- getModuleDirByID mainModule mHint moduleID
   return $ moduleDir </> moduleFile
 
-getModuleCacheMap :: App (Map.HashMap (Path Abs File) Module)
-getModuleCacheMap =
-  readRef' moduleCacheMap
+getModuleCacheMap :: Handle -> IO (Map.HashMap (Path Abs File) Module)
+getModuleCacheMap h =
+  readIORef (moduleCacheMapRef h)
 
-insertToModuleCacheMap :: Path Abs File -> Module -> App ()
-insertToModuleCacheMap k v =
-  modifyRef' moduleCacheMap $ Map.insert k v
+insertToModuleCacheMap :: Handle -> Path Abs File -> Module -> IO ()
+insertToModuleCacheMap h k v =
+  modifyIORef' (moduleCacheMapRef h) $ Map.insert k v
 
 getModuleDirByID :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs Dir)
 getModuleDirByID (MainModule pivotModule) mHint moduleID = do
