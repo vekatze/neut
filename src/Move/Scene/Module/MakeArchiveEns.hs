@@ -46,7 +46,7 @@ getDigest :: Module -> PV.PackageVersion -> App ModuleDigest
 getDigest targetModule ver = do
   path <- getPackagePath targetModule ver
   handle <- liftIO $ openFile (toFilePath path) ReadMode
-  package <- getHandleContents handle
+  package <- liftIO $ getHandleContents handle
   return $ MD.fromByteString package
 
 makeAntecedentEns :: Hint -> [ModuleDigest] -> E.Ens

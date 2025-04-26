@@ -7,6 +7,7 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
@@ -66,7 +67,7 @@ insertDependency aliasName url = do
   let alias = ModuleAlias aliasName'
   Fetch.withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias [url]
-    archive <- Fetch.getHandleContents tempFileHandle
+    archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
     mainModule <- getMainModule
     case Map.lookup alias (M.moduleDependency $ M.extractModule mainModule) of
@@ -125,7 +126,7 @@ installModule alias mirrorList digest = do
   printInstallationRemark alias digest
   Fetch.withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias mirrorList
-    archive <- Fetch.getHandleContents tempFileHandle
+    archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let archiveModuleDigest = MD.fromByteString archive
     when (digest /= archiveModuleDigest) $
       Throw.raiseError' $
