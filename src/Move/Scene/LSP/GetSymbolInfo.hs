@@ -18,7 +18,7 @@ import Move.Scene.Elaborate (overrideHandleEnv)
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.LSP.FindDefinition qualified as LSP
-import Move.Scene.LSP.GetSource qualified as LSP
+import Move.Scene.LSP.GetSource qualified as GetSource
 import Rule.LocationTree qualified as LT
 import Rule.Source (Source (sourceFilePath, sourceModule))
 import Rule.Target (Target (Peripheral))
@@ -31,7 +31,8 @@ getSymbolInfo ::
   p ->
   AppM T.Text
 getSymbolInfo params = do
-  source <- LSP.getSource params
+  hgs <- lift GetSource.new
+  source <- GetSource.getSource hgs params
   h <- lift Path.new
   lift $ toApp $ invalidate h Peripheral source
   handleEnv <- lift $ Check.checkSingle (sourceModule source) (sourceFilePath source)

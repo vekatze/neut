@@ -1,21 +1,23 @@
 module Move.Scene.LSP.FindDefinition (findDefinition) where
 
-import Move.Context.AppM
 import Control.Lens hiding (Iso, List)
+import Control.Monad.Trans
+import Language.LSP.Protocol.Lens qualified as J
+import Language.LSP.Protocol.Types
+import Move.Context.AppM
+import Move.Scene.LSP.GetLocationTree qualified as LSP
+import Move.Scene.LSP.GetSource qualified as GetSource
 import Rule.Hint qualified as H
 import Rule.LocationTree (LocationTree)
 import Rule.LocationTree qualified as LT
-import Language.LSP.Protocol.Lens qualified as J
-import Language.LSP.Protocol.Types
-import Move.Scene.LSP.GetLocationTree qualified as LSP
-import Move.Scene.LSP.GetSource qualified as LSP
 
 findDefinition ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
   p ->
   AppM ((LT.LocType, DefinitionLink), LocationTree)
 findDefinition params = do
-  src <- LSP.getSource params
+  hgs <- lift GetSource.new
+  src <- GetSource.getSource hgs params
   locTree <- LSP.getLocationTree src
   defLink <- _findDefinition params locTree
   return (defLink, locTree)
