@@ -30,7 +30,7 @@ references params = do
   hgac <- lift GAC.new
   cacheSeq <- lift $ toApp $ GAC.getAllLocationCachesInModule hgac $ sourceModule currentSource
   fmap concat $ lift $ pooledForConcurrently cacheSeq $ \(path, cache) -> do
-    refList <- LSP.findReferences defLink (Cache.locationTree cache)
+    let refList = LSP.findReferences defLink (Cache.locationTree cache)
     return $ map (toLocation $ sourceFilePath path) refList
 
 toLocation :: Path Abs File -> DocumentHighlight -> Location

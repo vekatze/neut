@@ -18,7 +18,7 @@ highlight params = do
   ((_, defLink@(DefinitionLink (LocationLink {_targetRange, _targetUri}))), locTree) <-
     lift $ toApp $ FindDefinition.findDefinition h params
   let reqUri = params ^. J.textDocument . J.uri
-  refs <- lift $ LSP.findReferences defLink locTree
+  let refs = LSP.findReferences defLink locTree
   if reqUri /= _targetUri
     then return refs
     else do
