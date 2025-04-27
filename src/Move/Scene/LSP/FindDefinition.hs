@@ -21,18 +21,18 @@ findDefinition params = do
   src <- GetSource.getSource hgs params
   hgt <- lift GetLocationTree.new
   locTree <- lift $ toApp $ GetLocationTree.getLocationTree hgt src
-  defLink <- _findDefinition params locTree
+  defLink <- liftMaybe $ _findDefinition params locTree
   return (defLink, locTree)
 
 _findDefinition ::
   (J.HasPosition p Position) =>
   p ->
   LT.LocationTree ->
-  AppM (LT.LocType, DefinitionLink)
+  Maybe (LT.LocType, DefinitionLink)
 _findDefinition params locationTree = do
   let line = fromEnum (params ^. J.position . J.line) + 1
   let col = fromEnum (params ^. J.position . J.character) + 1
-  (locType, m, _, symbolLen) <- liftMaybe $ LT.find line col locationTree
+  (locType, m, _, symbolLen) <- LT.find line col locationTree
   let defPath = H.metaFileName m
   let (defLine, defCol) = H.metaLocation m
   let defFilePath' = filePathToUri defPath
