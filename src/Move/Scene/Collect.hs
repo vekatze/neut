@@ -10,7 +10,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Path
 import Rule.Module
@@ -19,18 +19,18 @@ import Prelude hiding (log)
 
 newtype Handle
   = Handle
-  { mainModule :: MainModule
+  { envHandle :: Env.Handle
   }
 
 new :: App Handle
 new = do
-  he <- Env.new
-  mainModule <- toApp $ Env.getMainModule he
+  envHandle <- Env.new
   return $ Handle {..}
 
 getMainTarget :: Handle -> T.Text -> EIO MainTarget
 getMainTarget h targetName = do
-  case getTarget (extractModule (mainModule h)) targetName of
+  mainModule <- Env.getMainModule (envHandle h)
+  case getTarget (extractModule mainModule) targetName of
     Just target ->
       return target
     Nothing ->

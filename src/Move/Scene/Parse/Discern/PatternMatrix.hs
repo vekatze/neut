@@ -11,6 +11,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Move.Context.EIO (EIO, raiseError)
+import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -145,7 +146,8 @@ ensurePatternSanity h (m, pat) =
     PAT.Cons consInfo -> do
       let argNum = length (PAT.args consInfo)
       when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
-        let consDD' = Locator.getReadableDD (H.mainModule h) $ PAT.consDD consInfo
+        mainModule <- Env.getMainModule (H.envHandle h)
+        let consDD' = Locator.getReadableDD mainModule $ PAT.consDD consInfo
         raiseError m $
           "The constructor `"
             <> consDD'

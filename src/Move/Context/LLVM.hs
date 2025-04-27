@@ -16,14 +16,14 @@ import Data.Time.Clock
 import Move.Context.App
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
 import Path
 import Path.IO
 import Rule.Config.Build
-import Rule.Module (MainModule, extractModule)
+import Rule.Module (extractModule)
 import Rule.OutputKind qualified as OK
 import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
 import Rule.ProcessRunner.Rule qualified as ProcessRunner
@@ -36,7 +36,7 @@ data Handle
   { debugHandle :: Debug.Handle,
     pathHandle :: Path.Handle,
     externalHandle :: External.Handle,
-    mainModule :: MainModule
+    envHandle :: Env.Handle
   }
 
 new :: App Handle
@@ -45,7 +45,6 @@ new = do
   pathHandle <- Path.new
   externalHandle <- External.new
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   return $ Handle {..}
 
 type ClangOption = String
@@ -77,7 +76,8 @@ emit h target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
       forM_ (map snd kindPathList) $ \path -> do
         setModificationTime path timeStamp
     Left t -> do
-      let mm = extractModule $ mainModule h
+      mainModule <- Env.getMainModule (envHandle h)
+      let mm = extractModule mainModule
       kindPathList <- zipWithM (Path.getOutputPathForEntryPoint (pathHandle h) mm) outputKindList (repeat t)
       forM_ kindPathList $ \(_, path) -> ensureDir $ parent path
       emitAll h clangOptions llvmCode kindPathList

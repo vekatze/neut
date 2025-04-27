@@ -17,7 +17,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.EIO (EIO, forP, raiseError', toApp)
+import Move.Context.EIO (EIO, forP, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
@@ -49,7 +49,7 @@ data Handle
     externalHandle :: External.Handle,
     moduleHandle :: ModuleReflect.Handle,
     reportHandle :: Report.Handle,
-    mainModule :: M.MainModule
+    envHandle :: Env.Handle
   }
 
 new :: App Handle
@@ -60,7 +60,6 @@ new = do
   moduleHandle <- ModuleReflect.new
   reportHandle <- Report.new
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   return $ Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()
@@ -92,13 +91,14 @@ insertDependency h aliasName url = do
     download h tempFilePath alias [url]
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
-    case Map.lookup alias (M.moduleDependency $ M.extractModule (mainModule h)) of
+    mainModule <- Env.getMainModule (envHandle h)
+    case Map.lookup alias (M.moduleDependency $ M.extractModule mainModule) of
       Just dep -> do
         if M.dependencyDigest dep == digest
           then do
             if url `elem` M.dependencyMirrorList dep
               then do
-                moduleDirPath <- Module.getModuleDirByID (mainModule h) Nothing (MID.Library digest)
+                moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
                 dependencyDirExists <- doesDirExist moduleDirPath
                 if dependencyDirExists
                   then do
@@ -121,7 +121,7 @@ insertDependency h aliasName url = do
                   <> MD.reify digest
             installModule' h tempFilePath alias digest >>= fetchDeps h
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
-            updateDependencyInModuleFile h (moduleLocation $ M.extractModule (mainModule h)) alias dep'
+            updateDependencyInModuleFile h (moduleLocation $ M.extractModule mainModule) alias dep'
       Nothing -> do
         liftIO $ printInstallationRemark h alias digest
         installModule' h tempFilePath alias digest >>= fetchDeps h
@@ -180,11 +180,13 @@ collectDependency baseModule = do
 
 checkIfInstalled :: Handle -> MD.ModuleDigest -> EIO Bool
 checkIfInstalled h digest = do
-  Module.getModuleFilePath (mainModule h) Nothing (MID.Library digest) >>= doesFileExist
+  mainModule <- Env.getMainModule (envHandle h)
+  Module.getModuleFilePath mainModule Nothing (MID.Library digest) >>= doesFileExist
 
 getLibraryModule :: Handle -> ModuleAlias -> MD.ModuleDigest -> EIO M.Module
 getLibraryModule h alias digest = do
-  moduleFilePath <- Module.getModuleFilePath (mainModule h) Nothing (MID.Library digest)
+  mainModule <- Env.getMainModule (envHandle h)
+  moduleFilePath <- Module.getModuleFilePath mainModule Nothing (MID.Library digest)
   moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
     then do
@@ -214,13 +216,15 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO ()
 extractToDependencyDir h archivePath _ digest = do
-  moduleDirPath <- Module.getModuleDirByID (mainModule h) Nothing (MID.Library digest)
+  mainModule <- Env.getMainModule (envHandle h)
+  moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   ensureDir moduleDirPath
   External.run (externalHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
 addDependencyToModuleFile h alias dep = do
-  let mm = M.extractModule (mainModule h)
+  mainModule <- Env.getMainModule (envHandle h)
+  let mm = M.extractModule mainModule
   (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath (ensReflectHandle h) (moduleLocation mm)
   let depEns = makeDependencyEns m alias dep
   mergedEns <- liftEither $ E.merge baseEns depEns

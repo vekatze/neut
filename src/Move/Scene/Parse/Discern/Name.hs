@@ -14,6 +14,7 @@ import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.EIO (EIO, raiseError)
+import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
@@ -73,7 +74,8 @@ resolveVarOrErr h m name = do
       liftIO $ UnusedLocalLocator.delete (H.unusedLocalLocatorHandle h) localLocator
       return $ Right globalVar
     _ -> do
-      let foundNameList' = map (Locator.getReadableDD (H.mainModule h) . fst) foundNameList
+      mainModule <- Env.getMainModule (H.envHandle h)
+      let foundNameList' = map (Locator.getReadableDD mainModule . fst) foundNameList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 

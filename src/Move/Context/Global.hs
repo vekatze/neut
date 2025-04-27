@@ -23,7 +23,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -42,7 +42,6 @@ import Rule.Hint
 import Rule.Hint qualified as Hint
 import Rule.IsConstLike
 import Rule.Key
-import Rule.Module (MainModule)
 import Rule.OptimizableData qualified as OD
 import Rule.PrimOp.FromText qualified as PrimOp
 import Rule.PrimType.FromText qualified as PT
@@ -54,7 +53,7 @@ import Prelude hiding (lookup)
 
 data Handle
   = Handle
-  { mainModule :: MainModule,
+  { envHandle :: Env.Handle,
     locatorHandle :: Locator.Handle,
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle,
@@ -69,7 +68,6 @@ data Handle
 new :: App Handle
 new = do
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   locatorHandle <- Locator.new
   keyArgHandle <- KeyArg.new
   optDataHandle <- OptimizableData.new
@@ -217,7 +215,8 @@ lookup' h m name = do
     Just gn ->
       return gn
     Nothing -> do
-      let name' = Locator.getReadableDD (mainModule h) name
+      mainModule <- Env.getMainModule (envHandle h)
+      let name' = Locator.getReadableDD mainModule name
       raiseError m $ "No such top-level name is defined: " <> name'
 
 ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
@@ -226,14 +225,16 @@ ensureDefFreshness h m name = do
   topNameMap <- liftIO $ readIORef (nameMapRef h)
   case (Map.lookup name gmap, Map.member name topNameMap) of
     (Just _, False) -> do
-      let name' = Locator.getReadableDD (mainModule h) name
+      mainModule <- Env.getMainModule (envHandle h)
+      let name' = Locator.getReadableDD mainModule name
       raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
     (Just (mGeist, isConstLike), True) -> do
       liftIO $ removeFromGeistMap h name
       liftIO $ removeFromDefNameMap h name
       liftIO $ Tag.insertGlobalVar (tagHandle h) mGeist name isConstLike m
     (Nothing, True) -> do
-      let name' = Locator.getReadableDD (mainModule h) name
+      mainModule <- Env.getMainModule (envHandle h)
+      let name' = Locator.getReadableDD mainModule name
       raiseError m $ "`" <> name' <> "` is already defined"
     (Nothing, False) ->
       return ()
@@ -242,7 +243,8 @@ ensureGeistFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
 ensureGeistFreshness h m name = do
   geistMap <- liftIO $ readIORef (geistMapRef h)
   when (Map.member name geistMap) $ do
-    let name' = Locator.getReadableDD (mainModule h) name
+    mainModule <- Env.getMainModule (envHandle h)
+    let name' = Locator.getReadableDD mainModule name
     raiseError m $ "`" <> name' <> "` is already defined"
 
 reportMissingDefinitions :: Handle -> EIO ()

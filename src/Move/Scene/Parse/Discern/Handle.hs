@@ -10,7 +10,6 @@ where
 
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
-import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
@@ -28,13 +27,11 @@ import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.Layer
-import Rule.Module
 import Rule.NominalEnv
 import Rule.VarDefKind
 
 data Handle = Handle
-  { mainModule :: MainModule,
-    gensymHandle :: Gensym.Handle,
+  { gensymHandle :: Gensym.Handle,
     locatorHandle :: Locator.Handle,
     globalHandle :: Global.Handle,
     aliasHandle :: Alias.Handle,
@@ -55,7 +52,6 @@ data Handle = Handle
 new :: App Handle
 new = do
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   gensymHandle <- Gensym.new
   locatorHandle <- Locator.new
   globalHandle <- Global.new

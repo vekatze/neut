@@ -7,29 +7,29 @@ where
 
 import Control.Monad
 import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Scene.Unravel qualified as Unravel
 import Path.IO
-import Rule.Module (MainModule, extractModule)
+import Rule.Module (extractModule)
 import Prelude hiding (log)
 
 data Handle = Handle
-  { mainModule :: MainModule,
+  { envHandle :: Env.Handle,
     unravelHandle :: Unravel.Handle
   }
 
 new :: App Handle
 new = do
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   unravelHandle <- Unravel.new
   return $ Handle {..}
 
 clean :: Handle -> EIO ()
 clean h = do
-  moduleList <- Unravel.unravelModule (unravelHandle h) (extractModule (mainModule h))
+  mainModule <- Env.getMainModule (envHandle h)
+  moduleList <- Unravel.unravelModule (unravelHandle h) (extractModule mainModule)
   forM_ moduleList $ \someModule -> do
     baseBuildDir <- Path.getBaseBuildDir someModule
     b <- doesDirExist baseBuildDir

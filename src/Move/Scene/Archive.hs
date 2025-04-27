@@ -8,7 +8,7 @@ where
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -24,7 +24,7 @@ data Handle
   = Handle
   { externalHandle :: External.Handle,
     moduleSaveHandle :: ModuleSave.Handle,
-    mainModule :: MainModule
+    envHandle :: Env.Handle
   }
 
 new :: App Handle
@@ -32,7 +32,6 @@ new = do
   externalHandle <- External.new
   moduleSaveHandle <- ModuleSave.new
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   return $ Handle {..}
 
 archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()
@@ -47,7 +46,8 @@ makeArchiveFromTempDir :: Handle -> PV.PackageVersion -> Path Abs Dir -> EIO ()
 makeArchiveFromTempDir h packageVersion tempRootDir = do
   (_, files) <- listDirRecurRel tempRootDir
   let newContents = map toFilePath files
-  outputPath <- toFilePath <$> getArchiveFilePath (mainModule h) (PV.reify packageVersion)
+  mainModule <- Env.getMainModule (envHandle h)
+  outputPath <- toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
   External.run (externalHandle h) "tar" $
     ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
 

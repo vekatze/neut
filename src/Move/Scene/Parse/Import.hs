@@ -13,7 +13,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
@@ -49,7 +49,7 @@ type LocatorText =
 
 data Handle
   = Handle
-  { mainModule :: MainModule,
+  { envHandle :: Env.Handle,
     unusedStaticFileHandle :: UnusedStaticFile.Handle,
     unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
@@ -67,7 +67,6 @@ data Handle
 new :: App Handle
 new = do
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   unusedStaticFileHandle <- UnusedStaticFile.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
@@ -175,7 +174,8 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
 getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> EIO Source.Source
 getSource h mustUpdateTag m sgl locatorText = do
   let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
-  nextModule <- GetModule.getModule h' (mainModule h) m (SGL.moduleID sgl) locatorText
+  mainModule <- Env.getMainModule (envHandle h)
+  nextModule <- GetModule.getModule h' mainModule m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
   when mustUpdateTag $

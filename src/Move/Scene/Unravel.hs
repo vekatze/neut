@@ -25,7 +25,7 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, raiseError, raiseError', toApp)
+import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -61,7 +61,7 @@ type ObjectTime =
 
 data Handle
   = Handle
-  { mainModule :: MainModule,
+  { envHandle :: Env.Handle,
     debugHandle :: Debug.Handle,
     moduleHandle :: ModuleReflect.Handle,
     pathHandle :: Path.Handle,
@@ -72,7 +72,6 @@ data Handle
     aliasHandle :: Alias.Handle,
     antecedentHandle :: Antecedent.Handle,
     artifactHandle :: Artifact.Handle,
-    envHandle :: Env.Handle,
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
@@ -80,8 +79,7 @@ data Handle
 
 new :: App Handle
 new = do
-  he <- Env.new
-  mainModule <- toApp $ getMainModule he
+  envHandle <- Env.new
   debugHandle <- Debug.new
   pathHandle <- Path.new
   moduleHandle <- ModuleReflect.new
@@ -92,7 +90,6 @@ new = do
   aliasHandle <- Alias.new
   antecedentHandle <- Antecedent.new
   artifactHandle <- Artifact.new
-  envHandle <- Env.new
   visitEnvRef <- asks App.visitEnv
   traceSourceListRef <- asks App.traceSourceList
   sourceChildrenMapRef <- asks App.sourceChildrenMap
@@ -143,7 +140,7 @@ unravel' h t source = do
 registerShiftMap :: Handle -> EIO ()
 registerShiftMap h = do
   axis <- liftIO newAxis
-  let m = extractModule $ mainModule h
+  m <- extractModule <$> getMainModule (envHandle h)
   arrowList <- unravelAntecedentArrow h axis m
   cAxis <- liftIO newCAxis
   compressMap cAxis (Map.fromList arrowList) arrowList >>= liftIO . Antecedent.set (antecedentHandle h)
@@ -165,7 +162,8 @@ data Axis = Axis
 unravelAntecedentArrow :: Handle -> Axis -> Module -> EIO [(MID.ModuleID, Module)]
 unravelAntecedentArrow h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  path <- Module.getModuleFilePath (mainModule h) Nothing (moduleID currentModule)
+  mainModule <- getMainModule (envHandle h)
+  path <- Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
       pathList <- liftIO $ readIORef $ traceListRef axis
@@ -177,7 +175,7 @@ unravelAntecedentArrow h axis currentModule = do
       liftIO $ modifyIORef' (traceListRef axis) $ (:) path
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
-        path' <- Module.getModuleFilePath (mainModule h) Nothing moduleID
+        path' <- Module.getModuleFilePath mainModule Nothing moduleID
         ModuleReflect.fromFilePath (moduleHandle h) path' >>= unravelAntecedentArrow h axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
@@ -191,7 +189,8 @@ unravelModule h currentModule = do
 unravelModule' :: Handle -> Axis -> Module -> EIO [Module]
 unravelModule' h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  path <- Module.getModuleFilePath (mainModule h) Nothing (moduleID currentModule)
+  mainModule <- getMainModule (envHandle h)
+  path <- Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
       pathList <- liftIO $ readIORef $ traceListRef axis
@@ -203,7 +202,7 @@ unravelModule' h axis currentModule = do
       liftIO $ modifyIORef' (traceListRef axis) $ (:) path
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
-        path' <- Module.getModuleFilePath (mainModule h) Nothing moduleID
+        path' <- Module.getModuleFilePath mainModule Nothing moduleID
         b <- doesFileExist path'
         if b
           then do

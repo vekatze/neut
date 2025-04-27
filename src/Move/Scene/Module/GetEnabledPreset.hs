@@ -9,7 +9,7 @@ import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Module qualified as Module
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -22,13 +22,12 @@ data Handle
   = Handle
   { gensymHandle :: Gensym.Handle,
     moduleHandle :: Module.Handle,
-    mainModule :: MainModule
+    envHandle :: Env.Handle
   }
 
 new :: App Handle
 new = do
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   gensymHandle <- Gensym.new
   moduleHandle <- Module.new
   return $ Handle {..}
@@ -36,7 +35,8 @@ new = do
 getEnabledPreset :: Handle -> Module -> EIO [(T.Text, [BN.BaseName])]
 getEnabledPreset h baseModule = do
   let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
-  dependencies <- GetModule.getAllDependencies h' (mainModule h) baseModule
+  mainModule <- Env.getMainModule (envHandle h)
+  dependencies <- GetModule.getAllDependencies h' mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   let aliasPresetInfo = map getAllTopCandidate' visibleModuleList
   let aliasList = getAliasListWithEnabledPresets baseModule

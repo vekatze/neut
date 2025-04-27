@@ -17,7 +17,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -59,7 +59,6 @@ import Rule.Key (Key)
 import Rule.LamKind qualified as LK
 import Rule.Literal qualified as L
 import Rule.Magic qualified as M
-import Rule.Module qualified as M
 import Rule.Name qualified as N
 import Rule.OptimizableData qualified as OD
 import Rule.PrimOp
@@ -78,7 +77,7 @@ type BoundVarEnv = [BinderF WT.WeakTerm]
 
 data Handle
   = Handle
-  { mainModule :: M.MainModule,
+  { envHandle :: Env.Handle,
     substHandle :: Subst.Handle,
     reduceHandle :: Reduce.Handle,
     unifyHandle :: Unify.Handle,
@@ -98,7 +97,6 @@ data Handle
 new :: Elaborate.HandleEnv -> App Handle
 new handleEnv@(Elaborate.HandleEnv {..}) = do
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   substHandle <- Subst.new
   reduceHandle <- Reduce.new
   unifyHandle <- Unify.new handleEnv
@@ -594,7 +592,8 @@ ensureArityCorrectness h function expected found = do
   when (expected /= found) $ do
     case function of
       m :< WT.VarGlobal _ name -> do
-        let name' = Locator.getReadableDD (mainModule h) name
+        mainModule <- Env.getMainModule (envHandle h)
+        let name' = Locator.getReadableDD mainModule name
         raiseError m $
           "The function `"
             <> name'

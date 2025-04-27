@@ -40,7 +40,7 @@ import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, raiseError', toApp)
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
@@ -64,7 +64,7 @@ data Handle
   { cacheRef :: IORef (Maybe String),
     clangHandle :: Clang.Handle,
     debugHandle :: Debug.Handle,
-    mainModule :: M.MainModule
+    envHandle :: Env.Handle
   }
 
 -- temporary
@@ -73,7 +73,6 @@ new = do
   cacheRef <- asks App.buildSignatureCache
   clangHandle <- Clang.new
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
   debugHandle <- Debug.new
   return $ Handle {..}
 
@@ -151,7 +150,7 @@ getBuildSignature h t = do
       return sig
     Nothing -> do
       clangDigest <- Clang.getClangDigest (clangHandle h)
-      let MainModule m = mainModule h
+      MainModule m <- Env.getMainModule (envHandle h)
       clangOption <- getClangOption t m
       moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation m
       let moduleEns' = decodeUtf8 moduleEns
