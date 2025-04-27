@@ -16,7 +16,7 @@ import Move.Context.App
 import Move.Context.AppM
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
@@ -108,7 +108,7 @@ adjustTopCandidate summaryOrNone currentSource loc prefixSummary candInfo = do
   fmap concat $ forM candInfo $ \(candSource, candList) -> do
     h <- Antecedent.new
     revMap <- liftIO $ Antecedent.getReverseMap h
-    locatorOrNone <- getHumanReadableLocator revMap (sourceModule currentSource) candSource
+    locatorOrNone <- toApp $ getHumanReadableLocator revMap (sourceModule currentSource) candSource
     case locatorOrNone of
       Nothing ->
         return []
@@ -345,7 +345,7 @@ getPrefixList baseModule source = do
     else do
       h <- Antecedent.new
       revMap <- liftIO $ Antecedent.getReverseMap h
-      locatorList <- maybeToList <$> getHumanReadableLocator revMap baseModule source
+      locatorList <- toApp $ maybeToList <$> getHumanReadableLocator revMap baseModule source
       let prefixInfo = Map.toList $ modulePrefixMap baseModule
       return $ map (BN.reify . fst) $ filter (\(_, cod) -> uncurry reifyPrefixCod cod `elem` locatorList) prefixInfo
 
@@ -353,7 +353,7 @@ reifyPrefixCod :: MA.ModuleAlias -> SL.SourceLocator -> T.Text
 reifyPrefixCod alias sl =
   MA.reify alias <> "." <> SL.toText sl
 
-getHumanReadableLocator :: Antecedent.RevMap -> Module -> Source -> App (Maybe T.Text)
+getHumanReadableLocator :: Antecedent.RevMap -> Module -> Source -> EIO (Maybe T.Text)
 getHumanReadableLocator revMap baseModule source = do
   let sourceModuleID = moduleID $ sourceModule source
   baseReadableLocator <- getBaseReadableLocator source
