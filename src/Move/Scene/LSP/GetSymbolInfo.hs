@@ -17,7 +17,7 @@ import Move.Scene.Check qualified as Check
 import Move.Scene.Elaborate (overrideHandleEnv)
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
-import Move.Scene.LSP.FindDefinition qualified as LSP
+import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.GetSource qualified as GetSource
 import Rule.LocationTree qualified as LT
 import Rule.Source (Source (sourceFilePath, sourceModule))
@@ -32,11 +32,12 @@ getSymbolInfo ::
   AppM T.Text
 getSymbolInfo params = do
   hgs <- lift GetSource.new
-  source <- GetSource.getSource hgs params
+  source <- lift $ toApp $ GetSource.getSource hgs params
   h <- lift Path.new
   lift $ toApp $ invalidate h Peripheral source
   handleEnv <- lift $ Check.checkSingle (sourceModule source) (sourceFilePath source)
-  ((locType, _), _) <- LSP.findDefinition params
+  hfd <- lift FindDefinition.new
+  ((locType, _), _) <- FindDefinition.findDefinition hfd params
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
     LT.Local varID _ -> do

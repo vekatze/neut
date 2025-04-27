@@ -1,9 +1,15 @@
-module Move.Scene.LSP.FindDefinition (findDefinition) where
+module Move.Scene.LSP.FindDefinition
+  ( Handle,
+    new,
+    findDefinition,
+  )
+where
 
 import Control.Lens hiding (Iso, List)
 import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Move.Context.App (App)
 import Move.Context.AppM
 import Move.Context.EIO (toApp)
 import Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
@@ -12,15 +18,26 @@ import Rule.Hint qualified as H
 import Rule.LocationTree (LocationTree)
 import Rule.LocationTree qualified as LT
 
+data Handle
+  = Handle
+  { getSourceHandle :: GetSource.Handle,
+    getLocationTreeHandle :: GetLocationTree.Handle
+  }
+
+new :: App Handle
+new = do
+  getSourceHandle <- GetSource.new
+  getLocationTreeHandle <- GetLocationTree.new
+  return $ Handle {..}
+
 findDefinition ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
+  Handle ->
   p ->
   AppM ((LT.LocType, DefinitionLink), LocationTree)
-findDefinition params = do
-  hgs <- lift GetSource.new
-  src <- GetSource.getSource hgs params
-  hgt <- lift GetLocationTree.new
-  locTree <- lift $ toApp $ GetLocationTree.getLocationTree hgt src
+findDefinition h params = do
+  src <- lift $ toApp $ GetSource.getSource (getSourceHandle h) params
+  locTree <- lift $ toApp $ GetLocationTree.getLocationTree (getLocationTreeHandle h) src
   defLink <- liftMaybe $ _findDefinition params locTree
   return (defLink, locTree)
 

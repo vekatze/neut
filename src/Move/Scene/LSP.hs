@@ -17,7 +17,7 @@ import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Scene.Check (checkAll)
 import Move.Scene.LSP.Complete qualified as Complete
-import Move.Scene.LSP.FindDefinition qualified as LSP
+import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.Format qualified as LSP
 import Move.Scene.LSP.GetSymbolInfo qualified as LSP
 import Move.Scene.LSP.Highlight qualified as LSP
@@ -93,7 +93,8 @@ handlers =
         let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        mLoc <- liftAppM $ LSP.findDefinition (req ^. J.params)
+        h <- lift FindDefinition.new
+        mLoc <- liftAppM $ FindDefinition.findDefinition h (req ^. J.params)
         case mLoc of
           Nothing ->
             responder $ Right $ InR $ InR Null

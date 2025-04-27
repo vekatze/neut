@@ -6,12 +6,10 @@ module Move.Scene.LSP.GetSource
 where
 
 import Control.Lens hiding (Iso, List)
-import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.App (App)
-import Move.Context.AppM
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, liftMaybe)
 import Move.Scene.Source.Reflect qualified as SourceReflect
 import Rule.Source (Source)
 
@@ -29,7 +27,7 @@ getSource ::
   Handle ->
   (J.HasTextDocument p a1, J.HasUri a1 Uri) =>
   p ->
-  AppM Source
+  EIO Source
 getSource h params = do
   fp <- liftMaybe $ uriToFilePath $ params ^. J.textDocument . J.uri
-  lift (toApp $ SourceReflect.reflect (sourceReflectHandle h) fp) >>= liftMaybe
+  SourceReflect.reflect (sourceReflectHandle h) fp >>= liftMaybe
