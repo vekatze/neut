@@ -6,6 +6,7 @@ module Move.Scene.LSP.Complete
 where
 
 import Control.Monad
+import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
 import Data.Bifunctor (second)
 import Data.Containers.ListUtils (nubOrd)
@@ -18,13 +19,11 @@ import Data.Text qualified as T
 import Language.LSP.Protocol.Types
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.AppM
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
-import Move.Context.EIO (EIO, forP, toApp)
+import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
 import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Source.Reflect qualified as SourceReflect
@@ -69,14 +68,14 @@ new = do
   gacHandle <- GAC.new
   return $ Handle {..}
 
-complete :: Handle -> Uri -> Position -> AppM [CompletionItem]
+complete :: Handle -> Uri -> Position -> EIO [CompletionItem]
 complete h uri pos = do
-  lift $ toApp $ Unravel.registerShiftMap (unravelHandle h)
+  Unravel.registerShiftMap (unravelHandle h)
   pathString <- liftMaybe $ uriToFilePath uri
-  currentSource <- lift (toApp $ SourceReflect.reflect (sourceReflectHandle h) pathString) >>= liftMaybe
-  _ <- lift (toApp $ Clang.getClangDigest (clangHandle h)) -- cache
+  currentSource <- SourceReflect.reflect (sourceReflectHandle h) pathString >>= liftMaybe
+  _ <- Clang.getClangDigest (clangHandle h) -- cache
   let loc = positionToLoc pos
-  lift (Throw.runMaybe $ toApp $ collectCompletionItems h currentSource loc) >>= liftMaybe
+  lift (runEIO $ collectCompletionItems h currentSource loc) >>= liftEither
 
 collectCompletionItems :: Handle -> Source -> Loc -> EIO [CompletionItem]
 collectCompletionItems h currentSource loc = do

@@ -7,6 +7,7 @@ module Move.Context.EIO
     raiseError',
     raiseCritical,
     raiseCritical',
+    liftMaybe,
   )
 where
 
@@ -59,3 +60,11 @@ raiseCritical m t =
 raiseCritical' :: T.Text -> EIO a
 raiseCritical' t =
   throwError $ E.newCritical' t
+
+liftMaybe :: Maybe a -> EIO a
+liftMaybe m =
+  case m of
+    Nothing ->
+      throwError (E.MakeError [])
+    Just v ->
+      return v

@@ -14,6 +14,7 @@ import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Move.Context.App
+import Move.Context.EIO (toApp)
 import Move.Scene.Check (checkAll)
 import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as LSP
@@ -88,7 +89,7 @@ handlers =
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
         h <- lift Complete.new
-        itemListOrNone <- liftAppM $ Complete.complete h uri pos
+        itemListOrNone <- liftAppM $ lift $ toApp $ Complete.complete h uri pos
         let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
