@@ -357,15 +357,15 @@ getHumanReadableLocator :: Antecedent.RevMap -> Module -> Source -> App (Maybe T
 getHumanReadableLocator revMap baseModule source = do
   let sourceModuleID = moduleID $ sourceModule source
   baseReadableLocator <- getBaseReadableLocator source
-  _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator
+  return $ _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator
 
-_getHumanReadableLocator :: Antecedent.RevMap -> Module -> MID.ModuleID -> T.Text -> App (Maybe T.Text)
+_getHumanReadableLocator :: Antecedent.RevMap -> Module -> MID.ModuleID -> T.Text -> Maybe T.Text
 _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator = do
   case sourceModuleID of
     MID.Main -> do
-      return $ Just $ "this" <> nsSep <> baseReadableLocator
+      Just $ "this" <> nsSep <> baseReadableLocator
     MID.Base -> do
-      return $ Just $ "base" <> nsSep <> baseReadableLocator
+      Just $ "base" <> nsSep <> baseReadableLocator
     MID.Library digest -> do
       let digestMap = getDigestMap baseModule
       case Map.lookup digest digestMap of
@@ -374,20 +374,19 @@ _getHumanReadableLocator revMap baseModule sourceModuleID baseReadableLocator = 
             Just midSet ->
               _getHumanReadableLocator' revMap baseModule (S.toList midSet) baseReadableLocator
             Nothing ->
-              return Nothing
+              Nothing
         Just aliasList -> do
           let alias = BN.reify $ MA.extract $ NE.head aliasList
-          return $ Just $ alias <> nsSep <> baseReadableLocator
+          Just $ alias <> nsSep <> baseReadableLocator
 
-_getHumanReadableLocator' :: Antecedent.RevMap -> Module -> [MID.ModuleID] -> T.Text -> App (Maybe T.Text)
+_getHumanReadableLocator' :: Antecedent.RevMap -> Module -> [MID.ModuleID] -> T.Text -> Maybe T.Text
 _getHumanReadableLocator' revMap baseModule midList baseReadableLocator = do
   case midList of
     [] ->
-      return Nothing
+      Nothing
     mid : rest -> do
-      locatorOrNone <- _getHumanReadableLocator revMap baseModule mid baseReadableLocator
-      case locatorOrNone of
+      case _getHumanReadableLocator revMap baseModule mid baseReadableLocator of
         Just locator ->
-          return $ Just locator
+          Just locator
         Nothing ->
           _getHumanReadableLocator' revMap baseModule rest baseReadableLocator
