@@ -26,7 +26,7 @@ references params = do
   hgs <- lift GetSource.new
   currentSource <- lift $ toApp $ GetSource.getSource hgs params
   h <- lift FindDefinition.new
-  ((_, defLink), _) <- FindDefinition.findDefinition h params
+  ((_, defLink), _) <- lift $ toApp $ FindDefinition.findDefinition h params
   hgac <- lift GAC.new
   cacheSeq <- lift $ toApp $ GAC.getAllLocationCachesInModule hgac $ sourceModule currentSource
   fmap concat $ lift $ pooledForConcurrently cacheSeq $ \(path, cache) -> do

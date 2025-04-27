@@ -37,7 +37,7 @@ getSymbolInfo params = do
   lift $ toApp $ invalidate h Peripheral source
   handleEnv <- lift $ Check.checkSingle (sourceModule source) (sourceFilePath source)
   hfd <- lift FindDefinition.new
-  ((locType, _), _) <- FindDefinition.findDefinition hfd params
+  ((locType, _), _) <- lift $ toApp $ FindDefinition.findDefinition hfd params
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
     LT.Local varID _ -> do

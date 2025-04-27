@@ -5,6 +5,7 @@ import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.AppM
+import Move.Context.EIO (toApp)
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
 
@@ -14,7 +15,8 @@ highlight ::
   AppM [DocumentHighlight]
 highlight params = do
   h <- lift FindDefinition.new
-  ((_, defLink@(DefinitionLink (LocationLink {_targetRange, _targetUri}))), locTree) <- FindDefinition.findDefinition h params
+  ((_, defLink@(DefinitionLink (LocationLink {_targetRange, _targetUri}))), locTree) <-
+    lift $ toApp $ FindDefinition.findDefinition h params
   let reqUri = params ^. J.textDocument . J.uri
   refs <- lift $ LSP.findReferences defLink locTree
   if reqUri /= _targetUri

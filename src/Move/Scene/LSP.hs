@@ -94,7 +94,7 @@ handlers =
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
         h <- lift FindDefinition.new
-        mLoc <- liftAppM $ FindDefinition.findDefinition h (req ^. J.params)
+        mLoc <- liftAppM $ lift $ toApp $ FindDefinition.findDefinition h (req ^. J.params)
         case mLoc of
           Nothing ->
             responder $ Right $ InR $ InR Null
