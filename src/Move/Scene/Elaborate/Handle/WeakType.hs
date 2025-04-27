@@ -18,8 +18,11 @@ import Rule.Ident.Reify qualified as Ident
 import Rule.WeakTerm qualified as WT
 import Prelude hiding (lookup)
 
+type WeakTypeEnv =
+  IntMap.IntMap WT.WeakTerm
+
 newtype Handle = Handle
-  { weakTypeEnvRef :: IORef (IntMap.IntMap WT.WeakTerm)
+  { weakTypeEnvRef :: IORef WeakTypeEnv
   }
 
 new :: IO Handle
@@ -46,6 +49,6 @@ lookupMaybe h k = do
   weakTypeEnv <- readIORef (weakTypeEnvRef h)
   return $ IntMap.lookup k weakTypeEnv
 
-get :: Handle -> IO (IntMap.IntMap WT.WeakTerm)
+get :: Handle -> IO WeakTypeEnv
 get h =
   readIORef (weakTypeEnvRef h)

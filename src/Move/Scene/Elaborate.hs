@@ -3,6 +3,7 @@ module Move.Scene.Elaborate
     new,
     elaborate,
     elaborate',
+    elaborateThenGetTypeEnv,
   )
 where
 
@@ -34,6 +35,7 @@ import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
+import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Term.Inline qualified as Inline
@@ -102,11 +104,13 @@ data Handle
     topCandidateHandle :: TopCandidate.Handle,
     rawImportSummaryHandle :: RawImportSummary.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
+    weakTypeHandle :: WeakType.Handle,
     currentSource :: Source
   }
 
-new :: Elaborate.HandleEnv -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) = do
+new :: App Handle
+new = do
+  handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new
   weakDefHandle <- WeakDefinition.new
   substHandle <- Subst.new
@@ -141,6 +145,16 @@ elaborate h t cacheOrStmt = do
       return stmtList
     Right stmtList -> do
       analyzeStmtList h stmtList >>= synthesizeStmtList h t
+
+--- for LSP
+elaborateThenGetTypeEnv :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> EIO (IntMap.IntMap WT.WeakTerm)
+elaborateThenGetTypeEnv h t cacheOrStmt = do
+  case cacheOrStmt of
+    Left _ -> do
+      return IntMap.empty
+    Right stmtList -> do
+      void $ analyzeStmtList h stmtList >>= synthesizeStmtList h t
+      liftIO $ WeakType.get (weakTypeHandle h)
 
 analyzeStmtList :: Handle -> [WeakStmt] -> EIO [WeakStmt]
 analyzeStmtList h stmtList = do
