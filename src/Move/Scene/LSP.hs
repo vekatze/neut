@@ -2,23 +2,20 @@ module Move.Scene.LSP (lsp) where
 
 import Colog.Core (LogAction (..), Severity (..), WithSeverity (..))
 import Colog.Core qualified as L
-import Move.Context.App
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Control.Monad.Trans
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Text qualified as T
-import Rule.AppLsp
-import Rule.CodeAction qualified as CA
 import Language.LSP.Logging
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Prettyprinter
+import Move.Context.App
 import Move.Scene.Check (checkAll)
-import Move.Scene.LSP.Complete qualified as LSP
+import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as LSP
 import Move.Scene.LSP.Format qualified as LSP
 import Move.Scene.LSP.GetSymbolInfo qualified as LSP
@@ -26,6 +23,9 @@ import Move.Scene.LSP.Highlight qualified as LSP
 import Move.Scene.LSP.Lint qualified as LSP
 import Move.Scene.LSP.References qualified as LSP
 import Move.Scene.LSP.Util (getUriParam, liftAppM)
+import Prettyprinter
+import Rule.AppLsp
+import Rule.CodeAction qualified as CA
 import System.IO (stdin, stdout)
 
 lsp :: App Int
@@ -87,7 +87,8 @@ handlers =
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
-        itemListOrNone <- liftAppM $ LSP.complete uri pos
+        h <- lift Complete.new
+        itemListOrNone <- liftAppM $ Complete.complete h uri pos
         let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do

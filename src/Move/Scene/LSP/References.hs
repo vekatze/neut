@@ -7,7 +7,7 @@ import Move.Context.AppM
 import Move.Context.EIO (toApp)
 import Move.Scene.LSP.FindDefinition qualified as LSP
 import Move.Scene.LSP.FindReferences qualified as LSP
-import Move.Scene.LSP.GetAllCachesInModule qualified as LSP
+import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
 import Move.Scene.LSP.GetSource qualified as LSP
 import Move.Scene.Unravel qualified as Unravel
 import Path
@@ -25,7 +25,8 @@ references params = do
     toApp $ Unravel.registerShiftMap h
   currentSource <- LSP.getSource params
   ((_, defLink), _) <- LSP.findDefinition params
-  cacheSeq <- lift $ LSP.getAllLocationCachesInModule $ sourceModule currentSource
+  h <- lift GAC.new
+  cacheSeq <- lift $ toApp $ GAC.getAllLocationCachesInModule h $ sourceModule currentSource
   fmap concat $ lift $ pooledForConcurrently cacheSeq $ \(path, cache) -> do
     refList <- LSP.findReferences defLink (Cache.locationTree cache)
     return $ map (toLocation $ sourceFilePath path) refList

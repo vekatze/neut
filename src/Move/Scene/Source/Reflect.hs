@@ -1,17 +1,34 @@
-module Move.Scene.Source.Reflect (reflect) where
+module Move.Scene.Source.Reflect
+  ( Handle,
+    new,
+    reflect,
+  )
+where
 
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Module.Reflect qualified as Module
 import Path
 import Rule.Module
 import Rule.Source
 
-reflect :: FilePath -> App (Maybe Source)
-reflect srcPath = do
+data Handle
+  = Handle
+  { envHandle :: Env.Handle,
+    moduleHandle :: Module.Handle
+  }
+
+new :: App Handle
+new = do
+  envHandle <- Env.new
+  moduleHandle <- Module.new
+  return $ Handle {..}
+
+reflect :: Handle -> FilePath -> EIO (Maybe Source)
+reflect h srcPath = do
   srcPath' <- parseAbsFile srcPath
-  m <- getModule srcPath'
+  m <- getModule h srcPath'
   return $
     Just
       Source
@@ -20,14 +37,11 @@ reflect srcPath = do
           sourceHint = Nothing
         }
 
-getModule :: Path Abs File -> App Module
-getModule srcPath = do
+getModule :: Handle -> Path Abs File -> EIO Module
+getModule h srcPath = do
   let srcDir = parent srcPath
-  moduleFilePath <- toApp $ Module.findModuleFile srcDir srcDir
-  he <- Env.new
-  MainModule mainModule <- toApp $ Env.getMainModule he
+  moduleFilePath <- Module.findModuleFile srcDir srcDir
+  MainModule mainModule <- Env.getMainModule (envHandle h)
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
-    else do
-      h <- Module.new
-      toApp $ Module.fromFilePath h moduleFilePath
+    else Module.fromFilePath (moduleHandle h) moduleFilePath

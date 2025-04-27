@@ -1,5 +1,7 @@
 module Move.Scene.LSP.GetAllCachesInModule
-  ( getAllLocationCachesInModule,
+  ( Handle,
+    new,
+    getAllLocationCachesInModule,
     getAllCompletionCachesInModule,
   )
 where
@@ -7,7 +9,7 @@ where
 import Data.Maybe (catMaybes)
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, forP)
 import Move.Context.Module (getAllSourcePathInModule)
 import Move.Context.Path qualified as Path
 import Move.Scene.Source.ShiftToLatest qualified as STL
@@ -16,43 +18,48 @@ import Rule.Cache
 import Rule.Module
 import Rule.Source
 import Rule.Target (Target (Peripheral))
-import UnliftIO.Async
 
-getAllLocationCachesInModule :: Module -> App [(Source, LocationCache)]
-getAllLocationCachesInModule baseModule = do
-  sourcePathList <- toApp $ getAllSourcePathInModule baseModule
-  fmap catMaybes $ pooledForConcurrently sourcePathList $ \path -> getLocationCache baseModule path
+data Handle
+  = Handle
+  { shiftToLatestHandle :: STL.Handle,
+    pathHandle :: Path.Handle
+  }
 
-getLocationCache :: Module -> Path Abs File -> App (Maybe (Source, LocationCache))
-getLocationCache baseModule filePath = do
-  h <- STL.new
+new :: App Handle
+new = do
+  shiftToLatestHandle <- STL.new
+  pathHandle <- Path.new
+  return $ Handle {..}
+
+getAllLocationCachesInModule :: Handle -> Module -> EIO [(Source, LocationCache)]
+getAllLocationCachesInModule h baseModule = do
+  sourcePathList <- getAllSourcePathInModule baseModule
+  fmap catMaybes $ forP sourcePathList $ \path -> getLocationCache h baseModule path
+
+getLocationCache :: Handle -> Module -> Path Abs File -> EIO (Maybe (Source, LocationCache))
+getLocationCache h baseModule filePath = do
   source <-
-    toApp $
-      STL.shiftToLatest h $
-        Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  h' <- Path.new
-  cacheOrNone <- toApp $ Cache.loadLocationCache h' Peripheral source
+    STL.shiftToLatest (shiftToLatestHandle h) $
+      Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
+  cacheOrNone <- Cache.loadLocationCache (pathHandle h) Peripheral source
   case cacheOrNone of
     Nothing ->
       return Nothing
     Just cache ->
       return $ Just (source, cache)
 
-getAllCompletionCachesInModule :: Module -> App [(Source, CompletionCache)]
-getAllCompletionCachesInModule baseModule = do
-  sourcePathList <- toApp $ getAllSourcePathInModule baseModule
-  fmap catMaybes $ pooledForConcurrently sourcePathList $ \path -> getCompletionCache baseModule path
+getAllCompletionCachesInModule :: Handle -> Module -> EIO [(Source, CompletionCache)]
+getAllCompletionCachesInModule h baseModule = do
+  sourcePathList <- getAllSourcePathInModule baseModule
+  fmap catMaybes $ forP sourcePathList $ \path -> getCompletionCache h baseModule path
 
-getCompletionCache :: Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
-getCompletionCache baseModule filePath = do
-  h <- STL.new
+getCompletionCache :: Handle -> Module -> Path Abs File -> EIO (Maybe (Source, CompletionCache))
+getCompletionCache h baseModule filePath = do
   source <-
-    toApp $
-      STL.shiftToLatest h $
-        Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  h' <- Path.new
-  cachePath <- toApp (Path.getSourceCompletionCachePath h' Peripheral source)
-  cacheOrNone <- toApp $ Cache.loadCompletionCacheOptimistically cachePath
+    STL.shiftToLatest (shiftToLatestHandle h) $
+      Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
+  cachePath <- Path.getSourceCompletionCachePath (pathHandle h) Peripheral source
+  cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->
       return Nothing
