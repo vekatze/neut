@@ -94,19 +94,16 @@ unify h constraintList = do
 
 unifyCurrentConstraints :: Handle -> EIO HS.HoleSubst
 unifyCurrentConstraints h = do
-  -- susList <- liftIO $ readIORef (suspendedEnvRef h)
   susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
   cs <- liftIO $ Constraint.get (constraintHandle h)
   susList' <- simplify h susList $ zip cs cs
   liftIO $ Constraint.set (constraintHandle h) []
-  -- liftIO $ writeIORef (suspendedEnvRef h) susList'
   liftIO $ Constraint.setSuspendedConstraints (constraintHandle h) susList'
   liftIO $ Hole.getSubst (holeHandle h)
 
 unify' :: Handle -> [C.Constraint] -> EIO [SuspendedConstraint]
 unify' h constraintList = do
   susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
-  -- susList <- liftIO $ readIORef (suspendedEnvRef h)
   simplify h susList $ zip constraintList constraintList
 
 throwTypeErrors :: Handle -> [SuspendedConstraint] -> EIO a
