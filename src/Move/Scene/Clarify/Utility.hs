@@ -15,7 +15,7 @@ import Data.IntMap qualified as IntMap
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as GensymN
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Move.Scene.Comp.Subst qualified as Subst
 import Rule.Comp qualified as C
@@ -29,7 +29,7 @@ import Rule.PrimNumSize
 
 data Handle
   = Handle
-  { gensymHandle :: GensymN.Handle,
+  { gensymHandle :: Gensym.Handle,
     substHandle :: Subst.Handle,
     auxEnvHandle :: AuxEnv.Handle,
     baseSize :: Int
@@ -37,7 +37,7 @@ data Handle
 
 new :: App Handle
 new = do
-  gensymHandle <- GensymN.new
+  gensymHandle <- Gensym.new
   substHandle <- Subst.new
   auxEnvHandle <- AuxEnv.new
   baseSize <- toApp Env.getBaseSize'
@@ -48,7 +48,7 @@ new = do
 --   exp @ (0, x)
 toAffineApp :: Handle -> Ident -> C.Comp -> IO C.Comp
 toAffineApp h x t = do
-  (expVarName, expVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "exp"
+  (expVarName, expVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "exp"
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 0, C.VarLocal x])
 
 -- toRelevantApp meta x t ~>
@@ -56,7 +56,7 @@ toAffineApp h x t = do
 --   exp @ (1, x)
 toRelevantApp :: Handle -> Ident -> C.Comp -> IO C.Comp
 toRelevantApp h x t = do
-  (expVarName, expVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "exp"
+  (expVarName, expVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "exp"
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 1, C.VarLocal x])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
@@ -81,8 +81,8 @@ makeSwitcher ::
   (C.Value -> IO C.Comp) ->
   IO ([Ident], C.Comp)
 makeSwitcher h compAff compRel = do
-  (switchVarName, switchVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "switch"
-  (argVarName, argVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "arg"
+  (switchVarName, switchVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "switch"
+  (argVarName, argVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "arg"
   aff <- compAff argVar
   rel <- compRel argVar
   enumElim <- getEnumElim h [argVarName] switchVar rel [(EC.Int 0, aff)]
@@ -108,9 +108,9 @@ getEnumElim h idents d defaultBranch branchList = do
   clauses' <- mapM (Subst.subst (substHandle h) sub) clauses
   return $ C.EnumElim newToOld d defaultBranch' (zip labels clauses')
 
-getSub :: GensymN.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
+getSub :: Gensym.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
 getSub h idents = do
-  newIdents <- mapM (GensymN.newIdentFromIdent h) idents
+  newIdents <- mapM (Gensym.newIdentFromIdent h) idents
   let newToOld = zip (map toInt newIdents) (map C.VarLocal idents)
   let oldToNew = zip (map toInt idents) (map C.VarLocal newIdents)
   return (newToOld, oldToNew)

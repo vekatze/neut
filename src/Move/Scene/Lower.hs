@@ -26,7 +26,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
-import Move.Language.Utility.Gensym qualified as GensymN
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Cancel
 import Move.Scene.Comp.Reduce qualified as Reduce
 import Move.Scene.Comp.Subst qualified as Subst
@@ -58,7 +58,7 @@ data Handle
   = Handle
   { arch :: Arch,
     baseSize :: Int,
-    gensymHandle :: GensymN.Handle,
+    gensymHandle :: Gensym.Handle,
     locatorHandle :: Locator.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
@@ -71,7 +71,7 @@ new :: App Handle
 new = do
   arch <- toApp $ Env.getArch Nothing
   baseSize <- toApp Env.getBaseSize'
-  gensymHandle <- GensymN.new
+  gensymHandle <- Gensym.new
   locatorHandle <- Locator.new
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
@@ -129,8 +129,8 @@ registerInternalNames h stmtList =
 
 constructMainTerm :: Handle -> DD.DefiniteDescription -> IO LC.DefContent
 constructMainTerm h mainName = do
-  argc <- GensymN.newIdentFromText (gensymHandle h) "argc"
-  argv <- GensymN.newIdentFromText (gensymHandle h) "argv"
+  argc <- Gensym.newIdentFromText (gensymHandle h) "argc"
+  argv <- Gensym.newIdentFromText (gensymHandle h) "argv"
   let argcGlobal = LC.VarExternal (EN.ExternalName unsafeArgcName)
   let argvGlobal = LC.VarExternal (EN.ExternalName unsafeArgvName)
   let mainTerm =
@@ -190,7 +190,7 @@ lowerComp h term =
           lowerValueLetCast h castVar v t
             =<< return (LC.Switch (castValue, t) defaultCase caseList (phiVar, LC.Return phi))
     C.Free x size cont -> do
-      freeID <- liftIO $ GensymN.newCount (gensymHandle h)
+      freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
         =<< return . LC.Cont (LC.Free ptr size freeID)
@@ -318,7 +318,7 @@ allocateBasePointer h resultVar aggType cont = do
       let (elemType, len) = getSizeInfoOf aggType
       (sizeVar, sizeValue) <- liftIO $ newValueLocal h "result"
       (castVar, castValue) <- liftIO $ newValueLocal h "result"
-      allocID <- liftIO $ GensymN.newCount (gensymHandle h)
+      allocID <- liftIO $ Gensym.newCount (gensymHandle h)
       let lowInt = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
       return . getElemPtr sizeVar LC.Null elemType [toInteger len]
         =<< cast h castVar sizeValue lowInt
@@ -395,7 +395,7 @@ lowerValue h resultVar v cont =
     C.VarStaticText text -> do
       let i8s = encode $ T.unpack text
       let len = length i8s
-      i <- liftIO $ GensymN.newCount (gensymHandle h)
+      i <- liftIO $ Gensym.newCount (gensymHandle h)
       name <- lift $ liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.textName i
       let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
       liftIO $ insertStaticText h name encodedText len
@@ -436,7 +436,7 @@ freeIfNecessary :: Handle -> Bool -> LC.Value -> Int -> LC.Comp -> IO LC.Comp
 freeIfNecessary h shouldDeallocate pointer len cont = do
   if shouldDeallocate
     then do
-      freeID <- GensymN.newCount (gensymHandle h)
+      freeID <- Gensym.newCount (gensymHandle h)
       return $ LC.Cont (LC.Free pointer len freeID) cont
     else do
       return cont
@@ -455,7 +455,7 @@ constructSwitch h defaultBranch switch =
 
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
 newValueLocal h name = do
-  x <- GensymN.newIdentFromText (gensymHandle h) name
+  x <- Gensym.newIdentFromText (gensymHandle h) name
   return (x, LC.VarLocal x)
 
 insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> IO ()

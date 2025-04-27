@@ -15,7 +15,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.Locator qualified as Locator
-import Move.Language.Utility.Gensym qualified as GensymN
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Utility qualified as Utility
 import Rule.ArgNum qualified as AN
@@ -31,7 +31,7 @@ import Rule.Opacity qualified as O
 
 data Handle
   = Handle
-  { gensymHandle :: GensymN.Handle,
+  { gensymHandle :: Gensym.Handle,
     linearizeHandle :: Linearize.Handle,
     locatorHandle :: Locator.Handle,
     utilityHandle :: Utility.Handle
@@ -39,7 +39,7 @@ data Handle
 
 new :: App Handle
 new = do
-  gensymHandle <- GensymN.new
+  gensymHandle <- Gensym.new
   linearizeHandle <- Linearize.new
   locatorHandle <- Locator.new
   utilityHandle <- Utility.new
@@ -53,7 +53,7 @@ registerImmediateS4 h = do
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
-  (env, envVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "env"
+  (env, envVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "env"
   registerSigmaS4
     h
     DD.cls
@@ -105,7 +105,7 @@ sigmaT h mxts argVar = do
   xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
   as <- forM xts $ uncurry $ Utility.toAffineApp (utilityHandle h)
-  ys <- mapM (const $ GensymN.newIdentFromText (gensymHandle h) "arg") xts
+  ys <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") xts
   body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
   return $ C.SigmaElim True (map fst xts) argVar body'
 
@@ -132,17 +132,17 @@ sigma4 h mxts argVar = do
   xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
   -- as == [APP-1, ..., APP-n]
   as <- forM xts $ uncurry $ Utility.toRelevantApp (utilityHandle h)
-  (varNameList, varList) <- mapAndUnzipM (const $ GensymN.newValueVarLocalWith (gensymHandle h) "pair") xts
+  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.newValueVarLocalWith (gensymHandle h) "pair") xts
   body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
-supplyName :: GensymN.Handle -> Either b (Ident, b) -> IO (Ident, b)
+supplyName :: Gensym.Handle -> Either b (Ident, b) -> IO (Ident, b)
 supplyName h mName =
   case mName of
     Right (x, t) ->
       return (x, t)
     Left t -> do
-      x <- GensymN.newIdentFromText h "unused-sigarg"
+      x <- Gensym.newIdentFromText h "unused-sigarg"
       return (x, t)
 
 closureEnvS4 ::
@@ -154,7 +154,7 @@ closureEnvS4 h mxts =
     [] ->
       return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
-      i <- GensymN.newCount (gensymHandle h)
+      i <- Gensym.newCount (gensymHandle h)
       name <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.sigmaName i
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name (sigmaT h mxts) (sigma4 h mxts)
       return $ C.VarGlobal name AN.argNumS4
@@ -197,9 +197,9 @@ sigmaData h resourceHandler dataInfo arg = do
     _ -> do
       let (discList, binderList) = unzip dataInfo
       let discList' = map discriminantToEnumCase discList
-      localName <- GensymN.newIdentFromText (gensymHandle h) "local"
+      localName <- Gensym.newIdentFromText (gensymHandle h) "local"
       binderList' <- mapM (`resourceHandler` C.VarLocal localName) binderList
-      (disc, discVar) <- GensymN.newValueVarLocalWith (gensymHandle h) "disc"
+      (disc, discVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "disc"
       enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $

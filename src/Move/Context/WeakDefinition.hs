@@ -16,7 +16,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Language.Utility.Gensym qualified as GensymNew
+import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
 import Rule.DefiniteDescription qualified as DD
@@ -31,7 +31,7 @@ type DefMap =
 
 data Handle
   = Handle
-  { gensymHandle :: GensymNew.Handle,
+  { gensymHandle :: Gensym.Handle,
     weakDefMapRef :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm)
   }
 
@@ -41,7 +41,7 @@ initialize h = do
 
 new :: App Handle
 new = do
-  gensymHandle <- GensymNew.new
+  gensymHandle <- Gensym.new
   weakDefMapRef <- asks App.weakDefMap
   return $ Handle {..}
 
@@ -57,7 +57,7 @@ insert' ::
   IO ()
 insert' h opacity m name impArgs expArgs codType e =
   when (opacity == O.Clear) $ do
-    i <- GensymNew.newCount (gensymHandle h)
+    i <- Gensym.newCount (gensymHandle h)
     modifyIORef' (weakDefMapRef h) $
       Map.insert name (m :< WT.PiIntro (AttrL.normal i codType) impArgs expArgs e)
 
