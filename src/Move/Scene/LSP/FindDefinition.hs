@@ -5,7 +5,8 @@ import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.AppM
-import Move.Scene.LSP.GetLocationTree qualified as LSP
+import Move.Context.EIO (toApp)
+import Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
 import Move.Scene.LSP.GetSource qualified as GetSource
 import Rule.Hint qualified as H
 import Rule.LocationTree (LocationTree)
@@ -18,7 +19,8 @@ findDefinition ::
 findDefinition params = do
   hgs <- lift GetSource.new
   src <- GetSource.getSource hgs params
-  locTree <- LSP.getLocationTree src
+  hgt <- lift GetLocationTree.new
+  locTree <- lift $ toApp $ GetLocationTree.getLocationTree hgt src
   defLink <- _findDefinition params locTree
   return (defLink, locTree)
 
