@@ -1,6 +1,7 @@
 module Move.Scene.Elaborate
   ( Handle,
     new,
+    overrideHandleEnv,
     elaborate,
     elaborate',
     elaborateThenInspect,
@@ -108,8 +109,9 @@ data Handle
     currentSource :: Source
   }
 
-new :: Elaborate.HandleEnv -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) = do
+new :: App Handle
+new = do
+  handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new
   weakDefHandle <- WeakDefinition.new
   substHandle <- Subst.new
@@ -131,6 +133,10 @@ new handleEnv@(Elaborate.HandleEnv {..}) = do
   envHandle <- Env.new
   currentSource <- toApp $ Env.getCurrentSource envHandle
   return $ Handle {..}
+
+overrideHandleEnv :: Handle -> Elaborate.HandleEnv -> Handle
+overrideHandleEnv h (Elaborate.HandleEnv {..}) =
+  h {constraintHandle, weakTypeHandle, holeHandle}
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> EIO [Stmt]
 elaborate h t cacheOrStmt = do

@@ -14,6 +14,7 @@ import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type
 import Move.Scene.Check qualified as Check
+import Move.Scene.Elaborate (overrideHandleEnv)
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.LSP.FindDefinition qualified as LSP
@@ -40,8 +41,9 @@ getSymbolInfo params = do
     LT.Local varID _ -> do
       weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift $ Elaborate.new handleEnv
-      t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle t) >>= liftMaybe
+      elaborateHandle <- lift Elaborate.new
+      let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
+      t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'
     LT.Global dd isConstLike -> do
       t <- lift (lookupMaybe dd) >>= liftMaybe

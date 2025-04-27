@@ -9,7 +9,6 @@ import Control.Monad.IO.Class
 import Move.Context.Alias qualified as Alias
 import Move.Context.App
 import Move.Context.EIO (EIO)
-import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
@@ -63,7 +62,7 @@ new = do
   weakDeclHandle <- WeakDecl.new
   return $ Handle {..}
 
-initializeForSource :: Handle -> Source.Source -> EIO Elaborate.HandleEnv
+initializeForSource :: Handle -> Source.Source -> EIO ()
 initializeForSource h source = do
   liftIO $ UnusedVariable.initialize (unusedVariableHandle h)
   liftIO $ UnusedGlobalLocator.initialize (unusedGlobalLocatorHandle h)
@@ -80,4 +79,3 @@ initializeForSource h source = do
   liftIO $ TopCandidate.initialize (topCandidateHandle h)
   liftIO $ PreDecl.initialize (preDeclHandle h)
   WeakDecl.initialize (weakDeclHandle h)
-  liftIO Elaborate.createNewEnv

@@ -39,7 +39,9 @@ data Handle
     unravelHandle :: Unravel.Handle,
     parseHandle :: Parse.Handle,
     moduleHandle :: Module.Handle,
-    envHandle :: Env.Handle
+    envHandle :: Env.Handle,
+    initSourceHandle :: InitSource.Handle,
+    initTargetHandle :: InitTarget.Handle
   }
 
 new :: App Handle
@@ -50,6 +52,8 @@ new = do
   parseHandle <- Parse.new
   envHandle <- Env.new
   moduleHandle <- Module.new
+  initSourceHandle <- InitSource.new
+  initTargetHandle <- InitTarget.new
   return $ Handle {..}
 
 check :: App [Remark]
@@ -78,7 +82,7 @@ checkSingle baseModule path = do
 _check :: Handle -> Target -> M.Module -> App [Remark]
 _check h target baseModule = do
   Throw.collectLogs $ do
-    InitTarget.new >>= liftIO . InitTarget.initializeForTarget
+    liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
     (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
     contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
@@ -86,7 +90,7 @@ _check h target baseModule = do
 
 _check' :: Handle -> Target -> M.Module -> App Elaborate.HandleEnv
 _check' h target baseModule = do
-  InitTarget.new >>= liftIO . InitTarget.initializeForTarget
+  liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
   (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
   contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
   case unsnoc contentSeq of
@@ -99,10 +103,9 @@ _check' h target baseModule = do
 
 checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
-  hInit <- InitSource.new
-  sourceEnv <- toApp (InitSource.initializeForSource hInit source)
+  toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new sourceEnv
+  hElaborate <- Elaborate.new
   void $
     toApp $
       Parse.parse (parseHandle h) target source cacheOrContent
@@ -111,9 +114,9 @@ checkSource h target source cacheOrContent = do
 checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elaborate.HandleEnv
 checkSource' h target source cacheOrContent = do
   hInit <- InitSource.new
-  sourceEnv <- toApp (InitSource.initializeForSource hInit source)
+  toApp (InitSource.initializeForSource hInit source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new sourceEnv
+  hElaborate <- Elaborate.new
   toApp $
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborateThenInspect hElaborate target
