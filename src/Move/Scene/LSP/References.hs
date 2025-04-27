@@ -1,10 +1,15 @@
-module Move.Scene.LSP.References (references) where
+module Move.Scene.LSP.References
+  ( Handle,
+    new,
+    references,
+  )
+where
 
 import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Move.Context.AppM
-import Move.Context.EIO (toApp)
+import Move.Context.App (App)
+import Move.Context.EIO (EIO)
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
@@ -15,20 +20,32 @@ import Rule.Cache qualified as Cache
 import Rule.Source (Source (sourceFilePath, sourceModule))
 import UnliftIO.Async (pooledForConcurrently)
 
+data Handle
+  = Handle
+  { unravelHandle :: Unravel.Handle,
+    getSourceHandle :: GetSource.Handle,
+    findDefinitionHandle :: FindDefinition.Handle,
+    gacHandle :: GAC.Handle
+  }
+
+new :: App Handle
+new = do
+  unravelHandle <- Unravel.new
+  getSourceHandle <- GetSource.new
+  findDefinitionHandle <- FindDefinition.new
+  gacHandle <- GAC.new
+  return $ Handle {..}
+
 references ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
+  Handle ->
   p ->
-  AppM [Location]
-references params = do
-  lift $ do
-    h <- Unravel.new
-    toApp $ Unravel.registerShiftMap h
-  hgs <- lift GetSource.new
-  currentSource <- lift $ toApp $ GetSource.getSource hgs params
-  h <- lift FindDefinition.new
-  ((_, defLink), _) <- lift $ toApp $ FindDefinition.findDefinition h params
-  hgac <- lift GAC.new
-  cacheSeq <- lift $ toApp $ GAC.getAllLocationCachesInModule hgac $ sourceModule currentSource
+  EIO [Location]
+references h params = do
+  Unravel.registerShiftMap (unravelHandle h)
+  currentSource <- GetSource.getSource (getSourceHandle h) params
+  ((_, defLink), _) <- FindDefinition.findDefinition (findDefinitionHandle h) params
+  cacheSeq <- GAC.getAllLocationCachesInModule (gacHandle h) $ sourceModule currentSource
   fmap concat $ lift $ pooledForConcurrently cacheSeq $ \(path, cache) -> do
     let refList = LSP.findReferences defLink (Cache.locationTree cache)
     return $ map (toLocation $ sourceFilePath path) refList

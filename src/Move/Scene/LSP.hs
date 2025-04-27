@@ -22,7 +22,7 @@ import Move.Scene.LSP.Format qualified as Format
 import Move.Scene.LSP.GetSymbolInfo qualified as LSP
 import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as LSP
-import Move.Scene.LSP.References qualified as LSP
+import Move.Scene.LSP.References qualified as References
 import Move.Scene.LSP.Util (getUriParam, liftAppM)
 import Prettyprinter
 import Rule.AppLsp
@@ -109,7 +109,8 @@ handlers =
           Just highlights ->
             responder $ Right $ InL $ List highlights,
       requestHandler SMethod_TextDocumentReferences $ \req responder -> do
-        refsOrNone <- liftAppM $ LSP.references $ req ^. J.params
+        h <- lift References.new
+        refsOrNone <- liftAppM $ liftEIO $ References.references h $ req ^. J.params
         case refsOrNone of
           Nothing -> do
             responder $ Right $ InR Null
