@@ -1,21 +1,36 @@
-module Move.Scene.LSP.Highlight (highlight) where
+module Move.Scene.LSP.Highlight
+  ( Handle,
+    new,
+    highlight,
+  )
+where
 
 import Control.Lens hiding (Iso, List)
-import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Move.Context.AppM
+import Move.Context.App (App)
+import Move.Context.EIO (EIO)
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
 
+newtype Handle
+  = Handle
+  { findDefinitionHandle :: FindDefinition.Handle
+  }
+
+new :: App Handle
+new = do
+  findDefinitionHandle <- FindDefinition.new
+  return $ Handle {..}
+
 highlight ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
+  Handle ->
   p ->
-  AppM [DocumentHighlight]
-highlight params = do
-  h <- lift FindDefinition.new
+  EIO [DocumentHighlight]
+highlight h params = do
   ((_, defLink@(DefinitionLink (LocationLink {_targetRange, _targetUri}))), locTree) <-
-    liftEIO $ FindDefinition.findDefinition h params
+    FindDefinition.findDefinition (findDefinitionHandle h) params
   let reqUri = params ^. J.textDocument . J.uri
   let refs = LSP.findReferences defLink locTree
   if reqUri /= _targetUri

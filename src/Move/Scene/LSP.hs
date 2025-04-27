@@ -20,7 +20,7 @@ import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.Format qualified as Format
 import Move.Scene.LSP.GetSymbolInfo qualified as LSP
-import Move.Scene.LSP.Highlight qualified as LSP
+import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as LSP
 import Move.Scene.LSP.References qualified as LSP
 import Move.Scene.LSP.Util (getUriParam, liftAppM)
@@ -101,7 +101,8 @@ handlers =
           Just ((_, loc), _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        highlightsOrNone <- liftAppM $ LSP.highlight $ req ^. J.params
+        h <- lift Highlight.new
+        highlightsOrNone <- liftAppM $ liftEIO $ Highlight.highlight h $ req ^. J.params
         case highlightsOrNone of
           Nothing ->
             responder $ Right $ InR Null
