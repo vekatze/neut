@@ -14,11 +14,11 @@ import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.AppM (liftEIO)
 import Move.Scene.Check (checkAll)
 import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
-import Move.Scene.LSP.Format qualified as LSP
+import Move.Scene.LSP.Format qualified as Format
 import Move.Scene.LSP.GetSymbolInfo qualified as LSP
 import Move.Scene.LSP.Highlight qualified as LSP
 import Move.Scene.LSP.Lint qualified as LSP
@@ -89,12 +89,12 @@ handlers =
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
         h <- lift Complete.new
-        itemListOrNone <- liftAppM $ lift $ toApp $ Complete.complete h uri pos
+        itemListOrNone <- liftAppM $ liftEIO $ Complete.complete h uri pos
         let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
         h <- lift FindDefinition.new
-        mLoc <- liftAppM $ lift $ toApp $ FindDefinition.findDefinition h (req ^. J.params)
+        mLoc <- liftAppM $ liftEIO $ FindDefinition.findDefinition h (req ^. J.params)
         case mLoc of
           Nothing ->
             responder $ Right $ InR $ InR Null
@@ -116,8 +116,11 @@ handlers =
             responder $ Right $ InL refs,
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
-        textEditList <- LSP.format False uri
-        responder $ Right $ InL textEditList,
+        fileOrNone <- getVirtualFile (toNormalizedUri uri)
+        h <- lift Format.new
+        textEditList <- liftAppM $ liftEIO $ Format.format h False uri fileOrNone
+        let textEditList' = concat $ maybeToList textEditList
+        responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
         textOrNone <- liftAppM $ LSP.getSymbolInfo (req ^. J.params)
         case textOrNone of
@@ -148,10 +151,13 @@ handlers =
                   Nothing ->
                     responder $ Right $ InR Null
                   Just uri -> do
-                    textEditList <- LSP.format True uri
+                    h <- lift Format.new
+                    fileOrNone <- getVirtualFile (toNormalizedUri uri)
+                    textEditList <- liftAppM $ liftEIO $ Format.format h True uri fileOrNone
+                    let textEditList' = concat $ maybeToList textEditList
                     let editParams =
                           ApplyWorkspaceEditParams (Just CA.minimizeImportsCommandTitle) $
-                            WorkspaceEdit (Just (M.singleton uri textEditList)) Nothing Nothing
+                            WorkspaceEdit (Just (M.singleton uri textEditList')) Nothing Nothing
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do

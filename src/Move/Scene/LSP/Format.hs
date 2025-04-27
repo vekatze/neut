@@ -1,40 +1,49 @@
-module Move.Scene.LSP.Format (format) where
+module Move.Scene.LSP.Format
+  ( Handle,
+    new,
+    format,
+  )
+where
 
 import Control.Monad.Trans
-import Data.Maybe
 import Data.Text qualified as T
 import Language.LSP.Protocol.Types
-import Language.LSP.Server
 import Language.LSP.VFS
-import Move.Context.AppM
-import Move.Context.EIO (toApp)
-import Move.Context.Throw qualified as Throw
+import Move.Context.App (App)
+import Move.Context.EIO (EIO, liftMaybe)
 import Move.Scene.Format qualified as Format
-import Move.Scene.LSP.Util (liftAppM)
 import Path
 import Path.IO
-import Rule.AppLsp
 import Rule.Const
 import Rule.FileType qualified as FT
 
-format :: Format.ShouldMinimizeImports -> Uri -> AppLsp a [TextEdit]
-format shouldMinimizeImports uri = do
-  fileOrNone <- getVirtualFile (toNormalizedUri uri)
+newtype Handle
+  = Handle
+  { formatHandle :: Format.Handle
+  }
+
+new :: App Handle
+new = do
+  formatHandle <- Format.new
+  return $ Handle {..}
+
+format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]
+format h shouldMinimizeImports uri fileOrNone = do
   case fileOrNone of
     Nothing ->
       return []
     Just file -> do
-      textEditOrNone <- liftAppM $ _format shouldMinimizeImports uri file
-      return $ fromMaybe [] textEditOrNone
+      _format h shouldMinimizeImports uri file
 
 _format ::
+  Handle ->
   Format.ShouldMinimizeImports ->
   Uri ->
   VirtualFile ->
-  AppM [TextEdit]
-_format shouldMinimizeImports uri file = do
+  EIO [TextEdit]
+_format h shouldMinimizeImports uri file = do
   path <- liftMaybe (uriToFilePath uri) >>= lift . resolveFile'
-  newText <- getFormattedContent shouldMinimizeImports file path
+  newText <- getFormattedContent h shouldMinimizeImports file path
   return
     [ TextEdit
         { _range =
@@ -46,19 +55,13 @@ _format shouldMinimizeImports uri file = do
         }
     ]
 
-getFormattedContent :: Format.ShouldMinimizeImports -> VirtualFile -> Path Abs File -> AppM T.Text
-getFormattedContent shouldMinimizeImports file path = do
+getFormattedContent :: Handle -> Format.ShouldMinimizeImports -> VirtualFile -> Path Abs File -> EIO T.Text
+getFormattedContent h shouldMinimizeImports file path = do
   (_, ext) <- liftMaybe $ splitExtension path
   case (ext == sourceFileExtension, ext == ensFileExtension) of
     (True, _) -> do
-      hFormat <- lift Format.new
-      formattedContentOrNone <- lift $ Throw.runMaybe $ toApp $ do
-        Format.format hFormat shouldMinimizeImports FT.Source path (virtualFileText file)
-      liftMaybe formattedContentOrNone
+      Format.format (formatHandle h) shouldMinimizeImports FT.Source path (virtualFileText file)
     (_, True) -> do
-      hFormat <- lift Format.new
-      formattedContentOrNone <- lift $ Throw.runMaybe $ toApp $ do
-        Format.format hFormat shouldMinimizeImports FT.Ens path (virtualFileText file)
-      liftMaybe formattedContentOrNone
+      Format.format (formatHandle h) shouldMinimizeImports FT.Ens path (virtualFileText file)
     _ ->
       liftMaybe Nothing

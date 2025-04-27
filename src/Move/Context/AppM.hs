@@ -2,15 +2,18 @@ module Move.Context.AppM
   ( AppM,
     runAppM,
     liftMaybe,
+    liftEIO,
   )
 where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Trans.Except
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, runEIO, toApp)
 import Move.Context.Throw qualified as Throw
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Rule.Config.Remark qualified as Remark
+import Rule.Error qualified as E
 import Rule.Remark qualified as R
 
 type AppM =
@@ -32,4 +35,13 @@ liftMaybe m =
     Nothing ->
       except $ Left []
     Just v ->
+      return v
+
+liftEIO :: EIO a -> AppM a
+liftEIO m = do
+  val <- liftIO $ runEIO m
+  case val of
+    Left (E.MakeError vs) ->
+      except $ Left vs
+    Right v ->
       return v
