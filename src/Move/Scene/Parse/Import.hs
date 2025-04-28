@@ -64,9 +64,8 @@ data Handle
     tagHandle :: Tag.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  envHandle <- Env.new
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   unusedStaticFileHandle <- UnusedStaticFile.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new

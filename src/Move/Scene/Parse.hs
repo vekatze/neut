@@ -62,7 +62,7 @@ new envHandle gensymHandle = do
   parseHandle <- P.new gensymHandle
   discernHandle <- Discern.new envHandle gensymHandle
   pathHandle <- Path.new
-  importHandle <- Import.new gensymHandle
+  importHandle <- Import.new envHandle gensymHandle
   globalHandle <- Global.new
   localRemarkHandle <- LocalRemark.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
