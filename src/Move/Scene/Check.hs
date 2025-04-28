@@ -112,8 +112,7 @@ checkSource h target source cacheOrContent = do
 
 checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elaborate.HandleEnv
 checkSource' h target source cacheOrContent = do
-  hInit <- InitSource.new
-  toApp (InitSource.initializeForSource hInit source)
+  toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   hElaborate <- Elaborate.new (gensymHandle h)
   toApp $
