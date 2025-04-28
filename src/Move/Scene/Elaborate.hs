@@ -29,6 +29,7 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
+import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
@@ -110,8 +111,8 @@ data Handle
     currentSource :: Source
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new envHandle gensymHandle
   weakDefHandle <- WeakDefinition.new gensymHandle
@@ -123,7 +124,7 @@ new envHandle gensymHandle locatorHandle = do
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new envHandle gensymHandle
   affHandle <- EnsureAffinity.new envHandle gensymHandle
-  inferHandle <- Infer.new handleEnv envHandle gensymHandle locatorHandle
+  inferHandle <- Infer.new handleEnv envHandle gensymHandle locatorHandle tagHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
   pathHandle <- Path.new envHandle
   symLocHandle <- SymLoc.new

@@ -78,6 +78,7 @@ data Handle = Handle
     reportHandle :: Report.Handle,
     envHandle :: Env.Handle,
     locatorHandle :: Locator.Handle,
+    tagHandle :: Tag.Handle,
     cacheHandle :: Cache.Handle,
     colorHandle :: Color.Handle,
     initSourceHandle :: InitSource.Handle,
@@ -112,7 +113,7 @@ new cfg envHandle gensymHandle locatorHandle tagHandle = do
   pathHandle <- Path.new envHandle
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new locatorHandle
-  parseHandle <- Parse.new envHandle gensymHandle locatorHandle
+  parseHandle <- Parse.new envHandle gensymHandle locatorHandle tagHandle
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
   llvmHandle <- LLVM.new envHandle
   emitHandle <- Emit.new gensymHandle
@@ -167,7 +168,7 @@ compile h target outputKindList contentSeq = do
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
-    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (locatorHandle h)
+    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (locatorHandle h) (tagHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
     hl <- Lower.new (gensymHandle h) (locatorHandle h)

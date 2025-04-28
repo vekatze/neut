@@ -58,10 +58,10 @@ data Handle
     unusedVariableHandle :: UnusedVariable.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
   parseHandle <- P.new gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle locatorHandle
+  discernHandle <- Discern.new envHandle gensymHandle locatorHandle tagHandle
   pathHandle <- Path.new envHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle
   globalHandle <- Global.new envHandle locatorHandle

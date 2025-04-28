@@ -23,6 +23,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
+import Move.Context.Tag qualified as Tag
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -94,12 +95,12 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle locatorHandle = do
+new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle locatorHandle tagHandle = do
   substHandle <- Subst.new gensymHandle
   reduceHandle <- Reduce.new envHandle gensymHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle locatorHandle
+  discernHandle <- Discern.new envHandle gensymHandle locatorHandle tagHandle
   keyArgHandle <- KeyArg.new envHandle
   weakDeclHandle <- WeakDecl.new
   optDataHandle <- OptimizableData.new

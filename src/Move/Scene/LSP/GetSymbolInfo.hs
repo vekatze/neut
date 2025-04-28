@@ -44,7 +44,8 @@ data Handle
     envHandle :: Env.Handle,
     gensymHandle :: Gensym.Handle,
     checkHandle :: Check.Handle,
-    locatorHandle :: Locator.Handle
+    locatorHandle :: Locator.Handle,
+    tagHandle :: Tag.Handle
   }
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
@@ -70,7 +71,7 @@ getSymbolInfo h params = do
     LT.Local varID _ -> do
       weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (locatorHandle h)
+      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (locatorHandle h) (tagHandle h)
       let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'
