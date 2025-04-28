@@ -25,13 +25,10 @@ module Move.Console.Report
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
 import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.Color qualified as Color
 import Rule.FilePos
 import Rule.FilePos qualified as FilePos
@@ -47,9 +44,9 @@ data Handle
     endOfEntryRef :: IORef T.Text
   }
 
-new :: Color.Handle -> App Handle
+new :: Color.Handle -> IO Handle
 new colorHandle = do
-  endOfEntryRef <- asks App.endOfEntry
+  endOfEntryRef <- newIORef ""
   return $ Handle {..}
 
 printString :: String -> IO ()

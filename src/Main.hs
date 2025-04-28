@@ -41,7 +41,7 @@ execute = do
     locatorHandle <- liftIO $ Locator.new envHandle tagHandle
     antecedentHandle <- liftIO Antecedent.new
     colorHandle <- liftIO Color.new
-    reportHandle <- Report.new colorHandle
+    reportHandle <- liftIO $ Report.new colorHandle
     debugHandle <- liftIO $ Debug.new colorHandle
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do

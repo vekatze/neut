@@ -45,8 +45,7 @@ import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
 
 data Env = Env
-  { endOfEntry :: IORef T.Text,
-    moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
+  { moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     sourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap),
@@ -88,7 +87,6 @@ newRef =
 
 newEnv :: IO Env
 newEnv = do
-  endOfEntry <- newIORef ""
   moduleCacheMap <- newIORef Map.empty
   moduleAliasMap <- newIORef Map.empty
   locatorAliasMap <- newIORef Map.empty
