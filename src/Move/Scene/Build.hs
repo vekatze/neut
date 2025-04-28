@@ -68,6 +68,7 @@ data Config = Config
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
+    debugHandle :: Debug.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -77,6 +78,7 @@ data Handle = Handle
 
 new :: Config -> Gensym.Handle -> App Handle
 new cfg gensymHandle = do
+  debugHandle <- Debug.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -85,18 +87,17 @@ new cfg gensymHandle = do
   return $ Handle {..}
 
 buildTarget :: Handle -> M.MainModule -> Target -> App ()
-buildTarget axis (M.MainModule baseModule) target = do
-  h <- Debug.new
-  toApp $ Debug.report h $ "Building: " <> T.pack (show target)
+buildTarget h (M.MainModule baseModule) target = do
+  toApp $ Debug.report (debugHandle h) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
-  InitTarget.new (gensymHandle axis) >>= liftIO . InitTarget.initializeForTarget
+  InitTarget.new (gensymHandle h) >>= liftIO . InitTarget.initializeForTarget
   h' <- Unravel.new
   (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel h' baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
-  didPerformForeignCompilation <- compileForeign target moduleList
+  didPerformForeignCompilation <- compileForeign h target moduleList
   h'' <- Load.new
   contentSeq <- toApp $ Load.load h'' target dependenceSeq
-  compile axis target' (_outputKindList axis) contentSeq
+  compile h target' (_outputKindList h) contentSeq
   hgl <- GlobalRemark.new
   hr <- Report.new
   liftIO (GlobalRemark.get hgl) >>= liftIO . Report.printRemarkList hr
@@ -106,12 +107,12 @@ buildTarget axis (M.MainModule baseModule) target = do
     PeripheralSingle {} ->
       return ()
     Main ct -> do
-      Link.link ct (_shouldSkipLink axis) didPerformForeignCompilation artifactTime (toList dependenceSeq)
-      execute (_shouldExecute axis) ct (_executeArgs axis)
-      install (_installDir axis) ct
+      Link.link ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
+      execute (_shouldExecute h) ct (_executeArgs h)
+      install (_installDir h) ct
 
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
-compile axis target outputKindList contentSeq = do
+compile h target outputKindList contentSeq = do
   he <- Env.new
   mainModule <- toApp $ Env.getMainModule he
   hCache <- Cache.new
@@ -127,18 +128,17 @@ compile axis target outputKindList contentSeq = do
       else return []
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
-  h <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
+  hp <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
   hEmit <- Emit.new
   hLLVM <- LLVM.new
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     hInit <- InitSource.new
     toApp (InitSource.initializeForSource hInit source)
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-    h' <- Debug.new
-    toApp $ Debug.report h' $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+    toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     hParse <- Parse.new
     cacheOrStmtList <- toApp $ Parse.parse hParse target source cacheOrContent
-    hElaborate <- Elaborate.new (gensymHandle axis)
+    hElaborate <- Elaborate.new (gensymHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     hc <- Clarify.new
@@ -149,13 +149,13 @@ compile axis target outputKindList contentSeq = do
         stmtList' <- toApp $ Clarify.clarify hc stmtList
         fmap Just $ async $ toApp $ do
           virtualCode <- Lower.lower hl stmtList'
-          emit hEmit hLLVM h currentTime target outputKindList (Right source) virtualCode
+          emit hEmit hLLVM hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-    toApp $ emit hEmit hLLVM h currentTime target outputKindList src code
+    toApp $ emit hEmit hLLVM hp currentTime target outputKindList src code
   mapM_ wait $ entryPointAsync ++ contentAsync
-  ProgressBar.close h
+  ProgressBar.close hp
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do
@@ -223,24 +223,23 @@ install filePathOrNone target = do
   mDir <- mapM (toApp . Path.getInstallDir) filePathOrNone
   mapM_ (Install.install target) mDir
 
-compileForeign :: Target -> [M.Module] -> App Bool
-compileForeign t moduleList = do
+compileForeign :: Handle -> Target -> [M.Module] -> App Bool
+compileForeign h t moduleList = do
   currentTime <- liftIO getCurrentTime
-  bs <- pooledForConcurrently moduleList (compileForeign' t currentTime)
+  bs <- pooledForConcurrently moduleList (compileForeign' h t currentTime)
   return $ or bs
 
-compileForeign' :: Target -> UTCTime -> M.Module -> App Bool
-compileForeign' t currentTime m = do
+compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
+compileForeign' h t currentTime m = do
   sub <- getForeignSubst t m
   let cmdList = M.script $ M.moduleForeign m
   unless (null cmdList) $ do
-    h <- Debug.new
     toApp $
-      Debug.report h $
+      Debug.report (debugHandle h) $
         "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
-  h <- Path.new
-  foreignDir <- toApp $ Path.getForeignDir h t m
+  hPath <- Path.new
+  foreignDir <- toApp $ Path.getForeignDir hPath t m
   inputPathList <- fmap concat $ mapM (toApp . getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
@@ -250,8 +249,9 @@ compileForeign' t currentTime m = do
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
-          h' <- Debug.new
-          toApp $ Debug.report h' $ "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
+          toApp $
+            Debug.report (debugHandle h) $
+              "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
