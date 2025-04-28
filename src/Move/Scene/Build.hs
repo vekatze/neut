@@ -1,6 +1,8 @@
 module Move.Scene.Build
-  ( buildTarget,
-    Axis (..),
+  ( Config (..),
+    Handle,
+    new,
+    buildTarget,
   )
 where
 
@@ -56,7 +58,15 @@ import System.Console.ANSI
 import UnliftIO.Async
 import Prelude hiding (log)
 
-data Axis = Axis
+data Config = Config
+  { outputKindList :: [OutputKind],
+    shouldSkipLink :: Bool,
+    shouldExecute :: Bool,
+    installDir :: Maybe FilePath,
+    executeArgs :: [String]
+  }
+
+data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
@@ -65,7 +75,16 @@ data Axis = Axis
     _executeArgs :: [String]
   }
 
-buildTarget :: Axis -> M.MainModule -> Target -> App ()
+new :: Config -> Gensym.Handle -> App Handle
+new cfg gensymHandle = do
+  let _outputKindList = outputKindList cfg
+  let _shouldSkipLink = shouldSkipLink cfg
+  let _shouldExecute = shouldExecute cfg
+  let _installDir = installDir cfg
+  let _executeArgs = executeArgs cfg
+  return $ Handle {..}
+
+buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget axis (M.MainModule baseModule) target = do
   h <- Debug.new
   toApp $ Debug.report h $ "Building: " <> T.pack (show target)
@@ -91,7 +110,7 @@ buildTarget axis (M.MainModule baseModule) target = do
       execute (_shouldExecute axis) ct (_executeArgs axis)
       install (_installDir axis) ct
 
-compile :: Axis -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
+compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile axis target outputKindList contentSeq = do
   he <- Env.new
   mainModule <- toApp $ Env.getMainModule he

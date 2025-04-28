@@ -7,7 +7,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Language.Utility.Gensym qualified as Gensym
-import Move.Scene.Build (Axis (..), buildTarget)
+import Move.Scene.Build qualified as Build
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Path.IO (resolveFile')
@@ -20,26 +20,26 @@ import Prelude hiding (log)
 
 zen :: Config -> App ()
 zen cfg = do
-  g <- Gensym.new
+  gensymHandle <- Gensym.new
   setup cfg
   path <- resolveFile' (filePathString cfg)
   envHandle <- Env.new
+  buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
   mainModule <- toApp $ Env.getMainModule envHandle
-  buildTarget (fromConfig g cfg) mainModule $
+  Build.buildTarget buildHandle mainModule $
     Main $
       Zen path $
         Z.clangOption $
           moduleZenConfig (extractModule mainModule)
 
-fromConfig :: Gensym.Handle -> Config -> Axis
-fromConfig gensymHandle cfg =
-  Axis
-    { gensymHandle = gensymHandle,
-      _outputKindList = [Object],
-      _shouldSkipLink = False,
-      _shouldExecute = True,
-      _installDir = Nothing,
-      _executeArgs = args cfg
+toBuildConfig :: Config -> Build.Config
+toBuildConfig cfg = do
+  Build.Config
+    { outputKindList = [Object],
+      shouldSkipLink = False,
+      shouldExecute = True,
+      installDir = Nothing,
+      executeArgs = args cfg
     }
 
 setup :: Config -> App ()

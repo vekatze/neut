@@ -23,7 +23,8 @@ build cfg = do
   target <- toApp $ Collect.getMainTarget h $ targetName cfg
   envHandle <- Env.new
   mainModule <- toApp $ Env.getMainModule envHandle
-  Build.buildTarget (fromConfig cfg gensymHandle) mainModule (Main target)
+  buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
+  Build.buildTarget buildHandle mainModule (Main target)
 
 setup :: Config -> App ()
 setup cfg = do
@@ -37,13 +38,12 @@ setup cfg = do
   h <- Fetch.new
   toApp $ Fetch.fetch h mainModule
 
-fromConfig :: Config -> Gensym.Handle -> Build.Axis
-fromConfig cfg gensymHandle =
-  Build.Axis
-    { gensymHandle,
-      _outputKindList = outputKindList cfg,
-      _shouldSkipLink = shouldSkipLink cfg,
-      _shouldExecute = shouldExecute cfg,
-      _installDir = installDir cfg,
-      _executeArgs = args cfg
+toBuildConfig :: Config -> Build.Config
+toBuildConfig cfg = do
+  Build.Config
+    { outputKindList = outputKindList cfg,
+      shouldSkipLink = shouldSkipLink cfg,
+      shouldExecute = shouldExecute cfg,
+      installDir = installDir cfg,
+      executeArgs = args cfg
     }
