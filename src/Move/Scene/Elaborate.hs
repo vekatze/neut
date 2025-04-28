@@ -109,8 +109,8 @@ data Handle
     currentSource :: Source
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new gensymHandle
   weakDefHandle <- WeakDefinition.new gensymHandle
@@ -129,7 +129,6 @@ new gensymHandle = do
   topCandidateHandle <- TopCandidate.new
   rawImportSummaryHandle <- RawImportSummary.new
   globalRemarkHandle <- GlobalRemark.new
-  envHandle <- Env.new
   currentSource <- toApp $ Env.getCurrentSource envHandle
   return $ Handle {..}
 

@@ -103,7 +103,7 @@ checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (gensymHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h)
   void $
     toApp $
       Parse.parse (parseHandle h) target source cacheOrContent
@@ -113,7 +113,7 @@ checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elabora
 checkSource' h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (gensymHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h)
   toApp $
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborateThenInspect hElaborate target

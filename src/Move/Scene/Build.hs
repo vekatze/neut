@@ -164,7 +164,7 @@ compile h target outputKindList contentSeq = do
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
-    hElaborate <- Elaborate.new (gensymHandle h)
+    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
     hl <- Lower.new (gensymHandle h)
