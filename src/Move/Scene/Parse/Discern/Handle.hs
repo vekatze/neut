@@ -53,7 +53,7 @@ new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   locatorHandle <- Locator.new
   globalHandle <- Global.new
-  aliasHandle <- Alias.new
+  aliasHandle <- Alias.new envHandle
   keyArgHandle <- KeyArg.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new

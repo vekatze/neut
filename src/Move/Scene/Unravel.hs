@@ -87,7 +87,7 @@ new envHandle gensymHandle = do
   importHandle <- Import.new envHandle gensymHandle
   parseHandle <- ParseCore.new gensymHandle
   locatorHandle <- Locator.new
-  aliasHandle <- Alias.new
+  aliasHandle <- Alias.new envHandle
   antecedentHandle <- Antecedent.new
   artifactHandle <- Artifact.new
   visitEnvRef <- asks App.visitEnv
