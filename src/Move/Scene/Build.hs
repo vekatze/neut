@@ -111,7 +111,7 @@ new cfg envHandle gensymHandle = do
   ensureMainHandle <- EnsureMain.new
   parseHandle <- Parse.new envHandle gensymHandle
   clarifyHandle <- Clarify.new gensymHandle
-  llvmHandle <- LLVM.new
+  llvmHandle <- LLVM.new envHandle
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new envHandle
   installHandle <- Install.new envHandle

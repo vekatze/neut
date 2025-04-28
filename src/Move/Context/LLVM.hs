@@ -39,10 +39,9 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: App Handle
-new = do
+new :: Env.Handle -> App Handle
+new envHandle = do
   debugHandle <- Debug.new
-  envHandle <- Env.new
   pathHandle <- Path.new envHandle
   externalHandle <- External.new
   return $ Handle {..}
