@@ -12,6 +12,7 @@ import Move.Act.LSP qualified as LSP
 import Move.Act.Version qualified as Version
 import Move.Act.Zen qualified as Zen
 import Move.Console.EnsureExecutables (ensureExecutables)
+import Move.Console.Report qualified as Report
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Color qualified as Color
@@ -40,6 +41,7 @@ execute = do
     locatorHandle <- liftIO $ Locator.new envHandle tagHandle
     antecedentHandle <- liftIO Antecedent.new
     colorHandle <- liftIO Color.new
+    reportHandle <- Report.new colorHandle
     debugHandle <- liftIO $ Debug.new colorHandle
     c <- liftIO OptParse.parseCommand
     Throw.run colorHandle $ do
@@ -49,7 +51,7 @@ execute = do
           h <- Build.new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
           Build.build h cfg
         C.Check cfg -> do
-          h <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+          h <- Check.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           Check.check h cfg
         C.Clean cfg -> do
           h <- Clean.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
