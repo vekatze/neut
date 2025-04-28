@@ -13,6 +13,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
+import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -47,8 +48,8 @@ data Handle = Handle
     initSourceHandle :: InitSource.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
   loadHandle <- Load.new envHandle
   parseCoreHandle <- ParseCore.new gensymHandle
@@ -58,7 +59,7 @@ new envHandle gensymHandle locatorHandle = do
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle
   return $ Handle {..}
 
 format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> EIO T.Text

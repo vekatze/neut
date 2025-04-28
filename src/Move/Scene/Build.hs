@@ -27,6 +27,7 @@ import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
+import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify qualified as Clarify
@@ -97,8 +98,8 @@ data Handle = Handle
     _executeArgs :: [String]
   }
 
-new :: Config -> Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new cfg envHandle gensymHandle locatorHandle = do
+new :: Config -> Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new cfg envHandle gensymHandle locatorHandle tagHandle = do
   debugHandle <- Debug.new
   initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
   unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
@@ -107,7 +108,7 @@ new cfg envHandle gensymHandle locatorHandle = do
   reportHandle <- Report.new
   cacheHandle <- Cache.new envHandle
   colorHandle <- Color.new
-  initSourceHandle <- InitSource.new envHandle locatorHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle
   pathHandle <- Path.new envHandle
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new locatorHandle

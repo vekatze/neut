@@ -17,6 +17,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptParse qualified as OptParse
+import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Command qualified as C
@@ -33,15 +34,16 @@ execute = do
     gensymHandle <- liftIO Gensym.new
     envHandle <- liftIO Env.new
     locatorHandle <- Locator.new envHandle
+    tagHandle <- Tag.new
     c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables
       case c of
         C.Build cfg -> do
-          h <- Build.new cfg envHandle gensymHandle locatorHandle
+          h <- Build.new cfg envHandle gensymHandle locatorHandle tagHandle
           Build.build h cfg
         C.Check cfg -> do
-          h <- Check.new envHandle gensymHandle locatorHandle
+          h <- Check.new envHandle gensymHandle locatorHandle tagHandle
           Check.check h cfg
         C.Clean cfg -> do
           h <- Clean.new envHandle gensymHandle locatorHandle
@@ -50,19 +52,19 @@ execute = do
           h <- Archive.new envHandle gensymHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
-          h <- Create.new envHandle gensymHandle locatorHandle
+          h <- Create.new envHandle gensymHandle locatorHandle tagHandle
           Create.create h cfg
         C.Get cfg -> do
-          h <- Get.new envHandle gensymHandle locatorHandle
+          h <- Get.new envHandle gensymHandle locatorHandle tagHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new envHandle gensymHandle locatorHandle
+          h <- Format.new envHandle gensymHandle locatorHandle tagHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          h <- LSP.new envHandle gensymHandle locatorHandle
+          h <- LSP.new envHandle gensymHandle locatorHandle tagHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
-          h <- Zen.new cfg envHandle gensymHandle locatorHandle
+          h <- Zen.new cfg envHandle gensymHandle locatorHandle tagHandle
           Zen.zen h cfg

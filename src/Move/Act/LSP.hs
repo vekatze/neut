@@ -10,6 +10,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
+import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -24,11 +25,11 @@ data Handle
     lspHandle :: L.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   fetchHandle <- Fetch.new envHandle gensymHandle
-  lspHandle <- L.new envHandle gensymHandle locatorHandle
+  lspHandle <- L.new envHandle gensymHandle locatorHandle tagHandle
   return $ Handle {..}
 
 lsp :: Handle -> App ()

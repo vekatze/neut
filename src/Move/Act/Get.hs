@@ -11,6 +11,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
+import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Clean qualified as Clean
@@ -29,12 +30,12 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   fetchHandle <- Fetch.new envHandle gensymHandle
   cleanHandle <- Clean.new envHandle gensymHandle locatorHandle
-  checkHandle <- Check.new envHandle gensymHandle locatorHandle
+  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle
   return $ Handle {..}
 
 get :: Handle -> Config -> App ()

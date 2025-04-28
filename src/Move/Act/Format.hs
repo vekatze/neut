@@ -12,6 +12,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
+import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Format qualified as Format
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -27,11 +28,11 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
-  formatHandle <- Format.new envHandle gensymHandle locatorHandle
+  formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()
