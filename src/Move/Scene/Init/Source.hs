@@ -50,7 +50,7 @@ new envHandle locatorHandle = do
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   unusedStaticFileHandle <- UnusedStaticFile.new
   localRemarkHandle <- LocalRemark.new
-  globalHandle <- Global.new envHandle
+  globalHandle <- Global.new envHandle locatorHandle
   aliasHandle <- Alias.new envHandle
   tagHandle <- Tag.new
   rawImportSummaryHandle <- RawImportSummary.new

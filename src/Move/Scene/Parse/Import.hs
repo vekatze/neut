@@ -72,7 +72,7 @@ new envHandle gensymHandle locatorHandle = do
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   shiftToLatestHandle <- STL.new
   aliasHandle <- Alias.new envHandle
-  globalHandle <- Global.new envHandle
+  globalHandle <- Global.new envHandle locatorHandle
   moduleHandle <- Module.new
   rawImportSummaryHandle <- RawImportSummary.new
   tagHandle <- Tag.new
