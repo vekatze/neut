@@ -1,4 +1,9 @@
-module Move.Act.Get (get) where
+module Move.Act.Get
+  ( Handle,
+    new,
+    get,
+  )
+where
 
 import Control.Monad
 import Move.Context.App
@@ -14,18 +19,30 @@ import Rule.Config.Get
 import Rule.Module
 import Prelude hiding (log)
 
-get :: Config -> App ()
-get cfg = do
-  gensymHandle <- Gensym.new
-  hc <- InitCompiler.new gensymHandle
-  toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
+data Handle
+  = Handle
+  { initCompilerHandle :: InitCompiler.Handle,
+    fetchHandle :: Fetch.Handle,
+    envHandle :: Env.Handle,
+    cleanHandle :: Clean.Handle,
+    checkHandle :: Check.Handle
+  }
+
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  initCompilerHandle <- InitCompiler.new gensymHandle
+  fetchHandle <- Fetch.new gensymHandle
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
-  toApp $ Path.ensureNotInDependencyDir mainModule
   cleanHandle <- Clean.new gensymHandle
-  toApp $ Clean.clean cleanHandle
-  h <- Fetch.new gensymHandle
-  toApp $ Fetch.insertDependency h (moduleAliasText cfg) (moduleURL cfg)
-  toApp $ InitCompiler.initializeCompilerWithPath hc (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
-  hck <- Check.new gensymHandle
-  void $ Check.checkAll hck
+  checkHandle <- Check.new gensymHandle
+  return $ Handle {..}
+
+get :: Handle -> Config -> App ()
+get h cfg = do
+  toApp $ InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+  mainModule <- toApp $ Env.getMainModule (envHandle h)
+  toApp $ Path.ensureNotInDependencyDir mainModule
+  toApp $ Clean.clean (cleanHandle h)
+  toApp $ Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (moduleURL cfg)
+  toApp $ InitCompiler.initializeCompilerWithPath (initCompilerHandle h) (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
+  void $ Check.checkAll (checkHandle h)

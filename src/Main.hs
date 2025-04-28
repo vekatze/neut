@@ -48,8 +48,9 @@ execute = do
         C.Create cfg -> do
           h <- Create.new gensymHandle
           Create.create h cfg
-        C.Get cfg ->
-          Get.get cfg
+        C.Get cfg -> do
+          h <- Get.new gensymHandle
+          Get.get h cfg
         C.Format cfg -> do
           h <- Format.new gensymHandle
           toApp $ Format.format h cfg
