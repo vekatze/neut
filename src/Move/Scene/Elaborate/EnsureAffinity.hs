@@ -67,13 +67,12 @@ data InnerHandle
     mustPerformExpCheck :: Bool
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> App Handle
+new envHandle gensymHandle optDataHandle = do
   reduceHandle <- Reduce.new envHandle gensymHandle
   substHandle <- Subst.new gensymHandle
   typeHandle <- Type.new
   weakDefHandle <- WeakDefinition.new gensymHandle
-  optDataHandle <- OptimizableData.new
   return $ Handle {..}
 
 ensureAffinity :: Handle -> TM.Term -> EIO [R.Remark]

@@ -125,7 +125,7 @@ new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle 
   defHandle <- Definition.new
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new envHandle gensymHandle
-  affHandle <- EnsureAffinity.new envHandle gensymHandle
+  affHandle <- EnsureAffinity.new envHandle gensymHandle optDataHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
   pathHandle <- Path.new envHandle debugHandle
