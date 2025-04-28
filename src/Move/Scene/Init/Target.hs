@@ -31,7 +31,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
 new envHandle gensymHandle locatorHandle = do
-  clarifyHandle <- Clarify.new envHandle gensymHandle locatorHandle
+  clarifyHandle <- Clarify.new gensymHandle locatorHandle
   unravelHandle <- Unravel.new envHandle gensymHandle
   antecedentHandle <- Antecedent.new
   globalRemarkHandle <- GlobalRemark.new

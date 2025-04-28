@@ -77,12 +77,12 @@ data Handle
     baseSize :: Int
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Gensym.Handle -> Locator.Handle -> App Handle
+new gensymHandle locatorHandle = do
   linearizeHandle <- Linearize.new gensymHandle
   utilityHandle <- Utility.new gensymHandle
   auxEnvHandle <- AuxEnv.new
-  sigmaHandle <- Sigma.new envHandle gensymHandle
+  sigmaHandle <- Sigma.new gensymHandle locatorHandle
   optDataHandle <- OptimizableData.new
   reduceHandle <- Reduce.new gensymHandle
   substHandle <- Subst.new gensymHandle
