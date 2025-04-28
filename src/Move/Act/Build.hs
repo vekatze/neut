@@ -1,4 +1,9 @@
-module Move.Act.Build (build) where
+module Move.Act.Build
+  ( Handle,
+    new,
+    build,
+  )
+where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
@@ -15,28 +20,39 @@ import Rule.Config.Build
 import Rule.Target
 import Prelude hiding (log)
 
-build :: Config -> App ()
-build cfg = do
-  gensymHandle <- Gensym.new
-  setup cfg gensymHandle
-  h <- Collect.new
-  target <- toApp $ Collect.getMainTarget h $ targetName cfg
-  envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
-  buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
-  Build.buildTarget buildHandle mainModule (Main target)
+data Handle
+  = Handle
+  { collectHandle :: Collect.Handle,
+    envHandle :: Env.Handle,
+    initCompilerHandle :: InitCompiler.Handle,
+    fetchHandle :: Fetch.Handle,
+    buildHandle :: Build.Handle
+  }
 
-setup :: Config -> Gensym.Handle -> App ()
-setup cfg gensymHandle = do
-  toApp $ LLVM.ensureSetupSanity cfg
-  hc <- InitCompiler.new gensymHandle
-  toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
+new :: Config -> Gensym.Handle -> App Handle
+new cfg gensymHandle = do
+  collectHandle <- Collect.new
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
+  initCompilerHandle <- InitCompiler.new gensymHandle
+  fetchHandle <- Fetch.new gensymHandle
+  buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
+  return $ Handle {..}
+
+build :: Handle -> Config -> App ()
+build h cfg = do
+  setup h cfg
+  target <- toApp $ Collect.getMainTarget (collectHandle h) $ targetName cfg
+  mainModule <- toApp $ Env.getMainModule (envHandle h)
+  Build.buildTarget (buildHandle h) mainModule (Main target)
+
+setup :: Handle -> Config -> App ()
+setup h cfg = do
+  toApp $ LLVM.ensureSetupSanity cfg
+  toApp $ InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+  mainModule <- toApp $ Env.getMainModule (envHandle h)
   toApp $ Path.ensureNotInDependencyDir mainModule
-  liftIO $ Env.setBuildMode envHandle $ buildMode cfg
-  h <- Fetch.new gensymHandle
-  toApp $ Fetch.fetch h mainModule
+  liftIO $ Env.setBuildMode (envHandle h) $ buildMode cfg
+  toApp $ Fetch.fetch (fetchHandle h) mainModule
 
 toBuildConfig :: Config -> Build.Config
 toBuildConfig cfg = do
