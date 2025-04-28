@@ -57,15 +57,14 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   unravelHandle <- Unravel.new gensymHandle
   clangHandle <- Clang.new
   pathHandle <- Path.new
   antecedentHandle <- Antecedent.new
   getModuleHandle <- GetModule.new gensymHandle
   sourceReflectHandle <- SourceReflect.new gensymHandle
-  envHandle <- Env.new
   gacHandle <- GAC.new
   return $ Handle {..}
 

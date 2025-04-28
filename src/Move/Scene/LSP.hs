@@ -51,7 +51,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
-  completeHandle <- Complete.new gensymHandle
+  completeHandle <- Complete.new envHandle gensymHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   findDefinitionHandle <- FindDefinition.new gensymHandle
   highlightHandle <- Highlight.new gensymHandle
