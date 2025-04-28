@@ -112,9 +112,9 @@ data Handle
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
-  reduceHandle <- Reduce.new
+  reduceHandle <- Reduce.new gensymHandle
   weakDefHandle <- WeakDefinition.new gensymHandle
-  substHandle <- Subst.new
+  substHandle <- Subst.new gensymHandle
   typeHandle <- Type.new
   weakDeclHandle <- WeakDecl.new
   defHandle <- Definition.new

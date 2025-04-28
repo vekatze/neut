@@ -97,8 +97,8 @@ data Handle
 new :: Elaborate.HandleEnv -> Gensym.Handle -> App Handle
 new handleEnv@(Elaborate.HandleEnv {..}) gensymHandle = do
   envHandle <- Env.new
-  substHandle <- Subst.new
-  reduceHandle <- Reduce.new
+  substHandle <- Subst.new gensymHandle
+  reduceHandle <- Reduce.new gensymHandle
   unifyHandle <- Unify.new handleEnv gensymHandle
   discernHandle <- Discern.new
   keyArgHandle <- KeyArg.new

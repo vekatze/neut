@@ -68,8 +68,8 @@ data InnerHandle
 
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
-  reduceHandle <- Reduce.new
-  substHandle <- Subst.new
+  reduceHandle <- Reduce.new gensymHandle
+  substHandle <- Subst.new gensymHandle
   typeHandle <- Type.new
   weakDefHandle <- WeakDefinition.new gensymHandle
   optDataHandle <- OptimizableData.new

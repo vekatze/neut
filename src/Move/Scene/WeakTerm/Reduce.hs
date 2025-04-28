@@ -16,6 +16,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env qualified as Env
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
@@ -57,9 +58,9 @@ reduce _handle e = do
   let h' = InnerHandle {..}
   reduce' h' e
 
-new :: App Handle
-new = do
-  substHandle <- Subst.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  substHandle <- Subst.new gensymHandle
   envHandle <- Env.new
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)

@@ -71,9 +71,9 @@ data Handle = Handle
 
 new :: Elaborate.HandleEnv -> Gensym.Handle -> App Handle
 new Elaborate.HandleEnv {..} gensymHandle = do
-  reduceHandle <- Reduce.new
-  substHandle <- Subst.new
-  fillHandle <- Fill.new
+  reduceHandle <- Reduce.new gensymHandle
+  substHandle <- Subst.new gensymHandle
+  fillHandle <- Fill.new gensymHandle
   typeHandle <- Type.new
   envHandle <- Env.new
   source <- toApp $ Env.getCurrentSource envHandle
