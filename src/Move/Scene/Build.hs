@@ -69,6 +69,7 @@ data Config = Config
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     debugHandle :: Debug.Handle,
+    unravelHandle :: Unravel.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -79,6 +80,7 @@ data Handle = Handle
 new :: Config -> Gensym.Handle -> App Handle
 new cfg gensymHandle = do
   debugHandle <- Debug.new
+  unravelHandle <- Unravel.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -91,8 +93,7 @@ buildTarget h (M.MainModule baseModule) target = do
   toApp $ Debug.report (debugHandle h) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
   InitTarget.new (gensymHandle h) >>= liftIO . InitTarget.initializeForTarget
-  h' <- Unravel.new
-  (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel h' baseModule target'
+  (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign h target moduleList
   h'' <- Load.new
