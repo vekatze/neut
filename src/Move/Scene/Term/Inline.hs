@@ -18,6 +18,7 @@ import Move.Context.App
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseError, toApp)
 import Move.Context.Env qualified as Env
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Term.Refresh qualified as Refresh
 import Move.Scene.Term.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -52,11 +53,11 @@ data InnerHandle = InnerHandle
     location :: Hint
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   envHandle <- Env.new
   currentSource <- toApp $ Env.getCurrentSource envHandle
-  substHandle <- Subst.new
+  substHandle <- Subst.new gensymHandle
   refreshHandle <- Refresh.new
   defMapHandle <- Definition.new
   return $ Handle {..}

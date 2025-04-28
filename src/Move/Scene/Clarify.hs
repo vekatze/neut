@@ -87,7 +87,7 @@ new = do
   locatorHandle <- Locator.new
   optDataHandle <- OptimizableData.new
   reduceHandle <- Reduce.new
-  substHandle <- Subst.new
+  substHandle <- Subst.new gensymHandle
   compDefHandle <- CompDefinition.new
   baseSize <- toApp Env.getBaseSize'
   return $ Handle {..}
