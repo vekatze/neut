@@ -59,7 +59,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
-  unravelHandle <- Unravel.new gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle
   clangHandle <- Clang.new
   pathHandle <- Path.new
   antecedentHandle <- Antecedent.new

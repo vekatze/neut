@@ -98,8 +98,8 @@ data Handle = Handle
 new :: Config -> Env.Handle -> Gensym.Handle -> App Handle
 new cfg envHandle gensymHandle = do
   debugHandle <- Debug.new
-  initTargetHandle <- InitTarget.new gensymHandle
-  unravelHandle <- Unravel.new gensymHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle
   loadHandle <- Load.new
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new

@@ -23,7 +23,7 @@ data Handle = Handle
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
-  unravelHandle <- Unravel.new gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle
   return $ Handle {..}
 
 clean :: Handle -> EIO ()

@@ -78,9 +78,8 @@ data Handle
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  envHandle <- Env.new
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   debugHandle <- Debug.new
   pathHandle <- Path.new
   moduleHandle <- ModuleReflect.new gensymHandle

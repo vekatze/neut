@@ -9,6 +9,7 @@ import Control.Monad.IO.Class
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Definition qualified as Definition
+import Move.Context.Env qualified as Env
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -27,10 +28,10 @@ data Handle
     typeHandle :: Type.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   clarifyHandle <- Clarify.new gensymHandle
-  unravelHandle <- Unravel.new gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle
   antecedentHandle <- Antecedent.new
   globalRemarkHandle <- GlobalRemark.new
   weakDefinitionHandle <- WeakDefinition.new gensymHandle

@@ -48,7 +48,7 @@ data Handle = Handle
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
-  unravelHandle <- Unravel.new gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle
   loadHandle <- Load.new
   parseCoreHandle <- ParseCore.new gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle
@@ -56,7 +56,7 @@ new envHandle gensymHandle = do
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  initTargetHandle <- InitTarget.new gensymHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle
   initSourceHandle <- InitSource.new envHandle
   return $ Handle {..}
 

@@ -50,11 +50,11 @@ new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new
-  unravelHandle <- Unravel.new gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle
-  initTargetHandle <- InitTarget.new gensymHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle
   return $ Handle {..}
 
 check :: Handle -> App [Remark]

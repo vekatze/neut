@@ -32,7 +32,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
-  unravelHandle <- Unravel.new gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle
   getSourceHandle <- GetSource.new envHandle gensymHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
   gacHandle <- GAC.new
