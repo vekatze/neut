@@ -77,6 +77,7 @@ data Handle = Handle
     envHandle :: Env.Handle,
     cacheHandle :: Cache.Handle,
     colorHandle :: Color.Handle,
+    initSourceHandle :: InitSource.Handle,
     llvmHandle :: LLVM.Handle,
     emitHandle :: Emit.Handle,
     _outputKindList :: [OutputKind],
@@ -97,6 +98,7 @@ new cfg gensymHandle = do
   envHandle <- Env.new
   cacheHandle <- Cache.new
   colorHandle <- Color.new
+  initSourceHandle <- InitSource.new
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new
   let _outputKindList = outputKindList cfg
@@ -143,8 +145,7 @@ compile h target outputKindList contentSeq = do
   let completedTitle = getCompletedTitle numOfItems
   hp <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
-    hInit <- InitSource.new
-    toApp (InitSource.initializeForSource hInit source)
+    toApp (InitSource.initializeForSource (initSourceHandle h) source)
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     hParse <- Parse.new
