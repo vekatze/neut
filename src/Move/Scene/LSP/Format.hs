@@ -12,6 +12,7 @@ import Language.LSP.VFS
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -28,9 +29,9 @@ newtype Handle
   { formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
-  formatHandle <- Format.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+  formatHandle <- Format.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]

@@ -54,15 +54,22 @@ data Handle
     colorHandle :: Color.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
-  debugHandle <- Debug.new colorHandle
+new ::
+  Env.Handle ->
+  Gensym.Handle ->
+  Color.Handle ->
+  Debug.Handle ->
+  Locator.Handle ->
+  Tag.Handle ->
+  Antecedent.Handle ->
+  App Handle
+new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   loadHandle <- Load.new envHandle colorHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   parseHandle <- Parse.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 check :: Handle -> App [Remark]

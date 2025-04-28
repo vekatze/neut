@@ -112,8 +112,8 @@ new ::
   Antecedent.Handle ->
   App Handle
 new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle colorHandle
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new colorHandle
