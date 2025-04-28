@@ -6,11 +6,8 @@ module Move.Context.OptimizableData
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.DefiniteDescription qualified as DD
 import Rule.OptimizableData
 import Prelude hiding (lookup)
@@ -20,9 +17,9 @@ newtype Handle
   { optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData)
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  optDataMapRef <- asks App.optDataMap
+  optDataMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert :: Handle -> DD.DefiniteDescription -> OptimizableData -> IO ()

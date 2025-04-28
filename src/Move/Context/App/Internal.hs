@@ -30,7 +30,6 @@ import Rule.Module qualified as M
 import Rule.ModuleAlias qualified as MA
 import Rule.ModuleDigest qualified as MD
 import Rule.Opacity qualified as O
-import Rule.OptimizableData
 import Rule.RawImportSummary (RawImportSummary)
 import Rule.Remark qualified as Remark
 import Rule.Source qualified as Source
@@ -68,7 +67,6 @@ data Env = Env
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
-    optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
@@ -109,7 +107,6 @@ newEnv = do
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
   compAuxEnv <- newIORef Map.empty
-  optDataMap <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty
