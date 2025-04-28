@@ -44,14 +44,11 @@ import Rule.TopNameMap
 import Rule.VarDefKind
 import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
-import System.IO
 
 data Env = Env
   { enableDebugMode :: IORef Bool,
     startTime :: UTCTime,
     endOfEntry :: IORef T.Text,
-    shouldColorizeStdout :: IORef Bool,
-    shouldColorizeStderr :: IORef Bool,
     moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
@@ -97,8 +94,6 @@ newEnv = do
   startTime <- getCurrentTime
   enableDebugMode <- newIORef False
   endOfEntry <- newIORef ""
-  shouldColorizeStdout <- hIsTerminalDevice stdout >>= newIORef
-  shouldColorizeStderr <- hIsTerminalDevice stderr >>= newIORef
   moduleCacheMap <- newIORef Map.empty
   moduleAliasMap <- newIORef Map.empty
   locatorAliasMap <- newIORef Map.empty

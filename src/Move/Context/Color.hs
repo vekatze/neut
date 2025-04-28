@@ -11,12 +11,9 @@ module Move.Context.Color
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
 import Data.IORef
 import Data.Text.Encoding
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Log qualified as L
 import System.IO hiding (Handle)
 
@@ -26,10 +23,10 @@ data Handle
     shouldColorizeStderrRef :: IORef Bool
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  shouldColorizeStdoutRef <- asks App.shouldColorizeStdout
-  shouldColorizeStderrRef <- asks App.shouldColorizeStderr
+  shouldColorizeStdoutRef <- hIsTerminalDevice stdout >>= newIORef
+  shouldColorizeStderrRef <- hIsTerminalDevice stderr >>= newIORef
   return $ Handle {..}
 
 setShouldColorizeStdout :: Handle -> Bool -> IO ()
