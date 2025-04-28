@@ -15,6 +15,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -42,15 +43,16 @@ new ::
   Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  OptimizableData.Handle ->
   KeyArg.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
   cleanHandle <- Clean.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
-  checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 get :: Handle -> Config -> App ()

@@ -13,6 +13,7 @@ import Move.Context.Definition qualified as Definition
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
@@ -32,9 +33,9 @@ data Handle
     typeHandle :: Type.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
-  clarifyHandle <- Clarify.new gensymHandle locatorHandle
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+  clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   globalRemarkHandle <- GlobalRemark.new
   weakDefinitionHandle <- WeakDefinition.new gensymHandle

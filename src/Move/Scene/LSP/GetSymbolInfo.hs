@@ -22,6 +22,7 @@ import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
@@ -56,12 +57,12 @@ data Handle
     keyArgHandle :: KeyArg.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
   getSourceHandle <- GetSource.new envHandle gensymHandle
   pathHandle <- Path.new envHandle debugHandle
   findDefHandle <- FindDefinition.new envHandle gensymHandle debugHandle
-  checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 getSymbolInfo ::

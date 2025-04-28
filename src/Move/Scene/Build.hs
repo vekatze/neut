@@ -28,6 +28,7 @@ import Move.Context.External qualified as External
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
@@ -111,12 +112,13 @@ new ::
   Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  OptimizableData.Handle ->
   KeyArg.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new
@@ -126,7 +128,7 @@ new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandl
   externalHandle <- External.new debugHandle
   ensureMainHandle <- EnsureMain.new locatorHandle
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
-  clarifyHandle <- Clarify.new gensymHandle locatorHandle
+  clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
   llvmHandle <- LLVM.new envHandle debugHandle
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new envHandle colorHandle debugHandle

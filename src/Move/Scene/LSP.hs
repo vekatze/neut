@@ -27,6 +27,7 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
@@ -60,7 +61,8 @@ data Handle
     tagHandle :: Tag.Handle,
     antecedentHandle :: Antecedent.Handle,
     formatHandle :: Format.Handle,
-    keyArgHandle :: KeyArg.Handle
+    keyArgHandle :: KeyArg.Handle,
+    optDataHandle :: OptimizableData.Handle
   }
 
 new ::
@@ -70,17 +72,18 @@ new ::
   Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  OptimizableData.Handle ->
   KeyArg.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
   completeHandle <- Complete.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
   highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
   referencesHandle <- References.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
-  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 lsp :: Handle -> App Int
@@ -128,12 +131,12 @@ handlers h =
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
-        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (reportHandle h) (debugHandle h) (locatorHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
+        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (reportHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
         Lint.lint h',
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
-        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (reportHandle h) (debugHandle h) (locatorHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
+        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (reportHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
         Lint.lint h',
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),
@@ -175,7 +178,7 @@ handlers h =
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
+        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
         textOrNone <- liftAppM (initCompilerHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
         case textOrNone of
           Nothing ->
@@ -214,7 +217,7 @@ handlers h =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                hck <- lift $ Check.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
+                hck <- lift $ Check.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
                 _ <- liftAppM (initCompilerHandle h) $ lift $ Check.checkAll hck
                 responder $ Right $ InR Null
           _ ->
