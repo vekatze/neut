@@ -57,7 +57,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   parseHandle <- P.new gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+  discernHandle <- Discern.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle debugHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle

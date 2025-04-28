@@ -56,7 +56,8 @@ data Handle
     colorHandle :: Color.Handle,
     debugHandle :: Debug.Handle,
     keyArgHandle :: KeyArg.Handle,
-    optDataHandle :: OptimizableData.Handle
+    optDataHandle :: OptimizableData.Handle,
+    unusedHandle :: Unused.Handle
   }
 
 new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
@@ -82,7 +83,7 @@ getSymbolInfo h params = do
     LT.Local varID _ -> do
       weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
+      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
       let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'
