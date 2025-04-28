@@ -29,6 +29,7 @@ import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -74,16 +75,17 @@ new ::
   Locator.Handle ->
   OptimizableData.Handle ->
   KeyArg.Handle ->
+  Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   completeHandle <- Complete.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
   highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
   referencesHandle <- References.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
-  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 lsp :: Handle -> App Int

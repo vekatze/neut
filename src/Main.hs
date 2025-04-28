@@ -25,6 +25,7 @@ import Move.Context.OptParse qualified as OptParse
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Command qualified as C
 import System.IO
@@ -47,6 +48,7 @@ execute = do
     debugHandle <- liftIO $ Debug.new colorHandle
     keyArgHandle <- liftIO $ KeyArg.new envHandle
     optDataHandle <- liftIO OptimizableData.new
+    unusedHandle <- Unused.new
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do
       ensureExecutables
@@ -70,10 +72,10 @@ execute = do
           h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+          h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+          h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg

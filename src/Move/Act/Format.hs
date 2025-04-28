@@ -19,6 +19,7 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
 import Move.Context.Tag qualified as Tag
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Format qualified as Format
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -34,11 +35,11 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
-  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

@@ -50,15 +50,14 @@ data Handle = Handle
     initSourceHandle :: InitSource.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   parseCoreHandle <- ParseCore.new gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
-  unusedHandle <- Unused.new
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
