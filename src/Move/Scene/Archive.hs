@@ -27,11 +27,10 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: App Handle
-new = do
+new :: Env.Handle -> App Handle
+new envHandle = do
   externalHandle <- External.new
   moduleSaveHandle <- ModuleSave.new
-  envHandle <- Env.new
   return $ Handle {..}
 
 archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()

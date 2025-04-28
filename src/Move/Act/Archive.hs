@@ -33,7 +33,7 @@ new envHandle gensymHandle = do
   initCompilerHandle <- InitCompiler.new gensymHandle
   packageVersionHandle <- PV.new
   ensReflectHandle <- EnsReflect.new gensymHandle
-  archiveHandle <- Archive.new
+  archiveHandle <- Archive.new envHandle
   return $ Handle {..}
 
 archive :: Handle -> Config -> EIO ()
