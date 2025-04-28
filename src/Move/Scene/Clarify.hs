@@ -80,7 +80,7 @@ data Handle
 new :: App Handle
 new = do
   gensymHandle <- Gensym.new
-  linearizeHandle <- Linearize.new
+  linearizeHandle <- Linearize.new gensymHandle
   utilityHandle <- Utility.new gensymHandle
   auxEnvHandle <- AuxEnv.new
   sigmaHandle <- Sigma.new gensymHandle

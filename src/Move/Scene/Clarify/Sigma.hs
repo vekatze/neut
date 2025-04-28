@@ -39,7 +39,7 @@ data Handle
 
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
-  linearizeHandle <- Linearize.new
+  linearizeHandle <- Linearize.new gensymHandle
   locatorHandle <- Locator.new
   utilityHandle <- Utility.new gensymHandle
   return $ Handle {..}

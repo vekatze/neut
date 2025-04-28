@@ -23,9 +23,8 @@ data Handle
     utilityHandle :: Utility.Handle
   }
 
-new :: App Handle
-new = do
-  gensymHandle <- Gensym.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   utilityHandle <- Utility.new gensymHandle
   return $ Handle {..}
 
