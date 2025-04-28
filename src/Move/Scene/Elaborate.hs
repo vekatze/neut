@@ -28,6 +28,7 @@ import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
@@ -113,8 +114,8 @@ data Handle
     currentSource :: Source
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new envHandle gensymHandle
   weakDefHandle <- WeakDefinition.new gensymHandle
@@ -125,7 +126,7 @@ new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle ante
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new envHandle gensymHandle
   affHandle <- EnsureAffinity.new envHandle gensymHandle
-  inferHandle <- Infer.new handleEnv envHandle gensymHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  inferHandle <- Infer.new handleEnv envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
   pathHandle <- Path.new envHandle debugHandle
   symLocHandle <- SymLoc.new

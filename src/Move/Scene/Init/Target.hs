@@ -36,7 +36,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
   clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   globalRemarkHandle <- GlobalRemark.new
   weakDefinitionHandle <- WeakDefinition.new gensymHandle
   definitionHandle <- Definition.new

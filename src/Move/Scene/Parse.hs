@@ -19,6 +19,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
@@ -61,13 +62,13 @@ data Handle
     unusedVariableHandle :: UnusedVariable.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
   parseHandle <- P.new gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  discernHandle <- Discern.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle debugHandle
-  importHandle <- Import.new envHandle gensymHandle locatorHandle keyArgHandle tagHandle antecedentHandle
-  globalHandle <- Global.new envHandle locatorHandle keyArgHandle tagHandle
+  importHandle <- Import.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
   localRemarkHandle <- LocalRemark.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new

@@ -20,6 +20,7 @@ import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
+import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
@@ -66,15 +67,15 @@ data Handle
     tagHandle :: Tag.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
   unusedStaticFileHandle <- UnusedStaticFile.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
-  globalHandle <- Global.new envHandle locatorHandle keyArgHandle tagHandle
+  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
   moduleHandle <- Module.new
   rawImportSummaryHandle <- RawImportSummary.new
   return $ Handle {..}

@@ -78,11 +78,11 @@ new ::
   Antecedent.Handle ->
   App Handle
 new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
-  completeHandle <- Complete.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  completeHandle <- Complete.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
   highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
-  referencesHandle <- References.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  referencesHandle <- References.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
 

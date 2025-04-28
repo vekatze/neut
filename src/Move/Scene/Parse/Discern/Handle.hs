@@ -50,14 +50,13 @@ data Handle = Handle
     currentLayer :: Layer
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
-  globalHandle <- Global.new envHandle locatorHandle keyArgHandle tagHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   preDeclHandle <- PreDecl.new
-  optDataHandle <- OptimizableData.new
   unusedStaticFileHandle <- UnusedStaticFile.new
   unusedVariableHandle <- UnusedVariable.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
