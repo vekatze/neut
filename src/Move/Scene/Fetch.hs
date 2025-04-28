@@ -58,7 +58,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> App Handle
 new envHandle gensymHandle colorHandle debugHandle = do
   ensReflectHandle <- EnsReflect.new gensymHandle
-  moduleSaveHandle <- ModuleSave.new colorHandle
+  moduleSaveHandle <- ModuleSave.new debugHandle
   externalHandle <- External.new debugHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   reportHandle <- Report.new colorHandle

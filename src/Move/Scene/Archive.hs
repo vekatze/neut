@@ -8,7 +8,6 @@ where
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
@@ -29,10 +28,10 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
-new envHandle colorHandle debugHandle = do
+new :: Env.Handle -> Debug.Handle -> App Handle
+new envHandle debugHandle = do
   externalHandle <- External.new debugHandle
-  moduleSaveHandle <- ModuleSave.new colorHandle
+  moduleSaveHandle <- ModuleSave.new debugHandle
   return $ Handle {..}
 
 archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()

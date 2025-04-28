@@ -35,7 +35,7 @@ new envHandle gensymHandle colorHandle debugHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   packageVersionHandle <- PV.new colorHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
-  archiveHandle <- Archive.new envHandle colorHandle debugHandle
+  archiveHandle <- Archive.new envHandle debugHandle
   return $ Handle {..}
 
 archive :: Handle -> Config -> EIO ()

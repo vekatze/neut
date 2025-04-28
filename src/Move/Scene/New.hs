@@ -14,6 +14,7 @@ import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.App
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -33,9 +34,9 @@ data Handle
     reportHandle :: Report.Handle
   }
 
-new :: Color.Handle -> App Handle
-new colorHandle = do
-  moduleSaveHandle <- ModuleSave.new colorHandle
+new :: Color.Handle -> Debug.Handle -> App Handle
+new colorHandle debugHandle = do
+  moduleSaveHandle <- ModuleSave.new debugHandle
   reportHandle <- Report.new colorHandle
   return $ Handle {..}
 
