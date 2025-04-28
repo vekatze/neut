@@ -62,7 +62,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   parseHandle <- P.new gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle locatorHandle tagHandle
+  discernHandle <- Discern.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   globalHandle <- Global.new envHandle locatorHandle tagHandle

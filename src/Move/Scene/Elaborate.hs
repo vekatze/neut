@@ -18,6 +18,7 @@ import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Definition qualified as Definition
@@ -111,8 +112,8 @@ data Handle
     currentSource :: Source
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new envHandle gensymHandle
   weakDefHandle <- WeakDefinition.new gensymHandle
@@ -124,7 +125,7 @@ new envHandle gensymHandle locatorHandle tagHandle = do
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new envHandle gensymHandle
   affHandle <- EnsureAffinity.new envHandle gensymHandle
-  inferHandle <- Infer.new handleEnv envHandle gensymHandle locatorHandle tagHandle
+  inferHandle <- Infer.new handleEnv envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
   pathHandle <- Path.new envHandle
   symLocHandle <- SymLoc.new

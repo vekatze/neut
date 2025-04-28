@@ -43,9 +43,8 @@ data Handle
     moduleAliasMapRef :: IORef (Map.HashMap ModuleAlias ModuleDigest)
   }
 
-new :: Env.Handle -> Locator.Handle -> App Handle
-new envHandle locatorHandle = do
-  antecedentHandle <- Antecedent.new
+new :: Env.Handle -> Locator.Handle -> Antecedent.Handle -> App Handle
+new envHandle locatorHandle antecedentHandle = do
   locatorAliasMapRef <- asks App.locatorAliasMap
   moduleAliasMapRef <- asks App.moduleAliasMap
   return $ Handle {..}

@@ -87,7 +87,7 @@ new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   shiftToLatestHandle <- STL.new antecedentHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   parseHandle <- ParseCore.new gensymHandle
-  aliasHandle <- Alias.new envHandle locatorHandle
+  aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
   artifactHandle <- Artifact.new
   visitEnvRef <- asks App.visitEnv
   traceSourceListRef <- asks App.traceSourceList

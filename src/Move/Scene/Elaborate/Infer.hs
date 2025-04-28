@@ -16,6 +16,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Elaborate qualified as Elaborate
@@ -95,12 +96,12 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle locatorHandle tagHandle = do
+new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   substHandle <- Subst.new gensymHandle
   reduceHandle <- Reduce.new envHandle gensymHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle locatorHandle tagHandle
+  discernHandle <- Discern.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   keyArgHandle <- KeyArg.new envHandle
   weakDeclHandle <- WeakDecl.new
   optDataHandle <- OptimizableData.new

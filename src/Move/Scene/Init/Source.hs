@@ -7,6 +7,7 @@ where
 
 import Control.Monad.IO.Class
 import Move.Context.Alias qualified as Alias
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -43,15 +44,15 @@ data Handle = Handle
     weakDeclHandle :: WeakDecl.Handle
   }
 
-new :: Env.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle locatorHandle tagHandle antecedentHandle = do
   unusedVariableHandle <- UnusedVariable.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   unusedStaticFileHandle <- UnusedStaticFile.new
   localRemarkHandle <- LocalRemark.new
   globalHandle <- Global.new envHandle locatorHandle tagHandle
-  aliasHandle <- Alias.new envHandle locatorHandle
+  aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
   rawImportSummaryHandle <- RawImportSummary.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
