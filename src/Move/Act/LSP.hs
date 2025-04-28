@@ -23,11 +23,10 @@ data Handle
     lspHandle :: L.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   initCompilerHandle <- InitCompiler.new gensymHandle
   fetchHandle <- Fetch.new gensymHandle
-  envHandle <- Env.new
   lspHandle <- L.new gensymHandle
   return $ Handle {..}
 

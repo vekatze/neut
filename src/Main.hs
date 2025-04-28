@@ -57,7 +57,7 @@ execute = do
           h <- Format.new gensymHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          h <- LSP.new gensymHandle
+          h <- LSP.new envHandle gensymHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
