@@ -30,7 +30,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
-  clarifyHandle <- Clarify.new gensymHandle
+  clarifyHandle <- Clarify.new envHandle gensymHandle
   unravelHandle <- Unravel.new envHandle gensymHandle
   antecedentHandle <- Antecedent.new
   globalRemarkHandle <- GlobalRemark.new

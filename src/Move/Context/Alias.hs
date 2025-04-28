@@ -46,7 +46,7 @@ data Handle
 new :: Env.Handle -> App Handle
 new envHandle = do
   antecedentHandle <- Antecedent.new
-  locatorHandle <- Locator.new
+  locatorHandle <- Locator.new envHandle
   locatorAliasMapRef <- asks App.locatorAliasMap
   moduleAliasMapRef <- asks App.moduleAliasMap
   return $ Handle {..}

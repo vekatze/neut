@@ -86,7 +86,7 @@ new envHandle gensymHandle = do
   shiftToLatestHandle <- STL.new
   importHandle <- Import.new envHandle gensymHandle
   parseHandle <- ParseCore.new gensymHandle
-  locatorHandle <- Locator.new
+  locatorHandle <- Locator.new envHandle
   aliasHandle <- Alias.new envHandle
   antecedentHandle <- Antecedent.new
   artifactHandle <- Artifact.new

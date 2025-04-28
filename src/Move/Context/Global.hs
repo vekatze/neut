@@ -67,7 +67,7 @@ data Handle
 
 new :: Env.Handle -> App Handle
 new envHandle = do
-  locatorHandle <- Locator.new
+  locatorHandle <- Locator.new envHandle
   keyArgHandle <- KeyArg.new envHandle
   optDataHandle <- OptimizableData.new
   tagHandle <- Tag.new

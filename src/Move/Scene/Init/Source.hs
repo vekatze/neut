@@ -52,7 +52,7 @@ new envHandle = do
   localRemarkHandle <- LocalRemark.new
   globalHandle <- Global.new envHandle
   aliasHandle <- Alias.new envHandle
-  locatorHandle <- Locator.new
+  locatorHandle <- Locator.new envHandle
   tagHandle <- Tag.new
   rawImportSummaryHandle <- RawImportSummary.new
   symLocHandle <- SymLoc.new

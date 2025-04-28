@@ -14,6 +14,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
+import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Linearize qualified as Linearize
@@ -37,10 +38,10 @@ data Handle
     utilityHandle :: Utility.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   linearizeHandle <- Linearize.new gensymHandle
-  locatorHandle <- Locator.new
+  locatorHandle <- Locator.new envHandle
   utilityHandle <- Utility.new gensymHandle
   return $ Handle {..}
 

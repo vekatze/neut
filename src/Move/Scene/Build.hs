@@ -108,9 +108,9 @@ new cfg envHandle gensymHandle = do
   initSourceHandle <- InitSource.new envHandle
   pathHandle <- Path.new envHandle
   externalHandle <- External.new
-  ensureMainHandle <- EnsureMain.new
+  ensureMainHandle <- EnsureMain.new envHandle
   parseHandle <- Parse.new envHandle gensymHandle
-  clarifyHandle <- Clarify.new gensymHandle
+  clarifyHandle <- Clarify.new envHandle gensymHandle
   llvmHandle <- LLVM.new envHandle
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new envHandle
@@ -167,7 +167,7 @@ compile h target outputKindList contentSeq = do
     hElaborate <- Elaborate.new (envHandle h) (gensymHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
-    hl <- Lower.new (gensymHandle h)
+    hl <- Lower.new (envHandle h) (gensymHandle h)
     b <- toApp $ Cache.needsCompilation (cacheHandle h) outputKindList source
     if b
       then do
@@ -231,7 +231,7 @@ compileEntryPoint h mainModule target outputKindList = do
       if b
         then return []
         else do
-          hl <- Lower.new (gensymHandle h)
+          hl <- Lower.new (envHandle h) (gensymHandle h)
           mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= toApp . Lower.lowerEntryPoint hl t
           return [(Left t, mainVirtualCode)]
 
