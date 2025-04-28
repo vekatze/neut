@@ -115,7 +115,7 @@ new cfg envHandle gensymHandle = do
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new
   installHandle <- Install.new
-  executeHandle <- Execute.new
+  executeHandle <- Execute.new envHandle
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg

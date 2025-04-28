@@ -21,9 +21,8 @@ data Handle
     externalHandle :: External.Handle
   }
 
-new :: App Handle
-new = do
-  envHandle <- Env.new
+new :: Env.Handle -> App Handle
+new envHandle = do
   pathHandle <- Path.new
   externalHandle <- External.new
   return $ Handle {..}
