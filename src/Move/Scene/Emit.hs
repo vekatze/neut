@@ -49,7 +49,7 @@ data Handle
 new :: App Handle
 new = do
   gensymHandle <- Gensym.new
-  emitLowCompHandle <- EmitLowComp.new
+  emitLowCompHandle <- EmitLowComp.new gensymHandle
   reduceHandle <- Reduce.new gensymHandle
   dataSize <- toApp Env.getDataSize'
   baseSize <- toApp Env.getBaseSize'

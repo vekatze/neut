@@ -30,9 +30,8 @@ data Handle = Handle
     emitOpHandle :: EmitOp.Handle
   }
 
-new :: App Handle
-new = do
-  gensymHandle <- Gensym.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   emitOpHandle <- toApp EmitOp.new
   return
     Handle
