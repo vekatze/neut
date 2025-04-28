@@ -44,7 +44,7 @@ execute = do
     reportHandle <- Report.new colorHandle
     debugHandle <- liftIO $ Debug.new colorHandle
     c <- liftIO OptParse.parseCommand
-    Throw.run colorHandle $ do
+    Throw.run reportHandle $ do
       ensureExecutables
       case c of
         C.Build cfg -> do
