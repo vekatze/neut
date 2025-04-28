@@ -79,8 +79,8 @@ data Handle
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   debugHandle <- Debug.new
   pathHandle <- Path.new envHandle
   moduleHandle <- ModuleReflect.new gensymHandle
@@ -88,7 +88,6 @@ new envHandle gensymHandle locatorHandle tagHandle = do
   importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle
   parseHandle <- ParseCore.new gensymHandle
   aliasHandle <- Alias.new envHandle locatorHandle
-  antecedentHandle <- Antecedent.new
   artifactHandle <- Artifact.new
   visitEnvRef <- asks App.visitEnv
   traceSourceListRef <- asks App.traceSourceList

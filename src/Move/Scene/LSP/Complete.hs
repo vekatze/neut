@@ -59,12 +59,11 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   clangHandle <- Clang.new
   pathHandle <- Path.new envHandle
-  antecedentHandle <- Antecedent.new
   getModuleHandle <- GetModule.new gensymHandle
   sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
   gacHandle <- GAC.new envHandle

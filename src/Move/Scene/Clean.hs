@@ -6,6 +6,7 @@ module Move.Scene.Clean
 where
 
 import Control.Monad
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -23,9 +24,9 @@ data Handle = Handle
     unravelHandle :: Unravel.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 clean :: Handle -> EIO ()

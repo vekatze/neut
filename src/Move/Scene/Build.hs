@@ -15,6 +15,7 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
 import Move.Console.Report qualified as Report
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
@@ -99,11 +100,11 @@ data Handle = Handle
     _executeArgs :: [String]
   }
 
-new :: Config -> Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new cfg envHandle gensymHandle locatorHandle tagHandle = do
+new :: Config -> Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new cfg envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   debugHandle <- Debug.new
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new

@@ -9,6 +9,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -48,9 +49,9 @@ data Handle = Handle
     initSourceHandle :: InitSource.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle
   parseCoreHandle <- ParseCore.new gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle locatorHandle tagHandle
@@ -58,7 +59,7 @@ new envHandle gensymHandle locatorHandle tagHandle = do
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle
   return $ Handle {..}
 

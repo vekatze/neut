@@ -11,6 +11,7 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
 import Move.Context.AppM
 import Move.Context.Cache (invalidate)
@@ -48,12 +49,12 @@ data Handle
     tagHandle :: Tag.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   getSourceHandle <- GetSource.new envHandle gensymHandle
   pathHandle <- Path.new envHandle
   findDefHandle <- FindDefinition.new envHandle gensymHandle
-  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle
+  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 getSymbolInfo ::

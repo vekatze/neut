@@ -6,6 +6,7 @@ module Move.Act.LSP
 where
 
 import Control.Monad
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
@@ -25,11 +26,11 @@ data Handle
     lspHandle :: L.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   fetchHandle <- Fetch.new envHandle gensymHandle
-  lspHandle <- L.new envHandle gensymHandle locatorHandle tagHandle
+  lspHandle <- L.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 lsp :: Handle -> App ()

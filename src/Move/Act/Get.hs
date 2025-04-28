@@ -6,6 +6,7 @@ module Move.Act.Get
 where
 
 import Control.Monad
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
@@ -30,12 +31,12 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   fetchHandle <- Fetch.new envHandle gensymHandle
-  cleanHandle <- Clean.new envHandle gensymHandle locatorHandle tagHandle
-  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle
+  cleanHandle <- Clean.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 get :: Handle -> Config -> App ()

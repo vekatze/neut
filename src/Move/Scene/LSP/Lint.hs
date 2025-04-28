@@ -8,6 +8,7 @@ where
 import Control.Monad
 import Control.Monad.Trans
 import Language.LSP.Server
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
 import Move.Context.AppM (AppM)
 import Move.Context.EIO (toApp)
@@ -30,10 +31,10 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   fetchHandle <- Fetch.new envHandle gensymHandle
-  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle
+  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   return $ Handle {..}
 

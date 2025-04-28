@@ -8,6 +8,7 @@ where
 import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -32,9 +33,9 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   getSourceHandle <- GetSource.new envHandle gensymHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
   gacHandle <- GAC.new envHandle

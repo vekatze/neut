@@ -6,6 +6,7 @@ module Move.Act.Format
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -28,11 +29,11 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle
-  formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+  formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

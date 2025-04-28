@@ -9,6 +9,7 @@ import Control.Monad.Trans
 import Data.Text qualified as T
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Context.Env qualified as Env
@@ -26,9 +27,9 @@ newtype Handle
   { formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
-  formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
+  formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]

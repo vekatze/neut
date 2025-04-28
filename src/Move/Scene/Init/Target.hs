@@ -30,11 +30,10 @@ data Handle
     typeHandle :: Type.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
-  antecedentHandle <- Antecedent.new
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   globalRemarkHandle <- GlobalRemark.new
   weakDefinitionHandle <- WeakDefinition.new gensymHandle
   definitionHandle <- Definition.new

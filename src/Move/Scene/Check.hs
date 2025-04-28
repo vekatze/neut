@@ -11,6 +11,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
@@ -50,15 +51,15 @@ data Handle
     tagHandle :: Tag.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new envHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   parseHandle <- Parse.new envHandle gensymHandle locatorHandle tagHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 check :: Handle -> App [Remark]

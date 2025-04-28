@@ -5,6 +5,7 @@ module Move.Act.Clean
   )
 where
 
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -22,10 +23,10 @@ data Handle
     cleanHandle :: Clean.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  cleanHandle <- Clean.new envHandle gensymHandle locatorHandle tagHandle
+  cleanHandle <- Clean.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 clean :: Handle -> Config -> EIO ()
