@@ -77,9 +77,8 @@ data Handle
     baseSize :: Int
   }
 
-new :: App Handle
-new = do
-  gensymHandle <- Gensym.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   linearizeHandle <- Linearize.new gensymHandle
   utilityHandle <- Utility.new gensymHandle
   auxEnvHandle <- AuxEnv.new

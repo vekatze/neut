@@ -111,7 +111,7 @@ new cfg gensymHandle = do
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new
   parseHandle <- Parse.new gensymHandle
-  clarifyHandle <- Clarify.new
+  clarifyHandle <- Clarify.new gensymHandle
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new
