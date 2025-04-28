@@ -18,6 +18,7 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
+import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
@@ -51,7 +52,8 @@ data Handle
     locatorHandle :: Locator.Handle,
     tagHandle :: Tag.Handle,
     antecedentHandle :: Antecedent.Handle,
-    colorHandle :: Color.Handle
+    colorHandle :: Color.Handle,
+    keyArgHandle :: KeyArg.Handle
   }
 
 new ::
@@ -60,16 +62,17 @@ new ::
   Color.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  KeyArg.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
   loadHandle <- Load.new envHandle debugHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
-  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   moduleHandle <- Module.new gensymHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 check :: Handle -> App [Remark]
@@ -118,7 +121,7 @@ checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
   void $
     toApp $
       Parse.parse (parseHandle h) target source cacheOrContent
@@ -128,7 +131,7 @@ checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elabora
 checkSource' h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
   toApp $
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborateThenInspect hElaborate target

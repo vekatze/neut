@@ -24,6 +24,7 @@ import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Move.Context.Env qualified as Env
+import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
@@ -60,9 +61,9 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   clangHandle <- Clang.new debugHandle
   pathHandle <- Path.new envHandle debugHandle
   getModuleHandle <- GetModule.new gensymHandle

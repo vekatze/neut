@@ -13,6 +13,7 @@ import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
+import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
@@ -43,14 +44,15 @@ new ::
   Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  KeyArg.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
   collectHandle <- Collect.new envHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
-  buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
+  buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 build :: Handle -> Config -> App ()

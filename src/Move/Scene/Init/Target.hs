@@ -11,6 +11,7 @@ import Move.Context.App
 import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
 import Move.Context.Env qualified as Env
+import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
 import Move.Context.Type qualified as Type
@@ -31,10 +32,10 @@ data Handle
     typeHandle :: Type.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   globalRemarkHandle <- GlobalRemark.new
   weakDefinitionHandle <- WeakDefinition.new gensymHandle
   definitionHandle <- Definition.new

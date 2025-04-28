@@ -25,6 +25,7 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
+import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
@@ -94,6 +95,7 @@ data Handle = Handle
     linkHandle :: Link.Handle,
     installHandle :: Install.Handle,
     executeHandle :: Execute.Handle,
+    keyArgHandle :: KeyArg.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -109,20 +111,21 @@ new ::
   Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  KeyArg.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new
   cacheHandle <- Cache.new envHandle debugHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle debugHandle
   externalHandle <- External.new debugHandle
   ensureMainHandle <- EnsureMain.new locatorHandle
-  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
   llvmHandle <- LLVM.new envHandle debugHandle
   emitHandle <- Emit.new gensymHandle
@@ -177,7 +180,7 @@ compile h target outputKindList contentSeq = do
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
-    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (keyArgHandle h) (tagHandle h) (antecedentHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
     hl <- Lower.new (gensymHandle h) (locatorHandle h)

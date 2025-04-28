@@ -28,6 +28,7 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
+import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
 import Move.Context.Parse (ensureExistence')
@@ -84,14 +85,15 @@ new ::
   Gensym.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  KeyArg.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
   pathHandle <- Path.new envHandle debugHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
-  importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+  importHandle <- Import.new envHandle gensymHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   parseHandle <- ParseCore.new gensymHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
   artifactHandle <- Artifact.new

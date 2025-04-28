@@ -14,6 +14,7 @@ import Move.Context.App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
@@ -50,18 +51,18 @@ data Handle = Handle
     initSourceHandle :: InitSource.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   parseCoreHandle <- ParseCore.new gensymHandle
-  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle keyArgHandle tagHandle antecedentHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> EIO T.Text

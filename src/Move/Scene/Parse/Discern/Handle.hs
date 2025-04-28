@@ -50,11 +50,10 @@ data Handle = Handle
     currentLayer :: Layer
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
-  globalHandle <- Global.new envHandle locatorHandle tagHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle keyArgHandle tagHandle antecedentHandle = do
+  globalHandle <- Global.new envHandle locatorHandle keyArgHandle tagHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
-  keyArgHandle <- KeyArg.new envHandle
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   preDeclHandle <- PreDecl.new
