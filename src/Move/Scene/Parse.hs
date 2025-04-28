@@ -60,7 +60,7 @@ new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle 
   discernHandle <- Discern.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle debugHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
+  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
   localRemarkHandle <- LocalRemark.new
   return $ Handle {..}
 

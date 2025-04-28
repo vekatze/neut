@@ -48,7 +48,7 @@ data Handle = Handle
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
-  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
+  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new

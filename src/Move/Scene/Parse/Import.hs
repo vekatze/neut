@@ -68,7 +68,7 @@ new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle unusedHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
-  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
+  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
   moduleHandle <- Module.new
   rawImportSummaryHandle <- RawImportSummary.new
   return $ Handle {..}
