@@ -70,7 +70,7 @@ new gensymHandle = do
   unusedStaticFileHandle <- UnusedStaticFile.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle
+  getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   shiftToLatestHandle <- STL.new
   locatorHandle <- Locator.new
   aliasHandle <- Alias.new
