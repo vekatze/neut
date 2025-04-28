@@ -7,7 +7,7 @@ where
 
 import Control.Monad
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Fetch qualified as Fetch
@@ -33,10 +33,10 @@ new gensymHandle = do
 
 lsp :: Handle -> App ()
 lsp h = do
-  setup h
+  toApp $ setup h
   void $ L.lsp (lspHandle h)
 
-setup :: Handle -> App ()
+setup :: Handle -> EIO ()
 setup h = do
-  toApp $ InitCompiler.initializeCompiler (initCompilerHandle h) lspConfig
-  toApp $ Env.getMainModule (envHandle h) >>= Fetch.fetch (fetchHandle h)
+  InitCompiler.initializeCompiler (initCompilerHandle h) lspConfig
+  Env.getMainModule (envHandle h) >>= Fetch.fetch (fetchHandle h)

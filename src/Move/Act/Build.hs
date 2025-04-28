@@ -7,7 +7,7 @@ where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
@@ -40,19 +40,19 @@ new cfg gensymHandle = do
 
 build :: Handle -> Config -> App ()
 build h cfg = do
-  setup h cfg
+  toApp $ setup h cfg
   target <- toApp $ Collect.getMainTarget (collectHandle h) $ targetName cfg
   mainModule <- toApp $ Env.getMainModule (envHandle h)
   Build.buildTarget (buildHandle h) mainModule (Main target)
 
-setup :: Handle -> Config -> App ()
+setup :: Handle -> Config -> EIO ()
 setup h cfg = do
-  toApp $ LLVM.ensureSetupSanity cfg
-  toApp $ InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
-  mainModule <- toApp $ Env.getMainModule (envHandle h)
-  toApp $ Path.ensureNotInDependencyDir mainModule
+  LLVM.ensureSetupSanity cfg
+  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+  mainModule <- Env.getMainModule (envHandle h)
+  Path.ensureNotInDependencyDir mainModule
   liftIO $ Env.setBuildMode (envHandle h) $ buildMode cfg
-  toApp $ Fetch.fetch (fetchHandle h) mainModule
+  Fetch.fetch (fetchHandle h) mainModule
 
 toBuildConfig :: Config -> Build.Config
 toBuildConfig cfg = do
