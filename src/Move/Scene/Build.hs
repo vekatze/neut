@@ -114,7 +114,7 @@ new cfg envHandle gensymHandle = do
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new
-  installHandle <- Install.new
+  installHandle <- Install.new envHandle
   executeHandle <- Execute.new envHandle
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
