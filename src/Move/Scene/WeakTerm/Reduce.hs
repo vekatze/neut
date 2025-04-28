@@ -58,10 +58,9 @@ reduce _handle e = do
   let h' = InnerHandle {..}
   reduce' h' e
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   substHandle <- Subst.new gensymHandle
-  envHandle <- Env.new
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   return Handle {..}

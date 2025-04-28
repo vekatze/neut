@@ -15,6 +15,7 @@ import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Move.Context.App (App)
 import Move.Context.EIO (EIO, raiseCritical)
+import Move.Context.Env qualified as Env
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
@@ -66,9 +67,9 @@ data InnerHandle
     mustPerformExpCheck :: Bool
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  reduceHandle <- Reduce.new gensymHandle
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
+  reduceHandle <- Reduce.new envHandle gensymHandle
   substHandle <- Subst.new gensymHandle
   typeHandle <- Type.new
   weakDefHandle <- WeakDefinition.new gensymHandle

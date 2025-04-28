@@ -71,9 +71,9 @@ data Handle = Handle
 
 new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> App Handle
 new Elaborate.HandleEnv {..} envHandle gensymHandle = do
-  reduceHandle <- Reduce.new gensymHandle
+  reduceHandle <- Reduce.new envHandle gensymHandle
   substHandle <- Subst.new gensymHandle
-  fillHandle <- Fill.new gensymHandle
+  fillHandle <- Fill.new envHandle gensymHandle
   typeHandle <- Type.new
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
