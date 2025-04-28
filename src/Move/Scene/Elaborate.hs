@@ -109,22 +109,21 @@ data Handle
     currentSource :: Source
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new
-  weakDefHandle <- WeakDefinition.new
+  weakDefHandle <- WeakDefinition.new gensymHandle
   substHandle <- Subst.new
   typeHandle <- Type.new
   weakDeclHandle <- WeakDecl.new
-  gensymHandle <- Gensym.new
   defHandle <- Definition.new
   keyArgHandle <- KeyArg.new
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new
-  affHandle <- EnsureAffinity.new
-  inferHandle <- Infer.new handleEnv
-  unifyHandle <- Unify.new handleEnv
+  affHandle <- EnsureAffinity.new gensymHandle
+  inferHandle <- Infer.new handleEnv gensymHandle
+  unifyHandle <- Unify.new handleEnv gensymHandle
   pathHandle <- Path.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new

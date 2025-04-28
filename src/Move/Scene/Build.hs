@@ -1,7 +1,6 @@
 module Move.Scene.Build
   ( buildTarget,
     Axis (..),
-    abstractAxis,
   )
 where
 
@@ -26,6 +25,7 @@ import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
@@ -57,7 +57,8 @@ import UnliftIO.Async
 import Prelude hiding (log)
 
 data Axis = Axis
-  { _outputKindList :: [OutputKind],
+  { gensymHandle :: Gensym.Handle,
+    _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
     _installDir :: Maybe FilePath,
@@ -69,14 +70,14 @@ buildTarget axis (M.MainModule baseModule) target = do
   h <- Debug.new
   toApp $ Debug.report h $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
-  InitTarget.new >>= liftIO . InitTarget.initializeForTarget
+  InitTarget.new (gensymHandle axis) >>= liftIO . InitTarget.initializeForTarget
   h' <- Unravel.new
   (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel h' baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign target moduleList
   h'' <- Load.new
   contentSeq <- toApp $ Load.load h'' target dependenceSeq
-  compile target' (_outputKindList axis) contentSeq
+  compile axis target' (_outputKindList axis) contentSeq
   hgl <- GlobalRemark.new
   hr <- Report.new
   liftIO (GlobalRemark.get hgl) >>= liftIO . Report.printRemarkList hr
@@ -90,18 +91,8 @@ buildTarget axis (M.MainModule baseModule) target = do
       execute (_shouldExecute axis) ct (_executeArgs axis)
       install (_installDir axis) ct
 
-abstractAxis :: Axis
-abstractAxis =
-  Axis
-    { _outputKindList = [Object],
-      _shouldSkipLink = True,
-      _shouldExecute = False,
-      _installDir = Nothing,
-      _executeArgs = []
-    }
-
-compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
-compile target outputKindList contentSeq = do
+compile :: Axis -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
+compile axis target outputKindList contentSeq = do
   he <- Env.new
   mainModule <- toApp $ Env.getMainModule he
   hCache <- Cache.new
@@ -128,7 +119,7 @@ compile target outputKindList contentSeq = do
     toApp $ Debug.report h' $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     hParse <- Parse.new
     cacheOrStmtList <- toApp $ Parse.parse hParse target source cacheOrContent
-    hElaborate <- Elaborate.new
+    hElaborate <- Elaborate.new (gensymHandle axis)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     hc <- Clarify.new

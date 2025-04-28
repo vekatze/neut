@@ -14,6 +14,7 @@ import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Init.Source qualified as InitSource
 import Move.Scene.Init.Target qualified as InitTarget
@@ -45,8 +46,8 @@ data Handle = Handle
     initSourceHandle :: InitSource.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   unravelHandle <- Unravel.new
   loadHandle <- Load.new
   parseCoreHandle <- ParseCore.new
@@ -56,7 +57,7 @@ new = do
   getEnabledPresetHandle <- GetEnabledPreset.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  initTargetHandle <- InitTarget.new
+  initTargetHandle <- InitTarget.new gensymHandle
   initSourceHandle <- InitSource.new
   return $ Handle {..}
 

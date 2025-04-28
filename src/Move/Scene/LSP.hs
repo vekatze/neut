@@ -1,4 +1,9 @@
-module Move.Scene.LSP (lsp) where
+module Move.Scene.LSP
+  ( Handle,
+    new,
+    lsp,
+  )
+where
 
 import Colog.Core (LogAction (..), Severity (..), WithSeverity (..))
 import Colog.Core qualified as L
@@ -15,13 +20,14 @@ import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Move.Context.App
 import Move.Context.AppM (liftEIO)
-import Move.Scene.Check (checkAll)
+import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Check qualified as Check
 import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.Format qualified as Format
-import Move.Scene.LSP.GetSymbolInfo qualified as LSP
+import Move.Scene.LSP.GetSymbolInfo qualified as GetSymbolInfo
 import Move.Scene.LSP.Highlight qualified as Highlight
-import Move.Scene.LSP.Lint qualified as LSP
+import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.LSP.References qualified as References
 import Move.Scene.LSP.Util (getUriParam, liftAppM)
 import Prettyprinter
@@ -29,8 +35,27 @@ import Rule.AppLsp
 import Rule.CodeAction qualified as CA
 import System.IO (stdin, stdout)
 
-lsp :: App Int
-lsp = do
+data Handle
+  = Handle
+  { gensymHandle :: Gensym.Handle,
+    completeHandle :: Complete.Handle,
+    findDefinitionHandle :: FindDefinition.Handle,
+    highlightHandle :: Highlight.Handle,
+    referencesHandle :: References.Handle,
+    formatHandle :: Format.Handle
+  }
+
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  completeHandle <- Complete.new
+  findDefinitionHandle <- FindDefinition.new
+  highlightHandle <- Highlight.new
+  referencesHandle <- References.new
+  formatHandle <- Format.new gensymHandle
+  return $ Handle {..}
+
+lsp :: Handle -> App Int
+lsp h = do
   liftIO $
     runQuietServer $
       ServerDefinition
@@ -39,7 +64,7 @@ lsp = do
           configSection = "Neut",
           onConfigChange = const $ return (),
           doInitialize = \env _req -> pure $ Right env,
-          staticHandlers = const handlers,
+          staticHandlers = const (handlers h),
           interpretHandler = \env -> Iso (runApp . runLspT env) liftIO,
           options = lspOptions
         }
@@ -66,19 +91,21 @@ prettyMsg :: (Pretty a) => WithSeverity a -> Doc ann
 prettyMsg l =
   "[" <> viaShow (L.getSeverity l) <> "] " <> pretty (L.getMsg l)
 
-handlers :: Handlers (AppLsp ())
-handlers =
+handlers :: Handle -> Handlers (AppLsp ())
+handlers h =
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
         return (),
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
-        LSP.lint,
+        h' <- lift $ Lint.new (gensymHandle h)
+        Lint.lint h',
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
-        LSP.lint,
+        h' <- lift $ Lint.new (gensymHandle h)
+        Lint.lint h',
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),
       notificationHandler SMethod_CancelRequest $ \_ -> do
@@ -88,29 +115,25 @@ handlers =
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
-        h <- lift Complete.new
-        itemListOrNone <- liftAppM $ liftEIO $ Complete.complete h uri pos
+        itemListOrNone <- liftAppM $ liftEIO $ Complete.complete (completeHandle h) uri pos
         let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        h <- lift FindDefinition.new
-        mLoc <- liftAppM $ liftEIO $ FindDefinition.findDefinition h (req ^. J.params)
+        mLoc <- liftAppM $ liftEIO $ FindDefinition.findDefinition (findDefinitionHandle h) (req ^. J.params)
         case mLoc of
           Nothing ->
             responder $ Right $ InR $ InR Null
           Just ((_, loc), _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        h <- lift Highlight.new
-        highlightsOrNone <- liftAppM $ liftEIO $ Highlight.highlight h $ req ^. J.params
+        highlightsOrNone <- liftAppM $ liftEIO $ Highlight.highlight (highlightHandle h) $ req ^. J.params
         case highlightsOrNone of
           Nothing ->
             responder $ Right $ InR Null
           Just highlights ->
             responder $ Right $ InL $ List highlights,
       requestHandler SMethod_TextDocumentReferences $ \req responder -> do
-        h <- lift References.new
-        refsOrNone <- liftAppM $ liftEIO $ References.references h $ req ^. J.params
+        refsOrNone <- liftAppM $ liftEIO $ References.references (referencesHandle h) $ req ^. J.params
         case refsOrNone of
           Nothing -> do
             responder $ Right $ InR Null
@@ -119,12 +142,12 @@ handlers =
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         fileOrNone <- getVirtualFile (toNormalizedUri uri)
-        h <- lift Format.new
-        textEditList <- liftAppM $ liftEIO $ Format.format h False uri fileOrNone
+        textEditList <- liftAppM $ liftEIO $ Format.format (formatHandle h) False uri fileOrNone
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        textOrNone <- liftAppM $ LSP.getSymbolInfo (req ^. J.params)
+        h' <- lift $ GetSymbolInfo.new (gensymHandle h)
+        textOrNone <- liftAppM $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
         case textOrNone of
           Nothing ->
             responder $ Right $ InR Null
@@ -153,9 +176,8 @@ handlers =
                   Nothing ->
                     responder $ Right $ InR Null
                   Just uri -> do
-                    h <- lift Format.new
                     fileOrNone <- getVirtualFile (toNormalizedUri uri)
-                    textEditList <- liftAppM $ liftEIO $ Format.format h True uri fileOrNone
+                    textEditList <- liftAppM $ liftEIO $ Format.format (formatHandle h) True uri fileOrNone
                     let textEditList' = concat $ maybeToList textEditList
                     let editParams =
                           ApplyWorkspaceEditParams (Just CA.minimizeImportsCommandTitle) $
@@ -163,7 +185,8 @@ handlers =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                _ <- liftAppM $ lift checkAll
+                hck <- lift $ Check.new (gensymHandle h)
+                _ <- liftAppM $ lift $ Check.checkAll hck
                 responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null

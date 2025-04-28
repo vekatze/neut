@@ -39,9 +39,8 @@ initialize :: Handle -> IO ()
 initialize h = do
   writeIORef (weakDefMapRef h) Map.empty
 
-new :: App Handle
-new = do
-  gensymHandle <- Gensym.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   weakDefMapRef <- asks App.weakDefMap
   return $ Handle {..}
 

@@ -17,6 +17,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Throw qualified as Throw
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Init.Source qualified as InitSource
 import Move.Scene.Init.Target qualified as InitTarget
@@ -35,6 +36,7 @@ import Rule.Target
 data Handle
   = Handle
   { debugHandle :: Debug.Handle,
+    gensymHandle :: Gensym.Handle,
     loadHandle :: Load.Handle,
     unravelHandle :: Unravel.Handle,
     parseHandle :: Parse.Handle,
@@ -44,8 +46,8 @@ data Handle
     initTargetHandle :: InitTarget.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new
   unravelHandle <- Unravel.new
@@ -53,12 +55,11 @@ new = do
   envHandle <- Env.new
   moduleHandle <- Module.new
   initSourceHandle <- InitSource.new
-  initTargetHandle <- InitTarget.new
+  initTargetHandle <- InitTarget.new gensymHandle
   return $ Handle {..}
 
-check :: App [Remark]
-check = do
-  h <- new
+check :: Handle -> App [Remark]
+check h = do
   M.MainModule mainModule <- toApp $ Env.getMainModule (envHandle h)
   _check h Peripheral mainModule
 
@@ -66,17 +67,15 @@ checkModule :: Handle -> M.Module -> App [Remark]
 checkModule h baseModule = do
   _check h Peripheral baseModule
 
-checkAll :: App [Remark]
-checkAll = do
-  h <- new
+checkAll :: Handle -> App [Remark]
+checkAll h = do
   mainModule <- toApp $ Env.getMainModule (envHandle h)
   deps <- toApp $ Module.getAllDependencies (moduleHandle h) mainModule (extractModule mainModule)
   forM_ deps $ \(_, m) -> checkModule h m
   checkModule h (extractModule mainModule)
 
-checkSingle :: M.Module -> Path Abs File -> App Elaborate.HandleEnv
-checkSingle baseModule path = do
-  h <- new
+checkSingle :: Handle -> M.Module -> Path Abs File -> App Elaborate.HandleEnv
+checkSingle h baseModule path = do
   _check' h (PeripheralSingle path) baseModule
 
 _check :: Handle -> Target -> M.Module -> App [Remark]
@@ -105,7 +104,7 @@ checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new
+  hElaborate <- Elaborate.new (gensymHandle h)
   void $
     toApp $
       Parse.parse (parseHandle h) target source cacheOrContent
@@ -116,7 +115,7 @@ checkSource' h target source cacheOrContent = do
   hInit <- InitSource.new
   toApp (InitSource.initializeForSource hInit source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new
+  hElaborate <- Elaborate.new (gensymHandle h)
   toApp $
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborateThenInspect hElaborate target

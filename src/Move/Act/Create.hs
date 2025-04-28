@@ -4,6 +4,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (toApp)
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -14,6 +15,7 @@ import Rule.Module (moduleLocation)
 
 create :: Config -> App ()
 create cfg = do
+  gensymHandle <- Gensym.new
   newModule <- toApp $ New.constructDefaultModule (moduleName cfg) (targetName cfg)
   hl <- InitLogger.new
   liftIO $ InitLogger.initializeLogger hl (remarkCfg cfg)
@@ -24,4 +26,5 @@ create cfg = do
   hf <- Fetch.new
   toApp $ Fetch.insertCoreDependency hf
   toApp $ InitCompiler.initializeCompilerWithPath hc (moduleLocation newModule) (remarkCfg cfg)
-  void Check.checkAll
+  hck <- Check.new gensymHandle
+  void $ Check.checkAll hck

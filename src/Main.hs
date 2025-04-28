@@ -16,6 +16,7 @@ import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.OptParse qualified as OptParse
 import Move.Context.Throw qualified as Throw
+import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Command qualified as C
 import System.IO
 
@@ -46,10 +47,13 @@ execute = do
         C.Get cfg ->
           Get.get cfg
         C.Format cfg -> do
-          h <- Format.new
+          hg <- Gensym.new
+          h <- Format.new hg
           toApp $ Format.format h cfg
-        C.LSP ->
-          LSP.lsp
+        C.LSP -> do
+          g <- Gensym.new
+          h <- LSP.new g
+          LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg ->

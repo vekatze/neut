@@ -1,4 +1,9 @@
-module Move.Scene.LSP.GetSymbolInfo (getSymbolInfo) where
+module Move.Scene.LSP.GetSymbolInfo
+  ( Handle,
+    new,
+    getSymbolInfo,
+  )
+where
 
 import Control.Comonad.Cofree
 import Control.Monad.Trans
@@ -6,13 +11,15 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Move.Context.App (App)
 import Move.Context.AppM
 import Move.Context.Cache (invalidate)
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
-import Move.Context.Type
+import Move.Context.Type qualified as Type
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Elaborate (overrideHandleEnv)
 import Move.Scene.Elaborate qualified as Elaborate
@@ -26,29 +33,44 @@ import Rule.Term.Weaken (weaken)
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText
 
+data Handle
+  = Handle
+  { getSourceHandle :: GetSource.Handle,
+    pathHandle :: Path.Handle,
+    findDefHandle :: FindDefinition.Handle,
+    gensymHandle :: Gensym.Handle,
+    checkHandle :: Check.Handle
+  }
+
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  getSourceHandle <- GetSource.new
+  pathHandle <- Path.new
+  findDefHandle <- FindDefinition.new
+  checkHandle <- Check.new gensymHandle
+  return $ Handle {..}
+
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
+  Handle ->
   p ->
   AppM T.Text
-getSymbolInfo params = do
-  hgs <- lift GetSource.new
-  source <- lift $ toApp $ GetSource.getSource hgs params
-  h <- lift Path.new
-  lift $ toApp $ invalidate h Peripheral source
-  handleEnv <- lift $ Check.checkSingle (sourceModule source) (sourceFilePath source)
-  hfd <- lift FindDefinition.new
-  ((locType, _), _) <- lift $ toApp $ FindDefinition.findDefinition hfd params
+getSymbolInfo h params = do
+  source <- lift $ toApp $ GetSource.getSource (getSourceHandle h) params
+  lift $ toApp $ invalidate (pathHandle h) Peripheral source
+  handleEnv <- lift $ Check.checkSingle (checkHandle h) (sourceModule source) (sourceFilePath source)
+  ((locType, _), _) <- lift $ toApp $ FindDefinition.findDefinition (findDefHandle h) params
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
     LT.Local varID _ -> do
       weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift Elaborate.new
+      elaborateHandle <- lift $ Elaborate.new (gensymHandle h)
       let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'
     LT.Global dd isConstLike -> do
-      t <- lift (lookupMaybe dd) >>= liftMaybe
+      t <- lift (Type.lookupMaybe dd) >>= liftMaybe
       case (t, isConstLike) of
         (_ :< WT.Pi _ _ cod, True) ->
           return $ toText cod

@@ -10,6 +10,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Format qualified as Format
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.Init.Target qualified as InitTarget
@@ -24,11 +25,11 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new hg = do
   initCompilerHandle <- InitCompiler.new
-  initTargetHandle <- InitTarget.new
-  formatHandle <- Format.new
+  initTargetHandle <- InitTarget.new hg
+  formatHandle <- Format.new hg
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

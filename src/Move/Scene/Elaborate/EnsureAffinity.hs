@@ -18,6 +18,7 @@ import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
@@ -65,12 +66,12 @@ data InnerHandle
     mustPerformExpCheck :: Bool
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
   typeHandle <- Type.new
-  weakDefHandle <- WeakDefinition.new
+  weakDefHandle <- WeakDefinition.new gensymHandle
   optDataHandle <- OptimizableData.new
   return $ Handle {..}
 

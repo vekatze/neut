@@ -6,6 +6,7 @@ import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Build qualified as Build
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Fetch qualified as Fetch
@@ -17,11 +18,12 @@ import Prelude hiding (log)
 build :: Config -> App ()
 build cfg = do
   setup cfg
+  gensymHandle <- Gensym.new
   h <- Collect.new
   target <- toApp $ Collect.getMainTarget h $ targetName cfg
   envHandle <- Env.new
   mainModule <- toApp $ Env.getMainModule envHandle
-  Build.buildTarget (fromConfig cfg) mainModule (Main target)
+  Build.buildTarget (fromConfig cfg gensymHandle) mainModule (Main target)
 
 setup :: Config -> App ()
 setup cfg = do
@@ -35,10 +37,11 @@ setup cfg = do
   h <- Fetch.new
   toApp $ Fetch.fetch h mainModule
 
-fromConfig :: Config -> Build.Axis
-fromConfig cfg =
+fromConfig :: Config -> Gensym.Handle -> Build.Axis
+fromConfig cfg gensymHandle =
   Build.Axis
-    { _outputKindList = outputKindList cfg,
+    { gensymHandle,
+      _outputKindList = outputKindList cfg,
       _shouldSkipLink = shouldSkipLink cfg,
       _shouldExecute = shouldExecute cfg,
       _installDir = installDir cfg,

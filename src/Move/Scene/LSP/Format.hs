@@ -11,6 +11,7 @@ import Language.LSP.Protocol.Types
 import Language.LSP.VFS
 import Move.Context.App (App)
 import Move.Context.EIO (EIO, liftMaybe)
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Format qualified as Format
 import Path
 import Path.IO
@@ -22,9 +23,9 @@ newtype Handle
   { formatHandle :: Format.Handle
   }
 
-new :: App Handle
-new = do
-  formatHandle <- Format.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  formatHandle <- Format.new gensymHandle
   return $ Handle {..}
 
 format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]

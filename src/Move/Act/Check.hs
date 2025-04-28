@@ -5,6 +5,7 @@ import Move.Console.Report qualified as Report
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -13,11 +14,13 @@ import Rule.Remark qualified as Remark
 
 check :: Config -> App ()
 check cfg = do
+  g <- Gensym.new
+  hck <- Check.new g
   setup cfg
   logs <-
     if shouldCheckAllDependencies cfg
-      then Check.checkAll
-      else Check.check
+      then Check.checkAll hck
+      else Check.check hck
   hr <- Report.new
   if shouldInsertPadding cfg
     then liftIO $ Report.printErrorList hr logs
