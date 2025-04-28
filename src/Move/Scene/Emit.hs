@@ -50,7 +50,7 @@ new :: App Handle
 new = do
   gensymHandle <- Gensym.new
   emitLowCompHandle <- EmitLowComp.new
-  reduceHandle <- Reduce.new
+  reduceHandle <- Reduce.new gensymHandle
   dataSize <- toApp Env.getDataSize'
   baseSize <- toApp Env.getBaseSize'
   return $ Handle {..}
