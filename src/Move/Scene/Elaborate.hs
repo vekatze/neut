@@ -123,7 +123,7 @@ new envHandle gensymHandle = do
   inlineHandle <- Inline.new gensymHandle
   affHandle <- EnsureAffinity.new gensymHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle
-  unifyHandle <- Unify.new handleEnv gensymHandle
+  unifyHandle <- Unify.new handleEnv envHandle gensymHandle
   pathHandle <- Path.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
