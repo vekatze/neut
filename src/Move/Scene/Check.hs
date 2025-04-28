@@ -53,7 +53,7 @@ new gensymHandle = do
   unravelHandle <- Unravel.new gensymHandle
   parseHandle <- Parse.new gensymHandle
   envHandle <- Env.new
-  moduleHandle <- Module.new
+  moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new
   initTargetHandle <- InitTarget.new gensymHandle
   return $ Handle {..}

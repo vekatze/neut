@@ -63,7 +63,7 @@ new gensymHandle = do
   clangHandle <- Clang.new
   pathHandle <- Path.new
   antecedentHandle <- Antecedent.new
-  getModuleHandle <- GetModule.new
+  getModuleHandle <- GetModule.new gensymHandle
   sourceReflectHandle <- SourceReflect.new gensymHandle
   envHandle <- Env.new
   gacHandle <- GAC.new
