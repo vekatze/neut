@@ -19,11 +19,8 @@ module Move.Language.Utility.Gensym
 where
 
 import Control.Comonad.Cofree
-import Control.Monad.Reader (asks)
 import Data.IORef
 import Data.Text qualified as T
-import Move.Context.App (App)
-import Move.Context.App.Internal qualified as App
 import Rule.Comp qualified as C
 import Rule.Const
 import Rule.Hint (Hint)
@@ -38,9 +35,9 @@ newtype Handle
   { counterRef :: IORef Int
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  counterRef <- asks App.counter
+  counterRef <- newIORef 0
   return $ Handle {..}
 
 {-# INLINE newCount #-}

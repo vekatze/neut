@@ -28,7 +28,7 @@ main = do
 execute :: IO ()
 execute = do
   runApp $ do
-    gensymHandle <- Gensym.new
+    gensymHandle <- liftIO Gensym.new
     c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables

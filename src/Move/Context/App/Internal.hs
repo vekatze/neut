@@ -54,7 +54,6 @@ data Env = Env
   { enableDebugMode :: IORef Bool,
     enableSilentMode :: IORef Bool,
     startTime :: UTCTime,
-    counter :: IORef Int,
     endOfEntry :: IORef T.Text,
     shouldColorizeStdout :: IORef Bool,
     shouldColorizeStderr :: IORef Bool,
@@ -111,7 +110,6 @@ newRef =
 
 newEnv :: IO Env
 newEnv = do
-  counter <- newIORef 0
   startTime <- getCurrentTime
   enableDebugMode <- newIORef False
   enableSilentMode <- newIORef False
