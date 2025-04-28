@@ -101,6 +101,7 @@ data Handle = Handle
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle,
     unusedHandle :: Unused.Handle,
+    globalHandle :: Global.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -188,7 +189,7 @@ compile h target outputKindList contentSeq = do
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
-    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
+    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
     hl <- Lower.new (gensymHandle h) (locatorHandle h)

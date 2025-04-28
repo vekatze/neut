@@ -20,6 +20,7 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
+import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
@@ -57,11 +58,12 @@ data Handle
     debugHandle :: Debug.Handle,
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle,
-    unusedHandle :: Unused.Handle
+    unusedHandle :: Unused.Handle,
+    globalHandle :: Global.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Check.Handle -> App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle checkHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Check.Handle -> App Handle
+new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle checkHandle = do
   getSourceHandle <- GetSource.new envHandle gensymHandle
   pathHandle <- Path.new envHandle debugHandle
   findDefHandle <- FindDefinition.new envHandle gensymHandle debugHandle
@@ -82,7 +84,7 @@ getSymbolInfo h params = do
     LT.Local varID _ -> do
       weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
+      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
       let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'

@@ -188,7 +188,7 @@ handlers h =
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h) (checkHandle h)
+        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h) (checkHandle h)
         textOrNone <- liftAppM (initCompilerHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
         case textOrNone of
           Nothing ->
