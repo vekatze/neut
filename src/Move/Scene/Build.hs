@@ -32,6 +32,7 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
@@ -115,16 +116,17 @@ new ::
   Locator.Handle ->
   OptimizableData.Handle ->
   KeyArg.Handle ->
+  Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new
   cacheHandle <- Cache.new envHandle debugHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle debugHandle
   externalHandle <- External.new debugHandle
   ensureMainHandle <- EnsureMain.new locatorHandle

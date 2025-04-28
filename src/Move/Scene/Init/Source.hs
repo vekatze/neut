@@ -40,9 +40,8 @@ data Handle = Handle
     weakDeclHandle :: WeakDecl.Handle
   }
 
-new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
-  unusedHandle <- Unused.new
+new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   localRemarkHandle <- LocalRemark.new
   globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
