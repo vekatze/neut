@@ -27,9 +27,8 @@ newtype Handle
   { antecedentHandle :: Antecedent.Handle
   }
 
-new :: App Handle
-new = do
-  antecedentHandle <- Antecedent.new
+new :: Antecedent.Handle -> App Handle
+new antecedentHandle = do
   return $ Handle {..}
 
 shiftToLatest :: Handle -> Source.Source -> EIO Source.Source

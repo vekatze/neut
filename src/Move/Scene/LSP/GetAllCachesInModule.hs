@@ -7,6 +7,7 @@ module Move.Scene.LSP.GetAllCachesInModule
 where
 
 import Data.Maybe (catMaybes)
+import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO, forP)
@@ -26,9 +27,9 @@ data Handle
     pathHandle :: Path.Handle
   }
 
-new :: Env.Handle -> App Handle
-new envHandle = do
-  shiftToLatestHandle <- STL.new
+new :: Env.Handle -> Antecedent.Handle -> App Handle
+new envHandle antecedentHandle = do
+  shiftToLatestHandle <- STL.new antecedentHandle
   pathHandle <- Path.new envHandle
   return $ Handle {..}
 

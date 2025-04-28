@@ -38,7 +38,7 @@ new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   getSourceHandle <- GetSource.new envHandle gensymHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
-  gacHandle <- GAC.new envHandle
+  gacHandle <- GAC.new envHandle antecedentHandle
   return $ Handle {..}
 
 references ::

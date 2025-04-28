@@ -84,8 +84,8 @@ new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   debugHandle <- Debug.new
   pathHandle <- Path.new envHandle
   moduleHandle <- ModuleReflect.new gensymHandle
-  shiftToLatestHandle <- STL.new
-  importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle
+  shiftToLatestHandle <- STL.new antecedentHandle
+  importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   parseHandle <- ParseCore.new gensymHandle
   aliasHandle <- Alias.new envHandle locatorHandle
   artifactHandle <- Artifact.new

@@ -54,7 +54,7 @@ new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle
   parseCoreHandle <- ParseCore.new gensymHandle
-  parseHandle <- Parse.new envHandle gensymHandle locatorHandle tagHandle
+  parseHandle <- Parse.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new

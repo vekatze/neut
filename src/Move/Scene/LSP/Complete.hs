@@ -66,7 +66,7 @@ new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   pathHandle <- Path.new envHandle
   getModuleHandle <- GetModule.new gensymHandle
   sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
-  gacHandle <- GAC.new envHandle
+  gacHandle <- GAC.new envHandle antecedentHandle
   return $ Handle {..}
 
 complete :: Handle -> Uri -> Position -> EIO [CompletionItem]
