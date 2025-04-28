@@ -59,5 +59,6 @@ execute = do
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
-        C.Zen cfg ->
-          Zen.zen cfg
+        C.Zen cfg -> do
+          h <- Zen.new cfg gensymHandle
+          Zen.zen h cfg

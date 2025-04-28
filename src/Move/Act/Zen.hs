@@ -1,9 +1,14 @@
-module Move.Act.Zen (zen) where
+module Move.Act.Zen
+  ( Handle,
+    new,
+    zen,
+  )
+where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -18,15 +23,29 @@ import Rule.Target
 import Rule.ZenConfig qualified as Z
 import Prelude hiding (log)
 
-zen :: Config -> App ()
-zen cfg = do
-  gensymHandle <- Gensym.new
-  setup cfg gensymHandle
+data Handle
+  = Handle
+  { envHandle :: Env.Handle,
+    initCompilerHandle :: InitCompiler.Handle,
+    fetchHandle :: Fetch.Handle,
+    buildHandle :: Build.Handle
+  }
+
+new :: Config -> Gensym.Handle -> App Handle
+new cfg gensymHandle = do
+  envHandle <- Env.new
+  initCompilerHandle <- InitCompiler.new gensymHandle
+  fetchHandle <- Fetch.new gensymHandle
+  buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
+  return $ Handle {..}
+
+zen :: Handle -> Config -> App ()
+zen h cfg = do
+  toApp $ setup h cfg
   path <- resolveFile' (filePathString cfg)
   envHandle <- Env.new
-  buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
   mainModule <- toApp $ Env.getMainModule envHandle
-  Build.buildTarget buildHandle mainModule $
+  Build.buildTarget (buildHandle h) mainModule $
     Main $
       Zen path $
         Z.clangOption $
@@ -42,13 +61,10 @@ toBuildConfig cfg = do
       executeArgs = args cfg
     }
 
-setup :: Config -> Gensym.Handle -> App ()
-setup cfg gensymHandle = do
-  hc <- InitCompiler.new gensymHandle
-  toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
-  envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
-  toApp $ Path.ensureNotInDependencyDir mainModule
-  liftIO $ Env.setBuildMode envHandle $ buildMode cfg
-  h <- Fetch.new gensymHandle
-  toApp $ Fetch.fetch h mainModule
+setup :: Handle -> Config -> EIO ()
+setup h cfg = do
+  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+  mainModule <- Env.getMainModule (envHandle h)
+  Path.ensureNotInDependencyDir mainModule
+  liftIO $ Env.setBuildMode (envHandle h) $ buildMode cfg
+  Fetch.fetch (fetchHandle h) mainModule
