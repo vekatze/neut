@@ -34,7 +34,7 @@ new cfg envHandle gensymHandle = do
   collectHandle <- Collect.new
   initCompilerHandle <- InitCompiler.new gensymHandle
   fetchHandle <- Fetch.new gensymHandle
-  buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
+  buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle
   return $ Handle {..}
 
 build :: Handle -> Config -> App ()
