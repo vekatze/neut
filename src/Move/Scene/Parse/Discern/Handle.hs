@@ -20,9 +20,7 @@ import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
-import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
-import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
-import Move.Context.UnusedVariable qualified as UnusedVariable
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Hint
 import Rule.Ident
@@ -42,9 +40,7 @@ data Handle = Handle
     topCandidateHandle :: TopCandidate.Handle,
     preDeclHandle :: PreDecl.Handle,
     optDataHandle :: OptimizableData.Handle,
-    unusedVariableHandle :: UnusedVariable.Handle,
-    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
-    unusedStaticFileHandle :: UnusedStaticFile.Handle,
+    unusedHandle :: Unused.Handle,
     envHandle :: Env.Handle,
     nameEnv :: NominalEnv,
     currentLayer :: Layer
@@ -57,16 +53,14 @@ new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle an
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   preDeclHandle <- PreDecl.new
-  unusedStaticFileHandle <- UnusedStaticFile.new
-  unusedVariableHandle <- UnusedVariable.new
-  unusedLocalLocatorHandle <- UnusedLocalLocator.new
+  unusedHandle <- Unused.new
   let nameEnv = empty
   let currentLayer = 0
   return $ Handle {..}
 
 extend :: Handle -> Hint -> Ident -> Layer -> VarDefKind -> IO Handle
 extend h m newVar l k = do
-  UnusedVariable.insert (unusedVariableHandle h) m newVar k
+  Unused.insertVariable (unusedHandle h) m newVar k
   return $ h {nameEnv = (Ident.toText newVar, (m, newVar, l)) : nameEnv h}
 
 extend' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle

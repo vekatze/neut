@@ -18,7 +18,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
-import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Handle qualified as H
 import Rule.ArgNum qualified as AN
@@ -71,7 +71,7 @@ resolveVarOrErr h m name = do
       return $ Left $ "Undefined symbol: " <> name
     [globalVar@(dd, (mDef, gn))] -> do
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd (GN.getIsConstLike gn) mDef
-      liftIO $ UnusedLocalLocator.delete (H.unusedLocalLocatorHandle h) localLocator
+      liftIO $ Unused.deleteLocalLocator (H.unusedHandle h) localLocator
       return $ Right globalVar
     _ -> do
       mainModule <- Env.getMainModule (H.envHandle h)

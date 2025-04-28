@@ -29,8 +29,7 @@ import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
-import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
-import Move.Context.UnusedPreset qualified as UnusedPreset
+import Move.Context.Unused qualified as Unused
 import Path
 import Rule.ArgNum qualified as AN
 import Rule.DefiniteDescription qualified as DD
@@ -58,8 +57,7 @@ data Handle
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle,
     tagHandle :: Tag.Handle,
-    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
-    unusedPresetHandle :: UnusedPreset.Handle,
+    unusedHandle :: Unused.Handle,
     nameMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
     sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
@@ -67,11 +65,10 @@ data Handle
 
 new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> App Handle
 new envHandle locatorHandle optDataHandle keyArgHandle tagHandle = do
-  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
+  unusedHandle <- Unused.new
   nameMapRef <- asks App.nameMap
   geistMapRef <- asks App.geistMap
   sourceNameMapRef <- asks App.sourceNameMap
-  unusedPresetHandle <- UnusedPreset.new
   return $ Handle {..}
 
 initialize :: Handle -> IO ()
@@ -192,8 +189,8 @@ lookup h m name = do
   dataSize <- Env.getDataSize m
   case Map.lookup name nameMap of
     Just kind -> do
-      liftIO $ UnusedGlobalLocator.delete (unusedGlobalLocatorHandle h) $ DD.globalLocator name
-      liftIO $ UnusedPreset.delete (unusedPresetHandle h) $ DD.moduleID name
+      liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
+      liftIO $ Unused.deletePreset (unusedHandle h) $ DD.moduleID name
       return $ Just kind
     Nothing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->

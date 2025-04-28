@@ -20,19 +20,13 @@ import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
-import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
-import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
-import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
-import Move.Context.UnusedVariable qualified as UnusedVariable
+import Move.Context.Unused qualified as Unused
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Rule.Source qualified as Source
 
 data Handle = Handle
-  { unusedVariableHandle :: UnusedVariable.Handle,
-    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
-    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
-    unusedStaticFileHandle :: UnusedStaticFile.Handle,
+  { unusedHandle :: Unused.Handle,
     localRemarkHandle :: LocalRemark.Handle,
     globalHandle :: Global.Handle,
     envHandle :: Env.Handle,
@@ -48,10 +42,7 @@ data Handle = Handle
 
 new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
-  unusedVariableHandle <- UnusedVariable.new
-  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
-  unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  unusedStaticFileHandle <- UnusedStaticFile.new
+  unusedHandle <- Unused.new
   localRemarkHandle <- LocalRemark.new
   globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
@@ -64,10 +55,7 @@ new envHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandl
 
 initializeForSource :: Handle -> Source.Source -> EIO ()
 initializeForSource h source = do
-  liftIO $ UnusedVariable.initialize (unusedVariableHandle h)
-  liftIO $ UnusedGlobalLocator.initialize (unusedGlobalLocatorHandle h)
-  liftIO $ UnusedLocalLocator.initialize (unusedLocalLocatorHandle h)
-  liftIO $ UnusedStaticFile.initialize (unusedStaticFileHandle h)
+  liftIO $ Unused.initialize (unusedHandle h)
   liftIO $ LocalRemark.initialize (localRemarkHandle h)
   liftIO $ Global.initialize (globalHandle h)
   liftIO $ Env.setCurrentSource (envHandle h) source

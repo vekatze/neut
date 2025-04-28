@@ -22,11 +22,7 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
-import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
-import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
-import Move.Context.UnusedPreset qualified as UnusedPreset
-import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
-import Move.Context.UnusedVariable qualified as UnusedVariable
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
@@ -55,11 +51,7 @@ data Handle
     importHandle :: Import.Handle,
     globalHandle :: Global.Handle,
     localRemarkHandle :: LocalRemark.Handle, -- per file
-    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
-    unusedPresetHandle :: UnusedPreset.Handle, -- (ModuleID ~> Hint)
-    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
-    unusedStaticFileHandle :: UnusedStaticFile.Handle,
-    unusedVariableHandle :: UnusedVariable.Handle
+    unusedHandle :: Unused.Handle
   }
 
 new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
@@ -70,11 +62,7 @@ new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle 
   importHandle <- Import.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
   localRemarkHandle <- LocalRemark.new
-  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
-  unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  unusedPresetHandle <- UnusedPreset.new
-  unusedStaticFileHandle <- UnusedStaticFile.new
-  unusedVariableHandle <- UnusedVariable.new
+  unusedHandle <- Unused.new
   return $ Handle {..}
 
 parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])
@@ -129,7 +117,7 @@ saveTopLevelNames h source topNameList = do
 
 registerUnusedVariableRemarks :: Handle -> IO ()
 registerUnusedVariableRemarks h = do
-  unusedVars <- UnusedVariable.get (unusedVariableHandle h)
+  unusedVars <- Unused.getVariable (unusedHandle h)
   forM_ unusedVars $ \(mx, x, k) ->
     case k of
       Normal ->
@@ -147,7 +135,7 @@ registerUnusedVariableRemarks h = do
 
 registerUnusedGlobalLocatorRemarks :: Handle -> IO ()
 registerUnusedGlobalLocatorRemarks h = do
-  unusedGlobalLocatorMap <- UnusedGlobalLocator.get (unusedGlobalLocatorHandle h)
+  unusedGlobalLocatorMap <- Unused.getGlobalLocator (unusedHandle h)
   let unusedGlobalLocators = concatMap snd unusedGlobalLocatorMap
   forM_ unusedGlobalLocators $ \(m, locatorText) ->
     LocalRemark.insert (localRemarkHandle h) $
@@ -156,7 +144,7 @@ registerUnusedGlobalLocatorRemarks h = do
 
 registerUnusedLocalLocatorRemarks :: Handle -> IO ()
 registerUnusedLocalLocatorRemarks h = do
-  unusedLocalLocatorMap <- UnusedLocalLocator.get (unusedLocalLocatorHandle h)
+  unusedLocalLocatorMap <- Unused.getLocalLocator (unusedHandle h)
   forM_ unusedLocalLocatorMap $ \(ll, m) ->
     LocalRemark.insert (localRemarkHandle h) $
       R.newRemark m R.Warning $
@@ -164,7 +152,7 @@ registerUnusedLocalLocatorRemarks h = do
 
 registerUnusedPresetRemarks :: Handle -> IO ()
 registerUnusedPresetRemarks h = do
-  unusedPresets <- UnusedPreset.get (unusedPresetHandle h)
+  unusedPresets <- Unused.getPreset (unusedHandle h)
   forM_ (Map.toList unusedPresets) $ \(presetName, m) ->
     LocalRemark.insert (localRemarkHandle h) $
       R.newRemark m R.Warning $
@@ -172,7 +160,7 @@ registerUnusedPresetRemarks h = do
 
 registerUnusedStaticFileRemarks :: Handle -> IO ()
 registerUnusedStaticFileRemarks h = do
-  unusedStaticFiles <- UnusedStaticFile.get (unusedStaticFileHandle h)
+  unusedStaticFiles <- Unused.getStaticFile (unusedHandle h)
   forM_ unusedStaticFiles $ \(k, m) ->
     LocalRemark.insert (localRemarkHandle h) $
       R.newRemark m R.Warning $

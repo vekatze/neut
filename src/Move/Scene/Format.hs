@@ -18,8 +18,7 @@ import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
-import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
-import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Init.Source qualified as InitSource
@@ -46,8 +45,7 @@ data Handle = Handle
     envHandle :: Env.Handle,
     ensReflectHandle :: EnsReflect.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
-    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
-    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
+    unusedHandle :: Unused.Handle,
     initTargetHandle :: InitTarget.Handle,
     initSourceHandle :: InitSource.Handle
   }
@@ -60,8 +58,7 @@ new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle 
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
-  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
-  unusedLocalLocatorHandle <- UnusedLocalLocator.new
+  unusedHandle <- Unused.new
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   return $ Handle {..}
@@ -90,8 +87,8 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       forM_ contentSeq' $ \(source, cacheOrContent) -> do
         InitSource.initializeForSource (initSourceHandle h) source
         void $ Parse.parse (parseHandle h) Peripheral source cacheOrContent
-      unusedGlobalLocators <- liftIO $ UnusedGlobalLocator.get (unusedGlobalLocatorHandle h)
-      unusedLocalLocators <- liftIO $ UnusedLocalLocator.get (unusedLocalLocatorHandle h)
+      unusedGlobalLocators <- liftIO $ Unused.getGlobalLocator (unusedHandle h)
+      unusedLocalLocators <- liftIO $ Unused.getLocalLocator (unusedHandle h)
       program <- ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
       presetNames <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}

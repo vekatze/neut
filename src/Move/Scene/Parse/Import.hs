@@ -23,9 +23,7 @@ import Move.Context.Module qualified as Module
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
-import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
-import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
-import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as GetModule
@@ -53,11 +51,9 @@ type LocatorText =
 data Handle
   = Handle
   { envHandle :: Env.Handle,
-    unusedStaticFileHandle :: UnusedStaticFile.Handle,
-    unusedLocalLocatorHandle :: UnusedLocalLocator.Handle,
+    unusedHandle :: Unused.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,
     shiftToLatestHandle :: STL.Handle,
-    unusedGlobalLocatorHandle :: UnusedGlobalLocator.Handle,
     locatorHandle :: Locator.Handle,
     aliasHandle :: Alias.Handle,
     globalHandle :: Global.Handle,
@@ -69,9 +65,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
-  unusedStaticFileHandle <- UnusedStaticFile.new
-  unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
-  unusedLocalLocatorHandle <- UnusedLocalLocator.new
+  unusedHandle <- Unused.new
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
@@ -125,7 +119,7 @@ interpretImportItemStatic h currentModule keyList = do
       Just path -> do
         let fullPath = moduleRootDir </> path
         liftIO $ Tag.insertFileLoc (tagHandle h) mKey (T.length key) (newSourceHint fullPath)
-        liftIO $ UnusedStaticFile.insert (unusedStaticFileHandle h) key mKey
+        liftIO $ Unused.insertStaticFile (unusedHandle h) key mKey
         return (key, (mKey, fullPath))
       Nothing ->
         raiseError mKey $ "No such static file is defined: " <> key
@@ -150,9 +144,9 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
           source <- getSource h mustUpdateTag m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
           when mustUpdateTag $ do
-            liftIO $ UnusedGlobalLocator.insert (unusedGlobalLocatorHandle h) (SGL.reify sgl) m locatorText
+            liftIO $ Unused.insertGlobalLocator (unusedHandle h) (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) ->
-              liftIO $ UnusedLocalLocator.insert (unusedLocalLocatorHandle h) ll ml
+              liftIO $ Unused.insertLocalLocator (unusedHandle h) ll ml
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl]]
       | otherwise ->
           raiseError m $ "No such prefix is defined: " <> BN.reify baseName
@@ -164,9 +158,9 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
           let moduleAlias = ModuleAlias aliasText
           sgl <- Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
           when mustUpdateTag $ do
-            liftIO $ UnusedGlobalLocator.insert (unusedGlobalLocatorHandle h) (SGL.reify sgl) m locatorText
+            liftIO $ Unused.insertGlobalLocator (unusedHandle h) (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) ->
-              liftIO $ UnusedLocalLocator.insert (unusedLocalLocatorHandle h) ll ml
+              liftIO $ Unused.insertLocalLocator (unusedHandle h) ll ml
           source <- getSource h mustUpdateTag m sgl locatorText
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
 
