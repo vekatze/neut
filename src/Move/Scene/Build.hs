@@ -71,6 +71,7 @@ data Handle = Handle
     debugHandle :: Debug.Handle,
     unravelHandle :: Unravel.Handle,
     loadHandle :: Load.Handle,
+    globalRemarkHandle :: GlobalRemark.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -83,6 +84,7 @@ new cfg gensymHandle = do
   debugHandle <- Debug.new
   unravelHandle <- Unravel.new
   loadHandle <- Load.new
+  globalRemarkHandle <- GlobalRemark.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -100,9 +102,8 @@ buildTarget h (M.MainModule baseModule) target = do
   didPerformForeignCompilation <- compileForeign h target moduleList
   contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
   compile h target' (_outputKindList h) contentSeq
-  hgl <- GlobalRemark.new
   hr <- Report.new
-  liftIO (GlobalRemark.get hgl) >>= liftIO . Report.printRemarkList hr
+  liftIO $ GlobalRemark.get (globalRemarkHandle h) >>= Report.printRemarkList hr
   case target' of
     Peripheral {} ->
       return ()
