@@ -168,7 +168,7 @@ compile h target outputKindList contentSeq = do
     hElaborate <- Elaborate.new (gensymHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
-    hl <- Lower.new
+    hl <- Lower.new (gensymHandle h)
     b <- toApp $ Cache.needsCompilation (cacheHandle h) outputKindList source
     if b
       then do
@@ -232,7 +232,7 @@ compileEntryPoint h mainModule target outputKindList = do
       if b
         then return []
         else do
-          hl <- Lower.new
+          hl <- Lower.new (gensymHandle h)
           mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= toApp . Lower.lowerEntryPoint hl t
           return [(Left t, mainVirtualCode)]
 

@@ -67,11 +67,10 @@ data Handle
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   arch <- toApp $ Env.getArch Nothing
   baseSize <- toApp Env.getBaseSize'
-  gensymHandle <- Gensym.new
   locatorHandle <- Locator.new
   reduceHandle <- Reduce.new
   substHandle <- Subst.new
