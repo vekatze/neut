@@ -7,7 +7,6 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Path
 import Rule.Artifact qualified as AR
@@ -23,7 +22,6 @@ import Rule.Hint
 import Rule.Ident
 import Rule.Import
 import Rule.IsConstLike
-import Rule.LocalLocator qualified as LL
 import Rule.LocalVarTree qualified as LVT
 import Rule.Module qualified as M
 import Rule.ModuleAlias qualified as MA
@@ -36,7 +34,6 @@ import Rule.StrictGlobalLocator qualified as SGL
 import Rule.Term qualified as TM
 import Rule.TopCandidate
 import Rule.TopNameMap
-import Rule.VarDefKind
 import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
 
@@ -52,11 +49,6 @@ data Env = Env
     importEnv :: IORef (Maybe RawImportSummary),
     localVarMap :: IORef LVT.LocalVarTree,
     topCandidateEnv :: IORef [TopCandidate],
-    unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
-    unusedGlobalLocatorMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
-    unusedLocalLocatorMap :: IORef (Map.HashMap LL.LocalLocator Hint),
-    unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
-    unusedStaticFileMap :: IORef (Map.HashMap T.Text Hint),
     buildSignatureCache :: IORef (Maybe String), -- only for memoization
     sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
     traceSourceList :: IORef [Source.Source],
@@ -89,11 +81,6 @@ newEnv = do
   globalRemarkList <- newIORef []
   localVarMap <- newIORef LVT.empty
   topCandidateEnv <- newIORef []
-  unusedVariableMap <- newIORef IntMap.empty
-  unusedGlobalLocatorMap <- newIORef Map.empty
-  unusedPresetMap <- newIORef Map.empty
-  unusedLocalLocatorMap <- newIORef Map.empty
-  unusedStaticFileMap <- newIORef Map.empty
   nameMap <- newIORef Map.empty
   geistMap <- newIORef Map.empty
   buildSignatureCache <- newIORef Nothing

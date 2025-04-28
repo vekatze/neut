@@ -21,13 +21,10 @@ module Move.Context.Unused
 where
 
 import Control.Monad
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify
@@ -49,13 +46,13 @@ data Handle
     unusedVariableMapRef :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind))
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  unusedGlobalLocatorMapRef <- asks App.unusedGlobalLocatorMap
-  unusedLocalLocatorMapRef <- asks App.unusedLocalLocatorMap
-  unusedPresetMapRef <- asks App.unusedPresetMap
-  unusedStaticFileMapRef <- asks App.unusedStaticFileMap
-  unusedVariableMapRef <- asks App.unusedVariableMap
+  unusedGlobalLocatorMapRef <- newIORef Map.empty
+  unusedLocalLocatorMapRef <- newIORef Map.empty
+  unusedPresetMapRef <- newIORef Map.empty
+  unusedStaticFileMapRef <- newIORef Map.empty
+  unusedVariableMapRef <- newIORef IntMap.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()
