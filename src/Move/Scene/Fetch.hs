@@ -18,6 +18,7 @@ import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.App
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -54,11 +55,11 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> App Handle
-new envHandle gensymHandle colorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> App Handle
+new envHandle gensymHandle colorHandle debugHandle = do
   ensReflectHandle <- EnsReflect.new gensymHandle
   moduleSaveHandle <- ModuleSave.new colorHandle
-  externalHandle <- External.new colorHandle
+  externalHandle <- External.new debugHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   reportHandle <- Report.new colorHandle
   return $ Handle {..}

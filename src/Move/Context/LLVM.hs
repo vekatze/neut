@@ -44,7 +44,7 @@ new :: Env.Handle -> Color.Handle -> App Handle
 new envHandle colorHandle = do
   debugHandle <- Debug.new colorHandle
   pathHandle <- Path.new envHandle colorHandle
-  externalHandle <- External.new colorHandle
+  externalHandle <- External.new debugHandle
   return $ Handle {..}
 
 type ClangOption = String

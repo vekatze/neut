@@ -9,6 +9,7 @@ import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -28,9 +29,9 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> App Handle
-new envHandle colorHandle = do
-  externalHandle <- External.new colorHandle
+new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
+new envHandle colorHandle debugHandle = do
+  externalHandle <- External.new debugHandle
   moduleSaveHandle <- ModuleSave.new colorHandle
   return $ Handle {..}
 

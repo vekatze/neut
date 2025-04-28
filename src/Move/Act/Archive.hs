@@ -7,6 +7,7 @@ where
 
 import Move.Context.App
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
@@ -29,12 +30,12 @@ data Handle
     archiveHandle :: Archive.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> App Handle
-new envHandle gensymHandle colorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> App Handle
+new envHandle gensymHandle colorHandle debugHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
   packageVersionHandle <- PV.new colorHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
-  archiveHandle <- Archive.new envHandle colorHandle
+  archiveHandle <- Archive.new envHandle colorHandle debugHandle
   return $ Handle {..}
 
 archive :: Handle -> Config -> EIO ()

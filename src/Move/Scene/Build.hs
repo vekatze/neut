@@ -120,7 +120,7 @@ new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle a
   cacheHandle <- Cache.new envHandle colorHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle colorHandle
-  externalHandle <- External.new colorHandle
+  externalHandle <- External.new debugHandle
   ensureMainHandle <- EnsureMain.new locatorHandle
   parseHandle <- Parse.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
@@ -128,7 +128,7 @@ new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle a
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new envHandle colorHandle
   installHandle <- Install.new envHandle colorHandle
-  executeHandle <- Execute.new envHandle colorHandle
+  executeHandle <- Execute.new envHandle colorHandle debugHandle
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg

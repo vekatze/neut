@@ -55,7 +55,7 @@ execute = do
           h <- Clean.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
-          h <- Archive.new envHandle gensymHandle colorHandle
+          h <- Archive.new envHandle gensymHandle colorHandle debugHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
           h <- Create.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle

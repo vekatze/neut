@@ -35,7 +35,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  fetchHandle <- Fetch.new envHandle gensymHandle colorHandle
+  fetchHandle <- Fetch.new envHandle gensymHandle colorHandle debugHandle
   checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
   return $ Handle {..}

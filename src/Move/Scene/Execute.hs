@@ -7,6 +7,7 @@ where
 
 import Move.Context.App
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -22,10 +23,10 @@ data Handle
     externalHandle :: External.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> App Handle
-new envHandle colorHandle = do
+new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
+new envHandle colorHandle debugHandle = do
   pathHandle <- Path.new envHandle colorHandle
-  externalHandle <- External.new colorHandle
+  externalHandle <- External.new debugHandle
   return $ Handle {..}
 
 execute :: Handle -> MainTarget -> [String] -> EIO ()
