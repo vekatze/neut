@@ -36,7 +36,7 @@ execute = do
     envHandle <- liftIO Env.new
     tagHandle <- liftIO Tag.new
     locatorHandle <- liftIO $ Locator.new envHandle tagHandle
-    antecedentHandle <- Antecedent.new
+    antecedentHandle <- liftIO Antecedent.new
     c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables

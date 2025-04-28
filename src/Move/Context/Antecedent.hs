@@ -10,13 +10,10 @@ module Move.Context.Antecedent
 where
 
 import Control.Monad
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Module qualified as M
 import Rule.ModuleID qualified as MID
 import Prelude hiding (lookup, read)
@@ -31,11 +28,11 @@ data Handle
 type RevMap =
   Map.HashMap MID.ModuleID (S.Set MID.ModuleID)
 
-new :: App Handle
+new :: IO Handle
 new = do
-  antecedentMapRef <- asks App.antecedentMap
-  reverseAntecedentMapRef <- asks App.reverseAntecedentMap
-  antecedentDigestCacheRef <- asks App.antecedentDigestCache
+  antecedentMapRef <- newIORef Map.empty
+  reverseAntecedentMapRef <- newIORef Map.empty
+  antecedentDigestCacheRef <- newIORef Nothing
   return $ Handle {..}
 
 initialize :: Handle -> IO ()

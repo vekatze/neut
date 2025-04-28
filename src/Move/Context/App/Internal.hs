@@ -32,7 +32,6 @@ import Rule.LocalVarTree qualified as LVT
 import Rule.Module qualified as M
 import Rule.ModuleAlias qualified as MA
 import Rule.ModuleDigest qualified as MD
-import Rule.ModuleID qualified as MID
 import Rule.Opacity qualified as O
 import Rule.OptimizableData
 import Rule.RawImportSummary (RawImportSummary)
@@ -59,9 +58,6 @@ data Env = Env
     sourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap),
     nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     geistMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
-    antecedentMap :: IORef (Map.HashMap MID.ModuleID M.Module),
-    reverseAntecedentMap :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
-    antecedentDigestCache :: Ref T.Text,
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     importEnv :: IORef (Maybe RawImportSummary),
@@ -120,9 +116,6 @@ newEnv = do
   unusedStaticFileMap <- newIORef Map.empty
   nameMap <- newIORef Map.empty
   geistMap <- newIORef Map.empty
-  antecedentMap <- newIORef Map.empty
-  reverseAntecedentMap <- newIORef Map.empty
-  antecedentDigestCache <- newRef
   buildSignatureCache <- newIORef Nothing
   sourceChildrenMap <- newIORef Map.empty
   traceSourceList <- newIORef []
