@@ -39,7 +39,7 @@ new :: Env.Handle -> Color.Handle -> App Handle
 new envHandle colorHandle = do
   debugHandle <- Debug.new colorHandle
   pathHandle <- Path.new envHandle colorHandle
-  llvmHandle <- LLVM.new envHandle colorHandle
+  llvmHandle <- LLVM.new envHandle colorHandle debugHandle
   return $ Handle {..}
 
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()

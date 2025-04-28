@@ -124,7 +124,7 @@ new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle a
   ensureMainHandle <- EnsureMain.new locatorHandle
   parseHandle <- Parse.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
-  llvmHandle <- LLVM.new envHandle colorHandle
+  llvmHandle <- LLVM.new envHandle colorHandle debugHandle
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new envHandle colorHandle
   installHandle <- Install.new envHandle colorHandle
