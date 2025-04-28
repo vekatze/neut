@@ -126,7 +126,7 @@ new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle a
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
   llvmHandle <- LLVM.new envHandle debugHandle
   emitHandle <- Emit.new gensymHandle
-  linkHandle <- Link.new envHandle colorHandle
+  linkHandle <- Link.new envHandle colorHandle debugHandle
   installHandle <- Install.new envHandle debugHandle
   executeHandle <- Execute.new envHandle debugHandle
   let _outputKindList = outputKindList cfg
