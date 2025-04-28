@@ -74,7 +74,7 @@ new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antec
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
   highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
   referencesHandle <- References.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
-  formatHandle <- Format.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 lsp :: Handle -> App Int

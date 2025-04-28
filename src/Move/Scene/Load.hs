@@ -8,7 +8,6 @@ where
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP)
 import Move.Context.Env qualified as Env
@@ -24,9 +23,8 @@ data Handle
     cacheHandle :: Cache.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> App Handle
-new envHandle colorHandle = do
-  debugHandle <- Debug.new colorHandle
+new :: Env.Handle -> Debug.Handle -> App Handle
+new envHandle debugHandle = do
   cacheHandle <- Cache.new envHandle debugHandle
   return $ Handle {..}
 

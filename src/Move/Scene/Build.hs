@@ -114,7 +114,7 @@ new ::
 new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
-  loadHandle <- Load.new envHandle colorHandle
+  loadHandle <- Load.new envHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new colorHandle
   cacheHandle <- Cache.new envHandle debugHandle

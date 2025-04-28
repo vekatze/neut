@@ -35,7 +35,7 @@ new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Ha
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
-  formatHandle <- Format.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

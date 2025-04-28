@@ -64,7 +64,7 @@ new ::
   Antecedent.Handle ->
   App Handle
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  loadHandle <- Load.new envHandle colorHandle
+  loadHandle <- Load.new envHandle debugHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   moduleHandle <- Module.new gensymHandle
