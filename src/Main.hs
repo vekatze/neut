@@ -60,7 +60,7 @@ execute = do
           h <- Check.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           Check.check h cfg
         C.Clean cfg -> do
-          h <- Clean.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+          h <- Clean.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           h <- Archive.new envHandle gensymHandle colorHandle reportHandle debugHandle

@@ -63,9 +63,8 @@ data Handle
     tagHandle :: Tag.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
-  unusedHandle <- Unused.new
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle

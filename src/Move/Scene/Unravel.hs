@@ -36,6 +36,7 @@ import Move.Context.Parse (ensureExistence')
 import Move.Context.Parse qualified as Parse
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
+import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Parse.Core qualified as ParseCore
@@ -88,14 +89,15 @@ new ::
   Locator.Handle ->
   OptimizableData.Handle ->
   KeyArg.Handle ->
+  Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   pathHandle <- Path.new envHandle debugHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
-  importHandle <- Import.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+  importHandle <- Import.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   parseHandle <- ParseCore.new gensymHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
   artifactHandle <- Artifact.new
