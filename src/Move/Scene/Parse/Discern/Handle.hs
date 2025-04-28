@@ -49,10 +49,9 @@ data Handle = Handle
     currentLayer :: Layer
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   envHandle <- Env.new
-  gensymHandle <- Gensym.new
   locatorHandle <- Locator.new
   globalHandle <- Global.new
   aliasHandle <- Alias.new

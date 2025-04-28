@@ -59,7 +59,7 @@ data Handle
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
   parseHandle <- P.new gensymHandle
-  discernHandle <- Discern.new
+  discernHandle <- Discern.new gensymHandle
   pathHandle <- Path.new
   importHandle <- Import.new
   globalHandle <- Global.new
