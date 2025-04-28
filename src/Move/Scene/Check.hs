@@ -52,7 +52,7 @@ new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
 new envHandle gensymHandle locatorHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new envHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
   parseHandle <- Parse.new envHandle gensymHandle locatorHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle

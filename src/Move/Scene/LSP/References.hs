@@ -11,6 +11,7 @@ import Language.LSP.Protocol.Types
 import Move.Context.App (App)
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
@@ -30,9 +31,9 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
   getSourceHandle <- GetSource.new envHandle gensymHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
   gacHandle <- GAC.new envHandle

@@ -33,7 +33,7 @@ new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
 new envHandle gensymHandle locatorHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   fetchHandle <- Fetch.new envHandle gensymHandle
-  cleanHandle <- Clean.new envHandle gensymHandle
+  cleanHandle <- Clean.new envHandle gensymHandle locatorHandle
   checkHandle <- Check.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 

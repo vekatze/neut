@@ -9,6 +9,7 @@ import Control.Monad
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Unravel qualified as Unravel
@@ -21,9 +22,9 @@ data Handle = Handle
     unravelHandle :: Unravel.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 
 clean :: Handle -> EIO ()

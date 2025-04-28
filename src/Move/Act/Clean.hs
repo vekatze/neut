@@ -8,6 +8,7 @@ where
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clean qualified as Clean
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -20,10 +21,10 @@ data Handle
     cleanHandle :: Clean.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  cleanHandle <- Clean.new envHandle gensymHandle
+  cleanHandle <- Clean.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 
 clean :: Handle -> Config -> EIO ()

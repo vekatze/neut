@@ -23,6 +23,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
 import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
@@ -57,9 +58,9 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
   clangHandle <- Clang.new
   pathHandle <- Path.new envHandle
   antecedentHandle <- Antecedent.new

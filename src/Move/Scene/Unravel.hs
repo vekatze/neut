@@ -78,15 +78,14 @@ data Handle
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
   debugHandle <- Debug.new
   pathHandle <- Path.new envHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new
-  importHandle <- Import.new envHandle gensymHandle
+  importHandle <- Import.new envHandle gensymHandle locatorHandle
   parseHandle <- ParseCore.new gensymHandle
-  locatorHandle <- Locator.new envHandle
   aliasHandle <- Alias.new envHandle
   antecedentHandle <- Antecedent.new
   artifactHandle <- Artifact.new

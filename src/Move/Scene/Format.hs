@@ -49,7 +49,7 @@ data Handle = Handle
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
 new envHandle gensymHandle locatorHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
   loadHandle <- Load.new envHandle
   parseCoreHandle <- ParseCore.new gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle locatorHandle
