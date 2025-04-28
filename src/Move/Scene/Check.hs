@@ -44,7 +44,8 @@ data Handle
     moduleHandle :: Module.Handle,
     envHandle :: Env.Handle,
     initSourceHandle :: InitSource.Handle,
-    initTargetHandle :: InitTarget.Handle
+    initTargetHandle :: InitTarget.Handle,
+    locatorHandle :: Locator.Handle
   }
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
@@ -52,7 +53,7 @@ new envHandle gensymHandle locatorHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new envHandle
   unravelHandle <- Unravel.new envHandle gensymHandle
-  parseHandle <- Parse.new envHandle gensymHandle
+  parseHandle <- Parse.new envHandle gensymHandle locatorHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle
   initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
@@ -104,7 +105,7 @@ checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (locatorHandle h)
   void $
     toApp $
       Parse.parse (parseHandle h) target source cacheOrContent
@@ -114,7 +115,7 @@ checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elabora
 checkSource' h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (locatorHandle h)
   toApp $
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborateThenInspect hElaborate target

@@ -94,12 +94,12 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle = do
+new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle locatorHandle = do
   substHandle <- Subst.new gensymHandle
   reduceHandle <- Reduce.new envHandle gensymHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle
+  discernHandle <- Discern.new envHandle gensymHandle locatorHandle
   keyArgHandle <- KeyArg.new envHandle
   weakDeclHandle <- WeakDecl.new
   optDataHandle <- OptimizableData.new

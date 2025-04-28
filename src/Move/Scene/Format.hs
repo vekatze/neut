@@ -52,7 +52,7 @@ new envHandle gensymHandle locatorHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle
   loadHandle <- Load.new envHandle
   parseCoreHandle <- ParseCore.new gensymHandle
-  parseHandle <- Parse.new envHandle gensymHandle
+  parseHandle <- Parse.new envHandle gensymHandle locatorHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new

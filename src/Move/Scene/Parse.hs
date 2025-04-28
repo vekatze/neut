@@ -15,6 +15,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
+import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
@@ -57,10 +58,10 @@ data Handle
     unusedVariableHandle :: UnusedVariable.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
   parseHandle <- P.new gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle
+  discernHandle <- Discern.new envHandle gensymHandle locatorHandle
   pathHandle <- Path.new envHandle
   importHandle <- Import.new envHandle gensymHandle
   globalHandle <- Global.new envHandle
