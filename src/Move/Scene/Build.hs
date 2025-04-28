@@ -70,6 +70,7 @@ data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     debugHandle :: Debug.Handle,
     unravelHandle :: Unravel.Handle,
+    loadHandle :: Load.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -81,6 +82,7 @@ new :: Config -> Gensym.Handle -> App Handle
 new cfg gensymHandle = do
   debugHandle <- Debug.new
   unravelHandle <- Unravel.new
+  loadHandle <- Load.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -96,8 +98,7 @@ buildTarget h (M.MainModule baseModule) target = do
   (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign h target moduleList
-  h'' <- Load.new
-  contentSeq <- toApp $ Load.load h'' target dependenceSeq
+  contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
   compile h target' (_outputKindList h) contentSeq
   hgl <- GlobalRemark.new
   hr <- Report.new
