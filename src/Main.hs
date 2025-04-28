@@ -33,7 +33,7 @@ execute = do
   runApp $ do
     gensymHandle <- liftIO Gensym.new
     envHandle <- liftIO Env.new
-    tagHandle <- Tag.new
+    tagHandle <- liftIO Tag.new
     locatorHandle <- Locator.new envHandle tagHandle
     c <- liftIO OptParse.parseCommand
     Throw.run $ do

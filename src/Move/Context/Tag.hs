@@ -13,11 +13,8 @@ module Move.Context.Tag
 where
 
 import Control.Monad (unless, when)
-import Control.Monad.Reader (asks)
 import Data.IORef
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Binder
 import Rule.DefiniteDescription qualified as DD
 import Rule.ExternalName qualified as EN
@@ -32,9 +29,9 @@ newtype Handle
   { tagMapRef :: IORef LT.LocationTree
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  tagMapRef <- asks App.tagMap
+  tagMapRef <- newIORef LT.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()

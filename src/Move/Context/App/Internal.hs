@@ -29,7 +29,6 @@ import Rule.IsConstLike
 import Rule.Key
 import Rule.LocalLocator qualified as LL
 import Rule.LocalVarTree qualified as LVT
-import Rule.LocationTree qualified as LT
 import Rule.Module qualified as M
 import Rule.ModuleAlias qualified as MA
 import Rule.ModuleDigest qualified as MD
@@ -65,7 +64,6 @@ data Env = Env
     antecedentDigestCache :: Ref T.Text,
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
-    tagMap :: IORef LT.LocationTree,
     importEnv :: IORef (Maybe RawImportSummary),
     localVarMap :: IORef LVT.LocalVarTree,
     topCandidateEnv :: IORef [TopCandidate],
@@ -116,7 +114,6 @@ newEnv = do
   remarkList <- newIORef []
   importEnv <- newIORef Nothing
   globalRemarkList <- newIORef []
-  tagMap <- newIORef LT.empty
   localVarMap <- newIORef LVT.empty
   topCandidateEnv <- newIORef []
   unusedVariableMap <- newIORef IntMap.empty
