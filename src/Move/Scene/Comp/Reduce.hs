@@ -27,8 +27,8 @@ data Handle
 new :: App Handle
 new = do
   compDefinitionHandle <- CompDefinition.new
-  substHandle <- Subst.new
   gensymHandle <- Gensym.new
+  substHandle <- Subst.new gensymHandle
   return $ Handle {..}
 
 reduce :: Handle -> C.Comp -> IO C.Comp

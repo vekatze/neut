@@ -16,9 +16,8 @@ newtype Handle
   { gensymHandle :: Gensym.Handle
   }
 
-new :: App Handle
-new = do
-  gensymHandle <- Gensym.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   return $ Handle {..}
 
 subst :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp

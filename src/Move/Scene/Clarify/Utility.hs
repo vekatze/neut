@@ -38,7 +38,7 @@ data Handle
 new :: App Handle
 new = do
   gensymHandle <- Gensym.new
-  substHandle <- Subst.new
+  substHandle <- Subst.new gensymHandle
   auxEnvHandle <- AuxEnv.new
   baseSize <- toApp Env.getBaseSize'
   return $ Handle {..}
