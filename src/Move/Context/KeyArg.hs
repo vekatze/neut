@@ -9,12 +9,9 @@ module Move.Context.KeyArg
 where
 
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -32,9 +29,9 @@ data Handle
     keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key])))
   }
 
-new :: Env.Handle -> App Handle
+new :: Env.Handle -> IO Handle
 new envHandle = do
-  keyArgMapRef <- asks App.keyArgMap
+  keyArgMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> AN.ArgNum -> [Key] -> EIO ()

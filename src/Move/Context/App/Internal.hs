@@ -11,7 +11,6 @@ import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Path
-import Rule.ArgNum qualified as AN
 import Rule.Artifact qualified as AR
 import Rule.Binder
 import Rule.Comp
@@ -25,7 +24,6 @@ import Rule.Hint
 import Rule.Ident
 import Rule.Import
 import Rule.IsConstLike
-import Rule.Key
 import Rule.LocalLocator qualified as LL
 import Rule.LocalVarTree qualified as LVT
 import Rule.Module qualified as M
@@ -70,7 +68,6 @@ data Env = Env
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
-    keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
@@ -112,7 +109,6 @@ newEnv = do
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
   compAuxEnv <- newIORef Map.empty
-  keyArgMap <- newIORef Map.empty
   optDataMap <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty

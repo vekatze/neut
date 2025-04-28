@@ -44,7 +44,7 @@ execute = do
     colorHandle <- liftIO Color.new
     reportHandle <- liftIO $ Report.new colorHandle
     debugHandle <- liftIO $ Debug.new colorHandle
-    keyArgHandle <- KeyArg.new envHandle
+    keyArgHandle <- liftIO $ KeyArg.new envHandle
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do
       ensureExecutables
