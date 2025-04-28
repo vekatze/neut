@@ -53,14 +53,13 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   ensReflectHandle <- EnsReflect.new gensymHandle
   moduleSaveHandle <- ModuleSave.new
   externalHandle <- External.new
   moduleHandle <- ModuleReflect.new gensymHandle
   reportHandle <- Report.new
-  envHandle <- Env.new
   return $ Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()

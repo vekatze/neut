@@ -33,7 +33,7 @@ new envHandle gensymHandle = do
   initLoggerHandle <- InitLogger.new
   initCompilerHandle <- InitCompiler.new gensymHandle
   newHandle <- New.new
-  fetchHandle <- Fetch.new gensymHandle
+  fetchHandle <- Fetch.new envHandle gensymHandle
   checkHandle <- Check.new envHandle gensymHandle
   return $ Handle {..}
 
