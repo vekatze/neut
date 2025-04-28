@@ -21,9 +21,8 @@ data Handle = Handle
     unravelHandle :: Unravel.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  envHandle <- Env.new
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   unravelHandle <- Unravel.new gensymHandle
   return $ Handle {..}
 

@@ -42,7 +42,7 @@ execute = do
           h <- Check.new envHandle gensymHandle
           Check.check h cfg
         C.Clean cfg -> do
-          h <- Clean.new gensymHandle
+          h <- Clean.new envHandle gensymHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           h <- Archive.new envHandle gensymHandle
