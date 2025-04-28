@@ -106,17 +106,17 @@ new ::
   Env.Handle ->
   Gensym.Handle ->
   Color.Handle ->
+  Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new
-  reportHandle <- Report.new colorHandle
   cacheHandle <- Cache.new envHandle debugHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle debugHandle

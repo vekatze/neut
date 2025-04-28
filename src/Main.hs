@@ -48,7 +48,7 @@ execute = do
       ensureExecutables
       case c of
         C.Build cfg -> do
-          h <- Build.new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+          h <- Build.new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           Build.build h cfg
         C.Check cfg -> do
           h <- Check.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
@@ -74,5 +74,5 @@ execute = do
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
-          h <- Zen.new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+          h <- Zen.new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           Zen.zen h cfg
