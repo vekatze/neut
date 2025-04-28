@@ -130,7 +130,7 @@ new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandl
   pathHandle <- Path.new envHandle debugHandle
   externalHandle <- External.new debugHandle
   ensureMainHandle <- EnsureMain.new locatorHandle
-  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
   llvmHandle <- LLVM.new envHandle debugHandle
   emitHandle <- Emit.new gensymHandle

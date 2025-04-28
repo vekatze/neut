@@ -54,15 +54,14 @@ data Handle
     unusedHandle :: Unused.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   parseHandle <- P.new gensymHandle
   discernHandle <- Discern.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle debugHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle optDataHandle keyArgHandle tagHandle antecedentHandle
   globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle tagHandle
   localRemarkHandle <- LocalRemark.new
-  unusedHandle <- Unused.new
   return $ Handle {..}
 
 parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])
