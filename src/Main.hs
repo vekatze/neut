@@ -39,7 +39,7 @@ execute = do
           h <- Build.new cfg envHandle gensymHandle
           Build.build h cfg
         C.Check cfg -> do
-          h <- Check.new gensymHandle
+          h <- Check.new envHandle gensymHandle
           Check.check h cfg
         C.Clean cfg -> do
           h <- Clean.new gensymHandle

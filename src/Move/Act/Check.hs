@@ -26,12 +26,11 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   reportHandle <- Report.new
   initCompilerHandle <- InitCompiler.new gensymHandle
   fetchHandle <- Fetch.new gensymHandle
-  envHandle <- Env.new
   checkHandle <- Check.new gensymHandle
   return $ Handle {..}
 
