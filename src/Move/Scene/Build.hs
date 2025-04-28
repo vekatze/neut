@@ -69,6 +69,7 @@ data Config = Config
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     debugHandle :: Debug.Handle,
+    initTargetHandle :: InitTarget.Handle,
     unravelHandle :: Unravel.Handle,
     loadHandle :: Load.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
@@ -83,6 +84,7 @@ data Handle = Handle
 new :: Config -> Gensym.Handle -> App Handle
 new cfg gensymHandle = do
   debugHandle <- Debug.new
+  initTargetHandle <- InitTarget.new gensymHandle
   unravelHandle <- Unravel.new
   loadHandle <- Load.new
   globalRemarkHandle <- GlobalRemark.new
@@ -98,7 +100,7 @@ buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
   toApp $ Debug.report (debugHandle h) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
-  InitTarget.new (gensymHandle h) >>= liftIO . InitTarget.initializeForTarget
+  liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
   (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign h target moduleList
