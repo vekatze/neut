@@ -22,9 +22,8 @@ newtype Handle
   { envHandle :: Env.Handle
   }
 
-new :: App Handle
-new = do
-  envHandle <- Env.new
+new :: Env.Handle -> App Handle
+new envHandle = do
   return $ Handle {..}
 
 getMainTarget :: Handle -> T.Text -> EIO MainTarget
