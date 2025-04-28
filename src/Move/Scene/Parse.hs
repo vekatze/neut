@@ -63,7 +63,7 @@ new envHandle gensymHandle = do
   discernHandle <- Discern.new envHandle gensymHandle
   pathHandle <- Path.new envHandle
   importHandle <- Import.new envHandle gensymHandle
-  globalHandle <- Global.new
+  globalHandle <- Global.new envHandle
   localRemarkHandle <- LocalRemark.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new

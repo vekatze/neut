@@ -73,7 +73,7 @@ new envHandle gensymHandle = do
   shiftToLatestHandle <- STL.new
   locatorHandle <- Locator.new
   aliasHandle <- Alias.new envHandle
-  globalHandle <- Global.new
+  globalHandle <- Global.new envHandle
   moduleHandle <- Module.new
   rawImportSummaryHandle <- RawImportSummary.new
   tagHandle <- Tag.new
