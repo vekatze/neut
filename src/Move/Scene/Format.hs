@@ -53,7 +53,7 @@ new gensymHandle = do
   parseCoreHandle <- ParseCore.new gensymHandle
   parseHandle <- Parse.new gensymHandle
   envHandle <- Env.new
-  ensReflectHandle <- EnsReflect.new
+  ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new

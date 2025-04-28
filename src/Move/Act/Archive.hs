@@ -33,7 +33,7 @@ new gensymHandle = do
   initCompilerHandle <- InitCompiler.new gensymHandle
   envHandle <- Env.new
   packageVersionHandle <- PV.new
-  ensReflectHandle <- EnsReflect.new
+  ensReflectHandle <- EnsReflect.new gensymHandle
   archiveHandle <- Archive.new
   return $ Handle {..}
 

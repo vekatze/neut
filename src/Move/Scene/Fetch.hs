@@ -55,7 +55,7 @@ data Handle
 
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
-  ensReflectHandle <- EnsReflect.new
+  ensReflectHandle <- EnsReflect.new gensymHandle
   moduleSaveHandle <- ModuleSave.new
   externalHandle <- External.new
   moduleHandle <- ModuleReflect.new gensymHandle
