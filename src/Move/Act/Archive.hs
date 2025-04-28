@@ -32,7 +32,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> App Handle
 new envHandle gensymHandle colorHandle debugHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   packageVersionHandle <- PV.new colorHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   archiveHandle <- Archive.new envHandle colorHandle debugHandle

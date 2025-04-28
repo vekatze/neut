@@ -43,7 +43,7 @@ new ::
   Antecedent.Handle ->
   App Handle
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle colorHandle debugHandle
   cleanHandle <- Clean.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle

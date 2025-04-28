@@ -20,10 +20,9 @@ data Handle
     debugHandle :: Debug.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> App Handle
-new envHandle colorHandle = do
+new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
+new envHandle colorHandle debugHandle = do
   reportHandle <- Report.new colorHandle
-  debugHandle <- Debug.new colorHandle
   return $ Handle {..}
 
 initializeLogger :: Handle -> Remark.Config -> IO ()

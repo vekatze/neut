@@ -37,7 +37,7 @@ new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Ha
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   fetchHandle <- Fetch.new envHandle gensymHandle colorHandle debugHandle
   checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   return $ Handle {..}
 
 lint :: Handle -> AppLsp () ()
