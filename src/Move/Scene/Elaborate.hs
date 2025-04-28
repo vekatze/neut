@@ -118,7 +118,7 @@ new envHandle gensymHandle = do
   typeHandle <- Type.new
   weakDeclHandle <- WeakDecl.new
   defHandle <- Definition.new
-  keyArgHandle <- KeyArg.new
+  keyArgHandle <- KeyArg.new envHandle
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new envHandle gensymHandle
   affHandle <- EnsureAffinity.new envHandle gensymHandle

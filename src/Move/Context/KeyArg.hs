@@ -32,9 +32,8 @@ data Handle
     keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key])))
   }
 
-new :: App Handle
-new = do
-  envHandle <- Env.new
+new :: Env.Handle -> App Handle
+new envHandle = do
   keyArgMapRef <- asks App.keyArgMap
   return $ Handle {..}
 

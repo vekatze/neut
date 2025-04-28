@@ -54,7 +54,7 @@ new envHandle gensymHandle = do
   locatorHandle <- Locator.new
   globalHandle <- Global.new envHandle
   aliasHandle <- Alias.new envHandle
-  keyArgHandle <- KeyArg.new
+  keyArgHandle <- KeyArg.new envHandle
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   tagHandle <- Tag.new
