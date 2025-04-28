@@ -151,7 +151,7 @@ compile h target outputKindList contentSeq = do
       else return []
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
-  hp <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
+  hp <- liftIO $ ProgressBar.new (envHandle h) (colorHandle h) (Just numOfItems) workingTitle completedTitle color
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     toApp (InitSource.initializeForSource (initSourceHandle h) source)
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
@@ -173,7 +173,7 @@ compile h target outputKindList contentSeq = do
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
     toApp $ emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList src code
   mapM_ wait $ entryPointAsync ++ contentAsync
-  ProgressBar.close hp
+  liftIO $ ProgressBar.close hp
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do
