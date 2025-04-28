@@ -116,7 +116,7 @@ new cfg envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHan
   unravelHandle <- Unravel.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle colorHandle
   globalRemarkHandle <- GlobalRemark.new
-  reportHandle <- Report.new
+  reportHandle <- Report.new colorHandle
   cacheHandle <- Cache.new envHandle colorHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle colorHandle

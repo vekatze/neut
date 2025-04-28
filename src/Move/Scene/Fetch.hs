@@ -60,7 +60,7 @@ new envHandle gensymHandle colorHandle = do
   moduleSaveHandle <- ModuleSave.new colorHandle
   externalHandle <- External.new colorHandle
   moduleHandle <- ModuleReflect.new gensymHandle
-  reportHandle <- Report.new
+  reportHandle <- Report.new colorHandle
   return $ Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()

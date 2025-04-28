@@ -36,7 +36,7 @@ data Handle
 new :: Color.Handle -> App Handle
 new colorHandle = do
   moduleSaveHandle <- ModuleSave.new colorHandle
-  reportHandle <- Report.new
+  reportHandle <- Report.new colorHandle
   return $ Handle {..}
 
 createNewProject :: Handle -> T.Text -> Module -> EIO ()

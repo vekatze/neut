@@ -40,7 +40,7 @@ execute = do
     antecedentHandle <- liftIO Antecedent.new
     colorHandle <- Color.new
     c <- liftIO OptParse.parseCommand
-    Throw.run $ do
+    Throw.run colorHandle $ do
       ensureExecutables
       case c of
         C.Build cfg -> do

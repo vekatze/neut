@@ -17,6 +17,7 @@ import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.App
+import Move.Context.Color qualified as Color
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Rule.Error qualified as E
 import Rule.Hint
@@ -31,12 +32,12 @@ execute :: App a -> App (Either E.Error a)
 execute c = do
   Safe.try $ wrappingExternalExceptions c
 
-run :: App a -> App a
-run c = do
+run :: Color.Handle -> App a -> App a
+run colorHandle c = do
   resultOrErr <- execute c
   case resultOrErr of
     Left (E.MakeError err) -> do
-      hr <- Report.new
+      hr <- Report.new colorHandle
       liftIO $ Report.printErrorList hr err
       liftIO $ exitWith (ExitFailure 1)
     Right result ->

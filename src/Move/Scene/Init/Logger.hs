@@ -22,7 +22,7 @@ data Handle
 
 new :: Env.Handle -> Color.Handle -> App Handle
 new envHandle colorHandle = do
-  reportHandle <- Report.new
+  reportHandle <- Report.new colorHandle
   debugHandle <- Debug.new colorHandle
   return $ Handle {..}
 

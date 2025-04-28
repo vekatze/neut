@@ -47,9 +47,8 @@ data Handle
     endOfEntryRef :: IORef T.Text
   }
 
-new :: App Handle
-new = do
-  colorHandle <- Color.new
+new :: Color.Handle -> App Handle
+new colorHandle = do
   endOfEntryRef <- asks App.endOfEntry
   return $ Handle {..}
 
