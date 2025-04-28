@@ -67,9 +67,8 @@ data Handle
     currentGlobalLocator :: IORef (Maybe SGL.StrictGlobalLocator)
   }
 
-new :: Env.Handle -> App Handle
-new envHandle = do
-  tagHandle <- Tag.new
+new :: Env.Handle -> Tag.Handle -> App Handle
+new envHandle tagHandle = do
   activeDefiniteDescriptionListRef <- asks App.activeDefiniteDescriptionList
   activeStaticFileListRef <- asks App.activeStaticFileList
   activeGlobalLocatorListRef <- asks App.activeGlobalLocatorList
