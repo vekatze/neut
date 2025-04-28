@@ -60,16 +60,16 @@ execute = do
           h <- Archive.new envHandle gensymHandle colorHandle debugHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
-          h <- Create.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+          h <- Create.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           Create.create h cfg
         C.Get cfg -> do
-          h <- Get.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+          h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           Get.get h cfg
         C.Format cfg -> do
           h <- Format.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          h <- LSP.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+          h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg

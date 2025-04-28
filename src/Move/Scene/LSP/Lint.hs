@@ -8,6 +8,7 @@ where
 import Control.Monad
 import Control.Monad.Trans
 import Language.LSP.Server
+import Move.Console.Report qualified as Report
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
 import Move.Context.AppM (AppM)
@@ -33,9 +34,9 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  fetchHandle <- Fetch.new envHandle gensymHandle colorHandle debugHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+  fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
   checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   return $ Handle {..}

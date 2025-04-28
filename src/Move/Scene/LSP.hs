@@ -18,6 +18,7 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
+import Move.Console.Report qualified as Report
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.AppM (liftEIO)
@@ -47,6 +48,7 @@ data Handle
   { envHandle :: Env.Handle,
     gensymHandle :: Gensym.Handle,
     colorHandle :: Color.Handle,
+    reportHandle :: Report.Handle,
     debugHandle :: Debug.Handle,
     initCompilerHandle :: InitCompiler.Handle,
     completeHandle :: Complete.Handle,
@@ -63,12 +65,13 @@ new ::
   Env.Handle ->
   Gensym.Handle ->
   Color.Handle ->
+  Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   completeHandle <- Complete.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
@@ -122,12 +125,12 @@ handlers h =
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
-        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (reportHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
         Lint.lint h',
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
-        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (reportHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
         Lint.lint h',
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),

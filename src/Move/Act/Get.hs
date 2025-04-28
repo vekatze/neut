@@ -6,6 +6,7 @@ module Move.Act.Get
 where
 
 import Control.Monad
+import Move.Console.Report qualified as Report
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Color qualified as Color
@@ -37,14 +38,15 @@ new ::
   Env.Handle ->
   Gensym.Handle ->
   Color.Handle ->
+  Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
-  fetchHandle <- Fetch.new envHandle gensymHandle colorHandle debugHandle
+  fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
   cleanHandle <- Clean.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}

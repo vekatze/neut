@@ -7,6 +7,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Move.Console.Report qualified as Report
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Color qualified as Color
@@ -33,12 +34,12 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   initLoggerHandle <- InitLogger.new envHandle colorHandle debugHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   newHandle <- New.new colorHandle debugHandle
-  fetchHandle <- Fetch.new envHandle gensymHandle colorHandle debugHandle
+  fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
   checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
