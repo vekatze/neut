@@ -83,7 +83,7 @@ new = do
   linearizeHandle <- Linearize.new
   utilityHandle <- Utility.new gensymHandle
   auxEnvHandle <- AuxEnv.new
-  sigmaHandle <- Sigma.new
+  sigmaHandle <- Sigma.new gensymHandle
   locatorHandle <- Locator.new
   optDataHandle <- OptimizableData.new
   reduceHandle <- Reduce.new gensymHandle
