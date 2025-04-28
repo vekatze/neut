@@ -113,7 +113,7 @@ new cfg envHandle gensymHandle = do
   clarifyHandle <- Clarify.new gensymHandle
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new gensymHandle
-  linkHandle <- Link.new
+  linkHandle <- Link.new envHandle
   installHandle <- Install.new envHandle
   executeHandle <- Execute.new envHandle
   let _outputKindList = outputKindList cfg

@@ -35,10 +35,9 @@ data Handle
     llvmHandle :: LLVM.Handle
   }
 
-new :: App Handle
-new = do
+new :: Env.Handle -> App Handle
+new envHandle = do
   debugHandle <- Debug.new
-  envHandle <- Env.new
   pathHandle <- Path.new
   colorHandle <- Color.new
   llvmHandle <- LLVM.new
