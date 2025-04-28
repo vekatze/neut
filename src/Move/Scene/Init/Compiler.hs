@@ -27,7 +27,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
-  initLoggerHandle <- InitLogger.new
+  initLoggerHandle <- InitLogger.new envHandle
   moduleReflectHandle <- ModuleReflect.new gensymHandle
   return $ Handle {..}
 

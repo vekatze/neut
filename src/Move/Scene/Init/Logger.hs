@@ -20,11 +20,10 @@ data Handle
     debugHandle :: Debug.Handle
   }
 
-new :: App Handle
-new = do
+new :: Env.Handle -> App Handle
+new envHandle = do
   colorHandle <- Color.new
   reportHandle <- Report.new
-  envHandle <- Env.new
   debugHandle <- Debug.new
   return $ Handle {..}
 
