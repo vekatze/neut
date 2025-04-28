@@ -1,9 +1,14 @@
-module Move.Scene.Install (install) where
+module Move.Scene.Install
+  ( Handle,
+    new,
+    install,
+  )
+where
 
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Path
@@ -12,12 +17,22 @@ import Rule.Module (extractModule)
 import Rule.Target qualified as Target
 import Prelude hiding (log)
 
-install :: Target.MainTarget -> Path Abs Dir -> App ()
-install targetOrZen dir = do
+data Handle
+  = Handle
+  { envHandle :: Env.Handle,
+    pathHandle :: Path.Handle
+  }
+
+new :: App Handle
+new = do
   envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
-  h <- Path.new
-  execPath <- toApp $ Path.getExecutableOutputPath h targetOrZen (extractModule mainModule)
+  pathHandle <- Path.new
+  return $ Handle {..}
+
+install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()
+install h targetOrZen dir = do
+  mainModule <- Env.getMainModule (envHandle h)
+  execPath <- Path.getExecutableOutputPath (pathHandle h) targetOrZen (extractModule mainModule)
   case targetOrZen of
     Target.Named targetName _ -> do
       execName <- parseRelFile $ T.unpack targetName

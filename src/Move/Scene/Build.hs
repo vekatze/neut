@@ -85,6 +85,7 @@ data Handle = Handle
     llvmHandle :: LLVM.Handle,
     emitHandle :: Emit.Handle,
     linkHandle :: Link.Handle,
+    installHandle :: Install.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -111,6 +112,7 @@ new cfg gensymHandle = do
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new
   linkHandle <- Link.new
+  installHandle <- Install.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -137,7 +139,7 @@ buildTarget h (M.MainModule baseModule) target = do
     Main ct -> do
       toApp $ Link.link (linkHandle h) ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
       execute (_shouldExecute h) ct (_executeArgs h)
-      install (_installDir h) ct
+      toApp $ install h (_installDir h) ct
 
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile h target outputKindList contentSeq = do
@@ -235,10 +237,10 @@ execute shouldExecute target args = do
   when shouldExecute $ do
     Execute.execute target args
 
-install :: Maybe FilePath -> MainTarget -> App ()
-install filePathOrNone target = do
-  mDir <- mapM (toApp . Path.getInstallDir) filePathOrNone
-  mapM_ (Install.install target) mDir
+install :: Handle -> Maybe FilePath -> MainTarget -> EIO ()
+install h filePathOrNone target = do
+  mDir <- mapM Path.getInstallDir filePathOrNone
+  mapM_ (Install.install (installHandle h) target) mDir
 
 compileForeign :: Handle -> Target -> [M.Module] -> App Bool
 compileForeign h t moduleList = do
