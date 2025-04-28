@@ -28,10 +28,9 @@ data Handle
     archiveHandle :: Archive.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   initCompilerHandle <- InitCompiler.new gensymHandle
-  envHandle <- Env.new
   packageVersionHandle <- PV.new
   ensReflectHandle <- EnsReflect.new gensymHandle
   archiveHandle <- Archive.new

@@ -14,6 +14,7 @@ import Move.Act.Zen qualified as Zen
 import Move.Console.EnsureExecutables (ensureExecutables)
 import Move.Context.App
 import Move.Context.EIO (toApp)
+import Move.Context.Env qualified as Env
 import Move.Context.OptParse qualified as OptParse
 import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -29,6 +30,7 @@ execute :: IO ()
 execute = do
   runApp $ do
     gensymHandle <- liftIO Gensym.new
+    envHandle <- Env.new
     c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables
@@ -43,7 +45,7 @@ execute = do
           h <- Clean.new gensymHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
-          h <- Archive.new gensymHandle
+          h <- Archive.new envHandle gensymHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
           h <- Create.new gensymHandle
