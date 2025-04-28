@@ -93,7 +93,7 @@ new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle gl
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
   highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
-  referencesHandle <- References.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+  referencesHandle <- References.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
   return $ Handle {..}
 
 lsp :: Handle -> App Int
