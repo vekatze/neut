@@ -1,23 +1,36 @@
-module Move.Scene.EnsureMain (ensureMain) where
+module Move.Scene.EnsureMain
+  ( Handle,
+    new,
+    ensureMain,
+  )
+where
 
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Locator qualified as Locator
-import Move.Context.Throw qualified as Throw
 import Rule.BaseName qualified as BN
 import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
 import Rule.Source
 import Rule.Target
 
-ensureMain :: Target -> Source -> [DD.DefiniteDescription] -> App ()
-ensureMain t source topLevelNameList = do
+newtype Handle
+  = Handle
+  { locatorHandle :: Locator.Handle
+  }
+
+new :: App Handle
+new = do
+  locatorHandle <- Locator.new
+  return $ Handle {..}
+
+ensureMain :: Handle -> Target -> Source -> [DD.DefiniteDescription] -> EIO ()
+ensureMain h t source topLevelNameList = do
   case t of
     Main target -> do
-      h <- Locator.new
-      mainDD <- toApp $ Locator.getMainDefiniteDescriptionByTarget h target
+      mainDD <- Locator.getMainDefiniteDescriptionByTarget (locatorHandle h) target
       let hasEntryPoint = mainDD `elem` topLevelNameList
       let entryPointIsNecessary = Locator.checkIfEntryPointIsNecessary target source
       when (entryPointIsNecessary && not hasEntryPoint) $ do
@@ -32,6 +45,6 @@ ensureMain t source topLevelNameList = do
 type EntryPointName =
   T.Text
 
-raiseMissingEntryPoint :: Hint -> EntryPointName -> App a
+raiseMissingEntryPoint :: Hint -> EntryPointName -> EIO a
 raiseMissingEntryPoint m entryPointName = do
-  Throw.raiseError m $ "`" <> entryPointName <> "` is missing"
+  raiseError m $ "`" <> entryPointName <> "` is missing"

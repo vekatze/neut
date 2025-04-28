@@ -80,6 +80,7 @@ data Handle = Handle
     initSourceHandle :: InitSource.Handle,
     pathHandle :: Path.Handle,
     externalHandle :: External.Handle,
+    ensureMainHandle :: EnsureMain.Handle,
     parseHandle :: Parse.Handle,
     clarifyHandle :: Clarify.Handle,
     llvmHandle :: LLVM.Handle,
@@ -108,6 +109,7 @@ new cfg gensymHandle = do
   initSourceHandle <- InitSource.new
   pathHandle <- Path.new
   externalHandle <- External.new
+  ensureMainHandle <- EnsureMain.new
   parseHandle <- Parse.new
   clarifyHandle <- Clarify.new
   llvmHandle <- LLVM.new
@@ -165,7 +167,7 @@ compile h target outputKindList contentSeq = do
     cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
     hElaborate <- Elaborate.new (gensymHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
-    EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
+    toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
     hl <- Lower.new
     b <- toApp $ Cache.needsCompilation (cacheHandle h) outputKindList source
     if b
