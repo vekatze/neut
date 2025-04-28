@@ -46,9 +46,8 @@ data Handle
     baseSize :: Int
   }
 
-new :: App Handle
-new = do
-  gensymHandle <- Gensym.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   emitLowCompHandle <- EmitLowComp.new gensymHandle
   reduceHandle <- Reduce.new gensymHandle
   dataSize <- toApp Env.getDataSize'

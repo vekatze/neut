@@ -113,7 +113,7 @@ new cfg gensymHandle = do
   parseHandle <- Parse.new gensymHandle
   clarifyHandle <- Clarify.new
   llvmHandle <- LLVM.new
-  emitHandle <- Emit.new
+  emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new
   installHandle <- Install.new
   executeHandle <- Execute.new
