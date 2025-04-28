@@ -25,11 +25,10 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   initLoggerHandle <- InitLogger.new
   moduleReflectHandle <- ModuleReflect.new gensymHandle
-  envHandle <- Env.new
   return $ Handle {..}
 
 initializeCompiler :: Handle -> Remark.Config -> EIO ()

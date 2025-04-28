@@ -15,6 +15,7 @@ import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
+import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.LSP.Util (liftAppM, maxDiagNum, report)
 import Rule.AppLsp
 import Rule.Remark qualified as R
@@ -23,20 +24,21 @@ data Handle
   = Handle
   { fetchHandle :: Fetch.Handle,
     envHandle :: Env.Handle,
-    checkHandle :: Check.Handle,
-    gensymHandle :: Gensym.Handle
+    initCompilerHandle :: InitCompiler.Handle,
+    checkHandle :: Check.Handle
   }
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   fetchHandle <- Fetch.new envHandle gensymHandle
   checkHandle <- Check.new envHandle gensymHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   return $ Handle {..}
 
 lint :: Handle -> AppLsp () ()
 lint h = do
   flushDiagnosticsBySource maxDiagNum (Just "neut")
-  remarksOrNone <- liftAppM (gensymHandle h) $ lintM h
+  remarksOrNone <- liftAppM (initCompilerHandle h) $ lintM h
   forM_ remarksOrNone report
 
 lintM :: Handle -> AppM [R.Remark]

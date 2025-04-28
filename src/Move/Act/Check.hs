@@ -29,7 +29,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   reportHandle <- Report.new
-  initCompilerHandle <- InitCompiler.new gensymHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   fetchHandle <- Fetch.new envHandle gensymHandle
   checkHandle <- Check.new envHandle gensymHandle
   return $ Handle {..}

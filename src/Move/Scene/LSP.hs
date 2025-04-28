@@ -23,6 +23,7 @@ import Move.Context.AppM (liftEIO)
 import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
+import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.Format qualified as Format
@@ -40,6 +41,7 @@ data Handle
   = Handle
   { envHandle :: Env.Handle,
     gensymHandle :: Gensym.Handle,
+    initCompilerHandle :: InitCompiler.Handle,
     completeHandle :: Complete.Handle,
     findDefinitionHandle :: FindDefinition.Handle,
     highlightHandle :: Highlight.Handle,
@@ -50,6 +52,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   completeHandle <- Complete.new gensymHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   findDefinitionHandle <- FindDefinition.new gensymHandle
   highlightHandle <- Highlight.new gensymHandle
   referencesHandle <- References.new gensymHandle
@@ -117,25 +120,25 @@ handlers h =
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
-        itemListOrNone <- liftAppM (gensymHandle h) $ liftEIO $ Complete.complete (completeHandle h) uri pos
+        itemListOrNone <- liftAppM (initCompilerHandle h) $ liftEIO $ Complete.complete (completeHandle h) uri pos
         let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        mLoc <- liftAppM (gensymHandle h) $ liftEIO $ FindDefinition.findDefinition (findDefinitionHandle h) (req ^. J.params)
+        mLoc <- liftAppM (initCompilerHandle h) $ liftEIO $ FindDefinition.findDefinition (findDefinitionHandle h) (req ^. J.params)
         case mLoc of
           Nothing ->
             responder $ Right $ InR $ InR Null
           Just ((_, loc), _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        highlightsOrNone <- liftAppM (gensymHandle h) $ liftEIO $ Highlight.highlight (highlightHandle h) $ req ^. J.params
+        highlightsOrNone <- liftAppM (initCompilerHandle h) $ liftEIO $ Highlight.highlight (highlightHandle h) $ req ^. J.params
         case highlightsOrNone of
           Nothing ->
             responder $ Right $ InR Null
           Just highlights ->
             responder $ Right $ InL $ List highlights,
       requestHandler SMethod_TextDocumentReferences $ \req responder -> do
-        refsOrNone <- liftAppM (gensymHandle h) $ liftEIO $ References.references (referencesHandle h) $ req ^. J.params
+        refsOrNone <- liftAppM (initCompilerHandle h) $ liftEIO $ References.references (referencesHandle h) $ req ^. J.params
         case refsOrNone of
           Nothing -> do
             responder $ Right $ InR Null
@@ -144,12 +147,12 @@ handlers h =
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         fileOrNone <- getVirtualFile (toNormalizedUri uri)
-        textEditList <- liftAppM (gensymHandle h) $ liftEIO $ Format.format (formatHandle h) False uri fileOrNone
+        textEditList <- liftAppM (initCompilerHandle h) $ liftEIO $ Format.format (formatHandle h) False uri fileOrNone
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
         h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h)
-        textOrNone <- liftAppM (gensymHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
+        textOrNone <- liftAppM (initCompilerHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
         case textOrNone of
           Nothing ->
             responder $ Right $ InR Null
@@ -179,7 +182,7 @@ handlers h =
                     responder $ Right $ InR Null
                   Just uri -> do
                     fileOrNone <- getVirtualFile (toNormalizedUri uri)
-                    textEditList <- liftAppM (gensymHandle h) $ liftEIO $ Format.format (formatHandle h) True uri fileOrNone
+                    textEditList <- liftAppM (initCompilerHandle h) $ liftEIO $ Format.format (formatHandle h) True uri fileOrNone
                     let textEditList' = concat $ maybeToList textEditList
                     let editParams =
                           ApplyWorkspaceEditParams (Just CA.minimizeImportsCommandTitle) $
@@ -188,7 +191,7 @@ handlers h =
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
                 hck <- lift $ Check.new (envHandle h) (gensymHandle h)
-                _ <- liftAppM (gensymHandle h) $ lift $ Check.checkAll hck
+                _ <- liftAppM (initCompilerHandle h) $ lift $ Check.checkAll hck
                 responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null

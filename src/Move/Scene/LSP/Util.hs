@@ -24,7 +24,7 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Move.Context.AppM
-import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.Parse.Core qualified as Parse
 import Path
 import Rule.AppLsp
@@ -32,7 +32,7 @@ import Rule.FilePos qualified as FP
 import Rule.Remark
 import Rule.Remark qualified as R
 
-liftAppM :: Gensym.Handle -> AppM a -> AppLsp b (Maybe a)
+liftAppM :: InitCompiler.Handle -> AppM a -> AppLsp b (Maybe a)
 liftAppM h action = do
   resultOrRemarks <- lift $ runAppM h action
   case resultOrRemarks of

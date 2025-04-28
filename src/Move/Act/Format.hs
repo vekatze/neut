@@ -28,7 +28,7 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
-  initCompilerHandle <- InitCompiler.new gensymHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   initTargetHandle <- InitTarget.new gensymHandle
   formatHandle <- Format.new envHandle gensymHandle
   return $ Handle {..}
