@@ -9,7 +9,6 @@ import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseError)
-import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Rule.BaseName qualified as BN
 import Rule.DefiniteDescription qualified as DD
@@ -22,9 +21,8 @@ newtype Handle
   { locatorHandle :: Locator.Handle
   }
 
-new :: Env.Handle -> App Handle
-new envHandle = do
-  locatorHandle <- Locator.new envHandle
+new :: Locator.Handle -> App Handle
+new locatorHandle = do
   return $ Handle {..}
 
 ensureMain :: Handle -> Target -> Source -> [DD.DefiniteDescription] -> EIO ()

@@ -109,7 +109,7 @@ new cfg envHandle gensymHandle locatorHandle = do
   initSourceHandle <- InitSource.new envHandle
   pathHandle <- Path.new envHandle
   externalHandle <- External.new
-  ensureMainHandle <- EnsureMain.new envHandle
+  ensureMainHandle <- EnsureMain.new locatorHandle
   parseHandle <- Parse.new envHandle gensymHandle
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
   llvmHandle <- LLVM.new envHandle
