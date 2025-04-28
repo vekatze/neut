@@ -9,6 +9,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
@@ -38,15 +39,16 @@ new ::
   Env.Handle ->
   Gensym.Handle ->
   Color.Handle ->
+  Debug.Handle ->
   Locator.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
+new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   collectHandle <- Collect.new envHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
   fetchHandle <- Fetch.new envHandle gensymHandle colorHandle
-  buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 build :: Handle -> Config -> App ()

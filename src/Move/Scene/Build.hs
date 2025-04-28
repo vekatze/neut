@@ -106,12 +106,12 @@ new ::
   Env.Handle ->
   Gensym.Handle ->
   Color.Handle ->
+  Debug.Handle ->
   Locator.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
-  debugHandle <- Debug.new colorHandle
+new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   unravelHandle <- Unravel.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle colorHandle

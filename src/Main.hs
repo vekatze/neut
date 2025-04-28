@@ -15,6 +15,7 @@ import Move.Console.EnsureExecutables (ensureExecutables)
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -39,12 +40,13 @@ execute = do
     locatorHandle <- liftIO $ Locator.new envHandle tagHandle
     antecedentHandle <- liftIO Antecedent.new
     colorHandle <- liftIO Color.new
+    debugHandle <- Debug.new colorHandle
     c <- liftIO OptParse.parseCommand
     Throw.run colorHandle $ do
       ensureExecutables
       case c of
         C.Build cfg -> do
-          h <- Build.new cfg envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+          h <- Build.new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
           Build.build h cfg
         C.Check cfg -> do
           h <- Check.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
@@ -70,5 +72,5 @@ execute = do
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
-          h <- Zen.new cfg envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+          h <- Zen.new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
           Zen.zen h cfg
