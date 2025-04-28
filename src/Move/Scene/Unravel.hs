@@ -85,7 +85,7 @@ new gensymHandle = do
   pathHandle <- Path.new
   moduleHandle <- ModuleReflect.new
   shiftToLatestHandle <- STL.new
-  importHandle <- Import.new
+  importHandle <- Import.new gensymHandle
   parseHandle <- ParseCore.new gensymHandle
   locatorHandle <- Locator.new
   aliasHandle <- Alias.new

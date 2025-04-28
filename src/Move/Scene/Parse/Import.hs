@@ -64,8 +64,8 @@ data Handle
     tagHandle :: Tag.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   envHandle <- Env.new
   unusedStaticFileHandle <- UnusedStaticFile.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
@@ -75,7 +75,6 @@ new = do
   locatorHandle <- Locator.new
   aliasHandle <- Alias.new
   globalHandle <- Global.new
-  gensymHandle <- Gensym.new
   moduleHandle <- Module.new
   rawImportSummaryHandle <- RawImportSummary.new
   tagHandle <- Tag.new
