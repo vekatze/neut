@@ -51,7 +51,7 @@ execute = do
           h <- Create.new gensymHandle
           Create.create h cfg
         C.Get cfg -> do
-          h <- Get.new gensymHandle
+          h <- Get.new envHandle gensymHandle
           Get.get h cfg
         C.Format cfg -> do
           h <- Format.new gensymHandle
