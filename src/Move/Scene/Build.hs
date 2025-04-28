@@ -76,6 +76,7 @@ data Handle = Handle
     globalRemarkHandle :: GlobalRemark.Handle,
     reportHandle :: Report.Handle,
     envHandle :: Env.Handle,
+    locatorHandle :: Locator.Handle,
     cacheHandle :: Cache.Handle,
     colorHandle :: Color.Handle,
     initSourceHandle :: InitSource.Handle,
@@ -168,7 +169,7 @@ compile h target outputKindList contentSeq = do
     hElaborate <- Elaborate.new (envHandle h) (gensymHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
-    hl <- Lower.new (envHandle h) (gensymHandle h)
+    hl <- Lower.new (gensymHandle h) (locatorHandle h)
     b <- toApp $ Cache.needsCompilation (cacheHandle h) outputKindList source
     if b
       then do
@@ -232,7 +233,7 @@ compileEntryPoint h mainModule target outputKindList = do
       if b
         then return []
         else do
-          hl <- Lower.new (envHandle h) (gensymHandle h)
+          hl <- Lower.new (gensymHandle h) (locatorHandle h)
           mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= toApp . Lower.lowerEntryPoint hl t
           return [(Left t, mainVirtualCode)]
 
