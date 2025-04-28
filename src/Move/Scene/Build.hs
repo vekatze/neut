@@ -77,6 +77,7 @@ data Handle = Handle
     envHandle :: Env.Handle,
     cacheHandle :: Cache.Handle,
     colorHandle :: Color.Handle,
+    emitHandle :: Emit.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -95,6 +96,7 @@ new cfg gensymHandle = do
   envHandle <- Env.new
   cacheHandle <- Cache.new
   colorHandle <- Color.new
+  emitHandle <- Emit.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -138,7 +140,6 @@ compile h target outputKindList contentSeq = do
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
   hp <- ProgressBar.new (Just numOfItems) workingTitle completedTitle color
-  hEmit <- Emit.new
   hLLVM <- LLVM.new
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     hInit <- InitSource.new
@@ -158,11 +159,11 @@ compile h target outputKindList contentSeq = do
         stmtList' <- toApp $ Clarify.clarify hc stmtList
         fmap Just $ async $ toApp $ do
           virtualCode <- Lower.lower hl stmtList'
-          emit hEmit hLLVM hp currentTime target outputKindList (Right source) virtualCode
+          emit (emitHandle h) hLLVM hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-    toApp $ emit hEmit hLLVM hp currentTime target outputKindList src code
+    toApp $ emit (emitHandle h) hLLVM hp currentTime target outputKindList src code
   mapM_ wait $ entryPointAsync ++ contentAsync
   ProgressBar.close hp
 
