@@ -94,9 +94,8 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: Elaborate.HandleEnv -> Gensym.Handle -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) gensymHandle = do
-  envHandle <- Env.new
+new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> App Handle
+new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle = do
   substHandle <- Subst.new gensymHandle
   reduceHandle <- Reduce.new gensymHandle
   unifyHandle <- Unify.new handleEnv gensymHandle

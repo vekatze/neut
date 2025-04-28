@@ -122,7 +122,7 @@ new envHandle gensymHandle = do
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new gensymHandle
   affHandle <- EnsureAffinity.new gensymHandle
-  inferHandle <- Infer.new handleEnv gensymHandle
+  inferHandle <- Infer.new handleEnv envHandle gensymHandle
   unifyHandle <- Unify.new handleEnv gensymHandle
   pathHandle <- Path.new
   symLocHandle <- SymLoc.new
