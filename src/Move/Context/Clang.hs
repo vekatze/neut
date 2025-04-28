@@ -15,7 +15,6 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Rule.Const (envVarClang)
@@ -31,10 +30,9 @@ data Handle
     debugHandle :: Debug.Handle
   }
 
-new :: Color.Handle -> App Handle
-new colorHandle = do
+new :: Debug.Handle -> App Handle
+new debugHandle = do
   clangRef <- asks App.clangDigest
-  debugHandle <- Debug.new colorHandle
   return $ Handle {..}
 
 getClang :: IO String

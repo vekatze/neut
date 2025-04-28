@@ -9,7 +9,6 @@ import Control.Lens hiding (Iso, List)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.App (App)
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -22,9 +21,9 @@ newtype Handle
   { findDefinitionHandle :: FindDefinition.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> App Handle
-new envHandle gensymHandle colorHandle debugHandle = do
-  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle colorHandle debugHandle
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> App Handle
+new envHandle gensymHandle debugHandle = do
+  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
   return $ Handle {..}
 
 highlight ::

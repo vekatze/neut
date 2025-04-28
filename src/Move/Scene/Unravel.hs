@@ -24,7 +24,6 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Artifact qualified as Artifact
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env (getMainModule)
@@ -83,14 +82,13 @@ data Handle
 new ::
   Env.Handle ->
   Gensym.Handle ->
-  Color.Handle ->
   Debug.Handle ->
   Locator.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  pathHandle <- Path.new envHandle colorHandle debugHandle
+new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+  pathHandle <- Path.new envHandle debugHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle

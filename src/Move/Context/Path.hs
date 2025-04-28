@@ -39,7 +39,6 @@ import Data.Version qualified as V
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Clang qualified as Clang
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
@@ -69,10 +68,10 @@ data Handle
   }
 
 -- temporary
-new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
-new envHandle colorHandle debugHandle = do
+new :: Env.Handle -> Debug.Handle -> App Handle
+new envHandle debugHandle = do
   cacheRef <- asks App.buildSignatureCache
-  clangHandle <- Clang.new colorHandle
+  clangHandle <- Clang.new debugHandle
   return $ Handle {..}
 
 getBaseName :: Path Abs File -> EIO T.Text

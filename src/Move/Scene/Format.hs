@@ -53,15 +53,15 @@ data Handle = Handle
 
 new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle colorHandle
   parseCoreHandle <- ParseCore.new gensymHandle
-  parseHandle <- Parse.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 

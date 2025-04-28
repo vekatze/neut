@@ -21,7 +21,6 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Move.Context.Env qualified as Env
@@ -61,14 +60,14 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
-  clangHandle <- Clang.new colorHandle
-  pathHandle <- Path.new envHandle colorHandle debugHandle
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
+  clangHandle <- Clang.new debugHandle
+  pathHandle <- Path.new envHandle debugHandle
   getModuleHandle <- GetModule.new gensymHandle
   sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
-  gacHandle <- GAC.new envHandle colorHandle debugHandle antecedentHandle
+  gacHandle <- GAC.new envHandle debugHandle antecedentHandle
   return $ Handle {..}
 
 complete :: Handle -> Uri -> Position -> EIO [CompletionItem]

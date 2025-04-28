@@ -45,7 +45,7 @@ new ::
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle colorHandle debugHandle
-  cleanHandle <- Clean.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  cleanHandle <- Clean.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 

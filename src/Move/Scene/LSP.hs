@@ -69,11 +69,11 @@ new ::
   Antecedent.Handle ->
   App Handle
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  completeHandle <- Complete.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  completeHandle <- Complete.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
-  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle colorHandle debugHandle
-  highlightHandle <- Highlight.new envHandle gensymHandle colorHandle debugHandle
-  referencesHandle <- References.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
+  highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
+  referencesHandle <- References.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
   formatHandle <- Format.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 

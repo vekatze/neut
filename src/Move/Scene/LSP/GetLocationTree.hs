@@ -7,7 +7,6 @@ where
 
 import Move.Context.App (App)
 import Move.Context.Cache qualified as Cache
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Context.Env qualified as Env
@@ -22,9 +21,9 @@ newtype Handle
   { pathHandle :: Path.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
-new envHandle colorHandle debugHandle = do
-  pathHandle <- Path.new envHandle colorHandle debugHandle
+new :: Env.Handle -> Debug.Handle -> App Handle
+new envHandle debugHandle = do
+  pathHandle <- Path.new envHandle debugHandle
   return $ Handle {..}
 
 getLocationTree ::
