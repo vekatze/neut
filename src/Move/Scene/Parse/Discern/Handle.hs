@@ -51,7 +51,7 @@ data Handle = Handle
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
 new envHandle gensymHandle locatorHandle tagHandle = do
-  globalHandle <- Global.new envHandle locatorHandle
+  globalHandle <- Global.new envHandle locatorHandle tagHandle
   aliasHandle <- Alias.new envHandle locatorHandle
   keyArgHandle <- KeyArg.new envHandle
   symLocHandle <- SymLoc.new

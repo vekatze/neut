@@ -65,11 +65,10 @@ data Handle
     sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
   }
 
-new :: Env.Handle -> Locator.Handle -> App Handle
-new envHandle locatorHandle = do
+new :: Env.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle locatorHandle tagHandle = do
   keyArgHandle <- KeyArg.new envHandle
   optDataHandle <- OptimizableData.new
-  tagHandle <- Tag.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   nameMapRef <- asks App.nameMap
   geistMapRef <- asks App.geistMap
