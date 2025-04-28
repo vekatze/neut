@@ -34,7 +34,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> App Handle
 new envHandle gensymHandle colorHandle reportHandle debugHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  packageVersionHandle <- PV.new colorHandle
+  packageVersionHandle <- PV.new reportHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   archiveHandle <- Archive.new envHandle debugHandle
   return $ Handle {..}
