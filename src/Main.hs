@@ -62,5 +62,5 @@ execute = do
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
-          h <- Zen.new cfg gensymHandle
+          h <- Zen.new cfg envHandle gensymHandle
           Zen.zen h cfg

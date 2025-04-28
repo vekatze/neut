@@ -31,9 +31,8 @@ data Handle
     buildHandle :: Build.Handle
   }
 
-new :: Config -> Gensym.Handle -> App Handle
-new cfg gensymHandle = do
-  envHandle <- Env.new
+new :: Config -> Env.Handle -> Gensym.Handle -> App Handle
+new cfg envHandle gensymHandle = do
   initCompilerHandle <- InitCompiler.new gensymHandle
   fetchHandle <- Fetch.new gensymHandle
   buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
@@ -43,8 +42,7 @@ zen :: Handle -> Config -> App ()
 zen h cfg = do
   toApp $ setup h cfg
   path <- resolveFile' (filePathString cfg)
-  envHandle <- Env.new
-  mainModule <- toApp $ Env.getMainModule envHandle
+  mainModule <- toApp $ Env.getMainModule (envHandle h)
   Build.buildTarget (buildHandle h) mainModule $
     Main $
       Zen path $
