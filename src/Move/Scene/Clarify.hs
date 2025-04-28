@@ -81,7 +81,7 @@ new :: App Handle
 new = do
   gensymHandle <- Gensym.new
   linearizeHandle <- Linearize.new
-  utilityHandle <- Utility.new
+  utilityHandle <- Utility.new gensymHandle
   auxEnvHandle <- AuxEnv.new
   sigmaHandle <- Sigma.new
   locatorHandle <- Locator.new

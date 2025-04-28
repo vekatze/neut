@@ -26,7 +26,7 @@ data Handle
 new :: App Handle
 new = do
   gensymHandle <- Gensym.new
-  utilityHandle <- Utility.new
+  utilityHandle <- Utility.new gensymHandle
   return $ Handle {..}
 
 linearize ::

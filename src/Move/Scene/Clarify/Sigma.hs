@@ -42,7 +42,7 @@ new = do
   gensymHandle <- Gensym.new
   linearizeHandle <- Linearize.new
   locatorHandle <- Locator.new
-  utilityHandle <- Utility.new
+  utilityHandle <- Utility.new gensymHandle
   return $ Handle {..}
 
 registerImmediateS4 :: Handle -> IO ()

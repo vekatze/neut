@@ -35,9 +35,8 @@ data Handle
     baseSize :: Int
   }
 
-new :: App Handle
-new = do
-  gensymHandle <- Gensym.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   substHandle <- Subst.new gensymHandle
   auxEnvHandle <- AuxEnv.new
   baseSize <- toApp Env.getBaseSize'
