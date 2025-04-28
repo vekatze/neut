@@ -79,6 +79,7 @@ data Handle = Handle
     colorHandle :: Color.Handle,
     initSourceHandle :: InitSource.Handle,
     pathHandle :: Path.Handle,
+    externalHandle :: External.Handle,
     parseHandle :: Parse.Handle,
     clarifyHandle :: Clarify.Handle,
     llvmHandle :: LLVM.Handle,
@@ -103,6 +104,7 @@ new cfg gensymHandle = do
   colorHandle <- Color.new
   initSourceHandle <- InitSource.new
   pathHandle <- Path.new
+  externalHandle <- External.new
   parseHandle <- Parse.new
   clarifyHandle <- Clarify.new
   llvmHandle <- LLVM.new
@@ -268,8 +270,7 @@ compileForeign' h t currentTime m = do
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
       forM_ cmdList' $ \c -> do
-        h' <- External.new
-        result <- toApp $ External.runOrFail' h' moduleRootDir $ T.unpack c
+        result <- toApp $ External.runOrFail' (externalHandle h) moduleRootDir $ T.unpack c
         case result of
           Right _ ->
             return ()
