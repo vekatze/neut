@@ -84,6 +84,7 @@ data Handle = Handle
     clarifyHandle :: Clarify.Handle,
     llvmHandle :: LLVM.Handle,
     emitHandle :: Emit.Handle,
+    linkHandle :: Link.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -109,6 +110,7 @@ new cfg gensymHandle = do
   clarifyHandle <- Clarify.new
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new
+  linkHandle <- Link.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -133,7 +135,7 @@ buildTarget h (M.MainModule baseModule) target = do
     PeripheralSingle {} ->
       return ()
     Main ct -> do
-      Link.link ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
+      toApp $ Link.link (linkHandle h) ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
       execute (_shouldExecute h) ct (_executeArgs h)
       install (_installDir h) ct
 
