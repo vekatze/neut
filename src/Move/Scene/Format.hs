@@ -56,7 +56,7 @@ new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antec
   unravelHandle <- Unravel.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle colorHandle
   parseCoreHandle <- ParseCore.new gensymHandle
-  parseHandle <- Parse.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new

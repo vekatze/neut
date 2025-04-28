@@ -25,7 +25,7 @@ data Handle
 
 new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
 new envHandle colorHandle debugHandle = do
-  pathHandle <- Path.new envHandle colorHandle
+  pathHandle <- Path.new envHandle colorHandle debugHandle
   externalHandle <- External.new debugHandle
   return $ Handle {..}
 

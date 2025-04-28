@@ -66,7 +66,7 @@ new ::
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   loadHandle <- Load.new envHandle colorHandle
   unravelHandle <- Unravel.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
-  parseHandle <- Parse.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
   initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
@@ -118,7 +118,7 @@ checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
   void $
     toApp $
       Parse.parse (parseHandle h) target source cacheOrContent
@@ -128,7 +128,7 @@ checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elabora
 checkSource' h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
   toApp $
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborateThenInspect hElaborate target

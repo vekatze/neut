@@ -11,6 +11,7 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP)
 import Move.Context.Env qualified as Env
 import Move.Context.Module (getAllSourcePathInModule)
@@ -28,10 +29,10 @@ data Handle
     pathHandle :: Path.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> Antecedent.Handle -> App Handle
-new envHandle colorHandle antecedentHandle = do
+new :: Env.Handle -> Color.Handle -> Debug.Handle -> Antecedent.Handle -> App Handle
+new envHandle colorHandle debugHandle antecedentHandle = do
   shiftToLatestHandle <- STL.new antecedentHandle
-  pathHandle <- Path.new envHandle colorHandle
+  pathHandle <- Path.new envHandle colorHandle debugHandle
   return $ Handle {..}
 
 getAllLocationCachesInModule :: Handle -> Module -> EIO [(Source, LocationCache)]

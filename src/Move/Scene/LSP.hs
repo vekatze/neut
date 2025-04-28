@@ -71,8 +71,8 @@ new ::
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   completeHandle <- Complete.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
-  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle colorHandle
-  highlightHandle <- Highlight.new envHandle gensymHandle colorHandle
+  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle colorHandle debugHandle
+  highlightHandle <- Highlight.new envHandle gensymHandle colorHandle debugHandle
   referencesHandle <- References.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   formatHandle <- Format.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}

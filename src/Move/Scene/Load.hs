@@ -27,7 +27,7 @@ data Handle
 new :: Env.Handle -> Color.Handle -> App Handle
 new envHandle colorHandle = do
   debugHandle <- Debug.new colorHandle
-  cacheHandle <- Cache.new envHandle colorHandle
+  cacheHandle <- Cache.new envHandle colorHandle debugHandle
   return $ Handle {..}
 
 load :: Handle -> Target -> [Source.Source] -> EIO [(Source.Source, Either Cache.Cache T.Text)]

@@ -69,11 +69,10 @@ data Handle
   }
 
 -- temporary
-new :: Env.Handle -> Color.Handle -> App Handle
-new envHandle colorHandle = do
+new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
+new envHandle colorHandle debugHandle = do
   cacheRef <- asks App.buildSignatureCache
   clangHandle <- Clang.new colorHandle
-  debugHandle <- Debug.new colorHandle
   return $ Handle {..}
 
 getBaseName :: Path Abs File -> EIO T.Text

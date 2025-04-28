@@ -39,8 +39,8 @@ new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Ha
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   getSourceHandle <- GetSource.new envHandle gensymHandle
-  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle colorHandle
-  gacHandle <- GAC.new envHandle colorHandle antecedentHandle
+  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle colorHandle debugHandle
+  gacHandle <- GAC.new envHandle colorHandle debugHandle antecedentHandle
   return $ Handle {..}
 
 references ::

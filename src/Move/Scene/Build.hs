@@ -117,17 +117,17 @@ new cfg envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle a
   loadHandle <- Load.new envHandle colorHandle
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new colorHandle
-  cacheHandle <- Cache.new envHandle colorHandle
+  cacheHandle <- Cache.new envHandle colorHandle debugHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
-  pathHandle <- Path.new envHandle colorHandle
+  pathHandle <- Path.new envHandle colorHandle debugHandle
   externalHandle <- External.new debugHandle
   ensureMainHandle <- EnsureMain.new locatorHandle
-  parseHandle <- Parse.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
   llvmHandle <- LLVM.new envHandle colorHandle debugHandle
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new envHandle colorHandle
-  installHandle <- Install.new envHandle colorHandle
+  installHandle <- Install.new envHandle colorHandle debugHandle
   executeHandle <- Execute.new envHandle colorHandle debugHandle
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
@@ -177,7 +177,7 @@ compile h target outputKindList contentSeq = do
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
-    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
     hl <- Lower.new (gensymHandle h) (locatorHandle h)

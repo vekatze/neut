@@ -18,6 +18,7 @@ import Data.Binary
 import Move.Context.App
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Color qualified as Color
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path (getSourceLocationCachePath)
@@ -37,9 +38,9 @@ data Handle
     artifactHandle :: Artifact.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> App Handle
-new envHandle colorHandle = do
-  pathHandle <- Path.new envHandle colorHandle
+new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
+new envHandle colorHandle debugHandle = do
+  pathHandle <- Path.new envHandle colorHandle debugHandle
   artifactHandle <- Artifact.new
   return $ Handle {..}
 

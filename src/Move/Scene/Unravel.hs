@@ -90,7 +90,7 @@ new ::
   Antecedent.Handle ->
   App Handle
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
-  pathHandle <- Path.new envHandle colorHandle
+  pathHandle <- Path.new envHandle colorHandle debugHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle

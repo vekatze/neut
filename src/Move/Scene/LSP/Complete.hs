@@ -65,10 +65,10 @@ new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Ha
 new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   clangHandle <- Clang.new colorHandle
-  pathHandle <- Path.new envHandle colorHandle
+  pathHandle <- Path.new envHandle colorHandle debugHandle
   getModuleHandle <- GetModule.new gensymHandle
   sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
-  gacHandle <- GAC.new envHandle colorHandle antecedentHandle
+  gacHandle <- GAC.new envHandle colorHandle debugHandle antecedentHandle
   return $ Handle {..}
 
 complete :: Handle -> Uri -> Position -> EIO [CompletionItem]
