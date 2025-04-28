@@ -7,6 +7,7 @@ where
 
 import Move.Context.App
 import Move.Context.EIO (EIO)
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clean qualified as Clean
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Rule.Config.Clean
@@ -18,10 +19,10 @@ data Handle
     cleanHandle :: Clean.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   initCompilerHandle <- InitCompiler.new
-  cleanHandle <- Clean.new
+  cleanHandle <- Clean.new gensymHandle
   return $ Handle {..}
 
 clean :: Handle -> Config -> EIO ()

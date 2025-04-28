@@ -48,10 +48,10 @@ data Handle = Handle
 
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
-  unravelHandle <- Unravel.new
+  unravelHandle <- Unravel.new gensymHandle
   loadHandle <- Load.new
-  parseCoreHandle <- ParseCore.new
-  parseHandle <- Parse.new
+  parseCoreHandle <- ParseCore.new gensymHandle
+  parseHandle <- Parse.new gensymHandle
   envHandle <- Env.new
   ensReflectHandle <- EnsReflect.new
   getEnabledPresetHandle <- GetEnabledPreset.new

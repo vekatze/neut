@@ -22,7 +22,7 @@ get cfg = do
   envHandle <- Env.new
   mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
-  cleanHandle <- Clean.new
+  cleanHandle <- Clean.new gensymHandle
   toApp $ Clean.clean cleanHandle
   h <- Fetch.new
   toApp $ Fetch.insertDependency h (moduleAliasText cfg) (moduleURL cfg)

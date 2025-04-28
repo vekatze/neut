@@ -28,6 +28,7 @@ main = do
 execute :: IO ()
 execute = do
   runApp $ do
+    gensymHandle <- Gensym.new
     c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables
@@ -37,7 +38,7 @@ execute = do
         C.Check cfg -> do
           Check.check cfg
         C.Clean cfg -> do
-          h <- Clean.new
+          h <- Clean.new gensymHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           h <- Archive.new
@@ -47,12 +48,10 @@ execute = do
         C.Get cfg ->
           Get.get cfg
         C.Format cfg -> do
-          hg <- Gensym.new
-          h <- Format.new hg
+          h <- Format.new gensymHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          g <- Gensym.new
-          h <- LSP.new g
+          h <- LSP.new gensymHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg

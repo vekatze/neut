@@ -47,10 +47,10 @@ data Handle
 
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
-  completeHandle <- Complete.new
+  completeHandle <- Complete.new gensymHandle
   findDefinitionHandle <- FindDefinition.new
   highlightHandle <- Highlight.new
-  referencesHandle <- References.new
+  referencesHandle <- References.new gensymHandle
   formatHandle <- Format.new gensymHandle
   return $ Handle {..}
 

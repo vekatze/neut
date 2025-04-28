@@ -99,7 +99,7 @@ new :: Config -> Gensym.Handle -> App Handle
 new cfg gensymHandle = do
   debugHandle <- Debug.new
   initTargetHandle <- InitTarget.new gensymHandle
-  unravelHandle <- Unravel.new
+  unravelHandle <- Unravel.new gensymHandle
   loadHandle <- Load.new
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new
@@ -110,7 +110,7 @@ new cfg gensymHandle = do
   pathHandle <- Path.new
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new
-  parseHandle <- Parse.new
+  parseHandle <- Parse.new gensymHandle
   clarifyHandle <- Clarify.new
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new

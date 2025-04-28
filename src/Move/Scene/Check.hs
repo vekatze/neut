@@ -50,8 +50,8 @@ new :: Gensym.Handle -> App Handle
 new gensymHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new
-  unravelHandle <- Unravel.new
-  parseHandle <- Parse.new
+  unravelHandle <- Unravel.new gensymHandle
+  parseHandle <- Parse.new gensymHandle
   envHandle <- Env.new
   moduleHandle <- Module.new
   initSourceHandle <- InitSource.new

@@ -10,6 +10,7 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.App (App)
 import Move.Context.EIO (EIO)
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
@@ -28,9 +29,9 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: App Handle
-new = do
-  unravelHandle <- Unravel.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  unravelHandle <- Unravel.new gensymHandle
   getSourceHandle <- GetSource.new
   findDefinitionHandle <- FindDefinition.new
   gacHandle <- GAC.new

@@ -30,7 +30,7 @@ data Handle
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
   clarifyHandle <- Clarify.new
-  unravelHandle <- Unravel.new
+  unravelHandle <- Unravel.new gensymHandle
   antecedentHandle <- Antecedent.new
   globalRemarkHandle <- GlobalRemark.new
   weakDefinitionHandle <- WeakDefinition.new gensymHandle

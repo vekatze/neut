@@ -24,6 +24,7 @@ import Move.Context.Clang qualified as Clang
 import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
 import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Source.Reflect qualified as SourceReflect
@@ -56,9 +57,9 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: App Handle
-new = do
-  unravelHandle <- Unravel.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  unravelHandle <- Unravel.new gensymHandle
   clangHandle <- Clang.new
   pathHandle <- Path.new
   antecedentHandle <- Antecedent.new

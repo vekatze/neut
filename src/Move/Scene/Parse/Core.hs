@@ -68,9 +68,8 @@ newtype Handle
 
 type Parser a = ParsecT Void T.Text EIO a
 
-new :: App Handle
-new = do
-  gensymHandle <- Gensym.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   return $ Handle {..}
 
 parseFile :: Handle -> Path Abs File -> T.Text -> MustParseWholeFile -> (Handle -> Parser a) -> EIO (C, a)

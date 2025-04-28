@@ -10,6 +10,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Unravel qualified as Unravel
 import Path.IO
 import Rule.Module (extractModule)
@@ -20,10 +21,10 @@ data Handle = Handle
     unravelHandle :: Unravel.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   envHandle <- Env.new
-  unravelHandle <- Unravel.new
+  unravelHandle <- Unravel.new gensymHandle
   return $ Handle {..}
 
 clean :: Handle -> EIO ()

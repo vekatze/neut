@@ -21,6 +21,7 @@ import Move.Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Move.Context.UnusedPreset qualified as UnusedPreset
 import Move.Context.UnusedStaticFile qualified as UnusedStaticFile
 import Move.Context.UnusedVariable qualified as UnusedVariable
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -55,9 +56,9 @@ data Handle
     unusedVariableHandle :: UnusedVariable.Handle
   }
 
-new :: App Handle
-new = do
-  parseHandle <- P.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  parseHandle <- P.new gensymHandle
   discernHandle <- Discern.new
   pathHandle <- Path.new
   importHandle <- Import.new
