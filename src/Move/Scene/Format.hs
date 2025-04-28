@@ -14,6 +14,7 @@ import Move.Context.App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
@@ -50,8 +51,8 @@ data Handle = Handle
     initSourceHandle :: InitSource.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   parseCoreHandle <- ParseCore.new gensymHandle
@@ -59,7 +60,7 @@ new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle 
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> EIO T.Text

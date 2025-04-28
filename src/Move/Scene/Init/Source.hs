@@ -12,9 +12,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
@@ -40,10 +38,9 @@ data Handle = Handle
     weakDeclHandle :: WeakDecl.Handle
   }
 
-new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Locator.Handle -> Global.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle = do
   localRemarkHandle <- LocalRemark.new
-  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
   aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
   rawImportSummaryHandle <- RawImportSummary.new
   symLocHandle <- SymLoc.new

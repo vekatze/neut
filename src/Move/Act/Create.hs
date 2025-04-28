@@ -14,6 +14,7 @@ import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
+import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
@@ -37,13 +38,13 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   newHandle <- New.new reportHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
-  checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+  checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 create :: Handle -> Config -> App ()

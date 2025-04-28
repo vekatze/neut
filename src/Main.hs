@@ -19,6 +19,7 @@ import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
+import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptParse qualified as OptParse
@@ -49,15 +50,16 @@ execute = do
     keyArgHandle <- liftIO $ KeyArg.new envHandle
     optDataHandle <- liftIO OptimizableData.new
     unusedHandle <- liftIO Unused.new
+    globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do
       ensureExecutables
       case c of
         C.Build cfg -> do
-          h <- Build.new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- Build.new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           Build.build h cfg
         C.Check cfg -> do
-          h <- Check.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- Check.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           Check.check h cfg
         C.Clean cfg -> do
           h <- Clean.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
@@ -66,19 +68,19 @@ execute = do
           h <- Archive.new envHandle gensymHandle colorHandle reportHandle debugHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
-          h <- Create.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- Create.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           Create.create h cfg
         C.Get cfg -> do
-          h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
-          h <- Zen.new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- Zen.new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           Zen.zen h cfg

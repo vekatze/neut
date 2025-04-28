@@ -18,6 +18,7 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
+import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
@@ -66,18 +67,19 @@ new ::
   Color.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  Global.Handle ->
   OptimizableData.Handle ->
   KeyArg.Handle ->
   Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   loadHandle <- Load.new envHandle debugHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   moduleHandle <- Module.new gensymHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   return $ Handle {..}
 

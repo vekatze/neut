@@ -25,6 +25,7 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
+import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
@@ -115,19 +116,20 @@ new ::
   Report.Handle ->
   Debug.Handle ->
   Locator.Handle ->
+  Global.Handle ->
   OptimizableData.Handle ->
   KeyArg.Handle ->
   Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new
   cacheHandle <- Cache.new envHandle debugHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   pathHandle <- Path.new envHandle debugHandle
   externalHandle <- External.new debugHandle
   ensureMainHandle <- EnsureMain.new locatorHandle
