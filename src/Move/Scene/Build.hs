@@ -78,6 +78,7 @@ data Handle = Handle
     cacheHandle :: Cache.Handle,
     colorHandle :: Color.Handle,
     initSourceHandle :: InitSource.Handle,
+    parseHandle :: Parse.Handle,
     llvmHandle :: LLVM.Handle,
     emitHandle :: Emit.Handle,
     _outputKindList :: [OutputKind],
@@ -99,6 +100,7 @@ new cfg gensymHandle = do
   cacheHandle <- Cache.new
   colorHandle <- Color.new
   initSourceHandle <- InitSource.new
+  parseHandle <- Parse.new
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new
   let _outputKindList = outputKindList cfg
@@ -148,8 +150,7 @@ compile h target outputKindList contentSeq = do
     toApp (InitSource.initializeForSource (initSourceHandle h) source)
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
-    hParse <- Parse.new
-    cacheOrStmtList <- toApp $ Parse.parse hParse target source cacheOrContent
+    cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
     hElaborate <- Elaborate.new (gensymHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
