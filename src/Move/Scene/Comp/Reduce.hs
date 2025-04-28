@@ -24,10 +24,9 @@ data Handle
     gensymHandle :: Gensym.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   compDefinitionHandle <- CompDefinition.new
-  gensymHandle <- Gensym.new
   substHandle <- Subst.new gensymHandle
   return $ Handle {..}
 

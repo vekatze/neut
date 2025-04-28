@@ -72,7 +72,7 @@ new gensymHandle = do
   arch <- toApp $ Env.getArch Nothing
   baseSize <- toApp Env.getBaseSize'
   locatorHandle <- Locator.new
-  reduceHandle <- Reduce.new
+  reduceHandle <- Reduce.new gensymHandle
   substHandle <- Subst.new gensymHandle
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch
   staticTextList <- liftIO $ newIORef []

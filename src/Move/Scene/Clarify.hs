@@ -86,7 +86,7 @@ new = do
   sigmaHandle <- Sigma.new
   locatorHandle <- Locator.new
   optDataHandle <- OptimizableData.new
-  reduceHandle <- Reduce.new
+  reduceHandle <- Reduce.new gensymHandle
   substHandle <- Subst.new gensymHandle
   compDefHandle <- CompDefinition.new
   baseSize <- toApp Env.getBaseSize'
