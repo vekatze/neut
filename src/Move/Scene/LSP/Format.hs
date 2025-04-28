@@ -9,18 +9,8 @@ import Control.Monad.Trans
 import Data.Text qualified as T
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, liftMaybe)
-import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Format qualified as Format
 import Path
 import Path.IO
@@ -32,9 +22,8 @@ newtype Handle
   { formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
-  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+new :: Format.Handle -> App Handle
+new formatHandle = do
   return $ Handle {..}
 
 format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]

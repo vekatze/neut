@@ -23,6 +23,7 @@ import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.LSP qualified as L
+import Move.Scene.LSP.Format qualified as LSPFormat
 import Rule.Config.Remark (lspConfig)
 
 data Handle
@@ -46,11 +47,12 @@ new ::
   Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
+  LSPFormat.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
-  lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+  lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle
   return $ Handle {..}
 
 lsp :: Handle -> App ()
