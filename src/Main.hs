@@ -45,8 +45,9 @@ execute = do
         C.Archive cfg -> do
           h <- Archive.new gensymHandle
           toApp $ Archive.archive h cfg
-        C.Create cfg ->
-          Create.create cfg
+        C.Create cfg -> do
+          h <- Create.new gensymHandle
+          Create.create h cfg
         C.Get cfg ->
           Get.get cfg
         C.Format cfg -> do

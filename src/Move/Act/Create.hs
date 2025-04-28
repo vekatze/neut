@@ -1,4 +1,9 @@
-module Move.Act.Create (create) where
+module Move.Act.Create
+  ( Handle,
+    new,
+    create,
+  )
+where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -13,18 +18,30 @@ import Move.Scene.New qualified as New
 import Rule.Config.Create
 import Rule.Module (moduleLocation)
 
-create :: Config -> App ()
-create cfg = do
-  gensymHandle <- Gensym.new
+data Handle
+  = Handle
+  { initLoggerHandle :: InitLogger.Handle,
+    initCompilerHandle :: InitCompiler.Handle,
+    newHandle :: New.Handle,
+    fetchHandle :: Fetch.Handle,
+    checkHandle :: Check.Handle
+  }
+
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  initLoggerHandle <- InitLogger.new
+  initCompilerHandle <- InitCompiler.new gensymHandle
+  newHandle <- New.new
+  fetchHandle <- Fetch.new gensymHandle
+  checkHandle <- Check.new gensymHandle
+  return $ Handle {..}
+
+create :: Handle -> Config -> App ()
+create h cfg = do
   newModule <- toApp $ New.constructDefaultModule (moduleName cfg) (targetName cfg)
-  hl <- InitLogger.new
-  liftIO $ InitLogger.initializeLogger hl (remarkCfg cfg)
-  hc <- InitCompiler.new gensymHandle
-  liftIO $ InitCompiler.initializeCompilerWithModule hc newModule
-  h <- New.new
-  toApp $ New.createNewProject h (moduleName cfg) newModule
-  hf <- Fetch.new gensymHandle
-  toApp $ Fetch.insertCoreDependency hf
-  toApp $ InitCompiler.initializeCompilerWithPath hc (moduleLocation newModule) (remarkCfg cfg)
-  hck <- Check.new gensymHandle
-  void $ Check.checkAll hck
+  liftIO $ InitLogger.initializeLogger (initLoggerHandle h) (remarkCfg cfg)
+  liftIO $ InitCompiler.initializeCompilerWithModule (initCompilerHandle h) newModule
+  toApp $ New.createNewProject (newHandle h) (moduleName cfg) newModule
+  toApp $ Fetch.insertCoreDependency (fetchHandle h)
+  toApp $ InitCompiler.initializeCompilerWithPath (initCompilerHandle h) (moduleLocation newModule) (remarkCfg cfg)
+  void $ Check.checkAll (checkHandle h)
