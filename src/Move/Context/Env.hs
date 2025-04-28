@@ -22,13 +22,10 @@ module Move.Context.Env
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Data.Time
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical', raiseError, raiseError')
 import Path
 import Rule.Arch qualified as Arch
@@ -49,12 +46,12 @@ data Handle
     mainModuleRef :: IORef (Maybe MainModule)
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  buildModeRef <- asks App.buildMode
-  currentSourceRef <- asks App.currentSource
-  enableSilentModeRef <- asks App.enableSilentMode
-  mainModuleRef <- asks App.mainModule
+  buildModeRef <- newIORef BM.Develop
+  currentSourceRef <- newIORef Nothing
+  enableSilentModeRef <- newIORef False
+  mainModuleRef <- newIORef Nothing
   return $ Handle {..}
 
 getMainModule :: Handle -> EIO MainModule

@@ -30,7 +30,7 @@ execute :: IO ()
 execute = do
   runApp $ do
     gensymHandle <- liftIO Gensym.new
-    envHandle <- Env.new
+    envHandle <- liftIO Env.new
     c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables

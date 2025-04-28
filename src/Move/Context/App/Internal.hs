@@ -15,7 +15,6 @@ import Path
 import Rule.ArgNum qualified as AN
 import Rule.Artifact qualified as AR
 import Rule.Binder
-import Rule.BuildMode qualified as BM
 import Rule.Comp
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
@@ -32,7 +31,6 @@ import Rule.LocalLocator qualified as LL
 import Rule.LocalVarTree qualified as LVT
 import Rule.LocationTree qualified as LT
 import Rule.Module qualified as M
-import Rule.Module qualified as Module
 import Rule.ModuleAlias qualified as MA
 import Rule.ModuleDigest qualified as MD
 import Rule.ModuleID qualified as MID
@@ -52,12 +50,10 @@ import System.IO
 
 data Env = Env
   { enableDebugMode :: IORef Bool,
-    enableSilentMode :: IORef Bool,
     startTime :: UTCTime,
     endOfEntry :: IORef T.Text,
     shouldColorizeStdout :: IORef Bool,
     shouldColorizeStderr :: IORef Bool,
-    buildMode :: IORef BM.BuildMode,
     moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
@@ -97,9 +93,7 @@ data Env = Env
     activeDefiniteDescriptionList :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     activeStaticFileList :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
-    currentSource :: Ref Source.Source,
-    clangDigest :: Ref T.Text,
-    mainModule :: Ref Module.MainModule
+    clangDigest :: Ref T.Text
   }
 
 type Ref a = IORef (Maybe a)
@@ -112,11 +106,9 @@ newEnv :: IO Env
 newEnv = do
   startTime <- getCurrentTime
   enableDebugMode <- newIORef False
-  enableSilentMode <- newIORef False
   endOfEntry <- newIORef ""
   shouldColorizeStdout <- hIsTerminalDevice stdout >>= newIORef
   shouldColorizeStderr <- hIsTerminalDevice stderr >>= newIORef
-  buildMode <- newIORef BM.Develop
   moduleCacheMap <- newIORef Map.empty
   moduleAliasMap <- newIORef Map.empty
   locatorAliasMap <- newIORef Map.empty
@@ -156,7 +148,5 @@ newEnv = do
   activeDefiniteDescriptionList <- newIORef Map.empty
   activeStaticFileList <- newIORef Map.empty
   currentGlobalLocator <- newRef
-  currentSource <- newRef
   clangDigest <- newRef
-  mainModule <- newRef
   return Env {..}
