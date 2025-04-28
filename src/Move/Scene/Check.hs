@@ -16,6 +16,7 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate qualified as Elaborate
@@ -46,15 +47,15 @@ data Handle
     initTargetHandle :: InitTarget.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new envHandle
   unravelHandle <- Unravel.new envHandle gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 
 check :: Handle -> App [Remark]

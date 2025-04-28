@@ -10,6 +10,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
+import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Build qualified as Build
@@ -29,12 +30,12 @@ data Handle
     buildHandle :: Build.Handle
   }
 
-new :: Config -> Env.Handle -> Gensym.Handle -> App Handle
-new cfg envHandle gensymHandle = do
+new :: Config -> Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new cfg envHandle gensymHandle locatorHandle = do
   collectHandle <- Collect.new envHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   fetchHandle <- Fetch.new envHandle gensymHandle
-  buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle
+  buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle locatorHandle
   return $ Handle {..}
 
 build :: Handle -> Config -> App ()

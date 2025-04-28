@@ -25,6 +25,7 @@ import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
+import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -95,10 +96,10 @@ data Handle = Handle
     _executeArgs :: [String]
   }
 
-new :: Config -> Env.Handle -> Gensym.Handle -> App Handle
-new cfg envHandle gensymHandle = do
+new :: Config -> Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new cfg envHandle gensymHandle locatorHandle = do
   debugHandle <- Debug.new
-  initTargetHandle <- InitTarget.new envHandle gensymHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
   unravelHandle <- Unravel.new envHandle gensymHandle
   loadHandle <- Load.new envHandle
   globalRemarkHandle <- GlobalRemark.new
@@ -110,7 +111,7 @@ new cfg envHandle gensymHandle = do
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new envHandle
   parseHandle <- Parse.new envHandle gensymHandle
-  clarifyHandle <- Clarify.new envHandle gensymHandle
+  clarifyHandle <- Clarify.new envHandle gensymHandle locatorHandle
   llvmHandle <- LLVM.new envHandle
   emitHandle <- Emit.new gensymHandle
   linkHandle <- Link.new envHandle

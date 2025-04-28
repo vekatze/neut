@@ -10,6 +10,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
@@ -28,13 +29,13 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
   initLoggerHandle <- InitLogger.new envHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   newHandle <- New.new
   fetchHandle <- Fetch.new envHandle gensymHandle
-  checkHandle <- Check.new envHandle gensymHandle
+  checkHandle <- Check.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 
 create :: Handle -> Config -> App ()

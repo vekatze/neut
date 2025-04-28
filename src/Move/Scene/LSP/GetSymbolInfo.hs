@@ -17,6 +17,7 @@ import Move.Context.Cache (invalidate)
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
@@ -44,12 +45,12 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
   getSourceHandle <- GetSource.new envHandle gensymHandle
   pathHandle <- Path.new envHandle
   findDefHandle <- FindDefinition.new envHandle gensymHandle
-  checkHandle <- Check.new envHandle gensymHandle
+  checkHandle <- Check.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 
 getSymbolInfo ::

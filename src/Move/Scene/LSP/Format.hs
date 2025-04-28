@@ -12,6 +12,7 @@ import Language.LSP.VFS
 import Move.Context.App (App)
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Format qualified as Format
 import Path
@@ -24,9 +25,9 @@ newtype Handle
   { formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  formatHandle <- Format.new envHandle gensymHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
+  formatHandle <- Format.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 
 format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]

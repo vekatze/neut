@@ -9,6 +9,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Context.Locator qualified as Locator
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -26,11 +27,11 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
+new envHandle gensymHandle locatorHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle
-  formatHandle <- Format.new envHandle gensymHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
+  formatHandle <- Format.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()
