@@ -15,6 +15,7 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
 import Move.Context.AppM
 import Move.Context.Cache (invalidate)
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
@@ -47,15 +48,16 @@ data Handle
     checkHandle :: Check.Handle,
     locatorHandle :: Locator.Handle,
     tagHandle :: Tag.Handle,
-    antecedentHandle :: Antecedent.Handle
+    antecedentHandle :: Antecedent.Handle,
+    colorHandle :: Color.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
   getSourceHandle <- GetSource.new envHandle gensymHandle
-  pathHandle <- Path.new envHandle
-  findDefHandle <- FindDefinition.new envHandle gensymHandle
-  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+  pathHandle <- Path.new envHandle colorHandle
+  findDefHandle <- FindDefinition.new envHandle gensymHandle colorHandle
+  checkHandle <- Check.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 getSymbolInfo ::
@@ -73,7 +75,7 @@ getSymbolInfo h params = do
     LT.Local varID _ -> do
       weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
       let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'

@@ -11,6 +11,7 @@ import Language.LSP.Server
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
 import Move.Context.AppM (AppM)
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -31,11 +32,11 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
-  fetchHandle <- Fetch.new envHandle gensymHandle
-  checkHandle <- Check.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
+  fetchHandle <- Fetch.new envHandle gensymHandle colorHandle
+  checkHandle <- Check.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
   return $ Handle {..}
 
 lint :: Handle -> AppLsp () ()

@@ -9,6 +9,7 @@ where
 
 import Control.Monad.IO.Class
 import Move.Context.App
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -25,9 +26,9 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  initLoggerHandle <- InitLogger.new envHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> App Handle
+new envHandle gensymHandle colorHandle = do
+  initLoggerHandle <- InitLogger.new envHandle colorHandle
   moduleReflectHandle <- ModuleReflect.new gensymHandle
   return $ Handle {..}
 

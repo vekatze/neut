@@ -21,6 +21,7 @@ import Language.LSP.Server
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.AppM (liftEIO)
+import Move.Context.Color qualified as Color
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Tag qualified as Tag
@@ -44,6 +45,7 @@ data Handle
   = Handle
   { envHandle :: Env.Handle,
     gensymHandle :: Gensym.Handle,
+    colorHandle :: Color.Handle,
     initCompilerHandle :: InitCompiler.Handle,
     completeHandle :: Complete.Handle,
     findDefinitionHandle :: FindDefinition.Handle,
@@ -55,14 +57,14 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
-  completeHandle <- Complete.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
-  highlightHandle <- Highlight.new envHandle gensymHandle
-  referencesHandle <- References.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
-  formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
+  completeHandle <- Complete.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
+  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle colorHandle
+  highlightHandle <- Highlight.new envHandle gensymHandle colorHandle
+  referencesHandle <- References.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  formatHandle <- Format.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 lsp :: Handle -> App Int
@@ -110,12 +112,12 @@ handlers h =
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
-        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
         Lint.lint h',
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
-        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
         Lint.lint h',
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),
@@ -157,7 +159,7 @@ handlers h =
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
         textOrNone <- liftAppM (initCompilerHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
         case textOrNone of
           Nothing ->
@@ -196,7 +198,7 @@ handlers h =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                hck <- lift $ Check.new (envHandle h) (gensymHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+                hck <- lift $ Check.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
                 _ <- liftAppM (initCompilerHandle h) $ lift $ Check.checkAll hck
                 responder $ Right $ InR Null
           _ ->

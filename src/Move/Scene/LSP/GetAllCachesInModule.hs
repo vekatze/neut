@@ -10,6 +10,7 @@ import Data.Maybe (catMaybes)
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO, forP)
 import Move.Context.Env qualified as Env
 import Move.Context.Module (getAllSourcePathInModule)
@@ -27,10 +28,10 @@ data Handle
     pathHandle :: Path.Handle
   }
 
-new :: Env.Handle -> Antecedent.Handle -> App Handle
-new envHandle antecedentHandle = do
+new :: Env.Handle -> Color.Handle -> Antecedent.Handle -> App Handle
+new envHandle colorHandle antecedentHandle = do
   shiftToLatestHandle <- STL.new antecedentHandle
-  pathHandle <- Path.new envHandle
+  pathHandle <- Path.new envHandle colorHandle
   return $ Handle {..}
 
 getAllLocationCachesInModule :: Handle -> Module -> EIO [(Source, LocationCache)]

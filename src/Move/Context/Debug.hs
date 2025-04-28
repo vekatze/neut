@@ -29,9 +29,8 @@ data Handle
     baseTime :: UTCTime
   }
 
-new :: App Handle
-new = do
-  colorHandle <- Color.new
+new :: Color.Handle -> App Handle
+new colorHandle = do
   enableDebugModeRef <- asks App.enableDebugMode
   baseTime <- asks App.startTime
   return $ Handle {..}

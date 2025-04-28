@@ -9,6 +9,7 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Path qualified as Path
@@ -22,9 +23,9 @@ newtype Handle
   { debugHandle :: Debug.Handle
   }
 
-new :: App Handle
-new = do
-  debugHandle <- Debug.new
+new :: Color.Handle -> App Handle
+new colorHandle = do
+  debugHandle <- Debug.new colorHandle
   return $ Handle {..}
 
 save :: Handle -> Path Abs File -> FullEns -> EIO ()

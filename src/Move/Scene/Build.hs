@@ -101,27 +101,34 @@ data Handle = Handle
     _executeArgs :: [String]
   }
 
-new :: Config -> Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new cfg envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
-  debugHandle <- Debug.new
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
-  loadHandle <- Load.new envHandle
+new ::
+  Config ->
+  Env.Handle ->
+  Gensym.Handle ->
+  Color.Handle ->
+  Locator.Handle ->
+  Tag.Handle ->
+  Antecedent.Handle ->
+  App Handle
+new cfg envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
+  debugHandle <- Debug.new colorHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  loadHandle <- Load.new envHandle colorHandle
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new
-  cacheHandle <- Cache.new envHandle
-  colorHandle <- Color.new
+  cacheHandle <- Cache.new envHandle colorHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle antecedentHandle
-  pathHandle <- Path.new envHandle
-  externalHandle <- External.new
+  pathHandle <- Path.new envHandle colorHandle
+  externalHandle <- External.new colorHandle
   ensureMainHandle <- EnsureMain.new locatorHandle
-  parseHandle <- Parse.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+  parseHandle <- Parse.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   clarifyHandle <- Clarify.new gensymHandle locatorHandle
-  llvmHandle <- LLVM.new envHandle
+  llvmHandle <- LLVM.new envHandle colorHandle
   emitHandle <- Emit.new gensymHandle
-  linkHandle <- Link.new envHandle
-  installHandle <- Install.new envHandle
-  executeHandle <- Execute.new envHandle
+  linkHandle <- Link.new envHandle colorHandle
+  installHandle <- Install.new envHandle colorHandle
+  executeHandle <- Execute.new envHandle colorHandle
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -170,7 +177,7 @@ compile h target outputKindList contentSeq = do
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
-    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
+    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (colorHandle h) (locatorHandle h) (tagHandle h) (antecedentHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
     hl <- Lower.new (gensymHandle h) (locatorHandle h)

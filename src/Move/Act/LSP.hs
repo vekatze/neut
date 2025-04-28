@@ -8,6 +8,7 @@ where
 import Control.Monad
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -26,11 +27,11 @@ data Handle
     lspHandle :: L.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  fetchHandle <- Fetch.new envHandle gensymHandle
-  lspHandle <- L.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
+  fetchHandle <- Fetch.new envHandle gensymHandle colorHandle
+  lspHandle <- L.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 lsp :: Handle -> App ()

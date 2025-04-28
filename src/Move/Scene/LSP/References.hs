@@ -10,6 +10,7 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -33,12 +34,12 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   getSourceHandle <- GetSource.new envHandle gensymHandle
-  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
-  gacHandle <- GAC.new envHandle antecedentHandle
+  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle colorHandle
+  gacHandle <- GAC.new envHandle colorHandle antecedentHandle
   return $ Handle {..}
 
 references ::

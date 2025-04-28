@@ -24,6 +24,7 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.App.Internal qualified as App
 import Move.Context.Artifact qualified as Artifact
+import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env (getMainModule)
@@ -79,10 +80,10 @@ data Handle
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
-  debugHandle <- Debug.new
-  pathHandle <- Path.new envHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
+  debugHandle <- Debug.new colorHandle
+  pathHandle <- Path.new envHandle colorHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new antecedentHandle
   importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle

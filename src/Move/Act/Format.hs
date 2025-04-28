@@ -8,6 +8,7 @@ where
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -29,11 +30,11 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
-  formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
+  formatHandle <- Format.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

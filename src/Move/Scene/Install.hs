@@ -8,6 +8,7 @@ where
 import Control.Monad
 import Data.Text qualified as T
 import Move.Context.App
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
@@ -23,9 +24,9 @@ data Handle
     pathHandle :: Path.Handle
   }
 
-new :: Env.Handle -> App Handle
-new envHandle = do
-  pathHandle <- Path.new envHandle
+new :: Env.Handle -> Color.Handle -> App Handle
+new envHandle colorHandle = do
+  pathHandle <- Path.new envHandle colorHandle
   return $ Handle {..}
 
 install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()

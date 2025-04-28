@@ -21,6 +21,7 @@ import Data.Text qualified as T
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
+import Move.Context.Color qualified as Color
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Elaborate qualified as Elaborate
@@ -112,8 +113,8 @@ data Handle
     currentSource :: Source
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Locator.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
+new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle = do
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new envHandle gensymHandle
   weakDefHandle <- WeakDefinition.new gensymHandle
@@ -127,7 +128,7 @@ new envHandle gensymHandle locatorHandle tagHandle antecedentHandle = do
   affHandle <- EnsureAffinity.new envHandle gensymHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle locatorHandle tagHandle antecedentHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
-  pathHandle <- Path.new envHandle
+  pathHandle <- Path.new envHandle colorHandle
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   rawImportSummaryHandle <- RawImportSummary.new

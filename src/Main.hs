@@ -14,6 +14,7 @@ import Move.Act.Zen qualified as Zen
 import Move.Console.EnsureExecutables (ensureExecutables)
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -37,36 +38,37 @@ execute = do
     tagHandle <- liftIO Tag.new
     locatorHandle <- liftIO $ Locator.new envHandle tagHandle
     antecedentHandle <- liftIO Antecedent.new
+    colorHandle <- Color.new
     c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables
       case c of
         C.Build cfg -> do
-          h <- Build.new cfg envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+          h <- Build.new cfg envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
           Build.build h cfg
         C.Check cfg -> do
-          h <- Check.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+          h <- Check.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
           Check.check h cfg
         C.Clean cfg -> do
-          h <- Clean.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+          h <- Clean.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
-          h <- Archive.new envHandle gensymHandle
+          h <- Archive.new envHandle gensymHandle colorHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
-          h <- Create.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+          h <- Create.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
           Create.create h cfg
         C.Get cfg -> do
-          h <- Get.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+          h <- Get.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+          h <- Format.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          h <- LSP.new envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+          h <- LSP.new envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
-          h <- Zen.new cfg envHandle gensymHandle locatorHandle tagHandle antecedentHandle
+          h <- Zen.new cfg envHandle gensymHandle colorHandle locatorHandle tagHandle antecedentHandle
           Zen.zen h cfg

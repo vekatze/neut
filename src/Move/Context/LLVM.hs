@@ -15,6 +15,7 @@ import Data.Text qualified as T
 import Data.Time.Clock
 import Move.Context.App
 import Move.Context.Clang qualified as Clang
+import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
@@ -39,11 +40,11 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> App Handle
-new envHandle = do
-  debugHandle <- Debug.new
-  pathHandle <- Path.new envHandle
-  externalHandle <- External.new
+new :: Env.Handle -> Color.Handle -> App Handle
+new envHandle colorHandle = do
+  debugHandle <- Debug.new colorHandle
+  pathHandle <- Path.new envHandle colorHandle
+  externalHandle <- External.new colorHandle
   return $ Handle {..}
 
 type ClangOption = String

@@ -17,6 +17,7 @@ import Control.Monad.IO.Class
 import Data.Binary
 import Move.Context.App
 import Move.Context.Artifact qualified as Artifact
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path (getSourceLocationCachePath)
@@ -36,9 +37,9 @@ data Handle
     artifactHandle :: Artifact.Handle
   }
 
-new :: Env.Handle -> App Handle
-new envHandle = do
-  pathHandle <- Path.new envHandle
+new :: Env.Handle -> Color.Handle -> App Handle
+new envHandle colorHandle = do
+  pathHandle <- Path.new envHandle colorHandle
   artifactHandle <- Artifact.new
   return $ Handle {..}
 

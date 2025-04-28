@@ -6,6 +6,7 @@ module Move.Act.Archive
 where
 
 import Move.Context.App
+import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
@@ -28,12 +29,12 @@ data Handle
     archiveHandle :: Archive.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> App Handle
+new envHandle gensymHandle colorHandle = do
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle
   packageVersionHandle <- PV.new
   ensReflectHandle <- EnsReflect.new gensymHandle
-  archiveHandle <- Archive.new envHandle
+  archiveHandle <- Archive.new envHandle colorHandle
   return $ Handle {..}
 
 archive :: Handle -> Config -> EIO ()
