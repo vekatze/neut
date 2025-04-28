@@ -29,10 +29,9 @@ data Handle
     buildHandle :: Build.Handle
   }
 
-new :: Config -> Gensym.Handle -> App Handle
-new cfg gensymHandle = do
+new :: Config -> Env.Handle -> Gensym.Handle -> App Handle
+new cfg envHandle gensymHandle = do
   collectHandle <- Collect.new
-  envHandle <- Env.new
   initCompilerHandle <- InitCompiler.new gensymHandle
   fetchHandle <- Fetch.new gensymHandle
   buildHandle <- Build.new (toBuildConfig cfg) gensymHandle

@@ -36,7 +36,7 @@ execute = do
       ensureExecutables
       case c of
         C.Build cfg -> do
-          h <- Build.new cfg gensymHandle
+          h <- Build.new cfg envHandle gensymHandle
           Build.build h cfg
         C.Check cfg -> do
           h <- Check.new gensymHandle
