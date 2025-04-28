@@ -8,7 +8,6 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Path
 import Rule.Artifact qualified as AR
@@ -54,7 +53,6 @@ data Env = Env
     localVarMap :: IORef LVT.LocalVarTree,
     topCandidateEnv :: IORef [TopCandidate],
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
-    usedVariableSet :: IORef (S.Set Int),
     unusedGlobalLocatorMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMap :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
@@ -92,7 +90,6 @@ newEnv = do
   localVarMap <- newIORef LVT.empty
   topCandidateEnv <- newIORef []
   unusedVariableMap <- newIORef IntMap.empty
-  usedVariableSet <- newIORef S.empty
   unusedGlobalLocatorMap <- newIORef Map.empty
   unusedPresetMap <- newIORef Map.empty
   unusedLocalLocatorMap <- newIORef Map.empty
