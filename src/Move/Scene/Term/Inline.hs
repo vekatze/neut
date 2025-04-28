@@ -58,7 +58,7 @@ new gensymHandle = do
   envHandle <- Env.new
   currentSource <- toApp $ Env.getCurrentSource envHandle
   substHandle <- Subst.new gensymHandle
-  refreshHandle <- Refresh.new
+  refreshHandle <- Refresh.new gensymHandle
   defMapHandle <- Definition.new
   return $ Handle {..}
 
