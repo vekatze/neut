@@ -79,6 +79,7 @@ data Handle = Handle
     colorHandle :: Color.Handle,
     initSourceHandle :: InitSource.Handle,
     parseHandle :: Parse.Handle,
+    clarifyHandle :: Clarify.Handle,
     llvmHandle :: LLVM.Handle,
     emitHandle :: Emit.Handle,
     _outputKindList :: [OutputKind],
@@ -101,6 +102,7 @@ new cfg gensymHandle = do
   colorHandle <- Color.new
   initSourceHandle <- InitSource.new
   parseHandle <- Parse.new
+  clarifyHandle <- Clarify.new
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new
   let _outputKindList = outputKindList cfg
@@ -154,17 +156,16 @@ compile h target outputKindList contentSeq = do
     hElaborate <- Elaborate.new (gensymHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
-    hc <- Clarify.new
     hl <- Lower.new
     b <- toApp $ Cache.needsCompilation (cacheHandle h) outputKindList source
     if b
       then do
-        stmtList' <- toApp $ Clarify.clarify hc stmtList
+        stmtList' <- toApp $ Clarify.clarify (clarifyHandle h) stmtList
         fmap Just $ async $ toApp $ do
           virtualCode <- Lower.lower hl stmtList'
           emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
-  entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
+  entryPointVirtualCode <- compileEntryPoint h mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
     toApp $ emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList src code
   mapM_ wait $ entryPointAsync ++ contentAsync
@@ -208,22 +209,21 @@ getEntryPointCompilationCount mainModule target outputKindList = do
       b <- toApp $ Cache.isEntryPointCompilationSkippable h mainModule t outputKindList
       return $ if b then 0 else 1
 
-compileEntryPoint :: M.MainModule -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
-compileEntryPoint mainModule target outputKindList = do
+compileEntryPoint :: Handle -> M.MainModule -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
+compileEntryPoint h mainModule target outputKindList = do
   case target of
     Peripheral {} ->
       return []
     PeripheralSingle {} ->
       return []
     Main t -> do
-      h <- Path.new
-      b <- toApp $ Cache.isEntryPointCompilationSkippable h mainModule t outputKindList
+      hpath <- Path.new
+      b <- toApp $ Cache.isEntryPointCompilationSkippable hpath mainModule t outputKindList
       if b
         then return []
         else do
-          hc <- Clarify.new
           hl <- Lower.new
-          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint hc) >>= toApp . Lower.lowerEntryPoint hl t
+          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= toApp . Lower.lowerEntryPoint hl t
           return [(Left t, mainVirtualCode)]
 
 execute :: Bool -> MainTarget -> [String] -> App ()
