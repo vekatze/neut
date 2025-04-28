@@ -37,7 +37,8 @@ execute = do
           h <- Build.new cfg gensymHandle
           Build.build h cfg
         C.Check cfg -> do
-          Check.check cfg
+          h <- Check.new gensymHandle
+          Check.check h cfg
         C.Clean cfg -> do
           h <- Clean.new gensymHandle
           toApp $ Clean.clean h cfg

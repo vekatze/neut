@@ -1,9 +1,14 @@
-module Move.Act.Check (check) where
+module Move.Act.Check
+  ( Handle,
+    new,
+    check,
+  )
+where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
@@ -12,24 +17,36 @@ import Move.Scene.Init.Compiler qualified as InitCompiler
 import Rule.Config.Check
 import Rule.Remark qualified as Remark
 
-check :: Config -> App ()
-check cfg = do
-  g <- Gensym.new
-  hck <- Check.new g
-  setup cfg g
+data Handle
+  = Handle
+  { reportHandle :: Report.Handle,
+    initCompilerHandle :: InitCompiler.Handle,
+    fetchHandle :: Fetch.Handle,
+    envHandle :: Env.Handle,
+    checkHandle :: Check.Handle
+  }
+
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  reportHandle <- Report.new
+  initCompilerHandle <- InitCompiler.new gensymHandle
+  fetchHandle <- Fetch.new gensymHandle
+  envHandle <- Env.new
+  checkHandle <- Check.new gensymHandle
+  return $ Handle {..}
+
+check :: Handle -> Config -> App ()
+check h cfg = do
+  toApp $ setup h cfg
   logs <-
     if shouldCheckAllDependencies cfg
-      then Check.checkAll hck
-      else Check.check hck
-  hr <- Report.new
+      then Check.checkAll (checkHandle h)
+      else Check.check (checkHandle h)
   if shouldInsertPadding cfg
-    then liftIO $ Report.printErrorList hr logs
-    else liftIO $ Report.printErrorList hr $ map Remark.deactivatePadding logs
+    then liftIO $ Report.printErrorList (reportHandle h) logs
+    else liftIO $ Report.printErrorList (reportHandle h) $ map Remark.deactivatePadding logs
 
-setup :: Config -> Gensym.Handle -> App ()
-setup cfg gensymHandle = do
-  hc <- InitCompiler.new gensymHandle
-  toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
-  h <- Fetch.new gensymHandle
-  he <- Env.new
-  toApp (Env.getMainModule he) >>= toApp . Fetch.fetch h
+setup :: Handle -> Config -> EIO ()
+setup h cfg = do
+  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+  Env.getMainModule (envHandle h) >>= Fetch.fetch (fetchHandle h)
