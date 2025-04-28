@@ -51,7 +51,7 @@ new envHandle gensymHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new
   unravelHandle <- Unravel.new gensymHandle
-  parseHandle <- Parse.new gensymHandle
+  parseHandle <- Parse.new envHandle gensymHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle
   initTargetHandle <- InitTarget.new gensymHandle

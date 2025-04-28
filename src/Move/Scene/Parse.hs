@@ -13,6 +13,7 @@ import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO)
+import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
@@ -56,10 +57,10 @@ data Handle
     unusedVariableHandle :: UnusedVariable.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   parseHandle <- P.new gensymHandle
-  discernHandle <- Discern.new gensymHandle
+  discernHandle <- Discern.new envHandle gensymHandle
   pathHandle <- Path.new
   importHandle <- Import.new gensymHandle
   globalHandle <- Global.new

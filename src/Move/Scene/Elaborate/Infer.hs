@@ -99,7 +99,7 @@ new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle = do
   substHandle <- Subst.new gensymHandle
   reduceHandle <- Reduce.new gensymHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
-  discernHandle <- Discern.new gensymHandle
+  discernHandle <- Discern.new envHandle gensymHandle
   keyArgHandle <- KeyArg.new
   weakDeclHandle <- WeakDecl.new
   optDataHandle <- OptimizableData.new

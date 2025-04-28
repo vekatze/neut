@@ -109,7 +109,7 @@ new cfg envHandle gensymHandle = do
   pathHandle <- Path.new
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new
-  parseHandle <- Parse.new gensymHandle
+  parseHandle <- Parse.new envHandle gensymHandle
   clarifyHandle <- Clarify.new gensymHandle
   llvmHandle <- LLVM.new
   emitHandle <- Emit.new gensymHandle
