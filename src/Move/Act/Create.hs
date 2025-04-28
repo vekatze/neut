@@ -38,7 +38,7 @@ new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Han
 new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  newHandle <- New.new colorHandle debugHandle
+  newHandle <- New.new reportHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
   checkHandle <- Check.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}
