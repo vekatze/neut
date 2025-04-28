@@ -25,10 +25,9 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   envHandle <- Env.new
-  gensymHandle <- Gensym.new
   moduleHandle <- Module.new
   return $ Handle {..}
 

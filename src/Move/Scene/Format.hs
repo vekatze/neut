@@ -54,7 +54,7 @@ new gensymHandle = do
   parseHandle <- Parse.new gensymHandle
   envHandle <- Env.new
   ensReflectHandle <- EnsReflect.new
-  getEnabledPresetHandle <- GetEnabledPreset.new
+  getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   initTargetHandle <- InitTarget.new gensymHandle
