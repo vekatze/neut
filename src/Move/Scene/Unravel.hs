@@ -81,7 +81,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   debugHandle <- Debug.new
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new
   importHandle <- Import.new envHandle gensymHandle

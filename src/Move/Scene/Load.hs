@@ -10,6 +10,7 @@ import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP)
+import Move.Context.Env qualified as Env
 import Move.Context.Parse (readTextFile)
 import Rule.Cache qualified as Cache
 import Rule.Source qualified as Source
@@ -22,10 +23,10 @@ data Handle
     cacheHandle :: Cache.Handle
   }
 
-new :: App Handle
-new = do
+new :: Env.Handle -> App Handle
+new envHandle = do
   debugHandle <- Debug.new
-  cacheHandle <- Cache.new
+  cacheHandle <- Cache.new envHandle
   return $ Handle {..}
 
 load :: Handle -> Target -> [Source.Source] -> EIO [(Source.Source, Either Cache.Cache T.Text)]

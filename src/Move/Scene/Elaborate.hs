@@ -124,7 +124,7 @@ new envHandle gensymHandle = do
   affHandle <- EnsureAffinity.new envHandle gensymHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   rawImportSummaryHandle <- RawImportSummary.new

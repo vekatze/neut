@@ -61,7 +61,7 @@ new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   parseHandle <- P.new gensymHandle
   discernHandle <- Discern.new envHandle gensymHandle
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   importHandle <- Import.new envHandle gensymHandle
   globalHandle <- Global.new
   localRemarkHandle <- LocalRemark.new

@@ -27,7 +27,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   getSourceHandle <- GetSource.new envHandle gensymHandle
-  getLocationTreeHandle <- GetLocationTree.new
+  getLocationTreeHandle <- GetLocationTree.new envHandle
   return $ Handle {..}
 
 findDefinition ::

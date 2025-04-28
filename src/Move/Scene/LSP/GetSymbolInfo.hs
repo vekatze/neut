@@ -47,7 +47,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   getSourceHandle <- GetSource.new envHandle gensymHandle
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   findDefHandle <- FindDefinition.new envHandle gensymHandle
   checkHandle <- Check.new envHandle gensymHandle
   return $ Handle {..}

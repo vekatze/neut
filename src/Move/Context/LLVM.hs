@@ -42,9 +42,9 @@ data Handle
 new :: App Handle
 new = do
   debugHandle <- Debug.new
-  pathHandle <- Path.new
-  externalHandle <- External.new
   envHandle <- Env.new
+  pathHandle <- Path.new envHandle
+  externalHandle <- External.new
   return $ Handle {..}
 
 type ClangOption = String

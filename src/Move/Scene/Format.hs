@@ -49,7 +49,7 @@ data Handle = Handle
 new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle
-  loadHandle <- Load.new
+  loadHandle <- Load.new envHandle
   parseCoreHandle <- ParseCore.new gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle
   ensReflectHandle <- EnsReflect.new gensymHandle

@@ -61,11 +61,11 @@ new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle
   clangHandle <- Clang.new
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   antecedentHandle <- Antecedent.new
   getModuleHandle <- GetModule.new gensymHandle
   sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
-  gacHandle <- GAC.new
+  gacHandle <- GAC.new envHandle
   return $ Handle {..}
 
 complete :: Handle -> Uri -> Position -> EIO [CompletionItem]

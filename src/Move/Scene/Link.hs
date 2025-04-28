@@ -38,7 +38,7 @@ data Handle
 new :: Env.Handle -> App Handle
 new envHandle = do
   debugHandle <- Debug.new
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   colorHandle <- Color.new
   llvmHandle <- LLVM.new
   return $ Handle {..}

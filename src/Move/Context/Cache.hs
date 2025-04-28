@@ -18,6 +18,7 @@ import Data.Binary
 import Move.Context.App
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.EIO (EIO)
+import Move.Context.Env qualified as Env
 import Move.Context.Path (getSourceLocationCachePath)
 import Move.Context.Path qualified as Path
 import Path
@@ -35,9 +36,9 @@ data Handle
     artifactHandle :: Artifact.Handle
   }
 
-new :: App Handle
-new = do
-  pathHandle <- Path.new
+new :: Env.Handle -> App Handle
+new envHandle = do
+  pathHandle <- Path.new envHandle
   artifactHandle <- Artifact.new
   return $ Handle {..}
 

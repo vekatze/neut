@@ -23,7 +23,7 @@ data Handle
 
 new :: Env.Handle -> App Handle
 new envHandle = do
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   externalHandle <- External.new
   return $ Handle {..}
 

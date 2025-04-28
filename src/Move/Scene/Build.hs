@@ -100,13 +100,13 @@ new cfg envHandle gensymHandle = do
   debugHandle <- Debug.new
   initTargetHandle <- InitTarget.new envHandle gensymHandle
   unravelHandle <- Unravel.new envHandle gensymHandle
-  loadHandle <- Load.new
+  loadHandle <- Load.new envHandle
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new
-  cacheHandle <- Cache.new
+  cacheHandle <- Cache.new envHandle
   colorHandle <- Color.new
   initSourceHandle <- InitSource.new envHandle
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new
   parseHandle <- Parse.new envHandle gensymHandle

@@ -25,7 +25,7 @@ data Handle
 
 new :: Env.Handle -> App Handle
 new envHandle = do
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   return $ Handle {..}
 
 install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()

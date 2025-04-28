@@ -68,11 +68,10 @@ data Handle
   }
 
 -- temporary
-new :: App Handle
-new = do
+new :: Env.Handle -> App Handle
+new envHandle = do
   cacheRef <- asks App.buildSignatureCache
   clangHandle <- Clang.new
-  envHandle <- Env.new
   debugHandle <- Debug.new
   return $ Handle {..}
 

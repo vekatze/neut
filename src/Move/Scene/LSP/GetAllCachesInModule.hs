@@ -10,6 +10,7 @@ import Data.Maybe (catMaybes)
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO, forP)
+import Move.Context.Env qualified as Env
 import Move.Context.Module (getAllSourcePathInModule)
 import Move.Context.Path qualified as Path
 import Move.Scene.Source.ShiftToLatest qualified as STL
@@ -25,10 +26,10 @@ data Handle
     pathHandle :: Path.Handle
   }
 
-new :: App Handle
-new = do
+new :: Env.Handle -> App Handle
+new envHandle = do
   shiftToLatestHandle <- STL.new
-  pathHandle <- Path.new
+  pathHandle <- Path.new envHandle
   return $ Handle {..}
 
 getAllLocationCachesInModule :: Handle -> Module -> EIO [(Source, LocationCache)]
