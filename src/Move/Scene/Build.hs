@@ -74,6 +74,7 @@ data Handle = Handle
     loadHandle :: Load.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
     reportHandle :: Report.Handle,
+    envHandle :: Env.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -89,6 +90,7 @@ new cfg gensymHandle = do
   loadHandle <- Load.new
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new
+  envHandle <- Env.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -119,8 +121,7 @@ buildTarget h (M.MainModule baseModule) target = do
 
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile h target outputKindList contentSeq = do
-  he <- Env.new
-  mainModule <- toApp $ Env.getMainModule he
+  mainModule <- toApp $ Env.getMainModule (envHandle h)
   hCache <- Cache.new
   bs <- toApp $ mapM (needsCompilation hCache outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount mainModule target outputKindList
