@@ -10,7 +10,6 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Time (UTCTime, getCurrentTime)
 import Path
 import Rule.ArgNum qualified as AN
 import Rule.Artifact qualified as AR
@@ -46,9 +45,7 @@ import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
 
 data Env = Env
-  { enableDebugMode :: IORef Bool,
-    startTime :: UTCTime,
-    endOfEntry :: IORef T.Text,
+  { endOfEntry :: IORef T.Text,
     moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
@@ -91,8 +88,6 @@ newRef =
 
 newEnv :: IO Env
 newEnv = do
-  startTime <- getCurrentTime
-  enableDebugMode <- newIORef False
   endOfEntry <- newIORef ""
   moduleCacheMap <- newIORef Map.empty
   moduleAliasMap <- newIORef Map.empty

@@ -8,13 +8,10 @@ where
 
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.IORef
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, UTCTime, diffUTCTime, getCurrentTime)
 import Move.Console.Report (printStdErr)
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.Color (getShouldColorizeStderr)
 import Move.Context.Color qualified as Color
 import Move.Context.EIO (EIO)
@@ -29,10 +26,10 @@ data Handle
     baseTime :: UTCTime
   }
 
-new :: Color.Handle -> App Handle
+new :: Color.Handle -> IO Handle
 new colorHandle = do
-  enableDebugModeRef <- asks App.enableDebugMode
-  baseTime <- asks App.startTime
+  enableDebugModeRef <- newIORef False
+  baseTime <- getCurrentTime
   return $ Handle {..}
 
 report :: Handle -> T.Text -> EIO ()
