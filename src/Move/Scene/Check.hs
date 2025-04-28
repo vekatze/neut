@@ -54,11 +54,11 @@ new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
 new envHandle gensymHandle locatorHandle tagHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new envHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
   parseHandle <- Parse.new envHandle gensymHandle locatorHandle tagHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle
   return $ Handle {..}
 
 check :: Handle -> App [Remark]

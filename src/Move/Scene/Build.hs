@@ -102,8 +102,8 @@ data Handle = Handle
 new :: Config -> Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
 new cfg envHandle gensymHandle locatorHandle tagHandle = do
   debugHandle <- Debug.new
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
   loadHandle <- Load.new envHandle
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new

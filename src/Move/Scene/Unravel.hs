@@ -33,6 +33,7 @@ import Move.Context.Module qualified as Module
 import Move.Context.Parse (ensureExistence')
 import Move.Context.Parse qualified as Parse
 import Move.Context.Path qualified as Path
+import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Parse.Core qualified as ParseCore
@@ -78,13 +79,13 @@ data Handle
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
   debugHandle <- Debug.new
   pathHandle <- Path.new envHandle
   moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new
-  importHandle <- Import.new envHandle gensymHandle locatorHandle
+  importHandle <- Import.new envHandle gensymHandle locatorHandle tagHandle
   parseHandle <- ParseCore.new gensymHandle
   aliasHandle <- Alias.new envHandle locatorHandle
   antecedentHandle <- Antecedent.new

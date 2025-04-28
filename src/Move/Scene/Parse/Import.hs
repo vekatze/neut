@@ -64,8 +64,8 @@ data Handle
     tagHandle :: Tag.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
   unusedStaticFileHandle <- UnusedStaticFile.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
@@ -75,7 +75,6 @@ new envHandle gensymHandle locatorHandle = do
   globalHandle <- Global.new envHandle locatorHandle
   moduleHandle <- Module.new
   rawImportSummaryHandle <- RawImportSummary.new
-  tagHandle <- Tag.new
   return $ Handle {..}
 
 activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()

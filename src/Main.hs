@@ -46,7 +46,7 @@ execute = do
           h <- Check.new envHandle gensymHandle locatorHandle tagHandle
           Check.check h cfg
         C.Clean cfg -> do
-          h <- Clean.new envHandle gensymHandle locatorHandle
+          h <- Clean.new envHandle gensymHandle locatorHandle tagHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           h <- Archive.new envHandle gensymHandle

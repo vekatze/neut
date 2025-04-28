@@ -50,7 +50,7 @@ data Handle = Handle
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
 new envHandle gensymHandle locatorHandle tagHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
   loadHandle <- Load.new envHandle
   parseCoreHandle <- ParseCore.new gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle locatorHandle tagHandle
@@ -58,7 +58,7 @@ new envHandle gensymHandle locatorHandle tagHandle = do
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle tagHandle
   return $ Handle {..}
 

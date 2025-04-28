@@ -55,11 +55,11 @@ data Handle
 
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
 new envHandle gensymHandle locatorHandle tagHandle = do
-  completeHandle <- Complete.new envHandle gensymHandle locatorHandle
+  completeHandle <- Complete.new envHandle gensymHandle locatorHandle tagHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
   highlightHandle <- Highlight.new envHandle gensymHandle
-  referencesHandle <- References.new envHandle gensymHandle locatorHandle
+  referencesHandle <- References.new envHandle gensymHandle locatorHandle tagHandle
   formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle
   return $ Handle {..}
 

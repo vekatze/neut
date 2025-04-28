@@ -31,7 +31,7 @@ data Handle
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
 new envHandle gensymHandle locatorHandle tagHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle tagHandle
   formatHandle <- Format.new envHandle gensymHandle locatorHandle tagHandle
   return $ Handle {..}
 

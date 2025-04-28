@@ -12,6 +12,7 @@ import Move.Context.App (App)
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
+import Move.Context.Tag qualified as Tag
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
@@ -31,9 +32,9 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
-new envHandle gensymHandle locatorHandle = do
-  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle
+new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Tag.Handle -> App Handle
+new envHandle gensymHandle locatorHandle tagHandle = do
+  unravelHandle <- Unravel.new envHandle gensymHandle locatorHandle tagHandle
   getSourceHandle <- GetSource.new envHandle gensymHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
   gacHandle <- GAC.new envHandle
