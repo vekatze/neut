@@ -76,6 +76,7 @@ data Handle = Handle
     reportHandle :: Report.Handle,
     envHandle :: Env.Handle,
     cacheHandle :: Cache.Handle,
+    colorHandle :: Color.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -93,6 +94,7 @@ new cfg gensymHandle = do
   reportHandle <- Report.new
   envHandle <- Env.new
   cacheHandle <- Cache.new
+  colorHandle <- Color.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -129,8 +131,7 @@ compile h target outputKindList contentSeq = do
   let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
   color <- do
-    hc <- Color.new
-    shouldColorize <- liftIO $ Color.getShouldColorizeStdout hc
+    shouldColorize <- liftIO $ Color.getShouldColorizeStdout (colorHandle h)
     if shouldColorize
       then return [SetColor Foreground Vivid Green]
       else return []
