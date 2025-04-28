@@ -8,6 +8,7 @@ where
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (EIO)
+import Move.Context.Env qualified as Env
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -25,11 +26,11 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   initCompilerHandle <- InitCompiler.new gensymHandle
   initTargetHandle <- InitTarget.new gensymHandle
-  formatHandle <- Format.new gensymHandle
+  formatHandle <- Format.new envHandle gensymHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

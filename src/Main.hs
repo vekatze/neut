@@ -54,7 +54,7 @@ execute = do
           h <- Get.new envHandle gensymHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new gensymHandle
+          h <- Format.new envHandle gensymHandle
           toApp $ Format.format h cfg
         C.LSP -> do
           h <- LSP.new envHandle gensymHandle

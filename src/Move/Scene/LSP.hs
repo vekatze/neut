@@ -53,7 +53,7 @@ new envHandle gensymHandle = do
   findDefinitionHandle <- FindDefinition.new gensymHandle
   highlightHandle <- Highlight.new gensymHandle
   referencesHandle <- References.new gensymHandle
-  formatHandle <- Format.new gensymHandle
+  formatHandle <- Format.new envHandle gensymHandle
   return $ Handle {..}
 
 lsp :: Handle -> App Int
