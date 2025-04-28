@@ -20,6 +20,7 @@ import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Move.Context.App
 import Move.Context.AppM (liftEIO)
+import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.LSP.Complete qualified as Complete
@@ -37,7 +38,8 @@ import System.IO (stdin, stdout)
 
 data Handle
   = Handle
-  { gensymHandle :: Gensym.Handle,
+  { envHandle :: Env.Handle,
+    gensymHandle :: Gensym.Handle,
     completeHandle :: Complete.Handle,
     findDefinitionHandle :: FindDefinition.Handle,
     highlightHandle :: Highlight.Handle,
@@ -45,8 +47,8 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   completeHandle <- Complete.new gensymHandle
   findDefinitionHandle <- FindDefinition.new gensymHandle
   highlightHandle <- Highlight.new gensymHandle
@@ -99,12 +101,12 @@ handlers h =
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
-        h' <- lift $ Lint.new (gensymHandle h)
+        h' <- lift $ Lint.new (envHandle h) (gensymHandle h)
         Lint.lint h',
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
-        h' <- lift $ Lint.new (gensymHandle h)
+        h' <- lift $ Lint.new (envHandle h) (gensymHandle h)
         Lint.lint h',
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),
@@ -146,7 +148,7 @@ handlers h =
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        h' <- lift $ GetSymbolInfo.new (gensymHandle h)
+        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h)
         textOrNone <- liftAppM (gensymHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
         case textOrNone of
           Nothing ->
@@ -185,7 +187,7 @@ handlers h =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                hck <- lift $ Check.new (gensymHandle h)
+                hck <- lift $ Check.new (envHandle h) (gensymHandle h)
                 _ <- liftAppM (gensymHandle h) $ lift $ Check.checkAll hck
                 responder $ Right $ InR Null
           _ ->

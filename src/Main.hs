@@ -48,7 +48,7 @@ execute = do
           h <- Archive.new envHandle gensymHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
-          h <- Create.new gensymHandle
+          h <- Create.new envHandle gensymHandle
           Create.create h cfg
         C.Get cfg -> do
           h <- Get.new envHandle gensymHandle

@@ -46,13 +46,12 @@ data Handle
     initTargetHandle :: InitTarget.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   debugHandle <- Debug.new
   loadHandle <- Load.new
   unravelHandle <- Unravel.new gensymHandle
   parseHandle <- Parse.new gensymHandle
-  envHandle <- Env.new
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new
   initTargetHandle <- InitTarget.new gensymHandle

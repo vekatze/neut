@@ -33,7 +33,7 @@ new envHandle gensymHandle = do
   initCompilerHandle <- InitCompiler.new gensymHandle
   fetchHandle <- Fetch.new gensymHandle
   cleanHandle <- Clean.new gensymHandle
-  checkHandle <- Check.new gensymHandle
+  checkHandle <- Check.new envHandle gensymHandle
   return $ Handle {..}
 
 get :: Handle -> Config -> App ()

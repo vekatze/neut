@@ -27,11 +27,10 @@ data Handle
     gensymHandle :: Gensym.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   fetchHandle <- Fetch.new gensymHandle
-  envHandle <- Env.new
-  checkHandle <- Check.new gensymHandle
+  checkHandle <- Check.new envHandle gensymHandle
   return $ Handle {..}
 
 lint :: Handle -> AppLsp () ()

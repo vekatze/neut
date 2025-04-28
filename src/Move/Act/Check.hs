@@ -31,7 +31,7 @@ new envHandle gensymHandle = do
   reportHandle <- Report.new
   initCompilerHandle <- InitCompiler.new gensymHandle
   fetchHandle <- Fetch.new gensymHandle
-  checkHandle <- Check.new gensymHandle
+  checkHandle <- Check.new envHandle gensymHandle
   return $ Handle {..}
 
 check :: Handle -> Config -> App ()
