@@ -53,9 +53,9 @@ new :: Env.Handle -> Gensym.Handle -> App Handle
 new envHandle gensymHandle = do
   completeHandle <- Complete.new envHandle gensymHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle
-  findDefinitionHandle <- FindDefinition.new gensymHandle
-  highlightHandle <- Highlight.new gensymHandle
-  referencesHandle <- References.new gensymHandle
+  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle
+  highlightHandle <- Highlight.new envHandle gensymHandle
+  referencesHandle <- References.new envHandle gensymHandle
   formatHandle <- Format.new envHandle gensymHandle
   return $ Handle {..}
 

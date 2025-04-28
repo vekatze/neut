@@ -10,6 +10,7 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.App (App)
 import Move.Context.EIO (EIO, liftMaybe)
+import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
 import Move.Scene.LSP.GetSource qualified as GetSource
@@ -23,9 +24,9 @@ data Handle
     getLocationTreeHandle :: GetLocationTree.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  getSourceHandle <- GetSource.new gensymHandle
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
+  getSourceHandle <- GetSource.new envHandle gensymHandle
   getLocationTreeHandle <- GetLocationTree.new
   return $ Handle {..}
 
