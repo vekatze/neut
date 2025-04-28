@@ -64,7 +64,7 @@ new gensymHandle = do
   pathHandle <- Path.new
   antecedentHandle <- Antecedent.new
   getModuleHandle <- GetModule.new
-  sourceReflectHandle <- SourceReflect.new
+  sourceReflectHandle <- SourceReflect.new gensymHandle
   envHandle <- Env.new
   gacHandle <- GAC.new
   return $ Handle {..}

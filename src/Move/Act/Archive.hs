@@ -9,6 +9,7 @@ import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Archive qualified as Archive
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Ens.Reflect qualified as EnsReflect
@@ -27,9 +28,9 @@ data Handle
     archiveHandle :: Archive.Handle
   }
 
-new :: App Handle
-new = do
-  initCompilerHandle <- InitCompiler.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  initCompilerHandle <- InitCompiler.new gensymHandle
   envHandle <- Env.new
   packageVersionHandle <- PV.new
   ensReflectHandle <- EnsReflect.new

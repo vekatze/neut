@@ -10,6 +10,7 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.App (App)
 import Move.Context.EIO (EIO)
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
 
@@ -18,9 +19,9 @@ newtype Handle
   { findDefinitionHandle :: FindDefinition.Handle
   }
 
-new :: App Handle
-new = do
-  findDefinitionHandle <- FindDefinition.new
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
+  findDefinitionHandle <- FindDefinition.new gensymHandle
   return $ Handle {..}
 
 highlight ::

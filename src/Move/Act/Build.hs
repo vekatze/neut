@@ -17,8 +17,8 @@ import Prelude hiding (log)
 
 build :: Config -> App ()
 build cfg = do
-  setup cfg
   gensymHandle <- Gensym.new
+  setup cfg gensymHandle
   h <- Collect.new
   target <- toApp $ Collect.getMainTarget h $ targetName cfg
   envHandle <- Env.new
@@ -26,16 +26,16 @@ build cfg = do
   buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
   Build.buildTarget buildHandle mainModule (Main target)
 
-setup :: Config -> App ()
-setup cfg = do
+setup :: Config -> Gensym.Handle -> App ()
+setup cfg gensymHandle = do
   toApp $ LLVM.ensureSetupSanity cfg
-  hc <- InitCompiler.new
+  hc <- InitCompiler.new gensymHandle
   toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
   envHandle <- Env.new
   mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
   liftIO $ Env.setBuildMode envHandle $ buildMode cfg
-  h <- Fetch.new
+  h <- Fetch.new gensymHandle
   toApp $ Fetch.fetch h mainModule
 
 toBuildConfig :: Config -> Build.Config

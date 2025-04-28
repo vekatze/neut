@@ -48,8 +48,8 @@ data Handle
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
   completeHandle <- Complete.new gensymHandle
-  findDefinitionHandle <- FindDefinition.new
-  highlightHandle <- Highlight.new
+  findDefinitionHandle <- FindDefinition.new gensymHandle
+  highlightHandle <- Highlight.new gensymHandle
   referencesHandle <- References.new gensymHandle
   formatHandle <- Format.new gensymHandle
   return $ Handle {..}
@@ -115,25 +115,25 @@ handlers h =
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
-        itemListOrNone <- liftAppM $ liftEIO $ Complete.complete (completeHandle h) uri pos
+        itemListOrNone <- liftAppM (gensymHandle h) $ liftEIO $ Complete.complete (completeHandle h) uri pos
         let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        mLoc <- liftAppM $ liftEIO $ FindDefinition.findDefinition (findDefinitionHandle h) (req ^. J.params)
+        mLoc <- liftAppM (gensymHandle h) $ liftEIO $ FindDefinition.findDefinition (findDefinitionHandle h) (req ^. J.params)
         case mLoc of
           Nothing ->
             responder $ Right $ InR $ InR Null
           Just ((_, loc), _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        highlightsOrNone <- liftAppM $ liftEIO $ Highlight.highlight (highlightHandle h) $ req ^. J.params
+        highlightsOrNone <- liftAppM (gensymHandle h) $ liftEIO $ Highlight.highlight (highlightHandle h) $ req ^. J.params
         case highlightsOrNone of
           Nothing ->
             responder $ Right $ InR Null
           Just highlights ->
             responder $ Right $ InL $ List highlights,
       requestHandler SMethod_TextDocumentReferences $ \req responder -> do
-        refsOrNone <- liftAppM $ liftEIO $ References.references (referencesHandle h) $ req ^. J.params
+        refsOrNone <- liftAppM (gensymHandle h) $ liftEIO $ References.references (referencesHandle h) $ req ^. J.params
         case refsOrNone of
           Nothing -> do
             responder $ Right $ InR Null
@@ -142,12 +142,12 @@ handlers h =
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         fileOrNone <- getVirtualFile (toNormalizedUri uri)
-        textEditList <- liftAppM $ liftEIO $ Format.format (formatHandle h) False uri fileOrNone
+        textEditList <- liftAppM (gensymHandle h) $ liftEIO $ Format.format (formatHandle h) False uri fileOrNone
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
         h' <- lift $ GetSymbolInfo.new (gensymHandle h)
-        textOrNone <- liftAppM $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
+        textOrNone <- liftAppM (gensymHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
         case textOrNone of
           Nothing ->
             responder $ Right $ InR Null
@@ -177,7 +177,7 @@ handlers h =
                     responder $ Right $ InR Null
                   Just uri -> do
                     fileOrNone <- getVirtualFile (toNormalizedUri uri)
-                    textEditList <- liftAppM $ liftEIO $ Format.format (formatHandle h) True uri fileOrNone
+                    textEditList <- liftAppM (gensymHandle h) $ liftEIO $ Format.format (formatHandle h) True uri fileOrNone
                     let textEditList' = concat $ maybeToList textEditList
                     let editParams =
                           ApplyWorkspaceEditParams (Just CA.minimizeImportsCommandTitle) $
@@ -186,7 +186,7 @@ handlers h =
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
                 hck <- lift $ Check.new (gensymHandle h)
-                _ <- liftAppM $ lift $ Check.checkAll hck
+                _ <- liftAppM (gensymHandle h) $ lift $ Check.checkAll hck
                 responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null

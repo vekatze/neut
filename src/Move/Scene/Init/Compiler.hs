@@ -11,6 +11,7 @@ import Control.Monad.IO.Class
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Init.Logger qualified as InitLogger
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Path
@@ -24,10 +25,10 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   initLoggerHandle <- InitLogger.new
-  moduleReflectHandle <- ModuleReflect.new
+  moduleReflectHandle <- ModuleReflect.new gensymHandle
   envHandle <- Env.new
   return $ Handle {..}
 

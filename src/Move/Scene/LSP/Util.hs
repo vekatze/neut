@@ -6,7 +6,6 @@ module Move.Scene.LSP.Util
   )
 where
 
-import Move.Context.AppM
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
@@ -20,20 +19,22 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Rule.AppLsp
-import Rule.FilePos qualified as FP
-import Rule.Remark
-import Rule.Remark qualified as R
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Path
+import Move.Context.AppM
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Core qualified as Parse
+import Path
+import Rule.AppLsp
+import Rule.FilePos qualified as FP
+import Rule.Remark
+import Rule.Remark qualified as R
 
-liftAppM :: AppM a -> AppLsp b (Maybe a)
-liftAppM action = do
-  resultOrRemarks <- lift $ runAppM action
+liftAppM :: Gensym.Handle -> AppM a -> AppLsp b (Maybe a)
+liftAppM h action = do
+  resultOrRemarks <- lift $ runAppM h action
   case resultOrRemarks of
     Right result ->
       return $ Just result

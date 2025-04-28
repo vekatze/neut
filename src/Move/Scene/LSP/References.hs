@@ -32,8 +32,8 @@ data Handle
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
   unravelHandle <- Unravel.new gensymHandle
-  getSourceHandle <- GetSource.new
-  findDefinitionHandle <- FindDefinition.new
+  getSourceHandle <- GetSource.new gensymHandle
+  findDefinitionHandle <- FindDefinition.new gensymHandle
   gacHandle <- GAC.new
   return $ Handle {..}
 

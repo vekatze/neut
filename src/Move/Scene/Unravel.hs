@@ -83,7 +83,7 @@ new gensymHandle = do
   envHandle <- Env.new
   debugHandle <- Debug.new
   pathHandle <- Path.new
-  moduleHandle <- ModuleReflect.new
+  moduleHandle <- ModuleReflect.new gensymHandle
   shiftToLatestHandle <- STL.new
   importHandle <- Import.new gensymHandle
   parseHandle <- ParseCore.new gensymHandle

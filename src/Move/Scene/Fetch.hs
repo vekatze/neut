@@ -22,6 +22,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -52,12 +53,12 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: App Handle
-new = do
+new :: Gensym.Handle -> App Handle
+new gensymHandle = do
   ensReflectHandle <- EnsReflect.new
   moduleSaveHandle <- ModuleSave.new
   externalHandle <- External.new
-  moduleHandle <- ModuleReflect.new
+  moduleHandle <- ModuleReflect.new gensymHandle
   reportHandle <- Report.new
   envHandle <- Env.new
   return $ Handle {..}

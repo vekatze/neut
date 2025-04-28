@@ -16,7 +16,7 @@ check :: Config -> App ()
 check cfg = do
   g <- Gensym.new
   hck <- Check.new g
-  setup cfg
+  setup cfg g
   logs <-
     if shouldCheckAllDependencies cfg
       then Check.checkAll hck
@@ -26,10 +26,10 @@ check cfg = do
     then liftIO $ Report.printErrorList hr logs
     else liftIO $ Report.printErrorList hr $ map Remark.deactivatePadding logs
 
-setup :: Config -> App ()
-setup cfg = do
-  hc <- InitCompiler.new
+setup :: Config -> Gensym.Handle -> App ()
+setup cfg gensymHandle = do
+  hc <- InitCompiler.new gensymHandle
   toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
-  h <- Fetch.new
+  h <- Fetch.new gensymHandle
   he <- Env.new
   toApp (Env.getMainModule he) >>= toApp . Fetch.fetch h

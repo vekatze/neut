@@ -21,7 +21,7 @@ import Prelude hiding (log)
 zen :: Config -> App ()
 zen cfg = do
   gensymHandle <- Gensym.new
-  setup cfg
+  setup cfg gensymHandle
   path <- resolveFile' (filePathString cfg)
   envHandle <- Env.new
   buildHandle <- Build.new (toBuildConfig cfg) gensymHandle
@@ -42,13 +42,13 @@ toBuildConfig cfg = do
       executeArgs = args cfg
     }
 
-setup :: Config -> App ()
-setup cfg = do
-  hc <- InitCompiler.new
+setup :: Config -> Gensym.Handle -> App ()
+setup cfg gensymHandle = do
+  hc <- InitCompiler.new gensymHandle
   toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
   envHandle <- Env.new
   mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
   liftIO $ Env.setBuildMode envHandle $ buildMode cfg
-  h <- Fetch.new
+  h <- Fetch.new gensymHandle
   toApp $ Fetch.fetch h mainModule

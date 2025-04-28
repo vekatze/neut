@@ -21,7 +21,7 @@ data Handle
 
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
-  initCompilerHandle <- InitCompiler.new
+  initCompilerHandle <- InitCompiler.new gensymHandle
   cleanHandle <- Clean.new gensymHandle
   return $ Handle {..}
 

@@ -11,6 +11,7 @@ import Control.Monad.Trans.Except
 import Move.Context.App
 import Move.Context.EIO (EIO, runEIO, toApp)
 import Move.Context.Throw qualified as Throw
+import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Rule.Config.Remark qualified as Remark
 import Rule.Error qualified as E
@@ -19,9 +20,9 @@ import Rule.Remark qualified as R
 type AppM =
   ExceptT [R.Remark] App
 
-runAppM :: AppM a -> App (Either [R.Remark] a)
-runAppM action = do
-  h <- InitCompiler.new
+runAppM :: Gensym.Handle -> AppM a -> App (Either [R.Remark] a)
+runAppM gensymHandle action = do
+  h <- InitCompiler.new gensymHandle
   unitOrNone <- Throw.runEither (toApp $ InitCompiler.initializeCompiler h Remark.lspConfig)
   case unitOrNone of
     Right _ ->

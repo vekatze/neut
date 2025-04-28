@@ -23,12 +23,13 @@ data Handle
   = Handle
   { fetchHandle :: Fetch.Handle,
     envHandle :: Env.Handle,
-    checkHandle :: Check.Handle
+    checkHandle :: Check.Handle,
+    gensymHandle :: Gensym.Handle
   }
 
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
-  fetchHandle <- Fetch.new
+  fetchHandle <- Fetch.new gensymHandle
   envHandle <- Env.new
   checkHandle <- Check.new gensymHandle
   return $ Handle {..}
@@ -36,7 +37,7 @@ new gensymHandle = do
 lint :: Handle -> AppLsp () ()
 lint h = do
   flushDiagnosticsBySource maxDiagNum (Just "neut")
-  remarksOrNone <- liftAppM $ lintM h
+  remarksOrNone <- liftAppM (gensymHandle h) $ lintM h
   forM_ remarksOrNone report
 
 lintM :: Handle -> AppM [R.Remark]

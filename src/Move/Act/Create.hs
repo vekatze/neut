@@ -19,11 +19,11 @@ create cfg = do
   newModule <- toApp $ New.constructDefaultModule (moduleName cfg) (targetName cfg)
   hl <- InitLogger.new
   liftIO $ InitLogger.initializeLogger hl (remarkCfg cfg)
-  hc <- InitCompiler.new
+  hc <- InitCompiler.new gensymHandle
   liftIO $ InitCompiler.initializeCompilerWithModule hc newModule
   h <- New.new
   toApp $ New.createNewProject h (moduleName cfg) newModule
-  hf <- Fetch.new
+  hf <- Fetch.new gensymHandle
   toApp $ Fetch.insertCoreDependency hf
   toApp $ InitCompiler.initializeCompilerWithPath hc (moduleLocation newModule) (remarkCfg cfg)
   hck <- Check.new gensymHandle

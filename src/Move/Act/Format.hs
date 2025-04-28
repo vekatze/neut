@@ -26,10 +26,10 @@ data Handle
   }
 
 new :: Gensym.Handle -> App Handle
-new hg = do
-  initCompilerHandle <- InitCompiler.new
-  initTargetHandle <- InitTarget.new hg
-  formatHandle <- Format.new hg
+new gensymHandle = do
+  initCompilerHandle <- InitCompiler.new gensymHandle
+  initTargetHandle <- InitTarget.new gensymHandle
+  formatHandle <- Format.new gensymHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

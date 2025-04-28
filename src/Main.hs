@@ -41,7 +41,7 @@ execute = do
           h <- Clean.new gensymHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
-          h <- Archive.new
+          h <- Archive.new gensymHandle
           toApp $ Archive.archive h cfg
         C.Create cfg ->
           Create.create cfg

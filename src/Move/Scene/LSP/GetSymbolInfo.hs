@@ -44,9 +44,9 @@ data Handle
 
 new :: Gensym.Handle -> App Handle
 new gensymHandle = do
-  getSourceHandle <- GetSource.new
+  getSourceHandle <- GetSource.new gensymHandle
   pathHandle <- Path.new
-  findDefHandle <- FindDefinition.new
+  findDefHandle <- FindDefinition.new gensymHandle
   checkHandle <- Check.new gensymHandle
   return $ Handle {..}
 

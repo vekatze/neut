@@ -17,14 +17,14 @@ import Prelude hiding (log)
 get :: Config -> App ()
 get cfg = do
   gensymHandle <- Gensym.new
-  hc <- InitCompiler.new
+  hc <- InitCompiler.new gensymHandle
   toApp $ InitCompiler.initializeCompiler hc (remarkCfg cfg)
   envHandle <- Env.new
   mainModule <- toApp $ Env.getMainModule envHandle
   toApp $ Path.ensureNotInDependencyDir mainModule
   cleanHandle <- Clean.new gensymHandle
   toApp $ Clean.clean cleanHandle
-  h <- Fetch.new
+  h <- Fetch.new gensymHandle
   toApp $ Fetch.insertDependency h (moduleAliasText cfg) (moduleURL cfg)
   toApp $ InitCompiler.initializeCompilerWithPath hc (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
   hck <- Check.new gensymHandle
