@@ -19,7 +19,6 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
@@ -27,8 +26,6 @@ import Data.IORef
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.Tag qualified as Tag
@@ -64,22 +61,22 @@ data Handle
     activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
     activeGlobalLocatorListRef :: IORef [SGL.StrictGlobalLocator],
-    currentGlobalLocator :: IORef (Maybe SGL.StrictGlobalLocator)
+    currentGlobalLocatorRef :: IORef (Maybe SGL.StrictGlobalLocator)
   }
 
-new :: Env.Handle -> Tag.Handle -> App Handle
+new :: Env.Handle -> Tag.Handle -> IO Handle
 new envHandle tagHandle = do
-  activeDefiniteDescriptionListRef <- asks App.activeDefiniteDescriptionList
-  activeStaticFileListRef <- asks App.activeStaticFileList
-  activeGlobalLocatorListRef <- asks App.activeGlobalLocatorList
-  currentGlobalLocator <- asks App.currentGlobalLocator
+  activeDefiniteDescriptionListRef <- newIORef Map.empty
+  activeStaticFileListRef <- newIORef Map.empty
+  activeGlobalLocatorListRef <- newIORef []
+  currentGlobalLocatorRef <- newIORef Nothing
   return $ Handle {..}
 
 initialize :: Handle -> EIO ()
 initialize h = do
   currentSource <- Env.getCurrentSource (envHandle h)
   cgl <- constructGlobalLocator currentSource
-  liftIO $ writeIORef (currentGlobalLocator h) (Just cgl)
+  liftIO $ writeIORef (currentGlobalLocatorRef h) (Just cgl)
   liftIO $ writeIORef (activeGlobalLocatorListRef h) [cgl, SGL.llvmGlobalLocator]
   liftIO $ writeIORef (activeDefiniteDescriptionListRef h) Map.empty
   liftIO $ writeIORef (activeStaticFileListRef h) Map.empty
@@ -159,12 +156,12 @@ attachPublicCurrentLocator h name = do
 
 getCurrentGlobalLocator :: Handle -> IO SGL.StrictGlobalLocator
 getCurrentGlobalLocator h = do
-  sglOrNone <- readIORef (currentGlobalLocator h)
+  sglOrNone <- readIORef (currentGlobalLocatorRef h)
   case sglOrNone of
     Just sgl ->
       return sgl
     Nothing ->
-      error $ T.unpack "[compiler bug] `currentGlobalLocator` is uninitialized"
+      error $ T.unpack "[compiler bug] `currentGlobalLocatorRef` is uninitialized"
 
 getPossibleReferents :: Handle -> LL.LocalLocator -> IO [DD.DefiniteDescription]
 getPossibleReferents h localLocator = do

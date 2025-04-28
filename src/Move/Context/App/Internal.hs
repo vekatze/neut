@@ -87,10 +87,6 @@ data Env = Env
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
-    activeGlobalLocatorList :: IORef [SGL.StrictGlobalLocator],
-    activeDefiniteDescriptionList :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
-    activeStaticFileList :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
-    currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
     clangDigest :: Ref T.Text
   }
 
@@ -141,9 +137,5 @@ newEnv = do
   weakDeclEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty
   typeEnv <- newIORef Map.empty
-  activeGlobalLocatorList <- newIORef []
-  activeDefiniteDescriptionList <- newIORef Map.empty
-  activeStaticFileList <- newIORef Map.empty
-  currentGlobalLocator <- newRef
   clangDigest <- newRef
   return Env {..}

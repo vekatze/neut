@@ -34,7 +34,7 @@ execute = do
     gensymHandle <- liftIO Gensym.new
     envHandle <- liftIO Env.new
     tagHandle <- liftIO Tag.new
-    locatorHandle <- Locator.new envHandle tagHandle
+    locatorHandle <- liftIO $ Locator.new envHandle tagHandle
     c <- liftIO OptParse.parseCommand
     Throw.run $ do
       ensureExecutables
