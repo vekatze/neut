@@ -78,6 +78,7 @@ data Handle = Handle
     cacheHandle :: Cache.Handle,
     colorHandle :: Color.Handle,
     initSourceHandle :: InitSource.Handle,
+    pathHandle :: Path.Handle,
     parseHandle :: Parse.Handle,
     clarifyHandle :: Clarify.Handle,
     llvmHandle :: LLVM.Handle,
@@ -101,6 +102,7 @@ new cfg gensymHandle = do
   cacheHandle <- Cache.new
   colorHandle <- Color.new
   initSourceHandle <- InitSource.new
+  pathHandle <- Path.new
   parseHandle <- Parse.new
   clarifyHandle <- Clarify.new
   llvmHandle <- LLVM.new
@@ -137,7 +139,7 @@ compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -
 compile h target outputKindList contentSeq = do
   mainModule <- toApp $ Env.getMainModule (envHandle h)
   bs <- toApp $ mapM (needsCompilation (cacheHandle h) outputKindList . fst) contentSeq
-  c <- getEntryPointCompilationCount mainModule target outputKindList
+  c <- getEntryPointCompilationCount h mainModule target outputKindList
   let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
   color <- do
@@ -197,16 +199,15 @@ emit h he progressBar currentTime target outputKindList src code = do
   LLVM.emit he target clangOptions currentTime src outputKindList llvmIR'
   liftIO $ ProgressBar.increment progressBar
 
-getEntryPointCompilationCount :: M.MainModule -> Target -> [OutputKind] -> App Int
-getEntryPointCompilationCount mainModule target outputKindList = do
+getEntryPointCompilationCount :: Handle -> M.MainModule -> Target -> [OutputKind] -> App Int
+getEntryPointCompilationCount h mainModule target outputKindList = do
   case target of
     Peripheral {} ->
       return 0
     PeripheralSingle {} ->
       return 0
     Main t -> do
-      h <- Path.new
-      b <- toApp $ Cache.isEntryPointCompilationSkippable h mainModule t outputKindList
+      b <- toApp $ Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
       return $ if b then 0 else 1
 
 compileEntryPoint :: Handle -> M.MainModule -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
@@ -217,8 +218,7 @@ compileEntryPoint h mainModule target outputKindList = do
     PeripheralSingle {} ->
       return []
     Main t -> do
-      hpath <- Path.new
-      b <- toApp $ Cache.isEntryPointCompilationSkippable hpath mainModule t outputKindList
+      b <- toApp $ Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
       if b
         then return []
         else do
@@ -244,15 +244,14 @@ compileForeign h t moduleList = do
 
 compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
 compileForeign' h t currentTime m = do
-  sub <- getForeignSubst t m
+  sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
   unless (null cmdList) $ do
     toApp $
       Debug.report (debugHandle h) $
         "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
-  hPath <- Path.new
-  foreignDir <- toApp $ Path.getForeignDir hPath t m
+  foreignDir <- toApp $ Path.getForeignDir (pathHandle h) t m
   inputPathList <- fmap concat $ mapM (toApp . getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
@@ -300,11 +299,10 @@ naiveReplace sub t =
     (from, to) : rest -> do
       T.replace from to (naiveReplace rest t)
 
-getForeignSubst :: Target -> M.Module -> App [(T.Text, T.Text)]
-getForeignSubst t m = do
+getForeignSubst :: Handle -> Target -> M.Module -> App [(T.Text, T.Text)]
+getForeignSubst h t m = do
   clang <- liftIO Clang.getClang
-  h <- Path.new
-  foreignDir <- toApp $ Path.getForeignDir h t m
+  foreignDir <- toApp $ Path.getForeignDir (pathHandle h) t m
   return
     [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),
       ("{{clang}}", T.pack clang),
