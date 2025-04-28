@@ -105,7 +105,7 @@ new cfg envHandle gensymHandle = do
   reportHandle <- Report.new
   cacheHandle <- Cache.new
   colorHandle <- Color.new
-  initSourceHandle <- InitSource.new
+  initSourceHandle <- InitSource.new envHandle
   pathHandle <- Path.new
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new
