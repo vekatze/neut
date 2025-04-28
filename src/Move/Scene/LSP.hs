@@ -73,7 +73,7 @@ new ::
   App Handle
 new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   completeHandle <- Complete.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
   highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
   referencesHandle <- References.new envHandle gensymHandle debugHandle locatorHandle tagHandle antecedentHandle

@@ -5,6 +5,7 @@ module Move.Act.Archive
   )
 where
 
+import Move.Console.Report qualified as Report
 import Move.Context.App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
@@ -30,9 +31,9 @@ data Handle
     archiveHandle :: Archive.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> App Handle
-new envHandle gensymHandle colorHandle debugHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> App Handle
+new envHandle gensymHandle colorHandle reportHandle debugHandle = do
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   packageVersionHandle <- PV.new colorHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   archiveHandle <- Archive.new envHandle debugHandle

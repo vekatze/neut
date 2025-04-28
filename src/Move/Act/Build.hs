@@ -48,7 +48,7 @@ new ::
   App Handle
 new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle = do
   collectHandle <- Collect.new envHandle
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle debugHandle
+  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
   buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
   return $ Handle {..}

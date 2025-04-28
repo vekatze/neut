@@ -54,10 +54,10 @@ execute = do
           h <- Check.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           Check.check h cfg
         C.Clean cfg -> do
-          h <- Clean.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+          h <- Clean.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
-          h <- Archive.new envHandle gensymHandle colorHandle debugHandle
+          h <- Archive.new envHandle gensymHandle colorHandle reportHandle debugHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
           h <- Create.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
@@ -66,7 +66,7 @@ execute = do
           h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new envHandle gensymHandle colorHandle debugHandle locatorHandle tagHandle antecedentHandle
+          h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
           toApp $ Format.format h cfg
         C.LSP -> do
           h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle tagHandle antecedentHandle
