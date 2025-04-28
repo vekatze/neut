@@ -86,6 +86,7 @@ data Handle = Handle
     emitHandle :: Emit.Handle,
     linkHandle :: Link.Handle,
     installHandle :: Install.Handle,
+    executeHandle :: Execute.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -113,6 +114,7 @@ new cfg gensymHandle = do
   emitHandle <- Emit.new
   linkHandle <- Link.new
   installHandle <- Install.new
+  executeHandle <- Execute.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -138,7 +140,7 @@ buildTarget h (M.MainModule baseModule) target = do
       return ()
     Main ct -> do
       toApp $ Link.link (linkHandle h) ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
-      execute (_shouldExecute h) ct (_executeArgs h)
+      toApp $ execute h (_shouldExecute h) ct (_executeArgs h)
       toApp $ install h (_installDir h) ct
 
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
@@ -232,10 +234,10 @@ compileEntryPoint h mainModule target outputKindList = do
           mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= toApp . Lower.lowerEntryPoint hl t
           return [(Left t, mainVirtualCode)]
 
-execute :: Bool -> MainTarget -> [String] -> App ()
-execute shouldExecute target args = do
+execute :: Handle -> Bool -> MainTarget -> [String] -> EIO ()
+execute h shouldExecute target args = do
   when shouldExecute $ do
-    Execute.execute target args
+    Execute.execute (executeHandle h) target args
 
 install :: Handle -> Maybe FilePath -> MainTarget -> EIO ()
 install h filePathOrNone target = do
