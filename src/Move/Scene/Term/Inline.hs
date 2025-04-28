@@ -53,9 +53,8 @@ data InnerHandle = InnerHandle
     location :: Hint
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  envHandle <- Env.new
+new :: Env.Handle -> Gensym.Handle -> App Handle
+new envHandle gensymHandle = do
   currentSource <- toApp $ Env.getCurrentSource envHandle
   substHandle <- Subst.new gensymHandle
   refreshHandle <- Refresh.new gensymHandle

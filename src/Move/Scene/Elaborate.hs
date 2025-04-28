@@ -120,7 +120,7 @@ new envHandle gensymHandle = do
   defHandle <- Definition.new
   keyArgHandle <- KeyArg.new
   localRemarkHandle <- LocalRemark.new
-  inlineHandle <- Inline.new gensymHandle
+  inlineHandle <- Inline.new envHandle gensymHandle
   affHandle <- EnsureAffinity.new gensymHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
