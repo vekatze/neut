@@ -58,7 +58,7 @@ new envHandle gensymHandle locatorHandle = do
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
   initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
-  initSourceHandle <- InitSource.new envHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle
   return $ Handle {..}
 
 format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> EIO T.Text

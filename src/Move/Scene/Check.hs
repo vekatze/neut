@@ -54,7 +54,7 @@ new envHandle gensymHandle locatorHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle
   moduleHandle <- Module.new gensymHandle
-  initSourceHandle <- InitSource.new envHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle
   initTargetHandle <- InitTarget.new envHandle gensymHandle locatorHandle
   return $ Handle {..}
 

@@ -106,7 +106,7 @@ new cfg envHandle gensymHandle locatorHandle = do
   reportHandle <- Report.new
   cacheHandle <- Cache.new envHandle
   colorHandle <- Color.new
-  initSourceHandle <- InitSource.new envHandle
+  initSourceHandle <- InitSource.new envHandle locatorHandle
   pathHandle <- Path.new envHandle
   externalHandle <- External.new
   ensureMainHandle <- EnsureMain.new locatorHandle

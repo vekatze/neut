@@ -43,8 +43,8 @@ data Handle = Handle
     weakDeclHandle :: WeakDecl.Handle
   }
 
-new :: Env.Handle -> App Handle
-new envHandle = do
+new :: Env.Handle -> Locator.Handle -> App Handle
+new envHandle locatorHandle = do
   unusedVariableHandle <- UnusedVariable.new
   unusedGlobalLocatorHandle <- UnusedGlobalLocator.new
   unusedLocalLocatorHandle <- UnusedLocalLocator.new
@@ -52,7 +52,6 @@ new envHandle = do
   localRemarkHandle <- LocalRemark.new
   globalHandle <- Global.new envHandle
   aliasHandle <- Alias.new envHandle
-  locatorHandle <- Locator.new envHandle
   tagHandle <- Tag.new
   rawImportSummaryHandle <- RawImportSummary.new
   symLocHandle <- SymLoc.new
