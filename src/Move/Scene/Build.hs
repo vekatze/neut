@@ -75,6 +75,7 @@ data Handle = Handle
     globalRemarkHandle :: GlobalRemark.Handle,
     reportHandle :: Report.Handle,
     envHandle :: Env.Handle,
+    cacheHandle :: Cache.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -91,6 +92,7 @@ new cfg gensymHandle = do
   globalRemarkHandle <- GlobalRemark.new
   reportHandle <- Report.new
   envHandle <- Env.new
+  cacheHandle <- Cache.new
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -122,8 +124,7 @@ buildTarget h (M.MainModule baseModule) target = do
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile h target outputKindList contentSeq = do
   mainModule <- toApp $ Env.getMainModule (envHandle h)
-  hCache <- Cache.new
-  bs <- toApp $ mapM (needsCompilation hCache outputKindList . fst) contentSeq
+  bs <- toApp $ mapM (needsCompilation (cacheHandle h) outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount mainModule target outputKindList
   let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
@@ -150,7 +151,7 @@ compile h target outputKindList contentSeq = do
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     hc <- Clarify.new
     hl <- Lower.new
-    b <- toApp $ Cache.needsCompilation hCache outputKindList source
+    b <- toApp $ Cache.needsCompilation (cacheHandle h) outputKindList source
     if b
       then do
         stmtList' <- toApp $ Clarify.clarify hc stmtList
