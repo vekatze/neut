@@ -52,7 +52,7 @@ data Handle = Handle
 new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> App Handle
 new envHandle gensymHandle locatorHandle = do
   globalHandle <- Global.new envHandle locatorHandle
-  aliasHandle <- Alias.new envHandle
+  aliasHandle <- Alias.new envHandle locatorHandle
   keyArgHandle <- KeyArg.new envHandle
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
