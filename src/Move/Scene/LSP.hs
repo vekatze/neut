@@ -42,6 +42,7 @@ import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.LSP.References qualified as References
 import Move.Scene.LSP.Util (getUriParam, liftAppM)
+import Move.Scene.Unravel qualified as Unravel
 import Prettyprinter
 import Rule.AppLsp
 import Rule.CodeAction qualified as CA
@@ -83,9 +84,10 @@ new ::
   Tag.Handle ->
   Antecedent.Handle ->
   Format.Handle ->
+  Unravel.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle = do
-  completeHandle <- Complete.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle = do
+  completeHandle <- Complete.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
   highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
