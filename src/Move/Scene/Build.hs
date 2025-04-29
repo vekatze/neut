@@ -15,7 +15,6 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
 import Move.Console.Report qualified as Report
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
@@ -25,15 +24,10 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
-import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
-import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
-import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
@@ -106,37 +100,31 @@ data Handle = Handle
 
 new ::
   Config ->
-  Env.Handle ->
   Gensym.Handle ->
-  Color.Handle ->
-  Report.Handle ->
   Debug.Handle ->
+  InitTarget.Handle ->
+  Unravel.Handle ->
+  Load.Handle ->
+  GlobalRemark.Handle ->
+  Report.Handle ->
+  Env.Handle ->
   Locator.Handle ->
-  Global.Handle ->
-  OptimizableData.Handle ->
-  KeyArg.Handle ->
-  Unused.Handle ->
-  Tag.Handle ->
-  Antecedent.Handle ->
+  Cache.Handle ->
+  Color.Handle ->
+  InitSource.Handle ->
+  Path.Handle ->
+  External.Handle ->
+  EnsureMain.Handle ->
+  Parse.Handle ->
+  Clarify.Handle ->
+  LLVM.Handle ->
+  Emit.Handle ->
+  Link.Handle ->
+  Install.Handle ->
+  Execute.Handle ->
   Elaborate.Config ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle elaborateConfig = do
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle (Elaborate._typeHandle elaborateConfig)
-  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
-  loadHandle <- Load.new envHandle debugHandle
-  globalRemarkHandle <- GlobalRemark.new
-  cacheHandle <- Cache.new envHandle debugHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
-  pathHandle <- Path.new envHandle debugHandle
-  externalHandle <- External.new debugHandle
-  ensureMainHandle <- EnsureMain.new locatorHandle
-  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-  clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
-  llvmHandle <- LLVM.new envHandle debugHandle
-  emitHandle <- Emit.new gensymHandle
-  linkHandle <- Link.new envHandle colorHandle debugHandle
-  installHandle <- Install.new envHandle debugHandle
-  executeHandle <- Execute.new envHandle debugHandle
+new cfg gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig = do
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
