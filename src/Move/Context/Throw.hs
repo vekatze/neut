@@ -60,10 +60,9 @@ runEither h c = do
     Right v ->
       return $ Right v
 
-collectLogs :: App () -> App [R.Remark]
-collectLogs c = do
+collectLogs :: GlobalRemark.Handle -> App () -> App [R.Remark]
+collectLogs h c = do
   resultOrErr <- execute c
-  h <- GlobalRemark.new
   remarkList <- liftIO $ GlobalRemark.get h
   case resultOrErr of
     Left (E.MakeError logList) ->

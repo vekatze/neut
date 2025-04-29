@@ -25,6 +25,7 @@ import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetModule qualified as Module
 import Move.Scene.Parse qualified as Parse
 import Move.Scene.Unravel qualified as Unravel
+import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
 import Rule.Cache
 import Rule.Module (extractModule)
@@ -44,6 +45,7 @@ data Handle
     envHandle :: Env.Handle,
     initSourceHandle :: InitSource.Handle,
     initTargetHandle :: InitTarget.Handle,
+    globalRemarkHandle :: GlobalRemark.Handle,
     elaborateConfig :: Elaborate.Config
   }
 
@@ -57,9 +59,10 @@ new ::
   Env.Handle ->
   InitSource.Handle ->
   InitTarget.Handle ->
+  GlobalRemark.Handle ->
   Elaborate.Config ->
   App Handle
-new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle elaborateConfig = do
+new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle globalRemarkHandle elaborateConfig = do
   return $ Handle {..}
 
 check :: Handle -> App [Remark]
@@ -84,7 +87,7 @@ checkSingle h baseModule path = do
 
 _check :: Handle -> Target -> M.Module -> App [Remark]
 _check h target baseModule = do
-  Throw.collectLogs $ do
+  Throw.collectLogs (globalRemarkHandle h) $ do
     liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
     (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
     contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq

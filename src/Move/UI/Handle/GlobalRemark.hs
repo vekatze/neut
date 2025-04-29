@@ -7,10 +7,7 @@ module Move.UI.Handle.GlobalRemark
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Remark qualified as R
 
 newtype Handle
@@ -18,9 +15,9 @@ newtype Handle
   { globalRemarkListRef :: IORef [R.Remark]
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  globalRemarkListRef <- asks App.globalRemarkList
+  globalRemarkListRef <- newIORef []
   return $ Handle {..}
 
 insert :: Handle -> [R.Remark] -> IO ()

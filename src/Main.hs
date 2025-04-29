@@ -139,7 +139,7 @@ execute = do
     initCompilerHandle <- InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
-    globalRemarkHandle <- GlobalRemark.new
+    globalRemarkHandle <- liftIO GlobalRemark.new
     clangHandle <- liftIO $ Clang.new debugHandle
     pathHandle <- liftIO $ Path.new envHandle debugHandle clangHandle
     artifactHandle <- liftIO Artifact.new
@@ -196,7 +196,7 @@ execute = do
               _defHandle = defHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
-    checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
+    checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle globalRemarkHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle unravelHandle
     llvmHandle <- LLVM.new envHandle debugHandle pathHandle externalHandle
     let emitOpHandle = EmitOp.new baseSize

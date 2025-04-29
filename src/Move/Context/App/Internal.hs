@@ -1,20 +1,11 @@
 module Move.Context.App.Internal
-  ( Env (..),
-    Ref,
+  ( Env,
     newEnv,
   )
 where
 
-import Data.IORef
-import Rule.Remark qualified as Remark
-
-newtype Env = Env
-  { globalRemarkList :: IORef [Remark.Remark]
-  }
-
-type Ref a = IORef (Maybe a)
+data Env = Env {}
 
 newEnv :: IO Env
 newEnv = do
-  globalRemarkList <- newIORef []
-  return Env {..}
+  return Env {}
