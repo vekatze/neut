@@ -2,25 +2,19 @@ module Move.Act.Zen
   ( Handle,
     new,
     zen,
+    toBuildConfig,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
 import Move.Console.Report qualified as Report
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
-import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Build qualified as Build
 import Move.Scene.Fetch qualified as Fetch
@@ -42,24 +36,16 @@ data Handle
   }
 
 new ::
-  Config ->
   Env.Handle ->
   Gensym.Handle ->
   Color.Handle ->
   Report.Handle ->
   Debug.Handle ->
-  Locator.Handle ->
-  Global.Handle ->
-  OptimizableData.Handle ->
-  KeyArg.Handle ->
-  Unused.Handle ->
-  Tag.Handle ->
-  Antecedent.Handle ->
+  Build.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle buildHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
-  buildHandle <- Build.new (toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   return $ Handle {..}
 
 zen :: Handle -> Config -> App ()

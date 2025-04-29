@@ -42,6 +42,7 @@ import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.LSP.References qualified as References
 import Move.Scene.LSP.Util (getUriParam, liftAppM)
+import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Unravel qualified as Unravel
 import Prettyprinter
 import Rule.AppLsp
@@ -68,6 +69,7 @@ data Handle
     optDataHandle :: OptimizableData.Handle,
     unusedHandle :: Unused.Handle,
     globalHandle :: Global.Handle,
+    discernHandle :: Discern.Handle,
     checkHandle :: Check.Handle
   }
 
@@ -86,9 +88,10 @@ new ::
   Antecedent.Handle ->
   Format.Handle ->
   Unravel.Handle ->
+  Discern.Handle ->
   Check.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle checkHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle = do
   completeHandle <- Complete.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
@@ -188,7 +191,7 @@ handlers h =
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h) (checkHandle h)
+        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h) (discernHandle h) (checkHandle h)
         textOrNone <- liftAppM (initCompilerHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
         case textOrNone of
           Nothing ->
@@ -227,7 +230,7 @@ handlers h =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                hck <- lift $ Check.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
+                hck <- lift $ Check.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h) (discernHandle h)
                 _ <- liftAppM (initCompilerHandle h) $ lift $ Check.checkAll hck
                 responder $ Right $ InR Null
           _ ->

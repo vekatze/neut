@@ -32,6 +32,7 @@ import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetModule qualified as Module
 import Move.Scene.Parse qualified as Parse
+import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Unravel qualified as Unravel
 import Path
 import Rule.Cache
@@ -59,7 +60,8 @@ data Handle
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle,
     unusedHandle :: Unused.Handle,
-    globalHandle :: Global.Handle
+    globalHandle :: Global.Handle,
+    discernHandle :: Discern.Handle
   }
 
 new ::
@@ -74,8 +76,9 @@ new ::
   Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
+  Discern.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle = do
   loadHandle <- Load.new envHandle debugHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
@@ -130,7 +133,7 @@ checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (optDataHandle h) (keyArgHandle h) (discernHandle h)
   void $
     toApp $
       Parse.parse (parseHandle h) target source cacheOrContent
@@ -140,7 +143,7 @@ checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elabora
 checkSource' h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
+  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (optDataHandle h) (keyArgHandle h) (discernHandle h)
   toApp $
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborateThenInspect hElaborate target

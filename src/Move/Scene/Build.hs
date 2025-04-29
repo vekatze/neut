@@ -47,6 +47,7 @@ import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
 import Move.Scene.Lower qualified as Lower
 import Move.Scene.Parse qualified as Parse
+import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.ShowProgress qualified as ProgressBar
 import Move.Scene.Unravel qualified as Unravel
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
@@ -102,6 +103,7 @@ data Handle = Handle
     optDataHandle :: OptimizableData.Handle,
     unusedHandle :: Unused.Handle,
     globalHandle :: Global.Handle,
+    discernHandle :: Discern.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -123,8 +125,9 @@ new ::
   Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
+  Discern.Handle ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle = do
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
@@ -189,7 +192,7 @@ compile h target outputKindList contentSeq = do
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
-    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h)
+    hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (optDataHandle h) (keyArgHandle h) (discernHandle h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
     hl <- Lower.new (gensymHandle h) (locatorHandle h)
