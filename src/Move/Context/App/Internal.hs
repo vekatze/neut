@@ -17,11 +17,9 @@ import Rule.DefiniteDescription qualified as DD
 import Rule.ExternalName qualified as EN
 import Rule.ForeignCodType qualified as F
 import Rule.GlobalLocatorAlias qualified as GLA
-import Rule.GlobalName qualified as GN
 import Rule.Hint
 import Rule.Ident
 import Rule.Import
-import Rule.IsConstLike
 import Rule.LocalVarTree qualified as LVT
 import Rule.Module qualified as M
 import Rule.ModuleAlias qualified as MA
@@ -33,7 +31,6 @@ import Rule.Source qualified as Source
 import Rule.StrictGlobalLocator qualified as SGL
 import Rule.Term qualified as TM
 import Rule.TopCandidate
-import Rule.TopNameMap
 import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
 
@@ -41,9 +38,6 @@ data Env = Env
   { moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
-    sourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap),
-    nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
-    geistMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     importEnv :: IORef (Maybe RawImportSummary),
@@ -75,14 +69,11 @@ newEnv = do
   moduleCacheMap <- newIORef Map.empty
   moduleAliasMap <- newIORef Map.empty
   locatorAliasMap <- newIORef Map.empty
-  sourceNameMap <- newIORef Map.empty
   remarkList <- newIORef []
   importEnv <- newIORef Nothing
   globalRemarkList <- newIORef []
   localVarMap <- newIORef LVT.empty
   topCandidateEnv <- newIORef []
-  nameMap <- newIORef Map.empty
-  geistMap <- newIORef Map.empty
   buildSignatureCache <- newIORef Nothing
   sourceChildrenMap <- newIORef Map.empty
   traceSourceList <- newIORef []

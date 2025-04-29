@@ -17,12 +17,9 @@ where
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -63,11 +60,11 @@ data Handle
     sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
   }
 
-new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> App Handle
+new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
 new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle = do
-  nameMapRef <- asks App.nameMap
-  geistMapRef <- asks App.geistMap
-  sourceNameMapRef <- asks App.sourceNameMap
+  nameMapRef <- newIORef Map.empty
+  geistMapRef <- newIORef Map.empty
+  sourceNameMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()

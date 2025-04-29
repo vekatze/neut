@@ -56,7 +56,7 @@ execute = do
     keyArgHandle <- liftIO $ KeyArg.new envHandle
     optDataHandle <- liftIO OptimizableData.new
     unusedHandle <- liftIO Unused.new
-    globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
+    globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     formatHandle <- SceneFormat.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
     lspFormatHandle <- LSPFormat.new formatHandle
     unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
