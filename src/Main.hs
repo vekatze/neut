@@ -131,7 +131,7 @@ execute = do
     aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle
     symLocHandle <- liftIO SymLoc.new
     topCandidateHandle <- liftIO TopCandidate.new
-    preDeclHandle <- PreDecl.new
+    preDeclHandle <- liftIO PreDecl.new
     discernHandle <- Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
     initLoggerHandle <- InitLogger.new colorHandle reportHandle envHandle debugHandle
     moduleReflectHandle <- ModuleReflect.new gensymHandle

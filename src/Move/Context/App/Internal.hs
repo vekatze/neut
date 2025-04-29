@@ -10,9 +10,7 @@ import Data.IORef
 import Rule.Binder
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
-import Rule.ExternalName qualified as EN
 import Rule.ForeignCodType qualified as F
-import Rule.Hint
 import Rule.Remark qualified as Remark
 import Rule.Term qualified as TM
 import Rule.WeakTerm qualified as WT
@@ -22,7 +20,6 @@ data Env = Env
     globalRemarkList :: IORef [Remark.Remark],
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
-    preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm))
   }
 
@@ -34,6 +31,5 @@ newEnv = do
   globalRemarkList <- newIORef []
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
-  preDeclEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty
   return Env {..}

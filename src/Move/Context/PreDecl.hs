@@ -9,11 +9,8 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError)
 import Rule.ExternalName qualified as EN
 import Rule.Hint
@@ -24,9 +21,9 @@ newtype Handle
   { preDeclEnvRef :: IORef (Map.HashMap EN.ExternalName Hint)
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  preDeclEnvRef <- asks App.preDeclEnv
+  preDeclEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()
