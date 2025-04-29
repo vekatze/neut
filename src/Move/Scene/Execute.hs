@@ -6,7 +6,6 @@ module Move.Scene.Execute
 where
 
 import Move.Context.App
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -22,10 +21,8 @@ data Handle
     externalHandle :: External.Handle
   }
 
-new :: Env.Handle -> Debug.Handle -> App Handle
-new envHandle debugHandle = do
-  pathHandle <- Path.new envHandle debugHandle
-  externalHandle <- External.new debugHandle
+new :: Env.Handle -> Path.Handle -> External.Handle -> App Handle
+new envHandle pathHandle externalHandle = do
   return $ Handle {..}
 
 execute :: Handle -> MainTarget -> [String] -> EIO ()

@@ -157,7 +157,7 @@ execute = do
     emitHandle <- Emit.new gensymHandle emitLowCompHandle lowCompReduceHandle dataSize baseSize
     linkHandle <- Link.new envHandle colorHandle debugHandle
     installHandle <- Install.new envHandle debugHandle
-    executeHandle <- Execute.new envHandle debugHandle
+    executeHandle <- Execute.new envHandle pathHandle externalHandle
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do
       ensureExecutables
