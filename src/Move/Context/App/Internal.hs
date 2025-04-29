@@ -54,7 +54,6 @@ data Env = Env
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
-    typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     clangDigest :: Ref T.Text
   }
 
@@ -85,6 +84,5 @@ newEnv = do
   preDeclEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty
-  typeEnv <- newIORef Map.empty
   clangDigest <- newRef
   return Env {..}

@@ -92,7 +92,8 @@ getSymbolInfo h params = do
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'
     LT.Global dd isConstLike -> do
-      t <- lift (Type.lookupMaybe dd) >>= liftMaybe
+      let typeHandle = Elaborate._typeHandle (elaborateConfig h)
+      t <- lift (liftIO $ Type.lookupMaybe' typeHandle dd) >>= liftMaybe
       case (t, isConstLike) of
         (_ :< WT.Pi _ _ cod, True) ->
           return $ toText cod

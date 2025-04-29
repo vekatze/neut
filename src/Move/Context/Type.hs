@@ -2,7 +2,6 @@ module Move.Context.Type
   ( Handle,
     new,
     initialize,
-    lookupMaybe,
     insert',
     lookup',
     lookupMaybe',
@@ -10,11 +9,8 @@ module Move.Context.Type
 where
 
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical)
 import Rule.DefiniteDescription qualified as DD
 import Rule.Hint
@@ -26,19 +22,14 @@ newtype Handle
   { typeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakTerm)
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  typeEnvRef <- asks App.typeEnv
+  typeEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()
 initialize h = do
   writeIORef (typeEnvRef h) Map.empty
-
-lookupMaybe :: DD.DefiniteDescription -> App (Maybe WeakTerm)
-lookupMaybe k = do
-  tenv <- readRef' App.typeEnv
-  return $ Map.lookup k tenv
 
 insert' :: Handle -> DD.DefiniteDescription -> WeakTerm -> IO ()
 insert' h k v =
