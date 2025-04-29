@@ -69,12 +69,11 @@ data Handle = Handle
     weakDefHandle :: WeakDefinition.Handle
   }
 
-new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> App Handle
-new Elaborate.HandleEnv {..} envHandle gensymHandle = do
+new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> Type.Handle -> App Handle
+new Elaborate.HandleEnv {..} envHandle gensymHandle typeHandle = do
   reduceHandle <- Reduce.new envHandle gensymHandle
   substHandle <- Subst.new gensymHandle
   fillHandle <- Fill.new envHandle gensymHandle
-  typeHandle <- Type.new
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   weakDefHandle <- WeakDefinition.new gensymHandle
