@@ -7,10 +7,7 @@ module Move.UI.Handle.LocalRemark
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Remark qualified as R
 
 newtype Handle
@@ -18,9 +15,9 @@ newtype Handle
   { remarkListRef :: IORef [R.Remark] -- per file
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  remarkListRef <- asks App.remarkList
+  remarkListRef <- newIORef []
   return $ Handle {..}
 
 initialize :: Handle -> IO ()

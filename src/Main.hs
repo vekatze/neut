@@ -144,7 +144,7 @@ execute = do
     artifactHandle <- liftIO Artifact.new
     cacheHandle <- Cache.new pathHandle artifactHandle
     loadHandle <- Load.new debugHandle cacheHandle
-    localRemarkHandle <- LocalRemark.new
+    localRemarkHandle <- liftIO LocalRemark.new
     rawImportSummaryHandle <- liftIO RawImportSummary.new
     weakDeclHandle <- WeakDecl.new
     initSourceHandle <- InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle

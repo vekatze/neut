@@ -16,8 +16,7 @@ import Rule.Term qualified as TM
 import Rule.WeakTerm qualified as WT
 
 data Env = Env
-  { remarkList :: IORef [Remark.Remark], -- per file
-    globalRemarkList :: IORef [Remark.Remark],
+  { globalRemarkList :: IORef [Remark.Remark],
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm))
@@ -27,7 +26,6 @@ type Ref a = IORef (Maybe a)
 
 newEnv :: IO Env
 newEnv = do
-  remarkList <- newIORef []
   globalRemarkList <- newIORef []
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
