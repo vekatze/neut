@@ -47,7 +47,6 @@ import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
 import Move.Scene.Lower qualified as Lower
 import Move.Scene.Parse qualified as Parse
-import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.ShowProgress qualified as ProgressBar
 import Move.Scene.Unravel qualified as Unravel
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
@@ -84,12 +83,10 @@ data Handle = Handle
     reportHandle :: Report.Handle,
     envHandle :: Env.Handle,
     locatorHandle :: Locator.Handle,
-    tagHandle :: Tag.Handle,
     cacheHandle :: Cache.Handle,
     colorHandle :: Color.Handle,
     initSourceHandle :: InitSource.Handle,
     pathHandle :: Path.Handle,
-    antecedentHandle :: Antecedent.Handle,
     externalHandle :: External.Handle,
     ensureMainHandle :: EnsureMain.Handle,
     parseHandle :: Parse.Handle,
@@ -99,11 +96,6 @@ data Handle = Handle
     linkHandle :: Link.Handle,
     installHandle :: Install.Handle,
     executeHandle :: Execute.Handle,
-    keyArgHandle :: KeyArg.Handle,
-    optDataHandle :: OptimizableData.Handle,
-    unusedHandle :: Unused.Handle,
-    globalHandle :: Global.Handle,
-    discernHandle :: Discern.Handle,
     elaborateConfig :: Elaborate.Config,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
@@ -126,10 +118,9 @@ new ::
   Unused.Handle ->
   Tag.Handle ->
   Antecedent.Handle ->
-  Discern.Handle ->
   Elaborate.Config ->
   App Handle
-new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig = do
+new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle elaborateConfig = do
   initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle (Elaborate._typeHandle elaborateConfig)
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
