@@ -182,7 +182,7 @@ execute = do
               _discernHandle = discernHandle,
               _typeHandle = typeHandle
             }
-    getModuleHandle <- GetModule.new gensymHandle
+    getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle unravelHandle
     llvmHandle <- LLVM.new envHandle debugHandle
