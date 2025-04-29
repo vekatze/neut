@@ -233,8 +233,7 @@ handlers h =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                hck <- lift $ Check.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h) (discernHandle h) (elaborateConfig h)
-                _ <- liftAppM (initCompilerHandle h) $ lift $ Check.checkAll hck
+                _ <- liftAppM (initCompilerHandle h) $ lift $ Check.checkAll (checkHandle h)
                 responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null

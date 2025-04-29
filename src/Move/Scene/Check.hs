@@ -11,20 +11,12 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
-import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Init.Source qualified as InitSource
@@ -32,7 +24,6 @@ import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetModule qualified as Module
 import Move.Scene.Parse qualified as Parse
-import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Unravel qualified as Unravel
 import Path
 import Rule.Cache
@@ -53,40 +44,22 @@ data Handle
     envHandle :: Env.Handle,
     initSourceHandle :: InitSource.Handle,
     initTargetHandle :: InitTarget.Handle,
-    locatorHandle :: Locator.Handle,
-    tagHandle :: Tag.Handle,
-    antecedentHandle :: Antecedent.Handle,
-    colorHandle :: Color.Handle,
-    keyArgHandle :: KeyArg.Handle,
-    optDataHandle :: OptimizableData.Handle,
-    unusedHandle :: Unused.Handle,
-    globalHandle :: Global.Handle,
-    discernHandle :: Discern.Handle,
     elaborateConfig :: Elaborate.Config
   }
 
 new ::
-  Env.Handle ->
-  Gensym.Handle ->
-  Color.Handle ->
   Debug.Handle ->
-  Locator.Handle ->
-  Global.Handle ->
-  OptimizableData.Handle ->
-  KeyArg.Handle ->
-  Unused.Handle ->
-  Tag.Handle ->
-  Antecedent.Handle ->
-  Discern.Handle ->
+  Gensym.Handle ->
+  Load.Handle ->
+  Unravel.Handle ->
+  Parse.Handle ->
+  Module.Handle ->
+  Env.Handle ->
+  InitSource.Handle ->
+  InitTarget.Handle ->
   Elaborate.Config ->
   App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig = do
-  loadHandle <- Load.new envHandle debugHandle
-  unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
-  parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-  moduleHandle <- Module.new gensymHandle
-  initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle (Elaborate._typeHandle elaborateConfig)
+new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle elaborateConfig = do
   return $ Handle {..}
 
 check :: Handle -> App [Remark]

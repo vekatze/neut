@@ -55,6 +55,7 @@ import Move.Scene.LSP qualified as L
 import Move.Scene.LSP.Format qualified as LSPFormat
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
+import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Module.Save qualified as ModuleSave
 import Move.Scene.New qualified as New
 import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
@@ -115,7 +116,8 @@ execute = do
               _discernHandle = discernHandle,
               _typeHandle = typeHandle
             }
-    checkHandle <- SceneCheck.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig
+    moduleHandle <- GetModule.new gensymHandle
+    checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
     llvmHandle <- LLVM.new envHandle debugHandle
