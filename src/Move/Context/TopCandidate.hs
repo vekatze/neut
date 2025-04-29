@@ -7,19 +7,16 @@ module Move.Context.TopCandidate
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.TopCandidate
 
 newtype Handle = Handle
   { topCandidateEnvRef :: IORef [TopCandidate]
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  topCandidateEnvRef <- asks App.topCandidateEnv
+  topCandidateEnvRef <- newIORef []
   return $ Handle {..}
 
 initialize :: Handle -> IO ()

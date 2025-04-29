@@ -22,14 +22,12 @@ import Rule.LocalVarTree qualified as LVT
 import Rule.Opacity qualified as O
 import Rule.Remark qualified as Remark
 import Rule.Term qualified as TM
-import Rule.TopCandidate
 import Rule.WeakTerm qualified as WT
 
 data Env = Env
   { remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     localVarMap :: IORef LVT.LocalVarTree,
-    topCandidateEnv :: IORef [TopCandidate],
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
@@ -51,7 +49,6 @@ newEnv = do
   remarkList <- newIORef []
   globalRemarkList <- newIORef []
   localVarMap <- newIORef LVT.empty
-  topCandidateEnv <- newIORef []
   artifactMap <- newIORef Map.empty
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty

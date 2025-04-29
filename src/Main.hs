@@ -130,7 +130,7 @@ execute = do
     collectHandle <- Collect.new envHandle
     aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle
     symLocHandle <- liftIO SymLoc.new
-    topCandidateHandle <- TopCandidate.new
+    topCandidateHandle <- liftIO TopCandidate.new
     preDeclHandle <- PreDecl.new
     discernHandle <- Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
     initLoggerHandle <- InitLogger.new colorHandle reportHandle envHandle debugHandle
@@ -186,7 +186,8 @@ execute = do
               _clangHandle = clangHandle,
               _rawImportSummaryHandle = rawImportSummaryHandle,
               _symLocHandle = symLocHandle,
-              _pathHandle = pathHandle
+              _pathHandle = pathHandle,
+              _topCandidateHandle = topCandidateHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
