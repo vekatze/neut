@@ -11,7 +11,6 @@ import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Move.Context.App
-import Move.Context.EIO (toApp)
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Builder
 import Rule.Ident
@@ -30,9 +29,8 @@ data Handle = Handle
     emitOpHandle :: EmitOp.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  emitOpHandle <- toApp EmitOp.new
+new :: Gensym.Handle -> EmitOp.Handle -> App Handle
+new gensymHandle emitOpHandle = do
   return
     Handle
       { gensymHandle,

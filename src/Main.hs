@@ -93,6 +93,7 @@ import Move.Scene.Unravel qualified as Unravel
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Rule.Command qualified as C
+import Rule.LowComp.EmitOp qualified as EmitOp
 import System.IO
 
 main :: IO ()
@@ -172,7 +173,8 @@ execute = do
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle unravelHandle
     llvmHandle <- LLVM.new envHandle debugHandle
-    emitLowCompHandle <- EmitLowComp.new gensymHandle
+    let emitOpHandle = EmitOp.new baseSize
+    emitLowCompHandle <- EmitLowComp.new gensymHandle emitOpHandle
     dataSize <- toApp Env.getDataSize'
     lowCompReduceHandle <- LowCompReduce.new gensymHandle
     emitHandle <- Emit.new gensymHandle emitLowCompHandle lowCompReduceHandle dataSize baseSize

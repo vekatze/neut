@@ -8,8 +8,6 @@ where
 import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Move.Context.EIO (EIO)
-import Move.Context.Env qualified as Env
 import Rule.LowComp qualified as LC
 import Rule.LowComp.EmitValue
 import Rule.LowType qualified as LT
@@ -19,15 +17,15 @@ import Rule.PrimOp
 import Rule.PrimType qualified as PT
 import Rule.PrimType.EmitPrimType
 
-newtype Handle = Handle
-  { intType :: LT.LowType
+data Handle = Handle
+  { baseSize :: Int,
+    intType :: LT.LowType
   }
 
-new :: EIO Handle
-new = do
-  baseSize <- Env.getBaseSize'
+new :: Int -> Handle
+new baseSize = do
   let intType = LT.PrimNum $ PT.Int $ IntSize baseSize
-  return $ Handle {..}
+  Handle {..}
 
 emitLowOp :: Handle -> LC.Op -> Builder
 emitLowOp ax lowOp =
