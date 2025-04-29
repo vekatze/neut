@@ -35,10 +35,8 @@ data Handle
     llvmHandle :: LLVM.Handle
   }
 
-new :: Env.Handle -> Color.Handle -> Debug.Handle -> App Handle
-new envHandle colorHandle debugHandle = do
-  pathHandle <- Path.new envHandle debugHandle
-  llvmHandle <- LLVM.new envHandle debugHandle
+new :: Debug.Handle -> Env.Handle -> Path.Handle -> Color.Handle -> LLVM.Handle -> App Handle
+new debugHandle envHandle pathHandle colorHandle llvmHandle = do
   return $ Handle {..}
 
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()
