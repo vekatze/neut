@@ -59,7 +59,7 @@ execute = do
     globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     formatHandle <- SceneFormat.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
     lspFormatHandle <- LSPFormat.new formatHandle
-    unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+    unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
     checkHandle <- SceneCheck.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle
     c <- liftIO OptParse.parseCommand
@@ -74,7 +74,7 @@ execute = do
           h <- Check.new envHandle gensymHandle colorHandle reportHandle debugHandle checkHandle
           Check.check h cfg
         C.Clean cfg -> do
-          h <- Clean.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- Clean.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           h <- Archive.new envHandle gensymHandle colorHandle reportHandle debugHandle
@@ -83,7 +83,7 @@ execute = do
           h <- Create.new envHandle gensymHandle colorHandle reportHandle debugHandle checkHandle
           Create.create h cfg
         C.Get cfg -> do
-          h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle checkHandle
+          h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle checkHandle
           Get.get h cfg
         C.Format cfg -> do
           h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
