@@ -13,7 +13,6 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -33,9 +32,8 @@ data Handle
     reportHandle :: Report.Handle
   }
 
-new :: Report.Handle -> Debug.Handle -> App Handle
-new reportHandle debugHandle = do
-  moduleSaveHandle <- ModuleSave.new debugHandle
+new :: ModuleSave.Handle -> Report.Handle -> App Handle
+new moduleSaveHandle reportHandle = do
   return $ Handle {..}
 
 createNewProject :: Handle -> T.Text -> Module -> EIO ()
