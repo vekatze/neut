@@ -18,6 +18,7 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Cache qualified as Cache
+import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.Debug qualified as Debug
@@ -73,6 +74,7 @@ import Move.Scene.LSP qualified as L
 import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.Format qualified as LSPFormat
+import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
 import Move.Scene.LSP.GetSymbolInfo qualified as GetSymbolInfo
 import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
@@ -91,6 +93,7 @@ import Move.Scene.Parse qualified as Parse
 import Move.Scene.Parse.Core qualified as ParseCore
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Import qualified as Import
+import Move.Scene.Source.Reflect qualified as SourceReflect
 import Move.Scene.Source.ShiftToLatest qualified as ShiftToLatest
 import Move.Scene.Term.Subst qualified as TermSubst
 import Move.Scene.Unravel qualified as Unravel
@@ -219,10 +222,13 @@ execute = do
           h <- Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg
         C.LSP -> do
+          clangHandle <- Clang.new debugHandle
           lintHandle <- Lint.new fetchHandle envHandle initCompilerHandle checkHandle
           lspFormatHandle <- LSPFormat.new formatHandle
           getSymbolInfoHandle <- GetSymbolInfo.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle checkHandle elaborateConfig
-          completeHandle <- Complete.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
+          sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
+          gacHandle <- GAC.new envHandle debugHandle antecedentHandle
+          completeHandle <- Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
           findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
           highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
           referencesHandle <- References.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle

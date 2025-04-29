@@ -21,11 +21,9 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
 import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Source.Reflect qualified as SourceReflect
@@ -58,13 +56,17 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Antecedent.Handle -> Unravel.Handle -> App Handle
-new envHandle gensymHandle debugHandle antecedentHandle unravelHandle = do
-  clangHandle <- Clang.new debugHandle
-  pathHandle <- Path.new envHandle debugHandle
-  getModuleHandle <- GetModule.new gensymHandle
-  sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
-  gacHandle <- GAC.new envHandle debugHandle antecedentHandle
+new ::
+  Unravel.Handle ->
+  Clang.Handle ->
+  Path.Handle ->
+  Antecedent.Handle ->
+  GetModule.Handle ->
+  SourceReflect.Handle ->
+  Env.Handle ->
+  GAC.Handle ->
+  App Handle
+new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle = do
   return $ Handle {..}
 
 complete :: Handle -> Uri -> Position -> EIO [CompletionItem]
