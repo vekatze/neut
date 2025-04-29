@@ -50,10 +50,9 @@ runMaybe c = do
     Right result ->
       return $ Just result
 
-runEither :: App a -> App (Either [R.Remark] a)
-runEither c = do
+runEither :: GlobalRemark.Handle -> App a -> App (Either [R.Remark] a)
+runEither h c = do
   resultOrErr <- execute c
-  h <- GlobalRemark.new
   remarkList <- liftIO $ GlobalRemark.get h
   case resultOrErr of
     Left (E.MakeError logList) ->

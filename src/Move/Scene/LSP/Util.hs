@@ -23,8 +23,7 @@ import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Move.Context.AppM
-import Move.Scene.Init.Compiler qualified as InitCompiler
+import Move.Context.AppM qualified as AM
 import Move.Scene.Parse.Core qualified as Parse
 import Path
 import Rule.AppLsp
@@ -32,9 +31,9 @@ import Rule.FilePos qualified as FP
 import Rule.Remark
 import Rule.Remark qualified as R
 
-liftAppM :: InitCompiler.Handle -> AppM a -> AppLsp b (Maybe a)
+liftAppM :: AM.Handle -> AM.AppM a -> AppLsp b (Maybe a)
 liftAppM h action = do
-  resultOrRemarks <- lift $ runAppM h action
+  resultOrRemarks <- lift $ AM.runAppM h action
   case resultOrRemarks of
     Right result ->
       return $ Just result

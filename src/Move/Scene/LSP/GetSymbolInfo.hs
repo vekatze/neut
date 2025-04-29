@@ -13,7 +13,7 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
-import Move.Context.AppM
+import Move.Context.AppM (AppM, liftMaybe)
 import Move.Context.Cache (invalidate)
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug

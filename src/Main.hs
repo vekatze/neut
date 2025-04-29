@@ -16,6 +16,7 @@ import Move.Console.Report qualified as Report
 import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
+import Move.Context.AppM qualified as AppM
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
@@ -236,7 +237,8 @@ execute = do
           h <- Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          lintHandle <- Lint.new fetchHandle envHandle initCompilerHandle checkHandle
+          appHandle <- AppM.new initCompilerHandle globalRemarkHandle
+          lintHandle <- Lint.new fetchHandle envHandle appHandle checkHandle
           lspFormatHandle <- LSPFormat.new formatHandle
           sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle
           getSourceHandle <- GetSource.new sourceReflectHandle
@@ -247,7 +249,7 @@ execute = do
           completeHandle <- Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
           highlightHandle <- Highlight.new findDefHandle
           referencesHandle <- References.new unravelHandle getSourceHandle findDefHandle gacHandle
-          lspHandle <- L.new initCompilerHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
+          lspHandle <- L.new initCompilerHandle appHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
           h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
         C.ShowVersion cfg ->
