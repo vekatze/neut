@@ -8,13 +8,9 @@ module Move.Scene.Init.Compiler
 where
 
 import Control.Monad.IO.Class
-import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Init.Logger qualified as InitLogger
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Path
@@ -28,10 +24,8 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle = do
-  initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
-  moduleReflectHandle <- ModuleReflect.new gensymHandle
+new :: InitLogger.Handle -> ModuleReflect.Handle -> Env.Handle -> App Handle
+new initLoggerHandle moduleReflectHandle envHandle = do
   return $ Handle {..}
 
 initializeCompiler :: Handle -> Remark.Config -> EIO ()

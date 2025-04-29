@@ -120,7 +120,8 @@ execute = do
     collectHandle <- Collect.new envHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
     initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
-    initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
+    moduleReflectHandle <- ModuleReflect.new gensymHandle
+    initCompilerHandle <- InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
     globalRemarkHandle <- GlobalRemark.new
@@ -153,7 +154,6 @@ execute = do
     weakDefHandle <- WeakDefinition.new gensymHandle
     defHandle <- Definition.new
     ensReflectHandle <- EnsReflect.new gensymHandle
-    moduleReflectHandle <- ModuleReflect.new gensymHandle
     artifactHandle <- Artifact.new
     unravelHandle <- Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
     fetchHandle <- Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
