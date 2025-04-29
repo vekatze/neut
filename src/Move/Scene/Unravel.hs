@@ -28,15 +28,11 @@ import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env (getMainModule)
 import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
 import Move.Context.Parse (ensureExistence')
 import Move.Context.Parse qualified as Parse
 import Move.Context.Path qualified as Path
-import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Parse.Core qualified as ParseCore
 import Move.Scene.Parse.Import qualified as Import
@@ -83,22 +79,18 @@ data Handle
 
 new ::
   Env.Handle ->
-  Gensym.Handle ->
   Debug.Handle ->
+  ModuleReflect.Handle ->
+  Path.Handle ->
+  STL.Handle ->
+  Import.Handle ->
+  ParseCore.Handle ->
   Locator.Handle ->
-  Global.Handle ->
-  Unused.Handle ->
-  Tag.Handle ->
+  Alias.Handle ->
   Antecedent.Handle ->
+  Artifact.Handle ->
   App Handle
-new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle = do
-  pathHandle <- Path.new envHandle debugHandle
-  moduleHandle <- ModuleReflect.new gensymHandle
-  shiftToLatestHandle <- STL.new antecedentHandle
-  importHandle <- Import.new envHandle gensymHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
-  parseHandle <- ParseCore.new gensymHandle
-  aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
-  artifactHandle <- Artifact.new
+new envHandle debugHandle moduleHandle pathHandle shiftToLatestHandle importHandle parseHandle locatorHandle aliasHandle antecedentHandle artifactHandle = do
   visitEnvRef <- asks App.visitEnv
   traceSourceListRef <- asks App.traceSourceList
   sourceChildrenMapRef <- asks App.sourceChildrenMap

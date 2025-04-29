@@ -12,7 +12,6 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
@@ -61,13 +60,20 @@ data Handle
     tagHandle :: Tag.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Global.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle = do
-  getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
-  shiftToLatestHandle <- STL.new antecedentHandle
-  aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
-  moduleHandle <- Module.new
-  rawImportSummaryHandle <- RawImportSummary.new
+new ::
+  Env.Handle ->
+  Unused.Handle ->
+  GetEnabledPreset.Handle ->
+  STL.Handle ->
+  Locator.Handle ->
+  Alias.Handle ->
+  Global.Handle ->
+  Gensym.Handle ->
+  RawImportSummary.Handle ->
+  Module.Handle ->
+  Tag.Handle ->
+  App Handle
+new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle = do
   return $ Handle {..}
 
 activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()

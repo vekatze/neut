@@ -13,8 +13,10 @@ import Move.Act.Version qualified as Version
 import Move.Act.Zen qualified as Zen
 import Move.Console.EnsureExecutables (ensureExecutables)
 import Move.Console.Report qualified as Report
+import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
+import Move.Context.Artifact qualified as Artifact
 import Move.Context.Cache qualified as Cache
 import Move.Context.Color qualified as Color
 import Move.Context.CompDefinition qualified as CompDefinition
@@ -27,9 +29,11 @@ import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
+import Move.Context.Module qualified as Module
 import Move.Context.OptParse qualified as OptParse
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
+import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
@@ -82,9 +86,12 @@ import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
 import Move.Scene.Parse qualified as Parse
 import Move.Scene.Parse.Core qualified as ParseCore
 import Move.Scene.Parse.Discern.Handle qualified as Discern
+import Move.Scene.Parse.Import qualified as Import
+import Move.Scene.Source.ShiftToLatest qualified as ShiftToLatest
 import Move.Scene.Term.Subst qualified as TermSubst
 import Move.Scene.Unravel qualified as Unravel
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
+import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Rule.Command qualified as C
 import System.IO
 
@@ -110,7 +117,6 @@ execute = do
     globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     typeHandle <- liftIO Type.new
     collectHandle <- Collect.new envHandle
-    unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
     initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
     initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
@@ -122,7 +128,15 @@ execute = do
     initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     ensureMainHandle <- EnsureMain.new locatorHandle
     pathHandle <- Path.new envHandle debugHandle
-    parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+    parseCoreHandle <- ParseCore.new gensymHandle
+    getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
+    moduleHandle <- Module.new
+    shiftToLatestHandle <- ShiftToLatest.new antecedentHandle
+    aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
+    rawImportSummaryHandle <- RawImportSummary.new
+    importHandle <- Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle
+    localRemarkHandle <- LocalRemark.new
+    parseHandle <- Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
     baseSize <- toApp Env.getBaseSize'
     compSubstHandle <- CompSubst.new gensymHandle
     auxEnvHandle <- AuxEnv.new
@@ -139,10 +153,10 @@ execute = do
     defHandle <- Definition.new
     ensReflectHandle <- EnsReflect.new gensymHandle
     moduleReflectHandle <- ModuleReflect.new gensymHandle
+    artifactHandle <- Artifact.new
+    unravelHandle <- Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
     fetchHandle <- Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
     initTargetHandle <- InitTarget.new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefHandle defHandle typeHandle
-    parseCoreHandle <- ParseCore.new gensymHandle
-    getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
     formatHandle <- SceneFormat.new unravelHandle loadHandle parseCoreHandle parseHandle envHandle ensReflectHandle getEnabledPresetHandle unusedHandle initTargetHandle initSourceHandle
     let elaborateConfig =
           Elaborate.Config

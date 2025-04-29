@@ -10,20 +10,13 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
-import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -54,13 +47,16 @@ data Handle
     unusedHandle :: Unused.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
-  parseHandle <- P.new gensymHandle
-  discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-  pathHandle <- Path.new envHandle debugHandle
-  importHandle <- Import.new envHandle gensymHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
-  localRemarkHandle <- LocalRemark.new
+new ::
+  P.Handle ->
+  Discern.Handle ->
+  Path.Handle ->
+  Import.Handle ->
+  Global.Handle ->
+  LocalRemark.Handle ->
+  Unused.Handle ->
+  App Handle
+new parseHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle = do
   return $ Handle {..}
 
 parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])

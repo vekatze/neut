@@ -41,7 +41,7 @@ data Handle = Handle
 new :: Env.Handle -> Locator.Handle -> Global.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
 new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle = do
   localRemarkHandle <- LocalRemark.new
-  aliasHandle <- Alias.new envHandle locatorHandle antecedentHandle
+  aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
   rawImportSummaryHandle <- RawImportSummary.new
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
