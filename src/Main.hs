@@ -19,6 +19,7 @@ import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
+import Move.Context.External qualified as External
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -43,6 +44,7 @@ import Move.Scene.Init.Logger qualified as InitLogger
 import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.LSP qualified as L
 import Move.Scene.LSP.Format qualified as LSPFormat
+import Move.Scene.Module.Save qualified as ModuleSave
 import Move.Scene.New qualified as New
 import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -80,7 +82,8 @@ execute = do
     initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
     initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
     initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle
-
+    externalHandle <- External.new debugHandle
+    moduleSaveHandle <- ModuleSave.new debugHandle
     let elaborateConfig =
           Elaborate.Config
             { _envHandle = envHandle,
@@ -110,7 +113,7 @@ execute = do
         C.Archive cfg -> do
           packageVersionHandle <- PV.new reportHandle
           ensReflectHandle <- EnsReflect.new gensymHandle
-          archiveHandle <- SceneArchive.new envHandle debugHandle
+          archiveHandle <- SceneArchive.new externalHandle moduleSaveHandle envHandle
           h <- Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
