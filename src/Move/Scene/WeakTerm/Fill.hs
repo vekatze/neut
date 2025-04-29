@@ -13,8 +13,6 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Move.Context.App
 import Move.Context.EIO (EIO)
-import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Annotation qualified as AN
@@ -34,10 +32,8 @@ data Handle
     reduceHandle :: Reduce.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  substHandle <- Subst.new gensymHandle
-  reduceHandle <- Reduce.new envHandle gensymHandle
+new :: Subst.Handle -> Reduce.Handle -> App Handle
+new substHandle reduceHandle = do
   return $ Handle {..}
 
 fill :: Handle -> HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
