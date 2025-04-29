@@ -26,7 +26,6 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.ByteString.UTF8 qualified as B
@@ -36,8 +35,6 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
 import Data.Version qualified as V
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
@@ -68,9 +65,9 @@ data Handle
   }
 
 -- temporary
-new :: Env.Handle -> Debug.Handle -> Clang.Handle -> App Handle
+new :: Env.Handle -> Debug.Handle -> Clang.Handle -> IO Handle
 new envHandle debugHandle clangHandle = do
-  cacheRef <- asks App.buildSignatureCache
+  cacheRef <- newIORef Nothing
   return $ Handle {..}
 
 getBaseName :: Path Abs File -> EIO T.Text

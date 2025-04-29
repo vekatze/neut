@@ -140,7 +140,7 @@ execute = do
     moduleSaveHandle <- ModuleSave.new debugHandle
     globalRemarkHandle <- GlobalRemark.new
     clangHandle <- Clang.new debugHandle
-    pathHandle <- Path.new envHandle debugHandle clangHandle
+    pathHandle <- liftIO $ Path.new envHandle debugHandle clangHandle
     artifactHandle <- Artifact.new
     cacheHandle <- Cache.new pathHandle artifactHandle
     loadHandle <- Load.new debugHandle cacheHandle
@@ -185,7 +185,8 @@ execute = do
               _typeHandle = typeHandle,
               _clangHandle = clangHandle,
               _rawImportSummaryHandle = rawImportSummaryHandle,
-              _symLocHandle = symLocHandle
+              _symLocHandle = symLocHandle,
+              _pathHandle = pathHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig

@@ -30,7 +30,6 @@ data Env = Env
     globalRemarkList :: IORef [Remark.Remark],
     localVarMap :: IORef LVT.LocalVarTree,
     topCandidateEnv :: IORef [TopCandidate],
-    buildSignatureCache :: IORef (Maybe String), -- only for memoization
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
@@ -53,7 +52,6 @@ newEnv = do
   globalRemarkList <- newIORef []
   localVarMap <- newIORef LVT.empty
   topCandidateEnv <- newIORef []
-  buildSignatureCache <- newIORef Nothing
   artifactMap <- newIORef Map.empty
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
