@@ -161,7 +161,7 @@ execute = do
     utilityHandle <- ClarifyUtility.new gensymHandle compSubstHandle auxEnvHandle baseSize
     linearizeHandle <- Linearize.new gensymHandle utilityHandle
     sigmaHandle <- Sigma.new gensymHandle linearizeHandle locatorHandle utilityHandle
-    compDefHandle <- CompDefinition.new
+    compDefHandle <- liftIO CompDefinition.new
     compReduceHandle <- CompReduce.new compDefHandle compSubstHandle gensymHandle
     termSubstHandle <- TermSubst.new gensymHandle
     clarifyHandle <- Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize

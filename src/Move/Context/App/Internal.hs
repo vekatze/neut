@@ -11,15 +11,12 @@ import Data.Text qualified as T
 import Path
 import Rule.Artifact qualified as AR
 import Rule.Binder
-import Rule.Comp
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
 import Rule.ExternalName qualified as EN
 import Rule.ForeignCodType qualified as F
 import Rule.Hint
-import Rule.Ident
 import Rule.LocalVarTree qualified as LVT
-import Rule.Opacity qualified as O
 import Rule.Remark qualified as Remark
 import Rule.Term qualified as TM
 import Rule.WeakTerm qualified as WT
@@ -33,7 +30,6 @@ data Env = Env
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
-    compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     clangDigest :: Ref T.Text
   }
 
@@ -53,6 +49,5 @@ newEnv = do
   defMap <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty
-  compEnv <- newIORef Map.empty
   clangDigest <- newRef
   return Env {..}

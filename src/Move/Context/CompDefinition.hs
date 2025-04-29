@@ -9,11 +9,8 @@ module Move.Context.CompDefinition
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Comp
 import Rule.DefiniteDescription qualified as DD
 import Rule.Ident
@@ -32,9 +29,9 @@ newtype Handle
   { compEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp))
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  compEnvRef <- asks App.compEnv
+  compEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert :: Handle -> DefKey -> DefValue -> IO ()
