@@ -129,7 +129,7 @@ execute = do
     typeHandle <- liftIO Type.new
     collectHandle <- Collect.new envHandle
     aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle
-    symLocHandle <- SymLoc.new
+    symLocHandle <- liftIO SymLoc.new
     topCandidateHandle <- TopCandidate.new
     preDeclHandle <- PreDecl.new
     discernHandle <- Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle

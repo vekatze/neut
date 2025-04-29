@@ -8,10 +8,7 @@ module Move.Context.SymLoc
 where
 
 import Control.Monad (unless)
-import Control.Monad.Reader (asks)
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Hint
 import Rule.Ident
 import Rule.LocalVarTree qualified as LVT
@@ -21,9 +18,9 @@ newtype Handle
   { localVarMapRef :: IORef LVT.LocalVarTree
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  localVarMapRef <- asks App.localVarMap
+  localVarMapRef <- newIORef LVT.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()
