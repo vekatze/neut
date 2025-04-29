@@ -94,13 +94,12 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle = do
+new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> Type.Handle -> App Handle
+new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle = do
   substHandle <- Subst.new gensymHandle
   reduceHandle <- Reduce.new envHandle gensymHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle
   weakDeclHandle <- WeakDecl.new
-  typeHandle <- Type.new
   weakDefHandle <- WeakDefinition.new gensymHandle
   let varEnv = []
   return Handle {..}
