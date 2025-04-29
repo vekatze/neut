@@ -9,10 +9,7 @@ import Control.Lens hiding (Iso, List)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.App (App)
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, liftMaybe)
-import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
 import Move.Scene.LSP.GetSource qualified as GetSource
 import Rule.Hint qualified as H
@@ -25,10 +22,8 @@ data Handle
     getLocationTreeHandle :: GetLocationTree.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> App Handle
-new envHandle gensymHandle debugHandle = do
-  getSourceHandle <- GetSource.new envHandle gensymHandle
-  getLocationTreeHandle <- GetLocationTree.new envHandle debugHandle
+new :: GetSource.Handle -> GetLocationTree.Handle -> App Handle
+new getSourceHandle getLocationTreeHandle = do
   return $ Handle {..}
 
 findDefinition ::

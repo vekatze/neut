@@ -65,11 +65,26 @@ data Handle
     elaborateConfig :: Elaborate.Config
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Discern.Handle -> Check.Handle -> Elaborate.Config -> App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle checkHandle elaborateConfig = do
-  getSourceHandle <- GetSource.new envHandle gensymHandle
-  pathHandle <- Path.new envHandle debugHandle
-  findDefHandle <- FindDefinition.new envHandle gensymHandle debugHandle
+new ::
+  GetSource.Handle ->
+  Path.Handle ->
+  FindDefinition.Handle ->
+  Env.Handle ->
+  Gensym.Handle ->
+  Check.Handle ->
+  Locator.Handle ->
+  Tag.Handle ->
+  Antecedent.Handle ->
+  Color.Handle ->
+  Debug.Handle ->
+  KeyArg.Handle ->
+  OptimizableData.Handle ->
+  Unused.Handle ->
+  Global.Handle ->
+  Discern.Handle ->
+  Elaborate.Config ->
+  App Handle
+new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig = do
   return $ Handle {..}
 
 getSymbolInfo ::

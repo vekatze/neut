@@ -75,6 +75,8 @@ import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.Format qualified as LSPFormat
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
+import Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
+import Move.Scene.LSP.GetSource qualified as GetSource
 import Move.Scene.LSP.GetSymbolInfo qualified as GetSymbolInfo
 import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
@@ -225,14 +227,16 @@ execute = do
           clangHandle <- Clang.new debugHandle
           lintHandle <- Lint.new fetchHandle envHandle initCompilerHandle checkHandle
           lspFormatHandle <- LSPFormat.new formatHandle
-          getSymbolInfoHandle <- GetSymbolInfo.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle checkHandle elaborateConfig
           sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
-          gacHandle <- GAC.new envHandle debugHandle antecedentHandle
+          getSourceHandle <- GetSource.new sourceReflectHandle
+          getLocationTreeHandle <- GetLocationTree.new pathHandle
+          findDefHandle <- FindDefinition.new getSourceHandle getLocationTreeHandle
+          getSymbolInfoHandle <- GetSymbolInfo.new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig
+          gacHandle <- GAC.new shiftToLatestHandle pathHandle
           completeHandle <- Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
-          findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
-          highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
-          referencesHandle <- References.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
-          lspHandle <- L.new initCompilerHandle completeHandle findDefinitionHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
+          highlightHandle <- Highlight.new findDefHandle
+          referencesHandle <- References.new unravelHandle getSourceHandle findDefHandle gacHandle
+          lspHandle <- L.new initCompilerHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
           h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
         C.ShowVersion cfg ->

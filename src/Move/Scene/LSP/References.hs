@@ -8,12 +8,8 @@ where
 import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App (App)
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
-import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
@@ -32,11 +28,13 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Antecedent.Handle -> Unravel.Handle -> App Handle
-new envHandle gensymHandle debugHandle antecedentHandle unravelHandle = do
-  getSourceHandle <- GetSource.new envHandle gensymHandle
-  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
-  gacHandle <- GAC.new envHandle debugHandle antecedentHandle
+new ::
+  Unravel.Handle ->
+  GetSource.Handle ->
+  FindDefinition.Handle ->
+  GAC.Handle ->
+  App Handle
+new unravelHandle getSourceHandle findDefinitionHandle gacHandle = do
   return $ Handle {..}
 
 references ::

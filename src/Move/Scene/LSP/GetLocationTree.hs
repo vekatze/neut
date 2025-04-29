@@ -7,9 +7,7 @@ where
 
 import Move.Context.App (App)
 import Move.Context.Cache qualified as Cache
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, liftMaybe)
-import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Rule.Cache qualified as Cache
 import Rule.LocationTree qualified as LT
@@ -21,9 +19,8 @@ newtype Handle
   { pathHandle :: Path.Handle
   }
 
-new :: Env.Handle -> Debug.Handle -> App Handle
-new envHandle debugHandle = do
-  pathHandle <- Path.new envHandle debugHandle
+new :: Path.Handle -> App Handle
+new pathHandle = do
   return $ Handle {..}
 
 getLocationTree ::
