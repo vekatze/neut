@@ -44,6 +44,8 @@ import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Term.Inline qualified as Inline
+import Move.Scene.Term.Refresh qualified as Refresh
+import Move.Scene.Term.Subst qualified as TermSubst
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
@@ -139,7 +141,12 @@ new cfg = do
   weakDeclHandle <- WeakDecl.new
   defHandle <- Definition.new
   localRemarkHandle <- LocalRemark.new
-  inlineHandle <- Inline.new envHandle gensymHandle
+  currentSource <- toApp $ Env.getCurrentSource envHandle
+  -- currentSource <- toApp $ Env.getCurrentSource envHandle
+  termSubstHandle <- TermSubst.new gensymHandle
+  refreshHandle <- Refresh.new gensymHandle
+  defMapHandle <- Definition.new
+  inlineHandle <- Inline.new currentSource termSubstHandle refreshHandle defMapHandle
   affHandle <- EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
@@ -148,7 +155,6 @@ new cfg = do
   topCandidateHandle <- TopCandidate.new
   rawImportSummaryHandle <- RawImportSummary.new
   globalRemarkHandle <- GlobalRemark.new
-  currentSource <- toApp $ Env.getCurrentSource envHandle
   return $ Handle {..}
 
 overrideHandleEnv :: Handle -> Elaborate.HandleEnv -> Handle

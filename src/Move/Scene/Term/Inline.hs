@@ -16,9 +16,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (EIO, raiseError, toApp)
-import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Context.EIO (EIO, raiseError)
 import Move.Scene.Term.Refresh qualified as Refresh
 import Move.Scene.Term.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -53,12 +51,8 @@ data InnerHandle = InnerHandle
     location :: Hint
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  currentSource <- toApp $ Env.getCurrentSource envHandle
-  substHandle <- Subst.new gensymHandle
-  refreshHandle <- Refresh.new gensymHandle
-  defMapHandle <- Definition.new
+new :: Source -> Subst.Handle -> Refresh.Handle -> Definition.Handle -> App Handle
+new currentSource substHandle refreshHandle defMapHandle = do
   return $ Handle {..}
 
 new' :: Handle -> Hint -> IO InnerHandle
