@@ -26,6 +26,7 @@ import Move.Context.OptParse qualified as OptParse
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
+import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Build qualified as SceneBuild
@@ -62,6 +63,7 @@ execute = do
     lspFormatHandle <- LSPFormat.new formatHandle
     unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+    typeHandle <- Type.new
     let elaborateConfig =
           Elaborate.Config
             { _envHandle = envHandle,
@@ -69,7 +71,8 @@ execute = do
               _debugHandle = debugHandle,
               _optDataHandle = optDataHandle,
               _keyArgHandle = keyArgHandle,
-              _discernHandle = discernHandle
+              _discernHandle = discernHandle,
+              _typeHandle = typeHandle
             }
     checkHandle <- SceneCheck.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig
     c <- liftIO OptParse.parseCommand

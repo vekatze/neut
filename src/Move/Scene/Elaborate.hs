@@ -93,7 +93,8 @@ data Config = Config
     _debugHandle :: Debug.Handle,
     _optDataHandle :: OptimizableData.Handle,
     _keyArgHandle :: KeyArg.Handle,
-    _discernHandle :: Discern.Handle
+    _discernHandle :: Discern.Handle,
+    _typeHandle :: Type.Handle
   }
 
 data Handle
@@ -130,11 +131,11 @@ new cfg = do
   let optDataHandle = _optDataHandle cfg
   let keyArgHandle = _keyArgHandle cfg
   let discernHandle = _discernHandle cfg
+  let typeHandle = _typeHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new envHandle gensymHandle
   weakDefHandle <- WeakDefinition.new gensymHandle
   substHandle <- Subst.new gensymHandle
-  typeHandle <- Type.new
   weakDeclHandle <- WeakDecl.new
   defHandle <- Definition.new
   localRemarkHandle <- LocalRemark.new
