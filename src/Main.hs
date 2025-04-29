@@ -127,7 +127,7 @@ execute = do
     globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     typeHandle <- liftIO Type.new
     collectHandle <- Collect.new envHandle
-    aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
+    aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle
     symLocHandle <- SymLoc.new
     topCandidateHandle <- TopCandidate.new
     preDeclHandle <- PreDecl.new

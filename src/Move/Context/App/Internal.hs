@@ -16,27 +16,21 @@ import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
 import Rule.ExternalName qualified as EN
 import Rule.ForeignCodType qualified as F
-import Rule.GlobalLocatorAlias qualified as GLA
 import Rule.Hint
 import Rule.Ident
 import Rule.Import
 import Rule.LocalVarTree qualified as LVT
-import Rule.ModuleAlias qualified as MA
-import Rule.ModuleDigest qualified as MD
 import Rule.Opacity qualified as O
 import Rule.RawImportSummary (RawImportSummary)
 import Rule.Remark qualified as Remark
 import Rule.Source qualified as Source
-import Rule.StrictGlobalLocator qualified as SGL
 import Rule.Term qualified as TM
 import Rule.TopCandidate
 import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
 
 data Env = Env
-  { moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
-    locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
-    remarkList :: IORef [Remark.Remark], -- per file
+  { remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     importEnv :: IORef (Maybe RawImportSummary),
     localVarMap :: IORef LVT.LocalVarTree,
@@ -63,8 +57,6 @@ newRef =
 
 newEnv :: IO Env
 newEnv = do
-  moduleAliasMap <- newIORef Map.empty
-  locatorAliasMap <- newIORef Map.empty
   remarkList <- newIORef []
   importEnv <- newIORef Nothing
   globalRemarkList <- newIORef []

@@ -10,13 +10,10 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
 import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -43,10 +40,10 @@ data Handle
     moduleAliasMapRef :: IORef (Map.HashMap ModuleAlias ModuleDigest)
   }
 
-new :: Antecedent.Handle -> Locator.Handle -> Env.Handle -> App Handle
+new :: Antecedent.Handle -> Locator.Handle -> Env.Handle -> IO Handle
 new antecedentHandle locatorHandle envHandle = do
-  locatorAliasMapRef <- asks App.locatorAliasMap
-  moduleAliasMapRef <- asks App.moduleAliasMap
+  locatorAliasMapRef <- newIORef Map.empty
+  moduleAliasMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 registerGlobalLocatorAlias ::
