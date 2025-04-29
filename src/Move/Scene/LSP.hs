@@ -25,12 +25,6 @@ import Move.Context.AppM (liftEIO)
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Elaborate qualified as Elaborate
@@ -43,7 +37,6 @@ import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.LSP.References qualified as References
 import Move.Scene.LSP.Util (getUriParam, liftAppM)
-import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Unravel qualified as Unravel
 import Prettyprinter
 import Rule.AppLsp
@@ -52,26 +45,14 @@ import System.IO (stdin, stdout)
 
 data Handle
   = Handle
-  { envHandle :: Env.Handle,
-    gensymHandle :: Gensym.Handle,
-    colorHandle :: Color.Handle,
-    reportHandle :: Report.Handle,
-    debugHandle :: Debug.Handle,
-    initCompilerHandle :: InitCompiler.Handle,
+  { initCompilerHandle :: InitCompiler.Handle,
     completeHandle :: Complete.Handle,
     findDefinitionHandle :: FindDefinition.Handle,
     highlightHandle :: Highlight.Handle,
     referencesHandle :: References.Handle,
-    locatorHandle :: Locator.Handle,
-    tagHandle :: Tag.Handle,
-    antecedentHandle :: Antecedent.Handle,
     formatHandle :: Format.Handle,
-    keyArgHandle :: KeyArg.Handle,
-    optDataHandle :: OptimizableData.Handle,
-    unusedHandle :: Unused.Handle,
-    globalHandle :: Global.Handle,
-    discernHandle :: Discern.Handle,
     checkHandle :: Check.Handle,
+    getSymbolInfoHandle :: GetSymbolInfo.Handle,
     lintHandle :: Lint.Handle,
     elaborateConfig :: Elaborate.Config
   }
@@ -82,21 +63,15 @@ new ::
   Color.Handle ->
   Report.Handle ->
   Debug.Handle ->
-  Locator.Handle ->
-  Global.Handle ->
-  OptimizableData.Handle ->
-  KeyArg.Handle ->
-  Unused.Handle ->
-  Tag.Handle ->
   Antecedent.Handle ->
   Format.Handle ->
   Unravel.Handle ->
-  Discern.Handle ->
   Check.Handle ->
+  GetSymbolInfo.Handle ->
   Lint.Handle ->
   Elaborate.Config ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle lintHandle elaborateConfig = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle antecedentHandle formatHandle unravelHandle checkHandle getSymbolInfoHandle lintHandle elaborateConfig = do
   completeHandle <- Complete.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
@@ -194,8 +169,7 @@ handlers h =
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        h' <- lift $ GetSymbolInfo.new (envHandle h) (gensymHandle h) (colorHandle h) (debugHandle h) (locatorHandle h) (globalHandle h) (optDataHandle h) (keyArgHandle h) (unusedHandle h) (tagHandle h) (antecedentHandle h) (discernHandle h) (checkHandle h) (elaborateConfig h)
-        textOrNone <- liftAppM (initCompilerHandle h) $ GetSymbolInfo.getSymbolInfo h' (req ^. J.params)
+        textOrNone <- liftAppM (initCompilerHandle h) $ GetSymbolInfo.getSymbolInfo (getSymbolInfoHandle h) (req ^. J.params)
         case textOrNone of
           Nothing ->
             responder $ Right $ InR Null

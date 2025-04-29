@@ -63,6 +63,7 @@ import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.Install qualified as Install
 import Move.Scene.LSP qualified as L
 import Move.Scene.LSP.Format qualified as LSPFormat
+import Move.Scene.LSP.GetSymbolInfo qualified as GetSymbolInfo
 import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
@@ -192,7 +193,8 @@ execute = do
           toApp $ Format.format h cfg
         C.LSP -> do
           lintHandle <- Lint.new fetchHandle envHandle initCompilerHandle checkHandle
-          lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle lspFormatHandle unravelHandle discernHandle checkHandle lintHandle elaborateConfig
+          getSymbolInfoHandle <- GetSymbolInfo.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle checkHandle elaborateConfig
+          lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle antecedentHandle lspFormatHandle unravelHandle checkHandle getSymbolInfoHandle lintHandle elaborateConfig
           h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
         C.ShowVersion cfg ->
