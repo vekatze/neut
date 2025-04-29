@@ -50,6 +50,7 @@ import Move.Scene.Comp.Reduce qualified as CompReduce
 import Move.Scene.Comp.Subst qualified as CompSubst
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
+import Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.EnsureMain qualified as EnsureMain
 import Move.Scene.Execute qualified as Execute
@@ -64,6 +65,7 @@ import Move.Scene.LSP qualified as L
 import Move.Scene.LSP.Format qualified as LSPFormat
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
+import Move.Scene.LowComp.Reduce qualified as LowCompReduce
 import Move.Scene.Lower qualified as Lower
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as GetModule
@@ -149,7 +151,10 @@ execute = do
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle unravelHandle
     llvmHandle <- LLVM.new envHandle debugHandle
-    emitHandle <- Emit.new gensymHandle
+    emitLowCompHandle <- EmitLowComp.new gensymHandle
+    dataSize <- toApp Env.getDataSize'
+    lowCompReduceHandle <- LowCompReduce.new gensymHandle
+    emitHandle <- Emit.new gensymHandle emitLowCompHandle lowCompReduceHandle dataSize baseSize
     linkHandle <- Link.new envHandle colorHandle debugHandle
     installHandle <- Install.new envHandle debugHandle
     executeHandle <- Execute.new envHandle debugHandle
