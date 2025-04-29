@@ -94,6 +94,8 @@ import Rule.WeakTerm.ToText
 
 data Config = Config
   { _envHandle :: Env.Handle,
+    _localRemarkHandle :: LocalRemark.Handle,
+    _globalRemarkHandle :: GlobalRemark.Handle,
     _gensymHandle :: Gensym.Handle,
     _debugHandle :: Debug.Handle,
     _optDataHandle :: OptimizableData.Handle,
@@ -145,6 +147,8 @@ new cfg = do
   let symLocHandle = _symLocHandle cfg
   let pathHandle = _pathHandle cfg
   let topCandidateHandle = _topCandidateHandle cfg
+  let localRemarkHandle = _localRemarkHandle cfg
+  let globalRemarkHandle = _globalRemarkHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   substHandle <- Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
@@ -153,7 +157,6 @@ new cfg = do
   weakDefHandle <- WeakDefinition.new gensymHandle
   weakDeclHandle <- WeakDecl.new
   defHandle <- Definition.new
-  localRemarkHandle <- LocalRemark.new
   currentSource <- toApp $ Env.getCurrentSource envHandle
   termSubstHandle <- TermSubst.new gensymHandle
   refreshHandle <- Refresh.new gensymHandle
@@ -162,7 +165,6 @@ new cfg = do
   affHandle <- EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
-  globalRemarkHandle <- GlobalRemark.new
   return $ Handle {..}
 
 overrideHandleEnv :: Handle -> Elaborate.HandleEnv -> Handle

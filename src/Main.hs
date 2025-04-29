@@ -187,7 +187,9 @@ execute = do
               _rawImportSummaryHandle = rawImportSummaryHandle,
               _symLocHandle = symLocHandle,
               _pathHandle = pathHandle,
-              _topCandidateHandle = topCandidateHandle
+              _topCandidateHandle = topCandidateHandle,
+              _localRemarkHandle = localRemarkHandle,
+              _globalRemarkHandle = globalRemarkHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
