@@ -62,9 +62,13 @@ import Move.Scene.Init.Source qualified as InitSource
 import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.Install qualified as Install
 import Move.Scene.LSP qualified as L
+import Move.Scene.LSP.Complete qualified as Complete
+import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.Format qualified as LSPFormat
 import Move.Scene.LSP.GetSymbolInfo qualified as GetSymbolInfo
+import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
+import Move.Scene.LSP.References qualified as References
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
 import Move.Scene.LowComp.Reduce qualified as LowCompReduce
@@ -140,7 +144,6 @@ execute = do
     parseCoreHandle <- ParseCore.new gensymHandle
     getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
     formatHandle <- SceneFormat.new unravelHandle loadHandle parseCoreHandle parseHandle envHandle ensReflectHandle getEnabledPresetHandle unusedHandle initTargetHandle initSourceHandle
-    lspFormatHandle <- LSPFormat.new formatHandle
     let elaborateConfig =
           Elaborate.Config
             { _envHandle = envHandle,
@@ -193,8 +196,13 @@ execute = do
           toApp $ Format.format h cfg
         C.LSP -> do
           lintHandle <- Lint.new fetchHandle envHandle initCompilerHandle checkHandle
+          lspFormatHandle <- LSPFormat.new formatHandle
           getSymbolInfoHandle <- GetSymbolInfo.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle checkHandle elaborateConfig
-          lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle antecedentHandle lspFormatHandle unravelHandle checkHandle getSymbolInfoHandle lintHandle elaborateConfig
+          completeHandle <- Complete.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
+          findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
+          highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
+          referencesHandle <- References.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
+          lspHandle <- L.new initCompilerHandle completeHandle findDefinitionHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
           h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
         C.ShowVersion cfg ->

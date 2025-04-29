@@ -18,16 +18,9 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Move.Console.Report qualified as Report
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.AppM (liftEIO)
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
-import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
-import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.LSP.Complete qualified as Complete
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
@@ -37,7 +30,6 @@ import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.LSP.References qualified as References
 import Move.Scene.LSP.Util (getUriParam, liftAppM)
-import Move.Scene.Unravel qualified as Unravel
 import Prettyprinter
 import Rule.AppLsp
 import Rule.CodeAction qualified as CA
@@ -53,30 +45,21 @@ data Handle
     formatHandle :: Format.Handle,
     checkHandle :: Check.Handle,
     getSymbolInfoHandle :: GetSymbolInfo.Handle,
-    lintHandle :: Lint.Handle,
-    elaborateConfig :: Elaborate.Config
+    lintHandle :: Lint.Handle
   }
 
 new ::
-  Env.Handle ->
-  Gensym.Handle ->
-  Color.Handle ->
-  Report.Handle ->
-  Debug.Handle ->
-  Antecedent.Handle ->
+  InitCompiler.Handle ->
+  Complete.Handle ->
+  FindDefinition.Handle ->
+  Highlight.Handle ->
+  References.Handle ->
   Format.Handle ->
-  Unravel.Handle ->
   Check.Handle ->
   GetSymbolInfo.Handle ->
   Lint.Handle ->
-  Elaborate.Config ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle antecedentHandle formatHandle unravelHandle checkHandle getSymbolInfoHandle lintHandle elaborateConfig = do
-  completeHandle <- Complete.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
-  highlightHandle <- Highlight.new envHandle gensymHandle debugHandle
-  referencesHandle <- References.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
+new initCompilerHandle completeHandle findDefinitionHandle highlightHandle referencesHandle formatHandle checkHandle getSymbolInfoHandle lintHandle = do
   return $ Handle {..}
 
 lsp :: Handle -> App Int
