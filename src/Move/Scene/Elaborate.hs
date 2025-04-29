@@ -101,7 +101,8 @@ data Config = Config
     _discernHandle :: Discern.Handle,
     _typeHandle :: Type.Handle,
     _clangHandle :: Clang.Handle,
-    _rawImportSummaryHandle :: RawImportSummary.Handle
+    _rawImportSummaryHandle :: RawImportSummary.Handle,
+    _symLocHandle :: SymLoc.Handle
   }
 
 data Handle
@@ -141,6 +142,7 @@ new cfg = do
   let typeHandle = _typeHandle cfg
   let clangHandle = _clangHandle cfg
   let rawImportSummaryHandle = _rawImportSummaryHandle cfg
+  let symLocHandle = _symLocHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   substHandle <- Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
@@ -159,7 +161,6 @@ new cfg = do
   inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
   pathHandle <- Path.new envHandle debugHandle clangHandle
-  symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   globalRemarkHandle <- GlobalRemark.new
   return $ Handle {..}

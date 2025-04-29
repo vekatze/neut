@@ -184,7 +184,8 @@ execute = do
               _discernHandle = discernHandle,
               _typeHandle = typeHandle,
               _clangHandle = clangHandle,
-              _rawImportSummaryHandle = rawImportSummaryHandle
+              _rawImportSummaryHandle = rawImportSummaryHandle,
+              _symLocHandle = symLocHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
