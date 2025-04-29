@@ -185,7 +185,7 @@ execute = do
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle unravelHandle
-    llvmHandle <- LLVM.new envHandle debugHandle
+    llvmHandle <- LLVM.new envHandle debugHandle pathHandle externalHandle
     let emitOpHandle = EmitOp.new baseSize
     emitLowCompHandle <- EmitLowComp.new gensymHandle emitOpHandle
     dataSize <- toApp Env.getDataSize'

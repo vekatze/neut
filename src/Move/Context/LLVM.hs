@@ -39,10 +39,8 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Debug.Handle -> App Handle
-new envHandle debugHandle = do
-  pathHandle <- Path.new envHandle debugHandle
-  externalHandle <- External.new debugHandle
+new :: Env.Handle -> Debug.Handle -> Path.Handle -> External.Handle -> App Handle
+new envHandle debugHandle pathHandle externalHandle = do
   return $ Handle {..}
 
 type ClangOption = String
