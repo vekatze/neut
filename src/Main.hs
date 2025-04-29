@@ -146,7 +146,7 @@ execute = do
     loadHandle <- Load.new debugHandle cacheHandle
     localRemarkHandle <- liftIO LocalRemark.new
     rawImportSummaryHandle <- liftIO RawImportSummary.new
-    weakDeclHandle <- WeakDecl.new
+    weakDeclHandle <- liftIO WeakDecl.new
     initSourceHandle <- InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle
     ensureMainHandle <- EnsureMain.new locatorHandle
     parseCoreHandle <- ParseCore.new gensymHandle
@@ -189,7 +189,8 @@ execute = do
               _pathHandle = pathHandle,
               _topCandidateHandle = topCandidateHandle,
               _localRemarkHandle = localRemarkHandle,
-              _globalRemarkHandle = globalRemarkHandle
+              _globalRemarkHandle = globalRemarkHandle,
+              _weakDeclHandle = weakDeclHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig

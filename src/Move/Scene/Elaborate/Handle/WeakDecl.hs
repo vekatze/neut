@@ -9,11 +9,8 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Env qualified as Env
 import Rule.DeclarationName qualified as DN
@@ -28,9 +25,9 @@ newtype Handle
   { weakDeclEnvRef :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm))
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  weakDeclEnvRef <- asks App.weakDeclEnv
+  weakDeclEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
 initialize :: Handle -> EIO ()
