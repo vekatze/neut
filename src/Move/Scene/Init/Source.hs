@@ -7,7 +7,6 @@ where
 
 import Control.Monad.IO.Class
 import Move.Context.Alias qualified as Alias
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -38,15 +37,21 @@ data Handle = Handle
     weakDeclHandle :: WeakDecl.Handle
   }
 
-new :: Env.Handle -> Locator.Handle -> Global.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle = do
-  localRemarkHandle <- LocalRemark.new
-  aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
-  rawImportSummaryHandle <- RawImportSummary.new
-  symLocHandle <- SymLoc.new
-  topCandidateHandle <- TopCandidate.new
-  preDeclHandle <- PreDecl.new
-  weakDeclHandle <- WeakDecl.new
+new ::
+  Unused.Handle ->
+  LocalRemark.Handle ->
+  Global.Handle ->
+  Env.Handle ->
+  Alias.Handle ->
+  Locator.Handle ->
+  Tag.Handle ->
+  RawImportSummary.Handle ->
+  SymLoc.Handle ->
+  TopCandidate.Handle ->
+  PreDecl.Handle ->
+  WeakDecl.Handle ->
+  App Handle
+new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle = do
   return $ Handle {..}
 
 initializeForSource :: Handle -> Source.Source -> EIO ()

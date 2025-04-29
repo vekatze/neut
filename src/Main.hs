@@ -33,9 +33,12 @@ import Move.Context.Module qualified as Module
 import Move.Context.OptParse qualified as OptParse
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
+import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.RawImportSummary qualified as RawImportSummary
+import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
+import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
 import Move.Context.WeakDefinition qualified as WeakDefinition
@@ -53,6 +56,7 @@ import Move.Scene.Collect qualified as Collect
 import Move.Scene.Comp.Reduce qualified as CompReduce
 import Move.Scene.Comp.Subst qualified as CompSubst
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Move.Scene.Ens.Reflect qualified as EnsReflect
@@ -127,17 +131,21 @@ execute = do
     globalRemarkHandle <- GlobalRemark.new
     cacheHandle <- Cache.new envHandle debugHandle
     loadHandle <- Load.new debugHandle cacheHandle
-    initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
+    localRemarkHandle <- LocalRemark.new
+    aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
+    rawImportSummaryHandle <- RawImportSummary.new
+    weakDeclHandle <- WeakDecl.new
+    preDeclHandle <- PreDecl.new
+    topCandidateHandle <- TopCandidate.new
+    symLocHandle <- SymLoc.new
+    initSourceHandle <- InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle
     ensureMainHandle <- EnsureMain.new locatorHandle
     pathHandle <- Path.new envHandle debugHandle
     parseCoreHandle <- ParseCore.new gensymHandle
     getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
     moduleHandle <- Module.new
     shiftToLatestHandle <- ShiftToLatest.new antecedentHandle
-    aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
-    rawImportSummaryHandle <- RawImportSummary.new
     importHandle <- Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle
-    localRemarkHandle <- LocalRemark.new
     parseHandle <- Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
     baseSize <- toApp Env.getBaseSize'
     compSubstHandle <- CompSubst.new gensymHandle
