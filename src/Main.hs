@@ -138,7 +138,8 @@ execute = do
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
     globalRemarkHandle <- GlobalRemark.new
-    pathHandle <- Path.new envHandle debugHandle
+    clangHandle <- Clang.new debugHandle
+    pathHandle <- Path.new envHandle debugHandle clangHandle
     artifactHandle <- Artifact.new
     cacheHandle <- Cache.new pathHandle artifactHandle
     loadHandle <- Load.new debugHandle cacheHandle
@@ -180,7 +181,8 @@ execute = do
               _optDataHandle = optDataHandle,
               _keyArgHandle = keyArgHandle,
               _discernHandle = discernHandle,
-              _typeHandle = typeHandle
+              _typeHandle = typeHandle,
+              _clangHandle = clangHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
@@ -224,7 +226,6 @@ execute = do
           h <- Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          clangHandle <- Clang.new debugHandle
           lintHandle <- Lint.new fetchHandle envHandle initCompilerHandle checkHandle
           lspFormatHandle <- LSPFormat.new formatHandle
           sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle

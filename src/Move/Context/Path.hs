@@ -68,10 +68,9 @@ data Handle
   }
 
 -- temporary
-new :: Env.Handle -> Debug.Handle -> App Handle
-new envHandle debugHandle = do
+new :: Env.Handle -> Debug.Handle -> Clang.Handle -> App Handle
+new envHandle debugHandle clangHandle = do
   cacheRef <- asks App.buildSignatureCache
-  clangHandle <- Clang.new debugHandle
   return $ Handle {..}
 
 getBaseName :: Path Abs File -> EIO T.Text

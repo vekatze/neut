@@ -22,6 +22,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
+import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
@@ -98,7 +99,8 @@ data Config = Config
     _optDataHandle :: OptimizableData.Handle,
     _keyArgHandle :: KeyArg.Handle,
     _discernHandle :: Discern.Handle,
-    _typeHandle :: Type.Handle
+    _typeHandle :: Type.Handle,
+    _clangHandle :: Clang.Handle
   }
 
 data Handle
@@ -136,6 +138,7 @@ new cfg = do
   let keyArgHandle = _keyArgHandle cfg
   let discernHandle = _discernHandle cfg
   let typeHandle = _typeHandle cfg
+  let clangHandle = _clangHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   substHandle <- Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
@@ -153,7 +156,7 @@ new cfg = do
   affHandle <- EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
-  pathHandle <- Path.new envHandle debugHandle
+  pathHandle <- Path.new envHandle debugHandle clangHandle
   symLocHandle <- SymLoc.new
   topCandidateHandle <- TopCandidate.new
   rawImportSummaryHandle <- RawImportSummary.new
