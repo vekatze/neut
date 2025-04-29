@@ -149,7 +149,7 @@ execute = do
     initSourceHandle <- InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle
     ensureMainHandle <- EnsureMain.new locatorHandle
     parseCoreHandle <- ParseCore.new gensymHandle
-    moduleHandle <- Module.new
+    moduleHandle <- liftIO Module.new
     getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle envHandle moduleHandle
     shiftToLatestHandle <- ShiftToLatest.new antecedentHandle
     importHandle <- Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle

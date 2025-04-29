@@ -21,7 +21,6 @@ import Rule.Hint
 import Rule.Ident
 import Rule.Import
 import Rule.LocalVarTree qualified as LVT
-import Rule.Module qualified as M
 import Rule.ModuleAlias qualified as MA
 import Rule.ModuleDigest qualified as MD
 import Rule.Opacity qualified as O
@@ -35,8 +34,7 @@ import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
 
 data Env = Env
-  { moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
-    moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
+  { moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
@@ -65,7 +63,6 @@ newRef =
 
 newEnv :: IO Env
 newEnv = do
-  moduleCacheMap <- newIORef Map.empty
   moduleAliasMap <- newIORef Map.empty
   locatorAliasMap <- newIORef Map.empty
   remarkList <- newIORef []
