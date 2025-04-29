@@ -56,6 +56,7 @@ import Move.Scene.Clean qualified as SceneClean
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Comp.Reduce qualified as CompReduce
 import Move.Scene.Comp.Subst qualified as CompSubst
+import Move.Scene.Elaborate (Config (_rawImportSummaryHandle))
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Emit qualified as Emit
@@ -182,7 +183,8 @@ execute = do
               _keyArgHandle = keyArgHandle,
               _discernHandle = discernHandle,
               _typeHandle = typeHandle,
-              _clangHandle = clangHandle
+              _clangHandle = clangHandle,
+              _rawImportSummaryHandle = rawImportSummaryHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
