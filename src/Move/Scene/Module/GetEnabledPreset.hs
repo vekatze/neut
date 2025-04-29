@@ -25,9 +25,8 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  moduleHandle <- Module.new
+new :: Gensym.Handle -> Env.Handle -> Module.Handle -> App Handle
+new gensymHandle envHandle moduleHandle = do
   return $ Handle {..}
 
 getEnabledPreset :: Handle -> Module -> EIO [(T.Text, [BN.BaseName])]

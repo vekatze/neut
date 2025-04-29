@@ -147,8 +147,8 @@ execute = do
     ensureMainHandle <- EnsureMain.new locatorHandle
     pathHandle <- Path.new envHandle debugHandle
     parseCoreHandle <- ParseCore.new gensymHandle
-    getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
     moduleHandle <- Module.new
+    getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle envHandle moduleHandle
     shiftToLatestHandle <- ShiftToLatest.new antecedentHandle
     importHandle <- Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle
     parseHandle <- Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
