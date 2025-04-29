@@ -17,6 +17,7 @@ import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.App
@@ -57,7 +58,7 @@ import Rule.BaseLowType qualified as BLT
 import Rule.BasePrimType qualified as BPT
 import Rule.Binder
 import Rule.Cache qualified as Cache
-import Rule.Const (holeLiteral)
+import Rule.Const (defaultInlineLimit, holeLiteral)
 import Rule.DecisionTree qualified as DT
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
@@ -72,6 +73,7 @@ import Rule.Ident.Reify qualified as Ident
 import Rule.IsConstLike (IsConstLike)
 import Rule.LamKind qualified as LK
 import Rule.Magic qualified as M
+import Rule.Module (Module (moduleInlineLimit))
 import Rule.Prim qualified as P
 import Rule.PrimNumSize
 import Rule.PrimType qualified as PT
@@ -135,14 +137,15 @@ new cfg = do
   let discernHandle = _discernHandle cfg
   let typeHandle = _typeHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
-  reduceHandle <- Reduce.new envHandle gensymHandle
-  weakDefHandle <- WeakDefinition.new gensymHandle
   substHandle <- Subst.new gensymHandle
+  source <- toApp $ Env.getCurrentSource envHandle
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
+  reduceHandle <- Reduce.new substHandle inlineLimit
+  weakDefHandle <- WeakDefinition.new gensymHandle
   weakDeclHandle <- WeakDecl.new
   defHandle <- Definition.new
   localRemarkHandle <- LocalRemark.new
   currentSource <- toApp $ Env.getCurrentSource envHandle
-  -- currentSource <- toApp $ Env.getCurrentSource envHandle
   termSubstHandle <- TermSubst.new gensymHandle
   refreshHandle <- Refresh.new gensymHandle
   defMapHandle <- Definition.new

@@ -11,25 +11,19 @@ import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseError, toApp)
-import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Context.EIO (EIO, raiseError)
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
-import Rule.Const
 import Rule.DecisionTree qualified as DT
 import Rule.Discriminant qualified as D
 import Rule.Hint qualified as H
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.LamKind qualified as LK
-import Rule.Module
-import Rule.Source
 import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
@@ -51,19 +45,16 @@ data InnerHandle = InnerHandle
     location :: H.Hint
   }
 
+new :: Subst.Handle -> InlineLimit -> App Handle
+new substHandle inlineLimit = do
+  return Handle {..}
+
 reduce :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 reduce _handle e = do
   currentStepRef <- liftIO $ newIORef 0
   let location = WT.metaOf e
   let h' = InnerHandle {..}
   reduce' h' e
-
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  substHandle <- Subst.new gensymHandle
-  source <- toApp $ Env.getCurrentSource envHandle
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  return Handle {..}
 
 reduce' :: InnerHandle -> WT.WeakTerm -> EIO WT.WeakTerm
 reduce' h term = do

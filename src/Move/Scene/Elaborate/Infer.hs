@@ -15,9 +15,10 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.App
-import Move.Context.EIO (EIO, raiseCritical, raiseError)
+import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -59,10 +60,12 @@ import Rule.Key (Key)
 import Rule.LamKind qualified as LK
 import Rule.Literal qualified as L
 import Rule.Magic qualified as M
+import Rule.Module (Module (moduleInlineLimit))
 import Rule.Name qualified as N
 import Rule.OptimizableData qualified as OD
 import Rule.PrimOp
 import Rule.PrimType qualified as PT
+import Rule.Source
 import Rule.Stmt
 import Rule.StmtKind
 import Rule.Term qualified as TM
@@ -97,7 +100,9 @@ data Handle
 new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> Type.Handle -> App Handle
 new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle = do
   substHandle <- Subst.new gensymHandle
-  reduceHandle <- Reduce.new envHandle gensymHandle
+  source <- toApp $ Env.getCurrentSource envHandle
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
+  reduceHandle <- Reduce.new substHandle inlineLimit
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
   weakDeclHandle <- WeakDecl.new
   weakDefHandle <- WeakDefinition.new gensymHandle
