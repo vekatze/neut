@@ -118,7 +118,7 @@ execute = do
             }
     moduleHandle <- GetModule.new gensymHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
-    cleanHandle <- SceneClean.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
+    cleanHandle <- SceneClean.new envHandle unravelHandle
     clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
     llvmHandle <- LLVM.new envHandle debugHandle
     emitHandle <- Emit.new gensymHandle
