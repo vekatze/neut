@@ -21,7 +21,6 @@ import Rule.Ident
 import Rule.Import
 import Rule.LocalVarTree qualified as LVT
 import Rule.Opacity qualified as O
-import Rule.RawImportSummary (RawImportSummary)
 import Rule.Remark qualified as Remark
 import Rule.Source qualified as Source
 import Rule.Term qualified as TM
@@ -32,7 +31,6 @@ import Rule.WeakTerm qualified as WT
 data Env = Env
   { remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
-    importEnv :: IORef (Maybe RawImportSummary),
     localVarMap :: IORef LVT.LocalVarTree,
     topCandidateEnv :: IORef [TopCandidate],
     buildSignatureCache :: IORef (Maybe String), -- only for memoization
@@ -58,7 +56,6 @@ newRef =
 newEnv :: IO Env
 newEnv = do
   remarkList <- newIORef []
-  importEnv <- newIORef Nothing
   globalRemarkList <- newIORef []
   localVarMap <- newIORef LVT.empty
   topCandidateEnv <- newIORef []

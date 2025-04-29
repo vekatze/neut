@@ -7,10 +7,7 @@ module Move.Context.RawImportSummary
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.RawImportSummary qualified as RIS
 import Rule.RawProgram (RawImport)
 
@@ -18,9 +15,9 @@ newtype Handle = Handle
   { importEnvRef :: IORef (Maybe RIS.RawImportSummary)
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  importEnvRef <- asks App.importEnv
+  importEnvRef <- newIORef Nothing
   return $ Handle {..}
 
 initialize :: Handle -> IO ()
