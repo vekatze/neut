@@ -67,11 +67,10 @@ data InnerHandle
     mustPerformExpCheck :: Bool
   }
 
-new :: Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> App Handle
-new envHandle gensymHandle optDataHandle = do
+new :: Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> Type.Handle -> App Handle
+new envHandle gensymHandle optDataHandle typeHandle = do
   reduceHandle <- Reduce.new envHandle gensymHandle
   substHandle <- Subst.new gensymHandle
-  typeHandle <- Type.new
   weakDefHandle <- WeakDefinition.new gensymHandle
   return $ Handle {..}
 
