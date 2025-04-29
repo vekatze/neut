@@ -108,7 +108,8 @@ data Config = Config
     _pathHandle :: Path.Handle,
     _topCandidateHandle :: TopCandidate.Handle,
     _weakDeclHandle :: WeakDecl.Handle,
-    _weakDefHandle :: WeakDefinition.Handle
+    _weakDefHandle :: WeakDefinition.Handle,
+    _defHandle :: Definition.Handle
   }
 
 data Handle
@@ -153,12 +154,12 @@ new cfg = do
   let globalRemarkHandle = _globalRemarkHandle cfg
   let weakDeclHandle = _weakDeclHandle cfg
   let weakDefHandle = _weakDefHandle cfg
+  let defHandle = _defHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   substHandle <- Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   reduceHandle <- Reduce.new substHandle inlineLimit
-  defHandle <- Definition.new
   currentSource <- toApp $ Env.getCurrentSource envHandle
   termSubstHandle <- TermSubst.new gensymHandle
   refreshHandle <- Refresh.new gensymHandle

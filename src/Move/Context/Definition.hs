@@ -9,11 +9,8 @@ module Move.Context.Definition
 where
 
 import Control.Monad
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Rule.Binder
 import Rule.DefiniteDescription qualified as DD
 import Rule.Opacity qualified as O
@@ -28,9 +25,9 @@ newtype Handle
   { defMapRef :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term))
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  defMapRef <- asks App.defMap
+  defMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()

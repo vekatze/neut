@@ -168,7 +168,7 @@ execute = do
     arch <- toApp $ Env.getArch Nothing
     lowerHandle <- Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
     weakDefHandle <- liftIO $ WeakDefinition.new gensymHandle
-    defHandle <- Definition.new
+    defHandle <- liftIO Definition.new
     ensReflectHandle <- EnsReflect.new gensymHandle
     unravelHandle <- liftIO $ Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
     fetchHandle <- Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
@@ -191,7 +191,8 @@ execute = do
               _localRemarkHandle = localRemarkHandle,
               _globalRemarkHandle = globalRemarkHandle,
               _weakDeclHandle = weakDeclHandle,
-              _weakDefHandle = weakDefHandle
+              _weakDefHandle = weakDefHandle,
+              _defHandle = defHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
