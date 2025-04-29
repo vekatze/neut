@@ -13,7 +13,6 @@ import Rule.DefiniteDescription qualified as DD
 import Rule.ExternalName qualified as EN
 import Rule.ForeignCodType qualified as F
 import Rule.Hint
-import Rule.LocalVarTree qualified as LVT
 import Rule.Remark qualified as Remark
 import Rule.Term qualified as TM
 import Rule.WeakTerm qualified as WT
@@ -21,7 +20,6 @@ import Rule.WeakTerm qualified as WT
 data Env = Env
   { remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
-    localVarMap :: IORef LVT.LocalVarTree,
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
@@ -34,7 +32,6 @@ newEnv :: IO Env
 newEnv = do
   remarkList <- newIORef []
   globalRemarkList <- newIORef []
-  localVarMap <- newIORef LVT.empty
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty
