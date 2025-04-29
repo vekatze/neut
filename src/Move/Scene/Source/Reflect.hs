@@ -8,7 +8,6 @@ where
 import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Module.Reflect qualified as Module
 import Path
 import Rule.Module
@@ -20,9 +19,8 @@ data Handle
     moduleHandle :: Module.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> App Handle
-new envHandle gensymHandle = do
-  moduleHandle <- Module.new gensymHandle
+new :: Env.Handle -> Module.Handle -> App Handle
+new envHandle moduleHandle = do
   return $ Handle {..}
 
 reflect :: Handle -> FilePath -> EIO (Maybe Source)

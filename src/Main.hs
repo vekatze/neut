@@ -227,7 +227,7 @@ execute = do
           clangHandle <- Clang.new debugHandle
           lintHandle <- Lint.new fetchHandle envHandle initCompilerHandle checkHandle
           lspFormatHandle <- LSPFormat.new formatHandle
-          sourceReflectHandle <- SourceReflect.new envHandle gensymHandle
+          sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle
           getSourceHandle <- GetSource.new sourceReflectHandle
           getLocationTreeHandle <- GetLocationTree.new pathHandle
           findDefHandle <- FindDefinition.new getSourceHandle getLocationTreeHandle
