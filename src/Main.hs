@@ -167,7 +167,7 @@ execute = do
     clarifyHandle <- Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize
     arch <- toApp $ Env.getArch Nothing
     lowerHandle <- Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
-    weakDefHandle <- WeakDefinition.new gensymHandle
+    weakDefHandle <- liftIO $ WeakDefinition.new gensymHandle
     defHandle <- Definition.new
     ensReflectHandle <- EnsReflect.new gensymHandle
     unravelHandle <- liftIO $ Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
@@ -190,7 +190,8 @@ execute = do
               _topCandidateHandle = topCandidateHandle,
               _localRemarkHandle = localRemarkHandle,
               _globalRemarkHandle = globalRemarkHandle,
-              _weakDeclHandle = weakDeclHandle
+              _weakDeclHandle = weakDeclHandle,
+              _weakDefHandle = weakDefHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig

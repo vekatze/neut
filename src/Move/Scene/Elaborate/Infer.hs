@@ -97,14 +97,13 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> Type.Handle -> WeakDecl.Handle -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle = do
+new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> Type.Handle -> WeakDecl.Handle -> WeakDefinition.Handle -> App Handle
+new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle = do
   substHandle <- Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   reduceHandle <- Reduce.new substHandle inlineLimit
-  unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
-  weakDefHandle <- WeakDefinition.new gensymHandle
+  unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle weakDefHandle
   let varEnv = []
   return Handle {..}
 

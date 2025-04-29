@@ -11,11 +11,8 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
@@ -35,14 +32,14 @@ data Handle
     weakDefMapRef :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm)
   }
 
+new :: Gensym.Handle -> IO Handle
+new gensymHandle = do
+  weakDefMapRef <- newIORef Map.empty
+  return $ Handle {..}
+
 initialize :: Handle -> IO ()
 initialize h = do
   writeIORef (weakDefMapRef h) Map.empty
-
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  weakDefMapRef <- asks App.weakDefMap
-  return $ Handle {..}
 
 insert' ::
   Handle ->

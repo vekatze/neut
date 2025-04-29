@@ -107,7 +107,8 @@ data Config = Config
     _symLocHandle :: SymLoc.Handle,
     _pathHandle :: Path.Handle,
     _topCandidateHandle :: TopCandidate.Handle,
-    _weakDeclHandle :: WeakDecl.Handle
+    _weakDeclHandle :: WeakDecl.Handle,
+    _weakDefHandle :: WeakDefinition.Handle
   }
 
 data Handle
@@ -151,20 +152,20 @@ new cfg = do
   let localRemarkHandle = _localRemarkHandle cfg
   let globalRemarkHandle = _globalRemarkHandle cfg
   let weakDeclHandle = _weakDeclHandle cfg
+  let weakDefHandle = _weakDefHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   substHandle <- Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   reduceHandle <- Reduce.new substHandle inlineLimit
-  weakDefHandle <- WeakDefinition.new gensymHandle
   defHandle <- Definition.new
   currentSource <- toApp $ Env.getCurrentSource envHandle
   termSubstHandle <- TermSubst.new gensymHandle
   refreshHandle <- Refresh.new gensymHandle
   inlineHandle <- Inline.new currentSource termSubstHandle refreshHandle defHandle
   affHandle <- EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
-  inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle
-  unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
+  inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle
+  unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle weakDefHandle
   return $ Handle {..}
 
 overrideHandleEnv :: Handle -> Elaborate.HandleEnv -> Handle
