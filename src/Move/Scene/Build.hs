@@ -85,6 +85,7 @@ data Handle = Handle
     ensureMainHandle :: EnsureMain.Handle,
     parseHandle :: Parse.Handle,
     clarifyHandle :: Clarify.Handle,
+    lowerHandle :: Lower.Handle,
     llvmHandle :: LLVM.Handle,
     emitHandle :: Emit.Handle,
     linkHandle :: Link.Handle,
@@ -117,6 +118,7 @@ new ::
   EnsureMain.Handle ->
   Parse.Handle ->
   Clarify.Handle ->
+  Lower.Handle ->
   LLVM.Handle ->
   Emit.Handle ->
   Link.Handle ->
@@ -124,7 +126,7 @@ new ::
   Execute.Handle ->
   Elaborate.Config ->
   App Handle
-new cfg gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig = do
+new cfg gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig = do
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -176,13 +178,12 @@ compile h target outputKindList contentSeq = do
     hElaborate <- Elaborate.new (elaborateConfig h)
     stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
     toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
-    hl <- Lower.new (gensymHandle h) (locatorHandle h)
     b <- toApp $ Cache.needsCompilation (cacheHandle h) outputKindList source
     if b
       then do
         stmtList' <- toApp $ Clarify.clarify (clarifyHandle h) stmtList
         fmap Just $ async $ toApp $ do
-          virtualCode <- Lower.lower hl stmtList'
+          virtualCode <- Lower.lower (lowerHandle h) stmtList'
           emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   entryPointVirtualCode <- compileEntryPoint h mainModule target outputKindList
@@ -240,8 +241,7 @@ compileEntryPoint h mainModule target outputKindList = do
       if b
         then return []
         else do
-          hl <- Lower.new (gensymHandle h) (locatorHandle h)
-          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= toApp . Lower.lowerEntryPoint hl t
+          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= toApp . Lower.lowerEntryPoint (lowerHandle h) t
           return [(Left t, mainVirtualCode)]
 
 execute :: Handle -> Bool -> MainTarget -> [String] -> EIO ()

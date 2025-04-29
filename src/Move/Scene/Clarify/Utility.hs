@@ -13,8 +13,6 @@ where
 
 import Data.IntMap qualified as IntMap
 import Move.Context.App
-import Move.Context.EIO (toApp)
-import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Move.Scene.Comp.Subst qualified as Subst
@@ -35,11 +33,8 @@ data Handle
     baseSize :: Int
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  substHandle <- Subst.new gensymHandle
-  auxEnvHandle <- AuxEnv.new
-  baseSize <- toApp Env.getBaseSize'
+new :: Gensym.Handle -> Subst.Handle -> AuxEnv.Handle -> Int -> App Handle
+new gensymHandle substHandle auxEnvHandle baseSize = do
   return $ Handle {..}
 
 -- toAffineApp meta x t ~>

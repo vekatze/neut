@@ -17,7 +17,9 @@ import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Color qualified as Color
+import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.Debug qualified as Debug
+import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -32,13 +34,20 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
+import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Archive qualified as SceneArchive
 import Move.Scene.Build qualified as SceneBuild
 import Move.Scene.Check qualified as SceneCheck
 import Move.Scene.Clarify qualified as Clarify
+import Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
+import Move.Scene.Clarify.Linearize qualified as Linearize
+import Move.Scene.Clarify.Sigma qualified as Sigma
+import Move.Scene.Clarify.Utility qualified as ClarifyUtility
 import Move.Scene.Clean qualified as SceneClean
 import Move.Scene.Collect qualified as Collect
+import Move.Scene.Comp.Reduce qualified as CompReduce
+import Move.Scene.Comp.Subst qualified as CompSubst
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.Ens.Reflect qualified as EnsReflect
@@ -55,12 +64,16 @@ import Move.Scene.LSP qualified as L
 import Move.Scene.LSP.Format qualified as LSPFormat
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
+import Move.Scene.Lower qualified as Lower
+import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Module.Save qualified as ModuleSave
 import Move.Scene.New qualified as New
 import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
 import Move.Scene.Parse qualified as Parse
+import Move.Scene.Parse.Core qualified as ParseCore
 import Move.Scene.Parse.Discern.Handle qualified as Discern
+import Move.Scene.Term.Subst qualified as TermSubst
 import Move.Scene.Unravel qualified as Unravel
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Rule.Command qualified as C
@@ -88,14 +101,11 @@ execute = do
     globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     typeHandle <- liftIO Type.new
     collectHandle <- Collect.new envHandle
-    formatHandle <- SceneFormat.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle typeHandle
-    lspFormatHandle <- LSPFormat.new formatHandle
     fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
     unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
     initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
     initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-    initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
     loadHandle <- Load.new envHandle debugHandle
@@ -105,7 +115,26 @@ execute = do
     ensureMainHandle <- EnsureMain.new locatorHandle
     pathHandle <- Path.new envHandle debugHandle
     parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-
+    baseSize <- toApp Env.getBaseSize'
+    compSubstHandle <- CompSubst.new gensymHandle
+    auxEnvHandle <- AuxEnv.new
+    utilityHandle <- ClarifyUtility.new gensymHandle compSubstHandle auxEnvHandle baseSize
+    linearizeHandle <- Linearize.new gensymHandle utilityHandle
+    sigmaHandle <- Sigma.new gensymHandle linearizeHandle locatorHandle utilityHandle
+    compDefHandle <- CompDefinition.new
+    compReduceHandle <- CompReduce.new compDefHandle compSubstHandle gensymHandle
+    termSubstHandle <- TermSubst.new gensymHandle
+    clarifyHandle <- Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize
+    arch <- toApp $ Env.getArch Nothing
+    lowerHandle <- Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
+    weakDefHandle <- WeakDefinition.new gensymHandle
+    defHandle <- Definition.new
+    ensReflectHandle <- EnsReflect.new gensymHandle
+    initTargetHandle <- InitTarget.new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefHandle defHandle typeHandle
+    parseCoreHandle <- ParseCore.new gensymHandle
+    getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
+    formatHandle <- SceneFormat.new unravelHandle loadHandle parseCoreHandle parseHandle envHandle ensReflectHandle getEnabledPresetHandle unusedHandle initTargetHandle initSourceHandle
+    lspFormatHandle <- LSPFormat.new formatHandle
     let elaborateConfig =
           Elaborate.Config
             { _envHandle = envHandle,
@@ -119,7 +148,6 @@ execute = do
     moduleHandle <- GetModule.new gensymHandle
     checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle unravelHandle
-    clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
     llvmHandle <- LLVM.new envHandle debugHandle
     emitHandle <- Emit.new gensymHandle
     linkHandle <- Link.new envHandle colorHandle debugHandle
@@ -130,7 +158,7 @@ execute = do
       ensureExecutables
       case c of
         C.Build cfg -> do
-          buildHandle <- SceneBuild.new (Build.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
+          buildHandle <- SceneBuild.new (Build.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
           h <- Build.new initCompilerHandle fetchHandle collectHandle envHandle buildHandle
           Build.build h cfg
         C.Check cfg -> do
@@ -141,7 +169,6 @@ execute = do
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           packageVersionHandle <- PV.new reportHandle
-          ensReflectHandle <- EnsReflect.new gensymHandle
           archiveHandle <- SceneArchive.new externalHandle moduleSaveHandle envHandle
           h <- Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
           toApp $ Archive.archive h cfg
@@ -162,6 +189,6 @@ execute = do
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
-          buildHandle <- SceneBuild.new (Zen.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
+          buildHandle <- SceneBuild.new (Zen.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
           h <- Zen.new initCompilerHandle fetchHandle envHandle buildHandle
           Zen.zen h cfg

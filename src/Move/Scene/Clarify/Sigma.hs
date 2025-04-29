@@ -1,5 +1,5 @@
 module Move.Scene.Clarify.Sigma
-  ( Handle,
+  ( Handle (..),
     new,
     registerImmediateS4,
     registerClosureS4,
@@ -37,10 +37,8 @@ data Handle
     utilityHandle :: Utility.Handle
   }
 
-new :: Gensym.Handle -> Locator.Handle -> App Handle
-new gensymHandle locatorHandle = do
-  linearizeHandle <- Linearize.new gensymHandle
-  utilityHandle <- Utility.new gensymHandle
+new :: Gensym.Handle -> Linearize.Handle -> Locator.Handle -> Utility.Handle -> App Handle
+new gensymHandle linearizeHandle locatorHandle utilityHandle = do
   return $ Handle {..}
 
 registerImmediateS4 :: Handle -> IO ()

@@ -23,9 +23,8 @@ data Handle
     utilityHandle :: Utility.Handle
   }
 
-new :: Gensym.Handle -> App Handle
-new gensymHandle = do
-  utilityHandle <- Utility.new gensymHandle
+new :: Gensym.Handle -> Utility.Handle -> App Handle
+new gensymHandle utilityHandle = do
   return $ Handle {..}
 
 linearize ::

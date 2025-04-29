@@ -16,8 +16,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Move.Context.App
 import Move.Context.CompDefinition qualified as CompDefinition
-import Move.Context.EIO (EIO, raiseCritical, raiseCritical', toApp)
-import Move.Context.Env qualified as Env
+import Move.Context.EIO (EIO, raiseCritical, raiseCritical')
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -77,16 +76,20 @@ data Handle
     baseSize :: Int
   }
 
-new :: Gensym.Handle -> Locator.Handle -> OptimizableData.Handle -> App Handle
-new gensymHandle locatorHandle optDataHandle = do
-  linearizeHandle <- Linearize.new gensymHandle
-  utilityHandle <- Utility.new gensymHandle
-  auxEnvHandle <- AuxEnv.new
-  sigmaHandle <- Sigma.new gensymHandle locatorHandle
-  reduceHandle <- Reduce.new gensymHandle
-  substHandle <- Subst.new gensymHandle
-  compDefHandle <- CompDefinition.new
-  baseSize <- toApp Env.getBaseSize'
+new ::
+  Gensym.Handle ->
+  Linearize.Handle ->
+  Utility.Handle ->
+  AuxEnv.Handle ->
+  Sigma.Handle ->
+  Locator.Handle ->
+  OptimizableData.Handle ->
+  Reduce.Handle ->
+  Subst.Handle ->
+  CompDefinition.Handle ->
+  Int ->
+  App Handle
+new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle reduceHandle substHandle compDefHandle baseSize = do
   return $ Handle {..}
 
 clarify :: Handle -> [Stmt] -> EIO [C.CompStmt]
