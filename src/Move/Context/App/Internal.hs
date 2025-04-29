@@ -18,14 +18,11 @@ import Rule.ExternalName qualified as EN
 import Rule.ForeignCodType qualified as F
 import Rule.Hint
 import Rule.Ident
-import Rule.Import
 import Rule.LocalVarTree qualified as LVT
 import Rule.Opacity qualified as O
 import Rule.Remark qualified as Remark
-import Rule.Source qualified as Source
 import Rule.Term qualified as TM
 import Rule.TopCandidate
-import Rule.VisitInfo
 import Rule.WeakTerm qualified as WT
 
 data Env = Env
@@ -34,10 +31,7 @@ data Env = Env
     localVarMap :: IORef LVT.LocalVarTree,
     topCandidateEnv :: IORef [TopCandidate],
     buildSignatureCache :: IORef (Maybe String), -- only for memoization
-    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
-    traceSourceList :: IORef [Source.Source],
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
-    visitEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
@@ -60,10 +54,7 @@ newEnv = do
   localVarMap <- newIORef LVT.empty
   topCandidateEnv <- newIORef []
   buildSignatureCache <- newIORef Nothing
-  sourceChildrenMap <- newIORef Map.empty
-  traceSourceList <- newIORef []
   artifactMap <- newIORef Map.empty
-  visitEnv <- newIORef Map.empty
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
   compAuxEnv <- newIORef Map.empty

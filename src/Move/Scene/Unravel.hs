@@ -12,7 +12,6 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (asks)
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
@@ -21,8 +20,6 @@ import Data.Text qualified as T
 import Data.Time
 import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError')
@@ -89,11 +86,11 @@ new ::
   Alias.Handle ->
   Antecedent.Handle ->
   Artifact.Handle ->
-  App Handle
+  IO Handle
 new envHandle debugHandle moduleHandle pathHandle shiftToLatestHandle importHandle parseHandle locatorHandle aliasHandle antecedentHandle artifactHandle = do
-  visitEnvRef <- asks App.visitEnv
-  traceSourceListRef <- asks App.traceSourceList
-  sourceChildrenMapRef <- asks App.sourceChildrenMap
+  visitEnvRef <- newIORef Map.empty
+  traceSourceListRef <- newIORef []
+  sourceChildrenMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()

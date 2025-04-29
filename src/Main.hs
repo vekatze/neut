@@ -170,7 +170,7 @@ execute = do
     weakDefHandle <- WeakDefinition.new gensymHandle
     defHandle <- Definition.new
     ensReflectHandle <- EnsReflect.new gensymHandle
-    unravelHandle <- Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
+    unravelHandle <- liftIO $ Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
     fetchHandle <- Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
     initTargetHandle <- InitTarget.new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefHandle defHandle typeHandle
     formatHandle <- SceneFormat.new unravelHandle loadHandle parseCoreHandle parseHandle envHandle ensReflectHandle getEnabledPresetHandle unusedHandle initTargetHandle initSourceHandle
