@@ -127,7 +127,11 @@ execute = do
     globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     typeHandle <- liftIO Type.new
     collectHandle <- Collect.new envHandle
-    discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+    aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
+    symLocHandle <- SymLoc.new
+    topCandidateHandle <- TopCandidate.new
+    preDeclHandle <- PreDecl.new
+    discernHandle <- Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
     initLoggerHandle <- InitLogger.new colorHandle reportHandle envHandle debugHandle
     moduleReflectHandle <- ModuleReflect.new gensymHandle
     initCompilerHandle <- InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
@@ -137,12 +141,8 @@ execute = do
     cacheHandle <- Cache.new envHandle debugHandle
     loadHandle <- Load.new debugHandle cacheHandle
     localRemarkHandle <- LocalRemark.new
-    aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
     rawImportSummaryHandle <- RawImportSummary.new
     weakDeclHandle <- WeakDecl.new
-    preDeclHandle <- PreDecl.new
-    topCandidateHandle <- TopCandidate.new
-    symLocHandle <- SymLoc.new
     initSourceHandle <- InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle
     ensureMainHandle <- EnsureMain.new locatorHandle
     pathHandle <- Path.new envHandle debugHandle

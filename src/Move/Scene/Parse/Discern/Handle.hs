@@ -9,7 +9,6 @@ module Move.Scene.Parse.Discern.Handle
 where
 
 import Move.Context.Alias qualified as Alias
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
@@ -46,12 +45,21 @@ data Handle = Handle
     currentLayer :: Layer
   }
 
-new :: Env.Handle -> Gensym.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
-  aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
-  symLocHandle <- SymLoc.new
-  topCandidateHandle <- TopCandidate.new
-  preDeclHandle <- PreDecl.new
+new ::
+  Gensym.Handle ->
+  Locator.Handle ->
+  Global.Handle ->
+  Alias.Handle ->
+  Tag.Handle ->
+  KeyArg.Handle ->
+  SymLoc.Handle ->
+  TopCandidate.Handle ->
+  PreDecl.Handle ->
+  OptimizableData.Handle ->
+  Unused.Handle ->
+  Env.Handle ->
+  App Handle
+new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle = do
   let nameEnv = empty
   let currentLayer = 0
   return $ Handle {..}
