@@ -160,8 +160,7 @@ new cfg = do
   currentSource <- toApp $ Env.getCurrentSource envHandle
   termSubstHandle <- TermSubst.new gensymHandle
   refreshHandle <- Refresh.new gensymHandle
-  defMapHandle <- Definition.new
-  inlineHandle <- Inline.new currentSource termSubstHandle refreshHandle defMapHandle
+  inlineHandle <- Inline.new currentSource termSubstHandle refreshHandle defHandle
   affHandle <- EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
