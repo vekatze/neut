@@ -6,19 +6,10 @@ module Move.Act.Get
 where
 
 import Control.Monad
-import Move.Console.Report qualified as Report
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
-import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Clean qualified as Clean
 import Move.Scene.Fetch qualified as Fetch
@@ -37,22 +28,13 @@ data Handle
   }
 
 new ::
+  InitCompiler.Handle ->
+  Fetch.Handle ->
   Env.Handle ->
-  Gensym.Handle ->
-  Color.Handle ->
-  Report.Handle ->
-  Debug.Handle ->
-  Locator.Handle ->
-  Global.Handle ->
-  Unused.Handle ->
-  Tag.Handle ->
-  Antecedent.Handle ->
+  Clean.Handle ->
   Check.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle checkHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
-  cleanHandle <- Clean.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
+new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle = do
   return $ Handle {..}
 
 get :: Handle -> Config -> App ()

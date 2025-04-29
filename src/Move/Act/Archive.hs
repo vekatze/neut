@@ -5,14 +5,10 @@ module Move.Act.Archive
   )
 where
 
-import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Archive qualified as Archive
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Ens.Reflect qualified as EnsReflect
@@ -31,12 +27,8 @@ data Handle
     archiveHandle :: Archive.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  packageVersionHandle <- PV.new reportHandle
-  ensReflectHandle <- EnsReflect.new gensymHandle
-  archiveHandle <- Archive.new envHandle debugHandle
+new :: InitCompiler.Handle -> Env.Handle -> PV.Handle -> EnsReflect.Handle -> Archive.Handle -> App Handle
+new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle = do
   return $ Handle {..}
 
 archive :: Handle -> Config -> EIO ()

@@ -5,18 +5,8 @@ module Move.Act.Clean
   )
 where
 
-import Move.Console.Report qualified as Report
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
-import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.Locator qualified as Locator
-import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clean qualified as Clean
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Rule.Config.Clean
@@ -28,10 +18,8 @@ data Handle
     cleanHandle :: Clean.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  cleanHandle <- Clean.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
+new :: InitCompiler.Handle -> Clean.Handle -> App Handle
+new initCompilerHandle cleanHandle = do
   return $ Handle {..}
 
 clean :: Handle -> Config -> EIO ()

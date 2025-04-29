@@ -8,14 +8,10 @@ where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
-import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Build qualified as Build
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -36,16 +32,12 @@ data Handle
   }
 
 new ::
+  InitCompiler.Handle ->
+  Fetch.Handle ->
   Env.Handle ->
-  Gensym.Handle ->
-  Color.Handle ->
-  Report.Handle ->
-  Debug.Handle ->
   Build.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle buildHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
+new initCompilerHandle fetchHandle envHandle buildHandle = do
   return $ Handle {..}
 
 zen :: Handle -> Config -> App ()

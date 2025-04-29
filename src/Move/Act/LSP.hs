@@ -6,28 +6,12 @@ module Move.Act.LSP
 where
 
 import Control.Monad
-import Move.Console.Report qualified as Report
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
-import Move.Language.Utility.Gensym qualified as Gensym
-import Move.Scene.Check qualified as Check
-import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.LSP qualified as L
-import Move.Scene.LSP.Format qualified as LSPFormat
-import Move.Scene.Parse.Discern.Handle qualified as Discern
-import Move.Scene.Unravel qualified as Unravel
 import Rule.Config.Remark (lspConfig)
 
 data Handle
@@ -39,28 +23,12 @@ data Handle
   }
 
 new ::
+  InitCompiler.Handle ->
+  Fetch.Handle ->
   Env.Handle ->
-  Gensym.Handle ->
-  Color.Handle ->
-  Report.Handle ->
-  Debug.Handle ->
-  Locator.Handle ->
-  Global.Handle ->
-  OptimizableData.Handle ->
-  KeyArg.Handle ->
-  Unused.Handle ->
-  Tag.Handle ->
-  Antecedent.Handle ->
-  LSPFormat.Handle ->
-  Unravel.Handle ->
-  Discern.Handle ->
-  Check.Handle ->
-  Elaborate.Config ->
+  L.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle elaborateConfig = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
-  lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle elaborateConfig
+new initCompilerHandle fetchHandle envHandle lspHandle = do
   return $ Handle {..}
 
 lsp :: Handle -> App ()

@@ -6,22 +6,10 @@ module Move.Act.Format
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Console.Report qualified as Report
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
-import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
-import Move.Context.Tag qualified as Tag
-import Move.Context.Type qualified as Type
-import Move.Context.Unused qualified as Unused
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Format qualified as Format
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.Init.Target qualified as InitTarget
@@ -36,10 +24,8 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Type.Handle -> Format.Handle -> App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle formatHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle
+new :: InitCompiler.Handle -> InitTarget.Handle -> Format.Handle -> App Handle
+new initCompilerHandle initTargetHandle formatHandle = do
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

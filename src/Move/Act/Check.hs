@@ -8,11 +8,8 @@ where
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -28,10 +25,8 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Check.Handle -> App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle checkHandle = do
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
+new :: InitCompiler.Handle -> Fetch.Handle -> Env.Handle -> Report.Handle -> Check.Handle -> App Handle
+new initCompilerHandle fetchHandle envHandle reportHandle checkHandle = do
   return $ Handle {..}
 
 check :: Handle -> Config -> App ()

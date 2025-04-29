@@ -29,11 +29,22 @@ import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Archive qualified as SceneArchive
 import Move.Scene.Build qualified as SceneBuild
 import Move.Scene.Check qualified as SceneCheck
+import Move.Scene.Clean qualified as SceneClean
+import Move.Scene.Collect qualified as Collect
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Ens.Reflect qualified as EnsReflect
+import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Format qualified as SceneFormat
+import Move.Scene.Init.Compiler qualified as InitCompiler
+import Move.Scene.Init.Logger qualified as InitLogger
+import Move.Scene.Init.Target qualified as InitTarget
+import Move.Scene.LSP qualified as L
 import Move.Scene.LSP.Format qualified as LSPFormat
+import Move.Scene.New qualified as New
+import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Unravel qualified as Unravel
 import Rule.Command qualified as C
@@ -60,10 +71,16 @@ execute = do
     unusedHandle <- liftIO Unused.new
     globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     typeHandle <- liftIO Type.new
+    collectHandle <- Collect.new envHandle
     formatHandle <- SceneFormat.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle typeHandle
     lspFormatHandle <- LSPFormat.new formatHandle
+    fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
     unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+    initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
+    initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
+    initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle
+
     let elaborateConfig =
           Elaborate.Config
             { _envHandle = envHandle,
@@ -75,38 +92,44 @@ execute = do
               _typeHandle = typeHandle
             }
     checkHandle <- SceneCheck.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig
+    cleanHandle <- SceneClean.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do
       ensureExecutables
       case c of
         C.Build cfg -> do
           buildHandle <- SceneBuild.new (Build.toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig
-          h <- Build.new envHandle gensymHandle colorHandle reportHandle debugHandle buildHandle
+          h <- Build.new initCompilerHandle fetchHandle collectHandle envHandle buildHandle
           Build.build h cfg
         C.Check cfg -> do
-          h <- Check.new envHandle gensymHandle colorHandle reportHandle debugHandle checkHandle
+          h <- Check.new initCompilerHandle fetchHandle envHandle reportHandle checkHandle
           Check.check h cfg
         C.Clean cfg -> do
-          h <- Clean.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
+          h <- Clean.new initCompilerHandle cleanHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
-          h <- Archive.new envHandle gensymHandle colorHandle reportHandle debugHandle
+          packageVersionHandle <- PV.new reportHandle
+          ensReflectHandle <- EnsReflect.new gensymHandle
+          archiveHandle <- SceneArchive.new envHandle debugHandle
+          h <- Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
-          h <- Create.new envHandle gensymHandle colorHandle reportHandle debugHandle checkHandle
+          newHandle <- New.new reportHandle debugHandle
+          h <- Create.new initLoggerHandle initCompilerHandle newHandle fetchHandle checkHandle
           Create.create h cfg
         C.Get cfg -> do
-          h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle checkHandle
+          h <- Get.new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle formatHandle
+          h <- Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle lspFormatHandle unravelHandle discernHandle checkHandle elaborateConfig
+          lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle lspFormatHandle unravelHandle discernHandle checkHandle elaborateConfig
+          h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
           buildHandle <- SceneBuild.new (Zen.toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig
-          h <- Zen.new envHandle gensymHandle colorHandle reportHandle debugHandle buildHandle
+          h <- Zen.new initCompilerHandle fetchHandle envHandle buildHandle
           Zen.zen h cfg

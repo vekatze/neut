@@ -7,15 +7,11 @@ module Move.Act.Build
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Build qualified as Build
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Fetch qualified as Fetch
@@ -34,17 +30,13 @@ data Handle
   }
 
 new ::
+  InitCompiler.Handle ->
+  Fetch.Handle ->
+  Collect.Handle ->
   Env.Handle ->
-  Gensym.Handle ->
-  Color.Handle ->
-  Report.Handle ->
-  Debug.Handle ->
   Build.Handle ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle buildHandle = do
-  collectHandle <- Collect.new envHandle
-  initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
+new initCompilerHandle fetchHandle collectHandle envHandle buildHandle = do
   return $ Handle {..}
 
 build :: Handle -> Config -> App ()
