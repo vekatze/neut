@@ -21,6 +21,7 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
+import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.LSP qualified as L
@@ -54,11 +55,12 @@ new ::
   Unravel.Handle ->
   Discern.Handle ->
   Check.Handle ->
+  Elaborate.Config ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle elaborateConfig = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
-  lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle
+  lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle elaborateConfig
   return $ Handle {..}
 
 lsp :: Handle -> App ()

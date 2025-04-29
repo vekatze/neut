@@ -1,5 +1,6 @@
 module Move.Scene.Elaborate
-  ( Handle,
+  ( Config (..),
+    Handle,
     new,
     overrideHandleEnv,
     elaborate,
@@ -86,6 +87,15 @@ import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText
 
+data Config = Config
+  { _envHandle :: Env.Handle,
+    _gensymHandle :: Gensym.Handle,
+    _debugHandle :: Debug.Handle,
+    _optDataHandle :: OptimizableData.Handle,
+    _keyArgHandle :: KeyArg.Handle,
+    _discernHandle :: Discern.Handle
+  }
+
 data Handle
   = Handle
   { reduceHandle :: Reduce.Handle,
@@ -112,8 +122,14 @@ data Handle
     currentSource :: Source
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> App Handle
-new envHandle gensymHandle debugHandle optDataHandle keyArgHandle discernHandle = do
+new :: Config -> App Handle
+new cfg = do
+  let envHandle = _envHandle cfg
+  let gensymHandle = _gensymHandle cfg
+  let debugHandle = _debugHandle cfg
+  let optDataHandle = _optDataHandle cfg
+  let keyArgHandle = _keyArgHandle cfg
+  let discernHandle = _discernHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   reduceHandle <- Reduce.new envHandle gensymHandle
   weakDefHandle <- WeakDefinition.new gensymHandle

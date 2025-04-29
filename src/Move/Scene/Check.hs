@@ -61,7 +61,8 @@ data Handle
     optDataHandle :: OptimizableData.Handle,
     unusedHandle :: Unused.Handle,
     globalHandle :: Global.Handle,
-    discernHandle :: Discern.Handle
+    discernHandle :: Discern.Handle,
+    elaborateConfig :: Elaborate.Config
   }
 
 new ::
@@ -77,8 +78,9 @@ new ::
   Tag.Handle ->
   Antecedent.Handle ->
   Discern.Handle ->
+  Elaborate.Config ->
   App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle = do
+new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig = do
   loadHandle <- Load.new envHandle debugHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
@@ -133,7 +135,7 @@ checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (optDataHandle h) (keyArgHandle h) (discernHandle h)
+  hElaborate <- Elaborate.new (elaborateConfig h)
   void $
     toApp $
       Parse.parse (parseHandle h) target source cacheOrContent
@@ -143,7 +145,7 @@ checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elabora
 checkSource' h target source cacheOrContent = do
   toApp (InitSource.initializeForSource (initSourceHandle h) source)
   toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (optDataHandle h) (keyArgHandle h) (discernHandle h)
+  hElaborate <- Elaborate.new (elaborateConfig h)
   toApp $
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborateThenInspect hElaborate target

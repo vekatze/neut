@@ -61,11 +61,12 @@ data Handle
     optDataHandle :: OptimizableData.Handle,
     unusedHandle :: Unused.Handle,
     globalHandle :: Global.Handle,
-    discernHandle :: Discern.Handle
+    discernHandle :: Discern.Handle,
+    elaborateConfig :: Elaborate.Config
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Discern.Handle -> Check.Handle -> App Handle
-new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle checkHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Discern.Handle -> Check.Handle -> Elaborate.Config -> App Handle
+new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle checkHandle elaborateConfig = do
   getSourceHandle <- GetSource.new envHandle gensymHandle
   pathHandle <- Path.new envHandle debugHandle
   findDefHandle <- FindDefinition.new envHandle gensymHandle debugHandle
@@ -86,7 +87,7 @@ getSymbolInfo h params = do
     LT.Local varID _ -> do
       weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift $ Elaborate.new (envHandle h) (gensymHandle h) (debugHandle h) (optDataHandle h) (keyArgHandle h) (discernHandle h)
+      elaborateHandle <- lift $ Elaborate.new (elaborateConfig h)
       let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'

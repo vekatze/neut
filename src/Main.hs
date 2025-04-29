@@ -30,6 +30,7 @@ import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Build qualified as SceneBuild
 import Move.Scene.Check qualified as SceneCheck
+import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Format qualified as SceneFormat
 import Move.Scene.LSP.Format qualified as LSPFormat
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -61,13 +62,22 @@ execute = do
     lspFormatHandle <- LSPFormat.new formatHandle
     unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-    checkHandle <- SceneCheck.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle
+    let elaborateConfig =
+          Elaborate.Config
+            { _envHandle = envHandle,
+              _gensymHandle = gensymHandle,
+              _debugHandle = debugHandle,
+              _optDataHandle = optDataHandle,
+              _keyArgHandle = keyArgHandle,
+              _discernHandle = discernHandle
+            }
+    checkHandle <- SceneCheck.new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do
       ensureExecutables
       case c of
         C.Build cfg -> do
-          buildHandle <- SceneBuild.new (Build.toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle
+          buildHandle <- SceneBuild.new (Build.toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig
           h <- Build.new envHandle gensymHandle colorHandle reportHandle debugHandle buildHandle
           Build.build h cfg
         C.Check cfg -> do
@@ -89,11 +99,11 @@ execute = do
           h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle lspFormatHandle unravelHandle discernHandle checkHandle
+          h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle lspFormatHandle unravelHandle discernHandle checkHandle elaborateConfig
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
-          buildHandle <- SceneBuild.new (Zen.toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle
+          buildHandle <- SceneBuild.new (Zen.toBuildConfig cfg) envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig
           h <- Zen.new envHandle gensymHandle colorHandle reportHandle debugHandle buildHandle
           Zen.zen h cfg
