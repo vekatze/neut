@@ -116,9 +116,9 @@ execute = do
     initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
-    loadHandle <- Load.new envHandle debugHandle
     globalRemarkHandle <- GlobalRemark.new
     cacheHandle <- Cache.new envHandle debugHandle
+    loadHandle <- Load.new debugHandle cacheHandle
     initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     ensureMainHandle <- EnsureMain.new locatorHandle
     pathHandle <- Path.new envHandle debugHandle
