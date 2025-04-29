@@ -119,7 +119,7 @@ execute = do
     typeHandle <- liftIO Type.new
     collectHandle <- Collect.new envHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-    initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
+    initLoggerHandle <- InitLogger.new colorHandle reportHandle envHandle debugHandle
     moduleReflectHandle <- ModuleReflect.new gensymHandle
     initCompilerHandle <- InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
     externalHandle <- External.new debugHandle
