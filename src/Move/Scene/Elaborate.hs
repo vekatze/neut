@@ -140,7 +140,7 @@ new cfg = do
   defHandle <- Definition.new
   localRemarkHandle <- LocalRemark.new
   inlineHandle <- Inline.new envHandle gensymHandle
-  affHandle <- EnsureAffinity.new envHandle gensymHandle optDataHandle typeHandle
+  affHandle <- EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle
   pathHandle <- Path.new envHandle debugHandle

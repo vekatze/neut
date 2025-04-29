@@ -15,11 +15,9 @@ import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Move.Context.App (App)
 import Move.Context.EIO (EIO, raiseCritical)
-import Move.Context.Env qualified as Env
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
@@ -67,11 +65,14 @@ data InnerHandle
     mustPerformExpCheck :: Bool
   }
 
-new :: Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> Type.Handle -> App Handle
-new envHandle gensymHandle optDataHandle typeHandle = do
-  reduceHandle <- Reduce.new envHandle gensymHandle
-  substHandle <- Subst.new gensymHandle
-  weakDefHandle <- WeakDefinition.new gensymHandle
+new ::
+  Reduce.Handle ->
+  Subst.Handle ->
+  Type.Handle ->
+  WeakDefinition.Handle ->
+  OptimizableData.Handle ->
+  App Handle
+new reduceHandle substHandle typeHandle weakDefHandle optDataHandle = do
   return $ Handle {..}
 
 ensureAffinity :: Handle -> TM.Term -> EIO [R.Remark]
