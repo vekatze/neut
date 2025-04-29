@@ -9,11 +9,8 @@ module Move.Scene.Clarify.Handle.AuxEnv
   )
 where
 
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.CompDefinition qualified as CompDefinition
 import Rule.Comp
 import Rule.DefiniteDescription qualified as DD
@@ -26,9 +23,9 @@ newtype Handle
   { compAuxEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp))
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  compAuxEnvRef <- asks App.compAuxEnv
+  compAuxEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
 get :: Handle -> IO CompDefinition.DefMap

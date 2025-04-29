@@ -31,7 +31,6 @@ data Env = Env
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
-    compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
     weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
@@ -52,7 +51,6 @@ newEnv = do
   artifactMap <- newIORef Map.empty
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
-  compAuxEnv <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty

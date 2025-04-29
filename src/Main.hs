@@ -157,7 +157,7 @@ execute = do
     parseHandle <- Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
     baseSize <- toApp Env.getBaseSize'
     compSubstHandle <- CompSubst.new gensymHandle
-    auxEnvHandle <- AuxEnv.new
+    auxEnvHandle <- liftIO AuxEnv.new
     utilityHandle <- ClarifyUtility.new gensymHandle compSubstHandle auxEnvHandle baseSize
     linearizeHandle <- Linearize.new gensymHandle utilityHandle
     sigmaHandle <- Sigma.new gensymHandle linearizeHandle locatorHandle utilityHandle
