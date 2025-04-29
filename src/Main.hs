@@ -63,12 +63,14 @@ import Move.Scene.Init.Target qualified as InitTarget
 import Move.Scene.Install qualified as Install
 import Move.Scene.LSP qualified as L
 import Move.Scene.LSP.Format qualified as LSPFormat
+import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
 import Move.Scene.LowComp.Reduce qualified as LowCompReduce
 import Move.Scene.Lower qualified as Lower
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as GetModule
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Module.Save qualified as ModuleSave
 import Move.Scene.New qualified as New
 import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
@@ -103,7 +105,6 @@ execute = do
     globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     typeHandle <- liftIO Type.new
     collectHandle <- Collect.new envHandle
-    fetchHandle <- Fetch.new envHandle gensymHandle reportHandle debugHandle
     unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
     initLoggerHandle <- InitLogger.new envHandle colorHandle reportHandle debugHandle
@@ -132,6 +133,8 @@ execute = do
     weakDefHandle <- WeakDefinition.new gensymHandle
     defHandle <- Definition.new
     ensReflectHandle <- EnsReflect.new gensymHandle
+    moduleReflectHandle <- ModuleReflect.new gensymHandle
+    fetchHandle <- Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
     initTargetHandle <- InitTarget.new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefHandle defHandle typeHandle
     parseCoreHandle <- ParseCore.new gensymHandle
     getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
@@ -147,8 +150,8 @@ execute = do
               _discernHandle = discernHandle,
               _typeHandle = typeHandle
             }
-    moduleHandle <- GetModule.new gensymHandle
-    checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
+    getModuleHandle <- GetModule.new gensymHandle
+    checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle unravelHandle
     llvmHandle <- LLVM.new envHandle debugHandle
     emitLowCompHandle <- EmitLowComp.new gensymHandle
@@ -188,7 +191,8 @@ execute = do
           h <- Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle lspFormatHandle unravelHandle discernHandle checkHandle elaborateConfig
+          lintHandle <- Lint.new fetchHandle envHandle initCompilerHandle checkHandle
+          lspHandle <- L.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle lspFormatHandle unravelHandle discernHandle checkHandle lintHandle elaborateConfig
           h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
         C.ShowVersion cfg ->

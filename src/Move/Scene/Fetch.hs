@@ -17,13 +17,11 @@ import Data.Maybe
 import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.App
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -54,12 +52,15 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Report.Handle -> Debug.Handle -> App Handle
-new envHandle gensymHandle reportHandle debugHandle = do
-  ensReflectHandle <- EnsReflect.new gensymHandle
-  moduleSaveHandle <- ModuleSave.new debugHandle
-  externalHandle <- External.new debugHandle
-  moduleHandle <- ModuleReflect.new gensymHandle
+new ::
+  EnsReflect.Handle ->
+  ModuleSave.Handle ->
+  External.Handle ->
+  ModuleReflect.Handle ->
+  Report.Handle ->
+  Env.Handle ->
+  App Handle
+new ensReflectHandle moduleSaveHandle externalHandle moduleHandle reportHandle envHandle = do
   return $ Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()

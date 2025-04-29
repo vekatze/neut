@@ -72,6 +72,7 @@ data Handle
     globalHandle :: Global.Handle,
     discernHandle :: Discern.Handle,
     checkHandle :: Check.Handle,
+    lintHandle :: Lint.Handle,
     elaborateConfig :: Elaborate.Config
   }
 
@@ -92,9 +93,10 @@ new ::
   Unravel.Handle ->
   Discern.Handle ->
   Check.Handle ->
+  Lint.Handle ->
   Elaborate.Config ->
   App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle elaborateConfig = do
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle formatHandle unravelHandle discernHandle checkHandle lintHandle elaborateConfig = do
   completeHandle <- Complete.new envHandle gensymHandle debugHandle antecedentHandle unravelHandle
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
   findDefinitionHandle <- FindDefinition.new envHandle gensymHandle debugHandle
@@ -147,13 +149,11 @@ handlers h =
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
-        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (reportHandle h) (debugHandle h) (checkHandle h)
-        Lint.lint h',
+        Lint.lint (lintHandle h),
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
-        h' <- lift $ Lint.new (envHandle h) (gensymHandle h) (colorHandle h) (reportHandle h) (debugHandle h) (checkHandle h)
-        Lint.lint h',
+        Lint.lint (lintHandle h),
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),
       notificationHandler SMethod_CancelRequest $ \_ -> do
