@@ -9,12 +9,9 @@ where
 
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Move.Context.App
-import Move.Context.App.Internal qualified as App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Rule.Const (envVarClang)
@@ -30,9 +27,9 @@ data Handle
     debugHandle :: Debug.Handle
   }
 
-new :: Debug.Handle -> App Handle
+new :: Debug.Handle -> IO Handle
 new debugHandle = do
-  clangRef <- asks App.clangDigest
+  clangRef <- newIORef Nothing
   return $ Handle {..}
 
 getClang :: IO String

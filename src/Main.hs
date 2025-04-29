@@ -139,7 +139,7 @@ execute = do
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
     globalRemarkHandle <- GlobalRemark.new
-    clangHandle <- Clang.new debugHandle
+    clangHandle <- liftIO $ Clang.new debugHandle
     pathHandle <- liftIO $ Path.new envHandle debugHandle clangHandle
     artifactHandle <- Artifact.new
     cacheHandle <- Cache.new pathHandle artifactHandle

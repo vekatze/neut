@@ -7,7 +7,6 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Data.Text qualified as T
 import Path
 import Rule.Artifact qualified as AR
 import Rule.Binder
@@ -29,15 +28,10 @@ data Env = Env
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
-    weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)),
-    clangDigest :: Ref T.Text
+    weakDeclEnv :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm))
   }
 
 type Ref a = IORef (Maybe a)
-
-newRef :: IO (Ref a)
-newRef =
-  newIORef Nothing
 
 newEnv :: IO Env
 newEnv = do
@@ -49,5 +43,4 @@ newEnv = do
   defMap <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty
   weakDeclEnv <- newIORef Map.empty
-  clangDigest <- newRef
   return Env {..}
