@@ -20,6 +20,7 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
 import Move.Context.Tag qualified as Tag
+import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Format qualified as Format
@@ -36,11 +37,11 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Color.Handle -> Report.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Type.Handle -> App Handle
+new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle typeHandle = do
   initCompilerHandle <- InitCompiler.new envHandle gensymHandle colorHandle reportHandle debugHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle
-  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle
+  formatHandle <- Format.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle typeHandle
   return $ Handle {..}
 
 format :: Handle -> Config -> EIO ()

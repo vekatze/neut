@@ -19,6 +19,7 @@ import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
+import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Ens.Reflect qualified as EnsReflect
@@ -51,15 +52,15 @@ data Handle = Handle
     initSourceHandle :: InitSource.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Type.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle typeHandle = do
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   parseCoreHandle <- ParseCore.new gensymHandle
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   ensReflectHandle <- EnsReflect.new gensymHandle
   getEnabledPresetHandle <- GetEnabledPreset.new envHandle gensymHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   return $ Handle {..}
 

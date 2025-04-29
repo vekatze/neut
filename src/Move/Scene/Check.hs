@@ -86,7 +86,7 @@ new envHandle gensymHandle colorHandle debugHandle locatorHandle globalHandle op
   parseHandle <- Parse.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
   moduleHandle <- Module.new gensymHandle
   initSourceHandle <- InitSource.new envHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle (Elaborate._typeHandle elaborateConfig)
   return $ Handle {..}
 
 check :: Handle -> App [Remark]

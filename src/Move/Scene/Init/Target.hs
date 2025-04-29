@@ -34,14 +34,13 @@ data Handle
     typeHandle :: Type.Handle
   }
 
-new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> App Handle
-new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle = do
+new :: Env.Handle -> Gensym.Handle -> Debug.Handle -> Locator.Handle -> Global.Handle -> OptimizableData.Handle -> Unused.Handle -> Tag.Handle -> Antecedent.Handle -> Type.Handle -> App Handle
+new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle typeHandle = do
   clarifyHandle <- Clarify.new gensymHandle locatorHandle optDataHandle
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   globalRemarkHandle <- GlobalRemark.new
   weakDefinitionHandle <- WeakDefinition.new gensymHandle
   definitionHandle <- Definition.new
-  typeHandle <- Type.new
   return $ Handle {..}
 
 initializeForTarget :: Handle -> IO ()

@@ -130,7 +130,7 @@ new ::
   Elaborate.Config ->
   App Handle
 new cfg envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle discernHandle elaborateConfig = do
-  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle
+  initTargetHandle <- InitTarget.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle unusedHandle tagHandle antecedentHandle (Elaborate._typeHandle elaborateConfig)
   unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
   loadHandle <- Load.new envHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new

@@ -59,11 +59,11 @@ execute = do
     optDataHandle <- liftIO OptimizableData.new
     unusedHandle <- liftIO Unused.new
     globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
-    formatHandle <- SceneFormat.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+    typeHandle <- Type.new
+    formatHandle <- SceneFormat.new envHandle gensymHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle typeHandle
     lspFormatHandle <- LSPFormat.new formatHandle
     unravelHandle <- Unravel.new envHandle gensymHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle
     discernHandle <- Discern.new envHandle gensymHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
-    typeHandle <- Type.new
     let elaborateConfig =
           Elaborate.Config
             { _envHandle = envHandle,
@@ -99,7 +99,7 @@ execute = do
           h <- Get.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle unusedHandle tagHandle antecedentHandle checkHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle
+          h <- Format.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle typeHandle
           toApp $ Format.format h cfg
         C.LSP -> do
           h <- LSP.new envHandle gensymHandle colorHandle reportHandle debugHandle locatorHandle globalHandle optDataHandle keyArgHandle unusedHandle tagHandle antecedentHandle lspFormatHandle unravelHandle discernHandle checkHandle elaborateConfig
