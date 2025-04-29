@@ -7,8 +7,6 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Path
-import Rule.Artifact qualified as AR
 import Rule.Binder
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
@@ -24,7 +22,6 @@ data Env = Env
   { remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     localVarMap :: IORef LVT.LocalVarTree,
-    artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     preDeclEnv :: IORef (Map.HashMap EN.ExternalName Hint),
@@ -38,7 +35,6 @@ newEnv = do
   remarkList <- newIORef []
   globalRemarkList <- newIORef []
   localVarMap <- newIORef LVT.empty
-  artifactMap <- newIORef Map.empty
   weakDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
   preDeclEnv <- newIORef Map.empty

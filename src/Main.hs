@@ -141,7 +141,7 @@ execute = do
     globalRemarkHandle <- GlobalRemark.new
     clangHandle <- liftIO $ Clang.new debugHandle
     pathHandle <- liftIO $ Path.new envHandle debugHandle clangHandle
-    artifactHandle <- Artifact.new
+    artifactHandle <- liftIO Artifact.new
     cacheHandle <- Cache.new pathHandle artifactHandle
     loadHandle <- Load.new debugHandle cacheHandle
     localRemarkHandle <- LocalRemark.new

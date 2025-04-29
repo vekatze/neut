@@ -7,12 +7,9 @@ module Move.Context.Artifact
 where
 
 import Control.Monad.IO.Class
-import Control.Monad.Reader (asks)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Move.Context.App (App)
-import Move.Context.App.Internal qualified as App
 import Move.Context.EIO (EIO, raiseCritical')
 import Path
 import Rule.Artifact qualified as A
@@ -23,9 +20,9 @@ newtype Handle
   { artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
   }
 
-new :: App Handle
+new :: IO Handle
 new = do
-  artifactMapRef <- asks App.artifactMap
+  artifactMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert :: Handle -> Path Abs File -> A.ArtifactTime -> IO ()
