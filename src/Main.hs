@@ -138,14 +138,15 @@ execute = do
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
     globalRemarkHandle <- GlobalRemark.new
-    cacheHandle <- Cache.new envHandle debugHandle
+    pathHandle <- Path.new envHandle debugHandle
+    artifactHandle <- Artifact.new
+    cacheHandle <- Cache.new pathHandle artifactHandle
     loadHandle <- Load.new debugHandle cacheHandle
     localRemarkHandle <- LocalRemark.new
     rawImportSummaryHandle <- RawImportSummary.new
     weakDeclHandle <- WeakDecl.new
     initSourceHandle <- InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle
     ensureMainHandle <- EnsureMain.new locatorHandle
-    pathHandle <- Path.new envHandle debugHandle
     parseCoreHandle <- ParseCore.new gensymHandle
     moduleHandle <- Module.new
     getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle envHandle moduleHandle
@@ -167,7 +168,6 @@ execute = do
     weakDefHandle <- WeakDefinition.new gensymHandle
     defHandle <- Definition.new
     ensReflectHandle <- EnsReflect.new gensymHandle
-    artifactHandle <- Artifact.new
     unravelHandle <- Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
     fetchHandle <- Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
     initTargetHandle <- InitTarget.new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefHandle defHandle typeHandle
