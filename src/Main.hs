@@ -150,7 +150,7 @@ execute = do
     weakDeclHandle <- liftIO WeakDecl.new
     let initSourceHandle = InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle
     let ensureMainHandle = EnsureMain.new locatorHandle
-    parseCoreHandle <- ParseCore.new gensymHandle
+    let parseCoreHandle = ParseCore.new gensymHandle
     moduleHandle <- liftIO Module.new
     let getEnabledPresetHandle = GetEnabledPreset.new gensymHandle envHandle moduleHandle
     shiftToLatestHandle <- ShiftToLatest.new antecedentHandle

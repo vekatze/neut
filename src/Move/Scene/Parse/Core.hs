@@ -40,7 +40,6 @@ import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
-import Move.Context.App
 import Move.Context.EIO
 import Move.Language.Utility.Gensym (newTextForHole)
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -68,9 +67,9 @@ newtype Handle
 
 type Parser a = ParsecT Void T.Text EIO a
 
-new :: Gensym.Handle -> App Handle
+new :: Gensym.Handle -> Handle
 new gensymHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 parseFile :: Handle -> Path Abs File -> T.Text -> MustParseWholeFile -> (Handle -> Parser a) -> EIO (C, a)
 parseFile h filePath fileContent mustParseWholeFile parser = do
