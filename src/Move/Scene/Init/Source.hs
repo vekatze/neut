@@ -7,7 +7,6 @@ where
 
 import Control.Monad.IO.Class
 import Move.Context.Alias qualified as Alias
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
@@ -50,9 +49,9 @@ new ::
   TopCandidate.Handle ->
   PreDecl.Handle ->
   WeakDecl.Handle ->
-  App Handle
+  Handle
 new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 initializeForSource :: Handle -> Source.Source -> EIO ()
 initializeForSource h source = do
