@@ -241,7 +241,7 @@ execute = do
           lintHandle <- Lint.new fetchHandle envHandle appHandle checkHandle
           let lspFormatHandle = LSPFormat.new formatHandle
           sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle
-          getSourceHandle <- GetSource.new sourceReflectHandle
+          let getSourceHandle = GetSource.new sourceReflectHandle
           let getLocationTreeHandle = GetLocationTree.new pathHandle
           let findDefHandle = FindDefinition.new getSourceHandle getLocationTreeHandle
           getSymbolInfoHandle <- GetSymbolInfo.new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig
