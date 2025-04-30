@@ -173,7 +173,7 @@ execute = do
     let ensReflectHandle = EnsReflect.new gensymHandle
     unravelHandle <- liftIO $ Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
     let fetchHandle = Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
-    initTargetHandle <- InitTarget.new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefHandle defHandle typeHandle
+    let initTargetHandle = InitTarget.new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefHandle defHandle typeHandle
     let formatHandle = SceneFormat.new unravelHandle loadHandle parseCoreHandle parseHandle envHandle ensReflectHandle getEnabledPresetHandle unusedHandle initTargetHandle initSourceHandle
     let elaborateConfig =
           Elaborate.Config

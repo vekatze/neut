@@ -7,7 +7,6 @@ where
 
 import Control.Monad.IO.Class
 import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App
 import Move.Context.Definition qualified as Definition
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
@@ -34,9 +33,9 @@ new ::
   WeakDefinition.Handle ->
   Definition.Handle ->
   Type.Handle ->
-  App Handle
+  Handle
 new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefinitionHandle definitionHandle typeHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 initializeForTarget :: Handle -> IO ()
 initializeForTarget h = do
