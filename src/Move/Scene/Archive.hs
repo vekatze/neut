@@ -7,7 +7,6 @@ where
 
 import Control.Monad
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -27,9 +26,9 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: External.Handle -> ModuleSave.Handle -> Env.Handle -> App Handle
+new :: External.Handle -> ModuleSave.Handle -> Env.Handle -> Handle
 new externalHandle moduleSaveHandle envHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()
 archive h packageVersion fullEns moduleRootDir contents = do

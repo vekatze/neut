@@ -223,7 +223,7 @@ execute = do
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           packageVersionHandle <- PV.new reportHandle
-          archiveHandle <- SceneArchive.new externalHandle moduleSaveHandle envHandle
+          let archiveHandle = SceneArchive.new externalHandle moduleSaveHandle envHandle
           h <- Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
