@@ -262,7 +262,7 @@ compileForeign h t moduleList = do
 
 compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
 compileForeign' h t currentTime m = do
-  sub <- getForeignSubst h t m
+  sub <- toApp $ getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
   unless (null cmdList) $ do
     toApp $
@@ -316,10 +316,10 @@ naiveReplace sub t =
     (from, to) : rest -> do
       T.replace from to (naiveReplace rest t)
 
-getForeignSubst :: Handle -> Target -> M.Module -> App [(T.Text, T.Text)]
+getForeignSubst :: Handle -> Target -> M.Module -> EIO [(T.Text, T.Text)]
 getForeignSubst h t m = do
   clang <- liftIO Clang.getClang
-  foreignDir <- toApp $ Path.getForeignDir (pathHandle h) t m
+  foreignDir <- Path.getForeignDir (pathHandle h) t m
   return
     [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),
       ("{{clang}}", T.pack clang),
