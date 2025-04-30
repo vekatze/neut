@@ -195,7 +195,7 @@ execute = do
               _weakDefHandle = weakDefHandle,
               _defHandle = defHandle
             }
-    getModuleHandle <- GetModule.new gensymHandle moduleHandle
+    let getModuleHandle = GetModule.new gensymHandle moduleHandle
     let checkHandle = SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle globalRemarkHandle elaborateConfig
     let cleanHandle = SceneClean.new envHandle unravelHandle
     let llvmHandle = LLVM.new envHandle debugHandle pathHandle externalHandle

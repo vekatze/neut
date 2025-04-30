@@ -11,7 +11,6 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Unlift (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Move.Context.App (App)
 import Move.Context.EIO (EIO)
 import Move.Context.Module qualified as Module
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -29,9 +28,9 @@ data Handle
     moduleHandle :: Module.Handle
   }
 
-new :: Gensym.Handle -> Module.Handle -> App Handle
+new :: Gensym.Handle -> Module.Handle -> Handle
 new gensymHandle moduleHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 getModule ::
   Handle ->
