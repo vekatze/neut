@@ -8,9 +8,8 @@ where
 import Control.Monad
 import Control.Monad.Trans
 import Language.LSP.Server
-import Move.Context.AppM (AppM)
 import Move.Context.AppM qualified as AppM
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
@@ -33,12 +32,11 @@ new fetchHandle envHandle appHandle checkHandle = do
 lint :: Handle -> AppLsp () ()
 lint h = do
   flushDiagnosticsBySource maxDiagNum (Just "neut")
-  remarksOrNone <- liftAppM (appHandle h) $ lintM h
+  remarksOrNone <- liftAppM (appHandle h) $ lift (toApp $ lintM h)
   forM_ remarksOrNone report
 
-lintM :: Handle -> AppM [R.Remark]
+lintM :: Handle -> EIO [R.Remark]
 lintM h = do
-  lift $
-    toApp (Env.getMainModule (envHandle h))
-      >>= toApp . Fetch.fetch (fetchHandle h)
-      >> toApp (Check.check (checkHandle h))
+  Env.getMainModule (envHandle h)
+    >>= Fetch.fetch (fetchHandle h)
+    >> Check.check (checkHandle h)
