@@ -14,7 +14,6 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseError)
 import Move.Scene.Term.Refresh qualified as Refresh
@@ -51,9 +50,9 @@ data InnerHandle = InnerHandle
     location :: Hint
   }
 
-new :: Source -> Subst.Handle -> Refresh.Handle -> Definition.Handle -> App Handle
+new :: Source -> Subst.Handle -> Refresh.Handle -> Definition.Handle -> Handle
 new currentSource substHandle refreshHandle defMapHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 new' :: Handle -> Hint -> IO InnerHandle
 new' handle location = do
