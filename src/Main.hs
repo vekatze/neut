@@ -136,7 +136,7 @@ execute = do
     discernHandle <- Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
     initLoggerHandle <- InitLogger.new colorHandle reportHandle envHandle debugHandle
     moduleReflectHandle <- ModuleReflect.new gensymHandle
-    initCompilerHandle <- InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
+    let initCompilerHandle = InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
     globalRemarkHandle <- liftIO GlobalRemark.new

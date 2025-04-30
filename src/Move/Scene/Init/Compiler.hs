@@ -8,7 +8,6 @@ module Move.Scene.Init.Compiler
 where
 
 import Control.Monad.IO.Class
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Init.Logger qualified as InitLogger
@@ -24,9 +23,9 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: InitLogger.Handle -> ModuleReflect.Handle -> Env.Handle -> App Handle
+new :: InitLogger.Handle -> ModuleReflect.Handle -> Env.Handle -> Handle
 new initLoggerHandle moduleReflectHandle envHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 initializeCompiler :: Handle -> Remark.Config -> EIO ()
 initializeCompiler h cfg = do
