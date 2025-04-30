@@ -137,7 +137,7 @@ new cfg gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globa
 buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
   toApp $ Debug.report (debugHandle h) $ "Building: " <> T.pack (show target)
-  target' <- expandClangOptions target
+  target' <- toApp $ expandClangOptions target
   liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
   (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
@@ -338,7 +338,7 @@ attachPrefixPath baseDirPath path =
     Right filePath ->
       Right $ baseDirPath </> filePath
 
-expandClangOptions :: Target -> App Target
+expandClangOptions :: Target -> EIO Target
 expandClangOptions target =
   case target of
     Main concreteTarget ->
@@ -368,6 +368,6 @@ expandClangOptions target =
     PeripheralSingle {} ->
       return target
 
-expandOptions :: [T.Text] -> App [T.Text]
+expandOptions :: [T.Text] -> EIO [T.Text]
 expandOptions foo =
-  map T.strip <$> mapM (toApp . External.expandText) foo
+  map T.strip <$> mapM External.expandText foo
