@@ -12,7 +12,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Console.Report qualified as Report
-import Move.Context.App
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
 import Move.Scene.Module.Save qualified as ModuleSave
@@ -32,9 +31,9 @@ data Handle
     reportHandle :: Report.Handle
   }
 
-new :: ModuleSave.Handle -> Report.Handle -> App Handle
+new :: ModuleSave.Handle -> Report.Handle -> Handle
 new moduleSaveHandle reportHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 createNewProject :: Handle -> T.Text -> Module -> EIO ()
 createNewProject h moduleName newModule = do

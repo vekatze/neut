@@ -227,7 +227,7 @@ execute = do
           h <- Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
-          newHandle <- New.new moduleSaveHandle reportHandle
+          let newHandle = New.new moduleSaveHandle reportHandle
           h <- Create.new initLoggerHandle initCompilerHandle newHandle fetchHandle checkHandle
           Create.create h cfg
         C.Get cfg -> do
