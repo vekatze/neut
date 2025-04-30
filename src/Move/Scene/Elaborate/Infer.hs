@@ -15,11 +15,8 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
-import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
-import Move.Context.Elaborate qualified as Elaborate
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -34,7 +31,6 @@ import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Discern.Name qualified as N
-import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.Scene.WeakTerm.Subst qualified as WT
@@ -61,12 +57,10 @@ import Rule.Key (Key)
 import Rule.LamKind qualified as LK
 import Rule.Literal qualified as L
 import Rule.Magic qualified as M
-import Rule.Module (Module (moduleInlineLimit))
 import Rule.Name qualified as N
 import Rule.OptimizableData qualified as OD
 import Rule.PrimOp
 import Rule.PrimType qualified as PT
-import Rule.Source
 import Rule.Stmt
 import Rule.StmtKind
 import Rule.Term qualified as TM
@@ -98,16 +92,25 @@ data Handle
     varEnv :: BoundVarEnv
   }
 
-new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> Type.Handle -> WeakDecl.Handle -> WeakDefinition.Handle -> App Handle
-new (Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle = do
-  let substHandle = Subst.new gensymHandle
-  source <- toApp $ Env.getCurrentSource envHandle
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  let reduceHandle = Reduce.new substHandle inlineLimit
-  let fillHandle = Fill.new substHandle reduceHandle
-  let unifyHandle = Unify.new reduceHandle substHandle fillHandle typeHandle gensymHandle constraintHandle holeHandle inlineLimit weakDefHandle
+new ::
+  Env.Handle ->
+  Subst.Handle ->
+  Reduce.Handle ->
+  Unify.Handle ->
+  Gensym.Handle ->
+  Discern.Handle ->
+  Constraint.Handle ->
+  WeakType.Handle ->
+  WeakDecl.Handle ->
+  WeakDefinition.Handle ->
+  KeyArg.Handle ->
+  Hole.Handle ->
+  Type.Handle ->
+  OptimizableData.Handle ->
+  Handle
+new envHandle substHandle reduceHandle unifyHandle gensymHandle discernHandle constraintHandle weakTypeHandle weakDeclHandle weakDefHandle keyArgHandle holeHandle typeHandle optDataHandle = do
   let varEnv = []
-  return Handle {..}
+  Handle {..}
 
 inferStmt :: Handle -> WeakStmt -> EIO WeakStmt
 inferStmt h stmt =

@@ -156,7 +156,7 @@ new cfg = do
   let weakDeclHandle = _weakDeclHandle cfg
   let weakDefHandle = _weakDefHandle cfg
   let defHandle = _defHandle cfg
-  handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
+  (Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   let substHandle = Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
@@ -166,9 +166,9 @@ new cfg = do
   let refreshHandle = Refresh.new gensymHandle
   let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle
   let affHandle = EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
-  inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle
   let fillHandle = Fill.new substHandle reduceHandle
   let unifyHandle = Unify.new reduceHandle substHandle fillHandle typeHandle gensymHandle constraintHandle holeHandle inlineLimit weakDefHandle
+  let inferHandle = Infer.new envHandle substHandle reduceHandle unifyHandle gensymHandle discernHandle constraintHandle weakTypeHandle weakDeclHandle weakDefHandle keyArgHandle holeHandle typeHandle optDataHandle
   return $ Handle {..}
 
 overrideHandleEnv :: Handle -> Elaborate.HandleEnv -> Handle
