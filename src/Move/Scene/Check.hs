@@ -102,19 +102,10 @@ _check' h target baseModule = do
     Just (deps, (rootSource, rootCacheOrContent)) -> do
       forM_ deps $ \(source, cacheOrContent) -> do
         checkSource h target source cacheOrContent
-      Just <$> checkSource' h target rootSource rootCacheOrContent
+      Just <$> checkSource h target rootSource rootCacheOrContent
 
-checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO ()
+checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.Handle
 checkSource h target source cacheOrContent = do
-  InitSource.initializeForSource (initSourceHandle h) source
-  Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- liftIO $ Elaborate.new (elaborateConfig h) source
-  void $
-    Parse.parse (parseHandle h) target source cacheOrContent
-      >>= Elaborate.elaborate hElaborate target
-
-checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.Handle
-checkSource' h target source cacheOrContent = do
   InitSource.initializeForSource (initSourceHandle h) source
   Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   h' <- liftIO $ Elaborate.new (elaborateConfig h) source
