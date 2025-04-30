@@ -13,7 +13,6 @@ import Control.Monad.Except (MonadError (throwError), liftEither)
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Ens.Reflect qualified as Ens
@@ -43,9 +42,9 @@ newtype Handle
   { gensymHandle :: Gensym.Handle
   }
 
-new :: Gensym.Handle -> App Handle
+new :: Gensym.Handle -> Handle
 new gensymHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 fromFilePath :: Handle -> Path Abs File -> EIO Module
 fromFilePath h moduleFilePath = do

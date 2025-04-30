@@ -135,7 +135,7 @@ execute = do
     preDeclHandle <- liftIO PreDecl.new
     discernHandle <- Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
     let initLoggerHandle = InitLogger.new colorHandle reportHandle envHandle debugHandle
-    moduleReflectHandle <- ModuleReflect.new gensymHandle
+    let moduleReflectHandle = ModuleReflect.new gensymHandle
     let initCompilerHandle = InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
     externalHandle <- External.new debugHandle
     moduleSaveHandle <- ModuleSave.new debugHandle
