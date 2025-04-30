@@ -16,6 +16,7 @@ import Move.Context.Cache (invalidate)
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, liftMaybe)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg

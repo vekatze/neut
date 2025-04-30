@@ -17,6 +17,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
+import Move.Context.Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -29,7 +30,6 @@ import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Unify qualified as Unify
-import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Discern.Name qualified as N
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -73,44 +73,44 @@ import Rule.WeakTerm.ToText (toText)
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
-data Handle
-  = Handle
-  { envHandle :: Env.Handle,
-    substHandle :: Subst.Handle,
-    reduceHandle :: Reduce.Handle,
-    unifyHandle :: Unify.Handle,
-    gensymHandle :: Gensym.Handle,
-    discernHandle :: Discern.Handle,
-    constraintHandle :: Constraint.Handle,
-    weakTypeHandle :: WeakType.Handle,
-    weakDeclHandle :: WeakDecl.Handle,
-    weakDefHandle :: WeakDefinition.Handle,
-    keyArgHandle :: KeyArg.Handle,
-    holeHandle :: Hole.Handle,
-    typeHandle :: Type.Handle,
-    optDataHandle :: OptimizableData.Handle,
-    varEnv :: BoundVarEnv
-  }
+-- data Handle
+--   = Handle
+--   { envHandle :: Env.Handle,
+--     substHandle :: Subst.Handle,
+--     reduceHandle :: Reduce.Handle,
+--     unifyHandle :: Unify.Handle,
+--     gensymHandle :: Gensym.Handle,
+--     discernHandle :: Discern.Handle,
+--     constraintHandle :: Constraint.Handle,
+--     weakTypeHandle :: WeakType.Handle,
+--     weakDeclHandle :: WeakDecl.Handle,
+--     weakDefHandle :: WeakDefinition.Handle,
+--     keyArgHandle :: KeyArg.Handle,
+--     holeHandle :: Hole.Handle,
+--     typeHandle :: Type.Handle,
+--     optDataHandle :: OptimizableData.Handle,
+--     varEnv :: BoundVarEnv
+--   }
 
-new ::
-  Env.Handle ->
-  Subst.Handle ->
-  Reduce.Handle ->
-  Unify.Handle ->
-  Gensym.Handle ->
-  Discern.Handle ->
-  Constraint.Handle ->
-  WeakType.Handle ->
-  WeakDecl.Handle ->
-  WeakDefinition.Handle ->
-  KeyArg.Handle ->
-  Hole.Handle ->
-  Type.Handle ->
-  OptimizableData.Handle ->
-  Handle
-new envHandle substHandle reduceHandle unifyHandle gensymHandle discernHandle constraintHandle weakTypeHandle weakDeclHandle weakDefHandle keyArgHandle holeHandle typeHandle optDataHandle = do
-  let varEnv = []
-  Handle {..}
+-- new ::
+--   Env.Handle ->
+--   Subst.Handle ->
+--   Reduce.Handle ->
+--   Unify.Handle ->
+--   Gensym.Handle ->
+--   Discern.Handle ->
+--   Constraint.Handle ->
+--   WeakType.Handle ->
+--   WeakDecl.Handle ->
+--   WeakDefinition.Handle ->
+--   KeyArg.Handle ->
+--   Hole.Handle ->
+--   Type.Handle ->
+--   OptimizableData.Handle ->
+--   Handle
+-- new envHandle substHandle reduceHandle unifyHandle gensymHandle discernHandle constraintHandle weakTypeHandle weakDeclHandle weakDefHandle keyArgHandle holeHandle typeHandle optDataHandle = do
+--   let varEnv = []
+--   Handle {..}
 
 inferStmt :: Handle -> WeakStmt -> EIO WeakStmt
 inferStmt h stmt =
@@ -712,7 +712,7 @@ inferClause h cursorType@(_ :< cursorTypeInner) decisionCase = do
 
 resolveType :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 resolveType h t = do
-  sub <- Unify.unifyCurrentConstraints (unifyHandle h)
+  sub <- Unify.unifyCurrentConstraints h
   reduceWeakType' h sub t
 
 reduceWeakType' :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm

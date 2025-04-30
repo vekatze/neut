@@ -22,6 +22,7 @@ import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, raiseError', runEIO)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM

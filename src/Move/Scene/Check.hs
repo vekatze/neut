@@ -13,6 +13,7 @@ import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, collectLogs)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate qualified as Elaborate

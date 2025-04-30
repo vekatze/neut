@@ -23,6 +23,7 @@ import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (run)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Global qualified as Global
@@ -54,8 +55,6 @@ import Move.Scene.Clean qualified as SceneClean
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Comp.Reduce qualified as CompReduce
 import Move.Scene.Comp.Subst qualified as CompSubst
-import Move.Scene.Elaborate (Config (_rawImportSummaryHandle))
-import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.Emit.LowComp qualified as EmitLowComp

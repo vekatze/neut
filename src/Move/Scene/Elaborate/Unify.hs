@@ -1,7 +1,5 @@
 module Move.Scene.Elaborate.Unify
-  ( Handle,
-    new,
-    unify,
+  ( unify,
     unifyCurrentConstraints,
   )
 where
@@ -16,6 +14,7 @@ import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.EIO (EIO, raiseCritical)
+import Move.Context.Elaborate
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -48,34 +47,6 @@ import Rule.WeakTerm.Eq qualified as WT
 import Rule.WeakTerm.FreeVars
 import Rule.WeakTerm.Holes
 import Rule.WeakTerm.ToText
-
-data Handle = Handle
-  { reduceHandle :: Reduce.Handle,
-    substHandle :: Subst.Handle,
-    fillHandle :: Fill.Handle,
-    typeHandle :: Type.Handle,
-    gensymHandle :: Gensym.Handle,
-    constraintHandle :: Constraint.Handle,
-    holeHandle :: Hole.Handle,
-    inlineLimit :: Int,
-    currentStep :: Int,
-    weakDefHandle :: WeakDefinition.Handle
-  }
-
-new ::
-  Reduce.Handle ->
-  Subst.Handle ->
-  Fill.Handle ->
-  Type.Handle ->
-  Gensym.Handle ->
-  Constraint.Handle ->
-  Hole.Handle ->
-  Int ->
-  WeakDefinition.Handle ->
-  Handle
-new reduceHandle substHandle fillHandle typeHandle gensymHandle constraintHandle holeHandle inlineLimit weakDefHandle = do
-  let currentStep = 0
-  Handle {..}
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
 unify h constraintList = do

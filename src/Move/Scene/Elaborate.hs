@@ -1,8 +1,5 @@
 module Move.Scene.Elaborate
-  ( Config (..),
-    Handle,
-    new,
-    getWeakTypeEnv,
+  ( getWeakTypeEnv,
     elaborate,
     elaborate',
   )
@@ -16,19 +13,13 @@ import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
-import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.Cache qualified as Cache
-import Move.Context.Clang qualified as Clang
-import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
-import Move.Context.Elaborate qualified as Elaborate
-import Move.Context.Env qualified as Env
+import Move.Context.Elaborate
 import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Path qualified as Path
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.TopCandidate qualified as TopCandidate
@@ -42,11 +33,7 @@ import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
-import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Term.Inline qualified as Inline
-import Move.Scene.Term.Refresh qualified as Refresh
-import Move.Scene.Term.Subst qualified as TermSubst
-import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
@@ -58,7 +45,7 @@ import Rule.BaseLowType qualified as BLT
 import Rule.BasePrimType qualified as BPT
 import Rule.Binder
 import Rule.Cache qualified as Cache
-import Rule.Const (defaultInlineLimit, holeLiteral)
+import Rule.Const (holeLiteral)
 import Rule.DecisionTree qualified as DT
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
@@ -73,14 +60,12 @@ import Rule.Ident.Reify qualified as Ident
 import Rule.IsConstLike (IsConstLike)
 import Rule.LamKind qualified as LK
 import Rule.Magic qualified as M
-import Rule.Module (Module (moduleInlineLimit))
 import Rule.Prim qualified as P
 import Rule.PrimNumSize
 import Rule.PrimType qualified as PT
 import Rule.PrimValue qualified as PV
 import Rule.Remark qualified as R
 import Rule.Remark qualified as Remark
-import Rule.Source
 import Rule.Stmt
 import Rule.StmtKind
 import Rule.Target
@@ -90,82 +75,6 @@ import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText
-
-data Config = Config
-  { _envHandle :: Env.Handle,
-    _localRemarkHandle :: LocalRemark.Handle,
-    _globalRemarkHandle :: GlobalRemark.Handle,
-    _gensymHandle :: Gensym.Handle,
-    _debugHandle :: Debug.Handle,
-    _optDataHandle :: OptimizableData.Handle,
-    _keyArgHandle :: KeyArg.Handle,
-    _discernHandle :: Discern.Handle,
-    _typeHandle :: Type.Handle,
-    _clangHandle :: Clang.Handle,
-    _rawImportSummaryHandle :: RawImportSummary.Handle,
-    _symLocHandle :: SymLoc.Handle,
-    _pathHandle :: Path.Handle,
-    _topCandidateHandle :: TopCandidate.Handle,
-    _weakDeclHandle :: WeakDecl.Handle,
-    _weakDefHandle :: WeakDefinition.Handle,
-    _defHandle :: Definition.Handle
-  }
-
-data Handle
-  = Handle
-  { reduceHandle :: Reduce.Handle,
-    weakDefHandle :: WeakDefinition.Handle,
-    constraintHandle :: Constraint.Handle,
-    holeHandle :: Hole.Handle,
-    substHandle :: Subst.Handle,
-    typeHandle :: Type.Handle,
-    weakDeclHandle :: WeakDecl.Handle,
-    defHandle :: Definition.Handle,
-    gensymHandle :: Gensym.Handle,
-    keyArgHandle :: KeyArg.Handle,
-    localRemarkHandle :: LocalRemark.Handle,
-    inlineHandle :: Inline.Handle,
-    affHandle :: EnsureAffinity.Handle,
-    inferHandle :: Infer.Handle,
-    unifyHandle :: Unify.Handle,
-    pathHandle :: Path.Handle,
-    symLocHandle :: SymLoc.Handle,
-    topCandidateHandle :: TopCandidate.Handle,
-    rawImportSummaryHandle :: RawImportSummary.Handle,
-    globalRemarkHandle :: GlobalRemark.Handle,
-    weakTypeHandle :: WeakType.Handle,
-    currentSource :: Source
-  }
-
-new :: Config -> Source -> IO Handle
-new cfg currentSource = do
-  (Elaborate.HandleEnv {..}) <- Elaborate.createNewEnv
-  let envHandle = _envHandle cfg
-  let gensymHandle = _gensymHandle cfg
-  let optDataHandle = _optDataHandle cfg
-  let keyArgHandle = _keyArgHandle cfg
-  let discernHandle = _discernHandle cfg
-  let typeHandle = _typeHandle cfg
-  let rawImportSummaryHandle = _rawImportSummaryHandle cfg
-  let symLocHandle = _symLocHandle cfg
-  let pathHandle = _pathHandle cfg
-  let topCandidateHandle = _topCandidateHandle cfg
-  let localRemarkHandle = _localRemarkHandle cfg
-  let globalRemarkHandle = _globalRemarkHandle cfg
-  let weakDeclHandle = _weakDeclHandle cfg
-  let weakDefHandle = _weakDefHandle cfg
-  let defHandle = _defHandle cfg
-  let substHandle = Subst.new gensymHandle
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
-  let reduceHandle = Reduce.new substHandle inlineLimit
-  let termSubstHandle = TermSubst.new gensymHandle
-  let refreshHandle = Refresh.new gensymHandle
-  let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle
-  let affHandle = EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
-  let fillHandle = Fill.new substHandle reduceHandle
-  let unifyHandle = Unify.new reduceHandle substHandle fillHandle typeHandle gensymHandle constraintHandle holeHandle inlineLimit weakDefHandle
-  let inferHandle = Infer.new envHandle substHandle reduceHandle unifyHandle gensymHandle discernHandle constraintHandle weakTypeHandle weakDeclHandle weakDefHandle keyArgHandle holeHandle typeHandle optDataHandle
-  return $ Handle {..}
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =
@@ -187,14 +96,14 @@ elaborate h t cacheOrStmt = do
 analyzeStmtList :: Handle -> [WeakStmt] -> EIO [WeakStmt]
 analyzeStmtList h stmtList = do
   forM stmtList $ \stmt -> do
-    stmt' <- Infer.inferStmt (inferHandle h) stmt
+    stmt' <- Infer.inferStmt h stmt
     insertWeakStmt h stmt'
     return stmt'
 
 synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> EIO [Stmt]
 synthesizeStmtList h t stmtList = do
   -- mapM_ viewStmt stmtList
-  liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify (unifyHandle h) >>= liftIO . Hole.setSubst (holeHandle h)
+  liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
