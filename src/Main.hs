@@ -133,7 +133,7 @@ execute = do
     symLocHandle <- liftIO SymLoc.new
     topCandidateHandle <- liftIO TopCandidate.new
     preDeclHandle <- liftIO PreDecl.new
-    discernHandle <- Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
+    let discernHandle = Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
     let initLoggerHandle = InitLogger.new colorHandle reportHandle envHandle debugHandle
     let moduleReflectHandle = ModuleReflect.new gensymHandle
     let initCompilerHandle = InitCompiler.new initLoggerHandle moduleReflectHandle envHandle

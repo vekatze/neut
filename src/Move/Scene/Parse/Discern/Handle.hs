@@ -9,7 +9,6 @@ module Move.Scene.Parse.Discern.Handle
 where
 
 import Move.Context.Alias qualified as Alias
-import Move.Context.App
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
@@ -58,11 +57,11 @@ new ::
   OptimizableData.Handle ->
   Unused.Handle ->
   Env.Handle ->
-  App Handle
+  Handle
 new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle = do
   let nameEnv = empty
   let currentLayer = 0
-  return $ Handle {..}
+  Handle {..}
 
 extend :: Handle -> Hint -> Ident -> Layer -> VarDefKind -> IO Handle
 extend h m newVar l k = do
