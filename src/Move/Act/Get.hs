@@ -33,9 +33,9 @@ new ::
   Env.Handle ->
   Clean.Handle ->
   Check.Handle ->
-  App Handle
+  Handle
 new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 get :: Handle -> Config -> App ()
 get h cfg = do

@@ -231,7 +231,7 @@ execute = do
           let h = Create.new initLoggerHandle initCompilerHandle newHandle fetchHandle checkHandle
           Create.create h cfg
         C.Get cfg -> do
-          h <- Get.new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle
+          let h = Get.new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle
           Get.get h cfg
         C.Format cfg -> do
           let h = Format.new initCompilerHandle initTargetHandle formatHandle
