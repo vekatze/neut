@@ -5,7 +5,6 @@ module Move.Scene.Source.Reflect
   )
 where
 
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Module.Reflect qualified as Module
@@ -19,9 +18,9 @@ data Handle
     moduleHandle :: Module.Handle
   }
 
-new :: Env.Handle -> Module.Handle -> App Handle
+new :: Env.Handle -> Module.Handle -> Handle
 new envHandle moduleHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 reflect :: Handle -> FilePath -> EIO (Maybe Source)
 reflect h srcPath = do

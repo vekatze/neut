@@ -240,7 +240,7 @@ execute = do
           let appHandle = AppM.new initCompilerHandle globalRemarkHandle
           let lintHandle = Lint.new fetchHandle envHandle appHandle checkHandle
           let lspFormatHandle = LSPFormat.new formatHandle
-          sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle
+          let sourceReflectHandle = SourceReflect.new envHandle moduleReflectHandle
           let getSourceHandle = GetSource.new sourceReflectHandle
           let getLocationTreeHandle = GetLocationTree.new pathHandle
           let findDefHandle = FindDefinition.new getSourceHandle getLocationTreeHandle
