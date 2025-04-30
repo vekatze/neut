@@ -36,9 +36,9 @@ new ::
   Fetch.Handle ->
   Env.Handle ->
   Build.Handle ->
-  App Handle
+  Handle
 new initCompilerHandle fetchHandle envHandle buildHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 zen :: Handle -> Config -> App ()
 zen h cfg = do

@@ -256,5 +256,5 @@ execute = do
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
           let buildHandle = SceneBuild.new (Zen.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
-          h <- Zen.new initCompilerHandle fetchHandle envHandle buildHandle
+          let h = Zen.new initCompilerHandle fetchHandle envHandle buildHandle
           Zen.zen h cfg
