@@ -12,7 +12,6 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.Alias qualified as Alias
-import Move.Context.App
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
@@ -72,9 +71,9 @@ new ::
   RawImportSummary.Handle ->
   Module.Handle ->
   Tag.Handle ->
-  App Handle
+  Handle
 new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
 activateImport h m sourceInfoList = do
