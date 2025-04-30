@@ -18,7 +18,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.LSP.Protocol.Types
 import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
 import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
@@ -65,9 +64,9 @@ new ::
   SourceReflect.Handle ->
   Env.Handle ->
   GAC.Handle ->
-  App Handle
+  Handle
 new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 complete :: Handle -> Uri -> Position -> EIO [CompletionItem]
 complete h uri pos = do
