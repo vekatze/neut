@@ -152,7 +152,7 @@ execute = do
     let ensureMainHandle = EnsureMain.new locatorHandle
     parseCoreHandle <- ParseCore.new gensymHandle
     moduleHandle <- liftIO Module.new
-    getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle envHandle moduleHandle
+    let getEnabledPresetHandle = GetEnabledPreset.new gensymHandle envHandle moduleHandle
     shiftToLatestHandle <- ShiftToLatest.new antecedentHandle
     importHandle <- Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle
     let parseHandle = Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle

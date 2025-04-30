@@ -8,7 +8,6 @@ where
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Module qualified as Module
@@ -25,9 +24,9 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Gensym.Handle -> Env.Handle -> Module.Handle -> App Handle
+new :: Gensym.Handle -> Env.Handle -> Module.Handle -> Handle
 new gensymHandle envHandle moduleHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 getEnabledPreset :: Handle -> Module -> EIO [(T.Text, [BN.BaseName])]
 getEnabledPreset h baseModule = do
