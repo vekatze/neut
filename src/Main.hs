@@ -144,7 +144,7 @@ execute = do
     pathHandle <- liftIO $ Path.new envHandle debugHandle clangHandle
     artifactHandle <- liftIO Artifact.new
     let cacheHandle = Cache.new pathHandle artifactHandle
-    loadHandle <- Load.new debugHandle cacheHandle
+    let loadHandle = Load.new debugHandle cacheHandle
     localRemarkHandle <- liftIO LocalRemark.new
     rawImportSummaryHandle <- liftIO RawImportSummary.new
     weakDeclHandle <- liftIO WeakDecl.new

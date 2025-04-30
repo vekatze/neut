@@ -6,7 +6,6 @@ module Move.Scene.Load
 where
 
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP)
@@ -22,9 +21,9 @@ data Handle
     cacheHandle :: Cache.Handle
   }
 
-new :: Debug.Handle -> Cache.Handle -> App Handle
+new :: Debug.Handle -> Cache.Handle -> Handle
 new debugHandle cacheHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 load :: Handle -> Target -> [Source.Source] -> EIO [(Source.Source, Either Cache.Cache T.Text)]
 load h target dependenceSeq = do
