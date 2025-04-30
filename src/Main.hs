@@ -200,7 +200,7 @@ execute = do
     let cleanHandle = SceneClean.new envHandle unravelHandle
     let llvmHandle = LLVM.new envHandle debugHandle pathHandle externalHandle
     let emitOpHandle = EmitOp.new baseSize
-    emitLowCompHandle <- EmitLowComp.new gensymHandle emitOpHandle
+    let emitLowCompHandle = EmitLowComp.new gensymHandle emitOpHandle
     dataSize <- toApp Env.getDataSize'
     lowCompReduceHandle <- LowCompReduce.new gensymHandle
     let emitHandle = Emit.new gensymHandle emitLowCompHandle lowCompReduceHandle dataSize baseSize

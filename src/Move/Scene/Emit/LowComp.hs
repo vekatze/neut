@@ -10,7 +10,6 @@ import Control.Monad.IO.Class
 import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Move.Context.App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Builder
 import Rule.Ident
@@ -29,13 +28,9 @@ data Handle = Handle
     emitOpHandle :: EmitOp.Handle
   }
 
-new :: Gensym.Handle -> EmitOp.Handle -> App Handle
+new :: Gensym.Handle -> EmitOp.Handle -> Handle
 new gensymHandle emitOpHandle = do
-  return
-    Handle
-      { gensymHandle,
-        emitOpHandle
-      }
+  Handle {..}
 
 data InnerHandle
   = InnerHandle
