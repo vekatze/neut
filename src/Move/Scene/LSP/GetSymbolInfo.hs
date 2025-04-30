@@ -12,7 +12,6 @@ import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App (App)
 import Move.Context.AppM (AppM, liftMaybe)
 import Move.Context.Cache (invalidate)
 import Move.Context.Color qualified as Color
@@ -83,9 +82,9 @@ new ::
   Global.Handle ->
   Discern.Handle ->
   Elaborate.Config ->
-  App Handle
+  Handle
 new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig = do
-  return $ Handle {..}
+  Handle {..}
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
