@@ -161,7 +161,7 @@ new cfg = do
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   let reduceHandle = Reduce.new substHandle inlineLimit
   currentSource <- toApp $ Env.getCurrentSource envHandle
-  termSubstHandle <- TermSubst.new gensymHandle
+  let termSubstHandle = TermSubst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle
   let affHandle = EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
