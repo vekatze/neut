@@ -2,10 +2,9 @@ module Move.Scene.Elaborate
   ( Config (..),
     Handle,
     new,
-    overrideHandleEnv,
+    getWeakTypeEnv,
     elaborate,
     elaborate',
-    elaborateThenInspect,
   )
 where
 
@@ -168,9 +167,9 @@ new cfg currentSource = do
   let inferHandle = Infer.new envHandle substHandle reduceHandle unifyHandle gensymHandle discernHandle constraintHandle weakTypeHandle weakDeclHandle weakDefHandle keyArgHandle holeHandle typeHandle optDataHandle
   return $ Handle {..}
 
-overrideHandleEnv :: Handle -> Elaborate.HandleEnv -> Handle
-overrideHandleEnv h (Elaborate.HandleEnv {..}) =
-  h {constraintHandle, weakTypeHandle, holeHandle}
+getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
+getWeakTypeEnv h =
+  WeakType.get $ weakTypeHandle h
 
 elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> EIO [Stmt]
 elaborate h t cacheOrStmt = do
@@ -184,21 +183,6 @@ elaborate h t cacheOrStmt = do
       return stmtList
     Right stmtList -> do
       analyzeStmtList h stmtList >>= synthesizeStmtList h t
-
---- for LSP
-elaborateThenInspect :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> EIO Elaborate.HandleEnv
-elaborateThenInspect h t cacheOrStmt = do
-  case cacheOrStmt of
-    Left _ -> do
-      liftIO Elaborate.createNewEnv
-    Right stmtList -> do
-      void $ analyzeStmtList h stmtList >>= synthesizeStmtList h t
-      return $
-        Elaborate.HandleEnv
-          { weakTypeHandle = weakTypeHandle h,
-            constraintHandle = constraintHandle h,
-            holeHandle = holeHandle h
-          }
 
 analyzeStmtList :: Handle -> [WeakStmt] -> EIO [WeakStmt]
 analyzeStmtList h stmtList = do

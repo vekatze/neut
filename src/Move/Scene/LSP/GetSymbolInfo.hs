@@ -16,7 +16,6 @@ import Move.Context.Cache (invalidate)
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, liftMaybe)
-import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
@@ -28,9 +27,7 @@ import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
-import Move.Scene.Elaborate (overrideHandleEnv)
 import Move.Scene.Elaborate qualified as Elaborate
-import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.GetSource qualified as GetSource
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -92,27 +89,29 @@ getSymbolInfo ::
 getSymbolInfo h params = do
   source <- GetSource.getSource (getSourceHandle h) params
   invalidate (pathHandle h) Peripheral source
-  handleEnv <- Check.checkSingle (checkHandle h) (sourceModule source) (sourceFilePath source)
-  ((locType, _), _) <- FindDefinition.findDefinition (findDefHandle h) params
-  symbolName <- liftMaybe $ getSymbolLoc locType
-  case symbolName of
-    LT.Local varID _ -> do
-      weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
-      t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift $ liftIO $ Elaborate.new (elaborateConfig h) source
-      let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
-      t' <- Elaborate.elaborate' elaborateHandle' t
-      return $ toText $ weaken t'
-    LT.Global dd isConstLike -> do
-      let typeHandle = Elaborate._typeHandle (elaborateConfig h)
-      t <- lift (liftIO $ Type.lookupMaybe' typeHandle dd) >>= liftMaybe
-      case (t, isConstLike) of
-        (_ :< WT.Pi _ _ cod, True) ->
-          return $ toText cod
-        _ ->
-          return $ toText t
-    LT.Foreign {} -> do
+  handleOrNone <- Check.checkSingle (checkHandle h) (sourceModule source) (sourceFilePath source)
+  case handleOrNone of
+    Nothing ->
       liftMaybe Nothing
+    Just handle -> do
+      ((locType, _), _) <- FindDefinition.findDefinition (findDefHandle h) params
+      symbolName <- liftMaybe $ getSymbolLoc locType
+      case symbolName of
+        LT.Local varID _ -> do
+          weakTypeEnv <- liftIO $ Elaborate.getWeakTypeEnv handle
+          t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
+          t' <- Elaborate.elaborate' handle t
+          return $ toText $ weaken t'
+        LT.Global dd isConstLike -> do
+          let typeHandle = Elaborate._typeHandle (elaborateConfig h)
+          t <- lift (liftIO $ Type.lookupMaybe' typeHandle dd) >>= liftMaybe
+          case (t, isConstLike) of
+            (_ :< WT.Pi _ _ cod, True) ->
+              return $ toText cod
+            _ ->
+              return $ toText t
+        LT.Foreign {} -> do
+          liftMaybe Nothing
 
 getSymbolLoc :: LT.LocType -> Maybe LT.SymbolName
 getSymbolLoc locType =

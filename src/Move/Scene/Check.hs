@@ -13,7 +13,6 @@ import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, collectLogs)
-import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate qualified as Elaborate
@@ -79,7 +78,7 @@ checkAll h = do
   forM_ deps $ \(_, m) -> liftIO $ checkModule h m
   liftIO $ checkModule h (extractModule mainModule)
 
-checkSingle :: Handle -> M.Module -> Path Abs File -> EIO Elaborate.HandleEnv
+checkSingle :: Handle -> M.Module -> Path Abs File -> EIO (Maybe Elaborate.Handle)
 checkSingle h baseModule path = do
   _check' h (PeripheralSingle path) baseModule
 
@@ -92,18 +91,18 @@ _check h target baseModule = do
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       checkSource h target source cacheOrContent
 
-_check' :: Handle -> Target -> M.Module -> EIO Elaborate.HandleEnv
+_check' :: Handle -> Target -> M.Module -> EIO (Maybe Elaborate.Handle)
 _check' h target baseModule = do
   liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
   (_, dependenceSeq) <- Unravel.unravel (unravelHandle h) baseModule target
   contentSeq <- Load.load (loadHandle h) target dependenceSeq
   case unsnoc contentSeq of
     Nothing ->
-      liftIO Elaborate.createNewEnv
+      return Nothing
     Just (deps, (rootSource, rootCacheOrContent)) -> do
       forM_ deps $ \(source, cacheOrContent) -> do
         checkSource h target source cacheOrContent
-      checkSource' h target rootSource rootCacheOrContent
+      Just <$> checkSource' h target rootSource rootCacheOrContent
 
 checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO ()
 checkSource h target source cacheOrContent = do
@@ -114,13 +113,13 @@ checkSource h target source cacheOrContent = do
     Parse.parse (parseHandle h) target source cacheOrContent
       >>= Elaborate.elaborate hElaborate target
 
-checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.HandleEnv
+checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.Handle
 checkSource' h target source cacheOrContent = do
   InitSource.initializeForSource (initSourceHandle h) source
   Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  hElaborate <- liftIO $ Elaborate.new (elaborateConfig h) source
-  Parse.parse (parseHandle h) target source cacheOrContent
-    >>= Elaborate.elaborateThenInspect hElaborate target
+  h' <- liftIO $ Elaborate.new (elaborateConfig h) source
+  void $ Parse.parse (parseHandle h) target source cacheOrContent >>= Elaborate.elaborate h' target
+  return h'
 
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc =

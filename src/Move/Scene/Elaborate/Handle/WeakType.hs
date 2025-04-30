@@ -1,6 +1,7 @@
 module Move.Scene.Elaborate.Handle.WeakType
   ( Handle,
     new,
+    WeakTypeEnv,
     insert,
     lookup,
     lookupMaybe,
