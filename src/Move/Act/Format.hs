@@ -6,7 +6,6 @@ module Move.Act.Format
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
@@ -24,9 +23,9 @@ data Handle
     formatHandle :: Format.Handle
   }
 
-new :: InitCompiler.Handle -> InitTarget.Handle -> Format.Handle -> App Handle
+new :: InitCompiler.Handle -> InitTarget.Handle -> Format.Handle -> Handle
 new initCompilerHandle initTargetHandle formatHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 format :: Handle -> Config -> EIO ()
 format h cfg = do

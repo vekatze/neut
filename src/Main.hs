@@ -234,7 +234,7 @@ execute = do
           h <- Get.new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle
           Get.get h cfg
         C.Format cfg -> do
-          h <- Format.new initCompilerHandle initTargetHandle formatHandle
+          let h = Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg
         C.LSP -> do
           let appHandle = AppM.new initCompilerHandle globalRemarkHandle
