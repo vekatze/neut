@@ -8,7 +8,6 @@ where
 import Control.Monad
 import Control.Monad.Trans
 import Language.LSP.Server
-import Move.Context.App (App)
 import Move.Context.AppM (AppM)
 import Move.Context.AppM qualified as AppM
 import Move.Context.EIO (toApp)
@@ -27,9 +26,9 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: Fetch.Handle -> Env.Handle -> AppM.Handle -> Check.Handle -> App Handle
+new :: Fetch.Handle -> Env.Handle -> AppM.Handle -> Check.Handle -> Handle
 new fetchHandle envHandle appHandle checkHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 lint :: Handle -> AppLsp () ()
 lint h = do
