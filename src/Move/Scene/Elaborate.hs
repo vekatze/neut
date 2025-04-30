@@ -20,7 +20,6 @@ import Data.List (unzip5, zip5)
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
@@ -139,8 +138,9 @@ data Handle
     currentSource :: Source
   }
 
-new :: Config -> Source -> App Handle
+new :: Config -> Source -> IO Handle
 new cfg currentSource = do
+  (Elaborate.HandleEnv {..}) <- Elaborate.createNewEnv
   let envHandle = _envHandle cfg
   let gensymHandle = _gensymHandle cfg
   let optDataHandle = _optDataHandle cfg
@@ -156,7 +156,6 @@ new cfg currentSource = do
   let weakDeclHandle = _weakDeclHandle cfg
   let weakDefHandle = _weakDefHandle cfg
   let defHandle = _defHandle cfg
-  (Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   let substHandle = Subst.new gensymHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
   let reduceHandle = Reduce.new substHandle inlineLimit
