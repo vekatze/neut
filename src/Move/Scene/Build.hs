@@ -125,14 +125,14 @@ new ::
   Install.Handle ->
   Execute.Handle ->
   Elaborate.Config ->
-  App Handle
+  Handle
 new cfg gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig = do
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
   let _installDir = installDir cfg
   let _executeArgs = executeArgs cfg
-  return $ Handle {..}
+  Handle {..}
 
 buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
