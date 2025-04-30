@@ -61,9 +61,9 @@ new ::
   InitTarget.Handle ->
   GlobalRemark.Handle ->
   Elaborate.Config ->
-  App Handle
+  Handle
 new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle globalRemarkHandle elaborateConfig = do
-  return $ Handle {..}
+  Handle {..}
 
 check :: Handle -> App [Remark]
 check h = do

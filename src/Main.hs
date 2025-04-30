@@ -196,7 +196,7 @@ execute = do
               _defHandle = defHandle
             }
     getModuleHandle <- GetModule.new gensymHandle moduleHandle
-    checkHandle <- SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle globalRemarkHandle elaborateConfig
+    let checkHandle = SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle globalRemarkHandle elaborateConfig
     cleanHandle <- SceneClean.new envHandle unravelHandle
     let llvmHandle = LLVM.new envHandle debugHandle pathHandle externalHandle
     let emitOpHandle = EmitOp.new baseSize
