@@ -217,7 +217,7 @@ execute = do
           Build.build h cfg
         C.Check cfg -> do
           let h = Check.new initCompilerHandle fetchHandle envHandle reportHandle checkHandle
-          Check.check h cfg
+          toApp $ Check.check h cfg
         C.Clean cfg -> do
           let h = Clean.new initCompilerHandle cleanHandle
           toApp $ Clean.clean h cfg

@@ -7,8 +7,7 @@ where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Console.Report qualified as Report
-import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
@@ -29,13 +28,13 @@ new :: InitCompiler.Handle -> Fetch.Handle -> Env.Handle -> Report.Handle -> Che
 new initCompilerHandle fetchHandle envHandle reportHandle checkHandle = do
   Handle {..}
 
-check :: Handle -> Config -> App ()
+check :: Handle -> Config -> EIO ()
 check h cfg = do
-  toApp $ setup h cfg
+  setup h cfg
   logs <-
     if shouldCheckAllDependencies cfg
-      then toApp $ Check.checkAll (checkHandle h)
-      else toApp $ Check.check (checkHandle h)
+      then Check.checkAll (checkHandle h)
+      else Check.check (checkHandle h)
   if shouldInsertPadding cfg
     then liftIO $ Report.printErrorList (reportHandle h) logs
     else liftIO $ Report.printErrorList (reportHandle h) $ map Remark.deactivatePadding logs
