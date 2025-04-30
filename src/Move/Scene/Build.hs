@@ -185,7 +185,7 @@ compile h target outputKindList contentSeq = do
           virtualCode <- Lower.lower (lowerHandle h) stmtList'
           emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
-  entryPointVirtualCode <- compileEntryPoint h mainModule target outputKindList
+  entryPointVirtualCode <- toApp $ compileEntryPoint h mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
     toApp $ emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList src code
   mapM_ wait $ entryPointAsync ++ contentAsync
@@ -228,7 +228,7 @@ getEntryPointCompilationCount h mainModule target outputKindList = do
       b <- toApp $ Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
       return $ if b then 0 else 1
 
-compileEntryPoint :: Handle -> M.MainModule -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
+compileEntryPoint :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint h mainModule target outputKindList = do
   case target of
     Peripheral {} ->
@@ -236,11 +236,11 @@ compileEntryPoint h mainModule target outputKindList = do
     PeripheralSingle {} ->
       return []
     Main t -> do
-      b <- toApp $ Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
+      b <- Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
       if b
         then return []
         else do
-          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= toApp . Lower.lowerEntryPoint (lowerHandle h) t
+          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= Lower.lowerEntryPoint (lowerHandle h) t
           return [(Left t, mainVirtualCode)]
 
 execute :: Handle -> Bool -> MainTarget -> [String] -> EIO ()
