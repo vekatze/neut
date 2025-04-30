@@ -4,6 +4,7 @@ module Rule.Error
     newError',
     newCritical,
     newCritical',
+    join,
   )
 where
 
@@ -33,3 +34,7 @@ newCritical m text = do
 newCritical' :: T.Text -> Error
 newCritical' text = do
   MakeError [newRemark' Critical text]
+
+join :: [Error] -> Error
+join es = do
+  MakeError $ concatMap (\(MakeError rs) -> rs) es

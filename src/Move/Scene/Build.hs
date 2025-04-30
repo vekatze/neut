@@ -9,7 +9,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils (nubOrdOn)
-import Data.Either (isLeft)
+import Data.Either (isLeft, lefts)
 import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
@@ -21,12 +21,13 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, forP, raiseError', toApp)
+import Move.Context.EIO (EIO, forP, raiseError', runEIO, toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
+import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
@@ -47,6 +48,7 @@ import Path
 import Path.IO
 import Rule.Cache
 import Rule.ClangOption qualified as CL
+import Rule.Error qualified as E
 import Rule.LowComp qualified as LC
 import Rule.Module qualified as M
 import Rule.ModuleID qualified as MID
@@ -181,15 +183,18 @@ compile h target outputKindList contentSeq = do
     if b
       then do
         stmtList' <- toApp $ Clarify.clarify (clarifyHandle h) stmtList
-        fmap Just $ async $ toApp $ do
+        fmap Just $ async $ liftIO $ runEIO $ do
           virtualCode <- Lower.lower (lowerHandle h) stmtList'
           emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   entryPointVirtualCode <- toApp $ compileEntryPoint h mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-    toApp $ emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList src code
-  mapM_ wait $ entryPointAsync ++ contentAsync
+    liftIO $ runEIO $ emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList src code
+  errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
   liftIO $ ProgressBar.close hp
+  if null errors
+    then return ()
+    else Throw.throw $ E.join errors
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do
