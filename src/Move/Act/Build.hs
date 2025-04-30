@@ -35,9 +35,9 @@ new ::
   Collect.Handle ->
   Env.Handle ->
   Build.Handle ->
-  App Handle
+  Handle
 new initCompilerHandle fetchHandle collectHandle envHandle buildHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 build :: Handle -> Config -> App ()
 build h cfg = do
