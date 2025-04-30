@@ -92,7 +92,7 @@ _check h target baseModule = do
     (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
     contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
-      checkSource h target source cacheOrContent
+      toApp $ checkSource h target source cacheOrContent
 
 _check' :: Handle -> Target -> M.Module -> App Elaborate.HandleEnv
 _check' h target baseModule = do
@@ -104,18 +104,17 @@ _check' h target baseModule = do
       liftIO Elaborate.createNewEnv
     Just (deps, (rootSource, rootCacheOrContent)) -> do
       forM_ deps $ \(source, cacheOrContent) -> do
-        checkSource h target source cacheOrContent
+        toApp $ checkSource h target source cacheOrContent
       toApp $ checkSource' h target rootSource rootCacheOrContent
 
-checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
+checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO ()
 checkSource h target source cacheOrContent = do
-  toApp (InitSource.initializeForSource (initSourceHandle h) source)
-  toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
+  InitSource.initializeForSource (initSourceHandle h) source
+  Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   hElaborate <- liftIO $ Elaborate.new (elaborateConfig h) source
   void $
-    toApp $
-      Parse.parse (parseHandle h) target source cacheOrContent
-        >>= Elaborate.elaborate hElaborate target
+    Parse.parse (parseHandle h) target source cacheOrContent
+      >>= Elaborate.elaborate hElaborate target
 
 checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.HandleEnv
 checkSource' h target source cacheOrContent = do
