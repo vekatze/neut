@@ -5,7 +5,6 @@ module Move.Act.Clean
   )
 where
 
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Scene.Clean qualified as Clean
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -18,9 +17,9 @@ data Handle
     cleanHandle :: Clean.Handle
   }
 
-new :: InitCompiler.Handle -> Clean.Handle -> App Handle
+new :: InitCompiler.Handle -> Clean.Handle -> Handle
 new initCompilerHandle cleanHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 clean :: Handle -> Config -> EIO ()
 clean h cfg = do

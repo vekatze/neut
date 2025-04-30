@@ -219,7 +219,7 @@ execute = do
           let h = Check.new initCompilerHandle fetchHandle envHandle reportHandle checkHandle
           Check.check h cfg
         C.Clean cfg -> do
-          h <- Clean.new initCompilerHandle cleanHandle
+          let h = Clean.new initCompilerHandle cleanHandle
           toApp $ Clean.clean h cfg
         C.Archive cfg -> do
           let packageVersionHandle = PV.new reportHandle
