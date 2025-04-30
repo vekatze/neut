@@ -153,7 +153,7 @@ execute = do
     let parseCoreHandle = ParseCore.new gensymHandle
     moduleHandle <- liftIO Module.new
     let getEnabledPresetHandle = GetEnabledPreset.new gensymHandle envHandle moduleHandle
-    shiftToLatestHandle <- ShiftToLatest.new antecedentHandle
+    let shiftToLatestHandle = ShiftToLatest.new antecedentHandle
     let importHandle = Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle
     let parseHandle = Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
     baseSize <- toApp Env.getBaseSize'

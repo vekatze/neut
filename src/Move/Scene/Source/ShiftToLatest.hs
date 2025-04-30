@@ -11,7 +11,6 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Path
 import Path.IO
@@ -27,9 +26,9 @@ newtype Handle
   { antecedentHandle :: Antecedent.Handle
   }
 
-new :: Antecedent.Handle -> App Handle
+new :: Antecedent.Handle -> Handle
 new antecedentHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 shiftToLatest :: Handle -> Source.Source -> EIO Source.Source
 shiftToLatest h source = do
