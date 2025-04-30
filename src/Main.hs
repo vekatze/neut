@@ -149,7 +149,7 @@ execute = do
     rawImportSummaryHandle <- liftIO RawImportSummary.new
     weakDeclHandle <- liftIO WeakDecl.new
     initSourceHandle <- InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle
-    ensureMainHandle <- EnsureMain.new locatorHandle
+    let ensureMainHandle = EnsureMain.new locatorHandle
     parseCoreHandle <- ParseCore.new gensymHandle
     moduleHandle <- liftIO Module.new
     getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle envHandle moduleHandle

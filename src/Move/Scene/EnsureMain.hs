@@ -7,7 +7,6 @@ where
 
 import Control.Monad
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Locator qualified as Locator
 import Rule.BaseName qualified as BN
@@ -21,9 +20,9 @@ newtype Handle
   { locatorHandle :: Locator.Handle
   }
 
-new :: Locator.Handle -> App Handle
+new :: Locator.Handle -> Handle
 new locatorHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 ensureMain :: Handle -> Target -> Source -> [DD.DefiniteDescription] -> EIO ()
 ensureMain h t source topLevelNameList = do
