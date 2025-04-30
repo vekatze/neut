@@ -7,7 +7,6 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
-import Move.Context.App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
@@ -20,9 +19,9 @@ newtype Handle
   { gensymHandle :: Gensym.Handle
   }
 
-new :: Gensym.Handle -> App Handle
+new :: Gensym.Handle -> Handle
 new gensymHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 refresh :: Handle -> TM.Term -> IO TM.Term
 refresh h term =

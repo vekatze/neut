@@ -162,7 +162,7 @@ new cfg = do
   let reduceHandle = Reduce.new substHandle inlineLimit
   currentSource <- toApp $ Env.getCurrentSource envHandle
   termSubstHandle <- TermSubst.new gensymHandle
-  refreshHandle <- Refresh.new gensymHandle
+  let refreshHandle = Refresh.new gensymHandle
   let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle
   let affHandle = EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle
