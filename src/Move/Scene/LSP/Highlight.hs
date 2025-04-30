@@ -8,7 +8,6 @@ where
 import Control.Lens hiding (Iso, List)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Move.Context.App (App)
 import Move.Context.EIO (EIO)
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
@@ -18,9 +17,9 @@ newtype Handle
   { findDefinitionHandle :: FindDefinition.Handle
   }
 
-new :: FindDefinition.Handle -> App Handle
+new :: FindDefinition.Handle -> Handle
 new findDefinitionHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 highlight ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>

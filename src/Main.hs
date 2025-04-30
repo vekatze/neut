@@ -247,7 +247,7 @@ execute = do
           let getSymbolInfoHandle = GetSymbolInfo.new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig
           let gacHandle = GAC.new shiftToLatestHandle pathHandle
           let completeHandle = Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
-          highlightHandle <- Highlight.new findDefHandle
+          let highlightHandle = Highlight.new findDefHandle
           referencesHandle <- References.new unravelHandle getSourceHandle findDefHandle gacHandle
           let lspHandle = L.new initCompilerHandle appHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
           h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
