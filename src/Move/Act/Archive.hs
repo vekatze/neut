@@ -5,7 +5,6 @@ module Move.Act.Archive
   )
 where
 
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
@@ -27,9 +26,9 @@ data Handle
     archiveHandle :: Archive.Handle
   }
 
-new :: InitCompiler.Handle -> Env.Handle -> PV.Handle -> EnsReflect.Handle -> Archive.Handle -> App Handle
+new :: InitCompiler.Handle -> Env.Handle -> PV.Handle -> EnsReflect.Handle -> Archive.Handle -> Handle
 new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 archive :: Handle -> Config -> EIO ()
 archive h cfg = do

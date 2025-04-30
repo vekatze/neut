@@ -224,7 +224,7 @@ execute = do
         C.Archive cfg -> do
           let packageVersionHandle = PV.new reportHandle
           let archiveHandle = SceneArchive.new externalHandle moduleSaveHandle envHandle
-          h <- Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
+          let h = Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
           toApp $ Archive.archive h cfg
         C.Create cfg -> do
           let newHandle = New.new moduleSaveHandle reportHandle
