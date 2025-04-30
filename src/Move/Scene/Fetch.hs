@@ -16,7 +16,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Console.Report qualified as Report
-import Move.Context.App
 import Move.Context.EIO (EIO, forP, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -59,9 +58,9 @@ new ::
   ModuleReflect.Handle ->
   Report.Handle ->
   Env.Handle ->
-  App Handle
+  Handle
 new ensReflectHandle moduleSaveHandle externalHandle moduleHandle reportHandle envHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()
 fetch h (M.MainModule baseModule) = do
