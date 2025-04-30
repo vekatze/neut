@@ -138,7 +138,7 @@ execute = do
     let moduleReflectHandle = ModuleReflect.new gensymHandle
     let initCompilerHandle = InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
     externalHandle <- External.new debugHandle
-    moduleSaveHandle <- ModuleSave.new debugHandle
+    let moduleSaveHandle = ModuleSave.new debugHandle
     globalRemarkHandle <- liftIO GlobalRemark.new
     clangHandle <- liftIO $ Clang.new debugHandle
     pathHandle <- liftIO $ Path.new envHandle debugHandle clangHandle

@@ -8,7 +8,6 @@ where
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Path qualified as Path
@@ -22,9 +21,9 @@ newtype Handle
   { debugHandle :: Debug.Handle
   }
 
-new :: Debug.Handle -> App Handle
+new :: Debug.Handle -> Handle
 new debugHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 save :: Handle -> Path Abs File -> FullEns -> EIO ()
 save h path (c1, (ens, c2)) = do
