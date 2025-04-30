@@ -6,7 +6,6 @@ module Move.Scene.Init.Logger
 where
 
 import Move.Console.Report qualified as Report
-import Move.Context.App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.Env qualified as Env
@@ -20,9 +19,9 @@ data Handle
     debugHandle :: Debug.Handle
   }
 
-new :: Color.Handle -> Report.Handle -> Env.Handle -> Debug.Handle -> App Handle
+new :: Color.Handle -> Report.Handle -> Env.Handle -> Debug.Handle -> Handle
 new colorHandle reportHandle envHandle debugHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 initializeLogger :: Handle -> Remark.Config -> IO ()
 initializeLogger h cfg = do
