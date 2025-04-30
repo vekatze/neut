@@ -232,7 +232,7 @@ execute = do
           toApp $ Create.create h cfg
         C.Get cfg -> do
           let h = Get.new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle
-          Get.get h cfg
+          toApp $ Get.get h cfg
         C.Format cfg -> do
           let h = Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg

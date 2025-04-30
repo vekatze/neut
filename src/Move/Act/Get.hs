@@ -6,8 +6,7 @@ module Move.Act.Get
 where
 
 import Control.Monad
-import Move.Context.App
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Scene.Check qualified as Check
@@ -37,12 +36,12 @@ new ::
 new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle = do
   Handle {..}
 
-get :: Handle -> Config -> App ()
+get :: Handle -> Config -> EIO ()
 get h cfg = do
-  toApp $ InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
-  mainModule <- toApp $ Env.getMainModule (envHandle h)
-  toApp $ Path.ensureNotInDependencyDir mainModule
-  toApp $ Clean.clean (cleanHandle h)
-  toApp $ Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (moduleURL cfg)
-  toApp $ InitCompiler.initializeCompilerWithPath (initCompilerHandle h) (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
-  void $ toApp $ Check.checkAll (checkHandle h)
+  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+  mainModule <- Env.getMainModule (envHandle h)
+  Path.ensureNotInDependencyDir mainModule
+  Clean.clean (cleanHandle h)
+  Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (moduleURL cfg)
+  InitCompiler.initializeCompilerWithPath (initCompilerHandle h) (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
+  void $ Check.checkAll (checkHandle h)
