@@ -25,7 +25,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (EIO, raiseCritical, raiseError, toApp)
+import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -139,8 +139,8 @@ data Handle
     currentSource :: Source
   }
 
-new :: Config -> App Handle
-new cfg = do
+new :: Config -> Source -> App Handle
+new cfg currentSource = do
   let envHandle = _envHandle cfg
   let gensymHandle = _gensymHandle cfg
   let optDataHandle = _optDataHandle cfg
@@ -158,10 +158,8 @@ new cfg = do
   let defHandle = _defHandle cfg
   (Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
   let substHandle = Subst.new gensymHandle
-  source <- toApp $ Env.getCurrentSource envHandle
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
   let reduceHandle = Reduce.new substHandle inlineLimit
-  currentSource <- toApp $ Env.getCurrentSource envHandle
   let termSubstHandle = TermSubst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle

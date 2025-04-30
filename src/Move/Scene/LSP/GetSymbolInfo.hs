@@ -101,7 +101,7 @@ getSymbolInfo h params = do
     LT.Local varID _ -> do
       weakTypeEnv <- liftIO $ WeakType.get $ Elaborate.weakTypeHandle handleEnv
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-      elaborateHandle <- lift $ Elaborate.new (elaborateConfig h)
+      elaborateHandle <- lift $ Elaborate.new (elaborateConfig h) source
       let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
       t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
       return $ toText $ weaken t'
