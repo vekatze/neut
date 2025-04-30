@@ -7,7 +7,6 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Move.Context.App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Utility qualified as Utility
 import Rule.Comp qualified as C
@@ -23,9 +22,9 @@ data Handle
     utilityHandle :: Utility.Handle
   }
 
-new :: Gensym.Handle -> Utility.Handle -> App Handle
+new :: Gensym.Handle -> Utility.Handle -> Handle
 new gensymHandle utilityHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 linearize ::
   Handle ->
