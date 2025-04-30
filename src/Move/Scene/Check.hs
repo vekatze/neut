@@ -13,7 +13,7 @@ import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Move.Context.App
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, toApp)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Throw qualified as Throw
@@ -105,7 +105,7 @@ _check' h target baseModule = do
     Just (deps, (rootSource, rootCacheOrContent)) -> do
       forM_ deps $ \(source, cacheOrContent) -> do
         checkSource h target source cacheOrContent
-      checkSource' h target rootSource rootCacheOrContent
+      toApp $ checkSource' h target rootSource rootCacheOrContent
 
 checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> App ()
 checkSource h target source cacheOrContent = do
@@ -117,14 +117,13 @@ checkSource h target source cacheOrContent = do
       Parse.parse (parseHandle h) target source cacheOrContent
         >>= Elaborate.elaborate hElaborate target
 
-checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> App Elaborate.HandleEnv
+checkSource' :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.HandleEnv
 checkSource' h target source cacheOrContent = do
-  toApp (InitSource.initializeForSource (initSourceHandle h) source)
-  toApp $ Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
+  InitSource.initializeForSource (initSourceHandle h) source
+  Debug.report (debugHandle h) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   hElaborate <- liftIO $ Elaborate.new (elaborateConfig h) source
-  toApp $
-    Parse.parse (parseHandle h) target source cacheOrContent
-      >>= Elaborate.elaborateThenInspect hElaborate target
+  Parse.parse (parseHandle h) target source cacheOrContent
+    >>= Elaborate.elaborateThenInspect hElaborate target
 
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc =
