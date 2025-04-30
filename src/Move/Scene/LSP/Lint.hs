@@ -6,33 +6,32 @@ module Move.Scene.LSP.Lint
 where
 
 import Control.Monad
-import Control.Monad.Trans
 import Language.LSP.Server
-import Move.Context.AppM qualified as AppM
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
-import Move.Scene.LSP.Util (liftAppM, maxDiagNum, report)
-import Rule.AppLsp
+import Move.Scene.LSP.Util (maxDiagNum, report, runOneShot)
+import Move.Scene.LSP.Util qualified as LspUtil
+import Rule.Lsp
 import Rule.Remark qualified as R
 
 data Handle
   = Handle
   { fetchHandle :: Fetch.Handle,
     envHandle :: Env.Handle,
-    appHandle :: AppM.Handle,
-    checkHandle :: Check.Handle
+    checkHandle :: Check.Handle,
+    lspUtilHandle :: LspUtil.Handle
   }
 
-new :: Fetch.Handle -> Env.Handle -> AppM.Handle -> Check.Handle -> Handle
-new fetchHandle envHandle appHandle checkHandle = do
+new :: Fetch.Handle -> Env.Handle -> Check.Handle -> LspUtil.Handle -> Handle
+new fetchHandle envHandle checkHandle lspUtilHandle = do
   Handle {..}
 
-lint :: Handle -> AppLsp () ()
+lint :: Handle -> Lsp () ()
 lint h = do
   flushDiagnosticsBySource maxDiagNum (Just "neut")
-  remarksOrNone <- liftAppM (appHandle h) $ lift (toApp $ lintM h)
+  remarksOrNone <- runOneShot (lspUtilHandle h) (lintM h)
   forM_ remarksOrNone report
 
 lintM :: Handle -> EIO [R.Remark]

@@ -9,7 +9,6 @@ import Colog.Core (LogAction (..), Severity (..), WithSeverity (..))
 import Colog.Core qualified as L
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
-import Control.Monad.Trans
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Text qualified as T
@@ -18,10 +17,6 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Move.Context.App
-import Move.Context.AppM (liftEIO)
-import Move.Context.AppM qualified as AppM
-import Move.Context.EIO (toApp)
 import Move.Scene.Check qualified as Check
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.LSP.Complete qualified as Complete
@@ -31,16 +26,16 @@ import Move.Scene.LSP.GetSymbolInfo qualified as GetSymbolInfo
 import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.LSP.References qualified as References
-import Move.Scene.LSP.Util (getUriParam, liftAppM)
+import Move.Scene.LSP.Util (getUriParam, runOneShot)
+import Move.Scene.LSP.Util qualified as LspUtil
 import Prettyprinter
-import Rule.AppLsp
 import Rule.CodeAction qualified as CA
+import Rule.Lsp
 import System.IO (stdin, stdout)
 
 data Handle
   = Handle
   { initCompilerHandle :: InitCompiler.Handle,
-    appHandle :: AppM.Handle,
     completeHandle :: Complete.Handle,
     findDefinitionHandle :: FindDefinition.Handle,
     highlightHandle :: Highlight.Handle,
@@ -48,12 +43,12 @@ data Handle
     formatHandle :: Format.Handle,
     checkHandle :: Check.Handle,
     getSymbolInfoHandle :: GetSymbolInfo.Handle,
-    lintHandle :: Lint.Handle
+    lintHandle :: Lint.Handle,
+    lspUtilHandle :: LspUtil.Handle
   }
 
 new ::
   InitCompiler.Handle ->
-  AppM.Handle ->
   Complete.Handle ->
   FindDefinition.Handle ->
   Highlight.Handle ->
@@ -62,8 +57,9 @@ new ::
   Check.Handle ->
   GetSymbolInfo.Handle ->
   Lint.Handle ->
+  LspUtil.Handle ->
   Handle
-new initCompilerHandle appHandle completeHandle findDefinitionHandle highlightHandle referencesHandle formatHandle checkHandle getSymbolInfoHandle lintHandle = do
+new initCompilerHandle completeHandle findDefinitionHandle highlightHandle referencesHandle formatHandle checkHandle getSymbolInfoHandle lintHandle lspUtilHandle = do
   Handle {..}
 
 lsp :: Handle -> IO Int
@@ -76,7 +72,7 @@ lsp h = do
         onConfigChange = const $ return (),
         doInitialize = \env _req -> pure $ Right env,
         staticHandlers = const (handlers h),
-        interpretHandler = \env -> Iso (runApp . runLspT env) liftIO,
+        interpretHandler = \env -> Iso (runLspT env) liftIO,
         options = lspOptions
       }
 
@@ -102,7 +98,7 @@ prettyMsg :: (Pretty a) => WithSeverity a -> Doc ann
 prettyMsg l =
   "[" <> viaShow (L.getSeverity l) <> "] " <> pretty (L.getMsg l)
 
-handlers :: Handle -> Handlers (AppLsp ())
+handlers :: Handle -> Handlers (Lsp ())
 handlers h =
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
@@ -124,25 +120,28 @@ handlers h =
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
-        itemListOrNone <- liftAppM (appHandle h) $ liftEIO $ Complete.complete (completeHandle h) uri pos
-        let itemList = fromMaybe [] itemListOrNone
-        responder $ Right $ InL $ List itemList,
-      requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        mLoc <- liftAppM (appHandle h) $ liftEIO $ FindDefinition.findDefinition (findDefinitionHandle h) (req ^. J.params)
-        case mLoc of
+        itemListOrNone <- runOneShot (lspUtilHandle h) $ Complete.complete (completeHandle h) uri pos
+        case itemListOrNone of
           Nothing ->
+            responder $ Right $ InL $ List []
+          Just itemList ->
+            responder $ Right $ InL $ List itemList,
+      requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
+        mLoc <- runOneShot (lspUtilHandle h) $ FindDefinition.findDefinition (findDefinitionHandle h) (req ^. J.params)
+        case mLoc of
+          Nothing -> do
             responder $ Right $ InR $ InR Null
           Just ((_, loc), _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        highlightsOrNone <- liftAppM (appHandle h) $ liftEIO $ Highlight.highlight (highlightHandle h) $ req ^. J.params
+        highlightsOrNone <- runOneShot (lspUtilHandle h) $ Highlight.highlight (highlightHandle h) $ req ^. J.params
         case highlightsOrNone of
           Nothing ->
             responder $ Right $ InR Null
           Just highlights ->
             responder $ Right $ InL $ List highlights,
       requestHandler SMethod_TextDocumentReferences $ \req responder -> do
-        refsOrNone <- liftAppM (appHandle h) $ liftEIO $ References.references (referencesHandle h) $ req ^. J.params
+        refsOrNone <- runOneShot (lspUtilHandle h) $ References.references (referencesHandle h) $ req ^. J.params
         case refsOrNone of
           Nothing -> do
             responder $ Right $ InR Null
@@ -151,11 +150,11 @@ handlers h =
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         fileOrNone <- getVirtualFile (toNormalizedUri uri)
-        textEditList <- liftAppM (appHandle h) $ liftEIO $ Format.format (formatHandle h) False uri fileOrNone
+        textEditList <- runOneShot (lspUtilHandle h) $ Format.format (formatHandle h) False uri fileOrNone
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        textOrNone <- liftAppM (appHandle h) $ liftEIO $ GetSymbolInfo.getSymbolInfo (getSymbolInfoHandle h) (req ^. J.params)
+        textOrNone <- runOneShot (lspUtilHandle h) $ GetSymbolInfo.getSymbolInfo (getSymbolInfoHandle h) (req ^. J.params)
         case textOrNone of
           Nothing ->
             responder $ Right $ InR Null
@@ -185,7 +184,7 @@ handlers h =
                     responder $ Right $ InR Null
                   Just uri -> do
                     fileOrNone <- getVirtualFile (toNormalizedUri uri)
-                    textEditList <- liftAppM (appHandle h) $ liftEIO $ Format.format (formatHandle h) True uri fileOrNone
+                    textEditList <- runOneShot (lspUtilHandle h) $ Format.format (formatHandle h) True uri fileOrNone
                     let textEditList' = concat $ maybeToList textEditList
                     let editParams =
                           ApplyWorkspaceEditParams (Just CA.minimizeImportsCommandTitle) $
@@ -193,7 +192,7 @@ handlers h =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                _ <- liftAppM (appHandle h) $ lift $ toApp $ Check.checkAll (checkHandle h)
+                _ <- runOneShot (lspUtilHandle h) $ Check.checkAll (checkHandle h)
                 responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null

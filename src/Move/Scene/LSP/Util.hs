@@ -1,5 +1,7 @@
 module Move.Scene.LSP.Util
-  ( liftAppM,
+  ( Handle,
+    new,
+    runOneShot,
     report,
     maxDiagNum,
     getUriParam,
@@ -9,7 +11,6 @@ where
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Trans
 import Data.Aeson.Types qualified as A
 import Data.ByteString qualified as B
 import Data.Function (on)
@@ -23,25 +24,42 @@ import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Move.Context.AppM qualified as AM
+import Move.Context.EIO (EIO, runEIO)
+import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.Parse.Core qualified as Parse
+import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
-import Rule.AppLsp
+import Rule.Config.Remark qualified as Remark
+import Rule.Error qualified as E
 import Rule.FilePos qualified as FP
+import Rule.Lsp
 import Rule.Remark
 import Rule.Remark qualified as R
 
-liftAppM :: AM.Handle -> AM.AppM a -> AppLsp b (Maybe a)
-liftAppM h action = do
-  resultOrRemarks <- lift $ AM.runAppM h action
-  case resultOrRemarks of
+data Handle
+  = Handle
+  { initCompilerHandle :: InitCompiler.Handle,
+    globalRemarkHandle :: GlobalRemark.Handle
+  }
+
+new :: InitCompiler.Handle -> GlobalRemark.Handle -> Handle
+new initCompilerHandle globalRemarkHandle = do
+  Handle {..}
+
+runOneShot :: Handle -> EIO a -> Lsp b (Maybe a)
+runOneShot h comp = do
+  resultOrErr <- liftIO $ runEIO $ do
+    InitCompiler.initializeCompiler (initCompilerHandle h) Remark.lspConfig
+    comp
+  remarkList <- liftIO $ GlobalRemark.get (globalRemarkHandle h)
+  case resultOrErr of
+    Left (E.MakeError logList) -> do
+      report $ logList ++ remarkList
+      return Nothing
     Right result ->
       return $ Just result
-    Left remarks -> do
-      report remarks
-      return Nothing
 
-report :: [R.Remark] -> AppLsp b ()
+report :: [R.Remark] -> Lsp b ()
 report logList = do
   let uriDiagList = mapMaybe remarkToDignostic logList
   let diagGroupList' = NE.groupBy ((==) `on` fst) $ sortBy (compare `on` fst) uriDiagList

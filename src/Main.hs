@@ -16,7 +16,6 @@ import Move.Console.Report qualified as Report
 import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.App
-import Move.Context.AppM qualified as AppM
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
@@ -83,6 +82,7 @@ import Move.Scene.LSP.GetSymbolInfo qualified as GetSymbolInfo
 import Move.Scene.LSP.Highlight qualified as Highlight
 import Move.Scene.LSP.Lint qualified as Lint
 import Move.Scene.LSP.References qualified as References
+import Move.Scene.LSP.Util qualified as LspUtil
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
 import Move.Scene.LowComp.Reduce qualified as LowCompReduce
@@ -237,8 +237,8 @@ execute = do
           let h = Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          let appHandle = AppM.new initCompilerHandle globalRemarkHandle
-          let lintHandle = Lint.new fetchHandle envHandle appHandle checkHandle
+          let lspUtilHandle = LspUtil.new initCompilerHandle globalRemarkHandle
+          let lintHandle = Lint.new fetchHandle envHandle checkHandle lspUtilHandle
           let lspFormatHandle = LSPFormat.new formatHandle
           let sourceReflectHandle = SourceReflect.new envHandle moduleReflectHandle
           let getSourceHandle = GetSource.new sourceReflectHandle
@@ -249,7 +249,7 @@ execute = do
           let completeHandle = Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
           let highlightHandle = Highlight.new findDefHandle
           let referencesHandle = References.new unravelHandle getSourceHandle findDefHandle gacHandle
-          let lspHandle = L.new initCompilerHandle appHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
+          let lspHandle = L.new initCompilerHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle lspUtilHandle
           let h = LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           toApp $ LSP.lsp h
         C.ShowVersion cfg ->
