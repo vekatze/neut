@@ -1,16 +1,15 @@
 module Move.Console.EnsureExecutables (ensureExecutables) where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Context.App
 import Move.Context.Clang qualified as Clang
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.External (ensureExecutable)
 
-ensureExecutables :: App ()
+ensureExecutables :: EIO ()
 ensureExecutables = do
   clang <- liftIO Clang.getClang
   mapM_
-    (toApp . ensureExecutable)
+    ensureExecutable
     [ clang,
       "curl",
       "tar",

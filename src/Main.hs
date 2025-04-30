@@ -209,7 +209,7 @@ execute = do
     executeHandle <- Execute.new envHandle pathHandle externalHandle
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do
-      ensureExecutables
+      toApp ensureExecutables
       case c of
         C.Build cfg -> do
           buildHandle <- SceneBuild.new (Build.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
