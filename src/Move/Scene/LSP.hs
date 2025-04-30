@@ -155,7 +155,7 @@ handlers h =
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        textOrNone <- liftAppM (appHandle h) $ GetSymbolInfo.getSymbolInfo (getSymbolInfoHandle h) (req ^. J.params)
+        textOrNone <- liftAppM (appHandle h) $ liftEIO $ GetSymbolInfo.getSymbolInfo (getSymbolInfoHandle h) (req ^. J.params)
         case textOrNone of
           Nothing ->
             responder $ Right $ InR Null

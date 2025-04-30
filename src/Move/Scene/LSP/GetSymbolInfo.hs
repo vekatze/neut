@@ -12,11 +12,10 @@ import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.AppM (AppM, liftMaybe)
 import Move.Context.Cache (invalidate)
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (EIO, liftMaybe)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
@@ -25,7 +24,6 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
 import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -90,12 +88,12 @@ getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
   Handle ->
   p ->
-  AppM T.Text
+  EIO T.Text
 getSymbolInfo h params = do
-  source <- lift $ toApp $ GetSource.getSource (getSourceHandle h) params
-  lift $ toApp $ invalidate (pathHandle h) Peripheral source
-  handleEnv <- lift $ toApp $ Check.checkSingle (checkHandle h) (sourceModule source) (sourceFilePath source)
-  ((locType, _), _) <- lift $ toApp $ FindDefinition.findDefinition (findDefHandle h) params
+  source <- GetSource.getSource (getSourceHandle h) params
+  invalidate (pathHandle h) Peripheral source
+  handleEnv <- Check.checkSingle (checkHandle h) (sourceModule source) (sourceFilePath source)
+  ((locType, _), _) <- FindDefinition.findDefinition (findDefHandle h) params
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
     LT.Local varID _ -> do
@@ -103,7 +101,7 @@ getSymbolInfo h params = do
       t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
       elaborateHandle <- lift $ liftIO $ Elaborate.new (elaborateConfig h) source
       let elaborateHandle' = overrideHandleEnv elaborateHandle handleEnv
-      t' <- lift (Throw.runMaybe $ toApp $ Elaborate.elaborate' elaborateHandle' t) >>= liftMaybe
+      t' <- Elaborate.elaborate' elaborateHandle' t
       return $ toText $ weaken t'
     LT.Global dd isConstLike -> do
       let typeHandle = Elaborate._typeHandle (elaborateConfig h)
