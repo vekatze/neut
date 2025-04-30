@@ -25,9 +25,9 @@ data Handle
     checkHandle :: Check.Handle
   }
 
-new :: InitCompiler.Handle -> Fetch.Handle -> Env.Handle -> Report.Handle -> Check.Handle -> App Handle
+new :: InitCompiler.Handle -> Fetch.Handle -> Env.Handle -> Report.Handle -> Check.Handle -> Handle
 new initCompilerHandle fetchHandle envHandle reportHandle checkHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 check :: Handle -> Config -> App ()
 check h cfg = do
