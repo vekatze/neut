@@ -229,7 +229,7 @@ execute = do
         C.Create cfg -> do
           let newHandle = New.new moduleSaveHandle reportHandle
           let h = Create.new initLoggerHandle initCompilerHandle newHandle fetchHandle checkHandle
-          Create.create h cfg
+          toApp $ Create.create h cfg
         C.Get cfg -> do
           let h = Get.new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle
           Get.get h cfg
