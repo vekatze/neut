@@ -170,7 +170,7 @@ execute = do
     let lowerHandle = Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
     weakDefHandle <- liftIO $ WeakDefinition.new gensymHandle
     defHandle <- liftIO Definition.new
-    ensReflectHandle <- EnsReflect.new gensymHandle
+    let ensReflectHandle = EnsReflect.new gensymHandle
     unravelHandle <- liftIO $ Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
     let fetchHandle = Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
     initTargetHandle <- InitTarget.new clarifyHandle unravelHandle antecedentHandle globalRemarkHandle weakDefHandle defHandle typeHandle

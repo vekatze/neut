@@ -11,7 +11,6 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Parse
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -29,9 +28,9 @@ newtype Handle
   { gensymHandle :: Gensym.Handle
   }
 
-new :: Gensym.Handle -> App Handle
+new :: Gensym.Handle -> Handle
 new gensymHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 fromFilePath :: Handle -> Path Abs File -> EIO (C, (E.Ens, C))
 fromFilePath h path = do
