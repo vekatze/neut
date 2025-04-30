@@ -12,7 +12,6 @@ import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO, raiseError)
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -45,9 +44,9 @@ data InnerHandle = InnerHandle
     location :: H.Hint
   }
 
-new :: Subst.Handle -> InlineLimit -> App Handle
+new :: Subst.Handle -> InlineLimit -> Handle
 new substHandle inlineLimit = do
-  return Handle {..}
+  Handle {..}
 
 reduce :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 reduce _handle e = do

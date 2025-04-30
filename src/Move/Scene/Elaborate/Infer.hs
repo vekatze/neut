@@ -102,7 +102,7 @@ new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle ke
   substHandle <- Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  reduceHandle <- Reduce.new substHandle inlineLimit
+  let reduceHandle = Reduce.new substHandle inlineLimit
   unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle weakDefHandle
   let varEnv = []
   return Handle {..}

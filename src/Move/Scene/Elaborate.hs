@@ -159,7 +159,7 @@ new cfg = do
   substHandle <- Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  reduceHandle <- Reduce.new substHandle inlineLimit
+  let reduceHandle = Reduce.new substHandle inlineLimit
   currentSource <- toApp $ Env.getCurrentSource envHandle
   termSubstHandle <- TermSubst.new gensymHandle
   refreshHandle <- Refresh.new gensymHandle
