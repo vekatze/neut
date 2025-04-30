@@ -6,7 +6,6 @@ module Move.Scene.Comp.Subst
 where
 
 import Data.IntMap qualified as IntMap
-import Move.Context.App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Comp qualified as C
 import Rule.Ident.Reify qualified as Ident
@@ -16,9 +15,9 @@ newtype Handle
   { gensymHandle :: Gensym.Handle
   }
 
-new :: Gensym.Handle -> App Handle
+new :: Gensym.Handle -> Handle
 new gensymHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 subst :: Handle -> C.SubstValue -> C.Comp -> IO C.Comp
 subst =
