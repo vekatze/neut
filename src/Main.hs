@@ -128,7 +128,7 @@ execute = do
     unusedHandle <- liftIO Unused.new
     globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
     typeHandle <- liftIO Type.new
-    collectHandle <- Collect.new envHandle
+    let collectHandle = Collect.new envHandle
     aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle
     symLocHandle <- liftIO SymLoc.new
     topCandidateHandle <- liftIO TopCandidate.new

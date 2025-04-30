@@ -9,7 +9,6 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Path
@@ -22,9 +21,9 @@ newtype Handle
   { envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> App Handle
+new :: Env.Handle -> Handle
 new envHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 getMainTarget :: Handle -> T.Text -> EIO MainTarget
 getMainTarget h targetName = do
