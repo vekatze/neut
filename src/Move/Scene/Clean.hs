@@ -6,7 +6,6 @@ module Move.Scene.Clean
 where
 
 import Control.Monad
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
@@ -20,9 +19,9 @@ data Handle = Handle
     unravelHandle :: Unravel.Handle
   }
 
-new :: Env.Handle -> Unravel.Handle -> App Handle
+new :: Env.Handle -> Unravel.Handle -> Handle
 new envHandle unravelHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 clean :: Handle -> EIO ()
 clean h = do
