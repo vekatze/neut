@@ -8,7 +8,6 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Console.Report qualified as Report
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Scene.Module.GetExistingVersions
 import Rule.Module (MainModule)
@@ -20,9 +19,9 @@ newtype Handle
   { reportHandle :: Report.Handle
   }
 
-new :: Report.Handle -> App Handle
+new :: Report.Handle -> Handle
 new reportHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 chooseNewVersion :: Handle -> MainModule -> EIO PV.PackageVersion
 chooseNewVersion h mainModule = do
