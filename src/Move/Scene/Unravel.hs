@@ -362,7 +362,7 @@ showCycle' textList =
 getChildren :: Handle -> Source.Source -> EIO [ImportItem]
 getChildren h currentSource = do
   liftIO $ Env.setCurrentSource (envHandle h) currentSource
-  Alias.initializeAliasMap (aliasHandle h)
+  liftIO $ Alias.initializeAliasMap (aliasHandle h) currentSource
   sourceChildrenMap <- liftIO $ getSourceChildrenMap h
   let currentSourceFilePath = Source.sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of

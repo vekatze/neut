@@ -59,7 +59,7 @@ initializeForSource h source = do
   liftIO $ LocalRemark.initialize (localRemarkHandle h)
   liftIO $ Global.initialize (globalHandle h)
   liftIO $ Env.setCurrentSource (envHandle h) source
-  Alias.initializeAliasMap (aliasHandle h)
+  liftIO $ Alias.initializeAliasMap (aliasHandle h) source
   Locator.initialize (locatorHandle h)
   liftIO $ Tag.initialize (tagHandle h)
   liftIO $ RawImportSummary.initialize (rawImportSummaryHandle h)
