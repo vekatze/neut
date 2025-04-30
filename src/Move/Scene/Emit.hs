@@ -13,7 +13,6 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Move.Context.App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Move.Scene.LowComp.Reduce qualified as Reduce
@@ -44,9 +43,9 @@ data Handle
     baseSize :: Int
   }
 
-new :: Gensym.Handle -> EmitLowComp.Handle -> Reduce.Handle -> DataSize -> Int -> App Handle
+new :: Gensym.Handle -> EmitLowComp.Handle -> Reduce.Handle -> DataSize -> Int -> Handle
 new gensymHandle emitLowCompHandle reduceHandle dataSize baseSize = do
-  return $ Handle {..}
+  Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
 emit h lowCode = do
