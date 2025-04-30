@@ -5,7 +5,6 @@ module Move.Scene.LSP.GetLocationTree
   )
 where
 
-import Move.Context.App (App)
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Context.Path qualified as Path
@@ -19,9 +18,9 @@ newtype Handle
   { pathHandle :: Path.Handle
   }
 
-new :: Path.Handle -> App Handle
+new :: Path.Handle -> Handle
 new pathHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 getLocationTree ::
   Handle ->

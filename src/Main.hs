@@ -242,7 +242,7 @@ execute = do
           let lspFormatHandle = LSPFormat.new formatHandle
           sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle
           getSourceHandle <- GetSource.new sourceReflectHandle
-          getLocationTreeHandle <- GetLocationTree.new pathHandle
+          let getLocationTreeHandle = GetLocationTree.new pathHandle
           let findDefHandle = FindDefinition.new getSourceHandle getLocationTreeHandle
           getSymbolInfoHandle <- GetSymbolInfo.new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig
           let gacHandle = GAC.new shiftToLatestHandle pathHandle
