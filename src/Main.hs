@@ -143,7 +143,7 @@ execute = do
     clangHandle <- liftIO $ Clang.new debugHandle
     pathHandle <- liftIO $ Path.new envHandle debugHandle clangHandle
     artifactHandle <- liftIO Artifact.new
-    cacheHandle <- Cache.new pathHandle artifactHandle
+    let cacheHandle = Cache.new pathHandle artifactHandle
     loadHandle <- Load.new debugHandle cacheHandle
     localRemarkHandle <- liftIO LocalRemark.new
     rawImportSummaryHandle <- liftIO RawImportSummary.new

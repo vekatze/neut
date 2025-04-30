@@ -15,7 +15,6 @@ where
 
 import Control.Monad.IO.Class
 import Data.Binary
-import Move.Context.App
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.EIO (EIO)
 import Move.Context.Path (getSourceLocationCachePath)
@@ -35,9 +34,9 @@ data Handle
     artifactHandle :: Artifact.Handle
   }
 
-new :: Path.Handle -> Artifact.Handle -> App Handle
+new :: Path.Handle -> Artifact.Handle -> Handle
 new pathHandle artifactHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 saveCache :: Path.Handle -> Target -> Source.Source -> Cache.Cache -> EIO ()
 saveCache h t source cache = do
