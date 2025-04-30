@@ -7,8 +7,7 @@ module Move.Act.Build
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
@@ -39,12 +38,12 @@ new ::
 new initCompilerHandle fetchHandle collectHandle envHandle buildHandle = do
   Handle {..}
 
-build :: Handle -> Config -> App ()
+build :: Handle -> Config -> EIO ()
 build h cfg = do
-  toApp $ setup h cfg
-  target <- toApp $ Collect.getMainTarget (collectHandle h) $ targetName cfg
-  mainModule <- toApp $ Env.getMainModule (envHandle h)
-  toApp $ Build.buildTarget (buildHandle h) mainModule (Main target)
+  setup h cfg
+  target <- Collect.getMainTarget (collectHandle h) $ targetName cfg
+  mainModule <- Env.getMainModule (envHandle h)
+  Build.buildTarget (buildHandle h) mainModule (Main target)
 
 setup :: Handle -> Config -> EIO ()
 setup h cfg = do

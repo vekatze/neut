@@ -214,7 +214,7 @@ execute = do
         C.Build cfg -> do
           let buildHandle = SceneBuild.new (Build.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
           let h = Build.new initCompilerHandle fetchHandle collectHandle envHandle buildHandle
-          Build.build h cfg
+          toApp $ Build.build h cfg
         C.Check cfg -> do
           let h = Check.new initCompilerHandle fetchHandle envHandle reportHandle checkHandle
           toApp $ Check.check h cfg
