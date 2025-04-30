@@ -206,7 +206,7 @@ execute = do
     let emitHandle = Emit.new gensymHandle emitLowCompHandle lowCompReduceHandle dataSize baseSize
     linkHandle <- Link.new debugHandle envHandle pathHandle colorHandle llvmHandle
     installHandle <- Install.new envHandle pathHandle
-    executeHandle <- Execute.new envHandle pathHandle externalHandle
+    let executeHandle = Execute.new envHandle pathHandle externalHandle
     c <- liftIO OptParse.parseCommand
     Throw.run reportHandle $ do
       toApp ensureExecutables
