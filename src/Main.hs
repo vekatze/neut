@@ -163,7 +163,7 @@ execute = do
     let linearizeHandle = Linearize.new gensymHandle utilityHandle
     let sigmaHandle = Sigma.new gensymHandle linearizeHandle locatorHandle utilityHandle
     compDefHandle <- liftIO CompDefinition.new
-    compReduceHandle <- CompReduce.new compDefHandle compSubstHandle gensymHandle
+    let compReduceHandle = CompReduce.new compDefHandle compSubstHandle gensymHandle
     termSubstHandle <- TermSubst.new gensymHandle
     let clarifyHandle = Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize
     arch <- toApp $ Env.getArch Nothing

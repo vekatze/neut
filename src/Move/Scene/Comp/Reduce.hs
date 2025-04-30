@@ -6,7 +6,6 @@ module Move.Scene.Comp.Reduce
 where
 
 import Data.IntMap qualified as IntMap
-import Move.Context.App
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Comp.Subst qualified as Subst
@@ -24,9 +23,9 @@ data Handle
     gensymHandle :: Gensym.Handle
   }
 
-new :: CompDefinition.Handle -> Subst.Handle -> Gensym.Handle -> App Handle
+new :: CompDefinition.Handle -> Subst.Handle -> Gensym.Handle -> Handle
 new compDefinitionHandle substHandle gensymHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 reduce :: Handle -> C.Comp -> IO C.Comp
 reduce h term =
