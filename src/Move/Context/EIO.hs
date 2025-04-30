@@ -1,5 +1,6 @@
 module Move.Context.EIO
   ( EIO,
+    run,
     runEIO,
     toApp,
     forP,
@@ -16,12 +17,14 @@ import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either (partitionEithers)
 import Data.Text qualified as T
+import Move.Console.Report qualified as Report
 import Move.Context.App (App)
 import Move.Context.Throw (throw)
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Rule.Error qualified as E
 import Rule.Hint (Hint)
 import Rule.Remark qualified as R
+import System.Exit
 import UnliftIO.Async (pooledForConcurrently)
 
 type EIO = ExceptT E.Error IO
@@ -39,6 +42,16 @@ toApp comp = do
 runEIO :: EIO a -> IO (Either E.Error a)
 runEIO =
   runExceptT
+
+run :: Report.Handle -> EIO a -> IO a
+run reportHandle c = do
+  resultOrErr <- liftIO $ runEIO c
+  case resultOrErr of
+    Left (E.MakeError err) -> do
+      liftIO $ Report.printErrorList reportHandle err
+      liftIO $ exitWith (ExitFailure 1)
+    Right result ->
+      return result
 
 collectLogs :: GlobalRemark.Handle -> EIO () -> IO [R.Remark]
 collectLogs h c = do

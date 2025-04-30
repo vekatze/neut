@@ -15,7 +15,6 @@ import Move.Console.EnsureExecutables (ensureExecutables)
 import Move.Console.Report qualified as Report
 import Move.Context.Alias qualified as Alias
 import Move.Context.Antecedent qualified as Antecedent
-import Move.Context.App
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
@@ -23,7 +22,7 @@ import Move.Context.Color qualified as Color
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
-import Move.Context.EIO (toApp)
+import Move.Context.EIO (run)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Global qualified as Global
@@ -38,7 +37,6 @@ import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
-import Move.Context.Throw qualified as Throw
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
 import Move.Context.Unused qualified as Unused
@@ -114,6 +112,7 @@ main = do
 
 execute :: IO ()
 execute = do
+  userCommand <- OptParse.parseCommand
   gensymHandle <- Gensym.new
   envHandle <- Env.new
   tagHandle <- Tag.new
@@ -143,7 +142,7 @@ execute = do
   compDefHandle <- CompDefinition.new
   weakDefHandle <- WeakDefinition.new gensymHandle
   defHandle <- Definition.new
-  runApp $ do
+  run reportHandle $ do
     let collectHandle = Collect.new envHandle
     let discernHandle = Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
     let initLoggerHandle = InitLogger.new colorHandle reportHandle envHandle debugHandle
@@ -160,7 +159,7 @@ execute = do
     let shiftToLatestHandle = ShiftToLatest.new antecedentHandle
     let importHandle = Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle
     let parseHandle = Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
-    baseSize <- toApp Env.getBaseSize'
+    baseSize <- Env.getBaseSize'
     let compSubstHandle = CompSubst.new gensymHandle
     let utilityHandle = ClarifyUtility.new gensymHandle compSubstHandle auxEnvHandle baseSize
     let linearizeHandle = Linearize.new gensymHandle utilityHandle
@@ -168,7 +167,7 @@ execute = do
     let compReduceHandle = CompReduce.new compDefHandle compSubstHandle gensymHandle
     let termSubstHandle = TermSubst.new gensymHandle
     let clarifyHandle = Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize
-    arch <- toApp $ Env.getArch Nothing
+    arch <- Env.getArch Nothing
     let lowerHandle = Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
     let ensReflectHandle = EnsReflect.new gensymHandle
     unravelHandle <- liftIO $ Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
@@ -201,60 +200,58 @@ execute = do
     let llvmHandle = LLVM.new envHandle debugHandle pathHandle externalHandle
     let emitOpHandle = EmitOp.new baseSize
     let emitLowCompHandle = EmitLowComp.new gensymHandle emitOpHandle
-    dataSize <- toApp Env.getDataSize'
+    dataSize <- Env.getDataSize'
     let lowCompReduceHandle = LowCompReduce.new gensymHandle
     let emitHandle = Emit.new gensymHandle emitLowCompHandle lowCompReduceHandle dataSize baseSize
     let linkHandle = Link.new debugHandle envHandle pathHandle colorHandle llvmHandle
     let installHandle = Install.new envHandle pathHandle
     let executeHandle = Execute.new envHandle pathHandle externalHandle
-    c <- liftIO OptParse.parseCommand
-    Throw.run reportHandle $ do
-      toApp ensureExecutables
-      case c of
-        C.Build cfg -> do
-          let buildHandle = SceneBuild.new (Build.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
-          let h = Build.new initCompilerHandle fetchHandle collectHandle envHandle buildHandle
-          toApp $ Build.build h cfg
-        C.Check cfg -> do
-          let h = Check.new initCompilerHandle fetchHandle envHandle reportHandle checkHandle
-          toApp $ Check.check h cfg
-        C.Clean cfg -> do
-          let h = Clean.new initCompilerHandle cleanHandle
-          toApp $ Clean.clean h cfg
-        C.Archive cfg -> do
-          let packageVersionHandle = PV.new reportHandle
-          let archiveHandle = SceneArchive.new externalHandle moduleSaveHandle envHandle
-          let h = Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
-          toApp $ Archive.archive h cfg
-        C.Create cfg -> do
-          let newHandle = New.new moduleSaveHandle reportHandle
-          let h = Create.new initLoggerHandle initCompilerHandle newHandle fetchHandle checkHandle
-          toApp $ Create.create h cfg
-        C.Get cfg -> do
-          let h = Get.new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle
-          toApp $ Get.get h cfg
-        C.Format cfg -> do
-          let h = Format.new initCompilerHandle initTargetHandle formatHandle
-          toApp $ Format.format h cfg
-        C.LSP -> do
-          let lspUtilHandle = LspUtil.new initCompilerHandle globalRemarkHandle
-          let lintHandle = Lint.new fetchHandle envHandle checkHandle lspUtilHandle
-          let lspFormatHandle = LSPFormat.new formatHandle
-          let sourceReflectHandle = SourceReflect.new envHandle moduleReflectHandle
-          let getSourceHandle = GetSource.new sourceReflectHandle
-          let getLocationTreeHandle = GetLocationTree.new pathHandle
-          let findDefHandle = FindDefinition.new getSourceHandle getLocationTreeHandle
-          let getSymbolInfoHandle = GetSymbolInfo.new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig
-          let gacHandle = GAC.new shiftToLatestHandle pathHandle
-          let completeHandle = Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
-          let highlightHandle = Highlight.new findDefHandle
-          let referencesHandle = References.new unravelHandle getSourceHandle findDefHandle gacHandle
-          let lspHandle = L.new initCompilerHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle lspUtilHandle
-          let h = LSP.new initCompilerHandle fetchHandle envHandle lspHandle
-          toApp $ LSP.lsp h
-        C.ShowVersion cfg ->
-          liftIO $ Version.showVersion cfg
-        C.Zen cfg -> do
-          let buildHandle = SceneBuild.new (Zen.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
-          let h = Zen.new initCompilerHandle fetchHandle envHandle buildHandle
-          toApp $ Zen.zen h cfg
+    ensureExecutables
+    case userCommand of
+      C.Build cfg -> do
+        let buildHandle = SceneBuild.new (Build.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
+        let h = Build.new initCompilerHandle fetchHandle collectHandle envHandle buildHandle
+        Build.build h cfg
+      C.Check cfg -> do
+        let h = Check.new initCompilerHandle fetchHandle envHandle reportHandle checkHandle
+        Check.check h cfg
+      C.Clean cfg -> do
+        let h = Clean.new initCompilerHandle cleanHandle
+        Clean.clean h cfg
+      C.Archive cfg -> do
+        let packageVersionHandle = PV.new reportHandle
+        let archiveHandle = SceneArchive.new externalHandle moduleSaveHandle envHandle
+        let h = Archive.new initCompilerHandle envHandle packageVersionHandle ensReflectHandle archiveHandle
+        Archive.archive h cfg
+      C.Create cfg -> do
+        let newHandle = New.new moduleSaveHandle reportHandle
+        let h = Create.new initLoggerHandle initCompilerHandle newHandle fetchHandle checkHandle
+        Create.create h cfg
+      C.Get cfg -> do
+        let h = Get.new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle
+        Get.get h cfg
+      C.Format cfg -> do
+        let h = Format.new initCompilerHandle initTargetHandle formatHandle
+        Format.format h cfg
+      C.LSP -> do
+        let lspUtilHandle = LspUtil.new initCompilerHandle globalRemarkHandle
+        let lintHandle = Lint.new fetchHandle envHandle checkHandle lspUtilHandle
+        let lspFormatHandle = LSPFormat.new formatHandle
+        let sourceReflectHandle = SourceReflect.new envHandle moduleReflectHandle
+        let getSourceHandle = GetSource.new sourceReflectHandle
+        let getLocationTreeHandle = GetLocationTree.new pathHandle
+        let findDefHandle = FindDefinition.new getSourceHandle getLocationTreeHandle
+        let getSymbolInfoHandle = GetSymbolInfo.new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig
+        let gacHandle = GAC.new shiftToLatestHandle pathHandle
+        let completeHandle = Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
+        let highlightHandle = Highlight.new findDefHandle
+        let referencesHandle = References.new unravelHandle getSourceHandle findDefHandle gacHandle
+        let lspHandle = L.new initCompilerHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle lspUtilHandle
+        let h = LSP.new initCompilerHandle fetchHandle envHandle lspHandle
+        LSP.lsp h
+      C.ShowVersion cfg ->
+        liftIO $ Version.showVersion cfg
+      C.Zen cfg -> do
+        let buildHandle = SceneBuild.new (Zen.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
+        let h = Zen.new initCompilerHandle fetchHandle envHandle buildHandle
+        Zen.zen h cfg
