@@ -7,6 +7,7 @@ module Move.Scene.Build
 where
 
 import Control.Monad
+import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Either (isLeft, lefts)
@@ -27,7 +28,6 @@ import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
@@ -144,7 +144,7 @@ buildTarget h (M.MainModule baseModule) target = do
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- toApp $ compileForeign h target moduleList
   contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
-  compile h target' (_outputKindList h) contentSeq
+  toApp $ compile h target' (_outputKindList h) contentSeq
   liftIO $ GlobalRemark.get (globalRemarkHandle h) >>= Report.printRemarkList (reportHandle h)
   case target' of
     Peripheral {} ->
@@ -156,11 +156,11 @@ buildTarget h (M.MainModule baseModule) target = do
       toApp $ execute h (_shouldExecute h) ct (_executeArgs h)
       toApp $ install h (_installDir h) ct
 
-compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
+compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> EIO ()
 compile h target outputKindList contentSeq = do
-  mainModule <- toApp $ Env.getMainModule (envHandle h)
-  bs <- toApp $ mapM (needsCompilation (cacheHandle h) outputKindList . fst) contentSeq
-  c <- toApp $ getEntryPointCompilationCount h mainModule target outputKindList
+  mainModule <- Env.getMainModule (envHandle h)
+  bs <- mapM (needsCompilation (cacheHandle h) outputKindList . fst) contentSeq
+  c <- getEntryPointCompilationCount h mainModule target outputKindList
   let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
   color <- do
@@ -172,29 +172,29 @@ compile h target outputKindList contentSeq = do
   let completedTitle = getCompletedTitle numOfItems
   hp <- liftIO $ ProgressBar.new (envHandle h) (colorHandle h) (Just numOfItems) workingTitle completedTitle color
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
-    toApp (InitSource.initializeForSource (initSourceHandle h) source)
+    InitSource.initializeForSource (initSourceHandle h) source
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-    toApp $ Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
-    cacheOrStmtList <- toApp $ Parse.parse (parseHandle h) target source cacheOrContent
+    Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+    cacheOrStmtList <- Parse.parse (parseHandle h) target source cacheOrContent
     hElaborate <- liftIO $ Elaborate.new (elaborateConfig h) source
-    stmtList <- toApp $ Elaborate.elaborate hElaborate target cacheOrStmtList
-    toApp $ EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
-    b <- toApp $ Cache.needsCompilation (cacheHandle h) outputKindList source
+    stmtList <- Elaborate.elaborate hElaborate target cacheOrStmtList
+    EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
+    b <- Cache.needsCompilation (cacheHandle h) outputKindList source
     if b
       then do
-        stmtList' <- toApp $ Clarify.clarify (clarifyHandle h) stmtList
-        fmap Just $ async $ liftIO $ runEIO $ do
+        stmtList' <- Clarify.clarify (clarifyHandle h) stmtList
+        fmap Just $ liftIO $ async $ runEIO $ do
           virtualCode <- Lower.lower (lowerHandle h) stmtList'
           emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
-  entryPointVirtualCode <- toApp $ compileEntryPoint h mainModule target outputKindList
-  entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> async $ do
-    liftIO $ runEIO $ emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList src code
+  entryPointVirtualCode <- compileEntryPoint h mainModule target outputKindList
+  entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
+    async $ runEIO $ emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList src code
   errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
   liftIO $ ProgressBar.close hp
   if null errors
     then return ()
-    else Throw.throw $ E.join errors
+    else throwError $ E.join errors
 
 getCompletedTitle :: Int -> T.Text
 getCompletedTitle numOfItems = do
