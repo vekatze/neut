@@ -8,7 +8,6 @@ where
 import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Move.Context.App (App)
 import Move.Context.EIO (EIO)
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
@@ -33,9 +32,9 @@ new ::
   GetSource.Handle ->
   FindDefinition.Handle ->
   GAC.Handle ->
-  App Handle
+  Handle
 new unravelHandle getSourceHandle findDefinitionHandle gacHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 references ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>

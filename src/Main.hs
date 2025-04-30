@@ -248,7 +248,7 @@ execute = do
           let gacHandle = GAC.new shiftToLatestHandle pathHandle
           let completeHandle = Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
           let highlightHandle = Highlight.new findDefHandle
-          referencesHandle <- References.new unravelHandle getSourceHandle findDefHandle gacHandle
+          let referencesHandle = References.new unravelHandle getSourceHandle findDefHandle gacHandle
           let lspHandle = L.new initCompilerHandle appHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
           h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
