@@ -161,7 +161,7 @@ execute = do
     auxEnvHandle <- liftIO AuxEnv.new
     utilityHandle <- ClarifyUtility.new gensymHandle compSubstHandle auxEnvHandle baseSize
     let linearizeHandle = Linearize.new gensymHandle utilityHandle
-    sigmaHandle <- Sigma.new gensymHandle linearizeHandle locatorHandle utilityHandle
+    let sigmaHandle = Sigma.new gensymHandle linearizeHandle locatorHandle utilityHandle
     compDefHandle <- liftIO CompDefinition.new
     compReduceHandle <- CompReduce.new compDefHandle compSubstHandle gensymHandle
     termSubstHandle <- TermSubst.new gensymHandle

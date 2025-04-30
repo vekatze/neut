@@ -13,7 +13,6 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Context.App
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Linearize qualified as Linearize
@@ -37,9 +36,9 @@ data Handle
     utilityHandle :: Utility.Handle
   }
 
-new :: Gensym.Handle -> Linearize.Handle -> Locator.Handle -> Utility.Handle -> App Handle
+new :: Gensym.Handle -> Linearize.Handle -> Locator.Handle -> Utility.Handle -> Handle
 new gensymHandle linearizeHandle locatorHandle utilityHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
