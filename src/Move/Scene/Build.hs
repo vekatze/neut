@@ -21,13 +21,12 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, forP, raiseError', toApp)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
-import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
@@ -141,7 +140,7 @@ buildTarget h (M.MainModule baseModule) target = do
   liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
   (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
-  didPerformForeignCompilation <- compileForeign h target moduleList
+  didPerformForeignCompilation <- toApp $ compileForeign h target moduleList
   contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
   compile h target' (_outputKindList h) contentSeq
   liftIO $ GlobalRemark.get (globalRemarkHandle h) >>= Report.printRemarkList (reportHandle h)
@@ -254,45 +253,43 @@ install h filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
   mapM_ (Install.install (installHandle h) target) mDir
 
-compileForeign :: Handle -> Target -> [M.Module] -> App Bool
+compileForeign :: Handle -> Target -> [M.Module] -> EIO Bool
 compileForeign h t moduleList = do
   currentTime <- liftIO getCurrentTime
-  bs <- pooledForConcurrently moduleList (compileForeign' h t currentTime)
+  bs <- forP moduleList (compileForeign' h t currentTime)
   return $ or bs
 
-compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
+compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> EIO Bool
 compileForeign' h t currentTime m = do
-  sub <- toApp $ getForeignSubst h t m
+  sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
   unless (null cmdList) $ do
-    toApp $
-      Debug.report (debugHandle h) $
-        "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
+    Debug.report (debugHandle h) $
+      "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
-  foreignDir <- toApp $ Path.getForeignDir (pathHandle h) t m
-  inputPathList <- fmap concat $ mapM (toApp . getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
+  foreignDir <- Path.getForeignDir (pathHandle h) t m
+  inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
     ensureDir $ parent outputPath
-  inputTime <- toApp $ Path.getLastModifiedSup inputPathList
-  outputTime <- toApp $ Path.getLastModifiedInf outputPathList
+  inputTime <- Path.getLastModifiedSup inputPathList
+  outputTime <- Path.getLastModifiedInf outputPathList
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
-          toApp $
-            Debug.report (debugHandle h) $
-              "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
+          Debug.report (debugHandle h) $
+            "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
       forM_ cmdList' $ \c -> do
-        result <- toApp $ External.runOrFail' (externalHandle h) moduleRootDir $ T.unpack c
+        result <- External.runOrFail' (externalHandle h) moduleRootDir $ T.unpack c
         case result of
           Right _ ->
             return ()
           Left err -> do
             let External.ExternalError {cmd, exitCode, errStr} = err
-            Throw.raiseError' $
+            raiseError' $
               "Foreign compilation of `"
                 <> MID.reify (M.moduleID m)
                 <> "` failed at `"
@@ -305,7 +302,7 @@ compileForeign' h t currentTime m = do
         b <- doesFileExist outputPath
         if b
           then setModificationTime outputPath currentTime
-          else Throw.raiseError' $ "Missing foreign output: " <> T.pack (toFilePath outputPath)
+          else raiseError' $ "Missing foreign output: " <> T.pack (toFilePath outputPath)
       return $ not $ null cmdList
 
 naiveReplace :: [(T.Text, T.Text)] -> T.Text -> T.Text
