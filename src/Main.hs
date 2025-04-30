@@ -114,62 +114,62 @@ main = do
 
 execute :: IO ()
 execute = do
+  gensymHandle <- Gensym.new
+  envHandle <- Env.new
+  tagHandle <- Tag.new
+  locatorHandle <- Locator.new envHandle tagHandle
+  antecedentHandle <- Antecedent.new
+  colorHandle <- Color.new
+  reportHandle <- Report.new colorHandle
+  debugHandle <- Debug.new colorHandle
+  keyArgHandle <- KeyArg.new envHandle
+  optDataHandle <- OptimizableData.new
+  unusedHandle <- Unused.new
+  globalHandle <- Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
+  typeHandle <- Type.new
+  aliasHandle <- Alias.new antecedentHandle locatorHandle envHandle
+  symLocHandle <- SymLoc.new
+  topCandidateHandle <- TopCandidate.new
+  preDeclHandle <- PreDecl.new
+  clangHandle <- Clang.new debugHandle
+  pathHandle <- Path.new envHandle debugHandle clangHandle
+  globalRemarkHandle <- GlobalRemark.new
+  artifactHandle <- Artifact.new
+  localRemarkHandle <- LocalRemark.new
+  rawImportSummaryHandle <- RawImportSummary.new
+  weakDeclHandle <- WeakDecl.new
+  moduleHandle <- Module.new
+  auxEnvHandle <- AuxEnv.new
+  compDefHandle <- CompDefinition.new
+  weakDefHandle <- WeakDefinition.new gensymHandle
+  defHandle <- Definition.new
   runApp $ do
-    gensymHandle <- liftIO Gensym.new
-    envHandle <- liftIO Env.new
-    tagHandle <- liftIO Tag.new
-    locatorHandle <- liftIO $ Locator.new envHandle tagHandle
-    antecedentHandle <- liftIO Antecedent.new
-    colorHandle <- liftIO Color.new
-    reportHandle <- liftIO $ Report.new colorHandle
-    debugHandle <- liftIO $ Debug.new colorHandle
-    keyArgHandle <- liftIO $ KeyArg.new envHandle
-    optDataHandle <- liftIO OptimizableData.new
-    unusedHandle <- liftIO Unused.new
-    globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
-    typeHandle <- liftIO Type.new
     let collectHandle = Collect.new envHandle
-    aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle
-    symLocHandle <- liftIO SymLoc.new
-    topCandidateHandle <- liftIO TopCandidate.new
-    preDeclHandle <- liftIO PreDecl.new
     let discernHandle = Discern.new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle
     let initLoggerHandle = InitLogger.new colorHandle reportHandle envHandle debugHandle
     let moduleReflectHandle = ModuleReflect.new gensymHandle
     let initCompilerHandle = InitCompiler.new initLoggerHandle moduleReflectHandle envHandle
     let externalHandle = External.new debugHandle
     let moduleSaveHandle = ModuleSave.new debugHandle
-    globalRemarkHandle <- liftIO GlobalRemark.new
-    clangHandle <- liftIO $ Clang.new debugHandle
-    pathHandle <- liftIO $ Path.new envHandle debugHandle clangHandle
-    artifactHandle <- liftIO Artifact.new
     let cacheHandle = Cache.new pathHandle artifactHandle
     let loadHandle = Load.new debugHandle cacheHandle
-    localRemarkHandle <- liftIO LocalRemark.new
-    rawImportSummaryHandle <- liftIO RawImportSummary.new
-    weakDeclHandle <- liftIO WeakDecl.new
     let initSourceHandle = InitSource.new unusedHandle localRemarkHandle globalHandle envHandle aliasHandle locatorHandle tagHandle rawImportSummaryHandle symLocHandle topCandidateHandle preDeclHandle weakDeclHandle
     let ensureMainHandle = EnsureMain.new locatorHandle
     let parseCoreHandle = ParseCore.new gensymHandle
-    moduleHandle <- liftIO Module.new
     let getEnabledPresetHandle = GetEnabledPreset.new gensymHandle envHandle moduleHandle
     let shiftToLatestHandle = ShiftToLatest.new antecedentHandle
     let importHandle = Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle
     let parseHandle = Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
     baseSize <- toApp Env.getBaseSize'
     let compSubstHandle = CompSubst.new gensymHandle
-    auxEnvHandle <- liftIO AuxEnv.new
     let utilityHandle = ClarifyUtility.new gensymHandle compSubstHandle auxEnvHandle baseSize
     let linearizeHandle = Linearize.new gensymHandle utilityHandle
     let sigmaHandle = Sigma.new gensymHandle linearizeHandle locatorHandle utilityHandle
-    compDefHandle <- liftIO CompDefinition.new
     let compReduceHandle = CompReduce.new compDefHandle compSubstHandle gensymHandle
     let termSubstHandle = TermSubst.new gensymHandle
     let clarifyHandle = Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize
     arch <- toApp $ Env.getArch Nothing
     let lowerHandle = Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
-    weakDefHandle <- liftIO $ WeakDefinition.new gensymHandle
-    defHandle <- liftIO Definition.new
     let ensReflectHandle = EnsReflect.new gensymHandle
     unravelHandle <- liftIO $ Unravel.new envHandle debugHandle moduleReflectHandle pathHandle shiftToLatestHandle importHandle parseCoreHandle locatorHandle aliasHandle antecedentHandle artifactHandle
     let fetchHandle = Fetch.new ensReflectHandle moduleSaveHandle externalHandle moduleReflectHandle reportHandle envHandle
