@@ -239,7 +239,7 @@ execute = do
         C.LSP -> do
           let appHandle = AppM.new initCompilerHandle globalRemarkHandle
           lintHandle <- Lint.new fetchHandle envHandle appHandle checkHandle
-          lspFormatHandle <- LSPFormat.new formatHandle
+          let lspFormatHandle = LSPFormat.new formatHandle
           sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle
           getSourceHandle <- GetSource.new sourceReflectHandle
           getLocationTreeHandle <- GetLocationTree.new pathHandle

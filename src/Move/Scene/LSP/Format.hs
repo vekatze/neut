@@ -9,7 +9,6 @@ import Control.Monad.Trans
 import Data.Text qualified as T
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS
-import Move.Context.App (App)
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Scene.Format qualified as Format
 import Path
@@ -22,9 +21,9 @@ newtype Handle
   { formatHandle :: Format.Handle
   }
 
-new :: Format.Handle -> App Handle
+new :: Format.Handle -> Handle
 new formatHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]
 format h shouldMinimizeImports uri fileOrNone = do
