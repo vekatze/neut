@@ -8,8 +8,7 @@ where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
-import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Scene.Build qualified as Build
@@ -40,17 +39,16 @@ new ::
 new initCompilerHandle fetchHandle envHandle buildHandle = do
   Handle {..}
 
-zen :: Handle -> Config -> App ()
+zen :: Handle -> Config -> EIO ()
 zen h cfg = do
-  toApp $ setup h cfg
+  setup h cfg
   path <- resolveFile' (filePathString cfg)
-  mainModule <- toApp $ Env.getMainModule (envHandle h)
-  toApp $
-    Build.buildTarget (buildHandle h) mainModule $
-      Main $
-        Zen path $
-          Z.clangOption $
-            moduleZenConfig (extractModule mainModule)
+  mainModule <- Env.getMainModule (envHandle h)
+  Build.buildTarget (buildHandle h) mainModule $
+    Main $
+      Zen path $
+        Z.clangOption $
+          moduleZenConfig (extractModule mainModule)
 
 toBuildConfig :: Config -> Build.Config
 toBuildConfig cfg = do

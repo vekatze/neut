@@ -257,4 +257,4 @@ execute = do
         C.Zen cfg -> do
           let buildHandle = SceneBuild.new (Zen.toBuildConfig cfg) gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig
           let h = Zen.new initCompilerHandle fetchHandle envHandle buildHandle
-          Zen.zen h cfg
+          toApp $ Zen.zen h cfg
