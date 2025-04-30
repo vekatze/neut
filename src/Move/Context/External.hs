@@ -14,7 +14,6 @@ import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Move.Context.App
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Path
@@ -29,9 +28,9 @@ newtype Handle
   { debugHandle :: Debug.Handle
   }
 
-new :: Debug.Handle -> App Handle
+new :: Debug.Handle -> Handle
 new debugHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 run :: Handle -> String -> [String] -> EIO ()
 run h procName optionList = do
