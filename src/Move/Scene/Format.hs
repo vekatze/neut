@@ -9,7 +9,6 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Unused qualified as Unused
@@ -54,9 +53,9 @@ new ::
   Unused.Handle ->
   InitTarget.Handle ->
   InitSource.Handle ->
-  App Handle
+  Handle
 new unravelHandle loadHandle parseCoreHandle parseHandle envHandle ensReflectHandle getEnabledPresetHandle unusedHandle initTargetHandle initSourceHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> EIO T.Text
 format h shouldMinimizeImports fileType path content = do
