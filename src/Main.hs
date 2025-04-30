@@ -237,7 +237,7 @@ execute = do
           h <- Format.new initCompilerHandle initTargetHandle formatHandle
           toApp $ Format.format h cfg
         C.LSP -> do
-          appHandle <- AppM.new initCompilerHandle globalRemarkHandle
+          let appHandle = AppM.new initCompilerHandle globalRemarkHandle
           lintHandle <- Lint.new fetchHandle envHandle appHandle checkHandle
           lspFormatHandle <- LSPFormat.new formatHandle
           sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle

@@ -28,9 +28,9 @@ data Handle
     globalRemarkHandle :: GlobalRemark.Handle
   }
 
-new :: InitCompiler.Handle -> GlobalRemark.Handle -> App Handle
+new :: InitCompiler.Handle -> GlobalRemark.Handle -> Handle
 new initCompilerHandle globalRemarkHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 runAppM :: Handle -> AppM a -> App (Either [R.Remark] a)
 runAppM h action = do
