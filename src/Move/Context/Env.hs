@@ -6,7 +6,6 @@ module Move.Context.Env
     getBaseSize,
     getBaseSize',
     getBuildMode,
-    getCurrentSource,
     getDataSize,
     getDataSize',
     getDataSize'',
@@ -14,7 +13,6 @@ module Move.Context.Env
     getOS,
     getPlatform,
     setBuildMode,
-    setCurrentSource,
     setMainModule,
     setSilentMode,
     getSilentMode,
@@ -35,13 +33,11 @@ import Rule.Hint
 import Rule.Module
 import Rule.OS qualified as O
 import Rule.Platform
-import Rule.Source qualified as Source
 import System.Info qualified as SI
 
 data Handle
   = Handle
   { buildModeRef :: IORef BM.BuildMode,
-    currentSourceRef :: IORef (Maybe Source.Source),
     enableSilentModeRef :: IORef Bool,
     mainModuleRef :: IORef (Maybe MainModule)
   }
@@ -49,7 +45,6 @@ data Handle
 new :: IO Handle
 new = do
   buildModeRef <- newIORef BM.Develop
-  currentSourceRef <- newIORef Nothing
   enableSilentModeRef <- newIORef False
   mainModuleRef <- newIORef Nothing
   return $ Handle {..}
@@ -69,14 +64,6 @@ setBuildMode h =
 getBuildMode :: Handle -> IO BM.BuildMode
 getBuildMode h =
   readIORef (buildModeRef h)
-
-setCurrentSource :: Handle -> Source.Source -> IO ()
-setCurrentSource h s =
-  writeIORef (currentSourceRef h) (Just s)
-
-getCurrentSource :: Handle -> EIO Source.Source
-getCurrentSource h = do
-  readIORefOrFail "currentSource" (currentSourceRef h)
 
 type PathMap = Map.HashMap (Path Abs File) UTCTime
 

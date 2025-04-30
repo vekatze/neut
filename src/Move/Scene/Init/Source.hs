@@ -58,9 +58,8 @@ initializeForSource h source = do
   liftIO $ Unused.initialize (unusedHandle h)
   liftIO $ LocalRemark.initialize (localRemarkHandle h)
   liftIO $ Global.initialize (globalHandle h)
-  liftIO $ Env.setCurrentSource (envHandle h) source
   liftIO $ Alias.initializeAliasMap (aliasHandle h) source
-  Locator.initialize (locatorHandle h)
+  Locator.initialize (locatorHandle h) source
   liftIO $ Tag.initialize (tagHandle h)
   liftIO $ RawImportSummary.initialize (rawImportSummaryHandle h)
   liftIO $ SymLoc.initialize (symLocHandle h)

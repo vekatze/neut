@@ -84,7 +84,7 @@ activateImport h m sourceInfoList = do
         namesInSource <- Global.lookupSourceNameMap (globalHandle h) m path
         liftIO $ Global.activateTopLevelNames (globalHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
-          Alias.activateAliasInfo (aliasHandle h) namesInSource aliasInfo
+          Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
       StaticKey pathList -> do
         forM_ pathList $ \(key, (mKey, path)) -> do
           Locator.activateStaticFile (locatorHandle h) mKey key path

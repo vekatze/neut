@@ -132,13 +132,13 @@ getLatestCompatibleDigest h mc = do
     Nothing ->
       return mc
 
-activateAliasInfo :: Handle -> TopNameMap -> AliasInfo -> EIO ()
-activateAliasInfo h topNameMap aliasInfo =
+activateAliasInfo :: Handle -> Source.Source -> TopNameMap -> AliasInfo -> EIO ()
+activateAliasInfo h source topNameMap aliasInfo =
   case aliasInfo of
     Prefix m from to ->
       registerGlobalLocatorAlias h m from to
     Use shouldUpdateTag strictGlobalLocator localLocatorList ->
-      Locator.activateSpecifiedNames (locatorHandle h) topNameMap shouldUpdateTag strictGlobalLocator localLocatorList
+      Locator.activateSpecifiedNames (locatorHandle h) source topNameMap shouldUpdateTag strictGlobalLocator localLocatorList
 
 initializeAliasMap :: Handle -> Source.Source -> IO ()
 initializeAliasMap h currentSource = do

@@ -72,9 +72,8 @@ new envHandle tagHandle = do
   currentGlobalLocatorRef <- newIORef Nothing
   return $ Handle {..}
 
-initialize :: Handle -> EIO ()
-initialize h = do
-  currentSource <- Env.getCurrentSource (envHandle h)
+initialize :: Handle -> Source.Source -> EIO ()
+initialize h currentSource = do
   cgl <- constructGlobalLocator currentSource
   liftIO $ writeIORef (currentGlobalLocatorRef h) (Just cgl)
   liftIO $ writeIORef (activeGlobalLocatorListRef h) [cgl, SGL.llvmGlobalLocator]
@@ -83,12 +82,13 @@ initialize h = do
 
 activateSpecifiedNames ::
   Handle ->
+  Source.Source ->
   TopNameMap ->
   MustUpdateTag ->
   SGL.StrictGlobalLocator ->
   [(Hint, LL.LocalLocator)] ->
   EIO ()
-activateSpecifiedNames h topNameMap mustUpdateTag sgl lls = do
+activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
   forM_ lls $ \(m, ll) -> do
     let dd = DD.new sgl ll
     case Map.lookup dd topNameMap of
@@ -102,9 +102,8 @@ activateSpecifiedNames h topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                current <- Env.getCurrentSource (envHandle h)
-                let dd' = DD.getReadableDD (Source.sourceModule current) dd
-                let existingDD' = DD.getReadableDD (Source.sourceModule current) existingDD
+                let dd' = DD.getReadableDD (Source.sourceModule currentSource) dd
+                let existingDD' = DD.getReadableDD (Source.sourceModule currentSource) existingDD
                 raiseError m $
                   "This `"
                     <> LL.reify ll

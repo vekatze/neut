@@ -361,7 +361,6 @@ showCycle' textList =
 
 getChildren :: Handle -> Source.Source -> EIO [ImportItem]
 getChildren h currentSource = do
-  liftIO $ Env.setCurrentSource (envHandle h) currentSource
   liftIO $ Alias.initializeAliasMap (aliasHandle h) currentSource
   sourceChildrenMap <- liftIO $ getSourceChildrenMap h
   let currentSourceFilePath = Source.sourceFilePath currentSource
@@ -375,7 +374,7 @@ getChildren h currentSource = do
 
 parseSourceHeader :: Handle -> Source.Source -> EIO [ImportItem]
 parseSourceHeader h currentSource = do
-  Locator.initialize (locatorHandle h)
+  Locator.initialize (locatorHandle h) currentSource
   Parse.ensureExistence currentSource
   let filePath = Source.sourceFilePath currentSource
   fileContent <- liftIO $ Parse.readTextFile filePath
