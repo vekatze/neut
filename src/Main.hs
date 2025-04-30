@@ -250,7 +250,7 @@ execute = do
           let highlightHandle = Highlight.new findDefHandle
           let referencesHandle = References.new unravelHandle getSourceHandle findDefHandle gacHandle
           let lspHandle = L.new initCompilerHandle appHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
-          h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
+          let h = LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg

@@ -28,9 +28,9 @@ new ::
   Fetch.Handle ->
   Env.Handle ->
   L.Handle ->
-  App Handle
+  Handle
 new initCompilerHandle fetchHandle envHandle lspHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 lsp :: Handle -> App ()
 lsp h = do
