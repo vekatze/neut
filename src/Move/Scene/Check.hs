@@ -11,12 +11,10 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO, collectLogs)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
-import Move.Context.Throw qualified as Throw
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Init.Source qualified as InitSource
@@ -65,34 +63,34 @@ new ::
 new debugHandle gensymHandle loadHandle unravelHandle parseHandle moduleHandle envHandle initSourceHandle initTargetHandle globalRemarkHandle elaborateConfig = do
   Handle {..}
 
-check :: Handle -> App [Remark]
+check :: Handle -> EIO [Remark]
 check h = do
-  M.MainModule mainModule <- toApp $ Env.getMainModule (envHandle h)
-  _check h Peripheral mainModule
+  M.MainModule mainModule <- Env.getMainModule (envHandle h)
+  liftIO $ _check h Peripheral mainModule
 
-checkModule :: Handle -> M.Module -> App [Remark]
+checkModule :: Handle -> M.Module -> IO [Remark]
 checkModule h baseModule = do
   _check h Peripheral baseModule
 
-checkAll :: Handle -> App [Remark]
+checkAll :: Handle -> EIO [Remark]
 checkAll h = do
-  mainModule <- toApp $ Env.getMainModule (envHandle h)
-  deps <- toApp $ Module.getAllDependencies (moduleHandle h) mainModule (extractModule mainModule)
-  forM_ deps $ \(_, m) -> checkModule h m
-  checkModule h (extractModule mainModule)
+  mainModule <- Env.getMainModule (envHandle h)
+  deps <- Module.getAllDependencies (moduleHandle h) mainModule (extractModule mainModule)
+  forM_ deps $ \(_, m) -> liftIO $ checkModule h m
+  liftIO $ checkModule h (extractModule mainModule)
 
 checkSingle :: Handle -> M.Module -> Path Abs File -> EIO Elaborate.HandleEnv
 checkSingle h baseModule path = do
   _check' h (PeripheralSingle path) baseModule
 
-_check :: Handle -> Target -> M.Module -> App [Remark]
+_check :: Handle -> Target -> M.Module -> IO [Remark]
 _check h target baseModule = do
-  Throw.collectLogs (globalRemarkHandle h) $ do
+  collectLogs (globalRemarkHandle h) $ do
     liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
-    (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
-    contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
+    (_, dependenceSeq) <- Unravel.unravel (unravelHandle h) baseModule target
+    contentSeq <- Load.load (loadHandle h) target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
-      toApp $ checkSource h target source cacheOrContent
+      checkSource h target source cacheOrContent
 
 _check' :: Handle -> Target -> M.Module -> EIO Elaborate.HandleEnv
 _check' h target baseModule = do

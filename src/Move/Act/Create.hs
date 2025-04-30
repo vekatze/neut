@@ -38,4 +38,4 @@ create h cfg = do
   toApp $ New.createNewProject (newHandle h) (moduleName cfg) newModule
   toApp $ Fetch.insertCoreDependency (fetchHandle h)
   toApp $ InitCompiler.initializeCompilerWithPath (initCompilerHandle h) (moduleLocation newModule) (remarkCfg cfg)
-  void $ Check.checkAll (checkHandle h)
+  void $ toApp $ Check.checkAll (checkHandle h)

@@ -8,6 +8,7 @@ module Move.Context.EIO
     raiseCritical,
     raiseCritical',
     liftMaybe,
+    collectLogs,
   )
 where
 
@@ -17,8 +18,10 @@ import Data.Either (partitionEithers)
 import Data.Text qualified as T
 import Move.Context.App (App)
 import Move.Context.Throw (throw)
+import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Rule.Error qualified as E
 import Rule.Hint (Hint)
+import Rule.Remark qualified as R
 import UnliftIO.Async (pooledForConcurrently)
 
 type EIO = ExceptT E.Error IO
@@ -36,6 +39,16 @@ toApp comp = do
 runEIO :: EIO a -> IO (Either E.Error a)
 runEIO =
   runExceptT
+
+collectLogs :: GlobalRemark.Handle -> EIO () -> IO [R.Remark]
+collectLogs h c = do
+  resultOrErr <- runEIO c
+  remarkList <- liftIO $ GlobalRemark.get h
+  case resultOrErr of
+    Left (E.MakeError logList) ->
+      return $ logList ++ remarkList
+    Right _ ->
+      return remarkList
 
 forP :: [a] -> (a -> EIO b) -> EIO [b]
 forP xs f = do

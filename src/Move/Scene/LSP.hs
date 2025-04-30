@@ -21,6 +21,7 @@ import Language.LSP.Server
 import Move.Context.App
 import Move.Context.AppM (liftEIO)
 import Move.Context.AppM qualified as AppM
+import Move.Context.EIO (toApp)
 import Move.Scene.Check qualified as Check
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.LSP.Complete qualified as Complete
@@ -192,7 +193,7 @@ handlers h =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                _ <- liftAppM (appHandle h) $ lift $ Check.checkAll (checkHandle h)
+                _ <- liftAppM (appHandle h) $ lift $ toApp $ Check.checkAll (checkHandle h)
                 responder $ Right $ InR Null
           _ ->
             responder $ Right $ InR Null

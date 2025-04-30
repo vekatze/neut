@@ -41,4 +41,4 @@ lintM h = do
   lift $
     toApp (Env.getMainModule (envHandle h))
       >>= toApp . Fetch.fetch (fetchHandle h)
-      >> Check.check (checkHandle h)
+      >> toApp (Check.check (checkHandle h))

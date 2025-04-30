@@ -34,8 +34,8 @@ check h cfg = do
   toApp $ setup h cfg
   logs <-
     if shouldCheckAllDependencies cfg
-      then Check.checkAll (checkHandle h)
-      else Check.check (checkHandle h)
+      then toApp $ Check.checkAll (checkHandle h)
+      else toApp $ Check.check (checkHandle h)
   if shouldInsertPadding cfg
     then liftIO $ Report.printErrorList (reportHandle h) logs
     else liftIO $ Report.printErrorList (reportHandle h) $ map Remark.deactivatePadding logs

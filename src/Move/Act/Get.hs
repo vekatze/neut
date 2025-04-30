@@ -45,4 +45,4 @@ get h cfg = do
   toApp $ Clean.clean (cleanHandle h)
   toApp $ Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (moduleURL cfg)
   toApp $ InitCompiler.initializeCompilerWithPath (initCompilerHandle h) (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
-  void $ Check.checkAll (checkHandle h)
+  void $ toApp $ Check.checkAll (checkHandle h)
