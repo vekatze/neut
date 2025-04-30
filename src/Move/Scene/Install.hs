@@ -7,7 +7,6 @@ where
 
 import Control.Monad
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
@@ -23,9 +22,9 @@ data Handle
     pathHandle :: Path.Handle
   }
 
-new :: Env.Handle -> Path.Handle -> App Handle
+new :: Env.Handle -> Path.Handle -> Handle
 new envHandle pathHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()
 install h targetOrZen dir = do
