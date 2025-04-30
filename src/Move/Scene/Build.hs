@@ -158,7 +158,7 @@ compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -
 compile h target outputKindList contentSeq = do
   mainModule <- toApp $ Env.getMainModule (envHandle h)
   bs <- toApp $ mapM (needsCompilation (cacheHandle h) outputKindList . fst) contentSeq
-  c <- getEntryPointCompilationCount h mainModule target outputKindList
+  c <- toApp $ getEntryPointCompilationCount h mainModule target outputKindList
   let numOfItems = length (filter id bs) + c
   currentTime <- liftIO getCurrentTime
   color <- do
@@ -217,7 +217,7 @@ emit h he progressBar currentTime target outputKindList src code = do
   LLVM.emit he target clangOptions currentTime src outputKindList llvmIR'
   liftIO $ ProgressBar.increment progressBar
 
-getEntryPointCompilationCount :: Handle -> M.MainModule -> Target -> [OutputKind] -> App Int
+getEntryPointCompilationCount :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO Int
 getEntryPointCompilationCount h mainModule target outputKindList = do
   case target of
     Peripheral {} ->
@@ -225,7 +225,7 @@ getEntryPointCompilationCount h mainModule target outputKindList = do
     PeripheralSingle {} ->
       return 0
     Main t -> do
-      b <- toApp $ Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
+      b <- Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
       return $ if b then 0 else 1
 
 compileEntryPoint :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO [(Either MainTarget Source, LC.LowCode)]
