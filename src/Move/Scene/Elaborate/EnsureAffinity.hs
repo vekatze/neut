@@ -13,7 +13,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
-import Move.Context.App (App)
 import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
@@ -71,9 +70,9 @@ new ::
   Type.Handle ->
   WeakDefinition.Handle ->
   OptimizableData.Handle ->
-  App Handle
+  Handle
 new reduceHandle substHandle typeHandle weakDefHandle optDataHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 ensureAffinity :: Handle -> TM.Term -> EIO [R.Remark]
 ensureAffinity h e = do
