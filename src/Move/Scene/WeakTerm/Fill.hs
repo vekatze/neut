@@ -11,7 +11,6 @@ import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -32,9 +31,9 @@ data Handle
     reduceHandle :: Reduce.Handle
   }
 
-new :: Subst.Handle -> Reduce.Handle -> App Handle
+new :: Subst.Handle -> Reduce.Handle -> Handle
 new substHandle reduceHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 fill :: Handle -> HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 fill h holeSubst term =

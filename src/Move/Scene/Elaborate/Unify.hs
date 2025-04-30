@@ -75,7 +75,7 @@ new Elaborate.HandleEnv {..} envHandle gensymHandle typeHandle weakDefHandle = d
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   reduceHandle <- Reduce.new substHandle inlineLimit
-  fillHandle <- Fill.new substHandle reduceHandle
+  let fillHandle = Fill.new substHandle reduceHandle
   let currentStep = 0
   return $ Handle {..}
 
