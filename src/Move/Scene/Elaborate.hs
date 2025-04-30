@@ -48,6 +48,7 @@ import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Term.Inline qualified as Inline
 import Move.Scene.Term.Refresh qualified as Refresh
 import Move.Scene.Term.Subst qualified as TermSubst
+import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
@@ -166,7 +167,8 @@ new cfg = do
   let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle
   let affHandle = EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
   inferHandle <- Infer.new handleEnv envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle
-  unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle weakDefHandle
+  let fillHandle = Fill.new substHandle reduceHandle
+  let unifyHandle = Unify.new reduceHandle substHandle fillHandle typeHandle gensymHandle constraintHandle holeHandle inlineLimit weakDefHandle
   return $ Handle {..}
 
 overrideHandleEnv :: Handle -> Elaborate.HandleEnv -> Handle

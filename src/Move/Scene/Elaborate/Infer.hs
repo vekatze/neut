@@ -34,6 +34,7 @@ import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Discern.Name qualified as N
+import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.Scene.WeakTerm.Subst qualified as WT
@@ -98,12 +99,13 @@ data Handle
   }
 
 new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> Type.Handle -> WeakDecl.Handle -> WeakDefinition.Handle -> App Handle
-new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle = do
+new (Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle = do
   let substHandle = Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   let reduceHandle = Reduce.new substHandle inlineLimit
-  unifyHandle <- Unify.new handleEnv envHandle gensymHandle typeHandle weakDefHandle
+  let fillHandle = Fill.new substHandle reduceHandle
+  let unifyHandle = Unify.new reduceHandle substHandle fillHandle typeHandle gensymHandle constraintHandle holeHandle inlineLimit weakDefHandle
   let varEnv = []
   return Handle {..}
 

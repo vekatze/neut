@@ -13,13 +13,9 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (partition)
-import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Move.Context.App
-import Move.Context.EIO (EIO, raiseCritical, toApp)
-import Move.Context.Elaborate qualified as Elaborate
-import Move.Context.Env qualified as Env
+import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -31,7 +27,6 @@ import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
-import Rule.Const
 import Rule.Constraint (SuspendedConstraint)
 import Rule.Constraint qualified as C
 import Rule.DefiniteDescription qualified as DD
@@ -42,10 +37,8 @@ import Rule.HoleSubst qualified as HS
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.LamKind qualified as LK
-import Rule.Module
 import Rule.PrimType qualified as PT
 import Rule.Remark qualified as R
-import Rule.Source
 import Rule.Stuck qualified as Stuck
 import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
@@ -69,15 +62,20 @@ data Handle = Handle
     weakDefHandle :: WeakDefinition.Handle
   }
 
-new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> Type.Handle -> WeakDefinition.Handle -> App Handle
-new Elaborate.HandleEnv {..} envHandle gensymHandle typeHandle weakDefHandle = do
-  let substHandle = Subst.new gensymHandle
-  source <- toApp $ Env.getCurrentSource envHandle
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
-  let reduceHandle = Reduce.new substHandle inlineLimit
-  let fillHandle = Fill.new substHandle reduceHandle
+new ::
+  Reduce.Handle ->
+  Subst.Handle ->
+  Fill.Handle ->
+  Type.Handle ->
+  Gensym.Handle ->
+  Constraint.Handle ->
+  Hole.Handle ->
+  Int ->
+  WeakDefinition.Handle ->
+  Handle
+new reduceHandle substHandle fillHandle typeHandle gensymHandle constraintHandle holeHandle inlineLimit weakDefHandle = do
   let currentStep = 0
-  return $ Handle {..}
+  Handle {..}
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
 unify h constraintList = do
