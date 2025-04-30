@@ -81,7 +81,7 @@ checkAll h = do
   forM_ deps $ \(_, m) -> checkModule h m
   checkModule h (extractModule mainModule)
 
-checkSingle :: Handle -> M.Module -> Path Abs File -> App Elaborate.HandleEnv
+checkSingle :: Handle -> M.Module -> Path Abs File -> EIO Elaborate.HandleEnv
 checkSingle h baseModule path = do
   _check' h (PeripheralSingle path) baseModule
 
@@ -94,18 +94,18 @@ _check h target baseModule = do
     forM_ contentSeq $ \(source, cacheOrContent) -> do
       toApp $ checkSource h target source cacheOrContent
 
-_check' :: Handle -> Target -> M.Module -> App Elaborate.HandleEnv
+_check' :: Handle -> Target -> M.Module -> EIO Elaborate.HandleEnv
 _check' h target baseModule = do
   liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
-  (_, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target
-  contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
+  (_, dependenceSeq) <- Unravel.unravel (unravelHandle h) baseModule target
+  contentSeq <- Load.load (loadHandle h) target dependenceSeq
   case unsnoc contentSeq of
     Nothing ->
       liftIO Elaborate.createNewEnv
     Just (deps, (rootSource, rootCacheOrContent)) -> do
       forM_ deps $ \(source, cacheOrContent) -> do
-        toApp $ checkSource h target source cacheOrContent
-      toApp $ checkSource' h target rootSource rootCacheOrContent
+        checkSource h target source cacheOrContent
+      checkSource' h target rootSource rootCacheOrContent
 
 checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO ()
 checkSource h target source cacheOrContent = do

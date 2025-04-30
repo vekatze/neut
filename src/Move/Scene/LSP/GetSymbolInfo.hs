@@ -94,7 +94,7 @@ getSymbolInfo ::
 getSymbolInfo h params = do
   source <- lift $ toApp $ GetSource.getSource (getSourceHandle h) params
   lift $ toApp $ invalidate (pathHandle h) Peripheral source
-  handleEnv <- lift $ Check.checkSingle (checkHandle h) (sourceModule source) (sourceFilePath source)
+  handleEnv <- lift $ toApp $ Check.checkSingle (checkHandle h) (sourceModule source) (sourceFilePath source)
   ((locType, _), _) <- lift $ toApp $ FindDefinition.findDefinition (findDefHandle h) params
   symbolName <- liftMaybe $ getSymbolLoc locType
   case symbolName of
