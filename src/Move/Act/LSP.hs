@@ -7,8 +7,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Context.App
-import Move.Context.EIO (EIO, toApp)
+import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Compiler qualified as InitCompiler
@@ -32,9 +31,9 @@ new ::
 new initCompilerHandle fetchHandle envHandle lspHandle = do
   Handle {..}
 
-lsp :: Handle -> App ()
+lsp :: Handle -> EIO ()
 lsp h = do
-  toApp $ setup h
+  setup h
   void $ liftIO $ L.lsp (lspHandle h)
 
 setup :: Handle -> EIO ()

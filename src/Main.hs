@@ -251,7 +251,7 @@ execute = do
           let referencesHandle = References.new unravelHandle getSourceHandle findDefHandle gacHandle
           let lspHandle = L.new initCompilerHandle appHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
           let h = LSP.new initCompilerHandle fetchHandle envHandle lspHandle
-          LSP.lsp h
+          toApp $ LSP.lsp h
         C.ShowVersion cfg ->
           liftIO $ Version.showVersion cfg
         C.Zen cfg -> do
