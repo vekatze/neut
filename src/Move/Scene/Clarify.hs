@@ -14,7 +14,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Move.Context.App
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.EIO (EIO, raiseCritical, raiseCritical')
 import Move.Context.Locator qualified as Locator
@@ -88,9 +87,9 @@ new ::
   Subst.Handle ->
   CompDefinition.Handle ->
   Int ->
-  App Handle
+  Handle
 new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle reduceHandle substHandle compDefHandle baseSize = do
-  return $ Handle {..}
+  Handle {..}
 
 clarify :: Handle -> [Stmt] -> EIO [C.CompStmt]
 clarify h stmtList = do

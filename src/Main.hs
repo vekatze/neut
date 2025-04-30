@@ -165,7 +165,7 @@ execute = do
     compDefHandle <- liftIO CompDefinition.new
     compReduceHandle <- CompReduce.new compDefHandle compSubstHandle gensymHandle
     termSubstHandle <- TermSubst.new gensymHandle
-    clarifyHandle <- Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize
+    let clarifyHandle = Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize
     arch <- toApp $ Env.getArch Nothing
     lowerHandle <- Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
     weakDefHandle <- liftIO $ WeakDefinition.new gensymHandle
