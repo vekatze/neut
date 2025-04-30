@@ -249,7 +249,7 @@ execute = do
           completeHandle <- Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
           highlightHandle <- Highlight.new findDefHandle
           referencesHandle <- References.new unravelHandle getSourceHandle findDefHandle gacHandle
-          lspHandle <- L.new initCompilerHandle appHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
+          let lspHandle = L.new initCompilerHandle appHandle completeHandle findDefHandle highlightHandle referencesHandle lspFormatHandle checkHandle getSymbolInfoHandle lintHandle
           h <- LSP.new initCompilerHandle fetchHandle envHandle lspHandle
           LSP.lsp h
         C.ShowVersion cfg ->

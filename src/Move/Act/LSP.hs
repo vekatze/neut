@@ -6,6 +6,7 @@ module Move.Act.LSP
 where
 
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.App
 import Move.Context.EIO (EIO, toApp)
 import Move.Context.Env qualified as Env
@@ -34,7 +35,7 @@ new initCompilerHandle fetchHandle envHandle lspHandle = do
 lsp :: Handle -> App ()
 lsp h = do
   toApp $ setup h
-  void $ L.lsp (lspHandle h)
+  void $ liftIO $ L.lsp (lspHandle h)
 
 setup :: Handle -> EIO ()
 setup h = do

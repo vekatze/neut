@@ -61,24 +61,23 @@ new ::
   Check.Handle ->
   GetSymbolInfo.Handle ->
   Lint.Handle ->
-  App Handle
+  Handle
 new initCompilerHandle appHandle completeHandle findDefinitionHandle highlightHandle referencesHandle formatHandle checkHandle getSymbolInfoHandle lintHandle = do
-  return $ Handle {..}
+  Handle {..}
 
-lsp :: Handle -> App Int
+lsp :: Handle -> IO Int
 lsp h = do
-  liftIO $
-    runQuietServer $
-      ServerDefinition
-        { defaultConfig = (),
-          parseConfig = const $ const $ Right (),
-          configSection = "Neut",
-          onConfigChange = const $ return (),
-          doInitialize = \env _req -> pure $ Right env,
-          staticHandlers = const (handlers h),
-          interpretHandler = \env -> Iso (runApp . runLspT env) liftIO,
-          options = lspOptions
-        }
+  runQuietServer $
+    ServerDefinition
+      { defaultConfig = (),
+        parseConfig = const $ const $ Right (),
+        configSection = "Neut",
+        onConfigChange = const $ return (),
+        doInitialize = \env _req -> pure $ Right env,
+        staticHandlers = const (handlers h),
+        interpretHandler = \env -> Iso (runApp . runLspT env) liftIO,
+        options = lspOptions
+      }
 
 runQuietServer :: ServerDefinition config -> IO Int
 runQuietServer def = do
