@@ -6,7 +6,6 @@ module Move.Scene.LowComp.Reduce
 where
 
 import Data.IntMap qualified as IntMap
-import Move.Context.App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Ident.Reify qualified as Ident
 import Rule.LowComp qualified as LC
@@ -17,9 +16,9 @@ newtype Handle
   { gensymHandle :: Gensym.Handle
   }
 
-new :: Gensym.Handle -> App Handle
+new :: Gensym.Handle -> Handle
 new gensymHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 reduce :: Handle -> SubstLowComp -> LC.Comp -> IO LC.Comp
 reduce h sub lowComp = do

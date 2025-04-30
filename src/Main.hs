@@ -202,7 +202,7 @@ execute = do
     let emitOpHandle = EmitOp.new baseSize
     let emitLowCompHandle = EmitLowComp.new gensymHandle emitOpHandle
     dataSize <- toApp Env.getDataSize'
-    lowCompReduceHandle <- LowCompReduce.new gensymHandle
+    let lowCompReduceHandle = LowCompReduce.new gensymHandle
     let emitHandle = Emit.new gensymHandle emitLowCompHandle lowCompReduceHandle dataSize baseSize
     let linkHandle = Link.new debugHandle envHandle pathHandle colorHandle llvmHandle
     let installHandle = Install.new envHandle pathHandle
