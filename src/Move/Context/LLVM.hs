@@ -13,7 +13,6 @@ import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
-import Move.Context.App
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
@@ -39,9 +38,9 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Debug.Handle -> Path.Handle -> External.Handle -> App Handle
+new :: Env.Handle -> Debug.Handle -> Path.Handle -> External.Handle -> Handle
 new envHandle debugHandle pathHandle externalHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 type ClangOption = String
 
