@@ -64,7 +64,6 @@ data Handle
     envHandle :: Env.Handle
   }
 
--- temporary
 new :: Env.Handle -> Debug.Handle -> Clang.Handle -> IO Handle
 new envHandle debugHandle clangHandle = do
   cacheRef <- newIORef Nothing
