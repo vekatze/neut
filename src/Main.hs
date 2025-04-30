@@ -245,7 +245,7 @@ execute = do
           getLocationTreeHandle <- GetLocationTree.new pathHandle
           let findDefHandle = FindDefinition.new getSourceHandle getLocationTreeHandle
           getSymbolInfoHandle <- GetSymbolInfo.new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig
-          gacHandle <- GAC.new shiftToLatestHandle pathHandle
+          let gacHandle = GAC.new shiftToLatestHandle pathHandle
           let completeHandle = Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
           highlightHandle <- Highlight.new findDefHandle
           referencesHandle <- References.new unravelHandle getSourceHandle findDefHandle gacHandle
