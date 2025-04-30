@@ -22,7 +22,6 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.EIO (EIO)
 import Move.Context.Locator qualified as Locator
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -70,9 +69,9 @@ data InnerHandle = InnerHandle
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: Arch -> Int -> Gensym.Handle -> Locator.Handle -> Reduce.Handle -> Subst.Handle -> App Handle
+new :: Arch -> Int -> Gensym.Handle -> Locator.Handle -> Reduce.Handle -> Subst.Handle -> Handle
 new arch baseSize gensymHandle locatorHandle reduceHandle substHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 makeBaseDeclEnv :: Arch -> DN.DeclEnv
 makeBaseDeclEnv arch = do

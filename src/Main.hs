@@ -167,7 +167,7 @@ execute = do
     termSubstHandle <- TermSubst.new gensymHandle
     let clarifyHandle = Clarify.new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle compReduceHandle termSubstHandle compDefHandle baseSize
     arch <- toApp $ Env.getArch Nothing
-    lowerHandle <- Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
+    let lowerHandle = Lower.new arch baseSize gensymHandle locatorHandle compReduceHandle compSubstHandle
     weakDefHandle <- liftIO $ WeakDefinition.new gensymHandle
     defHandle <- liftIO Definition.new
     ensReflectHandle <- EnsReflect.new gensymHandle
