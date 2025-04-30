@@ -44,7 +44,7 @@ build h cfg = do
   toApp $ setup h cfg
   target <- toApp $ Collect.getMainTarget (collectHandle h) $ targetName cfg
   mainModule <- toApp $ Env.getMainModule (envHandle h)
-  Build.buildTarget (buildHandle h) mainModule (Main target)
+  toApp $ Build.buildTarget (buildHandle h) mainModule (Main target)
 
 setup :: Handle -> Config -> EIO ()
 setup h cfg = do

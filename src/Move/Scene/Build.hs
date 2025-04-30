@@ -16,13 +16,12 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
 import Move.Console.Report qualified as Report
-import Move.Context.App
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
 import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO, forP, raiseError', runEIO, toApp)
+import Move.Context.EIO (EIO, forP, raiseError', runEIO)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
@@ -135,16 +134,16 @@ new cfg gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globa
   let _executeArgs = executeArgs cfg
   Handle {..}
 
-buildTarget :: Handle -> M.MainModule -> Target -> App ()
+buildTarget :: Handle -> M.MainModule -> Target -> EIO ()
 buildTarget h (M.MainModule baseModule) target = do
-  toApp $ Debug.report (debugHandle h) $ "Building: " <> T.pack (show target)
-  target' <- toApp $ expandClangOptions target
+  Debug.report (debugHandle h) $ "Building: " <> T.pack (show target)
+  target' <- expandClangOptions target
   liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
-  (artifactTime, dependenceSeq) <- toApp $ Unravel.unravel (unravelHandle h) baseModule target'
+  (artifactTime, dependenceSeq) <- Unravel.unravel (unravelHandle h) baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
-  didPerformForeignCompilation <- toApp $ compileForeign h target moduleList
-  contentSeq <- toApp $ Load.load (loadHandle h) target dependenceSeq
-  toApp $ compile h target' (_outputKindList h) contentSeq
+  didPerformForeignCompilation <- compileForeign h target moduleList
+  contentSeq <- Load.load (loadHandle h) target dependenceSeq
+  compile h target' (_outputKindList h) contentSeq
   liftIO $ GlobalRemark.get (globalRemarkHandle h) >>= Report.printRemarkList (reportHandle h)
   case target' of
     Peripheral {} ->
@@ -152,9 +151,9 @@ buildTarget h (M.MainModule baseModule) target = do
     PeripheralSingle {} ->
       return ()
     Main ct -> do
-      toApp $ Link.link (linkHandle h) ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
-      toApp $ execute h (_shouldExecute h) ct (_executeArgs h)
-      toApp $ install h (_installDir h) ct
+      Link.link (linkHandle h) ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
+      execute h (_shouldExecute h) ct (_executeArgs h)
+      install h (_installDir h) ct
 
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> EIO ()
 compile h target outputKindList contentSeq = do

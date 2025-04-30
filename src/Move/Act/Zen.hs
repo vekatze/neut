@@ -45,11 +45,12 @@ zen h cfg = do
   toApp $ setup h cfg
   path <- resolveFile' (filePathString cfg)
   mainModule <- toApp $ Env.getMainModule (envHandle h)
-  Build.buildTarget (buildHandle h) mainModule $
-    Main $
-      Zen path $
-        Z.clangOption $
-          moduleZenConfig (extractModule mainModule)
+  toApp $
+    Build.buildTarget (buildHandle h) mainModule $
+      Main $
+        Zen path $
+          Z.clangOption $
+            moduleZenConfig (extractModule mainModule)
 
 toBuildConfig :: Config -> Build.Config
 toBuildConfig cfg = do
