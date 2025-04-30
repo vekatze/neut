@@ -9,7 +9,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
@@ -35,9 +34,9 @@ data Handle
     llvmHandle :: LLVM.Handle
   }
 
-new :: Debug.Handle -> Env.Handle -> Path.Handle -> Color.Handle -> LLVM.Handle -> App Handle
+new :: Debug.Handle -> Env.Handle -> Path.Handle -> Color.Handle -> LLVM.Handle -> Handle
 new debugHandle envHandle pathHandle colorHandle llvmHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()
 link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do

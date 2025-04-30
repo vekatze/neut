@@ -204,7 +204,7 @@ execute = do
     dataSize <- toApp Env.getDataSize'
     lowCompReduceHandle <- LowCompReduce.new gensymHandle
     let emitHandle = Emit.new gensymHandle emitLowCompHandle lowCompReduceHandle dataSize baseSize
-    linkHandle <- Link.new debugHandle envHandle pathHandle colorHandle llvmHandle
+    let linkHandle = Link.new debugHandle envHandle pathHandle colorHandle llvmHandle
     let installHandle = Install.new envHandle pathHandle
     let executeHandle = Execute.new envHandle pathHandle externalHandle
     c <- liftIO OptParse.parseCommand
