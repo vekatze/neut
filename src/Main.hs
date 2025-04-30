@@ -155,7 +155,7 @@ execute = do
     getEnabledPresetHandle <- GetEnabledPreset.new gensymHandle envHandle moduleHandle
     shiftToLatestHandle <- ShiftToLatest.new antecedentHandle
     importHandle <- Import.new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle
-    parseHandle <- Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
+    let parseHandle = Parse.new parseCoreHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle
     baseSize <- toApp Env.getBaseSize'
     compSubstHandle <- CompSubst.new gensymHandle
     auxEnvHandle <- liftIO AuxEnv.new

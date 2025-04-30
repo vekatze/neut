@@ -10,7 +10,6 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Move.Context.App
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO)
 import Move.Context.Global qualified as Global
@@ -55,9 +54,9 @@ new ::
   Global.Handle ->
   LocalRemark.Handle ->
   Unused.Handle ->
-  App Handle
+  Handle
 new parseHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])
 parse h t source cacheOrContent = do
