@@ -71,7 +71,7 @@ data Handle = Handle
 
 new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> Type.Handle -> WeakDefinition.Handle -> App Handle
 new Elaborate.HandleEnv {..} envHandle gensymHandle typeHandle weakDefHandle = do
-  substHandle <- Subst.new gensymHandle
+  let substHandle = Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   let reduceHandle = Reduce.new substHandle inlineLimit

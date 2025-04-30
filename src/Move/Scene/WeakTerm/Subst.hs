@@ -12,7 +12,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
-import Move.Context.App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Rule.Annotation qualified as AN
 import Rule.Attr.Lam qualified as AttrL
@@ -29,9 +28,9 @@ newtype Handle
   { gensymHandle :: Gensym.Handle
   }
 
-new :: Gensym.Handle -> App Handle
+new :: Gensym.Handle -> Handle
 new gensymHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 subst :: Handle -> WT.SubstWeakTerm -> WT.WeakTerm -> IO WT.WeakTerm
 subst h sub term =

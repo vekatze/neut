@@ -99,7 +99,7 @@ data Handle
 
 new :: Elaborate.HandleEnv -> Env.Handle -> Gensym.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Discern.Handle -> Type.Handle -> WeakDecl.Handle -> WeakDefinition.Handle -> App Handle
 new handleEnv@(Elaborate.HandleEnv {..}) envHandle gensymHandle optDataHandle keyArgHandle discernHandle typeHandle weakDeclHandle weakDefHandle = do
-  substHandle <- Subst.new gensymHandle
+  let substHandle = Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   let reduceHandle = Reduce.new substHandle inlineLimit

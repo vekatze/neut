@@ -156,7 +156,7 @@ new cfg = do
   let weakDefHandle = _weakDefHandle cfg
   let defHandle = _defHandle cfg
   handleEnv@(Elaborate.HandleEnv {..}) <- liftIO Elaborate.createNewEnv
-  substHandle <- Subst.new gensymHandle
+  let substHandle = Subst.new gensymHandle
   source <- toApp $ Env.getCurrentSource envHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule source)
   let reduceHandle = Reduce.new substHandle inlineLimit
