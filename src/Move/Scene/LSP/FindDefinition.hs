@@ -8,7 +8,6 @@ where
 import Control.Lens hiding (Iso, List)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Move.Context.App (App)
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
 import Move.Scene.LSP.GetSource qualified as GetSource
@@ -22,9 +21,9 @@ data Handle
     getLocationTreeHandle :: GetLocationTree.Handle
   }
 
-new :: GetSource.Handle -> GetLocationTree.Handle -> App Handle
+new :: GetSource.Handle -> GetLocationTree.Handle -> Handle
 new getSourceHandle getLocationTreeHandle = do
-  return $ Handle {..}
+  Handle {..}
 
 findDefinition ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>

@@ -243,7 +243,7 @@ execute = do
           sourceReflectHandle <- SourceReflect.new envHandle moduleReflectHandle
           getSourceHandle <- GetSource.new sourceReflectHandle
           getLocationTreeHandle <- GetLocationTree.new pathHandle
-          findDefHandle <- FindDefinition.new getSourceHandle getLocationTreeHandle
+          let findDefHandle = FindDefinition.new getSourceHandle getLocationTreeHandle
           getSymbolInfoHandle <- GetSymbolInfo.new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig
           gacHandle <- GAC.new shiftToLatestHandle pathHandle
           let completeHandle = Complete.new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle
