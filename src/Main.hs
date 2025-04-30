@@ -159,7 +159,7 @@ execute = do
     baseSize <- toApp Env.getBaseSize'
     compSubstHandle <- CompSubst.new gensymHandle
     auxEnvHandle <- liftIO AuxEnv.new
-    utilityHandle <- ClarifyUtility.new gensymHandle compSubstHandle auxEnvHandle baseSize
+    let utilityHandle = ClarifyUtility.new gensymHandle compSubstHandle auxEnvHandle baseSize
     let linearizeHandle = Linearize.new gensymHandle utilityHandle
     let sigmaHandle = Sigma.new gensymHandle linearizeHandle locatorHandle utilityHandle
     compDefHandle <- liftIO CompDefinition.new

@@ -12,7 +12,6 @@ module Move.Scene.Clarify.Utility
 where
 
 import Data.IntMap qualified as IntMap
-import Move.Context.App
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Move.Scene.Comp.Subst qualified as Subst
@@ -33,9 +32,9 @@ data Handle
     baseSize :: Int
   }
 
-new :: Gensym.Handle -> Subst.Handle -> AuxEnv.Handle -> Int -> App Handle
+new :: Gensym.Handle -> Subst.Handle -> AuxEnv.Handle -> Int -> Handle
 new gensymHandle substHandle auxEnvHandle baseSize = do
-  return $ Handle {..}
+  Handle {..}
 
 -- toAffineApp meta x t ~>
 --   bind exp := t in
