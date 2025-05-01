@@ -30,7 +30,6 @@ import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Name qualified as N
-import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.Scene.WeakTerm.Subst qualified as WT
 import Rule.Annotation qualified as Annotation
@@ -677,7 +676,7 @@ resolveType h t = do
 
 reduceWeakType' :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 reduceWeakType' h sub e = do
-  e' <- Reduce.reduce (reduceHandle h) e
+  e' <- reduce h e
   case e' of
     m :< WT.Hole hole es ->
       case HS.lookup hole sub of

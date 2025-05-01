@@ -134,7 +134,7 @@ compile h target outputKindList contentSeq = do
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     localHandle <- Local.new (baseHandle h) source
     let parseHandle = Parse.new (baseHandle h) localHandle
-    elaborateHandle <- liftIO $ Elaborate.new' (baseHandle h) localHandle source
+    elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
     let ensureMainHandle = EnsureMain.new (Local.locatorHandle localHandle)
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     Debug.report (Base.debugHandle (baseHandle h)) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix

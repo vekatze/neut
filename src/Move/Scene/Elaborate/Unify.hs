@@ -20,8 +20,6 @@ import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
-import Move.Scene.WeakTerm.Fill qualified as Fill
-import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -93,9 +91,9 @@ constraintToRemark h sub c = do
 
 fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 fillAsMuchAsPossible h sub e = do
-  e' <- Reduce.reduce (reduceHandle h) e
+  e' <- reduce h e
   if HS.fillable e' sub
-    then Fill.fill (fillHandle h) sub e' >>= fillAsMuchAsPossible h sub
+    then fill h sub e' >>= fillAsMuchAsPossible h sub
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
@@ -148,8 +146,8 @@ simplify h susList constraintList =
       simplify h (susList' ++ susList) cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       detectPossibleInfiniteLoop h orig
-      expected' <- Reduce.reduce (reduceHandle h) expected
-      actual' <- Reduce.reduce (reduceHandle h) actual
+      expected' <- reduce h expected
+      actual' <- reduce h actual
       if WT.eq expected' actual'
         then simplify h susList cs
         else do
@@ -219,16 +217,16 @@ simplify h susList constraintList =
                 (Just (hole1, (xs1, body1)), Just (hole2, (xs2, body2))) -> do
                   let s1 = HS.singleton hole1 xs1 body1
                   let s2 = HS.singleton hole2 xs2 body2
-                  e1' <- Fill.fill (fillHandle h) s1 e1
-                  e2' <- Fill.fill (fillHandle h) s2 e2
+                  e1' <- fill h s1 e1
+                  e2' <- fill h s2 e2
                   simplify h susList $ (C.Eq e1' e2', orig) : cs
                 (Just (hole1, (xs1, body1)), Nothing) -> do
                   let s1 = HS.singleton hole1 xs1 body1
-                  e1' <- Fill.fill (fillHandle h) s1 e1
+                  e1' <- fill h s1 e1
                   simplify h susList $ (C.Eq e1' e2, orig) : cs
                 (Nothing, Just (hole2, (xs2, body2))) -> do
                   let s2 = HS.singleton hole2 xs2 body2
-                  e2' <- Fill.fill (fillHandle h) s2 e2
+                  e2' <- fill h s2 e2
                   simplify h susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
@@ -370,7 +368,7 @@ simplifyActual ::
   EIO [SuspendedConstraint]
 simplifyActual h m dataNameSet t orig = do
   detectPossibleInfiniteLoop h orig
-  t' <- Reduce.reduce (reduceHandle h) t
+  t' <- reduce h t
   case t' of
     _ :< WT.Tau -> do
       return []
@@ -401,7 +399,7 @@ simplifyActual h m dataNameSet t orig = do
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
           let s = HS.singleton hole xs body
-          t'' <- Fill.fill (fillHandle h) s t'
+          t'' <- fill h s t'
           simplifyActual h m dataNameSet t'' orig
         Nothing -> do
           defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)
@@ -445,7 +443,7 @@ simplifyInteger ::
   EIO [SuspendedConstraint]
 simplifyInteger h m t orig = do
   detectPossibleInfiniteLoop h orig
-  t' <- Reduce.reduce (reduceHandle h) t
+  t' <- reduce h t
   case t' of
     _ :< WT.Prim (WP.Type (PT.Int _)) -> do
       return []
@@ -454,7 +452,7 @@ simplifyInteger h m t orig = do
       let fmvs = holes t'
       case lookupAny (S.toList fmvs) sub of
         Just (hole, (xs, body)) -> do
-          t'' <- Fill.fill (fillHandle h) (HS.singleton hole xs body) t'
+          t'' <- fill h (HS.singleton hole xs body) t'
           simplifyInteger h m t'' orig
         Nothing -> do
           defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)

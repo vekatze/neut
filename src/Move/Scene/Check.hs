@@ -90,7 +90,7 @@ checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborat
 checkSource h target source cacheOrContent = do
   localHandle <- Local.new (baseHandle h) source
   let parseHandle = Parse.new (baseHandle h) localHandle
-  elaborateHandle <- liftIO $ Elaborate.new' (baseHandle h) localHandle source
+  elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
   Debug.report (Base.debugHandle (baseHandle h)) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   void $ Parse.parse parseHandle target source cacheOrContent >>= Elaborate.elaborate elaborateHandle target
   return elaborateHandle

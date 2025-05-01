@@ -14,10 +14,10 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Move.Context.EIO (EIO, raiseCritical)
+import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
-import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -49,45 +49,29 @@ type VarEnv = IntMap.IntMap TM.Term
 
 data Handle
   = Handle
-  { reduceHandle :: Reduce.Handle,
-    substHandle :: Subst.Handle,
-    typeHandle :: Type.Handle,
-    weakDefHandle :: WeakDefinition.Handle,
-    optDataHandle :: OptimizableData.Handle
-  }
-
-data InnerHandle
-  = InnerHandle
-  { handle :: Handle,
+  { elaborateHandle :: Elaborate.Handle,
     varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),
     mustPerformExpCheck :: Bool
   }
 
-new ::
-  Reduce.Handle ->
-  Subst.Handle ->
-  Type.Handle ->
-  WeakDefinition.Handle ->
-  OptimizableData.Handle ->
-  Handle
-new reduceHandle substHandle typeHandle weakDefHandle optDataHandle = do
-  Handle {..}
+new :: Elaborate.Handle -> IO Handle
+new elaborateHandle = do
+  foundVarSetRef <- liftIO $ newIORef IntMap.empty
+  let mustPerformExpCheck = True
+  let varEnv = IntMap.empty
+  return $ Handle {..}
 
 ensureAffinity :: Handle -> TM.Term -> EIO [R.Remark]
 ensureAffinity h e = do
-  let varEnv = IntMap.empty
-  foundVarSetRef <- liftIO $ newIORef IntMap.empty
-  let mustPerformExpCheck = True
-  let h' = InnerHandle {handle = h, ..}
-  cs <- analyze h' e
-  synthesize h' $ map (bimap weaken weaken) cs
+  cs <- analyze h e
+  synthesize h $ map (bimap weaken weaken) cs
 
-extendHandle :: BinderF TM.Term -> InnerHandle -> InnerHandle
+extendHandle :: BinderF TM.Term -> Handle -> Handle
 extendHandle (_, x, t) h = do
   h {varEnv = IntMap.insert (toInt x) t (varEnv h)}
 
-extendHandle' :: [BinderF TM.Term] -> InnerHandle -> InnerHandle
+extendHandle' :: [BinderF TM.Term] -> Handle -> Handle
 extendHandle' mxts h = do
   case mxts of
     [] ->
@@ -99,31 +83,31 @@ mergeVarSet :: IntMap.IntMap Bool -> IntMap.IntMap Bool -> IntMap.IntMap Bool
 mergeVarSet set1 set2 = do
   IntMap.unionWith (||) set1 set2
 
-isExistingVar :: Ident -> InnerHandle -> IO (Maybe Bool)
+isExistingVar :: Ident -> Handle -> IO (Maybe Bool)
 isExistingVar i h = do
   foundVarSet <- readIORef $ foundVarSetRef h
   return $ IntMap.lookup (toInt i) foundVarSet
 
-insertVar :: Ident -> InnerHandle -> IO ()
+insertVar :: Ident -> Handle -> IO ()
 insertVar i h = do
   modifyIORef' (foundVarSetRef h) $ IntMap.insert (toInt i) False
 
-insertRelevantVar :: Ident -> InnerHandle -> IO ()
+insertRelevantVar :: Ident -> Handle -> IO ()
 insertRelevantVar i h = do
   modifyIORef' (foundVarSetRef h) $ IntMap.insert (toInt i) True
 
-cloneHandle :: InnerHandle -> IO InnerHandle
+cloneHandle :: Handle -> IO Handle
 cloneHandle h = do
   foundVarSet <- readIORef $ foundVarSetRef h
   foundVarSetRef <- newIORef foundVarSet
   let mustPerformExpCheck = True
   return $ h {foundVarSetRef, mustPerformExpCheck}
 
-deactivateExpCheck :: InnerHandle -> InnerHandle
+deactivateExpCheck :: Handle -> Handle
 deactivateExpCheck h =
   h {mustPerformExpCheck = False}
 
-analyzeVar :: InnerHandle -> Hint -> Ident -> EIO [AffineConstraint]
+analyzeVar :: Handle -> Hint -> Ident -> EIO [AffineConstraint]
 analyzeVar h m x = do
   if isCartesian x || not (mustPerformExpCheck h)
     then return []
@@ -141,7 +125,7 @@ analyzeVar h m x = do
               _ :< t <- lookupTypeEnv (varEnv h) m x
               return [(m :< t, m :< t)]
 
-analyze :: InnerHandle -> TM.Term -> EIO [AffineConstraint]
+analyze :: Handle -> TM.Term -> EIO [AffineConstraint]
 analyze h term = do
   case term of
     _ :< TM.Tau ->
@@ -240,9 +224,9 @@ analyze h term = do
       return []
 
 analyzeBinder ::
-  InnerHandle ->
+  Handle ->
   [BinderF TM.Term] ->
-  EIO ([AffineConstraint], InnerHandle)
+  EIO ([AffineConstraint], Handle)
 analyzeBinder h binder =
   case binder of
     [] -> do
@@ -253,9 +237,9 @@ analyzeBinder h binder =
       return (cs ++ cs', h')
 
 analyzeLet ::
-  InnerHandle ->
+  Handle ->
   [(BinderF TM.Term, TM.Term)] ->
-  EIO ([AffineConstraint], InnerHandle)
+  EIO ([AffineConstraint], Handle)
 analyzeLet h xtes =
   case xtes of
     [] ->
@@ -278,7 +262,7 @@ lookupTypeEnv varEnv m x =
           <> "` is not registered in the type environment"
 
 analyzeDecisionTree ::
-  InnerHandle ->
+  Handle ->
   DT.DecisionTree TM.Term ->
   EIO [AffineConstraint]
 analyzeDecisionTree h tree =
@@ -295,7 +279,7 @@ analyzeDecisionTree h tree =
       return $ cs1 ++ cs2
 
 analyzeClauseList ::
-  InnerHandle ->
+  Handle ->
   DT.CaseList TM.Term ->
   EIO [AffineConstraint]
 analyzeClauseList h (fallbackClause, caseList) = do
@@ -314,7 +298,7 @@ analyzeClauseList h (fallbackClause, caseList) = do
   return $ cs ++ concat css
 
 analyzeCase ::
-  InnerHandle ->
+  Handle ->
   DT.Case TM.Term ->
   EIO [AffineConstraint]
 analyzeCase h decisionCase = do
@@ -328,7 +312,7 @@ analyzeCase h decisionCase = do
       cs3 <- analyzeDecisionTree h' cont
       return $ cs1 ++ cs2 ++ cs3
 
-synthesize :: InnerHandle -> [WeakAffineConstraint] -> EIO [R.Remark]
+synthesize :: Handle -> [WeakAffineConstraint] -> EIO [R.Remark]
 synthesize h cs = do
   errorList <- concat <$> mapM (simplifyAffine h S.empty) cs
   return $ map constructErrorMessageAffine errorList
@@ -343,12 +327,12 @@ constructErrorMessageAffine (AffineConstraintError t) =
       <> WT.toText t
 
 simplifyAffine ::
-  InnerHandle ->
+  Handle ->
   S.Set DD.DefiniteDescription ->
   WeakAffineConstraint ->
   EIO [AffineConstraintError]
 simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
-  t' <- Reduce.reduce (reduceHandle (handle h)) t
+  t' <- Elaborate.reduce (elaborateHandle h) t
   case t' of
     _ :< WT.Tau -> do
       return []
@@ -377,7 +361,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
     _ :< WT.Prim {} -> do
       return []
     _ -> do
-      defMap <- liftIO $ WeakDefinition.read' (weakDefHandle (handle h))
+      defMap <- liftIO $ WeakDefinition.read' (Elaborate.weakDefHandle (elaborateHandle h))
       case Stuck.asStuckedTerm t' of
         Just (Stuck.VarGlobal dd, evalCtx)
           | Just lam <- Map.lookup dd defMap -> do
@@ -385,31 +369,31 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
         _ -> do
           return [AffineConstraintError orig]
 
-substConsArgs :: InnerHandle -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> EIO [BinderF WT.WeakTerm]
+substConsArgs :: Handle -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> EIO [BinderF WT.WeakTerm]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- liftIO $ Subst.subst (substHandle (handle h)) sub t
+      t' <- liftIO $ Subst.subst (Elaborate.substHandle (elaborateHandle h)) sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (toInt x) (Right opaque) sub
       rest' <- substConsArgs h sub' rest
       return $ (m, x, t') : rest'
 
 getConsArgTypes ::
-  InnerHandle ->
+  Handle ->
   Hint ->
   DD.DefiniteDescription ->
   EIO [BinderF WT.WeakTerm]
 getConsArgTypes h m consName = do
-  t <- Type.lookup' (typeHandle (handle h)) m consName
+  t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
     _ :< WT.Pi impArgs expArgs _ -> do
       return $ impArgs ++ expArgs
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
 
-lookupOptimizableData :: InnerHandle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
+lookupOptimizableData :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOptimizableData h dd = do
-  OptimizableData.lookup (optDataHandle (handle h)) dd
+  OptimizableData.lookup (Elaborate.optDataHandle (elaborateHandle h)) dd

@@ -33,8 +33,6 @@ import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
-import Move.Scene.Term.Inline qualified as Inline
-import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
@@ -138,7 +136,9 @@ elaborateStmt h stmt = do
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       codType' <- elaborate' h codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
-      remarks <- EnsureAffinity.ensureAffinity (affHandle h) $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
+      remarks <- do
+        affHandle <- liftIO $ EnsureAffinity.new h
+        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
       e'' <- inline h m e'
       codType'' <- inline h m codType'
       when isConstLike $ do
@@ -628,7 +628,7 @@ getSwitchSpec m cursorType = do
 
 reduceWeakType :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 reduceWeakType h e = do
-  e' <- Reduce.reduce (reduceHandle h) e
+  e' <- reduce h e
   case e' of
     m :< WT.Hole hole es ->
       fillHole h m hole es >>= reduceWeakType h
@@ -659,8 +659,3 @@ fillHole h m holeID es = do
           liftIO $ Subst.subst (substHandle h) s e
       | otherwise ->
           raiseError m "Arity mismatch"
-
-inline :: Handle -> Hint -> TM.Term -> EIO TM.Term
-inline h m e = do
-  inlineHandle <- liftIO $ Inline.new (baseHandle h) (currentSource h) m
-  Inline.inline inlineHandle e
