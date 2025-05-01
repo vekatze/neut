@@ -38,8 +38,7 @@ main = do
           C.Create cfg -> do
             let moduleSaveHandle = ModuleSave.new debugHandle
             let newHandle = New.new moduleSaveHandle reportHandle
-            let h = Create.new newHandle loggerConfig
-            Create.create h cfg
+            Create.create (Create.new newHandle loggerConfig) cfg
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg
     C.Internal loggerConfig cmd -> do

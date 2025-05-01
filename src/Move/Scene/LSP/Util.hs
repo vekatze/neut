@@ -1,7 +1,5 @@
 module Move.Scene.LSP.Util
-  ( Handle,
-    new,
-    run,
+  ( run,
     report,
     maxDiagNum,
     getUriParam,
@@ -26,7 +24,6 @@ import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Move.Context.EIO (EIO, runEIO)
 import Move.Scene.Init.Base qualified as Base
-import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.Parse.Core qualified as Parse
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
@@ -35,16 +32,6 @@ import Rule.FilePos qualified as FP
 import Rule.Lsp
 import Rule.Remark
 import Rule.Remark qualified as R
-
-data Handle
-  = Handle
-  { initCompilerHandle :: InitCompiler.Handle,
-    globalRemarkHandle :: GlobalRemark.Handle
-  }
-
-new :: InitCompiler.Handle -> GlobalRemark.Handle -> Handle
-new initCompilerHandle globalRemarkHandle = do
-  Handle {..}
 
 run :: Base.Handle -> EIO a -> Lsp b (Maybe a)
 run h comp = do
