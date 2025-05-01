@@ -147,8 +147,8 @@ execute = do
               _weakDefHandle = weakDefHandle,
               _defHandle = defHandle
             }
-    let getModuleHandle = GetModule.new gensymHandle moduleHandle
-    let checkHandle = SceneCheck.new debugHandle gensymHandle loadHandle unravelHandle parseHandle getModuleHandle envHandle initSourceHandle initTargetHandle globalRemarkHandle elaborateConfig
+    let getModuleHandle = GetModule.new baseHandle
+    let checkHandle = SceneCheck.new baseHandle
     let cleanHandle = SceneClean.new envHandle unravelHandle
     ensureExecutables
     case userCommand of

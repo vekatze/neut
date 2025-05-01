@@ -14,6 +14,7 @@ import Data.Text qualified as T
 import Move.Context.EIO (EIO)
 import Move.Context.Module qualified as Module
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Path.IO
 import Rule.Error (newError)
@@ -28,8 +29,8 @@ data Handle
     moduleHandle :: Module.Handle
   }
 
-new :: Gensym.Handle -> Module.Handle -> Handle
-new gensymHandle moduleHandle = do
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) = do
   Handle {..}
 
 getModule ::
