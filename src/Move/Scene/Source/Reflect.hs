@@ -7,6 +7,7 @@ where
 
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Module.Reflect qualified as Module
 import Path
 import Rule.Module
@@ -15,11 +16,12 @@ import Rule.Source
 data Handle
   = Handle
   { envHandle :: Env.Handle,
-    moduleHandle :: Module.Handle
+    moduleReflectHandle :: Module.Handle
   }
 
-new :: Env.Handle -> Module.Handle -> Handle
-new envHandle moduleHandle = do
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) = do
+  let moduleReflectHandle = Module.new gensymHandle
   Handle {..}
 
 reflect :: Handle -> FilePath -> EIO (Maybe Source)
@@ -38,7 +40,7 @@ getModule :: Handle -> Path Abs File -> EIO Module
 getModule h srcPath = do
   let srcDir = parent srcPath
   moduleFilePath <- Module.findModuleFile srcDir srcDir
-  MainModule mainModule <- Env.getMainModule (envHandle h)
+  let MainModule mainModule = Env.getMainModule (envHandle h)
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
-    else Module.fromFilePath (moduleHandle h) moduleFilePath
+    else Module.fromFilePath (moduleReflectHandle h) moduleFilePath

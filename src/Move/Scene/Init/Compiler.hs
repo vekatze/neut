@@ -2,8 +2,6 @@ module Move.Scene.Init.Compiler
   ( Handle,
     new,
     initializeCompiler,
-    initializeCompilerWithModule,
-    initializeCompilerWithPath,
   )
 where
 
@@ -12,9 +10,9 @@ import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Init.Logger qualified as InitLogger
 import Move.Scene.Module.Reflect qualified as ModuleReflect
-import Path
 import Rule.Config.Remark qualified as Remark
-import Rule.Module
+
+-- import Rule.Module
 
 data Handle
   = Handle
@@ -30,15 +28,15 @@ new initLoggerHandle moduleReflectHandle envHandle = do
 initializeCompiler :: Handle -> Remark.Config -> EIO ()
 initializeCompiler h cfg = do
   liftIO $ InitLogger.initializeLogger (initLoggerHandle h) cfg
-  mainModule <- ModuleReflect.fromCurrentPath (moduleReflectHandle h)
-  liftIO $ initializeCompilerWithModule h mainModule
 
-initializeCompilerWithPath :: Handle -> Path Abs File -> Remark.Config -> EIO ()
-initializeCompilerWithPath h path cfg = do
-  liftIO $ InitLogger.initializeLogger (initLoggerHandle h) cfg
-  mainModule <- ModuleReflect.fromFilePath (moduleReflectHandle h) path
-  liftIO $ initializeCompilerWithModule h mainModule
+-- mainModule <- ModuleReflect.fromCurrentPath (moduleReflectHandle h)
 
-initializeCompilerWithModule :: Handle -> Module -> IO ()
-initializeCompilerWithModule h newModule = do
-  Env.setMainModule (envHandle h) (MainModule newModule)
+-- liftIO $ initializeCompilerWithModule h mainModule
+
+-- mainModule <- ModuleReflect.fromFilePath (moduleReflectHandle h) path
+
+-- liftIO $ initializeCompilerWithModule h mainModule
+
+-- initializeCompilerWithModule :: Handle -> Module -> IO ()
+-- initializeCompilerWithModule h newModule = do
+--   Env.setMainModule (envHandle h) (MainModule newModule)

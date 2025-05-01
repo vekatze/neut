@@ -9,11 +9,11 @@ where
 
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
-import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Move.Console.Report qualified as Report
 import Move.Context.Debug qualified as Debug
-import Move.Context.EIO (EIO)
+import Move.Context.EIO (EIO, run)
 import Rule.Const (envVarClang)
 import Rule.Digest
 import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
@@ -23,14 +23,15 @@ import System.Process
 
 data Handle
   = Handle
-  { clangRef :: IORef (Maybe T.Text),
+  { clangDigest :: T.Text,
     debugHandle :: Debug.Handle
   }
 
-new :: Debug.Handle -> IO Handle
-new debugHandle = do
-  clangRef <- newIORef Nothing
-  return $ Handle {..}
+new :: Report.Handle -> Debug.Handle -> IO Handle
+new reportHandle debugHandle = do
+  run reportHandle $ do
+    clangDigest <- calculateClangDigest debugHandle
+    return $ Handle {..}
 
 getClang :: IO String
 getClang = do
@@ -41,18 +42,11 @@ getClang = do
     Nothing -> do
       return "clang"
 
-getClangDigest :: Handle -> EIO T.Text
-getClangDigest h = do
-  digestOrNone <- liftIO $ readIORef (clangRef h)
-  case digestOrNone of
-    Just digest -> do
-      return digest
-    Nothing -> do
-      digest <- calculateClangDigest h
-      liftIO $ writeIORef (clangRef h) (Just digest)
-      return digest
+getClangDigest :: Handle -> T.Text
+getClangDigest = do
+  clangDigest
 
-calculateClangDigest :: Handle -> EIO T.Text
+calculateClangDigest :: Debug.Handle -> EIO T.Text
 calculateClangDigest h = do
   clang <- liftIO getClang
   let ProcessRunner.Runner {run01} = ProcessRunner.ioRunner
@@ -60,7 +54,7 @@ calculateClangDigest h = do
   output <- liftIO $ run01 spec
   case output of
     Right value -> do
-      Debug.report (debugHandle h) $ "Clang info:\n" <> decodeUtf8 value
+      Debug.report h $ "Clang info:\n" <> decodeUtf8 value
       return $ decodeUtf8 $ hashAndEncode value
     Left err ->
       throwError $ ProcessRunner.toCompilerError err

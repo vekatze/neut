@@ -14,45 +14,39 @@ import Move.Context.Path qualified as Path
 import Move.Scene.Build qualified as Build
 import Move.Scene.Collect qualified as Collect
 import Move.Scene.Fetch qualified as Fetch
-import Move.Scene.Init.Compiler qualified as InitCompiler
+import Move.Scene.Init.Base qualified as Base
 import Rule.Config.Build
 import Rule.Target
 import Prelude hiding (log)
 
-data Handle
+newtype Handle
   = Handle
-  { collectHandle :: Collect.Handle,
-    envHandle :: Env.Handle,
-    initCompilerHandle :: InitCompiler.Handle,
-    fetchHandle :: Fetch.Handle,
-    buildHandle :: Build.Handle
+  { baseHandle :: Base.Handle
   }
 
 new ::
-  InitCompiler.Handle ->
-  Fetch.Handle ->
-  Collect.Handle ->
-  Env.Handle ->
-  Build.Handle ->
+  Base.Handle ->
   Handle
-new initCompilerHandle fetchHandle collectHandle envHandle buildHandle = do
+new baseHandle = do
   Handle {..}
 
 build :: Handle -> Config -> EIO ()
 build h cfg = do
   setup h cfg
-  target <- Collect.getMainTarget (collectHandle h) $ targetName cfg
-  mainModule <- Env.getMainModule (envHandle h)
-  Build.buildTarget (buildHandle h) mainModule (Main target)
+  let collectHandle = Collect.new (Base.envHandle (baseHandle h))
+  let buildHandle = Build.new (toBuildConfig cfg) (baseHandle h)
+  target <- Collect.getMainTarget collectHandle $ targetName cfg
+  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
+  Build.buildTarget buildHandle mainModule (Main target)
 
 setup :: Handle -> Config -> EIO ()
 setup h cfg = do
   LLVM.ensureSetupSanity cfg
-  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
   Path.ensureNotInDependencyDir mainModule
-  liftIO $ Env.setBuildMode (envHandle h) $ buildMode cfg
-  Fetch.fetch (fetchHandle h) mainModule
+  liftIO $ Env.setBuildMode (Base.envHandle (baseHandle h)) $ buildMode cfg
+  let fetchHandle = Fetch.new (baseHandle h)
+  Fetch.fetch fetchHandle mainModule
 
 toBuildConfig :: Config -> Build.Config
 toBuildConfig cfg = do

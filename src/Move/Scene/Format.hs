@@ -13,8 +13,8 @@ import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Unused qualified as Unused
 import Move.Scene.Ens.Reflect qualified as EnsReflect
-import Move.Scene.Init.Source qualified as InitSource
-import Move.Scene.Init.Target qualified as InitTarget
+import Move.Scene.Init.Base qualified as Base
+import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Load qualified as Load
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Parse qualified as Parse
@@ -29,39 +29,23 @@ import Rule.RawProgram.Decode qualified as RawProgram
 import Rule.Target
 import Prelude hiding (log)
 
-data Handle = Handle
-  { unravelHandle :: Unravel.Handle,
-    loadHandle :: Load.Handle,
-    parseCoreHandle :: ParseCore.Handle,
-    parseHandle :: Parse.Handle,
-    envHandle :: Env.Handle,
-    ensReflectHandle :: EnsReflect.Handle,
-    getEnabledPresetHandle :: GetEnabledPreset.Handle,
-    unusedHandle :: Unused.Handle,
-    initTargetHandle :: InitTarget.Handle,
-    initSourceHandle :: InitSource.Handle
+newtype Handle
+  = Handle
+  { baseHandle :: Base.Handle
   }
 
 new ::
-  Unravel.Handle ->
-  Load.Handle ->
-  ParseCore.Handle ->
-  Parse.Handle ->
-  Env.Handle ->
-  EnsReflect.Handle ->
-  GetEnabledPreset.Handle ->
-  Unused.Handle ->
-  InitTarget.Handle ->
-  InitSource.Handle ->
+  Base.Handle ->
   Handle
-new unravelHandle loadHandle parseCoreHandle parseHandle envHandle ensReflectHandle getEnabledPresetHandle unusedHandle initTargetHandle initSourceHandle = do
+new baseHandle = do
   Handle {..}
 
 format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> EIO T.Text
 format h shouldMinimizeImports fileType path content = do
   case fileType of
     FT.Ens -> do
-      ens <- EnsReflect.fromFilePath' (ensReflectHandle h) path content
+      let ensReflectHandle = EnsReflect.new (Base.gensymHandle (baseHandle h))
+      ens <- EnsReflect.fromFilePath' ensReflectHandle path content
       return $ Ens.pp ens
     FT.Source -> do
       _formatSource h shouldMinimizeImports path content
@@ -71,25 +55,35 @@ type ShouldMinimizeImports =
 
 _formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> EIO T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
-  liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
-  MainModule mainModule <- Env.getMainModule (envHandle h)
+  let MainModule mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
+  let parseCoreHandle = ParseCore.new (Base.gensymHandle (baseHandle h))
+  let getEnabledPresetHandle = GetEnabledPreset.new (baseHandle h)
   if shouldMinimizeImports
     then do
-      (_, dependenceSeq) <- Unravel.unravel (unravelHandle h) mainModule $ Main (emptyZen filePath)
-      contentSeq <- Load.load (loadHandle h) Peripheral dependenceSeq
-      let contentSeq' = _replaceLast fileContent contentSeq
-      forM_ contentSeq' $ \(source, cacheOrContent) -> do
-        InitSource.initializeForSource (initSourceHandle h) source
-        void $ Parse.parse (parseHandle h) Peripheral source cacheOrContent
-      unusedGlobalLocators <- liftIO $ Unused.getGlobalLocator (unusedHandle h)
-      unusedLocalLocators <- liftIO $ Unused.getLocalLocator (unusedHandle h)
-      program <- ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
-      presetNames <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule
-      let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
-      return $ RawProgram.pp importInfo program
+      unravelHandle <- liftIO $ Unravel.new (baseHandle h)
+      let loadHandle = Load.new (baseHandle h)
+      (_, dependenceSeq) <- Unravel.unravel unravelHandle mainModule $ Main (emptyZen filePath)
+      contentSeq <- Load.load loadHandle Peripheral dependenceSeq
+      case unsnoc contentSeq of
+        Nothing ->
+          undefined
+        Just (headItems, (rootSource, __)) -> do
+          forM_ headItems $ \(source, cacheOrContent) -> do
+            localHandle <- Local.new (baseHandle h) source
+            let parseHandle = Parse.new (baseHandle h) localHandle
+            void $ Parse.parse parseHandle Peripheral source cacheOrContent
+          localHandle <- Local.new (baseHandle h) rootSource
+          let parseHandle = Parse.new (baseHandle h) localHandle
+          void $ Parse.parse parseHandle Peripheral rootSource (Right fileContent)
+          unusedGlobalLocators <- liftIO $ Unused.getGlobalLocator (Local.unusedHandle localHandle)
+          unusedLocalLocators <- liftIO $ Unused.getLocalLocator (Local.unusedHandle localHandle)
+          program <- ParseCore.parseFile parseCoreHandle filePath fileContent True Parse.parseProgram
+          presetNames <- GetEnabledPreset.getEnabledPreset getEnabledPresetHandle mainModule
+          let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
+          return $ RawProgram.pp importInfo program
     else do
-      program <- ParseCore.parseFile (parseCoreHandle h) filePath fileContent True Parse.parseProgram
-      presetNames <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) mainModule
+      program <- ParseCore.parseFile parseCoreHandle filePath fileContent True Parse.parseProgram
+      presetNames <- GetEnabledPreset.getEnabledPreset getEnabledPresetHandle mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators = [], unusedLocalLocators = []}
       return $ RawProgram.pp importInfo program
 
@@ -102,3 +96,7 @@ _replaceLast content contentSeq =
       [(source, Right content)]
     cacheOrContent : rest ->
       cacheOrContent : _replaceLast content rest
+
+unsnoc :: [a] -> Maybe ([a], a)
+unsnoc =
+  foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing

@@ -10,31 +10,26 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.EIO (EIO)
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
-import Move.Scene.Init.Compiler qualified as InitCompiler
-import Move.Scene.Init.Logger qualified as InitLogger
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.New qualified as New
 import Rule.Config.Create
+import Rule.Config.Remark qualified as Remark
 import Rule.Module (moduleLocation)
 
 data Handle
   = Handle
-  { initLoggerHandle :: InitLogger.Handle,
-    initCompilerHandle :: InitCompiler.Handle,
-    newHandle :: New.Handle,
-    fetchHandle :: Fetch.Handle,
-    checkHandle :: Check.Handle
+  { newHandle :: New.Handle,
+    remarkCfg :: Remark.Config
   }
 
-new :: InitLogger.Handle -> InitCompiler.Handle -> New.Handle -> Fetch.Handle -> Check.Handle -> Handle
-new initLoggerHandle initCompilerHandle newHandle fetchHandle checkHandle = do
+new :: New.Handle -> Remark.Config -> Handle
+new newHandle remarkCfg = do
   Handle {..}
 
 create :: Handle -> Config -> EIO ()
 create h cfg = do
   newModule <- New.constructDefaultModule (moduleName cfg) (targetName cfg)
-  liftIO $ InitLogger.initializeLogger (initLoggerHandle h) (remarkCfg cfg)
-  liftIO $ InitCompiler.initializeCompilerWithModule (initCompilerHandle h) newModule
   New.createNewProject (newHandle h) (moduleName cfg) newModule
-  Fetch.insertCoreDependency (fetchHandle h)
-  InitCompiler.initializeCompilerWithPath (initCompilerHandle h) (moduleLocation newModule) (remarkCfg cfg)
-  void $ Check.checkAll (checkHandle h)
+  h' <- liftIO $ Base.new (remarkCfg h) (Just $ moduleLocation newModule)
+  Fetch.insertCoreDependency (Fetch.new h')
+  void $ Check.checkAll (Check.new h')

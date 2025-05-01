@@ -11,6 +11,7 @@ import Language.LSP.Protocol.Types
 import Language.LSP.VFS
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Scene.Format qualified as Format
+import Move.Scene.Init.Base qualified as Base
 import Path
 import Path.IO
 import Rule.Const
@@ -21,8 +22,9 @@ newtype Handle
   { formatHandle :: Format.Handle
   }
 
-new :: Format.Handle -> Handle
-new formatHandle = do
+new :: Base.Handle -> Handle
+new baseHandle = do
+  let formatHandle = Format.new baseHandle
   Handle {..}
 
 format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]

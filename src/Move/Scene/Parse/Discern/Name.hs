@@ -74,7 +74,7 @@ resolveVarOrErr h m name = do
       liftIO $ Unused.deleteLocalLocator (H.unusedHandle h) localLocator
       return $ Right globalVar
     _ -> do
-      mainModule <- Env.getMainModule (H.envHandle h)
+      let mainModule = Env.getMainModule (H.envHandle h)
       let foundNameList' = map (Locator.getReadableDD mainModule . fst) foundNameList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo

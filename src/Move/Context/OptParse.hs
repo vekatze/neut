@@ -54,26 +54,25 @@ parseBuildOpt = do
   shouldExecute <- shouldExecuteOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Build $
-      Build.Config
-        { Build.targetName = targetName,
-          Build.remarkCfg = remarkCfg,
-          Build.outputKindList = outputKindList,
-          Build.shouldSkipLink = shouldSkipLink,
-          Build.shouldExecute = shouldExecute,
-          Build.installDir = installDir,
-          Build.buildMode = buildMode,
-          Build.args = rest
-        }
+    Internal remarkCfg $
+      Build $
+        Build.Config
+          { Build.targetName = targetName,
+            Build.outputKindList = outputKindList,
+            Build.shouldSkipLink = shouldSkipLink,
+            Build.shouldExecute = shouldExecute,
+            Build.installDir = installDir,
+            Build.buildMode = buildMode,
+            Build.args = rest
+          }
 
 parseCleanOpt :: Parser Command
 parseCleanOpt = do
   remarkCfg <- remarkConfigOpt
   pure $
-    Clean $
-      Clean.Config
-        { Clean.remarkCfg = remarkCfg
-        }
+    Internal remarkCfg $
+      Clean $
+        Clean.Config {}
 
 parseGetOpt :: Parser Command
 parseGetOpt = do
@@ -81,12 +80,12 @@ parseGetOpt = do
   moduleURL <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
   remarkCfg <- remarkConfigOpt
   pure $
-    Get $
-      Get.Config
-        { Get.moduleAliasText = T.pack moduleAlias,
-          Get.moduleURL = ModuleURL $ T.pack moduleURL,
-          Get.remarkCfg = remarkCfg
-        }
+    Internal remarkCfg $
+      Get $
+        Get.Config
+          { Get.moduleAliasText = T.pack moduleAlias,
+            Get.moduleURL = ModuleURL $ T.pack moduleURL
+          }
 
 parseZenOpt :: Parser Command
 parseZenOpt = do
@@ -95,17 +94,18 @@ parseZenOpt = do
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Rule.Command.Zen $
-      Zen.Config
-        { Zen.filePathString = inputFilePath,
-          Zen.remarkCfg = remarkCfg,
-          Zen.buildMode = buildMode,
-          Zen.args = rest
-        }
+    Internal remarkCfg $
+      Rule.Command.Zen $
+        Zen.Config
+          { Zen.filePathString = inputFilePath,
+            Zen.buildMode = buildMode,
+            Zen.args = rest
+          }
 
 parseLSPOpt :: Parser Command
-parseLSPOpt =
-  pure LSP
+parseLSPOpt = do
+  remarkCfg <- remarkConfigOpt
+  pure $ Internal remarkCfg LSP
 
 parseCreateOpt :: Parser Command
 parseCreateOpt = do
@@ -120,18 +120,20 @@ parseCreateOpt = do
           ]
   remarkCfg <- remarkConfigOpt
   pure $
-    Create $
-      Create.Config
-        { Create.moduleName = T.pack moduleName,
-          Create.targetName = targetName,
-          Create.remarkCfg = remarkCfg
-        }
+    External remarkCfg $
+      Create $
+        Create.Config
+          { Create.moduleName = T.pack moduleName,
+            Create.targetName = targetName
+          }
 
 parseVersionOpt :: Parser Command
-parseVersionOpt =
+parseVersionOpt = do
+  remarkCfg <- remarkConfigOpt
   pure $
-    ShowVersion $
-      Version.Config {}
+    External remarkCfg $
+      ShowVersion $
+        Version.Config {}
 
 parseCheckOpt :: Parser Command
 parseCheckOpt = do
@@ -139,23 +141,23 @@ parseCheckOpt = do
   shouldCheckAllDependencies <- flag False True (mconcat [long "full", help "Set this to refresh the caches of all the dependencies"])
   remarkCfg <- remarkConfigOpt
   pure $
-    Check $
-      Check.Config
-        { Check.shouldInsertPadding = padOpt,
-          Check.shouldCheckAllDependencies = shouldCheckAllDependencies,
-          Check.remarkCfg = remarkCfg
-        }
+    Internal remarkCfg $
+      Check $
+        Check.Config
+          { Check.shouldInsertPadding = padOpt,
+            Check.shouldCheckAllDependencies = shouldCheckAllDependencies
+          }
 
 parseArchiveOpt :: Parser Command
 parseArchiveOpt = do
   archiveName <- optional $ argument str (mconcat [metavar "NAME", help "The name of the archive"])
   remarkCfg <- remarkConfigOpt
   pure $
-    Archive $
-      Archive.Config
-        { Archive.getArchiveName = archiveName,
-          Archive.remarkCfg = remarkCfg
-        }
+    Internal remarkCfg $
+      Archive $
+        Archive.Config
+          { Archive.getArchiveName = archiveName
+          }
 
 parseFormatOpt :: FT.FileType -> Parser Command
 parseFormatOpt fileType = do
@@ -164,14 +166,14 @@ parseFormatOpt fileType = do
   shouldMinimizeImports <- flag False True (mconcat [long "minimize-imports", help "Set this to remove unused items in `import {..}`"])
   remarkCfg <- remarkConfigOpt
   pure $
-    Format $
-      Format.Config
-        { Format.remarkCfg = remarkCfg,
-          Format.filePathString = inputFilePath,
-          Format.mustUpdateInPlace = inPlaceOpt,
-          Format.shouldMinimizeImports = shouldMinimizeImports,
-          Format.inputFileType = fileType
-        }
+    Internal remarkCfg $
+      Format $
+        Format.Config
+          { Format.filePathString = inputFilePath,
+            Format.mustUpdateInPlace = inPlaceOpt,
+            Format.shouldMinimizeImports = shouldMinimizeImports,
+            Format.inputFileType = fileType
+          }
 
 remarkConfigOpt :: Parser Remark.Config
 remarkConfigOpt = do

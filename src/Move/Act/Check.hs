@@ -11,35 +11,32 @@ import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
-import Move.Scene.Init.Compiler qualified as InitCompiler
+import Move.Scene.Init.Base qualified as Base
 import Rule.Config.Check
 import Rule.Remark qualified as Remark
 
-data Handle
+newtype Handle
   = Handle
-  { reportHandle :: Report.Handle,
-    initCompilerHandle :: InitCompiler.Handle,
-    fetchHandle :: Fetch.Handle,
-    envHandle :: Env.Handle,
-    checkHandle :: Check.Handle
+  { baseHandle :: Base.Handle
   }
 
-new :: InitCompiler.Handle -> Fetch.Handle -> Env.Handle -> Report.Handle -> Check.Handle -> Handle
-new initCompilerHandle fetchHandle envHandle reportHandle checkHandle = do
+new :: Base.Handle -> Handle
+new baseHandle = do
   Handle {..}
 
 check :: Handle -> Config -> EIO ()
 check h cfg = do
-  setup h cfg
+  setup h
+  let checkHandle = Check.new (baseHandle h)
   logs <-
     if shouldCheckAllDependencies cfg
-      then Check.checkAll (checkHandle h)
-      else Check.check (checkHandle h)
+      then Check.checkAll checkHandle
+      else Check.check checkHandle
   if shouldInsertPadding cfg
-    then liftIO $ Report.printErrorList (reportHandle h) logs
-    else liftIO $ Report.printErrorList (reportHandle h) $ map Remark.deactivatePadding logs
+    then liftIO $ Report.printErrorList (Base.reportHandle (baseHandle h)) logs
+    else liftIO $ Report.printErrorList (Base.reportHandle (baseHandle h)) $ map Remark.deactivatePadding logs
 
-setup :: Handle -> Config -> EIO ()
-setup h cfg = do
-  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
-  Env.getMainModule (envHandle h) >>= Fetch.fetch (fetchHandle h)
+setup :: Handle -> EIO ()
+setup h = do
+  let fetchHandle = Fetch.new (baseHandle h)
+  Fetch.fetch fetchHandle $ Env.getMainModule (Base.envHandle (baseHandle h))

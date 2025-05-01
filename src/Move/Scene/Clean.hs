@@ -9,6 +9,7 @@ import Control.Monad
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Unravel qualified as Unravel
 import Path.IO
 import Rule.Module (extractModule)
@@ -19,13 +20,15 @@ data Handle = Handle
     unravelHandle :: Unravel.Handle
   }
 
-new :: Env.Handle -> Unravel.Handle -> Handle
-new envHandle unravelHandle = do
-  Handle {..}
+new :: Base.Handle -> IO Handle
+new baseHandle = do
+  let envHandle = Base.envHandle baseHandle
+  unravelHandle <- Unravel.new baseHandle
+  return $ Handle {..}
 
 clean :: Handle -> EIO ()
 clean h = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   moduleList <- Unravel.unravelModule (unravelHandle h) (extractModule mainModule)
   forM_ moduleList $ \someModule -> do
     baseBuildDir <- Path.getBaseBuildDir someModule

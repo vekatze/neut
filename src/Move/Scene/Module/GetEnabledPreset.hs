@@ -12,6 +12,7 @@ import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Module qualified as Module
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Module.GetModule qualified as GetModule
 import Rule.BaseName qualified as BN
 import Rule.Module
@@ -24,14 +25,14 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Gensym.Handle -> Env.Handle -> Module.Handle -> Handle
-new gensymHandle envHandle moduleHandle = do
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) = do
   Handle {..}
 
 getEnabledPreset :: Handle -> Module -> EIO [(T.Text, [BN.BaseName])]
 getEnabledPreset h baseModule = do
   let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   dependencies <- GetModule.getAllDependencies h' mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   let aliasPresetInfo = map getAllTopCandidate' visibleModuleList

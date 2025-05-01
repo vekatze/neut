@@ -1,7 +1,7 @@
 module Move.Scene.LSP.Util
   ( Handle,
     new,
-    runOneShot,
+    run,
     report,
     maxDiagNum,
     getUriParam,
@@ -25,11 +25,11 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Move.Context.EIO (EIO, runEIO)
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Compiler qualified as InitCompiler
 import Move.Scene.Parse.Core qualified as Parse
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
-import Rule.Config.Remark qualified as Remark
 import Rule.Error qualified as E
 import Rule.FilePos qualified as FP
 import Rule.Lsp
@@ -46,12 +46,10 @@ new :: InitCompiler.Handle -> GlobalRemark.Handle -> Handle
 new initCompilerHandle globalRemarkHandle = do
   Handle {..}
 
-runOneShot :: Handle -> EIO a -> Lsp b (Maybe a)
-runOneShot h comp = do
-  resultOrErr <- liftIO $ runEIO $ do
-    InitCompiler.initializeCompiler (initCompilerHandle h) Remark.lspConfig
-    comp
-  remarkList <- liftIO $ GlobalRemark.get (globalRemarkHandle h)
+run :: Base.Handle -> EIO a -> Lsp b (Maybe a)
+run h comp = do
+  resultOrErr <- liftIO $ runEIO comp
+  remarkList <- liftIO $ GlobalRemark.get (Base.globalRemarkHandle h)
   case resultOrErr of
     Left (E.MakeError logList) -> do
       report $ logList ++ remarkList

@@ -9,6 +9,7 @@ import Control.Lens hiding (Iso, List)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.EIO (EIO, liftMaybe)
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
 import Move.Scene.LSP.GetSource qualified as GetSource
 import Rule.Hint qualified as H
@@ -21,8 +22,10 @@ data Handle
     getLocationTreeHandle :: GetLocationTree.Handle
   }
 
-new :: GetSource.Handle -> GetLocationTree.Handle -> Handle
-new getSourceHandle getLocationTreeHandle = do
+new :: Base.Handle -> Handle
+new baseHandle = do
+  let getSourceHandle = GetSource.new baseHandle
+  let getLocationTreeHandle = GetLocationTree.new baseHandle
   Handle {..}
 
 findDefinition ::

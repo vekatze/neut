@@ -85,8 +85,8 @@ new' ::
   Base.Handle ->
   Local.Handle ->
   Handle
-new' (Base.Handle {..}) (Local.Handle {..}) = do
-  let getEnabledPresetHandle = GetEnabledPreset.new gensymHandle envHandle moduleHandle
+new' baseHandle@(Base.Handle {..}) (Local.Handle {..}) = do
+  let getEnabledPresetHandle = GetEnabledPreset.new baseHandle
   let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}
 
@@ -183,7 +183,7 @@ interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList
 getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> EIO Source.Source
 getSource h mustUpdateTag m sgl locatorText = do
   let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   nextModule <- GetModule.getModule h' mainModule m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath

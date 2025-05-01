@@ -1,7 +1,6 @@
 module Move.Scene.Parse
   ( Handle,
     new,
-    new',
     parse,
     parseCachedStmtList,
   )
@@ -52,32 +51,19 @@ data Handle
   }
 
 new ::
-  P.Handle ->
-  Discern.Handle ->
-  Path.Handle ->
-  Import.Handle ->
-  Global.Handle ->
-  LocalRemark.Handle ->
-  NameMap.Handle ->
-  Unused.Handle ->
-  Handle
-new parseHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle nameMapHandle unusedHandle = do
-  Handle {..}
-
-new' ::
   Base.Handle ->
   Local.Handle ->
-  IO Handle
-new' baseHandle localHandle = do
-  localRemarkHandle <- LocalRemark.new
-  unusedHandle <- Unused.new
+  Handle
+new baseHandle localHandle = do
+  let localRemarkHandle = Local.localRemarkHandle localHandle
+  let unusedHandle = Local.unusedHandle localHandle
   let parseHandle = P.new (Base.gensymHandle baseHandle)
   let discernHandle = Discern.new' baseHandle localHandle
   let pathHandle = Base.pathHandle baseHandle
   let importHandle = Import.new' baseHandle localHandle
   let globalHandle = Local.globalHandle localHandle
   let nameMapHandle = Base.nameMapHandle baseHandle
-  return $ Handle {..}
+  Handle {..}
 
 parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])
 parse h t source cacheOrContent = do

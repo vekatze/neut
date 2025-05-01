@@ -13,7 +13,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Scene.Build qualified as Build
 import Move.Scene.Fetch qualified as Fetch
-import Move.Scene.Init.Compiler qualified as InitCompiler
+import Move.Scene.Init.Base qualified as Base
 import Path.IO (resolveFile')
 import Rule.Config.Zen
 import Rule.Module (Module (moduleZenConfig), extractModule)
@@ -25,25 +25,25 @@ import Prelude hiding (log)
 data Handle
   = Handle
   { envHandle :: Env.Handle,
-    initCompilerHandle :: InitCompiler.Handle,
     fetchHandle :: Fetch.Handle,
     buildHandle :: Build.Handle
   }
 
 new ::
-  InitCompiler.Handle ->
-  Fetch.Handle ->
-  Env.Handle ->
-  Build.Handle ->
+  Base.Handle ->
+  Config ->
   Handle
-new initCompilerHandle fetchHandle envHandle buildHandle = do
+new baseHandle cfg = do
+  let fetchHandle = Fetch.new baseHandle
+  let buildHandle = Build.new (toBuildConfig cfg) baseHandle
+  let envHandle = Base.envHandle baseHandle
   Handle {..}
 
 zen :: Handle -> Config -> EIO ()
 zen h cfg = do
   setup h cfg
   path <- resolveFile' (filePathString cfg)
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   Build.buildTarget (buildHandle h) mainModule $
     Main $
       Zen path $
@@ -62,8 +62,7 @@ toBuildConfig cfg = do
 
 setup :: Handle -> Config -> EIO ()
 setup h cfg = do
-  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule
   liftIO $ Env.setBuildMode (envHandle h) $ buildMode cfg
   Fetch.fetch (fetchHandle h) mainModule

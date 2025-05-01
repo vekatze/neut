@@ -9,6 +9,7 @@ import Move.Console.Report qualified as Report
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.Env qualified as Env
+import Move.Scene.Init.Base qualified as Base
 import Rule.Config.Remark qualified as Remark
 
 data Handle
@@ -19,14 +20,10 @@ data Handle
     debugHandle :: Debug.Handle
   }
 
-new :: Color.Handle -> Report.Handle -> Env.Handle -> Debug.Handle -> Handle
-new colorHandle reportHandle envHandle debugHandle = do
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) = do
   Handle {..}
 
 initializeLogger :: Handle -> Remark.Config -> IO ()
-initializeLogger h cfg = do
-  Color.setShouldColorizeStdout (colorHandle h) $ Remark.shouldColorize cfg
-  Color.setShouldColorizeStderr (colorHandle h) $ Remark.shouldColorize cfg
-  Report.setEndOfEntry (reportHandle h) $ Remark.endOfEntry cfg
-  Env.setSilentMode (envHandle h) $ Remark.enableSilentMode cfg
-  Debug.setDebugMode (debugHandle h) $ Remark.enableDebugMode cfg
+initializeLogger _ _ = do
+  return ()

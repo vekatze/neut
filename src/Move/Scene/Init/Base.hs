@@ -1,6 +1,7 @@
 module Move.Scene.Init.Base
   ( Handle (..),
     new,
+    refresh,
   )
 where
 
@@ -22,6 +23,8 @@ import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
+import Path
+import Rule.Config.Remark qualified as Remark
 
 data Handle
   = Handle
@@ -45,17 +48,17 @@ data Handle
     nameMapHandle :: NameMap.Handle
   }
 
-new :: IO Handle
-new = do
-  colorHandle <- Color.new
-  reportHandle <- Report.new colorHandle
+new :: Remark.Config -> Maybe (Path Abs File) -> IO Handle
+new cfg moduleFilePathOrNone = do
+  colorHandle <- Color.new (Remark.shouldColorize cfg)
+  let reportHandle = Report.new colorHandle (Remark.endOfEntry cfg)
   gensymHandle <- Gensym.new
-  envHandle <- Env.new reportHandle
-  debugHandle <- Debug.new colorHandle
+  envHandle <- Env.new reportHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
+  debugHandle <- Debug.new colorHandle (Remark.enableDebugMode cfg)
+  clangHandle <- Clang.new reportHandle debugHandle
   keyArgHandle <- KeyArg.new envHandle
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  clangHandle <- Clang.new debugHandle
   pathHandle <- Path.new envHandle debugHandle clangHandle
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
@@ -66,3 +69,33 @@ new = do
   compDefHandle <- CompDefinition.new
   nameMapHandle <- NameMap.new
   return $ Handle {..}
+
+refresh :: Handle -> IO Handle
+refresh h = do
+  keyArgHandle <- KeyArg.new (envHandle h)
+  optDataHandle <- OptimizableData.new
+  typeHandle <- Type.new
+  pathHandle <- Path.new (envHandle h) (debugHandle h) (clangHandle h)
+  globalRemarkHandle <- GlobalRemark.new
+  artifactHandle <- Artifact.new
+  moduleHandle <- Module.new
+  weakDefHandle <- WeakDefinition.new (gensymHandle h)
+  defHandle <- Definition.new
+  antecedentHandle <- Antecedent.new
+  compDefHandle <- CompDefinition.new
+  nameMapHandle <- NameMap.new
+  return $
+    h
+      { keyArgHandle,
+        optDataHandle,
+        typeHandle,
+        pathHandle,
+        globalRemarkHandle,
+        artifactHandle,
+        moduleHandle,
+        weakDefHandle,
+        defHandle,
+        antecedentHandle,
+        compDefHandle,
+        nameMapHandle
+      }

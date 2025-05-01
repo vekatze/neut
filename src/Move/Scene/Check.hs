@@ -43,7 +43,7 @@ new baseHandle = do
 
 check :: Handle -> EIO [Remark]
 check h = do
-  M.MainModule mainModule <- Env.getMainModule (Base.envHandle (baseHandle h))
+  let M.MainModule mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
   liftIO $ _check h Peripheral mainModule
 
 checkModule :: Handle -> M.Module -> IO [Remark]
@@ -52,7 +52,7 @@ checkModule h baseModule = do
 
 checkAll :: Handle -> EIO [Remark]
 checkAll h = do
-  mainModule <- Env.getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
   let getModuleHandle = GetModule.new (baseHandle h)
   deps <- GetModule.getAllDependencies getModuleHandle mainModule (extractModule mainModule)
   forM_ deps $ \(_, m) -> liftIO $ checkModule h m
@@ -89,7 +89,7 @@ _check' h target baseModule = do
 checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.Handle
 checkSource h target source cacheOrContent = do
   localHandle <- Local.new (baseHandle h) source
-  parseHandle <- liftIO $ Parse.new' (baseHandle h) localHandle
+  let parseHandle = Parse.new (baseHandle h) localHandle
   elaborateHandle <- liftIO $ Elaborate.new' (baseHandle h) localHandle source
   Debug.report (Base.debugHandle (baseHandle h)) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   void $ Parse.parse parseHandle target source cacheOrContent >>= Elaborate.elaborate elaborateHandle target

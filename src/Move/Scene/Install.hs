@@ -29,7 +29,7 @@ new (Base.Handle {..}) = do
 
 install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()
 install h targetOrZen dir = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   execPath <- Path.getExecutableOutputPath (pathHandle h) targetOrZen (extractModule mainModule)
   case targetOrZen of
     Target.Named targetName _ -> do

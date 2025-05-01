@@ -7,21 +7,19 @@ where
 
 import Move.Context.EIO (EIO)
 import Move.Scene.Clean qualified as Clean
-import Move.Scene.Init.Compiler qualified as InitCompiler
-import Rule.Config.Clean
+import Move.Scene.Init.Base qualified as Base
 import Prelude hiding (log)
 
-data Handle
+newtype Handle
   = Handle
-  { initCompilerHandle :: InitCompiler.Handle,
-    cleanHandle :: Clean.Handle
+  { cleanHandle :: Clean.Handle
   }
 
-new :: InitCompiler.Handle -> Clean.Handle -> Handle
-new initCompilerHandle cleanHandle = do
-  Handle {..}
+new :: Base.Handle -> IO Handle
+new baseHandle = do
+  cleanHandle <- Clean.new baseHandle
+  return $ Handle {..}
 
-clean :: Handle -> Config -> EIO ()
-clean h cfg = do
-  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
+clean :: Handle -> EIO ()
+clean h = do
   Clean.clean (cleanHandle h)

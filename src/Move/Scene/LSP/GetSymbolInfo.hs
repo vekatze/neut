@@ -1,7 +1,5 @@
 module Move.Scene.LSP.GetSymbolInfo
-  ( Handle,
-    new,
-    getSymbolInfo,
+  ( getSymbolInfo,
   )
 where
 
@@ -11,27 +9,15 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.Cache (invalidate)
-import Move.Context.Color qualified as Color
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, liftMaybe)
-import Move.Context.Elaborate qualified as Elaborate
-import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
-import Move.Context.KeyArg qualified as KeyArg
-import Move.Context.Locator qualified as Locator
-import Move.Context.OptimizableData qualified as OptimizableData
-import Move.Context.Path qualified as Path
-import Move.Context.Tag qualified as Tag
 import Move.Context.Type qualified as Type
-import Move.Context.Unused qualified as Unused
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Check qualified as Check
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.GetSource qualified as GetSource
-import Move.Scene.Parse.Discern.Handle qualified as Discern
+import Rule.Config.Remark (lspConfig)
 import Rule.LocationTree qualified as LT
 import Rule.Source (Source (sourceFilePath, sourceModule))
 import Rule.Target (Target (Peripheral))
@@ -39,63 +25,23 @@ import Rule.Term.Weaken (weaken)
 import Rule.WeakTerm qualified as WT
 import Rule.WeakTerm.ToText
 
-data Handle
-  = Handle
-  { getSourceHandle :: GetSource.Handle,
-    pathHandle :: Path.Handle,
-    findDefHandle :: FindDefinition.Handle,
-    envHandle :: Env.Handle,
-    gensymHandle :: Gensym.Handle,
-    checkHandle :: Check.Handle,
-    locatorHandle :: Locator.Handle,
-    tagHandle :: Tag.Handle,
-    antecedentHandle :: Antecedent.Handle,
-    colorHandle :: Color.Handle,
-    debugHandle :: Debug.Handle,
-    keyArgHandle :: KeyArg.Handle,
-    optDataHandle :: OptimizableData.Handle,
-    unusedHandle :: Unused.Handle,
-    globalHandle :: Global.Handle,
-    discernHandle :: Discern.Handle,
-    elaborateConfig :: Elaborate.Config
-  }
-
-new ::
-  GetSource.Handle ->
-  Path.Handle ->
-  FindDefinition.Handle ->
-  Env.Handle ->
-  Gensym.Handle ->
-  Check.Handle ->
-  Locator.Handle ->
-  Tag.Handle ->
-  Antecedent.Handle ->
-  Color.Handle ->
-  Debug.Handle ->
-  KeyArg.Handle ->
-  OptimizableData.Handle ->
-  Unused.Handle ->
-  Global.Handle ->
-  Discern.Handle ->
-  Elaborate.Config ->
-  Handle
-new getSourceHandle pathHandle findDefHandle envHandle gensymHandle checkHandle locatorHandle tagHandle antecedentHandle colorHandle debugHandle keyArgHandle optDataHandle unusedHandle globalHandle discernHandle elaborateConfig = do
-  Handle {..}
-
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
-  Handle ->
   p ->
   EIO T.Text
-getSymbolInfo h params = do
-  source <- GetSource.getSource (getSourceHandle h) params
-  invalidate (pathHandle h) Peripheral source
-  handleOrNone <- Check.checkSingle (checkHandle h) (sourceModule source) (sourceFilePath source)
+getSymbolInfo params = do
+  h <- liftIO $ Base.new lspConfig Nothing
+  let getSourceHandle = GetSource.new h
+  source <- GetSource.getSource getSourceHandle params
+  invalidate (Base.pathHandle h) Peripheral source
+  let checkHandle = Check.new h
+  handleOrNone <- Check.checkSingle checkHandle (sourceModule source) (sourceFilePath source)
   case handleOrNone of
     Nothing ->
       liftMaybe Nothing
     Just handle -> do
-      ((locType, _), _) <- FindDefinition.findDefinition (findDefHandle h) params
+      let findDefHandle = FindDefinition.new h
+      ((locType, _), _) <- FindDefinition.findDefinition findDefHandle params
       symbolName <- liftMaybe $ getSymbolLoc locType
       case symbolName of
         LT.Local varID _ -> do
@@ -104,7 +50,7 @@ getSymbolInfo h params = do
           t' <- Elaborate.elaborate' handle t
           return $ toText $ weaken t'
         LT.Global dd isConstLike -> do
-          let typeHandle = Elaborate._typeHandle (elaborateConfig h)
+          let typeHandle = Base.typeHandle h
           t <- lift (liftIO $ Type.lookupMaybe' typeHandle dd) >>= liftMaybe
           case (t, isConstLike) of
             (_ :< WT.Pi _ _ cod, True) ->

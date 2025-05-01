@@ -6,42 +6,43 @@ module Move.Act.Get
 where
 
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Scene.Check qualified as Check
 import Move.Scene.Clean qualified as Clean
 import Move.Scene.Fetch qualified as Fetch
-import Move.Scene.Init.Compiler qualified as InitCompiler
+import Move.Scene.Init.Base qualified as Base
 import Rule.Config.Get
-import Rule.Module
+import Rule.Config.Remark qualified as Remark
 import Prelude hiding (log)
 
 data Handle
   = Handle
-  { initCompilerHandle :: InitCompiler.Handle,
-    fetchHandle :: Fetch.Handle,
+  { fetchHandle :: Fetch.Handle,
     envHandle :: Env.Handle,
     cleanHandle :: Clean.Handle,
-    checkHandle :: Check.Handle
+    checkHandle :: Check.Handle,
+    remarkCfg :: Remark.Config
   }
 
 new ::
-  InitCompiler.Handle ->
-  Fetch.Handle ->
-  Env.Handle ->
-  Clean.Handle ->
-  Check.Handle ->
-  Handle
-new initCompilerHandle fetchHandle envHandle cleanHandle checkHandle = do
-  Handle {..}
+  Base.Handle ->
+  Remark.Config ->
+  IO Handle
+new baseHandle remarkCfg = do
+  let envHandle = Base.envHandle baseHandle
+  let fetchHandle = Fetch.new baseHandle
+  let checkHandle = Check.new baseHandle
+  cleanHandle <- Clean.new baseHandle
+  return $ Handle {..}
 
 get :: Handle -> Config -> EIO ()
 get h cfg = do
-  InitCompiler.initializeCompiler (initCompilerHandle h) (remarkCfg cfg)
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule
   Clean.clean (cleanHandle h)
   Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (moduleURL cfg)
-  InitCompiler.initializeCompilerWithPath (initCompilerHandle h) (moduleLocation (extractModule mainModule)) (remarkCfg cfg)
-  void $ Check.checkAll (checkHandle h)
+  h' <- liftIO $ Base.new (remarkCfg h) Nothing
+  void $ Check.checkAll (Check.new h')

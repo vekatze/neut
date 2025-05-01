@@ -22,6 +22,7 @@ import Move.Context.External qualified as External
 import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
 import Move.Scene.Ens.Reflect qualified as EnsReflect
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Move.Scene.Module.Save qualified as ModuleSave
 import Path
@@ -46,20 +47,19 @@ data Handle
   { ensReflectHandle :: EnsReflect.Handle,
     moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,
-    moduleHandle :: ModuleReflect.Handle,
+    moduleReflectHandle :: ModuleReflect.Handle,
     reportHandle :: Report.Handle,
     envHandle :: Env.Handle
   }
 
 new ::
-  EnsReflect.Handle ->
-  ModuleSave.Handle ->
-  External.Handle ->
-  ModuleReflect.Handle ->
-  Report.Handle ->
-  Env.Handle ->
+  Base.Handle ->
   Handle
-new ensReflectHandle moduleSaveHandle externalHandle moduleHandle reportHandle envHandle = do
+new (Base.Handle {..}) = do
+  let ensReflectHandle = EnsReflect.new gensymHandle
+  let moduleSaveHandle = ModuleSave.new debugHandle
+  let externalHandle = External.new debugHandle
+  let moduleReflectHandle = ModuleReflect.new gensymHandle
   Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()
@@ -91,7 +91,7 @@ insertDependency h aliasName url = do
     download h tempFilePath alias [url]
     archive <- liftIO $ Fetch.getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
-    mainModule <- Env.getMainModule (envHandle h)
+    let mainModule = Env.getMainModule (envHandle h)
     case Map.lookup alias (M.moduleDependency $ M.extractModule mainModule) of
       Just dep -> do
         if M.dependencyDigest dep == digest
@@ -180,17 +180,17 @@ collectDependency baseModule = do
 
 checkIfInstalled :: Handle -> MD.ModuleDigest -> EIO Bool
 checkIfInstalled h digest = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   Module.getModuleFilePath mainModule Nothing (MID.Library digest) >>= doesFileExist
 
 getLibraryModule :: Handle -> ModuleAlias -> MD.ModuleDigest -> EIO M.Module
 getLibraryModule h alias digest = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   moduleFilePath <- Module.getModuleFilePath mainModule Nothing (MID.Library digest)
   moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
     then do
-      ModuleReflect.fromFilePath (moduleHandle h) moduleFilePath
+      ModuleReflect.fromFilePath (moduleReflectHandle h) moduleFilePath
     else
       raiseError' $
         "Could not find the module file for `"
@@ -216,14 +216,14 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO ()
 extractToDependencyDir h archivePath _ digest = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   ensureDir moduleDirPath
   External.run (externalHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
 addDependencyToModuleFile h alias dep = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   let mm = M.extractModule mainModule
   (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath (ensReflectHandle h) (moduleLocation mm)
   let depEns = makeDependencyEns m alias dep

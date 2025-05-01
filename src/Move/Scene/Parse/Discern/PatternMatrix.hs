@@ -146,7 +146,7 @@ ensurePatternSanity h (m, pat) =
     PAT.Cons consInfo -> do
       let argNum = length (PAT.args consInfo)
       when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
-        mainModule <- Env.getMainModule (H.envHandle h)
+        let mainModule = Env.getMainModule (H.envHandle h)
         let consDD' = Locator.getReadableDD mainModule $ PAT.consDD consInfo
         raiseError m $
           "The constructor `"

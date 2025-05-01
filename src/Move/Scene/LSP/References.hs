@@ -9,6 +9,7 @@ import Control.Monad.Trans
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.EIO (EIO)
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
@@ -28,13 +29,14 @@ data Handle
   }
 
 new ::
-  Unravel.Handle ->
-  GetSource.Handle ->
-  FindDefinition.Handle ->
-  GAC.Handle ->
-  Handle
-new unravelHandle getSourceHandle findDefinitionHandle gacHandle = do
-  Handle {..}
+  Base.Handle ->
+  IO Handle
+new baseHandle = do
+  unravelHandle <- liftIO $ Unravel.new baseHandle
+  let getSourceHandle = GetSource.new baseHandle
+  let findDefinitionHandle = FindDefinition.new baseHandle
+  let gacHandle = GAC.new baseHandle
+  return $ Handle {..}
 
 references ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>

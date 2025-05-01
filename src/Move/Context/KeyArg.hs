@@ -37,7 +37,7 @@ new envHandle = do
 insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> AN.ArgNum -> [Key] -> EIO ()
 insert h m funcName isConstLike argNum keys = do
   kmap <- liftIO $ readIORef (keyArgMapRef h)
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   case Map.lookup funcName kmap of
     Nothing ->
       return ()
@@ -130,7 +130,7 @@ lookup h m dataName = do
     Just (_, value) ->
       return value
     Nothing -> do
-      mainModule <- Env.getMainModule (envHandle h)
+      let mainModule = Env.getMainModule (envHandle h)
       let dataName' = Locator.getReadableDD mainModule dataName
       raiseError m $ "No such function is defined: " <> dataName'
 

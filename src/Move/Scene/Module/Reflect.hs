@@ -4,6 +4,7 @@ module Move.Scene.Module.Reflect
     fromFilePath,
     fromCurrentPath,
     findModuleFile,
+    getCurrentModuleFilePath,
   )
 where
 

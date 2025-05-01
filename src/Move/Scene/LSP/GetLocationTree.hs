@@ -8,6 +8,7 @@ where
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Context.Path qualified as Path
+import Move.Scene.Init.Base qualified as Base
 import Rule.Cache qualified as Cache
 import Rule.LocationTree qualified as LT
 import Rule.Source
@@ -18,8 +19,8 @@ newtype Handle
   { pathHandle :: Path.Handle
   }
 
-new :: Path.Handle -> Handle
-new pathHandle = do
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) = do
   Handle {..}
 
 getLocationTree ::

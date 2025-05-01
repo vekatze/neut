@@ -116,7 +116,7 @@ unravel' h t source = do
 registerShiftMap :: Handle -> EIO ()
 registerShiftMap h = do
   axis <- liftIO newAxis
-  m <- extractModule <$> getMainModule (Base.envHandle (baseHandle h))
+  let m = extractModule $ getMainModule (Base.envHandle (baseHandle h))
   arrowList <- unravelAntecedentArrow h axis m
   cAxis <- liftIO newCAxis
   compressMap cAxis (Map.fromList arrowList) arrowList >>= liftIO . Antecedent.set (Base.antecedentHandle (baseHandle h))
@@ -138,7 +138,7 @@ data Axis = Axis
 unravelAntecedentArrow :: Handle -> Axis -> Module -> EIO [(MID.ModuleID, Module)]
 unravelAntecedentArrow h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  mainModule <- getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = getMainModule (Base.envHandle (baseHandle h))
   path <- Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
@@ -166,7 +166,7 @@ unravelModule h currentModule = do
 unravelModule' :: Handle -> Axis -> Module -> EIO [Module]
 unravelModule' h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  mainModule <- getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = getMainModule (Base.envHandle (baseHandle h))
   path <- Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do

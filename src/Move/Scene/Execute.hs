@@ -28,6 +28,6 @@ new (Base.Handle {..}) = do
 
 execute :: Handle -> MainTarget -> [String] -> EIO ()
 execute h target args = do
-  MainModule mainModule <- Env.getMainModule (envHandle h)
+  let MainModule mainModule = Env.getMainModule (envHandle h)
   outputPath <- Path.getExecutableOutputPath (pathHandle h) target mainModule
   External.run (externalHandle h) (toFilePath outputPath) args

@@ -27,7 +27,7 @@ new envHandle = do
 
 getMainTarget :: Handle -> T.Text -> EIO MainTarget
 getMainTarget h targetName = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   case getTarget (extractModule mainModule) targetName of
     Just target ->
       return target

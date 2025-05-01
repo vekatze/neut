@@ -230,7 +230,7 @@ isMainFile source = do
 
 getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> EIO DD.DefiniteDescription
 getMainDefiniteDescriptionByTarget h targetOrZen = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   case targetOrZen of
     Target.Named target _ -> do
       case Map.lookup target (Module.moduleTarget $ extractModule mainModule) of

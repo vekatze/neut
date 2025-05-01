@@ -42,7 +42,7 @@ makeArchiveFromTempDir :: Handle -> PV.PackageVersion -> Path Abs Dir -> EIO ()
 makeArchiveFromTempDir h packageVersion tempRootDir = do
   (_, files) <- listDirRecurRel tempRootDir
   let newContents = map toFilePath files
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   outputPath <- toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
   External.run (externalHandle h) "tar" $
     ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents

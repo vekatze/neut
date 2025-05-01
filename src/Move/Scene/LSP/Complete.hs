@@ -23,6 +23,7 @@ import Move.Context.Clang qualified as Clang
 import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
 import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Source.Reflect qualified as SourceReflect
@@ -55,25 +56,19 @@ data Handle
     gacHandle :: GAC.Handle
   }
 
-new ::
-  Unravel.Handle ->
-  Clang.Handle ->
-  Path.Handle ->
-  Antecedent.Handle ->
-  GetModule.Handle ->
-  SourceReflect.Handle ->
-  Env.Handle ->
-  GAC.Handle ->
-  Handle
-new unravelHandle clangHandle pathHandle antecedentHandle getModuleHandle sourceReflectHandle envHandle gacHandle = do
-  Handle {..}
+new :: Base.Handle -> IO Handle
+new baseHandle@(Base.Handle {..}) = do
+  unravelHandle <- liftIO $ Unravel.new baseHandle
+  let getModuleHandle = GetModule.new baseHandle
+  let sourceReflectHandle = SourceReflect.new baseHandle
+  let gacHandle = GAC.new baseHandle
+  return $ Handle {..}
 
 complete :: Handle -> Uri -> Position -> EIO [CompletionItem]
 complete h uri pos = do
   Unravel.registerShiftMap (unravelHandle h)
   pathString <- liftMaybe $ uriToFilePath uri
   currentSource <- SourceReflect.reflect (sourceReflectHandle h) pathString >>= liftMaybe
-  _ <- Clang.getClangDigest (clangHandle h) -- cache
   let loc = positionToLoc pos
   lift (runEIO $ collectCompletionItems h currentSource loc) >>= liftEither
 
@@ -310,7 +305,7 @@ locToPosition (line, character) =
 
 getAllTopCandidate :: Handle -> Module -> EIO ([(Source, [TopCandidate])], FastPresetSummary)
 getAllTopCandidate h baseModule = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   dependencies <- GetModule.getAllDependencies (getModuleHandle h) mainModule baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   (candListList, aliasPresetInfo) <- unzip <$> forP visibleModuleList (getAllTopCandidate' h)

@@ -49,7 +49,7 @@ new' (Base.Handle {..}) = do
 
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()
 link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
-  mainModule <- Env.getMainModule (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
   executablePath <- Path.getExecutableOutputPath (pathHandle h) target (extractModule mainModule)
   isExecutableAvailable <- doesFileExist executablePath
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
@@ -87,8 +87,7 @@ getCompletedTitle numOfObjects = do
 
 getColor :: Handle -> IO [SGR]
 getColor h = do
-  shouldColorize <- Color.getShouldColorizeStdout (colorHandle h)
-  if shouldColorize
+  if Color.getShouldColorizeStdout (colorHandle h)
     then return [SetColor Foreground Vivid Green]
     else return []
 

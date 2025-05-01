@@ -2,13 +2,11 @@ module Move.Context.Debug
   ( Handle,
     new,
     report,
-    setDebugMode,
   )
 where
 
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.IORef
 import Data.Text qualified as T
 import Data.Time (NominalDiffTime, UTCTime, diffUTCTime, getCurrentTime)
 import Move.Console.Report (printStdErr)
@@ -22,30 +20,24 @@ import Text.Printf (printf)
 data Handle
   = Handle
   { colorHandle :: Color.Handle,
-    enableDebugModeRef :: IORef Bool,
+    enableDebugMode :: Bool,
     baseTime :: UTCTime
   }
 
-new :: Color.Handle -> IO Handle
-new colorHandle = do
-  enableDebugModeRef <- newIORef False
+new :: Color.Handle -> Bool -> IO Handle
+new colorHandle enableDebugMode = do
   baseTime <- getCurrentTime
   return $ Handle {..}
 
 report :: Handle -> T.Text -> EIO ()
 report h message = do
-  enableDebugMode <- liftIO $ readIORef (enableDebugModeRef h)
-  when enableDebugMode $ do
+  when (enableDebugMode h) $ do
     currentTime <- liftIO getCurrentTime
     let elapsedTime = diffUTCTime currentTime (baseTime h)
     let elapsedTime' = L.pack [SetColor Foreground Vivid Black] (T.pack $ formatNominalDiffTime elapsedTime)
-    shouldColorize <- liftIO $ getShouldColorizeStderr (colorHandle h)
+    let shouldColorize = getShouldColorizeStderr (colorHandle h)
     let colorSpec = if shouldColorize then L.Colorful else L.Colorless
     liftIO $ printStdErr colorSpec $ elapsedTime' <> " " <> L.pack' message <> "\n"
-
-setDebugMode :: Handle -> Bool -> IO ()
-setDebugMode h =
-  writeIORef (enableDebugModeRef h)
 
 formatNominalDiffTime :: NominalDiffTime -> String
 formatNominalDiffTime t =

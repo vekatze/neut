@@ -16,20 +16,19 @@ module Move.Context.Env
     getOS,
     getPlatform,
     setBuildMode,
-    setMainModule,
-    setSilentMode,
     getSilentMode,
     getMainDefiniteDescriptionByTarget,
   )
 where
 
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Data.Time
 import Move.Console.Report qualified as Report
-import Move.Context.EIO (EIO, raiseCritical', raiseError, raiseError', run)
+import Move.Context.EIO (EIO, raiseError, raiseError', run)
+import Move.Scene.Module.Reflect (getCurrentModuleFilePath)
+import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Path
 import Rule.Arch qualified as Arch
 import Rule.BaseName qualified as BN
@@ -53,27 +52,29 @@ data Handle
   { arch :: Arch.Arch,
     baseSize :: DS.DataSize,
     buildModeRef :: IORef BM.BuildMode,
-    enableSilentModeRef :: IORef Bool,
-    mainModuleRef :: IORef (Maybe MainModule)
+    enableSilentMode :: Bool,
+    mainModule :: MainModule
   }
 
-new :: Report.Handle -> IO Handle
-new reportHandle = do
+new :: Report.Handle -> Bool -> Maybe (Path Abs File) -> IO Handle
+new reportHandle enableSilentMode moduleFilePathOrNone = do
   buildModeRef <- newIORef BM.Develop
-  enableSilentModeRef <- newIORef False
-  mainModuleRef <- newIORef Nothing
   run reportHandle $ do
+    let moduleReflectHandle = ModuleReflect.new undefined
+    mainModule <-
+      MainModule
+        <$> case moduleFilePathOrNone of
+          Just moduleFilePath ->
+            ModuleReflect.fromFilePath moduleReflectHandle moduleFilePath
+          Nothing -> do
+            getCurrentModuleFilePath >>= ModuleReflect.fromFilePath moduleReflectHandle
     arch <- getArch Nothing
     baseSize <- getDataSize'
     return $ Handle {..}
 
-getMainModule :: Handle -> EIO MainModule
-getMainModule h =
-  readIORefOrFail "mainModule" (mainModuleRef h)
-
-setMainModule :: Handle -> MainModule -> IO ()
-setMainModule h m =
-  writeIORef (mainModuleRef h) (Just m)
+getMainModule :: Handle -> MainModule
+getMainModule =
+  mainModule
 
 setBuildMode :: Handle -> BM.BuildMode -> IO ()
 setBuildMode h =
@@ -155,26 +156,13 @@ getPlatform mm = do
   os <- getOS mm
   return $ P.Platform {arch, os}
 
-setSilentMode :: Handle -> Bool -> IO ()
-setSilentMode h =
-  writeIORef (enableSilentModeRef h)
-
-getSilentMode :: Handle -> IO Bool
-getSilentMode h =
-  readIORef (enableSilentModeRef h)
-
-readIORefOrFail :: T.Text -> IORef (Maybe a) -> EIO a
-readIORefOrFail name ref = do
-  mValue <- liftIO $ readIORef ref
-  case mValue of
-    Just a ->
-      return a
-    Nothing ->
-      raiseCritical' $ "[compiler bug] `" <> name <> "` is uninitialized"
+getSilentMode :: Handle -> Bool
+getSilentMode =
+  enableSilentMode
 
 getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> EIO DD.DefiniteDescription
 getMainDefiniteDescriptionByTarget h targetOrZen = do
-  mainModule <- getMainModule h
+  let mainModule = getMainModule h
   case targetOrZen of
     Target.Named target _ -> do
       case Map.lookup target (Module.moduleTarget $ extractModule mainModule) of

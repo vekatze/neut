@@ -19,14 +19,11 @@ module Move.Console.Report
     printWarning,
     printStdOut,
     printStdErr,
-    setEndOfEntry,
-    getEndOfEntry,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
-import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.Color qualified as Color
@@ -41,13 +38,12 @@ import System.IO hiding (Handle)
 data Handle
   = Handle
   { colorHandle :: Color.Handle,
-    endOfEntryRef :: IORef T.Text
+    endOfEntry :: T.Text
   }
 
-new :: Color.Handle -> IO Handle
-new colorHandle = do
-  endOfEntryRef <- newIORef ""
-  return $ Handle {..}
+new :: Color.Handle -> T.Text -> Handle
+new colorHandle endOfEntry = do
+  Handle {..}
 
 printString :: String -> IO ()
 printString =
@@ -127,7 +123,7 @@ printRemarkIO h (mpos, shouldInsertPadding, l, t) = do
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
   footerText <- L.pack' <$> getFooter h
-  b <- Color.getShouldColorizeStdout (colorHandle h)
+  let b = Color.getShouldColorizeStdout (colorHandle h)
   let colorSpec = if b then L.Colorful else L.Colorless
   printStdOut colorSpec $ locText <> levelText <> remarkText <> footerText
 
@@ -137,7 +133,7 @@ printErrorIO h (mpos, shouldInsertPadding, l, t) = do
   let levelText = getRemarkLevel l
   let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
   footerText <- L.pack' <$> getFooter h
-  b <- Color.getShouldColorizeStderr (colorHandle h)
+  let b = Color.getShouldColorizeStderr (colorHandle h)
   let colorSpec = if b then L.Colorful else L.Colorless
   printStdErr colorSpec $ locText <> levelText <> remarkText <> footerText
 
@@ -151,7 +147,7 @@ getRemarkLocation mpos = do
 
 getFooter :: Handle -> IO T.Text
 getFooter h = do
-  eoe <- getEndOfEntry h
+  let eoe = getEndOfEntry h
   if eoe == ""
     then return ""
     else return $ eoe <> "\n"
@@ -186,10 +182,6 @@ printStdErr :: L.ColorSpec -> L.Log -> IO ()
 printStdErr c l = do
   B.hPutStr stderr $ encodeUtf8 $ L.unpack c l
 
-setEndOfEntry :: Handle -> T.Text -> IO ()
-setEndOfEntry h =
-  writeIORef (endOfEntryRef h)
-
-getEndOfEntry :: Handle -> IO T.Text
-getEndOfEntry h =
-  readIORef (endOfEntryRef h)
+getEndOfEntry :: Handle -> T.Text
+getEndOfEntry =
+  endOfEntry

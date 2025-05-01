@@ -114,7 +114,7 @@ buildTarget h (M.MainModule baseModule) target = do
 
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> EIO ()
 compile h target outputKindList contentSeq = do
-  mainModule <- Env.getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
   let cacheHandle = Cache.new' (baseHandle h)
   bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount h mainModule target outputKindList
@@ -122,8 +122,7 @@ compile h target outputKindList contentSeq = do
   let colorHandle = Base.colorHandle (baseHandle h)
   currentTime <- liftIO getCurrentTime
   color <- do
-    shouldColorize <- liftIO $ Color.getShouldColorizeStdout colorHandle
-    if shouldColorize
+    if Color.getShouldColorizeStdout colorHandle
       then return [SetColor Foreground Vivid Green]
       else return []
   let workingTitle = getWorkingTitle numOfItems
@@ -134,7 +133,7 @@ compile h target outputKindList contentSeq = do
   let llvmHandle = LLVM.new' (baseHandle h)
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     localHandle <- Local.new (baseHandle h) source
-    parseHandle <- liftIO $ Parse.new' (baseHandle h) localHandle
+    let parseHandle = Parse.new (baseHandle h) localHandle
     elaborateHandle <- liftIO $ Elaborate.new' (baseHandle h) localHandle source
     let ensureMainHandle = EnsureMain.new (Local.locatorHandle localHandle)
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""

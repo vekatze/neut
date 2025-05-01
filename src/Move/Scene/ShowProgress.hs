@@ -31,7 +31,7 @@ data InnerHandle
 
 new :: Env.Handle -> Color.Handle -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
 new envHandle colorHandle numOfItems workingTitle completedTitle color = do
-  silentMode <- Env.getSilentMode envHandle
+  let silentMode = Env.getSilentMode envHandle
   case (silentMode, numOfItems) of
     (True, _) ->
       return Nothing

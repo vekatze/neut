@@ -142,8 +142,8 @@ getBuildSignature h t = do
     Just sig -> do
       return sig
     Nothing -> do
-      clangDigest <- Clang.getClangDigest (clangHandle h)
-      MainModule m <- Env.getMainModule (envHandle h)
+      let clangDigest = Clang.getClangDigest (clangHandle h)
+      let MainModule m = Env.getMainModule (envHandle h)
       clangOption <- getClangOption t m
       moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation m
       let moduleEns' = decodeUtf8 moduleEns

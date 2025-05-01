@@ -1,14 +1,10 @@
 module Move.Context.Elaborate
-  ( Config (..),
-    Handle (..),
-    new,
+  ( Handle (..),
     new',
   )
 where
 
 import Data.Maybe (fromMaybe)
-import Move.Context.Clang qualified as Clang
-import Move.Context.Debug qualified as Debug
 import Move.Context.Definition qualified as Definition
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -42,26 +38,6 @@ import Rule.Module (Module (moduleInlineLimit))
 import Rule.Source
 import Rule.WeakTerm qualified as WT
 
-data Config = Config
-  { _envHandle :: Env.Handle,
-    _localRemarkHandle :: LocalRemark.Handle,
-    _globalRemarkHandle :: GlobalRemark.Handle,
-    _gensymHandle :: Gensym.Handle,
-    _debugHandle :: Debug.Handle,
-    _optDataHandle :: OptimizableData.Handle,
-    _keyArgHandle :: KeyArg.Handle,
-    _discernHandle :: Discern.Handle,
-    _typeHandle :: Type.Handle,
-    _clangHandle :: Clang.Handle,
-    _rawImportSummaryHandle :: RawImportSummary.Handle,
-    _symLocHandle :: SymLoc.Handle,
-    _pathHandle :: Path.Handle,
-    _topCandidateHandle :: TopCandidate.Handle,
-    _weakDeclHandle :: WeakDecl.Handle,
-    _weakDefHandle :: WeakDefinition.Handle,
-    _defHandle :: Definition.Handle
-  }
-
 data Handle
   = Handle
   { envHandle :: Env.Handle,
@@ -94,38 +70,6 @@ data Handle
   }
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
-
-new :: Config -> Source -> IO Handle
-new cfg currentSource = do
-  let envHandle = _envHandle cfg
-  let gensymHandle = _gensymHandle cfg
-  let optDataHandle = _optDataHandle cfg
-  let keyArgHandle = _keyArgHandle cfg
-  let discernHandle = _discernHandle cfg
-  let typeHandle = _typeHandle cfg
-  let rawImportSummaryHandle = _rawImportSummaryHandle cfg
-  let symLocHandle = _symLocHandle cfg
-  let pathHandle = _pathHandle cfg
-  let topCandidateHandle = _topCandidateHandle cfg
-  let localRemarkHandle = _localRemarkHandle cfg
-  let globalRemarkHandle = _globalRemarkHandle cfg
-  let weakDeclHandle = _weakDeclHandle cfg
-  let weakDefHandle = _weakDefHandle cfg
-  let defHandle = _defHandle cfg
-  let substHandle = Subst.new gensymHandle
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
-  let reduceHandle = Reduce.new substHandle inlineLimit
-  let termSubstHandle = TermSubst.new gensymHandle
-  let refreshHandle = Refresh.new gensymHandle
-  let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle
-  let affHandle = EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
-  let fillHandle = Fill.new substHandle reduceHandle
-  constraintHandle <- Constraint.new
-  holeHandle <- Hole.new
-  weakTypeHandle <- WeakType.new
-  let varEnv = []
-  let currentStep = 0
-  return $ Handle {..}
 
 new' :: Base.Handle -> Local.Handle -> Source -> IO Handle
 new' baseHandle@(Base.Handle {..}) localHandle@(Local.Handle {..}) currentSource = do

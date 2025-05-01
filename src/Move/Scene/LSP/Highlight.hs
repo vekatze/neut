@@ -9,6 +9,7 @@ import Control.Lens hiding (Iso, List)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.EIO (EIO)
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Move.Scene.LSP.FindReferences qualified as LSP
 
@@ -17,8 +18,9 @@ newtype Handle
   { findDefinitionHandle :: FindDefinition.Handle
   }
 
-new :: FindDefinition.Handle -> Handle
-new findDefinitionHandle = do
+new :: Base.Handle -> Handle
+new baseHandle = do
+  let findDefinitionHandle = FindDefinition.new baseHandle
   Handle {..}
 
 highlight ::

@@ -7,35 +7,29 @@ where
 
 import Control.Monad
 import Language.LSP.Server
-import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Check qualified as Check
 import Move.Scene.Fetch qualified as Fetch
-import Move.Scene.LSP.Util (maxDiagNum, report, runOneShot)
-import Move.Scene.LSP.Util qualified as LspUtil
+import Move.Scene.Init.Base qualified as Base
+import Move.Scene.LSP.Util (maxDiagNum, report, run)
 import Rule.Lsp
-import Rule.Remark qualified as R
 
-data Handle
+newtype Handle
   = Handle
-  { fetchHandle :: Fetch.Handle,
-    envHandle :: Env.Handle,
-    checkHandle :: Check.Handle,
-    lspUtilHandle :: LspUtil.Handle
+  { baseHandle :: Base.Handle
   }
 
-new :: Fetch.Handle -> Env.Handle -> Check.Handle -> LspUtil.Handle -> Handle
-new fetchHandle envHandle checkHandle lspUtilHandle = do
+new :: Base.Handle -> Handle
+new baseHandle = do
   Handle {..}
 
 lint :: Handle -> Lsp () ()
 lint h = do
+  let fetchHandle = Fetch.new (baseHandle h)
+  let envHandle = Base.envHandle (baseHandle h)
+  let checkHandle = Check.new (baseHandle h)
   flushDiagnosticsBySource maxDiagNum (Just "neut")
-  remarksOrNone <- runOneShot (lspUtilHandle h) (lintM h)
+  remarksOrNone <- run (baseHandle h) $ do
+    Fetch.fetch fetchHandle (Env.getMainModule envHandle)
+    Check.check checkHandle
   forM_ remarksOrNone report
-
-lintM :: Handle -> EIO [R.Remark]
-lintM h = do
-  Env.getMainModule (envHandle h)
-    >>= Fetch.fetch (fetchHandle h)
-    >> Check.check (checkHandle h)

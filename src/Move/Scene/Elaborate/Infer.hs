@@ -4,7 +4,6 @@
 
 module Move.Scene.Elaborate.Infer
   ( Handle,
-    new,
     inferStmt,
   )
 where
@@ -555,7 +554,7 @@ ensureArityCorrectness h function expected found = do
   when (expected /= found) $ do
     case function of
       m :< WT.VarGlobal _ name -> do
-        mainModule <- Env.getMainModule (envHandle h)
+        let mainModule = Env.getMainModule (envHandle h)
         let name' = Locator.getReadableDD mainModule name
         raiseError m $
           "The function `"
