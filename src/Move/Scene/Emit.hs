@@ -1,6 +1,7 @@
 module Move.Scene.Emit
   ( Handle,
     new,
+    new',
     emit,
   )
 where
@@ -13,8 +14,10 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Emit.LowComp qualified as EmitLowComp
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.LowComp.Reduce qualified as Reduce
 import Rule.BaseLowType qualified as BLT
 import Rule.Builder
@@ -26,6 +29,7 @@ import Rule.DefiniteDescription qualified as DD
 import Rule.ForeignCodType qualified as FCT
 import Rule.Ident.Reify
 import Rule.LowComp qualified as LC
+import Rule.LowComp.EmitOp qualified as EmitOp
 import Rule.LowComp.EmitValue
 import Rule.LowType qualified as LT
 import Rule.LowType.EmitLowType
@@ -45,6 +49,15 @@ data Handle
 
 new :: Gensym.Handle -> EmitLowComp.Handle -> Reduce.Handle -> DataSize -> Int -> Handle
 new gensymHandle emitLowCompHandle reduceHandle dataSize baseSize = do
+  Handle {..}
+
+new' :: Base.Handle -> Handle
+new' (Base.Handle {..}) = do
+  let baseSize = Env.getDataSizeValue envHandle
+  let emitOpHandle = EmitOp.new baseSize
+  let emitLowCompHandle = EmitLowComp.new gensymHandle emitOpHandle
+  let reduceHandle = Reduce.new gensymHandle
+  let dataSize = Env.getDataSize''' envHandle
   Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
@@ -99,12 +112,12 @@ emitGlobalExt name lt =
     <> " = external global "
     <> emitLowType lt
 
-type StaticTextInfo = (DD.DefiniteDescription, (Builder, Int))
+type StaticTextInfo = (T.Text, (Builder, Int))
 
 emitStaticText :: Int -> StaticTextInfo -> Builder
 emitStaticText baseSize (from, (text, len)) = do
   "@"
-    <> DD.toBuilder from
+    <> TE.encodeUtf8Builder ("\"" <> from <> "\"")
     <> " = private unnamed_addr constant "
     <> emitLowType (LT.textType baseSize len)
     <> " {"

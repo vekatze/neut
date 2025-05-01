@@ -26,16 +26,14 @@ import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
-import Move.Context.Locator qualified as Locator
 import Move.Context.Path qualified as Path
-import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.EnsureMain qualified as EnsureMain
 import Move.Scene.Execute qualified as Execute
-import Move.Scene.Init.Source qualified as InitSource
-import Move.Scene.Init.Target qualified as InitTarget
+import Move.Scene.Init.Base qualified as Base
+import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Install qualified as Install
 import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
@@ -69,30 +67,7 @@ data Config = Config
   }
 
 data Handle = Handle
-  { gensymHandle :: Gensym.Handle,
-    debugHandle :: Debug.Handle,
-    initTargetHandle :: InitTarget.Handle,
-    unravelHandle :: Unravel.Handle,
-    loadHandle :: Load.Handle,
-    globalRemarkHandle :: GlobalRemark.Handle,
-    reportHandle :: Report.Handle,
-    envHandle :: Env.Handle,
-    locatorHandle :: Locator.Handle,
-    cacheHandle :: Cache.Handle,
-    colorHandle :: Color.Handle,
-    initSourceHandle :: InitSource.Handle,
-    pathHandle :: Path.Handle,
-    externalHandle :: External.Handle,
-    ensureMainHandle :: EnsureMain.Handle,
-    parseHandle :: Parse.Handle,
-    clarifyHandle :: Clarify.Handle,
-    lowerHandle :: Lower.Handle,
-    llvmHandle :: LLVM.Handle,
-    emitHandle :: Emit.Handle,
-    linkHandle :: Link.Handle,
-    installHandle :: Install.Handle,
-    executeHandle :: Execute.Handle,
-    elaborateConfig :: Elaborate.Config,
+  { baseHandle :: Base.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -102,32 +77,9 @@ data Handle = Handle
 
 new ::
   Config ->
-  Gensym.Handle ->
-  Debug.Handle ->
-  InitTarget.Handle ->
-  Unravel.Handle ->
-  Load.Handle ->
-  GlobalRemark.Handle ->
-  Report.Handle ->
-  Env.Handle ->
-  Locator.Handle ->
-  Cache.Handle ->
-  Color.Handle ->
-  InitSource.Handle ->
-  Path.Handle ->
-  External.Handle ->
-  EnsureMain.Handle ->
-  Parse.Handle ->
-  Clarify.Handle ->
-  Lower.Handle ->
-  LLVM.Handle ->
-  Emit.Handle ->
-  Link.Handle ->
-  Install.Handle ->
-  Execute.Handle ->
-  Elaborate.Config ->
+  Base.Handle ->
   Handle
-new cfg gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globalRemarkHandle reportHandle envHandle locatorHandle cacheHandle colorHandle initSourceHandle pathHandle externalHandle ensureMainHandle parseHandle clarifyHandle lowerHandle llvmHandle emitHandle linkHandle installHandle executeHandle elaborateConfig = do
+new cfg baseHandle = do
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -137,59 +89,72 @@ new cfg gensymHandle debugHandle initTargetHandle unravelHandle loadHandle globa
 
 buildTarget :: Handle -> M.MainModule -> Target -> EIO ()
 buildTarget h (M.MainModule baseModule) target = do
-  Debug.report (debugHandle h) $ "Building: " <> T.pack (show target)
+  Debug.report (Base.debugHandle (baseHandle h)) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
-  liftIO $ InitTarget.initializeForTarget (initTargetHandle h)
-  (artifactTime, dependenceSeq) <- Unravel.unravel (unravelHandle h) baseModule target'
+  unravelHandle <- liftIO $ Unravel.new (baseHandle h)
+  (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
   didPerformForeignCompilation <- compileForeign h target moduleList
-  contentSeq <- Load.load (loadHandle h) target dependenceSeq
+  let loadHandle = Load.new (baseHandle h)
+  contentSeq <- Load.load loadHandle target dependenceSeq
   compile h target' (_outputKindList h) contentSeq
-  liftIO $ GlobalRemark.get (globalRemarkHandle h) >>= Report.printRemarkList (reportHandle h)
+  liftIO $
+    GlobalRemark.get (Base.globalRemarkHandle (baseHandle h))
+      >>= Report.printRemarkList (Base.reportHandle (baseHandle h))
   case target' of
     Peripheral {} ->
       return ()
     PeripheralSingle {} ->
       return ()
     Main ct -> do
-      Link.link (linkHandle h) ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
+      let linkHandle = Link.new' (baseHandle h)
+      Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
 
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> EIO ()
 compile h target outputKindList contentSeq = do
-  mainModule <- Env.getMainModule (envHandle h)
-  bs <- mapM (needsCompilation (cacheHandle h) outputKindList . fst) contentSeq
+  mainModule <- Env.getMainModule (Base.envHandle (baseHandle h))
+  let cacheHandle = Cache.new' (baseHandle h)
+  bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount h mainModule target outputKindList
   let numOfItems = length (filter id bs) + c
+  let colorHandle = Base.colorHandle (baseHandle h)
   currentTime <- liftIO getCurrentTime
   color <- do
-    shouldColorize <- liftIO $ Color.getShouldColorizeStdout (colorHandle h)
+    shouldColorize <- liftIO $ Color.getShouldColorizeStdout colorHandle
     if shouldColorize
       then return [SetColor Foreground Vivid Green]
       else return []
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
-  hp <- liftIO $ ProgressBar.new (envHandle h) (colorHandle h) (Just numOfItems) workingTitle completedTitle color
+  hp <- liftIO $ ProgressBar.new (Base.envHandle (baseHandle h)) colorHandle (Just numOfItems) workingTitle completedTitle color
+  let lowerHandle = Lower.new' (baseHandle h)
+  let emitHandle = Emit.new' (baseHandle h)
+  let llvmHandle = LLVM.new' (baseHandle h)
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
-    InitSource.initializeForSource (initSourceHandle h) source
+    localHandle <- Local.new (baseHandle h) source
+    parseHandle <- liftIO $ Parse.new' (baseHandle h) localHandle
+    elaborateHandle <- liftIO $ Elaborate.new' (baseHandle h) localHandle source
+    let ensureMainHandle = EnsureMain.new (Local.locatorHandle localHandle)
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-    Debug.report (debugHandle h) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
-    cacheOrStmtList <- Parse.parse (parseHandle h) target source cacheOrContent
-    hElaborate <- liftIO $ Elaborate.new (elaborateConfig h) source
-    stmtList <- Elaborate.elaborate hElaborate target cacheOrStmtList
-    EnsureMain.ensureMain (ensureMainHandle h) target source (map snd $ getStmtName stmtList)
-    b <- Cache.needsCompilation (cacheHandle h) outputKindList source
+    Debug.report (Base.debugHandle (baseHandle h)) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+    cacheOrStmtList <- Parse.parse parseHandle target source cacheOrContent
+    stmtList <- Elaborate.elaborate elaborateHandle target cacheOrStmtList
+    EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
+    b <- Cache.needsCompilation cacheHandle outputKindList source
     if b
       then do
-        stmtList' <- Clarify.clarify (clarifyHandle h) stmtList
+        clarifyHandle <- liftIO $ Clarify.new' (baseHandle h) localHandle
+
+        stmtList' <- Clarify.clarify clarifyHandle stmtList
         fmap Just $ liftIO $ async $ runEIO $ do
-          virtualCode <- Lower.lower (lowerHandle h) stmtList'
-          emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList (Right source) virtualCode
+          virtualCode <- Lower.lower lowerHandle stmtList'
+          emit emitHandle llvmHandle hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   entryPointVirtualCode <- compileEntryPoint h mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
-    async $ runEIO $ emit (emitHandle h) (llvmHandle h) hp currentTime target outputKindList src code
+    async $ runEIO $ emit emitHandle llvmHandle hp currentTime target outputKindList src code
   errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
   liftIO $ ProgressBar.close hp
   if null errors
@@ -230,7 +195,8 @@ getEntryPointCompilationCount h mainModule target outputKindList = do
     PeripheralSingle {} ->
       return 0
     Main t -> do
-      b <- Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
+      let pathHandle = Base.pathHandle (baseHandle h)
+      b <- Cache.isEntryPointCompilationSkippable pathHandle mainModule t outputKindList
       return $ if b then 0 else 1
 
 compileEntryPoint :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO [(Either MainTarget Source, LC.LowCode)]
@@ -241,22 +207,27 @@ compileEntryPoint h mainModule target outputKindList = do
     PeripheralSingle {} ->
       return []
     Main t -> do
-      b <- Cache.isEntryPointCompilationSkippable (pathHandle h) mainModule t outputKindList
+      let pathHandle = Base.pathHandle (baseHandle h)
+      b <- Cache.isEntryPointCompilationSkippable pathHandle mainModule t outputKindList
       if b
         then return []
         else do
-          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint (clarifyHandle h)) >>= Lower.lowerEntryPoint (lowerHandle h) t
+          clarifyMainHandle <- liftIO $ Clarify.newMain (baseHandle h)
+          let lowerHandle = Lower.new' (baseHandle h)
+          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint clarifyMainHandle) >>= Lower.lowerEntryPoint lowerHandle t
           return [(Left t, mainVirtualCode)]
 
 execute :: Handle -> Bool -> MainTarget -> [String] -> EIO ()
 execute h shouldExecute target args = do
   when shouldExecute $ do
-    Execute.execute (executeHandle h) target args
+    let executeHandle = Execute.new (baseHandle h)
+    Execute.execute executeHandle target args
 
 install :: Handle -> Maybe FilePath -> MainTarget -> EIO ()
 install h filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
-  mapM_ (Install.install (installHandle h) target) mDir
+  let installHandle = Install.new (baseHandle h)
+  mapM_ (Install.install installHandle target) mDir
 
 compileForeign :: Handle -> Target -> [M.Module] -> EIO Bool
 compileForeign h t moduleList = do
@@ -269,10 +240,10 @@ compileForeign' h t currentTime m = do
   sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
   unless (null cmdList) $ do
-    Debug.report (debugHandle h) $
+    Debug.report (Base.debugHandle (baseHandle h)) $
       "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
-  foreignDir <- Path.getForeignDir (pathHandle h) t m
+  foreignDir <- Path.getForeignDir (Base.pathHandle (baseHandle h)) t m
   inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
   let outputPathList = map (foreignDir </>) $ M.output $ M.moduleForeign m
   for_ outputPathList $ \outputPath -> do
@@ -282,13 +253,14 @@ compileForeign' h t currentTime m = do
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
-          Debug.report (debugHandle h) $
+          Debug.report (Base.debugHandle (baseHandle h)) $
             "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
       forM_ cmdList' $ \c -> do
-        result <- External.runOrFail' (externalHandle h) moduleRootDir $ T.unpack c
+        let externalHandle = External.new (Base.debugHandle (baseHandle h))
+        result <- External.runOrFail' externalHandle moduleRootDir $ T.unpack c
         case result of
           Right _ ->
             return ()
@@ -321,7 +293,7 @@ naiveReplace sub t =
 getForeignSubst :: Handle -> Target -> M.Module -> EIO [(T.Text, T.Text)]
 getForeignSubst h t m = do
   clang <- liftIO Clang.getClang
-  foreignDir <- Path.getForeignDir (pathHandle h) t m
+  foreignDir <- Path.getForeignDir (Base.pathHandle (baseHandle h)) t m
   return
     [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),
       ("{{clang}}", T.pack clang),

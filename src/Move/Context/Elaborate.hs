@@ -2,6 +2,7 @@ module Move.Context.Elaborate
   ( Config (..),
     Handle (..),
     new,
+    new',
   )
 where
 
@@ -24,6 +25,8 @@ import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
+import Move.Scene.Init.Base qualified as Base
+import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Term.Inline qualified as Inline
 import Move.Scene.Term.Refresh qualified as Refresh
@@ -122,4 +125,22 @@ new cfg currentSource = do
   weakTypeHandle <- WeakType.new
   let varEnv = []
   let currentStep = 0
+  return $ Handle {..}
+
+new' :: Base.Handle -> Local.Handle -> Source -> IO Handle
+new' baseHandle@(Base.Handle {..}) localHandle@(Local.Handle {..}) currentSource = do
+  let substHandle = Subst.new gensymHandle
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
+  let reduceHandle = Reduce.new substHandle inlineLimit
+  let refreshHandle = Refresh.new gensymHandle
+  let termSubstHandle = TermSubst.new gensymHandle
+  let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle
+  let affHandle = EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
+  let fillHandle = Fill.new substHandle reduceHandle
+  constraintHandle <- Constraint.new
+  holeHandle <- Hole.new
+  weakTypeHandle <- WeakType.new
+  let varEnv = []
+  let currentStep = 0
+  let discernHandle = Discern.new' baseHandle localHandle
   return $ Handle {..}

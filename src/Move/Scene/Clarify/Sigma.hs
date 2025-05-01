@@ -32,12 +32,11 @@ data Handle
   = Handle
   { gensymHandle :: Gensym.Handle,
     linearizeHandle :: Linearize.Handle,
-    locatorHandle :: Locator.Handle,
     utilityHandle :: Utility.Handle
   }
 
-new :: Gensym.Handle -> Linearize.Handle -> Locator.Handle -> Utility.Handle -> Handle
-new gensymHandle linearizeHandle locatorHandle utilityHandle = do
+new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> Handle
+new gensymHandle linearizeHandle utilityHandle = do
   Handle {..}
 
 registerImmediateS4 :: Handle -> IO ()
@@ -142,15 +141,17 @@ supplyName h mName =
 
 closureEnvS4 ::
   Handle ->
+  Locator.Handle ->
   [Either C.Comp (Ident, C.Comp)] ->
   IO C.Value
-closureEnvS4 h mxts =
+closureEnvS4 h locatorHandle mxts =
   case mxts of
     [] ->
       return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
-      name <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.sigmaName i
+      -- name <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.sigmaName i
+      name <- liftIO $ Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name (sigmaT h mxts) (sigma4 h mxts)
       return $ C.VarGlobal name AN.argNumS4
 

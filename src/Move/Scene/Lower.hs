@@ -7,6 +7,7 @@
 module Move.Scene.Lower
   ( Handle,
     new,
+    new',
     lower,
     lowerEntryPoint,
   )
@@ -23,15 +24,15 @@ import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.EIO (EIO)
-import Move.Context.Locator qualified as Locator
+import Move.Context.Env qualified as Env
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Cancel
 import Move.Scene.Comp.Reduce qualified as Reduce
 import Move.Scene.Comp.Subst qualified as Subst
+import Move.Scene.Init.Base qualified as Base
 import Rule.Arch
 import Rule.ArgNum qualified as AN
 import Rule.BaseLowType qualified as BLT
-import Rule.BaseName qualified as BN
 import Rule.Comp qualified as C
 import Rule.Const
 import Rule.DeclarationName qualified as DN
@@ -57,7 +58,7 @@ data Handle
   { arch :: Arch,
     baseSize :: Int,
     gensymHandle :: Gensym.Handle,
-    locatorHandle :: Locator.Handle,
+    envHandle :: Env.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle
   }
@@ -65,12 +66,20 @@ data Handle
 data InnerHandle = InnerHandle
   { handle :: Handle,
     declEnv :: IORef DN.DeclEnv,
-    staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
+    staticTextList :: IORef [(T.Text, (Builder, Int))],
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: Arch -> Int -> Gensym.Handle -> Locator.Handle -> Reduce.Handle -> Subst.Handle -> Handle
-new arch baseSize gensymHandle locatorHandle reduceHandle substHandle = do
+new :: Arch -> Int -> Gensym.Handle -> Env.Handle -> Reduce.Handle -> Subst.Handle -> Handle
+new arch baseSize gensymHandle envHandle reduceHandle substHandle = do
+  Handle {..}
+
+new' :: Base.Handle -> Handle
+new' (Base.Handle {..}) = do
+  let arch = Env.getArch' envHandle
+  let baseSize = Env.getDataSizeValue envHandle
+  let substHandle = Subst.new gensymHandle
+  let reduceHandle = Reduce.new compDefHandle substHandle gensymHandle
   Handle {..}
 
 makeBaseDeclEnv :: Arch -> DN.DeclEnv
@@ -98,7 +107,7 @@ lowerEntryPoint :: Handle -> MainTarget -> [C.CompStmt] -> EIO LC.LowCode
 lowerEntryPoint h target stmtList = do
   h' <- liftIO $ makeInnerHandle h
   liftIO $ registerInternalNames h' stmtList
-  mainDD <- Locator.getMainDefiniteDescriptionByTarget (locatorHandle (handle h')) target
+  mainDD <- Env.getMainDefiniteDescriptionByTarget (envHandle (handle h')) target
   liftIO $ insDeclEnv h' (DN.In mainDD) AN.zero
   mainDef <- liftIO $ constructMainTerm h' mainDD
   stmtList' <- catMaybes <$> mapM (lowerStmt h') stmtList
@@ -398,10 +407,12 @@ lowerValue h resultVar v cont =
       let i8s = encode $ T.unpack text
       let len = length i8s
       i <- liftIO $ Gensym.newCount (gensymHandle (handle h))
-      name <- lift $ liftIO $ Locator.attachCurrentLocator (locatorHandle (handle h)) $ BN.textName i
+      let name = "text;" <> T.pack (show i)
+      -- name <- lift $ liftIO $ Locator.attachCurrentLocator (locatorHandle (handle h)) $ BN.textName i
       let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
       liftIO $ insertStaticText h name encodedText len
-      uncast h resultVar (LC.VarGlobal name) LT.Pointer cont
+      -- uncast h resultVar (LC.VarGlobal name) LT.Pointer cont
+      uncast h resultVar (LC.VarTextName name) LT.Pointer cont
     C.SigmaIntro ds -> do
       let arrayType = AggTypeArray (length ds) LT.Pointer
       createAggData h resultVar arrayType (map (,LT.Pointer) ds) cont
@@ -473,7 +484,7 @@ member h k = do
   denv <- readIORef (declEnv h)
   return $ Map.member k denv
 
-insertStaticText :: InnerHandle -> DD.DefiniteDescription -> Builder -> Int -> IO ()
+insertStaticText :: InnerHandle -> T.Text -> Builder -> Int -> IO ()
 insertStaticText h name text len =
   modifyIORef' (staticTextList h) $ (:) (name, (text, len))
 

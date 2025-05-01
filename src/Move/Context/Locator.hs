@@ -1,6 +1,7 @@
 module Move.Context.Locator
   ( Handle,
     new,
+    new',
     initialize,
     attachCurrentLocator,
     attachPublicCurrentLocator,
@@ -71,6 +72,16 @@ new envHandle tagHandle = do
   activeGlobalLocatorListRef <- newIORef []
   currentGlobalLocatorRef <- newIORef Nothing
   return $ Handle {..}
+
+new' :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
+new' envHandle tagHandle source = do
+  activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
+  activeStaticFileListRef <- liftIO $ newIORef Map.empty
+  activeGlobalLocatorListRef <- liftIO $ newIORef []
+  currentGlobalLocatorRef <- liftIO $ newIORef Nothing
+  let h = Handle {..}
+  initialize h source
+  return h
 
 initialize :: Handle -> Source.Source -> EIO ()
 initialize h currentSource = do

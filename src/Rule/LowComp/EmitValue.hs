@@ -6,6 +6,8 @@ module Rule.LowComp.EmitValue
 where
 
 import Data.ByteString.Builder
+import Data.Text.Encoding qualified as TE
+import Numeric.Half
 import Rule.Builder
 import Rule.DefiniteDescription qualified as DD
 import Rule.ExternalName qualified as EN
@@ -14,7 +16,6 @@ import Rule.LowComp qualified as LC
 import Rule.LowType qualified as LT
 import Rule.LowType.EmitLowType (emitLowType)
 import Rule.PrimNumSize
-import Numeric.Half
 
 emitValue :: LC.Value -> Builder
 emitValue lowValue =
@@ -25,6 +26,8 @@ emitValue lowValue =
       "@" <> DD.toBuilder globalName
     LC.VarExternal extName ->
       "@" <> EN.toBuilder extName
+    LC.VarTextName textName ->
+      "@" <> TE.encodeUtf8Builder ("\"" <> textName <> "\"")
     LC.Int i ->
       integerDec i
     LC.Float FloatSize16 x -> do

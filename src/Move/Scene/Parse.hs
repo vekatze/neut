@@ -1,6 +1,7 @@
 module Move.Scene.Parse
   ( Handle,
     new,
+    new',
     parse,
     parseCachedStmtList,
   )
@@ -13,9 +14,12 @@ import Data.Text qualified as T
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO)
 import Move.Context.Global qualified as Global
+import Move.Context.NameMap qualified as NameMap
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
+import Move.Scene.Init.Base qualified as Base
+import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
@@ -42,7 +46,8 @@ data Handle
     pathHandle :: Path.Handle,
     importHandle :: Import.Handle,
     globalHandle :: Global.Handle,
-    localRemarkHandle :: LocalRemark.Handle, -- per file
+    localRemarkHandle :: LocalRemark.Handle,
+    nameMapHandle :: NameMap.Handle,
     unusedHandle :: Unused.Handle
   }
 
@@ -53,10 +58,26 @@ new ::
   Import.Handle ->
   Global.Handle ->
   LocalRemark.Handle ->
+  NameMap.Handle ->
   Unused.Handle ->
   Handle
-new parseHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle unusedHandle = do
+new parseHandle discernHandle pathHandle importHandle globalHandle localRemarkHandle nameMapHandle unusedHandle = do
   Handle {..}
+
+new' ::
+  Base.Handle ->
+  Local.Handle ->
+  IO Handle
+new' baseHandle localHandle = do
+  localRemarkHandle <- LocalRemark.new
+  unusedHandle <- Unused.new
+  let parseHandle = P.new (Base.gensymHandle baseHandle)
+  let discernHandle = Discern.new' baseHandle localHandle
+  let pathHandle = Base.pathHandle baseHandle
+  let importHandle = Import.new' baseHandle localHandle
+  let globalHandle = Local.globalHandle localHandle
+  let nameMapHandle = Base.nameMapHandle baseHandle
+  return $ Handle {..}
 
 parse :: Handle -> Target -> Source.Source -> Either Cache.Cache T.Text -> EIO (Either Cache.Cache [WeakStmt])
 parse h t source cacheOrContent = do
@@ -106,7 +127,7 @@ saveTopLevelNames :: Handle -> Source.Source -> [(Hint, DD.DefiniteDescription)]
 saveTopLevelNames h source topNameList = do
   globalNameList <- mapM (uncurry $ Global.lookup' (globalHandle h)) topNameList
   let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
-  liftIO $ Global.saveCurrentNameSet (globalHandle h) (Source.sourceFilePath source) nameMap
+  liftIO $ NameMap.saveCurrentNameSet (nameMapHandle h) (Source.sourceFilePath source) nameMap
 
 registerUnusedVariableRemarks :: Handle -> IO ()
 registerUnusedVariableRemarks h = do

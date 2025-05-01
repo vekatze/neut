@@ -27,6 +27,7 @@ data Value
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription
   | VarExternal EN.ExternalName
+  | VarTextName T.Text
   | Int Integer
   | Float FloatSize Double
   | Null
@@ -40,6 +41,8 @@ instance Show Value where
         T.unpack $ DD.reify dd
       VarExternal x ->
         T.unpack $ EN.reify x
+      VarTextName name ->
+        T.unpack name
       Int i ->
         show i
       Float _ f ->
@@ -97,7 +100,7 @@ data LowCode
   = LowCodeMain DefContent LowCodeInfo
   | LowCodeNormal LowCodeInfo
 
-type StaticTextInfo = (DD.DefiniteDescription, (Builder, Int))
+type StaticTextInfo = (T.Text, (Builder, Int))
 
 nop :: Value -> Op
 nop v =

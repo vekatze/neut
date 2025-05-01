@@ -10,6 +10,7 @@ import Data.Text qualified as T
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
+import Move.Scene.Init.Base qualified as Base
 import Path
 import Path.IO
 import Rule.Module (extractModule)
@@ -22,8 +23,8 @@ data Handle
     pathHandle :: Path.Handle
   }
 
-new :: Env.Handle -> Path.Handle -> Handle
-new envHandle pathHandle = do
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) = do
   Handle {..}
 
 install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()

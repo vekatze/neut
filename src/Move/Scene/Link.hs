@@ -1,6 +1,7 @@
 module Move.Scene.Link
   ( Handle,
     new,
+    new',
     link,
   )
 where
@@ -13,8 +14,10 @@ import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.ShowProgress qualified as ProgressBar
 import Path
 import Path.IO
@@ -36,6 +39,12 @@ data Handle
 
 new :: Debug.Handle -> Env.Handle -> Path.Handle -> Color.Handle -> LLVM.Handle -> Handle
 new debugHandle envHandle pathHandle colorHandle llvmHandle = do
+  Handle {..}
+
+new' :: Base.Handle -> Handle
+new' (Base.Handle {..}) = do
+  let externalHandle = External.new debugHandle
+  let llvmHandle = LLVM.new envHandle debugHandle pathHandle externalHandle
   Handle {..}
 
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()

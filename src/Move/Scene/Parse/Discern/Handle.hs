@@ -1,5 +1,6 @@
 module Move.Scene.Parse.Discern.Handle
   ( Handle (..),
+    new',
     new,
     extend,
     extend',
@@ -20,6 +21,8 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Init.Base qualified as Base
+import Move.Scene.Init.Local qualified as Local
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
@@ -59,6 +62,15 @@ new ::
   Env.Handle ->
   Handle
 new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle = do
+  let nameEnv = empty
+  let currentLayer = 0
+  Handle {..}
+
+new' ::
+  Base.Handle ->
+  Local.Handle ->
+  Handle
+new' (Base.Handle {..}) (Local.Handle {..}) = do
   let nameEnv = empty
   let currentLayer = 0
   Handle {..}

@@ -1,6 +1,7 @@
 module Move.Scene.Parse.Import
   ( Handle,
     new,
+    new',
     activateImport,
     interpretImport,
   )
@@ -17,10 +18,13 @@ import Move.Context.Env qualified as Env
 import Move.Context.Global qualified as Global
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
+import Move.Context.NameMap qualified as NameMap
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Init.Base qualified as Base
+import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Source.ShiftToLatest qualified as STL
@@ -56,6 +60,7 @@ data Handle
     gensymHandle :: Gensym.Handle,
     rawImportSummaryHandle :: RawImportSummary.Handle,
     moduleHandle :: Module.Handle,
+    nameMapHandle :: NameMap.Handle,
     tagHandle :: Tag.Handle
   }
 
@@ -70,9 +75,19 @@ new ::
   Gensym.Handle ->
   RawImportSummary.Handle ->
   Module.Handle ->
+  NameMap.Handle ->
   Tag.Handle ->
   Handle
-new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle tagHandle = do
+new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle nameMapHandle tagHandle = do
+  Handle {..}
+
+new' ::
+  Base.Handle ->
+  Local.Handle ->
+  Handle
+new' (Base.Handle {..}) (Local.Handle {..}) = do
+  let getEnabledPresetHandle = GetEnabledPreset.new gensymHandle envHandle moduleHandle
+  let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}
 
 activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
@@ -81,7 +96,7 @@ activateImport h m sourceInfoList = do
     case importItem of
       ImportItem source aliasInfoList -> do
         let path = Source.sourceFilePath source
-        namesInSource <- Global.lookupSourceNameMap (globalHandle h) m path
+        namesInSource <- NameMap.lookupSourceNameMap (nameMapHandle h) m path
         liftIO $ Global.activateTopLevelNames (globalHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
           Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo

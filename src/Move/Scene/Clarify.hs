@@ -1,6 +1,9 @@
 module Move.Scene.Clarify
   ( Handle,
     new,
+    new',
+    MainHandle,
+    newMain,
     clarify,
     clarifyEntryPoint,
     registerFoundationalTypes,
@@ -16,6 +19,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.EIO (EIO, raiseCritical, raiseCritical')
+import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -24,6 +28,9 @@ import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Sigma qualified as Sigma
 import Move.Scene.Clarify.Utility qualified as Utility
 import Move.Scene.Comp.Reduce qualified as Reduce
+import Move.Scene.Comp.Subst qualified as CompSubst
+import Move.Scene.Init.Base qualified as Base
+import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Term.Subst qualified as Subst
 import Rule.ArgNum qualified as AN
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -91,10 +98,22 @@ new ::
 new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle reduceHandle substHandle compDefHandle baseSize = do
   Handle {..}
 
+new' :: Base.Handle -> Local.Handle -> IO Handle
+new' (Base.Handle {..}) (Local.Handle {..}) = do
+  let baseSize = Env.getDataSizeValue envHandle
+  auxEnvHandle <- AuxEnv.new
+  let substHandle = Subst.new gensymHandle
+  let compSubstHandle = CompSubst.new gensymHandle
+  let reduceHandle = Reduce.new compDefHandle compSubstHandle gensymHandle
+  let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle baseSize
+  let linearizeHandle = Linearize.new gensymHandle utilityHandle
+  let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
+  return $ Handle {..}
+
 clarify :: Handle -> [Stmt] -> EIO [C.CompStmt]
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
-  baseAuxEnv <- AuxEnv.toCompStmtList <$> liftIO (getBaseAuxEnv h)
+  baseAuxEnv <- AuxEnv.toCompStmtList <$> liftIO (getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h))
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   stmtList' <- do
     stmtList' <- mapM (clarifyStmt h) stmtList
@@ -118,25 +137,42 @@ clarify h stmtList = do
       C.Foreign {} ->
         return stmt
 
-clarifyEntryPoint :: Handle -> IO [C.CompStmt]
+data MainHandle
+  = MainHandle
+  { mainAuxEnvHandle :: AuxEnv.Handle,
+    mainSigmaHandle :: Sigma.Handle,
+    mainReduceHandle :: Reduce.Handle
+  }
+
+newMain :: Base.Handle -> IO MainHandle
+newMain Base.Handle {..} = do
+  mainAuxEnvHandle <- AuxEnv.new
+  let baseSize = Env.getDataSizeValue envHandle
+  let compSubstHandle = CompSubst.new gensymHandle
+  let mainReduceHandle = Reduce.new compDefHandle compSubstHandle gensymHandle
+  let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle baseSize
+  let linearizeHandle = Linearize.new gensymHandle utilityHandle
+  let mainSigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
+  return $ MainHandle {..}
+
+clarifyEntryPoint :: MainHandle -> IO [C.CompStmt]
 clarifyEntryPoint h = do
-  AuxEnv.clear (auxEnvHandle h)
-  baseAuxEnv <- getBaseAuxEnv h
+  baseAuxEnv <- getBaseAuxEnv (mainAuxEnvHandle h) (mainSigmaHandle h)
   forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
-    e' <- Reduce.reduce (reduceHandle h) e
+    e' <- Reduce.reduce (mainReduceHandle h) e
     return $ C.Def x opacity args e'
 
 registerFoundationalTypes :: Handle -> IO ()
 registerFoundationalTypes h = do
   AuxEnv.clear (auxEnvHandle h)
-  auxEnv <- getBaseAuxEnv h
+  auxEnv <- getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
   forM_ (Map.toList auxEnv) $ uncurry $ CompDefinition.insert (compDefHandle h)
 
-getBaseAuxEnv :: Handle -> IO CompDefinition.DefMap
-getBaseAuxEnv h = do
-  Sigma.registerImmediateS4 (sigmaHandle h)
-  Sigma.registerClosureS4 (sigmaHandle h)
-  AuxEnv.get (auxEnvHandle h)
+getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO CompDefinition.DefMap
+getBaseAuxEnv auxEnvHandle sigmaHandle = do
+  Sigma.registerImmediateS4 sigmaHandle
+  Sigma.registerClosureS4 sigmaHandle
+  AuxEnv.get auxEnvHandle
 
 clarifyStmt :: Handle -> Stmt -> EIO C.CompStmt
 clarifyStmt h stmt =
@@ -593,7 +629,7 @@ returnClosure ::
 returnClosure h tenv lamID opacity fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
-  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) $ map Right fvs''
+  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 1 -- argNum == count(xts) + env
   name <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName lamID

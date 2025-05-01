@@ -73,45 +73,6 @@ import Rule.WeakTerm.ToText (toText)
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
--- data Handle
---   = Handle
---   { envHandle :: Env.Handle,
---     substHandle :: Subst.Handle,
---     reduceHandle :: Reduce.Handle,
---     unifyHandle :: Unify.Handle,
---     gensymHandle :: Gensym.Handle,
---     discernHandle :: Discern.Handle,
---     constraintHandle :: Constraint.Handle,
---     weakTypeHandle :: WeakType.Handle,
---     weakDeclHandle :: WeakDecl.Handle,
---     weakDefHandle :: WeakDefinition.Handle,
---     keyArgHandle :: KeyArg.Handle,
---     holeHandle :: Hole.Handle,
---     typeHandle :: Type.Handle,
---     optDataHandle :: OptimizableData.Handle,
---     varEnv :: BoundVarEnv
---   }
-
--- new ::
---   Env.Handle ->
---   Subst.Handle ->
---   Reduce.Handle ->
---   Unify.Handle ->
---   Gensym.Handle ->
---   Discern.Handle ->
---   Constraint.Handle ->
---   WeakType.Handle ->
---   WeakDecl.Handle ->
---   WeakDefinition.Handle ->
---   KeyArg.Handle ->
---   Hole.Handle ->
---   Type.Handle ->
---   OptimizableData.Handle ->
---   Handle
--- new envHandle substHandle reduceHandle unifyHandle gensymHandle discernHandle constraintHandle weakTypeHandle weakDeclHandle weakDefHandle keyArgHandle holeHandle typeHandle optDataHandle = do
---   let varEnv = []
---   Handle {..}
-
 inferStmt :: Handle -> WeakStmt -> EIO WeakStmt
 inferStmt h stmt =
   case stmt of

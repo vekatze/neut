@@ -1,6 +1,7 @@
 module Move.Context.LLVM
   ( Handle,
     new,
+    new',
     emit,
     link,
     ensureSetupSanity,
@@ -19,6 +20,7 @@ import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
+import Move.Scene.Init.Base qualified as Base
 import Path
 import Path.IO
 import Rule.Config.Build
@@ -40,6 +42,11 @@ data Handle
 
 new :: Env.Handle -> Debug.Handle -> Path.Handle -> External.Handle -> Handle
 new envHandle debugHandle pathHandle externalHandle = do
+  Handle {..}
+
+new' :: Base.Handle -> Handle
+new' (Base.Handle {..}) = do
+  let externalHandle = External.new debugHandle
   Handle {..}
 
 type ClangOption = String

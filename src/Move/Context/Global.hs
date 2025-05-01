@@ -7,9 +7,6 @@ module Move.Context.Global
     lookup,
     initialize,
     activateTopLevelNames,
-    clearSourceNameMap,
-    saveCurrentNameSet,
-    lookupSourceNameMap,
     lookup',
   )
 where
@@ -19,7 +16,6 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Data.Text qualified as T
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -27,7 +23,6 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
-import Path
 import Rule.ArgNum qualified as AN
 import Rule.DefiniteDescription qualified as DD
 import Rule.Discriminant qualified as D
@@ -56,15 +51,13 @@ data Handle
     tagHandle :: Tag.Handle,
     unusedHandle :: Unused.Handle,
     nameMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
-    geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
-    sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
+    geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike))
   }
 
 new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
 new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle = do
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
-  sourceNameMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 initialize :: Handle -> IO ()
@@ -264,24 +257,7 @@ removeFromDefNameMap :: Handle -> DD.DefiniteDescription -> IO ()
 removeFromDefNameMap h dd = do
   modifyIORef' (nameMapRef h) $ Map.delete dd
 
-clearSourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap) -> IO ()
-clearSourceNameMap ref =
-  writeIORef ref Map.empty
-
-lookupSourceNameMap :: Handle -> Hint.Hint -> Path Abs File -> EIO TopNameMap
-lookupSourceNameMap h m sourcePath = do
-  smap <- liftIO $ readIORef (sourceNameMapRef h)
-  case Map.lookup sourcePath smap of
-    Just topLevelNameInfo -> do
-      return topLevelNameInfo
-    Nothing ->
-      raiseCritical m $ "Top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
-
 activateTopLevelNames :: Handle -> TopNameMap -> IO ()
 activateTopLevelNames h namesInSource = do
   forM_ (Map.toList namesInSource) $ \(dd, (mDef, gn)) ->
     insertToNameMap h dd mDef gn
-
-saveCurrentNameSet :: Handle -> Path Abs File -> TopNameMap -> IO ()
-saveCurrentNameSet h currentPath nameMap = do
-  modifyIORef' (sourceNameMapRef h) $ Map.insert currentPath nameMap

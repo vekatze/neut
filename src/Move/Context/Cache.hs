@@ -1,6 +1,7 @@
 module Move.Context.Cache
   ( Handle,
     new,
+    new',
     saveCache,
     saveCompletionCache,
     saveLocationCache,
@@ -19,6 +20,7 @@ import Move.Context.Artifact qualified as Artifact
 import Move.Context.EIO (EIO)
 import Move.Context.Path (getSourceLocationCachePath)
 import Move.Context.Path qualified as Path
+import Move.Scene.Init.Base qualified as Base
 import Path
 import Path.IO
 import Rule.Artifact qualified as A
@@ -36,6 +38,10 @@ data Handle
 
 new :: Path.Handle -> Artifact.Handle -> Handle
 new pathHandle artifactHandle = do
+  Handle {..}
+
+new' :: Base.Handle -> Handle
+new' (Base.Handle {..}) =
   Handle {..}
 
 saveCache :: Path.Handle -> Target -> Source.Source -> Cache.Cache -> EIO ()
