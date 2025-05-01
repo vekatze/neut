@@ -24,9 +24,6 @@ import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Parse.Discern.Handle qualified as Discern
-import Move.Scene.Term.Inline qualified as Inline
-import Move.Scene.Term.Refresh qualified as Refresh
-import Move.Scene.Term.Subst qualified as TermSubst
 import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
@@ -40,7 +37,8 @@ import Rule.WeakTerm qualified as WT
 
 data Handle
   = Handle
-  { envHandle :: Env.Handle,
+  { baseHandle :: Base.Handle,
+    envHandle :: Env.Handle,
     reduceHandle :: Reduce.Handle,
     weakDefHandle :: WeakDefinition.Handle,
     constraintHandle :: Constraint.Handle,
@@ -52,7 +50,6 @@ data Handle
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
     localRemarkHandle :: LocalRemark.Handle,
-    inlineHandle :: Inline.Handle,
     affHandle :: EnsureAffinity.Handle,
     pathHandle :: Path.Handle,
     symLocHandle :: SymLoc.Handle,
@@ -76,9 +73,6 @@ new' baseHandle@(Base.Handle {..}) localHandle@(Local.Handle {..}) currentSource
   let substHandle = Subst.new gensymHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
   let reduceHandle = Reduce.new substHandle inlineLimit
-  let refreshHandle = Refresh.new gensymHandle
-  let termSubstHandle = TermSubst.new gensymHandle
-  let inlineHandle = Inline.new currentSource termSubstHandle refreshHandle defHandle
   let affHandle = EnsureAffinity.new reduceHandle substHandle typeHandle weakDefHandle optDataHandle
   let fillHandle = Fill.new substHandle reduceHandle
   constraintHandle <- Constraint.new

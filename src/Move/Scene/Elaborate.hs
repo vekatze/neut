@@ -139,8 +139,8 @@ elaborateStmt h stmt = do
       codType' <- elaborate' h codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
       remarks <- EnsureAffinity.ensureAffinity (affHandle h) $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
-      e'' <- Inline.inline (inlineHandle h) m e'
-      codType'' <- Inline.inline (inlineHandle h) m codType'
+      e'' <- inline h m e'
+      codType'' <- inline h m codType'
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
@@ -659,3 +659,8 @@ fillHole h m holeID es = do
           liftIO $ Subst.subst (substHandle h) s e
       | otherwise ->
           raiseError m "Arity mismatch"
+
+inline :: Handle -> Hint -> TM.Term -> EIO TM.Term
+inline h m e = do
+  inlineHandle <- liftIO $ Inline.new (baseHandle h) (currentSource h) m
+  Inline.inline inlineHandle e

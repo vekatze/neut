@@ -16,6 +16,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseError)
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Term.Refresh qualified as Refresh
 import Move.Scene.Term.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -39,46 +40,40 @@ data Handle = Handle
   { currentSource :: Source,
     substHandle :: Subst.Handle,
     refreshHandle :: Refresh.Handle,
-    defMapHandle :: Definition.Handle
-  }
-
-data InnerHandle = InnerHandle
-  { handle :: Handle,
+    defMapHandle :: Definition.Handle,
     dmap :: Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term),
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint
   }
 
-new :: Source -> Subst.Handle -> Refresh.Handle -> Definition.Handle -> Handle
-new currentSource substHandle refreshHandle defMapHandle = do
-  Handle {..}
-
-new' :: Handle -> Hint -> IO InnerHandle
-new' handle location = do
-  dmap <- Definition.get' (defMapHandle handle)
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule $ currentSource handle)
+new :: Base.Handle -> Source -> Hint -> IO Handle
+new baseHandle currentSource location = do
+  let substHandle = Subst.new (Base.gensymHandle baseHandle)
+  let refreshHandle = Refresh.new (Base.gensymHandle baseHandle)
+  let defMapHandle = Base.defHandle baseHandle
+  dmap <- Definition.get' defMapHandle
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
   currentStepRef <- liftIO $ newIORef 0
-  return $ InnerHandle {..}
+  return $ Handle {..}
 
-incrementStep :: InnerHandle -> IO ()
+inline :: Handle -> TM.Term -> EIO TM.Term
+inline h e = do
+  inline' h e
+
+incrementStep :: Handle -> IO ()
 incrementStep h = do
-  let InnerHandle {currentStepRef} = h
+  let Handle {currentStepRef} = h
   modifyIORef' currentStepRef (+ 1)
 
-detectPossibleInfiniteLoop :: InnerHandle -> EIO ()
+detectPossibleInfiniteLoop :: Handle -> EIO ()
 detectPossibleInfiniteLoop h = do
-  let InnerHandle {inlineLimit, currentStepRef, location} = h
+  let Handle {inlineLimit, currentStepRef, location} = h
   currentStep <- liftIO $ readIORef currentStepRef
   when (inlineLimit < currentStep) $ do
     raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
 
-inline :: Handle -> Hint -> TM.Term -> EIO TM.Term
-inline h m e = do
-  h' <- liftIO $ new' h m
-  inline' h' e
-
-inline' :: InnerHandle -> TM.Term -> EIO TM.Term
+inline' :: Handle -> TM.Term -> EIO TM.Term
 inline' h term = do
   detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
@@ -113,7 +108,7 @@ inline' h term = do
     m :< TM.PiElim e es -> do
       e' <- inline' h e
       es' <- mapM (inline' h) es
-      let InnerHandle {dmap} = h
+      let Handle {dmap} = h
       case e' of
         (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal _}) impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
@@ -122,10 +117,10 @@ inline' h term = do
                 then do
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
-                  _ :< body' <- liftIO $ Subst.subst (substHandle (handle h)) sub body
+                  _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                   inline' h $ m :< body'
                 else do
-                  (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle (handle h)) IntMap.empty xts body
+                  (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
                   inline' h $ bind (zip xts' es') (m :< body')
         (_ :< TM.VarGlobal _ dd)
           | Just (xts, body) <- Map.lookup dd dmap -> do
@@ -133,12 +128,12 @@ inline' h term = do
                 then do
                   let (_, xs, _) = unzip3 xts
                   let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
-                  _ :< body' <- liftIO $ Subst.subst (substHandle (handle h)) sub body
-                  body'' <- liftIO $ Refresh.refresh (refreshHandle (handle h)) $ m :< body'
+                  _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                   inline' h body''
                 else do
-                  (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle (handle h)) IntMap.empty xts body
-                  body'' <- liftIO $ Refresh.refresh (refreshHandle (handle h)) $ m :< body'
+                  (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
+                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                   inline' h $ bind (zip xts' es') body''
         _ ->
           return (m :< TM.PiElim e' es')
@@ -162,7 +157,7 @@ inline' h term = do
           case decisionTree of
             DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              liftIO (Subst.subst (substHandle (handle h)) sub (TM.fromLetSeq letSeq e)) >>= inline' h
+              liftIO (Subst.subst (substHandle h) sub (TM.fromLetSeq letSeq e)) >>= inline' h
             DT.Unreachable ->
               return $ m :< TM.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -171,7 +166,7 @@ inline' h term = do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
                   let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                  dataElim' <- liftIO $ Subst.subst (substHandle (handle h)) sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
+                  dataElim' <- liftIO $ Subst.subst (substHandle h) sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
                   inline' h dataElim'
                 _ -> do
                   decisionTree' <- inlineDecisionTree h decisionTree
@@ -191,7 +186,7 @@ inline' h term = do
         O.Clear
           | TM.isValue e1' -> do
               let sub = IntMap.singleton (Ident.toInt x) (Right e1')
-              liftIO (Subst.subst (substHandle (handle h)) sub e2) >>= inline' h
+              liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
           t' <- inline' h t
           e2' <- inline' h e2
@@ -206,13 +201,13 @@ inline' h term = do
     _ ->
       return term
 
-inlineBinder :: InnerHandle -> BinderF TM.Term -> EIO (BinderF TM.Term)
+inlineBinder :: Handle -> BinderF TM.Term -> EIO (BinderF TM.Term)
 inlineBinder h (m, x, t) = do
   t' <- inline' h t
   return (m, x, t')
 
 inlineDecisionTree ::
-  InnerHandle ->
+  Handle ->
   DT.DecisionTree TM.Term ->
   EIO (DT.DecisionTree TM.Term)
 inlineDecisionTree h tree =
@@ -229,7 +224,7 @@ inlineDecisionTree h tree =
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 inlineCaseList ::
-  InnerHandle ->
+  Handle ->
   DT.CaseList TM.Term ->
   EIO (DT.CaseList TM.Term)
 inlineCaseList h (fallbackTree, clauseList) = do
@@ -238,7 +233,7 @@ inlineCaseList h (fallbackTree, clauseList) = do
   return (fallbackTree', clauseList')
 
 inlineCase ::
-  InnerHandle ->
+  Handle ->
   DT.Case TM.Term ->
   EIO (DT.Case TM.Term)
 inlineCase h decisionCase = do
