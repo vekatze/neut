@@ -11,6 +11,7 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO, forP)
 import Move.Context.Module (getAllSourcePathInModule)
 import Move.Context.Path qualified as Path
+import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
 import Rule.Cache
@@ -24,8 +25,9 @@ data Handle
     pathHandle :: Path.Handle
   }
 
-new :: STL.Handle -> Path.Handle -> Handle
-new shiftToLatestHandle pathHandle = do
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) = do
+  let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}
 
 getAllLocationCachesInModule :: Handle -> Module -> EIO [(Source, LocationCache)]
