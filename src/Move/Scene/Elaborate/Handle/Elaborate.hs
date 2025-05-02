@@ -1,4 +1,4 @@
-module Move.Context.Elaborate
+module Move.Scene.Elaborate.Handle.Elaborate
   ( Handle (..),
     new,
     reduce,

@@ -21,7 +21,6 @@ import Move.Context.Cache qualified as Cache
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, raiseError', runEIO)
-import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
@@ -29,6 +28,7 @@ import Move.Context.Path qualified as Path
 import Move.Context.Platform qualified as Platform
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
 import Move.Scene.EnsureMain qualified as EnsureMain
 import Move.Scene.Execute qualified as Execute

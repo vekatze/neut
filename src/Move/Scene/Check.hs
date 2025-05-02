@@ -13,9 +13,9 @@ import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, collectLogs)
-import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.Env qualified as Env
 import Move.Scene.Elaborate qualified as Elaborate
+import Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Load qualified as Load

@@ -14,10 +14,10 @@ import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.EIO (EIO, raiseCritical)
-import Move.Context.Elaborate
 import Move.Context.Type qualified as Type
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
+import Move.Scene.Elaborate.Handle.Elaborate
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.WeakTerm.Subst qualified as Subst

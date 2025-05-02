@@ -16,7 +16,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
-import Move.Context.Elaborate
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -25,6 +24,7 @@ import Move.Context.Platform qualified as Platform
 import Move.Context.Type qualified as Type
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
+import Move.Scene.Elaborate.Handle.Elaborate
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef

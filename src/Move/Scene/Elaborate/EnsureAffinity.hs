@@ -14,9 +14,9 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Move.Context.EIO (EIO, raiseCritical)
-import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
+import Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
