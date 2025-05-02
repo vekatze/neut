@@ -16,9 +16,9 @@ import Move.Console.Report qualified as Report
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (run)
-import Move.Context.OptParse qualified as OptParse
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Module.Save qualified as ModuleSave
+import Move.Scene.OptParse qualified as OptParse
 import Rule.Command qualified as C
 import Rule.Config.Remark qualified as Remark
 import System.IO

@@ -1,4 +1,4 @@
-module Move.Context.OptParse (parseCommand) where
+module Move.Scene.OptParse (parseCommand) where
 
 import Data.Text qualified as T
 import Options.Applicative
