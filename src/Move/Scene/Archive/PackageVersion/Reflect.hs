@@ -1,4 +1,4 @@
-module Move.Scene.PackageVersion.Reflect (reflect) where
+module Move.Scene.Archive.PackageVersion.Reflect (reflect) where
 
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
