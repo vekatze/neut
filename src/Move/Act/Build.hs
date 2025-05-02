@@ -7,15 +7,16 @@ module Move.Act.Build
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Context.EIO (EIO)
+import Data.Text qualified as T
+import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
 import Move.Scene.Build qualified as Build
-import Move.Scene.Collect qualified as Collect
 import Move.Scene.Fetch qualified as Fetch
 import Move.Scene.Init.Base qualified as Base
 import Rule.Config.Build
+import Rule.Module
 import Rule.Target
 import Prelude hiding (log)
 
@@ -33,9 +34,8 @@ new baseHandle = do
 build :: Handle -> Config -> EIO ()
 build h cfg = do
   setup h cfg
-  let collectHandle = Collect.new (Base.envHandle (baseHandle h))
   let buildHandle = Build.new (toBuildConfig cfg) (baseHandle h)
-  target <- Collect.getMainTarget collectHandle $ targetName cfg
+  target <- getMainTarget h $ targetName cfg
   let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
   Build.buildTarget buildHandle mainModule (Main target)
 
@@ -57,3 +57,12 @@ toBuildConfig cfg = do
       installDir = installDir cfg,
       executeArgs = args cfg
     }
+
+getMainTarget :: Handle -> T.Text -> EIO MainTarget
+getMainTarget h targetName = do
+  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
+  case getTarget (extractModule mainModule) targetName of
+    Just target ->
+      return target
+    Nothing ->
+      raiseError' $ "No such target exists: " <> targetName

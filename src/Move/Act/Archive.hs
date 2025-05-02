@@ -5,19 +5,21 @@ module Move.Act.Archive
   )
 where
 
+import Data.HashMap.Strict qualified as Map
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
 import Move.Scene.Archive qualified as Archive
-import Move.Scene.Collect qualified as Collect
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Module.MakeArchiveEns
 import Move.Scene.Module.Save qualified as ModuleSave
 import Move.Scene.PackageVersion.ChooseNewVersion qualified as PV
 import Move.Scene.PackageVersion.Reflect qualified as PV
+import Path
 import Rule.Config.Archive
+import Rule.Module
 
 data Handle
   = Handle
@@ -44,5 +46,14 @@ archive h cfg = do
   packageVersion <-
     maybe (PV.chooseNewVersion (packageVersionHandle h) mainModule) (PV.reflect mainModule) (getArchiveName cfg)
   archiveEns <- makeArchiveEns (ensReflectHandle h) packageVersion mainModule
-  let (moduleRootDir, contents) = Collect.collectModuleFiles mainModule
+  let (moduleRootDir, contents) = collectModuleFiles mainModule
   Archive.archive (archiveHandle h) packageVersion archiveEns moduleRootDir contents
+
+collectModuleFiles :: MainModule -> (Path Abs Dir, [SomePath Rel])
+collectModuleFiles (MainModule baseModule) = do
+  let moduleRootDir = parent $ moduleLocation baseModule
+  let relModuleSourceDir = Left $ moduleSourceDir baseModule
+  let foreignContents = input $ moduleForeign baseModule
+  let extraContents = moduleExtraContents baseModule
+  let staticContents = map (\(_, path) -> Right path) $ Map.toList $ moduleStaticFiles baseModule
+  (moduleRootDir, relModuleSourceDir : foreignContents ++ staticContents ++ extraContents)
