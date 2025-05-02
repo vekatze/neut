@@ -1,7 +1,6 @@
 module Move.Context.Env
   ( Handle,
     new,
-    PathMap,
     getArch,
     getDataSizeValue,
     getBuildMode,
@@ -20,7 +19,6 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Data.Time
 import Data.Version qualified as V
 import Move.Console.Report qualified as Report
 import Move.Context.EIO (EIO, raiseError, raiseError', run)
@@ -83,8 +81,6 @@ setBuildMode h =
 getBuildMode :: Handle -> IO BM.BuildMode
 getBuildMode h =
   readIORef (buildModeRef h)
-
-type PathMap = Map.HashMap (Path Abs File) UTCTime
 
 getDataSizeValue :: Handle -> Int
 getDataSizeValue h =
