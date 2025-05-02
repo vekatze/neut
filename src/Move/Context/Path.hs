@@ -32,7 +32,6 @@ import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
-import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
@@ -54,13 +53,12 @@ import Rule.Target qualified as Target
 data Handle
   = Handle
   { cacheRef :: IORef (Maybe String),
-    clangHandle :: Clang.Handle,
     debugHandle :: Debug.Handle,
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Debug.Handle -> Clang.Handle -> IO Handle
-new envHandle debugHandle clangHandle = do
+new :: Env.Handle -> Debug.Handle -> IO Handle
+new envHandle debugHandle = do
   cacheRef <- newIORef Nothing
   return $ Handle {..}
 
@@ -125,7 +123,7 @@ getBuildSignature h t = do
     Just sig -> do
       return sig
     Nothing -> do
-      let clangDigest = Clang.getClangDigest (clangHandle h)
+      let clangDigest = Env.getClangDigest (envHandle h)
       let MainModule m = Env.getMainModule (envHandle h)
       clangOption <- getClangOption t m
       moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation m

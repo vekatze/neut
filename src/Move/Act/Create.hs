@@ -8,6 +8,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Console.Report qualified as Report
+import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Scene.Check qualified as Check
@@ -25,9 +26,9 @@ data Handle
     remarkCfg :: Remark.Config
   }
 
-new :: Remark.Config -> Report.Handle -> ModuleSave.Handle -> IO Handle
-new remarkCfg reportHandle moduleSaveHandle = do
-  envHandle <- Env.new reportHandle (Remark.enableSilentMode remarkCfg) Nothing
+new :: Remark.Config -> Report.Handle -> Debug.Handle -> ModuleSave.Handle -> IO Handle
+new remarkCfg reportHandle debugHandle moduleSaveHandle = do
+  envHandle <- Env.new reportHandle debugHandle (Remark.enableSilentMode remarkCfg) Nothing
   newHandle <- Create.new moduleSaveHandle reportHandle envHandle
   return $ Handle {..}
 

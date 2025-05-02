@@ -18,7 +18,6 @@ import Data.Time
 import Move.Console.Report qualified as Report
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
-import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, raiseError', runEIO)
@@ -292,7 +291,7 @@ naiveReplace sub t =
 
 getForeignSubst :: Handle -> Target -> M.Module -> EIO [(T.Text, T.Text)]
 getForeignSubst h t m = do
-  clang <- liftIO Clang.getClang
+  clang <- liftIO Env.getClang
   foreignDir <- Path.getForeignDir (Base.pathHandle (baseHandle h)) t m
   return
     [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),

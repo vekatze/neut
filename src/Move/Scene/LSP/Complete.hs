@@ -19,7 +19,6 @@ import Data.Text qualified as T
 import Language.LSP.Protocol.Types
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.Cache qualified as Cache
-import Move.Context.Clang qualified as Clang
 import Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
@@ -47,7 +46,6 @@ import Rule.TopCandidate
 data Handle
   = Handle
   { unravelHandle :: Unravel.Handle,
-    clangHandle :: Clang.Handle,
     pathHandle :: Path.Handle,
     antecedentHandle :: Antecedent.Handle,
     getModuleHandle :: GetModule.Handle,

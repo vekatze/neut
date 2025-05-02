@@ -36,7 +36,7 @@ main = do
         case cmd of
           C.Create cfg -> do
             let moduleSaveHandle = ModuleSave.new debugHandle
-            createHandle <- liftIO $ Create.new loggerConfig reportHandle moduleSaveHandle
+            createHandle <- liftIO $ Create.new loggerConfig reportHandle debugHandle moduleSaveHandle
             Create.create createHandle cfg
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg

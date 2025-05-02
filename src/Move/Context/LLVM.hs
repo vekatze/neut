@@ -13,7 +13,6 @@ import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
-import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
@@ -101,7 +100,7 @@ emit' h clangOptString llvmCode kind path = do
 
 emitInner :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> EIO ()
 emitInner h additionalClangOptions llvm outputPath = do
-  clang <- liftIO Clang.getClang
+  clang <- liftIO Env.getClang
   let optionList = clangBaseOpt outputPath ++ additionalClangOptions
   let ProcessRunner.Runner {run10} = ProcessRunner.ioRunner
   let spec =
@@ -131,7 +130,7 @@ clangBaseOpt outputPath =
 
 link :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> EIO ()
 link h clangOptions objectPathList outputPath = do
-  clang <- liftIO Clang.getClang
+  clang <- liftIO Env.getClang
   ensureDir $ parent outputPath
   External.run (externalHandle h) clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
 

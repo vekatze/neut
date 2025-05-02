@@ -8,7 +8,6 @@ where
 import Move.Console.Report qualified as Report
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.Artifact qualified as Artifact
-import Move.Context.Clang qualified as Clang
 import Move.Context.Color qualified as Color
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.Debug qualified as Debug
@@ -30,7 +29,6 @@ data Handle
   = Handle
   { artifactHandle :: Artifact.Handle,
     antecedentHandle :: Antecedent.Handle,
-    clangHandle :: Clang.Handle,
     colorHandle :: Color.Handle,
     debugHandle :: Debug.Handle,
     defHandle :: Definition.Handle,
@@ -53,13 +51,12 @@ new cfg moduleFilePathOrNone = do
   colorHandle <- Color.new (Remark.shouldColorize cfg)
   let reportHandle = Report.new colorHandle (Remark.endOfEntry cfg)
   gensymHandle <- Gensym.new
-  envHandle <- Env.new reportHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
   debugHandle <- Debug.new colorHandle (Remark.enableDebugMode cfg)
-  clangHandle <- Clang.new reportHandle debugHandle
+  envHandle <- Env.new reportHandle debugHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
   keyArgHandle <- KeyArg.new envHandle
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  pathHandle <- Path.new envHandle debugHandle clangHandle
+  pathHandle <- Path.new envHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new
@@ -75,7 +72,7 @@ refresh h = do
   keyArgHandle <- KeyArg.new (envHandle h)
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  pathHandle <- Path.new (envHandle h) (debugHandle h) (clangHandle h)
+  pathHandle <- Path.new (envHandle h) (debugHandle h)
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new
