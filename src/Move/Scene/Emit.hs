@@ -16,8 +16,8 @@ import Data.Text.Encoding qualified as TE
 import Move.Context.Platform qualified as Platform
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Emit.LowComp qualified as EmitLowComp
+import Move.Scene.Emit.LowComp.Reduce qualified as Reduce
 import Move.Scene.Init.Base qualified as Base
-import Move.Scene.LowComp.Reduce qualified as Reduce
 import Rule.BaseLowType qualified as BLT
 import Rule.Builder
 import Rule.Const

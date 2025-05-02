@@ -1,4 +1,4 @@
-module Move.Scene.LowComp.Reduce
+module Move.Scene.Emit.LowComp.Reduce
   ( Handle,
     new,
     reduce,
