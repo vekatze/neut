@@ -1,4 +1,4 @@
-module Move.Context.NameMap
+module Move.Scene.Parse.Handle.NameMap
   ( Handle,
     new,
     saveCurrentNameSet,

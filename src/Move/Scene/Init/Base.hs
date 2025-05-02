@@ -15,13 +15,13 @@ import Move.Context.Definition qualified as Definition
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Module qualified as Module
-import Move.Context.NameMap qualified as NameMap
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Platform qualified as Platform
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
 import Rule.Config.Remark qualified as Remark

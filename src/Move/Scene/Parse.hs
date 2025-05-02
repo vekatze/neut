@@ -12,7 +12,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO)
-import Move.Context.NameMap qualified as NameMap
 import Move.Context.Path qualified as Path
 import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
@@ -22,6 +21,7 @@ import Move.Scene.Parse.Core qualified as P
 import Move.Scene.Parse.Discern qualified as Discern
 import Move.Scene.Parse.Discern.Handle qualified as Discern
 import Move.Scene.Parse.Handle.Global qualified as Global
+import Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Move.Scene.Parse.Import qualified as Import
 import Move.Scene.Parse.Program qualified as Parse
 import Move.UI.Handle.LocalRemark qualified as LocalRemark

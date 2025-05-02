@@ -15,7 +15,6 @@ import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
-import Move.Context.NameMap qualified as NameMap
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
@@ -26,6 +25,7 @@ import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Parse.Handle.Alias qualified as Alias
 import Move.Scene.Parse.Handle.Global qualified as Global
+import Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
 import Rule.AliasInfo qualified as AI
