@@ -9,6 +9,7 @@ module Move.Context.Platform
     getClang,
     getClangDigest,
     getBaseBuildDir,
+    ensureExecutables,
   )
 where
 
@@ -20,6 +21,7 @@ import Data.Version qualified as V
 import Move.Console.Report qualified as Report
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError', run)
+import Move.Context.External (ensureExecutable)
 import Move.Context.ProcessRunner qualified as ProcessRunner
 import Path
 import Paths_neut
@@ -142,3 +144,14 @@ getBaseBuildDir h baseModule = do
   versionDir <- parseRelDir $ "compiler-" ++ V.showVersion version
   let moduleRootDir = getModuleRootDir baseModule
   return $ moduleRootDir </> moduleCacheDir baseModule </> $(mkRelDir "build") </> platformPrefix </> versionDir
+
+ensureExecutables :: EIO ()
+ensureExecutables = do
+  clang <- liftIO getClang
+  mapM_
+    ensureExecutable
+    [ clang,
+      "curl",
+      "tar",
+      "zstd"
+    ]

@@ -11,11 +11,11 @@ import Move.Act.Get qualified as Get
 import Move.Act.LSP qualified as LSP
 import Move.Act.Version qualified as Version
 import Move.Act.Zen qualified as Zen
-import Move.Console.EnsureExecutables (ensureExecutables)
 import Move.Console.Report qualified as Report
 import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (run)
+import Move.Context.Platform (ensureExecutables)
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Module.Save qualified as ModuleSave
 import Move.Scene.OptParse qualified as OptParse
