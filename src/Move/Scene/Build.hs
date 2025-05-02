@@ -128,7 +128,6 @@ compile h target outputKindList contentSeq = do
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
   hp <- liftIO $ ProgressBar.new (Base.envHandle (baseHandle h)) colorHandle (Just numOfItems) workingTitle completedTitle color
-  let lowerHandle = Lower.new' (baseHandle h)
   let emitHandle = Emit.new (baseHandle h)
   let llvmHandle = LLVM.new' (baseHandle h)
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
@@ -145,9 +144,9 @@ compile h target outputKindList contentSeq = do
     if b
       then do
         clarifyHandle <- liftIO $ Clarify.new' (baseHandle h) localHandle
-
         stmtList' <- Clarify.clarify clarifyHandle stmtList
         fmap Just $ liftIO $ async $ runEIO $ do
+          lowerHandle <- liftIO $ Lower.new (baseHandle h)
           virtualCode <- Lower.lower lowerHandle stmtList'
           emit emitHandle llvmHandle hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
@@ -212,8 +211,10 @@ compileEntryPoint h mainModule target outputKindList = do
         then return []
         else do
           clarifyMainHandle <- liftIO $ Clarify.newMain (baseHandle h)
-          let lowerHandle = Lower.new' (baseHandle h)
-          mainVirtualCode <- liftIO (Clarify.clarifyEntryPoint clarifyMainHandle) >>= Lower.lowerEntryPoint lowerHandle t
+          lowerHandle <- liftIO $ Lower.new (baseHandle h)
+          mainVirtualCode <-
+            liftIO (Clarify.clarifyEntryPoint clarifyMainHandle)
+              >>= Lower.lowerEntryPoint lowerHandle t
           return [(Left t, mainVirtualCode)]
 
 execute :: Handle -> Bool -> MainTarget -> [String] -> EIO ()

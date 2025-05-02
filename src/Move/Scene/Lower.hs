@@ -7,7 +7,6 @@
 module Move.Scene.Lower
   ( Handle,
     new,
-    new',
     lower,
     lowerEntryPoint,
   )
@@ -60,66 +59,52 @@ data Handle
     gensymHandle :: Gensym.Handle,
     envHandle :: Env.Handle,
     reduceHandle :: Reduce.Handle,
-    substHandle :: Subst.Handle
-  }
-
-data InnerHandle = InnerHandle
-  { handle :: Handle,
+    substHandle :: Subst.Handle,
     declEnv :: IORef DN.DeclEnv,
     staticTextList :: IORef [(T.Text, (Builder, Int))],
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: Arch -> Int -> Gensym.Handle -> Env.Handle -> Reduce.Handle -> Subst.Handle -> Handle
-new arch baseSize gensymHandle envHandle reduceHandle substHandle = do
-  Handle {..}
-
-new' :: Base.Handle -> Handle
-new' (Base.Handle {..}) = do
+new :: Base.Handle -> IO Handle
+new (Base.Handle {..}) = do
   let arch = Env.getArch' envHandle
   let baseSize = Env.getDataSizeValue envHandle
   let substHandle = Subst.new gensymHandle
   let reduceHandle = Reduce.new compDefHandle substHandle gensymHandle
-  Handle {..}
+  declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch
+  staticTextList <- liftIO $ newIORef []
+  definedNameSet <- liftIO $ newIORef S.empty
+  return $ Handle {..}
 
 makeBaseDeclEnv :: Arch -> DN.DeclEnv
 makeBaseDeclEnv arch = do
   Map.fromList $ flip map (F.defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
     (DN.Ext name, (domList, cod))
 
-makeInnerHandle :: Handle -> IO InnerHandle
-makeInnerHandle h = do
-  declEnv <- liftIO $ newIORef $ makeBaseDeclEnv (arch h)
-  staticTextList <- liftIO $ newIORef []
-  definedNameSet <- liftIO $ newIORef S.empty
-  return $ InnerHandle {handle = h, declEnv, staticTextList, definedNameSet}
-
 lower :: Handle -> [C.CompStmt] -> EIO LC.LowCode
 lower h stmtList = do
-  h' <- liftIO $ makeInnerHandle h
-  liftIO $ registerInternalNames h' stmtList
-  liftIO $ insDeclEnv h' (DN.In DD.imm) AN.argNumS4
-  liftIO $ insDeclEnv h' (DN.In DD.cls) AN.argNumS4
-  stmtList' <- catMaybes <$> mapM (lowerStmt h') stmtList
-  LC.LowCodeNormal <$> liftIO (summarize h' stmtList')
+  liftIO $ registerInternalNames h stmtList
+  liftIO $ insDeclEnv h (DN.In DD.imm) AN.argNumS4
+  liftIO $ insDeclEnv h (DN.In DD.cls) AN.argNumS4
+  stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
+  LC.LowCodeNormal <$> liftIO (summarize h stmtList')
 
 lowerEntryPoint :: Handle -> MainTarget -> [C.CompStmt] -> EIO LC.LowCode
 lowerEntryPoint h target stmtList = do
-  h' <- liftIO $ makeInnerHandle h
-  liftIO $ registerInternalNames h' stmtList
-  mainDD <- Env.getMainDefiniteDescriptionByTarget (envHandle (handle h')) target
-  liftIO $ insDeclEnv h' (DN.In mainDD) AN.zero
-  mainDef <- liftIO $ constructMainTerm h' mainDD
-  stmtList' <- catMaybes <$> mapM (lowerStmt h') stmtList
-  LC.LowCodeMain mainDef <$> liftIO (summarize h' stmtList')
+  liftIO $ registerInternalNames h stmtList
+  mainDD <- Env.getMainDefiniteDescriptionByTarget (envHandle h) target
+  liftIO $ insDeclEnv h (DN.In mainDD) AN.zero
+  mainDef <- liftIO $ constructMainTerm h mainDD
+  stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
+  LC.LowCodeMain mainDef <$> liftIO (summarize h stmtList')
 
-summarize :: InnerHandle -> [LC.Def] -> IO LC.LowCodeInfo
+summarize :: Handle -> [LC.Def] -> IO LC.LowCodeInfo
 summarize h stmtList = do
   declEnv <- readIORef $ declEnv h
   staticTextList <- readIORef $ staticTextList h
   return (declEnv, stmtList, staticTextList)
 
-lowerStmt :: InnerHandle -> C.CompStmt -> EIO (Maybe (DD.DefiniteDescription, ([Ident], LC.Comp)))
+lowerStmt :: Handle -> C.CompStmt -> EIO (Maybe (DD.DefiniteDescription, ([Ident], LC.Comp)))
 lowerStmt h stmt = do
   case stmt of
     C.Def name _ args e -> do
@@ -128,7 +113,7 @@ lowerStmt h stmt = do
     C.Foreign {} -> do
       return Nothing
 
-registerInternalNames :: InnerHandle -> [C.CompStmt] -> IO ()
+registerInternalNames :: Handle -> [C.CompStmt] -> IO ()
 registerInternalNames h stmtList =
   forM_ stmtList $ \stmt -> do
     case stmt of
@@ -138,10 +123,10 @@ registerInternalNames h stmtList =
         forM_ foreignList $ \(F.Foreign _ name domList cod) -> do
           insDeclEnv' h (DN.Ext name) domList cod
 
-constructMainTerm :: InnerHandle -> DD.DefiniteDescription -> IO LC.DefContent
+constructMainTerm :: Handle -> DD.DefiniteDescription -> IO LC.DefContent
 constructMainTerm h mainName = do
-  argc <- Gensym.newIdentFromText (gensymHandle (handle h)) "argc"
-  argv <- Gensym.newIdentFromText (gensymHandle (handle h)) "argv"
+  argc <- Gensym.newIdentFromText (gensymHandle h) "argc"
+  argv <- Gensym.newIdentFromText (gensymHandle h) "argv"
   let argcGlobal = LC.VarExternal (EN.ExternalName unsafeArgcName)
   let argvGlobal = LC.VarExternal (EN.ExternalName unsafeArgvName)
   let mainTerm =
@@ -151,7 +136,7 @@ constructMainTerm h mainName = do
               LC.Return (LC.Int 0)
   return ([argc, argv], mainTerm)
 
-lowerComp :: InnerHandle -> C.Comp -> EIO LC.Comp
+lowerComp :: Handle -> C.Comp -> EIO LC.Comp
 lowerComp h term =
   case term of
     C.Primitive theta -> do
@@ -184,9 +169,9 @@ lowerComp h term =
       return $ commConv x e1' e2'
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let sub = IntMap.fromList fvInfo
-      defaultBranch' <- liftIO $ Subst.subst (substHandle (handle h)) sub defaultBranch >>= Reduce.reduce (reduceHandle (handle h))
+      defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
-      clauses' <- liftIO $ mapM (Subst.subst (substHandle (handle h)) sub >=> Reduce.reduce (reduceHandle (handle h))) clauses
+      clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
       let branchList' = zip keys clauses'
       case (defaultBranch', clauses') of
         (C.Unreachable, [clause]) ->
@@ -195,13 +180,13 @@ lowerComp h term =
           lowerComp h defaultBranch'
         _ -> do
           (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
-          let t = LT.PrimNum $ PT.Int $ IntSize (baseSize (handle h))
+          let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
           (castVar, castValue) <- liftIO $ newValueLocal h "cast"
           (phiVar, phi) <- liftIO $ newValueLocal h "phi"
           lowerValueLetCast h castVar v t
             =<< return (LC.Switch (castValue, t) defaultCase caseList (phiVar, LC.Return phi))
     C.Free x size cont -> do
-      freeID <- liftIO $ Gensym.newCount (gensymHandle (handle h))
+      freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
       lowerValue h ptrVar x
         =<< return . LC.Cont (LC.Free ptr size freeID)
@@ -209,7 +194,7 @@ lowerComp h term =
     C.Unreachable ->
       return LC.Unreachable
 
-lowerCompPrimitive :: InnerHandle -> Ident -> C.Primitive -> LC.Comp -> EIO LC.Comp
+lowerCompPrimitive :: Handle -> Ident -> C.Primitive -> LC.Comp -> EIO LC.Comp
 lowerCompPrimitive h resultVar codeOp cont =
   case codeOp of
     C.PrimOp op vs ->
@@ -235,7 +220,7 @@ lowerCompPrimitive h resultVar codeOp cont =
             =<< uncast h resultVar tmp valueLowType' cont
         M.Alloca t size -> do
           let t' = LT.fromBaseLowType t
-          let indexType = LT.PrimNum $ PT.Int $ IntSize (baseSize (handle h))
+          let indexType = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
           (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
           (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h sizeVar size indexType
@@ -269,7 +254,7 @@ lowerCompPrimitive h resultVar codeOp cont =
         M.OpaqueValue e ->
           lowerValue h resultVar e cont
 
-lowerCompPrimOp :: InnerHandle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> EIO LC.Comp
+lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> EIO LC.Comp
 lowerCompPrimOp h resultVar op vs cont = do
   let (domList, cod) = getTypeInfo op
   (argVars, args) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") vs
@@ -278,7 +263,7 @@ lowerCompPrimOp h resultVar op vs cont = do
     =<< return . LC.Let tmpVar (LC.PrimOp op args)
     =<< uncast h resultVar tmp (LT.PrimNum cod) cont
 
-lowerValueLetCastPrimArgs :: InnerHandle -> [(Ident, (C.Value, PT.PrimType))] -> LC.Comp -> EIO LC.Comp
+lowerValueLetCastPrimArgs :: Handle -> [(Ident, (C.Value, PT.PrimType))] -> LC.Comp -> EIO LC.Comp
 lowerValueLetCastPrimArgs h xdts cont =
   case xdts of
     [] ->
@@ -287,7 +272,7 @@ lowerValueLetCastPrimArgs h xdts cont =
       lowerValueLetCast h x d (LT.PrimNum t)
         =<< lowerValueLetCastPrimArgs h rest cont
 
-cast :: InnerHandle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
+cast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
 cast h var v lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) -> do
@@ -302,7 +287,7 @@ cast h var v lowType cont = do
     _ -> do
       return $ LC.Let var (LC.Bitcast v LT.Pointer lowType) cont
 
-uncast :: InnerHandle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
+uncast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
 uncast h var castedValue lowType cont = do
   case lowType of
     LT.PrimNum (PT.Int _) ->
@@ -317,7 +302,7 @@ uncast h var castedValue lowType cont = do
     _ ->
       return $ LC.Let var (LC.Bitcast castedValue lowType LT.Pointer) cont
 
-allocateBasePointer :: InnerHandle -> Ident -> AggType -> LC.Comp -> EIO LC.Comp
+allocateBasePointer :: Handle -> Ident -> AggType -> LC.Comp -> EIO LC.Comp
 allocateBasePointer h resultVar aggType cont = do
   let lt = toLowType aggType
   case lt of
@@ -329,14 +314,14 @@ allocateBasePointer h resultVar aggType cont = do
       let (elemType, len) = getSizeInfoOf aggType
       (sizeVar, sizeValue) <- liftIO $ newValueLocal h "result"
       (castVar, castValue) <- liftIO $ newValueLocal h "result"
-      allocID <- liftIO $ Gensym.newCount (gensymHandle (handle h))
-      let lowInt = LT.PrimNum $ PT.Int $ IntSize (baseSize (handle h))
+      allocID <- liftIO $ Gensym.newCount (gensymHandle h)
+      let lowInt = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
       return . getElemPtr sizeVar LC.Null elemType [toInteger len]
         =<< cast h castVar sizeValue lowInt
         =<< return (LC.Let resultVar (LC.Alloc castValue len allocID) cont)
 
 createAggData ::
-  InnerHandle ->
+  Handle ->
   Ident ->
   AggType -> -- the type of the base pointer
   [(C.Value, LT.LowType)] ->
@@ -350,7 +335,7 @@ createAggData h resultVar aggType dts cont = do
     =<< storeElements h (LC.VarLocal resultVar) (zip vs dts) cont
 
 storeElements ::
-  InnerHandle ->
+  Handle ->
   LC.Value -> -- base pointer
   [(LC.Value, (C.Value, LT.LowType))] ->
   LC.Comp ->
@@ -369,7 +354,7 @@ store :: LT.LowType -> LC.Value -> LC.Value -> LC.Comp -> LC.Comp
 store lowType value pointer =
   LC.Cont (LC.Store lowType value pointer)
 
-load :: InnerHandle -> Ident -> LT.LowType -> LC.Value -> LC.Comp -> EIO LC.Comp
+load :: Handle -> Ident -> LT.LowType -> LC.Value -> LC.Comp -> EIO LC.Comp
 load h resultVar elemType pointer cont = do
   (tmpVar, tmpValue) <- liftIO $ newValueLocal h "tmp"
   (loadedVar, loadedValue) <- liftIO $ newValueLocal h "loaded"
@@ -378,7 +363,7 @@ load h resultVar elemType pointer cont = do
     =<< uncast h resultVar loadedValue elemType cont
 
 loadElements ::
-  InnerHandle ->
+  Handle ->
   LC.Value -> -- base pointer
   [(Ident, (LC.Value, LT.LowType))] ->
   LC.Comp ->
@@ -393,7 +378,7 @@ loadElements h basePointer values cont =
         =<< load h targetVar valueType castPtrValue
         =<< loadElements h basePointer rest cont
 
-lowerValue :: InnerHandle -> Ident -> C.Value -> LC.Comp -> EIO LC.Comp
+lowerValue :: Handle -> Ident -> C.Value -> LC.Comp -> EIO LC.Comp
 lowerValue h resultVar v cont =
   case v of
     C.VarGlobal globalName argNum -> do
@@ -406,12 +391,10 @@ lowerValue h resultVar v cont =
     C.VarStaticText text -> do
       let i8s = encode $ T.unpack text
       let len = length i8s
-      i <- liftIO $ Gensym.newCount (gensymHandle (handle h))
+      i <- liftIO $ Gensym.newCount (gensymHandle h)
       let name = "text;" <> T.pack (show i)
-      -- name <- lift $ liftIO $ Locator.attachCurrentLocator (locatorHandle (handle h)) $ BN.textName i
       let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
       liftIO $ insertStaticText h name encodedText len
-      -- uncast h resultVar (LC.VarGlobal name) LT.Pointer cont
       uncast h resultVar (LC.VarTextName name) LT.Pointer cont
     C.SigmaIntro ds -> do
       let arrayType = AggTypeArray (length ds) LT.Pointer
@@ -421,7 +404,7 @@ lowerValue h resultVar v cont =
     C.Float size f -> do
       uncast h resultVar (LC.Float size f) (LT.PrimNum $ PT.Float size) cont
 
-lowerValues :: InnerHandle -> [(Ident, C.Value)] -> LC.Comp -> EIO LC.Comp
+lowerValues :: Handle -> [(Ident, C.Value)] -> LC.Comp -> EIO LC.Comp
 lowerValues h xvs cont =
   case xvs of
     [] ->
@@ -430,7 +413,7 @@ lowerValues h xvs cont =
       lowerValue h x v
         =<< lowerValues h rest cont
 
-lowerAndCastValues :: InnerHandle -> [(Ident, (C.Value, LT.LowType))] -> LC.Comp -> EIO LC.Comp
+lowerAndCastValues :: Handle -> [(Ident, (C.Value, LT.LowType))] -> LC.Comp -> EIO LC.Comp
 lowerAndCastValues h xvs cont =
   case xvs of
     [] ->
@@ -439,23 +422,23 @@ lowerAndCastValues h xvs cont =
       lowerValueLetCast h x v t
         =<< lowerAndCastValues h rest cont
 
-lowerValueLetCast :: InnerHandle -> Ident -> C.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
+lowerValueLetCast :: Handle -> Ident -> C.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
 lowerValueLetCast h resultVar v lowType cont = do
   (tmpVar, tmpValue) <- liftIO $ newValueLocal h "tmp"
   lowerValue h tmpVar v
     =<< cast h resultVar tmpValue lowType cont
 
-freeIfNecessary :: InnerHandle -> Bool -> LC.Value -> Int -> LC.Comp -> IO LC.Comp
+freeIfNecessary :: Handle -> Bool -> LC.Value -> Int -> LC.Comp -> IO LC.Comp
 freeIfNecessary h shouldDeallocate pointer len cont = do
   if shouldDeallocate
     then do
-      freeID <- Gensym.newCount (gensymHandle (handle h))
+      freeID <- Gensym.newCount (gensymHandle h)
       return $ LC.Cont (LC.Free pointer len freeID) cont
     else do
       return cont
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: InnerHandle -> C.Comp -> [(EC.EnumCase, C.Comp)] -> EIO (LC.Comp, [(Integer, LC.Comp)])
+constructSwitch :: Handle -> C.Comp -> [(EC.EnumCase, C.Comp)] -> EIO (LC.Comp, [(Integer, LC.Comp)])
 constructSwitch h defaultBranch switch =
   case switch of
     [] -> do
@@ -466,29 +449,29 @@ constructSwitch h defaultBranch switch =
       (defaultBranch', caseList) <- constructSwitch h defaultBranch rest
       return (defaultBranch', (i, code') : caseList)
 
-newValueLocal :: InnerHandle -> T.Text -> IO (Ident, LC.Value)
+newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
 newValueLocal h name = do
-  x <- Gensym.newIdentFromText (gensymHandle (handle h)) name
+  x <- Gensym.newIdentFromText (gensymHandle h) name
   return (x, LC.VarLocal x)
 
-insDeclEnv :: InnerHandle -> DN.DeclarationName -> AN.ArgNum -> IO ()
+insDeclEnv :: Handle -> DN.DeclarationName -> AN.ArgNum -> IO ()
 insDeclEnv h k argNum = do
   modifyIORef' (declEnv h) $ Map.insert k (BLT.toVoidPtrSeq argNum, FCT.Void)
 
-insDeclEnv' :: InnerHandle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
+insDeclEnv' :: Handle -> DN.DeclarationName -> [BLT.BaseLowType] -> FCT.ForeignCodType BLT.BaseLowType -> IO ()
 insDeclEnv' h k domList cod = do
   modifyIORef' (declEnv h) $ Map.insert k (domList, cod)
 
-member :: InnerHandle -> DN.DeclarationName -> IO Bool
+member :: Handle -> DN.DeclarationName -> IO Bool
 member h k = do
   denv <- readIORef (declEnv h)
   return $ Map.member k denv
 
-insertStaticText :: InnerHandle -> T.Text -> Builder -> Int -> IO ()
+insertStaticText :: Handle -> T.Text -> Builder -> Int -> IO ()
 insertStaticText h name text len =
   modifyIORef' (staticTextList h) $ (:) (name, (text, len))
 
-getDefinedNameSet :: InnerHandle -> IO (S.Set DD.DefiniteDescription)
+getDefinedNameSet :: Handle -> IO (S.Set DD.DefiniteDescription)
 getDefinedNameSet h = do
   readIORef (definedNameSet h)
 
