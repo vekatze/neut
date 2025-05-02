@@ -1,7 +1,6 @@
 module Move.Context.RawImportSummary
   ( Handle,
     new,
-    initialize,
     set,
     get,
   )
@@ -19,10 +18,6 @@ new :: IO Handle
 new = do
   importEnvRef <- newIORef Nothing
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h =
-  writeIORef (importEnvRef h) Nothing
 
 set :: Handle -> RawImport -> IO ()
 set h rawImport = do

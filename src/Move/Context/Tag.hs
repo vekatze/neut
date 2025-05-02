@@ -1,7 +1,6 @@
 module Move.Context.Tag
   ( Handle,
     new,
-    initialize,
     get,
     insertFileLoc,
     insertLocalVar,
@@ -33,10 +32,6 @@ new :: IO Handle
 new = do
   tagMapRef <- newIORef LT.empty
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h =
-  writeIORef (tagMapRef h) LT.empty
 
 get :: Handle -> IO LT.LocationTree
 get h =

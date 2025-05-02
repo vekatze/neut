@@ -2,7 +2,6 @@ module Move.Context.Antecedent
   ( RevMap,
     Handle,
     new,
-    initialize,
     get,
     set,
     getReverseMap,
@@ -34,12 +33,6 @@ new = do
   reverseAntecedentMapRef <- newIORef Map.empty
   antecedentDigestCacheRef <- newIORef Nothing
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h = do
-  writeIORef (antecedentMapRef h) Map.empty
-  writeIORef (reverseAntecedentMapRef h) Map.empty
-  writeIORef (antecedentDigestCacheRef h) Nothing
 
 get :: Handle -> IO (Map.HashMap MID.ModuleID M.Module)
 get h =

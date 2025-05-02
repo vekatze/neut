@@ -1,7 +1,6 @@
 module Move.Context.WeakDefinition
   ( Handle,
     new,
-    initialize,
     DefMap,
     insert',
     read',
@@ -36,10 +35,6 @@ new :: Gensym.Handle -> IO Handle
 new gensymHandle = do
   weakDefMapRef <- newIORef Map.empty
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h = do
-  writeIORef (weakDefMapRef h) Map.empty
 
 insert' ::
   Handle ->

@@ -1,7 +1,6 @@
 module Move.UI.Handle.LocalRemark
   ( Handle,
     new,
-    initialize,
     insert,
     get,
   )
@@ -19,10 +18,6 @@ new :: IO Handle
 new = do
   remarkListRef <- newIORef []
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h = do
-  writeIORef (remarkListRef h) []
 
 insert :: Handle -> R.Remark -> IO ()
 insert h r = do

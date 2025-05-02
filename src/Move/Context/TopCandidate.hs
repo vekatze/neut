@@ -1,7 +1,6 @@
 module Move.Context.TopCandidate
   ( Handle,
     new,
-    initialize,
     insert,
     get,
   )
@@ -18,10 +17,6 @@ new :: IO Handle
 new = do
   topCandidateEnvRef <- newIORef []
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h =
-  writeIORef (topCandidateEnvRef h) []
 
 insert :: Handle -> TopCandidate -> IO ()
 insert h cand = do

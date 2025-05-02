@@ -1,7 +1,6 @@
 module Move.Context.Locator
   ( Handle,
     new,
-    initialize,
     attachCurrentLocator,
     attachPublicCurrentLocator,
     activateSpecifiedNames,
@@ -66,21 +65,12 @@ data Handle
 
 new :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
 new envHandle tagHandle source = do
+  cgl <- constructGlobalLocator source
   activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
   activeStaticFileListRef <- liftIO $ newIORef Map.empty
-  activeGlobalLocatorListRef <- liftIO $ newIORef []
-  currentGlobalLocatorRef <- liftIO $ newIORef Nothing
-  let h = Handle {..}
-  initialize h source
-  return h
-
-initialize :: Handle -> Source.Source -> EIO ()
-initialize h currentSource = do
-  cgl <- constructGlobalLocator currentSource
-  liftIO $ writeIORef (currentGlobalLocatorRef h) (Just cgl)
-  liftIO $ writeIORef (activeGlobalLocatorListRef h) [cgl, SGL.llvmGlobalLocator]
-  liftIO $ writeIORef (activeDefiniteDescriptionListRef h) Map.empty
-  liftIO $ writeIORef (activeStaticFileListRef h) Map.empty
+  activeGlobalLocatorListRef <- liftIO $ newIORef [cgl, SGL.llvmGlobalLocator]
+  currentGlobalLocatorRef <- liftIO $ newIORef (Just cgl)
+  return $ Handle {..}
 
 activateSpecifiedNames ::
   Handle ->

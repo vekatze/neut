@@ -1,7 +1,6 @@
 module Move.Context.Type
   ( Handle,
     new,
-    initialize,
     insert',
     lookup',
     lookupMaybe',
@@ -26,10 +25,6 @@ new :: IO Handle
 new = do
   typeEnvRef <- newIORef Map.empty
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h = do
-  writeIORef (typeEnvRef h) Map.empty
 
 insert' :: Handle -> DD.DefiniteDescription -> WeakTerm -> IO ()
 insert' h k v =

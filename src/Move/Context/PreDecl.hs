@@ -1,7 +1,6 @@
 module Move.Context.PreDecl
   ( Handle,
     new,
-    initialize,
     insert,
     lookup,
   )
@@ -25,10 +24,6 @@ new :: IO Handle
 new = do
   preDeclEnvRef <- newIORef Map.empty
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h = do
-  writeIORef (preDeclEnvRef h) Map.empty
 
 insert :: Handle -> EN.ExternalName -> Hint -> IO ()
 insert h k m =

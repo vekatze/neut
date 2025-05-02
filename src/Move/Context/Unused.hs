@@ -1,7 +1,6 @@
 module Move.Context.Unused
   ( Handle,
     new,
-    initialize,
     insertGlobalLocator,
     insertLocalLocator,
     insertPreset,
@@ -54,14 +53,6 @@ new = do
   unusedStaticFileMapRef <- newIORef Map.empty
   unusedVariableMapRef <- newIORef IntMap.empty
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h = do
-  writeIORef (unusedGlobalLocatorMapRef h) Map.empty
-  writeIORef (unusedLocalLocatorMapRef h) Map.empty
-  writeIORef (unusedPresetMapRef h) Map.empty
-  writeIORef (unusedStaticFileMapRef h) Map.empty
-  writeIORef (unusedVariableMapRef h) IntMap.empty
 
 insertGlobalLocator :: Handle -> T.Text -> Hint -> T.Text -> IO ()
 insertGlobalLocator h sglText m locatorText =

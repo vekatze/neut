@@ -1,8 +1,6 @@
 module Move.Scene.Unravel
   ( Handle,
-    -- new,
     new,
-    initialize,
     unravel,
     unravelFromFile,
     registerShiftMap,
@@ -15,7 +13,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
@@ -70,11 +68,6 @@ new baseHandle = do
   traceSourceListRef <- newIORef []
   sourceChildrenMapRef <- newIORef Map.empty
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h = do
-  writeIORef (visitEnvRef h) Map.empty
-  writeIORef (sourceChildrenMapRef h) Map.empty
 
 unravel :: Handle -> Module -> Target -> EIO (A.ArtifactTime, [Source.Source])
 unravel h baseModule t = do

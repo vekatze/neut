@@ -1,7 +1,6 @@
 module Move.Context.SymLoc
   ( Handle,
     new,
-    initialize,
     insert,
     get,
   )
@@ -22,10 +21,6 @@ new :: IO Handle
 new = do
   localVarMapRef <- newIORef LVT.empty
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h =
-  writeIORef (localVarMapRef h) LVT.empty
 
 insert :: Handle -> Ident -> Loc -> Loc -> IO ()
 insert h x startLoc endLoc = do
