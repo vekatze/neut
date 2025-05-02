@@ -15,6 +15,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
+import Move.Context.Platform qualified as Platform
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.TopCandidate qualified as TopCandidate
@@ -47,6 +48,7 @@ data Handle
   = Handle
   { baseHandle :: Base.Handle,
     envHandle :: Env.Handle,
+    platformHandle :: Platform.Handle,
     weakDefHandle :: WeakDefinition.Handle,
     constraintHandle :: Constraint.Handle,
     holeHandle :: Hole.Handle,

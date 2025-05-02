@@ -18,9 +18,9 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.EIO (EIO, raiseCritical, raiseCritical')
-import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
+import Move.Context.Platform qualified as Platform
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Move.Scene.Clarify.Linearize qualified as Linearize
@@ -83,7 +83,7 @@ data Handle
 
 new :: Base.Handle -> Local.Handle -> IO Handle
 new (Base.Handle {..}) (Local.Handle {..}) = do
-  let baseSize = Env.getDataSizeValue envHandle
+  let baseSize = Platform.getDataSizeValue platformHandle
   auxEnvHandle <- AuxEnv.new
   let substHandle = Subst.new gensymHandle
   let compSubstHandle = CompSubst.new gensymHandle
@@ -130,7 +130,7 @@ data MainHandle
 newMain :: Base.Handle -> IO MainHandle
 newMain Base.Handle {..} = do
   mainAuxEnvHandle <- AuxEnv.new
-  let baseSize = Env.getDataSizeValue envHandle
+  let baseSize = Platform.getDataSizeValue platformHandle
   let compSubstHandle = CompSubst.new gensymHandle
   let mainReduceHandle = Reduce.new compDefHandle compSubstHandle gensymHandle
   let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle baseSize

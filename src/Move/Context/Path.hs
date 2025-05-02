@@ -35,6 +35,7 @@ import Data.Time
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
+import Move.Context.Platform qualified as Platform
 import Path (Abs, Dir, File, Path, (</>))
 import Path qualified as P
 import Path.IO qualified as P
@@ -54,11 +55,12 @@ data Handle
   = Handle
   { cacheRef :: IORef (Maybe String),
     debugHandle :: Debug.Handle,
-    envHandle :: Env.Handle
+    envHandle :: Env.Handle,
+    platformHandle :: Platform.Handle
   }
 
-new :: Env.Handle -> Debug.Handle -> IO Handle
-new envHandle debugHandle = do
+new :: Env.Handle -> Platform.Handle -> Debug.Handle -> IO Handle
+new envHandle platformHandle debugHandle = do
   cacheRef <- newIORef Nothing
   return $ Handle {..}
 
@@ -111,7 +113,7 @@ getExecutableOutputPath h targetOrZen mainModule = do
 
 getBuildDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
 getBuildDir h t baseModule = do
-  baseBuildDir <- Env.getBaseBuildDir (envHandle h) baseModule
+  baseBuildDir <- Platform.getBaseBuildDir (platformHandle h) baseModule
   buildSignature <- getBuildSignature h t
   buildPrefix <- P.parseRelDir $ "build-" ++ buildSignature
   return $ baseBuildDir </> buildPrefix
@@ -123,7 +125,7 @@ getBuildSignature h t = do
     Just sig -> do
       return sig
     Nothing -> do
-      let clangDigest = Env.getClangDigest (envHandle h)
+      let clangDigest = Platform.getClangDigest (platformHandle h)
       let MainModule m = Env.getMainModule (envHandle h)
       clangOption <- getClangOption t m
       moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation m

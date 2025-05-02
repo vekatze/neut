@@ -38,8 +38,6 @@ new :: Base.Handle -> Source.Source -> EIO Handle
 new h source = do
   let envHandle = Base.envHandle h
   let antecedentHandle = Base.antecedentHandle h
-  let optDataHandle = Base.optDataHandle h
-  let keyArgHandle = Base.keyArgHandle h
   unusedHandle <- liftIO Unused.new
   localRemarkHandle <- liftIO LocalRemark.new
   tagHandle <- liftIO Tag.new
@@ -50,5 +48,5 @@ new h source = do
   topCandidateHandle <- liftIO TopCandidate.new
   preDeclHandle <- liftIO PreDecl.new
   weakDeclHandle <- liftIO WeakDecl.new
-  globalHandle <- liftIO $ Global.new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle
+  globalHandle <- liftIO $ Global.new h locatorHandle unusedHandle tagHandle
   return $ Handle {..}

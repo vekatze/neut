@@ -18,6 +18,7 @@ import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
+import Move.Context.Platform qualified as Platform
 import Move.Scene.Init.Base qualified as Base
 import Path
 import Path.IO
@@ -100,7 +101,7 @@ emit' h clangOptString llvmCode kind path = do
 
 emitInner :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> EIO ()
 emitInner h additionalClangOptions llvm outputPath = do
-  clang <- liftIO Env.getClang
+  clang <- liftIO Platform.getClang
   let optionList = clangBaseOpt outputPath ++ additionalClangOptions
   let ProcessRunner.Runner {run10} = ProcessRunner.ioRunner
   let spec =
@@ -130,7 +131,7 @@ clangBaseOpt outputPath =
 
 link :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> EIO ()
 link h clangOptions objectPathList outputPath = do
-  clang <- liftIO Env.getClang
+  clang <- liftIO Platform.getClang
   ensureDir $ parent outputPath
   External.run (externalHandle h) clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
 

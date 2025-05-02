@@ -13,8 +13,8 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Console.Report qualified as Report
 import Move.Context.EIO (EIO, raiseError')
-import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
+import Move.Context.Platform qualified as Platform
 import Move.Scene.Module.Save qualified as ModuleSave
 import Path
 import Path.IO
@@ -29,12 +29,12 @@ import Rule.ZenConfig
 data Handle
   = Handle
   { moduleSaveHandle :: ModuleSave.Handle,
-    envHandle :: Env.Handle,
+    platformHandle :: Platform.Handle,
     reportHandle :: Report.Handle
   }
 
-new :: ModuleSave.Handle -> Report.Handle -> Env.Handle -> IO Handle
-new moduleSaveHandle reportHandle envHandle = do
+new :: ModuleSave.Handle -> Report.Handle -> Platform.Handle -> IO Handle
+new moduleSaveHandle reportHandle platformHandle = do
   return $ Handle {..}
 
 createNewProject :: Handle -> T.Text -> Module -> EIO ()
@@ -85,7 +85,7 @@ createModuleFile :: Handle -> Module -> EIO ()
 createModuleFile h newModule = do
   ensureDir $ parent $ moduleLocation newModule
   ModuleSave.save (moduleSaveHandle h) (moduleLocation newModule) ([], (toDefaultEns newModule, []))
-  buildDir <- Env.getBaseBuildDir (envHandle h) newModule
+  buildDir <- Platform.getBaseBuildDir (platformHandle h) newModule
   ensureDir buildDir
 
 createMainFile :: Module -> IO ()

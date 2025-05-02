@@ -21,6 +21,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
+import Move.Context.Platform qualified as Platform
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -127,9 +128,9 @@ inferStmtKind h stmtKind =
       (consArgs', _) <- inferBinder' varEnv consArgs
       return $ DataIntro consName dataArgs' consArgs' discriminant
 
-getIntType :: Env.Handle -> Hint -> EIO WT.WeakTerm
+getIntType :: Platform.Handle -> Hint -> EIO WT.WeakTerm
 getIntType h m = do
-  let baseSize = Env.getDataSizeValue h
+  let baseSize = Platform.getDataSizeValue h
   return $ WT.intTypeBySize m baseSize
 
 getUnitType :: Handle -> Hint -> EIO WT.WeakTerm
@@ -307,7 +308,7 @@ infer h term =
           return (m :< WT.Magic (M.WeakMagic $ M.Load t' pointer'), t')
         M.Alloca lt size -> do
           (size', sizeType) <- infer h size
-          intType <- getIntType (envHandle h) m
+          intType <- getIntType (platformHandle h) m
           liftIO $ Constraint.insert (constraintHandle h) intType sizeType
           return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), m :< WT.Prim (WP.Type PT.Pointer))
         M.External _ _ funcName args varArgs -> do

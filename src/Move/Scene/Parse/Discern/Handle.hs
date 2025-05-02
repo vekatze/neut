@@ -14,6 +14,7 @@ import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
+import Move.Context.Platform qualified as Platform
 import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
@@ -42,6 +43,7 @@ data Handle = Handle
     optDataHandle :: OptimizableData.Handle,
     unusedHandle :: Unused.Handle,
     envHandle :: Env.Handle,
+    platformHandle :: Platform.Handle,
     nameEnv :: NominalEnv,
     currentLayer :: Layer
   }

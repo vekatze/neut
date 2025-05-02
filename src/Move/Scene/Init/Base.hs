@@ -18,6 +18,7 @@ import Move.Context.Module qualified as Module
 import Move.Context.NameMap qualified as NameMap
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
+import Move.Context.Platform qualified as Platform
 import Move.Context.Type qualified as Type
 import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -31,6 +32,7 @@ data Handle
     antecedentHandle :: Antecedent.Handle,
     colorHandle :: Color.Handle,
     debugHandle :: Debug.Handle,
+    platformHandle :: Platform.Handle,
     defHandle :: Definition.Handle,
     envHandle :: Env.Handle,
     gensymHandle :: Gensym.Handle,
@@ -52,11 +54,12 @@ new cfg moduleFilePathOrNone = do
   let reportHandle = Report.new colorHandle (Remark.endOfEntry cfg)
   gensymHandle <- Gensym.new
   debugHandle <- Debug.new colorHandle (Remark.enableDebugMode cfg)
-  envHandle <- Env.new reportHandle debugHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
+  platformHandle <- Platform.new reportHandle debugHandle
+  envHandle <- Env.new reportHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
   keyArgHandle <- KeyArg.new envHandle
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  pathHandle <- Path.new envHandle debugHandle
+  pathHandle <- Path.new envHandle platformHandle debugHandle
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new
@@ -72,7 +75,7 @@ refresh h = do
   keyArgHandle <- KeyArg.new (envHandle h)
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  pathHandle <- Path.new (envHandle h) (debugHandle h)
+  pathHandle <- Path.new (envHandle h) (platformHandle h) (debugHandle h)
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new

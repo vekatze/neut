@@ -4,10 +4,10 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
+import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
 import Move.Context.EIO (EIO)
-import Move.Context.Fetch (getHandleContents)
 import Move.Scene.Ens.Reflect qualified as Ens
 import Move.Scene.Module.GetExistingVersions
 import Path
@@ -44,7 +44,7 @@ getDigest :: Module -> PV.PackageVersion -> EIO ModuleDigest
 getDigest targetModule ver = do
   path <- getPackagePath targetModule ver
   handle <- liftIO $ openFile (toFilePath path) ReadMode
-  package <- liftIO $ getHandleContents handle
+  package <- liftIO $ B.hGetContents handle
   return $ MD.fromByteString package
 
 makeAntecedentEns :: Hint -> [ModuleDigest] -> E.Ens

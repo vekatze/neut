@@ -10,7 +10,7 @@ import Control.Monad.IO.Class
 import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Move.Context.Env qualified as Env
+import Move.Context.Platform qualified as Platform
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Init.Base qualified as Base
 import Rule.Builder
@@ -39,7 +39,7 @@ new baseHandle retType = do
   let phiInfo = Nothing
   let currentLabel = Nothing
   labelMapRef <- liftIO $ newIORef IntMap.empty
-  let baseSize = Env.getDataSizeValue (Base.envHandle baseHandle)
+  let baseSize = Platform.getDataSizeValue (Base.platformHandle baseHandle)
   let emitOpHandle = EmitOp.new baseSize
   let gensymHandle = Base.gensymHandle baseHandle
   return $ Handle {..}

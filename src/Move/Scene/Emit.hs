@@ -13,7 +13,7 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Move.Context.Env qualified as Env
+import Move.Context.Platform qualified as Platform
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Move.Scene.Init.Base qualified as Base
@@ -59,7 +59,7 @@ emit h lowCode = do
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList) = do
   let declStrList = emitDeclarations declEnv
-  let baseSize = Env.getDataSizeValue (Base.envHandle (baseHandle h))
+  let baseSize = Platform.getDataSizeValue (Base.platformHandle (baseHandle h))
   let staticTextList' = map (emitStaticText baseSize) staticTextList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   return (declStrList <> staticTextList', defStrList)
@@ -134,7 +134,7 @@ emitDefinitions h (name, (args, body)) = do
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (args, body) = do
-  let baseSize = Env.getDataSizeValue (Base.envHandle (baseHandle h))
+  let baseSize = Platform.getDataSizeValue (Base.platformHandle (baseHandle h))
   let mainType = emitPrimType $ PT.Int (IntSize baseSize)
   let args' = map (emitValue . LC.VarLocal) args
   emitDefinition h mainType "main" args' body

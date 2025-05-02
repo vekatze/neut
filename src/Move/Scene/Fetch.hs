@@ -11,6 +11,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.ByteString qualified as B
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
@@ -19,7 +20,6 @@ import Move.Console.Report qualified as Report
 import Move.Context.EIO (EIO, forP, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
-import Move.Context.Fetch qualified as Fetch
 import Move.Context.Module qualified as Module
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Init.Base qualified as Base
@@ -89,7 +89,7 @@ insertDependency h aliasName url = do
   let alias = ModuleAlias aliasName'
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download h tempFilePath alias [url]
-    archive <- liftIO $ Fetch.getHandleContents tempFileHandle
+    archive <- liftIO $ B.hGetContents tempFileHandle
     let digest = MD.fromByteString archive
     let mainModule = Env.getMainModule (envHandle h)
     case Map.lookup alias (M.moduleDependency $ M.extractModule mainModule) of
@@ -149,7 +149,7 @@ installModule h alias mirrorList digest = do
   liftIO $ printInstallationRemark h alias digest
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
     download h tempFilePath alias mirrorList
-    archive <- liftIO $ Fetch.getHandleContents tempFileHandle
+    archive <- liftIO $ B.hGetContents tempFileHandle
     let archiveModuleDigest = MD.fromByteString archive
     when (digest /= archiveModuleDigest) $
       raiseError' $

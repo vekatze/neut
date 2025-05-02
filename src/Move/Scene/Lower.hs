@@ -24,6 +24,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
+import Move.Context.Platform qualified as Platform
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Cancel
 import Move.Scene.Comp.Reduce qualified as Reduce
@@ -67,8 +68,8 @@ data Handle
 
 new :: Base.Handle -> IO Handle
 new (Base.Handle {..}) = do
-  let arch = Env.getArch envHandle
-  let baseSize = Env.getDataSizeValue envHandle
+  let arch = Platform.getArch platformHandle
+  let baseSize = Platform.getDataSizeValue platformHandle
   let substHandle = Subst.new gensymHandle
   let reduceHandle = Reduce.new compDefHandle substHandle gensymHandle
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch

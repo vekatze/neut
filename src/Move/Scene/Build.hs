@@ -26,6 +26,7 @@ import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
+import Move.Context.Platform qualified as Platform
 import Move.Scene.Clarify qualified as Clarify
 import Move.Scene.Elaborate qualified as Elaborate
 import Move.Scene.Emit qualified as Emit
@@ -291,7 +292,7 @@ naiveReplace sub t =
 
 getForeignSubst :: Handle -> Target -> M.Module -> EIO [(T.Text, T.Text)]
 getForeignSubst h t m = do
-  clang <- liftIO Env.getClang
+  clang <- liftIO Platform.getClang
   foreignDir <- Path.getForeignDir (Base.pathHandle (baseHandle h)) t m
   return
     [ ("{{module-root}}", T.pack $ toFilePath $ M.getModuleRootDir m),

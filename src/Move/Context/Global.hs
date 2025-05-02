@@ -21,8 +21,10 @@ import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
+import Move.Context.Platform qualified as Platform
 import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
+import Move.Scene.Init.Base qualified as Base
 import Rule.ArgNum qualified as AN
 import Rule.DefiniteDescription qualified as DD
 import Rule.Discriminant qualified as D
@@ -45,6 +47,7 @@ import Prelude hiding (lookup)
 data Handle
   = Handle
   { envHandle :: Env.Handle,
+    platformHandle :: Platform.Handle,
     locatorHandle :: Locator.Handle,
     keyArgHandle :: KeyArg.Handle,
     optDataHandle :: OptimizableData.Handle,
@@ -54,8 +57,8 @@ data Handle
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike))
   }
 
-new :: Env.Handle -> Locator.Handle -> OptimizableData.Handle -> KeyArg.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
-new envHandle locatorHandle optDataHandle keyArgHandle unusedHandle tagHandle = do
+new :: Base.Handle -> Locator.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
+new (Base.Handle {..}) locatorHandle unusedHandle tagHandle = do
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
   return $ Handle {..}
@@ -175,7 +178,7 @@ toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, disc
 lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO (Maybe (Hint, GlobalName))
 lookup h m name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
-  let dataSize = Env.getDataSize (envHandle h)
+  let dataSize = Platform.getDataSize (platformHandle h)
   case Map.lookup name nameMap of
     Just kind -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
