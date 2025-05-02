@@ -11,7 +11,6 @@ import Move.Context.Parse (ensureExistence', readTextFile)
 import Move.Context.Parse qualified as Parse
 import Move.Scene.Format qualified as Format
 import Move.Scene.Init.Base qualified as Base
-import Move.Scene.Write qualified as Write
 import Path.IO
 import Rule.Config.Format
 
@@ -32,5 +31,5 @@ format h cfg = do
   let formatHandle = Format.new (baseHandle h)
   content' <- Format.format formatHandle (shouldMinimizeImports cfg) (inputFileType cfg) path content
   if mustUpdateInPlace cfg
-    then liftIO $ Write.write path content'
+    then liftIO $ Parse.writeTextFile path content'
     else liftIO $ Parse.printTextFile content'
