@@ -725,7 +725,7 @@ lookupIntrospectiveClause m value clauseList =
 getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> EIO T.Text
 getIntrospectiveValue h m key = do
   bm <- liftIO $ Env.getBuildMode (H.envHandle h)
-  p <- Env.getPlatform (Just m)
+  let p = Env.getPlatform (H.envHandle h)
   case key of
     "architecture" ->
       return $ Arch.reify (Platform.arch p)

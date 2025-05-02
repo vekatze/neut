@@ -127,9 +127,9 @@ inferStmtKind h stmtKind =
       (consArgs', _) <- inferBinder' varEnv consArgs
       return $ DataIntro consName dataArgs' consArgs' discriminant
 
-getIntType :: Hint -> EIO WT.WeakTerm
-getIntType m = do
-  baseSize <- Env.getBaseSize m
+getIntType :: Env.Handle -> Hint -> EIO WT.WeakTerm
+getIntType h m = do
+  let baseSize = Env.getDataSizeValue h
   return $ WT.intTypeBySize m baseSize
 
 getUnitType :: Handle -> Hint -> EIO WT.WeakTerm
@@ -307,7 +307,7 @@ infer h term =
           return (m :< WT.Magic (M.WeakMagic $ M.Load t' pointer'), t')
         M.Alloca lt size -> do
           (size', sizeType) <- infer h size
-          intType <- getIntType m
+          intType <- getIntType (envHandle h) m
           liftIO $ Constraint.insert (constraintHandle h) intType sizeType
           return (m :< WT.Magic (M.WeakMagic $ M.Alloca lt size'), m :< WT.Prim (WP.Type PT.Pointer))
         M.External _ _ funcName args varArgs -> do

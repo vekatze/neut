@@ -17,12 +17,14 @@ import Prelude hiding (log)
 
 data Handle = Handle
   { envHandle :: Env.Handle,
+    pathHandle :: Path.Handle,
     unravelHandle :: Unravel.Handle
   }
 
 new :: Base.Handle -> IO Handle
 new baseHandle = do
   let envHandle = Base.envHandle baseHandle
+  let pathHandle = Base.pathHandle baseHandle
   unravelHandle <- Unravel.new baseHandle
   return $ Handle {..}
 
@@ -31,7 +33,7 @@ clean h = do
   let mainModule = Env.getMainModule (envHandle h)
   moduleList <- Unravel.unravelModule (unravelHandle h) (extractModule mainModule)
   forM_ moduleList $ \someModule -> do
-    baseBuildDir <- Path.getBaseBuildDir someModule
+    baseBuildDir <- Env.getBaseBuildDir (envHandle h) someModule
     b <- doesDirExist baseBuildDir
     when b $ do
       removeDirRecur baseBuildDir

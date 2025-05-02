@@ -67,7 +67,7 @@ data Handle
 
 new :: Base.Handle -> IO Handle
 new (Base.Handle {..}) = do
-  let arch = Env.getArch' envHandle
+  let arch = Env.getArch envHandle
   let baseSize = Env.getDataSizeValue envHandle
   let substHandle = Subst.new gensymHandle
   let reduceHandle = Reduce.new compDefHandle substHandle gensymHandle

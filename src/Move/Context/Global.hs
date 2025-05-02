@@ -175,7 +175,7 @@ toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, disc
 lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO (Maybe (Hint, GlobalName))
 lookup h m name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
-  dataSize <- Env.getDataSize m
+  let dataSize = Env.getDataSize (envHandle h)
   case Map.lookup name nameMap of
     Just kind -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name

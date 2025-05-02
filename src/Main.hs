@@ -19,7 +19,6 @@ import Move.Context.EIO (run)
 import Move.Context.OptParse qualified as OptParse
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Module.Save qualified as ModuleSave
-import Move.Scene.New qualified as New
 import Rule.Command qualified as C
 import Rule.Config.Remark qualified as Remark
 import System.IO
@@ -37,8 +36,8 @@ main = do
         case cmd of
           C.Create cfg -> do
             let moduleSaveHandle = ModuleSave.new debugHandle
-            let newHandle = New.new moduleSaveHandle reportHandle
-            Create.create (Create.new newHandle loggerConfig) cfg
+            createHandle <- liftIO $ Create.new loggerConfig reportHandle moduleSaveHandle
+            Create.create createHandle cfg
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg
     C.Internal loggerConfig cmd -> do

@@ -7,10 +7,8 @@ module Move.Context.Path
     writeText,
     getBaseName,
     getExecutableOutputPath,
-    getBaseBuildDir,
     getForeignDir,
     getInstallDir,
-    getPlatformPrefix,
     sourceToOutputPath,
     getZenExecutableDir,
     getSourceCachePath,
@@ -34,15 +32,13 @@ import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
-import Data.Version qualified as V
 import Move.Context.Clang qualified as Clang
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
-import Path (Abs, Dir, File, Path, Rel, (</>))
+import Path (Abs, Dir, File, Path, (</>))
 import Path qualified as P
 import Path.IO qualified as P
-import Paths_neut
 import Rule.ClangOption qualified as CL
 import Rule.Const
 import Rule.Digest
@@ -52,7 +48,6 @@ import Rule.Module
 import Rule.Module qualified as M
 import Rule.ModuleID qualified as MID
 import Rule.OutputKind qualified as OK
-import Rule.Platform as TP
 import Rule.Source qualified as Src
 import Rule.Target qualified as Target
 
@@ -104,11 +99,6 @@ ensureNotInDependencyDir mainModule = do
     _ ->
       return ()
 
-getPlatformPrefix :: EIO (Path Rel Dir)
-getPlatformPrefix = do
-  p <- Env.getPlatform Nothing
-  P.parseRelDir $ T.unpack $ TP.reify p
-
 getExecutableOutputPath :: Handle -> Target.MainTarget -> Module -> EIO (Path Abs File)
 getExecutableOutputPath h targetOrZen mainModule = do
   case targetOrZen of
@@ -121,16 +111,9 @@ getExecutableOutputPath h targetOrZen mainModule = do
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       return $ zenExecutableDir </> relPathWithoutExtension
 
-getBaseBuildDir :: Module -> EIO (Path Abs Dir)
-getBaseBuildDir baseModule = do
-  platformPrefix <- getPlatformPrefix
-  versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
-  let moduleRootDir = getModuleRootDir baseModule
-  return $ moduleRootDir </> moduleCacheDir baseModule </> $(P.mkRelDir "build") </> platformPrefix </> versionDir
-
 getBuildDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
 getBuildDir h t baseModule = do
-  baseBuildDir <- getBaseBuildDir baseModule
+  baseBuildDir <- Env.getBaseBuildDir (envHandle h) baseModule
   buildSignature <- getBuildSignature h t
   buildPrefix <- P.parseRelDir $ "build-" ++ buildSignature
   return $ baseBuildDir </> buildPrefix

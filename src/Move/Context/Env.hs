@@ -3,21 +3,17 @@ module Move.Context.Env
     new,
     PathMap,
     getArch,
-    getArch',
     getDataSizeValue,
-    getDataSize''',
-    getBaseSize,
-    getBaseSize',
     getBuildMode,
     getDataSize,
-    getDataSize',
-    getDataSize'',
     getMainModule,
     getOS,
     getPlatform,
     setBuildMode,
     getSilentMode,
     getMainDefiniteDescriptionByTarget,
+    getPlatformPrefix,
+    getBaseBuildDir,
   )
 where
 
@@ -25,11 +21,13 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Data.Time
+import Data.Version qualified as V
 import Move.Console.Report qualified as Report
 import Move.Context.EIO (EIO, raiseError, raiseError', run)
 import Move.Scene.Module.Reflect (getCurrentModuleFilePath)
 import Move.Scene.Module.Reflect qualified as ModuleReflect
 import Path
+import Paths_neut
 import Rule.Arch qualified as Arch
 import Rule.BaseName qualified as BN
 import Rule.BuildMode qualified as BM
@@ -50,6 +48,7 @@ import System.Info qualified as SI
 data Handle
   = Handle
   { arch :: Arch.Arch,
+    os :: O.OS,
     baseSize :: DS.DataSize,
     buildModeRef :: IORef BM.BuildMode,
     enableSilentMode :: Bool,
@@ -68,8 +67,9 @@ new reportHandle enableSilentMode moduleFilePathOrNone = do
             ModuleReflect.fromFilePath moduleReflectHandle moduleFilePath
           Nothing -> do
             getCurrentModuleFilePath >>= ModuleReflect.fromFilePath moduleReflectHandle
-    arch <- getArch Nothing
-    baseSize <- getDataSize'
+    arch <- getArch' Nothing
+    baseSize <- Arch.dataSizeOf <$> getArch' Nothing
+    os <- getOS' Nothing
     return $ Handle {..}
 
 getMainModule :: Handle -> MainModule
@@ -90,36 +90,26 @@ getDataSizeValue :: Handle -> Int
 getDataSizeValue h =
   DS.reify $ baseSize h
 
-getDataSize''' :: Handle -> DS.DataSize
-getDataSize''' =
-  baseSize
-
-getArch' :: Handle -> Arch.Arch
-getArch' =
+getArch :: Handle -> Arch.Arch
+getArch =
   arch
 
-getDataSize :: Hint -> EIO DS.DataSize
-getDataSize m = do
-  getDataSize'' (Just m)
+getOS :: Handle -> O.OS
+getOS =
+  os
 
-getDataSize' :: EIO DS.DataSize
-getDataSize' = do
-  getDataSize'' Nothing
+getPlatform :: Handle -> P.Platform
+getPlatform h = do
+  let arch = getArch h
+  let os = getOS h
+  P.Platform {arch, os}
 
-getDataSize'' :: Maybe Hint -> EIO DS.DataSize
-getDataSize'' mm = do
-  Arch.dataSizeOf <$> getArch mm
+getDataSize :: Handle -> DS.DataSize
+getDataSize =
+  baseSize
 
-getBaseSize :: Hint -> EIO Int
-getBaseSize m = do
-  DS.reify <$> getDataSize m
-
-getBaseSize' :: EIO Int
-getBaseSize' = do
-  DS.reify <$> getDataSize'
-
-getArch :: Maybe Hint -> EIO Arch.Arch
-getArch mm = do
+getArch' :: Maybe Hint -> EIO Arch.Arch
+getArch' mm = do
   case SI.arch of
     "amd64" ->
       return Arch.Amd64
@@ -136,8 +126,8 @@ getArch mm = do
         Nothing ->
           raiseError' $ "Unknown architecture: " <> T.pack arch
 
-getOS :: Maybe Hint -> EIO O.OS
-getOS mm = do
+getOS' :: Maybe Hint -> EIO O.OS
+getOS' mm = do
   case SI.os of
     "linux" ->
       return O.Linux
@@ -149,12 +139,6 @@ getOS mm = do
           raiseError m $ "Unknown OS: " <> T.pack os
         Nothing ->
           raiseError' $ "Unknown OS: " <> T.pack os
-
-getPlatform :: Maybe Hint -> EIO P.Platform
-getPlatform mm = do
-  arch <- getArch mm
-  os <- getOS mm
-  return $ P.Platform {arch, os}
 
 getSilentMode :: Handle -> Bool
 getSilentMode =
@@ -188,3 +172,15 @@ removeExtension path =
       return path'
     Nothing ->
       raiseError' $ "File extension is missing in `" <> T.pack (toFilePath path) <> "`"
+
+getPlatformPrefix :: Handle -> EIO (Path Rel Dir)
+getPlatformPrefix h = do
+  let p = getPlatform h
+  parseRelDir $ T.unpack $ P.reify p
+
+getBaseBuildDir :: Handle -> Module -> EIO (Path Abs Dir)
+getBaseBuildDir h baseModule = do
+  platformPrefix <- getPlatformPrefix h
+  versionDir <- parseRelDir $ "compiler-" ++ V.showVersion version
+  let moduleRootDir = getModuleRootDir baseModule
+  return $ moduleRootDir </> moduleCacheDir baseModule </> $(mkRelDir "build") </> platformPrefix </> versionDir
