@@ -8,7 +8,6 @@ module Move.Scene.Parse.Discern.Handle
   )
 where
 
-import Move.Context.Alias qualified as Alias
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
@@ -22,6 +21,7 @@ import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
+import Move.Scene.Parse.Handle.Alias qualified as Alias
 import Move.Scene.Parse.Handle.Global qualified as Global
 import Rule.Hint
 import Rule.Ident

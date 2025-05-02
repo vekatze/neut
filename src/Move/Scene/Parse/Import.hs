@@ -11,7 +11,6 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Move.Context.Alias qualified as Alias
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -25,6 +24,7 @@ import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Move.Scene.Module.GetModule qualified as GetModule
+import Move.Scene.Parse.Handle.Alias qualified as Alias
 import Move.Scene.Parse.Handle.Global qualified as Global
 import Move.Scene.Source.ShiftToLatest qualified as STL
 import Path

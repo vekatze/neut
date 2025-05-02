@@ -1,4 +1,4 @@
-module Move.Context.Alias
+module Move.Scene.Parse.Handle.Alias
   ( Handle,
     new,
     resolveAlias,

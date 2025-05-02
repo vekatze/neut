@@ -12,7 +12,6 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
-import Move.Context.Alias qualified as Alias
 import Move.Context.EIO (EIO, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.Locator qualified as Locator
@@ -20,6 +19,7 @@ import Move.Context.Tag qualified as Tag
 import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Handle qualified as H
+import Move.Scene.Parse.Handle.Alias qualified as Alias
 import Move.Scene.Parse.Handle.Global qualified as Global
 import Rule.ArgNum qualified as AN
 import Rule.Attr.VarGlobal qualified as AttrVG
