@@ -1,4 +1,4 @@
-module Move.Scene.New
+module Move.Scene.Create
   ( Handle,
     new,
     createNewProject,
