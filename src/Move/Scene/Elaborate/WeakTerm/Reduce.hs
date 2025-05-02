@@ -1,4 +1,4 @@
-module Move.Scene.WeakTerm.Reduce
+module Move.Scene.Elaborate.WeakTerm.Reduce
   ( Handle,
     new,
     reduce,

@@ -12,7 +12,7 @@ import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Move.Context.EIO (EIO)
-import Move.Scene.WeakTerm.Reduce qualified as Reduce
+import Move.Scene.Elaborate.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Annotation qualified as AN
 import Rule.Attr.Lam qualified as AttrL
