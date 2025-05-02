@@ -1,7 +1,6 @@
 module Move.Context.Alias
   ( Handle,
     new,
-    new',
     resolveAlias,
     resolveLocatorAlias,
     initializeAliasMap,
@@ -41,14 +40,8 @@ data Handle
     moduleAliasMapRef :: IORef (Map.HashMap ModuleAlias ModuleDigest)
   }
 
-new :: Antecedent.Handle -> Locator.Handle -> Env.Handle -> IO Handle
-new antecedentHandle locatorHandle envHandle = do
-  locatorAliasMapRef <- newIORef Map.empty
-  moduleAliasMapRef <- newIORef Map.empty
-  return $ Handle {..}
-
-new' :: Antecedent.Handle -> Locator.Handle -> Env.Handle -> Source.Source -> IO Handle
-new' antecedentHandle locatorHandle envHandle source = do
+new :: Antecedent.Handle -> Locator.Handle -> Env.Handle -> Source.Source -> IO Handle
+new antecedentHandle locatorHandle envHandle source = do
   locatorAliasMapRef <- newIORef Map.empty
   moduleAliasMapRef <- newIORef Map.empty
   let h = Handle {..}

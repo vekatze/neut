@@ -107,7 +107,7 @@ buildTarget h (M.MainModule baseModule) target = do
     PeripheralSingle {} ->
       return ()
     Main ct -> do
-      let linkHandle = Link.new' (baseHandle h)
+      let linkHandle = Link.new (baseHandle h)
       Link.link linkHandle ct (_shouldSkipLink h) didPerformForeignCompilation artifactTime (toList dependenceSeq)
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
@@ -115,7 +115,7 @@ buildTarget h (M.MainModule baseModule) target = do
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> EIO ()
 compile h target outputKindList contentSeq = do
   let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
-  let cacheHandle = Cache.new' (baseHandle h)
+  let cacheHandle = Cache.new (baseHandle h)
   bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
   c <- getEntryPointCompilationCount h mainModule target outputKindList
   let numOfItems = length (filter id bs) + c
@@ -129,7 +129,7 @@ compile h target outputKindList contentSeq = do
   let completedTitle = getCompletedTitle numOfItems
   hp <- liftIO $ ProgressBar.new (Base.envHandle (baseHandle h)) colorHandle (Just numOfItems) workingTitle completedTitle color
   let emitHandle = Emit.new (baseHandle h)
-  let llvmHandle = LLVM.new' (baseHandle h)
+  let llvmHandle = LLVM.new (baseHandle h)
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     localHandle <- Local.new (baseHandle h) source
     let parseHandle = Parse.new (baseHandle h) localHandle
@@ -143,7 +143,7 @@ compile h target outputKindList contentSeq = do
     b <- Cache.needsCompilation cacheHandle outputKindList source
     if b
       then do
-        clarifyHandle <- liftIO $ Clarify.new' (baseHandle h) localHandle
+        clarifyHandle <- liftIO $ Clarify.new (baseHandle h) localHandle
         stmtList' <- Clarify.clarify clarifyHandle stmtList
         fmap Just $ liftIO $ async $ runEIO $ do
           lowerHandle <- liftIO $ Lower.new (baseHandle h)

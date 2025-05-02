@@ -1,6 +1,5 @@
 module Move.Scene.Parse.Discern.Handle
   ( Handle (..),
-    new',
     new,
     extend,
     extend',
@@ -48,29 +47,10 @@ data Handle = Handle
   }
 
 new ::
-  Gensym.Handle ->
-  Locator.Handle ->
-  Global.Handle ->
-  Alias.Handle ->
-  Tag.Handle ->
-  KeyArg.Handle ->
-  SymLoc.Handle ->
-  TopCandidate.Handle ->
-  PreDecl.Handle ->
-  OptimizableData.Handle ->
-  Unused.Handle ->
-  Env.Handle ->
-  Handle
-new gensymHandle locatorHandle globalHandle aliasHandle tagHandle keyArgHandle symLocHandle topCandidateHandle preDeclHandle optDataHandle unusedHandle envHandle = do
-  let nameEnv = empty
-  let currentLayer = 0
-  Handle {..}
-
-new' ::
   Base.Handle ->
   Local.Handle ->
   Handle
-new' (Base.Handle {..}) (Local.Handle {..}) = do
+new (Base.Handle {..}) (Local.Handle {..}) = do
   let nameEnv = empty
   let currentLayer = 0
   Handle {..}

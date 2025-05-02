@@ -24,7 +24,7 @@ data Handle
 
 new :: Base.Handle -> Handle
 new baseHandle@(Base.Handle {..}) = do
-  let cacheHandle = Cache.new' baseHandle
+  let cacheHandle = Cache.new baseHandle
   Handle {..}
 
 load :: Handle -> Target -> [Source.Source] -> EIO [(Source.Source, Either Cache.Cache T.Text)]

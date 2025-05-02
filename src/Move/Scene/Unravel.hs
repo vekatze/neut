@@ -361,7 +361,7 @@ parseSourceHeader h localHandle currentSource = do
   let parseHandle = ParseCore.new (Base.gensymHandle (baseHandle h))
   (_, importList) <- ParseCore.parseFile parseHandle filePath fileContent False (const parseImport)
   let m = newSourceHint filePath
-  let importHandle = Import.new' (baseHandle h) localHandle
+  let importHandle = Import.new (baseHandle h) localHandle
   Import.interpretImport importHandle m currentSource importList
 
 getSourceChildrenMap :: Handle -> IO (Map.HashMap (Path Abs File) [ImportItem])

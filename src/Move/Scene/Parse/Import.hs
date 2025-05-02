@@ -1,7 +1,6 @@
 module Move.Scene.Parse.Import
   ( Handle,
     new,
-    new',
     activateImport,
     interpretImport,
   )
@@ -65,27 +64,10 @@ data Handle
   }
 
 new ::
-  Env.Handle ->
-  Unused.Handle ->
-  GetEnabledPreset.Handle ->
-  STL.Handle ->
-  Locator.Handle ->
-  Alias.Handle ->
-  Global.Handle ->
-  Gensym.Handle ->
-  RawImportSummary.Handle ->
-  Module.Handle ->
-  NameMap.Handle ->
-  Tag.Handle ->
-  Handle
-new envHandle unusedHandle getEnabledPresetHandle shiftToLatestHandle locatorHandle aliasHandle globalHandle gensymHandle rawImportSummaryHandle moduleHandle nameMapHandle tagHandle = do
-  Handle {..}
-
-new' ::
   Base.Handle ->
   Local.Handle ->
   Handle
-new' baseHandle@(Base.Handle {..}) (Local.Handle {..}) = do
+new baseHandle@(Base.Handle {..}) (Local.Handle {..}) = do
   let getEnabledPresetHandle = GetEnabledPreset.new baseHandle
   let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}

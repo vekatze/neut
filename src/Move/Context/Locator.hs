@@ -1,7 +1,6 @@
 module Move.Context.Locator
   ( Handle,
     new,
-    new',
     initialize,
     attachCurrentLocator,
     attachPublicCurrentLocator,
@@ -65,16 +64,8 @@ data Handle
     currentGlobalLocatorRef :: IORef (Maybe SGL.StrictGlobalLocator)
   }
 
-new :: Env.Handle -> Tag.Handle -> IO Handle
-new envHandle tagHandle = do
-  activeDefiniteDescriptionListRef <- newIORef Map.empty
-  activeStaticFileListRef <- newIORef Map.empty
-  activeGlobalLocatorListRef <- newIORef []
-  currentGlobalLocatorRef <- newIORef Nothing
-  return $ Handle {..}
-
-new' :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
-new' envHandle tagHandle source = do
+new :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
+new envHandle tagHandle source = do
   activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
   activeStaticFileListRef <- liftIO $ newIORef Map.empty
   activeGlobalLocatorListRef <- liftIO $ newIORef []

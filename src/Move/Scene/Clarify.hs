@@ -1,7 +1,6 @@
 module Move.Scene.Clarify
   ( Handle,
     new,
-    new',
     MainHandle,
     newMain,
     clarify,
@@ -82,24 +81,8 @@ data Handle
     baseSize :: Int
   }
 
-new ::
-  Gensym.Handle ->
-  Linearize.Handle ->
-  Utility.Handle ->
-  AuxEnv.Handle ->
-  Sigma.Handle ->
-  Locator.Handle ->
-  OptimizableData.Handle ->
-  Reduce.Handle ->
-  Subst.Handle ->
-  CompDefinition.Handle ->
-  Int ->
-  Handle
-new gensymHandle linearizeHandle utilityHandle auxEnvHandle sigmaHandle locatorHandle optDataHandle reduceHandle substHandle compDefHandle baseSize = do
-  Handle {..}
-
-new' :: Base.Handle -> Local.Handle -> IO Handle
-new' (Base.Handle {..}) (Local.Handle {..}) = do
+new :: Base.Handle -> Local.Handle -> IO Handle
+new (Base.Handle {..}) (Local.Handle {..}) = do
   let baseSize = Env.getDataSizeValue envHandle
   auxEnvHandle <- AuxEnv.new
   let substHandle = Subst.new gensymHandle

@@ -82,7 +82,7 @@ new baseHandle@(Base.Handle {..}) localHandle@(Local.Handle {..}) currentSource 
   weakTypeHandle <- WeakType.new
   let varEnv = []
   let currentStep = 0
-  let discernHandle = Discern.new' baseHandle localHandle
+  let discernHandle = Discern.new baseHandle localHandle
   return $ Handle {..}
 
 reduce :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm

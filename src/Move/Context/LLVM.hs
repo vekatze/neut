@@ -1,7 +1,6 @@
 module Move.Context.LLVM
   ( Handle,
     new,
-    new',
     emit,
     link,
     ensureSetupSanity,
@@ -40,12 +39,8 @@ data Handle
     envHandle :: Env.Handle
   }
 
-new :: Env.Handle -> Debug.Handle -> Path.Handle -> External.Handle -> Handle
-new envHandle debugHandle pathHandle externalHandle = do
-  Handle {..}
-
-new' :: Base.Handle -> Handle
-new' (Base.Handle {..}) = do
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) = do
   let externalHandle = External.new debugHandle
   Handle {..}
 

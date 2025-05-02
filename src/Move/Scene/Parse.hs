@@ -58,9 +58,9 @@ new baseHandle localHandle = do
   let localRemarkHandle = Local.localRemarkHandle localHandle
   let unusedHandle = Local.unusedHandle localHandle
   let parseHandle = P.new (Base.gensymHandle baseHandle)
-  let discernHandle = Discern.new' baseHandle localHandle
+  let discernHandle = Discern.new baseHandle localHandle
   let pathHandle = Base.pathHandle baseHandle
-  let importHandle = Import.new' baseHandle localHandle
+  let importHandle = Import.new baseHandle localHandle
   let globalHandle = Local.globalHandle localHandle
   let nameMapHandle = Base.nameMapHandle baseHandle
   Handle {..}

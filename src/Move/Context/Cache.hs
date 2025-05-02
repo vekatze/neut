@@ -1,7 +1,6 @@
 module Move.Context.Cache
   ( Handle,
     new,
-    new',
     saveCache,
     saveCompletionCache,
     saveLocationCache,
@@ -36,12 +35,8 @@ data Handle
     artifactHandle :: Artifact.Handle
   }
 
-new :: Path.Handle -> Artifact.Handle -> Handle
-new pathHandle artifactHandle = do
-  Handle {..}
-
-new' :: Base.Handle -> Handle
-new' (Base.Handle {..}) =
+new :: Base.Handle -> Handle
+new (Base.Handle {..}) =
   Handle {..}
 
 saveCache :: Path.Handle -> Target -> Source.Source -> Cache.Cache -> EIO ()

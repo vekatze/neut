@@ -43,8 +43,8 @@ new h source = do
   unusedHandle <- liftIO Unused.new
   localRemarkHandle <- liftIO LocalRemark.new
   tagHandle <- liftIO Tag.new
-  locatorHandle <- Locator.new' envHandle tagHandle source
-  aliasHandle <- liftIO $ Alias.new' antecedentHandle locatorHandle envHandle source
+  locatorHandle <- Locator.new envHandle tagHandle source
+  aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle source
   rawImportSummaryHandle <- liftIO RawImportSummary.new
   symLocHandle <- liftIO SymLoc.new
   topCandidateHandle <- liftIO TopCandidate.new
