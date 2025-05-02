@@ -1,4 +1,4 @@
-module Move.Scene.Term.Refresh
+module Move.Scene.Elaborate.Term.Refresh
   ( Handle,
     new,
     refresh,

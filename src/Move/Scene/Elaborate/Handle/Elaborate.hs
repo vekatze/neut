@@ -26,10 +26,10 @@ import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
+import Move.Scene.Elaborate.Term.Inline qualified as Inline
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Parse.Discern.Handle qualified as Discern
-import Move.Scene.Term.Inline qualified as Inline
 import Move.Scene.WeakTerm.Fill qualified as Fill
 import Move.Scene.WeakTerm.Reduce qualified as Reduce
 import Move.Scene.WeakTerm.Subst qualified as Subst

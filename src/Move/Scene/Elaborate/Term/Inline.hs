@@ -1,4 +1,4 @@
-module Move.Scene.Term.Inline
+module Move.Scene.Elaborate.Term.Inline
   ( Handle,
     new,
     inline,
@@ -16,8 +16,8 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.EIO (EIO, raiseError)
 import Move.Scene.Elaborate.Handle.Def qualified as Definition
+import Move.Scene.Elaborate.Term.Refresh qualified as Refresh
 import Move.Scene.Init.Base qualified as Base
-import Move.Scene.Term.Refresh qualified as Refresh
 import Move.Scene.Term.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
