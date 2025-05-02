@@ -14,8 +14,8 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseError)
+import Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Term.Refresh qualified as Refresh
 import Move.Scene.Term.Subst qualified as Subst

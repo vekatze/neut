@@ -16,7 +16,6 @@ import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Move.Context.Cache qualified as Cache
-import Move.Context.Definition qualified as Definition
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Elaborate
 import Move.Context.KeyArg qualified as KeyArg
@@ -27,6 +26,7 @@ import Move.Context.Type qualified as Type
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
+import Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef

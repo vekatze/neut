@@ -11,7 +11,6 @@ import Move.Context.Artifact qualified as Artifact
 import Move.Context.Color qualified as Color
 import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.Debug qualified as Debug
-import Move.Context.Definition qualified as Definition
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Module qualified as Module
@@ -20,6 +19,7 @@ import Move.Context.Path qualified as Path
 import Move.Context.Platform qualified as Platform
 import Move.Context.Type qualified as Type
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark

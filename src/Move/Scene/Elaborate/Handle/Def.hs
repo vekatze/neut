@@ -1,4 +1,4 @@
-module Move.Context.Definition
+module Move.Scene.Elaborate.Handle.Def
   ( Handle,
     new,
     DefMap,
