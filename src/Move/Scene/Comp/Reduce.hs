@@ -18,13 +18,13 @@ import Rule.Opacity qualified as O
 
 data Handle
   = Handle
-  { compDefinitionHandle :: CompDef.Handle,
+  { compDefHandle :: CompDef.Handle,
     substHandle :: Subst.Handle,
     gensymHandle :: Gensym.Handle
   }
 
 new :: CompDef.Handle -> Subst.Handle -> Gensym.Handle -> Handle
-new compDefinitionHandle substHandle gensymHandle = do
+new compDefHandle substHandle gensymHandle = do
   Handle {..}
 
 reduce :: Handle -> C.Comp -> IO C.Comp
@@ -39,7 +39,7 @@ reduce h term =
     C.PiElimDownElim v ds -> do
       case v of
         C.VarGlobal x _ -> do
-          mDefValue <- CompDef.lookup (compDefinitionHandle h) x
+          mDefValue <- CompDef.lookup (compDefHandle h) x
           case mDefValue of
             Just (O.Clear, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
