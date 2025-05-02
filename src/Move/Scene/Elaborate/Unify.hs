@@ -16,10 +16,10 @@ import Data.Text qualified as T
 import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.Elaborate
 import Move.Context.Type qualified as Type
-import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
+import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -230,7 +230,7 @@ simplify h susList constraintList =
                   simplify h susList $ (C.Eq e1 e2', orig) : cs
                 (Nothing, Nothing) -> do
                   let fmvs = S.union fmvs1 fmvs2
-                  defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)
+                  defMap <- liftIO $ WeakDef.read' (weakDefHandle h)
                   case (Stuck.asStuckedTerm e1, Stuck.asStuckedTerm e2) of
                     (Just (Stuck.Hole hole1 ies1, _ :< Stuck.Base), _)
                       | Just xss1 <- mapM asIdent ies1,
@@ -402,7 +402,7 @@ simplifyActual h m dataNameSet t orig = do
           t'' <- fill h s t'
           simplifyActual h m dataNameSet t'' orig
         Nothing -> do
-          defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)
+          defMap <- liftIO $ WeakDef.read' (weakDefHandle h)
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do
@@ -455,7 +455,7 @@ simplifyInteger h m t orig = do
           t'' <- fill h (HS.singleton hole xs body) t'
           simplifyInteger h m t'' orig
         Nothing -> do
-          defMap <- liftIO $ WeakDefinition.read' (weakDefHandle h)
+          defMap <- liftIO $ WeakDef.read' (weakDefHandle h)
           case Stuck.asStuckedTerm t' of
             Just (Stuck.VarGlobal dd, evalCtx)
               | Just lam <- Map.lookup dd defMap -> do

@@ -23,11 +23,11 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Platform qualified as Platform
 import Move.Context.Type qualified as Type
-import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
+import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Unify qualified as Unify
 import Move.Scene.Parse.Discern.Name qualified as N
@@ -701,7 +701,7 @@ reduceWeakType' h sub e = do
 
 lookupDefinition :: Handle -> DD.DefiniteDescription -> IO (Maybe WT.WeakTerm)
 lookupDefinition h name = do
-  WeakDefinition.lookup' (weakDefHandle h) name
+  WeakDef.lookup' (weakDefHandle h) name
 
 newHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakTerm
 newHole h m varEnv = do

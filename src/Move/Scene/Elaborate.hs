@@ -24,12 +24,12 @@ import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.TopCandidate qualified as TopCandidate
 import Move.Context.Type qualified as Type
-import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
+import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
@@ -178,7 +178,7 @@ insertWeakStmt :: Handle -> WeakStmt -> EIO ()
 insertWeakStmt h stmt = do
   case stmt of
     WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
-      liftIO $ WeakDefinition.insert' (weakDefHandle h) (toOpacity stmtKind) m f impArgs expArgs codType e
+      liftIO $ WeakDef.insert' (weakDefHandle h) (toOpacity stmtKind) m f impArgs expArgs codType e
     WeakStmtNominal {} -> do
       return ()
     WeakStmtForeign foreignList ->
@@ -633,7 +633,7 @@ reduceWeakType h e = do
     m :< WT.Hole hole es ->
       fillHole h m hole es >>= reduceWeakType h
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
-      mLam <- liftIO $ WeakDefinition.lookup' (weakDefHandle h) name
+      mLam <- liftIO $ WeakDef.lookup' (weakDefHandle h) name
       case mLam of
         Just lam ->
           reduceWeakType h $ m :< WT.PiElim lam args

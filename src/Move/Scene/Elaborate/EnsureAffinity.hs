@@ -17,7 +17,7 @@ import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.Elaborate qualified as Elaborate
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
-import Move.Context.WeakDefinition qualified as WeakDefinition
+import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
@@ -361,7 +361,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
     _ :< WT.Prim {} -> do
       return []
     _ -> do
-      defMap <- liftIO $ WeakDefinition.read' (Elaborate.weakDefHandle (elaborateHandle h))
+      defMap <- liftIO $ WeakDef.read' (Elaborate.weakDefHandle (elaborateHandle h))
       case Stuck.asStuckedTerm t' of
         Just (Stuck.VarGlobal dd, evalCtx)
           | Just lam <- Map.lookup dd defMap -> do

@@ -1,4 +1,4 @@
-module Move.Context.WeakDefinition
+module Move.Scene.Elaborate.Handle.WeakDef
   ( Handle,
     new,
     DefMap,

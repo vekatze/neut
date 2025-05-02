@@ -19,8 +19,8 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Path qualified as Path
 import Move.Context.Platform qualified as Platform
 import Move.Context.Type qualified as Type
-import Move.Context.WeakDefinition qualified as WeakDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
@@ -43,7 +43,7 @@ data Handle
     pathHandle :: Path.Handle,
     reportHandle :: Report.Handle,
     typeHandle :: Type.Handle,
-    weakDefHandle :: WeakDefinition.Handle,
+    weakDefHandle :: WeakDef.Handle,
     compDefHandle :: CompDefinition.Handle,
     nameMapHandle :: NameMap.Handle
   }
@@ -63,7 +63,7 @@ new cfg moduleFilePathOrNone = do
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new
-  weakDefHandle <- WeakDefinition.new gensymHandle
+  weakDefHandle <- WeakDef.new gensymHandle
   defHandle <- Definition.new
   antecedentHandle <- Antecedent.new
   compDefHandle <- CompDefinition.new
@@ -79,7 +79,7 @@ refresh h = do
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new
-  weakDefHandle <- WeakDefinition.new (gensymHandle h)
+  weakDefHandle <- WeakDef.new (gensymHandle h)
   defHandle <- Definition.new
   antecedentHandle <- Antecedent.new
   compDefHandle <- CompDefinition.new
