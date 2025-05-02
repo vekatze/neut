@@ -1,4 +1,4 @@
-module Move.Scene.Module.GetExistingVersions (getExistingVersions) where
+module Move.Scene.Archive.Module.GetExistingVersions (getExistingVersions) where
 
 import Data.List qualified as List
 import Data.Maybe

@@ -5,7 +5,7 @@ import Control.Monad.Except (MonadError (throwError))
 import Data.Maybe
 import Data.Text qualified as T
 import Move.Context.EIO (EIO)
-import Move.Scene.Module.GetExistingVersions
+import Move.Scene.Archive.Module.GetExistingVersions
 import Rule.Error (newError')
 import Rule.Module
 import Rule.PackageVersion qualified as PV
