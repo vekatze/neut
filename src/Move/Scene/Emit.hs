@@ -1,7 +1,6 @@
 module Move.Scene.Emit
   ( Handle,
     new,
-    new',
     emit,
   )
 where
@@ -22,14 +21,11 @@ import Move.Scene.LowComp.Reduce qualified as Reduce
 import Rule.BaseLowType qualified as BLT
 import Rule.Builder
 import Rule.Const
-import Rule.DataSize (DataSize)
-import Rule.DataSize qualified as DS
 import Rule.DeclarationName qualified as DN
 import Rule.DefiniteDescription qualified as DD
 import Rule.ForeignCodType qualified as FCT
 import Rule.Ident.Reify
 import Rule.LowComp qualified as LC
-import Rule.LowComp.EmitOp qualified as EmitOp
 import Rule.LowComp.EmitValue
 import Rule.LowType qualified as LT
 import Rule.LowType.EmitLowType
@@ -38,26 +34,13 @@ import Rule.PrimNumSize
 import Rule.PrimType qualified as PT
 import Rule.PrimType.EmitPrimType (emitPrimType)
 
-data Handle
+newtype Handle
   = Handle
-  { gensymHandle :: Gensym.Handle,
-    emitLowCompHandle :: EmitLowComp.Handle,
-    reduceHandle :: Reduce.Handle,
-    dataSize :: DataSize,
-    baseSize :: Int
+  { baseHandle :: Base.Handle
   }
 
-new :: Gensym.Handle -> EmitLowComp.Handle -> Reduce.Handle -> DataSize -> Int -> Handle
-new gensymHandle emitLowCompHandle reduceHandle dataSize baseSize = do
-  Handle {..}
-
-new' :: Base.Handle -> Handle
-new' (Base.Handle {..}) = do
-  let baseSize = Env.getDataSizeValue envHandle
-  let emitOpHandle = EmitOp.new baseSize
-  let emitLowCompHandle = EmitLowComp.new gensymHandle emitOpHandle
-  let reduceHandle = Reduce.new gensymHandle
-  let dataSize = Env.getDataSize''' envHandle
+new :: Base.Handle -> Handle
+new baseHandle = do
   Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
@@ -76,7 +59,8 @@ emit h lowCode = do
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList) = do
   let declStrList = emitDeclarations declEnv
-  let staticTextList' = map (emitStaticText (baseSize h)) staticTextList
+  let baseSize = Env.getDataSizeValue (Base.envHandle (baseHandle h))
+  let staticTextList' = map (emitStaticText baseSize) staticTextList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   return (declStrList <> staticTextList', defStrList)
 
@@ -141,15 +125,17 @@ emitDeclarations declEnv = do
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, (args, body)) = do
-  args' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) args
+  args' <- mapM (Gensym.newIdentFromIdent (Base.gensymHandle (baseHandle h))) args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
-  body' <- Reduce.reduce (reduceHandle h) sub body
+  let reduceHandle = Reduce.new (Base.gensymHandle (baseHandle h))
+  body' <- Reduce.reduce reduceHandle sub body
   let args'' = map (emitValue . LC.VarLocal) args'
   emitDefinition h "ptr" (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (args, body) = do
-  let mainType = emitPrimType $ PT.Int (IntSize $ DS.reify (dataSize h))
+  let baseSize = Env.getDataSizeValue (Base.envHandle (baseHandle h))
+  let mainType = emitPrimType $ PT.Int (IntSize baseSize)
   let args' = map (emitValue . LC.VarLocal) args
   emitDefinition h mainType "main" args' body
 
@@ -167,7 +153,8 @@ declToBuilder (name, (dom, cod)) = do
 emitDefinition :: Handle -> Builder -> Builder -> [Builder] -> LC.Comp -> IO [Builder]
 emitDefinition h retType name args asm = do
   let header = sig retType name args <> " {"
-  content <- EmitLowComp.emitLowComp (emitLowCompHandle h) retType asm
+  emitLowCompHandle <- EmitLowComp.new (baseHandle h) retType
+  content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
   return $ [header] <> content <> [footer]
 

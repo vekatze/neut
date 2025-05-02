@@ -129,7 +129,7 @@ compile h target outputKindList contentSeq = do
   let completedTitle = getCompletedTitle numOfItems
   hp <- liftIO $ ProgressBar.new (Base.envHandle (baseHandle h)) colorHandle (Just numOfItems) workingTitle completedTitle color
   let lowerHandle = Lower.new' (baseHandle h)
-  let emitHandle = Emit.new' (baseHandle h)
+  let emitHandle = Emit.new (baseHandle h)
   let llvmHandle = LLVM.new' (baseHandle h)
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     localHandle <- Local.new (baseHandle h) source
