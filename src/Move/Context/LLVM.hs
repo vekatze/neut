@@ -19,14 +19,13 @@ import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
 import Move.Context.Path qualified as Path
 import Move.Context.Platform qualified as Platform
+import Move.Context.ProcessRunner qualified as ProcessRunner
 import Move.Scene.Init.Base qualified as Base
 import Path
 import Path.IO
 import Rule.Config.Build
 import Rule.Module (extractModule)
 import Rule.OutputKind qualified as OK
-import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
-import Rule.ProcessRunner.Rule qualified as ProcessRunner
 import Rule.Source
 import Rule.Target
 import System.Process (CmdSpec (RawCommand))
@@ -103,14 +102,13 @@ emitInner :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> EIO ()
 emitInner h additionalClangOptions llvm outputPath = do
   clang <- liftIO Platform.getClang
   let optionList = clangBaseOpt outputPath ++ additionalClangOptions
-  let ProcessRunner.Runner {run10} = ProcessRunner.ioRunner
   let spec =
         ProcessRunner.Spec
           { cmdspec = RawCommand clang optionList,
             cwd = Nothing
           }
   Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (clang, optionList))
-  value <- liftIO $ run10 spec (ProcessRunner.Lazy llvm)
+  value <- liftIO $ ProcessRunner.run10 spec (ProcessRunner.Lazy llvm)
   case value of
     Right _ ->
       return ()

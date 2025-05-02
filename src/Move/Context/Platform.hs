@@ -20,6 +20,7 @@ import Data.Version qualified as V
 import Move.Console.Report qualified as Report
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError', run)
+import Move.Context.ProcessRunner qualified as ProcessRunner
 import Path
 import Paths_neut
 import Rule.Arch qualified as Arch
@@ -30,8 +31,6 @@ import Rule.Hint
 import Rule.Module
 import Rule.OS qualified as O
 import Rule.Platform qualified as P
-import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
-import Rule.ProcessRunner.Rule qualified as ProcessRunner
 import System.Environment (lookupEnv)
 import System.Info qualified as SI
 import System.Process (CmdSpec (RawCommand))
@@ -123,9 +122,8 @@ getClang = do
 calculateClangDigest :: Debug.Handle -> EIO T.Text
 calculateClangDigest h = do
   clang <- liftIO getClang
-  let ProcessRunner.Runner {run01} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
-  output <- liftIO $ run01 spec
+  output <- liftIO $ ProcessRunner.run01 spec
   case output of
     Right value -> do
       Debug.report h $ "Clang info:\n" <> decodeUtf8 value

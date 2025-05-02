@@ -1,4 +1,4 @@
-module Rule.Rule
+module Move.Context.ProcessRunner
   ( Spec (..),
     CommandError (..),
     ProcessError (..),

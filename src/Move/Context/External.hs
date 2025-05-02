@@ -16,10 +16,9 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError')
+import Move.Context.ProcessRunner qualified as ProcessRunner
 import Path
 import Rule.Error
-import Rule.ProcessRunner.Context.IO qualified as ProcessRunner (ioRunner)
-import Rule.ProcessRunner.Rule qualified as ProcessRunner
 import System.Directory
 import System.Process
 
@@ -39,9 +38,8 @@ run h procName optionList = do
 runOrFail :: Handle -> String -> [String] -> EIO (Either Error ())
 runOrFail h procName optionList = do
   Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (procName, optionList))
-  let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
-  value <- liftIO $ run00 spec
+  value <- liftIO $ ProcessRunner.run00 spec
   case value of
     Right _ ->
       return $ Right ()
@@ -57,9 +55,8 @@ data ExternalError = ExternalError
 runOrFail' :: Handle -> Path Abs Dir -> String -> EIO (Either ExternalError ())
 runOrFail' h cwd cmd = do
   Debug.report (debugHandle h) $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
-  let ProcessRunner.Runner {run00} = ProcessRunner.ioRunner
   let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
-  value <- liftIO $ run00 spec
+  value <- liftIO $ ProcessRunner.run00 spec
   case value of
     Right _ ->
       return $ Right ()
@@ -77,13 +74,12 @@ ensureExecutable name = do
 
 expandText :: T.Text -> EIO T.Text
 expandText t = do
-  let ProcessRunner.Runner {run01} = ProcessRunner.ioRunner
   let spec =
         ProcessRunner.Spec
           { cmdspec = RawCommand "sh" ["-c", unwords [T.unpack "printf", "%s", "\"" ++ T.unpack t ++ "\""]],
             cwd = Nothing
           }
-  output <- liftIO $ run01 spec
+  output <- liftIO $ ProcessRunner.run01 spec
   case output of
     Right value ->
       return $ decodeUtf8 value
