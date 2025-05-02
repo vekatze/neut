@@ -1,4 +1,4 @@
-module Move.Context.CompDefinition
+module Move.Scene.Clarify.Handle.CompDef 
   ( Handle,
     new,
     DefKey,

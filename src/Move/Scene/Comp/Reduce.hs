@@ -6,8 +6,8 @@ module Move.Scene.Comp.Reduce
 where
 
 import Data.IntMap qualified as IntMap
-import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Move.Scene.Comp.Subst qualified as Subst
 import Rule.Comp qualified as C
 import Rule.EnumCase qualified as EC
@@ -18,12 +18,12 @@ import Rule.Opacity qualified as O
 
 data Handle
   = Handle
-  { compDefinitionHandle :: CompDefinition.Handle,
+  { compDefinitionHandle :: CompDef.Handle,
     substHandle :: Subst.Handle,
     gensymHandle :: Gensym.Handle
   }
 
-new :: CompDefinition.Handle -> Subst.Handle -> Gensym.Handle -> Handle
+new :: CompDef.Handle -> Subst.Handle -> Gensym.Handle -> Handle
 new compDefinitionHandle substHandle gensymHandle = do
   Handle {..}
 
@@ -39,7 +39,7 @@ reduce h term =
     C.PiElimDownElim v ds -> do
       case v of
         C.VarGlobal x _ -> do
-          mDefValue <- CompDefinition.lookup (compDefinitionHandle h) x
+          mDefValue <- CompDef.lookup (compDefinitionHandle h) x
           case mDefValue of
             Just (O.Clear, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)

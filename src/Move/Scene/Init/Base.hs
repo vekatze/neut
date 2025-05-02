@@ -9,7 +9,6 @@ import Move.Console.Report qualified as Report
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Color qualified as Color
-import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.Debug qualified as Debug
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -19,6 +18,7 @@ import Move.Context.Path qualified as Path
 import Move.Context.Platform qualified as Platform
 import Move.Context.Type qualified as Type
 import Move.Language.Utility.Gensym qualified as Gensym
+import Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.Parse.Handle.NameMap qualified as NameMap
@@ -44,7 +44,7 @@ data Handle
     reportHandle :: Report.Handle,
     typeHandle :: Type.Handle,
     weakDefHandle :: WeakDef.Handle,
-    compDefHandle :: CompDefinition.Handle,
+    compDefHandle :: CompDef.Handle,
     nameMapHandle :: NameMap.Handle
   }
 
@@ -66,7 +66,7 @@ new cfg moduleFilePathOrNone = do
   weakDefHandle <- WeakDef.new gensymHandle
   defHandle <- Definition.new
   antecedentHandle <- Antecedent.new
-  compDefHandle <- CompDefinition.new
+  compDefHandle <- CompDef.new
   nameMapHandle <- NameMap.new
   return $ Handle {..}
 
@@ -82,7 +82,7 @@ refresh h = do
   weakDefHandle <- WeakDef.new (gensymHandle h)
   defHandle <- Definition.new
   antecedentHandle <- Antecedent.new
-  compDefHandle <- CompDefinition.new
+  compDefHandle <- CompDef.new
   nameMapHandle <- NameMap.new
   return $
     h

@@ -11,7 +11,7 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Move.Context.CompDefinition qualified as CompDefinition
+import Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Rule.Comp
 import Rule.DefiniteDescription qualified as DD
 import Rule.Ident
@@ -28,19 +28,19 @@ new = do
   compAuxEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
-get :: Handle -> IO CompDefinition.DefMap
+get :: Handle -> IO CompDef.DefMap
 get h =
   readIORef (compAuxEnvRef h)
 
-insert :: Handle -> CompDefinition.DefKey -> CompDefinition.DefValue -> IO ()
+insert :: Handle -> CompDef.DefKey -> CompDef.DefValue -> IO ()
 insert h k v =
   modifyIORef' (compAuxEnvRef h) $ Map.insert k v
 
-checkIfAlreadyRegistered :: Handle -> CompDefinition.DefKey -> IO Bool
+checkIfAlreadyRegistered :: Handle -> CompDef.DefKey -> IO Bool
 checkIfAlreadyRegistered h k = do
   Map.member k <$> get h
 
-toCompStmtList :: CompDefinition.DefMap -> [CompStmt]
+toCompStmtList :: CompDef.DefMap -> [CompStmt]
 toCompStmtList defMap = do
   map fromDefTuple $ Map.toList defMap
 

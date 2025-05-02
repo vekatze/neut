@@ -16,13 +16,13 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Move.Context.CompDefinition qualified as CompDefinition
 import Move.Context.EIO (EIO, raiseCritical, raiseCritical')
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Platform qualified as Platform
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
+import Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Move.Scene.Clarify.Linearize qualified as Linearize
 import Move.Scene.Clarify.Sigma qualified as Sigma
 import Move.Scene.Clarify.Utility qualified as Utility
@@ -77,7 +77,7 @@ data Handle
     optDataHandle :: OptimizableData.Handle,
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
-    compDefHandle :: CompDefinition.Handle,
+    compDefHandle :: CompDef.Handle,
     baseSize :: Int
   }
 
@@ -105,7 +105,7 @@ clarify h stmtList = do
   forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
-        liftIO $ CompDefinition.insert (compDefHandle h) x (opacity, args, e)
+        liftIO $ CompDef.insert (compDefHandle h) x (opacity, args, e)
       C.Foreign {} ->
         return ()
   forM stmtList' $ \stmt -> do
@@ -149,9 +149,9 @@ registerFoundationalTypes :: Handle -> IO ()
 registerFoundationalTypes h = do
   AuxEnv.clear (auxEnvHandle h)
   auxEnv <- getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
-  forM_ (Map.toList auxEnv) $ uncurry $ CompDefinition.insert (compDefHandle h)
+  forM_ (Map.toList auxEnv) $ uncurry $ CompDef.insert (compDefHandle h)
 
-getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO CompDefinition.DefMap
+getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO CompDef.DefMap
 getBaseAuxEnv auxEnvHandle sigmaHandle = do
   Sigma.registerImmediateS4 sigmaHandle
   Sigma.registerClosureS4 sigmaHandle
