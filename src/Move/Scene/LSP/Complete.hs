@@ -24,8 +24,8 @@ import Move.Context.Env qualified as Env
 import Move.Context.Path qualified as Path
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.LSP.GetAllCachesInModule qualified as GAC
+import Move.Scene.LSP.Source.Reflect qualified as SourceReflect
 import Move.Scene.Module.GetModule qualified as GetModule
-import Move.Scene.Source.Reflect qualified as SourceReflect
 import Move.Scene.Unravel qualified as Unravel
 import Rule.BaseName qualified as BN
 import Rule.Cache qualified as Cache

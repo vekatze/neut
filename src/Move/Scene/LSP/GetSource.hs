@@ -10,7 +10,7 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Move.Context.EIO (EIO, liftMaybe)
 import Move.Scene.Init.Base qualified as Base
-import Move.Scene.Source.Reflect qualified as SourceReflect
+import Move.Scene.LSP.Source.Reflect qualified as SourceReflect
 import Rule.Source (Source)
 
 newtype Handle
