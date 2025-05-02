@@ -14,8 +14,8 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Move.Context.EIO (EIO, raiseError)
+import Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Move.Scene.Init.Base qualified as Base
-import Move.Scene.WeakTerm.Subst qualified as Subst
 import Rule.Attr.DataIntro qualified as AttrDI
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder

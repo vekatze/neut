@@ -33,7 +33,7 @@ import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Infer qualified as Infer
 import Move.Scene.Elaborate.Unify qualified as Unify
-import Move.Scene.WeakTerm.Subst qualified as Subst
+import Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Rule.Annotation qualified as AN

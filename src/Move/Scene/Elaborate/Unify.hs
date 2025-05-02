@@ -20,7 +20,7 @@ import Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Move.Scene.Elaborate.Handle.Elaborate
 import Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
-import Move.Scene.WeakTerm.Subst qualified as Subst
+import Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder

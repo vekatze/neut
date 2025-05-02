@@ -29,10 +29,10 @@ import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Term.Inline qualified as Inline
 import Move.Scene.Elaborate.WeakTerm.Fill qualified as Fill
 import Move.Scene.Elaborate.WeakTerm.Reduce qualified as Reduce
+import Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Parse.Discern.Handle qualified as Discern
-import Move.Scene.WeakTerm.Subst qualified as Subst
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Rule.Binder

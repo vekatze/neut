@@ -30,9 +30,8 @@ import Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Move.Scene.Elaborate.Unify qualified as Unify
+import Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Move.Scene.Parse.Discern.Name qualified as N
-import Move.Scene.WeakTerm.Subst qualified as Subst
-import Move.Scene.WeakTerm.Subst qualified as WT
 import Rule.Annotation qualified as Annotation
 import Rule.ArgNum qualified as AN
 import Rule.Attr.Data qualified as AttrD
@@ -686,7 +685,7 @@ reduceWeakType' h sub e = do
         Just (xs, body)
           | length xs == length es -> do
               let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-              liftIO (WT.subst (substHandle h) s body) >>= reduceWeakType' h sub
+              liftIO (Subst.subst (substHandle h) s body) >>= reduceWeakType' h sub
           | otherwise ->
               raiseError m "Arity mismatch"
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do

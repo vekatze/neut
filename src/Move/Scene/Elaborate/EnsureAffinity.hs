@@ -18,7 +18,7 @@ import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
 import Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
 import Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
-import Move.Scene.WeakTerm.Subst qualified as Subst
+import Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.Lam qualified as AttrL
 import Rule.Binder
