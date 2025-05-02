@@ -12,7 +12,6 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
-import Move.Context.Global qualified as Global
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.Platform qualified as Platform
@@ -28,6 +27,7 @@ import Move.Scene.Parse.Discern.Name
 import Move.Scene.Parse.Discern.Noema
 import Move.Scene.Parse.Discern.PatternMatrix
 import Move.Scene.Parse.Discern.Struct
+import Move.Scene.Parse.Handle.Global qualified as Global
 import Move.Scene.Parse.Util
 import Rule.Annotation qualified as AN
 import Rule.Arch qualified as Arch

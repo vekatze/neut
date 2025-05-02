@@ -1,13 +1,12 @@
-module Move.Context.Global
+module Move.Scene.Parse.Handle.Global
   ( Handle,
     new,
     registerStmtDefine,
     registerGeist,
     reportMissingDefinitions,
-    lookup,
-    initialize,
     activateTopLevelNames,
     lookup',
+    lookup,
   )
 where
 
@@ -62,11 +61,6 @@ new (Base.Handle {..}) locatorHandle unusedHandle tagHandle = do
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
   return $ Handle {..}
-
-initialize :: Handle -> IO ()
-initialize h = do
-  writeIORef (nameMapRef h) Map.empty
-  writeIORef (geistMapRef h) Map.empty
 
 registerStmtDefine ::
   Handle ->
