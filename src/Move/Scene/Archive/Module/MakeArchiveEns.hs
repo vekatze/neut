@@ -1,4 +1,4 @@
-module Move.Scene.Module.MakeArchiveEns (makeArchiveEns) where
+module Move.Scene.Archive.Module.MakeArchiveEns (makeArchiveEns) where
 
 import Control.Comonad.Cofree
 import Control.Monad
