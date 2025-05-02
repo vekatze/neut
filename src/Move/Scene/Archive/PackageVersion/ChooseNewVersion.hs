@@ -1,4 +1,4 @@
-module Move.Scene.PackageVersion.ChooseNewVersion
+module Move.Scene.Archive.PackageVersion.ChooseNewVersion
   ( Handle,
     new,
     chooseNewVersion,
