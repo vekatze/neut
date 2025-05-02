@@ -15,7 +15,6 @@ import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.Platform qualified as Platform
-import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
@@ -28,6 +27,7 @@ import Move.Scene.Parse.Discern.Noema
 import Move.Scene.Parse.Discern.PatternMatrix
 import Move.Scene.Parse.Discern.Struct
 import Move.Scene.Parse.Handle.Global qualified as Global
+import Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
 import Move.Scene.Parse.Util
 import Rule.Annotation qualified as AN
 import Rule.Arch qualified as Arch

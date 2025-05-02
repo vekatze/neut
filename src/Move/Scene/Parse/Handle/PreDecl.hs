@@ -1,4 +1,4 @@
-module Move.Context.PreDecl
+module Move.Scene.Parse.Handle.PreDecl
   ( Handle,
     new,
     insert,

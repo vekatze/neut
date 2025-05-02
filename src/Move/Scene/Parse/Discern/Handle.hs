@@ -13,7 +13,6 @@ import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Platform qualified as Platform
-import Move.Context.PreDecl qualified as PreDecl
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
@@ -23,6 +22,7 @@ import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Parse.Handle.Alias qualified as Alias
 import Move.Scene.Parse.Handle.Global qualified as Global
+import Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
