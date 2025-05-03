@@ -5,7 +5,6 @@ module Move.Console.Report
     printNote',
     printRemark,
     printRemarkList,
-    printString,
     printWarning',
   )
 where
@@ -13,7 +12,6 @@ where
 import Color.Move.Print qualified as Color
 import Color.Rule.Handle qualified as Color
 import Color.Rule.Text qualified as Color
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Rule.FilePos
 import Rule.Remark qualified as R
@@ -28,10 +26,6 @@ data Handle
 new :: Color.Handle -> T.Text -> Handle
 new colorHandle endOfEntry = do
   Handle {..}
-
-printString :: String -> IO ()
-printString =
-  liftIO . putStrLn
 
 printRemark :: Handle -> R.Remark -> IO ()
 printRemark =

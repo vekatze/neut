@@ -90,10 +90,6 @@ toFilePos m = do
   path <- parseAbsFile $ metaFileName m
   return $ FilePos path (metaLocation m)
 
--- newRemark :: Hint -> RemarkLevel -> T.Text -> Remark
--- newRemark m level text = do
---   (toFilePos m, True, level, text)
-
 newRemark :: Hint -> RemarkLevel -> T.Text -> Remark
 newRemark m level text = do
   (toFilePos m, True, level, text)
