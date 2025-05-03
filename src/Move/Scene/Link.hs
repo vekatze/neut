@@ -16,9 +16,9 @@ import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
 import Move.Context.Path qualified as Path
 import Move.Scene.Init.Base qualified as Base
-import Move.Scene.ShowProgress qualified as ProgressBar
 import Path
 import Path.IO
+import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Rule.Artifact qualified as A
 import Rule.Module
 import Rule.OutputKind qualified as OK
@@ -63,9 +63,10 @@ link' h target (MainModule mainModule) sourceList = do
   let numOfObjects = length objects
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
-  progressBarHandle <- liftIO $ ProgressBar.new (envHandle h) (colorHandle h) Nothing workingTitle completedTitle barColor
+  let silentMode = Env.getSilentMode (envHandle h)
+  progressBarHandle <- liftIO $ Indicator.new (colorHandle h) silentMode Nothing workingTitle completedTitle barColor
   LLVM.link (llvmHandle h) clangOptions objects outputPath
-  liftIO $ ProgressBar.close progressBarHandle
+  liftIO $ Indicator.close progressBarHandle
 
 getWorkingTitle :: Int -> T.Text
 getWorkingTitle numOfObjects = do

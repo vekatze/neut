@@ -38,11 +38,11 @@ import Move.Scene.Link qualified as Link
 import Move.Scene.Load qualified as Load
 import Move.Scene.Lower qualified as Lower
 import Move.Scene.Parse qualified as Parse
-import Move.Scene.ShowProgress qualified as ProgressBar
 import Move.Scene.Unravel qualified as Unravel
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
 import Path.IO
+import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Rule.Cache
 import Rule.ClangOption qualified as CL
 import Rule.Error qualified as E
@@ -123,7 +123,8 @@ compile h target outputKindList contentSeq = do
   let color = [SetColor Foreground Vivid Green]
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
-  hp <- liftIO $ ProgressBar.new (Base.envHandle (baseHandle h)) colorHandle (Just numOfItems) workingTitle completedTitle color
+  let silentMode = Env.getSilentMode (Base.envHandle (baseHandle h))
+  hp <- liftIO $ Indicator.new colorHandle silentMode (Just numOfItems) workingTitle completedTitle color
   let emitHandle = Emit.new (baseHandle h)
   let llvmHandle = LLVM.new (baseHandle h)
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
@@ -150,7 +151,7 @@ compile h target outputKindList contentSeq = do
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
     async $ runEIO $ emit emitHandle llvmHandle hp currentTime target outputKindList src code
   errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
-  liftIO $ ProgressBar.close hp
+  liftIO $ Indicator.close hp
   if null errors
     then return ()
     else throwError $ E.join errors
@@ -168,7 +169,7 @@ getWorkingTitle numOfItems = do
 emit ::
   Emit.Handle ->
   LLVM.Handle ->
-  ProgressBar.Handle ->
+  Indicator.Handle ->
   UTCTime ->
   Target ->
   [OutputKind] ->
@@ -179,7 +180,7 @@ emit h he progressBar currentTime target outputKindList src code = do
   let clangOptions = getCompileOption target
   llvmIR' <- liftIO $ Emit.emit h code
   LLVM.emit he target clangOptions currentTime src outputKindList llvmIR'
-  liftIO $ ProgressBar.increment progressBar
+  liftIO $ Indicator.increment progressBar
 
 getEntryPointCompilationCount :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO Int
 getEntryPointCompilationCount h mainModule target outputKindList = do

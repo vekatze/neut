@@ -1,4 +1,4 @@
-module Move.Scene.ShowProgress
+module ProgressIndicator.Move.ShowProgress
   ( Handle,
     new,
     increment,
@@ -9,30 +9,17 @@ where
 import Color.Move.Print qualified as Color
 import Color.Rule.Handle qualified as Color
 import Color.Rule.Text qualified as Color
-import Control.Monad
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
-import Move.Context.Env qualified as Env
-import Rule.ProgressBar (Frame, ProgressBar (..), next, renderFinished, renderInProgress)
+import ProgressIndicator.Rule.Handle
+import ProgressIndicator.Rule.ProgressIndicator
 import System.Console.ANSI
 import System.IO hiding (Handle)
 import UnliftIO.Async
 import UnliftIO.Concurrent (threadDelay)
 
-type Handle =
-  Maybe InnerHandle
-
-data InnerHandle
-  = Handle
-  { envHandle :: Env.Handle,
-    colorHandle :: Color.Handle,
-    progressBarRef :: IORef ProgressBar,
-    renderThread :: Maybe (Async ())
-  }
-
-new :: Env.Handle -> Color.Handle -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
-new envHandle colorHandle numOfItems workingTitle completedTitle color = do
-  let silentMode = Env.getSilentMode envHandle
+new :: Color.Handle -> Bool -> Maybe Int -> T.Text -> T.Text -> [SGR] -> IO Handle
+new colorHandle silentMode numOfItems workingTitle completedTitle color = do
   case (silentMode, numOfItems) of
     (True, _) ->
       return Nothing
@@ -48,8 +35,8 @@ new envHandle colorHandle numOfItems workingTitle completedTitle color = do
             return $ Just (0, v)
       let progressBar = ProgressBar {workingTitle, completedTitle, color, progress}
       progressBarRef <- newIORef progressBar
-      renderThread <- Just <$> async (render colorHandle 0 progressBarRef)
-      return $ Just $ Handle {envHandle, colorHandle, progressBarRef, renderThread}
+      renderThread <- async (render colorHandle 0 progressBarRef)
+      return $ Just $ Handle {colorHandle, progressBarRef, renderThread}
 
 increment :: Handle -> IO ()
 increment mh = do
@@ -88,7 +75,7 @@ close mh = do
     Nothing ->
       return ()
     Just h -> do
-      forM_ (renderThread h) cancel
+      cancel (renderThread h)
       clear (progressBarRef h)
       progressBar <- readIORef (progressBarRef h)
       Color.printStdOut (colorHandle h) $ renderFinished progressBar

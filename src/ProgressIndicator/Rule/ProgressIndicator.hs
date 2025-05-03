@@ -1,4 +1,4 @@
-module Rule.ProgressBar
+module ProgressIndicator.Rule.ProgressIndicator
   ( ProgressBar (..),
     Frame,
     renderInProgress,
