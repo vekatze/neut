@@ -20,7 +20,6 @@ import Move.Context.Platform qualified as Platform
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
-import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Parse.Discern.Data
 import Move.Scene.Parse.Discern.Handle qualified as H
@@ -30,6 +29,7 @@ import Move.Scene.Parse.Discern.PatternMatrix
 import Move.Scene.Parse.Discern.Struct
 import Move.Scene.Parse.Handle.Global qualified as Global
 import Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
+import Move.Scene.Parse.Handle.Unused qualified as Unused
 import Move.Scene.Parse.Util
 import Rule.Annotation qualified as AN
 import Rule.Arch qualified as Arch

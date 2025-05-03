@@ -17,7 +17,6 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.Module qualified as Module
 import Move.Context.RawImportSummary qualified as RawImportSummary
 import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
@@ -26,6 +25,7 @@ import Move.Scene.Module.GetModule qualified as GetModule
 import Move.Scene.Parse.Handle.Alias qualified as Alias
 import Move.Scene.Parse.Handle.Global qualified as Global
 import Move.Scene.Parse.Handle.NameMap qualified as NameMap
+import Move.Scene.Parse.Handle.Unused qualified as Unused
 import Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
 import Rule.AliasInfo qualified as AI

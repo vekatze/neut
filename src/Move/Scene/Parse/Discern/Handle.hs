@@ -16,13 +16,13 @@ import Move.Context.Platform qualified as Platform
 import Move.Context.SymLoc qualified as SymLoc
 import Move.Context.Tag qualified as Tag
 import Move.Context.TopCandidate qualified as TopCandidate
-import Move.Context.Unused qualified as Unused
 import Move.Language.Utility.Gensym qualified as Gensym
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
 import Move.Scene.Parse.Handle.Alias qualified as Alias
 import Move.Scene.Parse.Handle.Global qualified as Global
 import Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
+import Move.Scene.Parse.Handle.Unused qualified as Unused
 import Rule.Hint
 import Rule.Ident
 import Rule.Ident.Reify qualified as Ident

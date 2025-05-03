@@ -24,8 +24,8 @@ import Move.Context.Locator qualified as Locator
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Platform qualified as Platform
 import Move.Context.Tag qualified as Tag
-import Move.Context.Unused qualified as Unused
 import Move.Scene.Init.Base qualified as Base
+import Move.Scene.Parse.Handle.Unused qualified as Unused
 import Rule.ArgNum qualified as AN
 import Rule.DefiniteDescription qualified as DD
 import Rule.Discriminant qualified as D
