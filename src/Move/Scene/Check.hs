@@ -11,6 +11,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Logger.Rule.Log
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, collectLogs)
 import Move.Context.Env qualified as Env
@@ -26,7 +27,6 @@ import Path
 import Rule.Cache
 import Rule.Module (extractModule)
 import Rule.Module qualified as M
-import Rule.Remark
 import Rule.Source (Source (sourceFilePath))
 import Rule.Target
 
@@ -41,16 +41,16 @@ new ::
 new baseHandle = do
   Handle {..}
 
-check :: Handle -> EIO [Remark]
+check :: Handle -> EIO [Log]
 check h = do
   let M.MainModule mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
   liftIO $ _check h Peripheral mainModule
 
-checkModule :: Handle -> M.Module -> IO [Remark]
+checkModule :: Handle -> M.Module -> IO [Log]
 checkModule h baseModule = do
   _check h Peripheral baseModule
 
-checkAll :: Handle -> EIO [Remark]
+checkAll :: Handle -> EIO [Log]
 checkAll h = do
   let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
   let getModuleHandle = GetModule.new (baseHandle h)
@@ -62,7 +62,7 @@ checkSingle :: Handle -> M.Module -> Path Abs File -> EIO (Maybe Elaborate.Handl
 checkSingle h baseModule path = do
   _check' h (PeripheralSingle path) baseModule
 
-_check :: Handle -> Target -> M.Module -> IO [Remark]
+_check :: Handle -> Target -> M.Module -> IO [Log]
 _check h target baseModule = do
   collectLogs (Base.globalRemarkHandle (baseHandle h)) $ do
     let loadHandle = Load.new (baseHandle h)

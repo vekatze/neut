@@ -15,7 +15,7 @@ import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
-import Move.Console.Report qualified as Report
+import Logger.Move.Log qualified as Logger
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
 import Move.Context.Debug qualified as Debug
@@ -99,7 +99,7 @@ buildTarget h (M.MainModule baseModule) target = do
   compile h target' (_outputKindList h) contentSeq
   liftIO $
     GlobalRemark.get (Base.globalRemarkHandle (baseHandle h))
-      >>= Report.printRemarkList (Base.reportHandle (baseHandle h))
+      >>= Logger.printLogList (Base.loggerHandle (baseHandle h))
   case target' of
     Peripheral {} ->
       return ()

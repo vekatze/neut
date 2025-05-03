@@ -16,11 +16,12 @@ import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either (partitionEithers)
 import Data.Text qualified as T
-import Move.Console.Report qualified as Report
+import Logger.Move.Log qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Logger.Rule.Log qualified as L
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Rule.Error qualified as E
 import Rule.Hint (Hint)
-import Rule.Remark qualified as R
 import System.Exit
 import UnliftIO.Async (pooledForConcurrently)
 
@@ -30,17 +31,17 @@ runEIO :: EIO a -> IO (Either E.Error a)
 runEIO =
   runExceptT
 
-run :: Report.Handle -> EIO a -> IO a
-run reportHandle c = do
+run :: Logger.Handle -> EIO a -> IO a
+run loggerHandle c = do
   resultOrErr <- liftIO $ runEIO c
   case resultOrErr of
     Left (E.MakeError err) -> do
-      liftIO $ Report.printErrorList reportHandle err
+      liftIO $ Logger.printErrorList loggerHandle err
       liftIO $ exitWith (ExitFailure 1)
     Right result ->
       return result
 
-collectLogs :: GlobalRemark.Handle -> EIO () -> IO [R.Remark]
+collectLogs :: GlobalRemark.Handle -> EIO () -> IO [L.Log]
 collectLogs h c = do
   resultOrErr <- runEIO c
   remarkList <- liftIO $ GlobalRemark.get h

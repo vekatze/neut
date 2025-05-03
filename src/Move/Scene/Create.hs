@@ -11,7 +11,8 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Move.Console.Report qualified as Report
+import Logger.Move.Log qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Path qualified as Path
 import Move.Context.Platform qualified as Platform
@@ -30,11 +31,11 @@ data Handle
   = Handle
   { moduleSaveHandle :: ModuleSave.Handle,
     platformHandle :: Platform.Handle,
-    reportHandle :: Report.Handle
+    loggerHandle :: Logger.Handle
   }
 
-new :: ModuleSave.Handle -> Report.Handle -> Platform.Handle -> IO Handle
-new moduleSaveHandle reportHandle platformHandle = do
+new :: ModuleSave.Handle -> Logger.Handle -> Platform.Handle -> IO Handle
+new moduleSaveHandle loggerHandle platformHandle = do
   return $ Handle {..}
 
 createNewProject :: Handle -> T.Text -> Module -> EIO ()
@@ -46,7 +47,7 @@ createNewProject h moduleName newModule = do
     else do
       createModuleFile h newModule
       liftIO $ createMainFile newModule
-      liftIO $ Report.printNote' (reportHandle h) $ "Created a module: " <> moduleName
+      liftIO $ Logger.printNote' (loggerHandle h) $ "Created a module: " <> moduleName
 
 constructDefaultModule :: T.Text -> Maybe T.Text -> EIO Module
 constructDefaultModule moduleName mTargetName = do

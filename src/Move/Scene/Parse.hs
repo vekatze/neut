@@ -11,6 +11,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Logger.Rule.LogLevel qualified as L
 import Move.Context.Cache qualified as Cache
 import Move.Context.EIO (EIO)
 import Move.Context.Path qualified as Path
@@ -33,7 +34,6 @@ import Rule.Hint
 import Rule.Ident.Reify
 import Rule.LocalLocator qualified as LL
 import Rule.RawProgram
-import Rule.Remark qualified as R
 import Rule.Source qualified as Source
 import Rule.Stmt
 import Rule.Target
@@ -131,15 +131,15 @@ registerUnusedVariableRemarks h = do
     case k of
       Normal ->
         LocalRemark.insert (localRemarkHandle h) $
-          newRemark mx R.Warning $
+          newLog mx L.Warning $
             "Defined but not used: `" <> toText x <> "`"
       Borrowed ->
         LocalRemark.insert (localRemarkHandle h) $
-          newRemark mx R.Warning $
+          newLog mx L.Warning $
             "Borrowed but not used: `" <> toText x <> "`"
       Relayed ->
         LocalRemark.insert (localRemarkHandle h) $
-          newRemark mx R.Warning $
+          newLog mx L.Warning $
             "Relayed but not used: `" <> toText x <> "`"
 
 registerUnusedGlobalLocatorRemarks :: Handle -> IO ()
@@ -148,7 +148,7 @@ registerUnusedGlobalLocatorRemarks h = do
   let unusedGlobalLocators = concatMap snd unusedGlobalLocatorMap
   forM_ unusedGlobalLocators $ \(m, locatorText) ->
     LocalRemark.insert (localRemarkHandle h) $
-      newRemark m R.Warning $
+      newLog m L.Warning $
         "Imported but not used: `" <> locatorText <> "`"
 
 registerUnusedLocalLocatorRemarks :: Handle -> IO ()
@@ -156,7 +156,7 @@ registerUnusedLocalLocatorRemarks h = do
   unusedLocalLocatorMap <- Unused.getLocalLocator (unusedHandle h)
   forM_ unusedLocalLocatorMap $ \(ll, m) ->
     LocalRemark.insert (localRemarkHandle h) $
-      newRemark m R.Warning $
+      newLog m L.Warning $
         "Imported but not used: `" <> LL.reify ll <> "`"
 
 registerUnusedPresetRemarks :: Handle -> IO ()
@@ -164,7 +164,7 @@ registerUnusedPresetRemarks h = do
   unusedPresets <- Unused.getPreset (unusedHandle h)
   forM_ (Map.toList unusedPresets) $ \(presetName, m) ->
     LocalRemark.insert (localRemarkHandle h) $
-      newRemark m R.Warning $
+      newLog m L.Warning $
         "Imported but not used: `" <> presetName <> "`"
 
 registerUnusedStaticFileRemarks :: Handle -> IO ()
@@ -172,5 +172,5 @@ registerUnusedStaticFileRemarks h = do
   unusedStaticFiles <- Unused.getStaticFile (unusedHandle h)
   forM_ unusedStaticFiles $ \(k, m) ->
     LocalRemark.insert (localRemarkHandle h) $
-      newRemark m R.Warning $
+      newLog m L.Warning $
         "Imported but not used: `" <> k <> "`"

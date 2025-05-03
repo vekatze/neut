@@ -28,6 +28,7 @@ where
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.Text qualified as T
+import Logger.Rule.LogLevel
 import Rule.Annotation qualified as Annot
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -45,7 +46,6 @@ import Rule.Noema qualified as N
 import Rule.RawBinder
 import Rule.RawIdent
 import Rule.RawPattern qualified as RP
-import Rule.Remark
 import Rule.Rune qualified as R
 import Rule.Syntax.Series qualified as SE
 
@@ -77,7 +77,7 @@ data RawTermF a
   | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
-  | Annotation RemarkLevel (Annot.Annotation ()) a
+  | Annotation LogLevel (Annot.Annotation ()) a
   | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
   | Use C a C (Args a) C a Loc
   | If (KeywordClause a) [KeywordClause a] (EL a)

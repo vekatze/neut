@@ -16,7 +16,8 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
-import Move.Console.Report qualified as Report
+import Logger.Move.Log qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.EIO (EIO, forP, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -48,7 +49,7 @@ data Handle
     moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,
     moduleReflectHandle :: ModuleReflect.Handle,
-    reportHandle :: Report.Handle,
+    loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle
   }
 
@@ -102,17 +103,17 @@ insertDependency h aliasName url = do
                 dependencyDirExists <- doesDirExist moduleDirPath
                 if dependencyDirExists
                   then do
-                    liftIO $ Report.printNote' (reportHandle h) $ "Already installed: " <> MD.reify digest
+                    liftIO $ Logger.printNote' (loggerHandle h) $ "Already installed: " <> MD.reify digest
                   else do
                     liftIO $ printInstallationRemark h alias digest
                     installModule' h tempFilePath alias digest >>= fetchDeps h
               else do
-                liftIO $ Report.printNote' (reportHandle h) $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
+                liftIO $ Logger.printNote' (loggerHandle h) $ "Adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
                 addDependencyToModuleFile h alias dep'
           else do
             liftIO $
-              Report.printNote' (reportHandle h) $
+              Logger.printNote' (loggerHandle h) $
                 "Replacing a dependency: "
                   <> BN.reify (extract alias)
                   <> "\n- old: "
@@ -172,7 +173,7 @@ installModule' h archivePath alias digest = do
 
 printInstallationRemark :: Handle -> ModuleAlias -> MD.ModuleDigest -> IO ()
 printInstallationRemark h alias digest = do
-  Report.printNote' (reportHandle h) $ "Install: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
+  Logger.printNote' (loggerHandle h) $ "Install: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
 
 collectDependency :: M.Module -> [(ModuleAlias, M.Dependency)]
 collectDependency baseModule = do
@@ -210,8 +211,8 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
         Right () ->
           return ()
         Left (MakeError errorList) -> do
-          liftIO $ Report.printWarning' (reportHandle h) $ "Could not process the module at: " <> mirror
-          liftIO $ forM_ errorList $ Report.printRemark (reportHandle h)
+          liftIO $ Logger.printWarning' (loggerHandle h) $ "Could not process the module at: " <> mirror
+          liftIO $ forM_ errorList $ Logger.printLog (loggerHandle h)
           download h tempFilePath ma rest
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO ()

@@ -62,7 +62,7 @@ import Rule.Prim qualified as P
 import Rule.PrimNumSize
 import Rule.PrimType qualified as PT
 import Rule.PrimValue qualified as PV
-import Rule.Remark qualified as R
+import Logger.Rule.Log qualified as L
 import Rule.Stmt
 import Rule.StmtKind
 import Rule.Target
@@ -125,7 +125,7 @@ synthesizeStmtList h t stmtList = do
   liftIO $ GlobalRemark.insert (globalRemarkHandle h) remarkList
   return stmtList'
 
-elaborateStmt :: Handle -> WeakStmt -> EIO ([Stmt], [R.Remark])
+elaborateStmt :: Handle -> WeakStmt -> EIO ([Stmt], [L.Log])
 elaborateStmt h stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
@@ -345,7 +345,7 @@ elaborate' h term =
         AN.Type t -> do
           t' <- elaborate' h t
           let message = "Admitted: `" <> toText (weaken t') <> "`"
-          let typeRemark = newRemark m remarkLevel message
+          let typeRemark = newLog m remarkLevel message
           liftIO $ LocalRemark.insert (localRemarkHandle h) typeRemark
           return e'
     m :< WT.Resource dd resourceID unitType discarder copier -> do

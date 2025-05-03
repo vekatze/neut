@@ -10,6 +10,8 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -70,7 +72,6 @@ import Rule.RawIdent hiding (isHole)
 import Rule.RawPattern qualified as RP
 import Rule.RawProgram
 import Rule.RawTerm qualified as RT
-import Rule.Remark qualified as R
 import Rule.Stmt
 import Rule.StmtKind qualified as SK
 import Rule.Syntax.Series qualified as SE
@@ -473,7 +474,7 @@ discern h term =
         asOpaqueValue $
           m
             :< RT.Annotation
-              R.Warning
+              L.Warning
               (AN.Type ())
               ( m
                   :< RT.piElim
@@ -965,13 +966,13 @@ ensureVariableLinearity vars = do
   let linearityErrors = getNonLinearOccurrences vars S.empty []
   unless (null linearityErrors) $ throwError $ E.MakeError linearityErrors
 
-getNonLinearOccurrences :: NominalEnv -> S.Set T.Text -> [(Hint, T.Text)] -> [R.Remark]
+getNonLinearOccurrences :: NominalEnv -> S.Set T.Text -> [(Hint, T.Text)] -> [L.Log]
 getNonLinearOccurrences vars found nonLinear =
   case vars of
     [] -> do
       let nonLinearVars = reverse $ ListUtils.nubOrdOn snd nonLinear
       flip map nonLinearVars $ \(m, x) ->
-        newRemark m R.Error $
+        newLog m L.Error $
           "the pattern variable `"
             <> x
             <> "` is used non-linearly"

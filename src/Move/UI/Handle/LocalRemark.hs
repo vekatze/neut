@@ -7,11 +7,11 @@ module Move.UI.Handle.LocalRemark
 where
 
 import Data.IORef
-import Rule.Remark qualified as R
+import Logger.Rule.Log qualified as L
 
 newtype Handle
   = Handle
-  { remarkListRef :: IORef [R.Remark] -- per file
+  { remarkListRef :: IORef [L.Log] -- per file
   }
 
 new :: IO Handle
@@ -19,10 +19,10 @@ new = do
   remarkListRef <- newIORef []
   return $ Handle {..}
 
-insert :: Handle -> R.Remark -> IO ()
+insert :: Handle -> L.Log -> IO ()
 insert h r = do
   modifyIORef' (remarkListRef h) $ (:) r
 
-get :: Handle -> IO [R.Remark]
+get :: Handle -> IO [L.Log]
 get h = do
   readIORef (remarkListRef h)

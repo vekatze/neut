@@ -15,6 +15,7 @@ where
 
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
+import Logger.Rule.LogLevel
 import Rule.Annotation qualified as AN
 import Rule.Attr.Data qualified as AttrD
 import Rule.Attr.DataIntro qualified as AttrDI
@@ -33,7 +34,6 @@ import Rule.Noema qualified as N
 import Rule.Opacity qualified as O
 import Rule.PrimNumSize
 import Rule.PrimType qualified as PT
-import Rule.Remark
 import Rule.WeakPrim qualified as WP
 
 type WeakTerm = Cofree WeakTermF Hint
@@ -59,7 +59,7 @@ data WeakTermF a
   | Prim (WP.WeakPrim a)
   | Magic (WeakMagic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
-  | Annotation RemarkLevel (AN.Annotation a) a
+  | Annotation LogLevel (AN.Annotation a) a
   | Resource DD.DefiniteDescription Int a a a
   | Use a [BinderF a] a
   | Void

@@ -13,6 +13,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
 import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.OptimizableData qualified as OptimizableData
 import Move.Context.Type qualified as Type
@@ -31,7 +33,6 @@ import Rule.LamKind qualified as LK
 import Rule.Magic qualified as M
 import Rule.OptimizableData
 import Rule.OptimizableData qualified as OD
-import Rule.Remark qualified as R
 import Rule.Stuck qualified as Stuck
 import Rule.Term qualified as TM
 import Rule.Term.FreeVarsWithHints (freeVarsWithHints)
@@ -62,7 +63,7 @@ new elaborateHandle = do
   let varEnv = IntMap.empty
   return $ Handle {..}
 
-ensureAffinity :: Handle -> TM.Term -> EIO [R.Remark]
+ensureAffinity :: Handle -> TM.Term -> EIO [L.Log]
 ensureAffinity h e = do
   cs <- analyze h e
   synthesize h $ map (bimap weaken weaken) cs
@@ -312,7 +313,7 @@ analyzeCase h decisionCase = do
       cs3 <- analyzeDecisionTree h' cont
       return $ cs1 ++ cs2 ++ cs3
 
-synthesize :: Handle -> [WeakAffineConstraint] -> EIO [R.Remark]
+synthesize :: Handle -> [WeakAffineConstraint] -> EIO [L.Log]
 synthesize h cs = do
   errorList <- concat <$> mapM (simplifyAffine h S.empty) cs
   return $ map constructErrorMessageAffine errorList
@@ -320,9 +321,9 @@ synthesize h cs = do
 newtype AffineConstraintError
   = AffineConstraintError WT.WeakTerm
 
-constructErrorMessageAffine :: AffineConstraintError -> R.Remark
+constructErrorMessageAffine :: AffineConstraintError -> L.Log
 constructErrorMessageAffine (AffineConstraintError t) =
-  newRemark (WT.metaOf t) R.Error $
+  newLog (WT.metaOf t) L.Error $
     "The type of this affine variable is not affine, but:\n"
       <> WT.toText t
 

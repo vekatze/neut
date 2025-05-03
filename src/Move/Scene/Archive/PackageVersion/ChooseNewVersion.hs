@@ -7,7 +7,8 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Console.Report qualified as Report
+import Logger.Move.Log qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.EIO (EIO)
 import Move.Scene.Archive.Module.GetExistingVersions
 import Rule.Module (MainModule)
@@ -16,11 +17,11 @@ import Prelude hiding (log)
 
 newtype Handle
   = Handle
-  { reportHandle :: Report.Handle
+  { loggerHandle :: Logger.Handle
   }
 
-new :: Report.Handle -> Handle
-new reportHandle = do
+new :: Logger.Handle -> Handle
+new loggerHandle = do
   Handle {..}
 
 chooseNewVersion :: Handle -> MainModule -> EIO PV.PackageVersion
@@ -32,5 +33,5 @@ chooseNewVersion h mainModule = do
         return PV.initialVersion
       v : vs ->
         return $ PV.increment $ PV.getNewestVersion vs v
-  liftIO $ Report.printNote' (reportHandle h) $ "Selected a new version: " <> PV.reify newVersion
+  liftIO $ Logger.printNote' (loggerHandle h) $ "Selected a new version: " <> PV.reify newVersion
   return newVersion

@@ -7,7 +7,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Move.Console.Report qualified as Report
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Platform qualified as Platform
@@ -26,10 +26,10 @@ data Handle
     remarkCfg :: Remark.Config
   }
 
-new :: Remark.Config -> Report.Handle -> Debug.Handle -> ModuleSave.Handle -> IO Handle
-new remarkCfg reportHandle debugHandle moduleSaveHandle = do
-  platformHandle <- Platform.new reportHandle debugHandle
-  createHandle <- Create.new moduleSaveHandle reportHandle platformHandle
+new :: Remark.Config -> Logger.Handle -> Debug.Handle -> ModuleSave.Handle -> IO Handle
+new remarkCfg loggerHandle debugHandle moduleSaveHandle = do
+  platformHandle <- Platform.new loggerHandle debugHandle
+  createHandle <- Create.new moduleSaveHandle loggerHandle platformHandle
   return $ Handle {..}
 
 create :: Handle -> Config -> EIO ()

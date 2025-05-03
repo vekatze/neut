@@ -15,6 +15,8 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Logger.Rule.Log (Log)
+import Logger.Rule.LogLevel (LogLevel (Error))
 import Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -38,7 +40,6 @@ import Rule.OptimizableData qualified as OD
 import Rule.PrimOp.FromText qualified as PrimOp
 import Rule.PrimType.FromText qualified as PT
 import Rule.RawTerm qualified as RT
-import Rule.Remark (Remark, RemarkLevel (Error))
 import Rule.StmtKind qualified as SK
 import Rule.TopNameMap
 import Prelude hiding (lookup)
@@ -234,9 +235,9 @@ reportMissingDefinitions h = do
     then return ()
     else throwError $ MakeError errorList
 
-geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Remark
+geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Log
 geistToRemark dd (m, _) =
-  newRemark m Error $ "This nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"
+  newLog m Error $ "This nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"
 
 insertToNameMap :: Handle -> DD.DefiniteDescription -> Hint -> GN.GlobalName -> IO ()
 insertToNameMap h dd m gn = do

@@ -9,24 +9,24 @@ module Rule.Cache
 where
 
 import Data.Binary
+import GHC.Generics
+import Logger.Rule.Log
 import Rule.LocalVarTree qualified as LVT
 import Rule.LocationTree qualified as LT
 import Rule.RawImportSummary
-import Rule.Remark
 import Rule.Stmt qualified as Stmt
 import Rule.TopCandidate (TopCandidate)
-import GHC.Generics
 
 data Cache = Cache
   { stmtList :: [Stmt.Stmt],
-    remarkList :: [Remark],
+    remarkList :: [Log],
     countSnapshot :: Int
   }
   deriving (Generic)
 
 data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
-    remarkList' :: [Remark],
+    remarkList' :: [Log],
     countSnapshot' :: Int
   }
   deriving (Generic)

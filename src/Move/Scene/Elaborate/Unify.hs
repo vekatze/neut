@@ -13,6 +13,8 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
 import Move.Context.EIO (EIO, raiseCritical)
 import Move.Context.Type qualified as Type
 import Move.Language.Utility.Gensym qualified as Gensym
@@ -35,7 +37,6 @@ import Rule.Ident
 import Rule.Ident.Reify qualified as Ident
 import Rule.LamKind qualified as LK
 import Rule.PrimType qualified as PT
-import Rule.Remark qualified as R
 import Rule.Stuck qualified as Stuck
 import Rule.WeakPrim qualified as WP
 import Rule.WeakPrimValue qualified as WPV
@@ -75,19 +76,19 @@ throwTypeErrors h susList = do
   errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark h sub c) susList
   throwError $ E.MakeError errorList
 
-constraintToRemark :: Handle -> HS.HoleSubst -> C.Constraint -> EIO R.Remark
+constraintToRemark :: Handle -> HS.HoleSubst -> C.Constraint -> EIO L.Log
 constraintToRemark h sub c = do
   case c of
     C.Actual t -> do
       t' <- fillAsMuchAsPossible h sub t
-      return $ newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
+      return $ newLog (WT.metaOf t) L.Error $ constructErrorMessageActual t'
     C.Integer t -> do
       t' <- fillAsMuchAsPossible h sub t
-      return $ newRemark (WT.metaOf t) R.Error $ constructErrorMessageInteger t'
+      return $ newLog (WT.metaOf t) L.Error $ constructErrorMessageInteger t'
     C.Eq expected actual -> do
       expected' <- fillAsMuchAsPossible h sub expected
       actual' <- fillAsMuchAsPossible h sub actual
-      return $ newRemark (WT.metaOf actual) R.Error $ constructErrorMessageEq actual' expected'
+      return $ newLog (WT.metaOf actual) L.Error $ constructErrorMessageEq actual' expected'
 
 fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 fillAsMuchAsPossible h sub e = do
@@ -124,14 +125,12 @@ detectPossibleInfiniteLoop h c = do
   let Handle {inlineLimit, currentStep} = h
   when (inlineLimit < currentStep) $ do
     sub <- liftIO $ Hole.getSubst (holeHandle h)
-    r <- constraintToRemark h sub c
-    throwError $
-      E.MakeError
-        [ R.attachSuffix r $
-            "\n(Exceeded max recursion depth of "
-              <> T.pack (show inlineLimit)
-              <> " during unification)"
-        ]
+    l <- constraintToRemark h sub c
+    let suffix =
+          "\n(Exceeded max recursion depth of "
+            <> T.pack (show inlineLimit)
+            <> " during unification)"
+    throwError $ E.MakeError [l {L.content = L.content l <> suffix}]
 
 simplify :: Handle -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> EIO [SuspendedConstraint]
 simplify h susList constraintList =

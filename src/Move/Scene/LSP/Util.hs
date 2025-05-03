@@ -22,16 +22,17 @@ import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
+import Logger.Rule.FilePos qualified as FP
+import Logger.Rule.Log
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel
 import Move.Context.EIO (EIO, runEIO)
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Parse.Core qualified as Parse
 import Move.UI.Handle.GlobalRemark qualified as GlobalRemark
 import Path
 import Rule.Error qualified as E
-import Rule.FilePos qualified as FP
 import Rule.Lsp
-import Rule.Remark
-import Rule.Remark qualified as R
 
 run :: Base.Handle -> EIO a -> Lsp b (Maybe a)
 run h comp = do
@@ -44,7 +45,7 @@ run h comp = do
     Right result ->
       return $ Just result
 
-report :: [R.Remark] -> Lsp b ()
+report :: [L.Log] -> Lsp b ()
 report logList = do
   let uriDiagList = mapMaybe remarkToDignostic logList
   let diagGroupList' = NE.groupBy ((==) `on` fst) $ sortBy (compare `on` fst) uriDiagList
@@ -57,9 +58,9 @@ maxDiagNum :: Int
 maxDiagNum =
   100
 
-remarkToDignostic :: Remark -> Maybe (NormalizedUri, Diagnostic)
-remarkToDignostic (mLoc, _, level, msg) = do
-  FP.FilePos path (line, col) <- mLoc
+remarkToDignostic :: Log -> Maybe (NormalizedUri, Diagnostic)
+remarkToDignostic Log {position, logLevel, content} = do
+  FP.FilePos path (line, col) <- position
   let pos = Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ col - 1}
   let range = Range {_start = pos, _end = pos}
   let uri = toNormalizedUri $ filePathToUri $ toFilePath path
@@ -67,10 +68,10 @@ remarkToDignostic (mLoc, _, level, msg) = do
     ( uri,
       Diagnostic
         { _range = range,
-          _severity = Just (levelToSeverity level),
+          _severity = Just (levelToSeverity logLevel),
           _code = Nothing,
           _source = Just "neut",
-          _message = msg,
+          _message = content,
           _tags = Nothing,
           _relatedInformation = Nothing,
           _codeDescription = Nothing,
@@ -110,7 +111,7 @@ uriToPath :: NormalizedUri -> Maybe (Path Abs File)
 uriToPath uri = do
   uriToFilePath (fromNormalizedUri uri) >>= parseAbsFile
 
-levelToSeverity :: RemarkLevel -> DiagnosticSeverity
+levelToSeverity :: LogLevel -> DiagnosticSeverity
 levelToSeverity level =
   case level of
     Note ->
@@ -120,10 +121,6 @@ levelToSeverity level =
     Error ->
       DiagnosticSeverity_Error
     Critical ->
-      DiagnosticSeverity_Error
-    Pass ->
-      DiagnosticSeverity_Information
-    Fail ->
       DiagnosticSeverity_Error
 
 getUriParam :: [A.Value] -> Maybe Uri

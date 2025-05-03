@@ -12,7 +12,7 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Move.Console.Report qualified as Report
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.EIO (EIO, raiseError', run)
 import Move.Scene.Module.Reflect (getCurrentModuleFilePath)
 import Move.Scene.Module.Reflect qualified as ModuleReflect
@@ -35,10 +35,10 @@ data Handle
     mainModule :: MainModule
   }
 
-new :: Report.Handle -> Bool -> Maybe (Path Abs File) -> IO Handle
-new reportHandle enableSilentMode moduleFilePathOrNone = do
+new :: Logger.Handle -> Bool -> Maybe (Path Abs File) -> IO Handle
+new loggerHandle enableSilentMode moduleFilePathOrNone = do
   buildModeRef <- newIORef BM.Develop
-  run reportHandle $ do
+  run loggerHandle $ do
     let moduleReflectHandle = ModuleReflect.new undefined
     mainModule <-
       MainModule

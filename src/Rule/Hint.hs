@@ -10,16 +10,17 @@ module Rule.Hint
     newSourceHint,
     fakeLoc,
     toFilePos,
-    newRemark,
+    newLog,
   )
 where
 
 import Data.Binary
 import Data.Text qualified as T
 import GHC.Generics
+import Logger.Rule.FilePos
+import Logger.Rule.Log
+import Logger.Rule.LogLevel
 import Path
-import Rule.FilePos
-import Rule.Remark
 
 data Hint = Hint
   { metaFileName :: FilePath,
@@ -90,6 +91,11 @@ toFilePos m = do
   path <- parseAbsFile $ metaFileName m
   return $ FilePos path (metaLocation m)
 
-newRemark :: Hint -> RemarkLevel -> T.Text -> Remark
-newRemark m level text = do
-  (toFilePos m, True, level, text)
+newLog :: Hint -> LogLevel -> T.Text -> Log
+newLog m level text = do
+  Log
+    { position = toFilePos m,
+      shouldInsertPadding = True,
+      logLevel = level,
+      content = text
+    }

@@ -18,7 +18,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Version qualified as V
-import Move.Console.Report qualified as Report
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError', run)
 import Move.Context.External (ensureExecutable)
@@ -45,9 +45,9 @@ data Handle
     baseSize :: DS.DataSize
   }
 
-new :: Report.Handle -> Debug.Handle -> IO Handle
-new reportHandle debugHandle = do
-  run reportHandle $ do
+new :: Logger.Handle -> Debug.Handle -> IO Handle
+new loggerHandle debugHandle = do
+  run loggerHandle $ do
     arch <- getArch' Nothing
     baseSize <- Arch.dataSizeOf <$> getArch' Nothing
     os <- getOS' Nothing

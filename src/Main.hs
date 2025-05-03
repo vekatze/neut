@@ -2,6 +2,7 @@ module Main (main) where
 
 import Color.Move.CreateHandle qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Logger.Move.CreateHandle qualified as Logger
 import Move.Act.Archive qualified as Archive
 import Move.Act.Build qualified as Build
 import Move.Act.Check qualified as Check
@@ -12,7 +13,6 @@ import Move.Act.Get qualified as Get
 import Move.Act.LSP qualified as LSP
 import Move.Act.Version qualified as Version
 import Move.Act.Zen qualified as Zen
-import Move.Console.Report qualified as Report
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (run)
 import Move.Context.Platform (ensureExecutables)
@@ -30,20 +30,21 @@ main = do
   case userCommand of
     C.External loggerConfig cmd -> do
       let shouldColorize = Remark.shouldColorize loggerConfig
+      let enableDebugMode = Remark.enableDebugMode loggerConfig
       colorHandle <- Color.createHandle shouldColorize shouldColorize
-      debugHandle <- Debug.new colorHandle (Remark.enableDebugMode loggerConfig)
-      let reportHandle = Report.new colorHandle (Remark.endOfEntry loggerConfig)
-      run reportHandle $ do
+      debugHandle <- Debug.new colorHandle enableDebugMode
+      loggerHandle <- Logger.createHandle colorHandle (Remark.endOfEntry loggerConfig) enableDebugMode
+      run loggerHandle $ do
         case cmd of
           C.Create cfg -> do
             let moduleSaveHandle = ModuleSave.new debugHandle
-            createHandle <- liftIO $ Create.new loggerConfig reportHandle debugHandle moduleSaveHandle
+            createHandle <- liftIO $ Create.new loggerConfig loggerHandle debugHandle moduleSaveHandle
             Create.create createHandle cfg
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg
     C.Internal loggerConfig cmd -> do
       h <- Base.new loggerConfig Nothing
-      run (Base.reportHandle h) $ do
+      run (Base.loggerHandle h) $ do
         ensureExecutables
         case cmd of
           C.Build cfg -> do

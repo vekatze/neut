@@ -32,7 +32,7 @@ data Handle
 new :: Base.Handle -> Handle
 new baseHandle = do
   let envHandle = Base.envHandle baseHandle
-  let packageVersionHandle = PV.new (Base.reportHandle baseHandle)
+  let packageVersionHandle = PV.new (Base.loggerHandle baseHandle)
   let externalHandle = External.new (Base.debugHandle baseHandle)
   let moduleSaveHandle = ModuleSave.new (Base.debugHandle baseHandle)
   let archiveHandle = Archive.new externalHandle moduleSaveHandle envHandle

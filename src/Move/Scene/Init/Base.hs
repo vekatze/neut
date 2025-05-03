@@ -7,7 +7,8 @@ where
 
 import Color.Move.CreateHandle qualified as Color
 import Color.Rule.Handle qualified as Color
-import Move.Console.Report qualified as Report
+import Logger.Move.CreateHandle qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.Artifact qualified as Artifact
 import Move.Context.Debug qualified as Debug
@@ -42,7 +43,7 @@ data Handle
     moduleHandle :: Module.Handle,
     optDataHandle :: OptimizableData.Handle,
     pathHandle :: Path.Handle,
-    reportHandle :: Report.Handle,
+    loggerHandle :: Logger.Handle,
     typeHandle :: Type.Handle,
     weakDefHandle :: WeakDef.Handle,
     compDefHandle :: CompDef.Handle,
@@ -52,11 +53,11 @@ data Handle
 new :: Remark.Config -> Maybe (Path Abs File) -> IO Handle
 new cfg moduleFilePathOrNone = do
   colorHandle <- Color.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
-  let reportHandle = Report.new colorHandle (Remark.endOfEntry cfg)
+  loggerHandle <- Logger.createHandle colorHandle (Remark.endOfEntry cfg) (Remark.enableDebugMode cfg)
   gensymHandle <- Gensym.new
   debugHandle <- Debug.new colorHandle (Remark.enableDebugMode cfg)
-  platformHandle <- Platform.new reportHandle debugHandle
-  envHandle <- Env.new reportHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
+  platformHandle <- Platform.new loggerHandle debugHandle
+  envHandle <- Env.new loggerHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
   keyArgHandle <- KeyArg.new envHandle
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
