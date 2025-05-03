@@ -11,7 +11,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
-import Move.Context.Unused qualified as Unused
 import Move.Scene.Ens.Reflect qualified as EnsReflect
 import Move.Scene.Init.Base qualified as Base
 import Move.Scene.Init.Local qualified as Local
@@ -25,6 +24,7 @@ import Path
 import Rule.Ens.Reify qualified as Ens
 import Rule.FileType qualified as FT
 import Rule.Module (MainModule (MainModule))
+import Rule.RawProgram.Decode (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Rule.RawProgram.Decode qualified as RawProgram
 import Rule.Target
 import Prelude hiding (log)
@@ -75,8 +75,7 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
           localHandle <- Local.new (baseHandle h) rootSource
           let parseHandle = Parse.new (baseHandle h) localHandle
           void $ Parse.parse parseHandle Peripheral rootSource (Right fileContent)
-          unusedGlobalLocators <- liftIO $ Unused.getGlobalLocator (Local.unusedHandle localHandle)
-          unusedLocalLocators <- liftIO $ Unused.getLocalLocator (Local.unusedHandle localHandle)
+          (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Parse.getUnusedLocators parseHandle
           program <- ParseCore.parseFile parseCoreHandle filePath fileContent True Parse.parseProgram
           presetNames <- GetEnabledPreset.getEnabledPreset getEnabledPresetHandle mainModule
           let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}

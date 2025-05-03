@@ -3,6 +3,7 @@ module Move.Scene.Parse
     new,
     parse,
     parseCachedStmtList,
+    getUnusedLocators,
   )
 where
 
@@ -36,6 +37,8 @@ import Rule.Remark qualified as R
 import Rule.Source qualified as Source
 import Rule.Stmt
 import Rule.Target
+import Rule.UnusedGlobalLocators (UnusedGlobalLocators)
+import Rule.UnusedLocalLocators (UnusedLocalLocators)
 import Rule.VarDefKind
 
 data Handle
@@ -114,6 +117,12 @@ saveTopLevelNames h source topNameList = do
   globalNameList <- mapM (uncurry $ Global.lookup' (globalHandle h)) topNameList
   let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
   liftIO $ NameMap.saveCurrentNameSet (nameMapHandle h) (Source.sourceFilePath source) nameMap
+
+getUnusedLocators :: Handle -> IO (UnusedGlobalLocators, UnusedLocalLocators)
+getUnusedLocators h = do
+  unusedGlobalLocators <- Unused.getGlobalLocator (unusedHandle h)
+  unusedLocalLocators <- Unused.getLocalLocator (unusedHandle h)
+  return (unusedGlobalLocators, unusedLocalLocators)
 
 registerUnusedVariableRemarks :: Handle -> IO ()
 registerUnusedVariableRemarks h = do
