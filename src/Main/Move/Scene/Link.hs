@@ -1,0 +1,91 @@
+module Main.Move.Scene.Link
+  ( Handle,
+    new,
+    link,
+  )
+where
+
+import Color.Rule.Handle qualified as Color
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Containers.ListUtils (nubOrdOn)
+import Data.Maybe
+import Data.Text qualified as T
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Main.Move.Context.EIO (EIO)
+import Main.Move.Context.Env qualified as Env
+import Main.Move.Context.LLVM qualified as LLVM
+import Main.Move.Context.Path qualified as Path
+import Main.Move.Scene.Init.Base qualified as Base
+import Main.Rule.Artifact qualified as A
+import Main.Rule.Module
+import Main.Rule.OutputKind qualified as OK
+import Main.Rule.Source qualified as Source
+import Main.Rule.Target
+import Path
+import Path.IO
+import ProgressIndicator.Move.ShowProgress qualified as Indicator
+import System.Console.ANSI
+
+data Handle
+  = Handle
+  { loggerHandle :: Logger.Handle,
+    envHandle :: Env.Handle,
+    pathHandle :: Path.Handle,
+    colorHandle :: Color.Handle,
+    llvmHandle :: LLVM.Handle
+  }
+
+new :: Base.Handle -> Handle
+new baseHandle@(Base.Handle {..}) = do
+  let llvmHandle = LLVM.new baseHandle
+  Handle {..}
+
+link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()
+link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
+  let mainModule = Env.getMainModule (envHandle h)
+  executablePath <- Path.getExecutableOutputPath (pathHandle h) target (extractModule mainModule)
+  isExecutableAvailable <- doesFileExist executablePath
+  let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
+  if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
+    then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files"
+    else link' h target mainModule sourceList
+
+link' :: Handle -> MainTarget -> MainModule -> [Source.Source] -> EIO ()
+link' h target (MainModule mainModule) sourceList = do
+  mainObject <- snd <$> Path.getOutputPathForEntryPoint (pathHandle h) mainModule OK.Object target
+  outputPath <- Path.getExecutableOutputPath (pathHandle h) target mainModule
+  objectPathList <- mapM (Path.sourceToOutputPath (pathHandle h) (Main target) OK.Object) sourceList
+  let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
+  foreignDirList <- mapM (Path.getForeignDir (pathHandle h) (Main target)) moduleList
+  foreignObjectList <- concat <$> mapM getForeignDirContent foreignDirList
+  let clangOptions = getLinkOption (Main target)
+  let objects = mainObject : objectPathList ++ foreignObjectList
+  let numOfObjects = length objects
+  let workingTitle = getWorkingTitle numOfObjects
+  let completedTitle = getCompletedTitle numOfObjects
+  let silentMode = Env.getSilentMode (envHandle h)
+  progressBarHandle <- liftIO $ Indicator.new (colorHandle h) silentMode Nothing workingTitle completedTitle barColor
+  LLVM.link (llvmHandle h) clangOptions objects outputPath
+  liftIO $ Indicator.close progressBarHandle
+
+getWorkingTitle :: Int -> T.Text
+getWorkingTitle numOfObjects = do
+  let suffix = if numOfObjects <= 1 then "" else "s"
+  "Linking " <> T.pack (show numOfObjects) <> " object" <> suffix
+
+getCompletedTitle :: Int -> T.Text
+getCompletedTitle numOfObjects = do
+  let suffix = if numOfObjects <= 1 then "" else "s"
+  "Linked " <> T.pack (show numOfObjects) <> " object" <> suffix
+
+barColor :: [SGR]
+barColor = do
+  [SetColor Foreground Vivid Green]
+
+getForeignDirContent :: Path Abs Dir -> EIO [Path Abs File]
+getForeignDirContent foreignDir = do
+  b <- doesDirExist foreignDir
+  if b
+    then snd <$> listDirRecur foreignDir
+    else return []

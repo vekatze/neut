@@ -1,4 +1,0 @@
-module Rule.DataInfo
-  (
-  )
-where

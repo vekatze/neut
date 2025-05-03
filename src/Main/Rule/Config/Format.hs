@@ -1,0 +1,10 @@
+module Main.Rule.Config.Format (Config (..)) where
+
+import Main.Rule.FileType qualified as FT
+
+data Config = Config
+  { filePathString :: FilePath,
+    mustUpdateInPlace :: Bool,
+    shouldMinimizeImports :: Bool,
+    inputFileType :: FT.FileType
+  }

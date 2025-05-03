@@ -3,23 +3,23 @@ module Main (main) where
 import Color.Move.CreateHandle qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Logger.Move.CreateHandle qualified as Logger
-import Move.Act.Archive qualified as Archive
-import Move.Act.Build qualified as Build
-import Move.Act.Check qualified as Check
-import Move.Act.Clean qualified as Clean
-import Move.Act.Create qualified as Create
-import Move.Act.Format qualified as Format
-import Move.Act.Get qualified as Get
-import Move.Act.LSP qualified as LSP
-import Move.Act.Version qualified as Version
-import Move.Act.Zen qualified as Zen
-import Move.Context.EIO (run)
-import Move.Context.Platform (ensureExecutables)
-import Move.Scene.Init.Base qualified as Base
-import Move.Scene.Module.Save qualified as ModuleSave
-import Move.Scene.OptParse qualified as OptParse
-import Rule.Command qualified as C
-import Rule.Config.Remark qualified as Remark
+import Main.Move.Act.Archive qualified as Archive
+import Main.Move.Act.Build qualified as Build
+import Main.Move.Act.Check qualified as Check
+import Main.Move.Act.Clean qualified as Clean
+import Main.Move.Act.Create qualified as Create
+import Main.Move.Act.Format qualified as Format
+import Main.Move.Act.Get qualified as Get
+import Main.Move.Act.LSP qualified as LSP
+import Main.Move.Act.Version qualified as Version
+import Main.Move.Act.Zen qualified as Zen
+import Main.Move.Context.EIO (run)
+import Main.Move.Context.Platform (ensureExecutables)
+import Main.Move.Scene.Init.Base qualified as Base
+import Main.Move.Scene.Module.Save qualified as ModuleSave
+import Main.Move.Scene.OptParse qualified as OptParse
+import Main.Rule.Command qualified as C
+import Main.Rule.Config.Remark qualified as Remark
 import System.IO
 
 main :: IO ()
