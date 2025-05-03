@@ -2,8 +2,6 @@ module Rule.Remark
   ( RemarkLevel (..),
     Remark,
     ShouldInsertPadding,
-    newRemark,
-    newRemark',
     remarkLevelToText,
     remarkLevelToSGR,
     attachSuffix,
@@ -13,9 +11,8 @@ where
 
 import Data.Binary
 import Data.Text qualified as T
-import Rule.FilePos qualified as FP
-import Rule.Hint
 import GHC.Generics (Generic)
+import Rule.FilePos qualified as FP
 import System.Console.ANSI
 
 data RemarkLevel
@@ -34,14 +31,6 @@ type Remark =
 
 type ShouldInsertPadding =
   Bool
-
-newRemark :: Hint -> RemarkLevel -> T.Text -> Remark
-newRemark m level text = do
-  (FP.fromHint m, True, level, text)
-
-newRemark' :: RemarkLevel -> T.Text -> Remark
-newRemark' level text = do
-  (Nothing, True, level, text)
 
 deactivatePadding :: Remark -> Remark
 deactivatePadding (mpos, _, level, text) =

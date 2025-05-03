@@ -38,7 +38,7 @@ import Rule.OptimizableData qualified as OD
 import Rule.PrimOp.FromText qualified as PrimOp
 import Rule.PrimType.FromText qualified as PT
 import Rule.RawTerm qualified as RT
-import Rule.Remark (Remark, RemarkLevel (Error), newRemark)
+import Rule.Remark (Remark, RemarkLevel (Error))
 import Rule.StmtKind qualified as SK
 import Rule.TopNameMap
 import Prelude hiding (lookup)

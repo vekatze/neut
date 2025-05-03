@@ -1,14 +1,24 @@
 module Rule.FilePos
   ( FilePos (..),
-    fromHint,
+    Line,
+    Column,
+    Loc,
     showFilePos,
   )
 where
 
 import Data.Binary
-import Rule.Hint
 import GHC.Generics
 import Path
+
+type Line =
+  Int
+
+type Column =
+  Int
+
+type Loc =
+  (Line, Column)
 
 data FilePos
   = FilePos (Path Abs File) Loc
@@ -28,14 +38,9 @@ instance Binary FilePos where
         fail $ "Could not parse given path: " <> filePath
     return $ FilePos path loc
 
-fromHint :: Hint -> Maybe FilePos
-fromHint m = do
-  path <- parseAbsFile $ metaFileName m
-  return $ FilePos path (metaLocation m)
+instance Show FilePos where
+  show = showFilePos
 
 showFilePos :: FilePos -> String
 showFilePos (FilePos path (l, c)) =
   toFilePath path ++ ":" ++ show l ++ ":" ++ show c
-
-instance Show FilePos where
-  show = showFilePos

@@ -9,12 +9,17 @@ module Rule.Hint
     internalHint,
     newSourceHint,
     fakeLoc,
+    toFilePos,
+    newRemark,
   )
 where
 
 import Data.Binary
+import Data.Text qualified as T
 import GHC.Generics
 import Path
+import Rule.FilePos
+import Rule.Remark
 
 data Hint = Hint
   { metaFileName :: FilePath,
@@ -22,15 +27,6 @@ data Hint = Hint
     metaShouldSaveLocation :: Bool
   }
   deriving (Generic)
-
-type Line =
-  Int
-
-type Column =
-  Int
-
-type Loc =
-  (Line, Column)
 
 instance Binary Hint where
   put _ =
@@ -88,3 +84,16 @@ newSourceHint path =
 fakeLoc :: Loc
 fakeLoc =
   (1, 1)
+
+toFilePos :: Hint -> Maybe FilePos
+toFilePos m = do
+  path <- parseAbsFile $ metaFileName m
+  return $ FilePos path (metaLocation m)
+
+-- newRemark :: Hint -> RemarkLevel -> T.Text -> Remark
+-- newRemark m level text = do
+--   (toFilePos m, True, level, text)
+
+newRemark :: Hint -> RemarkLevel -> T.Text -> Remark
+newRemark m level text = do
+  (toFilePos m, True, level, text)

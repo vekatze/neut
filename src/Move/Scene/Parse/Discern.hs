@@ -971,7 +971,7 @@ getNonLinearOccurrences vars found nonLinear =
     [] -> do
       let nonLinearVars = reverse $ ListUtils.nubOrdOn snd nonLinear
       flip map nonLinearVars $ \(m, x) ->
-        R.newRemark m R.Error $
+        newRemark m R.Error $
           "the pattern variable `"
             <> x
             <> "` is used non-linearly"

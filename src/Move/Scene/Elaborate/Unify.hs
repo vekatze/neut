@@ -80,14 +80,14 @@ constraintToRemark h sub c = do
   case c of
     C.Actual t -> do
       t' <- fillAsMuchAsPossible h sub t
-      return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
+      return $ newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
     C.Integer t -> do
       t' <- fillAsMuchAsPossible h sub t
-      return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageInteger t'
+      return $ newRemark (WT.metaOf t) R.Error $ constructErrorMessageInteger t'
     C.Eq expected actual -> do
       expected' <- fillAsMuchAsPossible h sub expected
       actual' <- fillAsMuchAsPossible h sub actual
-      return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMessageEq actual' expected'
+      return $ newRemark (WT.metaOf actual) R.Error $ constructErrorMessageEq actual' expected'
 
 fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 fillAsMuchAsPossible h sub e = do

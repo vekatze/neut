@@ -322,7 +322,7 @@ newtype AffineConstraintError
 
 constructErrorMessageAffine :: AffineConstraintError -> R.Remark
 constructErrorMessageAffine (AffineConstraintError t) =
-  R.newRemark (WT.metaOf t) R.Error $
+  newRemark (WT.metaOf t) R.Error $
     "The type of this affine variable is not affine, but:\n"
       <> WT.toText t
 

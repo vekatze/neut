@@ -25,7 +25,7 @@ newError m text = do
 
 newError' :: T.Text -> Error
 newError' text = do
-  MakeError [newRemark' Error text]
+  MakeError [(Nothing, True, Error, text)]
 
 newCritical :: Hint -> T.Text -> Error
 newCritical m text = do
@@ -33,7 +33,7 @@ newCritical m text = do
 
 newCritical' :: T.Text -> Error
 newCritical' text = do
-  MakeError [newRemark' Critical text]
+  MakeError [(Nothing, True, Critical, text)]
 
 join :: [Error] -> Error
 join es = do

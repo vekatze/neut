@@ -63,7 +63,6 @@ import Rule.PrimNumSize
 import Rule.PrimType qualified as PT
 import Rule.PrimValue qualified as PV
 import Rule.Remark qualified as R
-import Rule.Remark qualified as Remark
 import Rule.Stmt
 import Rule.StmtKind
 import Rule.Target
@@ -346,7 +345,7 @@ elaborate' h term =
         AN.Type t -> do
           t' <- elaborate' h t
           let message = "Admitted: `" <> toText (weaken t') <> "`"
-          let typeRemark = Remark.newRemark m remarkLevel message
+          let typeRemark = newRemark m remarkLevel message
           liftIO $ LocalRemark.insert (localRemarkHandle h) typeRemark
           return e'
     m :< WT.Resource dd resourceID unitType discarder copier -> do
