@@ -71,7 +71,7 @@ new baseHandle = do
 
 unravel :: Handle -> Module -> Target -> EIO (A.ArtifactTime, [Source.Source])
 unravel h baseModule t = do
-  Debug.report (Base.debugHandle (baseHandle h)) "Resolving file dependencies"
+  liftIO $ Debug.report (Base.debugHandle (baseHandle h)) "Resolving file dependencies"
   case t of
     Main t' -> do
       case t' of

@@ -47,7 +47,7 @@ link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceLis
   isExecutableAvailable <- doesFileExist executablePath
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
   if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
-    then Debug.report (debugHandle h) "Skipped linking object files"
+    then liftIO $ Debug.report (debugHandle h) "Skipped linking object files"
     else link' h target mainModule sourceList
 
 link' :: Handle -> MainTarget -> MainModule -> [Source.Source] -> EIO ()

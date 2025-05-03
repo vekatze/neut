@@ -37,7 +37,7 @@ run h procName optionList = do
 
 runOrFail :: Handle -> String -> [String] -> EIO (Either Error ())
 runOrFail h procName optionList = do
-  Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (procName, optionList))
+  liftIO $ Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (procName, optionList))
   let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
   value <- liftIO $ ProcessRunner.run00 spec
   case value of
@@ -54,7 +54,7 @@ data ExternalError = ExternalError
 
 runOrFail' :: Handle -> Path Abs Dir -> String -> EIO (Either ExternalError ())
 runOrFail' h cwd cmd = do
-  Debug.report (debugHandle h) $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
+  liftIO $ Debug.report (debugHandle h) $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
   let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
   value <- liftIO $ ProcessRunner.run00 spec
   case value of

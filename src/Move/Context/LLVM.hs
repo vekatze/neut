@@ -93,7 +93,7 @@ emit' :: Handle -> [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -
 emit' h clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
-      Debug.report (debugHandle h) $ "Saving: " <> T.pack (toFilePath path)
+      liftIO $ Debug.report (debugHandle h) $ "Saving: " <> T.pack (toFilePath path)
       liftIO $ Path.writeByteString path llvmCode
     OK.Object ->
       emitInner h clangOptString llvmCode path
@@ -107,7 +107,7 @@ emitInner h additionalClangOptions llvm outputPath = do
           { cmdspec = RawCommand clang optionList,
             cwd = Nothing
           }
-  Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (clang, optionList))
+  liftIO $ Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (clang, optionList))
   value <- liftIO $ ProcessRunner.run10 spec (ProcessRunner.Lazy llvm)
   case value of
     Right _ ->

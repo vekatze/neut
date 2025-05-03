@@ -128,7 +128,7 @@ calculateClangDigest h = do
   output <- liftIO $ ProcessRunner.run01 spec
   case output of
     Right value -> do
-      Debug.report h $ "Clang info:\n" <> decodeUtf8 value
+      liftIO $ Debug.report h $ "Clang info:\n" <> decodeUtf8 value
       return $ decodeUtf8 $ hashAndEncode value
     Left err ->
       throwError $ ProcessRunner.toCompilerError err

@@ -27,6 +27,6 @@ new debugHandle = do
 
 save :: Handle -> Path Abs File -> FullEns -> EIO ()
 save h path (c1, (ens, c2)) = do
-  Debug.report (debugHandle h) $ "Saving ens file to: " <> T.pack (toFilePath path)
+  liftIO $ Debug.report (debugHandle h) $ "Saving ens file to: " <> T.pack (toFilePath path)
   ens' <- liftEither $ stylize ens
   liftIO $ Path.writeText path $ Ens.pp (c1, (ens', c2))

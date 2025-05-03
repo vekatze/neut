@@ -29,7 +29,7 @@ new baseHandle@(Base.Handle {..}) = do
 
 load :: Handle -> Target -> [Source.Source] -> EIO [(Source.Source, Either Cache.Cache T.Text)]
 load h target dependenceSeq = do
-  Debug.report (debugHandle h) "Loading source files and caches"
+  liftIO $ Debug.report (debugHandle h) "Loading source files and caches"
   forP dependenceSeq $ \source -> do
     cacheOrContent <- _load (cacheHandle h) target source
     return (source, cacheOrContent)

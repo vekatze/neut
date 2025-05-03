@@ -88,7 +88,7 @@ new cfg baseHandle = do
 
 buildTarget :: Handle -> M.MainModule -> Target -> EIO ()
 buildTarget h (M.MainModule baseModule) target = do
-  Debug.report (Base.debugHandle (baseHandle h)) $ "Building: " <> T.pack (show target)
+  liftIO $ Debug.report (Base.debugHandle (baseHandle h)) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
   unravelHandle <- liftIO $ Unravel.new (baseHandle h)
   (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
@@ -133,7 +133,9 @@ compile h target outputKindList contentSeq = do
     elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
     let ensureMainHandle = EnsureMain.new (Base.envHandle (baseHandle h))
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-    Debug.report (Base.debugHandle (baseHandle h)) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
+    liftIO $
+      Debug.report (Base.debugHandle (baseHandle h)) $
+        "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- Parse.parse parseHandle target source cacheOrContent
     stmtList <- Elaborate.elaborate elaborateHandle target cacheOrStmtList
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
@@ -237,8 +239,9 @@ compileForeign' h t currentTime m = do
   sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
   unless (null cmdList) $ do
-    Debug.report (Base.debugHandle (baseHandle h)) $
-      "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
+    liftIO $
+      Debug.report (Base.debugHandle (baseHandle h)) $
+        "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir (Base.pathHandle (baseHandle h)) t m
   inputPathList <- fmap concat $ mapM (getInputPathList moduleRootDir) $ M.input $ M.moduleForeign m
@@ -250,8 +253,9 @@ compileForeign' h t currentTime m = do
   case (inputTime, outputTime) of
     (Just t1, Just t2)
       | t1 <= t2 -> do
-          Debug.report (Base.debugHandle (baseHandle h)) $
-            "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
+          liftIO $
+            Debug.report (Base.debugHandle (baseHandle h)) $
+              "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
