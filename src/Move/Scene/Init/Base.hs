@@ -5,10 +5,11 @@ module Move.Scene.Init.Base
   )
 where
 
+import Color.Move.CreateHandle qualified as Color
+import Color.Rule.Handle qualified as Color
 import Move.Console.Report qualified as Report
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.Artifact qualified as Artifact
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
@@ -50,7 +51,7 @@ data Handle
 
 new :: Remark.Config -> Maybe (Path Abs File) -> IO Handle
 new cfg moduleFilePathOrNone = do
-  colorHandle <- Color.new (Remark.shouldColorize cfg)
+  colorHandle <- Color.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
   let reportHandle = Report.new colorHandle (Remark.endOfEntry cfg)
   gensymHandle <- Gensym.new
   debugHandle <- Debug.new colorHandle (Remark.enableDebugMode cfg)

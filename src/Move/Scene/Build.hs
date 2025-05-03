@@ -18,7 +18,6 @@ import Data.Time
 import Move.Console.Report qualified as Report
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, raiseError', runEIO)
 import Move.Context.Env qualified as Env
@@ -121,10 +120,7 @@ compile h target outputKindList contentSeq = do
   let numOfItems = length (filter id bs) + c
   let colorHandle = Base.colorHandle (baseHandle h)
   currentTime <- liftIO getCurrentTime
-  color <- do
-    if Color.getShouldColorizeStdout colorHandle
-      then return [SetColor Foreground Vivid Green]
-      else return []
+  let color = [SetColor Foreground Vivid Green]
   let workingTitle = getWorkingTitle numOfItems
   let completedTitle = getCompletedTitle numOfItems
   hp <- liftIO $ ProgressBar.new (Base.envHandle (baseHandle h)) colorHandle (Just numOfItems) workingTitle completedTitle color
@@ -134,7 +130,7 @@ compile h target outputKindList contentSeq = do
     localHandle <- Local.new (baseHandle h) source
     let parseHandle = Parse.new (baseHandle h) localHandle
     elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
-    let ensureMainHandle = EnsureMain.new (Local.locatorHandle localHandle)
+    let ensureMainHandle = EnsureMain.new (Base.envHandle (baseHandle h))
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     Debug.report (Base.debugHandle (baseHandle h)) $ "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- Parse.parse parseHandle target source cacheOrContent

@@ -6,12 +6,13 @@ module Move.Scene.ShowProgress
   )
 where
 
+import Color.Move.Print qualified as Color
+import Color.Rule.Handle qualified as Color
+import Color.Rule.Text qualified as Color
 import Control.Monad
 import Data.IORef (IORef, atomicModifyIORef', newIORef, readIORef)
 import Data.Text qualified as T
-import Move.Context.Color qualified as Color
 import Move.Context.Env qualified as Env
-import Rule.Log qualified as L
 import Rule.ProgressBar (Frame, ProgressBar (..), next, renderFinished, renderInProgress)
 import System.Console.ANSI
 import System.IO hiding (Handle)
@@ -62,7 +63,7 @@ increment mh = do
 render :: Color.Handle -> Frame -> IORef ProgressBar -> IO ()
 render colorHandle i ref = do
   progressBar <- readIORef ref
-  Color.printStdOut colorHandle $ renderInProgress i progressBar <> L.pack' "\n"
+  Color.printStdOut colorHandle $ renderInProgress i progressBar <> Color.pack' "\n"
   threadDelay 33333 -- 2F
   clear ref
   render colorHandle (i + 1) ref

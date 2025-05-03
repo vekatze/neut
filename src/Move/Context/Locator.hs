@@ -11,7 +11,6 @@ module Move.Context.Locator
     getMainDefiniteDescription,
     getNameLifter,
     getMainDefiniteDescriptionByTarget,
-    checkIfEntryPointIsNecessary,
     getReadableDD,
   )
 where
@@ -229,14 +228,6 @@ relPathToDD relPath baseName = do
   let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator}
   let ll = LL.new baseName
   return $ DD.new sgl ll
-
-checkIfEntryPointIsNecessary :: Target.MainTarget -> Source.Source -> Bool
-checkIfEntryPointIsNecessary target source = do
-  case target of
-    Target.Named {} -> do
-      isMainFile source
-    Target.Zen path _ -> do
-      Source.sourceFilePath source == path
 
 getReadableDD :: MainModule -> DD.DefiniteDescription -> T.Text
 getReadableDD mainModule dd = do

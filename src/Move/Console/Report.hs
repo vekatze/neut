@@ -17,23 +17,19 @@ module Move.Console.Report
     printString,
     printWarning',
     printWarning,
-    printStdOut,
-    printStdErr,
   )
 where
 
+import Color.Move.Print qualified as Color
+import Color.Rule.Handle qualified as Color
+import Color.Rule.Text qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.ByteString qualified as B
 import Data.Text qualified as T
-import Data.Text.Encoding
-import Move.Context.Color qualified as Color
 import Rule.FilePos
 import Rule.FilePos qualified as FilePos
 import Rule.Hint
-import Rule.Log qualified as L
 import Rule.Remark qualified as R
 import System.Console.ANSI.Codes
-import System.IO hiding (Handle)
 
 data Handle
   = Handle
@@ -121,29 +117,25 @@ printRemarkIO :: Handle -> R.Remark -> IO ()
 printRemarkIO h (mpos, shouldInsertPadding, l, t) = do
   let locText = getRemarkLocation mpos
   let levelText = getRemarkLevel l
-  let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  footerText <- L.pack' <$> getFooter h
-  let b = Color.getShouldColorizeStdout (colorHandle h)
-  let colorSpec = if b then L.Colorful else L.Colorless
-  printStdOut colorSpec $ locText <> levelText <> remarkText <> footerText
+  let remarkText = Color.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
+  footerText <- Color.pack' <$> getFooter h
+  Color.printStdOut (colorHandle h) $ locText <> levelText <> remarkText <> footerText
 
 printErrorIO :: Handle -> R.Remark -> IO ()
 printErrorIO h (mpos, shouldInsertPadding, l, t) = do
   let locText = getRemarkLocation mpos
   let levelText = getRemarkLevel l
-  let remarkText = L.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  footerText <- L.pack' <$> getFooter h
-  let b = Color.getShouldColorizeStderr (colorHandle h)
-  let colorSpec = if b then L.Colorful else L.Colorless
-  printStdErr colorSpec $ locText <> levelText <> remarkText <> footerText
+  let remarkText = Color.pack' $ getRemarkText t (remarkLevelToPad shouldInsertPadding l)
+  footerText <- Color.pack' <$> getFooter h
+  Color.printStdErr (colorHandle h) $ locText <> levelText <> remarkText <> footerText
 
-getRemarkLocation :: Maybe FilePos -> L.Log
+getRemarkLocation :: Maybe FilePos -> Color.Text
 getRemarkLocation mpos = do
   case mpos of
     Just pos -> do
-      L.pack [SetConsoleIntensity BoldIntensity] $ T.pack (showFilePos pos ++ "\n")
+      Color.pack [SetConsoleIntensity BoldIntensity] $ T.pack (showFilePos pos ++ "\n")
     _ ->
-      L.Nil
+      Color.empty
 
 getFooter :: Handle -> IO T.Text
 getFooter h = do
@@ -152,9 +144,9 @@ getFooter h = do
     then return ""
     else return $ eoe <> "\n"
 
-getRemarkLevel :: R.RemarkLevel -> L.Log
+getRemarkLevel :: R.RemarkLevel -> Color.Text
 getRemarkLevel l =
-  L.pack (R.remarkLevelToSGR l) (R.remarkLevelToText l <> ": ")
+  Color.pack (R.remarkLevelToSGR l) (R.remarkLevelToText l <> ": ")
 
 getRemarkText :: T.Text -> T.Text -> T.Text
 getRemarkText str padComp = do
@@ -173,14 +165,6 @@ stylizeRemarkText str pad = do
   if null ls
     then str
     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
-
-printStdOut :: L.ColorSpec -> L.Log -> IO ()
-printStdOut c l = do
-  B.hPutStr stdout $ encodeUtf8 $ L.unpack c l
-
-printStdErr :: L.ColorSpec -> L.Log -> IO ()
-printStdErr c l = do
-  B.hPutStr stderr $ encodeUtf8 $ L.unpack c l
 
 getEndOfEntry :: Handle -> T.Text
 getEndOfEntry =

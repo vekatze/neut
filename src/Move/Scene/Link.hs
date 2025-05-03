@@ -5,11 +5,11 @@ module Move.Scene.Link
   )
 where
 
+import Color.Rule.Handle qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
@@ -61,10 +61,9 @@ link' h target (MainModule mainModule) sourceList = do
   let clangOptions = getLinkOption (Main target)
   let objects = mainObject : objectPathList ++ foreignObjectList
   let numOfObjects = length objects
-  color <- liftIO $ getColor h
   let workingTitle = getWorkingTitle numOfObjects
   let completedTitle = getCompletedTitle numOfObjects
-  progressBarHandle <- liftIO $ ProgressBar.new (envHandle h) (colorHandle h) Nothing workingTitle completedTitle color
+  progressBarHandle <- liftIO $ ProgressBar.new (envHandle h) (colorHandle h) Nothing workingTitle completedTitle barColor
   LLVM.link (llvmHandle h) clangOptions objects outputPath
   liftIO $ ProgressBar.close progressBarHandle
 
@@ -78,11 +77,9 @@ getCompletedTitle numOfObjects = do
   let suffix = if numOfObjects <= 1 then "" else "s"
   "Linked " <> T.pack (show numOfObjects) <> " object" <> suffix
 
-getColor :: Handle -> IO [SGR]
-getColor h = do
-  if Color.getShouldColorizeStdout (colorHandle h)
-    then return [SetColor Foreground Vivid Green]
-    else return []
+barColor :: [SGR]
+barColor = do
+  [SetColor Foreground Vivid Green]
 
 getForeignDirContent :: Path Abs Dir -> EIO [Path Abs File]
 getForeignDirContent foreignDir = do

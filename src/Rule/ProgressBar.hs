@@ -7,8 +7,8 @@ module Rule.ProgressBar
   )
 where
 
+import Color.Rule.Text qualified as Color
 import Data.Text qualified as T
-import Rule.Log qualified as L
 import System.Console.ANSI
 
 data ProgressBar
@@ -22,27 +22,27 @@ data ProgressBar
 type Frame =
   Int
 
-renderInProgress :: Frame -> ProgressBar -> L.Log
+renderInProgress :: Frame -> ProgressBar -> Color.Text
 renderInProgress frame progressBar = do
-  let spinner = L.pack (color progressBar) $ chooseSpinner frame
-  let title' = spinner <> " " <> L.pack' (workingTitle progressBar)
+  let spinner = Color.pack (color progressBar) $ chooseSpinner frame
+  let title' = spinner <> " " <> Color.pack' (workingTitle progressBar)
   case progress progressBar of
     Nothing -> do
       title'
     Just (current, size) -> do
       let frac :: Float = fromIntegral current / fromIntegral size
       let pivot = floor $ fromIntegral barLength * frac
-      let prefix = L.pack (color progressBar) $ T.replicate pivot barFinished
-      let suffix = L.pack' $ T.replicate (barLength - pivot) barInProgress
+      let prefix = Color.pack (color progressBar) $ T.replicate pivot barFinished
+      let suffix = Color.pack' $ T.replicate (barLength - pivot) barInProgress
       let bar = prefix <> suffix
-      let current' = L.pack' $ T.pack (show current)
-      let size' = L.pack' $ T.pack (show size)
+      let current' = Color.pack' $ T.pack (show current)
+      let size' = Color.pack' $ T.pack (show size)
       title' <> "\n  " <> bar <> " " <> current' <> "/" <> size'
 
-renderFinished :: ProgressBar -> L.Log
+renderFinished :: ProgressBar -> Color.Text
 renderFinished progressBar = do
-  let check = L.pack (color progressBar) "✓" <> " "
-  check <> L.pack' (completedTitle progressBar) <> "\n"
+  let check = Color.pack (color progressBar) "✓" <> " "
+  check <> Color.pack' (completedTitle progressBar) <> "\n"
 
 next :: ProgressBar -> ProgressBar
 next progressBar = do

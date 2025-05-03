@@ -1,5 +1,6 @@
 module Main (main) where
 
+import Color.Move.CreateHandle qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Move.Act.Archive qualified as Archive
 import Move.Act.Build qualified as Build
@@ -12,7 +13,6 @@ import Move.Act.LSP qualified as LSP
 import Move.Act.Version qualified as Version
 import Move.Act.Zen qualified as Zen
 import Move.Console.Report qualified as Report
-import Move.Context.Color qualified as Color
 import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (run)
 import Move.Context.Platform (ensureExecutables)
@@ -29,7 +29,8 @@ main = do
   userCommand <- liftIO OptParse.parseCommand
   case userCommand of
     C.External loggerConfig cmd -> do
-      colorHandle <- Color.new (Remark.shouldColorize loggerConfig)
+      let shouldColorize = Remark.shouldColorize loggerConfig
+      colorHandle <- Color.createHandle shouldColorize shouldColorize
       debugHandle <- Debug.new colorHandle (Remark.enableDebugMode loggerConfig)
       let reportHandle = Report.new colorHandle (Remark.endOfEntry loggerConfig)
       run reportHandle $ do
