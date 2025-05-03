@@ -15,10 +15,10 @@ import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
+import Logger.Move.Debug qualified as Logger
 import Logger.Move.Log qualified as Logger
 import Move.Context.Cache (needsCompilation)
 import Move.Context.Cache qualified as Cache
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP, raiseError', runEIO)
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -88,7 +88,7 @@ new cfg baseHandle = do
 
 buildTarget :: Handle -> M.MainModule -> Target -> EIO ()
 buildTarget h (M.MainModule baseModule) target = do
-  liftIO $ Debug.report (Base.debugHandle (baseHandle h)) $ "Building: " <> T.pack (show target)
+  liftIO $ Logger.report (Base.loggerHandle (baseHandle h)) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions target
   unravelHandle <- liftIO $ Unravel.new (baseHandle h)
   (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
@@ -134,7 +134,7 @@ compile h target outputKindList contentSeq = do
     let ensureMainHandle = EnsureMain.new (Base.envHandle (baseHandle h))
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""
     liftIO $
-      Debug.report (Base.debugHandle (baseHandle h)) $
+      Logger.report (Base.loggerHandle (baseHandle h)) $
         "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
     cacheOrStmtList <- Parse.parse parseHandle target source cacheOrContent
     stmtList <- Elaborate.elaborate elaborateHandle target cacheOrStmtList
@@ -240,7 +240,7 @@ compileForeign' h t currentTime m = do
   let cmdList = M.script $ M.moduleForeign m
   unless (null cmdList) $ do
     liftIO $
-      Debug.report (Base.debugHandle (baseHandle h)) $
+      Logger.report (Base.loggerHandle (baseHandle h)) $
         "Performing foreign compilation of `" <> MID.reify (M.moduleID m) <> "` with " <> T.pack (show sub)
   let moduleRootDir = M.getModuleRootDir m
   foreignDir <- Path.getForeignDir (Base.pathHandle (baseHandle h)) t m
@@ -254,13 +254,13 @@ compileForeign' h t currentTime m = do
     (Just t1, Just t2)
       | t1 <= t2 -> do
           liftIO $
-            Debug.report (Base.debugHandle (baseHandle h)) $
+            Logger.report (Base.loggerHandle (baseHandle h)) $
               "Cache found; skipping foreign compilation of `" <> MID.reify (M.moduleID m) <> "`"
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
       forM_ cmdList' $ \c -> do
-        let externalHandle = External.new (Base.debugHandle (baseHandle h))
+        let externalHandle = External.new (Base.loggerHandle (baseHandle h))
         result <- External.runOrFail' externalHandle moduleRootDir $ T.unpack c
         case result of
           Right _ ->

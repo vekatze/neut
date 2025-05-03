@@ -13,7 +13,8 @@ import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
-import Move.Context.Debug qualified as Debug
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.External qualified as External
@@ -32,7 +33,7 @@ import System.Process (CmdSpec (RawCommand))
 
 data Handle
   = Handle
-  { debugHandle :: Debug.Handle,
+  { loggerHandle :: Logger.Handle,
     pathHandle :: Path.Handle,
     externalHandle :: External.Handle,
     envHandle :: Env.Handle
@@ -40,7 +41,7 @@ data Handle
 
 new :: Base.Handle -> Handle
 new (Base.Handle {..}) = do
-  let externalHandle = External.new debugHandle
+  let externalHandle = External.new loggerHandle
   Handle {..}
 
 type ClangOption = String
@@ -93,7 +94,7 @@ emit' :: Handle -> [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -
 emit' h clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
-      liftIO $ Debug.report (debugHandle h) $ "Saving: " <> T.pack (toFilePath path)
+      liftIO $ Logger.report (loggerHandle h) $ "Saving: " <> T.pack (toFilePath path)
       liftIO $ Path.writeByteString path llvmCode
     OK.Object ->
       emitInner h clangOptString llvmCode path
@@ -107,7 +108,7 @@ emitInner h additionalClangOptions llvm outputPath = do
           { cmdspec = RawCommand clang optionList,
             cwd = Nothing
           }
-  liftIO $ Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (clang, optionList))
+  liftIO $ Logger.report (loggerHandle h) $ "Executing: " <> T.pack (show (clang, optionList))
   value <- liftIO $ ProcessRunner.run10 spec (ProcessRunner.Lazy llvm)
   case value of
     Right _ ->

@@ -6,8 +6,9 @@ module Move.Scene.Load
 where
 
 import Data.Text qualified as T
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.Cache qualified as Cache
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, forP)
 import Move.Context.Parse (readTextFile)
 import Move.Scene.Init.Base qualified as Base
@@ -18,7 +19,7 @@ import UnliftIO (MonadIO (liftIO))
 
 data Handle
   = Handle
-  { debugHandle :: Debug.Handle,
+  { loggerHandle :: Logger.Handle,
     cacheHandle :: Cache.Handle
   }
 
@@ -29,7 +30,7 @@ new baseHandle@(Base.Handle {..}) = do
 
 load :: Handle -> Target -> [Source.Source] -> EIO [(Source.Source, Either Cache.Cache T.Text)]
 load h target dependenceSeq = do
-  liftIO $ Debug.report (debugHandle h) "Loading source files and caches"
+  liftIO $ Logger.report (loggerHandle h) "Loading source files and caches"
   forP dependenceSeq $ \source -> do
     cacheOrContent <- _load (cacheHandle h) target source
     return (source, cacheOrContent)

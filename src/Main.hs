@@ -13,7 +13,6 @@ import Move.Act.Get qualified as Get
 import Move.Act.LSP qualified as LSP
 import Move.Act.Version qualified as Version
 import Move.Act.Zen qualified as Zen
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (run)
 import Move.Context.Platform (ensureExecutables)
 import Move.Scene.Init.Base qualified as Base
@@ -32,13 +31,12 @@ main = do
       let shouldColorize = Remark.shouldColorize loggerConfig
       let enableDebugMode = Remark.enableDebugMode loggerConfig
       colorHandle <- Color.createHandle shouldColorize shouldColorize
-      debugHandle <- Debug.new colorHandle enableDebugMode
       loggerHandle <- Logger.createHandle colorHandle (Remark.endOfEntry loggerConfig) enableDebugMode
       run loggerHandle $ do
         case cmd of
           C.Create cfg -> do
-            let moduleSaveHandle = ModuleSave.new debugHandle
-            createHandle <- liftIO $ Create.new loggerConfig loggerHandle debugHandle moduleSaveHandle
+            let moduleSaveHandle = ModuleSave.new loggerHandle
+            createHandle <- liftIO $ Create.new loggerConfig loggerHandle moduleSaveHandle
             Create.create createHandle cfg
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg

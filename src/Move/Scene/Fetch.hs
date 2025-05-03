@@ -58,8 +58,8 @@ new ::
   Handle
 new (Base.Handle {..}) = do
   let ensReflectHandle = EnsReflect.new gensymHandle
-  let moduleSaveHandle = ModuleSave.new debugHandle
-  let externalHandle = External.new debugHandle
+  let moduleSaveHandle = ModuleSave.new loggerHandle
+  let externalHandle = External.new loggerHandle
   let moduleReflectHandle = ModuleReflect.new gensymHandle
   Handle {..}
 

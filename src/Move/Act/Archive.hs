@@ -33,8 +33,8 @@ new :: Base.Handle -> Handle
 new baseHandle = do
   let envHandle = Base.envHandle baseHandle
   let packageVersionHandle = PV.new (Base.loggerHandle baseHandle)
-  let externalHandle = External.new (Base.debugHandle baseHandle)
-  let moduleSaveHandle = ModuleSave.new (Base.debugHandle baseHandle)
+  let externalHandle = External.new (Base.loggerHandle baseHandle)
+  let moduleSaveHandle = ModuleSave.new (Base.loggerHandle baseHandle)
   let archiveHandle = Archive.new externalHandle moduleSaveHandle envHandle
   let ensReflectHandle = EnsReflect.new (Base.gensymHandle baseHandle)
   Handle {..}

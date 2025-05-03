@@ -32,7 +32,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
-import Move.Context.Debug qualified as Debug
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.Env qualified as Env
 import Move.Context.Platform qualified as Platform
@@ -54,13 +54,13 @@ import Rule.Target qualified as Target
 data Handle
   = Handle
   { cacheRef :: IORef (Maybe String),
-    debugHandle :: Debug.Handle,
+    loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle
   }
 
-new :: Env.Handle -> Platform.Handle -> Debug.Handle -> IO Handle
-new envHandle platformHandle debugHandle = do
+new :: Env.Handle -> Platform.Handle -> Logger.Handle -> IO Handle
+new envHandle platformHandle loggerHandle = do
   cacheRef <- newIORef Nothing
   return $ Handle {..}
 

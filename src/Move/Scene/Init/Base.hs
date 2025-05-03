@@ -11,7 +11,6 @@ import Logger.Move.CreateHandle qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.Artifact qualified as Artifact
-import Move.Context.Debug qualified as Debug
 import Move.Context.Env qualified as Env
 import Move.Context.KeyArg qualified as KeyArg
 import Move.Context.Module qualified as Module
@@ -33,7 +32,6 @@ data Handle
   { artifactHandle :: Artifact.Handle,
     antecedentHandle :: Antecedent.Handle,
     colorHandle :: Color.Handle,
-    debugHandle :: Debug.Handle,
     platformHandle :: Platform.Handle,
     defHandle :: Definition.Handle,
     envHandle :: Env.Handle,
@@ -55,13 +53,12 @@ new cfg moduleFilePathOrNone = do
   colorHandle <- Color.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
   loggerHandle <- Logger.createHandle colorHandle (Remark.endOfEntry cfg) (Remark.enableDebugMode cfg)
   gensymHandle <- Gensym.new
-  debugHandle <- Debug.new colorHandle (Remark.enableDebugMode cfg)
-  platformHandle <- Platform.new loggerHandle debugHandle
+  platformHandle <- Platform.new loggerHandle
   envHandle <- Env.new loggerHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
   keyArgHandle <- KeyArg.new envHandle
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  pathHandle <- Path.new envHandle platformHandle debugHandle
+  pathHandle <- Path.new envHandle platformHandle loggerHandle
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new
@@ -77,7 +74,7 @@ refresh h = do
   keyArgHandle <- KeyArg.new (envHandle h)
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  pathHandle <- Path.new (envHandle h) (platformHandle h) (debugHandle h)
+  pathHandle <- Path.new (envHandle h) (platformHandle h) (loggerHandle h)
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new

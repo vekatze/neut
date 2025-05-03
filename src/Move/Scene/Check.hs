@@ -11,8 +11,8 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Log
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, collectLogs)
 import Move.Context.Env qualified as Env
 import Move.Scene.Elaborate qualified as Elaborate
@@ -91,7 +91,7 @@ checkSource h target source cacheOrContent = do
   localHandle <- Local.new (baseHandle h) source
   let parseHandle = Parse.new (baseHandle h) localHandle
   elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
-  liftIO $ Debug.report (Base.debugHandle (baseHandle h)) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
+  liftIO $ Logger.report (Base.loggerHandle (baseHandle h)) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   void $ Parse.parse parseHandle target source cacheOrContent >>= Elaborate.elaborate elaborateHandle target
   return elaborateHandle
 

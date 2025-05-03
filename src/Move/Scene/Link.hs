@@ -10,7 +10,8 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
-import Move.Context.Debug qualified as Debug
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.EIO (EIO)
 import Move.Context.Env qualified as Env
 import Move.Context.LLVM qualified as LLVM
@@ -28,7 +29,7 @@ import System.Console.ANSI
 
 data Handle
   = Handle
-  { debugHandle :: Debug.Handle,
+  { loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle,
     pathHandle :: Path.Handle,
     colorHandle :: Color.Handle,
@@ -47,7 +48,7 @@ link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceLis
   isExecutableAvailable <- doesFileExist executablePath
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
   if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
-    then liftIO $ Debug.report (debugHandle h) "Skipped linking object files"
+    then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files"
     else link' h target mainModule sourceList
 
 link' :: Handle -> MainTarget -> MainModule -> [Source.Source] -> EIO ()

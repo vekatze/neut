@@ -23,7 +23,7 @@ data Handle
 
 new :: Base.Handle -> Handle
 new (Base.Handle {..}) = do
-  let externalHandle = External.new debugHandle
+  let externalHandle = External.new loggerHandle
   Handle {..}
 
 execute :: Handle -> MainTarget -> [String] -> EIO ()

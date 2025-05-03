@@ -8,7 +8,6 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Logger.Rule.Handle qualified as Logger
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO)
 import Move.Context.Platform qualified as Platform
 import Move.Scene.Check qualified as Check
@@ -26,9 +25,9 @@ data Handle
     remarkCfg :: Remark.Config
   }
 
-new :: Remark.Config -> Logger.Handle -> Debug.Handle -> ModuleSave.Handle -> IO Handle
-new remarkCfg loggerHandle debugHandle moduleSaveHandle = do
-  platformHandle <- Platform.new loggerHandle debugHandle
+new :: Remark.Config -> Logger.Handle -> ModuleSave.Handle -> IO Handle
+new remarkCfg loggerHandle moduleSaveHandle = do
+  platformHandle <- Platform.new loggerHandle
   createHandle <- Create.new moduleSaveHandle loggerHandle platformHandle
   return $ Handle {..}
 

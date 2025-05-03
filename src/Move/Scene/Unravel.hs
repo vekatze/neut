@@ -17,9 +17,9 @@ import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
+import Logger.Move.Debug qualified as Logger
 import Move.Context.Antecedent qualified as Antecedent
 import Move.Context.Artifact qualified as Artifact
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError')
 import Move.Context.Env (getMainModule)
 import Move.Context.Module qualified as Module
@@ -71,7 +71,7 @@ new baseHandle = do
 
 unravel :: Handle -> Module -> Target -> EIO (A.ArtifactTime, [Source.Source])
 unravel h baseModule t = do
-  liftIO $ Debug.report (Base.debugHandle (baseHandle h)) "Resolving file dependencies"
+  liftIO $ Logger.report (Base.loggerHandle (baseHandle h)) "Resolving file dependencies"
   case t of
     Main t' -> do
       case t' of

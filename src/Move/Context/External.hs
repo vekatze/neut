@@ -14,7 +14,8 @@ import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Move.Context.Debug qualified as Debug
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Move.Context.EIO (EIO, raiseError')
 import Move.Context.ProcessRunner qualified as ProcessRunner
 import Path
@@ -24,11 +25,11 @@ import System.Process
 
 newtype Handle
   = Handle
-  { debugHandle :: Debug.Handle
+  { loggerHandle :: Logger.Handle
   }
 
-new :: Debug.Handle -> Handle
-new debugHandle = do
+new :: Logger.Handle -> Handle
+new loggerHandle = do
   Handle {..}
 
 run :: Handle -> String -> [String] -> EIO ()
@@ -37,7 +38,7 @@ run h procName optionList = do
 
 runOrFail :: Handle -> String -> [String] -> EIO (Either Error ())
 runOrFail h procName optionList = do
-  liftIO $ Debug.report (debugHandle h) $ "Executing: " <> T.pack (show (procName, optionList))
+  liftIO $ Logger.report (loggerHandle h) $ "Executing: " <> T.pack (show (procName, optionList))
   let spec = ProcessRunner.Spec {cmdspec = RawCommand procName optionList, cwd = Nothing}
   value <- liftIO $ ProcessRunner.run00 spec
   case value of
@@ -54,7 +55,7 @@ data ExternalError = ExternalError
 
 runOrFail' :: Handle -> Path Abs Dir -> String -> EIO (Either ExternalError ())
 runOrFail' h cwd cmd = do
-  liftIO $ Debug.report (debugHandle h) $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
+  liftIO $ Logger.report (loggerHandle h) $ "Executing: " <> T.pack cmd <> "\n(cwd = " <> T.pack (toFilePath cwd) <> ")"
   let spec = ProcessRunner.Spec {cmdspec = ShellCommand cmd, cwd = Just (toFilePath cwd)}
   value <- liftIO $ ProcessRunner.run00 spec
   case value of

@@ -18,8 +18,8 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Version qualified as V
+import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
-import Move.Context.Debug qualified as Debug
 import Move.Context.EIO (EIO, raiseError, raiseError', run)
 import Move.Context.External (ensureExecutable)
 import Move.Context.ProcessRunner qualified as ProcessRunner
@@ -45,13 +45,13 @@ data Handle
     baseSize :: DS.DataSize
   }
 
-new :: Logger.Handle -> Debug.Handle -> IO Handle
-new loggerHandle debugHandle = do
+new :: Logger.Handle -> IO Handle
+new loggerHandle = do
   run loggerHandle $ do
     arch <- getArch' Nothing
     baseSize <- Arch.dataSizeOf <$> getArch' Nothing
     os <- getOS' Nothing
-    clangDigest <- calculateClangDigest debugHandle
+    clangDigest <- calculateClangDigest loggerHandle
     return $ Handle {..}
 
 getDataSizeValue :: Handle -> Int
@@ -121,14 +121,14 @@ getClang = do
     Nothing -> do
       return "clang"
 
-calculateClangDigest :: Debug.Handle -> EIO T.Text
+calculateClangDigest :: Logger.Handle -> EIO T.Text
 calculateClangDigest h = do
   clang <- liftIO getClang
   let spec = ProcessRunner.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
   output <- liftIO $ ProcessRunner.run01 spec
   case output of
     Right value -> do
-      liftIO $ Debug.report h $ "Clang info:\n" <> decodeUtf8 value
+      liftIO $ Logger.report h $ "Clang info:\n" <> decodeUtf8 value
       return $ decodeUtf8 $ hashAndEncode value
     Left err ->
       throwError $ ProcessRunner.toCompilerError err
