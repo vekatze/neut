@@ -18,11 +18,11 @@ import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Scene.Elaborate.WeakTerm.Reduce qualified as Reduce
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Rule.HoleSubst
-import Main.Rule.WeakTerm.ToText (toText)
 import Prelude hiding (lookup)
 
 data Handle = Handle

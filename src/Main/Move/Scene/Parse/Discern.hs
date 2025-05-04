@@ -47,6 +47,7 @@ import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars)
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
@@ -81,7 +82,6 @@ import Main.Rule.Pattern qualified as PAT
 import Main.Rule.Platform qualified as Platform
 import Main.Rule.TopCandidate
 import Main.Rule.VarDefKind qualified as VDK
-import Main.Rule.WeakTerm.FreeVars (freeVars)
 import Text.Read qualified as R
 
 discernStmtList :: H.Handle -> Module -> [RawStmt] -> EIO [WeakStmt]

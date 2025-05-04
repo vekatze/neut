@@ -16,8 +16,7 @@ import System.Console.ANSI
 type ShouldInsertPadding =
   Bool
 
-data Log
-  = Log
+data Log = Log
   { position :: Maybe FP.FilePos,
     shouldInsertPadding :: ShouldInsertPadding,
     logLevel :: LogLevel,

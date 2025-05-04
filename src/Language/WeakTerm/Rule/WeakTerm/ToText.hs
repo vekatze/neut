@@ -1,4 +1,4 @@
-module Main.Rule.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable, showDomArgList) where
+module Language.WeakTerm.Rule.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable, showDomArgList) where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T

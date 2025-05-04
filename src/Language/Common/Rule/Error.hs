@@ -10,9 +10,9 @@ where
 
 import Control.Exception
 import Data.Text qualified as T
+import Language.Common.Rule.Hint
 import Logger.Rule.Log
 import Logger.Rule.LogLevel
-import Language.Common.Rule.Hint
 
 newtype Error
   = MakeError [Log]

@@ -28,6 +28,10 @@ import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.WeakTerm.Rule.WeakTerm.Eq qualified as WT
+import Language.WeakTerm.Rule.WeakTerm.FreeVars
+import Language.WeakTerm.Rule.WeakTerm.Holes
+import Language.WeakTerm.Rule.WeakTerm.ToText
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.EIO (EIO, raiseCritical)
@@ -42,10 +46,6 @@ import Main.Rule.Constraint (SuspendedConstraint)
 import Main.Rule.Constraint qualified as C
 import Main.Rule.HoleSubst qualified as HS
 import Main.Rule.Stuck qualified as Stuck
-import Main.Rule.WeakTerm.Eq qualified as WT
-import Main.Rule.WeakTerm.FreeVars
-import Main.Rule.WeakTerm.Holes
-import Main.Rule.WeakTerm.ToText
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
 unify h constraintList = do

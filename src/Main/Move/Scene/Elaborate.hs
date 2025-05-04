@@ -45,6 +45,7 @@ import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.WeakTerm.Rule.WeakTerm.ToText
 import Logger.Rule.Log qualified as L
 import Main.Move.Context.Cache qualified as Cache
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
@@ -72,7 +73,6 @@ import Main.Rule.Const (holeLiteral)
 import Main.Rule.HoleSubst qualified as HS
 import Main.Rule.Target
 import Main.Rule.Term.Weaken
-import Main.Rule.WeakTerm.ToText
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =

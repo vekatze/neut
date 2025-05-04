@@ -12,7 +12,7 @@ import Data.IntMap qualified as IntMap
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.WeakTerm.Rule.WeakTerm
-import Main.Rule.WeakTerm.Holes
+import Language.WeakTerm.Rule.WeakTerm.Holes
 import Prelude hiding (lookup)
 
 newtype HoleSubst = HoleSubst (IntMap.IntMap ([Ident], WeakTerm))

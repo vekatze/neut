@@ -3,8 +3,7 @@ module Color.Rule.Handle
   )
 where
 
-data Handle
-  = InternalHandle
+data Handle = InternalHandle
   { _shouldColorizeStdout :: Bool,
     _shouldColorizeStderr :: Bool
   }

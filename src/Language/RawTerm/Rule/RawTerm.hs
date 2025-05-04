@@ -28,26 +28,26 @@ where
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.Text qualified as T
-import Logger.Rule.LogLevel
 import Language.Common.Rule.Annotation qualified as Annot
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.BaseName qualified as BN
-import Language.RawTerm.Rule.C
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID
 import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.Noema qualified as N
+import Language.Common.Rule.Rune qualified as R
+import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.NecessityVariant (NecessityVariant)
-import Language.Common.Rule.Noema qualified as N
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
-import Language.Common.Rule.Rune qualified as R
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
+import Logger.Rule.LogLevel
 
 type RawTerm = Cofree RawTermF Hint
 

@@ -25,6 +25,7 @@ import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
 import Language.Term.Rule.Term qualified as TM
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.WeakTerm.Rule.WeakTerm.ToText qualified as WT
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.EIO (EIO, raiseCritical)
@@ -38,7 +39,6 @@ import Main.Rule.OptimizableData qualified as OD
 import Main.Rule.Stuck qualified as Stuck
 import Main.Rule.Term.FreeVarsWithHints (freeVarsWithHints)
 import Main.Rule.Term.Weaken (weaken)
-import Main.Rule.WeakTerm.ToText qualified as WT
 
 type AffineConstraint =
   (TM.Term, TM.Term)

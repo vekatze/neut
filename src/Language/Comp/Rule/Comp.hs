@@ -15,7 +15,6 @@ import Data.Text qualified as T
 import Language.Common.Rule.ArgNum
 import Language.Common.Rule.BaseLowType
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Comp.Rule.EnumCase
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
@@ -23,6 +22,7 @@ import Language.Common.Rule.Magic
 import Language.Common.Rule.Opacity
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimOp
+import Language.Comp.Rule.EnumCase
 
 data Value
   = VarLocal Ident

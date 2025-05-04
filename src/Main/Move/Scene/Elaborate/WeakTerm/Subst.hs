@@ -20,8 +20,8 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.WeakTerm.Rule.WeakTerm.FreeVars qualified as WT
 import Main.Move.Context.Gensym qualified as Gensym
-import Main.Rule.WeakTerm.FreeVars qualified as WT
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

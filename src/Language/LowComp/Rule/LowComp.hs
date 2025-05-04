@@ -14,7 +14,6 @@ where
 
 import Data.ByteString.Builder
 import Data.Text qualified as T
-import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Ident
@@ -22,6 +21,7 @@ import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LowType
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimOp
+import Language.LowComp.Rule.DeclarationName qualified as DN
 
 data Value
   = VarLocal Ident

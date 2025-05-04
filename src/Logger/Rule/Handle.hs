@@ -9,8 +9,7 @@ import Data.Text qualified as T
 import Data.Time
 import Text.Printf (printf)
 
-data Handle
-  = InternalHandle
+data Handle = InternalHandle
   { _colorHandle :: Color.Handle,
     _endOfEntry :: T.Text,
     _enableDebugMode :: Bool,

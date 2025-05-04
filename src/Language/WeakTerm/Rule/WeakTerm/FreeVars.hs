@@ -1,4 +1,4 @@
-module Main.Rule.WeakTerm.FreeVars (freeVars) where
+module Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars) where
 
 import Control.Comonad.Cofree
 import Data.Maybe

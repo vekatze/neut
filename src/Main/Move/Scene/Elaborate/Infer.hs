@@ -45,6 +45,7 @@ import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Gensym qualified as Gensym
@@ -67,7 +68,6 @@ import Main.Rule.HoleSubst qualified as HS
 import Main.Rule.OptimizableData qualified as OD
 import Main.Rule.Term.FromPrimNum qualified as Term
 import Main.Rule.Term.Weaken
-import Main.Rule.WeakTerm.ToText (toText)
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 

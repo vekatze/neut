@@ -11,8 +11,7 @@ import Color.Rule.Text qualified as Color
 import Data.Text qualified as T
 import System.Console.ANSI
 
-data ProgressBar
-  = ProgressBar
+data ProgressBar = ProgressBar
   { workingTitle :: T.Text,
     completedTitle :: T.Text,
     color :: [SGR],
