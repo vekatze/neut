@@ -32,8 +32,7 @@ newIdentFromText h s = do
 {-# INLINE newText #-}
 newText :: Handle -> IO T.Text
 newText h = do
-  i <- newCount h
-  return $ ";" <> T.pack (show i)
+  newTextForHole h
 
 {-# INLINE newIdentFromIdent #-}
 newIdentFromIdent :: Handle -> Ident -> IO Ident
