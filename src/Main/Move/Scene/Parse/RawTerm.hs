@@ -24,6 +24,7 @@ import Language.Common.Rule.Error (newError)
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Rune qualified as RU
+import Language.RawTerm.Move.CreateHole qualified as RT
 import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
@@ -34,7 +35,7 @@ import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO (EIO)
-import Main.Move.Context.Gensym (newPreHole, newTextForHole)
+import Main.Move.Context.Gensym (newTextForHole)
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
 import Text.Megaparsec
@@ -277,7 +278,7 @@ rawTermLetVarAscription h m = do
     Just tc ->
       return (c, tc)
     Nothing -> do
-      t <- liftIO $ newPreHole (gensymHandle h) m
+      t <- liftIO $ RT.createHole (gensymHandle h) m
       return (c, (t, []))
 
 rawTermLetVarAscription' :: Handle -> Parser (C, Maybe (RT.RawTerm, C))
@@ -335,7 +336,7 @@ rawTermHole :: Handle -> Parser (RT.RawTerm, C)
 rawTermHole h = do
   m <- getCurrentHint
   c <- keyword "_"
-  hole <- liftIO $ newPreHole (gensymHandle h) m
+  hole <- liftIO $ RT.createHole (gensymHandle h) m
   return (hole, c)
 
 parseDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
@@ -400,7 +401,7 @@ parseDefInfoCod h m =
         t <- rawTerm h
         return (c, t),
       do
-        hole <- liftIO $ newPreHole (gensymHandle h) m
+        hole <- liftIO $ RT.createHole (gensymHandle h) m
         return ([], (hole, []))
     ]
 
@@ -771,7 +772,7 @@ preAscription h ((m, x), c1) = do
 
 preAscription' :: Handle -> ((Hint, T.Text), C) -> Parser (RawBinder RT.RawTerm, C)
 preAscription' h ((m, x), c) = do
-  hole <- liftIO $ newPreHole (gensymHandle h) m
+  hole <- liftIO $ RT.createHole (gensymHandle h) m
   return ((m, x, c, [], hole), [])
 
 typeWithoutIdent :: Handle -> Parser (RawBinder RT.RawTerm, C)

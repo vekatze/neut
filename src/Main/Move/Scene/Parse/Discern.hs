@@ -34,6 +34,7 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
+import Language.RawTerm.Move.CreateHole qualified as RT
 import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Locator qualified as L
@@ -400,7 +401,7 @@ discern h term =
     m :< RT.Pin _ mxt@(mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       let m2' = blur m2
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
-      resultType <- liftIO $ Gensym.newPreHole (H.gensymHandle h) m2'
+      resultType <- liftIO $ RT.createHole (H.gensymHandle h) m2'
       resultVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-pin"
       let resultParam = (m2', RP.Var resultVar, [], [], resultType)
       let isNoetic = not $ null $ SE.extract mys
@@ -482,12 +483,12 @@ discern h term =
                     [m :< RT.StaticText textType ("Admitted: " <> T.pack (Hint.toString m) <> "\n")]
               )
     m :< RT.Detach _ _ (e, _) -> do
-      t <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur m)
+      t <- liftIO $ RT.createHole (H.gensymHandle h) (blur m)
       detachVar <- liftEither $ locatorToVarGlobal m coreThreadDetach
-      cod <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur m)
+      cod <- liftIO $ RT.createHole (H.gensymHandle h) (blur m)
       discern h $ m :< RT.piElim detachVar [t, RT.lam fakeLoc m [] cod e]
     m :< RT.Attach _ _ (e, _) -> do
-      t <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur m)
+      t <- liftIO $ RT.createHole (H.gensymHandle h) (blur m)
       attachVar <- liftEither $ locatorToVarGlobal m coreThreadAttach
       discern h $ m :< RT.piElim attachVar [t, e]
     m :< RT.Option t -> do
@@ -498,7 +499,7 @@ discern h term =
       assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
       textType <- liftEither $ locatorToVarGlobal m coreText
       let fullMessage = T.pack (Hint.toString m) <> "\nAssertion failure: " <> message <> "\n"
-      cod <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur m)
+      cod <- liftIO $ RT.createHole (H.gensymHandle h) (blur m)
       discern h $
         m
           :< RT.piElim
@@ -529,8 +530,8 @@ discern h term =
               tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
               (x, e2'') <- modifyLetContinuation h (mPat, pat) endLoc False e2'
               let m' = blur m
-              dom <- liftIO $ Gensym.newPreHole (H.gensymHandle h) m'
-              cod <- liftIO $ Gensym.newPreHole (H.gensymHandle h) m'
+              dom <- liftIO $ RT.createHole (H.gensymHandle h) m'
+              cod <- liftIO $ RT.createHole (H.gensymHandle h) m'
               discern h $
                 bind'
                   False
@@ -575,7 +576,7 @@ discern h term =
         _ ->
           discern h body
     _ :< RT.Projection e (mProj, proj) loc -> do
-      t <- liftIO $ Gensym.newPreHole (H.gensymHandle h) (blur mProj)
+      t <- liftIO $ RT.createHole (H.gensymHandle h) (blur mProj)
       let args = (SE.fromList SE.Brace SE.Comma [(mProj, proj, [], [], t)], [])
       let var = mProj :< RT.Var (Var proj)
       discern h $ mProj :< RT.Use [] e [] args [] var loc
@@ -818,7 +819,7 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
     RT.Try -> do
       let m' = blur m
       eitherTypeInner <- liftEither $ locatorToVarGlobal m' coreEither
-      leftType <- liftIO $ Gensym.newPreHole (H.gensymHandle h) m'
+      leftType <- liftIO $ RT.createHole (H.gensymHandle h) m'
       let eitherType = m' :< RT.piElim eitherTypeInner [leftType, t]
       e1' <- discern h e1
       tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
