@@ -22,6 +22,7 @@ import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.Hint
+import Language.Common.Rule.Hint.Reify qualified as Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
@@ -73,7 +74,6 @@ import Main.Rule.Arch qualified as Arch
 import Main.Rule.BuildMode qualified as BM
 import Main.Rule.Const
 import Main.Rule.GlobalName qualified as GN
-import Main.Rule.Hint.Reify qualified as Hint
 import Main.Rule.Layer
 import Main.Rule.Module
 import Main.Rule.NominalEnv

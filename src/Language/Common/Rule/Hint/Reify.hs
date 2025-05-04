@@ -1,4 +1,4 @@
-module Main.Rule.Hint.Reify (toString) where
+module Language.Common.Rule.Hint.Reify (toString) where
 
 import Language.Common.Rule.Hint
 

@@ -1,4 +1,4 @@
-module Main.Rule.Hint.Reflect (fromSourcePos) where
+module Language.Common.Rule.Hint.Reflect (fromSourcePos) where
 
 import Language.Common.Rule.Hint
 import Text.Megaparsec
