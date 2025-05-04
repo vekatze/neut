@@ -14,11 +14,11 @@ import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.RawTerm.Rule.RawTerm.Decode qualified as RT
 import Language.RawTerm.Rule.Syntax.Series (Series (hasOptionalSeparator))
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.Doc qualified as D
 import Main.Rule.Piece qualified as PI
-import Main.Rule.RawTerm.Decode qualified as RT
 import Main.Rule.Syntax.Series.Decode qualified as SE
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Main.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
