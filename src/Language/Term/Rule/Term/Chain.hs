@@ -1,4 +1,4 @@
-module Main.Rule.Term.Chain
+module Language.Term.Rule.Term.Chain
   ( chainOf,
     chainOfDecisionTree,
     chainOfCaseWithoutCont,

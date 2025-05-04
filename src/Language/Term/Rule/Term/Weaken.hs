@@ -1,4 +1,4 @@
-module Main.Rule.Term.Weaken
+module Language.Term.Rule.Term.Weaken
   ( weaken,
     weakenBinder,
     weakenStmt,

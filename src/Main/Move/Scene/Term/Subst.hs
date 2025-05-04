@@ -20,8 +20,8 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Term.Rule.Term qualified as TM
+import Language.Term.Rule.Term.FreeVars qualified as TM
 import Main.Move.Context.Gensym qualified as Gensym
-import Main.Rule.Term.FreeVars qualified as TM
 
 type SubstTerm =
   IntMap.IntMap (Either Ident TM.Term)

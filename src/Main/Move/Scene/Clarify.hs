@@ -46,6 +46,9 @@ import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Stmt
 import Language.Term.Rule.Term qualified as TM
+import Language.Term.Rule.Term.Chain (nubFreeVariables)
+import Language.Term.Rule.Term.Chain qualified as TM
+import Language.Term.Rule.Term.FromPrimNum
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseCritical')
 import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Locator qualified as Locator
@@ -62,9 +65,6 @@ import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Term.Subst qualified as Subst
 import Main.Rule.OptimizableData qualified as OD
-import Main.Rule.Term.Chain (nubFreeVariables)
-import Main.Rule.Term.Chain qualified as TM
-import Main.Rule.Term.FromPrimNum
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

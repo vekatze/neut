@@ -41,6 +41,7 @@ import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Stmt
 import Language.Term.Rule.Term qualified as TM
+import Language.Term.Rule.Term.Weaken
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
@@ -72,7 +73,6 @@ import Main.Rule.Cache qualified as Cache
 import Main.Rule.Const (holeLiteral)
 import Main.Rule.HoleSubst qualified as HS
 import Main.Rule.Target
-import Main.Rule.Term.Weaken
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =

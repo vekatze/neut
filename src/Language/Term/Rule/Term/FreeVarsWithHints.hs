@@ -1,4 +1,4 @@
-module Main.Rule.Term.FreeVarsWithHints (freeVarsWithHints) where
+module Language.Term.Rule.Term.FreeVarsWithHints (freeVarsWithHints) where
 
 import Control.Comonad.Cofree
 import Data.Maybe

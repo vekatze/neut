@@ -1,4 +1,4 @@
-module Main.Rule.Term.FromPrimNum (fromPrimNum) where
+module Language.Term.Rule.Term.FromPrimNum (fromPrimNum) where
 
 import Control.Comonad.Cofree
 import Language.Common.Rule.Hint

@@ -11,12 +11,12 @@ where
 import Data.Binary
 import GHC.Generics
 import Language.Term.Rule.Stmt qualified as Stmt
+import Language.Term.Rule.Term.Compress qualified as TM
+import Language.Term.Rule.Term.Extend qualified as TM
 import Logger.Rule.Log
 import Main.Rule.LocalVarTree qualified as LVT
 import Main.Rule.LocationTree qualified as LT
 import Main.Rule.RawImportSummary
-import Main.Rule.Term.Compress qualified as TM
-import Main.Rule.Term.Extend qualified as TM
 import Main.Rule.TopCandidate (TopCandidate)
 
 data Cache = Cache

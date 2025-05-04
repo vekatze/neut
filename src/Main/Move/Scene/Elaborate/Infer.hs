@@ -41,6 +41,8 @@ import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.RawTerm.Rule.Key (Key)
 import Language.RawTerm.Rule.Name qualified as N
 import Language.Term.Rule.Term qualified as TM
+import Language.Term.Rule.Term.FromPrimNum qualified as Term
+import Language.Term.Rule.Term.Weaken
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
@@ -66,8 +68,6 @@ import Main.Move.Scene.Parse.Discern.Name qualified as N
 import Main.Rule.Const
 import Main.Rule.HoleSubst qualified as HS
 import Main.Rule.OptimizableData qualified as OD
-import Main.Rule.Term.FromPrimNum qualified as Term
-import Main.Rule.Term.Weaken
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 

@@ -9,6 +9,7 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
 import Main.Move.Context.Cache (invalidate)
@@ -23,7 +24,6 @@ import Main.Rule.Config.Remark (lspConfig)
 import Main.Rule.LocationTree qualified as LT
 import Main.Rule.Source (Source (sourceFilePath, sourceModule))
 import Main.Rule.Target (Target (Peripheral))
-import Main.Rule.Term.Weaken (weaken)
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
