@@ -20,6 +20,7 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.ForeignCodType qualified as FCT
+import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
@@ -29,6 +30,7 @@ import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
 import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Key
@@ -38,10 +40,12 @@ import Language.RawTerm.Rule.NecessityVariant
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent hiding (isHole)
 import Language.RawTerm.Rule.RawPattern qualified as RP
+import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
@@ -67,7 +71,6 @@ import Main.Move.Scene.Parse.Util
 import Main.Rule.Arch qualified as Arch
 import Main.Rule.BuildMode qualified as BM
 import Main.Rule.Const
-import Main.Rule.Geist qualified as G
 import Main.Rule.GlobalName qualified as GN
 import Main.Rule.Hint.Reify qualified as Hint
 import Main.Rule.Layer
@@ -76,9 +79,6 @@ import Main.Rule.NominalEnv
 import Main.Rule.OS qualified as OS
 import Main.Rule.Pattern qualified as PAT
 import Main.Rule.Platform qualified as Platform
-import Main.Rule.RawProgram
-import Main.Rule.Stmt
-import Main.Rule.StmtKind qualified as SK
 import Main.Rule.TopCandidate
 import Main.Rule.VarDefKind qualified as VDK
 import Main.Rule.WeakTerm.FreeVars (freeVars)
@@ -179,7 +179,7 @@ registerTopLevelName h nameLifter stmt = do
     RawStmtForeign {} ->
       return ()
 
-liftStmtKind :: H.Handle -> SK.RawStmtKind BN.BaseName -> IO (SK.RawStmtKind DD.DefiniteDescription)
+liftStmtKind :: H.Handle -> RawStmtKind BN.BaseName -> IO (RawStmtKind DD.DefiniteDescription)
 liftStmtKind h stmtKind = do
   case stmtKind of
     SK.Normal opacity ->
@@ -194,7 +194,7 @@ liftStmtKind h stmtKind = do
       nameLifter <- Locator.getNameLifter (H.locatorHandle h)
       return $ SK.DataIntro (nameLifter dataName) dataArgs consArgs discriminant
 
-discernStmtKind :: H.Handle -> SK.RawStmtKind BN.BaseName -> EIO (SK.StmtKind WT.WeakTerm)
+discernStmtKind :: H.Handle -> RawStmtKind BN.BaseName -> EIO (SK.StmtKind WT.WeakTerm)
 discernStmtKind h stmtKind =
   case stmtKind of
     SK.Normal opacity ->

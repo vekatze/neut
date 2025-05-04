@@ -10,11 +10,13 @@ where
 
 import Data.Binary
 import GHC.Generics
+import Language.Term.Rule.Stmt qualified as Stmt
 import Logger.Rule.Log
 import Main.Rule.LocalVarTree qualified as LVT
 import Main.Rule.LocationTree qualified as LT
 import Main.Rule.RawImportSummary
-import Main.Rule.Stmt qualified as Stmt
+import Main.Rule.Term.Compress qualified as TM
+import Main.Rule.Term.Extend qualified as TM
 import Main.Rule.TopCandidate (TopCandidate)
 
 data Cache = Cache
@@ -52,7 +54,7 @@ instance Binary LocationCache
 compress :: Cache -> LowCache
 compress cache =
   LowCache
-    { stmtList' = map Stmt.compress (stmtList cache),
+    { stmtList' = map compressStmt (stmtList cache),
       remarkList' = remarkList cache,
       countSnapshot' = countSnapshot cache
     }
@@ -60,7 +62,33 @@ compress cache =
 extend :: LowCache -> Cache
 extend cache =
   Cache
-    { stmtList = map Stmt.extend (stmtList' cache),
+    { stmtList = map extendStmt (stmtList' cache),
       remarkList = remarkList' cache,
       countSnapshot = countSnapshot' cache
     }
+
+compressStmt :: Stmt.Stmt -> Stmt.StrippedStmt
+compressStmt stmt =
+  case stmt of
+    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
+      let stmtKind' = TM.compressStmtKind stmtKind
+      let impArgs' = map TM.compressBinder impArgs
+      let expArgs' = map TM.compressBinder expArgs
+      let codType' = TM.compress codType
+      let e' = TM.compress e
+      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
+    Stmt.StmtForeign foreignList ->
+      Stmt.StmtForeign foreignList
+
+extendStmt :: Stmt.StrippedStmt -> Stmt.Stmt
+extendStmt stmt =
+  case stmt of
+    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
+      let stmtKind' = TM.extendStmtKind stmtKind
+      let impArgs' = map TM.extendBinder impArgs
+      let expArgs' = map TM.extendBinder expArgs
+      let codType' = TM.extend codType
+      let e' = TM.extend e
+      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
+    Stmt.StmtForeign foreignList ->
+      Stmt.StmtForeign foreignList

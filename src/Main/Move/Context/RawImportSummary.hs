@@ -7,8 +7,8 @@ module Main.Move.Context.RawImportSummary
 where
 
 import Data.IORef
+import Language.RawTerm.Rule.RawStmt (RawImport)
 import Main.Rule.RawImportSummary qualified as RIS
-import Main.Rule.RawProgram (RawImport)
 
 newtype Handle = Handle
   { importEnvRef :: IORef (Maybe RIS.RawImportSummary)

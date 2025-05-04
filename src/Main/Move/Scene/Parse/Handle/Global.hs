@@ -22,6 +22,7 @@ import Language.Common.Rule.Error (Error (MakeError))
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Hint qualified as Hint
 import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Log (Log)
@@ -40,7 +41,6 @@ import Main.Rule.GlobalName qualified as GN
 import Main.Rule.OptimizableData qualified as OD
 import Main.Rule.PrimOp.FromText qualified as PrimOp
 import Main.Rule.PrimType.FromText qualified as PT
-import Main.Rule.StmtKind qualified as SK
 import Main.Rule.TopNameMap
 import Prelude hiding (lookup)
 

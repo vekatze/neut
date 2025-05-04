@@ -18,15 +18,16 @@ import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.StmtKind
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
+import Language.Term.Rule.Stmt
 import Language.Term.Rule.Term qualified as TM
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm (reflectOpacity)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Main.Rule.Stmt
-import Main.Rule.StmtKind
 
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do

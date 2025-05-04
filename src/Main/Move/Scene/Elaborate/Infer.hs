@@ -26,6 +26,7 @@ import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.ForeignCodType qualified as FCT
+import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident (Ident (..), isHole)
@@ -35,12 +36,14 @@ import Language.Common.Rule.Literal qualified as L
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.StmtKind
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.RawTerm.Rule.Key (Key)
 import Language.RawTerm.Rule.Name qualified as N
 import Language.Term.Rule.Term qualified as TM
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Main.Move.Context.Env qualified as Env
@@ -60,11 +63,8 @@ import Main.Move.Scene.Elaborate.Unify qualified as Unify
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Move.Scene.Parse.Discern.Name qualified as N
 import Main.Rule.Const
-import Main.Rule.Geist qualified as G
 import Main.Rule.HoleSubst qualified as HS
 import Main.Rule.OptimizableData qualified as OD
-import Main.Rule.Stmt
-import Main.Rule.StmtKind
 import Main.Rule.Term.FromPrimNum qualified as Term
 import Main.Rule.Term.Weaken
 import Main.Rule.WeakTerm.ToText (toText)

@@ -1,4 +1,4 @@
-module Main.Rule.Geist (Geist (..)) where
+module Language.Common.Rule.Geist (Geist (..)) where
 
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Hint

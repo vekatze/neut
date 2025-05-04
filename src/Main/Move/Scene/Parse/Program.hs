@@ -17,16 +17,16 @@ import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.Hint
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.RawBinder
+import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Scene.Parse.Core (asLabel)
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
-import Main.Rule.RawProgram
-import Main.Rule.StmtKind qualified as SK
 import Text.Megaparsec
 
 parseProgram :: P.Handle -> P.Parser RawProgram

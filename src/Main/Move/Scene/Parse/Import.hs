@@ -19,6 +19,7 @@ import Language.Common.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Main.Move.Context.Env qualified as Env
@@ -40,7 +41,6 @@ import Main.Rule.AliasInfo qualified as AI
 import Main.Rule.Const
 import Main.Rule.Import (ImportItem (..))
 import Main.Rule.Module
-import Main.Rule.RawProgram
 import Main.Rule.Source qualified as Source
 import Path
 

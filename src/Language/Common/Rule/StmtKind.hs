@@ -1,7 +1,6 @@
-module Main.Rule.StmtKind
-  ( StmtKind,
-    RawStmtKind,
-    BaseStmtKind (..),
+module Language.Common.Rule.StmtKind
+  ( BaseStmtKind (..),
+    StmtKind,
     toOpacity,
     toLowOpacity,
   )
@@ -15,8 +14,9 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Hint
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Opacity qualified as O
-import Language.RawTerm.Rule.RawBinder (RawBinder)
-import Language.RawTerm.Rule.RawTerm qualified as RT
+
+-- import Language.RawTerm.Rule.RawBinder (RawBinder)
+-- import Language.RawTerm.Rule.RawTerm qualified as RT
 
 data BaseStmtKind name b t
   = Normal O.Opacity
@@ -31,9 +31,6 @@ instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKind name x t)
 
 type StmtKind a =
   BaseStmtKind DD.DefiniteDescription (BinderF a) a
-
-type RawStmtKind a =
-  BaseStmtKind a (RawBinder RT.RawTerm) RT.RawTerm
 
 toOpacity :: BaseStmtKind name x t -> O.Opacity
 toOpacity stmtKind =

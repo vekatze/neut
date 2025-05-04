@@ -1,6 +1,7 @@
-module Main.Rule.RawProgram
+module Language.RawTerm.Rule.RawStmt
   ( RawProgram (..),
     RawStmt (..),
+    RawStmtKind,
     RawConsInfo,
     RawImport (..),
     RawImportItem (..),
@@ -19,19 +20,25 @@ import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.Hint
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
-import Main.Rule.StmtKind qualified as SK
 
 data RawProgram
   = RawProgram Hint [(RawImport, C)] [(RawStmt, C)]
 
+type RawConsInfo a =
+  (Hint, a, IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
+
+type RawStmtKind a =
+  SK.BaseStmtKind a (RawBinder RT.RawTerm) RT.RawTerm
+
 data RawStmt
   = RawStmtDefine
       C
-      (SK.RawStmtKind BN.BaseName)
+      (RawStmtKind BN.BaseName)
       RT.TopDef
   | RawStmtDefineData
       C
@@ -49,9 +56,6 @@ data RawStmt
       C
   | RawStmtNominal C Hint (SE.Series (RT.TopGeist, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
-
-type RawConsInfo a =
-  (Hint, a, IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
 
 data RawImport
   = RawImport C Hint (SE.Series RawImportItem) Loc
@@ -78,9 +82,6 @@ data RawForeignItemF a
 
 type RawForeignItem =
   RawForeignItemF RT.RawTerm
-
--- data RawForeignItemF a
---   = RawForeignItemF Hint EN.ExternalName C (SE.Series RT.RawTerm) C C (F.ForeignCodType RT.RawTerm)
 
 isImportEmpty :: RawImport -> Bool
 isImportEmpty rawImport =

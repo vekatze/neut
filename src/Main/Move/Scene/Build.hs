@@ -18,6 +18,7 @@ import Data.Time
 import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
+import Language.Term.Rule.Stmt (getStmtName)
 import Logger.Move.Debug qualified as Logger
 import Logger.Move.Log qualified as Logger
 import Main.Move.Context.Cache (needsCompilation)
@@ -48,7 +49,6 @@ import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Module qualified as M
 import Main.Rule.OutputKind
 import Main.Rule.Source
-import Main.Rule.Stmt (getStmtName)
 import Main.Rule.Target
 import Path
 import Path.IO

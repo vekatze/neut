@@ -16,6 +16,9 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL
+import Language.RawTerm.Rule.RawStmt
+import Language.Term.Rule.Stmt
+import Language.WeakTerm.Rule.WeakStmt
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.Cache qualified as Cache
@@ -33,9 +36,7 @@ import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program qualified as Parse
 import Main.Rule.Cache qualified as Cache
-import Main.Rule.RawProgram
 import Main.Rule.Source qualified as Source
-import Main.Rule.Stmt
 import Main.Rule.Target
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
 import Main.Rule.UnusedLocalLocators (UnusedLocalLocators)

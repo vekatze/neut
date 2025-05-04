@@ -39,10 +39,12 @@ import Language.Common.Rule.PrimNumSize qualified as PNS
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.Rune qualified as RU
+import Language.Common.Rule.StmtKind
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
+import Language.Term.Rule.Stmt
 import Language.Term.Rule.Term qualified as TM
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseCritical')
 import Main.Move.Context.Gensym qualified as Gensym
@@ -60,8 +62,6 @@ import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Term.Subst qualified as Subst
 import Main.Rule.OptimizableData qualified as OD
-import Main.Rule.Stmt
-import Main.Rule.StmtKind
 import Main.Rule.Term.Chain (nubFreeVariables)
 import Main.Rule.Term.Chain qualified as TM
 import Main.Rule.Term.FromPrimNum
