@@ -18,6 +18,7 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LowType qualified as LT
+import Language.Common.Rule.LowType.EmitLowType
 import Language.Common.Rule.LowType.FromBaseLowType qualified as LT
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
@@ -32,7 +33,6 @@ import Main.Move.Scene.Emit.LowComp.Reduce qualified as Reduce
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Builder
 import Main.Rule.Const
-import Main.Rule.LowType.EmitLowType
 
 newtype Handle = Handle
   { baseHandle :: Base.Handle

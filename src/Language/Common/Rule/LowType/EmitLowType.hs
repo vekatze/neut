@@ -1,4 +1,4 @@
-module Main.Rule.LowType.EmitLowType (emitLowType) where
+module Language.Common.Rule.LowType.EmitLowType (emitLowType) where
 
 import Data.ByteString.Builder
 import Language.Common.Rule.LowType qualified as LT
