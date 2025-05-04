@@ -26,6 +26,7 @@ import Language.Common.Rule.PrimOp qualified as PO
 import Language.Common.Rule.PrimType qualified as PT
 import Language.RawTerm.Rule.Locator qualified as L
 import Language.RawTerm.Rule.Name
+import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
@@ -166,7 +167,7 @@ castFromIntToBool h e@(m :< _) = do
   l <- liftEither $ DD.getLocatorPair m C.coreBool
   (dd, (_, gn)) <- resolveLocator h m l False
   bool <- interpretGlobalName h m dd gn
-  t <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
+  t <- liftIO $ WT.createHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   let cmpOpType cod = m :< WT.Pi [] [(m, x1, t), (m, x2, t)] cod

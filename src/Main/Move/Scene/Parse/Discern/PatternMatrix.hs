@@ -16,6 +16,7 @@ import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
+import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
@@ -66,8 +67,8 @@ compilePatternMatrix h isNoetic occurrences mat =
                     return $ DT.LiteralCase mPat literal cont
                   PAT.ConsSpecializer (PAT.ConsInfo {..}) -> do
                     let hGen = H.gensymHandle h
-                    dataHoles <- liftIO $ mapM (const $ Gensym.newHole hGen mPat []) [1 .. AN.reify dataArgNum]
-                    dataTypeHoles <- liftIO $ mapM (const $ Gensym.newHole hGen mPat []) [1 .. AN.reify dataArgNum]
+                    dataHoles <- liftIO $ mapM (const $ WT.createHole hGen mPat []) [1 .. AN.reify dataArgNum]
+                    dataTypeHoles <- liftIO $ mapM (const $ WT.createHole hGen mPat []) [1 .. AN.reify dataArgNum]
                     consVars <- liftIO $ mapM (const $ Gensym.newIdentFromText hGen "cvar") [1 .. AN.reify consArgNum]
                     let ms = map fst args
                     let consVars' = zip ms consVars
@@ -89,7 +90,7 @@ compilePatternMatrix h isNoetic occurrences mat =
                           }
               fallbackMatrix <- PATF.getFallbackMatrix h isNoetic cursor mat
               fallbackClause <- compilePatternMatrix h isNoetic (V.tail occurrences) fallbackMatrix
-              t <- liftIO $ Gensym.newHole (H.gensymHandle h) mCursor []
+              t <- liftIO $ WT.createHole (H.gensymHandle h) mCursor []
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
 alignConsArgs ::
@@ -101,7 +102,7 @@ alignConsArgs h binder =
     [] -> do
       return ([], h)
     (mx, x) : xts -> do
-      t <- Gensym.newHole (H.gensymHandle h) mx []
+      t <- WT.createHole (H.gensymHandle h) mx []
       let h' = H.extendWithoutInsert h mx x
       (xts', h'') <- alignConsArgs h' xts
       return ((mx, x, t) : xts', h'')
@@ -117,7 +118,7 @@ asLetSeq h binder =
     (Nothing, _) : xes -> do
       asLetSeq h xes
     (Just (m, from), to) : xes -> do
-      hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
+      hole <- liftIO $ WT.createHole (H.gensymHandle h) m []
       cont' <- asLetSeq h xes
       return $ ((m, from, hole), to) : cont'
 

@@ -7,8 +7,8 @@ where
 import Control.Comonad.Cofree hiding (section)
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
+import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 
 castToNoemaIfNecessary :: H.Handle -> N.IsNoetic -> WT.WeakTerm -> IO WT.WeakTerm
@@ -25,10 +25,10 @@ castFromNoemaIfNecessary h isNoetic e =
 
 castToNoema :: H.Handle -> WT.WeakTerm -> IO WT.WeakTerm
 castToNoema h e@(m :< _) = do
-  t <- Gensym.newHole (H.gensymHandle h) m []
+  t <- WT.createHole (H.gensymHandle h) m []
   return $ m :< WT.Magic (M.WeakMagic $ M.Cast t (m :< WT.BoxNoema t) e)
 
 castFromNoema :: H.Handle -> WT.WeakTerm -> IO WT.WeakTerm
 castFromNoema h e@(m :< _) = do
-  t <- Gensym.newHole (H.gensymHandle h) m []
+  t <- WT.createHole (H.gensymHandle h) m []
   return $ m :< WT.Magic (M.WeakMagic $ M.Cast (m :< WT.BoxNoema t) t e)

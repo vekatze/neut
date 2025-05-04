@@ -46,6 +46,7 @@ import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
+import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
@@ -238,19 +239,19 @@ discern h term =
       case name of
         Var s
           | Just x <- readIntDecimalMaybe s -> do
-              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
+              hole <- liftIO $ WT.createHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int hole x)
           | Just x <- readIntBinaryMaybe s -> do
-              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
+              hole <- liftIO $ WT.createHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int hole x)
           | Just x <- readIntOctalMaybe s -> do
-              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
+              hole <- liftIO $ WT.createHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int hole x)
           | Just x <- readIntHexadecimalMaybe s -> do
-              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
+              hole <- liftIO $ WT.createHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Int hole x)
           | Just x <- R.readMaybe (T.unpack s) -> do
-              hole <- liftIO $ Gensym.newHole (H.gensymHandle h) m []
+              hole <- liftIO $ WT.createHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Float hole x)
           | Just (mDef, name', layer) <- lookup s (H.nameEnv h) -> do
               if layer == H.currentLayer h
@@ -338,7 +339,7 @@ discern h term =
       let ms = map (\(me :< _) -> me) es'
       os <- liftIO $ mapM (const $ Gensym.newIdentFromText (H.gensymHandle h) "match") es' -- os: occurrences
       es'' <- mapM (discern h >=> liftIO . castFromNoemaIfNecessary h isNoetic) es'
-      ts <- liftIO $ mapM (const $ Gensym.newHole (H.gensymHandle h) m []) es''
+      ts <- liftIO $ mapM (const $ WT.createHole (H.gensymHandle h) m []) es''
       patternMatrix' <- discernPatternMatrix h $ SE.extract patternMatrix
       ensurePatternMatrixSanity h patternMatrix'
       let os' = zip ms os
@@ -598,7 +599,7 @@ discernNoeticVarList ::
 discernNoeticVarList h mustInsertTagInfo xsOuter = do
   forM xsOuter $ \(mDef, (mUse, outerVar)) -> do
     xInner <- Gensym.newIdentFromIdent (H.gensymHandle h) outerVar
-    t <- Gensym.newHole (H.gensymHandle h) mUse []
+    t <- WT.createHole (H.gensymHandle h) mUse []
     when mustInsertTagInfo $ do
       Tag.insertLocalVar (H.tagHandle h) mUse outerVar mDef
     return ((mUse, xInner, t), mDef :< WT.Var outerVar)

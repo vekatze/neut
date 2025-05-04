@@ -44,6 +44,7 @@ import Language.RawTerm.Rule.Name qualified as N
 import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.FromPrimNum qualified as Term
 import Language.Term.Rule.Term.Weaken
+import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
@@ -263,7 +264,7 @@ infer h term =
         Nothing -> do
           let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) (varEnv h)
           let holeTerm = m :< WT.Hole holeID holeArgs
-          holeType <- liftIO $ Gensym.newHole (gensymHandle h) m holeArgs
+          holeType <- liftIO $ WT.createHole (gensymHandle h) m holeArgs
           liftIO $ Hole.insert (holeHandle h) rawHoleID holeTerm holeType
           return (holeTerm, holeType)
     m :< WT.Prim prim
@@ -705,4 +706,4 @@ lookupDefinition h name = do
 
 newHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakTerm
 newHole h m varEnv = do
-  Gensym.newHole (gensymHandle h) m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
+  WT.createHole (gensymHandle h) m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv

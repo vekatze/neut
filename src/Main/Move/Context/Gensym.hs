@@ -1,6 +1,5 @@
 module Main.Move.Context.Gensym
   ( newTextForHole,
-    newHole,
     newIdentFromText,
     newText,
     newIdentFromIdent,
@@ -10,29 +9,19 @@ module Main.Move.Context.Gensym
   )
 where
 
-import Control.Comonad.Cofree
 import Data.Text qualified as T
 import Gensym.Move.Gensym
 import Gensym.Rule.Handle
 import Language.Common.Rule.Const
-import Language.Common.Rule.Hint (Hint)
-import Language.Common.Rule.HoleID (HoleID (HoleID))
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Comp.Rule.Comp qualified as C
-import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 {-# INLINE newTextForHole #-}
 newTextForHole :: Handle -> IO T.Text
 newTextForHole h = do
   i <- newCount h
   return $ holeVarPrefix <> ";" <> T.pack (show i)
-
-{-# INLINE newHole #-}
-newHole :: Handle -> Hint -> [WT.WeakTerm] -> IO WT.WeakTerm
-newHole h m varSeq = do
-  i <- HoleID <$> newCount h
-  return $ m :< WT.Hole i varSeq
 
 {-# INLINE newIdentFromText #-}
 newIdentFromText :: Handle -> T.Text -> IO Ident
