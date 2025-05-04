@@ -50,7 +50,7 @@ data WeakStmt
       WT.WeakTerm
       WT.WeakTerm
   | WeakStmtNominal Hint [G.Geist WT.WeakTerm]
-  | WeakStmtForeign [F.WeakForeign]
+  | WeakStmtForeign [WT.WeakForeign]
 
 type Program =
   (Source.Source, [Stmt])

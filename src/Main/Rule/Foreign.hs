@@ -1,9 +1,7 @@
 module Main.Rule.Foreign
   ( BaseForeign (..),
     Foreign,
-    WeakForeign,
     defaultForeignList,
-    defaultWeakForeignList,
   )
 where
 
@@ -14,7 +12,6 @@ import Main.Rule.BaseLowType qualified as BLT
 import Main.Rule.ExternalName qualified as EN
 import Main.Rule.ForeignCodType
 import Main.Rule.Hint
-import Main.Rule.WeakTerm qualified as WT
 
 data BaseForeign a
   = Foreign Hint EN.ExternalName [a] (ForeignCodType a)
@@ -25,15 +22,8 @@ instance (Binary a) => Binary (BaseForeign a)
 type Foreign =
   BaseForeign BLT.BaseLowType
 
-type WeakForeign =
-  BaseForeign WT.WeakTerm
-
 defaultForeignList :: A.Arch -> [Foreign]
 defaultForeignList arch =
   [ Foreign internalHint EN.malloc [BLT.getWordType arch] (Cod BLT.Pointer),
     Foreign internalHint EN.free [BLT.Pointer] Void
   ]
-
-defaultWeakForeignList :: A.Arch -> [WeakForeign]
-defaultWeakForeignList arch =
-  fmap (fmap (WT.fromBaseLowType internalHint)) (defaultForeignList arch)

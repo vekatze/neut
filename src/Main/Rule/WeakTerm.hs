@@ -3,6 +3,7 @@ module Main.Rule.WeakTerm
     WeakTermF (..),
     SubstWeakTerm,
     LetOpacity (..),
+    WeakForeign,
     reifyOpacity,
     reflectOpacity,
     intTypeBySize,
@@ -26,6 +27,7 @@ import Main.Rule.BasePrimType qualified as BPT
 import Main.Rule.Binder
 import Main.Rule.DecisionTree qualified as DT
 import Main.Rule.DefiniteDescription qualified as DD
+import Main.Rule.Foreign
 import Main.Rule.Hint
 import Main.Rule.HoleID
 import Main.Rule.Ident
@@ -122,3 +124,6 @@ fromBaseLowType m lt =
           m :< Prim (WP.Type (PT.Float (BPT.extractSize s)))
     BLT.Pointer ->
       m :< Prim (WP.Type PT.Pointer)
+
+type WeakForeign =
+  BaseForeign WeakTerm

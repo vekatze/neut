@@ -21,6 +21,7 @@ import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Data.List (find)
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Data.Text.Encoding
@@ -29,12 +30,14 @@ import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Tag qualified as Tag
 import Main.Rule.AliasInfo (MustUpdateTag)
 import Main.Rule.BaseName qualified as BN
+import Main.Rule.Const (nsSep)
 import Main.Rule.DefiniteDescription qualified as DD
 import Main.Rule.GlobalName qualified as GN
 import Main.Rule.Hint
 import Main.Rule.LocalLocator qualified as LL
-import Main.Rule.Module (MainModule, extractModule)
+import Main.Rule.Module
 import Main.Rule.Module qualified as Module
+import Main.Rule.ModuleAlias qualified as MA
 import Main.Rule.ModuleID qualified as MID
 import Main.Rule.Source qualified as Source
 import Main.Rule.SourceLocator qualified as SL
@@ -93,8 +96,8 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                let dd' = DD.getReadableDD (Source.sourceModule currentSource) dd
-                let existingDD' = DD.getReadableDD (Source.sourceModule currentSource) existingDD
+                let dd' = getReadableDD' (Source.sourceModule currentSource) dd
+                let existingDD' = getReadableDD' (Source.sourceModule currentSource) existingDD
                 raiseError m $
                   "This `"
                     <> LL.reify ll
@@ -230,5 +233,22 @@ relPathToDD relPath baseName = do
   return $ DD.new sgl ll
 
 getReadableDD :: MainModule -> DD.DefiniteDescription -> T.Text
-getReadableDD mainModule dd = do
-  DD.getReadableDD (extractModule mainModule) dd
+getReadableDD mainModule = do
+  getReadableDD' (extractModule mainModule)
+
+getReadableDD' :: Module -> DD.DefiniteDescription -> T.Text
+getReadableDD' baseModule dd = do
+  case DD.unconsDD dd of
+    (MID.Main, rest) ->
+      "this" <> nsSep <> rest
+    (MID.Base, rest) ->
+      "base" <> nsSep <> rest
+    (MID.Library digest, rest) -> do
+      let depMap = Map.toList $ moduleDependency baseModule
+      let aliasOrNone = fmap (MA.reify . fst) $ flip find depMap $ \(_, dependency) -> do
+            digest == dependencyDigest dependency
+      case aliasOrNone of
+        Nothing ->
+          DD.reify dd
+        Just alias ->
+          alias <> nsSep <> rest

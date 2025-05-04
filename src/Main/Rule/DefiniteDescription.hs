@@ -4,7 +4,6 @@ module Main.Rule.DefiniteDescription
     moduleID,
     localLocator,
     globalLocator,
-    getReadableDD,
     getLocatorPair,
     newByGlobalLocator,
     getFormDD,
@@ -13,14 +12,13 @@ module Main.Rule.DefiniteDescription
     toBuilder,
     llvmGlobalLocator,
     isEntryPoint,
+    unconsDD,
   )
 where
 
 import Data.Binary
 import Data.ByteString.Builder
-import Data.HashMap.Strict qualified as Map
 import Data.Hashable
-import Data.List (find)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import GHC.Generics
@@ -31,8 +29,6 @@ import Main.Rule.GlobalLocator qualified as GL
 import Main.Rule.Hint qualified as H
 import Main.Rule.List (initLast)
 import Main.Rule.LocalLocator qualified as LL
-import Main.Rule.Module qualified as M
-import Main.Rule.ModuleAlias qualified as MA
 import Main.Rule.ModuleDigest qualified as MD
 import Main.Rule.ModuleID qualified as MID
 import Main.Rule.SourceLocator qualified as SL
@@ -103,23 +99,6 @@ unconsDD dd = do
           (MID.Library (MD.ModuleDigest headElem), T.intercalate nsSep rest)
     _ ->
       error "Rule.DefiniteDescription.moduleID"
-
-getReadableDD :: M.Module -> DefiniteDescription -> T.Text
-getReadableDD baseModule dd =
-  case unconsDD dd of
-    (MID.Main, rest) ->
-      "this" <> nsSep <> rest
-    (MID.Base, rest) ->
-      "base" <> nsSep <> rest
-    (MID.Library digest, rest) -> do
-      let depMap = Map.toList $ M.moduleDependency baseModule
-      let aliasOrNone = fmap (MA.reify . fst) $ flip find depMap $ \(_, dependency) -> do
-            digest == M.dependencyDigest dependency
-      case aliasOrNone of
-        Nothing ->
-          reify dd
-        Just alias ->
-          alias <> nsSep <> rest
 
 globalLocator :: DefiniteDescription -> T.Text
 globalLocator dd = do

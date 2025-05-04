@@ -207,6 +207,6 @@ weakenStmtKind stmtKind =
       let consArgs' = map weakenBinder consArgs
       DataIntro dataName dataArgs' consArgs' discriminant
 
-weakenForeign :: F.Foreign -> F.WeakForeign
+weakenForeign :: F.Foreign -> WT.WeakForeign
 weakenForeign foreignItem@(F.Foreign m _ _ _) =
   fmap (WT.fromBaseLowType m) foreignItem
