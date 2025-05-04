@@ -1,4 +1,4 @@
-module Main.Rule.RawProgram.Decode (pp, ImportInfo (..)) where
+module Language.RawTerm.Rule.RawStmt.Decode (pp, ImportInfo (..)) where
 
 import Control.Monad
 import Data.Bifunctor
