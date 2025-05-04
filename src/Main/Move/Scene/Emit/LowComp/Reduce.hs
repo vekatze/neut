@@ -8,8 +8,8 @@ where
 import Data.IntMap qualified as IntMap
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.LowComp.Rule.LowComp qualified as LC
+import Language.LowComp.Rule.LowComp.Subst
 import Main.Move.Context.Gensym qualified as Gensym
-import Main.Rule.LowComp.Subst
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

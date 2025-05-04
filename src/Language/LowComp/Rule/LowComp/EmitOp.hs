@@ -1,4 +1,4 @@
-module Main.Rule.LowComp.EmitOp
+module Language.LowComp.Rule.LowComp.EmitOp
   ( Handle,
     new,
     emitLowOp,
@@ -13,7 +13,7 @@ import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
 import Language.LowComp.Rule.LowComp qualified as LC
-import Main.Rule.LowComp.EmitValue
+import Language.LowComp.Rule.LowComp.EmitValue
 import Main.Rule.LowType.EmitLowType
 import Main.Rule.PrimType.EmitPrimType
 

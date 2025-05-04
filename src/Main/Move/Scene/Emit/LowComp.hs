@@ -14,12 +14,12 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LowType qualified as LT
 import Language.LowComp.Rule.LowComp qualified as LC
+import Language.LowComp.Rule.LowComp.EmitOp qualified as EmitOp
+import Language.LowComp.Rule.LowComp.EmitValue
 import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Builder
-import Main.Rule.LowComp.EmitOp qualified as EmitOp
-import Main.Rule.LowComp.EmitValue
 import Main.Rule.LowType.EmitLowType
 
 type Label =

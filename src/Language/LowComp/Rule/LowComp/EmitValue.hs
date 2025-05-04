@@ -1,4 +1,4 @@
-module Main.Rule.LowComp.EmitValue
+module Language.LowComp.Rule.LowComp.EmitValue
   ( emitValue,
     showArgs,
     showFuncArgs,
