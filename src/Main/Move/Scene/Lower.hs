@@ -24,17 +24,20 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.Gensym qualified as Gensym
+import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Cancel
 import Main.Move.Scene.Comp.Reduce qualified as Reduce
 import Main.Move.Scene.Comp.Subst qualified as Subst
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Arch
+import Main.Rule.Arch qualified as A
 import Main.Rule.ArgNum qualified as AN
 import Main.Rule.BaseLowType qualified as BLT
+import Main.Rule.BasePrimType qualified as BPT
 import Main.Rule.Comp qualified as C
 import Main.Rule.Const
+import Main.Rule.DataSize qualified as DS
 import Main.Rule.DeclarationName qualified as DN
 import Main.Rule.DefiniteDescription qualified as DD
 import Main.Rule.EnumCase qualified as EC
@@ -42,6 +45,7 @@ import Main.Rule.ExternalName qualified as EN
 import Main.Rule.Foreign qualified as F
 import Main.Rule.ForeignCodType qualified as F
 import Main.Rule.ForeignCodType qualified as FCT
+import Main.Rule.Hint (internalHint)
 import Main.Rule.Ident
 import Main.Rule.LowComp qualified as LC
 import Main.Rule.LowType qualified as LT
@@ -79,7 +83,7 @@ new (Base.Handle {..}) = do
 
 makeBaseDeclEnv :: Arch -> DN.DeclEnv
 makeBaseDeclEnv arch = do
-  Map.fromList $ flip map (F.defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
+  Map.fromList $ flip map (defaultForeignList arch) $ \(F.Foreign _ name domList cod) -> do
     (DN.Ext name, (domList, cod))
 
 lower :: Handle -> [C.CompStmt] -> EIO LC.LowCode
@@ -524,3 +528,13 @@ commConv x lowComp cont2 =
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable
+
+defaultForeignList :: A.Arch -> [F.Foreign]
+defaultForeignList arch =
+  [ F.Foreign internalHint EN.malloc [getWordType arch] (FCT.Cod BLT.Pointer),
+    F.Foreign internalHint EN.free [BLT.Pointer] FCT.Void
+  ]
+
+getWordType :: A.Arch -> BLT.BaseLowType
+getWordType arch =
+  BLT.PrimNum $ BPT.Int $ BPT.Explicit $ IntSize $ DS.reify $ A.dataSizeOf arch
