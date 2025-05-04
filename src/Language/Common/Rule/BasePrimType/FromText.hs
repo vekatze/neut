@@ -1,4 +1,4 @@
-module Main.Rule.BasePrimType.FromText (fromText) where
+module Language.Common.Rule.BasePrimType.FromText (fromText) where
 
 import Data.Text qualified as T
 import Language.Common.Rule.BasePrimType qualified as BPT
