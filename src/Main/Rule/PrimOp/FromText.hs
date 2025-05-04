@@ -9,8 +9,8 @@ import Language.Common.Rule.PrimOp.CmpOp
 import Language.Common.Rule.PrimOp.ConvOp qualified as Conv
 import Language.Common.Rule.PrimOp.UnaryOp
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.PrimType.FromText qualified as PT
 import Main.Rule.DataSize qualified as DS
-import Main.Rule.PrimType.FromText qualified as PT
 
 fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PrimOp
 fromDefiniteDescription dataSize dd = do

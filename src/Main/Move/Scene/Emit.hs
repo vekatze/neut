@@ -21,6 +21,7 @@ import Language.Common.Rule.LowType qualified as LT
 import Language.Common.Rule.LowType.FromBaseLowType qualified as LT
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.PrimType.EmitPrimType (emitPrimType)
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.LowComp.Rule.LowComp.EmitValue
@@ -32,7 +33,6 @@ import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Builder
 import Main.Rule.Const
 import Main.Rule.LowType.EmitLowType
-import Main.Rule.PrimType.EmitPrimType (emitPrimType)
 
 newtype Handle = Handle
   { baseHandle :: Base.Handle

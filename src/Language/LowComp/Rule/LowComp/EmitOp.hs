@@ -12,10 +12,10 @@ import Language.Common.Rule.LowType qualified as LT
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.PrimType.EmitPrimType
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.LowComp.Rule.LowComp.EmitValue
 import Main.Rule.LowType.EmitLowType
-import Main.Rule.PrimType.EmitPrimType
 
 data Handle = Handle
   { baseSize :: Int,

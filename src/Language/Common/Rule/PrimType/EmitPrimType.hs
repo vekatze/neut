@@ -1,4 +1,4 @@
-module Main.Rule.PrimType.EmitPrimType (emitPrimType) where
+module Language.Common.Rule.PrimType.EmitPrimType (emitPrimType) where
 
 import Data.ByteString.Builder
 import Language.Common.Rule.PrimNumSize
