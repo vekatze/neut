@@ -1,4 +1,4 @@
-module Main.Move.UI.Handle.LocalRemark
+module Main.Move.Scene.Elaborate.Handle.LocalLogs
   ( Handle,
     new,
     insert,
@@ -11,18 +11,18 @@ import Logger.Rule.Log qualified as L
 
 newtype Handle
   = Handle
-  { remarkListRef :: IORef [L.Log] -- per file
+  { logsRef :: IORef [L.Log]
   }
 
 new :: IO Handle
 new = do
-  remarkListRef <- newIORef []
+  logsRef <- newIORef []
   return $ Handle {..}
 
 insert :: Handle -> L.Log -> IO ()
 insert h r = do
-  modifyIORef' (remarkListRef h) $ (:) r
+  modifyIORef' (logsRef h) $ (:) r
 
 get :: Handle -> IO [L.Log]
 get h = do
-  readIORef (remarkListRef h)
+  readIORef (logsRef h)

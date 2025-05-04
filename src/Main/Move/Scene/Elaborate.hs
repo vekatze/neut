@@ -29,6 +29,7 @@ import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Handle.Elaborate
 import Main.Move.Scene.Elaborate.Handle.Hole qualified as Hole
+import Main.Move.Scene.Elaborate.Handle.LocalLogs qualified as LocalLogs
 import Main.Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
@@ -36,7 +37,6 @@ import Main.Move.Scene.Elaborate.Infer qualified as Infer
 import Main.Move.Scene.Elaborate.Unify qualified as Unify
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Move.UI.Handle.GlobalRemark qualified as GlobalRemark
-import Main.Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Main.Rule.Annotation qualified as AN
 import Main.Rule.Attr.Data qualified as AttrD
 import Main.Rule.Attr.Lam qualified as AttrL
@@ -77,18 +77,17 @@ getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =
   WeakType.get $ weakTypeHandle h
 
-elaborate :: Handle -> Target -> Either Cache.Cache [WeakStmt] -> EIO [Stmt]
-elaborate h t cacheOrStmt = do
+elaborate :: Handle -> Target -> [L.Log] -> Either Cache.Cache [WeakStmt] -> EIO [Stmt]
+elaborate h t logs cacheOrStmt = do
   case cacheOrStmt of
     Left cache -> do
       let stmtList = Cache.stmtList cache
       forM_ stmtList $ insertStmt h
-      let remarkList = Cache.remarkList cache
-      liftIO $ GlobalRemark.insert (globalRemarkHandle h) remarkList
+      liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs
       liftIO $ Gensym.setCount (gensymHandle h) $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
-      analyzeStmtList h stmtList >>= synthesizeStmtList h t
+      analyzeStmtList h stmtList >>= synthesizeStmtList h t logs
 
 analyzeStmtList :: Handle -> [WeakStmt] -> EIO [WeakStmt]
 analyzeStmtList h stmtList = do
@@ -97,15 +96,14 @@ analyzeStmtList h stmtList = do
     insertWeakStmt h stmt'
     return stmt'
 
-synthesizeStmtList :: Handle -> Target -> [WeakStmt] -> EIO [Stmt]
-synthesizeStmtList h t stmtList = do
+synthesizeStmtList :: Handle -> Target -> [L.Log] -> [WeakStmt] -> EIO [Stmt]
+synthesizeStmtList h t logs stmtList = do
   -- mapM_ viewStmt stmtList
   liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setSubst (holeHandle h)
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
   -- mapM_ (viewStmt . weakenStmt) stmtList'
-  remarkList <- liftIO $ LocalRemark.get (localRemarkHandle h)
   localVarTree <- liftIO $ SymLoc.get (symLocHandle h)
   topCandidate <- liftIO $ TopCandidate.get (topCandidateHandle h)
   rawImportSummary <- liftIO $ RawImportSummary.get (rawImportSummaryHandle h)
@@ -113,7 +111,7 @@ synthesizeStmtList h t stmtList = do
   Cache.saveCache (pathHandle h) t (currentSource h) $
     Cache.Cache
       { Cache.stmtList = stmtList',
-        Cache.remarkList = remarkList,
+        Cache.remarkList = logs,
         Cache.countSnapshot = countSnapshot
       }
   Cache.saveCompletionCache (pathHandle h) t (currentSource h) $
@@ -122,7 +120,7 @@ synthesizeStmtList h t stmtList = do
         Cache.topCandidate = topCandidate,
         Cache.rawImportSummary = rawImportSummary
       }
-  liftIO $ GlobalRemark.insert (globalRemarkHandle h) remarkList
+  liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs
   return stmtList'
 
 elaborateStmt :: Handle -> WeakStmt -> EIO ([Stmt], [L.Log])
@@ -346,7 +344,7 @@ elaborate' h term =
           t' <- elaborate' h t
           let message = "Admitted: `" <> toText (weaken t') <> "`"
           let typeRemark = newLog m remarkLevel message
-          liftIO $ LocalRemark.insert (localRemarkHandle h) typeRemark
+          liftIO $ LocalLogs.insert (localLogsHandle h) typeRemark
           return e'
     m :< WT.Resource dd resourceID unitType discarder copier -> do
       unitType' <- elaborate' h unitType

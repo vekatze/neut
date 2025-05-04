@@ -91,8 +91,11 @@ checkSource h target source cacheOrContent = do
   localHandle <- Local.new (baseHandle h) source
   let parseHandle = Parse.new (baseHandle h) localHandle
   elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
-  liftIO $ Logger.report (Base.loggerHandle (baseHandle h)) $ "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  void $ Parse.parse parseHandle target source cacheOrContent >>= Elaborate.elaborate elaborateHandle target
+  liftIO $
+    Logger.report (Base.loggerHandle (baseHandle h)) $
+      "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
+  (cacheOrStmtList, logs) <- Parse.parse parseHandle target source cacheOrContent
+  void $ Elaborate.elaborate elaborateHandle target logs cacheOrStmtList
   return elaborateHandle
 
 unsnoc :: [a] -> Maybe ([a], a)

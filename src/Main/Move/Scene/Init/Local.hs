@@ -17,12 +17,10 @@ import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
 import Main.Move.Scene.Parse.Handle.Global qualified as Global
 import Main.Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
-import Main.Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Main.Rule.Source qualified as Source
 
 data Handle = Handle
   { unusedHandle :: Unused.Handle,
-    localRemarkHandle :: LocalRemark.Handle,
     globalHandle :: Global.Handle,
     aliasHandle :: Alias.Handle,
     locatorHandle :: Locator.Handle,
@@ -39,7 +37,6 @@ new h source = do
   let envHandle = Base.envHandle h
   let antecedentHandle = Base.antecedentHandle h
   unusedHandle <- liftIO Unused.new
-  localRemarkHandle <- liftIO LocalRemark.new
   tagHandle <- liftIO Tag.new
   locatorHandle <- Locator.new envHandle tagHandle source
   aliasHandle <- liftIO $ Alias.new antecedentHandle locatorHandle envHandle source

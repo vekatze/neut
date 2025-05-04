@@ -136,8 +136,8 @@ compile h target outputKindList contentSeq = do
     liftIO $
       Logger.report (Base.loggerHandle (baseHandle h)) $
         "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
-    cacheOrStmtList <- Parse.parse parseHandle target source cacheOrContent
-    stmtList <- Elaborate.elaborate elaborateHandle target cacheOrStmtList
+    (cacheOrStmtList, logs) <- Parse.parse parseHandle target source cacheOrContent
+    stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmtList
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
     b <- Cache.needsCompilation cacheHandle outputKindList source
     if b

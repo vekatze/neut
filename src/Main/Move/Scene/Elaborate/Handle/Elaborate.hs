@@ -23,6 +23,7 @@ import Main.Move.Language.Utility.Gensym qualified as Gensym
 import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Handle.Hole qualified as Hole
+import Main.Move.Scene.Elaborate.Handle.LocalLogs qualified as LocalLogs
 import Main.Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
@@ -34,7 +35,6 @@ import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
 import Main.Move.UI.Handle.GlobalRemark qualified as GlobalRemark
-import Main.Move.UI.Handle.LocalRemark qualified as LocalRemark
 import Main.Rule.Binder
 import Main.Rule.Const (defaultInlineLimit)
 import Main.Rule.Hint (Hint)
@@ -58,7 +58,7 @@ data Handle
     defHandle :: Definition.Handle,
     gensymHandle :: Gensym.Handle,
     keyArgHandle :: KeyArg.Handle,
-    localRemarkHandle :: LocalRemark.Handle,
+    localLogsHandle :: LocalLogs.Handle,
     pathHandle :: Path.Handle,
     symLocHandle :: SymLoc.Handle,
     topCandidateHandle :: TopCandidate.Handle,
@@ -77,6 +77,7 @@ type BoundVarEnv = [BinderF WT.WeakTerm]
 
 new :: Base.Handle -> Local.Handle -> Source -> IO Handle
 new baseHandle@(Base.Handle {..}) localHandle@(Local.Handle {..}) currentSource = do
+  localLogsHandle <- LocalLogs.new
   let substHandle = Subst.new gensymHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
   constraintHandle <- Constraint.new
