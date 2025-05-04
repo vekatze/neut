@@ -1,5 +1,3 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-
 module Main.Move.Context.Gensym
   ( Handle,
     new,
