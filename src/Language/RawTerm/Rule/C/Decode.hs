@@ -1,4 +1,4 @@
-module Main.Rule.C.Decode
+module Language.RawTerm.Rule.C.Decode
   ( decode,
     asPrefix,
     asPrefix',
