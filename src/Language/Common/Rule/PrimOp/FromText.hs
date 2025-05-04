@@ -1,4 +1,4 @@
-module Main.Rule.PrimOp.FromText (fromDefiniteDescription) where
+module Language.Common.Rule.PrimOp.FromText (fromDefiniteDescription) where
 
 import Data.Text qualified as T
 import Language.Common.Rule.DefiniteDescription qualified as DD

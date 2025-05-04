@@ -22,6 +22,7 @@ import Language.Common.Rule.Error (Error (MakeError))
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Hint qualified as Hint
 import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.PrimOp.FromText qualified as PrimOp
 import Language.Common.Rule.PrimType.FromText qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Key
@@ -40,7 +41,6 @@ import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Rule.GlobalName
 import Main.Rule.GlobalName qualified as GN
 import Main.Rule.OptimizableData qualified as OD
-import Main.Rule.PrimOp.FromText qualified as PrimOp
 import Main.Rule.TopNameMap
 import Prelude hiding (lookup)
 
