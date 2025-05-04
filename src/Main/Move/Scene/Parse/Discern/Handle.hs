@@ -8,11 +8,11 @@ module Main.Move.Scene.Parse.Discern.Handle
   )
 where
 
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.OptimizableData qualified as OptimizableData

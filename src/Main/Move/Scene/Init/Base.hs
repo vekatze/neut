@@ -7,12 +7,13 @@ where
 
 import Color.Move.CreateHandle qualified as Color
 import Color.Rule.Handle qualified as Color
+import Gensym.Move.CreateHandle qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Logger.Move.CreateHandle qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Artifact qualified as Artifact
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.Module qualified as Module
@@ -51,7 +52,7 @@ new :: Remark.Config -> Maybe (Path Abs File) -> IO Handle
 new cfg moduleFilePathOrNone = do
   colorHandle <- Color.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
   loggerHandle <- Logger.createHandle colorHandle (Remark.endOfEntry cfg) (Remark.enableDebugMode cfg)
-  gensymHandle <- Gensym.new
+  gensymHandle <- Gensym.createHandle
   platformHandle <- Platform.new loggerHandle
   envHandle <- Env.new loggerHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
   keyArgHandle <- KeyArg.new envHandle

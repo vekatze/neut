@@ -11,12 +11,12 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Error (newError)
 import Language.Common.Rule.Hint
 import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO (EIO)
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Parse
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Rule.Ens qualified as E

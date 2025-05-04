@@ -6,6 +6,7 @@ module Main.Move.Scene.Comp.Reduce
 where
 
 import Data.IntMap qualified as IntMap
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.Magic qualified as M

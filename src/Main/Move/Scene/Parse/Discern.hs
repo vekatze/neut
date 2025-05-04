@@ -10,6 +10,7 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Gensym.Move.Gensym qualified as Gensym
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL

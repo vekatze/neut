@@ -1,8 +1,5 @@
 module Main.Move.Context.Gensym
-  ( Handle,
-    new,
-    newCount,
-    newTextForHole,
+  ( newTextForHole,
     newPreHole,
     newHole,
     newIdentFromText,
@@ -11,14 +8,13 @@ module Main.Move.Context.Gensym
     newTextFromText,
     newIdentForHole,
     newValueVarLocalWith,
-    setCount,
-    getCount,
   )
 where
 
 import Control.Comonad.Cofree
-import Data.IORef
 import Data.Text qualified as T
+import Gensym.Move.Gensym
+import Gensym.Rule.Handle
 import Language.Common.Rule.Const
 import Language.Common.Rule.Hint (Hint)
 import Language.Common.Rule.HoleID (HoleID (HoleID))
@@ -27,20 +23,6 @@ import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Comp.Rule.Comp qualified as C
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-
-newtype Handle = Handle
-  { counterRef :: IORef Int
-  }
-
-new :: IO Handle
-new = do
-  counterRef <- newIORef 0
-  return $ Handle {..}
-
-{-# INLINE newCount #-}
-newCount :: Handle -> IO Int
-newCount h =
-  atomicModifyIORef' (counterRef h) (\x -> (x + 1, x))
 
 {-# INLINE newTextForHole #-}
 newTextForHole :: Handle -> IO T.Text
@@ -89,14 +71,6 @@ newIdentForHole h = do
   text <- newTextForHole h
   i <- newCount h
   return $ I (text, i)
-
-setCount :: Handle -> Int -> IO ()
-setCount h countSnapshot = do
-  atomicModifyIORef' (counterRef h) (\x -> (max x countSnapshot, ()))
-
-getCount :: Handle -> IO Int
-getCount h =
-  readIORef (counterRef h)
 
 {-# INLINE newValueVarLocalWith #-}
 newValueVarLocalWith :: Handle -> T.Text -> IO (Ident, C.Value)

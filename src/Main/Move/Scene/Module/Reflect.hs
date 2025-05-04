@@ -14,6 +14,7 @@ import Control.Monad.Except (MonadError (throwError), liftEither)
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Error
@@ -25,7 +26,6 @@ import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO (EIO)
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)

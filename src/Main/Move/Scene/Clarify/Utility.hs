@@ -12,6 +12,7 @@ module Main.Move.Scene.Clarify.Utility
 where
 
 import Data.IntMap qualified as IntMap
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify

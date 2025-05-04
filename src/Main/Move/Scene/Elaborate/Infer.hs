@@ -15,6 +15,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Gensym.Move.Gensym qualified as Gensym
 import Language.Common.Rule.Annotation qualified as Annotation
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.Data qualified as AttrD

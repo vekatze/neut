@@ -7,6 +7,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.Magic qualified as M

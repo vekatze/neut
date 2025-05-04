@@ -11,12 +11,12 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Unlift (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Error (newError)
 import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.ModuleAlias (ModuleAlias)
 import Language.Common.Rule.ModuleID qualified as MID
 import Main.Move.Context.EIO (EIO)
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Module qualified as Module
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
