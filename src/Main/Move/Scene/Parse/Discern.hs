@@ -20,7 +20,7 @@ import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.SymLoc qualified as SymLoc
 import Main.Move.Context.Tag qualified as Tag
 import Main.Move.Context.TopCandidate qualified as TopCandidate
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Discern.Data
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Move.Scene.Parse.Discern.Name

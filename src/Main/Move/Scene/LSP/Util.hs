@@ -29,7 +29,7 @@ import Logger.Rule.LogLevel
 import Main.Move.Context.EIO (EIO, runEIO)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Parse.Core qualified as Parse
-import Main.Move.UI.Handle.GlobalRemark qualified as GlobalRemark
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Rule.Error qualified as E
 import Main.Rule.Lsp
 import Path

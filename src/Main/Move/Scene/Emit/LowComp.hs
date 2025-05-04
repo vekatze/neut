@@ -11,7 +11,7 @@ import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Builder
 import Main.Rule.Ident

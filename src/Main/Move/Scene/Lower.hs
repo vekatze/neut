@@ -25,7 +25,7 @@ import Data.Text qualified as T
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Cancel
 import Main.Move.Scene.Comp.Reduce qualified as Reduce
 import Main.Move.Scene.Comp.Subst qualified as Subst

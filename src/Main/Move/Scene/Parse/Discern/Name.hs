@@ -16,7 +16,7 @@ import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Tag qualified as Tag
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
 import Main.Move.Scene.Parse.Handle.Global qualified as Global

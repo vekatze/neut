@@ -14,7 +14,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Main.Move.Context.Locator qualified as Locator
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Linearize qualified as Linearize
 import Main.Move.Scene.Clarify.Utility qualified as Utility
 import Main.Rule.ArgNum qualified as AN

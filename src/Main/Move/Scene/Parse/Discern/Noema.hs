@@ -5,7 +5,7 @@ module Main.Move.Scene.Parse.Discern.Noema
 where
 
 import Control.Comonad.Cofree hiding (section)
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Rule.Magic qualified as M
 import Main.Rule.Noema qualified as N

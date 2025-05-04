@@ -18,12 +18,12 @@ import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.Type qualified as Type
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
-import Main.Move.UI.Handle.GlobalRemark qualified as GlobalRemark
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Rule.Config.Remark qualified as Remark
 import Path
 

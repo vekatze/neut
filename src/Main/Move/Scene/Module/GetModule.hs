@@ -13,7 +13,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Module qualified as Module
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Main.Rule.Error (newError)

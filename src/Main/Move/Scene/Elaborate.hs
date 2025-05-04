@@ -23,7 +23,7 @@ import Main.Move.Context.RawImportSummary qualified as RawImportSummary
 import Main.Move.Context.SymLoc qualified as SymLoc
 import Main.Move.Context.TopCandidate qualified as TopCandidate
 import Main.Move.Context.Type qualified as Type
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
@@ -36,7 +36,7 @@ import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Main.Move.Scene.Elaborate.Infer qualified as Infer
 import Main.Move.Scene.Elaborate.Unify qualified as Unify
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
-import Main.Move.UI.Handle.GlobalRemark qualified as GlobalRemark
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Rule.Annotation qualified as AN
 import Main.Rule.Attr.Data qualified as AttrD
 import Main.Rule.Attr.Lam qualified as AttrL

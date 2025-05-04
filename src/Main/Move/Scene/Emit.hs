@@ -14,7 +14,7 @@ import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Main.Move.Scene.Emit.LowComp.Reduce qualified as Reduce
 import Main.Move.Scene.Init.Base qualified as Base

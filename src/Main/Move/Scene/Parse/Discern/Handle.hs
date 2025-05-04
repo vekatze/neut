@@ -16,7 +16,7 @@ import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.SymLoc qualified as SymLoc
 import Main.Move.Context.Tag qualified as Tag
 import Main.Move.Context.TopCandidate qualified as TopCandidate
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias

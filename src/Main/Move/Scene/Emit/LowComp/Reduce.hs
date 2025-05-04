@@ -6,7 +6,7 @@ module Main.Move.Scene.Emit.LowComp.Reduce
 where
 
 import Data.IntMap qualified as IntMap
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Rule.Ident.Reify qualified as Ident
 import Main.Rule.LowComp qualified as LC
 import Main.Rule.LowComp.Subst

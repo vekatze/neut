@@ -17,7 +17,7 @@ import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Module qualified as Module
 import Main.Move.Context.RawImportSummary qualified as RawImportSummary
 import Main.Move.Context.Tag qualified as Tag
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset

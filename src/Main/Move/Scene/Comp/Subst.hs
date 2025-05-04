@@ -6,7 +6,7 @@ module Main.Move.Scene.Comp.Subst
 where
 
 import Data.IntMap qualified as IntMap
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Rule.Comp qualified as C
 import Main.Rule.Ident.Reify qualified as Ident
 

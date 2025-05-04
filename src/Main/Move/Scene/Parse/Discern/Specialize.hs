@@ -9,7 +9,7 @@ import Control.Monad.IO.Class
 import Data.Vector qualified as V
 import Main.Move.Context.EIO (EIO, raiseCritical')
 import Main.Move.Context.OptimizableData qualified as OptimizableData
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Move.Scene.Parse.Discern.Noema
 import Main.Rule.ArgNum qualified as AN

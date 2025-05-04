@@ -1,4 +1,4 @@
-module Main.Move.UI.Handle.GlobalRemark
+module Main.Move.Context.GlobalRemark
   ( Handle,
     new,
     insert,

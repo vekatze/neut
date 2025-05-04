@@ -19,7 +19,7 @@ import Main.Move.Context.RawImportSummary qualified as RawImportSummary
 import Main.Move.Context.SymLoc qualified as SymLoc
 import Main.Move.Context.TopCandidate qualified as TopCandidate
 import Main.Move.Context.Type qualified as Type
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Handle.Hole qualified as Hole
@@ -34,7 +34,7 @@ import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
-import Main.Move.UI.Handle.GlobalRemark qualified as GlobalRemark
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Rule.Binder
 import Main.Rule.Const (defaultInlineLimit)
 import Main.Rule.Hint (Hint)

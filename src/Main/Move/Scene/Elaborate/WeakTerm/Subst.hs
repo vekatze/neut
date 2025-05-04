@@ -12,7 +12,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Rule.Annotation qualified as AN
 import Main.Rule.Attr.Lam qualified as AttrL
 import Main.Rule.Binder

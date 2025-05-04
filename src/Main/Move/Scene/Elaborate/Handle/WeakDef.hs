@@ -12,7 +12,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Rule.Attr.Lam qualified as AttrL
 import Main.Rule.Binder
 import Main.Rule.DefiniteDescription qualified as DD

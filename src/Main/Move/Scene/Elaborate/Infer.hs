@@ -22,7 +22,7 @@ import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.Type qualified as Type
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Elaborate
 import Main.Move.Scene.Elaborate.Handle.Hole qualified as Hole

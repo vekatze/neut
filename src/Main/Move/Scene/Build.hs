@@ -39,7 +39,7 @@ import Main.Move.Scene.Load qualified as Load
 import Main.Move.Scene.Lower qualified as Lower
 import Main.Move.Scene.Parse qualified as Parse
 import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Move.UI.Handle.GlobalRemark qualified as GlobalRemark
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Rule.Cache
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Error qualified as E

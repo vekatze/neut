@@ -11,7 +11,7 @@ import Data.Text qualified as T
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Module qualified as Module
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.GetModule qualified as GetModule
 import Main.Rule.BaseName qualified as BN

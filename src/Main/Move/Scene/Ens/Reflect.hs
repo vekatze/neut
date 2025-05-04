@@ -13,7 +13,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Parse
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Rule.C
 import Main.Rule.Ens qualified as E

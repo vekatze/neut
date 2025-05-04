@@ -1,6 +1,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module Main.Move.Language.Utility.Gensym
+module Main.Move.Context.Gensym
   ( Handle,
     new,
     newCount,

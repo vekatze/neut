@@ -15,7 +15,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Main.Move.Context.EIO (EIO)
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.BaseName (isCapitalized)
 import Main.Rule.BaseName qualified as BN

@@ -7,7 +7,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Utility qualified as Utility
 import Main.Rule.Comp qualified as C
 import Main.Rule.Ident

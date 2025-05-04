@@ -7,7 +7,7 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Rule.Attr.Lam qualified as AttrL
 import Main.Rule.Binder
 import Main.Rule.DecisionTree qualified as DT

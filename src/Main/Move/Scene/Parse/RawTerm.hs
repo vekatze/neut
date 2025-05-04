@@ -19,7 +19,7 @@ import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Main.Move.Context.EIO (EIO)
-import Main.Move.Language.Utility.Gensym (newPreHole, newTextForHole)
+import Main.Move.Context.Gensym (newPreHole, newTextForHole)
 import Main.Move.Scene.Parse.Core
 import Main.Rule.BaseName qualified as BN
 import Main.Rule.C

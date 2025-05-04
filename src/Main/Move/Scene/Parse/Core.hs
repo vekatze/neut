@@ -41,8 +41,8 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
 import Main.Move.Context.EIO
-import Main.Move.Language.Utility.Gensym (newTextForHole)
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym (newTextForHole)
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Rule.BaseName qualified as BN
 import Main.Rule.C
 import Main.Rule.Const

@@ -20,7 +20,7 @@ import Main.Move.Context.EIO (EIO, raiseCritical, raiseCritical')
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Language.Utility.Gensym qualified as Gensym
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Main.Move.Scene.Clarify.Linearize qualified as Linearize
