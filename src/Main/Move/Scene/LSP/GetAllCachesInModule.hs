@@ -19,8 +19,7 @@ import Main.Rule.Source
 import Main.Rule.Target (Target (Peripheral))
 import Path
 
-data Handle
-  = Handle
+data Handle = Handle
   { shiftToLatestHandle :: STL.Handle,
     pathHandle :: Path.Handle
   }

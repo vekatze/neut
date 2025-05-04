@@ -9,9 +9,9 @@ module Main.Rule.HoleSubst
 where
 
 import Data.IntMap qualified as IntMap
-import Main.Rule.HoleID qualified as HID
-import Main.Rule.Ident
-import Main.Rule.WeakTerm
+import Language.Common.Rule.HoleID qualified as HID
+import Language.Common.Rule.Ident
+import Language.WeakTerm.Rule.WeakTerm
 import Main.Rule.WeakTerm.Holes
 import Prelude hiding (lookup)
 

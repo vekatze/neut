@@ -15,8 +15,7 @@ import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Config.Check
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { baseHandle :: Base.Handle
   }
 

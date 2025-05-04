@@ -40,17 +40,17 @@ import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Const
+import Language.Common.Rule.Error qualified as E
+import Language.Common.Rule.Hint
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO
 import Main.Move.Context.Gensym (newTextForHole)
 import Main.Move.Context.Gensym qualified as Gensym
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.C
-import Main.Rule.Const
-import Main.Rule.Error qualified as E
-import Main.Rule.Hint
 import Main.Rule.Hint.Reflect qualified as Hint
 import Main.Rule.Syntax.Block
-import Main.Rule.Syntax.Series qualified as SE
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)
@@ -60,8 +60,7 @@ import Text.Read qualified as R
 type MustParseWholeFile =
   Bool
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { gensymHandle :: Gensym.Handle
   }
 

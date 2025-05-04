@@ -19,23 +19,22 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Language.Common.Rule.Error (newError, newError')
+import Language.Common.Rule.Hint qualified as H
+import Language.Common.Rule.ModuleDigest
+import Language.Common.Rule.ModuleDigest qualified as MD
+import Language.Common.Rule.ModuleID qualified as MID
 import Main.Move.Context.EIO (EIO, raiseError')
 import Main.Move.Context.Path qualified as Path
 import Main.Rule.Const
-import Main.Rule.Error (newError, newError')
-import Main.Rule.Hint qualified as H
 import Main.Rule.Module
-import Main.Rule.ModuleDigest
-import Main.Rule.ModuleDigest qualified as MD
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.ModuleURL
 import Main.Rule.Source qualified as Source
 import Path
 import Path.IO
 import System.Environment
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
   }
 

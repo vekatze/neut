@@ -1,4 +1,3 @@
 module Main.Rule.Config.Clean (Config (..)) where
 
-data Config
-  = Config {}
+data Config = Config {}

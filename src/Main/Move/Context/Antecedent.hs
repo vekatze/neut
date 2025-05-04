@@ -13,12 +13,11 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Rule.ModuleID qualified as MID
 import Main.Rule.Module qualified as M
-import Main.Rule.ModuleID qualified as MID
 import Prelude hiding (lookup, read)
 
-data Handle
-  = Handle
+data Handle = Handle
   { antecedentMapRef :: IORef (Map.HashMap MID.ModuleID M.Module),
     reverseAntecedentMapRef :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
     antecedentDigestCacheRef :: IORef (Maybe T.Text)

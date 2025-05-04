@@ -2,8 +2,8 @@ module Main.Rule.Vector (swap) where
 
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Main.Rule.Error
-import Main.Rule.Hint
+import Language.Common.Rule.Error
+import Language.Common.Rule.Hint
 
 swap :: Hint -> Int -> V.Vector a -> Either Error (V.Vector a)
 swap m i xs = do

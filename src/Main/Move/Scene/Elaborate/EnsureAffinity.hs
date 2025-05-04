@@ -13,6 +13,18 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
+import Language.Common.Rule.Attr.Data qualified as AttrD
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.Magic qualified as M
+import Language.Term.Rule.Term qualified as TM
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.EIO (EIO, raiseCritical)
@@ -21,23 +33,11 @@ import Main.Move.Context.Type qualified as Type
 import Main.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
-import Main.Rule.Attr.Data qualified as AttrD
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.Magic qualified as M
 import Main.Rule.OptimizableData
 import Main.Rule.OptimizableData qualified as OD
 import Main.Rule.Stuck qualified as Stuck
-import Main.Rule.Term qualified as TM
 import Main.Rule.Term.FreeVarsWithHints (freeVarsWithHints)
 import Main.Rule.Term.Weaken (weaken)
-import Main.Rule.WeakTerm qualified as WT
 import Main.Rule.WeakTerm.ToText qualified as WT
 
 type AffineConstraint =
@@ -48,8 +48,7 @@ type WeakAffineConstraint =
 
 type VarEnv = IntMap.IntMap TM.Term
 
-data Handle
-  = Handle
+data Handle = Handle
   { elaborateHandle :: Elaborate.Handle,
     varEnv :: VarEnv,
     foundVarSetRef :: IORef (IntMap.IntMap Bool),

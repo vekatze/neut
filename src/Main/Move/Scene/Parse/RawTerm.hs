@@ -18,25 +18,25 @@ import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Error (newError)
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Rune qualified as RU
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.Key
+import Language.RawTerm.Rule.Name
+import Language.RawTerm.Rule.NecessityVariant (NecessityVariant (..), showNecessityVariant)
+import Language.RawTerm.Rule.RawBinder
+import Language.RawTerm.Rule.RawIdent
+import Language.RawTerm.Rule.RawPattern qualified as RP
+import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Gensym (newPreHole, newTextForHole)
 import Main.Move.Scene.Parse.Core
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.C
 import Main.Rule.Const
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Error (newError)
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.Hint
-import Main.Rule.Key
-import Main.Rule.Name
-import Main.Rule.NecessityVariant (NecessityVariant (..), showNecessityVariant)
-import Main.Rule.RawBinder
-import Main.Rule.RawIdent
-import Main.Rule.RawPattern qualified as RP
-import Main.Rule.RawTerm qualified as RT
-import Main.Rule.Rune qualified as RU
-import Main.Rule.Syntax.Series qualified as SE
 import Text.Megaparsec
 import Text.Read qualified as R
 

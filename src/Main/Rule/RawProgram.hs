@@ -13,17 +13,17 @@ module Main.Rule.RawProgram
 where
 
 import Data.Text qualified as T
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.C
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.ForeignCodType qualified as F
-import Main.Rule.Hint
-import Main.Rule.IsConstLike
-import Main.Rule.LocalLocator qualified as LL
-import Main.Rule.RawBinder
-import Main.Rule.RawTerm qualified as RT
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.ForeignCodType qualified as F
+import Language.Common.Rule.Hint
+import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.RawBinder
+import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.StmtKind qualified as SK
-import Main.Rule.Syntax.Series qualified as SE
 
 data RawProgram
   = RawProgram Hint [(RawImport, C)] [(RawStmt, C)]

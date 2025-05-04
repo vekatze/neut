@@ -11,13 +11,22 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
+import Language.Common.Rule.Hint
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
+import Language.Common.Rule.SourceLocator qualified as SL
+import Language.Common.Rule.StrictGlobalLocator qualified as SGL
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Main.Move.Context.Env qualified as Env
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Module qualified as Module
 import Main.Move.Context.RawImportSummary qualified as RawImportSummary
 import Main.Move.Context.Tag qualified as Tag
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
@@ -28,27 +37,17 @@ import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Source.ShiftToLatest qualified as STL
 import Main.Rule.AliasInfo qualified as AI
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.C
 import Main.Rule.Const
-import Main.Rule.GlobalLocatorAlias qualified as GLA
-import Main.Rule.Hint
 import Main.Rule.Import (ImportItem (..))
-import Main.Rule.LocalLocator qualified as LL
 import Main.Rule.Module
-import Main.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Main.Rule.RawProgram
 import Main.Rule.Source qualified as Source
-import Main.Rule.SourceLocator qualified as SL
-import Main.Rule.StrictGlobalLocator qualified as SGL
-import Main.Rule.Syntax.Series qualified as SE
 import Path
 
 type LocatorText =
   T.Text
 
-data Handle
-  = Handle
+data Handle = Handle
   { envHandle :: Env.Handle,
     unusedHandle :: Unused.Handle,
     getEnabledPresetHandle :: GetEnabledPreset.Handle,

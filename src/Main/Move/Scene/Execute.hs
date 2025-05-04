@@ -14,8 +14,7 @@ import Main.Rule.Module (MainModule (MainModule))
 import Main.Rule.Target
 import Path
 
-data Handle
-  = Handle
+data Handle = Handle
   { envHandle :: Env.Handle,
     pathHandle :: Path.Handle,
     externalHandle :: External.Handle

@@ -15,6 +15,9 @@ import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
+import Language.Common.Rule.Error qualified as E
+import Language.Common.Rule.ModuleID qualified as MID
+import Language.LowComp.Rule.LowComp qualified as LC
 import Logger.Move.Debug qualified as Logger
 import Logger.Move.Log qualified as Logger
 import Main.Move.Context.Cache (needsCompilation)
@@ -22,6 +25,7 @@ import Main.Move.Context.Cache qualified as Cache
 import Main.Move.Context.EIO (EIO, forP, raiseError', runEIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.External qualified as External
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Context.LLVM qualified as LLVM
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Platform qualified as Platform
@@ -39,13 +43,9 @@ import Main.Move.Scene.Load qualified as Load
 import Main.Move.Scene.Lower qualified as Lower
 import Main.Move.Scene.Parse qualified as Parse
 import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Rule.Cache
 import Main.Rule.ClangOption qualified as CL
-import Main.Rule.Error qualified as E
-import Main.Rule.LowComp qualified as LC
 import Main.Rule.Module qualified as M
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.OutputKind
 import Main.Rule.Source
 import Main.Rule.Stmt (getStmtName)

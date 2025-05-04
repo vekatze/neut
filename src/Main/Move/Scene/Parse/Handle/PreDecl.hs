@@ -10,13 +10,12 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.Hint
 import Main.Move.Context.EIO (EIO, raiseError)
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.Hint
 import Prelude hiding (lookup, read)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { preDeclEnvRef :: IORef (Map.HashMap EN.ExternalName Hint)
   }
 

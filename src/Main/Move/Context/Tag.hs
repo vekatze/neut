@@ -14,17 +14,16 @@ where
 import Control.Monad (unless, when)
 import Data.IORef
 import Data.Text qualified as T
-import Main.Rule.Binder
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.IsConstLike
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.IsConstLike
 import Main.Rule.LocationTree qualified as LT
 import Prelude hiding (lookup, read)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { tagMapRef :: IORef LT.LocationTree
   }
 

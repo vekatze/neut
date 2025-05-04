@@ -10,24 +10,24 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Noema qualified as N
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Tag qualified as Tag
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Discern.Fallback qualified as PATF
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Move.Scene.Parse.Discern.Noema
 import Main.Move.Scene.Parse.Discern.Specialize qualified as PATS
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.Noema qualified as N
 import Main.Rule.Pattern qualified as PAT
 import Main.Rule.Vector qualified as V
-import Main.Rule.WeakTerm qualified as WT
 
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311

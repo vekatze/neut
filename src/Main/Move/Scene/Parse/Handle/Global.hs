@@ -15,6 +15,15 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Error (Error (MakeError))
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Hint qualified as Hint
+import Language.Common.Rule.IsConstLike
+import Language.RawTerm.Rule.Key
+import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Log (Log)
 import Logger.Rule.LogLevel (LogLevel (Error))
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
@@ -26,26 +35,16 @@ import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.Tag qualified as Tag
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.Error (Error (MakeError))
 import Main.Rule.GlobalName
 import Main.Rule.GlobalName qualified as GN
-import Main.Rule.Hint
-import Main.Rule.Hint qualified as Hint
-import Main.Rule.IsConstLike
-import Main.Rule.Key
 import Main.Rule.OptimizableData qualified as OD
 import Main.Rule.PrimOp.FromText qualified as PrimOp
 import Main.Rule.PrimType.FromText qualified as PT
-import Main.Rule.RawTerm qualified as RT
 import Main.Rule.StmtKind qualified as SK
 import Main.Rule.TopNameMap
 import Prelude hiding (lookup)
 
-data Handle
-  = Handle
+data Handle = Handle
   { envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
     locatorHandle :: Locator.Handle,

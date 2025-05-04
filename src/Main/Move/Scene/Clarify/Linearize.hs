@@ -7,17 +7,16 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify
+import Language.Common.Rule.Magic qualified as M
+import Language.Comp.Rule.Comp qualified as C
 import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Utility qualified as Utility
-import Main.Rule.Comp qualified as C
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify
-import Main.Rule.Magic qualified as M
 
 type Occurrence = Ident
 
-data Handle
-  = Handle
+data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     utilityHandle :: Utility.Handle
   }

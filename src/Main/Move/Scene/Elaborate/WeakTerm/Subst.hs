@@ -12,19 +12,18 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
+import Language.Common.Rule.Annotation qualified as AN
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.Gensym qualified as Gensym
-import Main.Rule.Annotation qualified as AN
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.WeakTerm qualified as WT
 import Main.Rule.WeakTerm.FreeVars qualified as WT
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { gensymHandle :: Gensym.Handle
   }
 

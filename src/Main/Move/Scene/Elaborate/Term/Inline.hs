@@ -14,27 +14,27 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.Opacity qualified as O
+import Language.Term.Rule.Term qualified as TM
 import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Term.Refresh qualified as Refresh
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Term.Subst qualified as Subst
-import Main.Rule.Attr.DataIntro qualified as AttrDI
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
 import Main.Rule.Const (defaultInlineLimit)
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.Magic qualified as M
 import Main.Rule.Module (moduleInlineLimit)
-import Main.Rule.Opacity qualified as O
 import Main.Rule.Source (Source, sourceModule)
-import Main.Rule.Term qualified as TM
 
 data Handle = Handle
   { currentSource :: Source,

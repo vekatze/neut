@@ -5,9 +5,9 @@ where
 
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Rule.Hint
+import Language.RawTerm.Rule.Key
 import Main.Move.Context.EIO (EIO, raiseError)
-import Main.Rule.Hint
-import Main.Rule.Key
 
 ensureFieldLinearity ::
   Hint ->

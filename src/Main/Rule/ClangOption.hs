@@ -9,8 +9,7 @@ import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 
-data ClangOption
-  = ClangOption
+data ClangOption = ClangOption
   { compileOption :: [T.Text],
     linkOption :: [T.Text]
   }

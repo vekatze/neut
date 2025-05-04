@@ -27,8 +27,7 @@ import Path.IO
 import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import System.Console.ANSI
 
-data Handle
-  = Handle
+data Handle = Handle
   { loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle,
     pathHandle :: Path.Handle,

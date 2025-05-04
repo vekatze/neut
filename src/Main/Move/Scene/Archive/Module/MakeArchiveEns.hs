@@ -7,18 +7,18 @@ import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
+import Language.Common.Rule.Hint
+import Language.Common.Rule.ModuleDigest (ModuleDigest (..))
+import Language.Common.Rule.ModuleDigest qualified as MD
+import Language.RawTerm.Rule.Syntax.Series (Series (hasOptionalSeparator))
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Scene.Archive.Module.GetExistingVersions
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.Const
 import Main.Rule.Ens qualified as E
-import Main.Rule.Hint
 import Main.Rule.Module
-import Main.Rule.ModuleDigest (ModuleDigest (..))
-import Main.Rule.ModuleDigest qualified as MD
 import Main.Rule.PackageVersion qualified as PV
-import Main.Rule.Syntax.Series (Series (hasOptionalSeparator))
-import Main.Rule.Syntax.Series qualified as SE
 import Path
 import Path.IO
 import System.IO

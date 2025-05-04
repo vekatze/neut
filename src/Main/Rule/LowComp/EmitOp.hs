@@ -8,13 +8,13 @@ where
 import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Main.Rule.LowComp qualified as LC
+import Language.Common.Rule.LowType qualified as LT
+import Language.Common.Rule.PrimNumSize
+import Language.Common.Rule.PrimOp
+import Language.Common.Rule.PrimType qualified as PT
+import Language.LowComp.Rule.LowComp qualified as LC
 import Main.Rule.LowComp.EmitValue
-import Main.Rule.LowType qualified as LT
 import Main.Rule.LowType.EmitLowType
-import Main.Rule.PrimNumSize
-import Main.Rule.PrimOp
-import Main.Rule.PrimType qualified as PT
 import Main.Rule.PrimType.EmitPrimType
 
 data Handle = Handle

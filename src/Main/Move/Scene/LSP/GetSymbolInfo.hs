@@ -9,6 +9,7 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.Cache (invalidate)
 import Main.Move.Context.EIO (EIO, liftMaybe)
 import Main.Move.Context.Type qualified as Type
@@ -22,7 +23,6 @@ import Main.Rule.LocationTree qualified as LT
 import Main.Rule.Source (Source (sourceFilePath, sourceModule))
 import Main.Rule.Target (Target (Peripheral))
 import Main.Rule.Term.Weaken (weaken)
-import Main.Rule.WeakTerm qualified as WT
 import Main.Rule.WeakTerm.ToText
 
 getSymbolInfo ::

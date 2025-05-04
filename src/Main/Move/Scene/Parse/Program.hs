@@ -10,23 +10,23 @@ import Control.Monad.Trans
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Error (newError)
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.ForeignCodType qualified as F
+import Language.Common.Rule.Hint
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.Opacity qualified as O
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.Name
+import Language.RawTerm.Rule.RawBinder
+import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Scene.Parse.Core (asLabel)
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.C
-import Main.Rule.Error (newError)
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.ForeignCodType qualified as F
-import Main.Rule.Hint
-import Main.Rule.LocalLocator qualified as LL
-import Main.Rule.Name
-import Main.Rule.Opacity qualified as O
-import Main.Rule.RawBinder
 import Main.Rule.RawProgram
-import Main.Rule.RawTerm qualified as RT
 import Main.Rule.StmtKind qualified as SK
-import Main.Rule.Syntax.Series qualified as SE
 import Text.Megaparsec
 
 parseProgram :: P.Handle -> P.Parser RawProgram

@@ -16,6 +16,15 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
+import Language.Common.Rule.BaseName (isCapitalized)
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Error (Error (MakeError))
+import Language.Common.Rule.Hint
+import Language.Common.Rule.ModuleAlias
+import Language.Common.Rule.ModuleDigest qualified as MD
+import Language.Common.Rule.ModuleID qualified as MID
+import Language.RawTerm.Rule.Syntax.Series (Series (hasOptionalSeparator))
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.EIO (EIO, forP, raiseError')
@@ -26,25 +35,15 @@ import Main.Move.Scene.Ens.Reflect qualified as EnsReflect
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.BaseName (isCapitalized)
-import Main.Rule.BaseName qualified as BN
 import Main.Rule.Ens qualified as E
 import Main.Rule.Ens qualified as SE
-import Main.Rule.Error (Error (MakeError))
-import Main.Rule.Hint
 import Main.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Main.Rule.Module qualified as M
-import Main.Rule.ModuleAlias
-import Main.Rule.ModuleDigest qualified as MD
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.ModuleURL
-import Main.Rule.Syntax.Series (Series (hasOptionalSeparator))
-import Main.Rule.Syntax.Series qualified as SE
 import Path
 import Path.IO
 
-data Handle
-  = Handle
+data Handle = Handle
   { ensReflectHandle :: EnsReflect.Handle,
     moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,

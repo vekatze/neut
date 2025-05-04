@@ -16,6 +16,14 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Const (nsSep)
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.ModuleAlias qualified as MA
+import Language.Common.Rule.ModuleID qualified as MID
+import Language.Common.Rule.SourceLocator qualified as SL
 import Language.LSP.Protocol.Types
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Cache qualified as Cache
@@ -27,24 +35,15 @@ import Main.Move.Scene.LSP.GetAllCachesInModule qualified as GAC
 import Main.Move.Scene.LSP.Source.Reflect qualified as SourceReflect
 import Main.Move.Scene.Module.GetModule qualified as GetModule
 import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Rule.BaseName qualified as BN
 import Main.Rule.Cache qualified as Cache
-import Main.Rule.Const (nsSep)
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
-import Main.Rule.Ident.Reify qualified as Ident
 import Main.Rule.LocalVarTree qualified as LVT
 import Main.Rule.Module
-import Main.Rule.ModuleAlias qualified as MA
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.RawImportSummary
 import Main.Rule.Source
-import Main.Rule.SourceLocator qualified as SL
 import Main.Rule.Target
 import Main.Rule.TopCandidate
 
-data Handle
-  = Handle
+data Handle = Handle
   { unravelHandle :: Unravel.Handle,
     pathHandle :: Path.Handle,
     antecedentHandle :: Antecedent.Handle,

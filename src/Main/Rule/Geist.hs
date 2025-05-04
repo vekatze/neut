@@ -1,9 +1,9 @@
 module Main.Rule.Geist (Geist (..)) where
 
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.IsConstLike
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.IsConstLike
 
 data Geist a = Geist
   { loc :: Hint,

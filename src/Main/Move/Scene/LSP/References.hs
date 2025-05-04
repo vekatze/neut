@@ -20,8 +20,7 @@ import Main.Rule.Source (Source (sourceFilePath, sourceModule))
 import Path
 import UnliftIO.Async (pooledForConcurrently)
 
-data Handle
-  = Handle
+data Handle = Handle
   { unravelHandle :: Unravel.Handle,
     getSourceHandle :: GetSource.Handle,
     findDefinitionHandle :: FindDefinition.Handle,

@@ -13,8 +13,7 @@ import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.Source.Reflect qualified as SourceReflect
 import Main.Rule.Source (Source)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { sourceReflectHandle :: SourceReflect.Handle
   }
 

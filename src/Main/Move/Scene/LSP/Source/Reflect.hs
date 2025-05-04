@@ -13,8 +13,7 @@ import Main.Rule.Module
 import Main.Rule.Source
 import Path
 
-data Handle
-  = Handle
+data Handle = Handle
   { envHandle :: Env.Handle,
     moduleReflectHandle :: Module.Handle
   }

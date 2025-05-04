@@ -12,8 +12,8 @@ module Main.Move.Scene.Elaborate.Handle.Constraint
 where
 
 import Data.IORef
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Rule.Constraint qualified as C
-import Main.Rule.WeakTerm qualified as WT
 
 data Handle = Handle
   { constraintEnvRef :: IORef [C.Constraint],

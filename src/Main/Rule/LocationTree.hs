@@ -14,10 +14,10 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.Hint
-import Main.Rule.IsConstLike
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.Hint
+import Language.Common.Rule.IsConstLike
 
 type ColFrom =
   Int

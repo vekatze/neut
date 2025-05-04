@@ -6,8 +6,8 @@ module Main.Rule.LowComp.Subst
 where
 
 import Data.IntMap qualified as IntMap
-import Main.Rule.Ident.Reify
-import Main.Rule.LowComp qualified as LC
+import Language.Common.Rule.Ident.Reify
+import Language.LowComp.Rule.LowComp qualified as LC
 
 type SubstLowComp =
   IntMap.IntMap LC.Value

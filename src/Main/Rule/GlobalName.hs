@@ -6,13 +6,13 @@ where
 
 import Data.Binary
 import GHC.Generics (Generic)
-import Main.Rule.ArgNum
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.Hint
-import Main.Rule.IsConstLike
-import Main.Rule.PrimOp
-import Main.Rule.PrimType qualified as PT
+import Language.Common.Rule.ArgNum
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Hint
+import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.PrimOp
+import Language.Common.Rule.PrimType qualified as PT
 
 data GlobalName
   = TopLevelFunc ArgNum IsConstLike

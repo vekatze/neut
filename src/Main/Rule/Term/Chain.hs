@@ -11,14 +11,14 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.Hint
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Term.Rule.Term qualified as TM
 import Main.Rule.Hint.Reify (toString)
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.Term qualified as TM
 
 chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
 chainOf tenv term =

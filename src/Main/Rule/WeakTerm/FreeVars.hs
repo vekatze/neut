@@ -3,12 +3,12 @@ module Main.Rule.WeakTerm.FreeVars (freeVars) where
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
-import Main.Rule.Annotation qualified as AN
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.Ident
-import Main.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.Annotation qualified as AN
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.Ident
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 freeVars :: WT.WeakTerm -> S.Set Ident
 freeVars term =

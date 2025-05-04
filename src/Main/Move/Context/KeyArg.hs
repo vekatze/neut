@@ -12,19 +12,18 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.Const (holeVarPrefix)
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.Common.Rule.IsConstLike
+import Language.RawTerm.Rule.Key
 import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.Const (holeVarPrefix)
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
-import Main.Rule.IsConstLike
-import Main.Rule.Key
 import Prelude hiding (lookup, read)
 
-data Handle
-  = Handle
+data Handle = Handle
   { envHandle :: Env.Handle,
     keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key])))
   }

@@ -19,19 +19,19 @@ import Data.Binary
 import Data.Maybe
 import Data.Set qualified as S
 import GHC.Generics hiding (C)
-import Main.Rule.Binder
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.Foreign qualified as F
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Foreign qualified as F
+import Language.Common.Rule.Hint
+import Language.Common.Rule.IsConstLike
+import Language.Term.Rule.Term qualified as TM
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Rule.Geist qualified as G
-import Main.Rule.Hint
-import Main.Rule.IsConstLike
 import Main.Rule.Source qualified as Source
 import Main.Rule.StmtKind qualified as SK
-import Main.Rule.Term qualified as TM
 import Main.Rule.Term.Compress qualified as TM
 import Main.Rule.Term.Extend qualified as TM
-import Main.Rule.WeakTerm qualified as WT
 import Path
 
 type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)

@@ -29,8 +29,7 @@ import Main.Rule.Target
 import Path
 import Prelude hiding (log)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { baseHandle :: Base.Handle
   }
 

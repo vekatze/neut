@@ -13,24 +13,24 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Hint qualified as H
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Attr.DataIntro qualified as AttrDI
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
 import Main.Rule.Const (defaultInlineLimit)
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.Hint qualified as H
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.LamKind qualified as LK
 import Main.Rule.Module (moduleInlineLimit)
 import Main.Rule.Source (Source, sourceModule)
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakPrimValue qualified as WPV
-import Main.Rule.WeakTerm qualified as WT
 
 type InlineLimit =
   Int

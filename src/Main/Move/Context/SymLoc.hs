@@ -8,12 +8,11 @@ where
 
 import Control.Monad (unless)
 import Data.IORef
-import Main.Rule.Hint
-import Main.Rule.Ident
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
 import Main.Rule.LocalVarTree qualified as LVT
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { localVarMapRef :: IORef LVT.LocalVarTree
   }
 

@@ -1,15 +1,15 @@
 module Main.Rule.WeakTerm.Eq (eq) where
 
 import Control.Comonad.Cofree
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder (BinderF)
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.ForeignCodType qualified as FCT
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.Magic qualified as M
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakPrimValue qualified as WPV
-import Main.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder (BinderF)
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.ForeignCodType qualified as FCT
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.Magic qualified as M
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 -- syntactic equality
 eq :: WT.WeakTerm -> WT.WeakTerm -> Bool

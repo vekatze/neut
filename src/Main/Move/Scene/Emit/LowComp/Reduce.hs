@@ -6,13 +6,12 @@ module Main.Move.Scene.Emit.LowComp.Reduce
 where
 
 import Data.IntMap qualified as IntMap
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.LowComp.Rule.LowComp qualified as LC
 import Main.Move.Context.Gensym qualified as Gensym
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.LowComp qualified as LC
 import Main.Rule.LowComp.Subst
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { gensymHandle :: Gensym.Handle
   }
 

@@ -10,14 +10,13 @@ where
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.WeakTerm.Rule.WeakTerm
 import Main.Move.Context.EIO (EIO, raiseCritical)
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
-import Main.Rule.WeakTerm
 import Prelude hiding (lookup)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { typeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakTerm)
   }
 

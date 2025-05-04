@@ -17,8 +17,7 @@ import Main.Rule.FileType qualified as FT
 import Path
 import Path.IO
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { formatHandle :: Format.Handle
   }
 

@@ -3,16 +3,16 @@ module Main.Rule.Term.Compress (compress, compressStmtKind, compressBinder) wher
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.Prim qualified as P
-import Main.Rule.PrimValue qualified as PV
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Term.Rule.Prim qualified as P
+import Language.Term.Rule.PrimValue qualified as PV
+import Language.Term.Rule.Term qualified as TM
 import Main.Rule.StmtKind
-import Main.Rule.Term qualified as TM
 
 compress :: TM.Term -> Cofree TM.TermF ()
 compress term =

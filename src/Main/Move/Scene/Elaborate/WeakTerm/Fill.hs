@@ -11,22 +11,21 @@ import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Language.Common.Rule.Annotation qualified as AN
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Scene.Elaborate.WeakTerm.Reduce qualified as Reduce
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
-import Main.Rule.Annotation qualified as AN
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
 import Main.Rule.HoleSubst
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.WeakTerm qualified as WT
 import Main.Rule.WeakTerm.ToText (toText)
 import Prelude hiding (lookup)
 
-data Handle
-  = Handle
+data Handle = Handle
   { substHandle :: Subst.Handle,
     reduceHandle :: Reduce.Handle
   }

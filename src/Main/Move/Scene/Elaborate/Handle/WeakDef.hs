@@ -12,21 +12,20 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Opacity qualified as O
+import Language.WeakTerm.Rule.WeakTerm
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.Gensym qualified as Gensym
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
-import Main.Rule.Opacity qualified as O
-import Main.Rule.WeakTerm
-import Main.Rule.WeakTerm qualified as WT
 import Prelude hiding (lookup, read)
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription WeakTerm
 
-data Handle
-  = Handle
+data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     weakDefMapRef :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm)
   }

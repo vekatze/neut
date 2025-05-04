@@ -13,8 +13,7 @@ import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP qualified as L
 
-data Handle
-  = Handle
+data Handle = Handle
   { fetchHandle :: Fetch.Handle,
     envHandle :: Env.Handle,
     lspHandle :: L.Handle

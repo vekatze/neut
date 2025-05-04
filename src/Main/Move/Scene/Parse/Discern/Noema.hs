@@ -5,11 +5,11 @@ module Main.Move.Scene.Parse.Discern.Noema
 where
 
 import Control.Comonad.Cofree hiding (section)
+import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.Noema qualified as N
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
-import Main.Rule.Magic qualified as M
-import Main.Rule.Noema qualified as N
-import Main.Rule.WeakTerm qualified as WT
 
 castToNoemaIfNecessary :: H.Handle -> N.IsNoetic -> WT.WeakTerm -> IO WT.WeakTerm
 castToNoemaIfNecessary h isNoetic e =

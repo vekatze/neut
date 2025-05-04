@@ -12,20 +12,19 @@ module Main.Move.Scene.Clarify.Utility
 where
 
 import Data.IntMap qualified as IntMap
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify
+import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PrimNumSize
+import Language.Comp.Rule.Comp qualified as C
+import Language.Comp.Rule.EnumCase
+import Language.Comp.Rule.EnumCase qualified as EC
 import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Main.Move.Scene.Comp.Subst qualified as Subst
-import Main.Rule.Comp qualified as C
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.EnumCase
-import Main.Rule.EnumCase qualified as EC
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify
-import Main.Rule.Opacity qualified as O
-import Main.Rule.PrimNumSize
 
-data Handle
-  = Handle
+data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     substHandle :: Subst.Handle,
     auxEnvHandle :: AuxEnv.Handle,

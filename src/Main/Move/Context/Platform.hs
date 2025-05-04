@@ -18,6 +18,8 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Version qualified as V
+import Language.Common.Rule.Digest (hashAndEncode)
+import Language.Common.Rule.Hint
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.EIO (EIO, raiseError, raiseError', run)
@@ -26,8 +28,6 @@ import Main.Move.Context.ProcessRunner qualified as ProcessRunner
 import Main.Rule.Arch qualified as Arch
 import Main.Rule.Const (envVarClang)
 import Main.Rule.DataSize qualified as DS
-import Main.Rule.Digest (hashAndEncode)
-import Main.Rule.Hint
 import Main.Rule.Module
 import Main.Rule.OS qualified as O
 import Main.Rule.Platform qualified as P
@@ -37,8 +37,7 @@ import System.Environment (lookupEnv)
 import System.Info qualified as SI
 import System.Process (CmdSpec (RawCommand))
 
-data Handle
-  = Handle
+data Handle = Handle
   { arch :: Arch.Arch,
     os :: O.OS,
     clangDigest :: T.Text,

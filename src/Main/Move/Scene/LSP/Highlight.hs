@@ -13,8 +13,7 @@ import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Main.Move.Scene.LSP.FindReferences qualified as LSP
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { findDefinitionHandle :: FindDefinition.Handle
   }
 

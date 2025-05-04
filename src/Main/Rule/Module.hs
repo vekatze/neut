@@ -61,19 +61,19 @@ import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
-import Main.Rule.BaseName qualified as BN
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Error
+import Language.Common.Rule.GlobalLocator qualified as GL
+import Language.Common.Rule.Hint (Hint, internalHint)
+import Language.Common.Rule.ModuleAlias qualified as MA
+import Language.Common.Rule.ModuleDigest
+import Language.Common.Rule.ModuleID qualified as MID
+import Language.Common.Rule.SourceLocator qualified as SL
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const
 import Main.Rule.Ens qualified as E
-import Main.Rule.Error
-import Main.Rule.GlobalLocator qualified as GL
-import Main.Rule.Hint (Hint, internalHint)
-import Main.Rule.ModuleAlias qualified as MA
-import Main.Rule.ModuleDigest
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.ModuleURL
-import Main.Rule.SourceLocator qualified as SL
-import Main.Rule.Syntax.Series qualified as SE
 import Main.Rule.Target qualified as Target
 import Main.Rule.ZenConfig
 import Path

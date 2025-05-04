@@ -19,8 +19,7 @@ import Main.Rule.Config.Create
 import Main.Rule.Config.Remark qualified as Remark
 import Main.Rule.Module (moduleLocation)
 
-data Handle
-  = Handle
+data Handle = Handle
   { createHandle :: Create.Handle,
     remarkCfg :: Remark.Config
   }

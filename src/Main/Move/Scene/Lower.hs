@@ -22,6 +22,27 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.BaseLowType qualified as BLT
+import Language.Common.Rule.BasePrimType qualified as BPT
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.Foreign qualified as F
+import Language.Common.Rule.ForeignCodType qualified as F
+import Language.Common.Rule.ForeignCodType qualified as FCT
+import Language.Common.Rule.Hint (internalHint)
+import Language.Common.Rule.Ident
+import Language.Common.Rule.LowType qualified as LT
+import Language.Common.Rule.LowType.FromBaseLowType qualified as LT
+import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.PrimNumSize
+import Language.Common.Rule.PrimNumSize.ToInt
+import Language.Common.Rule.PrimOp
+import Language.Common.Rule.PrimType qualified as PT
+import Language.Comp.Rule.Comp qualified as C
+import Language.Comp.Rule.EnumCase qualified as EC
+import Language.LowComp.Rule.DeclarationName qualified as DN
+import Language.LowComp.Rule.LowComp qualified as LC
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Gensym qualified as Gensym
@@ -32,33 +53,11 @@ import Main.Move.Scene.Comp.Subst qualified as Subst
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Arch
 import Main.Rule.Arch qualified as A
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.BaseLowType qualified as BLT
-import Main.Rule.BasePrimType qualified as BPT
-import Main.Rule.Comp qualified as C
 import Main.Rule.Const
 import Main.Rule.DataSize qualified as DS
-import Main.Rule.DeclarationName qualified as DN
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.EnumCase qualified as EC
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.Foreign qualified as F
-import Main.Rule.ForeignCodType qualified as F
-import Main.Rule.ForeignCodType qualified as FCT
-import Main.Rule.Hint (internalHint)
-import Main.Rule.Ident
-import Main.Rule.LowComp qualified as LC
-import Main.Rule.LowType qualified as LT
-import Main.Rule.LowType.FromBaseLowType qualified as LT
-import Main.Rule.Magic qualified as M
-import Main.Rule.PrimNumSize
-import Main.Rule.PrimNumSize.ToInt
-import Main.Rule.PrimOp
-import Main.Rule.PrimType qualified as PT
 import Main.Rule.Target
 
-data Handle
-  = Handle
+data Handle = Handle
   { arch :: Arch,
     baseSize :: Int,
     gensymHandle :: Gensym.Handle,

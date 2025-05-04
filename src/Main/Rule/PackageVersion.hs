@@ -12,8 +12,8 @@ where
 
 import Data.List qualified as List
 import Data.Text qualified as T
+import Language.Common.Rule.List (initLast)
 import Main.Rule.Const
-import Main.Rule.List (initLast)
 import Text.Read
 
 type PackageVersion =

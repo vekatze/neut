@@ -2,19 +2,19 @@ module Main.Move.Scene.Parse.Discern.Data (defineData) where
 
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe
-import Main.Rule.Attr.Data qualified as AttrD
-import Main.Rule.Attr.DataIntro qualified as AttrDI
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.Hint
-import Main.Rule.IsConstLike
-import Main.Rule.Name
-import Main.Rule.RawBinder
-import Main.Rule.RawIdent
+import Language.Common.Rule.Attr.Data qualified as AttrD
+import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Hint
+import Language.Common.Rule.IsConstLike
+import Language.RawTerm.Rule.Name
+import Language.RawTerm.Rule.RawBinder
+import Language.RawTerm.Rule.RawIdent
+import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.RawProgram
-import Main.Rule.RawTerm qualified as RT
 import Main.Rule.StmtKind qualified as SK
-import Main.Rule.Syntax.Series qualified as SE
 
 defineData ::
   Hint ->

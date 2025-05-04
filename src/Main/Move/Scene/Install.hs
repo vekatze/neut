@@ -17,8 +17,7 @@ import Path
 import Path.IO
 import Prelude hiding (log)
 
-data Handle
-  = Handle
+data Handle = Handle
   { envHandle :: Env.Handle,
     pathHandle :: Path.Handle
   }

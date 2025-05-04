@@ -32,18 +32,18 @@ import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
+import Language.Common.Rule.Digest
+import Language.Common.Rule.ModuleID qualified as MID
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.EIO (EIO, raiseError')
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Platform qualified as Platform
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const
-import Main.Rule.Digest
 import Main.Rule.Ens qualified as E
 import Main.Rule.Ens.Reify qualified as E
 import Main.Rule.Module
 import Main.Rule.Module qualified as M
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.OutputKind qualified as OK
 import Main.Rule.Source qualified as Src
 import Main.Rule.Target qualified as Target
@@ -51,8 +51,7 @@ import Path (Abs, Dir, File, Path, (</>))
 import Path qualified as P
 import Path.IO qualified as P
 
-data Handle
-  = Handle
+data Handle = Handle
   { cacheRef :: IORef (Maybe String),
     loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle,

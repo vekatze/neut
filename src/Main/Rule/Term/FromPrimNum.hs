@@ -1,10 +1,10 @@
 module Main.Rule.Term.FromPrimNum (fromPrimNum) where
 
 import Control.Comonad.Cofree
-import Main.Rule.Hint
-import Main.Rule.Prim qualified as Prim
-import Main.Rule.PrimType qualified as PT
-import Main.Rule.Term qualified as TM
+import Language.Common.Rule.Hint
+import Language.Common.Rule.PrimType qualified as PT
+import Language.Term.Rule.Prim qualified as Prim
+import Language.Term.Rule.Term qualified as TM
 
 fromPrimNum :: Hint -> PT.PrimType -> TM.Term
 fromPrimNum m primNum =

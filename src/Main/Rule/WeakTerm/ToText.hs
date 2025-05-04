@@ -2,24 +2,24 @@ module Main.Rule.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable, 
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
-import Main.Rule.Attr.Data qualified as AttrD
-import Main.Rule.Attr.DataIntro qualified as AttrDI
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Attr.VarGlobal qualified as AttrVG
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.HoleID qualified as HID
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.PrimOp qualified as PO
-import Main.Rule.PrimType.ToText qualified as PT
-import Main.Rule.Rune qualified as RU
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakPrimValue qualified as WPV
-import Main.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.Attr.Data qualified as AttrD
+import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.HoleID qualified as HID
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.PrimOp qualified as PO
+import Language.Common.Rule.PrimType.ToText qualified as PT
+import Language.Common.Rule.Rune qualified as RU
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 toText :: WT.WeakTerm -> T.Text
 toText term =

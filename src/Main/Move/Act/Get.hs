@@ -18,8 +18,7 @@ import Main.Rule.Config.Get
 import Main.Rule.Config.Remark qualified as Remark
 import Prelude hiding (log)
 
-data Handle
-  = Handle
+data Handle = Handle
   { fetchHandle :: Fetch.Handle,
     envHandle :: Env.Handle,
     cleanHandle :: Clean.Handle,

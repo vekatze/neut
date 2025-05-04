@@ -11,6 +11,8 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Language.Common.Rule.ModuleID qualified as MID
+import Language.Common.Rule.SourceLocator qualified as SL
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.EIO (EIO, raiseError')
@@ -20,15 +22,12 @@ import Main.Move.Scene.Module.Save qualified as ModuleSave
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const
 import Main.Rule.Module
-import Main.Rule.ModuleID qualified as MID
-import Main.Rule.SourceLocator qualified as SL
 import Main.Rule.Target
 import Main.Rule.ZenConfig
 import Path
 import Path.IO
 
-data Handle
-  = Handle
+data Handle = Handle
   { moduleSaveHandle :: ModuleSave.Handle,
     platformHandle :: Platform.Handle,
     loggerHandle :: Logger.Handle

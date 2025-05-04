@@ -22,8 +22,7 @@ import Main.Rule.ZenConfig qualified as Z
 import Path.IO (resolveFile')
 import Prelude hiding (log)
 
-data Handle
-  = Handle
+data Handle = Handle
   { envHandle :: Env.Handle,
     fetchHandle :: Fetch.Handle,
     buildHandle :: Build.Handle

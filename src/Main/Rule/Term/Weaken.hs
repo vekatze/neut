@@ -9,24 +9,24 @@ where
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List qualified as List
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.BaseLowType qualified as BLT
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.Foreign qualified as F
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.Magic qualified as M
-import Main.Rule.Prim qualified as P
-import Main.Rule.PrimValue qualified as PV
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.BaseLowType qualified as BLT
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.Foreign qualified as F
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.Magic qualified as M
+import Language.Term.Rule.Prim qualified as P
+import Language.Term.Rule.PrimValue qualified as PV
+import Language.Term.Rule.Term qualified as TM
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakTerm (reflectOpacity)
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Rule.Stmt
 import Main.Rule.StmtKind
-import Main.Rule.Term qualified as TM
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakPrimValue qualified as WPV
-import Main.Rule.WeakTerm (reflectOpacity)
-import Main.Rule.WeakTerm qualified as WT
 
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do

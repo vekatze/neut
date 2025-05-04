@@ -4,9 +4,9 @@ import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Data.Maybe
 import Data.Text qualified as T
+import Language.Common.Rule.Error (newError')
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Scene.Archive.Module.GetExistingVersions
-import Main.Rule.Error (newError')
 import Main.Rule.Module
 import Main.Rule.PackageVersion qualified as PV
 import Prelude hiding (log)

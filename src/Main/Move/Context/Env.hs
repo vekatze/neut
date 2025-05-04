@@ -12,24 +12,23 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.ModuleID qualified as MID
+import Language.Common.Rule.SourceLocator qualified as SL
+import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.EIO (EIO, raiseError', run)
 import Main.Move.Scene.Module.Reflect (getCurrentModuleFilePath)
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
-import Main.Rule.BaseName qualified as BN
 import Main.Rule.BuildMode qualified as BM
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.LocalLocator qualified as LL
 import Main.Rule.Module
 import Main.Rule.Module qualified as Module
-import Main.Rule.ModuleID qualified as MID
-import Main.Rule.SourceLocator qualified as SL
-import Main.Rule.StrictGlobalLocator qualified as SGL
 import Main.Rule.Target qualified as Target
 import Path
 
-data Handle
-  = Handle
+data Handle = Handle
   { buildModeRef :: IORef BM.BuildMode,
     enableSilentMode :: Bool,
     mainModule :: MainModule

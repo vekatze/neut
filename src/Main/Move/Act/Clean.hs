@@ -10,8 +10,7 @@ import Main.Move.Scene.Clean qualified as Clean
 import Main.Move.Scene.Init.Base qualified as Base
 import Prelude hiding (log)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { cleanHandle :: Clean.Handle
   }
 

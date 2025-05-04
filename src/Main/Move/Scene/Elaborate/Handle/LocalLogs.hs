@@ -9,8 +9,7 @@ where
 import Data.IORef
 import Logger.Rule.Log qualified as L
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { logsRef :: IORef [L.Log]
   }
 

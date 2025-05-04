@@ -11,15 +11,14 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Opacity qualified as O
+import Language.Comp.Rule.Comp
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
-import Main.Rule.Comp
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Ident
-import Main.Rule.Opacity qualified as O
 import Prelude hiding (lookup)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { compAuxEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp))
   }
 

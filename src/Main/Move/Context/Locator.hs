@@ -25,23 +25,23 @@ import Data.List (find)
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Const (nsSep)
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.ModuleAlias qualified as MA
+import Language.Common.Rule.ModuleID qualified as MID
+import Language.Common.Rule.SourceLocator qualified as SL
+import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Main.Move.Context.EIO (EIO, raiseError, raiseError')
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Tag qualified as Tag
 import Main.Rule.AliasInfo (MustUpdateTag)
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.Const (nsSep)
-import Main.Rule.DefiniteDescription qualified as DD
 import Main.Rule.GlobalName qualified as GN
-import Main.Rule.Hint
-import Main.Rule.LocalLocator qualified as LL
 import Main.Rule.Module
 import Main.Rule.Module qualified as Module
-import Main.Rule.ModuleAlias qualified as MA
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.Source qualified as Source
-import Main.Rule.SourceLocator qualified as SL
-import Main.Rule.StrictGlobalLocator qualified as SGL
 import Main.Rule.Target qualified as Target
 import Main.Rule.TopNameMap (TopNameMap)
 import Path
@@ -55,8 +55,7 @@ import Path.IO
 --     ------------------------------------------------
 --     ↑ the definite description of a global variable `some-function` (up-to module alias)
 
-data Handle
-  = Handle
+data Handle = Handle
   { tagHandle :: Tag.Handle,
     envHandle :: Env.Handle,
     activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),

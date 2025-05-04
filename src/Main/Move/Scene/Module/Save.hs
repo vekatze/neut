@@ -17,8 +17,7 @@ import Main.Rule.Ens.Reify qualified as Ens
 import Main.Rule.Module
 import Path
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { loggerHandle :: Logger.Handle
   }
 

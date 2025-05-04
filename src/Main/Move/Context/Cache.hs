@@ -29,8 +29,7 @@ import Main.Rule.Target
 import Path
 import Path.IO
 
-data Handle
-  = Handle
+data Handle = Handle
   { pathHandle :: Path.Handle,
     artifactHandle :: Artifact.Handle
   }

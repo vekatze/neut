@@ -1,9 +1,9 @@
 module Main.Rule.PrimType.EmitPrimType (emitPrimType) where
 
 import Data.ByteString.Builder
-import Main.Rule.PrimNumSize
-import Main.Rule.PrimNumSize.ToInt
-import Main.Rule.PrimType qualified as PT
+import Language.Common.Rule.PrimNumSize
+import Language.Common.Rule.PrimNumSize.ToInt
+import Language.Common.Rule.PrimType qualified as PT
 
 emitPrimType :: PT.PrimType -> Builder
 emitPrimType lowType =

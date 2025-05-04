@@ -31,8 +31,7 @@ import Path
 import Path.IO
 import System.Process (CmdSpec (RawCommand))
 
-data Handle
-  = Handle
+data Handle = Handle
   { loggerHandle :: Logger.Handle,
     pathHandle :: Path.Handle,
     externalHandle :: External.Handle,

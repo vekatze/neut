@@ -10,16 +10,16 @@ import Control.Monad.IO.Class
 import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Main.Move.Context.Platform qualified as Platform
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify
+import Language.Common.Rule.LowType qualified as LT
+import Language.LowComp.Rule.LowComp qualified as LC
 import Main.Move.Context.Gensym qualified as Gensym
+import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Builder
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify
-import Main.Rule.LowComp qualified as LC
 import Main.Rule.LowComp.EmitOp qualified as EmitOp
 import Main.Rule.LowComp.EmitValue
-import Main.Rule.LowType qualified as LT
 import Main.Rule.LowType.EmitLowType
 
 type Label =

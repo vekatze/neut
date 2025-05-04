@@ -12,26 +12,25 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.GlobalLocator qualified as GL
+import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
+import Language.Common.Rule.Hint
+import Language.Common.Rule.ModuleAlias
+import Language.Common.Rule.ModuleDigest
+import Language.Common.Rule.ModuleID qualified as MID
+import Language.Common.Rule.SourceLocator qualified as SL
+import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Main.Rule.AliasInfo
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.GlobalLocator qualified as GL
-import Main.Rule.GlobalLocatorAlias qualified as GLA
-import Main.Rule.Hint
 import Main.Rule.Module
-import Main.Rule.ModuleAlias
-import Main.Rule.ModuleDigest
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.Source qualified as Source
-import Main.Rule.SourceLocator qualified as SL
-import Main.Rule.StrictGlobalLocator qualified as SGL
 import Main.Rule.TopNameMap
 
-data Handle
-  = Handle
+data Handle = Handle
   { antecedentHandle :: Antecedent.Handle,
     locatorHandle :: Locator.Handle,
     envHandle :: Env.Handle,

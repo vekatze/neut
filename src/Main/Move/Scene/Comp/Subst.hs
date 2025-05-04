@@ -6,12 +6,11 @@ module Main.Move.Scene.Comp.Subst
 where
 
 import Data.IntMap qualified as IntMap
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Comp.Rule.Comp qualified as C
 import Main.Move.Context.Gensym qualified as Gensym
-import Main.Rule.Comp qualified as C
-import Main.Rule.Ident.Reify qualified as Ident
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { gensymHandle :: Gensym.Handle
   }
 

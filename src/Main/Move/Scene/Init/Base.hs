@@ -12,23 +12,22 @@ import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Artifact qualified as Artifact
 import Main.Move.Context.Env qualified as Env
+import Main.Move.Context.Gensym qualified as Gensym
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.Module qualified as Module
 import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.Type qualified as Type
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
-import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Rule.Config.Remark qualified as Remark
 import Path
 
-data Handle
-  = Handle
+data Handle = Handle
   { artifactHandle :: Artifact.Handle,
     antecedentHandle :: Antecedent.Handle,
     colorHandle :: Color.Handle,

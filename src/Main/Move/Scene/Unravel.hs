@@ -17,6 +17,8 @@ import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
+import Language.Common.Rule.Hint
+import Language.Common.Rule.ModuleID qualified as MID
 import Logger.Move.Debug qualified as Logger
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Artifact qualified as Artifact
@@ -34,10 +36,8 @@ import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program (parseImport)
 import Main.Move.Scene.Source.ShiftToLatest qualified as STL
 import Main.Rule.Artifact qualified as A
-import Main.Rule.Hint
 import Main.Rule.Import
 import Main.Rule.Module
-import Main.Rule.ModuleID qualified as MID
 import Main.Rule.OutputKind qualified as OK
 import Main.Rule.Source qualified as Source
 import Main.Rule.Target
@@ -54,8 +54,7 @@ type LLVMTime =
 type ObjectTime =
   Maybe UTCTime
 
-data Handle
-  = Handle
+data Handle = Handle
   { baseHandle :: Base.Handle,
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],

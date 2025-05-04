@@ -6,8 +6,8 @@ module Main.Rule.Constraint
 where
 
 import Data.Set qualified as S
-import Main.Rule.HoleID qualified as HID
-import Main.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.HoleID qualified as HID
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 data Constraint
   = Eq WT.WeakTerm WT.WeakTerm -- (expected-type, actual-type)

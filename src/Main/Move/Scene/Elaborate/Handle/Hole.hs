@@ -11,10 +11,10 @@ where
 
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Main.Rule.HoleID qualified as HID
+import Language.Common.Rule.HoleID qualified as HID
+import Language.Common.Rule.Ident
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Rule.HoleSubst qualified as HS
-import Main.Rule.Ident
-import Main.Rule.WeakTerm qualified as WT
 import Prelude hiding (lookup)
 
 data Handle = Handle

@@ -10,6 +10,39 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Language.Common.Rule.Annotation qualified as AN
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Error qualified as E
+import Language.Common.Rule.Foreign qualified as F
+import Language.Common.Rule.ForeignCodType qualified as FCT
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.Literal qualified as LI
+import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.Noema qualified as N
+import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.Text.Util
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.Key
+import Language.RawTerm.Rule.Locator qualified as L
+import Language.RawTerm.Rule.Name
+import Language.RawTerm.Rule.NecessityVariant
+import Language.RawTerm.Rule.RawBinder
+import Language.RawTerm.Rule.RawIdent hiding (isHole)
+import Language.RawTerm.Rule.RawPattern qualified as RP
+import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
@@ -31,56 +64,23 @@ import Main.Move.Scene.Parse.Handle.Global qualified as Global
 import Main.Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Parse.Util
-import Main.Rule.Annotation qualified as AN
 import Main.Rule.Arch qualified as Arch
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Attr.VarGlobal qualified as AttrVG
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.Binder
 import Main.Rule.BuildMode qualified as BM
-import Main.Rule.C
 import Main.Rule.Const
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Error qualified as E
-import Main.Rule.Foreign qualified as F
-import Main.Rule.ForeignCodType qualified as FCT
 import Main.Rule.Geist qualified as G
 import Main.Rule.GlobalName qualified as GN
-import Main.Rule.Hint
 import Main.Rule.Hint.Reify qualified as Hint
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.Key
-import Main.Rule.LamKind qualified as LK
 import Main.Rule.Layer
-import Main.Rule.Literal qualified as LI
-import Main.Rule.Locator qualified as L
-import Main.Rule.Magic qualified as M
 import Main.Rule.Module
-import Main.Rule.Name
-import Main.Rule.NecessityVariant
-import Main.Rule.Noema qualified as N
 import Main.Rule.NominalEnv
 import Main.Rule.OS qualified as OS
-import Main.Rule.Opacity qualified as O
 import Main.Rule.Pattern qualified as PAT
 import Main.Rule.Platform qualified as Platform
-import Main.Rule.PrimType qualified as PT
-import Main.Rule.RawBinder
-import Main.Rule.RawIdent hiding (isHole)
-import Main.Rule.RawPattern qualified as RP
 import Main.Rule.RawProgram
-import Main.Rule.RawTerm qualified as RT
 import Main.Rule.Stmt
 import Main.Rule.StmtKind qualified as SK
-import Main.Rule.Syntax.Series qualified as SE
-import Main.Rule.Text.Util
 import Main.Rule.TopCandidate
 import Main.Rule.VarDefKind qualified as VDK
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakPrimValue qualified as WPV
-import Main.Rule.WeakTerm qualified as WT
 import Main.Rule.WeakTerm.FreeVars (freeVars)
 import Text.Read qualified as R
 
@@ -256,8 +256,7 @@ discern h term =
                   liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
                   liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
                   return $ m :< WT.Var name'
-                else
-                  raiseLayerError m (H.currentLayer h) layer
+                else raiseLayerError m (H.currentLayer h) layer
         _ -> do
           (dd, (_, gn)) <- resolveName h m name
           interpretGlobalName h m dd gn

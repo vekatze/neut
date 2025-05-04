@@ -8,8 +8,8 @@ where
 
 import Data.Binary
 import GHC.Generics (Generic)
-import Main.Rule.Hint
-import Main.Rule.Ident
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
 
 data LocalVarTree
   = Leaf

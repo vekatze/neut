@@ -11,6 +11,11 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident.Reify
+import Language.Common.Rule.LocalLocator qualified as LL
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.Cache qualified as Cache
@@ -27,12 +32,7 @@ import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program qualified as Parse
-import Main.Rule.ArgNum qualified as AN
 import Main.Rule.Cache qualified as Cache
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
-import Main.Rule.Ident.Reify
-import Main.Rule.LocalLocator qualified as LL
 import Main.Rule.RawProgram
 import Main.Rule.Source qualified as Source
 import Main.Rule.Stmt
@@ -41,8 +41,7 @@ import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
 import Main.Rule.UnusedLocalLocators (UnusedLocalLocators)
 import Main.Rule.VarDefKind
 
-data Handle
-  = Handle
+data Handle = Handle
   { parseHandle :: P.Handle,
     discernHandle :: Discern.Handle,
     pathHandle :: Path.Handle,

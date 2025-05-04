@@ -21,17 +21,16 @@ where
 import Control.Comonad.Cofree
 import Data.IORef
 import Data.Text qualified as T
-import Main.Rule.Comp qualified as C
-import Main.Rule.Const
-import Main.Rule.Hint (Hint)
-import Main.Rule.HoleID (HoleID (HoleID))
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.RawTerm qualified as RT
-import Main.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.Const
+import Language.Common.Rule.Hint (Hint)
+import Language.Common.Rule.HoleID (HoleID (HoleID))
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Comp.Rule.Comp qualified as C
+import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { counterRef :: IORef Int
   }
 

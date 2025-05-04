@@ -12,9 +12,9 @@ where
 import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Main.Rule.BaseName qualified as BN
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.SourceLocator qualified as SL
 import Main.Rule.ClangOption qualified as CL
-import Main.Rule.SourceLocator qualified as SL
 import Path
 
 data Target

@@ -8,7 +8,11 @@ module Main.Move.Scene.Parse.Discern.Handle
   )
 where
 
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
 import Main.Move.Context.Env qualified as Env
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.OptimizableData qualified as OptimizableData
@@ -16,16 +20,12 @@ import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.SymLoc qualified as SymLoc
 import Main.Move.Context.Tag qualified as Tag
 import Main.Move.Context.TopCandidate qualified as TopCandidate
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
 import Main.Move.Scene.Parse.Handle.Global qualified as Global
 import Main.Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
 import Main.Rule.Layer
 import Main.Rule.NominalEnv
 import Main.Rule.VarDefKind

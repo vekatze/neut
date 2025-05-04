@@ -12,34 +12,34 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.GlobalLocator qualified as GL
+import Language.Common.Rule.Hint
+import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.PrimNumSize qualified as PNS
+import Language.Common.Rule.PrimOp qualified as PO
+import Language.Common.Rule.PrimType qualified as PT
+import Language.RawTerm.Rule.Locator qualified as L
+import Language.RawTerm.Rule.Name
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Tag qualified as Tag
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
 import Main.Move.Scene.Parse.Handle.Global qualified as Global
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.Attr.VarGlobal qualified as AttrVG
 import Main.Rule.Const qualified as C
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.GlobalLocator qualified as GL
 import Main.Rule.GlobalName qualified as GN
-import Main.Rule.Hint
-import Main.Rule.IsConstLike
-import Main.Rule.LocalLocator qualified as LL
-import Main.Rule.Locator qualified as L
-import Main.Rule.Magic qualified as M
-import Main.Rule.Name
-import Main.Rule.PrimNumSize qualified as PNS
-import Main.Rule.PrimOp qualified as PO
-import Main.Rule.PrimType qualified as PT
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakPrimValue qualified as WPV
-import Main.Rule.WeakTerm qualified as WT
 
 {-# INLINE resolveName #-}
 resolveName :: H.Handle -> Hint -> Name -> EIO (DD.DefiniteDescription, (Hint, GN.GlobalName))

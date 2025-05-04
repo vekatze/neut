@@ -14,8 +14,7 @@ import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.Util (maxDiagNum, report, run)
 import Main.Rule.Lsp
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { baseHandle :: Base.Handle
   }
 

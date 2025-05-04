@@ -15,8 +15,7 @@ import Main.Rule.Artifact qualified as A
 import Path
 import Prelude hiding (lookup)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
   }
 

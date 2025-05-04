@@ -20,14 +20,14 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.Error
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.IsConstLike
-import Main.Rule.Literal qualified as L
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Error
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.Literal qualified as L
 
 data Pattern
   = Var Ident

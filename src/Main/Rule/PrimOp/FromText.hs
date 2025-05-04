@@ -1,15 +1,15 @@
 module Main.Rule.PrimOp.FromText (fromDefiniteDescription) where
 
 import Data.Text qualified as T
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.PrimNumSize
+import Language.Common.Rule.PrimOp
+import Language.Common.Rule.PrimOp.BinaryOp
+import Language.Common.Rule.PrimOp.CmpOp
+import Language.Common.Rule.PrimOp.ConvOp qualified as Conv
+import Language.Common.Rule.PrimOp.UnaryOp
+import Language.Common.Rule.PrimType qualified as PT
 import Main.Rule.DataSize qualified as DS
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.PrimNumSize
-import Main.Rule.PrimOp
-import Main.Rule.PrimOp.BinaryOp
-import Main.Rule.PrimOp.CmpOp
-import Main.Rule.PrimOp.ConvOp qualified as Conv
-import Main.Rule.PrimOp.UnaryOp
-import Main.Rule.PrimType qualified as PT
 import Main.Rule.PrimType.FromText qualified as PT
 
 fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PrimOp

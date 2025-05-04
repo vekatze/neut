@@ -34,11 +34,11 @@ import Control.Monad
 import Data.Bifunctor
 import Data.List (find, nubBy)
 import Data.Text qualified as T
-import Main.Rule.C
+import Language.Common.Rule.Error
+import Language.Common.Rule.Hint
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.EnsType qualified as ET
-import Main.Rule.Error
-import Main.Rule.Hint
-import Main.Rule.Syntax.Series qualified as SE
 import Path
 
 data EnsF a

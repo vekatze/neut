@@ -12,11 +12,11 @@ where
 import Control.Monad.IO.Class
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseCritical)
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.WeakTerm qualified as WT
 import Prelude hiding (lookup)
 
 type WeakTypeEnv =

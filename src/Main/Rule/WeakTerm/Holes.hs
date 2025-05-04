@@ -3,12 +3,12 @@ module Main.Rule.WeakTerm.Holes (holes) where
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
-import Main.Rule.Annotation qualified as AN
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.HoleID
-import Main.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.Annotation qualified as AN
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.HoleID
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 holes :: WT.WeakTerm -> S.Set HoleID
 holes term =

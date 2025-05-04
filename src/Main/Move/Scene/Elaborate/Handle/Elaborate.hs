@@ -9,8 +9,14 @@ where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (fromMaybe)
+import Language.Common.Rule.Binder
+import Language.Common.Rule.Hint (Hint)
+import Language.Term.Rule.Term qualified as TM
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
+import Main.Move.Context.Gensym qualified as Gensym
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Path qualified as Path
@@ -19,7 +25,6 @@ import Main.Move.Context.RawImportSummary qualified as RawImportSummary
 import Main.Move.Context.SymLoc qualified as SymLoc
 import Main.Move.Context.TopCandidate qualified as TopCandidate
 import Main.Move.Context.Type qualified as Type
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Handle.Hole qualified as Hole
@@ -34,18 +39,12 @@ import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
-import Main.Move.Context.GlobalRemark qualified as GlobalRemark
-import Main.Rule.Binder
 import Main.Rule.Const (defaultInlineLimit)
-import Main.Rule.Hint (Hint)
 import Main.Rule.HoleSubst (HoleSubst)
 import Main.Rule.Module (Module (moduleInlineLimit))
 import Main.Rule.Source
-import Main.Rule.Term qualified as TM
-import Main.Rule.WeakTerm qualified as WT
 
-data Handle
-  = Handle
+data Handle = Handle
   { baseHandle :: Base.Handle,
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,

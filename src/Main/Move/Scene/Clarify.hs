@@ -16,11 +16,39 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
+import Language.Common.Rule.BaseLowType qualified as BLT
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.Literal qualified as L
+import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.Noema qualified as N
+import Language.Common.Rule.Opacity (isOpaque)
+import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PrimNumSize qualified as PNS
+import Language.Common.Rule.PrimOp
+import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.Rune qualified as RU
+import Language.Comp.Rule.Comp qualified as C
+import Language.Comp.Rule.EnumCase qualified as EC
+import Language.Term.Rule.Prim qualified as P
+import Language.Term.Rule.PrimValue qualified as PV
+import Language.Term.Rule.Term qualified as TM
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseCritical')
+import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Main.Move.Scene.Clarify.Linearize qualified as Linearize
@@ -31,43 +59,14 @@ import Main.Move.Scene.Comp.Subst qualified as CompSubst
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Term.Subst qualified as Subst
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.Attr.DataIntro qualified as AttrDI
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Attr.VarGlobal qualified as AttrVG
-import Main.Rule.BaseLowType qualified as BLT
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.Binder
-import Main.Rule.Comp qualified as C
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.EnumCase qualified as EC
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.Literal qualified as L
-import Main.Rule.Magic qualified as M
-import Main.Rule.Noema qualified as N
-import Main.Rule.Opacity (isOpaque)
-import Main.Rule.Opacity qualified as O
 import Main.Rule.OptimizableData qualified as OD
-import Main.Rule.Prim qualified as P
-import Main.Rule.PrimNumSize qualified as PNS
-import Main.Rule.PrimOp
-import Main.Rule.PrimType qualified as PT
-import Main.Rule.PrimValue qualified as PV
-import Main.Rule.Rune qualified as RU
 import Main.Rule.Stmt
 import Main.Rule.StmtKind
-import Main.Rule.Term qualified as TM
 import Main.Rule.Term.Chain (nubFreeVariables)
 import Main.Rule.Term.Chain qualified as TM
 import Main.Rule.Term.FromPrimNum
 
-data Handle
-  = Handle
+data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     linearizeHandle :: Linearize.Handle,
     utilityHandle :: Utility.Handle,
@@ -120,8 +119,7 @@ clarify h stmtList = do
       C.Foreign {} ->
         return stmt
 
-data MainHandle
-  = MainHandle
+data MainHandle = MainHandle
   { mainAuxEnvHandle :: AuxEnv.Handle,
     mainSigmaHandle :: Sigma.Handle,
     mainReduceHandle :: Reduce.Handle

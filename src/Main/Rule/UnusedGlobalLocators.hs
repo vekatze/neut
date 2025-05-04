@@ -1,7 +1,7 @@
 module Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL) where
 
 import Data.Text qualified as T
-import Main.Rule.Hint
+import Language.Common.Rule.Hint
 
 type UnusedGlobalLocators =
   [(T.Text, [(Hint, T.Text)])]

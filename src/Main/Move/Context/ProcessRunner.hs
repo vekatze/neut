@@ -16,8 +16,8 @@ import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import GHC.IO.Handle (Handle, hClose)
-import Main.Rule.Error (newError')
-import Main.Rule.Error qualified as E
+import Language.Common.Rule.Error (newError')
+import Language.Common.Rule.Error qualified as E
 import System.Exit
 import System.Process qualified as P
 

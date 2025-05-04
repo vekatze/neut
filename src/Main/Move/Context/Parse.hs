@@ -11,9 +11,9 @@ import Control.Monad.Except (MonadError (throwError))
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Language.Common.Rule.Error qualified as E
+import Language.Common.Rule.Hint
 import Main.Move.Context.EIO (EIO)
-import Main.Rule.Error qualified as E
-import Main.Rule.Hint
 import Main.Rule.Source
 import Path
 import Path.IO

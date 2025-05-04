@@ -10,8 +10,7 @@ where
 import Data.IORef
 import Logger.Rule.Log qualified as L
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { globalRemarkListRef :: IORef [L.Log]
   }
 

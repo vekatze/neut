@@ -14,8 +14,7 @@ import Main.Rule.LocationTree qualified as LT
 import Main.Rule.Source
 import Main.Rule.Target (Target (Peripheral))
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { pathHandle :: Path.Handle
   }
 

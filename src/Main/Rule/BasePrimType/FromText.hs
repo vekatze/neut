@@ -1,9 +1,9 @@
 module Main.Rule.BasePrimType.FromText (fromText) where
 
 import Data.Text qualified as T
-import Main.Rule.BasePrimType qualified as BPT
+import Language.Common.Rule.BasePrimType qualified as BPT
+import Language.Common.Rule.PrimNumSize
 import Main.Rule.DataSize qualified as DS
-import Main.Rule.PrimNumSize
 import Text.Read
 
 fromText :: DS.DataSize -> T.Text -> Maybe BPT.BasePrimType

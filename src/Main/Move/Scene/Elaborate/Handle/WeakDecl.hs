@@ -10,15 +10,14 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Language.Common.Rule.ForeignCodType qualified as F
+import Language.Common.Rule.Hint
+import Language.LowComp.Rule.DeclarationName qualified as DN
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseError)
-import Main.Rule.DeclarationName qualified as DN
-import Main.Rule.ForeignCodType qualified as F
-import Main.Rule.Hint
-import Main.Rule.WeakTerm qualified as WT
 import Prelude hiding (lookup)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { weakDeclEnvRef :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm))
   }
 

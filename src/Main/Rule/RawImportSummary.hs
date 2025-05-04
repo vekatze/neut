@@ -6,10 +6,10 @@ where
 
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
-import Main.Rule.Hint
-import Main.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.Hint
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.RawProgram (RawImport (..), RawImportItem (..))
-import Main.Rule.Syntax.Series qualified as SE
 
 type RawImportSummary = ([(T.Text, [T.Text])], Loc)
 

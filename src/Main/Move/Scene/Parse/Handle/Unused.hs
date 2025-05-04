@@ -24,10 +24,10 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Main.Rule.Hint
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify
-import Main.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify
+import Language.Common.Rule.LocalLocator qualified as LL
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
 import Main.Rule.UnusedLocalLocators
 import Main.Rule.VarDefKind
@@ -36,8 +36,7 @@ import Prelude hiding (lookup, read)
 type ModuleIDText =
   T.Text
 
-data Handle
-  = Handle
+data Handle = Handle
   { unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMapRef :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMapRef :: IORef (Map.HashMap T.Text Hint),

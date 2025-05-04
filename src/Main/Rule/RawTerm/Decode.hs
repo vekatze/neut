@@ -19,25 +19,25 @@ where
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.C
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.Hint
+import Language.Common.Rule.Rune qualified as RU
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.Key
+import Language.RawTerm.Rule.Locator qualified as Locator
+import Language.RawTerm.Rule.Name qualified as N
+import Language.RawTerm.Rule.NecessityVariant (showNecessityVariant)
+import Language.RawTerm.Rule.RawBinder
+import Language.RawTerm.Rule.RawIdent
+import Language.RawTerm.Rule.RawPattern qualified as RP
+import Language.RawTerm.Rule.RawTerm
+import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.C.Decode qualified as C
-import Main.Rule.DefiniteDescription qualified as DD
 import Main.Rule.Doc qualified as D
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.Hint
-import Main.Rule.Key
-import Main.Rule.Locator qualified as Locator
-import Main.Rule.Name qualified as N
-import Main.Rule.NecessityVariant (showNecessityVariant)
 import Main.Rule.Piece qualified as PI
-import Main.Rule.RawBinder
-import Main.Rule.RawIdent
-import Main.Rule.RawPattern qualified as RP
-import Main.Rule.RawTerm
-import Main.Rule.RawTerm qualified as RT
-import Main.Rule.Rune qualified as RU
-import Main.Rule.Syntax.Series qualified as SE
 import Main.Rule.Syntax.Series.Decode qualified as SE
 
 pp :: RawTerm -> T.Text

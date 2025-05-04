@@ -11,14 +11,13 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Language.Common.Rule.Hint qualified as Hint
 import Main.Move.Context.EIO (EIO, raiseCritical)
-import Main.Rule.Hint qualified as Hint
 import Main.Rule.TopNameMap
 import Path
 import Prelude hiding (lookup)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
   }
 

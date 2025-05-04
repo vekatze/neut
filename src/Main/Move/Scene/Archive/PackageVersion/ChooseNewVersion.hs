@@ -15,8 +15,7 @@ import Main.Rule.Module (MainModule)
 import Main.Rule.PackageVersion qualified as PV
 import Prelude hiding (log)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { loggerHandle :: Logger.Handle
   }
 

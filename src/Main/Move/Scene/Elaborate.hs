@@ -15,15 +15,42 @@ import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Rule.Annotation qualified as AN
+import Language.Common.Rule.Attr.Data qualified as AttrD
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.BaseLowType qualified as BLT
+import Language.Common.Rule.BasePrimType qualified as BPT
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DecisionTree qualified as DT
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Error qualified as E
+import Language.Common.Rule.Foreign qualified as F
+import Language.Common.Rule.Hint
+import Language.Common.Rule.HoleID qualified as HID
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.IsConstLike (IsConstLike)
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.PrimNumSize
+import Language.Common.Rule.PrimType qualified as PT
+import Language.LowComp.Rule.DeclarationName qualified as DN
+import Language.Term.Rule.Prim qualified as P
+import Language.Term.Rule.PrimValue qualified as PV
+import Language.Term.Rule.Term qualified as TM
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Logger.Rule.Log qualified as L
 import Main.Move.Context.Cache qualified as Cache
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
+import Main.Move.Context.Gensym qualified as Gensym
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.RawImportSummary qualified as RawImportSummary
 import Main.Move.Context.SymLoc qualified as SymLoc
 import Main.Move.Context.TopCandidate qualified as TopCandidate
 import Main.Move.Context.Type qualified as Type
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
 import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
@@ -36,41 +63,14 @@ import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Main.Move.Scene.Elaborate.Infer qualified as Infer
 import Main.Move.Scene.Elaborate.Unify qualified as Unify
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
-import Main.Move.Context.GlobalRemark qualified as GlobalRemark
-import Main.Rule.Annotation qualified as AN
-import Main.Rule.Attr.Data qualified as AttrD
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.BaseLowType qualified as BLT
-import Main.Rule.BasePrimType qualified as BPT
-import Main.Rule.Binder
 import Main.Rule.Cache qualified as Cache
 import Main.Rule.Const (holeLiteral)
-import Main.Rule.DecisionTree qualified as DT
-import Main.Rule.DeclarationName qualified as DN
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Error qualified as E
-import Main.Rule.Foreign qualified as F
 import Main.Rule.Geist qualified as G
-import Main.Rule.Hint
-import Main.Rule.HoleID qualified as HID
 import Main.Rule.HoleSubst qualified as HS
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.IsConstLike (IsConstLike)
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.Magic qualified as M
-import Main.Rule.Prim qualified as P
-import Main.Rule.PrimNumSize
-import Main.Rule.PrimType qualified as PT
-import Main.Rule.PrimValue qualified as PV
 import Main.Rule.Stmt
 import Main.Rule.StmtKind
 import Main.Rule.Target
-import Main.Rule.Term qualified as TM
 import Main.Rule.Term.Weaken
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakPrimValue qualified as WPV
-import Main.Rule.WeakTerm qualified as WT
 import Main.Rule.WeakTerm.ToText
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv

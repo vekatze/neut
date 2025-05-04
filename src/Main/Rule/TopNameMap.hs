@@ -5,9 +5,9 @@ module Main.Rule.TopNameMap
 where
 
 import Data.HashMap.Strict qualified as Map
-import Main.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
 import Main.Rule.GlobalName qualified as GN
-import Main.Rule.Hint
 
 type TopNameMap =
   Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)

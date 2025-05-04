@@ -17,8 +17,7 @@ import Main.Rule.Source qualified as Source
 import Main.Rule.Target
 import UnliftIO (MonadIO (liftIO))
 
-data Handle
-  = Handle
+data Handle = Handle
   { loggerHandle :: Logger.Handle,
     cacheHandle :: Cache.Handle
   }

@@ -16,12 +16,12 @@ import Control.Monad.Except (ExceptT, MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either (partitionEithers)
 import Data.Text qualified as T
+import Language.Common.Rule.Error qualified as E
+import Language.Common.Rule.Hint (Hint)
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Logger.Rule.Log qualified as L
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark
-import Main.Rule.Error qualified as E
-import Main.Rule.Hint (Hint)
 import System.Exit
 import UnliftIO.Async (pooledForConcurrently)
 

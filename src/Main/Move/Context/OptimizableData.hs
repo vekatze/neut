@@ -8,12 +8,11 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Main.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.DefiniteDescription qualified as DD
 import Main.Rule.OptimizableData
 import Prelude hiding (lookup)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData)
   }
 

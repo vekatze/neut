@@ -9,14 +9,14 @@ where
 
 import Data.Binary
 import GHC.Generics
-import Main.Rule.Binder
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.Hint
-import Main.Rule.IsConstLike
-import Main.Rule.Opacity qualified as O
-import Main.Rule.RawBinder (RawBinder)
-import Main.Rule.RawTerm qualified as RT
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Hint
+import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.Opacity qualified as O
+import Language.RawTerm.Rule.RawBinder (RawBinder)
+import Language.RawTerm.Rule.RawTerm qualified as RT
 
 data BaseStmtKind name b t
   = Normal O.Opacity

@@ -8,18 +8,17 @@ where
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.ModuleAlias qualified as MA
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Module qualified as Module
 import Main.Move.Context.Gensym qualified as Gensym
+import Main.Move.Context.Module qualified as Module
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.GetModule qualified as GetModule
-import Main.Rule.BaseName qualified as BN
 import Main.Rule.Module
-import Main.Rule.ModuleAlias qualified as MA
 
-data Handle
-  = Handle
+data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     moduleHandle :: Module.Handle,
     envHandle :: Env.Handle

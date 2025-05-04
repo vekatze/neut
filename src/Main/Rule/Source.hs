@@ -10,9 +10,9 @@ where
 import Control.Monad.Catch
 import Data.Maybe
 import Data.Text qualified as T
+import Language.Common.Rule.Const
+import Language.Common.Rule.Hint
 import Main.Rule.Artifact qualified as A
-import Main.Rule.Const
-import Main.Rule.Hint
 import Main.Rule.Module qualified as M
 import Main.Rule.OutputKind qualified as OK
 import Path

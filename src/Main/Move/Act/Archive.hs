@@ -17,12 +17,11 @@ import Main.Move.Scene.Archive.PackageVersion.Reflect qualified as PV
 import Main.Move.Scene.Ens.Reflect qualified as EnsReflect
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Path
 import Main.Rule.Config.Archive
 import Main.Rule.Module
+import Path
 
-data Handle
-  = Handle
+data Handle = Handle
   { envHandle :: Env.Handle,
     packageVersionHandle :: PV.Handle,
     ensReflectHandle :: EnsReflect.Handle,

@@ -10,13 +10,13 @@ module Main.Rule.Stuck
 where
 
 import Control.Comonad.Cofree
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
+import Language.Common.Rule.HoleID qualified as HID
+import Language.Common.Rule.Ident
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Rule.Constraint qualified as C
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
-import Main.Rule.HoleID qualified as HID
-import Main.Rule.Ident
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakTerm qualified as WT
 
 data EvalBase
   = VarLocal Ident

@@ -10,17 +10,16 @@ where
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Main.Rule.Binder
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Opacity qualified as O
-import Main.Rule.Term qualified as TM
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Opacity qualified as O
+import Language.Term.Rule.Term qualified as TM
 import Prelude hiding (lookup, read)
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { defMapRef :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term))
   }
 

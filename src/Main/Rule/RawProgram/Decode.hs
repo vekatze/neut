@@ -3,22 +3,22 @@ module Main.Rule.RawProgram.Decode (pp, ImportInfo (..)) where
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.C
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.ForeignCodType qualified as FCT
+import Language.Common.Rule.Hint
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.Opacity qualified as O
+import Language.RawTerm.Rule.C
+import Language.RawTerm.Rule.Name qualified as N
+import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.RawTerm.Rule.Syntax.Series (Series (hasOptionalSeparator))
+import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.Doc qualified as D
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.ForeignCodType qualified as FCT
-import Main.Rule.Hint
-import Main.Rule.LocalLocator qualified as LL
-import Main.Rule.Name qualified as N
-import Main.Rule.Opacity qualified as O
 import Main.Rule.Piece qualified as PI
 import Main.Rule.RawProgram
-import Main.Rule.RawTerm qualified as RT
 import Main.Rule.RawTerm.Decode qualified as RT
 import Main.Rule.StmtKind qualified as SK
-import Main.Rule.Syntax.Series (Series (hasOptionalSeparator))
-import Main.Rule.Syntax.Series qualified as SE
 import Main.Rule.Syntax.Series.Decode qualified as SE
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Main.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)

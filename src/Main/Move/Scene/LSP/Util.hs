@@ -18,6 +18,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Language.Common.Rule.Error qualified as E
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -27,10 +28,9 @@ import Logger.Rule.Log
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel
 import Main.Move.Context.EIO (EIO, runEIO)
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Parse.Core qualified as Parse
-import Main.Move.Context.GlobalRemark qualified as GlobalRemark
-import Main.Rule.Error qualified as E
 import Main.Rule.Lsp
 import Path
 

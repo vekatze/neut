@@ -8,11 +8,11 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.GlobalLocatorAlias qualified as GLA
-import Main.Rule.Hint
-import Main.Rule.LocalLocator qualified as LL
-import Main.Rule.StrictGlobalLocator qualified as SGL
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
+import Language.Common.Rule.Hint
+import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Path
 
 data AliasInfo

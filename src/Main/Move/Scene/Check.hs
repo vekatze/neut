@@ -30,8 +30,7 @@ import Main.Rule.Source (Source (sourceFilePath))
 import Main.Rule.Target
 import Path
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { baseHandle :: Base.Handle
   }
 

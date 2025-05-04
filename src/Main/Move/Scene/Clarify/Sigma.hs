@@ -13,23 +13,22 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Main.Move.Context.Locator qualified as Locator
+import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.BaseLowType qualified as BLT
+import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Discriminant qualified as D
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.Opacity qualified as O
+import Language.Comp.Rule.Comp qualified as C
+import Language.Comp.Rule.EnumCase qualified as EC
 import Main.Move.Context.Gensym qualified as Gensym
+import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Scene.Clarify.Linearize qualified as Linearize
 import Main.Move.Scene.Clarify.Utility qualified as Utility
-import Main.Rule.ArgNum qualified as AN
-import Main.Rule.BaseLowType qualified as BLT
-import Main.Rule.BaseName qualified as BN
-import Main.Rule.Comp qualified as C
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Discriminant qualified as D
-import Main.Rule.EnumCase qualified as EC
-import Main.Rule.Ident
-import Main.Rule.Magic qualified as M
-import Main.Rule.Opacity qualified as O
 
-data Handle
-  = Handle
+data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     linearizeHandle :: Linearize.Handle,
     utilityHandle :: Utility.Handle

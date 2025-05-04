@@ -13,35 +13,35 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Rule.Attr.Data qualified as AttrD
+import Language.Common.Rule.Attr.Lam qualified as AttrL
+import Language.Common.Rule.Binder
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Error qualified as E
+import Language.Common.Rule.Hint
+import Language.Common.Rule.HoleID qualified as HID
+import Language.Common.Rule.Ident
+import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.PrimType qualified as PT
+import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
+import Language.WeakTerm.Rule.WeakTerm qualified as Subst
+import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.EIO (EIO, raiseCritical)
-import Main.Move.Context.Type qualified as Type
 import Main.Move.Context.Gensym qualified as Gensym
+import Main.Move.Context.Type qualified as Type
 import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Elaborate
 import Main.Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
-import Main.Rule.Attr.Data qualified as AttrD
-import Main.Rule.Attr.Lam qualified as AttrL
-import Main.Rule.Binder
 import Main.Rule.Constraint (SuspendedConstraint)
 import Main.Rule.Constraint qualified as C
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Error qualified as E
-import Main.Rule.Hint
-import Main.Rule.HoleID qualified as HID
 import Main.Rule.HoleSubst qualified as HS
-import Main.Rule.Ident
-import Main.Rule.Ident.Reify qualified as Ident
-import Main.Rule.LamKind qualified as LK
-import Main.Rule.PrimType qualified as PT
 import Main.Rule.Stuck qualified as Stuck
-import Main.Rule.WeakPrim qualified as WP
-import Main.Rule.WeakPrimValue qualified as WPV
-import Main.Rule.WeakTerm qualified as Subst
-import Main.Rule.WeakTerm qualified as WT
 import Main.Rule.WeakTerm.Eq qualified as WT
 import Main.Rule.WeakTerm.FreeVars
 import Main.Rule.WeakTerm.Holes

@@ -6,8 +6,8 @@ where
 
 import Data.Binary
 import GHC.Generics
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.Hint
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.Hint
 
 data TopCandidate = TopCandidate
   { loc :: Loc,

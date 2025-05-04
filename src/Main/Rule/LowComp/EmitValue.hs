@@ -7,14 +7,14 @@ where
 
 import Data.ByteString.Builder
 import Data.Text.Encoding qualified as TE
+import Language.Common.Rule.DefiniteDescription qualified as DD
+import Language.Common.Rule.ExternalName qualified as EN
+import Language.Common.Rule.Ident
+import Language.Common.Rule.LowType qualified as LT
+import Language.Common.Rule.PrimNumSize
+import Language.LowComp.Rule.LowComp qualified as LC
 import Main.Rule.Builder
-import Main.Rule.DefiniteDescription qualified as DD
-import Main.Rule.ExternalName qualified as EN
-import Main.Rule.Ident
-import Main.Rule.LowComp qualified as LC
-import Main.Rule.LowType qualified as LT
 import Main.Rule.LowType.EmitLowType (emitLowType)
-import Main.Rule.PrimNumSize
 import Numeric.Half
 
 emitValue :: LC.Value -> Builder

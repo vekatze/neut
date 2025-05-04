@@ -32,8 +32,7 @@ import Main.Rule.Lsp
 import Prettyprinter
 import System.IO (stdin, stdout)
 
-newtype Handle
-  = Handle
+newtype Handle = Handle
   { baseHandle :: Base.Handle
   }
 
