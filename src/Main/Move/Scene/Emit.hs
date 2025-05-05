@@ -24,12 +24,12 @@ import Language.Common.Rule.LowType.FromBaseLowType qualified as LT
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.PrimType.EmitPrimType (emitPrimType)
+import Language.LowComp.Move.Reduce qualified as Reduce
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.LowComp.Rule.LowComp.EmitValue
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Emit.LowComp qualified as EmitLowComp
-import Main.Move.Scene.Emit.LowComp.Reduce qualified as Reduce
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Builder
 import Main.Rule.Const
