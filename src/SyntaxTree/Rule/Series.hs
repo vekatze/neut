@@ -1,4 +1,4 @@
-module Tree.Rule.Series
+module SyntaxTree.Rule.Series
   ( Series (..),
     Separator (..),
     Container (..),
@@ -26,7 +26,7 @@ module Tree.Rule.Series
     catMaybes,
     compressEither,
     hasComment,
-    Tree.Rule.Series.filter,
+    SyntaxTree.Rule.Series.filter,
   )
 where
 
@@ -34,7 +34,7 @@ import Data.Bifunctor
 import Data.List (nubBy, sortBy)
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
-import Tree.Rule.C (C)
+import SyntaxTree.Rule.C (C)
 
 data Separator
   = Comma

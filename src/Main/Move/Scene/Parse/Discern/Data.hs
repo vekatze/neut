@@ -14,7 +14,7 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Tree.Rule.Series qualified as SE
+import SyntaxTree.Rule.Series qualified as SE
 
 defineData ::
   Hint ->

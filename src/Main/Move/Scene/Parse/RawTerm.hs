@@ -36,10 +36,10 @@ import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 import Text.Read qualified as R
-import Tree.Rule.C
-import Tree.Rule.Series qualified as SE
 
 rawExpr :: Handle -> Parser (RT.RawTerm, C)
 rawExpr h = do

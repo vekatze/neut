@@ -9,8 +9,8 @@ import Data.Text qualified as T
 import Language.RawTerm.Rule.C.Decode qualified as C
 import Main.Rule.Doc qualified as D
 import Main.Rule.Piece qualified as PI
-import Tree.Rule.C
-import Tree.Rule.Series
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series
 
 decode :: Series D.Doc -> D.Doc
 decode = do

@@ -84,9 +84,9 @@ import Main.Rule.Pattern qualified as PAT
 import Main.Rule.Platform qualified as Platform
 import Main.Rule.TopCandidate
 import Main.Rule.VarDefKind qualified as VDK
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Text.Read qualified as R
-import Tree.Rule.C
-import Tree.Rule.Series qualified as SE
 
 discernStmtList :: H.Handle -> Module -> [RawStmt] -> EIO [WeakStmt]
 discernStmtList h mo =

@@ -6,7 +6,7 @@ import Data.Text qualified as T
 import Main.Rule.Doc qualified as D
 import Main.Rule.Ens
 import Main.Rule.Syntax.Series.Decode qualified as SE
-import Tree.Rule.C
+import SyntaxTree.Rule.C
 
 pp :: FullEns -> T.Text
 pp (leadingComments, (ens, trailingComments)) = do

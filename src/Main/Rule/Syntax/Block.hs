@@ -1,7 +1,7 @@
 module Main.Rule.Syntax.Block (Block, Block', mapBlock, mapBlock') where
 
 import Language.Common.Rule.Hint
-import Tree.Rule.C
+import SyntaxTree.Rule.C
 
 type Block a =
   (C, (a, C))

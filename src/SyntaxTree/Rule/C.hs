@@ -1,4 +1,4 @@
-module Tree.Rule.C (C) where
+module SyntaxTree.Rule.C (C) where
 
 import Data.Text qualified as T
 

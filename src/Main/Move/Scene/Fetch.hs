@@ -42,8 +42,8 @@ import Main.Rule.Module qualified as M
 import Main.Rule.ModuleURL
 import Path
 import Path.IO
-import Tree.Rule.Series (Series (hasOptionalSeparator))
-import Tree.Rule.Series qualified as SE
+import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import SyntaxTree.Rule.Series qualified as SE
 
 data Handle = Handle
   { ensReflectHandle :: EnsReflect.Handle,

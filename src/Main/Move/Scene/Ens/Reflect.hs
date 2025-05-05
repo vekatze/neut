@@ -18,9 +18,9 @@ import Main.Move.Context.Parse
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Rule.Ens qualified as E
 import Path
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec hiding (parse)
-import Tree.Rule.C
-import Tree.Rule.Series qualified as SE
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

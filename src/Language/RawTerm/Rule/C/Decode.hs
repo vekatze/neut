@@ -9,7 +9,7 @@ where
 
 import Data.Text qualified as T
 import Main.Rule.Doc qualified as D
-import Tree.Rule.C
+import SyntaxTree.Rule.C
 
 decode :: C -> D.Doc
 decode =

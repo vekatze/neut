@@ -76,8 +76,8 @@ import Main.Rule.ModuleURL
 import Main.Rule.Target qualified as Target
 import Main.Rule.ZenConfig
 import Path
+import SyntaxTree.Rule.Series qualified as SE
 import System.FilePath qualified as FP
-import Tree.Rule.Series qualified as SE
 
 type SomePath a =
   Either (Path a Dir) (Path a File)

@@ -19,9 +19,9 @@ import Main.Rule.Piece qualified as PI
 import Main.Rule.Syntax.Series.Decode qualified as SE
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Main.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
-import Tree.Rule.C
-import Tree.Rule.Series (Series (hasOptionalSeparator))
-import Tree.Rule.Series qualified as SE
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import SyntaxTree.Rule.Series qualified as SE
 
 data ImportInfo = ImportInfo
   { presetNames :: [(T.Text, [BN.BaseName])], -- "prelude"

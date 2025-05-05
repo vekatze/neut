@@ -50,12 +50,12 @@ import Language.Common.Rule.Hint
 import Language.Common.Rule.Hint.Reflect qualified as Hint
 import Main.Rule.Syntax.Block
 import Path
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
-import Tree.Rule.C
-import Tree.Rule.Series qualified as SE
 
 type MustParseWholeFile =
   Bool

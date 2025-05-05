@@ -37,7 +37,7 @@ import Main.Rule.Target
 import Main.Rule.ZenConfig (ZenConfig (..))
 import Path
 import Path.IO
-import Tree.Rule.Series qualified as SE
+import SyntaxTree.Rule.Series qualified as SE
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

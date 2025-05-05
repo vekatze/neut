@@ -37,8 +37,8 @@ import Language.RawTerm.Rule.RawTerm qualified as RT
 import Main.Rule.Doc qualified as D
 import Main.Rule.Piece qualified as PI
 import Main.Rule.Syntax.Series.Decode qualified as SE
-import Tree.Rule.C
-import Tree.Rule.Series qualified as SE
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 
 pp :: RawTerm -> T.Text
 pp e = do

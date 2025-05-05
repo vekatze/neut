@@ -19,9 +19,9 @@ import Main.Rule.Module
 import Main.Rule.PackageVersion qualified as PV
 import Path
 import Path.IO
+import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import SyntaxTree.Rule.Series qualified as SE
 import System.IO
-import Tree.Rule.Series (Series (hasOptionalSeparator))
-import Tree.Rule.Series qualified as SE
 import Prelude hiding (log)
 
 makeArchiveEns :: Ens.Handle -> PV.PackageVersion -> MainModule -> EIO E.FullEns

@@ -24,9 +24,9 @@ import Language.RawTerm.Rule.RawTerm qualified as RT
 import Main.Move.Scene.Parse.Core (asLabel)
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
-import Tree.Rule.C
-import Tree.Rule.Series qualified as SE
 
 parseProgram :: P.Handle -> P.Parser RawProgram
 parseProgram h = do

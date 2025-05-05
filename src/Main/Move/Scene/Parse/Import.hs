@@ -42,8 +42,8 @@ import Main.Rule.Import (ImportItem (..))
 import Main.Rule.Module
 import Main.Rule.Source qualified as Source
 import Path
-import Tree.Rule.C
-import Tree.Rule.Series qualified as SE
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 
 type LocatorText =
   T.Text
