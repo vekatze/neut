@@ -51,6 +51,7 @@ import Language.LowComp.Rule.LowComp qualified as LC
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Cancel
+import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Main.Move.Scene.Comp.Reduce qualified as Reduce
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Arch
@@ -76,7 +77,8 @@ new (Base.Handle {..}) = do
   let arch = Platform.getArch platformHandle
   let baseSize = Platform.getDataSizeValue platformHandle
   let substHandle = Subst.new gensymHandle
-  let reduceHandle = Reduce.new compDefHandle substHandle gensymHandle
+  defMap <- CompDef.get compDefHandle
+  let reduceHandle = Reduce.new substHandle gensymHandle defMap
   declEnv <- liftIO $ newIORef $ makeBaseDeclEnv arch
   staticTextList <- liftIO $ newIORef []
   definedNameSet <- liftIO $ newIORef S.empty

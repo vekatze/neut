@@ -5,10 +5,12 @@ module Language.Comp.Rule.Comp
     CompStmt (..),
     SubstValue,
     IsReducible,
+    DefMap,
     fromDefTuple,
   )
 where
 
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (intercalate)
 import Data.Text qualified as T
@@ -103,3 +105,6 @@ data CompStmt
 fromDefTuple :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> CompStmt
 fromDefTuple (dd, (opacity, args, body)) =
   Def dd opacity args body
+
+type DefMap =
+  Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)

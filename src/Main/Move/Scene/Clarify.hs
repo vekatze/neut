@@ -88,9 +88,10 @@ new :: Base.Handle -> Local.Handle -> IO Handle
 new (Base.Handle {..}) (Local.Handle {..}) = do
   let baseSize = Platform.getDataSizeValue platformHandle
   auxEnvHandle <- AuxEnv.new
+  defMap <- CompDef.get compDefHandle
   let substHandle = Subst.new gensymHandle
   let compSubstHandle = CompSubst.new gensymHandle
-  let reduceHandle = Reduce.new compDefHandle compSubstHandle gensymHandle
+  let reduceHandle = Reduce.new compSubstHandle gensymHandle defMap
   let utilityHandle = Utility.new gensymHandle compSubstHandle auxEnvHandle baseSize
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
@@ -132,9 +133,10 @@ data MainHandle = MainHandle
 newMain :: Base.Handle -> IO MainHandle
 newMain Base.Handle {..} = do
   mainAuxEnvHandle <- AuxEnv.new
+  defMap <- CompDef.get compDefHandle
   let baseSize = Platform.getDataSizeValue platformHandle
   let compSubstHandle = CompSubst.new gensymHandle
-  let mainReduceHandle = Reduce.new compDefHandle compSubstHandle gensymHandle
+  let mainReduceHandle = Reduce.new compSubstHandle gensymHandle defMap
   let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle baseSize
   let linearizeHandle = Linearize.new gensymHandle utilityHandle
   let mainSigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
@@ -153,7 +155,7 @@ registerFoundationalTypes h = do
   auxEnv <- getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
   forM_ (Map.toList auxEnv) $ uncurry $ CompDef.insert (compDefHandle h)
 
-getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO CompDef.DefMap
+getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO C.DefMap
 getBaseAuxEnv auxEnvHandle sigmaHandle = do
   Sigma.registerImmediateS4 sigmaHandle
   Sigma.registerClosureS4 sigmaHandle

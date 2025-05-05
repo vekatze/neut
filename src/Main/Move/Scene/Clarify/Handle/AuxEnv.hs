@@ -27,7 +27,7 @@ new = do
   compAuxEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
-get :: Handle -> IO CompDef.DefMap
+get :: Handle -> IO DefMap
 get h =
   readIORef (compAuxEnvRef h)
 
@@ -39,7 +39,7 @@ checkIfAlreadyRegistered :: Handle -> CompDef.DefKey -> IO Bool
 checkIfAlreadyRegistered h k = do
   Map.member k <$> get h
 
-toCompStmtList :: CompDef.DefMap -> [CompStmt]
+toCompStmtList :: DefMap -> [CompStmt]
 toCompStmtList defMap = do
   map fromDefTuple $ Map.toList defMap
 
