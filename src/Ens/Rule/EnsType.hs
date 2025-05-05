@@ -1,4 +1,4 @@
-module Main.Rule.EnsType
+module Ens.Rule.EnsType
   ( EnsType (..),
     showEnsType,
   )
