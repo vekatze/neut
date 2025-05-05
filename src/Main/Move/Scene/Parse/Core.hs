@@ -1,13 +1,11 @@
 module Main.Move.Scene.Parse.Core
   ( symbol,
     baseName,
-    delimiter,
     nonSymbolCharSet,
     keyword,
     string,
     rune,
     integer,
-    spaceConsumer,
     float,
     bool,
     betweenParen,
@@ -27,8 +25,8 @@ module Main.Move.Scene.Parse.Core
 where
 
 import BaseParser.Move.GetInfo
+import BaseParser.Move.Parse
 import BaseParser.Rule.Parser
-import Control.Monad
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
@@ -39,42 +37,7 @@ import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)
-import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
-
-skipSpace :: Parser ()
-skipSpace =
-  L.space asciiSpaceOrNewLine1 empty empty
-
-comment :: Parser T.Text
-comment = do
-  skipSpace
-  chunk "//"
-  takeWhileP (Just "character") (/= '\n')
-
-{-# INLINE spaceConsumer #-}
-spaceConsumer :: Parser C
-spaceConsumer =
-  hidden $ do
-    skipSpace
-    many (comment <* skipSpace)
-
-{-# INLINE asciiSpaceOrNewLine1 #-}
-asciiSpaceOrNewLine1 :: Parser ()
-asciiSpaceOrNewLine1 =
-  void $ takeWhile1P (Just "space or newline") isAsciiSpaceOrNewLine
-
-{-# INLINE isAsciiSpaceOrNewLine #-}
-isAsciiSpaceOrNewLine :: Char -> Bool
-isAsciiSpaceOrNewLine c =
-  c == ' ' || c == '\n'
-
-{-# INLINE lexeme #-}
-lexeme :: Parser a -> Parser (a, C)
-lexeme p = do
-  v <- p
-  c <- spaceConsumer -- read spaces *before* p
-  return (v, c)
 
 symbol :: Parser (T.Text, C)
 symbol = do
@@ -91,10 +54,6 @@ keyword expected = do
   fmap snd $ lexeme $ try $ do
     _ <- chunk expected
     label (T.unpack expected) $ notFollowedBy symbol
-
-delimiter :: T.Text -> Parser C
-delimiter expected = do
-  fmap snd $ lexeme $ void $ chunk expected
 
 string :: Parser (T.Text, C)
 string =

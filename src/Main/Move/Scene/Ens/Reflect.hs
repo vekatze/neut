@@ -7,6 +7,7 @@ module Main.Move.Scene.Ens.Reflect
 where
 
 import BaseParser.Move.GetInfo
+import BaseParser.Move.Parse
 import BaseParser.Rule.Parser qualified as P
 import Control.Comonad.Cofree
 import Control.Monad
@@ -36,7 +37,7 @@ type MustParseWholeFile =
 parse :: Path Abs File -> T.Text -> MustParseWholeFile -> P.Parser a -> EIO (C, a)
 parse filePath fileContent mustParseWholeFile parser = do
   let fileParser = do
-        leadingComments <- P.spaceConsumer
+        leadingComments <- spaceConsumer
         value <- parser
         when mustParseWholeFile eof
         return (leadingComments, value)

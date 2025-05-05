@@ -16,6 +16,7 @@ module Main.Move.Scene.Parse.RawTerm
 where
 
 import BaseParser.Move.GetInfo
+import BaseParser.Move.Parse
 import BaseParser.Rule.Parser
 import Control.Comonad.Cofree
 import Control.Monad

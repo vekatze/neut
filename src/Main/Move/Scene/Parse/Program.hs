@@ -5,6 +5,7 @@ module Main.Move.Scene.Parse.Program
 where
 
 import BaseParser.Move.GetInfo
+import BaseParser.Move.Parse
 import BaseParser.Rule.Parser
 import Control.Monad
 import Control.Monad.Trans
@@ -101,7 +102,7 @@ parseForeignItem h = do
   m <- getCurrentHint
   (funcName, c1) <- P.symbol
   (domList, c2) <- P.seriesParen $ rawTerm h
-  c3 <- P.delimiter ":"
+  c3 <- delimiter ":"
   (cod, c) <-
     choice
       [ do
