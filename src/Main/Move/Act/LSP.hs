@@ -7,7 +7,7 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base

@@ -12,6 +12,8 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
@@ -22,7 +24,6 @@ import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Main.Move.Context.Antecedent qualified as Antecedent
-import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Main.Rule.AliasInfo

@@ -8,9 +8,9 @@ where
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Path qualified as Path
 import Main.Rule.Ens
 import Main.Rule.Ens.Reify qualified as Ens

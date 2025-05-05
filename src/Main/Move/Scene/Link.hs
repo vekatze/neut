@@ -10,9 +10,9 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.LLVM qualified as LLVM
 import Main.Move.Context.Path qualified as Path

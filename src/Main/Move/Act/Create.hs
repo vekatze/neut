@@ -7,8 +7,8 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Error.Rule.EIO (EIO)
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Check qualified as Check
 import Main.Move.Scene.Create qualified as Create

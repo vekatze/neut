@@ -7,7 +7,8 @@ where
 
 import Control.Monad
 import Data.Text qualified as T
-import Main.Move.Context.EIO (EIO, raiseError')
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError')
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.External qualified as External
 import Main.Move.Scene.Module.Save qualified as ModuleSave

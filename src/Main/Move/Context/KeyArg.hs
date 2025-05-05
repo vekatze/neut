@@ -12,13 +12,14 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Const (holeVarPrefix)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Hint
 import Language.Common.Rule.IsConstLike
 import Language.RawTerm.Rule.Key
-import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Prelude hiding (lookup, read)

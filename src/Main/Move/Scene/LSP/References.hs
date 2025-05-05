@@ -6,9 +6,9 @@ module Main.Move.Scene.LSP.References
 where
 
 import Control.Monad.Trans
+import Error.Rule.EIO (EIO)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Main.Move.Scene.LSP.FindReferences qualified as LSP

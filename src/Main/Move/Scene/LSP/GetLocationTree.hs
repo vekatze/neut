@@ -5,8 +5,9 @@ module Main.Move.Scene.LSP.GetLocationTree
   )
 where
 
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.EIO (EIO, liftMaybe)
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Cache qualified as Cache

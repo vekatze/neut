@@ -9,6 +9,7 @@ import Control.Monad.Trans
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as F
@@ -22,7 +23,6 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
-import Main.Move.Context.EIO (raiseError)
 import Main.Move.Scene.Parse.Core (asLabel)
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm

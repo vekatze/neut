@@ -10,9 +10,10 @@ where
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Main.Move.Context.Antecedent qualified as Antecedent
-import Main.Move.Context.EIO (EIO, raiseError, raiseError')
 import Main.Rule.Module
 import Main.Rule.Source (Source (sourceModule))
 import Main.Rule.Source qualified as Source

@@ -11,7 +11,9 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.Hint
@@ -22,7 +24,6 @@ import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
-import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Module qualified as Module

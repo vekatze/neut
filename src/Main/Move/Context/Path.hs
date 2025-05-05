@@ -32,10 +32,11 @@ import Data.IORef
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Digest
 import Language.Common.Rule.ModuleID qualified as MID
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.EIO (EIO, raiseError')
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Platform qualified as Platform
 import Main.Rule.ClangOption qualified as CL

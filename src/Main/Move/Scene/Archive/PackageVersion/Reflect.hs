@@ -3,7 +3,8 @@ module Main.Move.Scene.Archive.PackageVersion.Reflect (reflect) where
 import Control.Monad
 import Data.Maybe
 import Data.Text qualified as T
-import Main.Move.Context.EIO (EIO, raiseError')
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError')
 import Main.Move.Scene.Archive.Module.GetExistingVersions
 import Main.Rule.Module
 import Main.Rule.PackageVersion qualified as PV

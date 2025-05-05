@@ -6,9 +6,9 @@ module Main.Move.Act.Check
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Error.Rule.EIO (EIO)
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Log qualified as L
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Scene.Check qualified as Check
 import Main.Move.Scene.Fetch qualified as Fetch

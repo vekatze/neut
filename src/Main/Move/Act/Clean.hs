@@ -5,7 +5,7 @@ module Main.Move.Act.Clean
   )
 where
 
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Scene.Clean qualified as Clean
 import Main.Move.Scene.Init.Base qualified as Base
 import Prelude hiding (log)

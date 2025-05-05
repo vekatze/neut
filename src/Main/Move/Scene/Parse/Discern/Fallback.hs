@@ -3,12 +3,13 @@ module Main.Move.Scene.Parse.Discern.Fallback (getFallbackMatrix) where
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Vector qualified as V
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseCritical')
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Main.Move.Context.EIO (EIO, raiseCritical')
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Move.Scene.Parse.Discern.Noema
 import Main.Rule.Pattern

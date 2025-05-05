@@ -14,6 +14,8 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -27,7 +29,6 @@ import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Rule.Term qualified as TM
-import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Term.Refresh qualified as Refresh
 import Main.Move.Scene.Init.Base qualified as Base

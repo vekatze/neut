@@ -6,7 +6,7 @@ module Main.Move.Act.Format
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Parse (ensureExistence', readTextFile)
 import Main.Move.Context.Parse qualified as Parse
 import Main.Move.Scene.Format qualified as Format

@@ -22,6 +22,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
@@ -46,7 +47,6 @@ import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Cancel

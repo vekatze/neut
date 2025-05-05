@@ -16,6 +16,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Move.Run (forP, liftMaybe, runEIO)
+import Error.Rule.EIO (EIO)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -27,7 +29,6 @@ import Language.Common.Rule.SourceLocator qualified as SL
 import Language.LSP.Protocol.Types
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.EIO (EIO, forP, liftMaybe, runEIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Init.Base qualified as Base

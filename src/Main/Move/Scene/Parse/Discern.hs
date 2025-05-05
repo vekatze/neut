@@ -10,8 +10,10 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
+import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -55,7 +57,6 @@ import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars)
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
-import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.Locator qualified as Locator

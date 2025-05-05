@@ -2,6 +2,7 @@ module Main (main) where
 
 import Color.Move.CreateHandle qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Error.Move.Run (run)
 import Logger.Move.CreateHandle qualified as Logger
 import Main.Move.Act.Archive qualified as Archive
 import Main.Move.Act.Build qualified as Build
@@ -13,7 +14,6 @@ import Main.Move.Act.Get qualified as Get
 import Main.Move.Act.LSP qualified as LSP
 import Main.Move.Act.Version qualified as Version
 import Main.Move.Act.Zen qualified as Zen
-import Main.Move.Context.EIO (run)
 import Main.Move.Context.Platform (ensureExecutables)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave

@@ -8,7 +8,8 @@ where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
-import Main.Move.Context.EIO (EIO, raiseError')
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError')
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.LLVM qualified as LLVM
 import Main.Move.Context.Path qualified as Path

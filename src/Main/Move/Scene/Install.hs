@@ -7,7 +7,7 @@ where
 
 import Control.Monad
 import Data.Text qualified as T
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Init.Base qualified as Base

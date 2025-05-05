@@ -7,13 +7,14 @@ import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
 import Main.Move.Context.Cache (invalidate)
-import Main.Move.Context.EIO (EIO, liftMaybe)
 import Main.Move.Context.Type qualified as Type
 import Main.Move.Scene.Check qualified as Check
 import Main.Move.Scene.Elaborate qualified as Elaborate

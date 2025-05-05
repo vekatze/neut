@@ -12,7 +12,9 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Language.Common.Move.CreateSymbol qualified as Gensym
+import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -31,7 +33,6 @@ import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Tag qualified as Tag

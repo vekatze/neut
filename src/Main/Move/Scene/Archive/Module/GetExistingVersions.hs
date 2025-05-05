@@ -2,7 +2,7 @@ module Main.Move.Scene.Archive.Module.GetExistingVersions (getExistingVersions) 
 
 import Data.List qualified as List
 import Data.Maybe
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Path (getBaseName)
 import Main.Rule.Module
 import Main.Rule.PackageVersion qualified as PV

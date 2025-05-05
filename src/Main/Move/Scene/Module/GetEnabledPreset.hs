@@ -8,10 +8,10 @@ where
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias qualified as MA
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Module qualified as Module
 import Main.Move.Scene.Init.Base qualified as Base

@@ -15,8 +15,8 @@ where
 
 import Control.Monad.IO.Class
 import Data.Binary
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Artifact qualified as Artifact
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Path (getSourceLocationCachePath)
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Init.Base qualified as Base

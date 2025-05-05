@@ -16,6 +16,9 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
+import Error.Move.Run (forP)
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Error (Error (MakeError))
@@ -27,7 +30,6 @@ import Language.RawTerm.Rule.Syntax.Series (Series (hasOptionalSeparator))
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.EIO (EIO, forP, raiseError')
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.External qualified as External
 import Main.Move.Context.Module qualified as Module

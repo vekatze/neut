@@ -17,12 +17,13 @@ import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleID qualified as MID
 import Logger.Move.Debug qualified as Logger
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Artifact qualified as Artifact
-import Main.Move.Context.EIO (EIO, raiseError, raiseError')
 import Main.Move.Context.Env (getMainModule)
 import Main.Move.Context.Module qualified as Module
 import Main.Move.Context.Parse (ensureExistence')

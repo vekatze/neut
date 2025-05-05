@@ -11,6 +11,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Hint
@@ -22,7 +23,6 @@ import Language.WeakTerm.Rule.WeakStmt
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Tag qualified as Tag
 import Main.Move.Scene.Init.Base qualified as Base

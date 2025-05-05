@@ -9,9 +9,9 @@ where
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Language.RawTerm.Rule.RawStmt.Decode (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Language.RawTerm.Rule.RawStmt.Decode qualified as RawProgram
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Scene.Ens.Reflect qualified as EnsReflect
 import Main.Move.Scene.Init.Base qualified as Base

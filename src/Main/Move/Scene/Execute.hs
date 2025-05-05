@@ -5,7 +5,7 @@ module Main.Move.Scene.Execute
   )
 where
 
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.External qualified as External
 import Main.Move.Context.Path qualified as Path

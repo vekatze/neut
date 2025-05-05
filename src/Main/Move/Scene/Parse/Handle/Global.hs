@@ -15,6 +15,8 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
@@ -29,7 +31,6 @@ import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Log (Log)
 import Logger.Rule.LogLevel (LogLevel (Error))
-import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.Locator qualified as Locator

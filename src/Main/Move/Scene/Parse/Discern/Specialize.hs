@@ -7,13 +7,14 @@ where
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.Vector qualified as V
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseCritical')
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Main.Move.Context.EIO (EIO, raiseCritical')
 import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Move.Scene.Parse.Discern.Noema

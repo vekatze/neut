@@ -5,7 +5,7 @@ module Main.Move.Scene.Init.Local
 where
 
 import Control.Monad.IO.Class
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.RawImportSummary qualified as RawImportSummary
 import Main.Move.Context.SymLoc qualified as SymLoc

@@ -7,9 +7,10 @@ where
 
 import Control.Monad.Trans
 import Data.Text qualified as T
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS
-import Main.Move.Context.EIO (EIO, liftMaybe)
 import Main.Move.Scene.Format qualified as Format
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Const

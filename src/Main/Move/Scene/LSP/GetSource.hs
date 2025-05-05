@@ -6,9 +6,10 @@ module Main.Move.Scene.LSP.GetSource
 where
 
 import Control.Lens hiding (Iso, List)
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Main.Move.Context.EIO (EIO, liftMaybe)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.Source.Reflect qualified as SourceReflect
 import Main.Rule.Source (Source)

@@ -6,7 +6,7 @@ module Main.Move.Scene.Clean
 where
 
 import Control.Monad
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Platform qualified as Platform

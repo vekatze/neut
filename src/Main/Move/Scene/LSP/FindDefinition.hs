@@ -6,10 +6,11 @@ module Main.Move.Scene.LSP.FindDefinition
 where
 
 import Control.Lens hiding (Iso, List)
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Language.Common.Rule.Hint qualified as H
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Main.Move.Context.EIO (EIO, liftMaybe)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
 import Main.Move.Scene.LSP.GetSource qualified as GetSource

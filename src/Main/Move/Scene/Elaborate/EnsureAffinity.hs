@@ -13,6 +13,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -31,7 +33,6 @@ import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText qualified as WT
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
-import Main.Move.Context.EIO (EIO, raiseCritical)
 import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Type qualified as Type
 import Main.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate

@@ -9,13 +9,10 @@ module Language.Common.Rule.Error
 where
 
 import Data.Text qualified as T
+import Error.Rule.Error
 import Language.Common.Rule.Hint
 import Logger.Rule.Log
 import Logger.Rule.LogLevel
-
-newtype Error
-  = MakeError [Log]
-  deriving (Show, Semigroup)
 
 newError :: Hint -> T.Text -> Error
 newError m text = do
@@ -32,7 +29,3 @@ newCritical m text = do
 newCritical' :: T.Text -> Error
 newCritical' text = do
   MakeError [Log Nothing True Critical text]
-
-join :: [Error] -> Error
-join es = do
-  MakeError $ concatMap (\(MakeError rs) -> rs) es

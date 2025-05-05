@@ -12,6 +12,9 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Error.Move.Run (run)
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
@@ -19,7 +22,6 @@ import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.EIO (EIO, raiseError', run)
 import Main.Move.Scene.Module.Reflect (getCurrentModuleFilePath)
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Main.Rule.BuildMode qualified as BM

@@ -15,6 +15,9 @@ import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Time
+import Error.Move.Run (forP, runEIO)
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
@@ -23,7 +26,6 @@ import Logger.Move.Debug qualified as Logger
 import Logger.Move.Log qualified as Logger
 import Main.Move.Context.Cache (needsCompilation)
 import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.EIO (EIO, forP, raiseError', runEIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.External qualified as External
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark

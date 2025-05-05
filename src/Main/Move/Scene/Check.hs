@@ -11,10 +11,14 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Error.Move.Run (runEIO)
+import Error.Rule.EIO (EIO)
+import Language.Common.Rule.Error qualified as E
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Log
-import Main.Move.Context.EIO (EIO, collectLogs)
+import Logger.Rule.Log qualified as L
 import Main.Move.Context.Env qualified as Env
+import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Scene.Elaborate qualified as Elaborate
 import Main.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
 import Main.Move.Scene.Init.Base qualified as Base
@@ -100,3 +104,13 @@ checkSource h target source cacheOrContent = do
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc =
   foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
+
+collectLogs :: GlobalRemark.Handle -> EIO () -> IO [L.Log]
+collectLogs h c = do
+  resultOrErr <- runEIO c
+  remarkList <- liftIO $ GlobalRemark.get h
+  case resultOrErr of
+    Left (E.MakeError logList) ->
+      return $ logList ++ remarkList
+    Right _ ->
+      return remarkList

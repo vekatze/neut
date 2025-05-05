@@ -10,7 +10,8 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Main.Move.Context.EIO (EIO, raiseCritical')
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseCritical')
 import Main.Rule.Artifact qualified as A
 import Path
 import Prelude hiding (lookup)

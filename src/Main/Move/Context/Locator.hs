@@ -25,6 +25,8 @@ import Data.List (find)
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Data.Text.Encoding
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -34,7 +36,6 @@ import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Main.Move.Context.EIO (EIO, raiseError, raiseError')
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Tag qualified as Tag
 import Main.Rule.AliasInfo (MustUpdateTag)

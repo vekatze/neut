@@ -6,10 +6,11 @@ module Main.Move.Scene.Load
 where
 
 import Data.Text qualified as T
+import Error.Move.Run (forP)
+import Error.Rule.EIO (EIO)
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.EIO (EIO, forP)
 import Main.Move.Context.Parse (readTextFile)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Cache qualified as Cache

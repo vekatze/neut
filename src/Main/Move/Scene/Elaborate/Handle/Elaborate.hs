@@ -9,13 +9,13 @@ where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (fromMaybe)
+import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Hint (Hint)
 import Language.Term.Rule.Term qualified as TM
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Context.KeyArg qualified as KeyArg

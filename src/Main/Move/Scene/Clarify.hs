@@ -16,9 +16,11 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
+import Language.Common.Move.Raise (raiseCritical, raiseCritical')
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -53,7 +55,6 @@ import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.Chain (nubFreeVariables)
 import Language.Term.Rule.Term.Chain qualified as TM
 import Language.Term.Rule.Term.FromPrimNum
-import Main.Move.Context.EIO (EIO, raiseCritical, raiseCritical')
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Platform qualified as Platform

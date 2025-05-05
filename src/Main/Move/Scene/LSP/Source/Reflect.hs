@@ -5,7 +5,7 @@ module Main.Move.Scene.LSP.Source.Reflect
   )
 where
 
-import Main.Move.Context.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Reflect qualified as Module

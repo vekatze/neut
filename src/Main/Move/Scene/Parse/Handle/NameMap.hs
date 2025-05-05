@@ -11,8 +11,9 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Hint qualified as Hint
-import Main.Move.Context.EIO (EIO, raiseCritical)
 import Main.Rule.TopNameMap
 import Path
 import Prelude hiding (lookup)
