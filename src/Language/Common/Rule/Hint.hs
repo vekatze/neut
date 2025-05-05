@@ -9,7 +9,6 @@ module Language.Common.Rule.Hint
     internalHint,
     newSourceHint,
     fakeLoc,
-    toFilePos,
     newLog,
   )
 where
