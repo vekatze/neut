@@ -17,9 +17,9 @@ import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Const (holeVarPrefix)
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
 import Language.Common.Rule.IsConstLike
 import Language.RawTerm.Rule.Key
+import Logger.Rule.Hint
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Prelude hiding (lookup, read)

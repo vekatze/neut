@@ -17,12 +17,12 @@ import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
-import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
+import Logger.Rule.Hint
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator

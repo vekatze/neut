@@ -42,9 +42,9 @@ import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.Const
 import Language.Common.Rule.Error
-import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.PrimType.ToText qualified as PT
+import Logger.Rule.Hint qualified as H
 import Prelude hiding (length)
 
 newtype BaseName = MakeBaseName {reify :: T.Text}

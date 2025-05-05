@@ -8,8 +8,8 @@ where
 
 import Control.Monad (unless)
 import Data.IORef
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
+import Logger.Rule.Hint
 import Main.Rule.LocalVarTree qualified as LVT
 
 newtype Handle = Handle

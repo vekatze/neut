@@ -9,9 +9,9 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
-import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleDigest (ModuleDigest (..))
 import Language.Common.Rule.ModuleDigest qualified as MD
+import Logger.Rule.Hint
 import Main.Move.Scene.Archive.Module.GetExistingVersions
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.Const

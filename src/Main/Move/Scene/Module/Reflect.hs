@@ -21,11 +21,11 @@ import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocator qualified as GL
-import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
+import Logger.Rule.Hint qualified as H
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)

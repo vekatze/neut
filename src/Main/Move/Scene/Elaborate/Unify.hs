@@ -21,7 +21,6 @@ import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
@@ -36,6 +35,7 @@ import Language.WeakTerm.Rule.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars
 import Language.WeakTerm.Rule.WeakTerm.Holes
 import Language.WeakTerm.Rule.WeakTerm.ToText
+import Logger.Rule.Hint
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.Type qualified as Type
@@ -82,14 +82,14 @@ constraintToRemark h sub c = do
   case c of
     C.Actual t -> do
       t' <- fillAsMuchAsPossible h sub t
-      return $ newLog (WT.metaOf t) L.Error $ constructErrorMessageActual t'
+      return $ L.newLog (WT.metaOf t) L.Error $ constructErrorMessageActual t'
     C.Integer t -> do
       t' <- fillAsMuchAsPossible h sub t
-      return $ newLog (WT.metaOf t) L.Error $ constructErrorMessageInteger t'
+      return $ L.newLog (WT.metaOf t) L.Error $ constructErrorMessageInteger t'
     C.Eq expected actual -> do
       expected' <- fillAsMuchAsPossible h sub expected
       actual' <- fillAsMuchAsPossible h sub actual
-      return $ newLog (WT.metaOf actual) L.Error $ constructErrorMessageEq actual' expected'
+      return $ L.newLog (WT.metaOf actual) L.Error $ constructErrorMessageEq actual' expected'
 
 fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 fillAsMuchAsPossible h sub e = do

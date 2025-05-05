@@ -1,6 +1,6 @@
-module Language.Common.Rule.Hint.Reify (toString) where
+module Logger.Rule.Hint.Reify (toString) where
 
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 
 toString :: Hint -> String
 toString m = do

@@ -9,7 +9,7 @@ where
 
 import Data.Text qualified as T
 import Error.Rule.Error
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 import Logger.Rule.Log
 import Logger.Rule.LogLevel
 

@@ -1,6 +1,6 @@
 module Main.Rule.Syntax.Block (Block, Block', mapBlock, mapBlock') where
 
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 import SyntaxTree.Rule.C
 
 type Block a =

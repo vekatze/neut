@@ -13,10 +13,9 @@ import Data.Text qualified as T
 import Data.Void
 import Error.Rule.EIO
 import Error.Rule.Error qualified as E
-import Logger.Rule.FilePos (FilePos (FilePos))
+import Logger.Rule.Hint.Reflect (fromSourcePos)
 import Logger.Rule.Log (Log (..))
 import Logger.Rule.LogLevel (LogLevel (Error))
-import Path (parseAbsFile)
 import Text.Megaparsec
 
 type Parser a = ParsecT Void T.Text EIO a
@@ -25,14 +24,10 @@ createParseError :: ParseErrorBundle T.Text Void -> E.Error
 createParseError errorBundle = do
   let (foo, posState) = attachSourcePos errorOffset (bundleErrors errorBundle) (bundlePosState errorBundle)
   let pos = pstateSourcePos posState
-  let line = unPos $ sourceLine pos
-  let column = unPos $ sourceColumn pos
-  let file = sourceName pos
+  let m = fromSourcePos pos
   E.MakeError
     [ Log
-        { position = do
-            path <- parseAbsFile file
-            return $ FilePos path (line, column),
+        { position = Just m,
           shouldInsertPadding = True,
           logLevel = Error,
           content = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo

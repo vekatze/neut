@@ -29,7 +29,6 @@ import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Rune qualified as RU
 import Language.RawTerm.Move.CreateHole qualified as RT
 import Language.RawTerm.Rule.Key
@@ -39,6 +38,7 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Logger.Rule.Hint
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
 import Path

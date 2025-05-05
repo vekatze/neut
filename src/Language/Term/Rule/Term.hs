@@ -21,13 +21,13 @@ import Language.Common.Rule.BaseLowType
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.Magic
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Rule.Prim qualified as P
+import Logger.Rule.Hint
 
 type Term = Cofree TermF Hint
 

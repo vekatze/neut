@@ -16,12 +16,12 @@ import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
-import Language.Common.Rule.Hint
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.Rule.RawStmt
+import Logger.Rule.Hint
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Module qualified as Module

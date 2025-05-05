@@ -11,7 +11,7 @@ import Control.Monad.Catch
 import Data.Maybe
 import Data.Text qualified as T
 import Language.Common.Rule.Const
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 import Main.Rule.Artifact qualified as A
 import Main.Rule.Module qualified as M
 import Main.Rule.OutputKind qualified as OK

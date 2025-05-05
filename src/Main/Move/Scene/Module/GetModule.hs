@@ -13,9 +13,9 @@ import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseError)
-import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.ModuleAlias (ModuleAlias)
 import Language.Common.Rule.ModuleID qualified as MID
+import Logger.Rule.Hint qualified as H
 import Main.Move.Context.Module qualified as Module
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect

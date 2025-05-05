@@ -19,9 +19,9 @@ import Data.Text qualified as T
 import Data.Time
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError, raiseError')
-import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleID qualified as MID
 import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Hint
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Artifact qualified as Artifact
 import Main.Move.Context.Env (getMainModule)

@@ -25,7 +25,7 @@ import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Logger.Rule.FilePos qualified as FP
+import Logger.Rule.Hint
 import Logger.Rule.Log
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel
@@ -61,10 +61,10 @@ maxDiagNum =
 
 remarkToDignostic :: Log -> Maybe (NormalizedUri, Diagnostic)
 remarkToDignostic Log {position, logLevel, content} = do
-  FP.FilePos path (line, col) <- position
+  Hint {metaFileName = path, metaLocation = (line, col)} <- position
   let pos = Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ col - 1}
   let range = Range {_start = pos, _end = pos}
-  let uri = toNormalizedUri $ filePathToUri $ toFilePath path
+  let uri = toNormalizedUri $ filePathToUri path
   return
     ( uri,
       Diagnostic

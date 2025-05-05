@@ -36,8 +36,8 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
-import Language.Common.Rule.Hint
-import Language.Common.Rule.Hint.Reflect qualified as Hint
+import Logger.Rule.Hint
+import Logger.Rule.Hint.Reflect qualified as Hint
 import Main.Rule.Syntax.Block
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE

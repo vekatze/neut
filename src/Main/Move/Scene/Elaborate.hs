@@ -30,7 +30,6 @@ import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.Geist qualified as G
-import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
@@ -52,6 +51,7 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
+import Logger.Rule.Hint
 import Logger.Rule.Log qualified as L
 import Main.Move.Context.Cache qualified as Cache
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark
@@ -346,7 +346,7 @@ elaborate' h term =
         AN.Type t -> do
           t' <- elaborate' h t
           let message = "Admitted: `" <> toText (weaken t') <> "`"
-          let typeRemark = newLog m remarkLevel message
+          let typeRemark = L.newLog m remarkLevel message
           liftIO $ LocalLogs.insert (localLogsHandle h) typeRemark
           return e'
     m :< WT.Resource dd resourceID unitType discarder copier -> do

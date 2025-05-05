@@ -27,13 +27,13 @@ import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
 import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocator qualified as GL
-import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.List (initLast)
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
+import Logger.Rule.Hint qualified as H
 
 newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Generic, Show)

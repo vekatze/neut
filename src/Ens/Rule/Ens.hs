@@ -37,7 +37,7 @@ import Data.Text qualified as T
 import Ens.Rule.EnsType qualified as ET
 import Error.Rule.Error
 import Language.Common.Rule.Error
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 import Path
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE

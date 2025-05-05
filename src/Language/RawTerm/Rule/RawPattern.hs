@@ -5,10 +5,10 @@ module Language.RawTerm.Rule.RawPattern
   )
 where
 
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Rune qualified as RU
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
+import Logger.Rule.Hint
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 

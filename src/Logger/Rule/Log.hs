@@ -1,6 +1,7 @@
 module Logger.Rule.Log
   ( Log (..),
     ShouldInsertPadding,
+    newLog,
     _logLevelToText,
     _logLevelToSGR,
   )
@@ -9,7 +10,7 @@ where
 import Data.Binary (Binary)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Logger.Rule.FilePos qualified as FP
+import Logger.Rule.Hint
 import Logger.Rule.LogLevel
 import System.Console.ANSI
 
@@ -17,7 +18,7 @@ type ShouldInsertPadding =
   Bool
 
 data Log = Log
-  { position :: Maybe FP.FilePos,
+  { position :: Maybe Hint,
     shouldInsertPadding :: ShouldInsertPadding,
     logLevel :: LogLevel,
     content :: T.Text
@@ -49,3 +50,12 @@ _logLevelToSGR level =
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
     Critical ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
+
+newLog :: Hint -> LogLevel -> T.Text -> Log
+newLog m level text = do
+  Log
+    { position = Just m,
+      shouldInsertPadding = True,
+      logLevel = level,
+      content = text
+    }

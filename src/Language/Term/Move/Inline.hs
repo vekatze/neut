@@ -22,7 +22,6 @@ import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
@@ -31,6 +30,7 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Move.Refresh qualified as Refresh
 import Language.Term.Move.Subst qualified as Subst
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)

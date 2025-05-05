@@ -13,7 +13,7 @@ import Data.IORef
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ExternalName qualified as EN
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 newtype Handle = Handle

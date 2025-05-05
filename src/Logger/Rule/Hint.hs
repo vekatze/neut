@@ -1,4 +1,4 @@
-module Language.Common.Rule.Hint
+module Logger.Rule.Hint
   ( Hint (..),
     SavedHint (..),
     Line,
@@ -9,17 +9,22 @@ module Language.Common.Rule.Hint
     internalHint,
     newSourceHint,
     fakeLoc,
-    newLog,
+    showFilePos,
   )
 where
 
 import Data.Binary
-import Data.Text qualified as T
 import GHC.Generics
-import Logger.Rule.FilePos
-import Logger.Rule.Log
-import Logger.Rule.LogLevel
 import Path
+
+type Line =
+  Int
+
+type Column =
+  Int
+
+type Loc =
+  (Line, Column)
 
 data Hint = Hint
   { metaFileName :: FilePath,
@@ -85,16 +90,20 @@ fakeLoc :: Loc
 fakeLoc =
   (1, 1)
 
-toFilePos :: Hint -> Maybe FilePos
-toFilePos m = do
-  path <- parseAbsFile $ metaFileName m
-  return $ FilePos path (metaLocation m)
+-- toFilePos :: Hint -> Maybe FilePos
+-- toFilePos m = do
+--   path <- parseAbsFile $ metaFileName m
+--   return $ FilePos path (metaLocation m)
 
-newLog :: Hint -> LogLevel -> T.Text -> Log
-newLog m level text = do
-  Log
-    { position = toFilePos m,
-      shouldInsertPadding = True,
-      logLevel = level,
-      content = text
-    }
+-- newLog :: Hint -> LogLevel -> T.Text -> Log
+-- newLog m level text = do
+--   Log
+--     { position = toFilePos m,
+--       shouldInsertPadding = True,
+--       logLevel = level,
+--       content = text
+--     }
+
+showFilePos :: Hint -> String
+showFilePos (Hint {metaFileName, metaLocation = (l, c)}) =
+  metaFileName ++ ":" ++ show l ++ ":" ++ show c

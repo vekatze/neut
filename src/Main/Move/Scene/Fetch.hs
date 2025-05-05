@@ -24,12 +24,12 @@ import Error.Rule.Error
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
+import Logger.Rule.Hint
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.External qualified as External
 import Main.Move.Context.Module qualified as Module

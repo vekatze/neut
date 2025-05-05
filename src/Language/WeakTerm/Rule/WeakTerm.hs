@@ -27,7 +27,6 @@ import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Foreign
-import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Magic
@@ -36,6 +35,7 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Logger.Rule.Hint
 import Logger.Rule.LogLevel
 
 type WeakTerm = Cofree WeakTermF Hint

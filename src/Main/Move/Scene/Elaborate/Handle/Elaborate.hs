@@ -12,12 +12,12 @@ import Data.Maybe (fromMaybe)
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Binder
-import Language.Common.Rule.Hint (Hint)
 import Language.Term.Move.Inline qualified as Inline
 import Language.Term.Rule.Term qualified as TM
 import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Logger.Rule.Hint (Hint)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Context.KeyArg qualified as KeyArg

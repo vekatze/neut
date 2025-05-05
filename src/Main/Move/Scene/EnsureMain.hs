@@ -11,8 +11,8 @@ import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleID qualified as MID
+import Logger.Rule.Hint
 import Main.Move.Context.Env qualified as Env
 import Main.Rule.Module
 import Main.Rule.Source

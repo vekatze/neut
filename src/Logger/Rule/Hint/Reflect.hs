@@ -1,6 +1,6 @@
-module Language.Common.Rule.Hint.Reflect (fromSourcePos) where
+module Logger.Rule.Hint.Reflect (fromSourcePos) where
 
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 import Text.Megaparsec
 
 fromSourcePos :: SourcePos -> Hint

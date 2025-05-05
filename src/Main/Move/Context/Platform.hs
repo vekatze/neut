@@ -22,9 +22,9 @@ import Error.Move.Run (run)
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Digest (hashAndEncode)
-import Language.Common.Rule.Hint
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
+import Logger.Rule.Hint
 import Main.Move.Context.External (ensureExecutable)
 import Main.Move.Context.ProcessRunner qualified as ProcessRunner
 import Main.Rule.Arch qualified as Arch

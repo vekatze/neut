@@ -14,12 +14,12 @@ import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.RawTerm.Rule.RawStmt
 import Language.Term.Rule.Stmt
 import Language.WeakTerm.Rule.WeakStmt
+import Logger.Rule.Hint
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.Cache qualified as Cache
@@ -138,13 +138,13 @@ registerUnusedVariableRemarks h = do
   return $ flip map unusedVars $ \(mx, x, k) ->
     case k of
       Normal ->
-        newLog mx L.Warning $
+        L.newLog mx L.Warning $
           "Defined but not used: `" <> toText x <> "`"
       Borrowed ->
-        newLog mx L.Warning $
+        L.newLog mx L.Warning $
           "Borrowed but not used: `" <> toText x <> "`"
       Relayed ->
-        newLog mx L.Warning $
+        L.newLog mx L.Warning $
           "Relayed but not used: `" <> toText x <> "`"
 
 registerUnusedGlobalLocatorRemarks :: Handle -> IO [L.Log]
@@ -152,26 +152,26 @@ registerUnusedGlobalLocatorRemarks h = do
   unusedGlobalLocatorMap <- Unused.getGlobalLocator (unusedHandle h)
   let unusedGlobalLocators = concatMap snd unusedGlobalLocatorMap
   return $ flip map unusedGlobalLocators $ \(m, locatorText) ->
-    newLog m L.Warning $
+    L.newLog m L.Warning $
       "Imported but not used: `" <> locatorText <> "`"
 
 registerUnusedLocalLocatorRemarks :: Handle -> IO [L.Log]
 registerUnusedLocalLocatorRemarks h = do
   unusedLocalLocatorMap <- Unused.getLocalLocator (unusedHandle h)
   return $ flip map unusedLocalLocatorMap $ \(ll, m) ->
-    newLog m L.Warning $
+    L.newLog m L.Warning $
       "Imported but not used: `" <> LL.reify ll <> "`"
 
 registerUnusedPresetRemarks :: Handle -> IO [L.Log]
 registerUnusedPresetRemarks h = do
   unusedPresets <- Unused.getPreset (unusedHandle h)
   return $ flip map (Map.toList unusedPresets) $ \(presetName, m) ->
-    newLog m L.Warning $
+    L.newLog m L.Warning $
       "Imported but not used: `" <> presetName <> "`"
 
 registerUnusedStaticFileRemarks :: Handle -> IO [L.Log]
 registerUnusedStaticFileRemarks h = do
   unusedStaticFiles <- Unused.getStaticFile (unusedHandle h)
   return $ flip map unusedStaticFiles $ \(k, m) ->
-    newLog m L.Warning $
+    L.newLog m L.Warning $
       "Imported but not used: `" <> k <> "`"

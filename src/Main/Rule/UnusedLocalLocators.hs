@@ -1,7 +1,7 @@
 module Main.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL) where
 
-import Language.Common.Rule.Hint
 import Language.Common.Rule.LocalLocator qualified as LL
+import Logger.Rule.Hint
 
 type UnusedLocalLocators =
   [(LL.LocalLocator, Hint)]

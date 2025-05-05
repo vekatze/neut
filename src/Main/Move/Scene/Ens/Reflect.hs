@@ -17,7 +17,7 @@ import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseError)
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 import Main.Move.Context.Parse (readTextFile)
 import Main.Move.Scene.Parse.Core qualified as P
 import Path

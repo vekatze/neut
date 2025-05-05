@@ -6,7 +6,7 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 import Main.Rule.GlobalName qualified as GN
 
 type TopNameMap =

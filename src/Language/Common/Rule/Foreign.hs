@@ -9,7 +9,7 @@ import GHC.Generics
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType
-import Language.Common.Rule.Hint
+import Logger.Rule.Hint
 
 data BaseForeign a
   = Foreign Hint EN.ExternalName [a] (ForeignCodType a)

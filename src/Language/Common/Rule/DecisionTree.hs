@@ -16,10 +16,10 @@ import GHC.Generics (Generic)
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Literal qualified as L
+import Logger.Rule.Hint
 
 data DecisionTree a
   = Leaf [Ident] [(BinderF a, a)] a

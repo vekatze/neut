@@ -20,10 +20,10 @@ import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError, raiseError')
-import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
+import Logger.Rule.Hint qualified as H
 import Main.Move.Context.Path qualified as Path
 import Main.Rule.Const
 import Main.Rule.Module

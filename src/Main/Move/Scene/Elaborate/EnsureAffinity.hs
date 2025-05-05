@@ -20,7 +20,6 @@ import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LamKind qualified as LK
@@ -31,6 +30,7 @@ import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText qualified as WT
+import Logger.Rule.Hint
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.OptimizableData qualified as OptimizableData
@@ -323,7 +323,7 @@ newtype AffineConstraintError
 
 constructErrorMessageAffine :: AffineConstraintError -> L.Log
 constructErrorMessageAffine (AffineConstraintError t) =
-  newLog (WT.metaOf t) L.Error $
+  L.newLog (WT.metaOf t) L.Error $
     "The type of this affine variable is not affine, but:\n"
       <> WT.toText t
 

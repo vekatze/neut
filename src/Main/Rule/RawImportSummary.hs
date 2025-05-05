@@ -6,9 +6,9 @@ where
 
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
-import Language.Common.Rule.Hint
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.RawTerm.Rule.RawStmt (RawImport (..), RawImportItem (..))
+import Logger.Rule.Hint
 import SyntaxTree.Rule.Series qualified as SE
 
 type RawImportSummary = ([(T.Text, [T.Text])], Loc)

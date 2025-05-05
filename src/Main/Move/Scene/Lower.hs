@@ -34,7 +34,6 @@ import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.ForeignCodType qualified as FCT
-import Language.Common.Rule.Hint (internalHint)
 import Language.Common.Rule.Ident
 import Language.Common.Rule.LowType qualified as LT
 import Language.Common.Rule.LowType.FromBaseLowType qualified as LT
@@ -49,6 +48,7 @@ import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
+import Logger.Rule.Hint (internalHint)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Cancel

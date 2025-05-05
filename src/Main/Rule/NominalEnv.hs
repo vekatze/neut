@@ -5,8 +5,8 @@ module Main.Rule.NominalEnv
 where
 
 import Data.Text qualified as T
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
+import Logger.Rule.Hint
 import Main.Rule.Layer
 
 type NominalEnv = [(T.Text, (Hint, Ident, Layer))]

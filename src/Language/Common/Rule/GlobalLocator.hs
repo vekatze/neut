@@ -16,9 +16,9 @@ import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
 import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
-import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.ModuleAlias hiding (reify)
 import Language.Common.Rule.SourceLocator qualified as SL
+import Logger.Rule.Hint qualified as H
 
 data IdentifiedGlobalLocator = IdentifiedGlobalLocator
   { moduleAlias :: ModuleAlias,

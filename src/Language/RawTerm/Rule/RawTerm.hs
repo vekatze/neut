@@ -34,7 +34,6 @@ import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
-import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Noema qualified as N
@@ -45,6 +44,7 @@ import Language.RawTerm.Rule.NecessityVariant (NecessityVariant)
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
+import Logger.Rule.Hint
 import Logger.Rule.LogLevel
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE

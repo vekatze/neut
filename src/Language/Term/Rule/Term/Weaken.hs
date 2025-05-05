@@ -14,7 +14,6 @@ import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.Foreign qualified as F
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
@@ -28,6 +27,7 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm (reflectOpacity)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Logger.Rule.Hint
 
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do

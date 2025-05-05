@@ -14,11 +14,11 @@ import Data.Text qualified as T
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
-import Language.Common.Rule.Hint
-import Language.Common.Rule.Hint.Reify (toString)
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
+import Logger.Rule.Hint.Reify (toString)
 
 chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
 chainOf tenv term =

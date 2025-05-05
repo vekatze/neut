@@ -13,7 +13,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseCritical)
-import Language.Common.Rule.Hint qualified as Hint
+import Logger.Rule.Hint qualified as Hint
 import Main.Rule.TopNameMap
 import Path
 import Prelude hiding (lookup)

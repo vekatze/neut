@@ -3,9 +3,9 @@ module Language.RawTerm.Move.CreateHole (createHole) where
 import Control.Comonad.Cofree
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
-import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID (HoleID (HoleID))
 import Language.RawTerm.Rule.RawTerm
+import Logger.Rule.Hint
 
 {-# INLINE createHole #-}
 createHole :: Gensym.Handle -> Hint -> IO RawTerm

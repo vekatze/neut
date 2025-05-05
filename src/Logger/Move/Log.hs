@@ -10,8 +10,8 @@ where
 import Color.Move.Print qualified as Color
 import Color.Rule.Text qualified as Color
 import Data.Text qualified as T
-import Logger.Rule.FilePos
 import Logger.Rule.Handle (Handle (..))
+import Logger.Rule.Hint
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import System.Console.ANSI
@@ -56,7 +56,7 @@ printErrorIO h l = do
   footerText <- Color.pack' <$> getFooter h
   Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText <> footerText
 
-getLogLocation :: Maybe FilePos -> Color.Text
+getLogLocation :: Maybe Hint -> Color.Text
 getLogLocation mpos = do
   case mpos of
     Just pos -> do

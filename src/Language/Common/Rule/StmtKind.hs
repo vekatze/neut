@@ -11,9 +11,9 @@ import GHC.Generics
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
-import Language.Common.Rule.Hint
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Opacity qualified as O
+import Logger.Rule.Hint
 
 -- import Language.RawTerm.Rule.RawBinder (RawBinder)
 -- import Language.RawTerm.Rule.RawTerm qualified as RT

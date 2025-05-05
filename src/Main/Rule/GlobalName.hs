@@ -9,10 +9,10 @@ import GHC.Generics (Generic)
 import Language.Common.Rule.ArgNum
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
-import Language.Common.Rule.Hint
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
+import Logger.Rule.Hint
 
 data GlobalName
   = TopLevelFunc ArgNum IsConstLike

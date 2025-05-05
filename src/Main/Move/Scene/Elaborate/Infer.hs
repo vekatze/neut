@@ -31,7 +31,6 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Geist qualified as G
-import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident (Ident (..), isHole)
 import Language.Common.Rule.Ident.Reify qualified as Ident
@@ -54,6 +53,7 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
+import Logger.Rule.Hint
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.Locator qualified as Locator

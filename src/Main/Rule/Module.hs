@@ -65,11 +65,11 @@ import Ens.Rule.Ens qualified as E
 import Error.Rule.Error
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL
-import Language.Common.Rule.Hint (Hint, internalHint)
 import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
+import Logger.Rule.Hint (Hint, internalHint)
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const
 import Main.Rule.ModuleURL

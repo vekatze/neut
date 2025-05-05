@@ -21,12 +21,12 @@ import Error.Rule.EIO (EIO)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.LSP.Protocol.Types
+import Logger.Rule.Hint
 import Main.Move.Context.Antecedent qualified as Antecedent
 import Main.Move.Context.Cache qualified as Cache
 import Main.Move.Context.Env qualified as Env

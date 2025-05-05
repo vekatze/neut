@@ -25,10 +25,10 @@ import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Error
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Literal qualified as L
+import Logger.Rule.Hint
 
 data Pattern
   = Var Ident

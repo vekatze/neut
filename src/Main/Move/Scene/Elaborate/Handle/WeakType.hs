@@ -14,10 +14,10 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseCritical)
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Logger.Rule.Hint
 import Prelude hiding (lookup)
 
 type WeakTypeEnv =

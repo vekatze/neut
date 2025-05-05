@@ -6,7 +6,6 @@ import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Discriminant qualified as D
-import Language.Common.Rule.Hint
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Name
@@ -14,6 +13,7 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Logger.Rule.Hint
 import SyntaxTree.Rule.Series qualified as SE
 
 defineData ::

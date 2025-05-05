@@ -13,8 +13,8 @@ import Data.IORef
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Hint
 import Language.WeakTerm.Rule.WeakTerm
+import Logger.Rule.Hint
 import Prelude hiding (lookup)
 
 newtype Handle = Handle

@@ -21,15 +21,15 @@ import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
-import Language.Common.Rule.Hint
-import Language.Common.Rule.Hint qualified as Hint
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.PrimOp.FromText qualified as PrimOp
 import Language.Common.Rule.PrimType.FromText qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Logger.Rule.Log (Log)
+import Logger.Rule.Hint
+import Logger.Rule.Hint qualified as Hint
+import Logger.Rule.Log (Log, newLog)
 import Logger.Rule.LogLevel (LogLevel (Error))
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.KeyArg qualified as KeyArg

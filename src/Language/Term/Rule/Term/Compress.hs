@@ -6,13 +6,13 @@ import Data.List (unzip5, zip5)
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.StmtKind
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
 
 compress :: TM.Term -> Cofree TM.TermF ()
 compress term =

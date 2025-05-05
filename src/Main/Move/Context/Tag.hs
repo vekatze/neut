@@ -17,9 +17,9 @@ import Data.Text qualified as T
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
-import Language.Common.Rule.Hint
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
+import Logger.Rule.Hint
 import Main.Rule.LocationTree qualified as LT
 import Prelude hiding (lookup, read)
 
