@@ -10,7 +10,7 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError), liftEither)
+import Control.Monad.Except (liftEither)
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -25,7 +25,7 @@ import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
-import Main.Move.Context.EIO (EIO)
+import Main.Move.Context.EIO (EIO, raiseError, raiseError')
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
@@ -160,7 +160,7 @@ interpretSourceLocator ens = do
     Just relPath ->
       return $ SL.SourceLocator relPath
     Nothing ->
-      throwError $ newError m $ "Invalid file path: " <> pathString
+      raiseError m $ "Invalid file path: " <> pathString
 
 interpretRelFilePath :: E.Ens -> EIO (Path Rel File)
 interpretRelFilePath ens = do
@@ -169,7 +169,7 @@ interpretRelFilePath ens = do
     Just relPath ->
       return relPath
     Nothing ->
-      throwError $ newError m $ "Invalid file path: " <> pathString
+      raiseError m $ "Invalid file path: " <> pathString
 
 interpretDependencyDict ::
   (H.Hint, SE.Series (T.Text, E.Ens)) ->
@@ -178,13 +178,12 @@ interpretDependencyDict (m, dep) = do
   items <- forM dep $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
     when (BN.isCapitalized k') $ do
-      throwError $ newError m $ "Module aliases cannot be capitalized, but found: " <> BN.reify k'
+      raiseError m $ "Module aliases cannot be capitalized, but found: " <> BN.reify k'
     when (S.member k' BN.reservedAlias) $
-      throwError $
-        newError m $
-          "The reserved name `"
-            <> BN.reify k'
-            <> "` cannot be used as an alias of a module"
+      raiseError m $
+        "The reserved name `"
+          <> BN.reify k'
+          <> "` cannot be used as an alias of a module"
     (_, urlEnsSeries) <- liftEither $ E.access keyMirror ens >>= E.toList
     urlList <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract urlEnsSeries
     (_, digest) <- liftEither $ E.access keyDigest ens >>= E.toString
@@ -252,7 +251,7 @@ ensureExistence ::
 ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker (moduleRootDir </> path)
   unless b $ do
-    throwError $ newError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
+    raiseError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
 
 findModuleFile :: Path Abs Dir -> Path Abs Dir -> EIO (Path Abs File)
 findModuleFile baseDir moduleRootDirCandidate = do
@@ -264,7 +263,7 @@ findModuleFile baseDir moduleRootDirCandidate = do
     (_, True) ->
       findModuleFile baseDir $ parent moduleRootDirCandidate
     _ ->
-      throwError $ newError' $ "Could not find a module file (Context: " <> T.pack (toFilePath baseDir) <> ")"
+      raiseError' $ "Could not find a module file (Context: " <> T.pack (toFilePath baseDir) <> ")"
 
 getCurrentModuleFilePath :: EIO (Path Abs File)
 getCurrentModuleFilePath = do

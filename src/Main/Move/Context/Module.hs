@@ -14,17 +14,15 @@ module Main.Move.Context.Module
 where
 
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Language.Common.Rule.Error (newError, newError')
 import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
-import Main.Move.Context.EIO (EIO, raiseError')
+import Main.Move.Context.EIO (EIO, raiseError, raiseError')
 import Main.Move.Context.Path qualified as Path
 import Main.Rule.Const
 import Main.Rule.Module
@@ -63,9 +61,9 @@ getModuleDirByID (MainModule pivotModule) mHint moduleID = do
       let message = "The base module cannot be used here"
       case mHint of
         Just hint ->
-          throwError $ newError hint message
+          raiseError hint message
         Nothing ->
-          throwError $ newError' message
+          raiseError' message
     MID.Main ->
       return $ getModuleRootDir pivotModule
     MID.Library (MD.ModuleDigest digest) -> do

@@ -7,16 +7,14 @@ module Main.Move.Scene.Module.GetModule
 where
 
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Unlift (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Gensym.Rule.Handle qualified as Gensym
-import Language.Common.Rule.Error (newError)
 import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.ModuleAlias (ModuleAlias)
 import Language.Common.Rule.ModuleID qualified as MID
-import Main.Move.Context.EIO (EIO)
+import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Context.Module qualified as Module
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
@@ -48,11 +46,10 @@ getModule h mainModule m moduleID locatorText = do
     Nothing -> do
       moduleFileExists <- doesFileExist nextModuleFilePath
       unless moduleFileExists $ do
-        throwError $
-          newError m $
-            T.pack "Could not find the module file for `"
-              <> locatorText
-              <> "`"
+        raiseError m $
+          T.pack "Could not find the module file for `"
+            <> locatorText
+            <> "`"
       let h' = ModuleReflect.Handle {gensymHandle = gensymHandle h}
       nextModule <- ModuleReflect.fromFilePath h' nextModuleFilePath
       liftIO $ Module.insertToModuleCacheMap (moduleHandle h) nextModuleFilePath nextModule

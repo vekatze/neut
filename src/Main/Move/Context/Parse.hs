@@ -7,13 +7,11 @@ module Main.Move.Context.Parse
   )
 where
 
-import Control.Monad.Except (MonadError (throwError))
 import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.Hint
-import Main.Move.Context.EIO (EIO)
+import Main.Move.Context.EIO (EIO, raiseError, raiseError')
 import Main.Rule.Source
 import Path
 import Path.IO
@@ -50,6 +48,6 @@ ensureExistence' path mHint = do
       let message = T.pack $ "No such file exists: " <> toFilePath path
       case mHint of
         Just m ->
-          throwError $ E.newError m message
+          raiseError m message
         Nothing ->
-          throwError $ E.newError' message
+          raiseError' message

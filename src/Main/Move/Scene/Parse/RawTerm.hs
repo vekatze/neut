@@ -14,14 +14,13 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError), liftEither)
+import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.Common.Move.CreateSymbol (newTextForHole)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Error (newError)
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Rune qualified as RU
@@ -35,7 +34,7 @@ import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
-import Main.Move.Context.EIO (EIO)
+import Main.Move.Context.EIO (EIO, raiseError)
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
 import Text.Megaparsec
@@ -208,7 +207,7 @@ rawTermLet h mLet = do
     (RT.Plain _, False) -> do
       return (mLet :< RT.LetOn False c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
     (_, False) ->
-      lift $ throwError $ newError mLet $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
+      lift $ raiseError mLet $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
     _ ->
       return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
 
@@ -298,7 +297,7 @@ ensureIdentLinearity foundVarSet vs =
       return ()
     (m, name) : rest
       | S.member name foundVarSet ->
-          throwError $ newError m $ "Found a non-linear occurrence of `" <> name <> "`."
+          raiseError m $ "Found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
           ensureIdentLinearity (S.insert name foundVarSet) rest
 
@@ -389,7 +388,7 @@ ensureArgumentLinearity foundVarSet vs =
       return ()
     (m, name) : rest
       | S.member name foundVarSet ->
-          throwError $ newError m $ "Found a non-linear occurrence of `" <> name <> "`."
+          raiseError m $ "Found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
           ensureArgumentLinearity (S.insert name foundVarSet) rest
 
@@ -545,13 +544,12 @@ rawTermPatternRow h patternSize = do
       let len = length $ SE.extract patternList
       unless (len == patternSize) $ do
         lift $
-          throwError $
-            newError m $
-              "The size of the pattern row `"
-                <> T.pack (show len)
-                <> "` does not match with its input size `"
-                <> T.pack (show patternSize)
-                <> "`"
+          raiseError m $
+            "The size of the pattern row `"
+              <> T.pack (show len)
+              <> "` does not match with its input size `"
+              <> T.pack (show patternSize)
+              <> "`"
       cArrow <- delimiter "=>"
       (body, c) <- rawExpr h
       loc <- getCurrentLoc
@@ -583,7 +581,7 @@ rawTermPatternRuneIntro = do
     Right r ->
       return ((m, RP.RuneIntro r), c)
     Left e ->
-      lift $ throwError $ newError m e
+      lift $ raiseError m e
 
 parseName :: Handle -> Parser ((Hint, Name), C)
 parseName h = do
@@ -866,7 +864,7 @@ rawTermRuneIntro = do
     Right r ->
       return (m :< RT.RuneIntro runeCons r, c)
     Left e ->
-      lift $ throwError $ newError m e
+      lift $ raiseError m e
 
 locatorToVarGlobal :: Hint -> T.Text -> EIO RT.RawTerm
 locatorToVarGlobal m text = do

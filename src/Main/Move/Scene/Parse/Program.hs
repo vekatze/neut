@@ -5,13 +5,11 @@ module Main.Move.Scene.Parse.Program
 where
 
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.Trans
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.Error (newError)
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.Hint
@@ -24,6 +22,7 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
+import Main.Move.Context.EIO (raiseError)
 import Main.Move.Scene.Parse.Core (asLabel)
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
@@ -163,7 +162,7 @@ parseDefineDataClause h = do
   m <- P.getCurrentHint
   (consName, c1) <- P.baseName
   unless (isConsName (BN.reify consName)) $ do
-    lift $ throwError $ newError m "The name of a constructor must be capitalized"
+    lift $ raiseError m "The name of a constructor must be capitalized"
   (consArgsOrNone, loc, c2) <- parseConsArgs h
   let consArgs = fromMaybe SE.emptySeriesPC consArgsOrNone
   let isConstLike = isNothing consArgsOrNone
