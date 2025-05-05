@@ -1,10 +1,4 @@
-module Language.Common.Rule.Const
-  ( nsSepChar,
-    nsSep,
-    holeVarPrefix,
-    expVarPrefix,
-  )
-where
+module Language.Common.Rule.Const (module Language.Common.Rule.Const) where
 
 import Data.Text qualified as T
 

@@ -89,12 +89,14 @@ new baseHandle@(Base.Handle {..}) localHandle@(Local.Handle {..}) currentSource 
 
 reduce :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 reduce h e = do
-  reduceHandle <- liftIO $ Reduce.new (baseHandle h) (WT.metaOf e) (currentSource h)
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule (currentSource h))
+  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) inlineLimit
   Reduce.reduce reduceHandle e
 
 fill :: Handle -> HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 fill h sub e = do
-  reduceHandle <- liftIO $ Reduce.new (baseHandle h) (WT.metaOf e) (currentSource h)
+  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule (currentSource h))
+  reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) inlineLimit
   let substHandle = Subst.new (Base.gensymHandle (baseHandle h))
   let fillHandle = Fill.new substHandle reduceHandle
   Fill.fill fillHandle sub e

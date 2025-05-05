@@ -11,7 +11,6 @@ import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -27,10 +26,6 @@ import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseError)
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Const (defaultInlineLimit)
-import Main.Rule.Module (moduleInlineLimit)
-import Main.Rule.Source (Source, sourceModule)
 
 type InlineLimit =
   Int
@@ -45,10 +40,8 @@ data Handle = Handle
     location :: H.Hint
   }
 
-new :: Base.Handle -> H.Hint -> Source -> IO Handle
-new baseHandle location currentSource = do
-  let substHandle = Subst.new (Base.gensymHandle baseHandle)
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
+new :: Subst.Handle -> H.Hint -> InlineLimit -> IO Handle
+new substHandle location inlineLimit = do
   currentStepRef <- liftIO $ newIORef 0
   return $ Handle {..}
 
