@@ -28,9 +28,9 @@ import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
+import Language.Term.Move.Refresh qualified as Refresh
 import Language.Term.Move.Subst qualified as Subst
 import Language.Term.Rule.Term qualified as TM
-import Main.Move.Scene.Elaborate.Term.Refresh qualified as Refresh
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)
