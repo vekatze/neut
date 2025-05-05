@@ -24,9 +24,9 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
+import Language.Comp.Move.CreateVar qualified as Gensym
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Scene.Clarify.Linearize qualified as Linearize
 import Main.Move.Scene.Clarify.Utility qualified as Utility
@@ -49,7 +49,7 @@ registerImmediateS4 h = do
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "env"
+  (env, envVar) <- Gensym.createVar (gensymHandle h) "env"
   registerSigmaS4
     h
     DD.cls
@@ -128,7 +128,7 @@ sigma4 h mxts argVar = do
   xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
   -- as == [APP-1, ..., APP-n]
   as <- forM xts $ uncurry $ Utility.toRelevantApp (utilityHandle h)
-  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.newValueVarLocalWith (gensymHandle h) "pair") xts
+  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") xts
   body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
@@ -197,7 +197,7 @@ sigmaData h resourceHandler dataInfo arg = do
       let discList' = map discriminantToEnumCase discList
       localName <- Gensym.newIdentFromText (gensymHandle h) "local"
       binderList' <- mapM (`resourceHandler` C.VarLocal localName) binderList
-      (disc, discVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "disc"
+      (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
       enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $

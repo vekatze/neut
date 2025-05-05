@@ -19,10 +19,10 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PrimNumSize
+import Language.Comp.Move.CreateVar qualified as Gensym
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase
 import Language.Comp.Rule.EnumCase qualified as EC
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
 import Main.Move.Scene.Comp.Subst qualified as Subst
 
@@ -42,7 +42,7 @@ new gensymHandle substHandle auxEnvHandle baseSize = do
 --   exp @ (0, x)
 toAffineApp :: Handle -> Ident -> C.Comp -> IO C.Comp
 toAffineApp h x t = do
-  (expVarName, expVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "exp"
+  (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 0, C.VarLocal x])
 
 -- toRelevantApp meta x t ~>
@@ -50,7 +50,7 @@ toAffineApp h x t = do
 --   exp @ (1, x)
 toRelevantApp :: Handle -> Ident -> C.Comp -> IO C.Comp
 toRelevantApp h x t = do
-  (expVarName, expVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "exp"
+  (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 1, C.VarLocal x])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
@@ -75,8 +75,8 @@ makeSwitcher ::
   (C.Value -> IO C.Comp) ->
   IO ([Ident], C.Comp)
 makeSwitcher h compAff compRel = do
-  (switchVarName, switchVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "switch"
-  (argVarName, argVar) <- Gensym.newValueVarLocalWith (gensymHandle h) "arg"
+  (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
+  (argVarName, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   aff <- compAff argVar
   rel <- compRel argVar
   enumElim <- getEnumElim h [argVarName] switchVar rel [(EC.Int 0, aff)]

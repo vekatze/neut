@@ -1,16 +1,17 @@
 module Main.Move.Context.Gensym
-  ( newValueVarLocalWith,
+  (
+  -- newValueVarLocalWith,
   )
 where
 
-import Data.Text qualified as T
-import Gensym.Rule.Handle
-import Language.Common.Move.CreateSymbol
-import Language.Common.Rule.Ident
-import Language.Comp.Rule.Comp qualified as C
+-- import Data.Text qualified as T
+-- import Gensym.Rule.Handle
+-- import Language.Common.Move.CreateSymbol
+-- import Language.Common.Rule.Ident
+-- import Language.Comp.Rule.Comp qualified as C
 
-{-# INLINE newValueVarLocalWith #-}
-newValueVarLocalWith :: Handle -> T.Text -> IO (Ident, C.Value)
-newValueVarLocalWith h name = do
-  x <- newIdentFromText h name
-  return (x, C.VarLocal x)
+-- {-# INLINE newValueVarLocalWith #-}
+-- newValueVarLocalWith :: Handle -> T.Text -> IO (Ident, C.Value)
+-- newValueVarLocalWith h name = do
+--   x <- newIdentFromText h name
+--   return (x, C.VarLocal x)
