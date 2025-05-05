@@ -14,20 +14,17 @@ module Language.RawTerm.Rule.Syntax.Series
     singleton,
     cons,
     replace,
-    nubElemsBy,
     joinC,
     assoc,
     getContainerPair,
     getSeparator,
     extract,
     isEmpty,
-    containsNoComment,
     sortSeriesBy,
     nubSeriesBy,
     appendLeftBiased,
     catMaybes,
     compressEither,
-    comments,
     hasComment,
     Language.RawTerm.Rule.Syntax.Series.filter,
   )
@@ -36,7 +33,6 @@ where
 import Data.Bifunctor
 import Data.List (nubBy, sortBy)
 import Data.Maybe (mapMaybe)
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.RawTerm.Rule.C (C)
 
@@ -251,12 +247,6 @@ isEmpty :: Series a -> Bool
 isEmpty series =
   null (elems series) && null (trailingComment series)
 
-containsNoComment :: Series a -> Bool
-containsNoComment series = do
-  let cs = map fst $ elems series
-  let c = trailingComment series
-  all null (c : cs)
-
 sortSeriesBy :: (a -> a -> Ordering) -> Series a -> Series a
 sortSeriesBy cmp series = do
   let cmp' (_, x) (_, y) = cmp x y
@@ -266,17 +256,6 @@ nubSeriesBy :: (a -> a -> Bool) -> Series a -> Series a
 nubSeriesBy cmp series = do
   let cmp' (_, x) (_, y) = cmp x y
   series {elems = nubBy cmp' $ elems series}
-
-nubElemsBy :: (Ord b) => S.Set b -> (a -> b) -> Series a -> Series a
-nubElemsBy found f xs = do
-  case uncons xs of
-    Nothing ->
-      xs
-    Just ((c', y), ys) -> do
-      let key = f y
-      if S.member key found
-        then pushComment c' $ nubElemsBy (S.insert key found) f ys
-        else cons (c', y) (nubElemsBy found f ys)
 
 appendLeftBiased :: Series a -> Series a -> Series a
 appendLeftBiased series1 series2 = do
