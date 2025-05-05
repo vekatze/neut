@@ -13,7 +13,7 @@ import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
-import Language.Common.Rule.Error qualified as E
+import Error.Rule.Error qualified as E
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Log
 import Logger.Rule.Log qualified as L

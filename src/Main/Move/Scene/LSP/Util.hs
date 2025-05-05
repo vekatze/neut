@@ -20,7 +20,7 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
-import Language.Common.Rule.Error qualified as E
+import Error.Rule.Error qualified as E
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types

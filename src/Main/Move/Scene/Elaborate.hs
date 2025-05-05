@@ -16,6 +16,7 @@ import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
 import Gensym.Move.Trick qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
@@ -27,7 +28,6 @@ import Language.Common.Rule.BasePrimType qualified as BPT
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.Hint

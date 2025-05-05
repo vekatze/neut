@@ -1,6 +1,5 @@
 module Language.Common.Rule.Error
-  ( Error (..),
-    newError,
+  ( newError,
     newError',
     newCritical,
     newCritical',

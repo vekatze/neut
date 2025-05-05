@@ -11,6 +11,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
 import Gensym.Move.Gensym qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
@@ -21,7 +22,6 @@ import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Geist qualified as G

@@ -20,10 +20,10 @@ import Ens.Rule.Ens qualified as E
 import Ens.Rule.Ens qualified as SE
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
+import Error.Rule.Error
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.Error (Error (MakeError))
 import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest qualified as MD

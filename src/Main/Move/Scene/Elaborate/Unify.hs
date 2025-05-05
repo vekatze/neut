@@ -14,13 +14,13 @@ import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.Hint
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident

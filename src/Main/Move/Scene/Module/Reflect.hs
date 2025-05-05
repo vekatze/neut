@@ -15,6 +15,7 @@ import Data.Text qualified as T
 import Ens.Rule.Ens (dictFromListVertical')
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
+import Error.Rule.Error
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN

@@ -16,11 +16,11 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Error.Rule.EIO (EIO)
+import Error.Rule.Error
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
-import Language.Common.Rule.Error (Error (MakeError))
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Hint qualified as Hint
 import Language.Common.Rule.IsConstLike

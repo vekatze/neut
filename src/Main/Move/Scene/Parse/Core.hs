@@ -27,19 +27,15 @@ module Main.Move.Scene.Parse.Core
     seriesBraceList,
     seriesBraceList',
     asLabel,
-    createParseError,
   )
 where
 
+import BaseParser.Rule.Parser
 import Control.Monad
-import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Void
-import Error.Rule.EIO
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
-import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Hint.Reflect qualified as Hint
 import Main.Rule.Syntax.Block
@@ -49,15 +45,6 @@ import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
-
-type Parser a = ParsecT Void T.Text EIO a
-
-createParseError :: ParseErrorBundle T.Text Void -> E.Error
-createParseError errorBundle = do
-  let (foo, posState) = attachSourcePos errorOffset (bundleErrors errorBundle) (bundlePosState errorBundle)
-  let hint = Hint.fromSourcePos $ pstateSourcePos posState
-  let message = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
-  E.newError hint message
 
 getCurrentHint :: Parser Hint
 getCurrentHint =
@@ -344,20 +331,7 @@ seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBraceList' =
   series' Nothing SE.Brace SE.Bar
 
-{-# INLINE nonSymbolCharSet #-}
-nonSymbolCharSet :: S.Set Char
-nonSymbolCharSet =
-  S.fromList "=() `\"\n\t:;,<>[]{}/*|"
-
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char
 nonBaseNameCharSet =
   S.insert nsSepChar nonSymbolCharSet
-
-asTokens :: T.Text -> ErrorItem Char
-asTokens s =
-  Tokens $ fromList $ T.unpack s
-
-asLabel :: T.Text -> ErrorItem Char
-asLabel s =
-  Label $ fromList $ T.unpack s

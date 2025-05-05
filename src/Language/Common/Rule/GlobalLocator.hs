@@ -10,6 +10,7 @@ where
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
+import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const

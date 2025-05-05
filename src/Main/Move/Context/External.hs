@@ -15,8 +15,8 @@ import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Error.Rule.EIO (EIO)
+import Error.Rule.Error
 import Language.Common.Move.Raise (raiseError')
-import Language.Common.Rule.Error
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.ProcessRunner qualified as ProcessRunner

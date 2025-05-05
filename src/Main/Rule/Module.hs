@@ -62,8 +62,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
 import Ens.Rule.Ens qualified as E
+import Error.Rule.Error
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.Hint (Hint, internalHint)
 import Language.Common.Rule.ModuleAlias qualified as MA

@@ -2,6 +2,7 @@ module Main.Rule.Vector (swap) where
 
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Error.Rule.Error
 import Language.Common.Rule.Error
 import Language.Common.Rule.Hint
 

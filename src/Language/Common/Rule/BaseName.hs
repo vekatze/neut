@@ -38,6 +38,7 @@ import Data.Char (isUpper)
 import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.Const
 import Language.Common.Rule.Error
