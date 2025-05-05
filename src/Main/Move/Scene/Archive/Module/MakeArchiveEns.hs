@@ -24,12 +24,12 @@ import SyntaxTree.Rule.Series qualified as SE
 import System.IO
 import Prelude hiding (log)
 
-makeArchiveEns :: Ens.Handle -> PV.PackageVersion -> MainModule -> EIO E.FullEns
-makeArchiveEns h newVersion targetModule = do
+makeArchiveEns :: PV.PackageVersion -> MainModule -> EIO E.FullEns
+makeArchiveEns newVersion targetModule = do
   existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
   antecedentList <- ListUtils.nubOrd <$> mapM (getDigest $ extractModule targetModule) antecedents
-  (c1, (baseEns@(m :< _), c2)) <- Ens.fromFilePath h (moduleLocation $ extractModule targetModule)
+  (c1, (baseEns@(m :< _), c2)) <- Ens.fromFilePath (moduleLocation $ extractModule targetModule)
   let antecedentEns = makeAntecedentEns m antecedentList
   mergedEns <- liftEither $ E.merge baseEns antecedentEns
   return (c1, (mergedEns, c2))

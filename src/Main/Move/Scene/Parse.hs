@@ -27,7 +27,6 @@ import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Tag qualified as Tag
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
-import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.Discern qualified as Discern
 import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
 import Main.Move.Scene.Parse.Handle.Global qualified as Global
@@ -35,6 +34,7 @@ import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program qualified as Parse
+import Main.Move.Scene.Parse.RawTerm qualified as ParseRT
 import Main.Rule.Cache qualified as Cache
 import Main.Rule.Source qualified as Source
 import Main.Rule.Target
@@ -43,7 +43,7 @@ import Main.Rule.UnusedLocalLocators (UnusedLocalLocators)
 import Main.Rule.VarDefKind
 
 data Handle = Handle
-  { parseHandle :: P.Handle,
+  { parseHandle :: ParseRT.Handle,
     discernHandle :: Discern.Handle,
     pathHandle :: Path.Handle,
     importHandle :: Import.Handle,
@@ -58,7 +58,7 @@ new ::
   Handle
 new baseHandle localHandle = do
   let unusedHandle = Local.unusedHandle localHandle
-  let parseHandle = P.new (Base.gensymHandle baseHandle)
+  let parseHandle = ParseRT.new (Base.gensymHandle baseHandle)
   let discernHandle = Discern.new baseHandle localHandle
   let pathHandle = Base.pathHandle baseHandle
   let importHandle = Import.new baseHandle localHandle
@@ -90,7 +90,7 @@ parseSource h t source cacheOrContent = do
       saveTopLevelNames h source $ getStmtName stmtList
       return (Left cache, Cache.remarkList cache)
     Right fileContent -> do
-      prog <- P.parseFile (parseHandle h) filePath fileContent True Parse.parseProgram
+      prog <- ParseRT.parseRawTerm (parseHandle h) filePath fileContent True Parse.parseProgram
       (prog', logs) <- interpret h source (snd prog)
       tmap <- liftIO $ Tag.get (Discern.tagHandle (discernHandle h))
       Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap

@@ -44,7 +44,7 @@ archive h cfg = do
   Path.ensureNotInDependencyDir mainModule
   packageVersion <-
     maybe (PV.chooseNewVersion (packageVersionHandle h) mainModule) (PV.reflect mainModule) (getArchiveName cfg)
-  archiveEns <- makeArchiveEns (ensReflectHandle h) packageVersion mainModule
+  archiveEns <- makeArchiveEns packageVersion mainModule
   let (moduleRootDir, contents) = collectModuleFiles mainModule
   Archive.archive (archiveHandle h) packageVersion archiveEns moduleRootDir contents
 

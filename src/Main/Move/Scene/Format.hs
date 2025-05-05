@@ -19,8 +19,8 @@ import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Load qualified as Load
 import Main.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Main.Move.Scene.Parse qualified as Parse
-import Main.Move.Scene.Parse.Core qualified as ParseCore
 import Main.Move.Scene.Parse.Program qualified as Parse
+import Main.Move.Scene.Parse.RawTerm qualified as ParseRT
 import Main.Move.Scene.Unravel qualified as Unravel
 import Main.Rule.Ens.Reify qualified as Ens
 import Main.Rule.FileType qualified as FT
@@ -43,8 +43,7 @@ format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.T
 format h shouldMinimizeImports fileType path content = do
   case fileType of
     FT.Ens -> do
-      let ensReflectHandle = EnsReflect.new (Base.gensymHandle (baseHandle h))
-      ens <- EnsReflect.fromFilePath' ensReflectHandle path content
+      ens <- EnsReflect.fromFilePath' path content
       return $ Ens.pp ens
     FT.Source -> do
       _formatSource h shouldMinimizeImports path content
@@ -55,7 +54,7 @@ type ShouldMinimizeImports =
 _formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> EIO T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
   let MainModule mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
-  let parseCoreHandle = ParseCore.new (Base.gensymHandle (baseHandle h))
+  let parseCoreHandle = ParseRT.new (Base.gensymHandle (baseHandle h))
   let getEnabledPresetHandle = GetEnabledPreset.new (baseHandle h)
   if shouldMinimizeImports
     then do
@@ -75,12 +74,12 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
           let parseHandle = Parse.new (baseHandle h) localHandle
           void $ Parse.parse parseHandle Peripheral rootSource (Right fileContent)
           (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Parse.getUnusedLocators parseHandle
-          program <- ParseCore.parseFile parseCoreHandle filePath fileContent True Parse.parseProgram
+          program <- ParseRT.parseRawTerm parseCoreHandle filePath fileContent True Parse.parseProgram
           presetNames <- GetEnabledPreset.getEnabledPreset getEnabledPresetHandle mainModule
           let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
           return $ RawProgram.pp importInfo program
     else do
-      program <- ParseCore.parseFile parseCoreHandle filePath fileContent True Parse.parseProgram
+      program <- ParseRT.parseRawTerm parseCoreHandle filePath fileContent True Parse.parseProgram
       presetNames <- GetEnabledPreset.getEnabledPreset getEnabledPresetHandle mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators = [], unusedLocalLocators = []}
       return $ RawProgram.pp importInfo program

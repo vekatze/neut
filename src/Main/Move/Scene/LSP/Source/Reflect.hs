@@ -13,14 +13,12 @@ import Main.Rule.Module
 import Main.Rule.Source
 import Path
 
-data Handle = Handle
-  { envHandle :: Env.Handle,
-    moduleReflectHandle :: Module.Handle
+newtype Handle = Handle
+  { envHandle :: Env.Handle
   }
 
 new :: Base.Handle -> Handle
 new (Base.Handle {..}) = do
-  let moduleReflectHandle = Module.new gensymHandle
   Handle {..}
 
 reflect :: Handle -> FilePath -> EIO (Maybe Source)
@@ -42,4 +40,4 @@ getModule h srcPath = do
   let MainModule mainModule = Env.getMainModule (envHandle h)
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
-    else Module.fromFilePath (moduleReflectHandle h) moduleFilePath
+    else Module.fromFilePath moduleFilePath

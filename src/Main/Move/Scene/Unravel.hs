@@ -32,9 +32,9 @@ import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
-import Main.Move.Scene.Parse.Core qualified as ParseCore
 import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program (parseImport)
+import Main.Move.Scene.Parse.RawTerm qualified as ParseRT
 import Main.Move.Scene.Source.ShiftToLatest qualified as STL
 import Main.Rule.Artifact qualified as A
 import Main.Rule.Import
@@ -145,8 +145,7 @@ unravelAntecedentArrow h axis currentModule = do
       let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath mainModule Nothing moduleID
-        let moduleReflectHandle = ModuleReflect.new (Base.gensymHandle (baseHandle h))
-        ModuleReflect.fromFilePath moduleReflectHandle path' >>= unravelAntecedentArrow h axis
+        ModuleReflect.fromFilePath path' >>= unravelAntecedentArrow h axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
       return $ getAntecedentArrow currentModule ++ arrows
@@ -175,9 +174,7 @@ unravelModule' h axis currentModule = do
         path' <- Module.getModuleFilePath mainModule Nothing moduleID
         b <- doesFileExist path'
         if b
-          then do
-            let moduleReflectHandle = ModuleReflect.new (Base.gensymHandle (baseHandle h))
-            ModuleReflect.fromFilePath moduleReflectHandle path' >>= unravelModule' h axis
+          then ModuleReflect.fromFilePath path' >>= unravelModule' h axis
           else return []
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
@@ -351,8 +348,8 @@ parseSourceHeader h localHandle currentSource = do
   Parse.ensureExistence currentSource
   let filePath = Source.sourceFilePath currentSource
   fileContent <- liftIO $ Parse.readTextFile filePath
-  let parseHandle = ParseCore.new (Base.gensymHandle (baseHandle h))
-  (_, importList) <- ParseCore.parseFile parseHandle filePath fileContent False (const parseImport)
+  let parseHandle = ParseRT.new (Base.gensymHandle (baseHandle h))
+  (_, importList) <- ParseRT.parseRawTerm parseHandle filePath fileContent False (const parseImport)
   let m = newSourceHint filePath
   let importHandle = Import.new (baseHandle h) localHandle
   Import.interpretImport importHandle m currentSource importList

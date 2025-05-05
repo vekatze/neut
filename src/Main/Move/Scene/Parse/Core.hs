@@ -1,8 +1,5 @@
 module Main.Move.Scene.Parse.Core
-  ( Handle (..),
-    Parser,
-    new,
-    parseFile,
+  ( Parser,
     getCurrentHint,
     getCurrentLoc,
     symbol,
@@ -13,6 +10,7 @@ module Main.Move.Scene.Parse.Core
     string,
     rune,
     integer,
+    spaceConsumer,
     float,
     bool,
     betweenParen,
@@ -29,27 +27,22 @@ module Main.Move.Scene.Parse.Core
     seriesBraceList,
     seriesBraceList',
     asLabel,
-    var,
+    createParseError,
   )
 where
 
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError))
-import Control.Monad.Trans
 import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
 import Error.Rule.EIO
-import Gensym.Rule.Handle qualified as Gensym
-import Language.Common.Move.CreateSymbol (newTextForHole)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
 import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Hint.Reflect qualified as Hint
 import Main.Rule.Syntax.Block
-import Path
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
@@ -57,33 +50,7 @@ import Text.Megaparsec.Char hiding (string)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
 
-type MustParseWholeFile =
-  Bool
-
-newtype Handle = Handle
-  { gensymHandle :: Gensym.Handle
-  }
-
 type Parser a = ParsecT Void T.Text EIO a
-
-new :: Gensym.Handle -> Handle
-new gensymHandle = do
-  Handle {..}
-
-parseFile :: Handle -> Path Abs File -> T.Text -> MustParseWholeFile -> (Handle -> Parser a) -> EIO (C, a)
-parseFile h filePath fileContent mustParseWholeFile parser = do
-  let fileParser = do
-        leadingComments <- spaceConsumer
-        value <- parser h
-        when mustParseWholeFile eof
-        return (leadingComments, value)
-  let path = toFilePath filePath
-  result <- runParserT fileParser path fileContent
-  case result of
-    Right v ->
-      return v
-    Left errorBundle ->
-      throwError $ createParseError errorBundle
 
 createParseError :: ParseErrorBundle T.Text Void -> E.Error
 createParseError errorBundle = do
@@ -376,16 +343,6 @@ seriesBraceList =
 seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
 seriesBraceList' =
   series' Nothing SE.Brace SE.Bar
-
-var :: Handle -> Parser ((Hint, T.Text), C)
-var h = do
-  m <- getCurrentHint
-  (x, c) <- symbol
-  if x /= "_"
-    then return ((m, x), c)
-    else do
-      unusedVar <- liftIO $ newTextForHole (gensymHandle h)
-      return ((m, unusedVar), c)
 
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char

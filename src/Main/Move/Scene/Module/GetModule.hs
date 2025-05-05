@@ -51,8 +51,7 @@ getModule h mainModule m moduleID locatorText = do
           T.pack "Could not find the module file for `"
             <> locatorText
             <> "`"
-      let h' = ModuleReflect.Handle {gensymHandle = gensymHandle h}
-      nextModule <- ModuleReflect.fromFilePath h' nextModuleFilePath
+      nextModule <- ModuleReflect.fromFilePath nextModuleFilePath
       liftIO $ Module.insertToModuleCacheMap (moduleHandle h) nextModuleFilePath nextModule
       return nextModule
 

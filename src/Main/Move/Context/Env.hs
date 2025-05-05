@@ -40,14 +40,13 @@ new :: Logger.Handle -> Bool -> Maybe (Path Abs File) -> IO Handle
 new loggerHandle enableSilentMode moduleFilePathOrNone = do
   buildModeRef <- newIORef BM.Develop
   run loggerHandle $ do
-    let moduleReflectHandle = ModuleReflect.new undefined
     mainModule <-
       MainModule
         <$> case moduleFilePathOrNone of
           Just moduleFilePath ->
-            ModuleReflect.fromFilePath moduleReflectHandle moduleFilePath
+            ModuleReflect.fromFilePath moduleFilePath
           Nothing -> do
-            getCurrentModuleFilePath >>= ModuleReflect.fromFilePath moduleReflectHandle
+            getCurrentModuleFilePath >>= ModuleReflect.fromFilePath
     return $ Handle {..}
 
 getMainModule :: Handle -> MainModule

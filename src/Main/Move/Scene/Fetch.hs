@@ -49,7 +49,6 @@ data Handle = Handle
   { ensReflectHandle :: EnsReflect.Handle,
     moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,
-    moduleReflectHandle :: ModuleReflect.Handle,
     loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle
   }
@@ -61,7 +60,6 @@ new (Base.Handle {..}) = do
   let ensReflectHandle = EnsReflect.new gensymHandle
   let moduleSaveHandle = ModuleSave.new loggerHandle
   let externalHandle = External.new loggerHandle
-  let moduleReflectHandle = ModuleReflect.new gensymHandle
   Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()
@@ -191,8 +189,7 @@ getLibraryModule h alias digest = do
   moduleFilePath <- Module.getModuleFilePath mainModule Nothing (MID.Library digest)
   moduleFileExists <- doesFileExist moduleFilePath
   if moduleFileExists
-    then do
-      ModuleReflect.fromFilePath (moduleReflectHandle h) moduleFilePath
+    then ModuleReflect.fromFilePath moduleFilePath
     else
       raiseError' $
         "Could not find the module file for `"
@@ -227,7 +224,7 @@ addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
 addDependencyToModuleFile h alias dep = do
   let mainModule = Env.getMainModule (envHandle h)
   let mm = M.extractModule mainModule
-  (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath (ensReflectHandle h) (moduleLocation mm)
+  (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath (moduleLocation mm)
   let depEns = makeDependencyEns m alias dep
   mergedEns <- liftEither $ E.merge baseEns depEns
   ModuleSave.save (moduleSaveHandle h) (M.moduleLocation mm) (c1, (mergedEns, c2))
@@ -259,7 +256,7 @@ makeDependencyEns m alias dep = do
 
 updateDependencyInModuleFile :: Handle -> Path Abs File -> ModuleAlias -> M.Dependency -> EIO ()
 updateDependencyInModuleFile h mainModuleFileLoc alias dep = do
-  (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath (ensReflectHandle h) mainModuleFileLoc
+  (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath mainModuleFileLoc
   let depEns = makeDependencyEns' m dep
   mergedEns <- liftEither $ E.conservativeUpdate [keyDependency, BN.reify (extract alias)] depEns baseEns
   ModuleSave.save (moduleSaveHandle h) mainModuleFileLoc (c1, (mergedEns, c2))

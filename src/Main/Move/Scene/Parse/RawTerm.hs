@@ -1,5 +1,8 @@
 module Main.Move.Scene.Parse.RawTerm
-  ( rawExpr,
+  ( Handle (..),
+    new,
+    parseRawTerm,
+    rawExpr,
     rawTerm,
     var,
     preAscription,
@@ -14,11 +17,12 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (liftEither)
+import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol (newTextForHole)
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
@@ -36,10 +40,37 @@ import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
+import Path
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 import Text.Read qualified as R
+
+newtype Handle = Handle
+  { gensymHandle :: Gensym.Handle
+  }
+
+type MustParseWholeFile =
+  Bool
+
+new :: Gensym.Handle -> Handle
+new gensymHandle = do
+  Handle {..}
+
+parseRawTerm :: Handle -> Path Abs File -> T.Text -> MustParseWholeFile -> (Handle -> Parser a) -> EIO (C, a)
+parseRawTerm h filePath fileContent mustParseWholeFile parser = do
+  let fileParser = do
+        leadingComments <- spaceConsumer
+        value <- parser h
+        when mustParseWholeFile eof
+        return (leadingComments, value)
+  let path = toFilePath filePath
+  result <- runParserT fileParser path fileContent
+  case result of
+    Right v ->
+      return v
+    Left errorBundle ->
+      throwError $ createParseError errorBundle
 
 rawExpr :: Handle -> Parser (RT.RawTerm, C)
 rawExpr h = do
@@ -875,3 +906,13 @@ locatorToVarGlobal m text = do
 rawVar :: Hint -> Name -> RT.RawTerm
 rawVar m name =
   m :< RT.Var name
+
+var :: Handle -> Parser ((Hint, T.Text), C)
+var h = do
+  m <- getCurrentHint
+  (x, c) <- symbol
+  if x /= "_"
+    then return ((m, x), c)
+    else do
+      unusedVar <- liftIO $ newTextForHole (gensymHandle h)
+      return ((m, unusedVar), c)

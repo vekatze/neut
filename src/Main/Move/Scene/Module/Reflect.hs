@@ -1,7 +1,5 @@
 module Main.Move.Scene.Module.Reflect
-  ( Handle (..),
-    new,
-    fromFilePath,
+  ( fromFilePath,
     fromCurrentPath,
     findModuleFile,
     getCurrentModuleFilePath,
@@ -17,7 +15,6 @@ import Data.Text qualified as T
 import Ens.Rule.Ens (dictFromListVertical')
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
@@ -39,18 +36,9 @@ import Path
 import Path.IO
 import SyntaxTree.Rule.Series qualified as SE
 
-newtype Handle = Handle
-  { gensymHandle :: Gensym.Handle
-  }
-
-new :: Gensym.Handle -> Handle
-new gensymHandle = do
-  Handle {..}
-
-fromFilePath :: Handle -> Path Abs File -> EIO Module
-fromFilePath h moduleFilePath = do
-  let h' = Ens.Handle {gensymHandle = gensymHandle h}
-  (_, (ens@(m :< _), _)) <- Ens.fromFilePath h' moduleFilePath
+fromFilePath :: Path Abs File -> EIO Module
+fromFilePath moduleFilePath = do
+  (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
   target <- interpretTarget targetEns
   zenConfigEns <- liftEither (E.access' keyZen E.emptyDict ens) >>= interpretZenConfig
@@ -95,9 +83,9 @@ fromFilePath h moduleFilePath = do
         modulePresetMap = presetMap
       }
 
-fromCurrentPath :: Handle -> EIO Module
-fromCurrentPath h = do
-  getCurrentModuleFilePath >>= fromFilePath h
+fromCurrentPath :: EIO Module
+fromCurrentPath = do
+  getCurrentModuleFilePath >>= fromFilePath
 
 interpretPrefixMap ::
   H.Hint ->
