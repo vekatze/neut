@@ -8,8 +8,8 @@ module Language.RawTerm.Rule.C.Decode
 where
 
 import Data.Text qualified as T
-import Language.RawTerm.Rule.C
 import Main.Rule.Doc qualified as D
+import Tree.Rule.C
 
 decode :: C -> D.Doc
 decode =

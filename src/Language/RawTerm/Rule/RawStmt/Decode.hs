@@ -10,7 +10,6 @@ import Language.Common.Rule.Hint
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.StmtKind qualified as SK
-import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
@@ -22,6 +21,7 @@ import Main.Rule.Piece qualified as PI
 import Main.Rule.Syntax.Series.Decode qualified as SE
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Main.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
+import Tree.Rule.C
 
 data ImportInfo = ImportInfo
   { presetNames :: [(T.Text, [BN.BaseName])], -- "prelude"

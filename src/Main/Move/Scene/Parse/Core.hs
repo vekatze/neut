@@ -48,7 +48,6 @@ import Language.Common.Rule.Const
 import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Hint.Reflect qualified as Hint
-import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.Syntax.Block
 import Path
@@ -56,6 +55,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
+import Tree.Rule.C
 
 type MustParseWholeFile =
   Bool

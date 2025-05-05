@@ -24,7 +24,6 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Rune qualified as RU
-import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.C.Decode qualified as C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Locator qualified as Locator
@@ -39,6 +38,7 @@ import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.Doc qualified as D
 import Main.Rule.Piece qualified as PI
 import Main.Rule.Syntax.Series.Decode qualified as SE
+import Tree.Rule.C
 
 pp :: RawTerm -> T.Text
 pp e = do

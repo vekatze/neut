@@ -3,10 +3,10 @@ module Main.Rule.Ens.Reify (pp) where
 import Control.Comonad.Cofree
 import Data.Char (isSpace)
 import Data.Text qualified as T
-import Language.RawTerm.Rule.C
 import Main.Rule.Doc qualified as D
 import Main.Rule.Ens
 import Main.Rule.Syntax.Series.Decode qualified as SE
+import Tree.Rule.C
 
 pp :: FullEns -> T.Text
 pp (leadingComments, (ens, trailingComments)) = do

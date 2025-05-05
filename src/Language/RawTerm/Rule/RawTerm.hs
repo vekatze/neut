@@ -39,7 +39,6 @@ import Language.Common.Rule.HoleID
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Rune qualified as R
-import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.NecessityVariant (NecessityVariant)
@@ -48,6 +47,7 @@ import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Logger.Rule.LogLevel
+import Tree.Rule.C
 
 type RawTerm = Cofree RawTermF Hint
 

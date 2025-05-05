@@ -34,7 +34,7 @@ import Data.Bifunctor
 import Data.List (nubBy, sortBy)
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
-import Language.RawTerm.Rule.C (C)
+import Tree.Rule.C (C)
 
 data Separator
   = Comma

@@ -7,10 +7,10 @@ where
 
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Rune qualified as RU
-import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
+import Tree.Rule.C
 
 data RawPattern
   = Var Name

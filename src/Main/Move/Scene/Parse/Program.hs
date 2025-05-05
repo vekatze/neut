@@ -17,7 +17,6 @@ import Language.Common.Rule.Hint
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.StmtKind qualified as SK
-import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
@@ -27,6 +26,7 @@ import Main.Move.Scene.Parse.Core (asLabel)
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
 import Text.Megaparsec
+import Tree.Rule.C
 
 parseProgram :: P.Handle -> P.Parser RawProgram
 parseProgram h = do

@@ -27,7 +27,6 @@ import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Hint
 import Language.Common.Rule.Rune qualified as RU
 import Language.RawTerm.Move.CreateHole qualified as RT
-import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.NecessityVariant (NecessityVariant (..), showNecessityVariant)
@@ -40,6 +39,7 @@ import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
 import Text.Megaparsec
 import Text.Read qualified as R
+import Tree.Rule.C
 
 rawExpr :: Handle -> Parser (RT.RawTerm, C)
 rawExpr h = do

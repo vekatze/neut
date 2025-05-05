@@ -38,7 +38,6 @@ import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
 import Language.RawTerm.Move.CreateHole qualified as RT
-import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Locator qualified as L
 import Language.RawTerm.Rule.Name
@@ -87,6 +86,7 @@ import Main.Rule.Platform qualified as Platform
 import Main.Rule.TopCandidate
 import Main.Rule.VarDefKind qualified as VDK
 import Text.Read qualified as R
+import Tree.Rule.C
 
 discernStmtList :: H.Handle -> Module -> [RawStmt] -> EIO [WeakStmt]
 discernStmtList h mo =
