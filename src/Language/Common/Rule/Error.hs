@@ -8,7 +8,6 @@ module Language.Common.Rule.Error
   )
 where
 
-import Control.Exception
 import Data.Text qualified as T
 import Language.Common.Rule.Hint
 import Logger.Rule.Log
@@ -17,8 +16,6 @@ import Logger.Rule.LogLevel
 newtype Error
   = MakeError [Log]
   deriving (Show, Semigroup)
-
-instance Exception Error
 
 newError :: Hint -> T.Text -> Error
 newError m text = do
