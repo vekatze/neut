@@ -26,6 +26,7 @@ import Language.Common.Rule.Magic qualified as M
 import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.FreeVarsWithHints (freeVarsWithHints)
 import Language.Term.Rule.Term.Weaken (weaken)
+import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText qualified as WT
 import Logger.Rule.Log qualified as L
@@ -35,7 +36,6 @@ import Main.Move.Context.OptimizableData qualified as OptimizableData
 import Main.Move.Context.Type qualified as Type
 import Main.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
-import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Rule.OptimizableData
 import Main.Rule.OptimizableData qualified as OD
 import Main.Rule.Stuck qualified as Stuck

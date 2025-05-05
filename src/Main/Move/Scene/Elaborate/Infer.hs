@@ -46,6 +46,7 @@ import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.FromPrimNum qualified as Term
 import Language.Term.Rule.Term.Weaken
 import Language.WeakTerm.Move.CreateHole qualified as WT
+import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
@@ -65,7 +66,6 @@ import Main.Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Main.Move.Scene.Elaborate.Unify qualified as Unify
-import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Move.Scene.Parse.Discern.Name qualified as N
 import Main.Rule.Const
 import Main.Rule.HoleSubst qualified as HS

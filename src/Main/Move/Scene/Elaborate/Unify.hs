@@ -25,6 +25,7 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.PrimType qualified as PT
+import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as Subst
@@ -41,7 +42,6 @@ import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Elaborate
 import Main.Move.Scene.Elaborate.Handle.Hole qualified as Hole
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
-import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Rule.Constraint (SuspendedConstraint)
 import Main.Rule.Constraint qualified as C
 import Main.Rule.HoleSubst qualified as HS

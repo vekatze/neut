@@ -22,11 +22,11 @@ import Language.Common.Rule.Hint qualified as H
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
+import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.EIO (EIO, raiseError)
-import Main.Move.Scene.Elaborate.WeakTerm.Subst qualified as Subst
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Const (defaultInlineLimit)
 import Main.Rule.Module (moduleInlineLimit)

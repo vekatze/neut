@@ -1,4 +1,4 @@
-module Main.Move.Scene.Elaborate.WeakTerm.Subst
+module Language.WeakTerm.Move.Subst
   ( Handle,
     new,
     subst,
