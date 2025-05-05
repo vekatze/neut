@@ -29,18 +29,18 @@ import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 
-parseProgram :: Handle -> P.Parser RawProgram
+parseProgram :: Handle -> Parser RawProgram
 parseProgram h = do
   m <- getCurrentHint
   importList <- parseImport
   stmtList <- many $ parseStmt h
   return $ RawProgram m importList stmtList
 
-parseImport :: P.Parser [(RawImport, C)]
+parseImport :: Parser [(RawImport, C)]
 parseImport =
   many parseSingleImport
 
-parseSingleImport :: P.Parser (RawImport, C)
+parseSingleImport :: Parser (RawImport, C)
 parseSingleImport = do
   c1 <- P.keyword "import"
   m <- getCurrentHint
@@ -56,7 +56,7 @@ parseSingleImport = do
         return (RawImportItem mImportItem locator lls, c)
   return (RawImport c1 m importItems loc, c)
 
-parseStmt :: Handle -> P.Parser (RawStmt, C)
+parseStmt :: Handle -> Parser (RawStmt, C)
 parseStmt h = do
   choice
     [ parseDefine h,
@@ -67,14 +67,14 @@ parseStmt h = do
       parseForeign h
     ]
 
-parseLocalLocatorList' :: P.Parser (SE.Series (Hint, LL.LocalLocator), C)
+parseLocalLocatorList' :: Parser (SE.Series (Hint, LL.LocalLocator), C)
 parseLocalLocatorList' = do
   choice
     [ P.seriesBrace parseLocalLocator,
       return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
 
-parseStaticKeyList :: P.Parser (SE.Series (Hint, T.Text), C)
+parseStaticKeyList :: Parser (SE.Series (Hint, T.Text), C)
 parseStaticKeyList = do
   choice
     [ P.seriesBrace $ do
@@ -84,19 +84,19 @@ parseStaticKeyList = do
       return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
 
-parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)
+parseLocalLocator :: Parser ((Hint, LL.LocalLocator), C)
 parseLocalLocator = do
   m <- getCurrentHint
   (ll, c) <- P.baseName
   return ((m, LL.new ll), c)
 
-parseForeign :: Handle -> P.Parser (RawStmt, C)
+parseForeign :: Handle -> Parser (RawStmt, C)
 parseForeign h = do
   c1 <- P.keyword "foreign"
   (val, c) <- P.seriesBrace $ parseForeignItem h
   return (RawStmtForeign c1 val, c)
 
-parseForeignItem :: Handle -> P.Parser (RawForeignItem, C)
+parseForeignItem :: Handle -> Parser (RawForeignItem, C)
 parseForeignItem h = do
   m <- getCurrentHint
   (funcName, c1) <- P.symbol
@@ -113,15 +113,15 @@ parseForeignItem h = do
       ]
   return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
 
-parseDefine :: Handle -> P.Parser (RawStmt, C)
+parseDefine :: Handle -> Parser (RawStmt, C)
 parseDefine h =
   parseDefine' h O.Opaque
 
-parseInline :: Handle -> P.Parser (RawStmt, C)
+parseInline :: Handle -> Parser (RawStmt, C)
 parseInline h =
   parseDefine' h O.Clear
 
-parseDefine' :: Handle -> O.Opacity -> P.Parser (RawStmt, C)
+parseDefine' :: Handle -> O.Opacity -> Parser (RawStmt, C)
 parseDefine' h opacity = do
   c1 <-
     case opacity of
@@ -132,7 +132,7 @@ parseDefine' h opacity = do
   (def, c) <- parseDef h P.baseName
   return (RawStmtDefine c1 (SK.Normal opacity) def, c)
 
-parseData :: Handle -> P.Parser (RawStmt, C)
+parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do
   c1 <- P.keyword "data"
   m <- getCurrentHint
@@ -141,7 +141,7 @@ parseData h = do
   (consSeries, loc, c) <- P.seriesBraceList' $ parseDefineDataClause h
   return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries loc, c)
 
-parseNominal :: Handle -> P.Parser (RawStmt, C)
+parseNominal :: Handle -> Parser (RawStmt, C)
 parseNominal h = do
   c1 <- P.keyword "nominal"
   m <- getCurrentHint
@@ -151,14 +151,14 @@ parseNominal h = do
     return ((geist, loc), c)
   return (RawStmtNominal c1 m geists, c)
 
-parseDataArgs :: Handle -> P.Parser (Maybe (RT.Args RT.RawTerm))
+parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawTerm))
 parseDataArgs h = do
   choice
     [ Just <$> try (P.seriesParen $ preBinder h),
       return Nothing
     ]
 
-parseDefineDataClause :: Handle -> P.Parser (RawConsInfo BN.BaseName, C)
+parseDefineDataClause :: Handle -> Parser (RawConsInfo BN.BaseName, C)
 parseDefineDataClause h = do
   m <- getCurrentHint
   (consName, c1) <- P.baseName
@@ -169,7 +169,7 @@ parseDefineDataClause h = do
   let isConstLike = isNothing consArgsOrNone
   return ((m, consName, isConstLike, consArgs, loc), c1 ++ c2)
 
-parseConsArgs :: Handle -> P.Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
+parseConsArgs :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
 parseConsArgs h = do
   choice
     [ do
@@ -180,14 +180,14 @@ parseConsArgs h = do
         return (Nothing, loc, [])
     ]
 
-parseDefineDataClauseArg :: Handle -> P.Parser (RawBinder RT.RawTerm, C)
+parseDefineDataClauseArg :: Handle -> Parser (RawBinder RT.RawTerm, C)
 parseDefineDataClauseArg h = do
   choice
     [ try $ var h >>= preAscription h,
       typeWithoutIdent h
     ]
 
-parseResource :: Handle -> P.Parser (RawStmt, C)
+parseResource :: Handle -> Parser (RawStmt, C)
 parseResource h = do
   c1 <- P.keyword "resource"
   m <- getCurrentHint

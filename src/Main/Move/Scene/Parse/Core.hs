@@ -1,6 +1,5 @@
 module Main.Move.Scene.Parse.Core
-  ( Parser,
-    symbol,
+  ( symbol,
     baseName,
     delimiter,
     nonSymbolCharSet,
