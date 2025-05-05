@@ -1,4 +1,4 @@
-module Main.Move.Scene.Comp.Reduce
+module Language.Comp.Move.Reduce
   ( Handle,
     new,
     reduce,

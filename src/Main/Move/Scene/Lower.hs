@@ -43,6 +43,7 @@ import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimNumSize.ToInt
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Comp.Move.Reduce qualified as Reduce
 import Language.Comp.Move.Subst qualified as Subst
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
@@ -52,7 +53,6 @@ import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Cancel
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
-import Main.Move.Scene.Comp.Reduce qualified as Reduce
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Arch
 import Main.Rule.Arch qualified as A
