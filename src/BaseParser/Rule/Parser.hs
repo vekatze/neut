@@ -1,5 +1,7 @@
 module BaseParser.Rule.Parser
   ( Parser,
+    getCurrentHint,
+    getCurrentLoc,
     createParseError,
     nonSymbolCharSet,
     asTokens,
@@ -13,12 +15,24 @@ import Data.Text qualified as T
 import Data.Void
 import Error.Rule.EIO
 import Error.Rule.Error qualified as E
+import Logger.Rule.Hint
 import Logger.Rule.Hint.Reflect (fromSourcePos)
 import Logger.Rule.Log (Log (..))
 import Logger.Rule.LogLevel (LogLevel (Error))
 import Text.Megaparsec
 
 type Parser a = ParsecT Void T.Text EIO a
+
+getCurrentHint :: Parser Hint
+getCurrentHint =
+  fromSourcePos <$> getSourcePos
+
+getCurrentLoc :: Parser Loc
+getCurrentLoc = do
+  pos <- getSourcePos
+  let line = unPos $ sourceLine pos
+  let column = unPos $ sourceColumn pos
+  return (line, column)
 
 createParseError :: ParseErrorBundle T.Text Void -> E.Error
 createParseError errorBundle = do

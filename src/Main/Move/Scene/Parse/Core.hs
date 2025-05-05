@@ -1,7 +1,5 @@
 module Main.Move.Scene.Parse.Core
   ( Parser,
-    getCurrentHint,
-    getCurrentLoc,
     symbol,
     baseName,
     delimiter,
@@ -26,7 +24,6 @@ module Main.Move.Scene.Parse.Core
     seriesAngle,
     seriesBraceList,
     seriesBraceList',
-    asLabel,
   )
 where
 
@@ -37,7 +34,6 @@ import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
 import Logger.Rule.Hint
-import Logger.Rule.Hint.Reflect qualified as Hint
 import Main.Rule.Syntax.Block
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
@@ -45,17 +41,6 @@ import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
-
-getCurrentHint :: Parser Hint
-getCurrentHint =
-  Hint.fromSourcePos <$> getSourcePos
-
-getCurrentLoc :: Parser Loc
-getCurrentLoc = do
-  pos <- getSourcePos
-  let line = unPos $ sourceLine pos
-  let column = unPos $ sourceColumn pos
-  return (line, column)
 
 skipSpace :: Parser ()
 skipSpace =

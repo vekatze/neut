@@ -4,6 +4,7 @@ module Main.Move.Scene.Parse.Program
   )
 where
 
+import BaseParser.Rule.Parser
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
@@ -21,7 +22,6 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
-import Main.Move.Scene.Parse.Core (asLabel)
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
 import SyntaxTree.Rule.C
@@ -30,7 +30,7 @@ import Text.Megaparsec
 
 parseProgram :: Handle -> P.Parser RawProgram
 parseProgram h = do
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   importList <- parseImport
   stmtList <- many $ parseStmt h
   return $ RawProgram m importList stmtList
@@ -42,9 +42,9 @@ parseImport =
 parseSingleImport :: P.Parser (RawImport, C)
 parseSingleImport = do
   c1 <- P.keyword "import"
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   (importItems, loc, c) <- P.seriesBrace' $ do
-    mImportItem <- P.getCurrentHint
+    mImportItem <- getCurrentHint
     locator <- P.symbol
     case fst locator of
       "static" -> do
@@ -77,7 +77,7 @@ parseStaticKeyList :: P.Parser (SE.Series (Hint, T.Text), C)
 parseStaticKeyList = do
   choice
     [ P.seriesBrace $ do
-        m <- P.getCurrentHint
+        m <- getCurrentHint
         (k, c) <- P.symbol
         return ((m, k), c),
       return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
@@ -85,7 +85,7 @@ parseStaticKeyList = do
 
 parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)
 parseLocalLocator = do
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   (ll, c) <- P.baseName
   return ((m, LL.new ll), c)
 
@@ -97,7 +97,7 @@ parseForeign h = do
 
 parseForeignItem :: Handle -> P.Parser (RawForeignItem, C)
 parseForeignItem h = do
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   (funcName, c1) <- P.symbol
   (domList, c2) <- P.seriesParen $ rawTerm h
   c3 <- P.delimiter ":"
@@ -134,7 +134,7 @@ parseDefine' h opacity = do
 parseData :: Handle -> P.Parser (RawStmt, C)
 parseData h = do
   c1 <- P.keyword "data"
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   (dataName, c2) <- P.baseName
   dataArgsOrNone <- parseDataArgs h
   (consSeries, loc, c) <- P.seriesBraceList' $ parseDefineDataClause h
@@ -143,10 +143,10 @@ parseData h = do
 parseNominal :: Handle -> P.Parser (RawStmt, C)
 parseNominal h = do
   c1 <- P.keyword "nominal"
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   (geists, c) <- P.seriesBrace $ do
     (geist, c) <- parseGeist h P.baseName
-    loc <- P.getCurrentLoc
+    loc <- getCurrentLoc
     return ((geist, loc), c)
   return (RawStmtNominal c1 m geists, c)
 
@@ -159,7 +159,7 @@ parseDataArgs h = do
 
 parseDefineDataClause :: Handle -> P.Parser (RawConsInfo BN.BaseName, C)
 parseDefineDataClause h = do
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   (consName, c1) <- P.baseName
   unless (isConsName (BN.reify consName)) $ do
     lift $ raiseError m "The name of a constructor must be capitalized"
@@ -175,7 +175,7 @@ parseConsArgs h = do
         (series, loc, c) <- P.seriesParen' $ parseDefineDataClauseArg h
         return (Just series, loc, c),
       do
-        loc <- P.getCurrentLoc
+        loc <- getCurrentLoc
         return (Nothing, loc, [])
     ]
 
@@ -189,7 +189,7 @@ parseDefineDataClauseArg h = do
 parseResource :: Handle -> P.Parser (RawStmt, C)
 parseResource h = do
   c1 <- P.keyword "resource"
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   (name, c2) <- P.baseName
   (handlers, c) <- P.seriesBrace $ rawExpr h
   case SE.elems handlers of
