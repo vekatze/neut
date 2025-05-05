@@ -26,8 +26,6 @@ import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
-import Language.RawTerm.Rule.Syntax.Series (Series (hasOptionalSeparator))
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.Env qualified as Env
@@ -44,6 +42,8 @@ import Main.Rule.Module qualified as M
 import Main.Rule.ModuleURL
 import Path
 import Path.IO
+import Tree.Rule.Series (Series (hasOptionalSeparator))
+import Tree.Rule.Series qualified as SE
 
 data Handle = Handle
   { ensReflectHandle :: EnsReflect.Handle,

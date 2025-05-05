@@ -22,7 +22,6 @@ import Language.Common.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.Rule.RawStmt
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Module qualified as Module
@@ -44,6 +43,7 @@ import Main.Rule.Module
 import Main.Rule.Source qualified as Source
 import Path
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 type LocatorText =
   T.Text

@@ -23,8 +23,8 @@ import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 data RawProgram
   = RawProgram Hint [(RawImport, C)] [(RawStmt, C)]

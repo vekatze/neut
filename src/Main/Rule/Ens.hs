@@ -36,10 +36,10 @@ import Data.List (find, nubBy)
 import Data.Text qualified as T
 import Language.Common.Rule.Error
 import Language.Common.Rule.Hint
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.EnsType qualified as ET
 import Path
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 data EnsF a
   = Int Int

@@ -1,4 +1,4 @@
-module Language.RawTerm.Rule.Syntax.Series
+module Tree.Rule.Series
   ( Series (..),
     Separator (..),
     Container (..),
@@ -26,7 +26,7 @@ module Language.RawTerm.Rule.Syntax.Series
     catMaybes,
     compressEither,
     hasComment,
-    Language.RawTerm.Rule.Syntax.Series.filter,
+    Tree.Rule.Series.filter,
   )
 where
 

@@ -26,7 +26,6 @@ import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
@@ -38,6 +37,7 @@ import Main.Rule.Target
 import Main.Rule.ZenConfig (ZenConfig (..))
 import Path
 import Path.IO
+import Tree.Rule.Series qualified as SE
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

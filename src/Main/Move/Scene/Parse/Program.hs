@@ -21,12 +21,12 @@ import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Scene.Parse.Core (asLabel)
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
 import Text.Megaparsec
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 parseProgram :: P.Handle -> P.Parser RawProgram
 parseProgram h = do

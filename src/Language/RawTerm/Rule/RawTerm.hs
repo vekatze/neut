@@ -45,9 +45,9 @@ import Language.RawTerm.Rule.NecessityVariant (NecessityVariant)
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Logger.Rule.LogLevel
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 type RawTerm = Cofree RawTermF Hint
 

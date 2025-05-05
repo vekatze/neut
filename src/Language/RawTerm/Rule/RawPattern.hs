@@ -9,8 +9,8 @@ import Language.Common.Rule.Hint
 import Language.Common.Rule.Rune qualified as RU
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 data RawPattern
   = Var Name

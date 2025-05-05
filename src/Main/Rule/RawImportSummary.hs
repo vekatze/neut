@@ -9,7 +9,7 @@ import Data.Text qualified as T
 import Language.Common.Rule.Hint
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.RawTerm.Rule.RawStmt (RawImport (..), RawImportItem (..))
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
+import Tree.Rule.Series qualified as SE
 
 type RawImportSummary = ([(T.Text, [T.Text])], Loc)
 

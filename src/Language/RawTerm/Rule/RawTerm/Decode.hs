@@ -34,11 +34,11 @@ import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.Doc qualified as D
 import Main.Rule.Piece qualified as PI
 import Main.Rule.Syntax.Series.Decode qualified as SE
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 pp :: RawTerm -> T.Text
 pp e = do

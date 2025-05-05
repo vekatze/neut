@@ -14,13 +14,13 @@ import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.Hint
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.Parse
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Rule.Ens qualified as E
 import Path
 import Text.Megaparsec hiding (parse)
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

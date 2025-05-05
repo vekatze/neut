@@ -47,7 +47,6 @@ import Language.RawTerm.Rule.RawIdent hiding (isHole)
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
@@ -87,6 +86,7 @@ import Main.Rule.TopCandidate
 import Main.Rule.VarDefKind qualified as VDK
 import Text.Read qualified as R
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 discernStmtList :: H.Handle -> Module -> [RawStmt] -> EIO [WeakStmt]
 discernStmtList h mo =

@@ -69,7 +69,6 @@ import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const
 import Main.Rule.Ens qualified as E
@@ -78,6 +77,7 @@ import Main.Rule.Target qualified as Target
 import Main.Rule.ZenConfig
 import Path
 import System.FilePath qualified as FP
+import Tree.Rule.Series qualified as SE
 
 type SomePath a =
   Either (Path a Dir) (Path a File)

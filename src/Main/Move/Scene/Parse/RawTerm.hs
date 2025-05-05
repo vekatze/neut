@@ -34,12 +34,12 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
 import Text.Megaparsec
 import Text.Read qualified as R
 import Tree.Rule.C
+import Tree.Rule.Series qualified as SE
 
 rawExpr :: Handle -> Parser (RT.RawTerm, C)
 rawExpr h = do
