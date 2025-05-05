@@ -14,6 +14,8 @@ import Control.Monad.Except (liftEither)
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Ens.Rule.Ens (dictFromListVertical')
+import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseError, raiseError')
@@ -29,8 +31,6 @@ import Language.Common.Rule.SourceLocator qualified as SL
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
-import Main.Rule.Ens (dictFromListVertical')
-import Main.Rule.Ens qualified as E
 import Main.Rule.Module
 import Main.Rule.ModuleURL
 import Main.Rule.Target

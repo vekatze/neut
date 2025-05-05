@@ -10,13 +10,13 @@ import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.Hint
 import Main.Move.Context.Parse
 import Main.Move.Scene.Parse.Core qualified as P
-import Main.Rule.Ens qualified as E
 import Path
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE

@@ -1,4 +1,4 @@
-module Main.Rule.Ens
+module Ens.Rule.Ens
   ( Ens,
     EnsF (..),
     TopEns,

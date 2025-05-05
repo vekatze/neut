@@ -7,6 +7,7 @@ import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
+import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Language.Common.Rule.Hint
 import Language.Common.Rule.ModuleDigest (ModuleDigest (..))
@@ -14,7 +15,6 @@ import Language.Common.Rule.ModuleDigest qualified as MD
 import Main.Move.Scene.Archive.Module.GetExistingVersions
 import Main.Move.Scene.Ens.Reflect qualified as Ens
 import Main.Rule.Const
-import Main.Rule.Ens qualified as E
 import Main.Rule.Module
 import Main.Rule.PackageVersion qualified as PV
 import Path

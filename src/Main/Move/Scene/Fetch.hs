@@ -16,6 +16,8 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
+import Ens.Rule.Ens qualified as E
+import Ens.Rule.Ens qualified as SE
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError')
@@ -35,8 +37,6 @@ import Main.Move.Scene.Ens.Reflect qualified as EnsReflect
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.Ens qualified as E
-import Main.Rule.Ens qualified as SE
 import Main.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Main.Rule.Module qualified as M
 import Main.Rule.ModuleURL

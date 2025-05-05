@@ -61,6 +61,7 @@ import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
+import Ens.Rule.Ens qualified as E
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocator qualified as GL
@@ -71,7 +72,6 @@ import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const
-import Main.Rule.Ens qualified as E
 import Main.Rule.ModuleURL
 import Main.Rule.Target qualified as Target
 import Main.Rule.ZenConfig
