@@ -14,6 +14,7 @@ import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Hint (Hint)
 import Language.Term.Rule.Term qualified as TM
+import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Main.Move.Context.Env qualified as Env
@@ -35,7 +36,6 @@ import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Main.Move.Scene.Elaborate.Term.Inline qualified as Inline
 import Main.Move.Scene.Elaborate.WeakTerm.Fill qualified as Fill
-import Main.Move.Scene.Elaborate.WeakTerm.Reduce qualified as Reduce
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
