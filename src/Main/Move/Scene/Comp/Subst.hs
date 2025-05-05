@@ -7,9 +7,9 @@ where
 
 import Data.IntMap qualified as IntMap
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Comp.Rule.Comp qualified as C
-import Main.Move.Context.Gensym qualified as Gensym
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

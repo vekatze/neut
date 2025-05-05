@@ -14,6 +14,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -23,7 +24,6 @@ import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars qualified as WT
-import Main.Move.Context.Gensym qualified as Gensym
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

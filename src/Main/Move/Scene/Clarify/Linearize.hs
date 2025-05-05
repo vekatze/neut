@@ -8,11 +8,11 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.Magic qualified as M
 import Language.Comp.Rule.Comp qualified as C
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Utility qualified as Utility
 
 type Occurrence = Ident

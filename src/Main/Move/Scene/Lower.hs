@@ -24,6 +24,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.BasePrimType qualified as BPT
@@ -47,7 +48,6 @@ import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
 import Main.Move.Context.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Cancel
 import Main.Move.Scene.Comp.Reduce qualified as Reduce

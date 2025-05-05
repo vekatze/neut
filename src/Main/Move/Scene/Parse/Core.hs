@@ -41,6 +41,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.CreateSymbol (newTextForHole)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
 import Language.Common.Rule.Error qualified as E
@@ -49,7 +50,6 @@ import Language.Common.Rule.Hint.Reflect qualified as Hint
 import Language.RawTerm.Rule.C
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO
-import Main.Move.Context.Gensym (newTextForHole)
 import Main.Rule.Syntax.Block
 import Path
 import Text.Megaparsec

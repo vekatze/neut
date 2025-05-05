@@ -15,6 +15,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.BaseName qualified as BN

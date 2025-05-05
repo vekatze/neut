@@ -16,6 +16,7 @@ import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Gensym.Move.Trick qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -51,7 +52,6 @@ import Language.WeakTerm.Rule.WeakTerm.ToText
 import Logger.Rule.Log qualified as L
 import Main.Move.Context.Cache qualified as Cache
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.RawImportSummary qualified as RawImportSummary

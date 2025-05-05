@@ -13,6 +13,7 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ForeignCodType qualified as FCT
@@ -26,7 +27,6 @@ import Language.Common.Rule.PrimType.EmitPrimType (emitPrimType)
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.LowComp.Rule.LowComp.EmitValue
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Main.Move.Scene.Emit.LowComp.Reduce qualified as Reduce

@@ -13,6 +13,7 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -35,7 +36,6 @@ import Language.WeakTerm.Rule.WeakTerm.ToText
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.EIO (EIO, raiseCritical)
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Type qualified as Type
 import Main.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
 import Main.Move.Scene.Elaborate.Handle.Elaborate

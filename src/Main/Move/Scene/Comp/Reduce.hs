@@ -7,13 +7,13 @@ where
 
 import Data.IntMap qualified as IntMap
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Main.Move.Scene.Comp.Subst qualified as Subst
 

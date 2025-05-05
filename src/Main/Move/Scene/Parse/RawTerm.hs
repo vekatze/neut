@@ -18,6 +18,7 @@ import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Language.Common.Move.CreateSymbol (newTextForHole)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Error (newError)
@@ -35,7 +36,6 @@ import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.Syntax.Series qualified as SE
 import Main.Move.Context.EIO (EIO)
-import Main.Move.Context.Gensym (newTextForHole)
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
 import Text.Megaparsec

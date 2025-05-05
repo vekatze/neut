@@ -11,6 +11,7 @@ import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Gensym.Rule.Handle qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LowType qualified as LT
@@ -18,7 +19,6 @@ import Language.Common.Rule.LowType.EmitLowType
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.LowComp.Rule.LowComp.EmitOp qualified as EmitOp
 import Language.LowComp.Rule.LowComp.EmitValue
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Builder

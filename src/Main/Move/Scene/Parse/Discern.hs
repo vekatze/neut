@@ -11,6 +11,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Gensym.Move.Gensym qualified as Gensym
+import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -56,7 +57,6 @@ import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.EIO (EIO, raiseCritical, raiseError)
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Gensym qualified as Gensym
 import Main.Move.Context.KeyArg qualified as KeyArg
 import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Platform qualified as Platform
