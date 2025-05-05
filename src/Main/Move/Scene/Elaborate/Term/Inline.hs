@@ -12,9 +12,9 @@ import Data.Bitraversable (bimapM)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -30,31 +30,24 @@ import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Move.Subst qualified as Subst
 import Language.Term.Rule.Term qualified as TM
-import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Term.Refresh qualified as Refresh
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Const (defaultInlineLimit)
-import Main.Rule.Module (moduleInlineLimit)
-import Main.Rule.Source (Source, sourceModule)
+
+type DefMap =
+  Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)
 
 data Handle = Handle
-  { currentSource :: Source,
-    substHandle :: Subst.Handle,
+  { substHandle :: Subst.Handle,
     refreshHandle :: Refresh.Handle,
-    defMapHandle :: Definition.Handle,
-    dmap :: Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term),
+    dmap :: DefMap,
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
     location :: Hint
   }
 
-new :: Base.Handle -> Source -> Hint -> IO Handle
-new baseHandle currentSource location = do
-  let substHandle = Subst.new (Base.gensymHandle baseHandle)
-  let refreshHandle = Refresh.new (Base.gensymHandle baseHandle)
-  let defMapHandle = Base.defHandle baseHandle
-  dmap <- Definition.get' defMapHandle
-  let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
+new :: Gensym.Handle -> DefMap -> Hint -> Int -> IO Handle
+new gensymHandle dmap location inlineLimit = do
+  let substHandle = Subst.new gensymHandle
+  let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
   return $ Handle {..}
 
