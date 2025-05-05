@@ -1,4 +1,4 @@
-module Main.Move.Scene.Term.Subst
+module Language.Term.Move.Subst
   ( Handle,
     new,
     subst,

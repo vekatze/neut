@@ -48,6 +48,7 @@ import Language.Common.Rule.StmtKind
 import Language.Comp.Move.CreateVar qualified as Gensym
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
+import Language.Term.Move.Subst qualified as Subst
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Stmt
@@ -67,7 +68,6 @@ import Main.Move.Scene.Comp.Reduce qualified as Reduce
 import Main.Move.Scene.Comp.Subst qualified as CompSubst
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
-import Main.Move.Scene.Term.Subst qualified as Subst
 import Main.Rule.OptimizableData qualified as OD
 
 data Handle = Handle

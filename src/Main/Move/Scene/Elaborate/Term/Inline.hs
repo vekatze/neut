@@ -28,11 +28,11 @@ import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
+import Language.Term.Move.Subst qualified as Subst
 import Language.Term.Rule.Term qualified as TM
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Term.Refresh qualified as Refresh
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Term.Subst qualified as Subst
 import Main.Rule.Const (defaultInlineLimit)
 import Main.Rule.Module (moduleInlineLimit)
 import Main.Rule.Source (Source, sourceModule)
