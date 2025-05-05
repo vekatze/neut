@@ -12,10 +12,10 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
+import Language.Comp.Move.Subst qualified as Subst
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
-import Main.Move.Scene.Comp.Subst qualified as Subst
 
 data Handle = Handle
   { compDefHandle :: CompDef.Handle,

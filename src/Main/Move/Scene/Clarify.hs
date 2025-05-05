@@ -46,6 +46,7 @@ import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.Rune qualified as RU
 import Language.Common.Rule.StmtKind
 import Language.Comp.Move.CreateVar qualified as Gensym
+import Language.Comp.Move.Subst qualified as CompSubst
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
 import Language.Term.Move.Subst qualified as Subst
@@ -65,7 +66,6 @@ import Main.Move.Scene.Clarify.Linearize qualified as Linearize
 import Main.Move.Scene.Clarify.Sigma qualified as Sigma
 import Main.Move.Scene.Clarify.Utility qualified as Utility
 import Main.Move.Scene.Comp.Reduce qualified as Reduce
-import Main.Move.Scene.Comp.Subst qualified as CompSubst
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Rule.OptimizableData qualified as OD

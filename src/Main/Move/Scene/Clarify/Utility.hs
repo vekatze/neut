@@ -20,11 +20,11 @@ import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PrimNumSize
 import Language.Comp.Move.CreateVar qualified as Gensym
+import Language.Comp.Move.Subst qualified as Subst
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase
 import Language.Comp.Rule.EnumCase qualified as EC
 import Main.Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
-import Main.Move.Scene.Comp.Subst qualified as Subst
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

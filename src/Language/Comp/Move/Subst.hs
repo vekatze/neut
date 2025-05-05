@@ -1,4 +1,4 @@
-module Main.Move.Scene.Comp.Subst
+module Language.Comp.Move.Subst
   ( Handle,
     new,
     subst,
