@@ -90,20 +90,6 @@ fakeLoc :: Loc
 fakeLoc =
   (1, 1)
 
--- toFilePos :: Hint -> Maybe FilePos
--- toFilePos m = do
---   path <- parseAbsFile $ metaFileName m
---   return $ FilePos path (metaLocation m)
-
--- newLog :: Hint -> LogLevel -> T.Text -> Log
--- newLog m level text = do
---   Log
---     { position = toFilePos m,
---       shouldInsertPadding = True,
---       logLevel = level,
---       content = text
---     }
-
 showFilePos :: Hint -> String
 showFilePos (Hint {metaFileName, metaLocation = (l, c)}) =
   metaFileName ++ ":" ++ show l ++ ":" ++ show c
