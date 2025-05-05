@@ -4,6 +4,7 @@ module Main.Move.Scene.Parse.Program
   )
 where
 
+import BaseParser.Move.GetInfo
 import BaseParser.Rule.Parser
 import Control.Monad
 import Control.Monad.Trans

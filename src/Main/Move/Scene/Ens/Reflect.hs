@@ -6,6 +6,7 @@ module Main.Move.Scene.Ens.Reflect
   )
 where
 
+import BaseParser.Move.GetInfo
 import BaseParser.Rule.Parser qualified as P
 import Control.Comonad.Cofree
 import Control.Monad
@@ -62,7 +63,7 @@ fromFilePath' filePath fileContent = do
 
 parseEns :: P.Parser (E.Ens, C)
 parseEns = do
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   choice
     [ parseDictionary m,
       parseList m,
@@ -106,7 +107,7 @@ parseDictionary m = do
 
 parseKeyValuePair :: P.Parser ((C, (Hint, (T.Text, E.Ens))), C)
 parseKeyValuePair = do
-  m <- P.getCurrentHint
+  m <- getCurrentHint
   (k, cLead) <- P.symbol
   (v, cTrail) <- parseEns
   return ((cLead, (m, (k, v))), cTrail)

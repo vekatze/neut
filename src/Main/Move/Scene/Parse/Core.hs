@@ -27,6 +27,7 @@ module Main.Move.Scene.Parse.Core
   )
 where
 
+import BaseParser.Move.GetInfo
 import BaseParser.Rule.Parser
 import Control.Monad
 import Data.Set qualified as S
