@@ -13,6 +13,7 @@ import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Hint (Hint)
+import Language.Term.Move.Inline qualified as Inline
 import Language.Term.Rule.Term qualified as TM
 import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
@@ -34,7 +35,6 @@ import Main.Move.Scene.Elaborate.Handle.LocalLogs qualified as LocalLogs
 import Main.Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
-import Main.Move.Scene.Elaborate.Term.Inline qualified as Inline
 import Main.Move.Scene.Elaborate.WeakTerm.Fill qualified as Fill
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local

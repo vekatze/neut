@@ -1,4 +1,4 @@
-module Main.Move.Scene.Elaborate.Term.Inline
+module Language.Term.Move.Inline
   ( Handle,
     new,
     inline,
