@@ -16,12 +16,12 @@ import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.RawTerm.Decode qualified as RT
 import Logger.Rule.Hint
-import Main.Rule.Syntax.Series.Decode qualified as SE
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Main.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
 import SyntaxTree.Rule.Series qualified as SE
+import SyntaxTree.Rule.Series.ToDoc qualified as SE
 
 data ImportInfo = ImportInfo
   { presetNames :: [(T.Text, [BN.BaseName])], -- "prelude"

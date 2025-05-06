@@ -1,4 +1,4 @@
-module Main.Rule.Syntax.Series.Decode
+module SyntaxTree.Rule.Series.ToDoc
   ( decode,
     decode',
     decodeHorizontallyIfPossible,

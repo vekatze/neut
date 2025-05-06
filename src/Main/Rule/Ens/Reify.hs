@@ -5,8 +5,8 @@ import Control.Comonad.Cofree
 import Data.Char (isSpace)
 import Data.Text qualified as T
 import Ens.Rule.Ens
-import Main.Rule.Syntax.Series.Decode qualified as SE
 import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series.ToDoc qualified as SE
 
 pp :: FullEns -> T.Text
 pp (leadingComments, (ens, trailingComments)) = do
