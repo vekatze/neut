@@ -1,5 +1,6 @@
 module BaseParser.Move.Parse
-  ( spaceConsumer,
+  ( runParser,
+    spaceConsumer,
     lexeme,
     delimiter,
   )
@@ -7,10 +8,31 @@ where
 
 import BaseParser.Rule.Parser
 import Control.Monad
+import Control.Monad.Error.Class (MonadError (throwError))
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
+import Path
 import SyntaxTree.Rule.C
-import Text.Megaparsec
+import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char.Lexer qualified as L
+
+type MustParseWholeFile =
+  Bool
+
+runParser :: Path Abs File -> T.Text -> MustParseWholeFile -> Parser a -> EIO (C, a)
+runParser filePath fileContent mustParseWholeFile parser = do
+  let fileParser = do
+        leadingComments <- spaceConsumer
+        value <- parser
+        when mustParseWholeFile eof
+        return (leadingComments, value)
+  let path = toFilePath filePath
+  result <- runParserT fileParser path fileContent
+  case result of
+    Right v ->
+      return v
+    Left errorBundle ->
+      throwError $ createParseError errorBundle
 
 skipSpace :: Parser ()
 skipSpace =

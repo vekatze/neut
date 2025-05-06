@@ -9,6 +9,7 @@ module Main.Move.Scene.Unravel
   )
 where
 
+import BaseParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
@@ -34,7 +35,6 @@ import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program (parseImport)
-import Main.Move.Scene.Parse.RawTerm qualified as ParseRT
 import Main.Move.Scene.Source.ShiftToLatest qualified as STL
 import Main.Rule.Artifact qualified as A
 import Main.Rule.Import
@@ -348,8 +348,7 @@ parseSourceHeader h localHandle currentSource = do
   Parse.ensureExistence currentSource
   let filePath = Source.sourceFilePath currentSource
   fileContent <- liftIO $ Parse.readTextFile filePath
-  let parseHandle = ParseRT.new (Base.gensymHandle (baseHandle h))
-  (_, importList) <- ParseRT.parseRawTerm parseHandle filePath fileContent False (const parseImport)
+  (_, importList) <- runParser filePath fileContent False parseImport
   let m = newSourceHint filePath
   let importHandle = Import.new (baseHandle h) localHandle
   Import.interpretImport importHandle m currentSource importList

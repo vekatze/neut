@@ -1,7 +1,5 @@
 module Main.Move.Scene.Ens.Reflect
-  ( Handle (..),
-    new,
-    fromFilePath,
+  ( fromFilePath,
     fromFilePath',
   )
 where
@@ -10,14 +8,11 @@ import BaseParser.Move.GetInfo
 import BaseParser.Move.Parse
 import BaseParser.Rule.Parser qualified as P
 import Control.Comonad.Cofree
-import Control.Monad
-import Control.Monad.Error.Class (MonadError (throwError))
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.Raise (raiseError)
 import Logger.Rule.Hint
 import Main.Move.Context.Parse (readTextFile)
@@ -25,33 +20,7 @@ import Main.Move.Scene.Parse.Core qualified as P
 import Path
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
-import Text.Megaparsec hiding (parse)
-
-newtype Handle = Handle
-  { gensymHandle :: Gensym.Handle
-  }
-
-type MustParseWholeFile =
-  Bool
-
-parse :: Path Abs File -> T.Text -> MustParseWholeFile -> P.Parser a -> EIO (C, a)
-parse filePath fileContent mustParseWholeFile parser = do
-  let fileParser = do
-        leadingComments <- spaceConsumer
-        value <- parser
-        when mustParseWholeFile eof
-        return (leadingComments, value)
-  let path = toFilePath filePath
-  result <- runParserT fileParser path fileContent
-  case result of
-    Right v ->
-      return v
-    Left errorBundle ->
-      throwError $ P.createParseError errorBundle
-
-new :: Gensym.Handle -> Handle
-new gensymHandle = do
-  Handle {..}
+import Text.Megaparsec hiding (runParser)
 
 fromFilePath :: Path Abs File -> EIO (C, (E.Ens, C))
 fromFilePath path = do
@@ -60,7 +29,7 @@ fromFilePath path = do
 
 fromFilePath' :: Path Abs File -> T.Text -> EIO (C, (E.Ens, C))
 fromFilePath' filePath fileContent = do
-  parse filePath fileContent True parseEns
+  runParser filePath fileContent True parseEns
 
 parseEns :: P.Parser (E.Ens, C)
 parseEns = do

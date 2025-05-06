@@ -14,7 +14,6 @@ import Main.Move.Scene.Archive qualified as Archive
 import Main.Move.Scene.Archive.Module.MakeArchiveEns
 import Main.Move.Scene.Archive.PackageVersion.ChooseNewVersion qualified as PV
 import Main.Move.Scene.Archive.PackageVersion.Reflect qualified as PV
-import Main.Move.Scene.Ens.Reflect qualified as EnsReflect
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave
 import Main.Rule.Config.Archive
@@ -24,7 +23,6 @@ import Path
 data Handle = Handle
   { envHandle :: Env.Handle,
     packageVersionHandle :: PV.Handle,
-    ensReflectHandle :: EnsReflect.Handle,
     archiveHandle :: Archive.Handle
   }
 
@@ -35,7 +33,6 @@ new baseHandle = do
   let externalHandle = External.new (Base.loggerHandle baseHandle)
   let moduleSaveHandle = ModuleSave.new (Base.loggerHandle baseHandle)
   let archiveHandle = Archive.new externalHandle moduleSaveHandle envHandle
-  let ensReflectHandle = EnsReflect.new (Base.gensymHandle baseHandle)
   Handle {..}
 
 archive :: Handle -> Config -> EIO ()

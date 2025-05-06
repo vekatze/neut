@@ -7,6 +7,7 @@ module Main.Move.Scene.Parse
   )
 where
 
+import BaseParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
@@ -90,7 +91,7 @@ parseSource h t source cacheOrContent = do
       saveTopLevelNames h source $ getStmtName stmtList
       return (Left cache, Cache.remarkList cache)
     Right fileContent -> do
-      prog <- ParseRT.parseRawTerm (parseHandle h) filePath fileContent True Parse.parseProgram
+      prog <- runParser filePath fileContent True (Parse.parseProgram (parseHandle h))
       (prog', logs) <- interpret h source (snd prog)
       tmap <- liftIO $ Tag.get (Discern.tagHandle (discernHandle h))
       Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap

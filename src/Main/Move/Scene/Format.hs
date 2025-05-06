@@ -6,6 +6,7 @@ module Main.Move.Scene.Format
   )
 where
 
+import BaseParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
@@ -74,12 +75,12 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
           let parseHandle = Parse.new (baseHandle h) localHandle
           void $ Parse.parse parseHandle Peripheral rootSource (Right fileContent)
           (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Parse.getUnusedLocators parseHandle
-          program <- ParseRT.parseRawTerm parseCoreHandle filePath fileContent True Parse.parseProgram
+          program <- runParser filePath fileContent True (Parse.parseProgram parseCoreHandle)
           presetNames <- GetEnabledPreset.getEnabledPreset getEnabledPresetHandle mainModule
           let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}
           return $ RawProgram.pp importInfo program
     else do
-      program <- ParseRT.parseRawTerm parseCoreHandle filePath fileContent True Parse.parseProgram
+      program <- runParser filePath fileContent True (Parse.parseProgram parseCoreHandle)
       presetNames <- GetEnabledPreset.getEnabledPreset getEnabledPresetHandle mainModule
       let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators = [], unusedLocalLocators = []}
       return $ RawProgram.pp importInfo program

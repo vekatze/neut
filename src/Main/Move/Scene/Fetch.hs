@@ -46,8 +46,7 @@ import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
 import SyntaxTree.Rule.Series qualified as SE
 
 data Handle = Handle
-  { ensReflectHandle :: EnsReflect.Handle,
-    moduleSaveHandle :: ModuleSave.Handle,
+  { moduleSaveHandle :: ModuleSave.Handle,
     externalHandle :: External.Handle,
     loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle
@@ -57,7 +56,6 @@ new ::
   Base.Handle ->
   Handle
 new (Base.Handle {..}) = do
-  let ensReflectHandle = EnsReflect.new gensymHandle
   let moduleSaveHandle = ModuleSave.new loggerHandle
   let externalHandle = External.new loggerHandle
   Handle {..}

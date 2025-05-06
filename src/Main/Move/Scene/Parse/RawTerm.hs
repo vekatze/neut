@@ -1,7 +1,6 @@
 module Main.Move.Scene.Parse.RawTerm
   ( Handle (..),
     new,
-    parseRawTerm,
     rawExpr,
     rawTerm,
     var,
@@ -20,7 +19,7 @@ import BaseParser.Move.Parse
 import BaseParser.Rule.Parser
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (MonadError (throwError), liftEither)
+import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -43,7 +42,6 @@ import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
-import Path
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
@@ -53,27 +51,9 @@ newtype Handle = Handle
   { gensymHandle :: Gensym.Handle
   }
 
-type MustParseWholeFile =
-  Bool
-
 new :: Gensym.Handle -> Handle
 new gensymHandle = do
   Handle {..}
-
-parseRawTerm :: Handle -> Path Abs File -> T.Text -> MustParseWholeFile -> (Handle -> Parser a) -> EIO (C, a)
-parseRawTerm h filePath fileContent mustParseWholeFile parser = do
-  let fileParser = do
-        leadingComments <- spaceConsumer
-        value <- parser h
-        when mustParseWholeFile eof
-        return (leadingComments, value)
-  let path = toFilePath filePath
-  result <- runParserT fileParser path fileContent
-  case result of
-    Right v ->
-      return v
-    Left errorBundle ->
-      throwError $ createParseError errorBundle
 
 rawExpr :: Handle -> Parser (RT.RawTerm, C)
 rawExpr h = do
