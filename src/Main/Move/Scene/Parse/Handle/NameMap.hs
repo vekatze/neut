@@ -1,4 +1,4 @@
-module Main.Move.Scene.Parse.Handle.Global
+module Main.Move.Scene.Parse.Handle.NameMap
   ( Handle,
     new,
     registerStmtDefine,

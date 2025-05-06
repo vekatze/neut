@@ -23,7 +23,7 @@ import Main.Move.Context.TopCandidate qualified as TopCandidate
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Main.Move.Scene.Parse.Handle.Global qualified as Global
+import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Rule.Layer
@@ -33,7 +33,7 @@ import Main.Rule.VarDefKind
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     locatorHandle :: Locator.Handle,
-    globalHandle :: Global.Handle,
+    nameMapHandle :: NameMap.Handle,
     aliasHandle :: Alias.Handle,
     tagHandle :: Tag.Handle,
     keyArgHandle :: KeyArg.Handle,
@@ -51,9 +51,9 @@ data Handle = Handle
 new ::
   Base.Handle ->
   Local.Handle ->
-  Global.Handle ->
+  NameMap.Handle ->
   Handle
-new (Base.Handle {..}) (Local.Handle {..}) globalHandle = do
+new (Base.Handle {..}) (Local.Handle {..}) nameMapHandle = do
   let nameEnv = empty
   let currentLayer = 0
   Handle {..}

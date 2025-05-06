@@ -68,7 +68,7 @@ import Main.Move.Scene.Parse.Discern.Name
 import Main.Move.Scene.Parse.Discern.Noema
 import Main.Move.Scene.Parse.Discern.PatternMatrix
 import Main.Move.Scene.Parse.Discern.Struct
-import Main.Move.Scene.Parse.Handle.Global qualified as Global
+import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Parse.Util
@@ -128,7 +128,7 @@ discernStmt h mo stmt = do
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
     RawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
-        Global.registerGeist (H.globalHandle h) geist
+        NameMap.registerGeist (H.nameMapHandle h) geist
         discernGeist h endLoc geist
       return [WeakStmtNominal m geistList']
     RawStmtForeign _ foreignList -> do
@@ -172,14 +172,14 @@ registerTopLevelName h nameLifter stmt = do
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
       let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
       stmtKind' <- liftIO $ liftStmtKind h stmtKind
-      Global.registerStmtDefine (H.globalHandle h) isConstLike m stmtKind' functionName allArgNum expArgNames
+      NameMap.registerStmtDefine (H.nameMapHandle h) isConstLike m stmtKind' functionName allArgNum expArgNames
     RawStmtNominal {} -> do
       return ()
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       let stmtList = defineData m dd args (SE.extract consInfo) loc
       mapM_ (registerTopLevelName h nameLifter) stmtList
     RawStmtDefineResource _ m (name, _) _ _ _ -> do
-      Global.registerStmtDefine (H.globalHandle h) True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
+      NameMap.registerStmtDefine (H.nameMapHandle h) True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
     RawStmtForeign {} ->
       return ()
 

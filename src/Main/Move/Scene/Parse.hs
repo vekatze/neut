@@ -32,8 +32,8 @@ import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Discern qualified as Discern
 import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Main.Move.Scene.Parse.Handle.Global qualified as Global
 import Main.Move.Scene.Parse.Handle.GlobalNameMap qualified as GlobalNameMap
+import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program qualified as Parse
@@ -53,7 +53,7 @@ data Handle = Handle
     discernHandle :: Discern.Handle,
     pathHandle :: Path.Handle,
     importHandle :: Import.Handle,
-    globalHandle :: Global.Handle,
+    nameMapHandle :: NameMap.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
     unusedHandle :: Unused.Handle
   }
@@ -71,8 +71,8 @@ new baseHandle localHandle = do
   let aliasHandle = Local.aliasHandle localHandle
   let locatorHandle = Local.locatorHandle localHandle
   let tagHandle = Local.tagHandle localHandle
-  globalHandle <- Global.new baseHandle locatorHandle unusedHandle tagHandle
-  let discernHandle = Discern.new baseHandle localHandle globalHandle
+  nameMapHandle <- NameMap.new baseHandle locatorHandle unusedHandle tagHandle
+  let discernHandle = Discern.new baseHandle localHandle nameMapHandle
   return $ Handle {..}
 
 parse ::
@@ -112,7 +112,7 @@ parseCachedStmtList h stmtList = do
       StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
         let expArgNames = map (\(_, x, _) -> toText x) expArgs
         let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
-        Global.registerStmtDefine (globalHandle h) isConstLike m stmtKind name allArgNum expArgNames
+        NameMap.registerStmtDefine (nameMapHandle h) isConstLike m stmtKind name allArgNum expArgNames
       StmtForeign {} ->
         return ()
 
@@ -120,7 +120,7 @@ interpret :: Handle -> Source.Source -> RawProgram -> EIO ([WeakStmt], [L.Log])
 interpret h currentSource (RawProgram m importList stmtList) = do
   Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m
   stmtList' <- Discern.discernStmtList (discernHandle h) (Source.sourceModule currentSource) $ map fst stmtList
-  Global.reportMissingDefinitions (globalHandle h)
+  NameMap.reportMissingDefinitions (nameMapHandle h)
   saveTopLevelNames h currentSource $ getWeakStmtName stmtList'
   logs1 <- liftIO $ registerUnusedVariableRemarks h
   logs2 <- liftIO $ registerUnusedGlobalLocatorRemarks h
@@ -131,7 +131,7 @@ interpret h currentSource (RawProgram m importList stmtList) = do
 
 saveTopLevelNames :: Handle -> Source.Source -> [(Hint, DD.DefiniteDescription)] -> EIO ()
 saveTopLevelNames h source topNameList = do
-  globalNameList <- mapM (uncurry $ Global.lookup' (globalHandle h)) topNameList
+  globalNameList <- mapM (uncurry $ NameMap.lookup' (nameMapHandle h)) topNameList
   let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
   liftIO $ GlobalNameMap.saveCurrentNameSet (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
 
@@ -192,7 +192,7 @@ activateImport h m sourceInfoList = do
       ImportItem source aliasInfoList -> do
         let path = Source.sourceFilePath source
         namesInSource <- GlobalNameMap.lookupSourceNameMap (globalNameMapHandle h) m path
-        liftIO $ Global.activateTopLevelNames (globalHandle h) namesInSource
+        liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
           Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
       StaticKey pathList -> do

@@ -38,7 +38,7 @@ import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Tag qualified as Tag
 import Main.Move.Scene.Parse.Discern.Handle qualified as H
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Main.Move.Scene.Parse.Handle.Global qualified as Global
+import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Rule.Const qualified as C
 import Main.Rule.GlobalName qualified as GN
@@ -66,7 +66,7 @@ resolveVarOrErr :: H.Handle -> Hint -> T.Text -> EIO (Either T.Text (DD.Definite
 resolveVarOrErr h m name = do
   localLocator <- liftEither $ LL.reflect m name
   candList <- liftIO $ Locator.getPossibleReferents (H.locatorHandle h) localLocator
-  candList' <- mapM (Global.lookup (H.globalHandle h) m) candList
+  candList' <- mapM (NameMap.lookup (H.nameMapHandle h) m) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
@@ -90,7 +90,7 @@ resolveLocator ::
 resolveLocator h m (gl, ll) shouldInsertTag = do
   sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
   let cand = DD.new sgl ll
-  cand' <- Global.lookup (H.globalHandle h) m cand
+  cand' <- NameMap.lookup (H.nameMapHandle h) m cand
   let foundName = candFilter (cand, cand')
   case foundName of
     Nothing ->
