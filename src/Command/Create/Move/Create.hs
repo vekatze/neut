@@ -1,4 +1,4 @@
-module Main.Move.Act.Create
+module Command.Create.Move.Create
   ( Handle,
     new,
     create,
@@ -6,6 +6,7 @@ module Main.Move.Act.Create
 where
 
 import Command.Common.Move.Check qualified as Check
+import Command.Create.Move.Internal.Create qualified as Create
 import CommandParser.Rule.Config.Create
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
@@ -13,7 +14,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Scene.Create qualified as Create
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave

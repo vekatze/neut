@@ -1,4 +1,4 @@
-module Main.Move.Scene.Create
+module Command.Create.Move.Internal.Create
   ( Handle,
     new,
     createNewProject,
