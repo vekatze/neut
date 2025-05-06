@@ -48,7 +48,7 @@ parseSingleImport = do
   m <- getCurrentHint
   (importItems, loc, c) <- seriesBrace' $ do
     mImportItem <- getCurrentHint
-    locator <- P.symbol
+    locator <- symbol
     case fst locator of
       "static" -> do
         (ks, c) <- parseStaticKeyList
@@ -81,7 +81,7 @@ parseStaticKeyList = do
   choice
     [ seriesBrace $ do
         m <- getCurrentHint
-        (k, c) <- P.symbol
+        (k, c) <- symbol
         return ((m, k), c),
       return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
@@ -101,7 +101,7 @@ parseForeign h = do
 parseForeignItem :: Handle -> Parser (RawForeignItem, C)
 parseForeignItem h = do
   m <- getCurrentHint
-  (funcName, c1) <- P.symbol
+  (funcName, c1) <- symbol
   (domList, c2) <- seriesParen $ rawTerm h
   c3 <- delimiter ":"
   (cod, c) <-

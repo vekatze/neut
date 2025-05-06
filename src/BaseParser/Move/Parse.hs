@@ -3,17 +3,21 @@ module BaseParser.Move.Parse
     spaceConsumer,
     lexeme,
     delimiter,
+    string,
+    symbol,
   )
 where
 
 import BaseParser.Rule.Parser
 import Control.Monad
 import Control.Monad.Error.Class (MonadError (throwError))
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Path
 import SyntaxTree.Rule.C
 import Text.Megaparsec hiding (runParser)
+import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L
 
 type MustParseWholeFile =
@@ -71,3 +75,25 @@ lexeme p = do
 delimiter :: T.Text -> Parser C
 delimiter expected = do
   fmap snd $ lexeme $ void $ chunk expected
+
+symbol :: Parser (T.Text, C)
+symbol = do
+  lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+
+string :: Parser (T.Text, C)
+string =
+  lexeme $ do
+    _ <- char '"'
+    stringInner []
+
+stringInner :: [Char] -> Parser T.Text
+stringInner acc = do
+  c <- anySingle
+  case c of
+    '\\' -> do
+      c' <- anySingle
+      stringInner (c' : '\\' : acc)
+    '"' ->
+      return $ T.pack $ Prelude.reverse acc
+    _ ->
+      stringInner (c : acc)

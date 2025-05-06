@@ -16,12 +16,12 @@ import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError)
 import Logger.Rule.Hint
 import Main.Move.Context.Parse (readTextFile)
-import Main.Move.Scene.Parse.Core qualified as P
 import Path
 import SyntaxTree.Move.ParseSeries
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec hiding (runParser)
+import Text.Read (readMaybe)
 
 fromFilePath :: Path Abs File -> EIO (C, (E.Ens, C))
 fromFilePath path = do
@@ -46,22 +46,22 @@ parseEns = do
 
 parseInt :: Hint -> P.Parser (E.Ens, C)
 parseInt m = do
-  (x, c) <- P.integer
+  (x, c) <- integer
   return (m :< E.Int (fromInteger x), c)
 
 parseFloat :: Hint -> P.Parser (E.Ens, C)
 parseFloat m = do
-  (x, c) <- P.float
+  (x, c) <- float
   return (m :< E.Float x, c)
 
 parseBool :: Hint -> P.Parser (E.Ens, C)
 parseBool m = do
-  (x, c) <- P.bool
+  (x, c) <- bool
   return (m :< E.Bool x, c)
 
 parseString :: Hint -> P.Parser (E.Ens, C)
 parseString m = do
-  (x, c) <- P.string
+  (x, c) <- string
   return (m :< E.String x, c)
 
 parseList :: Hint -> P.Parser (E.Ens, C)
@@ -79,7 +79,7 @@ parseDictionary m = do
 parseKeyValuePair :: P.Parser ((C, (Hint, (T.Text, E.Ens))), C)
 parseKeyValuePair = do
   m <- getCurrentHint
-  (k, cLead) <- P.symbol
+  (k, cLead) <- symbol
   (v, cTrail) <- parseEns
   return ((cLead, (m, (k, v))), cTrail)
 
@@ -93,3 +93,32 @@ ensureKeyLinearity mks foundKeySet =
           raiseError m $ "Found a duplicate key: `" <> k <> "`"
       | otherwise ->
           ensureKeyLinearity rest (S.insert k foundKeySet)
+
+integer :: P.Parser (Integer, C)
+integer = do
+  (s, c) <- symbol
+  case readMaybe (T.unpack s) of
+    Just value ->
+      return (value, c)
+    Nothing ->
+      failure (Just (P.asTokens s)) (S.fromList [P.asLabel "integer"])
+
+float :: P.Parser (Double, C)
+float = do
+  (s, c) <- symbol
+  case readMaybe (T.unpack s) of
+    Just value ->
+      return (value, c)
+    Nothing -> do
+      failure (Just (P.asTokens s)) (S.fromList [P.asLabel "float"])
+
+bool :: P.Parser (Bool, C)
+bool = do
+  (s, c) <- symbol
+  case s of
+    "true" ->
+      return (True, c)
+    "false" ->
+      return (False, c)
+    _ -> do
+      failure (Just (P.asTokens s)) (S.fromList [P.asTokens "true", P.asTokens "false"])
