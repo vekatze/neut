@@ -16,6 +16,7 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
+import Ens.Move.Parse qualified as EnsParse
 import Ens.Rule.Ens qualified as E
 import Ens.Rule.Ens qualified as SE
 import Error.Move.Run (forP)
@@ -33,7 +34,6 @@ import Logger.Rule.Hint
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.External qualified as External
 import Main.Move.Context.Module qualified as Module
-import Main.Move.Scene.Ens.Reflect qualified as EnsReflect
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Main.Move.Scene.Module.Save qualified as ModuleSave
@@ -222,7 +222,7 @@ addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
 addDependencyToModuleFile h alias dep = do
   let mainModule = Env.getMainModule (envHandle h)
   let mm = M.extractModule mainModule
-  (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath (moduleLocation mm)
+  (c1, (baseEns@(m :< _), c2)) <- EnsParse.fromFilePath (moduleLocation mm)
   let depEns = makeDependencyEns m alias dep
   mergedEns <- liftEither $ E.merge baseEns depEns
   ModuleSave.save (moduleSaveHandle h) (M.moduleLocation mm) (c1, (mergedEns, c2))
@@ -254,7 +254,7 @@ makeDependencyEns m alias dep = do
 
 updateDependencyInModuleFile :: Handle -> Path Abs File -> ModuleAlias -> M.Dependency -> EIO ()
 updateDependencyInModuleFile h mainModuleFileLoc alias dep = do
-  (c1, (baseEns@(m :< _), c2)) <- EnsReflect.fromFilePath mainModuleFileLoc
+  (c1, (baseEns@(m :< _), c2)) <- EnsParse.fromFilePath mainModuleFileLoc
   let depEns = makeDependencyEns' m dep
   mergedEns <- liftEither $ E.conservativeUpdate [keyDependency, BN.reify (extract alias)] depEns baseEns
   ModuleSave.save (moduleSaveHandle h) mainModuleFileLoc (c1, (mergedEns, c2))

@@ -10,11 +10,11 @@ import BaseParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
+import Ens.Move.Parse qualified as EnsParse
 import Error.Rule.EIO (EIO)
 import Language.RawTerm.Rule.RawStmt.Decode (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Language.RawTerm.Rule.RawStmt.Decode qualified as RawProgram
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Scene.Ens.Reflect qualified as EnsReflect
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Load qualified as Load
@@ -44,7 +44,7 @@ format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.T
 format h shouldMinimizeImports fileType path content = do
   case fileType of
     FT.Ens -> do
-      ens <- EnsReflect.fromFilePath' path content
+      ens <- EnsParse.fromFilePath' path content
       return $ Ens.pp ens
     FT.Source -> do
       _formatSource h shouldMinimizeImports path content
