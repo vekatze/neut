@@ -53,7 +53,7 @@ data Handle = Handle
     optDataHandle :: OptimizableData.Handle,
     tagHandle :: Tag.Handle,
     unusedHandle :: Unused.Handle,
-    nameMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
+    nameMapRef :: IORef TopNameMap,
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike))
   }
 
