@@ -1,4 +1,4 @@
-module Main.Rule.Config.Zen (Config (..)) where
+module CommandParser.Rule.Config.Zen (Config (..)) where
 
 import Main.Rule.BuildMode
 

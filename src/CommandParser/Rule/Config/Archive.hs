@@ -1,4 +1,4 @@
-module Main.Rule.Config.Archive (Config (..)) where
+module CommandParser.Rule.Config.Archive (Config (..)) where
 
 import Data.Text qualified as T
 

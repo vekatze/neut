@@ -7,6 +7,7 @@ where
 
 import Color.Move.CreateHandle qualified as Color
 import Color.Rule.Handle qualified as Color
+import CommandParser.Rule.Config.Remark qualified as Remark
 import Gensym.Move.CreateHandle qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
 import Logger.Move.CreateHandle qualified as Logger
@@ -25,7 +26,6 @@ import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Parse.Handle.GlobalNameMap qualified as GlobalNameMap
-import Main.Rule.Config.Remark qualified as Remark
 import Path
 
 data Handle = Handle

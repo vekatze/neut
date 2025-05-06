@@ -1,18 +1,18 @@
 module Main.Move.Scene.OptParse (parseCommand) where
 
+import CommandParser.Rule.Command
+import CommandParser.Rule.Config.Archive qualified as Archive
+import CommandParser.Rule.Config.Build qualified as Build
+import CommandParser.Rule.Config.Check qualified as Check
+import CommandParser.Rule.Config.Clean qualified as Clean
+import CommandParser.Rule.Config.Create qualified as Create
+import CommandParser.Rule.Config.Format qualified as Format
+import CommandParser.Rule.Config.Get qualified as Get
+import CommandParser.Rule.Config.Remark qualified as Remark
+import CommandParser.Rule.Config.Version qualified as Version
+import CommandParser.Rule.Config.Zen qualified as Zen
 import Data.Text qualified as T
 import Main.Rule.BuildMode qualified as BM
-import Main.Rule.Command
-import Main.Rule.Config.Archive qualified as Archive
-import Main.Rule.Config.Build qualified as Build
-import Main.Rule.Config.Check qualified as Check
-import Main.Rule.Config.Clean qualified as Clean
-import Main.Rule.Config.Create qualified as Create
-import Main.Rule.Config.Format qualified as Format
-import Main.Rule.Config.Get qualified as Get
-import Main.Rule.Config.Remark qualified as Remark
-import Main.Rule.Config.Version qualified as Version
-import Main.Rule.Config.Zen qualified as Zen
 import Main.Rule.FileType qualified as FT
 import Main.Rule.ModuleURL
 import Main.Rule.OutputKind qualified as OK
@@ -95,7 +95,7 @@ parseZenOpt = do
   rest <- (many . strArgument) (metavar "args")
   pure $
     Internal remarkCfg $
-      Main.Rule.Command.Zen $
+      CommandParser.Rule.Command.Zen $
         Zen.Config
           { Zen.filePathString = inputFilePath,
             Zen.buildMode = buildMode,

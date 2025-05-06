@@ -6,6 +6,7 @@ module Main.Move.Act.Zen
   )
 where
 
+import CommandParser.Rule.Config.Zen
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
 import Error.Rule.EIO (EIO)
@@ -14,7 +15,6 @@ import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Build qualified as Build
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Config.Zen
 import Main.Rule.Module (Module (moduleZenConfig), extractModule)
 import Main.Rule.OutputKind
 import Main.Rule.Target

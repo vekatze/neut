@@ -1,4 +1,4 @@
-module Main.Rule.Config.Format (Config (..)) where
+module CommandParser.Rule.Config.Format (Config (..)) where
 
 import Main.Rule.FileType qualified as FT
 

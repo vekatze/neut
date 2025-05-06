@@ -1,4 +1,4 @@
-module Main.Rule.Config.Build (Config (..)) where
+module CommandParser.Rule.Config.Build (Config (..)) where
 
 import Data.Text qualified as T
 import Main.Rule.BuildMode

@@ -1,6 +1,8 @@
 module Main (main) where
 
 import Color.Move.CreateHandle qualified as Color
+import CommandParser.Rule.Command qualified as C
+import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
 import Logger.Move.CreateHandle qualified as Logger
@@ -18,8 +20,6 @@ import Main.Move.Context.Platform (ensureExecutables)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave
 import Main.Move.Scene.OptParse qualified as OptParse
-import Main.Rule.Command qualified as C
-import Main.Rule.Config.Remark qualified as Remark
 import System.IO
 
 main :: IO ()

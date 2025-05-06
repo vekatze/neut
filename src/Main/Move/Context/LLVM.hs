@@ -7,6 +7,7 @@ module Main.Move.Context.LLVM
   )
 where
 
+import CommandParser.Rule.Config.Build
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
@@ -23,7 +24,6 @@ import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Context.ProcessRunner qualified as ProcessRunner
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Config.Build
 import Main.Rule.Module (extractModule)
 import Main.Rule.OutputKind qualified as OK
 import Main.Rule.Source

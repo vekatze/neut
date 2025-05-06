@@ -3,6 +3,7 @@ module Main.Move.Scene.LSP.GetSymbolInfo
   )
 where
 
+import CommandParser.Rule.Config.Remark (lspConfig)
 import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.IntMap qualified as IntMap
@@ -21,7 +22,6 @@ import Main.Move.Scene.Elaborate qualified as Elaborate
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition
 import Main.Move.Scene.LSP.GetSource qualified as GetSource
-import Main.Rule.Config.Remark (lspConfig)
 import Main.Rule.LocationTree qualified as LT
 import Main.Rule.Source (Source (sourceFilePath, sourceModule))
 import Main.Rule.Target (Target (Peripheral))

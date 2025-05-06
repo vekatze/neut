@@ -5,6 +5,7 @@ module Main.Move.Act.Check
   )
 where
 
+import CommandParser.Rule.Config.Check
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Logger.Move.Log qualified as Logger
@@ -13,7 +14,6 @@ import Main.Move.Context.Env qualified as Env
 import Main.Move.Scene.Check qualified as Check
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Config.Check
 
 newtype Handle = Handle
   { baseHandle :: Base.Handle

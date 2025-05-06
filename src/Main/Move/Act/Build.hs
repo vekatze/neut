@@ -6,6 +6,7 @@ module Main.Move.Act.Build
   )
 where
 
+import CommandParser.Rule.Config.Build
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
@@ -16,7 +17,6 @@ import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Build qualified as Build
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Config.Build
 import Main.Rule.Module
 import Main.Rule.Target
 import Prelude hiding (log)

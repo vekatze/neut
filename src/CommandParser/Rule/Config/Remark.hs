@@ -1,4 +1,4 @@
-module Main.Rule.Config.Remark
+module CommandParser.Rule.Config.Remark
   ( Config (..),
     lspConfig,
   )

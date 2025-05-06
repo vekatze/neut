@@ -5,13 +5,13 @@ module Main.Move.Act.Format
   )
 where
 
+import CommandParser.Rule.Config.Format
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Main.Move.Context.Parse (ensureExistence')
 import Main.Move.Context.Parse qualified as Parse
 import Main.Move.Scene.Format qualified as Format
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Config.Format
 import Path.IO
 import Path.Move.Read (readText)
 import Path.Move.Write (writeText)

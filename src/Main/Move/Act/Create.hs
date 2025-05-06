@@ -5,6 +5,8 @@ module Main.Move.Act.Create
   )
 where
 
+import CommandParser.Rule.Config.Create
+import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
@@ -15,8 +17,6 @@ import Main.Move.Scene.Create qualified as Create
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.Config.Create
-import Main.Rule.Config.Remark qualified as Remark
 import Main.Rule.Module (moduleLocation)
 
 data Handle = Handle

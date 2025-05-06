@@ -5,6 +5,7 @@ module Main.Move.Act.Archive
   )
 where
 
+import CommandParser.Rule.Config.Archive
 import Data.HashMap.Strict qualified as Map
 import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
@@ -16,7 +17,6 @@ import Main.Move.Scene.Archive.PackageVersion.ChooseNewVersion qualified as PV
 import Main.Move.Scene.Archive.PackageVersion.Reflect qualified as PV
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.Config.Archive
 import Main.Rule.Module
 import Path
 

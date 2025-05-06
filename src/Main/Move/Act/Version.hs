@@ -1,7 +1,7 @@
 module Main.Move.Act.Version (showVersion) where
 
+import CommandParser.Rule.Config.Version
 import Data.Version qualified as V
-import Main.Rule.Config.Version
 import Paths_neut
 
 showVersion :: Config -> IO ()

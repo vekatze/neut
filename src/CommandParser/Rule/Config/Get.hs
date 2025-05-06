@@ -1,4 +1,4 @@
-module Main.Rule.Config.Get (Config (..)) where
+module CommandParser.Rule.Config.Get (Config (..)) where
 
 import Data.Text qualified as T
 import Main.Rule.ModuleURL

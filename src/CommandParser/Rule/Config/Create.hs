@@ -1,4 +1,4 @@
-module Main.Rule.Config.Create (Config (..)) where
+module CommandParser.Rule.Config.Create (Config (..)) where
 
 import Data.Text qualified as T
 
