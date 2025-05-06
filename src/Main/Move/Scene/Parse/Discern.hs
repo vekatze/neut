@@ -231,7 +231,7 @@ getUnitType h m = do
   locator <- liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- resolveName h m (Locator locator)
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
-  return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
+  return $ m :< WT.PiElim (m :< WT.VarGlobal attr unitDD) []
 
 toCandidateKind :: SK.StmtKind a -> CandidateKind
 toCandidateKind stmtKind =

@@ -8,7 +8,6 @@ module Language.WeakTerm.Rule.WeakTerm
     reflectOpacity,
     intTypeBySize,
     metaOf,
-    piElim,
     fromLetSeq,
     fromBaseLowType,
   )
@@ -100,10 +99,6 @@ intTypeBySize m size =
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =
   m
-
-piElim :: a -> [a] -> WeakTermF a
-piElim =
-  PiElim
 
 fromLetSeq :: [(BinderF WeakTerm, WeakTerm)] -> WeakTerm -> WeakTerm
 fromLetSeq xts cont =
