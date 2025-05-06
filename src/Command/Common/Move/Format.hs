@@ -1,4 +1,4 @@
-module Main.Move.Scene.Format
+module Command.Common.Move.Format
   ( Handle,
     new,
     formatSource,

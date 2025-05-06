@@ -1,16 +1,16 @@
-module Main.Move.Act.FormatSource
+module Command.FormatSource.Move.FormatSource
   ( Handle,
     new,
     format,
   )
 where
 
+import Command.Common.Move.Format qualified as Format
 import CommandParser.Rule.Config.FormatSource
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Main.Move.Context.Parse (ensureExistence')
 import Main.Move.Context.Parse qualified as Parse
-import Main.Move.Scene.Format qualified as Format
 import Main.Move.Scene.Init.Base qualified as Base
 import Path.IO
 import Path.Move.Read (readText)

@@ -1,14 +1,14 @@
-module Main.Move.Act.FormatEns
+module Command.FormatEns.Move.FormatEns
   ( format,
   )
 where
 
+import Command.Common.Move.Format qualified as Format
 import CommandParser.Rule.Config.FormatEns
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Main.Move.Context.Parse (ensureExistence')
 import Main.Move.Context.Parse qualified as Parse
-import Main.Move.Scene.Format qualified as Format
 import Path.IO
 import Path.Move.Read (readText)
 import Path.Move.Write (writeText)
