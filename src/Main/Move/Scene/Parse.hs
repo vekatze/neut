@@ -7,7 +7,7 @@ module Main.Move.Scene.Parse
   )
 where
 
-import BaseParser.Move.Parse (runParser)
+import BasicParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map

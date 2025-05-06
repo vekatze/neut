@@ -1,4 +1,4 @@
-module BaseParser.Rule.Parser
+module BasicParser.Rule.Parser
   ( Parser,
     createParseError,
     nonSymbolCharSet,

@@ -4,9 +4,9 @@ module Ens.Move.Parse
   )
 where
 
-import BaseParser.Move.GetInfo
-import BaseParser.Move.Parse
-import BaseParser.Rule.Parser qualified as P
+import BasicParser.Move.GetInfo
+import BasicParser.Move.Parse
+import BasicParser.Rule.Parser qualified as P
 import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Set qualified as S

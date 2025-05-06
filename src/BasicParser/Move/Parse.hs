@@ -1,4 +1,4 @@
-module BaseParser.Move.Parse
+module BasicParser.Move.Parse
   ( runParser,
     spaceConsumer,
     lexeme,
@@ -8,7 +8,7 @@ module BaseParser.Move.Parse
   )
 where
 
-import BaseParser.Rule.Parser
+import BasicParser.Rule.Parser
 import Control.Monad
 import Control.Monad.Error.Class (MonadError (throwError))
 import Data.Set qualified as S

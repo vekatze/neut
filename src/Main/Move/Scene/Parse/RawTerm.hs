@@ -16,9 +16,9 @@ module Main.Move.Scene.Parse.RawTerm
   )
 where
 
-import BaseParser.Move.GetInfo
-import BaseParser.Move.Parse
-import BaseParser.Rule.Parser
+import BasicParser.Move.GetInfo
+import BasicParser.Move.Parse
+import BasicParser.Rule.Parser
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)

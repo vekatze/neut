@@ -6,7 +6,7 @@ module Main.Move.Scene.LSP.Util
   )
 where
 
-import BaseParser.Rule.Parser (nonSymbolCharSet)
+import BasicParser.Rule.Parser (nonSymbolCharSet)
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class

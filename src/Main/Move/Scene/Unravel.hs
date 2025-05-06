@@ -9,7 +9,7 @@ module Main.Move.Scene.Unravel
   )
 where
 
-import BaseParser.Move.Parse (runParser)
+import BasicParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable

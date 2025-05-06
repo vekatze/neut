@@ -12,9 +12,9 @@ module SyntaxTree.Move.ParseSeries
   )
 where
 
-import BaseParser.Move.GetInfo
-import BaseParser.Move.Parse
-import BaseParser.Rule.Parser
+import BasicParser.Move.GetInfo
+import BasicParser.Move.Parse
+import BasicParser.Rule.Parser
 import Logger.Rule.Hint
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE

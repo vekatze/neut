@@ -6,7 +6,7 @@ module Main.Move.Scene.Format
   )
 where
 
-import BaseParser.Move.Parse (runParser)
+import BasicParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
