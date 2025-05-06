@@ -1,4 +1,4 @@
-module Main.Move.Scene.OptParse (parseCommand) where
+module CommandParser.Move.Parse (run) where
 
 import CommandParser.Rule.Command
 import CommandParser.Rule.Config.Archive qualified as Archive
@@ -15,8 +15,8 @@ import CommandParser.Rule.Config.Zen qualified as Zen
 import Data.Text qualified as T
 import Options.Applicative
 
-parseCommand :: IO Command
-parseCommand =
+run :: IO Command
+run =
   execParser (info (helper <*> parseOpt) fullDesc)
 
 parseOpt :: Parser Command

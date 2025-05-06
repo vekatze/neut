@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Color.Move.CreateHandle qualified as Color
+import CommandParser.Move.Parse qualified as CommandParser
 import CommandParser.Rule.Command qualified as C
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -20,13 +21,12 @@ import Main.Move.Act.Zen qualified as Zen
 import Main.Move.Context.Platform (ensureExecutables)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Move.Scene.OptParse qualified as OptParse
 import System.IO
 
 main :: IO ()
 main = do
   mapM_ (`hSetEncoding` utf8) [stdin, stdout, stderr]
-  userCommand <- liftIO OptParse.parseCommand
+  userCommand <- liftIO CommandParser.run
   case userCommand of
     C.External loggerConfig cmd -> do
       let shouldColorize = Remark.shouldColorize loggerConfig
