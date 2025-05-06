@@ -11,6 +11,8 @@ module Main.Move.Scene.Parse.RawTerm
     parseDefInfoCod,
     typeWithoutIdent,
     parseImplicitArgs,
+    keyword,
+    baseName,
   )
 where
 
@@ -40,12 +42,13 @@ import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
-import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
+import Main.Rule.Syntax.Block
 import SyntaxTree.Move.ParseSeries
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
+import Text.Megaparsec.Char (char)
 import Text.Read qualified as R
 
 newtype Handle = Handle
@@ -900,3 +903,62 @@ var h = do
     else do
       unusedVar <- liftIO $ newTextForHole (gensymHandle h)
       return ((m, unusedVar), c)
+
+baseName :: Parser (BN.BaseName, C)
+baseName = do
+  lexeme $ do
+    bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
+    return $ BN.fromText bn
+
+keyword :: T.Text -> Parser C
+keyword expected = do
+  fmap snd $ lexeme $ try $ do
+    _ <- chunk expected
+    label (T.unpack expected) $ notFollowedBy symbol
+
+rune :: Parser (T.Text, C)
+rune =
+  lexeme $ do
+    _ <- char '`'
+    runeInner []
+
+runeInner :: [Char] -> Parser T.Text
+runeInner acc = do
+  c <- anySingle
+  case c of
+    '\\' -> do
+      c' <- anySingle
+      if c' == '`'
+        then runeInner (c' : acc)
+        else runeInner (c' : '\\' : acc)
+    '`' ->
+      return $ T.pack $ Prelude.reverse acc
+    _ ->
+      runeInner (c : acc)
+
+betweenParen :: Parser a -> Parser (C, (a, C))
+betweenParen p = do
+  c1 <- delimiter "("
+  v <- p
+  c2 <- delimiter ")"
+  return (c1, (v, c2))
+
+betweenBrace :: Parser a -> Parser (C, (a, C))
+betweenBrace p = do
+  c1 <- delimiter "{"
+  v <- p
+  c2 <- delimiter "}"
+  return (c1, (v, c2))
+
+betweenBrace' :: Parser a -> Parser (Block' a)
+betweenBrace' p = do
+  c1 <- delimiter "{"
+  v <- p
+  loc <- getCurrentLoc
+  c2 <- delimiter "}"
+  return (c1, (v, loc, c2))
+
+{-# INLINE nonBaseNameCharSet #-}
+nonBaseNameCharSet :: S.Set Char
+nonBaseNameCharSet =
+  S.insert nsSepChar nonSymbolCharSet

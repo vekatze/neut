@@ -6,6 +6,7 @@ module Main.Move.Scene.LSP.Util
   )
 where
 
+import BaseParser.Rule.Parser (nonSymbolCharSet)
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
@@ -31,7 +32,6 @@ import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Parse.Core qualified as Parse
 import Main.Rule.Lsp
 import Path
 
@@ -103,7 +103,7 @@ updateCol' sourceLines diags =
         then updateCol' sourceLines' diags
         else do
           let currentLine' = T.drop (fromEnum c) currentLine
-          let offset = T.length $ T.takeWhile (`S.notMember` Parse.nonSymbolCharSet) currentLine'
+          let offset = T.length $ T.takeWhile (`S.notMember` nonSymbolCharSet) currentLine'
           let endPos = Position l (fromIntegral $ fromEnum c + offset)
           let diag' = set J.range (Range startPos endPos) diag
           diag' : updateCol' ((currentLineNumber, currentLine) : sourceLines') rest

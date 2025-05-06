@@ -24,7 +24,6 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
-import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
 import SyntaxTree.Move.ParseSeries
 import SyntaxTree.Rule.C
@@ -44,7 +43,7 @@ parseImport =
 
 parseSingleImport :: Parser (RawImport, C)
 parseSingleImport = do
-  c1 <- P.keyword "import"
+  c1 <- keyword "import"
   m <- getCurrentHint
   (importItems, loc, c) <- seriesBrace' $ do
     mImportItem <- getCurrentHint
@@ -89,12 +88,12 @@ parseStaticKeyList = do
 parseLocalLocator :: Parser ((Hint, LL.LocalLocator), C)
 parseLocalLocator = do
   m <- getCurrentHint
-  (ll, c) <- P.baseName
+  (ll, c) <- baseName
   return ((m, LL.new ll), c)
 
 parseForeign :: Handle -> Parser (RawStmt, C)
 parseForeign h = do
-  c1 <- P.keyword "foreign"
+  c1 <- keyword "foreign"
   (val, c) <- seriesBrace $ parseForeignItem h
   return (RawStmtForeign c1 val, c)
 
@@ -107,7 +106,7 @@ parseForeignItem h = do
   (cod, c) <-
     choice
       [ do
-          c <- P.keyword "void"
+          c <- keyword "void"
           return (F.Void, c),
         do
           (lt, c) <- rawTerm h
@@ -128,27 +127,27 @@ parseDefine' h opacity = do
   c1 <-
     case opacity of
       O.Opaque ->
-        P.keyword "define"
+        keyword "define"
       O.Clear ->
-        P.keyword "inline"
-  (def, c) <- parseDef h P.baseName
+        keyword "inline"
+  (def, c) <- parseDef h baseName
   return (RawStmtDefine c1 (SK.Normal opacity) def, c)
 
 parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do
-  c1 <- P.keyword "data"
+  c1 <- keyword "data"
   m <- getCurrentHint
-  (dataName, c2) <- P.baseName
+  (dataName, c2) <- baseName
   dataArgsOrNone <- parseDataArgs h
   (consSeries, loc, c) <- seriesBraceList' $ parseDefineDataClause h
   return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries loc, c)
 
 parseNominal :: Handle -> Parser (RawStmt, C)
 parseNominal h = do
-  c1 <- P.keyword "nominal"
+  c1 <- keyword "nominal"
   m <- getCurrentHint
   (geists, c) <- seriesBrace $ do
-    (geist, c) <- parseGeist h P.baseName
+    (geist, c) <- parseGeist h baseName
     loc <- getCurrentLoc
     return ((geist, loc), c)
   return (RawStmtNominal c1 m geists, c)
@@ -163,7 +162,7 @@ parseDataArgs h = do
 parseDefineDataClause :: Handle -> Parser (RawConsInfo BN.BaseName, C)
 parseDefineDataClause h = do
   m <- getCurrentHint
-  (consName, c1) <- P.baseName
+  (consName, c1) <- baseName
   unless (isConsName (BN.reify consName)) $ do
     lift $ raiseError m "The name of a constructor must be capitalized"
   (consArgsOrNone, loc, c2) <- parseConsArgs h
@@ -191,9 +190,9 @@ parseDefineDataClauseArg h = do
 
 parseResource :: Handle -> Parser (RawStmt, C)
 parseResource h = do
-  c1 <- P.keyword "resource"
+  c1 <- keyword "resource"
   m <- getCurrentHint
-  (name, c2) <- P.baseName
+  (name, c2) <- baseName
   (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
     [discarder, copier] -> do
