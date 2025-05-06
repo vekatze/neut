@@ -30,6 +30,7 @@ import Main.Rule.Source
 import Main.Rule.Target
 import Path
 import Path.IO
+import Path.Move.Write (writeLazyByteString)
 import System.Process (CmdSpec (RawCommand))
 
 data Handle = Handle
@@ -95,7 +96,7 @@ emit' h clangOptString llvmCode kind path = do
   case kind of
     OK.LLVM -> do
       liftIO $ Logger.report (loggerHandle h) $ "Saving: " <> T.pack (toFilePath path)
-      liftIO $ Path.writeByteString path llvmCode
+      liftIO $ writeLazyByteString path llvmCode
     OK.Object ->
       emitInner h clangOptString llvmCode path
 

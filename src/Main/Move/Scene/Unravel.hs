@@ -45,6 +45,7 @@ import Main.Rule.Target
 import Main.Rule.VisitInfo qualified as VI
 import Path
 import Path.IO
+import Path.Move.Read (readText)
 
 type CacheTime =
   Maybe UTCTime
@@ -347,7 +348,7 @@ parseSourceHeader :: Handle -> Local.Handle -> Source.Source -> EIO [ImportItem]
 parseSourceHeader h localHandle currentSource = do
   Parse.ensureExistence currentSource
   let filePath = Source.sourceFilePath currentSource
-  fileContent <- liftIO $ Parse.readTextFile filePath
+  fileContent <- liftIO $ readText filePath
   (_, importList) <- runParser filePath fileContent False parseImport
   let m = newSourceHint filePath
   let importHandle = Import.new (baseHandle h) localHandle

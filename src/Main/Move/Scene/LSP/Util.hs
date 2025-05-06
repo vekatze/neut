@@ -11,14 +11,12 @@ import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Aeson.Types qualified as A
-import Data.ByteString qualified as B
 import Data.Function (on)
 import Data.List (sortBy, sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Text.Encoding
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
@@ -34,6 +32,7 @@ import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Lsp
 import Path
+import Path.Move.Read (readText)
 
 run :: Base.Handle -> EIO a -> Lsp b (Maybe a)
 run h comp = do
@@ -87,7 +86,7 @@ updateCol uri diags = do
       return []
     Just path -> do
       let diags' = sortOn (\diag -> diag ^. J.range . J.start) diags
-      content <- fmap decodeUtf8 $ B.readFile $ toFilePath path
+      content <- readText path
       return $ updateCol' (zip [0 ..] $ T.lines content) diags'
 
 updateCol' :: [(Int, T.Text)] -> [Diagnostic] -> [Diagnostic]

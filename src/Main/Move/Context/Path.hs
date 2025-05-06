@@ -3,8 +3,6 @@ module Main.Move.Context.Path
     new,
     getDependencyDirPath,
     ensureNotInDependencyDir,
-    writeByteString,
-    writeText,
     getBaseName,
     getExecutableOutputPath,
     getForeignDir,
@@ -24,13 +22,10 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
-import Data.ByteString qualified as B
-import Data.ByteString.Lazy qualified as L
 import Data.ByteString.UTF8 qualified as B
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Data.Text.Encoding
 import Data.Time
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
@@ -51,6 +46,7 @@ import Main.Rule.Target qualified as Target
 import Path (Abs, Dir, File, Path, (</>))
 import Path qualified as P
 import Path.IO qualified as P
+import Path.Move.Read (readText)
 
 data Handle = Handle
   { cacheRef :: IORef (Maybe String),
@@ -69,14 +65,6 @@ getBaseName path = do
   let dirPath = P.parent path
   filename <- P.stripProperPrefix dirPath path
   return $ T.replace packageFileExtension "" $ T.pack $ P.toFilePath filename
-
-writeByteString :: Path Abs File -> L.ByteString -> IO ()
-writeByteString path =
-  L.writeFile (P.toFilePath path)
-
-writeText :: Path Abs File -> T.Text -> IO ()
-writeText path text =
-  B.writeFile (P.toFilePath path) $ encodeUtf8 text
 
 returnDirectory :: Path Abs Dir -> EIO (Path Abs Dir)
 returnDirectory path =
@@ -128,8 +116,7 @@ getBuildSignature h t = do
       let clangDigest = Platform.getClangDigest (platformHandle h)
       let MainModule m = Env.getMainModule (envHandle h)
       clangOption <- getClangOption t m
-      moduleEns <- liftIO $ B.readFile $ P.toFilePath $ moduleLocation m
-      let moduleEns' = decodeUtf8 moduleEns
+      moduleEns' <- liftIO $ readText (moduleLocation m)
       let ens =
             E.dictFromList
               _m

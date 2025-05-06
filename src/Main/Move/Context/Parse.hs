@@ -1,7 +1,5 @@
 module Main.Move.Context.Parse
-  ( readTextFile,
-    writeTextFile,
-    printTextFile,
+  ( printTextFile,
     ensureExistence,
     ensureExistence',
   )
@@ -16,20 +14,6 @@ import Logger.Rule.Hint
 import Main.Rule.Source
 import Path
 import Path.IO
-
-readTextFile :: Path Abs File -> IO T.Text
-readTextFile path = do
-  if isStdin path
-    then decodeUtf8 <$> B.getContents
-    else fmap decodeUtf8 $ B.readFile $ toFilePath path
-
-isStdin :: Path Abs File -> Bool
-isStdin path =
-  toFilePath (filename path) == "-"
-
-writeTextFile :: Path Abs File -> T.Text -> IO ()
-writeTextFile path content = do
-  B.writeFile (toFilePath path) $ encodeUtf8 content
 
 printTextFile :: T.Text -> IO ()
 printTextFile content = do

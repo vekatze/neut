@@ -17,14 +17,12 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.List (find)
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
-import Data.Text.Encoding
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName qualified as BN
@@ -47,6 +45,7 @@ import Main.Rule.Target qualified as Target
 import Main.Rule.TopNameMap (TopNameMap)
 import Path
 import Path.IO
+import Path.Move.Read (readText)
 
 -- the structure of a name of a global variable:
 --
@@ -113,7 +112,7 @@ activateStaticFile h m key path = do
   b <- doesFileExist path
   if b
     then do
-      content <- liftIO $ fmap decodeUtf8 $ B.readFile $ toFilePath path
+      content <- liftIO $ readText path
       liftIO $ modifyIORef' (activeStaticFileListRef h) $ Map.insert key (path, content)
     else
       raiseError m $

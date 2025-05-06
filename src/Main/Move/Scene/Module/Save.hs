@@ -12,10 +12,10 @@ import Ens.Rule.Ens
 import Error.Rule.EIO (EIO)
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.Path qualified as Path
 import Main.Rule.Ens.Reify qualified as Ens
 import Main.Rule.Module
 import Path
+import Path.Move.Write (writeText)
 
 newtype Handle = Handle
   { loggerHandle :: Logger.Handle
@@ -29,4 +29,4 @@ save :: Handle -> Path Abs File -> FullEns -> EIO ()
 save h path (c1, (ens, c2)) = do
   liftIO $ Logger.report (loggerHandle h) $ "Saving ens file to: " <> T.pack (toFilePath path)
   ens' <- liftEither $ stylize ens
-  liftIO $ Path.writeText path $ Ens.pp (c1, (ens', c2))
+  liftIO $ writeText path $ Ens.pp (c1, (ens', c2))

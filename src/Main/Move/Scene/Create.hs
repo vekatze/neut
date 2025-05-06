@@ -17,7 +17,6 @@ import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Platform qualified as Platform
 import Main.Move.Scene.Module.Save qualified as ModuleSave
 import Main.Rule.ClangOption qualified as CL
@@ -27,6 +26,7 @@ import Main.Rule.Target
 import Main.Rule.ZenConfig
 import Path
 import Path.IO
+import Path.Move.Write (writeText)
 
 data Handle = Handle
   { moduleSaveHandle :: ModuleSave.Handle,
@@ -93,4 +93,4 @@ createMainFile :: Module -> IO ()
 createMainFile newModule = do
   ensureDir $ getSourceDir newModule
   forM_ (getTargetPathList newModule) $ \mainFilePath -> do
-    Path.writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"
+    writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"

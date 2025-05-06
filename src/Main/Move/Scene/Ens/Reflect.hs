@@ -15,8 +15,8 @@ import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError)
 import Logger.Rule.Hint
-import Main.Move.Context.Parse (readTextFile)
 import Path
+import Path.Move.Read (readText)
 import SyntaxTree.Move.ParseSeries
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
@@ -25,7 +25,7 @@ import Text.Read (readMaybe)
 
 fromFilePath :: Path Abs File -> EIO (C, (E.Ens, C))
 fromFilePath path = do
-  fileContent <- liftIO $ readTextFile path
+  fileContent <- liftIO $ readText path
   fromFilePath' path fileContent
 
 fromFilePath' :: Path Abs File -> T.Text -> EIO (C, (E.Ens, C))

@@ -11,11 +11,11 @@ import Error.Rule.EIO (EIO)
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.Parse (readTextFile)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Cache qualified as Cache
 import Main.Rule.Source qualified as Source
 import Main.Rule.Target
+import Path.Move.Read (readText)
 import UnliftIO (MonadIO (liftIO))
 
 data Handle = Handle
@@ -42,4 +42,4 @@ _load h t source = do
     Just cache -> do
       return $ Left cache
     Nothing -> do
-      fmap Right $ liftIO . readTextFile $ Source.sourceFilePath source
+      fmap Right $ liftIO . readText $ Source.sourceFilePath source
