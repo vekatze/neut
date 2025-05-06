@@ -1,7 +1,6 @@
 module Main.Move.Scene.Parse.Import
   ( Handle,
     new,
-    activateImport,
     interpretImport,
   )
 where
@@ -32,7 +31,6 @@ import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Main.Move.Scene.Module.GetModule qualified as GetModule
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Main.Move.Scene.Parse.Handle.Global qualified as Global
 import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Source.ShiftToLatest qualified as STL
@@ -55,7 +53,6 @@ data Handle = Handle
     shiftToLatestHandle :: STL.Handle,
     locatorHandle :: Locator.Handle,
     aliasHandle :: Alias.Handle,
-    globalHandle :: Global.Handle,
     gensymHandle :: Gensym.Handle,
     rawImportSummaryHandle :: RawImportSummary.Handle,
     moduleHandle :: Module.Handle,
@@ -71,20 +68,6 @@ new baseHandle@(Base.Handle {..}) (Local.Handle {..}) = do
   let getEnabledPresetHandle = GetEnabledPreset.new baseHandle
   let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}
-
-activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
-activateImport h m sourceInfoList = do
-  forM_ sourceInfoList $ \importItem -> do
-    case importItem of
-      ImportItem source aliasInfoList -> do
-        let path = Source.sourceFilePath source
-        namesInSource <- NameMap.lookupSourceNameMap (nameMapHandle h) m path
-        liftIO $ Global.activateTopLevelNames (globalHandle h) namesInSource
-        forM_ aliasInfoList $ \aliasInfo ->
-          Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
-      StaticKey pathList -> do
-        forM_ pathList $ \(key, (mKey, path)) -> do
-          Locator.activateStaticFile (locatorHandle h) mKey key path
 
 interpretImport :: Handle -> Hint -> Source.Source -> [(RawImport, C)] -> EIO [ImportItem]
 interpretImport h m currentSource importList = do

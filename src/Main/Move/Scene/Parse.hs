@@ -24,12 +24,14 @@ import Logger.Rule.Hint
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel qualified as L
 import Main.Move.Context.Cache qualified as Cache
+import Main.Move.Context.Locator qualified as Locator
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Context.Tag qualified as Tag
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Parse.Discern qualified as Discern
 import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
+import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
 import Main.Move.Scene.Parse.Handle.Global qualified as Global
 import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
@@ -37,6 +39,7 @@ import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program qualified as Parse
 import Main.Move.Scene.Parse.RawTerm qualified as ParseRT
 import Main.Rule.Cache qualified as Cache
+import Main.Rule.Import
 import Main.Rule.Source qualified as Source
 import Main.Rule.Target
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
@@ -45,6 +48,8 @@ import Main.Rule.VarDefKind
 
 data Handle = Handle
   { parseHandle :: ParseRT.Handle,
+    aliasHandle :: Alias.Handle,
+    locatorHandle :: Locator.Handle,
     discernHandle :: Discern.Handle,
     pathHandle :: Path.Handle,
     importHandle :: Import.Handle,
@@ -65,6 +70,8 @@ new baseHandle localHandle = do
   let importHandle = Import.new baseHandle localHandle
   let globalHandle = Local.globalHandle localHandle
   let nameMapHandle = Base.nameMapHandle baseHandle
+  let aliasHandle = Local.aliasHandle localHandle
+  let locatorHandle = Local.locatorHandle localHandle
   Handle {..}
 
 parse ::
@@ -110,7 +117,7 @@ parseCachedStmtList h stmtList = do
 
 interpret :: Handle -> Source.Source -> RawProgram -> EIO ([WeakStmt], [L.Log])
 interpret h currentSource (RawProgram m importList stmtList) = do
-  Import.interpretImport (importHandle h) m currentSource importList >>= Import.activateImport (importHandle h) m
+  Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m
   stmtList' <- Discern.discernStmtList (discernHandle h) (Source.sourceModule currentSource) $ map fst stmtList
   Global.reportMissingDefinitions (globalHandle h)
   saveTopLevelNames h currentSource $ getWeakStmtName stmtList'
@@ -176,3 +183,17 @@ registerUnusedStaticFileRemarks h = do
   return $ flip map unusedStaticFiles $ \(k, m) ->
     L.newLog m L.Warning $
       "Imported but not used: `" <> k <> "`"
+
+activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
+activateImport h m sourceInfoList = do
+  forM_ sourceInfoList $ \importItem -> do
+    case importItem of
+      ImportItem source aliasInfoList -> do
+        let path = Source.sourceFilePath source
+        namesInSource <- NameMap.lookupSourceNameMap (nameMapHandle h) m path
+        liftIO $ Global.activateTopLevelNames (globalHandle h) namesInSource
+        forM_ aliasInfoList $ \aliasInfo ->
+          Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
+      StaticKey pathList -> do
+        forM_ pathList $ \(key, (mKey, path)) -> do
+          Locator.activateStaticFile (locatorHandle h) mKey key path
