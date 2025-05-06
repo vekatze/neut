@@ -1,4 +1,4 @@
-module Language.RawTerm.Rule.C.Decode
+module SyntaxTree.Rule.C.ToDoc
   ( decode,
     asPrefix,
     asPrefix',

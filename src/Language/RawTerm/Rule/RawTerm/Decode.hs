@@ -25,7 +25,6 @@ import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Rune qualified as RU
-import Language.RawTerm.Rule.C.Decode qualified as C
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Locator qualified as Locator
 import Language.RawTerm.Rule.Name qualified as N
@@ -37,6 +36,7 @@ import Language.RawTerm.Rule.RawTerm
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
 import SyntaxTree.Rule.C
+import SyntaxTree.Rule.C.ToDoc qualified as C
 import SyntaxTree.Rule.Series qualified as SE
 import SyntaxTree.Rule.Series.ToDoc qualified as SE
 

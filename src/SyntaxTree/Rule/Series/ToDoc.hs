@@ -8,8 +8,8 @@ where
 import BasicPrettyPrinter.Rule.Doc qualified as D
 import BasicPrettyPrinter.Rule.Piece qualified as PI
 import Data.Text qualified as T
-import Language.RawTerm.Rule.C.Decode qualified as C
 import SyntaxTree.Rule.C
+import SyntaxTree.Rule.C.ToDoc qualified as C
 import SyntaxTree.Rule.Series
 
 decode :: Series D.Doc -> D.Doc
