@@ -1,7 +1,8 @@
 module Main.Move.Scene.Format
   ( Handle,
     new,
-    format,
+    formatSource,
+    formatEns,
     ShouldMinimizeImports,
   )
 where
@@ -25,7 +26,6 @@ import Main.Move.Scene.Parse qualified as Parse
 import Main.Move.Scene.Parse.Program qualified as Parse
 import Main.Move.Scene.Parse.RawTerm qualified as ParseRT
 import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Rule.FileType qualified as FT
 import Main.Rule.Module (MainModule (MainModule))
 import Main.Rule.Target
 import Path
@@ -41,14 +41,14 @@ new ::
 new baseHandle = do
   Handle {..}
 
-format :: Handle -> ShouldMinimizeImports -> FT.FileType -> Path Abs File -> T.Text -> EIO T.Text
-format h shouldMinimizeImports fileType path content = do
-  case fileType of
-    FT.Ens -> do
-      ens <- EnsParse.fromFilePath' path content
-      return $ Ens.pp ens
-    FT.Source -> do
-      _formatSource h shouldMinimizeImports path content
+formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> EIO T.Text
+formatSource h shouldMinimizeImports path content = do
+  _formatSource h shouldMinimizeImports path content
+
+formatEns :: Path Abs File -> T.Text -> EIO T.Text
+formatEns path content = do
+  ens <- EnsParse.fromFilePath' path content
+  return $ Ens.pp ens
 
 type ShouldMinimizeImports =
   Bool

@@ -11,7 +11,8 @@ import Main.Move.Act.Build qualified as Build
 import Main.Move.Act.Check qualified as Check
 import Main.Move.Act.Clean qualified as Clean
 import Main.Move.Act.Create qualified as Create
-import Main.Move.Act.Format qualified as Format
+import Main.Move.Act.FormatEns qualified as FormatEns
+import Main.Move.Act.FormatSource qualified as FormatSource
 import Main.Move.Act.Get qualified as Get
 import Main.Move.Act.LSP qualified as LSP
 import Main.Move.Act.Version qualified as Version
@@ -57,8 +58,10 @@ main = do
           C.Get cfg -> do
             getHandle <- liftIO $ Get.new h loggerConfig
             Get.get getHandle cfg
-          C.Format cfg -> do
-            Format.format (Format.new h) cfg
+          C.FormatSource cfg -> do
+            FormatSource.format (FormatSource.new h) cfg
+          C.FormatEns cfg -> do
+            FormatEns.format cfg
           C.LSP -> do
             LSP.lsp (LSP.new h)
           C.Zen cfg -> do

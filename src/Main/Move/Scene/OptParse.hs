@@ -6,14 +6,14 @@ import CommandParser.Rule.Config.Build qualified as Build
 import CommandParser.Rule.Config.Check qualified as Check
 import CommandParser.Rule.Config.Clean qualified as Clean
 import CommandParser.Rule.Config.Create qualified as Create
-import CommandParser.Rule.Config.Format qualified as Format
+import CommandParser.Rule.Config.FormatEns qualified as FormatEns
+import CommandParser.Rule.Config.FormatSource qualified as FormatSource
 import CommandParser.Rule.Config.Get qualified as Get
 import CommandParser.Rule.Config.Remark qualified as Remark
 import CommandParser.Rule.Config.Version qualified as Version
 import CommandParser.Rule.Config.Zen qualified as Zen
 import Data.Text qualified as T
 import Main.Rule.BuildMode qualified as BM
-import Main.Rule.FileType qualified as FT
 import Main.Rule.ModuleURL
 import Main.Rule.OutputKind qualified as OK
 import Options.Applicative
@@ -32,8 +32,8 @@ parseOpt = do
         cmd "archive" parseArchiveOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
         cmd "get" parseGetOpt "add or update a dependency",
-        cmd "format-source" (parseFormatOpt FT.Source) "format a source file",
-        cmd "format-ens" (parseFormatOpt FT.Ens) "format an ens file",
+        cmd "format-source" parseFormatSourceOpt "format a source file",
+        cmd "format-ens" parseFormatEnsOpt "format an ens file",
         cmd "zen" parseZenOpt "execute `zen` of given file",
         cmd "lsp" parseLSPOpt "start the LSP server",
         cmd "version" parseVersionOpt "show version info"
@@ -159,20 +159,32 @@ parseArchiveOpt = do
           { Archive.getArchiveName = archiveName
           }
 
-parseFormatOpt :: FT.FileType -> Parser Command
-parseFormatOpt fileType = do
+parseFormatSourceOpt :: Parser Command
+parseFormatSourceOpt = do
   inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
   inPlaceOpt <- flag False True (mconcat [long "in-place", help "Set this to perform in-place update"])
   shouldMinimizeImports <- flag False True (mconcat [long "minimize-imports", help "Set this to remove unused items in `import {..}`"])
   remarkCfg <- remarkConfigOpt
   pure $
     Internal remarkCfg $
-      Format $
-        Format.Config
-          { Format.filePathString = inputFilePath,
-            Format.mustUpdateInPlace = inPlaceOpt,
-            Format.shouldMinimizeImports = shouldMinimizeImports,
-            Format.inputFileType = fileType
+      FormatSource $
+        FormatSource.Config
+          { FormatSource.filePathString = inputFilePath,
+            FormatSource.mustUpdateInPlace = inPlaceOpt,
+            FormatSource.shouldMinimizeImports = shouldMinimizeImports
+          }
+
+parseFormatEnsOpt :: Parser Command
+parseFormatEnsOpt = do
+  inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
+  inPlaceOpt <- flag False True (mconcat [long "in-place", help "Set this to perform in-place update"])
+  remarkCfg <- remarkConfigOpt
+  pure $
+    Internal remarkCfg $
+      FormatEns $
+        FormatEns.Config
+          { FormatEns.filePathString = inputFilePath,
+            FormatEns.mustUpdateInPlace = inPlaceOpt
           }
 
 remarkConfigOpt :: Parser Remark.Config

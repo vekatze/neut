@@ -14,7 +14,6 @@ import Language.LSP.VFS
 import Main.Move.Scene.Format qualified as Format
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.Const
-import Main.Rule.FileType qualified as FT
 import Path
 import Path.IO
 
@@ -60,8 +59,8 @@ getFormattedContent h shouldMinimizeImports file path = do
   (_, ext) <- liftMaybe $ splitExtension path
   case (ext == sourceFileExtension, ext == ensFileExtension) of
     (True, _) -> do
-      Format.format (formatHandle h) shouldMinimizeImports FT.Source path (virtualFileText file)
+      Format.formatSource (formatHandle h) shouldMinimizeImports path (virtualFileText file)
     (_, True) -> do
-      Format.format (formatHandle h) shouldMinimizeImports FT.Ens path (virtualFileText file)
+      Format.formatEns path (virtualFileText file)
     _ ->
       liftMaybe Nothing
