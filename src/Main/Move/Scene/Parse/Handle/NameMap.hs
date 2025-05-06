@@ -19,17 +19,17 @@ import Path
 import Prelude hiding (lookup)
 
 newtype Handle = Handle
-  { sourceNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
+  { globalNameMapRef :: IORef (Map.HashMap (Path Abs File) TopNameMap)
   }
 
 new :: IO Handle
 new = do
-  sourceNameMapRef <- newIORef Map.empty
+  globalNameMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 lookupSourceNameMap :: Handle -> Hint.Hint -> Path Abs File -> EIO TopNameMap
 lookupSourceNameMap h m sourcePath = do
-  smap <- liftIO $ readIORef (sourceNameMapRef h)
+  smap <- liftIO $ readIORef (globalNameMapRef h)
   case Map.lookup sourcePath smap of
     Just topLevelNameInfo -> do
       return topLevelNameInfo
@@ -38,4 +38,4 @@ lookupSourceNameMap h m sourcePath = do
 
 saveCurrentNameSet :: Handle -> Path Abs File -> TopNameMap -> IO ()
 saveCurrentNameSet h currentPath nameMap = do
-  modifyIORef' (sourceNameMapRef h) $ Map.insert currentPath nameMap
+  modifyIORef' (globalNameMapRef h) $ Map.insert currentPath nameMap
