@@ -1,4 +1,4 @@
-module Main.Move.Scene.Check
+module Command.Common.Move.Check
   ( Handle,
     new,
     check,

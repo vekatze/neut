@@ -5,10 +5,10 @@ module Main.Move.Scene.LSP.Lint
   )
 where
 
+import Command.Common.Move.Check qualified as Check
 import Control.Monad
 import Language.LSP.Server
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Scene.Check qualified as Check
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.Util (maxDiagNum, report, run)

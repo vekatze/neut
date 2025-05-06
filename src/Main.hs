@@ -3,13 +3,13 @@ module Main (main) where
 import Color.Move.CreateHandle qualified as Color
 import Command.Archive.Move.Archive qualified as Archive
 import Command.Build.Move.Build qualified as Build
+import Command.Check.Move.Check qualified as Check
 import CommandParser.Move.Parse qualified as CommandParser
 import CommandParser.Rule.Command qualified as C
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
 import Logger.Move.CreateHandle qualified as Logger
-import Main.Move.Act.Check qualified as Check
 import Main.Move.Act.Clean qualified as Clean
 import Main.Move.Act.Create qualified as Create
 import Main.Move.Act.FormatEns qualified as FormatEns

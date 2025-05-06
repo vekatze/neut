@@ -3,6 +3,7 @@ module Main.Move.Scene.LSP.GetSymbolInfo
   )
 where
 
+import Command.Common.Move.Check qualified as Check
 import CommandParser.Rule.Config.Remark (lspConfig)
 import Control.Comonad.Cofree
 import Control.Monad.Trans
@@ -17,7 +18,6 @@ import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
 import Main.Move.Context.Cache (invalidate)
 import Main.Move.Context.Type qualified as Type
-import Main.Move.Scene.Check qualified as Check
 import Main.Move.Scene.Elaborate qualified as Elaborate
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition

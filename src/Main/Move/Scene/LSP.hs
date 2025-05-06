@@ -7,6 +7,7 @@ where
 
 import Colog.Core (LogAction (..), Severity (..), WithSeverity (..))
 import Colog.Core qualified as L
+import Command.Common.Move.Check qualified as Check
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Data.Map.Strict qualified as M
@@ -17,7 +18,6 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Main.Move.Scene.Check qualified as Check
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP.Complete qualified as Complete
 import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition
