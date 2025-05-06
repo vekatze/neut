@@ -15,9 +15,6 @@ import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Opacity qualified as O
 import Logger.Rule.Hint
 
--- import Language.RawTerm.Rule.RawBinder (RawBinder)
--- import Language.RawTerm.Rule.RawTerm qualified as RT
-
 data BaseStmtKind name b t
   = Normal O.Opacity
   | Data
