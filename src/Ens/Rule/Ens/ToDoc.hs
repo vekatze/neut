@@ -1,4 +1,4 @@
-module Main.Rule.Ens.Reify (pp) where
+module Ens.Rule.Ens.ToDoc (pp) where
 
 import BasicPrettyPrinter.Rule.Doc qualified as D
 import Control.Comonad.Cofree

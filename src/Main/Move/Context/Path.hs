@@ -28,6 +28,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Data.Time
 import Ens.Rule.Ens qualified as E
+import Ens.Rule.Ens.ToDoc qualified as E
 import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Digest
@@ -37,7 +38,6 @@ import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Platform qualified as Platform
 import Main.Rule.ClangOption qualified as CL
 import Main.Rule.Const
-import Main.Rule.Ens.Reify qualified as E
 import Main.Rule.Module
 import Main.Rule.Module qualified as M
 import Main.Rule.OutputKind qualified as OK
