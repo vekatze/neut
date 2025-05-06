@@ -11,16 +11,6 @@ module Main.Move.Scene.Parse.Core
     betweenParen,
     betweenBrace,
     betweenBrace',
-    series,
-    bareSeries,
-    seriesParen,
-    seriesParen',
-    seriesBrace,
-    seriesBrace',
-    seriesBracket,
-    seriesAngle,
-    seriesBraceList,
-    seriesBraceList',
   )
 where
 
@@ -31,7 +21,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
-import Logger.Rule.Hint
 import Main.Rule.Syntax.Block
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
@@ -208,72 +197,6 @@ _seriesSepBy1 container separator leadingComment p = do
     val <- p
     return (cSep, val)
   return $ SE.fromListWithComment container separator $ (leadingComment, v) : elems
-
-series :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
-series prefix container separator p = do
-  let (open, close) = SE.getContainerPair container
-  c1 <- delimiter open
-  se <- _series (Just container) separator c1 p
-  c2 <- delimiter close
-  return (se {SE.prefix = prefix}, c2)
-
-series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, Loc, C)
-series' prefix container separator p = do
-  let (opener, closer) = getParserPair container
-  c1 <- opener
-  se <- _series (Just container) separator c1 p
-  loc <- getCurrentLoc
-  c2 <- closer
-  return (se {SE.prefix = prefix}, loc, c2)
-
-bareSeries :: SE.Prefix -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a)
-bareSeries prefix separator p = do
-  se <- _series Nothing separator [] p
-  return se {SE.prefix = prefix}
-
-getParserPair :: SE.Container -> (Parser C, Parser C)
-getParserPair container =
-  case container of
-    SE.Paren ->
-      (delimiter "(", delimiter ")")
-    SE.Brace ->
-      (delimiter "{", delimiter "}")
-    SE.Bracket ->
-      (delimiter "[", delimiter "]")
-    SE.Angle ->
-      (delimiter "<", delimiter ">")
-
-seriesParen :: Parser (a, C) -> Parser (SE.Series a, C)
-seriesParen =
-  series Nothing SE.Paren SE.Comma
-
-seriesParen' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
-seriesParen' =
-  series' Nothing SE.Paren SE.Comma
-
-seriesBrace :: Parser (a, C) -> Parser (SE.Series a, C)
-seriesBrace =
-  series Nothing SE.Brace SE.Comma
-
-seriesBrace' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
-seriesBrace' =
-  series' Nothing SE.Brace SE.Comma
-
-seriesBracket :: Parser (a, C) -> Parser (SE.Series a, C)
-seriesBracket =
-  series Nothing SE.Bracket SE.Comma
-
-seriesAngle :: Parser (a, C) -> Parser (SE.Series a, C)
-seriesAngle =
-  series Nothing SE.Angle SE.Comma
-
-seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
-seriesBraceList =
-  series Nothing SE.Brace SE.Bar
-
-seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
-seriesBraceList' =
-  series' Nothing SE.Brace SE.Bar
 
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char

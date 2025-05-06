@@ -42,6 +42,7 @@ import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
 import Main.Move.Scene.Parse.Core
 import Main.Rule.Const
+import SyntaxTree.Move.ParseSeries
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec

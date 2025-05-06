@@ -18,6 +18,7 @@ import Logger.Rule.Hint
 import Main.Move.Context.Parse (readTextFile)
 import Main.Move.Scene.Parse.Core qualified as P
 import Path
+import SyntaxTree.Move.ParseSeries
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec hiding (runParser)
@@ -65,12 +66,12 @@ parseString m = do
 
 parseList :: Hint -> P.Parser (E.Ens, C)
 parseList m = do
-  (ensSeries, c) <- P.seriesBracket parseEns
+  (ensSeries, c) <- seriesBracket parseEns
   return (m :< E.List ensSeries, c)
 
 parseDictionary :: Hint -> P.Parser (E.Ens, C)
 parseDictionary m = do
-  (kvs, c) <- P.seriesBrace parseKeyValuePair
+  (kvs, c) <- seriesBrace parseKeyValuePair
   let kvs' = SE.joinC kvs
   lift $ ensureKeyLinearity (SE.extract kvs') S.empty
   return (m :< E.Dictionary (fmap snd kvs'), c)

@@ -26,6 +26,7 @@ import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
 import Main.Move.Scene.Parse.Core qualified as P
 import Main.Move.Scene.Parse.RawTerm
+import SyntaxTree.Move.ParseSeries
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
@@ -45,7 +46,7 @@ parseSingleImport :: Parser (RawImport, C)
 parseSingleImport = do
   c1 <- P.keyword "import"
   m <- getCurrentHint
-  (importItems, loc, c) <- P.seriesBrace' $ do
+  (importItems, loc, c) <- seriesBrace' $ do
     mImportItem <- getCurrentHint
     locator <- P.symbol
     case fst locator of
@@ -71,14 +72,14 @@ parseStmt h = do
 parseLocalLocatorList' :: Parser (SE.Series (Hint, LL.LocalLocator), C)
 parseLocalLocatorList' = do
   choice
-    [ P.seriesBrace parseLocalLocator,
+    [ seriesBrace parseLocalLocator,
       return (SE.emptySeries (Just SE.Brace) SE.Comma, [])
     ]
 
 parseStaticKeyList :: Parser (SE.Series (Hint, T.Text), C)
 parseStaticKeyList = do
   choice
-    [ P.seriesBrace $ do
+    [ seriesBrace $ do
         m <- getCurrentHint
         (k, c) <- P.symbol
         return ((m, k), c),
@@ -94,14 +95,14 @@ parseLocalLocator = do
 parseForeign :: Handle -> Parser (RawStmt, C)
 parseForeign h = do
   c1 <- P.keyword "foreign"
-  (val, c) <- P.seriesBrace $ parseForeignItem h
+  (val, c) <- seriesBrace $ parseForeignItem h
   return (RawStmtForeign c1 val, c)
 
 parseForeignItem :: Handle -> Parser (RawForeignItem, C)
 parseForeignItem h = do
   m <- getCurrentHint
   (funcName, c1) <- P.symbol
-  (domList, c2) <- P.seriesParen $ rawTerm h
+  (domList, c2) <- seriesParen $ rawTerm h
   c3 <- delimiter ":"
   (cod, c) <-
     choice
@@ -139,14 +140,14 @@ parseData h = do
   m <- getCurrentHint
   (dataName, c2) <- P.baseName
   dataArgsOrNone <- parseDataArgs h
-  (consSeries, loc, c) <- P.seriesBraceList' $ parseDefineDataClause h
+  (consSeries, loc, c) <- seriesBraceList' $ parseDefineDataClause h
   return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries loc, c)
 
 parseNominal :: Handle -> Parser (RawStmt, C)
 parseNominal h = do
   c1 <- P.keyword "nominal"
   m <- getCurrentHint
-  (geists, c) <- P.seriesBrace $ do
+  (geists, c) <- seriesBrace $ do
     (geist, c) <- parseGeist h P.baseName
     loc <- getCurrentLoc
     return ((geist, loc), c)
@@ -155,7 +156,7 @@ parseNominal h = do
 parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawTerm))
 parseDataArgs h = do
   choice
-    [ Just <$> try (P.seriesParen $ preBinder h),
+    [ Just <$> try (seriesParen $ preBinder h),
       return Nothing
     ]
 
@@ -174,8 +175,8 @@ parseConsArgs :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc
 parseConsArgs h = do
   choice
     [ do
-        (series, loc, c) <- P.seriesParen' $ parseDefineDataClauseArg h
-        return (Just series, loc, c),
+        (s, loc, c) <- seriesParen' $ parseDefineDataClauseArg h
+        return (Just s, loc, c),
       do
         loc <- getCurrentLoc
         return (Nothing, loc, [])
@@ -193,7 +194,7 @@ parseResource h = do
   c1 <- P.keyword "resource"
   m <- getCurrentHint
   (name, c2) <- P.baseName
-  (handlers, c) <- P.seriesBrace $ rawExpr h
+  (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
     [discarder, copier] -> do
       return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
