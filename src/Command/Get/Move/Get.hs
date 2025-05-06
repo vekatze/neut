@@ -1,4 +1,4 @@
-module Main.Move.Act.Get
+module Command.Get.Move.Get
   ( Handle,
     new,
     get,
@@ -7,6 +7,7 @@ where
 
 import Command.Common.Move.Check qualified as Check
 import Command.Common.Move.Clean qualified as Clean
+import Command.Common.Move.Fetch qualified as Fetch
 import CommandParser.Rule.Config.Get
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
@@ -14,7 +15,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.ModuleURL (ModuleURL (ModuleURL))
 import Prelude hiding (log)

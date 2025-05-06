@@ -8,13 +8,13 @@ import Command.Clean.Move.Clean qualified as Clean
 import Command.Create.Move.Create qualified as Create
 import Command.FormatEns.Move.FormatEns qualified as FormatEns
 import Command.FormatSource.Move.FormatSource qualified as FormatSource
+import Command.Get.Move.Get qualified as Get
 import CommandParser.Move.Parse qualified as CommandParser
 import CommandParser.Rule.Command qualified as C
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
 import Logger.Move.CreateHandle qualified as Logger
-import Main.Move.Act.Get qualified as Get
 import Main.Move.Act.LSP qualified as LSP
 import Main.Move.Act.Version qualified as Version
 import Main.Move.Act.Zen qualified as Zen

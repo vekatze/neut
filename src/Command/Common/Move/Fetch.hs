@@ -1,4 +1,4 @@
-module Main.Move.Scene.Fetch
+module Command.Common.Move.Fetch
   ( Handle,
     new,
     fetch,

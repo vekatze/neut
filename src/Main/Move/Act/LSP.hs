@@ -5,11 +5,11 @@ module Main.Move.Act.LSP
   )
 where
 
+import Command.Common.Move.Fetch qualified as Fetch
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
-import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.LSP qualified as L
 

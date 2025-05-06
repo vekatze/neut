@@ -7,6 +7,7 @@ module Command.Build.Move.Build
 where
 
 import Command.Common.Move.Build qualified as Build
+import Command.Common.Move.Fetch qualified as Fetch
 import CommandParser.Rule.Config.Build
 import Control.Monad
 import Control.Monad.Except (liftEither)
@@ -17,7 +18,6 @@ import Error.Rule.Error (Error)
 import Language.Common.Move.Raise (raiseError')
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.BuildMode qualified as BM
 import Main.Rule.Module
