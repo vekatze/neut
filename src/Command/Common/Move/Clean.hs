@@ -1,4 +1,4 @@
-module Main.Move.Scene.Clean
+module Command.Common.Move.Clean
   ( Handle,
     new,
     clean,

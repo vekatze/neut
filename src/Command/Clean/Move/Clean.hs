@@ -1,12 +1,12 @@
-module Main.Move.Act.Clean
+module Command.Clean.Move.Clean
   ( Handle,
     new,
     clean,
   )
 where
 
+import Command.Common.Move.Clean qualified as Clean
 import Error.Rule.EIO (EIO)
-import Main.Move.Scene.Clean qualified as Clean
 import Main.Move.Scene.Init.Base qualified as Base
 import Prelude hiding (log)
 
