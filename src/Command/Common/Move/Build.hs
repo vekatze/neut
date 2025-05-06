@@ -1,4 +1,4 @@
-module Main.Move.Scene.Build
+module Command.Common.Move.Build
   ( Config (..),
     Handle,
     new,

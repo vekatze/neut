@@ -6,6 +6,7 @@ module Main.Move.Act.Zen
   )
 where
 
+import Command.Common.Move.Build qualified as Build
 import CommandParser.Rule.Config.Zen
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -13,7 +14,6 @@ import Data.Maybe
 import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Build qualified as Build
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Rule.BuildMode qualified as BM
