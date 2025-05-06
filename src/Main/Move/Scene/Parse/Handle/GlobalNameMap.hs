@@ -1,8 +1,8 @@
 module Main.Move.Scene.Parse.Handle.GlobalNameMap
   ( Handle,
     new,
-    saveCurrentNameSet,
-    lookupSourceNameMap,
+    insert,
+    lookup,
   )
 where
 
@@ -27,8 +27,8 @@ new = do
   globalNameMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-lookupSourceNameMap :: Handle -> Hint.Hint -> Path Abs File -> EIO TopNameMap
-lookupSourceNameMap h m sourcePath = do
+lookup :: Handle -> Hint.Hint -> Path Abs File -> EIO TopNameMap
+lookup h m sourcePath = do
   smap <- liftIO $ readIORef (globalNameMapRef h)
   case Map.lookup sourcePath smap of
     Just topLevelNameInfo -> do
@@ -36,6 +36,6 @@ lookupSourceNameMap h m sourcePath = do
     Nothing ->
       raiseCritical m $ "Top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
 
-saveCurrentNameSet :: Handle -> Path Abs File -> TopNameMap -> IO ()
-saveCurrentNameSet h currentPath nameMap = do
+insert :: Handle -> Path Abs File -> TopNameMap -> IO ()
+insert h currentPath nameMap = do
   modifyIORef' (globalNameMapRef h) $ Map.insert currentPath nameMap

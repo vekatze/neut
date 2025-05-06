@@ -133,7 +133,7 @@ saveTopLevelNames :: Handle -> Source.Source -> [(Hint, DD.DefiniteDescription)]
 saveTopLevelNames h source topNameList = do
   globalNameList <- mapM (uncurry $ NameMap.lookup' (nameMapHandle h)) topNameList
   let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
-  liftIO $ GlobalNameMap.saveCurrentNameSet (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
+  liftIO $ GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
 
 getUnusedLocators :: Handle -> IO (UnusedGlobalLocators, UnusedLocalLocators)
 getUnusedLocators h = do
@@ -191,7 +191,7 @@ activateImport h m sourceInfoList = do
     case importItem of
       ImportItem source aliasInfoList -> do
         let path = Source.sourceFilePath source
-        namesInSource <- GlobalNameMap.lookupSourceNameMap (globalNameMapHandle h) m path
+        namesInSource <- GlobalNameMap.lookup (globalNameMapHandle h) m path
         liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
           Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
