@@ -1,4 +1,4 @@
-module Main.Rule.Syntax.Block (Block, Block', mapBlock, mapBlock') where
+module SyntaxTree.Rule.Block (Block, Block', mapBlock, mapBlock') where
 
 import Logger.Rule.Hint
 import SyntaxTree.Rule.C

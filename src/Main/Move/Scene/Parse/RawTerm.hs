@@ -43,8 +43,8 @@ import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
 import Main.Rule.Const
-import Main.Rule.Syntax.Block
 import SyntaxTree.Move.ParseSeries
+import SyntaxTree.Rule.Block
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
