@@ -24,7 +24,7 @@ import Main.Move.Context.Type qualified as Type
 import Main.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
 import Main.Move.Scene.Elaborate.Handle.Def qualified as Definition
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
-import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
+import Main.Move.Scene.Parse.Handle.GlobalNameMap qualified as GlobalNameMap
 import Main.Rule.Config.Remark qualified as Remark
 import Path
 
@@ -45,7 +45,7 @@ data Handle = Handle
     typeHandle :: Type.Handle,
     weakDefHandle :: WeakDef.Handle,
     compDefHandle :: CompDef.Handle,
-    nameMapHandle :: NameMap.Handle
+    globalNameMapHandle :: GlobalNameMap.Handle
   }
 
 new :: Remark.Config -> Maybe (Path Abs File) -> IO Handle
@@ -66,7 +66,7 @@ new cfg moduleFilePathOrNone = do
   defHandle <- Definition.new
   antecedentHandle <- Antecedent.new
   compDefHandle <- CompDef.new
-  nameMapHandle <- NameMap.new
+  globalNameMapHandle <- GlobalNameMap.new
   return $ Handle {..}
 
 refresh :: Handle -> IO Handle
@@ -82,7 +82,7 @@ refresh h = do
   defHandle <- Definition.new
   antecedentHandle <- Antecedent.new
   compDefHandle <- CompDef.new
-  nameMapHandle <- NameMap.new
+  globalNameMapHandle <- GlobalNameMap.new
   return $
     h
       { keyArgHandle,
@@ -96,5 +96,5 @@ refresh h = do
         defHandle,
         antecedentHandle,
         compDefHandle,
-        nameMapHandle
+        globalNameMapHandle
       }

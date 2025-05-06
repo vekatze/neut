@@ -31,7 +31,7 @@ import Main.Move.Scene.Init.Local qualified as Local
 import Main.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Main.Move.Scene.Module.GetModule qualified as GetModule
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
+import Main.Move.Scene.Parse.Handle.GlobalNameMap qualified as GlobalNameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Source.ShiftToLatest qualified as STL
 import Main.Rule.AliasInfo qualified as AI
@@ -56,7 +56,7 @@ data Handle = Handle
     gensymHandle :: Gensym.Handle,
     rawImportSummaryHandle :: RawImportSummary.Handle,
     moduleHandle :: Module.Handle,
-    nameMapHandle :: NameMap.Handle,
+    globalNameMapHandle :: GlobalNameMap.Handle,
     tagHandle :: Tag.Handle
   }
 

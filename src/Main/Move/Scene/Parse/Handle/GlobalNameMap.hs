@@ -1,4 +1,4 @@
-module Main.Move.Scene.Parse.Handle.NameMap
+module Main.Move.Scene.Parse.Handle.GlobalNameMap
   ( Handle,
     new,
     saveCurrentNameSet,

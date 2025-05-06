@@ -33,7 +33,7 @@ import Main.Move.Scene.Parse.Discern qualified as Discern
 import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
 import Main.Move.Scene.Parse.Handle.Global qualified as Global
-import Main.Move.Scene.Parse.Handle.NameMap qualified as NameMap
+import Main.Move.Scene.Parse.Handle.GlobalNameMap qualified as GlobalNameMap
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Move.Scene.Parse.Import qualified as Import
 import Main.Move.Scene.Parse.Program qualified as Parse
@@ -54,7 +54,7 @@ data Handle = Handle
     pathHandle :: Path.Handle,
     importHandle :: Import.Handle,
     globalHandle :: Global.Handle,
-    nameMapHandle :: NameMap.Handle,
+    globalNameMapHandle :: GlobalNameMap.Handle,
     unusedHandle :: Unused.Handle
   }
 
@@ -67,7 +67,7 @@ new baseHandle localHandle = do
   let parseHandle = ParseRT.new (Base.gensymHandle baseHandle)
   let pathHandle = Base.pathHandle baseHandle
   let importHandle = Import.new baseHandle localHandle
-  let nameMapHandle = Base.nameMapHandle baseHandle
+  let globalNameMapHandle = Base.globalNameMapHandle baseHandle
   let aliasHandle = Local.aliasHandle localHandle
   let locatorHandle = Local.locatorHandle localHandle
   let tagHandle = Local.tagHandle localHandle
@@ -133,7 +133,7 @@ saveTopLevelNames :: Handle -> Source.Source -> [(Hint, DD.DefiniteDescription)]
 saveTopLevelNames h source topNameList = do
   globalNameList <- mapM (uncurry $ Global.lookup' (globalHandle h)) topNameList
   let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
-  liftIO $ NameMap.saveCurrentNameSet (nameMapHandle h) (Source.sourceFilePath source) nameMap
+  liftIO $ GlobalNameMap.saveCurrentNameSet (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
 
 getUnusedLocators :: Handle -> IO (UnusedGlobalLocators, UnusedLocalLocators)
 getUnusedLocators h = do
@@ -191,7 +191,7 @@ activateImport h m sourceInfoList = do
     case importItem of
       ImportItem source aliasInfoList -> do
         let path = Source.sourceFilePath source
-        namesInSource <- NameMap.lookupSourceNameMap (nameMapHandle h) m path
+        namesInSource <- GlobalNameMap.lookupSourceNameMap (globalNameMapHandle h) m path
         liftIO $ Global.activateTopLevelNames (globalHandle h) namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
           Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
