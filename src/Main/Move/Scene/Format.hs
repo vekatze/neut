@@ -65,7 +65,7 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       contentSeq <- Load.load loadHandle Peripheral dependenceSeq
       case unsnoc contentSeq of
         Nothing ->
-          undefined
+          return "" -- fixme: unreachable
         Just (headItems, (rootSource, __)) -> do
           forM_ headItems $ \(source, cacheOrContent) -> do
             localHandle <- Local.new (baseHandle h) source
