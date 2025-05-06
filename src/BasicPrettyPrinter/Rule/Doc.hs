@@ -1,4 +1,4 @@
-module Main.Rule.Doc
+module BasicPrettyPrinter.Rule.Doc
   ( Doc (..),
     indent,
     line,

@@ -16,6 +16,8 @@ module Language.RawTerm.Rule.RawTerm.Decode
   )
 where
 
+import BasicPrettyPrinter.Rule.Doc qualified as D
+import BasicPrettyPrinter.Rule.Piece qualified as PI
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -34,8 +36,6 @@ import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
-import Main.Rule.Doc qualified as D
-import Main.Rule.Piece qualified as PI
 import Main.Rule.Syntax.Series.Decode qualified as SE
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series qualified as SE

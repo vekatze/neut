@@ -5,10 +5,10 @@ module Main.Rule.Syntax.Series.Decode
   )
 where
 
+import BasicPrettyPrinter.Rule.Doc qualified as D
+import BasicPrettyPrinter.Rule.Piece qualified as PI
 import Data.Text qualified as T
 import Language.RawTerm.Rule.C.Decode qualified as C
-import Main.Rule.Doc qualified as D
-import Main.Rule.Piece qualified as PI
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series
 

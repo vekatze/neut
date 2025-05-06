@@ -1,4 +1,4 @@
-module Main.Rule.Piece
+module BasicPrettyPrinter.Rule.Piece
   ( Piece (..),
     arrange,
     arrangeVertical,
@@ -20,7 +20,7 @@ module Main.Rule.Piece
   )
 where
 
-import Main.Rule.Doc qualified as D
+import BasicPrettyPrinter.Rule.Doc qualified as D
 
 data Piece = Piece
   { content :: D.Doc,

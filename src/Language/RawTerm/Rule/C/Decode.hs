@@ -7,8 +7,8 @@ module Language.RawTerm.Rule.C.Decode
   )
 where
 
+import BasicPrettyPrinter.Rule.Doc qualified as D
 import Data.Text qualified as T
-import Main.Rule.Doc qualified as D
 import SyntaxTree.Rule.C
 
 decode :: C -> D.Doc
