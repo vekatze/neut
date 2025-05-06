@@ -1,13 +1,13 @@
 module Main (main) where
 
 import Color.Move.CreateHandle qualified as Color
+import Command.Archive.Move.Archive qualified as Archive
 import CommandParser.Move.Parse qualified as CommandParser
 import CommandParser.Rule.Command qualified as C
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
 import Logger.Move.CreateHandle qualified as Logger
-import Main.Move.Act.Archive qualified as Archive
 import Main.Move.Act.Build qualified as Build
 import Main.Move.Act.Check qualified as Check
 import Main.Move.Act.Clean qualified as Clean

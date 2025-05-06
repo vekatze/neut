@@ -1,16 +1,16 @@
-module Main.Move.Scene.Archive.PackageVersion.ChooseNewVersion
+module Command.Archive.Move.Internal.PackageVersion.ChooseNewVersion
   ( Handle,
     new,
     chooseNewVersion,
   )
 where
 
+import Command.Archive.Move.Internal.Module.GetExistingVersions
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Scene.Archive.Module.GetExistingVersions
 import Main.Rule.Module (MainModule)
 import Main.Rule.PackageVersion qualified as PV
 import Prelude hiding (log)

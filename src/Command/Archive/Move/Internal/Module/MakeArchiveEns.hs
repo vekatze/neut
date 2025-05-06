@@ -1,5 +1,6 @@
-module Main.Move.Scene.Archive.Module.MakeArchiveEns (makeArchiveEns) where
+module Command.Archive.Move.Internal.Module.MakeArchiveEns (makeArchiveEns) where
 
+import Command.Archive.Move.Internal.Module.GetExistingVersions
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
@@ -13,7 +14,6 @@ import Error.Rule.EIO (EIO)
 import Language.Common.Rule.ModuleDigest (ModuleDigest (..))
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Logger.Rule.Hint
-import Main.Move.Scene.Archive.Module.GetExistingVersions
 import Main.Rule.Const
 import Main.Rule.Module
 import Main.Rule.PackageVersion qualified as PV

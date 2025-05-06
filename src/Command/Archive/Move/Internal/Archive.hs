@@ -1,4 +1,4 @@
-module Main.Move.Scene.Archive
+module Command.Archive.Move.Internal.Archive
   ( Handle,
     new,
     archive,

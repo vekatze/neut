@@ -1,20 +1,20 @@
-module Main.Move.Act.Archive
+module Command.Archive.Move.Archive
   ( Handle,
     new,
     archive,
   )
 where
 
+import Command.Archive.Move.Internal.Archive qualified as Archive
+import Command.Archive.Move.Internal.Module.MakeArchiveEns
+import Command.Archive.Move.Internal.PackageVersion.ChooseNewVersion qualified as PV
+import Command.Archive.Move.Internal.PackageVersion.Reflect qualified as PV
 import CommandParser.Rule.Config.Archive
 import Data.HashMap.Strict qualified as Map
 import Error.Rule.EIO (EIO)
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.External qualified as External
 import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Archive qualified as Archive
-import Main.Move.Scene.Archive.Module.MakeArchiveEns
-import Main.Move.Scene.Archive.PackageVersion.ChooseNewVersion qualified as PV
-import Main.Move.Scene.Archive.PackageVersion.Reflect qualified as PV
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave
 import Main.Rule.Module
