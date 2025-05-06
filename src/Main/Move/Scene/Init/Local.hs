@@ -14,14 +14,12 @@ import Main.Move.Context.TopCandidate qualified as TopCandidate
 import Main.Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Main.Move.Scene.Parse.Handle.Global qualified as Global
 import Main.Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
 import Main.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Main.Rule.Source qualified as Source
 
 data Handle = Handle
   { unusedHandle :: Unused.Handle,
-    globalHandle :: Global.Handle,
     aliasHandle :: Alias.Handle,
     locatorHandle :: Locator.Handle,
     tagHandle :: Tag.Handle,
@@ -45,5 +43,4 @@ new h source = do
   topCandidateHandle <- liftIO TopCandidate.new
   preDeclHandle <- liftIO PreDecl.new
   weakDeclHandle <- liftIO WeakDecl.new
-  globalHandle <- liftIO $ Global.new h locatorHandle unusedHandle tagHandle
   return $ Handle {..}

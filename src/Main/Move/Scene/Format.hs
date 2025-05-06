@@ -70,10 +70,10 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
         Just (headItems, (rootSource, __)) -> do
           forM_ headItems $ \(source, cacheOrContent) -> do
             localHandle <- Local.new (baseHandle h) source
-            let parseHandle = Parse.new (baseHandle h) localHandle
+            parseHandle <- liftIO $ Parse.new (baseHandle h) localHandle
             void $ Parse.parse parseHandle Peripheral source cacheOrContent
           localHandle <- Local.new (baseHandle h) rootSource
-          let parseHandle = Parse.new (baseHandle h) localHandle
+          parseHandle <- liftIO $ Parse.new (baseHandle h) localHandle
           void $ Parse.parse parseHandle Peripheral rootSource (Right fileContent)
           (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Parse.getUnusedLocators parseHandle
           program <- runParser filePath fileContent True (Parse.parseProgram parseCoreHandle)

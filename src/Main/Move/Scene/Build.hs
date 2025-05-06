@@ -131,7 +131,7 @@ compile h target outputKindList contentSeq = do
   let llvmHandle = LLVM.new (baseHandle h)
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     localHandle <- Local.new (baseHandle h) source
-    let parseHandle = Parse.new (baseHandle h) localHandle
+    parseHandle <- liftIO $ Parse.new (baseHandle h) localHandle
     elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
     let ensureMainHandle = EnsureMain.new (Base.envHandle (baseHandle h))
     let suffix = if isLeft cacheOrContent then " (cache found)" else ""

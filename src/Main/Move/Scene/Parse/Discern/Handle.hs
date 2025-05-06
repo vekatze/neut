@@ -51,8 +51,9 @@ data Handle = Handle
 new ::
   Base.Handle ->
   Local.Handle ->
+  Global.Handle ->
   Handle
-new (Base.Handle {..}) (Local.Handle {..}) = do
+new (Base.Handle {..}) (Local.Handle {..}) globalHandle = do
   let nameEnv = empty
   let currentLayer = 0
   Handle {..}

@@ -92,7 +92,7 @@ _check' h target baseModule = do
 checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.Handle
 checkSource h target source cacheOrContent = do
   localHandle <- Local.new (baseHandle h) source
-  let parseHandle = Parse.new (baseHandle h) localHandle
+  parseHandle <- liftIO $ Parse.new (baseHandle h) localHandle
   elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
   liftIO $
     Logger.report (Base.loggerHandle (baseHandle h)) $

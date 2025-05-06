@@ -61,18 +61,19 @@ data Handle = Handle
 new ::
   Base.Handle ->
   Local.Handle ->
-  Handle
+  IO Handle
 new baseHandle localHandle = do
   let unusedHandle = Local.unusedHandle localHandle
   let parseHandle = ParseRT.new (Base.gensymHandle baseHandle)
-  let discernHandle = Discern.new baseHandle localHandle
   let pathHandle = Base.pathHandle baseHandle
   let importHandle = Import.new baseHandle localHandle
-  let globalHandle = Local.globalHandle localHandle
   let nameMapHandle = Base.nameMapHandle baseHandle
   let aliasHandle = Local.aliasHandle localHandle
   let locatorHandle = Local.locatorHandle localHandle
-  Handle {..}
+  let tagHandle = Local.tagHandle localHandle
+  globalHandle <- Global.new baseHandle locatorHandle unusedHandle tagHandle
+  let discernHandle = Discern.new baseHandle localHandle globalHandle
+  return $ Handle {..}
 
 parse ::
   Handle ->
