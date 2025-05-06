@@ -3,11 +3,9 @@ module Main.Move.Context.LLVM
     new,
     emit,
     link,
-    ensureSetupSanity,
   )
 where
 
-import CommandParser.Rule.Config.Build
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
@@ -15,7 +13,6 @@ import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
 import Error.Rule.EIO (EIO)
-import Language.Common.Move.Raise (raiseError')
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Main.Move.Context.Env qualified as Env
@@ -48,13 +45,6 @@ new (Base.Handle {..}) = do
 type ClangOption = String
 
 type LLVMCode = L.ByteString
-
-ensureSetupSanity :: Config -> EIO ()
-ensureSetupSanity cfg = do
-  let willBuildObjects = OK.Object `elem` outputKindList cfg
-  let willLink = not $ shouldSkipLink cfg
-  when (not willBuildObjects && willLink) $
-    raiseError' "`--skip-link` must be set explicitly when `--emit` does not contain `object`"
 
 emit ::
   Handle ->

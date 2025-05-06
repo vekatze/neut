@@ -7,6 +7,7 @@ module Main.Move.Act.Zen
 where
 
 import CommandParser.Rule.Config.Zen
+import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
 import Error.Rule.EIO (EIO)
@@ -15,6 +16,7 @@ import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Build qualified as Build
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
+import Main.Rule.BuildMode qualified as BM
 import Main.Rule.Module (Module (moduleZenConfig), extractModule)
 import Main.Rule.OutputKind
 import Main.Rule.Target
@@ -63,5 +65,6 @@ setup :: Handle -> Config -> EIO ()
 setup h cfg = do
   let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule
-  liftIO $ Env.setBuildMode (envHandle h) $ buildMode cfg
+  buildMode <- liftEither $ BM.fromString $ buildModeString cfg
+  liftIO $ Env.setBuildMode (envHandle h) buildMode
   Fetch.fetch (fetchHandle h) mainModule

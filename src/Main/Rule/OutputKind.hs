@@ -1,4 +1,12 @@
-module Main.Rule.OutputKind (OutputKind (..)) where
+module Main.Rule.OutputKind
+  ( OutputKind (..),
+    fromText,
+  )
+where
+
+import Data.Text qualified as T
+import Error.Rule.Error (Error)
+import Language.Common.Rule.Error (newError')
 
 data OutputKind
   = Object
@@ -12,3 +20,13 @@ instance Read OutputKind where
     [(LLVM, [])]
   readsPrec _ _ =
     []
+
+fromText :: T.Text -> Either Error OutputKind
+fromText t =
+  case t of
+    "object" ->
+      return Object
+    "llvm" ->
+      return LLVM
+    _ ->
+      Left $ newError' $ "Invalid output kind: " <> t

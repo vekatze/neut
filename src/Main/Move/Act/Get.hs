@@ -16,6 +16,7 @@ import Main.Move.Scene.Check qualified as Check
 import Main.Move.Scene.Clean qualified as Clean
 import Main.Move.Scene.Fetch qualified as Fetch
 import Main.Move.Scene.Init.Base qualified as Base
+import Main.Rule.ModuleURL (ModuleURL (ModuleURL))
 import Prelude hiding (log)
 
 data Handle = Handle
@@ -42,6 +43,6 @@ get h cfg = do
   let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule
   Clean.clean (cleanHandle h)
-  Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (moduleURL cfg)
+  Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (ModuleURL $ moduleURLText cfg)
   h' <- liftIO $ Base.new (remarkCfg h) Nothing
   void $ Check.checkAll (Check.new h')

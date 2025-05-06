@@ -13,9 +13,6 @@ import CommandParser.Rule.Config.Remark qualified as Remark
 import CommandParser.Rule.Config.Version qualified as Version
 import CommandParser.Rule.Config.Zen qualified as Zen
 import Data.Text qualified as T
-import Main.Rule.BuildMode qualified as BM
-import Main.Rule.ModuleURL
-import Main.Rule.OutputKind qualified as OK
 import Options.Applicative
 
 parseCommand :: IO Command
@@ -47,9 +44,9 @@ parseBuildOpt :: Parser Command
 parseBuildOpt = do
   targetName <- argument str $ mconcat [metavar "TARGET", help "The build target"]
   installDir <- optional $ strOption $ mconcat [long "install", metavar "DIRECTORY", help "Install the resulting binary to this directory"]
-  buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
+  buildModeString <- parseBuildModeOpt
   remarkCfg <- remarkConfigOpt
-  outputKindList <- outputKindListOpt
+  outputKindTextList <- outputKindTextListOpt
   shouldSkipLink <- shouldSkipLinkOpt
   shouldExecute <- shouldExecuteOpt
   rest <- (many . strArgument) (metavar "args")
@@ -58,11 +55,11 @@ parseBuildOpt = do
       Build $
         Build.Config
           { Build.targetName = targetName,
-            Build.outputKindList = outputKindList,
+            Build.outputKindTextList = outputKindTextList,
             Build.shouldSkipLink = shouldSkipLink,
             Build.shouldExecute = shouldExecute,
             Build.installDir = installDir,
-            Build.buildMode = buildMode,
+            Build.buildModeString = buildModeString,
             Build.args = rest
           }
 
@@ -77,28 +74,28 @@ parseCleanOpt = do
 parseGetOpt :: Parser Command
 parseGetOpt = do
   moduleAlias <- argument str (mconcat [metavar "ALIAS", help "The alias of the module"])
-  moduleURL <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
+  moduleURLText <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
   remarkCfg <- remarkConfigOpt
   pure $
     Internal remarkCfg $
       Get $
         Get.Config
           { Get.moduleAliasText = T.pack moduleAlias,
-            Get.moduleURL = ModuleURL $ T.pack moduleURL
+            Get.moduleURLText = T.pack moduleURLText
           }
 
 parseZenOpt :: Parser Command
 parseZenOpt = do
   inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
   remarkCfg <- remarkConfigOpt
-  buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
+  buildModeString <- parseBuildModeOpt
   rest <- (many . strArgument) (metavar "args")
   pure $
     Internal remarkCfg $
       CommandParser.Rule.Command.Zen $
         Zen.Config
           { Zen.filePathString = inputFilePath,
-            Zen.buildMode = buildMode,
+            Zen.buildModeString = buildModeString,
             Zen.args = rest
           }
 
@@ -201,43 +198,19 @@ remarkConfigOpt = do
         Remark.endOfEntry = eoe
       }
 
-outputKindListOpt :: Parser [OK.OutputKind]
-outputKindListOpt = do
-  option outputKindListReader $ mconcat [long "emit", metavar "EMIT", help "EMIT == (llvm || object)", value [OK.Object]]
+outputKindTextListOpt :: Parser [T.Text]
+outputKindTextListOpt = do
+  option outputKindTextListReader $
+    mconcat [long "emit", metavar "EMIT", help "EMIT == (llvm || object)", value ["object"]]
 
-outputKindListReader :: ReadM [OK.OutputKind]
-outputKindListReader =
+outputKindTextListReader :: ReadM [T.Text]
+outputKindTextListReader =
   eitherReader $ \input ->
-    readOutputKinds $ T.splitOn "," $ T.pack input
+    return $ T.splitOn "," $ T.pack input
 
-readOutputKinds :: [T.Text] -> Either String [OK.OutputKind]
-readOutputKinds kindStrList =
-  case kindStrList of
-    [] ->
-      return []
-    kindStr : rest -> do
-      tmp <- readOutputKinds rest
-      case kindStr of
-        "llvm" ->
-          return $ OK.LLVM : tmp
-        "object" ->
-          return $ OK.Object : tmp
-        _ ->
-          Left $ T.unpack $ "no such output kind exists: " <> kindStr
-
-buildModeReader :: ReadM BM.BuildMode
-buildModeReader =
-  eitherReader readBuildMode
-
-readBuildMode :: String -> Either String BM.BuildMode
-readBuildMode input = do
-  case input of
-    "develop" ->
-      return BM.Develop
-    "release" ->
-      return BM.Release
-    _ ->
-      Left $ T.unpack $ "no such build mode exists: " <> T.pack input
+parseBuildModeOpt :: Parser String
+parseBuildModeOpt = do
+  strOption $ mconcat [long "mode", metavar "MODE", help "develop, release", value "develop"]
 
 shouldSkipLinkOpt :: Parser Bool
 shouldSkipLinkOpt =
