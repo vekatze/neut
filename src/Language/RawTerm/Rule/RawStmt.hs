@@ -33,7 +33,7 @@ type RawConsInfo a =
   (Hint, a, IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
 
 type RawStmtKind a =
-  SK.BaseStmtKind a (RawBinder RT.RawTerm) RT.RawTerm
+  SK.BaseStmtKind a (RawBinder RT.RawTerm) ()
 
 data RawStmt
   = RawStmtDefine

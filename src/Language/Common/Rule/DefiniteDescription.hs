@@ -11,7 +11,6 @@ module Language.Common.Rule.DefiniteDescription
     cls,
     toBuilder,
     llvmGlobalLocator,
-    isEntryPoint,
     unconsDD,
   )
 where
@@ -147,7 +146,3 @@ getLocatorPair m varText = do
 llvmGlobalLocator :: T.Text
 llvmGlobalLocator =
   "base.llvm"
-
-isEntryPoint :: DefiniteDescription -> Bool
-isEntryPoint dd =
-  localLocator dd `elem` ["main", "zen"]

@@ -156,6 +156,8 @@ extendStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       Normal opacity
+    Main opacity t ->
+      Main opacity (extend t)
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map extendBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList

@@ -197,6 +197,8 @@ weakenStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       Normal opacity
+    Main opacity t ->
+      Main opacity (weaken t)
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList

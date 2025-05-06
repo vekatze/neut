@@ -38,7 +38,6 @@ import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Main.Move.Scene.Elaborate.WeakTerm.Fill qualified as Fill
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local
-import Main.Move.Scene.Parse.Discern.Handle qualified as Discern
 import Main.Rule.Const (defaultInlineLimit)
 import Main.Rule.HoleSubst (HoleSubst)
 import Main.Rule.Module (Module (moduleInlineLimit))
@@ -64,7 +63,6 @@ data Handle = Handle
     rawImportSummaryHandle :: RawImportSummary.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
     weakTypeHandle :: WeakType.Handle,
-    discernHandle :: Discern.Handle,
     optDataHandle :: OptimizableData.Handle,
     currentSource :: Source,
     inlineLimit :: Int,
@@ -75,7 +73,7 @@ data Handle = Handle
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
 new :: Base.Handle -> Local.Handle -> Source -> IO Handle
-new baseHandle@(Base.Handle {..}) localHandle@(Local.Handle {..}) currentSource = do
+new baseHandle@(Base.Handle {..}) (Local.Handle {..}) currentSource = do
   localLogsHandle <- LocalLogs.new
   let substHandle = Subst.new gensymHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
@@ -84,7 +82,6 @@ new baseHandle@(Base.Handle {..}) localHandle@(Local.Handle {..}) currentSource 
   weakTypeHandle <- WeakType.new
   let varEnv = []
   let currentStep = 0
-  let discernHandle = Discern.new baseHandle localHandle
   return $ Handle {..}
 
 reduce :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm

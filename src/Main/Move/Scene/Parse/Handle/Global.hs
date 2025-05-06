@@ -76,6 +76,8 @@ registerStmtDefine h isConstLike m stmtKind name allArgNum expArgNames = do
   case stmtKind of
     SK.Normal _ ->
       registerTopLevelFunc h isConstLike m name allArgNum
+    SK.Main {} ->
+      registerTopLevelFunc h isConstLike m name allArgNum
     SK.Data dataName dataArgs consInfoList -> do
       registerData h isConstLike m dataName dataArgs consInfoList
       liftIO $ registerAsUnaryIfNecessary h dataName consInfoList

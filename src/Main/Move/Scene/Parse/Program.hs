@@ -131,7 +131,10 @@ parseDefine' h opacity = do
       O.Clear ->
         keyword "inline"
   (def, c) <- parseDef h baseName
-  return (RawStmtDefine c1 (SK.Normal opacity) def, c)
+  let defName = RT.getDefName def
+  if defName == BN.mainName || defName == BN.zenName
+    then return (RawStmtDefine c1 (SK.Main opacity ()) def, c)
+    else return (RawStmtDefine c1 (SK.Normal opacity) def, c)
 
 parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do

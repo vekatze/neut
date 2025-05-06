@@ -184,6 +184,8 @@ decStmt stmt =
       case stmtKind of
         SK.Normal O.Clear ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
+        SK.Main O.Clear _ ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do

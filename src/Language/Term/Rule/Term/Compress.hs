@@ -149,6 +149,8 @@ compressStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       Normal opacity
+    Main opacity t ->
+      Main opacity (compress t)
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map compressBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList

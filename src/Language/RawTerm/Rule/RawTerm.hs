@@ -13,6 +13,7 @@ module Language.RawTerm.Rule.RawTerm
     RawGeist (..),
     RawDef (..),
     VarArg,
+    getDefName,
     emptyArgs,
     extractArgs,
     lam,
@@ -162,6 +163,10 @@ type TopGeist =
 
 type TopDef =
   RawDef BN.BaseName
+
+getDefName :: RawDef a -> a
+getDefName def =
+  fst $ name $ geist def
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =

@@ -107,7 +107,7 @@ discernStmt h mo stmt = do
       (impArgs', nenv) <- discernBinder h impArgs endLoc
       (expArgs', nenv') <- discernBinder nenv expArgs endLoc
       codType' <- discern nenv' codType
-      stmtKind' <- discernStmtKind h stmtKind
+      stmtKind' <- discernStmtKind h stmtKind m
       body' <- discern nenv' body
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m functionName isConstLike m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
@@ -188,6 +188,8 @@ liftStmtKind h stmtKind = do
   case stmtKind of
     SK.Normal opacity ->
       return $ SK.Normal opacity
+    SK.Main opacity t ->
+      return $ SK.Main opacity t
     SK.Data dataName dataArgs consInfoList -> do
       nameLifter <- Locator.getNameLifter (H.locatorHandle h)
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
@@ -198,11 +200,14 @@ liftStmtKind h stmtKind = do
       nameLifter <- Locator.getNameLifter (H.locatorHandle h)
       return $ SK.DataIntro (nameLifter dataName) dataArgs consArgs discriminant
 
-discernStmtKind :: H.Handle -> RawStmtKind BN.BaseName -> EIO (SK.StmtKind WT.WeakTerm)
-discernStmtKind h stmtKind =
+discernStmtKind :: H.Handle -> RawStmtKind BN.BaseName -> Hint -> EIO (SK.StmtKind WT.WeakTerm)
+discernStmtKind h stmtKind m =
   case stmtKind of
     SK.Normal opacity ->
       return $ SK.Normal opacity
+    SK.Main opacity _ -> do
+      unitType <- getUnitType h m
+      return $ SK.Main opacity unitType
     SK.Data dataName dataArgs consInfoList -> do
       nameLifter <- liftIO $ Locator.getNameLifter (H.locatorHandle h)
       (dataArgs', h') <- discernBinder' h dataArgs
@@ -221,10 +226,19 @@ discernStmtKind h stmtKind =
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
       return $ SK.DataIntro (nameLifter dataName) dataArgs' consArgs' discriminant
 
+getUnitType :: H.Handle -> Hint -> EIO WT.WeakTerm
+getUnitType h m = do
+  locator <- liftEither $ DD.getLocatorPair m coreUnit
+  (unitDD, _) <- resolveName h m (Locator locator)
+  let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
+  return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
+
 toCandidateKind :: SK.StmtKind a -> CandidateKind
 toCandidateKind stmtKind =
   case stmtKind of
     SK.Normal {} ->
+      Function
+    SK.Main {} ->
       Function
     SK.Data {} ->
       Function

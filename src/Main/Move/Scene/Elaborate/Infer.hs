@@ -10,7 +10,6 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
@@ -42,7 +41,6 @@ import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.StmtKind
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.RawTerm.Rule.Key (Key)
-import Language.RawTerm.Rule.Name qualified as N
 import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.FromPrimNum qualified as Term
 import Language.Term.Rule.Term.Weaken
@@ -67,7 +65,6 @@ import Main.Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
 import Main.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
 import Main.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
 import Main.Move.Scene.Elaborate.Unify qualified as Unify
-import Main.Move.Scene.Parse.Discern.Name qualified as N
 import Main.Rule.Const
 import Main.Rule.HoleSubst qualified as HS
 import Main.Rule.OptimizableData qualified as OD
@@ -85,10 +82,12 @@ inferStmt h stmt =
       stmtKind' <- inferStmtKind h'' stmtKind
       (e', te) <- infer h'' e
       liftIO $ Constraint.insert (constraintHandle h'') codType' te
-      when (DD.isEntryPoint x) $ do
-        let _m = m {metaShouldSaveLocation = False}
-        unitType <- getUnitType h'' _m
-        liftIO $ Constraint.insert (constraintHandle h'') (m :< WT.Pi [] [] unitType) (m :< WT.Pi impArgs' expArgs' codType')
+      case getMainUnitType stmtKind of
+        Just unitType ->
+          liftIO $
+            Constraint.insert (constraintHandle h'') (m :< WT.Pi [] [] unitType) (m :< WT.Pi impArgs' expArgs' codType')
+        Nothing ->
+          return ()
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgs' expArgs' codType' e'
     WeakStmtNominal m geistList -> do
       geistList' <- mapM (inferGeist h) geistList
@@ -119,6 +118,9 @@ inferStmtKind h stmtKind =
   case stmtKind of
     Normal {} ->
       return stmtKind
+    Main opacity t -> do
+      t' <- inferType h t
+      return $ Main opacity t'
     Data dataName dataArgs consInfoList -> do
       (dataArgs', varEnv) <- inferBinder' h dataArgs
       consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
@@ -135,12 +137,13 @@ getIntType h m = do
   let baseSize = Platform.getDataSizeValue h
   return $ WT.intTypeBySize m baseSize
 
-getUnitType :: Handle -> Hint -> EIO WT.WeakTerm
-getUnitType h m = do
-  locator <- liftEither $ DD.getLocatorPair m coreUnit
-  (unitDD, _) <- N.resolveName (discernHandle h) m (N.Locator locator)
-  let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
-  return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
+getMainUnitType :: StmtKind WT.WeakTerm -> Maybe WT.WeakTerm
+getMainUnitType stmtKind = do
+  case stmtKind of
+    Main _ unitType ->
+      return unitType
+    _ ->
+      Nothing
 
 extendHandle :: BinderF WT.WeakTerm -> Handle -> Handle
 extendHandle (mx, x, t) h = do

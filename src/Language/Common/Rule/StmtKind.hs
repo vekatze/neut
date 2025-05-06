@@ -15,13 +15,14 @@ import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Opacity qualified as O
 import Logger.Rule.Hint
 
-data BaseStmtKind name b t
+data BaseStmtKind name binder t
   = Normal O.Opacity
+  | Main O.Opacity t
   | Data
       name -- the name of the variant type
-      [b] -- variant args
-      [(SavedHint, name, IsConstLike, [b], D.Discriminant)] -- constructors
-  | DataIntro name [b] [b] D.Discriminant
+      [binder] -- variant args
+      [(SavedHint, name, IsConstLike, [binder], D.Discriminant)] -- constructors
+  | DataIntro name [binder] [binder] D.Discriminant
   deriving (Generic)
 
 instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKind name x t)
@@ -34,6 +35,8 @@ toOpacity stmtKind =
   case stmtKind of
     Normal opacity ->
       opacity
+    Main opacity _ ->
+      opacity
     _ ->
       O.Clear
 
@@ -41,6 +44,8 @@ toLowOpacity :: BaseStmtKind name x t -> O.Opacity
 toLowOpacity stmtKind =
   case stmtKind of
     Normal opacity ->
+      opacity
+    Main opacity _ ->
       opacity
     Data {} ->
       O.Opaque -- so as not to reduce recursive terms

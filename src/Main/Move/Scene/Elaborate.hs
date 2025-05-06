@@ -74,7 +74,7 @@ import Main.Move.Scene.Elaborate.Unify qualified as Unify
 import Main.Rule.Cache qualified as Cache
 import Main.Rule.Const (holeLiteral)
 import Main.Rule.HoleSubst qualified as HS
-import Main.Rule.Target
+import Main.Rule.Target hiding (Main)
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =
@@ -192,6 +192,9 @@ elaborateStmtKind h stmtKind =
   case stmtKind of
     Normal opacity ->
       return $ Normal opacity
+    Main opacity t -> do
+      t' <- elaborate' h t
+      return $ Main opacity t'
     Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       let (ms, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList
