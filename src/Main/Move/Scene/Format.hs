@@ -13,8 +13,8 @@ import Data.Text qualified as T
 import Ens.Move.Parse qualified as EnsParse
 import Ens.Rule.Ens.ToDoc qualified as Ens
 import Error.Rule.EIO (EIO)
-import Language.RawTerm.Rule.RawStmt.Decode (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
-import Language.RawTerm.Rule.RawStmt.Decode qualified as RawProgram
+import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
+import Language.RawTerm.Rule.RawStmt.ToDoc qualified as RawProgram
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Init.Local qualified as Local

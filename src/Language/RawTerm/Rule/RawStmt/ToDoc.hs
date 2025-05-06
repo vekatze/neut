@@ -1,4 +1,4 @@
-module Language.RawTerm.Rule.RawStmt.Decode (pp, ImportInfo (..)) where
+module Language.RawTerm.Rule.RawStmt.ToDoc (pp, ImportInfo (..)) where
 
 import BasicPrettyPrinter.Rule.Doc qualified as D
 import BasicPrettyPrinter.Rule.Piece qualified as PI
@@ -14,7 +14,7 @@ import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Language.RawTerm.Rule.RawTerm.Decode qualified as RT
+import Language.RawTerm.Rule.RawTerm.ToDoc qualified as RT
 import Logger.Rule.Hint
 import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Main.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)

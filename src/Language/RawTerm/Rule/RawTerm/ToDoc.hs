@@ -1,6 +1,6 @@
 {- HLINT ignore "Use list comprehension" -}
 
-module Language.RawTerm.Rule.RawTerm.Decode
+module Language.RawTerm.Rule.RawTerm.ToDoc
   ( pp,
     toDoc,
     nameToDoc,
