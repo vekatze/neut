@@ -13,6 +13,7 @@ import Data.Text qualified as T
 import Ens.Move.Parse qualified as EnsParse
 import Ens.Rule.Ens.ToDoc qualified as Ens
 import Error.Rule.EIO (EIO)
+import Language.Common.Move.Raise (raiseError')
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Language.RawTerm.Rule.RawStmt.ToDoc qualified as RawProgram
 import Main.Move.Context.Env qualified as Env
@@ -65,7 +66,7 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       contentSeq <- Load.load loadHandle Peripheral dependenceSeq
       case unsnoc contentSeq of
         Nothing ->
-          return "" -- fixme: unreachable
+          raiseError' "Nothing to format"
         Just (headItems, (rootSource, __)) -> do
           forM_ headItems $ \(source, cacheOrContent) -> do
             localHandle <- Local.new (baseHandle h) source
