@@ -10,8 +10,8 @@ import Command.LSP.Move.Internal.Server qualified as L
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Scene.Init.Base qualified as Base
 
 data Handle = Handle
   { fetchHandle :: Fetch.Handle,

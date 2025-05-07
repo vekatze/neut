@@ -17,6 +17,34 @@ import Data.Text qualified as T
 import Data.Time
 import Error.Move.Run (forP, runEIO)
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Context.Cache (needsCompilation)
+import Kernel.Move.Context.Cache qualified as Cache
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.External qualified as External
+import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Context.LLVM qualified as LLVM
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Scene.Clarify qualified as Clarify
+import Kernel.Move.Scene.Elaborate qualified as Elaborate
+import Kernel.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
+import Kernel.Move.Scene.Emit qualified as Emit
+import Kernel.Move.Scene.EnsureMain qualified as EnsureMain
+import Kernel.Move.Scene.Execute qualified as Execute
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Local qualified as Local
+import Kernel.Move.Scene.Install qualified as Install
+import Kernel.Move.Scene.Link qualified as Link
+import Kernel.Move.Scene.Load qualified as Load
+import Kernel.Move.Scene.Lower qualified as Lower
+import Kernel.Move.Scene.Parse qualified as Parse
+import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Rule.Cache
+import Kernel.Rule.ClangOption qualified as CL
+import Kernel.Rule.Module qualified as M
+import Kernel.Rule.OutputKind
+import Kernel.Rule.Source
+import Kernel.Rule.Target
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.ModuleID qualified as MID
@@ -24,34 +52,6 @@ import Language.LowComp.Rule.LowComp qualified as LC
 import Language.Term.Rule.Stmt (getStmtName)
 import Logger.Move.Debug qualified as Logger
 import Logger.Move.Log qualified as Logger
-import Main.Move.Context.Cache (needsCompilation)
-import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.External qualified as External
-import Main.Move.Context.GlobalRemark qualified as GlobalRemark
-import Main.Move.Context.LLVM qualified as LLVM
-import Main.Move.Context.Path qualified as Path
-import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Scene.Clarify qualified as Clarify
-import Main.Move.Scene.Elaborate qualified as Elaborate
-import Main.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
-import Main.Move.Scene.Emit qualified as Emit
-import Main.Move.Scene.EnsureMain qualified as EnsureMain
-import Main.Move.Scene.Execute qualified as Execute
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Init.Local qualified as Local
-import Main.Move.Scene.Install qualified as Install
-import Main.Move.Scene.Link qualified as Link
-import Main.Move.Scene.Load qualified as Load
-import Main.Move.Scene.Lower qualified as Lower
-import Main.Move.Scene.Parse qualified as Parse
-import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Rule.Cache
-import Main.Rule.ClangOption qualified as CL
-import Main.Rule.Module qualified as M
-import Main.Rule.OutputKind
-import Main.Rule.Source
-import Main.Rule.Target
 import Path
 import Path.IO
 import ProgressIndicator.Move.ShowProgress qualified as Indicator

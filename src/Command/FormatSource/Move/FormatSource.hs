@@ -9,9 +9,9 @@ import Command.Common.Move.Format qualified as Format
 import CommandParser.Rule.Config.FormatSource
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
-import Main.Move.Context.Parse (ensureExistence')
-import Main.Move.Context.Parse qualified as Parse
-import Main.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Context.Parse (ensureExistence')
+import Kernel.Move.Context.Parse qualified as Parse
+import Kernel.Move.Scene.Init.Base qualified as Base
 import Path.IO
 import Path.Move.Read (readText)
 import Path.Move.Write (writeText)

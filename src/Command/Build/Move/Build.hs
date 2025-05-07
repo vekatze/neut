@@ -15,14 +15,14 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error (Error)
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Rule.BuildMode qualified as BM
+import Kernel.Rule.Module
+import Kernel.Rule.OutputKind qualified as OK
+import Kernel.Rule.Target
 import Language.Common.Move.Raise (raiseError')
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.BuildMode qualified as BM
-import Main.Rule.Module
-import Main.Rule.OutputKind qualified as OK
-import Main.Rule.Target
 import Prelude hiding (log)
 
 newtype Handle = Handle

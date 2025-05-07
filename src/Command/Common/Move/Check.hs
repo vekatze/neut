@@ -14,24 +14,24 @@ import Data.Text qualified as T
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Scene.Elaborate qualified as Elaborate
+import Kernel.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Local qualified as Local
+import Kernel.Move.Scene.Load qualified as Load
+import Kernel.Move.Scene.Module.GetModule qualified as GetModule
+import Kernel.Move.Scene.Parse qualified as Parse
+import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Rule.Cache
+import Kernel.Rule.Module (extractModule)
+import Kernel.Rule.Module qualified as M
+import Kernel.Rule.Source (Source (sourceFilePath))
+import Kernel.Rule.Target
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Log
 import Logger.Rule.Log qualified as L
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.GlobalRemark qualified as GlobalRemark
-import Main.Move.Scene.Elaborate qualified as Elaborate
-import Main.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Init.Local qualified as Local
-import Main.Move.Scene.Load qualified as Load
-import Main.Move.Scene.Module.GetModule qualified as GetModule
-import Main.Move.Scene.Parse qualified as Parse
-import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Rule.Cache
-import Main.Rule.Module (extractModule)
-import Main.Rule.Module qualified as M
-import Main.Rule.Source (Source (sourceFilePath))
-import Main.Rule.Target
 import Path
 
 newtype Handle = Handle

@@ -14,20 +14,20 @@ import Data.Text qualified as T
 import Ens.Move.Parse qualified as EnsParse
 import Ens.Rule.Ens.ToDoc qualified as Ens
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Local qualified as Local
+import Kernel.Move.Scene.Load qualified as Load
+import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
+import Kernel.Move.Scene.Parse qualified as Parse
+import Kernel.Move.Scene.Parse.Program qualified as Parse
+import Kernel.Move.Scene.Parse.RawTerm qualified as ParseRT
+import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Rule.Module (MainModule (MainModule))
+import Kernel.Rule.Target
 import Language.Common.Move.Raise (raiseError')
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Language.RawTerm.Rule.RawStmt.ToDoc qualified as RawProgram
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Init.Local qualified as Local
-import Main.Move.Scene.Load qualified as Load
-import Main.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
-import Main.Move.Scene.Parse qualified as Parse
-import Main.Move.Scene.Parse.Program qualified as Parse
-import Main.Move.Scene.Parse.RawTerm qualified as ParseRT
-import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Rule.Module (MainModule (MainModule))
-import Main.Rule.Target
 import Path
 import Prelude hiding (log)
 

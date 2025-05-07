@@ -12,12 +12,12 @@ import Command.Archive.Move.Internal.PackageVersion.Reflect qualified as PV
 import CommandParser.Rule.Config.Archive
 import Data.HashMap.Strict qualified as Map
 import Error.Rule.EIO (EIO)
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.External qualified as External
-import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.Module
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.External qualified as External
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Module.Save qualified as ModuleSave
+import Kernel.Rule.Module
 import Path
 
 data Handle = Handle

@@ -1,9 +1,9 @@
 module Language.Common.Rule.LowType.EmitLowType (emitLowType) where
 
 import Data.ByteString.Builder
+import Kernel.Rule.Builder
 import Language.Common.Rule.LowType qualified as LT
 import Language.Common.Rule.PrimType.EmitPrimType
-import Main.Rule.Builder
 
 emitLowType :: LT.LowType -> Builder
 emitLowType lowType =

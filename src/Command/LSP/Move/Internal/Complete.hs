@@ -20,6 +20,20 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Move.Run (forP, liftMaybe, runEIO)
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Context.Antecedent qualified as Antecedent
+import Kernel.Move.Context.Cache qualified as Cache
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Module.GetModule qualified as GetModule
+import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Rule.Cache qualified as Cache
+import Kernel.Rule.LocalVarTree qualified as LVT
+import Kernel.Rule.Module
+import Kernel.Rule.RawImportSummary
+import Kernel.Rule.Source
+import Kernel.Rule.Target
+import Kernel.Rule.TopCandidate
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -29,20 +43,6 @@ import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.LSP.Protocol.Types
 import Logger.Rule.Hint
-import Main.Move.Context.Antecedent qualified as Antecedent
-import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Module.GetModule qualified as GetModule
-import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Rule.Cache qualified as Cache
-import Main.Rule.LocalVarTree qualified as LVT
-import Main.Rule.Module
-import Main.Rule.RawImportSummary
-import Main.Rule.Source
-import Main.Rule.Target
-import Main.Rule.TopCandidate
 
 data Handle = Handle
   { unravelHandle :: Unravel.Handle,

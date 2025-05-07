@@ -7,13 +7,13 @@ where
 
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
-import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Cache qualified as Cache
-import Main.Rule.LocationTree qualified as LT
-import Main.Rule.Source
-import Main.Rule.Target (Target (Peripheral))
+import Kernel.Move.Context.Cache qualified as Cache
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Rule.Cache qualified as Cache
+import Kernel.Rule.LocationTree qualified as LT
+import Kernel.Rule.Source
+import Kernel.Rule.Target (Target (Peripheral))
 
 newtype Handle = Handle
   { pathHandle :: Path.Handle

@@ -10,10 +10,10 @@ import Command.Common.Move.Fetch qualified as Fetch
 import CommandParser.Rule.Config.Check
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Scene.Init.Base qualified as Base
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Log qualified as L
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Scene.Init.Base qualified as Base
 
 newtype Handle = Handle
   { baseHandle :: Base.Handle

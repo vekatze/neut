@@ -10,10 +10,10 @@ import Control.Monad.Trans
 import Data.Text qualified as T
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Rule.Const
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Const
 import Path
 import Path.IO
 

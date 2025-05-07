@@ -10,9 +10,9 @@ import Command.Common.Move.Fetch qualified as Fetch
 import Command.LSP.Move.Internal.Util (maxDiagNum, report, run)
 import Command.LSP.Rule.Lsp
 import Control.Monad
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Scene.Init.Base qualified as Base
 import Language.LSP.Server
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Scene.Init.Base qualified as Base
 
 newtype Handle = Handle
   { baseHandle :: Base.Handle

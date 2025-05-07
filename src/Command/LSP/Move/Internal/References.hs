@@ -11,12 +11,12 @@ import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Monad.Trans
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Rule.Cache qualified as Cache
+import Kernel.Rule.Source (Source (sourceFilePath, sourceModule))
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Rule.Cache qualified as Cache
-import Main.Rule.Source (Source (sourceFilePath, sourceModule))
 import Path
 import UnliftIO.Async (pooledForConcurrently)
 

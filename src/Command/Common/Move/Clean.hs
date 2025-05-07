@@ -7,12 +7,12 @@ where
 
 import Control.Monad
 import Error.Rule.EIO (EIO)
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Path qualified as Path
-import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Unravel qualified as Unravel
-import Main.Rule.Module (extractModule)
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Rule.Module (extractModule)
 import Path.IO
 import Prelude hiding (log)
 

@@ -23,12 +23,12 @@ import Control.Monad.IO.Class
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Text qualified as T
+import Kernel.Move.Scene.Init.Base qualified as Base
 import Language.LSP.Logging
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Main.Move.Scene.Init.Base qualified as Base
 import Prettyprinter
 import System.IO (stdin, stdout)
 

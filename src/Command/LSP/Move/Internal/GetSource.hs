@@ -9,10 +9,10 @@ import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Lens hiding (Iso, List)
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Rule.Source (Source)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Source (Source)
 
 newtype Handle = Handle
   { sourceReflectHandle :: SourceReflect.Handle

@@ -13,18 +13,18 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Context.Cache (invalidate)
+import Kernel.Move.Context.Type qualified as Type
+import Kernel.Move.Scene.Elaborate qualified as Elaborate
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Rule.LocationTree qualified as LT
+import Kernel.Rule.Source (Source (sourceFilePath, sourceModule))
+import Kernel.Rule.Target (Target (Peripheral))
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
-import Main.Move.Context.Cache (invalidate)
-import Main.Move.Context.Type qualified as Type
-import Main.Move.Scene.Elaborate qualified as Elaborate
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.LocationTree qualified as LT
-import Main.Rule.Source (Source (sourceFilePath, sourceModule))
-import Main.Rule.Target (Target (Peripheral))
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>

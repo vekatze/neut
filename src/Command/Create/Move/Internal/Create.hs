@@ -12,18 +12,18 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Scene.Module.Save qualified as ModuleSave
+import Kernel.Rule.ClangOption qualified as CL
+import Kernel.Rule.Const
+import Kernel.Rule.Module
+import Kernel.Rule.Target
+import Kernel.Rule.ZenConfig
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.ClangOption qualified as CL
-import Main.Rule.Const
-import Main.Rule.Module
-import Main.Rule.Target
-import Main.Rule.ZenConfig
 import Path
 import Path.IO
 import Path.Move.Write (writeText)

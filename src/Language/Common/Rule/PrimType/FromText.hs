@@ -1,10 +1,10 @@
 module Language.Common.Rule.PrimType.FromText (fromDefiniteDescription, fromText) where
 
 import Data.Text qualified as T
+import Kernel.Rule.DataSize qualified as DS
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
-import Main.Rule.DataSize qualified as DS
 import Text.Read
 
 fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PT.PrimType

@@ -9,15 +9,15 @@ where
 import Data.Maybe (catMaybes)
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
-import Main.Move.Context.Cache qualified as Cache
-import Main.Move.Context.Module (getAllSourcePathInModule)
-import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Source.ShiftToLatest qualified as STL
-import Main.Rule.Cache
-import Main.Rule.Module
-import Main.Rule.Source
-import Main.Rule.Target (Target (Peripheral))
+import Kernel.Move.Context.Cache qualified as Cache
+import Kernel.Move.Context.Module (getAllSourcePathInModule)
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
+import Kernel.Rule.Cache
+import Kernel.Rule.Module
+import Kernel.Rule.Source
+import Kernel.Rule.Target (Target (Peripheral))
 import Path
 
 data Handle = Handle

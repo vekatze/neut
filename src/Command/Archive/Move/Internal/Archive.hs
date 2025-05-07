@@ -9,13 +9,13 @@ import Control.Monad
 import Data.Text qualified as T
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.External qualified as External
+import Kernel.Move.Scene.Module.Save qualified as ModuleSave
+import Kernel.Rule.Const
+import Kernel.Rule.Module
+import Kernel.Rule.PackageVersion qualified as PV
 import Language.Common.Move.Raise (raiseError')
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.External qualified as External
-import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.Const
-import Main.Rule.Module
-import Main.Rule.PackageVersion qualified as PV
 import Path
 import Path.IO
 import Prelude hiding (log)

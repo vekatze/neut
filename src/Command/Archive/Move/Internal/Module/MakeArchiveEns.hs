@@ -11,12 +11,12 @@ import Data.Text qualified as T
 import Ens.Move.Parse qualified as Ens
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
+import Kernel.Rule.Const
+import Kernel.Rule.Module
+import Kernel.Rule.PackageVersion qualified as PV
 import Language.Common.Rule.ModuleDigest (ModuleDigest (..))
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Logger.Rule.Hint
-import Main.Rule.Const
-import Main.Rule.Module
-import Main.Rule.PackageVersion qualified as PV
 import Path
 import Path.IO
 import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))

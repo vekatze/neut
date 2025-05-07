@@ -7,6 +7,7 @@ where
 
 import Data.ByteString.Builder
 import Data.Text.Encoding qualified as TE
+import Kernel.Rule.Builder
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Ident
@@ -14,7 +15,6 @@ import Language.Common.Rule.LowType qualified as LT
 import Language.Common.Rule.LowType.EmitLowType (emitLowType)
 import Language.Common.Rule.PrimNumSize
 import Language.LowComp.Rule.LowComp qualified as LC
-import Main.Rule.Builder
 import Numeric.Half
 
 emitValue :: LC.Value -> Builder

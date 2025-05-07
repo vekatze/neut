@@ -13,11 +13,11 @@ import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
+import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Module.Save qualified as ModuleSave
+import Kernel.Rule.Module (moduleLocation)
 import Logger.Rule.Handle qualified as Logger
-import Main.Move.Context.Platform qualified as Platform
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.Module (moduleLocation)
 
 data Handle = Handle
   { createHandle :: Create.Handle,

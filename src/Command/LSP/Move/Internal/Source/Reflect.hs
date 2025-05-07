@@ -6,11 +6,11 @@ module Command.LSP.Move.Internal.Source.Reflect
 where
 
 import Error.Rule.EIO (EIO)
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Module.Reflect qualified as Module
-import Main.Rule.Module
-import Main.Rule.Source
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Module.Reflect qualified as Module
+import Kernel.Rule.Module
+import Kernel.Rule.Source
 import Path
 
 newtype Handle = Handle

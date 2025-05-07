@@ -21,6 +21,8 @@ import Data.Text qualified as T
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
+import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Scene.Init.Base qualified as Base
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -29,8 +31,6 @@ import Logger.Rule.Hint
 import Logger.Rule.Log
 import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel
-import Main.Move.Context.GlobalRemark qualified as GlobalRemark
-import Main.Move.Scene.Init.Base qualified as Base
 import Path
 import Path.Move.Read (readText)
 

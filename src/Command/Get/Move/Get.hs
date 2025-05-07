@@ -13,10 +13,10 @@ import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.Path qualified as Path
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.ModuleURL (ModuleURL (ModuleURL))
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Rule.ModuleURL (ModuleURL (ModuleURL))
 import Prelude hiding (log)
 
 data Handle = Handle

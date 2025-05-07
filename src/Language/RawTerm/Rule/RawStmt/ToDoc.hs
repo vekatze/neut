@@ -5,6 +5,8 @@ import BasicPrettyPrinter.Rule.Piece qualified as PI
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
+import Kernel.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
+import Kernel.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as FCT
@@ -16,8 +18,6 @@ import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.RawTerm.ToDoc qualified as RT
 import Logger.Rule.Hint
-import Main.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
-import Main.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
 import SyntaxTree.Rule.Series qualified as SE

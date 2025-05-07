@@ -22,6 +22,15 @@ import Ens.Rule.Ens qualified as SE
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.External qualified as External
+import Kernel.Move.Context.Module qualified as Module
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
+import Kernel.Move.Scene.Module.Save qualified as ModuleSave
+import Kernel.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
+import Kernel.Rule.Module qualified as M
+import Kernel.Rule.ModuleURL
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
@@ -31,15 +40,6 @@ import Language.Common.Rule.ModuleID qualified as MID
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Logger.Rule.Hint
-import Main.Move.Context.Env qualified as Env
-import Main.Move.Context.External qualified as External
-import Main.Move.Context.Module qualified as Module
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Module.Reflect qualified as ModuleReflect
-import Main.Move.Scene.Module.Save qualified as ModuleSave
-import Main.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
-import Main.Rule.Module qualified as M
-import Main.Rule.ModuleURL
 import Path
 import Path.IO
 import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))

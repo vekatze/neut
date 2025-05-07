@@ -17,10 +17,10 @@ import CommandParser.Rule.Command qualified as C
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
+import Kernel.Move.Context.Platform (ensureExecutables)
+import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Module.Save qualified as ModuleSave
 import Logger.Move.CreateHandle qualified as Logger
-import Main.Move.Context.Platform (ensureExecutables)
-import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.Module.Save qualified as ModuleSave
 import System.IO
 
 main :: IO ()

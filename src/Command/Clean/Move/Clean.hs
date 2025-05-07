@@ -7,7 +7,7 @@ where
 
 import Command.Common.Move.Clean qualified as Clean
 import Error.Rule.EIO (EIO)
-import Main.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Base qualified as Base
 import Prelude hiding (log)
 
 newtype Handle = Handle

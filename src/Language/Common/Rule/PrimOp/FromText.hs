@@ -1,6 +1,7 @@
 module Language.Common.Rule.PrimOp.FromText (fromDefiniteDescription) where
 
 import Data.Text qualified as T
+import Kernel.Rule.DataSize qualified as DS
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimOp
@@ -10,7 +11,6 @@ import Language.Common.Rule.PrimOp.ConvOp qualified as Conv
 import Language.Common.Rule.PrimOp.UnaryOp
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.PrimType.FromText qualified as PT
-import Main.Rule.DataSize qualified as DS
 
 fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PrimOp
 fromDefiniteDescription dataSize dd = do
