@@ -1,4 +1,4 @@
-module Kernel.Move.Context.LLVM
+module Command.Common.Move.Build.Generate
   ( Handle,
     new,
     generateObject,

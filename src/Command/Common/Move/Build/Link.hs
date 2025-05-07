@@ -19,7 +19,6 @@ import Kernel.Common.Rule.Target
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
-import Kernel.Move.Context.LLVM qualified as LLVM
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Logger.Move.Debug qualified as Logger
@@ -33,13 +32,11 @@ data Handle = Handle
   { loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle,
     pathHandle :: Path.Handle,
-    colorHandle :: Color.Handle,
-    llvmHandle :: LLVM.Handle
+    colorHandle :: Color.Handle
   }
 
 new :: Global.Handle -> Handle
-new globalHandle@(Global.Handle {..}) = do
-  let llvmHandle = LLVM.new globalHandle
+new (Global.Handle {..}) = do
   Handle {..}
 
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()

@@ -8,6 +8,7 @@ where
 
 import Command.Common.Move.Build.EnsureMain qualified as EnsureMain
 import Command.Common.Move.Build.Execute qualified as Execute
+import Command.Common.Move.Build.Generate qualified as Gen
 import Command.Common.Move.Build.Install qualified as Install
 import Command.Common.Move.Build.Link qualified as Link
 import Control.Monad
@@ -39,7 +40,6 @@ import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
-import Kernel.Move.Context.LLVM qualified as LLVM
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.ManageCache (needsCompilation)
@@ -185,15 +185,15 @@ emit ::
   EIO ()
 emit h progressBar currentTime target outputKindList src code = do
   let emitHandle = Emit.new (globalHandle h)
-  let llvmHandle = LLVM.new (globalHandle h)
+  let llvmHandle = Gen.new (globalHandle h)
   let clangOptions = getCompileOption target
   llvmIR' <- liftIO $ Emit.emit emitHandle code
   forM_ outputKindList $ \outputKind -> do
     case outputKind of
       OK.Object -> do
-        LLVM.generateObject llvmHandle target clangOptions currentTime src llvmIR'
+        Gen.generateObject llvmHandle target clangOptions currentTime src llvmIR'
       OK.LLVM -> do
-        LLVM.generateAsm llvmHandle target currentTime src llvmIR'
+        Gen.generateAsm llvmHandle target currentTime src llvmIR'
   liftIO $ Indicator.increment progressBar
 
 getEntryPointCompilationCount :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO Int
