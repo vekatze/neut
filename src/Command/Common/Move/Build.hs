@@ -39,7 +39,7 @@ import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.LLVM qualified as LLVM
-import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
+import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.ManageCache (needsCompilation)
@@ -72,7 +72,7 @@ data Config = Config
 
 data Handle = Handle
   { globalHandle :: Global.Handle,
-    processRunnerHandle :: ProcessRunner.Handle,
+    runProcessHandle :: RunProcess.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -85,7 +85,7 @@ new ::
   Global.Handle ->
   Handle
 new cfg globalHandle = do
-  let processRunnerHandle = ProcessRunner.new (Global.loggerHandle globalHandle)
+  let runProcessHandle = RunProcess.new (Global.loggerHandle globalHandle)
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -268,11 +268,11 @@ compileForeign' h t currentTime m = do
       let cmdList' = map (naiveReplace sub) cmdList
       forM_ cmdList' $ \cmd -> do
         let spec =
-              ProcessRunner.Spec
+              RunProcess.Spec
                 { cmdspec = ShellCommand (T.unpack cmd),
                   cwd = Just (toFilePath moduleRootDir)
                 }
-        result <- liftIO $ ProcessRunner.run00 (processRunnerHandle h) spec
+        result <- liftIO $ RunProcess.run00 (runProcessHandle h) spec
         case result of
           Right _ ->
             return ()
@@ -358,11 +358,11 @@ expandOptions h textList =
 expandText :: Handle -> T.Text -> EIO T.Text
 expandText h t = do
   let spec =
-        ProcessRunner.Spec
+        RunProcess.Spec
           { cmdspec = RawCommand "sh" ["-c", unwords [T.unpack "printf", "%s", "\"" ++ T.unpack t ++ "\""]],
             cwd = Nothing
           }
-  output <- liftIO $ ProcessRunner.run01 (processRunnerHandle h) spec
+  output <- liftIO $ RunProcess.run01 (runProcessHandle h) spec
   case output of
     Right value ->
       return $ decodeUtf8 value

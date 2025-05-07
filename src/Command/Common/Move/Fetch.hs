@@ -27,7 +27,7 @@ import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Module qualified as Module
-import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
+import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Language.Common.Move.Raise (raiseError')
@@ -47,7 +47,7 @@ import System.Process (CmdSpec (RawCommand))
 
 data Handle = Handle
   { saveModuleHandle :: SaveModule.Handle,
-    processRunnerHandle :: ProcessRunner.Handle,
+    runProcessHandle :: RunProcess.Handle,
     loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle
   }
@@ -57,7 +57,7 @@ new ::
   Handle
 new (Global.Handle {..}) = do
   let saveModuleHandle = SaveModule.new loggerHandle
-  let processRunnerHandle = ProcessRunner.new loggerHandle
+  let runProcessHandle = RunProcess.new loggerHandle
   Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()
@@ -203,11 +203,11 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
       raiseError' $ "Could not obtain the module `" <> BN.reify alias <> "`."
     ModuleURL mirror : rest -> do
       let spec =
-            ProcessRunner.Spec
+            RunProcess.Spec
               { cmdspec = RawCommand "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror],
                 cwd = Nothing
               }
-      errOrUnit <- liftIO $ ProcessRunner.run00 (processRunnerHandle h) spec
+      errOrUnit <- liftIO $ RunProcess.run00 (runProcessHandle h) spec
       case errOrUnit of
         Right () ->
           return ()
@@ -221,7 +221,7 @@ extractToDependencyDir h archivePath _ digest = do
   let mainModule = Env.getMainModule (envHandle h)
   moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   ensureDir moduleDirPath
-  ProcessRunner.run (processRunnerHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
+  RunProcess.run (runProcessHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
 addDependencyToModuleFile h alias dep = do

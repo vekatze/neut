@@ -26,7 +26,7 @@ import Kernel.Common.Rule.DataSize qualified as DS
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as O
 import Kernel.Common.Rule.Platform qualified as P
-import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
+import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Digest (hashAndEncode)
 import Language.Common.Rule.Error (newError')
@@ -126,9 +126,9 @@ getClang = do
 calculateClangDigest :: Logger.Handle -> EIO T.Text
 calculateClangDigest h = do
   clang <- liftIO getClang
-  let spec = ProcessRunner.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
-  let h' = ProcessRunner.new h
-  output <- liftIO $ ProcessRunner.run01 h' spec
+  let spec = RunProcess.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
+  let h' = RunProcess.new h
+  output <- liftIO $ RunProcess.run01 h' spec
   case output of
     Right value -> do
       liftIO $ Logger.report h $ "Clang info:\n" <> decodeUtf8 value

@@ -16,7 +16,7 @@ import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Path qualified as Path
-import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
+import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 
@@ -30,9 +30,9 @@ new :: Global.Handle -> Handle
 new globalHandle = do
   let envHandle = Global.envHandle globalHandle
   let packageVersionHandle = PV.new (Global.loggerHandle globalHandle)
-  let processRunnerHandle = ProcessRunner.new (Global.loggerHandle globalHandle)
+  let runProcessHandle = RunProcess.new (Global.loggerHandle globalHandle)
   let saveModuleHandle = SaveModule.new (Global.loggerHandle globalHandle)
-  let archiveHandle = Archive.new processRunnerHandle saveModuleHandle envHandle
+  let archiveHandle = Archive.new runProcessHandle saveModuleHandle envHandle
   Handle {..}
 
 archive :: Handle -> Config -> EIO ()
