@@ -1,4 +1,4 @@
-module Kernel.Move.Context.Platform
+module Kernel.Move.Context.Global.Platform
   ( Handle,
     new,
     getArch,

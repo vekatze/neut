@@ -17,11 +17,11 @@ import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Import (ImportItem (..))
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Locator qualified as Locator
-import Kernel.Move.Context.Module qualified as Module
-import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
-import Kernel.Move.Context.Tag qualified as Tag
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Module qualified as Module
+import Kernel.Move.Context.Local.Locator qualified as Locator
+import Kernel.Move.Context.Local.RawImportSummary qualified as RawImportSummary
+import Kernel.Move.Context.Local.Tag qualified as Tag
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset

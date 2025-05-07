@@ -1,4 +1,4 @@
-module Kernel.Move.Context.SymLoc
+module Kernel.Move.Context.Local.SymLoc
   ( Handle,
     new,
     insert,

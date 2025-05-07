@@ -27,10 +27,10 @@ import Kernel.Common.Rule.RawImportSummary
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.TopCandidate
-import Kernel.Move.Context.Antecedent qualified as Antecedent
 import Kernel.Move.Context.Cache qualified as Cache
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Context.Global.Antecedent qualified as Antecedent
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule
 import Kernel.Unravel.Move.Unravel qualified as Unravel

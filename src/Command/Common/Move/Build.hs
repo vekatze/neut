@@ -35,12 +35,12 @@ import Kernel.Load.Move.Load qualified as Load
 import Kernel.Lower.Move.Lower qualified as Lower
 import Kernel.Move.Context.Cache (needsCompilation)
 import Kernel.Move.Context.Cache qualified as Cache
-import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
-import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Context.Global.Path qualified as Path
+import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.LLVM qualified as LLVM
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Parse qualified as Parse

@@ -1,4 +1,4 @@
-module Kernel.Move.Context.Type
+module Kernel.Move.Context.Global.Type
   ( Handle,
     new,
     insert',

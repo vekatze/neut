@@ -5,7 +5,7 @@ import Data.List qualified as List
 import Data.Maybe
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module
-import Kernel.Move.Context.Path (getBaseName)
+import Kernel.Move.Context.Global.Path (getBaseName)
 import Path.IO
 
 getExistingVersions :: MainModule -> EIO [PV.PackageVersion]

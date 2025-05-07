@@ -1,4 +1,4 @@
-module Kernel.Move.Context.KeyArg
+module Kernel.Move.Context.Global.KeyArg
   ( Handle,
     new,
     insert,
@@ -13,8 +13,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Locator qualified as Locator
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Local.Locator qualified as Locator
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Const (holeVarPrefix)

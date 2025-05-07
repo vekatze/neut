@@ -21,12 +21,12 @@ import Kernel.Common.Rule.GlobalName
 import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Common.Rule.TopNameMap
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.KeyArg qualified as KeyArg
-import Kernel.Move.Context.Locator qualified as Locator
-import Kernel.Move.Context.OptimizableData qualified as OptimizableData
-import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Context.Tag qualified as Tag
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
+import Kernel.Move.Context.Global.OptimizableData qualified as OptimizableData
+import Kernel.Move.Context.Global.Platform qualified as Platform
+import Kernel.Move.Context.Local.Locator qualified as Locator
+import Kernel.Move.Context.Local.Tag qualified as Tag
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Language.Common.Move.Raise (raiseCritical, raiseError)

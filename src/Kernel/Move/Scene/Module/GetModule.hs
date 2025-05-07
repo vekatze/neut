@@ -13,7 +13,7 @@ import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Rule.Module
-import Kernel.Move.Context.Module qualified as Module
+import Kernel.Move.Context.Global.Module qualified as Module
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Language.Common.Move.Raise (raiseError)

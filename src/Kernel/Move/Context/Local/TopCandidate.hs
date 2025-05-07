@@ -1,4 +1,4 @@
-module Kernel.Move.Context.TopCandidate
+module Kernel.Move.Context.Local.TopCandidate
   ( Handle,
     new,
     insert,

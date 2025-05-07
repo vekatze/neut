@@ -18,7 +18,7 @@ import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig
-import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Context.Global.Platform qualified as Platform
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL

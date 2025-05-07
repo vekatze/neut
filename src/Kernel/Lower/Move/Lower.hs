@@ -32,8 +32,8 @@ import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.DataSize qualified as DS
 import Kernel.Common.Rule.Target
 import Kernel.Lower.Rule.Cancel
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN

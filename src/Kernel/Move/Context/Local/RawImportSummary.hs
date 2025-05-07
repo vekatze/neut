@@ -1,4 +1,4 @@
-module Kernel.Move.Context.RawImportSummary
+module Kernel.Move.Context.Local.RawImportSummary
   ( Handle,
     new,
     set,

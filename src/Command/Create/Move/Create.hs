@@ -15,7 +15,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module (moduleLocation)
-import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Rule.Handle qualified as Logger
 

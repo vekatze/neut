@@ -11,7 +11,7 @@ import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Global.Env qualified as Env
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD

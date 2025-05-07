@@ -25,13 +25,13 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.Antecedent qualified as Antecedent
-import Kernel.Move.Context.Artifact qualified as Artifact
-import Kernel.Move.Context.Env (getMainModule)
-import Kernel.Move.Context.Module qualified as Module
+import Kernel.Move.Context.Global.Antecedent qualified as Antecedent
+import Kernel.Move.Context.Global.Artifact qualified as Artifact
+import Kernel.Move.Context.Global.Env (getMainModule)
+import Kernel.Move.Context.Global.Module qualified as Module
+import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Parse (ensureExistence')
 import Kernel.Move.Context.Parse qualified as Parse
-import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect

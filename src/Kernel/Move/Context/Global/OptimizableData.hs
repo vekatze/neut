@@ -1,4 +1,4 @@
-module Kernel.Move.Context.OptimizableData
+module Kernel.Move.Context.Global.OptimizableData
   ( Handle,
     new,
     insert,

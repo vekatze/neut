@@ -1,4 +1,4 @@
-module Kernel.Move.Context.Antecedent
+module Kernel.Move.Context.Global.Antecedent
   ( RevMap,
     Handle,
     new,

@@ -21,13 +21,13 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as OS
 import Kernel.Common.Rule.Platform qualified as Platform
 import Kernel.Common.Rule.TopCandidate
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.KeyArg qualified as KeyArg
-import Kernel.Move.Context.Locator qualified as Locator
-import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Context.SymLoc qualified as SymLoc
-import Kernel.Move.Context.Tag qualified as Tag
-import Kernel.Move.Context.TopCandidate qualified as TopCandidate
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
+import Kernel.Move.Context.Global.Platform qualified as Platform
+import Kernel.Move.Context.Local.Locator qualified as Locator
+import Kernel.Move.Context.Local.SymLoc qualified as SymLoc
+import Kernel.Move.Context.Local.Tag qualified as Tag
+import Kernel.Move.Context.Local.TopCandidate qualified as TopCandidate
 import Kernel.Parse.Move.Internal.Discern.Data
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Name

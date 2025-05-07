@@ -22,8 +22,8 @@ import Kernel.Common.Rule.Target
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Load.Move.Load qualified as Load
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule

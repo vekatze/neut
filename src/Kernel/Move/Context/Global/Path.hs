@@ -1,4 +1,4 @@
-module Kernel.Move.Context.Path
+module Kernel.Move.Context.Global.Path
   ( Handle (..),
     new,
     getDependencyDirPath,
@@ -37,8 +37,8 @@ import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Src
 import Kernel.Common.Rule.Target qualified as Target
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Platform qualified as Platform
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Digest
 import Language.Common.Rule.ModuleID qualified as MID

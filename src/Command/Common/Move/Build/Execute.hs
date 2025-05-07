@@ -8,9 +8,9 @@ where
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module (MainModule (MainModule))
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
-import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 

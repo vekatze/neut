@@ -26,9 +26,9 @@ import Error.Rule.Error
 import Kernel.Common.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.ModuleURL
-import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
-import Kernel.Move.Context.Module qualified as Module
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Module qualified as Module
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Language.Common.Move.Raise (raiseError')

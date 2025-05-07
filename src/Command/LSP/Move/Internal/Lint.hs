@@ -10,7 +10,7 @@ import Command.Common.Move.Fetch qualified as Fetch
 import Command.LSP.Move.Internal.Util (maxDiagNum, report, run)
 import Command.LSP.Rule.Lsp
 import Control.Monad
-import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Server
 

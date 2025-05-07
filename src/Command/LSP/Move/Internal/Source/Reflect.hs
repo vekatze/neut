@@ -8,7 +8,7 @@ where
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
-import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Module.Reflect qualified as Module
 import Path

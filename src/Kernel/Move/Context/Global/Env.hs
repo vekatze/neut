@@ -1,4 +1,4 @@
-module Kernel.Move.Context.Env
+module Kernel.Move.Context.Global.Env
   ( Handle,
     new,
     getBuildMode,

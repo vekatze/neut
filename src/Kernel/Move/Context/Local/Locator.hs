@@ -1,4 +1,4 @@
-module Kernel.Move.Context.Locator
+module Kernel.Move.Context.Local.Locator
   ( Handle,
     new,
     attachCurrentLocator,
@@ -31,8 +31,8 @@ import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target qualified as Target
 import Kernel.Common.Rule.TopNameMap (TopNameMap)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Tag qualified as Tag
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Local.Tag qualified as Tag
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)

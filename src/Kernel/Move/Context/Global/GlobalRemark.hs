@@ -1,4 +1,4 @@
-module Kernel.Move.Context.GlobalRemark
+module Kernel.Move.Context.Global.GlobalRemark
   ( Handle,
     new,
     insert,

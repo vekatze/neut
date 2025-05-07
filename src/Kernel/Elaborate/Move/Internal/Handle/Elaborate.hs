@@ -23,16 +23,16 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.Rule.HoleSubst (HoleSubst)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
-import Kernel.Move.Context.KeyArg qualified as KeyArg
-import Kernel.Move.Context.OptimizableData qualified as OptimizableData
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
-import Kernel.Move.Context.SymLoc qualified as SymLoc
-import Kernel.Move.Context.TopCandidate qualified as TopCandidate
-import Kernel.Move.Context.Type qualified as Type
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
+import Kernel.Move.Context.Global.OptimizableData qualified as OptimizableData
+import Kernel.Move.Context.Global.Path qualified as Path
+import Kernel.Move.Context.Global.Platform qualified as Platform
+import Kernel.Move.Context.Global.Type qualified as Type
+import Kernel.Move.Context.Local.RawImportSummary qualified as RawImportSummary
+import Kernel.Move.Context.Local.SymLoc qualified as SymLoc
+import Kernel.Move.Context.Local.TopCandidate qualified as TopCandidate
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Language.Common.Rule.Binder

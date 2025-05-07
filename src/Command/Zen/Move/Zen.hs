@@ -18,8 +18,8 @@ import Kernel.Common.Rule.Module (Module (moduleZenConfig), extractModule)
 import Kernel.Common.Rule.OutputKind
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig qualified as Z
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Path.IO (resolveFile')
 import Prelude hiding (log)

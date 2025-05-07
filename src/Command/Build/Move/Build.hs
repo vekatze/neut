@@ -19,8 +19,8 @@ import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.Raise (raiseError')
 import Prelude hiding (log)

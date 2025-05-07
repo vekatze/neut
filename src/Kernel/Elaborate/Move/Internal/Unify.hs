@@ -23,7 +23,7 @@ import Kernel.Elaborate.Rule.Constraint (SuspendedConstraint)
 import Kernel.Elaborate.Rule.Constraint qualified as C
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Kernel.Elaborate.Rule.Stuck qualified as Stuck
-import Kernel.Move.Context.Type qualified as Type
+import Kernel.Move.Context.Global.Type qualified as Type
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD

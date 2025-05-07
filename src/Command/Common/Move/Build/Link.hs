@@ -16,9 +16,9 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.LLVM qualified as LLVM
-import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger

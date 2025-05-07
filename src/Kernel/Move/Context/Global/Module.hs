@@ -1,4 +1,4 @@
-module Kernel.Move.Context.Module
+module Kernel.Move.Context.Global.Module
   ( Handle,
     new,
     getModuleFilePath,
@@ -23,7 +23,7 @@ import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Context.Global.Path qualified as Path
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD

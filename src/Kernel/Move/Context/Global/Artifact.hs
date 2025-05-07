@@ -1,4 +1,4 @@
-module Kernel.Move.Context.Artifact
+module Kernel.Move.Context.Global.Artifact
   ( Handle,
     new,
     insert,

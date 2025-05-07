@@ -17,9 +17,9 @@ import Kernel.Common.Rule.AliasInfo
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap
-import Kernel.Move.Context.Antecedent qualified as Antecedent
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Locator qualified as Locator
+import Kernel.Move.Context.Global.Antecedent qualified as Antecedent
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Local.Locator qualified as Locator
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL

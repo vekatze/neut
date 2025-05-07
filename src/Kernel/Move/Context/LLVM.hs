@@ -17,10 +17,10 @@ import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.Global.Path qualified as Path
+import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.Debug qualified as Logger

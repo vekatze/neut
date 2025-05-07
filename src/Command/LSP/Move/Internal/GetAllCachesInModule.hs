@@ -14,8 +14,8 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target (Target (Peripheral))
 import Kernel.Move.Context.Cache qualified as Cache
-import Kernel.Move.Context.Module (getAllSourcePathInModule)
-import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Context.Global.Module (getAllSourcePathInModule)
+import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
