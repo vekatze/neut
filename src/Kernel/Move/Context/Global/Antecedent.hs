@@ -12,15 +12,13 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Set qualified as S
-import Data.Text qualified as T
 import Kernel.Common.Rule.Module qualified as M
 import Language.Common.Rule.ModuleID qualified as MID
 import Prelude hiding (lookup, read)
 
 data Handle = Handle
   { antecedentMapRef :: IORef (Map.HashMap MID.ModuleID M.Module),
-    reverseAntecedentMapRef :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID)),
-    antecedentDigestCacheRef :: IORef (Maybe T.Text)
+    reverseAntecedentMapRef :: IORef (Map.HashMap MID.ModuleID (S.Set MID.ModuleID))
   }
 
 type RevMap =
@@ -30,7 +28,6 @@ new :: IO Handle
 new = do
   antecedentMapRef <- newIORef Map.empty
   reverseAntecedentMapRef <- newIORef Map.empty
-  antecedentDigestCacheRef <- newIORef Nothing
   return $ Handle {..}
 
 get :: Handle -> IO (Map.HashMap MID.ModuleID M.Module)
