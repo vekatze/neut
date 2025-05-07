@@ -29,9 +29,9 @@ import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
-import Kernel.Move.Scene.Parse.Import qualified as Import
-import Kernel.Move.Scene.Parse.Program (parseImport)
 import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
+import Kernel.Parse.Move.Internal.Import qualified as Import
+import Kernel.Parse.Move.Internal.Program (parseImport)
 import Kernel.Rule.Artifact qualified as A
 import Kernel.Rule.Import
 import Kernel.Rule.Module

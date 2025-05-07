@@ -19,10 +19,10 @@ import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Load qualified as Load
 import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
-import Kernel.Move.Scene.Parse qualified as Parse
-import Kernel.Move.Scene.Parse.Program qualified as Parse
-import Kernel.Move.Scene.Parse.RawTerm qualified as ParseRT
 import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Parse.Move.Internal.Program qualified as Parse
+import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
+import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Rule.Module (MainModule (MainModule))
 import Kernel.Rule.Target
 import Language.Common.Move.Raise (raiseError')

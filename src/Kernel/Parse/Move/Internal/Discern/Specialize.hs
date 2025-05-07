@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Discern.Specialize
+module Kernel.Parse.Move.Internal.Discern.Specialize
   ( specialize,
     Specializer (..),
   )
@@ -9,8 +9,8 @@ import Control.Monad.IO.Class
 import Data.Vector qualified as V
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.OptimizableData qualified as OptimizableData
-import Kernel.Move.Scene.Parse.Discern.Handle qualified as H
-import Kernel.Move.Scene.Parse.Discern.Noema
+import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
+import Kernel.Parse.Move.Internal.Discern.Noema
 import Kernel.Rule.OptimizableData qualified as OD
 import Kernel.Rule.Pattern
 import Language.Common.Move.Raise (raiseCritical')

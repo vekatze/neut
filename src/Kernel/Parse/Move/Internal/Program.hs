@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Program
+module Kernel.Parse.Move.Internal.Program
   ( parseProgram,
     parseImport,
   )
@@ -12,7 +12,7 @@ import Control.Monad.Trans
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Kernel.Move.Scene.Parse.RawTerm
+import Kernel.Parse.Move.Internal.RawTerm
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN

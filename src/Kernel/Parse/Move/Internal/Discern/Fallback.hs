@@ -1,11 +1,11 @@
-module Kernel.Move.Scene.Parse.Discern.Fallback (getFallbackMatrix) where
+module Kernel.Parse.Move.Internal.Discern.Fallback (getFallbackMatrix) where
 
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Vector qualified as V
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Scene.Parse.Discern.Handle qualified as H
-import Kernel.Move.Scene.Parse.Discern.Noema
+import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
+import Kernel.Parse.Move.Internal.Discern.Noema
 import Kernel.Rule.Pattern
 import Language.Common.Move.Raise (raiseCritical')
 import Language.Common.Rule.Binder

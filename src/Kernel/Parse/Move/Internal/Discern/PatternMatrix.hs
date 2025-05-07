@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Discern.PatternMatrix
+module Kernel.Parse.Move.Internal.Discern.PatternMatrix
   ( compilePatternMatrix,
     ensurePatternMatrixSanity,
   )
@@ -14,10 +14,10 @@ import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.Tag qualified as Tag
-import Kernel.Move.Scene.Parse.Discern.Fallback qualified as PATF
-import Kernel.Move.Scene.Parse.Discern.Handle qualified as H
-import Kernel.Move.Scene.Parse.Discern.Noema
-import Kernel.Move.Scene.Parse.Discern.Specialize qualified as PATS
+import Kernel.Parse.Move.Internal.Discern.Fallback qualified as PATF
+import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
+import Kernel.Parse.Move.Internal.Discern.Noema
+import Kernel.Parse.Move.Internal.Discern.Specialize qualified as PATS
 import Kernel.Rule.Pattern qualified as PAT
 import Kernel.Rule.Vector qualified as V
 import Language.Common.Move.CreateSymbol qualified as Gensym

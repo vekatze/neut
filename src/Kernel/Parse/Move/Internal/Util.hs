@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Util
+module Kernel.Parse.Move.Internal.Util
   ( readIntBinaryMaybe,
     readIntOctalMaybe,
     readIntDecimalMaybe,

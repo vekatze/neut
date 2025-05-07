@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Discern.Handle
+module Kernel.Parse.Move.Internal.Discern.Handle
   ( Handle (..),
     new,
     extend,
@@ -19,10 +19,10 @@ import Kernel.Move.Context.Tag qualified as Tag
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Kernel.Move.Scene.Parse.Handle.NameMap qualified as NameMap
-import Kernel.Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
-import Kernel.Move.Scene.Parse.Handle.Unused qualified as Unused
+import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
+import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
+import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl
+import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Kernel.Rule.Layer
 import Kernel.Rule.NominalEnv
 import Kernel.Rule.VarDefKind

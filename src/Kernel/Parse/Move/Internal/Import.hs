@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Import
+module Kernel.Parse.Move.Internal.Import
   ( Handle,
     new,
     interpretImport,
@@ -21,10 +21,10 @@ import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule
-import Kernel.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Kernel.Move.Scene.Parse.Handle.GlobalNameMap qualified as GlobalNameMap
-import Kernel.Move.Scene.Parse.Handle.Unused qualified as Unused
 import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
+import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
+import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
+import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Kernel.Rule.AliasInfo qualified as AI
 import Kernel.Rule.Const
 import Kernel.Rule.Import (ImportItem (..))

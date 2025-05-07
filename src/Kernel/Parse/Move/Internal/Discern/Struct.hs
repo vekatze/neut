@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Discern.Struct
+module Kernel.Parse.Move.Internal.Discern.Struct
   ( ensureFieldLinearity,
   )
 where

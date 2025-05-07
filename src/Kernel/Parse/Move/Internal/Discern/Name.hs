@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Discern.Name
+module Kernel.Parse.Move.Internal.Discern.Name
   ( resolveName,
     resolveConstructor,
     resolveLocator,
@@ -16,10 +16,10 @@ import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.Tag qualified as Tag
-import Kernel.Move.Scene.Parse.Discern.Handle qualified as H
-import Kernel.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Kernel.Move.Scene.Parse.Handle.NameMap qualified as NameMap
-import Kernel.Move.Scene.Parse.Handle.Unused qualified as Unused
+import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
+import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
+import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
+import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Kernel.Rule.Const qualified as C
 import Kernel.Rule.GlobalName qualified as GN
 import Language.Common.Move.CreateSymbol qualified as Gensym

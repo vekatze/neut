@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Handle.Alias
+module Kernel.Parse.Move.Internal.Handle.Alias
   ( Handle,
     new,
     resolveAlias,

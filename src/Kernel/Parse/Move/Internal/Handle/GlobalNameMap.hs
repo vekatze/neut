@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Handle.GlobalNameMap
+module Kernel.Parse.Move.Internal.Handle.GlobalNameMap
   ( Handle,
     new,
     insert,

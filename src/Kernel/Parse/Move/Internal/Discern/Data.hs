@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Discern.Data (defineData) where
+module Kernel.Parse.Move.Internal.Discern.Data (defineData) where
 
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe

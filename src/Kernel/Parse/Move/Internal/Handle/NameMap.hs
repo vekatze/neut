@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Handle.NameMap
+module Kernel.Parse.Move.Internal.Handle.NameMap
   ( Handle,
     new,
     registerStmtDefine,
@@ -24,7 +24,7 @@ import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.Tag qualified as Tag
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Move.Scene.Parse.Handle.Unused qualified as Unused
+import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Kernel.Rule.GlobalName
 import Kernel.Rule.GlobalName qualified as GN
 import Kernel.Rule.OptimizableData qualified as OD

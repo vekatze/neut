@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Handle.PreDecl
+module Kernel.Parse.Move.Internal.Handle.PreDecl
   ( Handle,
     new,
     insert,

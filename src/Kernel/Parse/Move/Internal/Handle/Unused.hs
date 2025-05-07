@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Handle.Unused
+module Kernel.Parse.Move.Internal.Handle.Unused
   ( Handle,
     new,
     insertGlobalLocator,

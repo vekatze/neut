@@ -37,8 +37,8 @@ import Kernel.Move.Scene.Install qualified as Install
 import Kernel.Move.Scene.Link qualified as Link
 import Kernel.Move.Scene.Load qualified as Load
 import Kernel.Move.Scene.Lower qualified as Lower
-import Kernel.Move.Scene.Parse qualified as Parse
 import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Rule.Cache
 import Kernel.Rule.ClangOption qualified as CL
 import Kernel.Rule.Module qualified as M

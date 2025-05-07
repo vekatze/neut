@@ -1,11 +1,11 @@
-module Kernel.Move.Scene.Parse.Discern.Noema
+module Kernel.Parse.Move.Internal.Discern.Noema
   ( castToNoemaIfNecessary,
     castFromNoemaIfNecessary,
   )
 where
 
 import Control.Comonad.Cofree hiding (section)
-import Kernel.Move.Scene.Parse.Discern.Handle qualified as H
+import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT

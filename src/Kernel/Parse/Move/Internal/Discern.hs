@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.Discern (discernStmtList) where
+module Kernel.Parse.Move.Internal.Discern (discernStmtList) where
 
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
@@ -20,16 +20,16 @@ import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.SymLoc qualified as SymLoc
 import Kernel.Move.Context.Tag qualified as Tag
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
-import Kernel.Move.Scene.Parse.Discern.Data
-import Kernel.Move.Scene.Parse.Discern.Handle qualified as H
-import Kernel.Move.Scene.Parse.Discern.Name
-import Kernel.Move.Scene.Parse.Discern.Noema
-import Kernel.Move.Scene.Parse.Discern.PatternMatrix
-import Kernel.Move.Scene.Parse.Discern.Struct
-import Kernel.Move.Scene.Parse.Handle.NameMap qualified as NameMap
-import Kernel.Move.Scene.Parse.Handle.PreDecl qualified as PreDecl
-import Kernel.Move.Scene.Parse.Handle.Unused qualified as Unused
-import Kernel.Move.Scene.Parse.Util
+import Kernel.Parse.Move.Internal.Discern.Data
+import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
+import Kernel.Parse.Move.Internal.Discern.Name
+import Kernel.Parse.Move.Internal.Discern.Noema
+import Kernel.Parse.Move.Internal.Discern.PatternMatrix
+import Kernel.Parse.Move.Internal.Discern.Struct
+import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
+import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl
+import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
+import Kernel.Parse.Move.Internal.Util
 import Kernel.Rule.Arch qualified as Arch
 import Kernel.Rule.BuildMode qualified as BM
 import Kernel.Rule.Const

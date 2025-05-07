@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse
+module Kernel.Parse.Move.Parse
   ( Handle,
     new,
     parse,
@@ -19,15 +19,15 @@ import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Tag qualified as Tag
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.Parse.Discern qualified as Discern
-import Kernel.Move.Scene.Parse.Discern.Handle qualified as Discern
-import Kernel.Move.Scene.Parse.Handle.Alias qualified as Alias
-import Kernel.Move.Scene.Parse.Handle.GlobalNameMap qualified as GlobalNameMap
-import Kernel.Move.Scene.Parse.Handle.NameMap qualified as NameMap
-import Kernel.Move.Scene.Parse.Handle.Unused qualified as Unused
-import Kernel.Move.Scene.Parse.Import qualified as Import
-import Kernel.Move.Scene.Parse.Program qualified as Parse
-import Kernel.Move.Scene.Parse.RawTerm qualified as ParseRT
+import Kernel.Parse.Move.Internal.Discern qualified as Discern
+import Kernel.Parse.Move.Internal.Discern.Handle qualified as Discern
+import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
+import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
+import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
+import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
+import Kernel.Parse.Move.Internal.Import qualified as Import
+import Kernel.Parse.Move.Internal.Program qualified as Parse
+import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
 import Kernel.Rule.Cache qualified as Cache
 import Kernel.Rule.Import
 import Kernel.Rule.Source qualified as Source

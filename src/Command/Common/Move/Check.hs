@@ -22,8 +22,8 @@ import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Load qualified as Load
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule
-import Kernel.Move.Scene.Parse qualified as Parse
 import Kernel.Move.Scene.Unravel qualified as Unravel
+import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Rule.Cache
 import Kernel.Rule.Module (extractModule)
 import Kernel.Rule.Module qualified as M

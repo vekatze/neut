@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Parse.RawTerm
+module Kernel.Parse.Move.Internal.RawTerm
   ( Handle (..),
     new,
     rawExpr,
