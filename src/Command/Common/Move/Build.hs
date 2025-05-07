@@ -35,7 +35,7 @@ import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Install qualified as Install
 import Kernel.Move.Scene.Link qualified as Link
-import Kernel.Move.Scene.Load qualified as Load
+import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Scene.Lower qualified as Lower
 import Kernel.Move.Scene.Unravel qualified as Unravel
 import Kernel.Parse.Move.Parse qualified as Parse

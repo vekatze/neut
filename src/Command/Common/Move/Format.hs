@@ -17,7 +17,7 @@ import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.Load qualified as Load
+import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Kernel.Move.Scene.Unravel qualified as Unravel
 import Kernel.Parse.Move.Internal.Program qualified as Parse

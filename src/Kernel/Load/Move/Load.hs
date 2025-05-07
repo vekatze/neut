@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Load
+module Kernel.Load.Move.Load
   ( Handle,
     load,
     new,
