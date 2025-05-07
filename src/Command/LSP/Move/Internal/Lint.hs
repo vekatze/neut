@@ -8,11 +8,11 @@ where
 import Command.Common.Move.Check qualified as Check
 import Command.Common.Move.Fetch qualified as Fetch
 import Command.LSP.Move.Internal.Util (maxDiagNum, report, run)
+import Command.LSP.Rule.Lsp
 import Control.Monad
 import Language.LSP.Server
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Lsp
 
 newtype Handle = Handle
   { baseHandle :: Base.Handle

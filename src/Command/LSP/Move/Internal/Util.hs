@@ -7,6 +7,7 @@ module Command.LSP.Move.Internal.Util
 where
 
 import BasicParser.Rule.Parser (nonSymbolCharSet)
+import Command.LSP.Rule.Lsp
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
@@ -30,7 +31,6 @@ import Logger.Rule.Log qualified as L
 import Logger.Rule.LogLevel
 import Main.Move.Context.GlobalRemark qualified as GlobalRemark
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.Lsp
 import Path
 import Path.Move.Read (readText)
 

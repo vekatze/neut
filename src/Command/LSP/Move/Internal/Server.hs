@@ -16,6 +16,8 @@ import Command.LSP.Move.Internal.Highlight qualified as Highlight
 import Command.LSP.Move.Internal.Lint qualified as Lint
 import Command.LSP.Move.Internal.References qualified as References
 import Command.LSP.Move.Internal.Util (getUriParam, run)
+import Command.LSP.Rule.CodeAction qualified as CA
+import Command.LSP.Rule.Lsp
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Data.Map.Strict qualified as M
@@ -27,8 +29,6 @@ import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Rule.CodeAction qualified as CA
-import Main.Rule.Lsp
 import Prettyprinter
 import System.IO (stdin, stdout)
 

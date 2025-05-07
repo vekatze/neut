@@ -1,4 +1,4 @@
-module Main.Rule.CodeAction
+module Command.LSP.Rule.CodeAction
   ( minimizeImportsCommandTitle,
     minimizeImportsCommandName,
     minimizeImportsCommand,

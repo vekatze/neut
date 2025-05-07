@@ -1,8 +1,8 @@
-module Main.Rule.Lsp (Lsp, lspOptions) where
+module Command.LSP.Rule.Lsp (Lsp, lspOptions) where
 
+import Command.LSP.Rule.CodeAction qualified as CA
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Main.Rule.CodeAction qualified as CA
 
 type Lsp config =
   LspT config IO
