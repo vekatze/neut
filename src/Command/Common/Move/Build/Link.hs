@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Link
+module Command.Common.Move.Build.Link
   ( Handle,
     new,
     link,

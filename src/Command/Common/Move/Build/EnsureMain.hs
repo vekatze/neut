@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.EnsureMain
+module Command.Common.Move.Build.EnsureMain
   ( Handle,
     new,
     ensureMain,

@@ -6,6 +6,10 @@ module Command.Common.Move.Build
   )
 where
 
+import Command.Common.Move.Build.EnsureMain qualified as EnsureMain
+import Command.Common.Move.Build.Execute qualified as Execute
+import Command.Common.Move.Build.Install qualified as Install
+import Command.Common.Move.Build.Link qualified as Link
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
@@ -31,12 +35,8 @@ import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.LLVM qualified as LLVM
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.EnsureMain qualified as EnsureMain
-import Kernel.Move.Scene.Execute qualified as Execute
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.Install qualified as Install
-import Kernel.Move.Scene.Link qualified as Link
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Rule.Cache
 import Kernel.Rule.ClangOption qualified as CL

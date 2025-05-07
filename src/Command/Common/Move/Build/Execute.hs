@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Execute
+module Command.Common.Move.Build.Execute
   ( Handle,
     new,
     execute,

@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Install
+module Command.Common.Move.Build.Install
   ( Handle,
     new,
     install,
