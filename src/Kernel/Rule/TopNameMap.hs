@@ -1,6 +1,5 @@
 module Kernel.Rule.TopNameMap
   ( TopNameMap,
-    PreTopNameMap,
   )
 where
 
@@ -11,6 +10,3 @@ import Logger.Rule.Hint
 
 type TopNameMap =
   Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)
-
-type PreTopNameMap =
-  [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
