@@ -12,7 +12,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Common.Rule.Module
 import Kernel.Move.Context.Local.Locator qualified as Locator
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
@@ -24,39 +24,38 @@ import Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 data Handle = Handle
-  { envHandle :: Env.Handle,
+  { mainModule :: MainModule,
     keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key])))
   }
 
-new :: Env.Handle -> IO Handle
-new envHandle = do
+new :: MainModule -> IO Handle
+new mainModule = do
   keyArgMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> AN.ArgNum -> [Key] -> EIO ()
 insert h m funcName isConstLike argNum keys = do
   kmap <- liftIO $ readIORef (keyArgMapRef h)
-  let mainModule = Env.getMainModule (envHandle h)
   case Map.lookup funcName kmap of
     Nothing ->
       return ()
     Just (isConstLike', (argNum', keys'))
       | isConstLike,
         not isConstLike' -> do
-          let funcName' = Locator.getReadableDD mainModule funcName
+          let funcName' = Locator.getReadableDD (mainModule h) funcName
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a function, but defined as a constant-like term."
       | not isConstLike,
         isConstLike' -> do
-          let funcName' = Locator.getReadableDD mainModule funcName
+          let funcName' = Locator.getReadableDD (mainModule h) funcName
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a constant-like term, but defined as a function."
       | argNum /= argNum' -> do
-          let funcName' = Locator.getReadableDD mainModule funcName
+          let funcName' = Locator.getReadableDD (mainModule h) funcName
           raiseError m $
             "The arity of `"
               <> funcName'
@@ -66,7 +65,7 @@ insert h m funcName isConstLike argNum keys = do
               <> T.pack (show $ AN.reify argNum)
               <> "."
       | not $ eqKeys keys keys' -> do
-          let funcName' = Locator.getReadableDD mainModule funcName
+          let funcName' = Locator.getReadableDD (mainModule h) funcName
           raiseError m $
             "The explicit key sequence of `"
               <> funcName'
@@ -129,8 +128,7 @@ lookup h m dataName = do
     Just (_, value) ->
       return value
     Nothing -> do
-      let mainModule = Env.getMainModule (envHandle h)
-      let dataName' = Locator.getReadableDD mainModule dataName
+      let dataName' = Locator.getReadableDD (mainModule h) dataName
       raiseError m $ "No such function is defined: " <> dataName'
 
 reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> EIO [a]

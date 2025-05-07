@@ -55,7 +55,8 @@ new cfg moduleFilePathOrNone = do
   gensymHandle <- Gensym.createHandle
   platformHandle <- Platform.new loggerHandle
   envHandle <- Env.new loggerHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
-  keyArgHandle <- KeyArg.new envHandle
+  let mainModule = Env.getMainModule envHandle
+  keyArgHandle <- KeyArg.new mainModule
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
   pathHandle <- Path.new envHandle platformHandle loggerHandle
@@ -71,7 +72,8 @@ new cfg moduleFilePathOrNone = do
 
 refresh :: Handle -> IO Handle
 refresh h = do
-  keyArgHandle <- KeyArg.new (envHandle h)
+  let mainModule = Env.getMainModule (envHandle h)
+  keyArgHandle <- KeyArg.new mainModule
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
   pathHandle <- Path.new (envHandle h) (platformHandle h) (loggerHandle h)
