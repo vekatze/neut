@@ -9,6 +9,7 @@ import Command.Archive.Move.Internal.Archive qualified as Archive
 import Command.Archive.Move.Internal.Module.MakeArchiveEns
 import Command.Archive.Move.Internal.PackageVersion.ChooseNewVersion qualified as PV
 import Command.Archive.Move.Internal.PackageVersion.Reflect qualified as PV
+import Command.Common.Move.SaveModule qualified as SaveModule
 import CommandParser.Rule.Config.Archive
 import Data.HashMap.Strict qualified as Map
 import Error.Rule.EIO (EIO)
@@ -16,7 +17,6 @@ import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Move.Scene.Module.Save qualified as ModuleSave
 import Kernel.Rule.Module
 import Path
 
@@ -31,8 +31,8 @@ new baseHandle = do
   let envHandle = Base.envHandle baseHandle
   let packageVersionHandle = PV.new (Base.loggerHandle baseHandle)
   let externalHandle = External.new (Base.loggerHandle baseHandle)
-  let moduleSaveHandle = ModuleSave.new (Base.loggerHandle baseHandle)
-  let archiveHandle = Archive.new externalHandle moduleSaveHandle envHandle
+  let saveModuleHandle = SaveModule.new (Base.loggerHandle baseHandle)
+  let archiveHandle = Archive.new externalHandle saveModuleHandle envHandle
   Handle {..}
 
 archive :: Handle -> Config -> EIO ()

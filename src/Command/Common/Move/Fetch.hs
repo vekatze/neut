@@ -7,6 +7,7 @@ module Command.Common.Move.Fetch
   )
 where
 
+import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
@@ -27,7 +28,6 @@ import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Module qualified as Module
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
-import Kernel.Move.Scene.Module.Save qualified as ModuleSave
 import Kernel.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Rule.Module qualified as M
 import Kernel.Rule.ModuleURL
@@ -46,7 +46,7 @@ import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
 import SyntaxTree.Rule.Series qualified as SE
 
 data Handle = Handle
-  { moduleSaveHandle :: ModuleSave.Handle,
+  { saveModuleHandle :: SaveModule.Handle,
     externalHandle :: External.Handle,
     loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle
@@ -56,7 +56,7 @@ new ::
   Base.Handle ->
   Handle
 new (Base.Handle {..}) = do
-  let moduleSaveHandle = ModuleSave.new loggerHandle
+  let saveModuleHandle = SaveModule.new loggerHandle
   let externalHandle = External.new loggerHandle
   Handle {..}
 
@@ -225,7 +225,7 @@ addDependencyToModuleFile h alias dep = do
   (c1, (baseEns@(m :< _), c2)) <- EnsParse.fromFilePath (moduleLocation mm)
   let depEns = makeDependencyEns m alias dep
   mergedEns <- liftEither $ E.merge baseEns depEns
-  ModuleSave.save (moduleSaveHandle h) (M.moduleLocation mm) (c1, (mergedEns, c2))
+  SaveModule.save (saveModuleHandle h) (M.moduleLocation mm) (c1, (mergedEns, c2))
 
 makeDependencyEns :: Hint -> ModuleAlias -> M.Dependency -> E.Ens
 makeDependencyEns m alias dep = do
@@ -257,7 +257,7 @@ updateDependencyInModuleFile h mainModuleFileLoc alias dep = do
   (c1, (baseEns@(m :< _), c2)) <- EnsParse.fromFilePath mainModuleFileLoc
   let depEns = makeDependencyEns' m dep
   mergedEns <- liftEither $ E.conservativeUpdate [keyDependency, BN.reify (extract alias)] depEns baseEns
-  ModuleSave.save (moduleSaveHandle h) mainModuleFileLoc (c1, (mergedEns, c2))
+  SaveModule.save (saveModuleHandle h) mainModuleFileLoc (c1, (mergedEns, c2))
 
 makeDependencyEns' :: Hint -> M.Dependency -> E.Ens
 makeDependencyEns' m dep = do

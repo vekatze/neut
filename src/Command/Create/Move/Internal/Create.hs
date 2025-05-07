@@ -6,6 +6,7 @@ module Command.Create.Move.Internal.Create
   )
 where
 
+import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
@@ -13,7 +14,6 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Module.Save qualified as ModuleSave
 import Kernel.Rule.ClangOption qualified as CL
 import Kernel.Rule.Const
 import Kernel.Rule.Module
@@ -29,13 +29,13 @@ import Path.IO
 import Path.Move.Write (writeText)
 
 data Handle = Handle
-  { moduleSaveHandle :: ModuleSave.Handle,
+  { saveModuleHandle :: SaveModule.Handle,
     platformHandle :: Platform.Handle,
     loggerHandle :: Logger.Handle
   }
 
-new :: ModuleSave.Handle -> Logger.Handle -> Platform.Handle -> IO Handle
-new moduleSaveHandle loggerHandle platformHandle = do
+new :: SaveModule.Handle -> Logger.Handle -> Platform.Handle -> IO Handle
+new saveModuleHandle loggerHandle platformHandle = do
   return $ Handle {..}
 
 createNewProject :: Handle -> T.Text -> Module -> EIO ()
@@ -85,7 +85,7 @@ constructDefaultModule moduleName mTargetName = do
 createModuleFile :: Handle -> Module -> EIO ()
 createModuleFile h newModule = do
   ensureDir $ parent $ moduleLocation newModule
-  ModuleSave.save (moduleSaveHandle h) (moduleLocation newModule) ([], (toDefaultEns newModule, []))
+  SaveModule.save (saveModuleHandle h) (moduleLocation newModule) ([], (toDefaultEns newModule, []))
   buildDir <- Platform.getBaseBuildDir (platformHandle h) newModule
   ensureDir buildDir
 

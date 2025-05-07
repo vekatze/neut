@@ -5,6 +5,7 @@ import Command.Archive.Move.Archive qualified as Archive
 import Command.Build.Move.Build qualified as Build
 import Command.Check.Move.Check qualified as Check
 import Command.Clean.Move.Clean qualified as Clean
+import Command.Common.Move.SaveModule qualified as SaveModule
 import Command.Create.Move.Create qualified as Create
 import Command.FormatEns.Move.FormatEns qualified as FormatEns
 import Command.FormatSource.Move.FormatSource qualified as FormatSource
@@ -19,7 +20,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
 import Kernel.Move.Context.Platform (ensureExecutables)
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Move.Scene.Module.Save qualified as ModuleSave
 import Logger.Move.CreateHandle qualified as Logger
 import System.IO
 
@@ -36,8 +36,8 @@ main = do
       run loggerHandle $ do
         case cmd of
           C.Create cfg -> do
-            let moduleSaveHandle = ModuleSave.new loggerHandle
-            createHandle <- liftIO $ Create.new loggerConfig loggerHandle moduleSaveHandle
+            let saveModuleHandle = SaveModule.new loggerHandle
+            createHandle <- liftIO $ Create.new loggerConfig loggerHandle saveModuleHandle
             Create.create createHandle cfg
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg

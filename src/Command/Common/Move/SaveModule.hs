@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Module.Save
+module Command.Common.Move.SaveModule
   ( Handle,
     new,
     save,

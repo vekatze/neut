@@ -6,13 +6,13 @@ module Command.Archive.Move.Internal.Archive
 where
 
 import Command.Archive.Rule.PackageVersion qualified as PV
+import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Monad
 import Data.Text qualified as T
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
-import Kernel.Move.Scene.Module.Save qualified as ModuleSave
 import Kernel.Rule.Const
 import Kernel.Rule.Module
 import Language.Common.Move.Raise (raiseError')
@@ -22,18 +22,18 @@ import Prelude hiding (log)
 
 data Handle = Handle
   { externalHandle :: External.Handle,
-    moduleSaveHandle :: ModuleSave.Handle,
+    saveModuleHandle :: SaveModule.Handle,
     envHandle :: Env.Handle
   }
 
-new :: External.Handle -> ModuleSave.Handle -> Env.Handle -> Handle
-new externalHandle moduleSaveHandle envHandle = do
+new :: External.Handle -> SaveModule.Handle -> Env.Handle -> Handle
+new externalHandle saveModuleHandle envHandle = do
   Handle {..}
 
 archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()
 archive h packageVersion fullEns moduleRootDir contents = do
   withSystemTempDir "archive" $ \tempRootDir -> do
-    ModuleSave.save (moduleSaveHandle h) (tempRootDir </> moduleFile) fullEns
+    SaveModule.save (saveModuleHandle h) (tempRootDir </> moduleFile) fullEns
     copyModuleContents tempRootDir moduleRootDir contents
     makeReadOnly tempRootDir
     makeArchiveFromTempDir h packageVersion tempRootDir
