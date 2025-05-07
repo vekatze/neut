@@ -1,4 +1,4 @@
-module Main.Move.Act.Version (showVersion) where
+module Command.Version.Move.Version (showVersion) where
 
 import CommandParser.Rule.Config.Version
 import Data.Version qualified as V
