@@ -18,8 +18,8 @@ import Kernel.Parse.Move.Internal.Discern.Fallback qualified as PATF
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema
 import Kernel.Parse.Move.Internal.Discern.Specialize qualified as PATS
-import Kernel.Rule.Pattern qualified as PAT
-import Kernel.Rule.Vector qualified as V
+import Kernel.Parse.Rule.Pattern qualified as PAT
+import Kernel.Parse.Rule.Vector qualified as V
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN

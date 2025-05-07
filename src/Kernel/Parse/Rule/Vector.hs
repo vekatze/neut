@@ -1,4 +1,4 @@
-module Kernel.Rule.Vector (swap) where
+module Kernel.Parse.Rule.Vector (swap) where
 
 import Data.Text qualified as T
 import Data.Vector qualified as V

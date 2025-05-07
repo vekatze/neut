@@ -1,11 +1,11 @@
-module Kernel.Rule.NominalEnv
+module Kernel.Parse.Rule.NominalEnv
   ( NominalEnv,
     empty,
   )
 where
 
 import Data.Text qualified as T
-import Kernel.Rule.Layer
+import Kernel.Parse.Rule.Layer
 import Language.Common.Rule.Ident
 import Logger.Rule.Hint
 

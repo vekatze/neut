@@ -30,18 +30,18 @@ import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Move.Internal.Util
+import Kernel.Parse.Rule.Layer
+import Kernel.Parse.Rule.NominalEnv
+import Kernel.Parse.Rule.Pattern qualified as PAT
+import Kernel.Parse.Rule.VarDefKind qualified as VDK
 import Kernel.Rule.Arch qualified as Arch
 import Kernel.Rule.BuildMode qualified as BM
 import Kernel.Rule.Const
 import Kernel.Rule.GlobalName qualified as GN
-import Kernel.Rule.Layer
 import Kernel.Rule.Module
-import Kernel.Rule.NominalEnv
 import Kernel.Rule.OS qualified as OS
-import Kernel.Rule.Pattern qualified as PAT
 import Kernel.Rule.Platform qualified as Platform
 import Kernel.Rule.TopCandidate
-import Kernel.Rule.VarDefKind qualified as VDK
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN

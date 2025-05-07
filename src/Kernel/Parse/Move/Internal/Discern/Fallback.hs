@@ -6,7 +6,7 @@ import Data.Vector qualified as V
 import Error.Rule.EIO (EIO)
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema
-import Kernel.Rule.Pattern
+import Kernel.Parse.Rule.Pattern
 import Language.Common.Move.Raise (raiseCritical')
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Ident

@@ -28,13 +28,13 @@ import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Move.Internal.Import qualified as Import
 import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
+import Kernel.Parse.Rule.VarDefKind
 import Kernel.Rule.Cache qualified as Cache
 import Kernel.Rule.Import
 import Kernel.Rule.Source qualified as Source
 import Kernel.Rule.Target
 import Kernel.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
 import Kernel.Rule.UnusedLocalLocators (UnusedLocalLocators)
-import Kernel.Rule.VarDefKind
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident.Reify

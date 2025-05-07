@@ -1,4 +1,4 @@
-module Kernel.Rule.Pattern
+module Kernel.Parse.Rule.Pattern
   ( Pattern (..),
     PatternRow,
     PatternMatrix,

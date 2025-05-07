@@ -23,9 +23,9 @@ import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Rule.Layer
-import Kernel.Rule.NominalEnv
-import Kernel.Rule.VarDefKind
+import Kernel.Parse.Rule.Layer
+import Kernel.Parse.Rule.NominalEnv
+import Kernel.Parse.Rule.VarDefKind
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Logger.Rule.Hint
