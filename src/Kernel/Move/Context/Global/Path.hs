@@ -1,7 +1,6 @@
 module Kernel.Move.Context.Global.Path
   ( Handle (..),
     new,
-    getDependencyDirPath,
     ensureNotInDependencyDir,
     getBaseName,
     getExecutableOutputPath,
@@ -64,19 +63,6 @@ getBaseName path = do
   let dirPath = P.parent path
   filename <- P.stripProperPrefix dirPath path
   return $ T.replace packageFileExtension "" $ T.pack $ P.toFilePath filename
-
-returnDirectory :: Path Abs Dir -> EIO (Path Abs Dir)
-returnDirectory path =
-  P.ensureDir path >> return path
-
-getDependencyDirPath :: Module -> EIO (Path Abs Dir)
-getDependencyDirPath baseModule = do
-  let moduleRootDir = getModuleRootDir baseModule
-  case moduleID baseModule of
-    MID.Library _ ->
-      returnDirectory $ P.parent moduleRootDir
-    _ -> do
-      returnDirectory $ moduleRootDir </> moduleCacheDir baseModule </> $(P.mkRelDir "dependency")
 
 ensureNotInDependencyDir :: MainModule -> EIO ()
 ensureNotInDependencyDir mainModule = do

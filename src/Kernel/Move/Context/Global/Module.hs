@@ -23,7 +23,6 @@ import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Move.Context.Global.Path qualified as Path
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD
@@ -68,7 +67,7 @@ getModuleDirByID (MainModule pivotModule) mHint moduleID = do
     MID.Main ->
       return $ getModuleRootDir pivotModule
     MID.Library (MD.ModuleDigest digest) -> do
-      dependencyDir <- Path.getDependencyDirPath pivotModule
+      dependencyDir <- getDependencyDirPath pivotModule
       resolveDir dependencyDir $ T.unpack digest
 
 getCoreModuleURL :: EIO ModuleURL
@@ -125,3 +124,16 @@ hasSourceExtension path =
           True
     _ ->
       False
+
+getDependencyDirPath :: Module -> EIO (Path Abs Dir)
+getDependencyDirPath baseModule = do
+  let moduleRootDir = getModuleRootDir baseModule
+  case moduleID baseModule of
+    MID.Library _ ->
+      returnDirectory $ parent moduleRootDir
+    _ -> do
+      returnDirectory $ moduleRootDir </> moduleCacheDir baseModule </> $(mkRelDir "dependency")
+
+returnDirectory :: Path Abs Dir -> EIO (Path Abs Dir)
+returnDirectory path =
+  ensureDir path >> return path
