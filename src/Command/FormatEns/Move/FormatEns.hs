@@ -8,10 +8,9 @@ import CommandParser.Rule.Config.FormatEns
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Parse (ensureExistence')
-import Kernel.Move.Context.Parse qualified as Parse
 import Path.IO
 import Path.Move.Read (readText)
-import Path.Move.Write (writeText)
+import Path.Move.Write (printText, writeText)
 
 format :: Config -> EIO ()
 format cfg = do
@@ -21,4 +20,4 @@ format cfg = do
   content' <- Format.formatEns path content
   if mustUpdateInPlace cfg
     then liftIO $ writeText path content'
-    else liftIO $ Parse.printTextFile content'
+    else liftIO $ printText content'

@@ -10,11 +10,10 @@ import CommandParser.Rule.Config.FormatSource
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Parse (ensureExistence')
-import Kernel.Move.Context.Parse qualified as Parse
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Path.IO
 import Path.Move.Read (readText)
-import Path.Move.Write (writeText)
+import Path.Move.Write (printText, writeText)
 
 newtype Handle = Handle
   { globalHandle :: Global.Handle
@@ -33,4 +32,4 @@ format h cfg = do
   content' <- Format.formatSource formatHandle (shouldMinimizeImports cfg) path content
   if mustUpdateInPlace cfg
     then liftIO $ writeText path content'
-    else liftIO $ Parse.printTextFile content'
+    else liftIO $ printText content'

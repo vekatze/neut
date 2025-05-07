@@ -1,6 +1,7 @@
 module Path.Move.Write
   ( writeText,
     writeLazyByteString,
+    printText,
   )
 where
 
@@ -17,3 +18,7 @@ writeText path content = do
 writeLazyByteString :: Path Abs File -> L.ByteString -> IO ()
 writeLazyByteString path =
   L.writeFile (toFilePath path)
+
+printText :: T.Text -> IO ()
+printText content = do
+  B.putStr $ encodeUtf8 content

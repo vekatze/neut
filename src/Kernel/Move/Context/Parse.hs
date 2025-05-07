@@ -1,23 +1,16 @@
 module Kernel.Move.Context.Parse
-  ( printTextFile,
-    ensureExistence,
+  ( ensureExistence,
     ensureExistence',
   )
 where
 
-import Data.ByteString qualified as B
 import Data.Text qualified as T
-import Data.Text.Encoding
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Source
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Logger.Rule.Hint
 import Path
 import Path.IO
-
-printTextFile :: T.Text -> IO ()
-printTextFile content = do
-  B.putStr $ encodeUtf8 content
 
 ensureExistence :: Source -> EIO ()
 ensureExistence source = do
