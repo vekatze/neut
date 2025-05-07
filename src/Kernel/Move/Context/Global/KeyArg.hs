@@ -13,7 +13,6 @@ import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module
-import Kernel.Move.Context.Local.Locator qualified as Locator
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Const (holeVarPrefix)
@@ -42,20 +41,20 @@ insert h m funcName isConstLike argNum keys = do
     Just (isConstLike', (argNum', keys'))
       | isConstLike,
         not isConstLike' -> do
-          let funcName' = Locator.getReadableDD (mainModule h) funcName
+          let funcName' = DD.getReadableDD (mainModule h) funcName
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a function, but defined as a constant-like term."
       | not isConstLike,
         isConstLike' -> do
-          let funcName' = Locator.getReadableDD (mainModule h) funcName
+          let funcName' = DD.getReadableDD (mainModule h) funcName
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a constant-like term, but defined as a function."
       | argNum /= argNum' -> do
-          let funcName' = Locator.getReadableDD (mainModule h) funcName
+          let funcName' = DD.getReadableDD (mainModule h) funcName
           raiseError m $
             "The arity of `"
               <> funcName'
@@ -65,7 +64,7 @@ insert h m funcName isConstLike argNum keys = do
               <> T.pack (show $ AN.reify argNum)
               <> "."
       | not $ eqKeys keys keys' -> do
-          let funcName' = Locator.getReadableDD (mainModule h) funcName
+          let funcName' = DD.getReadableDD (mainModule h) funcName
           raiseError m $
             "The explicit key sequence of `"
               <> funcName'
@@ -128,7 +127,7 @@ lookup h m dataName = do
     Just (_, value) ->
       return value
     Nothing -> do
-      let dataName' = Locator.getReadableDD (mainModule h) dataName
+      let dataName' = DD.getReadableDD (mainModule h) dataName
       raiseError m $ "No such function is defined: " <> dataName'
 
 reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> EIO [a]

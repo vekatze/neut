@@ -77,7 +77,7 @@ resolveVarOrErr h m name = do
       return $ Right globalVar
     _ -> do
       let mainModule = Env.getMainModule (H.envHandle h)
-      let foundNameList' = map (Locator.getReadableDD mainModule . fst) foundNameList
+      let foundNameList' = map (DD.getReadableDD mainModule . fst) foundNameList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 

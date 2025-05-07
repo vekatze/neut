@@ -31,7 +31,6 @@ import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
 import Kernel.Move.Context.Global.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.Global.Type qualified as Type
-import Kernel.Move.Context.Local.Locator qualified as Locator
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as Annotation
@@ -560,7 +559,7 @@ ensureArityCorrectness h function expected found = do
     case function of
       m :< WT.VarGlobal _ name -> do
         let mainModule = Env.getMainModule (envHandle h)
-        let name' = Locator.getReadableDD mainModule name
+        let name' = DD.getReadableDD mainModule name
         raiseError m $
           "The function `"
             <> name'

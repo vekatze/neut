@@ -1015,7 +1015,7 @@ discernPattern h layer (m, pat) = do
               (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
               unless isConstLike $ do
                 let mainModule = Env.getMainModule (H.envHandle h)
-                let consDD' = Locator.getReadableDD mainModule consDD
+                let consDD' = DD.getReadableDD mainModule consDD
                 raiseError m $
                   "The constructor `" <> consDD' <> "` cannot be used as a constant"
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
@@ -1038,7 +1038,7 @@ discernPattern h layer (m, pat) = do
               return ((m, PAT.Cons consInfo), [])
             _ -> do
               let mainModule = Env.getMainModule (H.envHandle h)
-              let dd' = Locator.getReadableDD mainModule dd
+              let dd' = DD.getReadableDD mainModule dd
               raiseError m $
                 "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mArgs -> do

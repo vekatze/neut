@@ -7,7 +7,6 @@ module Kernel.Move.Context.Local.Locator
     activateStaticFile,
     getPossibleReferents,
     getNameLifter,
-    getReadableDD,
   )
 where
 
@@ -16,13 +15,11 @@ import Control.Monad.IO.Class
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Data.List (find)
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.AliasInfo (MustUpdateTag)
 import Kernel.Common.Rule.GlobalName qualified as GN
-import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap (TopNameMap)
@@ -30,11 +27,8 @@ import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Local.Tag qualified as Tag
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.Const (nsSep)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
-import Language.Common.Rule.ModuleAlias qualified as MA
-import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Logger.Rule.Hint
@@ -90,8 +84,8 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                let dd' = getReadableDD' (Source.sourceModule currentSource) dd
-                let existingDD' = getReadableDD' (Source.sourceModule currentSource) existingDD
+                let dd' = DD.getReadableDD' (Source.sourceModule currentSource) dd
+                let existingDD' = DD.getReadableDD' (Source.sourceModule currentSource) existingDD
                 raiseError m $
                   "This `"
                     <> LL.reify ll
@@ -178,24 +172,3 @@ removeExtension path =
       return path'
     Nothing ->
       raiseError' $ "File extension is missing in `" <> T.pack (toFilePath path) <> "`"
-
-getReadableDD :: MainModule -> DD.DefiniteDescription -> T.Text
-getReadableDD mainModule = do
-  getReadableDD' (extractModule mainModule)
-
-getReadableDD' :: Module -> DD.DefiniteDescription -> T.Text
-getReadableDD' baseModule dd = do
-  case DD.unconsDD dd of
-    (MID.Main, rest) ->
-      "this" <> nsSep <> rest
-    (MID.Base, rest) ->
-      "base" <> nsSep <> rest
-    (MID.Library digest, rest) -> do
-      let depMap = Map.toList $ moduleDependency baseModule
-      let aliasOrNone = fmap (MA.reify . fst) $ flip find depMap $ \(_, dependency) -> do
-            digest == dependencyDigest dependency
-      case aliasOrNone of
-        Nothing ->
-          DD.reify dd
-        Just alias ->
-          alias <> nsSep <> rest

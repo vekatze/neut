@@ -196,7 +196,7 @@ lookup' h m name = do
       return gn
     Nothing -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = Locator.getReadableDD mainModule name
+      let name' = DD.getReadableDD mainModule name
       raiseError m $ "No such top-level name is defined: " <> name'
 
 ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
@@ -206,7 +206,7 @@ ensureDefFreshness h m name = do
   case (Map.lookup name gmap, Map.member name topNameMap) of
     (Just _, False) -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = Locator.getReadableDD mainModule name
+      let name' = DD.getReadableDD mainModule name
       raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
     (Just (mGeist, isConstLike), True) -> do
       liftIO $ removeFromGeistMap h name
@@ -214,7 +214,7 @@ ensureDefFreshness h m name = do
       liftIO $ Tag.insertGlobalVar (tagHandle h) mGeist name isConstLike m
     (Nothing, True) -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = Locator.getReadableDD mainModule name
+      let name' = DD.getReadableDD mainModule name
       raiseError m $ "`" <> name' <> "` is already defined"
     (Nothing, False) ->
       return ()
@@ -224,7 +224,7 @@ ensureGeistFreshness h m name = do
   geistMap <- liftIO $ readIORef (geistMapRef h)
   when (Map.member name geistMap) $ do
     let mainModule = Env.getMainModule (envHandle h)
-    let name' = Locator.getReadableDD mainModule name
+    let name' = DD.getReadableDD mainModule name
     raiseError m $ "`" <> name' <> "` is already defined"
 
 reportMissingDefinitions :: Handle -> EIO ()
