@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Module.GetEnabledPreset
+module Kernel.Common.Move.Module.GetEnabledPreset
   ( Handle,
     new,
     getEnabledPreset,
@@ -10,11 +10,11 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Move.Module.GetModule qualified as GetModule
 import Kernel.Common.Rule.Module
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Module qualified as Module
 import Kernel.Move.Scene.Init.Global qualified as Global
-import Kernel.Move.Scene.Module.GetModule qualified as GetModule
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias qualified as MA
 

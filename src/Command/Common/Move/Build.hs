@@ -24,6 +24,9 @@ import Data.Time
 import Error.Move.Run (forP, runEIO)
 import Error.Rule.EIO (EIO)
 import Kernel.Clarify.Move.Clarify qualified as Clarify
+import Kernel.Common.Move.ManageCache (needsCompilation)
+import Kernel.Common.Move.ManageCache qualified as Cache
+import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Cache
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Module qualified as M
@@ -42,9 +45,6 @@ import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.ManageCache (needsCompilation)
-import Kernel.Move.Scene.ManageCache qualified as Cache
-import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')

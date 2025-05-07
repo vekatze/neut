@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.ManageCache
+module Kernel.Common.Move.ManageCache
   ( Handle,
     new,
     saveCache,

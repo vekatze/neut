@@ -14,6 +14,7 @@ import Data.Text qualified as T
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
+import Kernel.Common.Move.Module.GetModule qualified as GetModule
 import Kernel.Common.Rule.Cache
 import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Common.Rule.Module qualified as M
@@ -26,7 +27,6 @@ import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.Module.GetModule qualified as GetModule
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Logger.Move.Debug qualified as Logger

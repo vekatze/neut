@@ -6,11 +6,11 @@ module Command.Common.Move.Build.Execute
 where
 
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Module (MainModule (MainModule))
 import Kernel.Common.Rule.Target
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Path qualified as Path
-import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 

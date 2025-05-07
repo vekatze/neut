@@ -12,6 +12,9 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Move.Module.GetEnabledPreset qualified as GetEnabledPreset
+import Kernel.Common.Move.Module.GetModule qualified as GetModule
+import Kernel.Common.Move.Source.ShiftToLatest qualified as STL
 import Kernel.Common.Rule.AliasInfo qualified as AI
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Import (ImportItem (..))
@@ -24,9 +27,6 @@ import Kernel.Move.Context.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.Local.Tag qualified as Tag
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
-import Kernel.Move.Scene.Module.GetModule qualified as GetModule
-import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused

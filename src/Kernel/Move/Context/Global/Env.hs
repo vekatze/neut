@@ -14,12 +14,11 @@ import Data.IORef
 import Data.Text qualified as T
 import Error.Move.Run (run)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Target qualified as Target
-import Kernel.Move.Scene.Module.Reflect (getCurrentModuleFilePath)
-import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -46,7 +45,7 @@ new loggerHandle enableSilentMode moduleFilePathOrNone = do
           Just moduleFilePath ->
             ModuleReflect.fromFilePath moduleFilePath
           Nothing -> do
-            getCurrentModuleFilePath >>= ModuleReflect.fromFilePath
+            ModuleReflect.fromCurrentPath
     return $ Handle {..}
 
 getMainModule :: Handle -> MainModule

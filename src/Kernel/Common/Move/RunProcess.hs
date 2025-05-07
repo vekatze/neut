@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.RunProcess
+module Kernel.Common.Move.RunProcess
   ( Spec (..),
     Input (..),
     Handle,

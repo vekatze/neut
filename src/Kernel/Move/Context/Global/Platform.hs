@@ -20,13 +20,13 @@ import Data.Text.Encoding
 import Data.Version qualified as V
 import Error.Move.Run (run)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Arch qualified as Arch
 import Kernel.Common.Rule.Const (envVarClang)
 import Kernel.Common.Rule.DataSize qualified as DS
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as O
 import Kernel.Common.Rule.Platform qualified as P
-import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Digest (hashAndEncode)
 import Language.Common.Rule.Error (newError')

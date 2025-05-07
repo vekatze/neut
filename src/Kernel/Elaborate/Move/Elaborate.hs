@@ -18,6 +18,7 @@ import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
 import Gensym.Move.Trick qualified as Gensym
+import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Const (holeLiteral)
 import Kernel.Common.Rule.Target hiding (Main)
@@ -39,7 +40,6 @@ import Kernel.Move.Context.Global.Type qualified as Type
 import Kernel.Move.Context.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.Local.SymLoc qualified as SymLoc
 import Kernel.Move.Context.Local.TopCandidate qualified as TopCandidate
-import Kernel.Move.Scene.ManageCache qualified as Cache
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN

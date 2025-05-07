@@ -13,6 +13,7 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Import
 import Kernel.Common.Rule.Source qualified as Source
@@ -24,7 +25,6 @@ import Kernel.Move.Context.Local.Locator qualified as Locator
 import Kernel.Move.Context.Local.Tag qualified as Tag
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.ManageCache qualified as Cache
 import Kernel.Parse.Move.Internal.Discern qualified as Discern
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as Discern
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias

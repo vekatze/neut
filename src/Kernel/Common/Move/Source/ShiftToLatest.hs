@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Source.ShiftToLatest
+module Kernel.Common.Move.Source.ShiftToLatest
   ( Handle,
     new,
     shiftToLatest,

@@ -11,6 +11,7 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Artifact qualified as A
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
@@ -20,7 +21,6 @@ import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Global qualified as Global
-import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path

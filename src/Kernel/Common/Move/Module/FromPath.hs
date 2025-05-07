@@ -1,8 +1,6 @@
-module Kernel.Move.Scene.Module.Reflect
+module Kernel.Common.Move.Module.FromPath
   ( fromFilePath,
     fromCurrentPath,
-    findModuleFile,
-    getCurrentModuleFilePath,
   )
 where
 
@@ -17,13 +15,14 @@ import Ens.Rule.Ens (dictFromListVertical')
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error
+import Kernel.Common.Move.Module.FindModuleFile
 import Kernel.Common.Rule.ClangOption qualified as CL
-import Kernel.Common.Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
+import Kernel.Common.Rule.Const (archiveRelDir, cacheRelDir, sourceRelDir)
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig (ZenConfig (..))
-import Language.Common.Move.Raise (raiseError, raiseError')
+import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Error
@@ -242,23 +241,6 @@ ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker (moduleRootDir </> path)
   unless b $ do
     raiseError m $ "No such " <> kindText <> " exists: " <> T.pack (toFilePath path)
-
-findModuleFile :: Path Abs Dir -> Path Abs Dir -> EIO (Path Abs File)
-findModuleFile baseDir moduleRootDirCandidate = do
-  let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
-  moduleFileExists <- doesFileExist moduleFileCandidate
-  case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
-    (True, _) ->
-      return moduleFileCandidate
-    (_, True) ->
-      findModuleFile baseDir $ parent moduleRootDirCandidate
-    _ ->
-      raiseError' $ "Could not find a module file (Context: " <> T.pack (toFilePath baseDir) <> ")"
-
-getCurrentModuleFilePath :: EIO (Path Abs File)
-getCurrentModuleFilePath = do
-  baseDir <- getCurrentDir
-  findModuleFile baseDir baseDir
 
 rightToMaybe :: Either a b -> Maybe b
 rightToMaybe errOrVal =

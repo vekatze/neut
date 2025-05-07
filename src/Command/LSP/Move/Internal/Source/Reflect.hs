@@ -6,11 +6,12 @@ module Command.LSP.Move.Internal.Source.Reflect
 where
 
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Module.FindModuleFile qualified as Module
+import Kernel.Common.Move.Module.FromPath qualified as Module
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Scene.Init.Global qualified as Global
-import Kernel.Move.Scene.Module.Reflect qualified as Module
 import Path
 
 newtype Handle = Handle
@@ -36,7 +37,7 @@ reflect h srcPath = do
 getModule :: Handle -> Path Abs File -> EIO Module
 getModule h srcPath = do
   let srcDir = parent srcPath
-  moduleFilePath <- Module.findModuleFile srcDir srcDir
+  moduleFilePath <- Module.findModuleFile srcDir
   let MainModule mainModule = Env.getMainModule (envHandle h)
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
