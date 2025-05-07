@@ -1,4 +1,4 @@
-module Main.Move.Scene.LSP.GetLocationTree
+module Command.LSP.Move.Internal.GetLocationTree
   ( Handle,
     new,
     getLocationTree,

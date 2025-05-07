@@ -1,4 +1,4 @@
-module Main.Move.Scene.LSP.GetAllCachesInModule
+module Command.LSP.Move.Internal.GetAllCachesInModule
   ( Handle,
     new,
     getAllLocationCachesInModule,

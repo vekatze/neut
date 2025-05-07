@@ -1,9 +1,11 @@
-module Main.Move.Scene.LSP.GetSymbolInfo
+module Command.LSP.Move.Internal.GetSymbolInfo
   ( getSymbolInfo,
   )
 where
 
 import Command.Common.Move.Check qualified as Check
+import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
+import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import CommandParser.Rule.Config.Remark (lspConfig)
 import Control.Comonad.Cofree
 import Control.Monad.Trans
@@ -20,8 +22,6 @@ import Main.Move.Context.Cache (invalidate)
 import Main.Move.Context.Type qualified as Type
 import Main.Move.Scene.Elaborate qualified as Elaborate
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition
-import Main.Move.Scene.LSP.GetSource qualified as GetSource
 import Main.Rule.LocationTree qualified as LT
 import Main.Rule.Source (Source (sourceFilePath, sourceModule))
 import Main.Rule.Target (Target (Peripheral))

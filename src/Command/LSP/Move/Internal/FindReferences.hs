@@ -1,4 +1,4 @@
-module Main.Move.Scene.LSP.FindReferences (findReferences) where
+module Command.LSP.Move.Internal.FindReferences (findReferences) where
 
 import Data.Maybe (fromMaybe)
 import Language.LSP.Protocol.Types

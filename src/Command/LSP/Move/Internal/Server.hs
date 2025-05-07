@@ -1,4 +1,4 @@
-module Main.Move.Scene.LSP
+module Command.LSP.Move.Internal.Server
   ( Handle,
     new,
     lsp,
@@ -8,6 +8,14 @@ where
 import Colog.Core (LogAction (..), Severity (..), WithSeverity (..))
 import Colog.Core qualified as L
 import Command.Common.Move.Check qualified as Check
+import Command.LSP.Move.Internal.Complete qualified as Complete
+import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
+import Command.LSP.Move.Internal.Format qualified as Format
+import Command.LSP.Move.Internal.GetSymbolInfo qualified as GetSymbolInfo
+import Command.LSP.Move.Internal.Highlight qualified as Highlight
+import Command.LSP.Move.Internal.Lint qualified as Lint
+import Command.LSP.Move.Internal.References qualified as References
+import Command.LSP.Move.Internal.Util (getUriParam, run)
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Data.Map.Strict qualified as M
@@ -19,14 +27,6 @@ import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.LSP.Complete qualified as Complete
-import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition
-import Main.Move.Scene.LSP.Format qualified as Format
-import Main.Move.Scene.LSP.GetSymbolInfo qualified as GetSymbolInfo
-import Main.Move.Scene.LSP.Highlight qualified as Highlight
-import Main.Move.Scene.LSP.Lint qualified as Lint
-import Main.Move.Scene.LSP.References qualified as References
-import Main.Move.Scene.LSP.Util (getUriParam, run)
 import Main.Rule.CodeAction qualified as CA
 import Main.Rule.Lsp
 import Prettyprinter

@@ -1,10 +1,12 @@
-module Main.Move.Scene.LSP.Complete
+module Command.LSP.Move.Internal.Complete
   ( Handle,
     new,
     complete,
   )
 where
 
+import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
+import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
@@ -32,8 +34,6 @@ import Main.Move.Context.Cache qualified as Cache
 import Main.Move.Context.Env qualified as Env
 import Main.Move.Context.Path qualified as Path
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.LSP.GetAllCachesInModule qualified as GAC
-import Main.Move.Scene.LSP.Source.Reflect qualified as SourceReflect
 import Main.Move.Scene.Module.GetModule qualified as GetModule
 import Main.Move.Scene.Unravel qualified as Unravel
 import Main.Rule.Cache qualified as Cache

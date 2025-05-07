@@ -1,4 +1,4 @@
-module Main.Move.Scene.LSP.Source.Reflect
+module Command.LSP.Move.Internal.Source.Reflect
   ( Handle,
     new,
     reflect,

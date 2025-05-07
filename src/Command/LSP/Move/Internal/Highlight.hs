@@ -1,17 +1,17 @@
-module Main.Move.Scene.LSP.Highlight
+module Command.LSP.Move.Internal.Highlight
   ( Handle,
     new,
     highlight,
   )
 where
 
+import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
+import Command.LSP.Move.Internal.FindReferences qualified as LSP
 import Control.Lens hiding (Iso, List)
 import Error.Rule.EIO (EIO)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition
-import Main.Move.Scene.LSP.FindReferences qualified as LSP
 
 newtype Handle = Handle
   { findDefinitionHandle :: FindDefinition.Handle

@@ -1,4 +1,4 @@
-module Main.Move.Scene.LSP.Util
+module Command.LSP.Move.Internal.Util
   ( run,
     report,
     maxDiagNum,

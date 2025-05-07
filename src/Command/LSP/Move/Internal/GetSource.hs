@@ -1,17 +1,17 @@
-module Main.Move.Scene.LSP.GetSource
+module Command.LSP.Move.Internal.GetSource
   ( Handle,
     new,
     getSource,
   )
 where
 
+import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Lens hiding (Iso, List)
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.LSP.Source.Reflect qualified as SourceReflect
 import Main.Rule.Source (Source)
 
 newtype Handle = Handle

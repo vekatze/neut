@@ -1,19 +1,19 @@
-module Main.Move.Scene.LSP.References
+module Command.LSP.Move.Internal.References
   ( Handle,
     new,
     references,
   )
 where
 
+import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
+import Command.LSP.Move.Internal.FindReferences qualified as LSP
+import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
+import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Monad.Trans
 import Error.Rule.EIO (EIO)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.LSP.FindDefinition qualified as FindDefinition
-import Main.Move.Scene.LSP.FindReferences qualified as LSP
-import Main.Move.Scene.LSP.GetAllCachesInModule qualified as GAC
-import Main.Move.Scene.LSP.GetSource qualified as GetSource
 import Main.Move.Scene.Unravel qualified as Unravel
 import Main.Rule.Cache qualified as Cache
 import Main.Rule.Source (Source (sourceFilePath, sourceModule))

@@ -1,10 +1,12 @@
-module Main.Move.Scene.LSP.FindDefinition
+module Command.LSP.Move.Internal.FindDefinition
   ( Handle,
     new,
     findDefinition,
   )
 where
 
+import Command.LSP.Move.Internal.GetLocationTree qualified as GetLocationTree
+import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Lens hiding (Iso, List)
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
@@ -12,8 +14,6 @@ import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Logger.Rule.Hint qualified as H
 import Main.Move.Scene.Init.Base qualified as Base
-import Main.Move.Scene.LSP.GetLocationTree qualified as GetLocationTree
-import Main.Move.Scene.LSP.GetSource qualified as GetSource
 import Main.Rule.LocationTree (LocationTree)
 import Main.Rule.LocationTree qualified as LT
 

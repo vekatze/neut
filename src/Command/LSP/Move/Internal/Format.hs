@@ -1,4 +1,4 @@
-module Main.Move.Scene.LSP.Format
+module Command.LSP.Move.Internal.Format
   ( Handle,
     new,
     format,
