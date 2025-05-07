@@ -1,4 +1,4 @@
-module Kernel.Rule.Builder
+module Kernel.Emit.Rule.Builder
   ( unwordsC,
     unwordsL,
     unlinesL,

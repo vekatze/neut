@@ -11,17 +11,17 @@ import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Emit.Rule.Builder
+import Kernel.Emit.Rule.LowType
+import Kernel.Emit.Rule.LowValue
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Builder
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LowType qualified as LT
-import Language.Common.Rule.LowType.EmitLowType
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.LowComp.Rule.LowComp.EmitOp qualified as EmitOp
-import Language.LowComp.Rule.LowComp.EmitValue
 
 type Label =
   Ident

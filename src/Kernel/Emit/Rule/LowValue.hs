@@ -1,4 +1,4 @@
-module Language.LowComp.Rule.LowComp.EmitValue
+module Kernel.Emit.Rule.LowValue
   ( emitValue,
     showArgs,
     showFuncArgs,
@@ -7,12 +7,12 @@ where
 
 import Data.ByteString.Builder
 import Data.Text.Encoding qualified as TE
-import Kernel.Rule.Builder
+import Kernel.Emit.Rule.Builder
+import Kernel.Emit.Rule.LowType (emitLowType)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Ident
 import Language.Common.Rule.LowType qualified as LT
-import Language.Common.Rule.LowType.EmitLowType (emitLowType)
 import Language.Common.Rule.PrimNumSize
 import Language.LowComp.Rule.LowComp qualified as LC
 import Numeric.Half

@@ -14,9 +14,12 @@ import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Kernel.Emit.Move.Internal.LowComp qualified as EmitLowComp
+import Kernel.Emit.Rule.Builder
+import Kernel.Emit.Rule.LowType
+import Kernel.Emit.Rule.LowValue
+import Kernel.Emit.Rule.PrimType (emitPrimType)
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Builder
 import Kernel.Rule.Const
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.BaseLowType qualified as BLT
@@ -24,15 +27,12 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LowType qualified as LT
-import Language.Common.Rule.LowType.EmitLowType
 import Language.Common.Rule.LowType.FromBaseLowType qualified as LT
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
-import Language.Common.Rule.PrimType.EmitPrimType (emitPrimType)
 import Language.LowComp.Move.Reduce qualified as Reduce
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
-import Language.LowComp.Rule.LowComp.EmitValue
 
 newtype Handle = Handle
   { baseHandle :: Base.Handle

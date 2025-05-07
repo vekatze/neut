@@ -8,14 +8,14 @@ where
 import Data.ByteString.Builder
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Kernel.Emit.Rule.LowType
+import Kernel.Emit.Rule.LowValue
+import Kernel.Emit.Rule.PrimType
 import Language.Common.Rule.LowType qualified as LT
-import Language.Common.Rule.LowType.EmitLowType
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
-import Language.Common.Rule.PrimType.EmitPrimType
 import Language.LowComp.Rule.LowComp qualified as LC
-import Language.LowComp.Rule.LowComp.EmitValue
 
 data Handle = Handle
   { baseSize :: Int,
