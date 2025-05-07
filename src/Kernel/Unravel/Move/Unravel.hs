@@ -30,7 +30,6 @@ import Kernel.Move.Context.Global.Artifact qualified as Artifact
 import Kernel.Move.Context.Global.Env (getMainModule)
 import Kernel.Move.Context.Global.Module qualified as Module
 import Kernel.Move.Context.Global.Path qualified as Path
-import Kernel.Move.Context.Parse (ensureExistence')
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
@@ -44,6 +43,7 @@ import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Hint
 import Path
 import Path.IO
+import Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
 import Path.Move.Read (readText)
 
 type CacheTime =
@@ -223,7 +223,7 @@ unravelImportItem h t importItem = do
     StaticKey staticFileList -> do
       let pathList = map snd staticFileList
       itemModTime <- forM pathList $ \(m, p) -> do
-        ensureExistence' p (Just m)
+        ensureFileExistence p m
         getModificationTime p
       let newestArtifactTime = maximum $ map A.inject itemModTime
       return (newestArtifactTime, Seq.empty)
@@ -433,4 +433,8 @@ artifactTimeFromCurrentTime = do
 ensureSourceExistence :: Source.Source -> EIO ()
 ensureSourceExistence source = do
   let path = Source.sourceFilePath source
-  ensureExistence' path (Source.sourceHint source)
+  case Source.sourceHint source of
+    Just m ->
+      ensureFileExistence path m
+    Nothing ->
+      ensureFileExistence' path

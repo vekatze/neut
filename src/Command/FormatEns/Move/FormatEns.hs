@@ -7,15 +7,15 @@ import Command.Common.Move.Format qualified as Format
 import CommandParser.Rule.Config.FormatEns
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Parse (ensureExistence')
 import Path.IO
+import Path.Move.EnsureFileExistence (ensureFileExistence')
 import Path.Move.Read (readText)
 import Path.Move.Write (printText, writeText)
 
 format :: Config -> EIO ()
 format cfg = do
   path <- resolveFile' $ filePathString cfg
-  ensureExistence' path Nothing
+  ensureFileExistence' path
   content <- liftIO $ readText path
   content' <- Format.formatEns path content
   if mustUpdateInPlace cfg
