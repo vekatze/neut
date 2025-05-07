@@ -10,6 +10,9 @@ import Color.Rule.Handle qualified as Color
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Gensym.Move.CreateHandle qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
+import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
+import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Move.Context.Antecedent qualified as Antecedent
 import Kernel.Move.Context.Artifact qualified as Artifact
 import Kernel.Move.Context.Env qualified as Env
@@ -20,9 +23,6 @@ import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
-import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
-import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Logger.Move.CreateHandle qualified as Logger
 import Logger.Rule.Handle qualified as Logger

@@ -17,6 +17,9 @@ import Data.Text qualified as T
 import Data.Time
 import Error.Move.Run (forP, runEIO)
 import Error.Rule.EIO (EIO)
+import Kernel.Clarify.Move.Clarify qualified as Clarify
+import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
+import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Move.Context.Cache (needsCompilation)
 import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Context.Env qualified as Env
@@ -25,9 +28,6 @@ import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.LLVM qualified as LLVM
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Clarify qualified as Clarify
-import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
-import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Move.Scene.Emit qualified as Emit
 import Kernel.Move.Scene.EnsureMain qualified as EnsureMain
 import Kernel.Move.Scene.Execute qualified as Execute

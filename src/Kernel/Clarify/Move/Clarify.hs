@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Clarify
+module Kernel.Clarify.Move.Clarify
   ( Handle,
     new,
     MainHandle,
@@ -19,14 +19,14 @@ import Data.Maybe
 import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
+import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
+import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
+import Kernel.Clarify.Move.Internal.Sigma qualified as Sigma
+import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
-import Kernel.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
-import Kernel.Move.Scene.Clarify.Linearize qualified as Linearize
-import Kernel.Move.Scene.Clarify.Sigma qualified as Sigma
-import Kernel.Move.Scene.Clarify.Utility qualified as Utility
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Rule.OptimizableData qualified as OD

@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Clarify.Utility
+module Kernel.Clarify.Move.Internal.Utility
   ( Handle,
     new,
     toAffineApp,
@@ -13,7 +13,7 @@ where
 
 import Data.IntMap qualified as IntMap
 import Gensym.Rule.Handle qualified as Gensym
-import Kernel.Move.Scene.Clarify.Handle.AuxEnv qualified as AuxEnv
+import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident

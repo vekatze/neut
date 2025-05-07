@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Clarify.Sigma
+module Kernel.Clarify.Move.Internal.Sigma
   ( Handle (..),
     new,
     registerImmediateS4,
@@ -15,9 +15,9 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
+import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Kernel.Move.Context.Locator qualified as Locator
-import Kernel.Move.Scene.Clarify.Linearize qualified as Linearize
-import Kernel.Move.Scene.Clarify.Utility qualified as Utility
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT

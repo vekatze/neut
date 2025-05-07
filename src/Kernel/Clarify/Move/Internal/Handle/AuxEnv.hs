@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Clarify.Handle.AuxEnv
+module Kernel.Clarify.Move.Internal.Handle.AuxEnv
   ( Handle,
     new,
     insert,
@@ -11,7 +11,7 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Kernel.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
+import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Opacity qualified as O

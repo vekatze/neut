@@ -14,10 +14,10 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.OptimizableData qualified as OptimizableData
-import Kernel.Move.Context.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
+import Kernel.Move.Context.OptimizableData qualified as OptimizableData
+import Kernel.Move.Context.Type qualified as Type
 import Kernel.Rule.OptimizableData
 import Kernel.Rule.OptimizableData qualified as OD
 import Kernel.Rule.Stuck qualified as Stuck

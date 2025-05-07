@@ -16,12 +16,6 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.KeyArg qualified as KeyArg
-import Kernel.Move.Context.Locator qualified as Locator
-import Kernel.Move.Context.OptimizableData qualified as OptimizableData
-import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Context.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
@@ -29,6 +23,12 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.KeyArg qualified as KeyArg
+import Kernel.Move.Context.Locator qualified as Locator
+import Kernel.Move.Context.OptimizableData qualified as OptimizableData
+import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Context.Type qualified as Type
 import Kernel.Rule.Const
 import Kernel.Rule.HoleSubst qualified as HS
 import Kernel.Rule.OptimizableData qualified as OD

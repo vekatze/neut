@@ -11,6 +11,14 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (fromMaybe)
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
+import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
+import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
+import Kernel.Elaborate.Move.Internal.Handle.LocalLogs qualified as LocalLogs
+import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
+import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
+import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
+import Kernel.Elaborate.Move.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.KeyArg qualified as KeyArg
@@ -21,14 +29,6 @@ import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.SymLoc qualified as SymLoc
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
-import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
-import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
-import Kernel.Elaborate.Move.Internal.Handle.LocalLogs qualified as LocalLogs
-import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
-import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
-import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
-import Kernel.Elaborate.Move.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Rule.Const (defaultInlineLimit)

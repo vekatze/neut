@@ -15,11 +15,11 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
-import Kernel.Move.Context.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
+import Kernel.Move.Context.Type qualified as Type
 import Kernel.Rule.Constraint (SuspendedConstraint)
 import Kernel.Rule.Constraint qualified as C
 import Kernel.Rule.HoleSubst qualified as HS

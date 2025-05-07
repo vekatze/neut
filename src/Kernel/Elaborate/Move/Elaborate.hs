@@ -18,13 +18,6 @@ import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
 import Gensym.Move.Trick qualified as Gensym
-import Kernel.Move.Context.Cache qualified as Cache
-import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
-import Kernel.Move.Context.KeyArg qualified as KeyArg
-import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
-import Kernel.Move.Context.SymLoc qualified as SymLoc
-import Kernel.Move.Context.TopCandidate qualified as TopCandidate
-import Kernel.Move.Context.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.EnsureAffinity qualified as EnsureAffinity
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
@@ -36,6 +29,13 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
+import Kernel.Move.Context.Cache qualified as Cache
+import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Context.KeyArg qualified as KeyArg
+import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
+import Kernel.Move.Context.SymLoc qualified as SymLoc
+import Kernel.Move.Context.TopCandidate qualified as TopCandidate
+import Kernel.Move.Context.Type qualified as Type
 import Kernel.Rule.Cache qualified as Cache
 import Kernel.Rule.Const (holeLiteral)
 import Kernel.Rule.HoleSubst qualified as HS

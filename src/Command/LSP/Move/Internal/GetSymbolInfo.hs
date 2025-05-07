@@ -13,9 +13,9 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
+import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Kernel.Move.Context.Cache (invalidate)
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Rule.LocationTree qualified as LT
 import Kernel.Rule.Source (Source (sourceFilePath, sourceModule))

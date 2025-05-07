@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Clarify.Handle.CompDef
+module Kernel.Clarify.Move.Internal.Handle.CompDef
   ( Handle,
     new,
     DefKey,

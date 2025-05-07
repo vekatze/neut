@@ -14,10 +14,10 @@ import Data.Text qualified as T
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Load qualified as Load

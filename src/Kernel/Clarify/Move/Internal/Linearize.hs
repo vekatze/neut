@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Clarify.Linearize
+module Kernel.Clarify.Move.Internal.Linearize
   ( Handle (..),
     new,
     linearize,
@@ -8,7 +8,7 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Gensym.Rule.Handle qualified as Gensym
-import Kernel.Move.Scene.Clarify.Utility qualified as Utility
+import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
