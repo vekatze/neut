@@ -38,7 +38,7 @@ import Kernel.Rule.Module
 import Kernel.Rule.OutputKind qualified as OK
 import Kernel.Rule.Source qualified as Source
 import Kernel.Rule.Target
-import Kernel.Rule.VisitInfo qualified as VI
+import Kernel.Unravel.Rule.VisitInfo qualified as VI
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Logger.Move.Debug qualified as Logger
