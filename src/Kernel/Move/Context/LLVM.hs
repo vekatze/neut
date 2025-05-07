@@ -62,10 +62,10 @@ emit h target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
       emitAll h clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
         setModificationTime path timeStamp
-    Left t -> do
+    Left mainTarget -> do
       let mainModule = Env.getMainModule (envHandle h)
       let mm = extractModule mainModule
-      kindPathList <- zipWithM (Path.getOutputPathForEntryPoint (pathHandle h) mm) outputKindList (repeat t)
+      kindPathList <- zipWithM (Path.getOutputPathForEntryPoint (pathHandle h) mm) outputKindList (repeat mainTarget)
       forM_ kindPathList $ \(_, path) -> ensureDir $ parent path
       emitAll h clangOptions llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
