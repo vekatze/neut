@@ -21,6 +21,7 @@ import Kernel.Clarify.Move.Clarify qualified as Clarify
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Emit.Move.Emit qualified as Emit
+import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Context.Cache (needsCompilation)
 import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Context.Env qualified as Env
@@ -35,9 +36,7 @@ import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Install qualified as Install
 import Kernel.Move.Scene.Link qualified as Link
-import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Scene.Lower qualified as Lower
-import Kernel.Move.Scene.Unravel qualified as Unravel
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Rule.Cache
 import Kernel.Rule.ClangOption qualified as CL
@@ -45,6 +44,7 @@ import Kernel.Rule.Module qualified as M
 import Kernel.Rule.OutputKind
 import Kernel.Rule.Source
 import Kernel.Rule.Target
+import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.ModuleID qualified as MID

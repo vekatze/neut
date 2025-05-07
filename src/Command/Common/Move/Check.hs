@@ -16,19 +16,19 @@ import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
+import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule
-import Kernel.Move.Scene.Unravel qualified as Unravel
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Rule.Cache
 import Kernel.Rule.Module (extractModule)
 import Kernel.Rule.Module qualified as M
 import Kernel.Rule.Source (Source (sourceFilePath))
 import Kernel.Rule.Target
+import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Log
 import Logger.Rule.Log qualified as L

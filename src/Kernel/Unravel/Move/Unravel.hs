@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Unravel
+module Kernel.Unravel.Move.Unravel
   ( Handle,
     new,
     unravel,

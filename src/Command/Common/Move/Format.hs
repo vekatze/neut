@@ -14,17 +14,17 @@ import Data.Text qualified as T
 import Ens.Move.Parse qualified as EnsParse
 import Ens.Rule.Ens.ToDoc qualified as Ens
 import Error.Rule.EIO (EIO)
+import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
-import Kernel.Move.Scene.Unravel qualified as Unravel
 import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Rule.Module (MainModule (MainModule))
 import Kernel.Rule.Target
+import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Language.RawTerm.Rule.RawStmt.ToDoc qualified as RawProgram
