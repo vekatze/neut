@@ -16,11 +16,11 @@ import Data.Set qualified as S
 import Error.Rule.EIO (EIO)
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
+import Kernel.Elaborate.Rule.Stuck qualified as Stuck
 import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Type qualified as Type
 import Kernel.Rule.OptimizableData
 import Kernel.Rule.OptimizableData qualified as OD
-import Kernel.Rule.Stuck qualified as Stuck
 import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL

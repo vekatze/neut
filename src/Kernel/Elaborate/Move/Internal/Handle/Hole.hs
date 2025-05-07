@@ -11,7 +11,7 @@ where
 
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Kernel.Rule.HoleSubst qualified as HS
+import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.WeakTerm.Rule.WeakTerm qualified as WT

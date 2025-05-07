@@ -23,6 +23,7 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
+import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.KeyArg qualified as KeyArg
 import Kernel.Move.Context.Locator qualified as Locator
@@ -30,7 +31,6 @@ import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.Type qualified as Type
 import Kernel.Rule.Const
-import Kernel.Rule.HoleSubst qualified as HS
 import Kernel.Rule.OptimizableData qualified as OD
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)

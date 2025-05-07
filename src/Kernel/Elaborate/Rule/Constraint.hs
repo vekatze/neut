@@ -1,4 +1,4 @@
-module Kernel.Rule.Constraint
+module Kernel.Elaborate.Rule.Constraint
   ( Constraint (..),
     MetaVarSet,
     SuspendedConstraint (..),

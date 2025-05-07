@@ -1,4 +1,4 @@
-module Kernel.Rule.Stuck
+module Kernel.Elaborate.Rule.Stuck
   ( EvalBase (..),
     EvalCtx,
     EvalCtxF (..),
@@ -10,7 +10,7 @@ module Kernel.Rule.Stuck
 where
 
 import Control.Comonad.Cofree
-import Kernel.Rule.Constraint qualified as C
+import Kernel.Elaborate.Rule.Constraint qualified as C
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident

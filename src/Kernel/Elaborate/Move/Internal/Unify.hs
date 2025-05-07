@@ -19,11 +19,11 @@ import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
+import Kernel.Elaborate.Rule.Constraint (SuspendedConstraint)
+import Kernel.Elaborate.Rule.Constraint qualified as C
+import Kernel.Elaborate.Rule.HoleSubst qualified as HS
+import Kernel.Elaborate.Rule.Stuck qualified as Stuck
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Rule.Constraint (SuspendedConstraint)
-import Kernel.Rule.Constraint qualified as C
-import Kernel.Rule.HoleSubst qualified as HS
-import Kernel.Rule.Stuck qualified as Stuck
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD

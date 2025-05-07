@@ -1,4 +1,4 @@
-module Kernel.Rule.HoleSubst
+module Kernel.Elaborate.Rule.HoleSubst
   ( HoleSubst (..),
     insert,
     lookup,

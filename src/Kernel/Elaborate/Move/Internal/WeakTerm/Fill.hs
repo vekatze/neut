@@ -12,7 +12,7 @@ import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Error.Rule.EIO (EIO)
-import Kernel.Rule.HoleSubst
+import Kernel.Elaborate.Rule.HoleSubst
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder

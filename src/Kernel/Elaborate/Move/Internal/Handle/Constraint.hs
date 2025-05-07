@@ -12,7 +12,7 @@ module Kernel.Elaborate.Move.Internal.Handle.Constraint
 where
 
 import Data.IORef
-import Kernel.Rule.Constraint qualified as C
+import Kernel.Elaborate.Rule.Constraint qualified as C
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 data Handle = Handle

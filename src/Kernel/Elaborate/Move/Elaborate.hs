@@ -29,6 +29,7 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
+import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.KeyArg qualified as KeyArg
@@ -38,7 +39,6 @@ import Kernel.Move.Context.TopCandidate qualified as TopCandidate
 import Kernel.Move.Context.Type qualified as Type
 import Kernel.Rule.Cache qualified as Cache
 import Kernel.Rule.Const (holeLiteral)
-import Kernel.Rule.HoleSubst qualified as HS
 import Kernel.Rule.Target hiding (Main)
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)

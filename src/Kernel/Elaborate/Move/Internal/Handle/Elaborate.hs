@@ -19,6 +19,7 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.WeakTerm.Fill qualified as Fill
+import Kernel.Elaborate.Rule.HoleSubst (HoleSubst)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.KeyArg qualified as KeyArg
@@ -32,7 +33,6 @@ import Kernel.Move.Context.Type qualified as Type
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Rule.Const (defaultInlineLimit)
-import Kernel.Rule.HoleSubst (HoleSubst)
 import Kernel.Rule.Module (Module (moduleInlineLimit))
 import Kernel.Rule.Source
 import Language.Common.Rule.Binder
