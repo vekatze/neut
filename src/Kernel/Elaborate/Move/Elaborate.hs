@@ -111,10 +111,12 @@ synthesizeStmtList h t logs stmtList = do
   topCandidate <- liftIO $ TopCandidate.get (topCandidateHandle h)
   rawImportSummary <- liftIO $ RawImportSummary.get (rawImportSummaryHandle h)
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
+  localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
+  let logs' = logs ++ localLogs
   Cache.saveCache (pathHandle h) t (currentSource h) $
     Cache.Cache
       { Cache.stmtList = stmtList',
-        Cache.remarkList = logs,
+        Cache.remarkList = logs',
         Cache.countSnapshot = countSnapshot
       }
   Cache.saveCompletionCache (pathHandle h) t (currentSource h) $
@@ -123,7 +125,7 @@ synthesizeStmtList h t logs stmtList = do
         Cache.topCandidate = topCandidate,
         Cache.rawImportSummary = rawImportSummary
       }
-  liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs
+  liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs'
   return stmtList'
 
 elaborateStmt :: Handle -> WeakStmt -> EIO ([Stmt], [L.Log])
