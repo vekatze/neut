@@ -27,6 +27,7 @@ import Kernel.Common.Rule.Cache
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.OutputKind
+import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
@@ -39,11 +40,11 @@ import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.LLVM qualified as LLVM
-import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.ManageCache (needsCompilation)
 import Kernel.Move.Scene.ManageCache qualified as Cache
+import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')
@@ -132,8 +133,6 @@ compile h target outputKindList contentSeq = do
   let completedTitle = getCompletedTitle numOfItems
   let silentMode = Env.getSilentMode (Global.envHandle (globalHandle h))
   hp <- liftIO $ Indicator.new colorHandle silentMode (Just numOfItems) workingTitle completedTitle color
-  let emitHandle = Emit.new (globalHandle h)
-  let llvmHandle = LLVM.new (globalHandle h)
   contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     localHandle <- Local.new (globalHandle h) source
     parseHandle <- liftIO $ Parse.new (globalHandle h) localHandle
@@ -154,11 +153,11 @@ compile h target outputKindList contentSeq = do
         fmap Just $ liftIO $ async $ runEIO $ do
           lowerHandle <- liftIO $ Lower.new (globalHandle h)
           virtualCode <- Lower.lower lowerHandle stmtList'
-          emit emitHandle llvmHandle hp currentTime target outputKindList (Right source) virtualCode
+          emit h hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   entryPointVirtualCode <- compileEntryPoint h mainModule target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
-    async $ runEIO $ emit emitHandle llvmHandle hp currentTime target outputKindList src code
+    async $ runEIO $ emit h hp currentTime target outputKindList src code
   errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
   liftIO $ Indicator.close hp
   if null errors
@@ -176,8 +175,7 @@ getWorkingTitle numOfItems = do
   "Compiling " <> T.pack (show numOfItems) <> " file" <> suffix
 
 emit ::
-  Emit.Handle ->
-  LLVM.Handle ->
+  Handle ->
   Indicator.Handle ->
   UTCTime ->
   Target ->
@@ -185,10 +183,17 @@ emit ::
   Either MainTarget Source ->
   LC.LowCode ->
   EIO ()
-emit h he progressBar currentTime target outputKindList src code = do
+emit h progressBar currentTime target outputKindList src code = do
+  let emitHandle = Emit.new (globalHandle h)
+  let llvmHandle = LLVM.new (globalHandle h)
   let clangOptions = getCompileOption target
-  llvmIR' <- liftIO $ Emit.emit h code
-  LLVM.emit he target clangOptions currentTime src outputKindList llvmIR'
+  llvmIR' <- liftIO $ Emit.emit emitHandle code
+  forM_ outputKindList $ \outputKind -> do
+    case outputKind of
+      OK.Object -> do
+        LLVM.generateObject llvmHandle target clangOptions currentTime src llvmIR'
+      OK.LLVM -> do
+        LLVM.generateAsm llvmHandle target currentTime src llvmIR'
   liftIO $ Indicator.increment progressBar
 
 getEntryPointCompilationCount :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO Int

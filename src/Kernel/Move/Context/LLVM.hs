@@ -1,11 +1,11 @@
 module Kernel.Move.Context.LLVM
   ( Handle,
     new,
-    emit,
+    generateObject,
+    generateAsm,
   )
 where
 
-import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
@@ -45,52 +45,58 @@ type ClangOption = String
 
 type LLVMCode = L.ByteString
 
-emit ::
+generateObject ::
   Handle ->
   Target ->
   [ClangOption] ->
   UTCTime ->
   Either MainTarget Source ->
-  [OK.OutputKind] ->
   L.ByteString ->
   EIO ()
-emit h target clangOptions timeStamp sourceOrNone outputKindList llvmCode = do
+generateObject h target clangOptions timeStamp sourceOrNone llvmCode = do
   case sourceOrNone of
     Right source -> do
-      kindPathList <- zipWithM (Path.attachOutputPath (pathHandle h) target) outputKindList (repeat source)
-      forM_ kindPathList $ \(_, outputPath) -> ensureDir $ parent outputPath
-      emitAll h clangOptions llvmCode kindPathList
-      forM_ (map snd kindPathList) $ \path -> do
-        setModificationTime path timeStamp
+      (_, outputPath) <- Path.attachOutputPath (pathHandle h) target OK.Object source
+      ensureDir $ parent outputPath
+      generateObject' h clangOptions llvmCode outputPath
+      setModificationTime outputPath timeStamp
     Left mainTarget -> do
       let mainModule = Env.getMainModule (envHandle h)
       let mm = extractModule mainModule
-      kindPathList <- zipWithM (Path.getOutputPathForEntryPoint (pathHandle h) mm) outputKindList (repeat mainTarget)
-      forM_ kindPathList $ \(_, path) -> ensureDir $ parent path
-      emitAll h clangOptions llvmCode kindPathList
-      forM_ (map snd kindPathList) $ \path -> do
-        setModificationTime path timeStamp
+      (_, outputPath) <- Path.getOutputPathForEntryPoint (pathHandle h) mm OK.Object mainTarget
+      ensureDir $ parent outputPath
+      generateObject' h clangOptions llvmCode outputPath
+      setModificationTime outputPath timeStamp
 
-emitAll :: Handle -> [ClangOption] -> LLVMCode -> [(OK.OutputKind, Path Abs File)] -> EIO ()
-emitAll h clangOptions llvmCode kindPathList = do
-  case kindPathList of
-    [] ->
-      return ()
-    (kind, path) : rest -> do
-      emit' h clangOptions llvmCode kind path
-      emitAll h clangOptions llvmCode rest
+generateAsm ::
+  Handle ->
+  Target ->
+  UTCTime ->
+  Either MainTarget Source ->
+  L.ByteString ->
+  EIO ()
+generateAsm h target timeStamp sourceOrNone llvmCode = do
+  case sourceOrNone of
+    Right source -> do
+      (_, outputPath) <- Path.attachOutputPath (pathHandle h) target OK.LLVM source
+      ensureDir $ parent outputPath
+      generateAsm' h llvmCode outputPath
+      setModificationTime outputPath timeStamp
+    Left mainTarget -> do
+      let mainModule = Env.getMainModule (envHandle h)
+      let mm = extractModule mainModule
+      (_, outputPath) <- Path.getOutputPathForEntryPoint (pathHandle h) mm OK.LLVM mainTarget
+      ensureDir $ parent outputPath
+      generateAsm' h llvmCode outputPath
+      setModificationTime outputPath timeStamp
 
-emit' :: Handle -> [ClangOption] -> LLVMCode -> OK.OutputKind -> Path Abs File -> EIO ()
-emit' h clangOptString llvmCode kind path = do
-  case kind of
-    OK.LLVM -> do
-      liftIO $ Logger.report (loggerHandle h) $ "Saving: " <> T.pack (toFilePath path)
-      liftIO $ writeLazyByteString path llvmCode
-    OK.Object ->
-      emitInner h clangOptString llvmCode path
+generateAsm' :: Handle -> LLVMCode -> Path Abs File -> EIO ()
+generateAsm' h llvmCode path = do
+  liftIO $ Logger.report (loggerHandle h) $ "Saving: " <> T.pack (toFilePath path)
+  liftIO $ writeLazyByteString path llvmCode
 
-emitInner :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> EIO ()
-emitInner h additionalClangOptions llvm outputPath = do
+generateObject' :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> EIO ()
+generateObject' h additionalClangOptions llvm outputPath = do
   clang <- liftIO Platform.getClang
   let optionList = clangBaseOpt outputPath ++ additionalClangOptions
   let spec =
