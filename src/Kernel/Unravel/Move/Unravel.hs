@@ -31,7 +31,6 @@ import Kernel.Move.Context.Global.Env (getMainModule)
 import Kernel.Move.Context.Global.Module qualified as Module
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Parse (ensureExistence')
-import Kernel.Move.Context.Parse qualified as Parse
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
@@ -104,7 +103,7 @@ unravel' h t source = do
   registerShiftMap h
   (artifactTime, sourceSeq) <- unravel'' h t source
   let sourceList = toList sourceSeq
-  forM_ sourceSeq Parse.ensureExistence
+  forM_ sourceSeq ensureSourceExistence
   return (artifactTime, sourceList)
 
 registerShiftMap :: Handle -> EIO ()
@@ -346,7 +345,7 @@ getChildren h currentSource = do
 
 parseSourceHeader :: Handle -> Local.Handle -> Source.Source -> EIO [ImportItem]
 parseSourceHeader h localHandle currentSource = do
-  Parse.ensureExistence currentSource
+  ensureSourceExistence currentSource
   let filePath = Source.sourceFilePath currentSource
   fileContent <- liftIO $ readText filePath
   (_, importList) <- runParser filePath fileContent False parseImport
@@ -430,3 +429,8 @@ artifactTimeFromCurrentTime = do
         llvmTime = Just now,
         objectTime = Just now
       }
+
+ensureSourceExistence :: Source.Source -> EIO ()
+ensureSourceExistence source = do
+  let path = Source.sourceFilePath source
+  ensureExistence' path (Source.sourceHint source)

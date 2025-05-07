@@ -1,21 +1,14 @@
 module Kernel.Move.Context.Parse
-  ( ensureExistence,
-    ensureExistence',
+  ( ensureExistence',
   )
 where
 
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
-import Kernel.Common.Rule.Source
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Logger.Rule.Hint
 import Path
 import Path.IO
-
-ensureExistence :: Source -> EIO ()
-ensureExistence source = do
-  let path = sourceFilePath source
-  ensureExistence' path (sourceHint source)
 
 ensureExistence' :: Path Abs File -> Maybe Hint -> EIO ()
 ensureExistence' path mHint = do
