@@ -11,9 +11,9 @@ import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.LocationTree qualified as LT
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target (Target (Peripheral))
-import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.ManageCache qualified as Cache
 
 newtype Handle = Handle
   { pathHandle :: Path.Handle

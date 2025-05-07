@@ -33,8 +33,6 @@ import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Emit.Move.Emit qualified as Emit
 import Kernel.Load.Move.Load qualified as Load
 import Kernel.Lower.Move.Lower qualified as Lower
-import Kernel.Move.Context.Cache (needsCompilation)
-import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
@@ -43,6 +41,8 @@ import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.LLVM qualified as LLVM
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
+import Kernel.Move.Scene.ManageCache (needsCompilation)
+import Kernel.Move.Scene.ManageCache qualified as Cache
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')

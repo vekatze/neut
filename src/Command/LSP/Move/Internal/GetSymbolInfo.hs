@@ -17,9 +17,9 @@ import Kernel.Common.Rule.LocationTree qualified as LT
 import Kernel.Common.Rule.Source (Source (sourceFilePath, sourceModule))
 import Kernel.Common.Rule.Target (Target (Peripheral))
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
-import Kernel.Move.Context.Cache (invalidate)
 import Kernel.Move.Context.Global.Type qualified as Type
 import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.ManageCache (invalidate)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.Term.Rule.Term.Weaken (weaken)

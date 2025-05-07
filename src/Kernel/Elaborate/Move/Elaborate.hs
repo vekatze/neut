@@ -33,13 +33,13 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
-import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
 import Kernel.Move.Context.Global.Type qualified as Type
 import Kernel.Move.Context.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.Local.SymLoc qualified as SymLoc
 import Kernel.Move.Context.Local.TopCandidate qualified as TopCandidate
+import Kernel.Move.Scene.ManageCache qualified as Cache
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN

@@ -11,8 +11,8 @@ import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.ManageCache qualified as Cache
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path.Move.Read (readText)
