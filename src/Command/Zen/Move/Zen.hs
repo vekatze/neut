@@ -1,4 +1,4 @@
-module Main.Move.Act.Zen
+module Command.Zen.Move.Zen
   ( Handle,
     new,
     zen,

@@ -11,13 +11,13 @@ import Command.FormatSource.Move.FormatSource qualified as FormatSource
 import Command.Get.Move.Get qualified as Get
 import Command.LSP.Move.LSP qualified as LSP
 import Command.Version.Move.Version qualified as Version
+import Command.Zen.Move.Zen qualified as Zen
 import CommandParser.Move.Parse qualified as CommandParser
 import CommandParser.Rule.Command qualified as C
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
 import Logger.Move.CreateHandle qualified as Logger
-import Main.Move.Act.Zen qualified as Zen
 import Main.Move.Context.Platform (ensureExecutables)
 import Main.Move.Scene.Init.Base qualified as Base
 import Main.Move.Scene.Module.Save qualified as ModuleSave
