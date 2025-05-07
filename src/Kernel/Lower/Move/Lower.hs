@@ -4,7 +4,7 @@
 {-# HLINT ignore "Use <$>" #-}
 {-# HLINT ignore "Monad law, left identity" #-}
 
-module Kernel.Move.Scene.Lower
+module Kernel.Lower.Move.Lower
   ( Handle,
     new,
     lower,
