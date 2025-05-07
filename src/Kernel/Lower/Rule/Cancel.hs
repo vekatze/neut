@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Cancel (cancel) where
+module Kernel.Lower.Rule.Cancel (cancel) where
 
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
