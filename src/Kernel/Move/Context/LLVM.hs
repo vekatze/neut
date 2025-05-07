@@ -2,7 +2,6 @@ module Kernel.Move.Context.LLVM
   ( Handle,
     new,
     emit,
-    link,
   )
 where
 
@@ -20,8 +19,8 @@ import Kernel.Common.Rule.Target
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
-import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Language.Common.Rule.Error (newError')
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
@@ -117,23 +116,3 @@ clangBaseOpt outputPath =
     "-o",
     toFilePath outputPath
   ]
-
-link :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> EIO ()
-link h clangOptions objectPathList outputPath = do
-  clang <- liftIO Platform.getClang
-  ensureDir $ parent outputPath
-  RunProcess.run (runProcessHandle h) clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
-
-clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
-clangLinkOpt objectPathList outputPath additionalOptionStr = do
-  let pathList = map toFilePath objectPathList
-  [ "-Wno-override-module",
-    "-O2",
-    "-flto=thin",
-    "-pthread",
-    "-lm",
-    "-o",
-    toFilePath outputPath
-    ]
-    ++ words additionalOptionStr
-    ++ pathList

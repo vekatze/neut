@@ -18,8 +18,10 @@ import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Path qualified as Path
+import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.LLVM qualified as LLVM
 import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.RunProcess qualified as RunProcess
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path
@@ -65,7 +67,7 @@ link' h target (MainModule mainModule) sourceList = do
   let completedTitle = getCompletedTitle numOfObjects
   let silentMode = Env.getSilentMode (envHandle h)
   progressBarHandle <- liftIO $ Indicator.new (colorHandle h) silentMode Nothing workingTitle completedTitle barColor
-  LLVM.link (llvmHandle h) clangOptions objects outputPath
+  link'' h clangOptions objects outputPath
   liftIO $ Indicator.close progressBarHandle
 
 getWorkingTitle :: Int -> T.Text
@@ -88,3 +90,24 @@ getForeignDirContent foreignDir = do
   if b
     then snd <$> listDirRecur foreignDir
     else return []
+
+link'' :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> EIO ()
+link'' h clangOptions objectPathList outputPath = do
+  clang <- liftIO Platform.getClang
+  ensureDir $ parent outputPath
+  let runProcessHandle = RunProcess.new (loggerHandle h)
+  RunProcess.run runProcessHandle clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
+
+clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
+clangLinkOpt objectPathList outputPath additionalOptionStr = do
+  let pathList = map toFilePath objectPathList
+  [ "-Wno-override-module",
+    "-O2",
+    "-flto=thin",
+    "-pthread",
+    "-lm",
+    "-o",
+    toFilePath outputPath
+    ]
+    ++ words additionalOptionStr
+    ++ pathList
