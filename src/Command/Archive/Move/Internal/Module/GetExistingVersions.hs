@@ -1,11 +1,11 @@
 module Command.Archive.Move.Internal.Module.GetExistingVersions (getExistingVersions) where
 
+import Command.Archive.Rule.PackageVersion qualified as PV
 import Data.List qualified as List
 import Data.Maybe
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Path (getBaseName)
 import Kernel.Rule.Module
-import Kernel.Rule.PackageVersion qualified as PV
 import Path.IO
 
 getExistingVersions :: MainModule -> EIO [PV.PackageVersion]

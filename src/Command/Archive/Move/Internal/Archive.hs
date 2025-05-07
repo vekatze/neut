@@ -5,6 +5,7 @@ module Command.Archive.Move.Internal.Archive
   )
 where
 
+import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Monad
 import Data.Text qualified as T
 import Ens.Rule.Ens qualified as E
@@ -14,7 +15,6 @@ import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Scene.Module.Save qualified as ModuleSave
 import Kernel.Rule.Const
 import Kernel.Rule.Module
-import Kernel.Rule.PackageVersion qualified as PV
 import Language.Common.Move.Raise (raiseError')
 import Path
 import Path.IO

@@ -1,6 +1,7 @@
 module Command.Archive.Move.Internal.Module.MakeArchiveEns (makeArchiveEns) where
 
 import Command.Archive.Move.Internal.Module.GetExistingVersions
+import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
@@ -13,7 +14,6 @@ import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Kernel.Rule.Const
 import Kernel.Rule.Module
-import Kernel.Rule.PackageVersion qualified as PV
 import Language.Common.Rule.ModuleDigest (ModuleDigest (..))
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Logger.Rule.Hint

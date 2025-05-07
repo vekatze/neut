@@ -26,9 +26,9 @@ import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
+import Kernel.Lower.Rule.Cancel
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Lower.Rule.Cancel
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Rule.Arch
 import Kernel.Rule.Arch qualified as A

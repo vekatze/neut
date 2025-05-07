@@ -1,4 +1,4 @@
-module Kernel.Rule.PackageVersion
+module Command.Archive.Rule.PackageVersion
   ( PackageVersion,
     reflect,
     reify,
