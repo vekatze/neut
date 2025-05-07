@@ -26,15 +26,16 @@ import Kernel.Common.Rule.DataSize qualified as DS
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as O
 import Kernel.Common.Rule.Platform qualified as P
-import Kernel.Move.Context.External (ensureExecutable)
 import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Digest (hashAndEncode)
+import Language.Common.Rule.Error (newError')
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Logger.Rule.Hint
 import Path
 import Paths_neut
+import System.Directory
 import System.Environment (lookupEnv)
 import System.Info qualified as SI
 import System.Process (CmdSpec (RawCommand))
@@ -126,13 +127,14 @@ calculateClangDigest :: Logger.Handle -> EIO T.Text
 calculateClangDigest h = do
   clang <- liftIO getClang
   let spec = ProcessRunner.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
-  output <- liftIO $ ProcessRunner.run01 spec
+  let h' = ProcessRunner.new h
+  output <- liftIO $ ProcessRunner.run01 h' spec
   case output of
     Right value -> do
       liftIO $ Logger.report h $ "Clang info:\n" <> decodeUtf8 value
       return $ decodeUtf8 $ hashAndEncode value
     Left err ->
-      throwError $ ProcessRunner.toCompilerError err
+      throwError $ newError' err
 
 getPlatformPrefix :: Handle -> EIO (Path Rel Dir)
 getPlatformPrefix h = do
@@ -156,3 +158,12 @@ ensureExecutables = do
       "tar",
       "zstd"
     ]
+
+ensureExecutable :: String -> EIO ()
+ensureExecutable name = do
+  mPath <- liftIO $ findExecutable name
+  case mPath of
+    Just _ ->
+      return ()
+    Nothing ->
+      raiseError' $ "Command not found: " <> T.pack name

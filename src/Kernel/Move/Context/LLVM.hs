@@ -17,12 +17,12 @@ import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
 import Kernel.Move.Scene.Init.Global qualified as Global
+import Language.Common.Rule.Error (newError')
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path
@@ -33,13 +33,13 @@ import System.Process (CmdSpec (RawCommand))
 data Handle = Handle
   { loggerHandle :: Logger.Handle,
     pathHandle :: Path.Handle,
-    externalHandle :: External.Handle,
+    processRunnerHandle :: ProcessRunner.Handle,
     envHandle :: Env.Handle
   }
 
 new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
-  let externalHandle = External.new loggerHandle
+  let processRunnerHandle = ProcessRunner.new loggerHandle
   Handle {..}
 
 type ClangOption = String
@@ -99,13 +99,12 @@ emitInner h additionalClangOptions llvm outputPath = do
           { cmdspec = RawCommand clang optionList,
             cwd = Nothing
           }
-  liftIO $ Logger.report (loggerHandle h) $ "Executing: " <> T.pack (show (clang, optionList))
-  value <- liftIO $ ProcessRunner.run10 spec (ProcessRunner.Lazy llvm)
+  value <- liftIO (ProcessRunner.run10 (processRunnerHandle h) spec (ProcessRunner.Lazy llvm))
   case value of
     Right _ ->
       return ()
     Left err ->
-      throwError $ ProcessRunner.toCompilerError err
+      throwError $ newError' err
 
 clangBaseOpt :: Path Abs File -> [String]
 clangBaseOpt outputPath =
@@ -123,7 +122,7 @@ link :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> EIO ()
 link h clangOptions objectPathList outputPath = do
   clang <- liftIO Platform.getClang
   ensureDir $ parent outputPath
-  External.run (externalHandle h) clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
+  ProcessRunner.run (processRunnerHandle h) clang $ clangLinkOpt objectPathList outputPath (unwords clangOptions)
 
 clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
 clangLinkOpt objectPathList outputPath additionalOptionStr = do

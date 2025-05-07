@@ -14,9 +14,9 @@ import CommandParser.Rule.Config.Archive
 import Data.HashMap.Strict qualified as Map
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module
-import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Path qualified as Path
+import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 
@@ -30,9 +30,9 @@ new :: Global.Handle -> Handle
 new globalHandle = do
   let envHandle = Global.envHandle globalHandle
   let packageVersionHandle = PV.new (Global.loggerHandle globalHandle)
-  let externalHandle = External.new (Global.loggerHandle globalHandle)
+  let processRunnerHandle = ProcessRunner.new (Global.loggerHandle globalHandle)
   let saveModuleHandle = SaveModule.new (Global.loggerHandle globalHandle)
-  let archiveHandle = Archive.new externalHandle saveModuleHandle envHandle
+  let archiveHandle = Archive.new processRunnerHandle saveModuleHandle envHandle
   Handle {..}
 
 archive :: Handle -> Config -> EIO ()

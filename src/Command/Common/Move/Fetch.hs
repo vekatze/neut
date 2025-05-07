@@ -22,13 +22,12 @@ import Ens.Rule.Ens qualified as E
 import Ens.Rule.Ens qualified as SE
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
-import Error.Rule.Error
 import Kernel.Common.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.ModuleURL
-import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.Module qualified as Module
+import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Language.Common.Move.Raise (raiseError')
@@ -44,10 +43,11 @@ import Path
 import Path.IO
 import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
 import SyntaxTree.Rule.Series qualified as SE
+import System.Process (CmdSpec (RawCommand))
 
 data Handle = Handle
   { saveModuleHandle :: SaveModule.Handle,
-    externalHandle :: External.Handle,
+    processRunnerHandle :: ProcessRunner.Handle,
     loggerHandle :: Logger.Handle,
     envHandle :: Env.Handle
   }
@@ -57,7 +57,7 @@ new ::
   Handle
 new (Global.Handle {..}) = do
   let saveModuleHandle = SaveModule.new loggerHandle
-  let externalHandle = External.new loggerHandle
+  let processRunnerHandle = ProcessRunner.new loggerHandle
   Handle {..}
 
 fetch :: Handle -> M.MainModule -> EIO ()
@@ -202,13 +202,18 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
     [] ->
       raiseError' $ "Could not obtain the module `" <> BN.reify alias <> "`."
     ModuleURL mirror : rest -> do
-      errOrUnit <- External.runOrFail (externalHandle h) "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror]
+      let spec =
+            ProcessRunner.Spec
+              { cmdspec = RawCommand "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror],
+                cwd = Nothing
+              }
+      errOrUnit <- liftIO $ ProcessRunner.run00 (processRunnerHandle h) spec
       case errOrUnit of
         Right () ->
           return ()
-        Left (MakeError errorList) -> do
+        Left err -> do
           liftIO $ Logger.printWarning' (loggerHandle h) $ "Could not process the module at: " <> mirror
-          liftIO $ forM_ errorList $ Logger.printLog (loggerHandle h)
+          liftIO $ Logger.printWarning' (loggerHandle h) err
           download h tempFilePath ma rest
 
 extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO ()
@@ -216,7 +221,7 @@ extractToDependencyDir h archivePath _ digest = do
   let mainModule = Env.getMainModule (envHandle h)
   moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   ensureDir moduleDirPath
-  External.run (externalHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
+  ProcessRunner.run (processRunnerHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
 addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
 addDependencyToModuleFile h alias dep = do

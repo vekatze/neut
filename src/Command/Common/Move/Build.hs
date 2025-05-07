@@ -18,6 +18,7 @@ import Data.Either (isLeft, lefts)
 import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
+import Data.Text.Encoding (decodeUtf8)
 import Data.Time
 import Error.Move.Run (forP, runEIO)
 import Error.Rule.EIO (EIO)
@@ -33,12 +34,12 @@ import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Emit.Move.Emit qualified as Emit
 import Kernel.Load.Move.Load qualified as Load
 import Kernel.Lower.Move.Lower qualified as Lower
-import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Context.LLVM qualified as LLVM
+import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.ManageCache (needsCompilation)
@@ -46,6 +47,7 @@ import Kernel.Move.Scene.ManageCache qualified as Cache
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')
+import Language.Common.Rule.Error (newError')
 import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
@@ -56,6 +58,7 @@ import Path
 import Path.IO
 import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import System.Console.ANSI
+import System.Process (CmdSpec (RawCommand, ShellCommand))
 import UnliftIO.Async
 import Prelude hiding (log)
 
@@ -69,6 +72,7 @@ data Config = Config
 
 data Handle = Handle
   { globalHandle :: Global.Handle,
+    processRunnerHandle :: ProcessRunner.Handle,
     _outputKindList :: [OutputKind],
     _shouldSkipLink :: Bool,
     _shouldExecute :: Bool,
@@ -81,6 +85,7 @@ new ::
   Global.Handle ->
   Handle
 new cfg globalHandle = do
+  let processRunnerHandle = ProcessRunner.new (Global.loggerHandle globalHandle)
   let _outputKindList = outputKindList cfg
   let _shouldSkipLink = shouldSkipLink cfg
   let _shouldExecute = shouldExecute cfg
@@ -91,7 +96,7 @@ new cfg globalHandle = do
 buildTarget :: Handle -> M.MainModule -> Target -> EIO ()
 buildTarget h (M.MainModule baseModule) target = do
   liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Building: " <> T.pack (show target)
-  target' <- expandClangOptions target
+  target' <- expandClangOptions h target
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   (artifactTime, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target'
   let moduleList = nubOrdOn M.moduleID $ map sourceModule dependenceSeq
@@ -261,23 +266,24 @@ compileForeign' h t currentTime m = do
           return False
     _ -> do
       let cmdList' = map (naiveReplace sub) cmdList
-      forM_ cmdList' $ \c -> do
-        let externalHandle = External.new (Global.loggerHandle (globalHandle h))
-        result <- External.runOrFail' externalHandle moduleRootDir $ T.unpack c
+      forM_ cmdList' $ \cmd -> do
+        let spec =
+              ProcessRunner.Spec
+                { cmdspec = ShellCommand (T.unpack cmd),
+                  cwd = Just (toFilePath moduleRootDir)
+                }
+        result <- liftIO $ ProcessRunner.run00 (processRunnerHandle h) spec
         case result of
           Right _ ->
             return ()
           Left err -> do
-            let External.ExternalError {cmd, exitCode, errStr} = err
             raiseError' $
               "Foreign compilation of `"
                 <> MID.reify (M.moduleID m)
                 <> "` failed at `"
-                <> T.pack cmd
-                <> "` with the following error (exitcode = "
-                <> T.pack (show exitCode)
-                <> "):\n"
-                <> errStr
+                <> cmd
+                <> "` with the following error:\n"
+                <> err
       forM_ outputPathList $ \outputPath -> do
         b <- doesFileExist outputPath
         if b
@@ -315,15 +321,15 @@ attachPrefixPath baseDirPath path =
     Right filePath ->
       Right $ baseDirPath </> filePath
 
-expandClangOptions :: Target -> EIO Target
-expandClangOptions target =
+expandClangOptions :: Handle -> Target -> EIO Target
+expandClangOptions h target =
   case target of
     Main concreteTarget ->
       case concreteTarget of
         Named targetName summary -> do
           let cl = clangOption summary
-          compileOption' <- expandOptions (CL.compileOption cl)
-          linkOption' <- expandOptions (CL.linkOption cl)
+          compileOption' <- expandOptions h (CL.compileOption cl)
+          linkOption' <- expandOptions h (CL.linkOption cl)
           return $
             Main $
               Named
@@ -337,14 +343,28 @@ expandClangOptions target =
                     }
                 )
         Zen path clangOption -> do
-          compileOption' <- expandOptions (CL.compileOption clangOption)
-          linkOption' <- expandOptions (CL.linkOption clangOption)
+          compileOption' <- expandOptions h (CL.compileOption clangOption)
+          linkOption' <- expandOptions h (CL.linkOption clangOption)
           return $ Main $ Zen path $ CL.ClangOption {compileOption = compileOption', linkOption = linkOption'}
     Peripheral {} ->
       return target
     PeripheralSingle {} ->
       return target
 
-expandOptions :: [T.Text] -> EIO [T.Text]
-expandOptions foo =
-  map T.strip <$> mapM External.expandText foo
+expandOptions :: Handle -> [T.Text] -> EIO [T.Text]
+expandOptions h textList =
+  map T.strip <$> mapM (expandText h) textList
+
+expandText :: Handle -> T.Text -> EIO T.Text
+expandText h t = do
+  let spec =
+        ProcessRunner.Spec
+          { cmdspec = RawCommand "sh" ["-c", unwords [T.unpack "printf", "%s", "\"" ++ T.unpack t ++ "\""]],
+            cwd = Nothing
+          }
+  output <- liftIO $ ProcessRunner.run01 (processRunnerHandle h) spec
+  case output of
+    Right value ->
+      return $ decodeUtf8 value
+    Left err ->
+      throwError $ newError' err

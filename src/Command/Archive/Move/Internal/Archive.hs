@@ -13,21 +13,21 @@ import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Module
-import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
 import Language.Common.Move.Raise (raiseError')
 import Path
 import Path.IO
 import Prelude hiding (log)
 
 data Handle = Handle
-  { externalHandle :: External.Handle,
+  { processRunnerHandle :: ProcessRunner.Handle,
     saveModuleHandle :: SaveModule.Handle,
     envHandle :: Env.Handle
   }
 
-new :: External.Handle -> SaveModule.Handle -> Env.Handle -> Handle
-new externalHandle saveModuleHandle envHandle = do
+new :: ProcessRunner.Handle -> SaveModule.Handle -> Env.Handle -> Handle
+new processRunnerHandle saveModuleHandle envHandle = do
   Handle {..}
 
 archive :: Handle -> PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> EIO ()
@@ -44,7 +44,7 @@ makeArchiveFromTempDir h packageVersion tempRootDir = do
   let newContents = map toFilePath files
   let mainModule = Env.getMainModule (envHandle h)
   outputPath <- toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
-  External.run (externalHandle h) "tar" $
+  ProcessRunner.run (processRunnerHandle h) "tar" $
     ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
 
 copyModuleContents :: Path Abs Dir -> Path Abs Dir -> [SomePath Rel] -> EIO ()
