@@ -7,16 +7,16 @@ where
 
 import Command.Common.Move.Clean qualified as Clean
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Prelude hiding (log)
 
 newtype Handle = Handle
   { cleanHandle :: Clean.Handle
   }
 
-new :: Base.Handle -> IO Handle
-new baseHandle = do
-  cleanHandle <- Clean.new baseHandle
+new :: Global.Handle -> IO Handle
+new globalHandle = do
+  cleanHandle <- Clean.new globalHandle
   return $ Handle {..}
 
 clean :: Handle -> EIO ()

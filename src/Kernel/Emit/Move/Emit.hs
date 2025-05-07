@@ -13,14 +13,14 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Kernel.Common.Rule.Const
 import Kernel.Emit.Move.Internal.LowComp qualified as EmitLowComp
 import Kernel.Emit.Rule.Builder
 import Kernel.Emit.Rule.LowType
 import Kernel.Emit.Rule.LowValue
 import Kernel.Emit.Rule.PrimType (emitPrimType)
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Common.Rule.Const
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -35,11 +35,11 @@ import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
 
 newtype Handle = Handle
-  { baseHandle :: Base.Handle
+  { globalHandle :: Global.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle = do
+new :: Global.Handle -> Handle
+new globalHandle = do
   Handle {..}
 
 emit :: Handle -> LC.LowCode -> IO L.ByteString
@@ -58,7 +58,7 @@ emit h lowCode = do
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList) = do
   let declStrList = emitDeclarations declEnv
-  let baseSize = Platform.getDataSizeValue (Base.platformHandle (baseHandle h))
+  let baseSize = Platform.getDataSizeValue (Global.platformHandle (globalHandle h))
   let staticTextList' = map (emitStaticText baseSize) staticTextList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   return (declStrList <> staticTextList', defStrList)
@@ -124,16 +124,16 @@ emitDeclarations declEnv = do
 
 emitDefinitions :: Handle -> LC.Def -> IO [Builder]
 emitDefinitions h (name, (args, body)) = do
-  args' <- mapM (Gensym.newIdentFromIdent (Base.gensymHandle (baseHandle h))) args
+  args' <- mapM (Gensym.newIdentFromIdent (Global.gensymHandle (globalHandle h))) args
   let sub = IntMap.fromList $ zipWith (\from to -> (toInt from, LC.VarLocal to)) args args'
-  let reduceHandle = Reduce.new (Base.gensymHandle (baseHandle h))
+  let reduceHandle = Reduce.new (Global.gensymHandle (globalHandle h))
   body' <- Reduce.reduce reduceHandle sub body
   let args'' = map (emitValue . LC.VarLocal) args'
   emitDefinition h "ptr" (DD.toBuilder name) args'' body'
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (args, body) = do
-  let baseSize = Platform.getDataSizeValue (Base.platformHandle (baseHandle h))
+  let baseSize = Platform.getDataSizeValue (Global.platformHandle (globalHandle h))
   let mainType = emitPrimType $ PT.Int (IntSize baseSize)
   let args' = map (emitValue . LC.VarLocal) args
   emitDefinition h mainType "main" args' body
@@ -152,7 +152,7 @@ declToBuilder (name, (dom, cod)) = do
 emitDefinition :: Handle -> Builder -> Builder -> [Builder] -> LC.Comp -> IO [Builder]
 emitDefinition h retType name args asm = do
   let header = sig retType name args <> " {"
-  emitLowCompHandle <- EmitLowComp.new (baseHandle h) retType
+  emitLowCompHandle <- EmitLowComp.new (globalHandle h) retType
   content <- EmitLowComp.emitLowComp emitLowCompHandle asm
   let footer = "}"
   return $ [header] <> content <> [footer]

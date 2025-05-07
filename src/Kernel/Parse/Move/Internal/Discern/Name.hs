@@ -13,6 +13,8 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Const qualified as C
+import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.Tag qualified as Tag
@@ -20,8 +22,6 @@ import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Common.Rule.Const qualified as C
-import Kernel.Common.Rule.GlobalName qualified as GN
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN

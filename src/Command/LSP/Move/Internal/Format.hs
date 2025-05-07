@@ -10,8 +10,8 @@ import Control.Monad.Trans
 import Data.Text qualified as T
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Const
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS
 import Path
@@ -21,9 +21,9 @@ newtype Handle = Handle
   { formatHandle :: Format.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle = do
-  let formatHandle = Format.new baseHandle
+new :: Global.Handle -> Handle
+new globalHandle = do
+  let formatHandle = Format.new globalHandle
   Handle {..}
 
 format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]

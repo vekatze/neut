@@ -20,12 +20,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Move.Run (forP, liftMaybe, runEIO)
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Antecedent qualified as Antecedent
-import Kernel.Move.Context.Cache qualified as Cache
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Move.Scene.Module.GetModule qualified as GetModule
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.LocalVarTree qualified as LVT
 import Kernel.Common.Rule.Module
@@ -33,6 +27,12 @@ import Kernel.Common.Rule.RawImportSummary
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.TopCandidate
+import Kernel.Move.Context.Antecedent qualified as Antecedent
+import Kernel.Move.Context.Cache qualified as Cache
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.Module.GetModule qualified as GetModule
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)
@@ -54,12 +54,12 @@ data Handle = Handle
     gacHandle :: GAC.Handle
   }
 
-new :: Base.Handle -> IO Handle
-new baseHandle@(Base.Handle {..}) = do
-  unravelHandle <- liftIO $ Unravel.new baseHandle
-  let getModuleHandle = GetModule.new baseHandle
-  let sourceReflectHandle = SourceReflect.new baseHandle
-  let gacHandle = GAC.new baseHandle
+new :: Global.Handle -> IO Handle
+new globalHandle@(Global.Handle {..}) = do
+  unravelHandle <- liftIO $ Unravel.new globalHandle
+  let getModuleHandle = GetModule.new globalHandle
+  let sourceReflectHandle = SourceReflect.new globalHandle
+  let gacHandle = GAC.new globalHandle
   return $ Handle {..}
 
 complete :: Handle -> Uri -> Position -> EIO [CompletionItem]

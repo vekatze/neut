@@ -24,12 +24,12 @@ import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Move.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
+import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Common.Rule.OptimizableData qualified as OD
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseCritical')
 import Language.Common.Rule.ArgNum qualified as AN
@@ -84,8 +84,8 @@ data Handle = Handle
     baseSize :: Int
   }
 
-new :: Base.Handle -> Local.Handle -> IO Handle
-new (Base.Handle {..}) (Local.Handle {..}) = do
+new :: Global.Handle -> Local.Handle -> IO Handle
+new (Global.Handle {..}) (Local.Handle {..}) = do
   let baseSize = Platform.getDataSizeValue platformHandle
   auxEnvHandle <- AuxEnv.new
   defMap <- CompDef.get compDefHandle
@@ -130,8 +130,8 @@ data MainHandle = MainHandle
     mainReduceHandle :: Reduce.Handle
   }
 
-newMain :: Base.Handle -> IO MainHandle
-newMain Base.Handle {..} = do
+newMain :: Global.Handle -> IO MainHandle
+newMain Global.Handle {..} = do
   mainAuxEnvHandle <- AuxEnv.new
   defMap <- CompDef.get compDefHandle
   let baseSize = Platform.getDataSizeValue platformHandle

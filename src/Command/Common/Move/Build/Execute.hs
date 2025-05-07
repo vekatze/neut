@@ -6,12 +6,12 @@ module Command.Common.Move.Build.Execute
 where
 
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Module (MainModule (MainModule))
+import Kernel.Common.Rule.Target
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Common.Rule.Module (MainModule (MainModule))
-import Kernel.Common.Rule.Target
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 
 data Handle = Handle
@@ -20,8 +20,8 @@ data Handle = Handle
     externalHandle :: External.Handle
   }
 
-new :: Base.Handle -> Handle
-new (Base.Handle {..}) = do
+new :: Global.Handle -> Handle
+new (Global.Handle {..}) = do
   let externalHandle = External.new loggerHandle
   Handle {..}
 

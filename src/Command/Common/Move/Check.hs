@@ -14,20 +14,20 @@ import Data.Text qualified as T
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
-import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
-import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
-import Kernel.Load.Move.Load qualified as Load
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Move.Scene.Module.GetModule qualified as GetModule
-import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Common.Rule.Cache
 import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.Source (Source (sourceFilePath))
 import Kernel.Common.Rule.Target
+import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
+import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
+import Kernel.Load.Move.Load qualified as Load
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
+import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.Init.Local qualified as Local
+import Kernel.Move.Scene.Module.GetModule qualified as GetModule
+import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Log
@@ -35,18 +35,18 @@ import Logger.Rule.Log qualified as L
 import Path
 
 newtype Handle = Handle
-  { baseHandle :: Base.Handle
+  { globalHandle :: Global.Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Handle
-new baseHandle = do
+new globalHandle = do
   Handle {..}
 
 check :: Handle -> EIO [Log]
 check h = do
-  let M.MainModule mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
+  let M.MainModule mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   liftIO $ _check h Peripheral mainModule
 
 checkModule :: Handle -> M.Module -> IO [Log]
@@ -55,8 +55,8 @@ checkModule h baseModule = do
 
 checkAll :: Handle -> EIO [Log]
 checkAll h = do
-  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
-  let getModuleHandle = GetModule.new (baseHandle h)
+  let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
+  let getModuleHandle = GetModule.new (globalHandle h)
   deps <- GetModule.getAllDependencies getModuleHandle mainModule (extractModule mainModule)
   forM_ deps $ \(_, m) -> liftIO $ checkModule h m
   liftIO $ checkModule h (extractModule mainModule)
@@ -67,9 +67,9 @@ checkSingle h baseModule path = do
 
 _check :: Handle -> Target -> M.Module -> IO [Log]
 _check h target baseModule = do
-  collectLogs (Base.globalRemarkHandle (baseHandle h)) $ do
-    let loadHandle = Load.new (baseHandle h)
-    unravelHandle <- liftIO $ Unravel.new (baseHandle h)
+  collectLogs (Global.globalRemarkHandle (globalHandle h)) $ do
+    let loadHandle = Load.new (globalHandle h)
+    unravelHandle <- liftIO $ Unravel.new (globalHandle h)
     (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
     contentSeq <- Load.load loadHandle target dependenceSeq
     forM_ contentSeq $ \(source, cacheOrContent) -> do
@@ -77,8 +77,8 @@ _check h target baseModule = do
 
 _check' :: Handle -> Target -> M.Module -> EIO (Maybe Elaborate.Handle)
 _check' h target baseModule = do
-  unravelHandle <- liftIO $ Unravel.new (baseHandle h)
-  let loadHandle = Load.new (baseHandle h)
+  unravelHandle <- liftIO $ Unravel.new (globalHandle h)
+  let loadHandle = Load.new (globalHandle h)
   (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
   contentSeq <- Load.load loadHandle target dependenceSeq
   case unsnoc contentSeq of
@@ -91,11 +91,11 @@ _check' h target baseModule = do
 
 checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.Handle
 checkSource h target source cacheOrContent = do
-  localHandle <- Local.new (baseHandle h) source
-  parseHandle <- liftIO $ Parse.new (baseHandle h) localHandle
-  elaborateHandle <- liftIO $ Elaborate.new (baseHandle h) localHandle source
+  localHandle <- Local.new (globalHandle h) source
+  parseHandle <- liftIO $ Parse.new (globalHandle h) localHandle
+  elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) localHandle source
   liftIO $
-    Logger.report (Base.loggerHandle (baseHandle h)) $
+    Logger.report (Global.loggerHandle (globalHandle h)) $
       "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
   (cacheOrStmtList, logs) <- Parse.parse parseHandle target source cacheOrContent
   void $ Elaborate.elaborate elaborateHandle target logs cacheOrStmtList

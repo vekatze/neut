@@ -13,11 +13,17 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Cache qualified as Cache
+import Kernel.Common.Rule.Import
+import Kernel.Common.Rule.Source qualified as Source
+import Kernel.Common.Rule.Target
+import Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
+import Kernel.Common.Rule.UnusedLocalLocators (UnusedLocalLocators)
 import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Tag qualified as Tag
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Internal.Discern qualified as Discern
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as Discern
@@ -29,12 +35,6 @@ import Kernel.Parse.Move.Internal.Import qualified as Import
 import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
 import Kernel.Parse.Rule.VarDefKind
-import Kernel.Common.Rule.Cache qualified as Cache
-import Kernel.Common.Rule.Import
-import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Common.Rule.Target
-import Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
-import Kernel.Common.Rule.UnusedLocalLocators (UnusedLocalLocators)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident.Reify
@@ -59,20 +59,20 @@ data Handle = Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Local.Handle ->
   IO Handle
-new baseHandle localHandle = do
+new globalHandle localHandle = do
   let unusedHandle = Local.unusedHandle localHandle
-  let parseHandle = ParseRT.new (Base.gensymHandle baseHandle)
-  let pathHandle = Base.pathHandle baseHandle
-  let importHandle = Import.new baseHandle localHandle
-  let globalNameMapHandle = Base.globalNameMapHandle baseHandle
+  let parseHandle = ParseRT.new (Global.gensymHandle globalHandle)
+  let pathHandle = Global.pathHandle globalHandle
+  let importHandle = Import.new globalHandle localHandle
+  let globalNameMapHandle = Global.globalNameMapHandle globalHandle
   let aliasHandle = Local.aliasHandle localHandle
   let locatorHandle = Local.locatorHandle localHandle
   let tagHandle = Local.tagHandle localHandle
-  nameMapHandle <- NameMap.new baseHandle locatorHandle unusedHandle tagHandle
-  let discernHandle = Discern.new baseHandle localHandle nameMapHandle
+  nameMapHandle <- NameMap.new globalHandle locatorHandle unusedHandle tagHandle
+  let discernHandle = Discern.new globalHandle localHandle nameMapHandle
   return $ Handle {..}
 
 parse ::

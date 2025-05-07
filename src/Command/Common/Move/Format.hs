@@ -14,16 +14,16 @@ import Data.Text qualified as T
 import Ens.Move.Parse qualified as EnsParse
 import Ens.Rule.Ens.ToDoc qualified as Ens
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Module (MainModule (MainModule))
+import Kernel.Common.Rule.Target
 import Kernel.Load.Move.Load qualified as Load
 import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
 import Kernel.Parse.Move.Parse qualified as Parse
-import Kernel.Common.Rule.Module (MainModule (MainModule))
-import Kernel.Common.Rule.Target
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
@@ -32,13 +32,13 @@ import Path
 import Prelude hiding (log)
 
 newtype Handle = Handle
-  { baseHandle :: Base.Handle
+  { globalHandle :: Global.Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Handle
-new baseHandle = do
+new globalHandle = do
   Handle {..}
 
 formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> EIO T.Text
@@ -55,13 +55,13 @@ type ShouldMinimizeImports =
 
 _formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> EIO T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
-  let MainModule mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
-  let parseCoreHandle = ParseRT.new (Base.gensymHandle (baseHandle h))
-  let getEnabledPresetHandle = GetEnabledPreset.new (baseHandle h)
+  let MainModule mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
+  let parseCoreHandle = ParseRT.new (Global.gensymHandle (globalHandle h))
+  let getEnabledPresetHandle = GetEnabledPreset.new (globalHandle h)
   if shouldMinimizeImports
     then do
-      unravelHandle <- liftIO $ Unravel.new (baseHandle h)
-      let loadHandle = Load.new (baseHandle h)
+      unravelHandle <- liftIO $ Unravel.new (globalHandle h)
+      let loadHandle = Load.new (globalHandle h)
       (_, dependenceSeq) <- Unravel.unravel unravelHandle mainModule $ Main (emptyZen filePath)
       contentSeq <- Load.load loadHandle Peripheral dependenceSeq
       case unsnoc contentSeq of
@@ -69,11 +69,11 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
           raiseError' "Nothing to format"
         Just (headItems, (rootSource, __)) -> do
           forM_ headItems $ \(source, cacheOrContent) -> do
-            localHandle <- Local.new (baseHandle h) source
-            parseHandle <- liftIO $ Parse.new (baseHandle h) localHandle
+            localHandle <- Local.new (globalHandle h) source
+            parseHandle <- liftIO $ Parse.new (globalHandle h) localHandle
             void $ Parse.parse parseHandle Peripheral source cacheOrContent
-          localHandle <- Local.new (baseHandle h) rootSource
-          parseHandle <- liftIO $ Parse.new (baseHandle h) localHandle
+          localHandle <- Local.new (globalHandle h) rootSource
+          parseHandle <- liftIO $ Parse.new (globalHandle h) localHandle
           void $ Parse.parse parseHandle Peripheral rootSource (Right fileContent)
           (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Parse.getUnusedLocators parseHandle
           program <- runParser filePath fileContent True (Parse.parseProgram parseCoreHandle)

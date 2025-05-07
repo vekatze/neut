@@ -11,7 +11,7 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 
 data Handle = Handle
   { fetchHandle :: Fetch.Handle,
@@ -20,12 +20,12 @@ data Handle = Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Handle
-new baseHandle = do
-  let fetchHandle = Fetch.new baseHandle
-  let envHandle = Base.envHandle baseHandle
-  let lspHandle = L.new baseHandle
+new globalHandle = do
+  let fetchHandle = Fetch.new globalHandle
+  let envHandle = Global.envHandle globalHandle
+  let lspHandle = L.new globalHandle
   Handle {..}
 
 lsp :: Handle -> EIO ()

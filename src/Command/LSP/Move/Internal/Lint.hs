@@ -11,24 +11,24 @@ import Command.LSP.Move.Internal.Util (maxDiagNum, report, run)
 import Command.LSP.Rule.Lsp
 import Control.Monad
 import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Server
 
 newtype Handle = Handle
-  { baseHandle :: Base.Handle
+  { globalHandle :: Global.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle = do
+new :: Global.Handle -> Handle
+new globalHandle = do
   Handle {..}
 
 lint :: Handle -> Lsp () ()
 lint h = do
-  let fetchHandle = Fetch.new (baseHandle h)
-  let envHandle = Base.envHandle (baseHandle h)
-  let checkHandle = Check.new (baseHandle h)
+  let fetchHandle = Fetch.new (globalHandle h)
+  let envHandle = Global.envHandle (globalHandle h)
+  let checkHandle = Check.new (globalHandle h)
   flushDiagnosticsBySource maxDiagNum (Just "neut")
-  remarksOrNone <- run (baseHandle h) $ do
+  remarksOrNone <- run (globalHandle h) $ do
     Fetch.fetch fetchHandle (Env.getMainModule envHandle)
     Check.check checkHandle
   forM_ remarksOrNone report

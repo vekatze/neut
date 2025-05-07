@@ -19,6 +19,12 @@ import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Artifact qualified as A
+import Kernel.Common.Rule.Import
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.OutputKind qualified as OK
+import Kernel.Common.Rule.Source qualified as Source
+import Kernel.Common.Rule.Target
 import Kernel.Move.Context.Antecedent qualified as Antecedent
 import Kernel.Move.Context.Artifact qualified as Artifact
 import Kernel.Move.Context.Env (getMainModule)
@@ -26,18 +32,12 @@ import Kernel.Move.Context.Module qualified as Module
 import Kernel.Move.Context.Parse (ensureExistence')
 import Kernel.Move.Context.Parse qualified as Parse
 import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
 import Kernel.Parse.Move.Internal.Import qualified as Import
 import Kernel.Parse.Move.Internal.Program (parseImport)
-import Kernel.Common.Rule.Artifact qualified as A
-import Kernel.Common.Rule.Import
-import Kernel.Common.Rule.Module
-import Kernel.Common.Rule.OutputKind qualified as OK
-import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Common.Rule.Target
 import Kernel.Unravel.Rule.VisitInfo qualified as VI
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
@@ -57,14 +57,14 @@ type ObjectTime =
   Maybe UTCTime
 
 data Handle = Handle
-  { baseHandle :: Base.Handle,
+  { globalHandle :: Global.Handle,
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
   }
 
-new :: Base.Handle -> IO Handle
-new baseHandle = do
+new :: Global.Handle -> IO Handle
+new globalHandle = do
   visitEnvRef <- newIORef Map.empty
   traceSourceListRef <- newIORef []
   sourceChildrenMapRef <- newIORef Map.empty
@@ -72,7 +72,7 @@ new baseHandle = do
 
 unravel :: Handle -> Module -> Target -> EIO (A.ArtifactTime, [Source.Source])
 unravel h baseModule t = do
-  liftIO $ Logger.report (Base.loggerHandle (baseHandle h)) "Resolving file dependencies"
+  liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) "Resolving file dependencies"
   case t of
     Main t' -> do
       case t' of
@@ -110,10 +110,10 @@ unravel' h t source = do
 registerShiftMap :: Handle -> EIO ()
 registerShiftMap h = do
   axis <- liftIO newAxis
-  let m = extractModule $ getMainModule (Base.envHandle (baseHandle h))
+  let m = extractModule $ getMainModule (Global.envHandle (globalHandle h))
   arrowList <- unravelAntecedentArrow h axis m
   cAxis <- liftIO newCAxis
-  compressMap cAxis (Map.fromList arrowList) arrowList >>= liftIO . Antecedent.set (Base.antecedentHandle (baseHandle h))
+  compressMap cAxis (Map.fromList arrowList) arrowList >>= liftIO . Antecedent.set (Global.antecedentHandle (globalHandle h))
 
 type VisitMap =
   Map.HashMap (Path Abs File) VI.VisitInfo
@@ -132,7 +132,7 @@ data Axis = Axis
 unravelAntecedentArrow :: Handle -> Axis -> Module -> EIO [(MID.ModuleID, Module)]
 unravelAntecedentArrow h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  let mainModule = getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = getMainModule (Global.envHandle (globalHandle h))
   path <- Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
@@ -159,7 +159,7 @@ unravelModule h currentModule = do
 unravelModule' :: Handle -> Axis -> Module -> EIO [Module]
 unravelModule' h axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
-  let mainModule = getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = getMainModule (Global.envHandle (globalHandle h))
   path <- Module.getModuleFilePath mainModule Nothing (moduleID currentModule)
   case Map.lookup path visitMap of
     Just VI.Active -> do
@@ -190,7 +190,7 @@ unravel'' h t source = do
       traceSourceList <- liftIO $ readIORef (traceSourceListRef h)
       raiseCyclicPath path (map Source.sourceFilePath traceSourceList)
     Just VI.Finish -> do
-      artifactTime <- Artifact.lookup (Base.artifactHandle (baseHandle h)) path
+      artifactTime <- Artifact.lookup (Global.artifactHandle (globalHandle h)) path
       return (artifactTime, Seq.empty)
     Nothing -> do
       liftIO $ insertToVisitEnv h path VI.Active
@@ -199,9 +199,9 @@ unravel'' h t source = do
       (artifactTimeList, seqList) <- mapAndUnzipM (unravelImportItem h t) children
       _ <- liftIO $ popFromTraceSourceList h
       liftIO $ insertToVisitEnv h path VI.Finish
-      baseArtifactTime <- getBaseArtifactTime (Base.pathHandle (baseHandle h)) t source
+      baseArtifactTime <- getBaseArtifactTime (Global.pathHandle (globalHandle h)) t source
       let artifactTime = getArtifactTime artifactTimeList baseArtifactTime
-      liftIO $ Artifact.insert (Base.artifactHandle (baseHandle h)) (Source.sourceFilePath source) artifactTime
+      liftIO $ Artifact.insert (Global.artifactHandle (globalHandle h)) (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source)
 
 insertToVisitEnv :: Handle -> Path Abs File -> VI.VisitInfo -> IO ()
@@ -231,7 +231,7 @@ unravelImportItem h t importItem = do
 
 unravelFoundational :: Handle -> Target -> Module -> EIO (A.ArtifactTime, [Source.Source])
 unravelFoundational h t baseModule = do
-  let shiftToLatestHandle = STL.new (Base.antecedentHandle (baseHandle h))
+  let shiftToLatestHandle = STL.new (Global.antecedentHandle (globalHandle h))
   children <- Module.getAllSourceInModule baseModule
   children' <- mapM (STL.shiftToLatest shiftToLatestHandle) children
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' h t) children'
@@ -333,7 +333,7 @@ showCycle' textList =
 
 getChildren :: Handle -> Source.Source -> EIO [ImportItem]
 getChildren h currentSource = do
-  localHandle <- Local.new (baseHandle h) currentSource
+  localHandle <- Local.new (globalHandle h) currentSource
   sourceChildrenMap <- liftIO $ getSourceChildrenMap h
   let currentSourceFilePath = Source.sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of
@@ -351,7 +351,7 @@ parseSourceHeader h localHandle currentSource = do
   fileContent <- liftIO $ readText filePath
   (_, importList) <- runParser filePath fileContent False parseImport
   let m = newSourceHint filePath
-  let importHandle = Import.new (baseHandle h) localHandle
+  let importHandle = Import.new (globalHandle h) localHandle
   Import.interpretImport importHandle m currentSource importList
 
 getSourceChildrenMap :: Handle -> IO (Map.HashMap (Path Abs File) [ImportItem])

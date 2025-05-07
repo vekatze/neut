@@ -10,9 +10,9 @@ import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Lens hiding (Iso, List)
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.LocationTree (LocationTree)
 import Kernel.Common.Rule.LocationTree qualified as LT
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Logger.Rule.Hint qualified as H
@@ -22,10 +22,10 @@ data Handle = Handle
     getLocationTreeHandle :: GetLocationTree.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle = do
-  let getSourceHandle = GetSource.new baseHandle
-  let getLocationTreeHandle = GetLocationTree.new baseHandle
+new :: Global.Handle -> Handle
+new globalHandle = do
+  let getSourceHandle = GetSource.new globalHandle
+  let getLocationTreeHandle = GetLocationTree.new globalHandle
   Handle {..}
 
 findDefinition ::

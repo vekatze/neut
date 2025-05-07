@@ -22,7 +22,7 @@ import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
 import Kernel.Move.Context.GlobalRemark qualified as GlobalRemark
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -34,10 +34,10 @@ import Logger.Rule.LogLevel
 import Path
 import Path.Move.Read (readText)
 
-run :: Base.Handle -> EIO a -> Lsp b (Maybe a)
+run :: Global.Handle -> EIO a -> Lsp b (Maybe a)
 run h comp = do
   resultOrErr <- liftIO $ runEIO comp
-  remarkList <- liftIO $ GlobalRemark.get (Base.globalRemarkHandle h)
+  remarkList <- liftIO $ GlobalRemark.get (Global.globalRemarkHandle h)
   case resultOrErr of
     Left (E.MakeError logList) -> do
       report $ logList ++ remarkList

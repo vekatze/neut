@@ -7,11 +7,11 @@ where
 
 import Control.Monad
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Common.Rule.Module (extractModule)
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Path.IO
 import Prelude hiding (log)
@@ -23,12 +23,12 @@ data Handle = Handle
     unravelHandle :: Unravel.Handle
   }
 
-new :: Base.Handle -> IO Handle
-new baseHandle = do
-  let envHandle = Base.envHandle baseHandle
-  let pathHandle = Base.pathHandle baseHandle
-  let platformHandle = Base.platformHandle baseHandle
-  unravelHandle <- Unravel.new baseHandle
+new :: Global.Handle -> IO Handle
+new globalHandle = do
+  let envHandle = Global.envHandle globalHandle
+  let pathHandle = Global.pathHandle globalHandle
+  let platformHandle = Global.platformHandle globalHandle
+  unravelHandle <- Unravel.new globalHandle
   return $ Handle {..}
 
 clean :: Handle -> EIO ()

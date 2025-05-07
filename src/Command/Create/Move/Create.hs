@@ -14,9 +14,9 @@ import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Module (moduleLocation)
+import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Rule.Handle qualified as Logger
 
 data Handle = Handle
@@ -34,6 +34,6 @@ create :: Handle -> Config -> EIO ()
 create h cfg = do
   newModule <- Create.constructDefaultModule (moduleName cfg) (targetName cfg)
   Create.createNewProject (createHandle h) (moduleName cfg) newModule
-  h' <- liftIO $ Base.new (remarkCfg h) (Just $ moduleLocation newModule)
+  h' <- liftIO $ Global.new (remarkCfg h) (Just $ moduleLocation newModule)
   Fetch.insertCoreDependency (Fetch.new h')
   void $ Check.checkAll (Check.new h')

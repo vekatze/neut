@@ -9,8 +9,8 @@ import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Lens hiding (Iso, List)
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Source (Source)
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 
@@ -18,9 +18,9 @@ newtype Handle = Handle
   { sourceReflectHandle :: SourceReflect.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle = do
-  let sourceReflectHandle = SourceReflect.new baseHandle
+new :: Global.Handle -> Handle
+new globalHandle = do
+  let sourceReflectHandle = SourceReflect.new globalHandle
   Handle {..}
 
 getSource ::

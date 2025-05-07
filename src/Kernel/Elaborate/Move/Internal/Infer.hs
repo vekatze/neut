@@ -16,6 +16,8 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
@@ -30,8 +32,6 @@ import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Common.Rule.Const
-import Kernel.Common.Rule.OptimizableData qualified as OD
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as Annotation

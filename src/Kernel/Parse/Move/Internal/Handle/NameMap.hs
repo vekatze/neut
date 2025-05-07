@@ -17,18 +17,18 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error
+import Kernel.Common.Rule.GlobalName
+import Kernel.Common.Rule.GlobalName qualified as GN
+import Kernel.Common.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.TopNameMap
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.KeyArg qualified as KeyArg
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.Tag qualified as Tag
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Common.Rule.GlobalName
-import Kernel.Common.Rule.GlobalName qualified as GN
-import Kernel.Common.Rule.OptimizableData qualified as OD
-import Kernel.Common.Rule.TopNameMap
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -57,8 +57,8 @@ data Handle = Handle
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike))
   }
 
-new :: Base.Handle -> Locator.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
-new (Base.Handle {..}) locatorHandle unusedHandle tagHandle = do
+new :: Global.Handle -> Locator.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
+new (Global.Handle {..}) locatorHandle unusedHandle tagHandle = do
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
   return $ Handle {..}

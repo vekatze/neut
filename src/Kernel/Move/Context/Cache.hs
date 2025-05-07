@@ -16,16 +16,16 @@ where
 import Control.Monad.IO.Class
 import Data.Binary
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Artifact qualified as Artifact
-import Kernel.Move.Context.Path (getSourceLocationCachePath)
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Artifact qualified as A
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
+import Kernel.Move.Context.Artifact qualified as Artifact
+import Kernel.Move.Context.Path (getSourceLocationCachePath)
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 import Path.IO
 
@@ -34,8 +34,8 @@ data Handle = Handle
     artifactHandle :: Artifact.Handle
   }
 
-new :: Base.Handle -> Handle
-new (Base.Handle {..}) =
+new :: Global.Handle -> Handle
+new (Global.Handle {..}) =
   Handle {..}
 
 saveCache :: Path.Handle -> Target -> Source.Source -> Cache.Cache -> EIO ()

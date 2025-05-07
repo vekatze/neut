@@ -26,15 +26,15 @@ import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
-import Kernel.Lower.Rule.Cancel
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Arch
 import Kernel.Common.Rule.Arch qualified as A
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.DataSize qualified as DS
 import Kernel.Common.Rule.Target
+import Kernel.Lower.Rule.Cancel
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Platform qualified as Platform
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT
@@ -72,8 +72,8 @@ data Handle = Handle
     definedNameSet :: IORef (S.Set DD.DefiniteDescription)
   }
 
-new :: Base.Handle -> IO Handle
-new (Base.Handle {..}) = do
+new :: Global.Handle -> IO Handle
+new (Global.Handle {..}) = do
   let arch = Platform.getArch platformHandle
   let baseSize = Platform.getDataSizeValue platformHandle
   let substHandle = Subst.new gensymHandle

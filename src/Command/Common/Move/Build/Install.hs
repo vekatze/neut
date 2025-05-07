@@ -8,11 +8,11 @@ where
 import Control.Monad
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Common.Rule.Target qualified as Target
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 import Path.IO
 import Prelude hiding (log)
@@ -22,8 +22,8 @@ data Handle = Handle
     pathHandle :: Path.Handle
   }
 
-new :: Base.Handle -> Handle
-new (Base.Handle {..}) = do
+new :: Global.Handle -> Handle
+new (Global.Handle {..}) = do
   Handle {..}
 
 install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()

@@ -13,11 +13,11 @@ import Command.Common.Move.SaveModule qualified as SaveModule
 import CommandParser.Rule.Config.Archive
 import Data.HashMap.Strict qualified as Map
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Module
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Common.Rule.Module
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 
 data Handle = Handle
@@ -26,12 +26,12 @@ data Handle = Handle
     archiveHandle :: Archive.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle = do
-  let envHandle = Base.envHandle baseHandle
-  let packageVersionHandle = PV.new (Base.loggerHandle baseHandle)
-  let externalHandle = External.new (Base.loggerHandle baseHandle)
-  let saveModuleHandle = SaveModule.new (Base.loggerHandle baseHandle)
+new :: Global.Handle -> Handle
+new globalHandle = do
+  let envHandle = Global.envHandle globalHandle
+  let packageVersionHandle = PV.new (Global.loggerHandle globalHandle)
+  let externalHandle = External.new (Global.loggerHandle globalHandle)
+  let saveModuleHandle = SaveModule.new (Global.loggerHandle globalHandle)
   let archiveHandle = Archive.new externalHandle saveModuleHandle envHandle
   Handle {..}
 

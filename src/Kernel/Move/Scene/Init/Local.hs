@@ -6,17 +6,17 @@ where
 
 import Control.Monad.IO.Class
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.SymLoc qualified as SymLoc
 import Kernel.Move.Context.Tag qualified as Tag
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Common.Rule.Source qualified as Source
 
 data Handle = Handle
   { unusedHandle :: Unused.Handle,
@@ -30,10 +30,10 @@ data Handle = Handle
     weakDeclHandle :: WeakDecl.Handle
   }
 
-new :: Base.Handle -> Source.Source -> EIO Handle
+new :: Global.Handle -> Source.Source -> EIO Handle
 new h source = do
-  let envHandle = Base.envHandle h
-  let antecedentHandle = Base.antecedentHandle h
+  let envHandle = Global.envHandle h
+  let antecedentHandle = Global.antecedentHandle h
   unusedHandle <- liftIO Unused.new
   tagHandle <- liftIO Tag.new
   locatorHandle <- Locator.new envHandle tagHandle source

@@ -19,7 +19,7 @@ import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
 import Kernel.Move.Context.Platform (ensureExecutables)
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.CreateHandle qualified as Logger
 import System.IO
 
@@ -42,8 +42,8 @@ main = do
           C.ShowVersion cfg ->
             liftIO $ Version.showVersion cfg
     C.Internal loggerConfig cmd -> do
-      h <- Base.new loggerConfig Nothing
-      run (Base.loggerHandle h) $ do
+      h <- Global.new loggerConfig Nothing
+      run (Global.loggerHandle h) $ do
         ensureExecutables
         case cmd of
           C.Build cfg -> do

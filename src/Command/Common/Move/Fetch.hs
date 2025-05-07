@@ -23,14 +23,14 @@ import Ens.Rule.Ens qualified as SE
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.External qualified as External
-import Kernel.Move.Context.Module qualified as Module
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Kernel.Common.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.ModuleURL
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.External qualified as External
+import Kernel.Move.Context.Module qualified as Module
+import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
@@ -53,9 +53,9 @@ data Handle = Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Handle
-new (Base.Handle {..}) = do
+new (Global.Handle {..}) = do
   let saveModuleHandle = SaveModule.new loggerHandle
   let externalHandle = External.new loggerHandle
   Handle {..}

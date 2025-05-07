@@ -17,7 +17,7 @@ import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.SymLoc qualified as SymLoc
 import Kernel.Move.Context.Tag qualified as Tag
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
@@ -49,11 +49,11 @@ data Handle = Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Local.Handle ->
   NameMap.Handle ->
   Handle
-new (Base.Handle {..}) (Local.Handle {..}) nameMapHandle = do
+new (Global.Handle {..}) (Local.Handle {..}) nameMapHandle = do
   let nameEnv = empty
   let currentLayer = 0
   Handle {..}

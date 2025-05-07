@@ -11,17 +11,17 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Parse (ensureExistence')
 import Kernel.Move.Context.Parse qualified as Parse
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Path.IO
 import Path.Move.Read (readText)
 import Path.Move.Write (writeText)
 
 newtype Handle = Handle
-  { baseHandle :: Base.Handle
+  { globalHandle :: Global.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle = do
+new :: Global.Handle -> Handle
+new globalHandle = do
   Handle {..}
 
 format :: Handle -> Config -> EIO ()
@@ -29,7 +29,7 @@ format h cfg = do
   path <- resolveFile' $ filePathString cfg
   ensureExistence' path Nothing
   content <- liftIO $ readText path
-  let formatHandle = Format.new (baseHandle h)
+  let formatHandle = Format.new (globalHandle h)
   content' <- Format.formatSource formatHandle (shouldMinimizeImports cfg) path content
   if mustUpdateInPlace cfg
     then liftIO $ writeText path content'

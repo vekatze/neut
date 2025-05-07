@@ -11,6 +11,9 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (fromMaybe)
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Rule.Const (defaultInlineLimit)
+import Kernel.Common.Rule.Module (Module (moduleInlineLimit))
+import Kernel.Common.Rule.Source
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
@@ -30,11 +33,8 @@ import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.SymLoc qualified as SymLoc
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Common.Rule.Const (defaultInlineLimit)
-import Kernel.Common.Rule.Module (Module (moduleInlineLimit))
-import Kernel.Common.Rule.Source
 import Language.Common.Rule.Binder
 import Language.Term.Move.Inline qualified as Inline
 import Language.Term.Rule.Term qualified as TM
@@ -44,7 +44,7 @@ import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Logger.Rule.Hint (Hint)
 
 data Handle = Handle
-  { baseHandle :: Base.Handle,
+  { globalHandle :: Global.Handle,
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
     weakDefHandle :: WeakDef.Handle,
@@ -72,8 +72,8 @@ data Handle = Handle
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
-new :: Base.Handle -> Local.Handle -> Source -> IO Handle
-new baseHandle@(Base.Handle {..}) (Local.Handle {..}) currentSource = do
+new :: Global.Handle -> Local.Handle -> Source -> IO Handle
+new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   localLogsHandle <- LocalLogs.new
   let substHandle = Subst.new gensymHandle
   let inlineLimit = fromMaybe defaultInlineLimit $ moduleInlineLimit (sourceModule currentSource)
@@ -92,7 +92,7 @@ reduce h e = do
 fill :: Handle -> HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
 fill h sub e = do
   reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) (inlineLimit h)
-  let substHandle = Subst.new (Base.gensymHandle (baseHandle h))
+  let substHandle = Subst.new (Global.gensymHandle (globalHandle h))
   let fillHandle = Fill.new substHandle reduceHandle
   Fill.fill fillHandle sub e
 

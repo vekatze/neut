@@ -13,14 +13,14 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Module (Module (moduleZenConfig), extractModule)
 import Kernel.Common.Rule.OutputKind
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig qualified as Z
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Path.IO (resolveFile')
 import Prelude hiding (log)
 
@@ -31,13 +31,13 @@ data Handle = Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Config ->
   Handle
-new baseHandle cfg = do
-  let fetchHandle = Fetch.new baseHandle
-  let buildHandle = Build.new (toBuildConfig cfg) baseHandle
-  let envHandle = Base.envHandle baseHandle
+new globalHandle cfg = do
+  let fetchHandle = Fetch.new globalHandle
+  let buildHandle = Build.new (toBuildConfig cfg) globalHandle
+  let envHandle = Global.envHandle globalHandle
   Handle {..}
 
 zen :: Handle -> Config -> EIO ()

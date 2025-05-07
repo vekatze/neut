@@ -11,10 +11,10 @@ import Control.Monad
 import Data.Text qualified as T
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.External qualified as External
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Module
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.External qualified as External
 import Language.Common.Move.Raise (raiseError')
 import Path
 import Path.IO

@@ -9,15 +9,15 @@ where
 import Data.Maybe (catMaybes)
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Cache qualified as Cache
-import Kernel.Move.Context.Module (getAllSourcePathInModule)
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
 import Kernel.Common.Rule.Cache
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target (Target (Peripheral))
+import Kernel.Move.Context.Cache qualified as Cache
+import Kernel.Move.Context.Module (getAllSourcePathInModule)
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
 import Path
 
 data Handle = Handle
@@ -25,8 +25,8 @@ data Handle = Handle
     pathHandle :: Path.Handle
   }
 
-new :: Base.Handle -> Handle
-new (Base.Handle {..}) = do
+new :: Global.Handle -> Handle
+new (Global.Handle {..}) = do
   let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}
 

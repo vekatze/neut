@@ -13,10 +13,10 @@ import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.ModuleURL (ModuleURL (ModuleURL))
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Common.Rule.ModuleURL (ModuleURL (ModuleURL))
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Prelude hiding (log)
 
 data Handle = Handle
@@ -28,14 +28,14 @@ data Handle = Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Remark.Config ->
   IO Handle
-new baseHandle remarkCfg = do
-  let envHandle = Base.envHandle baseHandle
-  let fetchHandle = Fetch.new baseHandle
-  let checkHandle = Check.new baseHandle
-  cleanHandle <- Clean.new baseHandle
+new globalHandle remarkCfg = do
+  let envHandle = Global.envHandle globalHandle
+  let fetchHandle = Fetch.new globalHandle
+  let checkHandle = Check.new globalHandle
+  cleanHandle <- Clean.new globalHandle
   return $ Handle {..}
 
 get :: Handle -> Config -> EIO ()
@@ -44,5 +44,5 @@ get h cfg = do
   Path.ensureNotInDependencyDir mainModule
   Clean.clean (cleanHandle h)
   Fetch.insertDependency (fetchHandle h) (moduleAliasText cfg) (ModuleURL $ moduleURLText cfg)
-  h' <- liftIO $ Base.new (remarkCfg h) Nothing
+  h' <- liftIO $ Global.new (remarkCfg h) Nothing
   void $ Check.checkAll (Check.new h')

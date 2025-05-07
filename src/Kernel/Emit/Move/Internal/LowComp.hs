@@ -15,7 +15,7 @@ import Kernel.Emit.Rule.Builder
 import Kernel.Emit.Rule.LowType
 import Kernel.Emit.Rule.LowValue
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
@@ -35,14 +35,14 @@ data Handle = Handle
     labelMapRef :: IORef (IntMap.IntMap Ident)
   }
 
-new :: Base.Handle -> Builder -> IO Handle
-new baseHandle retType = do
+new :: Global.Handle -> Builder -> IO Handle
+new globalHandle retType = do
   let phiInfo = Nothing
   let currentLabel = Nothing
   labelMapRef <- liftIO $ newIORef IntMap.empty
-  let baseSize = Platform.getDataSizeValue (Base.platformHandle baseHandle)
+  let baseSize = Platform.getDataSizeValue (Global.platformHandle globalHandle)
   let emitOpHandle = EmitOp.new baseSize
-  let gensymHandle = Base.gensymHandle baseHandle
+  let gensymHandle = Global.gensymHandle globalHandle
   return $ Handle {..}
 
 emitLowComp :: Handle -> LC.Comp -> IO [Builder]

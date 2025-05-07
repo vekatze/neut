@@ -12,12 +12,17 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Rule.AliasInfo qualified as AI
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Import (ImportItem (..))
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.Module qualified as Module
 import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.Tag qualified as Tag
-import Kernel.Move.Scene.Init.Base qualified as Base
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule
@@ -25,11 +30,6 @@ import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Common.Rule.AliasInfo qualified as AI
-import Kernel.Common.Rule.Const
-import Kernel.Common.Rule.Import (ImportItem (..))
-import Kernel.Common.Rule.Module
-import Kernel.Common.Rule.Source qualified as Source
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
@@ -61,11 +61,11 @@ data Handle = Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Local.Handle ->
   Handle
-new baseHandle@(Base.Handle {..}) (Local.Handle {..}) = do
-  let getEnabledPresetHandle = GetEnabledPreset.new baseHandle
+new globalHandle@(Global.Handle {..}) (Local.Handle {..}) = do
+  let getEnabledPresetHandle = GetEnabledPreset.new globalHandle
   let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}
 

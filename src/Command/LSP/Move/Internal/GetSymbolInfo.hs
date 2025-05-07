@@ -13,13 +13,13 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
-import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
-import Kernel.Move.Context.Cache (invalidate)
-import Kernel.Move.Context.Type qualified as Type
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.LocationTree qualified as LT
 import Kernel.Common.Rule.Source (Source (sourceFilePath, sourceModule))
 import Kernel.Common.Rule.Target (Target (Peripheral))
+import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
+import Kernel.Move.Context.Cache (invalidate)
+import Kernel.Move.Context.Type qualified as Type
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.Term.Rule.Term.Weaken (weaken)
@@ -31,10 +31,10 @@ getSymbolInfo ::
   p ->
   EIO T.Text
 getSymbolInfo params = do
-  h <- liftIO $ Base.new lspConfig Nothing
+  h <- liftIO $ Global.new lspConfig Nothing
   let getSourceHandle = GetSource.new h
   source <- GetSource.getSource getSourceHandle params
-  invalidate (Base.pathHandle h) Peripheral source
+  invalidate (Global.pathHandle h) Peripheral source
   let checkHandle = Check.new h
   handleOrNone <- Check.checkSingle checkHandle (sourceModule source) (sourceFilePath source)
   case handleOrNone of
@@ -51,7 +51,7 @@ getSymbolInfo params = do
           t' <- Elaborate.elaborate' handle t
           return $ toText $ weaken t'
         LT.Global dd isConstLike -> do
-          let typeHandle = Base.typeHandle h
+          let typeHandle = Global.typeHandle h
           t <- lift (liftIO $ Type.lookupMaybe' typeHandle dd) >>= liftMaybe
           case (t, isConstLike) of
             (_ :< WT.Pi _ _ cod, True) ->

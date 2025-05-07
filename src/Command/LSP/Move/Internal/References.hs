@@ -11,9 +11,9 @@ import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Monad.Trans
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Source (Source (sourceFilePath, sourceModule))
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -28,13 +28,13 @@ data Handle = Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   IO Handle
-new baseHandle = do
-  unravelHandle <- liftIO $ Unravel.new baseHandle
-  let getSourceHandle = GetSource.new baseHandle
-  let findDefinitionHandle = FindDefinition.new baseHandle
-  let gacHandle = GAC.new baseHandle
+new globalHandle = do
+  unravelHandle <- liftIO $ Unravel.new globalHandle
+  let getSourceHandle = GetSource.new globalHandle
+  let findDefinitionHandle = FindDefinition.new globalHandle
+  let gacHandle = GAC.new globalHandle
   return $ Handle {..}
 
 references ::

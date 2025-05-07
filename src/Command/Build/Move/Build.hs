@@ -15,43 +15,43 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error (Error)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Target
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.Raise (raiseError')
 import Prelude hiding (log)
 
 newtype Handle = Handle
-  { baseHandle :: Base.Handle
+  { globalHandle :: Global.Handle
   }
 
 new ::
-  Base.Handle ->
+  Global.Handle ->
   Handle
-new baseHandle = do
+new globalHandle = do
   Handle {..}
 
 build :: Handle -> Config -> EIO ()
 build h cfg = do
   setup h cfg
   buildConfig <- liftEither $ toBuildConfig cfg
-  let buildHandle = Build.new buildConfig (baseHandle h)
+  let buildHandle = Build.new buildConfig (globalHandle h)
   target <- getMainTarget h $ targetName cfg
-  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   Build.buildTarget buildHandle mainModule (Main target)
 
 setup :: Handle -> Config -> EIO ()
 setup h cfg = do
   ensureSetupSanity cfg
-  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   Path.ensureNotInDependencyDir mainModule
   buildMode <- liftEither $ BM.fromString $ buildModeString cfg
-  liftIO $ Env.setBuildMode (Base.envHandle (baseHandle h)) buildMode
-  let fetchHandle = Fetch.new (baseHandle h)
+  liftIO $ Env.setBuildMode (Global.envHandle (globalHandle h)) buildMode
+  let fetchHandle = Fetch.new (globalHandle h)
   Fetch.fetch fetchHandle mainModule
 
 toBuildConfig :: Config -> Either Error Build.Config
@@ -68,7 +68,7 @@ toBuildConfig cfg = do
 
 getMainTarget :: Handle -> T.Text -> EIO MainTarget
 getMainTarget h targetName = do
-  let mainModule = Env.getMainModule (Base.envHandle (baseHandle h))
+  let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   case getTarget (extractModule mainModule) targetName of
     Just target ->
       return target

@@ -11,15 +11,15 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Context.LLVM qualified as LLVM
-import Kernel.Move.Context.Path qualified as Path
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Artifact qualified as A
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Context.LLVM qualified as LLVM
+import Kernel.Move.Context.Path qualified as Path
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path
@@ -35,9 +35,9 @@ data Handle = Handle
     llvmHandle :: LLVM.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle@(Base.Handle {..}) = do
-  let llvmHandle = LLVM.new baseHandle
+new :: Global.Handle -> Handle
+new globalHandle@(Global.Handle {..}) = do
+  let llvmHandle = LLVM.new globalHandle
   Handle {..}
 
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()

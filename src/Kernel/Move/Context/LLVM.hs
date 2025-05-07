@@ -13,16 +13,16 @@ import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Module (extractModule)
+import Kernel.Common.Rule.OutputKind qualified as OK
+import Kernel.Common.Rule.Source
+import Kernel.Common.Rule.Target
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Common.Rule.Module (extractModule)
-import Kernel.Common.Rule.OutputKind qualified as OK
-import Kernel.Common.Rule.Source
-import Kernel.Common.Rule.Target
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path
@@ -37,8 +37,8 @@ data Handle = Handle
     envHandle :: Env.Handle
   }
 
-new :: Base.Handle -> Handle
-new (Base.Handle {..}) = do
+new :: Global.Handle -> Handle
+new (Global.Handle {..}) = do
   let externalHandle = External.new loggerHandle
   Handle {..}
 

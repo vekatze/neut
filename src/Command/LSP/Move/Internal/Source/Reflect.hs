@@ -6,19 +6,19 @@ module Command.LSP.Move.Internal.Source.Reflect
 where
 
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Env qualified as Env
-import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Move.Scene.Module.Reflect qualified as Module
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
+import Kernel.Move.Context.Env qualified as Env
+import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Move.Scene.Module.Reflect qualified as Module
 import Path
 
 newtype Handle = Handle
   { envHandle :: Env.Handle
   }
 
-new :: Base.Handle -> Handle
-new (Base.Handle {..}) = do
+new :: Global.Handle -> Handle
+new (Global.Handle {..}) = do
   Handle {..}
 
 reflect :: Handle -> FilePath -> EIO (Maybe Source)

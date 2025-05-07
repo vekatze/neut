@@ -8,11 +8,11 @@ where
 import Data.Text qualified as T
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Cache qualified as Cache
-import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
+import Kernel.Move.Context.Cache qualified as Cache
+import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path.Move.Read (readText)
@@ -23,9 +23,9 @@ data Handle = Handle
     cacheHandle :: Cache.Handle
   }
 
-new :: Base.Handle -> Handle
-new baseHandle@(Base.Handle {..}) = do
-  let cacheHandle = Cache.new baseHandle
+new :: Global.Handle -> Handle
+new globalHandle@(Global.Handle {..}) = do
+  let cacheHandle = Cache.new globalHandle
   Handle {..}
 
 load :: Handle -> Target -> [Source.Source] -> EIO [(Source.Source, Either Cache.Cache T.Text)]
