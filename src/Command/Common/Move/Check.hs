@@ -23,11 +23,11 @@ import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule
 import Kernel.Parse.Move.Parse qualified as Parse
-import Kernel.Rule.Cache
-import Kernel.Rule.Module (extractModule)
-import Kernel.Rule.Module qualified as M
-import Kernel.Rule.Source (Source (sourceFilePath))
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Cache
+import Kernel.Common.Rule.Module (extractModule)
+import Kernel.Common.Rule.Module qualified as M
+import Kernel.Common.Rule.Source (Source (sourceFilePath))
+import Kernel.Common.Rule.Target
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Log

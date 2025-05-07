@@ -1,4 +1,4 @@
-module Kernel.Rule.Cache
+module Kernel.Common.Rule.Cache
   ( Cache (..),
     LowCache (..),
     CompletionCache (..),
@@ -10,10 +10,10 @@ where
 
 import Data.Binary
 import GHC.Generics
-import Kernel.Rule.LocalVarTree qualified as LVT
-import Kernel.Rule.LocationTree qualified as LT
-import Kernel.Rule.RawImportSummary
-import Kernel.Rule.TopCandidate (TopCandidate)
+import Kernel.Common.Rule.LocalVarTree qualified as LVT
+import Kernel.Common.Rule.LocationTree qualified as LT
+import Kernel.Common.Rule.RawImportSummary
+import Kernel.Common.Rule.TopCandidate (TopCandidate)
 import Language.Term.Rule.Stmt qualified as Stmt
 import Language.Term.Rule.Term.Compress qualified as TM
 import Language.Term.Rule.Term.Extend qualified as TM

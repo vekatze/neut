@@ -1,4 +1,4 @@
-module Kernel.Rule.GlobalName
+module Kernel.Common.Rule.GlobalName
   ( GlobalName (..),
     getIsConstLike,
   )

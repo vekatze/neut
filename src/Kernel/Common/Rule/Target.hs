@@ -1,4 +1,4 @@
-module Kernel.Rule.Target
+module Kernel.Common.Rule.Target
   ( Target (..),
     TargetSummary (..),
     MainTarget (..),
@@ -12,7 +12,7 @@ where
 import Data.Hashable
 import Data.Text qualified as T
 import GHC.Generics (Generic)
-import Kernel.Rule.ClangOption qualified as CL
+import Kernel.Common.Rule.ClangOption qualified as CL
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.SourceLocator qualified as SL
 import Path

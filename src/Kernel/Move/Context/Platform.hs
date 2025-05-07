@@ -22,12 +22,12 @@ import Error.Move.Run (run)
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.External (ensureExecutable)
 import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
-import Kernel.Rule.Arch qualified as Arch
-import Kernel.Rule.Const (envVarClang)
-import Kernel.Rule.DataSize qualified as DS
-import Kernel.Rule.Module
-import Kernel.Rule.OS qualified as O
-import Kernel.Rule.Platform qualified as P
+import Kernel.Common.Rule.Arch qualified as Arch
+import Kernel.Common.Rule.Const (envVarClang)
+import Kernel.Common.Rule.DataSize qualified as DS
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.OS qualified as O
+import Kernel.Common.Rule.Platform qualified as P
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Digest (hashAndEncode)
 import Logger.Move.Debug qualified as Logger

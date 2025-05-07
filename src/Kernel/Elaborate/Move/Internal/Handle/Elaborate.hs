@@ -32,9 +32,9 @@ import Kernel.Move.Context.TopCandidate qualified as TopCandidate
 import Kernel.Move.Context.Type qualified as Type
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Rule.Const (defaultInlineLimit)
-import Kernel.Rule.Module (Module (moduleInlineLimit))
-import Kernel.Rule.Source
+import Kernel.Common.Rule.Const (defaultInlineLimit)
+import Kernel.Common.Rule.Module (Module (moduleInlineLimit))
+import Kernel.Common.Rule.Source
 import Language.Common.Rule.Binder
 import Language.Term.Move.Inline qualified as Inline
 import Language.Term.Rule.Term qualified as TM

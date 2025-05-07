@@ -7,7 +7,7 @@ module Kernel.Move.Context.TopCandidate
 where
 
 import Data.IORef
-import Kernel.Rule.TopCandidate
+import Kernel.Common.Rule.TopCandidate
 
 newtype Handle = Handle
   { topCandidateEnvRef :: IORef [TopCandidate]

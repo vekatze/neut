@@ -12,8 +12,8 @@ import Data.Text qualified as T
 import Ens.Move.Parse qualified as Ens
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
-import Kernel.Rule.Const
-import Kernel.Rule.Module
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Module
 import Language.Common.Rule.ModuleDigest (ModuleDigest (..))
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Logger.Rule.Hint

@@ -10,7 +10,7 @@ import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
-import Kernel.Rule.Module (MainModule)
+import Kernel.Common.Rule.Module (MainModule)
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Prelude hiding (log)

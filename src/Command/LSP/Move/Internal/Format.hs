@@ -11,7 +11,7 @@ import Data.Text qualified as T
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Const
+import Kernel.Common.Rule.Const
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS
 import Path

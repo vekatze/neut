@@ -1,4 +1,4 @@
-module Kernel.Rule.ClangOption
+module Kernel.Common.Rule.ClangOption
   ( ClangOption (..),
     new,
     empty,

@@ -11,7 +11,7 @@ import Data.Text qualified as T
 import Ens.Rule.Ens
 import Ens.Rule.Ens.ToDoc qualified as Ens
 import Error.Rule.EIO (EIO)
-import Kernel.Rule.Module
+import Kernel.Common.Rule.Module
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path

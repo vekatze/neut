@@ -16,10 +16,10 @@ import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Antecedent qualified as Antecedent
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Locator qualified as Locator
-import Kernel.Rule.AliasInfo
-import Kernel.Rule.Module
-import Kernel.Rule.Source qualified as Source
-import Kernel.Rule.TopNameMap
+import Kernel.Common.Rule.AliasInfo
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Source qualified as Source
+import Kernel.Common.Rule.TopNameMap
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL

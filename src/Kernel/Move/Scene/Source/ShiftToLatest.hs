@@ -12,9 +12,9 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Antecedent qualified as Antecedent
-import Kernel.Rule.Module
-import Kernel.Rule.Source (Source (sourceModule))
-import Kernel.Rule.Source qualified as Source
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Source (Source (sourceModule))
+import Kernel.Common.Rule.Source qualified as Source
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Path

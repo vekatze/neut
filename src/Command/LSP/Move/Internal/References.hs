@@ -12,8 +12,8 @@ import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Monad.Trans
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Cache qualified as Cache
-import Kernel.Rule.Source (Source (sourceFilePath, sourceModule))
+import Kernel.Common.Rule.Cache qualified as Cache
+import Kernel.Common.Rule.Source (Source (sourceFilePath, sourceModule))
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types

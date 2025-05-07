@@ -10,9 +10,9 @@ import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Cache qualified as Cache
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Cache qualified as Cache
-import Kernel.Rule.Source qualified as Source
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Cache qualified as Cache
+import Kernel.Common.Rule.Source qualified as Source
+import Kernel.Common.Rule.Target
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path.Move.Read (readText)

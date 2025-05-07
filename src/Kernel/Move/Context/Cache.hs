@@ -20,12 +20,12 @@ import Kernel.Move.Context.Artifact qualified as Artifact
 import Kernel.Move.Context.Path (getSourceLocationCachePath)
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Artifact qualified as A
-import Kernel.Rule.Cache qualified as Cache
-import Kernel.Rule.Module
-import Kernel.Rule.OutputKind qualified as OK
-import Kernel.Rule.Source qualified as Source
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Artifact qualified as A
+import Kernel.Common.Rule.Cache qualified as Cache
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.OutputKind qualified as OK
+import Kernel.Common.Rule.Source qualified as Source
+import Kernel.Common.Rule.Target
 import Path
 import Path.IO
 

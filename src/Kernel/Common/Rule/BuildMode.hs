@@ -1,4 +1,4 @@
-module Kernel.Rule.BuildMode
+module Kernel.Common.Rule.BuildMode
   ( BuildMode (..),
     reify,
     fromString,

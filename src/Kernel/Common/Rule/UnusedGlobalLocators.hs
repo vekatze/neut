@@ -1,4 +1,4 @@
-module Kernel.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL) where
+module Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL) where
 
 import Data.Text qualified as T
 import Logger.Rule.Hint

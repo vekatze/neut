@@ -29,7 +29,7 @@ import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
-import Kernel.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.OptimizableData qualified as OD
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseCritical')
 import Language.Common.Rule.ArgNum qualified as AN

@@ -25,11 +25,11 @@ import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Rule.AliasInfo qualified as AI
-import Kernel.Rule.Const
-import Kernel.Rule.Import (ImportItem (..))
-import Kernel.Rule.Module
-import Kernel.Rule.Source qualified as Source
+import Kernel.Common.Rule.AliasInfo qualified as AI
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Import (ImportItem (..))
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Source qualified as Source
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA

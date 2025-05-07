@@ -1,4 +1,4 @@
-module Kernel.Rule.LocationTree
+module Kernel.Common.Rule.LocationTree
   ( LocationTree,
     LocType (..),
     SymbolName (..),

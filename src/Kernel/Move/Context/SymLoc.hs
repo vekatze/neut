@@ -8,7 +8,7 @@ where
 
 import Control.Monad (unless)
 import Data.IORef
-import Kernel.Rule.LocalVarTree qualified as LVT
+import Kernel.Common.Rule.LocalVarTree qualified as LVT
 import Language.Common.Rule.Ident
 import Logger.Rule.Hint
 

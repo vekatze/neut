@@ -1,7 +1,7 @@
 module Command.LSP.Move.Internal.FindReferences (findReferences) where
 
 import Data.Maybe (fromMaybe)
-import Kernel.Rule.LocationTree qualified as LT
+import Kernel.Common.Rule.LocationTree qualified as LT
 import Language.LSP.Protocol.Types
 import Path
 

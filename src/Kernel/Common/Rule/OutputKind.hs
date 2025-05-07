@@ -1,4 +1,4 @@
-module Kernel.Rule.OutputKind
+module Kernel.Common.Rule.OutputKind
   ( OutputKind (..),
     fromText,
   )

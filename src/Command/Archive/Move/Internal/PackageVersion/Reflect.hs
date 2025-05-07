@@ -6,7 +6,7 @@ import Control.Monad
 import Data.Maybe
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
-import Kernel.Rule.Module
+import Kernel.Common.Rule.Module
 import Language.Common.Move.Raise (raiseError')
 import Prelude hiding (log)
 

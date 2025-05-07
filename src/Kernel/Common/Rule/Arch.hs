@@ -1,4 +1,4 @@
-module Kernel.Rule.Arch
+module Kernel.Common.Rule.Arch
   ( Arch (..),
     reify,
     dataSizeOf,
@@ -8,7 +8,7 @@ where
 import Data.Binary
 import Data.Text qualified as T
 import GHC.Generics qualified as G
-import Kernel.Rule.DataSize qualified as DS
+import Kernel.Common.Rule.DataSize qualified as DS
 
 -- names are chosen as in https://wiki.debian.org/SupportedArchitectures
 data Arch

@@ -13,8 +13,8 @@ import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
-import Kernel.Rule.Const
-import Kernel.Rule.Module
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Module
 import Language.Common.Move.Raise (raiseError')
 import Path
 import Path.IO

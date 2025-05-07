@@ -1,8 +1,8 @@
-module Kernel.Rule.Import (ImportItem (..)) where
+module Kernel.Common.Rule.Import (ImportItem (..)) where
 
 import Data.Text qualified as T
-import Kernel.Rule.AliasInfo qualified as AI
-import Kernel.Rule.Source qualified as Source
+import Kernel.Common.Rule.AliasInfo qualified as AI
+import Kernel.Common.Rule.Source qualified as Source
 import Logger.Rule.Hint
 import Path
 

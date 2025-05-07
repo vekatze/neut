@@ -5,8 +5,8 @@ import BasicPrettyPrinter.Rule.Piece qualified as PI
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
-import Kernel.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
-import Kernel.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
+import Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
+import Kernel.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as FCT

@@ -1,4 +1,4 @@
-module Kernel.Rule.Module
+module Kernel.Common.Rule.Module
   ( Module (..),
     MainModule (..),
     SomePath,
@@ -63,11 +63,11 @@ import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
 import Ens.Rule.Ens qualified as E
 import Error.Rule.Error
-import Kernel.Rule.ClangOption qualified as CL
-import Kernel.Rule.Const
-import Kernel.Rule.ModuleURL
-import Kernel.Rule.Target qualified as Target
-import Kernel.Rule.ZenConfig
+import Kernel.Common.Rule.ClangOption qualified as CL
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.ModuleURL
+import Kernel.Common.Rule.Target qualified as Target
+import Kernel.Common.Rule.ZenConfig
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.ModuleAlias qualified as MA

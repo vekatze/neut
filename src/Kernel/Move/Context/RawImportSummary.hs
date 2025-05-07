@@ -7,7 +7,7 @@ module Kernel.Move.Context.RawImportSummary
 where
 
 import Data.IORef
-import Kernel.Rule.RawImportSummary qualified as RIS
+import Kernel.Common.Rule.RawImportSummary qualified as RIS
 import Language.RawTerm.Rule.RawStmt (RawImport)
 
 newtype Handle = Handle

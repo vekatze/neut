@@ -9,8 +9,8 @@ import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Module.Reflect qualified as Module
-import Kernel.Rule.Module
-import Kernel.Rule.Source
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Source
 import Path
 
 newtype Handle = Handle

@@ -16,7 +16,7 @@ import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.ModuleURL (ModuleURL (ModuleURL))
+import Kernel.Common.Rule.ModuleURL (ModuleURL (ModuleURL))
 import Prelude hiding (log)
 
 data Handle = Handle

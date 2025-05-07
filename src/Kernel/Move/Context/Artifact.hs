@@ -11,7 +11,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
-import Kernel.Rule.Artifact qualified as A
+import Kernel.Common.Rule.Artifact qualified as A
 import Language.Common.Move.Raise (raiseCritical')
 import Path
 import Prelude hiding (lookup)

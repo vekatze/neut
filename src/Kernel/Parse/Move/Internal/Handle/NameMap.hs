@@ -25,10 +25,10 @@ import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.Tag qualified as Tag
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Rule.GlobalName
-import Kernel.Rule.GlobalName qualified as GN
-import Kernel.Rule.OptimizableData qualified as OD
-import Kernel.Rule.TopNameMap
+import Kernel.Common.Rule.GlobalName
+import Kernel.Common.Rule.GlobalName qualified as GN
+import Kernel.Common.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.TopNameMap
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD

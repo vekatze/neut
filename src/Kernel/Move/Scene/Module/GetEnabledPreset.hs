@@ -14,7 +14,7 @@ import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Module qualified as Module
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule
-import Kernel.Rule.Module
+import Kernel.Common.Rule.Module
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias qualified as MA
 

@@ -22,8 +22,8 @@ import Kernel.Move.Scene.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
 import Kernel.Parse.Move.Parse qualified as Parse
-import Kernel.Rule.Module (MainModule (MainModule))
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Module (MainModule (MainModule))
+import Kernel.Common.Rule.Target
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))

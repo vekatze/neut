@@ -1,4 +1,4 @@
-module Kernel.Rule.OS
+module Kernel.Common.Rule.OS
   ( OS (..),
     reify,
   )

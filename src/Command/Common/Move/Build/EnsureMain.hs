@@ -9,9 +9,9 @@ import Control.Monad
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
-import Kernel.Rule.Module
-import Kernel.Rule.Source
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Source
+import Kernel.Common.Rule.Target
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD

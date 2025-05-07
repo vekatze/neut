@@ -1,4 +1,4 @@
-module Kernel.Rule.LocalVarTree
+module Kernel.Common.Rule.LocalVarTree
   ( LocalVarTree (..),
     empty,
     insert,

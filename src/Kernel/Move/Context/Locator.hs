@@ -26,13 +26,13 @@ import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Tag qualified as Tag
-import Kernel.Rule.AliasInfo (MustUpdateTag)
-import Kernel.Rule.GlobalName qualified as GN
-import Kernel.Rule.Module
-import Kernel.Rule.Module qualified as Module
-import Kernel.Rule.Source qualified as Source
-import Kernel.Rule.Target qualified as Target
-import Kernel.Rule.TopNameMap (TopNameMap)
+import Kernel.Common.Rule.AliasInfo (MustUpdateTag)
+import Kernel.Common.Rule.GlobalName qualified as GN
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Module qualified as Module
+import Kernel.Common.Rule.Source qualified as Source
+import Kernel.Common.Rule.Target qualified as Target
+import Kernel.Common.Rule.TopNameMap (TopNameMap)
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)

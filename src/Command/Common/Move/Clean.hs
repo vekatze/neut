@@ -11,7 +11,7 @@ import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Module (extractModule)
+import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Path.IO
 import Prelude hiding (log)

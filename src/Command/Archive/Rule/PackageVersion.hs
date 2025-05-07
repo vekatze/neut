@@ -12,7 +12,7 @@ where
 
 import Data.List qualified as List
 import Data.Text qualified as T
-import Kernel.Rule.Const
+import Kernel.Common.Rule.Const
 import Language.Common.Rule.List (initLast)
 import Text.Read
 

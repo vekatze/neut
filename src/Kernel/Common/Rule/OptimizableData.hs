@@ -1,4 +1,4 @@
-module Kernel.Rule.OptimizableData (OptimizableData (..)) where
+module Kernel.Common.Rule.OptimizableData (OptimizableData (..)) where
 
 data OptimizableData
   = Enum

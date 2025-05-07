@@ -14,10 +14,10 @@ import Kernel.Move.Context.Module (getAllSourcePathInModule)
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
-import Kernel.Rule.Cache
-import Kernel.Rule.Module
-import Kernel.Rule.Source
-import Kernel.Rule.Target (Target (Peripheral))
+import Kernel.Common.Rule.Cache
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Source
+import Kernel.Common.Rule.Target (Target (Peripheral))
 import Path
 
 data Handle = Handle

@@ -1,4 +1,4 @@
-module Kernel.Rule.ModuleURL (ModuleURL (..)) where
+module Kernel.Common.Rule.ModuleURL (ModuleURL (..)) where
 
 import Data.Text qualified as T
 

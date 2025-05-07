@@ -20,10 +20,10 @@ import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Path qualified as Path
-import Kernel.Rule.Const
-import Kernel.Rule.Module
-import Kernel.Rule.ModuleURL
-import Kernel.Rule.Source qualified as Source
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.ModuleURL
+import Kernel.Common.Rule.Source qualified as Source
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD

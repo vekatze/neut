@@ -1,4 +1,4 @@
-module Kernel.Rule.TopCandidate
+module Kernel.Common.Rule.TopCandidate
   ( TopCandidate (..),
     CandidateKind (..),
   )

@@ -10,8 +10,8 @@ import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Module (MainModule (MainModule))
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Module (MainModule (MainModule))
+import Kernel.Common.Rule.Target
 import Path
 
 data Handle = Handle

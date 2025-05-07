@@ -1,4 +1,4 @@
-module Kernel.Rule.AliasInfo
+module Kernel.Common.Rule.AliasInfo
   ( AliasInfo (..),
     MustUpdateTag,
     SourceAliasMap,

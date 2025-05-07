@@ -25,8 +25,8 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Parse.Rule.VarDefKind
-import Kernel.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
-import Kernel.Rule.UnusedLocalLocators
+import Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
+import Kernel.Common.Rule.UnusedLocalLocators
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL

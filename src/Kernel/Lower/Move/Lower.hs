@@ -30,11 +30,11 @@ import Kernel.Lower.Rule.Cancel
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Arch
-import Kernel.Rule.Arch qualified as A
-import Kernel.Rule.Const
-import Kernel.Rule.DataSize qualified as DS
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Arch
+import Kernel.Common.Rule.Arch qualified as A
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.DataSize qualified as DS
+import Kernel.Common.Rule.Target
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT

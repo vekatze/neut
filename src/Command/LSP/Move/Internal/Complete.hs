@@ -26,13 +26,13 @@ import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Module.GetModule qualified as GetModule
-import Kernel.Rule.Cache qualified as Cache
-import Kernel.Rule.LocalVarTree qualified as LVT
-import Kernel.Rule.Module
-import Kernel.Rule.RawImportSummary
-import Kernel.Rule.Source
-import Kernel.Rule.Target
-import Kernel.Rule.TopCandidate
+import Kernel.Common.Rule.Cache qualified as Cache
+import Kernel.Common.Rule.LocalVarTree qualified as LVT
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.RawImportSummary
+import Kernel.Common.Rule.Source
+import Kernel.Common.Rule.Target
+import Kernel.Common.Rule.TopCandidate
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)

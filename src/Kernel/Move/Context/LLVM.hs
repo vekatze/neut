@@ -19,10 +19,10 @@ import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.ProcessRunner qualified as ProcessRunner
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Module (extractModule)
-import Kernel.Rule.OutputKind qualified as OK
-import Kernel.Rule.Source
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Module (extractModule)
+import Kernel.Common.Rule.OutputKind qualified as OK
+import Kernel.Common.Rule.Source
+import Kernel.Common.Rule.Target
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path

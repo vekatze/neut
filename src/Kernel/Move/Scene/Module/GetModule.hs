@@ -15,7 +15,7 @@ import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Move.Context.Module qualified as Module
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
-import Kernel.Rule.Module
+import Kernel.Common.Rule.Module
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ModuleAlias (ModuleAlias)
 import Language.Common.Rule.ModuleID qualified as MID

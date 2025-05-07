@@ -27,7 +27,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
-import Kernel.Rule.Const
+import Kernel.Common.Rule.Const
 import Language.Common.Move.CreateSymbol (newTextForHole)
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN

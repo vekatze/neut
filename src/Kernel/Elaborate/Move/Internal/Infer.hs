@@ -30,8 +30,8 @@ import Kernel.Move.Context.Locator qualified as Locator
 import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Rule.Const
-import Kernel.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.OptimizableData qualified as OD
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as Annotation

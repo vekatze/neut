@@ -17,12 +17,12 @@ import Ens.Rule.Ens (dictFromListVertical')
 import Ens.Rule.Ens qualified as E
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error
-import Kernel.Rule.ClangOption qualified as CL
-import Kernel.Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
-import Kernel.Rule.Module
-import Kernel.Rule.ModuleURL
-import Kernel.Rule.Target
-import Kernel.Rule.ZenConfig (ZenConfig (..))
+import Kernel.Common.Rule.ClangOption qualified as CL
+import Kernel.Common.Rule.Const (archiveRelDir, cacheRelDir, moduleFile, sourceRelDir)
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.ModuleURL
+import Kernel.Common.Rule.Target
+import Kernel.Common.Rule.ZenConfig (ZenConfig (..))
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN

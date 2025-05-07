@@ -38,12 +38,12 @@ import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Parse qualified as Parse
-import Kernel.Rule.Cache
-import Kernel.Rule.ClangOption qualified as CL
-import Kernel.Rule.Module qualified as M
-import Kernel.Rule.OutputKind
-import Kernel.Rule.Source
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Cache
+import Kernel.Common.Rule.ClangOption qualified as CL
+import Kernel.Common.Rule.Module qualified as M
+import Kernel.Common.Rule.OutputKind
+import Kernel.Common.Rule.Source
+import Kernel.Common.Rule.Target
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Error qualified as E

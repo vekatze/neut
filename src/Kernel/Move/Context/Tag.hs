@@ -14,7 +14,7 @@ where
 import Control.Monad (unless, when)
 import Data.IORef
 import Data.Text qualified as T
-import Kernel.Rule.LocationTree qualified as LT
+import Kernel.Common.Rule.LocationTree qualified as LT
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN

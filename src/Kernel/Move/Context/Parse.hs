@@ -9,7 +9,7 @@ import Data.ByteString qualified as B
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Error.Rule.EIO (EIO)
-import Kernel.Rule.Source
+import Kernel.Common.Rule.Source
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Logger.Rule.Hint
 import Path

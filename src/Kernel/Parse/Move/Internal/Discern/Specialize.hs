@@ -12,7 +12,7 @@ import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema
 import Kernel.Parse.Rule.Pattern
-import Kernel.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.OptimizableData qualified as OD
 import Language.Common.Move.Raise (raiseCritical')
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Binder

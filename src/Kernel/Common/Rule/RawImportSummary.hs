@@ -1,4 +1,4 @@
-module Kernel.Rule.RawImportSummary
+module Kernel.Common.Rule.RawImportSummary
   ( RawImportSummary,
     fromRawImport,
   )

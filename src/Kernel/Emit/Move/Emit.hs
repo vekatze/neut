@@ -20,7 +20,7 @@ import Kernel.Emit.Rule.LowValue
 import Kernel.Emit.Rule.PrimType (emitPrimType)
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.Const
+import Kernel.Common.Rule.Const
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.DefiniteDescription qualified as DD

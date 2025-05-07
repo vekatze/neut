@@ -16,7 +16,7 @@ import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Rule.Source qualified as Source
+import Kernel.Common.Rule.Source qualified as Source
 
 data Handle = Handle
   { unusedHandle :: Unused.Handle,

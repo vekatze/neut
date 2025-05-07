@@ -18,10 +18,10 @@ import Error.Rule.Error (Error)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.BuildMode qualified as BM
-import Kernel.Rule.Module
-import Kernel.Rule.OutputKind qualified as OK
-import Kernel.Rule.Target
+import Kernel.Common.Rule.BuildMode qualified as BM
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.OutputKind qualified as OK
+import Kernel.Common.Rule.Target
 import Language.Common.Move.Raise (raiseError')
 import Prelude hiding (log)
 

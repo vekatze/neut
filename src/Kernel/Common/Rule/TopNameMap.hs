@@ -1,10 +1,10 @@
-module Kernel.Rule.TopNameMap
+module Kernel.Common.Rule.TopNameMap
   ( TopNameMap,
   )
 where
 
 import Data.HashMap.Strict qualified as Map
-import Kernel.Rule.GlobalName qualified as GN
+import Kernel.Common.Rule.GlobalName qualified as GN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Logger.Rule.Hint
 

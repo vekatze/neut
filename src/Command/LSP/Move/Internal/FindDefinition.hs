@@ -11,8 +11,8 @@ import Control.Lens hiding (Iso, List)
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.LocationTree (LocationTree)
-import Kernel.Rule.LocationTree qualified as LT
+import Kernel.Common.Rule.LocationTree (LocationTree)
+import Kernel.Common.Rule.LocationTree qualified as LT
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Logger.Rule.Hint qualified as H

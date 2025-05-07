@@ -32,12 +32,12 @@ import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
 import Kernel.Move.Scene.Source.ShiftToLatest qualified as STL
 import Kernel.Parse.Move.Internal.Import qualified as Import
 import Kernel.Parse.Move.Internal.Program (parseImport)
-import Kernel.Rule.Artifact qualified as A
-import Kernel.Rule.Import
-import Kernel.Rule.Module
-import Kernel.Rule.OutputKind qualified as OK
-import Kernel.Rule.Source qualified as Source
-import Kernel.Rule.Target
+import Kernel.Common.Rule.Artifact qualified as A
+import Kernel.Common.Rule.Import
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.OutputKind qualified as OK
+import Kernel.Common.Rule.Source qualified as Source
+import Kernel.Common.Rule.Target
 import Kernel.Unravel.Rule.VisitInfo qualified as VI
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID

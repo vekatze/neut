@@ -14,11 +14,11 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Rule.ClangOption qualified as CL
-import Kernel.Rule.Const
-import Kernel.Rule.Module
-import Kernel.Rule.Target
-import Kernel.Rule.ZenConfig
+import Kernel.Common.Rule.ClangOption qualified as CL
+import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Module
+import Kernel.Common.Rule.Target
+import Kernel.Common.Rule.ZenConfig
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL

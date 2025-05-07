@@ -1,4 +1,4 @@
-module Kernel.Rule.Artifact
+module Kernel.Common.Rule.Artifact
   ( ArtifactTime (..),
     empty,
     inject,

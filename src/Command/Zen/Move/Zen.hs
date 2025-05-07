@@ -16,11 +16,11 @@ import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.Env qualified as Env
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Scene.Init.Base qualified as Base
-import Kernel.Rule.BuildMode qualified as BM
-import Kernel.Rule.Module (Module (moduleZenConfig), extractModule)
-import Kernel.Rule.OutputKind
-import Kernel.Rule.Target
-import Kernel.Rule.ZenConfig qualified as Z
+import Kernel.Common.Rule.BuildMode qualified as BM
+import Kernel.Common.Rule.Module (Module (moduleZenConfig), extractModule)
+import Kernel.Common.Rule.OutputKind
+import Kernel.Common.Rule.Target
+import Kernel.Common.Rule.ZenConfig qualified as Z
 import Path.IO (resolveFile')
 import Prelude hiding (log)
 

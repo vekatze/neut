@@ -37,9 +37,9 @@ import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.SymLoc qualified as SymLoc
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Rule.Cache qualified as Cache
-import Kernel.Rule.Const (holeLiteral)
-import Kernel.Rule.Target hiding (Main)
+import Kernel.Common.Rule.Cache qualified as Cache
+import Kernel.Common.Rule.Const (holeLiteral)
+import Kernel.Common.Rule.Target hiding (Main)
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN

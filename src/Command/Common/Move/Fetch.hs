@@ -28,9 +28,9 @@ import Kernel.Move.Context.External qualified as External
 import Kernel.Move.Context.Module qualified as Module
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Move.Scene.Module.Reflect qualified as ModuleReflect
-import Kernel.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
-import Kernel.Rule.Module qualified as M
-import Kernel.Rule.ModuleURL
+import Kernel.Common.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
+import Kernel.Common.Rule.Module qualified as M
+import Kernel.Common.Rule.ModuleURL
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN

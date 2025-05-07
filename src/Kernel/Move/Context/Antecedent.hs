@@ -13,7 +13,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Kernel.Rule.Module qualified as M
+import Kernel.Common.Rule.Module qualified as M
 import Language.Common.Rule.ModuleID qualified as MID
 import Prelude hiding (lookup, read)
 
