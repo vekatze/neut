@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Emit
+module Kernel.Emit.Move.Emit
   ( Handle,
     new,
     emit,
@@ -13,8 +13,8 @@ import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Kernel.Emit.Move.Internal.LowComp qualified as EmitLowComp
 import Kernel.Move.Context.Platform qualified as Platform
-import Kernel.Move.Scene.Emit.LowComp qualified as EmitLowComp
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Rule.Builder
 import Kernel.Rule.Const

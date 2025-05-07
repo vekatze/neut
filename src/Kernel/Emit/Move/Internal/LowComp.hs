@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Emit.LowComp
+module Kernel.Emit.Move.Internal.LowComp
   ( Handle,
     new,
     emitLowComp,
