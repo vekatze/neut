@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.Handle.WeakDecl
+module Kernel.Elaborate.Move.Internal.Handle.WeakDecl
   ( Handle,
     new,
     insert,

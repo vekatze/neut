@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.Handle.LocalLogs
+module Kernel.Elaborate.Move.Internal.Handle.LocalLogs
   ( Handle,
     new,
     insert,

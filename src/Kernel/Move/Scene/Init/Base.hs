@@ -21,8 +21,8 @@ import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Context.Type qualified as Type
 import Kernel.Move.Scene.Clarify.Handle.CompDef qualified as CompDef
-import Kernel.Move.Scene.Elaborate.Handle.Def qualified as Definition
-import Kernel.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
+import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
+import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Logger.Move.CreateHandle qualified as Logger
 import Logger.Rule.Handle qualified as Logger

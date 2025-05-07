@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.Handle.Def
+module Kernel.Elaborate.Move.Internal.Handle.Def
   ( Handle,
     new,
     DefMap,

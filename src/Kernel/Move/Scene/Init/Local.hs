@@ -11,7 +11,7 @@ import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.SymLoc qualified as SymLoc
 import Kernel.Move.Context.Tag qualified as Tag
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
-import Kernel.Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
+import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Move.Scene.Init.Base qualified as Base
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl

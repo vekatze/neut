@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.Handle.WeakDef
+module Kernel.Elaborate.Move.Internal.Handle.WeakDef
   ( Handle,
     new,
     DefMap,

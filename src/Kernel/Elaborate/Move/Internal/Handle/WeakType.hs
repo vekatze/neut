@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.Handle.WeakType
+module Kernel.Elaborate.Move.Internal.Handle.WeakType
   ( Handle,
     new,
     WeakTypeEnv,

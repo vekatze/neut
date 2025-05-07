@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.WeakTerm.Fill
+module Kernel.Elaborate.Move.Internal.WeakTerm.Fill
   ( Handle,
     new,
     fill,

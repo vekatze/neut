@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.EnsureAffinity
+module Kernel.Elaborate.Move.Internal.EnsureAffinity
   ( Handle,
     new,
     ensureAffinity,
@@ -16,8 +16,8 @@ import Data.Set qualified as S
 import Error.Rule.EIO (EIO)
 import Kernel.Move.Context.OptimizableData qualified as OptimizableData
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
-import Kernel.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
+import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
+import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Rule.OptimizableData
 import Kernel.Rule.OptimizableData qualified as OD
 import Kernel.Rule.Stuck qualified as Stuck

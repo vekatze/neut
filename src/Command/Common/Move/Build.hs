@@ -26,8 +26,8 @@ import Kernel.Move.Context.LLVM qualified as LLVM
 import Kernel.Move.Context.Path qualified as Path
 import Kernel.Move.Context.Platform qualified as Platform
 import Kernel.Move.Scene.Clarify qualified as Clarify
-import Kernel.Move.Scene.Elaborate qualified as Elaborate
-import Kernel.Move.Scene.Elaborate.Handle.Elaborate qualified as Elaborate
+import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
+import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Move.Scene.Emit qualified as Emit
 import Kernel.Move.Scene.EnsureMain qualified as EnsureMain
 import Kernel.Move.Scene.Execute qualified as Execute

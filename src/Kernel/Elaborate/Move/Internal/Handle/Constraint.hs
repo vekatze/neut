@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.Handle.Constraint
+module Kernel.Elaborate.Move.Internal.Handle.Constraint
   ( Handle,
     new,
     get,

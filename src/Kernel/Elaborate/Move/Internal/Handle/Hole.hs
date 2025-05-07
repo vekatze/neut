@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate.Handle.Hole
+module Kernel.Elaborate.Move.Internal.Handle.Hole
   ( Handle,
     new,
     insert,

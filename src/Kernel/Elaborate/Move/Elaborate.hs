@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Elaborate
+module Kernel.Elaborate.Move.Elaborate
   ( getWeakTypeEnv,
     elaborate,
     elaborate',
@@ -25,17 +25,17 @@ import Kernel.Move.Context.RawImportSummary qualified as RawImportSummary
 import Kernel.Move.Context.SymLoc qualified as SymLoc
 import Kernel.Move.Context.TopCandidate qualified as TopCandidate
 import Kernel.Move.Context.Type qualified as Type
-import Kernel.Move.Scene.Elaborate.EnsureAffinity qualified as EnsureAffinity
-import Kernel.Move.Scene.Elaborate.Handle.Constraint qualified as Constraint
-import Kernel.Move.Scene.Elaborate.Handle.Def qualified as Definition
-import Kernel.Move.Scene.Elaborate.Handle.Elaborate
-import Kernel.Move.Scene.Elaborate.Handle.Hole qualified as Hole
-import Kernel.Move.Scene.Elaborate.Handle.LocalLogs qualified as LocalLogs
-import Kernel.Move.Scene.Elaborate.Handle.WeakDecl qualified as WeakDecl
-import Kernel.Move.Scene.Elaborate.Handle.WeakDef qualified as WeakDef
-import Kernel.Move.Scene.Elaborate.Handle.WeakType qualified as WeakType
-import Kernel.Move.Scene.Elaborate.Infer qualified as Infer
-import Kernel.Move.Scene.Elaborate.Unify qualified as Unify
+import Kernel.Elaborate.Move.Internal.EnsureAffinity qualified as EnsureAffinity
+import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
+import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
+import Kernel.Elaborate.Move.Internal.Handle.Elaborate
+import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
+import Kernel.Elaborate.Move.Internal.Handle.LocalLogs qualified as LocalLogs
+import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
+import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
+import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
+import Kernel.Elaborate.Move.Internal.Infer qualified as Infer
+import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
 import Kernel.Rule.Cache qualified as Cache
 import Kernel.Rule.Const (holeLiteral)
 import Kernel.Rule.HoleSubst qualified as HS
