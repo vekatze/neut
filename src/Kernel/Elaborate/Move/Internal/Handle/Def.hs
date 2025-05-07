@@ -1,7 +1,6 @@
 module Kernel.Elaborate.Move.Internal.Handle.Def
   ( Handle,
     new,
-    DefMap,
     insert',
     get',
   )
@@ -15,9 +14,6 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Rule.Term qualified as TM
 import Prelude hiding (lookup, read)
-
-type DefMap =
-  Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)
 
 newtype Handle = Handle
   { defMapRef :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term))

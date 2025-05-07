@@ -2,15 +2,11 @@ module Kernel.Move.Context.Local.Locator
   ( Handle,
     new,
     attachCurrentLocator,
-    attachPublicCurrentLocator,
     activateSpecifiedNames,
     getStaticFileContent,
     activateStaticFile,
-    isMainFile,
     getPossibleReferents,
-    getMainDefiniteDescription,
     getNameLifter,
-    getMainDefiniteDescriptionByTarget,
     getReadableDD,
   )
 where
@@ -29,7 +25,6 @@ import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Common.Rule.Target qualified as Target
 import Kernel.Common.Rule.TopNameMap (TopNameMap)
 import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Context.Local.Tag qualified as Tag
@@ -138,14 +133,6 @@ getNameLifter h = do
   cgl <- getCurrentGlobalLocator h
   return $ \name -> DD.new cgl $ LL.new name
 
-attachPublicCurrentLocator ::
-  Handle ->
-  BN.BaseName ->
-  IO DD.DefiniteDescription
-attachPublicCurrentLocator h name = do
-  cgl <- getCurrentGlobalLocator h
-  return $ DD.new cgl $ LL.new name
-
 getCurrentGlobalLocator :: Handle -> IO SGL.StrictGlobalLocator
 getCurrentGlobalLocator h = do
   sglOrNone <- readIORef (currentGlobalLocatorRef h)
@@ -191,45 +178,6 @@ removeExtension path =
       return path'
     Nothing ->
       raiseError' $ "File extension is missing in `" <> T.pack (toFilePath path) <> "`"
-
-getMainDefiniteDescription ::
-  Handle ->
-  Source.Source ->
-  IO (Maybe DD.DefiniteDescription)
-getMainDefiniteDescription h source = do
-  if isMainFile source
-    then Just <$> attachCurrentLocator h BN.mainName
-    else return Nothing
-
-isMainFile :: Source.Source -> Bool
-isMainFile source = do
-  case Module.moduleID $ Source.sourceModule source of
-    MID.Main -> do
-      let sourcePathList = Module.getTargetPathList $ Source.sourceModule source
-      Source.sourceFilePath source `elem` sourcePathList
-    _ ->
-      False
-
-getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> EIO DD.DefiniteDescription
-getMainDefiniteDescriptionByTarget h targetOrZen = do
-  let mainModule = Env.getMainModule (envHandle h)
-  case targetOrZen of
-    Target.Named target _ -> do
-      case Map.lookup target (Module.moduleTarget $ extractModule mainModule) of
-        Nothing ->
-          raiseError' $ "No such target is defined: " <> target
-        Just targetSummary -> do
-          relPathToDD (SL.reify $ Target.entryPoint targetSummary) BN.mainName
-    Target.Zen path _ -> do
-      relPath <- Module.getRelPathFromSourceDir (extractModule mainModule) path
-      relPathToDD relPath BN.zenName
-
-relPathToDD :: Path Rel File -> BN.BaseName -> EIO DD.DefiniteDescription
-relPathToDD relPath baseName = do
-  sourceLocator <- SL.SourceLocator <$> removeExtension relPath
-  let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator}
-  let ll = LL.new baseName
-  return $ DD.new sgl ll
 
 getReadableDD :: MainModule -> DD.DefiniteDescription -> T.Text
 getReadableDD mainModule = do

@@ -3,17 +3,14 @@ module Kernel.Parse.Move.Internal.Handle.Unused
     new,
     insertGlobalLocator,
     insertLocalLocator,
-    insertPreset,
     insertStaticFile,
     insertVariable,
     deleteGlobalLocator,
     deleteLocalLocator,
-    deletePreset,
     deleteStaticFile,
     deleteVariable,
     getGlobalLocator,
     getLocalLocator,
-    getPreset,
     getStaticFile,
     getVariable,
   )
@@ -32,9 +29,6 @@ import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL
 import Logger.Rule.Hint
 import Prelude hiding (lookup, read)
-
-type ModuleIDText =
-  T.Text
 
 data Handle = Handle
   { unusedGlobalLocatorMapRef :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
@@ -61,10 +55,6 @@ insertLocalLocator :: Handle -> LL.LocalLocator -> Hint -> IO ()
 insertLocalLocator h ll m =
   modifyIORef' (unusedLocalLocatorMapRef h) $ Map.insert ll m
 
-insertPreset :: Handle -> ModuleIDText -> Hint -> IO ()
-insertPreset h presetName m =
-  modifyIORef' (unusedPresetMapRef h) $ Map.insert presetName m
-
 insertStaticFile :: Handle -> T.Text -> Hint -> IO ()
 insertStaticFile h ll m =
   modifyIORef' (unusedStaticFileMapRef h) $ Map.insert ll m
@@ -80,10 +70,6 @@ deleteGlobalLocator h sglText =
 deleteLocalLocator :: Handle -> LL.LocalLocator -> IO ()
 deleteLocalLocator h ll =
   modifyIORef' (unusedLocalLocatorMapRef h) $ Map.delete ll
-
-deletePreset :: Handle -> ModuleIDText -> IO ()
-deletePreset h presetName =
-  modifyIORef' (unusedPresetMapRef h) $ Map.delete presetName
 
 deleteStaticFile :: Handle -> T.Text -> IO ()
 deleteStaticFile h ll =
@@ -102,10 +88,6 @@ getLocalLocator :: Handle -> IO UnusedLocalLocators
 getLocalLocator h = do
   uenv <- readIORef (unusedLocalLocatorMapRef h)
   return $ Map.toList uenv
-
-getPreset :: Handle -> IO (Map.HashMap T.Text Hint)
-getPreset h =
-  readIORef (unusedPresetMapRef h)
 
 getStaticFile :: Handle -> IO [(T.Text, Hint)]
 getStaticFile h = do

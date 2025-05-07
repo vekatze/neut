@@ -125,9 +125,8 @@ interpret h currentSource (RawProgram m importList stmtList) = do
   logs1 <- liftIO $ registerUnusedVariableRemarks h
   logs2 <- liftIO $ registerUnusedGlobalLocatorRemarks h
   logs3 <- liftIO $ registerUnusedLocalLocatorRemarks h
-  logs4 <- liftIO $ registerUnusedPresetRemarks h
-  logs5 <- liftIO $ registerUnusedStaticFileRemarks h
-  return (stmtList', logs1 ++ logs2 ++ logs3 ++ logs4 ++ logs5)
+  logs4 <- liftIO $ registerUnusedStaticFileRemarks h
+  return (stmtList', logs1 ++ logs2 ++ logs3 ++ logs4)
 
 saveTopLevelNames :: Handle -> Source.Source -> [(Hint, DD.DefiniteDescription)] -> EIO ()
 saveTopLevelNames h source topNameList = do
@@ -170,13 +169,6 @@ registerUnusedLocalLocatorRemarks h = do
   return $ flip map unusedLocalLocatorMap $ \(ll, m) ->
     L.newLog m L.Warning $
       "Imported but not used: `" <> LL.reify ll <> "`"
-
-registerUnusedPresetRemarks :: Handle -> IO [L.Log]
-registerUnusedPresetRemarks h = do
-  unusedPresets <- Unused.getPreset (unusedHandle h)
-  return $ flip map (Map.toList unusedPresets) $ \(presetName, m) ->
-    L.newLog m L.Warning $
-      "Imported but not used: `" <> presetName <> "`"
 
 registerUnusedStaticFileRemarks :: Handle -> IO [L.Log]
 registerUnusedStaticFileRemarks h = do

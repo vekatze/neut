@@ -4,7 +4,6 @@ module Kernel.Move.Context.Global.Platform
     getArch,
     getDataSizeValue,
     getDataSize,
-    getOS,
     getPlatform,
     getClang,
     getClangDigest,

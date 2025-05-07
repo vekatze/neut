@@ -8,7 +8,6 @@ module Kernel.Move.Context.Global.Path
     getForeignDir,
     getInstallDir,
     sourceToOutputPath,
-    getZenExecutableDir,
     getSourceCachePath,
     getSourceCompletionCachePath,
     getSourceLocationCachePath,

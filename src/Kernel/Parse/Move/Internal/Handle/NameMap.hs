@@ -179,7 +179,6 @@ lookup h m name = do
   case Map.lookup name nameMap of
     Just kind -> do
       liftIO $ Unused.deleteGlobalLocator (unusedHandle h) $ DD.globalLocator name
-      liftIO $ Unused.deletePreset (unusedHandle h) $ DD.moduleID name
       return $ Just kind
     Nothing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->

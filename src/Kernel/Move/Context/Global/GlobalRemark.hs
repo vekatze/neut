@@ -3,7 +3,6 @@ module Kernel.Move.Context.Global.GlobalRemark
     new,
     insert,
     get,
-    set,
   )
 where
 
@@ -26,7 +25,3 @@ insert h remarkList = do
 get :: Handle -> IO [L.Log]
 get h = do
   readIORef (globalRemarkListRef h)
-
-set :: Handle -> [L.Log] -> IO ()
-set h = do
-  writeIORef (globalRemarkListRef h)

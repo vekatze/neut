@@ -3,7 +3,6 @@ module Kernel.Move.Context.Global.KeyArg
     new,
     insert,
     lookup,
-    lookupMaybe,
     reorderArgs,
   )
 where
@@ -133,15 +132,6 @@ lookup h m dataName = do
       let mainModule = Env.getMainModule (envHandle h)
       let dataName' = Locator.getReadableDD mainModule dataName
       raiseError m $ "No such function is defined: " <> dataName'
-
-lookupMaybe :: Handle -> DD.DefiniteDescription -> IO (Maybe (IsConstLike, [Key]))
-lookupMaybe h dataName = do
-  keyArgMap <- liftIO $ readIORef (keyArgMapRef h)
-  case Map.lookup dataName keyArgMap of
-    Just (isConstLike, (_, keyList)) ->
-      return $ Just (isConstLike, keyList)
-    _ ->
-      return Nothing
 
 reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> EIO [a]
 reorderArgs m keyList kvs =

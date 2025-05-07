@@ -4,7 +4,6 @@ module Kernel.Elaborate.Move.Internal.Handle.WeakType
     WeakTypeEnv,
     insert,
     lookup,
-    lookupMaybe,
     get,
   )
 where
@@ -45,11 +44,6 @@ lookup h m k = do
     Nothing ->
       raiseCritical m $
         "`" <> Ident.toText' k <> "` is not found in the weak type environment."
-
-lookupMaybe :: Handle -> Int -> IO (Maybe WT.WeakTerm)
-lookupMaybe h k = do
-  weakTypeEnv <- readIORef (weakTypeEnvRef h)
-  return $ IntMap.lookup k weakTypeEnv
 
 get :: Handle -> IO WeakTypeEnv
 get h =

@@ -1,7 +1,6 @@
 module Kernel.Parse.Move.Internal.Discern.Handle
   ( Handle (..),
     new,
-    extend,
     extend',
     extendWithoutInsert,
     extendByNominalEnv,
