@@ -33,7 +33,6 @@ import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Arch
 import Kernel.Common.Rule.Arch qualified as A
 import Kernel.Common.Rule.Const
-import Kernel.Common.Rule.DataSize qualified as DS
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Target
 import Kernel.Lower.Rule.Cancel
@@ -41,6 +40,7 @@ import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.BasePrimType qualified as BPT
+import Language.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Foreign qualified as F

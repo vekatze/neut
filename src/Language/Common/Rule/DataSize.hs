@@ -1,4 +1,4 @@
-module Kernel.Common.Rule.DataSize
+module Language.Common.Rule.DataSize
   ( DataSize (..),
     reify,
   )

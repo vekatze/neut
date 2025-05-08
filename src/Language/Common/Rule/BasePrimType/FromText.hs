@@ -1,8 +1,8 @@
 module Language.Common.Rule.BasePrimType.FromText (fromText) where
 
 import Data.Text qualified as T
-import Kernel.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.BasePrimType qualified as BPT
+import Language.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.PrimNumSize
 import Text.Read
 

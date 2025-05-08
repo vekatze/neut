@@ -1,7 +1,7 @@
 module Language.Common.Rule.PrimType.FromText (fromDefiniteDescription, fromText) where
 
 import Data.Text qualified as T
-import Kernel.Common.Rule.DataSize qualified as DS
+import Language.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
