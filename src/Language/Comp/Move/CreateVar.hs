@@ -1,7 +1,7 @@
 module Language.Comp.Move.CreateVar (createVar) where
 
+import Aux.Gensym.Rule.Handle
 import Data.Text qualified as T
-import Gensym.Rule.Handle
 import Language.Common.Move.CreateSymbol
 import Language.Common.Rule.Ident
 import Language.Comp.Rule.Comp qualified as C

@@ -5,8 +5,8 @@ module Command.LSP.Move.Internal.GetLocationTree
   )
 where
 
-import Error.Move.Run (liftMaybe)
-import Error.Rule.EIO (EIO)
+import Aux.Error.Move.Run (liftMaybe)
+import Aux.Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache

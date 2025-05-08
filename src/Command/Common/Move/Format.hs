@@ -7,13 +7,14 @@ module Command.Common.Move.Format
   )
 where
 
-import CodeParser.Move.Parse (runParser)
+import Aux.CodeParser.Move.Parse (runParser)
+import Aux.Ens.Move.Parse qualified as EnsParse
+import Aux.Ens.Rule.Ens.ToDoc qualified as Ens
+import Aux.Error.Move.Run (raiseError')
+import Aux.Error.Rule.EIO (EIO)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
-import Ens.Move.Parse qualified as EnsParse
-import Ens.Rule.Ens.ToDoc qualified as Ens
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Module.GetEnabledPreset qualified as GetEnabledPreset
@@ -25,7 +26,6 @@ import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
-import Language.Common.Move.Raise (raiseError')
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Language.RawTerm.Rule.RawStmt.ToDoc qualified as RawProgram
 import Path

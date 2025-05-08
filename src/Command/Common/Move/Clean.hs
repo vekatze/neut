@@ -5,8 +5,8 @@ module Command.Common.Move.Clean
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Control.Monad
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform

@@ -12,22 +12,22 @@ module Kernel.Common.Move.Handle.Global.Module
   )
 where
 
+import Aux.Error.Move.Run (raiseError, raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint qualified as H
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Handle.Global.Module
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Source qualified as Source
-import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
-import Logger.Rule.Hint qualified as H
 import Path
 import Path.IO
 import System.Environment

@@ -7,12 +7,14 @@ module Kernel.Parse.Move.Internal.Handle.Alias
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.AliasInfo
@@ -22,7 +24,6 @@ import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
@@ -31,7 +32,6 @@ import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Logger.Rule.Hint
 
 data Handle = Handle
   { antecedentHandle :: Antecedent.Handle,

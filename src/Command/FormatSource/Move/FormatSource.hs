@@ -5,15 +5,15 @@ module Command.FormatSource.Move.FormatSource
   )
 where
 
+import Aux.CommandParser.Rule.Config.FormatSource
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Path.Move.EnsureFileExistence (ensureFileExistence')
+import Aux.Path.Move.Read (readText)
+import Aux.Path.Move.Write (printText, writeText)
 import Command.Common.Move.Format qualified as Format
-import CommandParser.Rule.Config.FormatSource
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Path.IO
-import Path.Move.EnsureFileExistence (ensureFileExistence')
-import Path.Move.Read (readText)
-import Path.Move.Write (printText, writeText)
 
 newtype Handle = Handle
   { globalHandle :: Global.Handle

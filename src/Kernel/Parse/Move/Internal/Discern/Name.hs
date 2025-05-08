@@ -6,24 +6,26 @@ module Kernel.Parse.Move.Internal.Discern.Name
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Const qualified as C
 import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -41,7 +43,6 @@ import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint
 
 {-# INLINE resolveName #-}
 resolveName :: H.Handle -> Hint -> Name -> EIO (DD.DefiniteDescription, (Hint, GN.GlobalName))
@@ -77,7 +78,7 @@ resolveVarOrErr h m name = do
       return $ Right globalVar
     _ -> do
       let mainModule = Env.getMainModule (H.envHandle h)
-      let foundNameList' = map (DD.getReadableDD mainModule . fst) foundNameList
+      let foundNameList' = map (readableDD mainModule . fst) foundNameList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 

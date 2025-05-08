@@ -17,6 +17,12 @@ module Kernel.Common.Move.Handle.Global.Path
   )
 where
 
+import Aux.Ens.Rule.Ens qualified as E
+import Aux.Ens.Rule.Ens.ToDoc qualified as E
+import Aux.Error.Move.Run (raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Handle qualified as Logger
+import Aux.Path.Move.Read (readText)
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.ByteString.UTF8 qualified as B
@@ -24,9 +30,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Data.Time
-import Ens.Rule.Ens qualified as E
-import Ens.Rule.Ens.ToDoc qualified as E
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Const
@@ -37,14 +40,11 @@ import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Src
 import Kernel.Common.Rule.Target qualified as Target
-import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Digest
 import Language.Common.Rule.ModuleID qualified as MID
-import Logger.Rule.Handle qualified as Logger
 import Path (Abs, Dir, File, Path, (</>))
 import Path qualified as P
 import Path.IO qualified as P
-import Path.Move.Read (readText)
 
 new :: MainModule -> Platform.Handle -> Logger.Handle -> IO Handle
 new _mainModule _platformHandle _loggerHandle = do

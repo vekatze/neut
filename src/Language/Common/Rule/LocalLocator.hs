@@ -8,13 +8,13 @@ module Language.Common.Rule.LocalLocator
   )
 where
 
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
-import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.BaseName qualified as BN
-import Logger.Rule.Hint qualified as H
 import Prelude hiding (length)
 
 newtype LocalLocator = MakeLocalLocator

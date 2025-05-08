@@ -5,15 +5,15 @@ module Command.Check.Move.Check
   )
 where
 
+import Aux.CommandParser.Rule.Config.Check
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Move.Log qualified as Logger
+import Aux.Logger.Rule.Log qualified as L
 import Command.Common.Move.Check qualified as Check
 import Command.Common.Move.Fetch qualified as Fetch
-import CommandParser.Rule.Config.Check
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
-import Logger.Move.Log qualified as Logger
-import Logger.Rule.Log qualified as L
 
 newtype Handle = Handle
   { globalHandle :: Global.Handle

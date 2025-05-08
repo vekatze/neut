@@ -5,13 +5,13 @@ module Kernel.Elaborate.Move.Internal.WeakTerm.Fill
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Error.Rule.EIO (EIO)
 import Kernel.Elaborate.Rule.HoleSubst
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL

@@ -1,13 +1,13 @@
 module Kernel.Parse.Move.Internal.Discern.Fallback (getFallbackMatrix) where
 
+import Aux.Error.Move.Run (raiseCritical')
+import Aux.Error.Rule.EIO (EIO)
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Vector qualified as V
-import Error.Rule.EIO (EIO)
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema
 import Kernel.Parse.Rule.Pattern
-import Language.Common.Move.Raise (raiseCritical')
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N

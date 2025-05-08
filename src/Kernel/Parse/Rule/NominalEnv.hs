@@ -4,10 +4,10 @@ module Kernel.Parse.Rule.NominalEnv
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Data.Text qualified as T
 import Kernel.Parse.Rule.Layer
 import Language.Common.Rule.Ident
-import Logger.Rule.Hint
 
 type NominalEnv = [(T.Text, (Hint, Ident, Layer))]
 

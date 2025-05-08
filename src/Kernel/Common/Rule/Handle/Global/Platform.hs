@@ -10,9 +10,9 @@ where
 
 import Data.Text qualified as T
 import Kernel.Common.Rule.Arch qualified as Arch
-import Kernel.Common.Rule.DataSize qualified as DS
 import Kernel.Common.Rule.OS qualified as O
 import Kernel.Common.Rule.Platform qualified as P
+import Language.Common.Rule.DataSize qualified as DS
 
 data Handle = Handle
   { _arch :: Arch.Arch,

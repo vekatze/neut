@@ -5,9 +5,9 @@ module Kernel.Clarify.Move.Internal.Linearize
   )
 where
 
+import Aux.Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident

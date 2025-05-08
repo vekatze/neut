@@ -5,8 +5,8 @@ module Command.Clean.Move.Clean
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Command.Common.Move.Clean qualified as Clean
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Prelude hiding (log)
 

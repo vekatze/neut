@@ -6,6 +6,7 @@ module Language.Term.Rule.Term.Weaken
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List qualified as List
@@ -27,7 +28,6 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm (reflectOpacity)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint
 
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do

@@ -5,7 +5,7 @@ module Command.LSP.Move.Internal.Source.Reflect
   )
 where
 
-import Error.Rule.EIO (EIO)
+import Aux.Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Module.FindModuleFile qualified as Module
 import Kernel.Common.Move.Module.FromPath qualified as Module

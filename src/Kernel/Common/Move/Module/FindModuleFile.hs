@@ -4,10 +4,10 @@ module Kernel.Common.Move.Module.FindModuleFile
   )
 where
 
+import Aux.Error.Move.Run (raiseError')
+import Aux.Error.Rule.EIO (EIO)
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Const (moduleFile)
-import Language.Common.Move.Raise (raiseError')
 import Path
 import Path.IO
 

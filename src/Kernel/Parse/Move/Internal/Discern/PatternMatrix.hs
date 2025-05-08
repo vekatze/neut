@@ -4,15 +4,18 @@ module Kernel.Parse.Move.Internal.Discern.PatternMatrix
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Parse.Move.Internal.Discern.Fallback qualified as PATF
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema
@@ -20,16 +23,13 @@ import Kernel.Parse.Move.Internal.Discern.Specialize qualified as PATS
 import Kernel.Parse.Rule.Pattern qualified as PAT
 import Kernel.Parse.Rule.Vector qualified as V
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
-import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint
 
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311
@@ -149,7 +149,7 @@ ensurePatternSanity h (m, pat) =
       let argNum = length (PAT.args consInfo)
       when (argNum /= AN.reify (PAT.consArgNum consInfo)) $ do
         let mainModule = Env.getMainModule (H.envHandle h)
-        let consDD' = DD.getReadableDD mainModule $ PAT.consDD consInfo
+        let consDD' = readableDD mainModule $ PAT.consDD consInfo
         raiseError m $
           "The constructor `"
             <> consDD'

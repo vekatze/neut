@@ -3,16 +3,16 @@ module Command.LSP.Move.Internal.GetSymbolInfo
   )
 where
 
+import Aux.CommandParser.Rule.Config.Remark (lspConfig)
+import Aux.Error.Move.Run (liftMaybe)
+import Aux.Error.Rule.EIO (EIO)
 import Command.Common.Move.Check qualified as Check
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
-import CommandParser.Rule.Config.Remark (lspConfig)
 import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.Move.Run (liftMaybe)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Move.ManageCache (invalidate)

@@ -6,12 +6,16 @@ module Command.Common.Move.Build.Generate
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error (newError')
+import Aux.Logger.Move.Debug qualified as Logger
+import Aux.Logger.Rule.Handle qualified as Logger
+import Aux.Path.Move.Write (writeLazyByteString)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
@@ -20,12 +24,8 @@ import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
-import Language.Common.Rule.Error (newError')
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Handle qualified as Logger
 import Path
 import Path.IO
-import Path.Move.Write (writeLazyByteString)
 import System.Process (CmdSpec (RawCommand))
 
 data Handle = Handle

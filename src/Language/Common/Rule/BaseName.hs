@@ -33,18 +33,17 @@ module Language.Common.Rule.BaseName
   )
 where
 
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.Char (isUpper)
 import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.Const
-import Language.Common.Rule.Error
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.PrimType.ToText qualified as PT
-import Logger.Rule.Hint qualified as H
 import Prelude hiding (length)
 
 newtype BaseName = MakeBaseName {reify :: T.Text}

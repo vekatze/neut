@@ -10,13 +10,18 @@ module Kernel.Parse.Move.Internal.Handle.NameMap
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Hint qualified as Hint
+import Aux.Logger.Rule.Log (Log, newLog)
+import Aux.Logger.Rule.LogLevel (LogLevel (Error))
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
@@ -33,9 +38,9 @@ import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Common.Rule.TopNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
@@ -45,10 +50,6 @@ import Language.Common.Rule.PrimType.FromText qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Logger.Rule.Hint
-import Logger.Rule.Hint qualified as Hint
-import Logger.Rule.Log (Log, newLog)
-import Logger.Rule.LogLevel (LogLevel (Error))
 import Prelude hiding (lookup)
 
 data Handle = Handle
@@ -202,7 +203,7 @@ lookup' h m name = do
       return gn
     Nothing -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = DD.getReadableDD mainModule name
+      let name' = readableDD mainModule name
       raiseError m $ "No such top-level name is defined: " <> name'
 
 ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
@@ -212,7 +213,7 @@ ensureDefFreshness h m name = do
   case (Map.lookup name gmap, Map.member name topNameMap) of
     (Just _, False) -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = DD.getReadableDD mainModule name
+      let name' = readableDD mainModule name
       raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
     (Just (mGeist, isConstLike), True) -> do
       liftIO $ removeFromGeistMap h name
@@ -220,7 +221,7 @@ ensureDefFreshness h m name = do
       liftIO $ Tag.insertGlobalVar (tagHandle h) mGeist name isConstLike m
     (Nothing, True) -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = DD.getReadableDD mainModule name
+      let name' = readableDD mainModule name
       raiseError m $ "`" <> name' <> "` is already defined"
     (Nothing, False) ->
       return ()
@@ -230,7 +231,7 @@ ensureGeistFreshness h m name = do
   geistMap <- liftIO $ readIORef (geistMapRef h)
   when (Map.member name geistMap) $ do
     let mainModule = Env.getMainModule (envHandle h)
-    let name' = DD.getReadableDD mainModule name
+    let name' = readableDD mainModule name
     raiseError m $ "`" <> name' <> "` is already defined"
 
 reportMissingDefinitions :: Handle -> EIO ()

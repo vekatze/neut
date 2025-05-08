@@ -5,13 +5,17 @@ module Kernel.Parse.Move.Internal.Import
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -33,7 +37,6 @@ import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.LocalLocator qualified as LL
@@ -41,10 +44,7 @@ import Language.Common.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.Rule.RawStmt
-import Logger.Rule.Hint
 import Path
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 
 type LocatorText =
   T.Text

@@ -13,6 +13,9 @@ module Language.RawTerm.Rule.RawStmt
   )
 where
 
+import Aux.Logger.Rule.Hint
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN
@@ -22,9 +25,6 @@ import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Logger.Rule.Hint
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 
 data RawProgram
   = RawProgram Hint [(RawImport, C)] [(RawStmt, C)]

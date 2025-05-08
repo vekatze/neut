@@ -6,9 +6,9 @@ module Command.LSP.Move.Internal.GetAllCachesInModule
   )
 where
 
+import Aux.Error.Move.Run (forP)
+import Aux.Error.Rule.EIO (EIO)
 import Data.Maybe (catMaybes)
-import Error.Move.Run (forP)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Module (getAllSourcePathInModule)
 import Kernel.Common.Move.Handle.Global.Path qualified as Path

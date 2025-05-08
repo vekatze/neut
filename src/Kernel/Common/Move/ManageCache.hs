@@ -13,9 +13,9 @@ module Kernel.Common.Move.ManageCache
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Control.Monad.IO.Class
 import Data.Binary
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Move.Handle.Global.Path qualified as Path

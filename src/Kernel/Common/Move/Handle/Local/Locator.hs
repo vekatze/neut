@@ -9,6 +9,10 @@ module Kernel.Common.Move.Handle.Local.Locator
   )
 where
 
+import Aux.Error.Move.Run (raiseError, raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
+import Aux.Path.Move.Read (readText)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils qualified as ListUtils
@@ -16,7 +20,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.AliasInfo (MustUpdateTag)
 import Kernel.Common.Rule.GlobalName qualified as GN
@@ -24,18 +27,16 @@ import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Local.Locator
 import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Module qualified as Module
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap (TopNameMap)
-import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Logger.Rule.Hint
 import Path
 import Path.IO
-import Path.Move.Read (readText)
 
 new :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
 new _envHandle _tagHandle source = do
@@ -68,8 +69,8 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                let dd' = DD.getReadableDD' (Source.sourceModule currentSource) dd
-                let existingDD' = DD.getReadableDD' (Source.sourceModule currentSource) existingDD
+                let dd' = readableDD' (Source.sourceModule currentSource) dd
+                let existingDD' = readableDD' (Source.sourceModule currentSource) existingDD
                 raiseError m $
                   "This `"
                     <> LL.reify ll

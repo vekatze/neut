@@ -6,21 +6,21 @@ module Kernel.Common.Move.Module.GetModule
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint qualified as H
 import Control.Monad
 import Control.Monad.IO.Unlift (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Module qualified as Module
 import Kernel.Common.Move.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Rule.Handle.Global.Module qualified as Module
 import Kernel.Common.Rule.Module
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ModuleAlias (ModuleAlias)
 import Language.Common.Rule.ModuleID qualified as MID
-import Logger.Rule.Hint qualified as H
 import Path.IO
 
 data Handle = Handle

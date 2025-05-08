@@ -1,8 +1,8 @@
 module Language.RawTerm.Rule.RawBinder (RawBinder) where
 
+import Aux.Logger.Rule.Hint
+import Aux.SyntaxTree.Rule.C
 import Language.RawTerm.Rule.RawIdent
-import Logger.Rule.Hint
-import SyntaxTree.Rule.C
 
 type RawBinder a =
   (Hint, RawIdent, C, C, a)

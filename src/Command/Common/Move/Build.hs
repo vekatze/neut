@@ -6,6 +6,13 @@ module Command.Common.Move.Build
   )
 where
 
+import Aux.Error.Move.Run (forP, raiseError', runEIO)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error (newError')
+import Aux.Error.Rule.Error qualified as E
+import Aux.Logger.Move.Debug qualified as Logger
+import Aux.Logger.Move.Log qualified as Logger
+import Aux.ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Command.Common.Move.Build.EnsureMain qualified as EnsureMain
 import Command.Common.Move.Build.Execute qualified as Execute
 import Command.Common.Move.Build.Generate qualified as Gen
@@ -21,8 +28,6 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time
-import Error.Move.Run (forP, runEIO)
-import Error.Rule.EIO (EIO)
 import Kernel.Clarify.Move.Clarify qualified as Clarify
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
@@ -47,17 +52,11 @@ import Kernel.Load.Move.Load qualified as Load
 import Kernel.Lower.Move.Lower qualified as Lower
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
-import Language.Common.Move.Raise (raiseError')
-import Language.Common.Rule.Error (newError')
-import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.Term.Rule.Stmt (getStmtName)
-import Logger.Move.Debug qualified as Logger
-import Logger.Move.Log qualified as Logger
 import Path
 import Path.IO
-import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import System.Console.ANSI
 import System.Process (CmdSpec (RawCommand, ShellCommand))
 import UnliftIO.Async

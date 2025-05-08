@@ -7,10 +7,11 @@ module Kernel.Elaborate.Move.Internal.Handle.Elaborate
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint (Hint)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (fromMaybe)
-import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Rule.Const (defaultInlineLimit)
@@ -41,7 +42,6 @@ import Language.Term.Rule.Term qualified as TM
 import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint (Hint)
 
 data Handle = Handle
   { globalHandle :: Global.Handle,

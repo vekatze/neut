@@ -5,11 +5,13 @@ module Kernel.Common.Move.CreateGlobalHandle
   )
 where
 
-import Color.Move.CreateHandle qualified as Color
-import Color.Rule.Handle qualified as Color
-import CommandParser.Rule.Config.Remark qualified as Remark
-import Gensym.Move.CreateHandle qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
+import Aux.Color.Move.CreateHandle qualified as Color
+import Aux.Color.Rule.Handle qualified as Color
+import Aux.CommandParser.Rule.Config.Remark qualified as Remark
+import Aux.Gensym.Move.CreateHandle qualified as Gensym
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Move.CreateHandle qualified as Logger
+import Aux.Logger.Rule.Handle qualified as Logger
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Move.Handle.Global.Artifact qualified as Artifact
@@ -34,8 +36,6 @@ import Kernel.Common.Rule.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
-import Logger.Move.CreateHandle qualified as Logger
-import Logger.Rule.Handle qualified as Logger
 import Path
 
 data Handle = Handle

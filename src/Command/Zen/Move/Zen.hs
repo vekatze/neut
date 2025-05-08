@@ -6,13 +6,13 @@ module Command.Zen.Move.Zen
   )
 where
 
+import Aux.CommandParser.Rule.Config.Zen
+import Aux.Error.Rule.EIO (EIO)
 import Command.Common.Move.Build qualified as Build
 import Command.Common.Move.Fetch qualified as Fetch
-import CommandParser.Rule.Config.Zen
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path

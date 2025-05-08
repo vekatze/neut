@@ -5,14 +5,14 @@ module Command.Archive.Move.Archive
   )
 where
 
+import Aux.CommandParser.Rule.Config.Archive
+import Aux.Error.Rule.EIO (EIO)
 import Command.Archive.Move.Internal.Archive qualified as Archive
 import Command.Archive.Move.Internal.Module.MakeArchiveEns
 import Command.Archive.Move.Internal.PackageVersion.ChooseNewVersion qualified as PV
 import Command.Archive.Move.Internal.PackageVersion.Reflect qualified as PV
 import Command.Common.Move.SaveModule qualified as SaveModule
-import CommandParser.Rule.Config.Archive
 import Data.HashMap.Strict qualified as Map
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path

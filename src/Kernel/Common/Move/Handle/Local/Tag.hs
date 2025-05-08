@@ -10,6 +10,7 @@ module Kernel.Common.Move.Handle.Local.Tag
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Control.Monad (unless, when)
 import Data.IORef
 import Data.Text qualified as T
@@ -20,7 +21,6 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
-import Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 new :: IO Handle

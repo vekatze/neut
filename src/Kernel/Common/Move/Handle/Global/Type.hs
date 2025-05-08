@@ -6,15 +6,15 @@ module Kernel.Common.Move.Handle.Global.Type
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Handle.Global.Type
-import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.WeakTerm.Rule.WeakTerm
-import Logger.Rule.Hint
 import Prelude hiding (lookup)
 
 new :: IO Handle

@@ -12,6 +12,10 @@ module Kernel.Lower.Move.Lower
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint (internalHint)
 import Codec.Binary.UTF8.String
 import Control.Monad
 import Control.Monad.Writer.Lazy
@@ -22,9 +26,6 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -32,7 +33,6 @@ import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Arch
 import Kernel.Common.Rule.Arch qualified as A
 import Kernel.Common.Rule.Const
-import Kernel.Common.Rule.DataSize qualified as DS
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Target
 import Kernel.Lower.Rule.Cancel
@@ -40,6 +40,7 @@ import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.BasePrimType qualified as BPT
+import Language.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Foreign qualified as F
@@ -59,7 +60,6 @@ import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
-import Logger.Rule.Hint (internalHint)
 
 data Handle = Handle
   { arch :: Arch,

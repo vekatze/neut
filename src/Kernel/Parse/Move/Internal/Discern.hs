@@ -1,5 +1,15 @@
 module Kernel.Parse.Move.Internal.Discern (discernStmtList) where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error qualified as E
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Hint.Reify qualified as Hint
+import Aux.Logger.Rule.Log qualified as L
+import Aux.Logger.Rule.LogLevel qualified as L
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
@@ -10,9 +20,6 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
-import Gensym.Move.Gensym qualified as Gensym
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
@@ -27,6 +34,7 @@ import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as OS
 import Kernel.Common.Rule.Platform qualified as Platform
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Common.Rule.TopCandidate
 import Kernel.Parse.Move.Internal.Discern.Data
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
@@ -43,7 +51,6 @@ import Kernel.Parse.Rule.NominalEnv
 import Kernel.Parse.Rule.Pattern qualified as PAT
 import Kernel.Parse.Rule.VarDefKind qualified as VDK
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -80,12 +87,6 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars)
-import Logger.Rule.Hint
-import Logger.Rule.Hint.Reify qualified as Hint
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel qualified as L
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 import Text.Read qualified as R
 
 discernStmtList :: H.Handle -> Module -> [RawStmt] -> EIO [WeakStmt]
@@ -1015,7 +1016,7 @@ discernPattern h layer (m, pat) = do
               (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
               unless isConstLike $ do
                 let mainModule = Env.getMainModule (H.envHandle h)
-                let consDD' = DD.getReadableDD mainModule consDD
+                let consDD' = readableDD mainModule consDD
                 raiseError m $
                   "The constructor `" <> consDD' <> "` cannot be used as a constant"
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
@@ -1038,7 +1039,7 @@ discernPattern h layer (m, pat) = do
               return ((m, PAT.Cons consInfo), [])
             _ -> do
               let mainModule = Env.getMainModule (H.envHandle h)
-              let dd' = DD.getReadableDD mainModule dd
+              let dd' = readableDD mainModule dd
               raiseError m $
                 "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mArgs -> do

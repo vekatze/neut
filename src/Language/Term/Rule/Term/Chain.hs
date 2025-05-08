@@ -6,6 +6,8 @@ module Language.Term.Rule.Term.Chain
   )
 where
 
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Hint.Reify (toString)
 import Control.Comonad.Cofree
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap
@@ -17,8 +19,6 @@ import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Term.Rule.Term qualified as TM
-import Logger.Rule.Hint
-import Logger.Rule.Hint.Reify (toString)
 
 chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
 chainOf tenv term =

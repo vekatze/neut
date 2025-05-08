@@ -7,25 +7,24 @@ module Kernel.Common.Move.Handle.Global.Env
   )
 where
 
+import Aux.Error.Move.Run (raiseError', run)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Handle qualified as Logger
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.Move.Run (run)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Handle.Global.Env
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Target qualified as Target
-import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Logger.Rule.Handle qualified as Logger
 import Path
 
 new :: Logger.Handle -> Bool -> Maybe (Path Abs File) -> IO Handle

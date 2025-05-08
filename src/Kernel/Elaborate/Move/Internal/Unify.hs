@@ -4,6 +4,12 @@ module Kernel.Elaborate.Move.Internal.Unify
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error qualified as E
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Log qualified as L
+import Aux.Logger.Rule.LogLevel qualified as L
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -13,8 +19,6 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
@@ -25,7 +29,6 @@ import Kernel.Elaborate.Rule.Constraint qualified as C
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Kernel.Elaborate.Rule.Stuck qualified as Stuck
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -44,9 +47,6 @@ import Language.WeakTerm.Rule.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars
 import Language.WeakTerm.Rule.WeakTerm.Holes
 import Language.WeakTerm.Rule.WeakTerm.ToText
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel qualified as L
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
 unify h constraintList = do

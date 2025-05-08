@@ -8,14 +8,16 @@ module Kernel.Elaborate.Move.Internal.Infer
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Gensym.Move.Gensym qualified as Gensym
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
@@ -24,6 +26,7 @@ import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
@@ -33,7 +36,6 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as Annotation
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.Data qualified as AttrD
@@ -67,7 +69,6 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
-import Logger.Rule.Hint
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -560,7 +561,7 @@ ensureArityCorrectness h function expected found = do
     case function of
       m :< WT.VarGlobal _ name -> do
         let mainModule = Env.getMainModule (envHandle h)
-        let name' = DD.getReadableDD mainModule name
+        let name' = readableDD mainModule name
         raiseError m $
           "The function `"
             <> name'

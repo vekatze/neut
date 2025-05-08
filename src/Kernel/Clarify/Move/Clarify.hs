@@ -9,6 +9,11 @@ module Kernel.Clarify.Move.Clarify
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical, raiseCritical')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -16,9 +21,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Error.Rule.EIO (EIO)
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
@@ -33,7 +35,6 @@ import Kernel.Common.Rule.Handle.Global.OptimizableData qualified as Optimizable
 import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.OptimizableData qualified as OD
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical, raiseCritical')
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -70,7 +71,6 @@ import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.Chain (nubFreeVariables)
 import Language.Term.Rule.Term.Chain qualified as TM
 import Language.Term.Rule.Term.FromPrimNum
-import Logger.Rule.Hint
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

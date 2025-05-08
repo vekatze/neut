@@ -12,33 +12,26 @@ module Language.Common.Rule.DefiniteDescription
     toBuilder,
     llvmGlobalLocator,
     unconsDD,
-    getReadableDD,
-    getReadableDD',
   )
 where
 
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.ByteString.Builder
-import Data.HashMap.Strict qualified as Map
 import Data.Hashable
-import Data.List (find)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Error.Rule.Error
 import GHC.Generics
-import Kernel.Common.Rule.Module hiding (moduleID)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
-import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.List (initLast)
 import Language.Common.Rule.LocalLocator qualified as LL
-import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Logger.Rule.Hint qualified as H
 
 newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Generic, Show)
@@ -152,24 +145,3 @@ getLocatorPair m varText = do
 llvmGlobalLocator :: T.Text
 llvmGlobalLocator =
   "base.llvm"
-
-getReadableDD :: MainModule -> DefiniteDescription -> T.Text
-getReadableDD mainModule = do
-  getReadableDD' (extractModule mainModule)
-
-getReadableDD' :: Module -> DefiniteDescription -> T.Text
-getReadableDD' baseModule dd = do
-  case unconsDD dd of
-    (MID.Main, rest) ->
-      "this" <> nsSep <> rest
-    (MID.Base, rest) ->
-      "base" <> nsSep <> rest
-    (MID.Library digest, rest) -> do
-      let depMap = Map.toList $ moduleDependency baseModule
-      let aliasOrNone = fmap (MA.reify . fst) $ flip find depMap $ \(_, dependency) -> do
-            digest == dependencyDigest dependency
-      case aliasOrNone of
-        Nothing ->
-          reify dd
-        Just alias ->
-          alias <> nsSep <> rest

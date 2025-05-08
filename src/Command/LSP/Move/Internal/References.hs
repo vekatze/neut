@@ -5,12 +5,12 @@ module Command.LSP.Move.Internal.References
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.FindReferences qualified as LSP
 import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Monad.Trans
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Source (Source (sourceFilePath, sourceModule))

@@ -5,10 +5,10 @@ module Language.Term.Move.Refresh
   )
 where
 
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Gensym.Rule.Handle qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT

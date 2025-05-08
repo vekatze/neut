@@ -5,6 +5,12 @@ module Kernel.Elaborate.Move.Elaborate
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error qualified as E
+import Aux.Gensym.Move.Trick qualified as Gensym
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Log qualified as L
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -15,9 +21,6 @@ import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
-import Gensym.Move.Trick qualified as Gensym
 import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
@@ -41,7 +44,6 @@ import Kernel.Elaborate.Move.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -73,8 +75,6 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =

@@ -5,9 +5,8 @@ module Kernel.Common.Rule.BuildMode
   )
 where
 
+import Aux.Error.Rule.Error (Error, newError')
 import Data.Text qualified as T
-import Error.Rule.Error (Error)
-import Language.Common.Rule.Error (newError')
 
 data BuildMode
   = Develop

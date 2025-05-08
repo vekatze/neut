@@ -7,6 +7,16 @@ module Command.Common.Move.Fetch
   )
 where
 
+import Aux.Ens.Move.Parse qualified as EnsParse
+import Aux.Ens.Rule.Ens qualified as E
+import Aux.Ens.Rule.Ens qualified as SE
+import Aux.Error.Move.Run (forP, raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Move.Log qualified as Logger
+import Aux.Logger.Rule.Handle qualified as Logger
+import Aux.Logger.Rule.Hint
+import Aux.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Comonad.Cofree
 import Control.Monad
@@ -17,11 +27,6 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
-import Ens.Move.Parse qualified as EnsParse
-import Ens.Rule.Ens qualified as E
-import Ens.Rule.Ens qualified as SE
-import Error.Move.Run (forP)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Module qualified as Module
@@ -31,19 +36,13 @@ import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.ModuleURL
-import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
-import Logger.Move.Log qualified as Logger
-import Logger.Rule.Handle qualified as Logger
-import Logger.Rule.Hint
 import Path
 import Path.IO
-import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import SyntaxTree.Rule.Series qualified as SE
 import System.Process (CmdSpec (RawCommand))
 
 data Handle = Handle

@@ -1,27 +1,27 @@
 module Language.RawTerm.Rule.RawStmt.ToDoc (pp, ImportInfo (..)) where
 
+import Aux.Logger.Rule.Hint
+import Aux.PrettyPrinter.Rule.Doc qualified as D
+import Aux.PrettyPrinter.Rule.Piece qualified as PI
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import Aux.SyntaxTree.Rule.Series qualified as SE
+import Aux.SyntaxTree.Rule.Series.ToDoc qualified as SE
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
-import Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
-import Kernel.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.StmtKind qualified as SK
+import Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
+import Language.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.RawTerm.ToDoc qualified as RT
-import Logger.Rule.Hint
-import PrettyPrinter.Rule.Doc qualified as D
-import PrettyPrinter.Rule.Piece qualified as PI
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import SyntaxTree.Rule.Series qualified as SE
-import SyntaxTree.Rule.Series.ToDoc qualified as SE
 
 data ImportInfo = ImportInfo
   { presetNames :: [(T.Text, [BN.BaseName])], -- "prelude"

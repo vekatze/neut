@@ -8,6 +8,7 @@ module Kernel.Common.Rule.Cache
   )
 where
 
+import Aux.Logger.Rule.Log
 import Data.Binary
 import GHC.Generics
 import Kernel.Common.Rule.LocalVarTree qualified as LVT
@@ -17,7 +18,6 @@ import Kernel.Common.Rule.TopCandidate (TopCandidate)
 import Language.Term.Rule.Stmt qualified as Stmt
 import Language.Term.Rule.Term.Compress qualified as TM
 import Language.Term.Rule.Term.Extend qualified as TM
-import Logger.Rule.Log
 
 data Cache = Cache
   { stmtList :: [Stmt.Stmt],

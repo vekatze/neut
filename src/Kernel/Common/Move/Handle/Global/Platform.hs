@@ -11,13 +11,17 @@ module Kernel.Common.Move.Handle.Global.Platform
   )
 where
 
+import Aux.Error.Move.Run (raiseError, raiseError', run)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error (newError')
+import Aux.Logger.Move.Debug qualified as Logger
+import Aux.Logger.Rule.Handle qualified as Logger
+import Aux.Logger.Rule.Hint
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Version qualified as V
-import Error.Move.Run (run)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Arch qualified as Arch
 import Kernel.Common.Rule.Const (envVarClang)
@@ -25,12 +29,7 @@ import Kernel.Common.Rule.Handle.Global.Platform
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as O
 import Kernel.Common.Rule.Platform qualified as P
-import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Digest (hashAndEncode)
-import Language.Common.Rule.Error (newError')
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Handle qualified as Logger
-import Logger.Rule.Hint
 import Path
 import Paths_neut
 import System.Directory

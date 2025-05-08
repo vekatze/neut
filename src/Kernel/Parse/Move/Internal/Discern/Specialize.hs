@@ -4,16 +4,16 @@ module Kernel.Parse.Move.Internal.Discern.Specialize
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical')
+import Aux.Error.Rule.EIO (EIO)
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.Vector qualified as V
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema
 import Kernel.Parse.Rule.Pattern
-import Language.Common.Move.Raise (raiseCritical')
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Ident

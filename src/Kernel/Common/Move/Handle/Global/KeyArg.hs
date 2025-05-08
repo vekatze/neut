@@ -6,19 +6,20 @@ module Kernel.Common.Move.Handle.Global.KeyArg
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Handle.Global.KeyArg
 import Kernel.Common.Rule.Module
-import Language.Common.Move.Raise (raiseError)
+import Kernel.Common.Rule.ReadableDD
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.IsConstLike
 import Language.RawTerm.Rule.Key
-import Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 new :: MainModule -> IO Handle
@@ -35,20 +36,20 @@ insert h m funcName isConstLike argNum keys = do
     Just (isConstLike', (argNum', keys'))
       | isConstLike,
         not isConstLike' -> do
-          let funcName' = DD.getReadableDD (_mainModule h) funcName
+          let funcName' = readableDD (_mainModule h) funcName
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a function, but defined as a constant-like term."
       | not isConstLike,
         isConstLike' -> do
-          let funcName' = DD.getReadableDD (_mainModule h) funcName
+          let funcName' = readableDD (_mainModule h) funcName
           raiseError m $
             "`"
               <> funcName'
               <> "` is declared as a constant-like term, but defined as a function."
       | argNum /= argNum' -> do
-          let funcName' = DD.getReadableDD (_mainModule h) funcName
+          let funcName' = readableDD (_mainModule h) funcName
           raiseError m $
             "The arity of `"
               <> funcName'
@@ -58,7 +59,7 @@ insert h m funcName isConstLike argNum keys = do
               <> T.pack (show $ AN.reify argNum)
               <> "."
       | not $ _eqKeys keys keys' -> do
-          let funcName' = DD.getReadableDD (_mainModule h) funcName
+          let funcName' = readableDD (_mainModule h) funcName
           raiseError m $
             "The explicit key sequence of `"
               <> funcName'
@@ -78,7 +79,7 @@ lookup h m dataName = do
     Just (_, value) ->
       return value
     Nothing -> do
-      let dataName' = DD.getReadableDD (_mainModule h) dataName
+      let dataName' = readableDD (_mainModule h) dataName
       raiseError m $ "No such function is defined: " <> dataName'
 
 reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> EIO [a]
