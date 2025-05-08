@@ -23,6 +23,7 @@ module Language.RawTerm.Rule.RawTerm
     decodeLetKind,
     mapEL,
     mapKeywordClause,
+    letKindFromText,
   )
 where
 
@@ -211,6 +212,20 @@ decodeLetKind letKind =
     Noetic -> "tie"
     Try -> "try"
     Bind -> "bind"
+
+letKindFromText :: T.Text -> Maybe LetKind
+letKindFromText t =
+  case t of
+    "let" ->
+      return $ Plain False
+    "tie" ->
+      return Noetic
+    "try" ->
+      return Try
+    "bind" ->
+      return Bind
+    _ ->
+      Nothing
 
 type VarArg =
   (Hint, RawTerm, C, C, RawTerm)

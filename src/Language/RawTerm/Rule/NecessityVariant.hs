@@ -2,6 +2,7 @@ module Language.RawTerm.Rule.NecessityVariant
   ( NecessityVariant (..),
     showNecessityVariant,
     layerOffset,
+    fromText,
   )
 where
 
@@ -18,6 +19,16 @@ showNecessityVariant nv =
       "letbox"
     VariantT ->
       "letbox-T"
+
+fromText :: T.Text -> Maybe NecessityVariant
+fromText t =
+  case t of
+    "letbox" ->
+      return VariantK
+    "letbox-T" ->
+      return VariantT
+    _ ->
+      Nothing
 
 layerOffset :: NecessityVariant -> Int
 layerOffset nv =
