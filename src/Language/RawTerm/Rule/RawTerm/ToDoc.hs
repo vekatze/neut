@@ -16,8 +16,6 @@ module Language.RawTerm.Rule.RawTerm.ToDoc
   )
 where
 
-import BasicPrettyPrinter.Rule.Doc qualified as D
-import BasicPrettyPrinter.Rule.Piece qualified as PI
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -35,6 +33,8 @@ import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
+import PrettyPrinter.Rule.Doc qualified as D
+import PrettyPrinter.Rule.Piece qualified as PI
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.C.ToDoc qualified as C
 import SyntaxTree.Rule.Series qualified as SE

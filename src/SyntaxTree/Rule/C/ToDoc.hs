@@ -7,8 +7,8 @@ module SyntaxTree.Rule.C.ToDoc
   )
 where
 
-import BasicPrettyPrinter.Rule.Doc qualified as D
 import Data.Text qualified as T
+import PrettyPrinter.Rule.Doc qualified as D
 import SyntaxTree.Rule.C
 
 decode :: C -> D.Doc

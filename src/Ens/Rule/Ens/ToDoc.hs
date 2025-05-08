@@ -1,10 +1,10 @@
 module Ens.Rule.Ens.ToDoc (pp) where
 
-import BasicPrettyPrinter.Rule.Doc qualified as D
 import Control.Comonad.Cofree
 import Data.Char (isSpace)
 import Data.Text qualified as T
 import Ens.Rule.Ens
+import PrettyPrinter.Rule.Doc qualified as D
 import SyntaxTree.Rule.C
 import SyntaxTree.Rule.Series.ToDoc qualified as SE
 
