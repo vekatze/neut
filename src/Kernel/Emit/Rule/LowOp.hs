@@ -1,4 +1,4 @@
-module Language.LowComp.Rule.LowComp.EmitOp
+module Kernel.Emit.Rule.LowOp
   ( Handle,
     new,
     emitLowOp,
