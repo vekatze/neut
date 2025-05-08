@@ -27,8 +27,6 @@ import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Import
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
-import Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
-import Kernel.Common.Rule.UnusedLocalLocators (UnusedLocalLocators)
 import Kernel.Parse.Move.Internal.Discern qualified as Discern
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as Discern
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
@@ -43,6 +41,8 @@ import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
+import Language.Common.Rule.UnusedLocalLocators (UnusedLocalLocators)
 import Language.RawTerm.Rule.RawStmt
 import Language.Term.Rule.Stmt
 import Language.WeakTerm.Rule.WeakStmt

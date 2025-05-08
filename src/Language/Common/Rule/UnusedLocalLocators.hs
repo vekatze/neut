@@ -1,4 +1,4 @@
-module Kernel.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL) where
+module Language.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL) where
 
 import Aux.Logger.Rule.Hint
 import Language.Common.Rule.LocalLocator qualified as LL

@@ -22,12 +22,12 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
-import Kernel.Common.Rule.UnusedLocalLocators
 import Kernel.Parse.Rule.VarDefKind
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
+import Language.Common.Rule.UnusedLocalLocators
 import Prelude hiding (lookup, read)
 
 data Handle = Handle

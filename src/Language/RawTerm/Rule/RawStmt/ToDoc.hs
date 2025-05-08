@@ -10,14 +10,14 @@ import Aux.SyntaxTree.Rule.Series.ToDoc qualified as SE
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
-import Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
-import Kernel.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.StmtKind qualified as SK
+import Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
+import Language.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
