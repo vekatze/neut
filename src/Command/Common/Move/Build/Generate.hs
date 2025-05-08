@@ -13,13 +13,10 @@ import Data.Text qualified as T
 import Data.Time.Clock
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
-import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Move.RunProcess qualified as RunProcess
-import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
-import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
@@ -34,8 +31,7 @@ import System.Process (CmdSpec (RawCommand))
 data Handle = Handle
   { loggerHandle :: Logger.Handle,
     pathHandle :: Path.Handle,
-    runProcessHandle :: RunProcess.Handle,
-    envHandle :: Env.Handle
+    runProcessHandle :: RunProcess.Handle
   }
 
 new :: Global.Handle -> Handle
@@ -63,9 +59,7 @@ generateObject h target clangOptions timeStamp sourceOrNone llvmCode = do
       generateObject' h clangOptions llvmCode outputPath
       setModificationTime outputPath timeStamp
     Left mainTarget -> do
-      let mainModule = Env.getMainModule (envHandle h)
-      let mm = extractModule mainModule
-      (_, outputPath) <- Path.getOutputPathForEntryPoint (pathHandle h) mm OK.Object mainTarget
+      (_, outputPath) <- Path.getOutputPathForEntryPoint (pathHandle h) OK.Object mainTarget
       ensureDir $ parent outputPath
       generateObject' h clangOptions llvmCode outputPath
       setModificationTime outputPath timeStamp
@@ -85,9 +79,7 @@ generateAsm h target timeStamp sourceOrNone llvmCode = do
       generateAsm' h llvmCode outputPath
       setModificationTime outputPath timeStamp
     Left mainTarget -> do
-      let mainModule = Env.getMainModule (envHandle h)
-      let mm = extractModule mainModule
-      (_, outputPath) <- Path.getOutputPathForEntryPoint (pathHandle h) mm OK.LLVM mainTarget
+      (_, outputPath) <- Path.getOutputPathForEntryPoint (pathHandle h) OK.LLVM mainTarget
       ensureDir $ parent outputPath
       generateAsm' h llvmCode outputPath
       setModificationTime outputPath timeStamp

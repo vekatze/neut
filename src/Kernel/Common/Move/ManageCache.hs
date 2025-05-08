@@ -23,7 +23,6 @@ import Kernel.Common.Rule.Artifact qualified as A
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
-import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
@@ -111,16 +110,16 @@ needsCompilation h outputKindList source = do
   artifactTime <- Artifact.lookup (artifactHandle h) (Source.sourceFilePath source)
   return $ not $ Source.isCompilationSkippable artifactTime outputKindList
 
-isEntryPointCompilationSkippable :: Path.Handle -> MainModule -> MainTarget -> [OK.OutputKind] -> EIO Bool
-isEntryPointCompilationSkippable h mainModule target outputKindList = do
+isEntryPointCompilationSkippable :: Path.Handle -> MainTarget -> [OK.OutputKind] -> EIO Bool
+isEntryPointCompilationSkippable h target outputKindList = do
   case outputKindList of
     [] ->
       return True
     kind : rest -> do
-      (_, outputPath) <- Path.getOutputPathForEntryPoint h (extractModule mainModule) kind target
+      (_, outputPath) <- Path.getOutputPathForEntryPoint h kind target
       b <- doesFileExist outputPath
       if b
-        then isEntryPointCompilationSkippable h mainModule target rest
+        then isEntryPointCompilationSkippable h target rest
         else return False
 
 invalidate :: Path.Handle -> Target -> Source.Source -> EIO ()

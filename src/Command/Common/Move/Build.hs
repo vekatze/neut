@@ -26,7 +26,6 @@ import Error.Rule.EIO (EIO)
 import Kernel.Clarify.Move.Clarify qualified as Clarify
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
-import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
@@ -122,10 +121,9 @@ buildTarget h (M.MainModule baseModule) target = do
 
 compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> EIO ()
 compile h target outputKindList contentSeq = do
-  let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   let cacheHandle = Cache.new (globalHandle h)
   bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
-  c <- getEntryPointCompilationCount h mainModule target outputKindList
+  c <- getEntryPointCompilationCount h target outputKindList
   let numOfItems = length (filter id bs) + c
   let colorHandle = Global.colorHandle (globalHandle h)
   currentTime <- liftIO getCurrentTime
@@ -156,7 +154,7 @@ compile h target outputKindList contentSeq = do
           virtualCode <- Lower.lower lowerHandle stmtList'
           emit h hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
-  entryPointVirtualCode <- compileEntryPoint h mainModule target outputKindList
+  entryPointVirtualCode <- compileEntryPoint h target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
     async $ runEIO $ emit h hp currentTime target outputKindList src code
   errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
@@ -197,8 +195,8 @@ emit h progressBar currentTime target outputKindList src code = do
         Gen.generateAsm llvmHandle target currentTime src llvmIR'
   liftIO $ Indicator.increment progressBar
 
-getEntryPointCompilationCount :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO Int
-getEntryPointCompilationCount h mainModule target outputKindList = do
+getEntryPointCompilationCount :: Handle -> Target -> [OutputKind] -> EIO Int
+getEntryPointCompilationCount h target outputKindList = do
   case target of
     Peripheral {} ->
       return 0
@@ -206,11 +204,11 @@ getEntryPointCompilationCount h mainModule target outputKindList = do
       return 0
     Main t -> do
       let pathHandle = Global.pathHandle (globalHandle h)
-      b <- Cache.isEntryPointCompilationSkippable pathHandle mainModule t outputKindList
+      b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       return $ if b then 0 else 1
 
-compileEntryPoint :: Handle -> M.MainModule -> Target -> [OutputKind] -> EIO [(Either MainTarget Source, LC.LowCode)]
-compileEntryPoint h mainModule target outputKindList = do
+compileEntryPoint :: Handle -> Target -> [OutputKind] -> EIO [(Either MainTarget Source, LC.LowCode)]
+compileEntryPoint h target outputKindList = do
   case target of
     Peripheral {} ->
       return []
@@ -218,7 +216,7 @@ compileEntryPoint h mainModule target outputKindList = do
       return []
     Main t -> do
       let pathHandle = Global.pathHandle (globalHandle h)
-      b <- Cache.isEntryPointCompilationSkippable pathHandle mainModule t outputKindList
+      b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       if b
         then return []
         else do

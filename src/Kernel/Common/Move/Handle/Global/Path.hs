@@ -191,11 +191,11 @@ attachOutputPath h t outputKind source = do
 
 getOutputPathForEntryPoint ::
   Handle ->
-  Module ->
   OK.OutputKind ->
   Target.MainTarget ->
   EIO (OK.OutputKind, Path Abs File)
-getOutputPathForEntryPoint h baseModule kind mainTarget = do
+getOutputPathForEntryPoint h kind mainTarget = do
+  let baseModule = extractModule $ _mainModule h
   case mainTarget of
     Target.Named target _ -> do
       entryDir <- getEntryDir h (Target.Main mainTarget) baseModule

@@ -12,7 +12,6 @@ import Data.Maybe
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
-import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Move.RunProcess qualified as RunProcess
@@ -43,17 +42,16 @@ new (Global.Handle {..}) = do
 
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()
 link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
-  let mainModule = Env.getMainModule (envHandle h)
   executablePath <- Path.getExecutableOutputPath (pathHandle h) target
   isExecutableAvailable <- doesFileExist executablePath
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
   if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
     then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files"
-    else link' h target mainModule sourceList
+    else link' h target sourceList
 
-link' :: Handle -> MainTarget -> MainModule -> [Source.Source] -> EIO ()
-link' h target (MainModule mainModule) sourceList = do
-  mainObject <- snd <$> Path.getOutputPathForEntryPoint (pathHandle h) mainModule OK.Object target
+link' :: Handle -> MainTarget -> [Source.Source] -> EIO ()
+link' h target sourceList = do
+  mainObject <- snd <$> Path.getOutputPathForEntryPoint (pathHandle h) OK.Object target
   outputPath <- Path.getExecutableOutputPath (pathHandle h) target
   objectPathList <- mapM (Path.sourceToOutputPath (pathHandle h) (Main target) OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
