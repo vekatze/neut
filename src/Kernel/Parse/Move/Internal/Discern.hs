@@ -460,11 +460,8 @@ discern h term =
       discarder' <- discern h discarder
       copier' <- discern h copier
       return $ m :< WT.Resource dd resourceID unitType discarder' copier'
-    m :< RT.Use _ e _ xs _ cont endLoc -> do
-      e' <- discern h e
-      (xs', h') <- discernBinder h (RT.extractArgs xs) endLoc
-      cont' <- discern h' cont
-      return $ m :< WT.Use e' xs' cont'
+    m :< RT.Use _ e1 _ _ (mx, pat, c1, c2, t) _ startLoc _ e2 endLoc -> do
+      discernLet h m (RT.Plain False) (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
     m :< RT.If ifClause elseIfClauseList (_, (elseBody, _)) -> do
       let (ifCond, ifBody) = RT.extractFromKeywordClause ifClause
       boolTrue <- liftEither $ locatorToName (blur m) coreBoolTrue
@@ -583,9 +580,9 @@ discern h term =
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
           discern h $ mSeq :< RT.Seq (e1', c1) c2 e2'
-        mUse :< RT.Use c1 item c2 vars c3 cont endLoc -> do
-          let cont' = m :< RT.With (([], (binder, [])), ([], (cont, [])))
-          discern h $ mUse :< RT.Use c1 item c2 vars c3 cont' endLoc
+        mUse :< RT.Use c1 e1 c2 c3 mxt c6 loc c7 e2 endLoc -> do
+          let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
+          discern h $ mUse :< RT.Use c1 e1 c2 c3 mxt c6 loc c7 e2' endLoc
         mPin :< RT.Pin c1 (mx, x, c2, c3, t) c4 mys c5 e1 c6 startLoc c7 e2 endLoc -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))

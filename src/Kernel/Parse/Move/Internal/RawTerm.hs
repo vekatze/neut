@@ -265,14 +265,16 @@ rawTermPin h m c1 = do
   return (m :< RT.Pin c1 (mx, x, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermUse :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermUse h m c1 = do
-  (e, c2) <- rawTerm h
-  xs@(ys, _) <- seriesBrace $ preBinder h
-  c3 <- delimiter "in"
-  lift $ ensureIdentLinearity S.empty $ map (\(_, (mx, x, _, _, _)) -> (mx, x)) $ SE.elems ys
-  (cont, c) <- rawExpr h
+rawTermUse h mUse c1 = do
+  (e1, c2) <- rawExpr h
+  c3 <- delimiter "="
+  ((mx, patInner), c4) <- rawTermPattern h
+  (c5, (t, c6)) <- rawTermLetVarAscription h mx
   loc <- getCurrentLoc
-  return (m :< RT.Use c1 e c2 xs c3 cont loc, c)
+  c7 <- delimiter "in"
+  (e2, c) <- rawExpr h
+  endLoc <- getCurrentLoc
+  return (mUse :< RT.Use c1 e1 c2 c3 (mx, patInner, c4, c5, t) c6 loc c7 e2 endLoc, c)
 
 rawTermLetVarAscription :: Handle -> Hint -> Parser (C, (RT.RawTerm, C))
 rawTermLetVarAscription h m = do

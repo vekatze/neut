@@ -359,8 +359,6 @@ elaborate' h term =
       discarder' <- elaborate' h discarder
       copier' <- elaborate' h copier
       return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
-    m :< WT.Use {} -> do
-      raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
     m :< WT.Void ->
       return $ m :< TM.Void
 

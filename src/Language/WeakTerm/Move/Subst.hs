@@ -143,11 +143,6 @@ subst h sub term =
       discarder' <- subst h sub discarder
       copier' <- subst h sub copier
       return $ m :< WT.Resource dd resourceID unitType' discarder' copier'
-    m :< WT.Use e xts cont -> do
-      e' <- subst h sub e
-      (xts', sub') <- subst' h sub xts
-      cont' <- subst h sub' cont
-      return $ m :< WT.Use e' xts' cont'
     _ :< WT.Void ->
       return term
 
