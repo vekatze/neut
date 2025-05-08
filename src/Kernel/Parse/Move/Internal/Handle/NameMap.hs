@@ -33,7 +33,6 @@ import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Common.Rule.TopNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
@@ -43,6 +42,7 @@ import Language.Common.Rule.PrimType.FromText qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Library.Error.Move.Run (raiseCritical, raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Error.Rule.Error
 import Library.Logger.Rule.Hint

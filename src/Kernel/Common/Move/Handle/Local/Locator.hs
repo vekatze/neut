@@ -25,12 +25,12 @@ import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap (TopNameMap)
-import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
+import Library.Error.Move.Run (raiseError, raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 import Library.Path.Move.Read (readText)

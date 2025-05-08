@@ -22,7 +22,6 @@ import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -40,6 +39,7 @@ import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 

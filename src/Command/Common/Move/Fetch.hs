@@ -26,7 +26,6 @@ import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.ModuleURL
-import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias
@@ -35,7 +34,7 @@ import Language.Common.Rule.ModuleID qualified as MID
 import Library.Ens.Move.Parse qualified as EnsParse
 import Library.Ens.Rule.Ens qualified as E
 import Library.Ens.Rule.Ens qualified as SE
-import Library.Error.Move.Run (forP)
+import Library.Error.Move.Run (forP, raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Move.Log qualified as Logger
 import Library.Logger.Rule.Handle qualified as Logger

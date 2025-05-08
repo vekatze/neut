@@ -24,7 +24,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Common.Rule.Const
 import Language.Common.Move.CreateSymbol (newTextForHole)
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
@@ -40,6 +39,7 @@ import Language.RawTerm.Rule.RawTerm qualified as RT
 import Library.CodeParser.Move.GetInfo
 import Library.CodeParser.Move.Parse
 import Library.CodeParser.Rule.Parser
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Gensym.Rule.Handle qualified as Gensym
 import Library.Logger.Rule.Hint

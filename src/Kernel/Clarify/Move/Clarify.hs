@@ -30,7 +30,6 @@ import Kernel.Common.Rule.Handle.Global.OptimizableData qualified as Optimizable
 import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.OptimizableData qualified as OD
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical, raiseCritical')
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -67,6 +66,7 @@ import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.Chain (nubFreeVariables)
 import Language.Term.Rule.Term.Chain qualified as TM
 import Language.Term.Rule.Term.FromPrimNum
+import Library.Error.Move.Run (raiseCritical, raiseCritical')
 import Library.Error.Rule.EIO (EIO)
 import Library.Gensym.Move.Gensym qualified as Gensym
 import Library.Gensym.Rule.Handle qualified as Gensym

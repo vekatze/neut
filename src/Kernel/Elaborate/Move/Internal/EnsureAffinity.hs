@@ -20,7 +20,6 @@ import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Rule.Stuck qualified as Stuck
-import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -36,6 +35,7 @@ import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText qualified as WT
+import Library.Error.Move.Run (raiseCritical)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 import Library.Logger.Rule.Log qualified as L

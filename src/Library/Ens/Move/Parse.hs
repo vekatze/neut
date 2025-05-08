@@ -8,11 +8,11 @@ import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Language.Common.Move.Raise (raiseError)
 import Library.CodeParser.Move.GetInfo
 import Library.CodeParser.Move.Parse
 import Library.CodeParser.Rule.Parser qualified as P
 import Library.Ens.Rule.Ens qualified as E
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 import Library.Path.Move.Read (readText)

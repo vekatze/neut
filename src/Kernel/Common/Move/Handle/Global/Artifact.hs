@@ -11,7 +11,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Kernel.Common.Rule.Artifact qualified as A
 import Kernel.Common.Rule.Handle.Global.Artifact
-import Language.Common.Move.Raise (raiseCritical')
+import Library.Error.Move.Run (raiseCritical')
 import Library.Error.Rule.EIO (EIO)
 import Path
 import Prelude hiding (lookup)

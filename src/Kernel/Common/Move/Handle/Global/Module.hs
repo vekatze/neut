@@ -22,10 +22,10 @@ import Kernel.Common.Rule.Handle.Global.Module
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Source qualified as Source
-import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
+import Library.Error.Move.Run (raiseError, raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint qualified as H
 import Path

@@ -12,7 +12,6 @@ import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -25,6 +24,7 @@ import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint qualified as H
 

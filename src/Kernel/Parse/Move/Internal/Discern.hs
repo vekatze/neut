@@ -40,7 +40,6 @@ import Kernel.Parse.Rule.NominalEnv
 import Kernel.Parse.Rule.Pattern qualified as PAT
 import Kernel.Parse.Rule.VarDefKind qualified as VDK
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -77,6 +76,7 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars)
+import Library.Error.Move.Run (raiseCritical, raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Error.Rule.Error qualified as E
 import Library.Gensym.Move.Gensym qualified as Gensym

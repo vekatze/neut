@@ -45,11 +45,10 @@ import Kernel.Load.Move.Load qualified as Load
 import Kernel.Lower.Move.Lower qualified as Lower
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
-import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.Term.Rule.Stmt (getStmtName)
-import Library.Error.Move.Run (forP, runEIO)
+import Library.Error.Move.Run (forP, raiseError', runEIO)
 import Library.Error.Rule.EIO (EIO)
 import Library.Error.Rule.Error (newError')
 import Library.Error.Rule.Error qualified as E

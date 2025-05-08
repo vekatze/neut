@@ -31,7 +31,6 @@ import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.LocalLocator qualified as LL
@@ -39,6 +38,7 @@ import Language.Common.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.Rule.RawStmt
+import Library.Error.Move.Run (raiseCritical, raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Gensym.Rule.Handle qualified as Gensym
 import Library.Logger.Rule.Hint

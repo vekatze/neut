@@ -23,7 +23,6 @@ import Kernel.Elaborate.Rule.Constraint qualified as C
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Kernel.Elaborate.Rule.Stuck qualified as Stuck
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -42,6 +41,7 @@ import Language.WeakTerm.Rule.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars
 import Language.WeakTerm.Rule.WeakTerm.Holes
 import Language.WeakTerm.Rule.WeakTerm.ToText
+import Library.Error.Move.Run (raiseCritical)
 import Library.Error.Rule.EIO (EIO)
 import Library.Error.Rule.Error qualified as E
 import Library.Logger.Rule.Hint

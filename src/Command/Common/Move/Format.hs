@@ -21,12 +21,12 @@ import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
-import Language.Common.Move.Raise (raiseError')
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Language.RawTerm.Rule.RawStmt.ToDoc qualified as RawProgram
 import Library.CodeParser.Move.Parse (runParser)
 import Library.Ens.Move.Parse qualified as EnsParse
 import Library.Ens.Rule.Ens.ToDoc qualified as Ens
+import Library.Error.Move.Run (raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Path
 import Prelude hiding (log)

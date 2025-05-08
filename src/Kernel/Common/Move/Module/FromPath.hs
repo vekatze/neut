@@ -17,7 +17,6 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig (ZenConfig (..))
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL
@@ -28,6 +27,7 @@ import Language.Common.Rule.SourceLocator qualified as SL
 import Library.Ens.Move.Parse qualified as Ens
 import Library.Ens.Rule.Ens (dictFromListVertical')
 import Library.Ens.Rule.Ens qualified as E
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Error.Rule.Error
 import Library.Logger.Rule.Hint qualified as H

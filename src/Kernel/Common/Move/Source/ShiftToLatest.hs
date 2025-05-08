@@ -15,8 +15,8 @@ import Kernel.Common.Rule.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source (Source (sourceModule))
 import Kernel.Common.Rule.Source qualified as Source
-import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
+import Library.Error.Move.Run (raiseError, raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Path
 import Path.IO

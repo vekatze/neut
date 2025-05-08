@@ -11,10 +11,10 @@ where
 import Control.Monad.IO.Class
 import Data.IORef
 import Data.IntMap qualified as IntMap
-import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Library.Error.Move.Run (raiseCritical)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 import Prelude hiding (lookup)

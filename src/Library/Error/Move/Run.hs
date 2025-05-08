@@ -3,16 +3,22 @@ module Library.Error.Move.Run
     run,
     forP,
     liftMaybe,
+    raiseError,
+    raiseError',
+    raiseCritical,
+    raiseCritical',
   )
 where
 
 import Control.Monad.Except (MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either (partitionEithers)
+import Data.Text qualified as T
 import Library.Error.Rule.EIO
 import Library.Error.Rule.Error qualified as E
 import Library.Logger.Move.Log qualified as Logger
 import Library.Logger.Rule.Handle qualified as Logger
+import Library.Logger.Rule.Hint
 import System.Exit
 import UnliftIO.Async (pooledForConcurrently)
 
@@ -45,3 +51,19 @@ liftMaybe m =
       throwError (E.MakeError [])
     Just v ->
       return v
+
+raiseError :: Hint -> T.Text -> EIO a
+raiseError m t =
+  throwError $ E.newError m t
+
+raiseError' :: T.Text -> EIO a
+raiseError' t =
+  throwError $ E.newError' t
+
+raiseCritical :: Hint -> T.Text -> EIO a
+raiseCritical m t =
+  throwError $ E.newCritical m t
+
+raiseCritical' :: T.Text -> EIO a
+raiseCritical' t =
+  throwError $ E.newCritical' t

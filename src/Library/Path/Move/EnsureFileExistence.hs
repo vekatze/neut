@@ -5,7 +5,7 @@ module Library.Path.Move.EnsureFileExistence
 where
 
 import Data.Text qualified as T
-import Language.Common.Move.Raise (raiseError, raiseError')
+import Library.Error.Move.Run (raiseError, raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 import Path

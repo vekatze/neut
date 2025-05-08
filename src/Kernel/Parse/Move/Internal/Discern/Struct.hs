@@ -5,8 +5,8 @@ where
 
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Language.Common.Move.Raise (raiseError)
 import Language.RawTerm.Rule.Key
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 

@@ -6,7 +6,7 @@ where
 
 import Data.Text qualified as T
 import Kernel.Common.Rule.Const (moduleFile)
-import Language.Common.Move.Raise (raiseError')
+import Library.Error.Move.Run (raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Path
 import Path.IO

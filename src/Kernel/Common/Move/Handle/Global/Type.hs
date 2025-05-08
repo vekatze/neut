@@ -10,9 +10,9 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Kernel.Common.Rule.Handle.Global.Type
-import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.WeakTerm.Rule.WeakTerm
+import Library.Error.Move.Run (raiseCritical)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 import Prelude hiding (lookup)

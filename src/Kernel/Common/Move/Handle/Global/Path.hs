@@ -34,11 +34,11 @@ import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Src
 import Kernel.Common.Rule.Target qualified as Target
-import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Digest
 import Language.Common.Rule.ModuleID qualified as MID
 import Library.Ens.Rule.Ens qualified as E
 import Library.Ens.Rule.Ens.ToDoc qualified as E
+import Library.Error.Move.Run (raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Handle qualified as Logger
 import Library.Path.Move.Read (readText)

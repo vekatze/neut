@@ -13,7 +13,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -28,6 +27,7 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Move.Refresh qualified as Refresh
 import Language.Term.Move.Subst qualified as Subst
 import Language.Term.Rule.Term qualified as TM
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Gensym.Rule.Handle qualified as Gensym
 import Library.Logger.Rule.Hint

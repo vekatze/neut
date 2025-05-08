@@ -15,9 +15,9 @@ import Kernel.Common.Move.Handle.Global.Module qualified as Module
 import Kernel.Common.Move.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Rule.Handle.Global.Module qualified as Module
 import Kernel.Common.Rule.Module
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ModuleAlias (ModuleAlias)
 import Language.Common.Rule.ModuleID qualified as MID
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Gensym.Rule.Handle qualified as Gensym
 import Library.Logger.Rule.Hint qualified as H

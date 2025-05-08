@@ -19,7 +19,6 @@ import Kernel.Parse.Move.Internal.Discern.Specialize qualified as PATS
 import Kernel.Parse.Rule.Pattern qualified as PAT
 import Kernel.Parse.Rule.Vector qualified as V
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
@@ -28,6 +27,7 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 

@@ -12,10 +12,10 @@ import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ModuleID qualified as MID
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 

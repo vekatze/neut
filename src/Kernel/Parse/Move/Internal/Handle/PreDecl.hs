@@ -10,8 +10,8 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ExternalName qualified as EN
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)

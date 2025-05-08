@@ -19,9 +19,9 @@ import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig
-import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
+import Library.Error.Move.Run (raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Move.Log qualified as Logger
 import Library.Logger.Rule.Handle qualified as Logger

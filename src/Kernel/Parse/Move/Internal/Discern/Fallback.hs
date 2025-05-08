@@ -6,12 +6,12 @@ import Data.Vector qualified as V
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema
 import Kernel.Parse.Rule.Pattern
-import Language.Common.Move.Raise (raiseCritical')
 import Language.Common.Rule.Binder
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Library.Error.Move.Run (raiseCritical')
 import Library.Error.Rule.EIO (EIO)
 
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.

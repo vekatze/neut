@@ -36,9 +36,9 @@ import Kernel.Common.Rule.Target
 import Kernel.Parse.Move.Internal.Import qualified as Import
 import Kernel.Parse.Move.Internal.Program (parseImport)
 import Kernel.Unravel.Rule.VisitInfo qualified as VI
-import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
 import Library.CodeParser.Move.Parse (runParser)
+import Library.Error.Move.Run (raiseError, raiseError')
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Move.Debug qualified as Logger
 import Library.Logger.Rule.Hint

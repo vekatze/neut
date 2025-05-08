@@ -16,14 +16,13 @@ import Kernel.Common.Rule.Handle.Global.Env
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Target qualified as Target
-import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Library.Error.Move.Run (run)
+import Library.Error.Move.Run (raiseError', run)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Handle qualified as Logger
 import Path

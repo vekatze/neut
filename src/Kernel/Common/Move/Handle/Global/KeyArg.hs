@@ -12,11 +12,11 @@ import Data.IORef
 import Data.Text qualified as T
 import Kernel.Common.Rule.Handle.Global.KeyArg
 import Kernel.Common.Rule.Module
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.IsConstLike
 import Language.RawTerm.Rule.Key
+import Library.Error.Move.Run (raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)

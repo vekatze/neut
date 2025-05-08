@@ -10,7 +10,6 @@ import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Kernel.Parse.Move.Internal.RawTerm
-import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as F
@@ -24,6 +23,7 @@ import Language.RawTerm.Rule.RawTerm qualified as RT
 import Library.CodeParser.Move.GetInfo
 import Library.CodeParser.Move.Parse
 import Library.CodeParser.Rule.Parser
+import Library.Error.Move.Run (raiseError)
 import Library.Logger.Rule.Hint
 import Library.SyntaxTree.Move.ParseSeries
 import Library.SyntaxTree.Rule.C

@@ -31,7 +31,6 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Language.Common.Move.CreateSymbol qualified as Gensym
-import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as Annotation
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Attr.Data qualified as AttrD
@@ -65,6 +64,7 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
+import Library.Error.Move.Run (raiseCritical, raiseError)
 import Library.Error.Rule.EIO (EIO)
 import Library.Gensym.Move.Gensym qualified as Gensym
 import Library.Logger.Rule.Hint

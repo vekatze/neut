@@ -12,7 +12,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Kernel.Common.Rule.TopNameMap
-import Language.Common.Move.Raise (raiseCritical)
+import Library.Error.Move.Run (raiseCritical)
 import Library.Error.Rule.EIO (EIO)
 import Library.Logger.Rule.Hint qualified as Hint
 import Path
