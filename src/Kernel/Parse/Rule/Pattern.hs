@@ -16,6 +16,8 @@ module Kernel.Parse.Rule.Pattern
   )
 where
 
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T
@@ -26,8 +28,6 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Literal qualified as L
-import Library.Error.Rule.Error
-import Library.Logger.Rule.Hint
 
 data Pattern
   = Var Ident

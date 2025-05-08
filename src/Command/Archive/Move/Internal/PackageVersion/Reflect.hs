@@ -1,13 +1,13 @@
 module Command.Archive.Move.Internal.PackageVersion.Reflect (reflect) where
 
+import Aux.Error.Move.Run (raiseError')
+import Aux.Error.Rule.EIO (EIO)
 import Command.Archive.Move.Internal.Module.GetExistingVersions
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Monad
 import Data.Maybe
 import Data.Text qualified as T
 import Kernel.Common.Rule.Module
-import Library.Error.Move.Run (raiseError')
-import Library.Error.Rule.EIO (EIO)
 import Prelude hiding (log)
 
 reflect :: MainModule -> T.Text -> EIO PV.PackageVersion

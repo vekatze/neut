@@ -7,6 +7,8 @@ module Kernel.Parse.Move.Internal.Discern.Handle
   )
 where
 
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
@@ -26,8 +28,6 @@ import Kernel.Parse.Rule.NominalEnv
 import Kernel.Parse.Rule.VarDefKind
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
-import Library.Gensym.Rule.Handle qualified as Gensym
-import Library.Logger.Rule.Hint
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

@@ -4,6 +4,12 @@ module Kernel.Elaborate.Move.Internal.Unify
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error qualified as E
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Log qualified as L
+import Aux.Logger.Rule.LogLevel qualified as L
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -41,12 +47,6 @@ import Language.WeakTerm.Rule.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars
 import Language.WeakTerm.Rule.WeakTerm.Holes
 import Language.WeakTerm.Rule.WeakTerm.ToText
-import Library.Error.Move.Run (raiseCritical)
-import Library.Error.Rule.EIO (EIO)
-import Library.Error.Rule.Error qualified as E
-import Library.Logger.Rule.Hint
-import Library.Logger.Rule.Log qualified as L
-import Library.Logger.Rule.LogLevel qualified as L
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
 unify h constraintList = do

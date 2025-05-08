@@ -5,6 +5,9 @@ module Command.LSP.Move.Internal.Complete
   )
 where
 
+import Aux.Error.Move.Run (forP, liftMaybe, runEIO)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Monad
@@ -43,9 +46,6 @@ import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.LSP.Protocol.Types
-import Library.Error.Move.Run (forP, liftMaybe, runEIO)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
 
 data Handle = Handle
   { unravelHandle :: Unravel.Handle,

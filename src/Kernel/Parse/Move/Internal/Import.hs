@@ -5,6 +5,12 @@ module Kernel.Parse.Move.Internal.Import
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
@@ -38,12 +44,6 @@ import Language.Common.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.Rule.RawStmt
-import Library.Error.Move.Run (raiseCritical, raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Gensym.Rule.Handle qualified as Gensym
-import Library.Logger.Rule.Hint
-import Library.SyntaxTree.Rule.C
-import Library.SyntaxTree.Rule.Series qualified as SE
 import Path
 
 type LocatorText =

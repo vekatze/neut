@@ -5,6 +5,10 @@ module Language.Term.Move.Inline
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
@@ -27,10 +31,6 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Move.Refresh qualified as Refresh
 import Language.Term.Move.Subst qualified as Subst
 import Language.Term.Rule.Term qualified as TM
-import Library.Error.Move.Run (raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Gensym.Rule.Handle qualified as Gensym
-import Library.Logger.Rule.Hint
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)

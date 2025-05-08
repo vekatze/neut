@@ -17,6 +17,8 @@ module Language.Common.Rule.DefiniteDescription
   )
 where
 
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.ByteString.Builder
 import Data.HashMap.Strict qualified as Map
@@ -36,8 +38,6 @@ import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Library.Error.Rule.Error
-import Library.Logger.Rule.Hint qualified as H
 
 newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Generic, Show)

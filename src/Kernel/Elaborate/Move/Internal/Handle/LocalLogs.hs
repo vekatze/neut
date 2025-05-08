@@ -6,8 +6,8 @@ module Kernel.Elaborate.Move.Internal.Handle.LocalLogs
   )
 where
 
+import Aux.Logger.Rule.Log qualified as L
 import Data.IORef
-import Library.Logger.Rule.Log qualified as L
 
 newtype Handle = Handle
   { logsRef :: IORef [L.Log]

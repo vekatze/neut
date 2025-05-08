@@ -5,6 +5,8 @@ module Command.LSP.Move.Internal.Format
   )
 where
 
+import Aux.Error.Move.Run (liftMaybe)
+import Aux.Error.Rule.EIO (EIO)
 import Command.Common.Move.Format qualified as Format
 import Control.Monad.Trans
 import Data.Text qualified as T
@@ -12,8 +14,6 @@ import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Const
 import Language.LSP.Protocol.Types
 import Language.LSP.VFS
-import Library.Error.Move.Run (liftMaybe)
-import Library.Error.Rule.EIO (EIO)
 import Path
 import Path.IO
 

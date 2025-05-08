@@ -4,8 +4,8 @@ module Kernel.Common.Rule.OutputKind
   )
 where
 
+import Aux.Error.Rule.Error (Error, newError')
 import Data.Text qualified as T
-import Library.Error.Rule.Error (Error, newError')
 
 data OutputKind
   = Object

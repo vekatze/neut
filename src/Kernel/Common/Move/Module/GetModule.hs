@@ -6,6 +6,10 @@ module Kernel.Common.Move.Module.GetModule
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint qualified as H
 import Control.Monad
 import Control.Monad.IO.Unlift (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
@@ -17,10 +21,6 @@ import Kernel.Common.Rule.Handle.Global.Module qualified as Module
 import Kernel.Common.Rule.Module
 import Language.Common.Rule.ModuleAlias (ModuleAlias)
 import Language.Common.Rule.ModuleID qualified as MID
-import Library.Error.Move.Run (raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Gensym.Rule.Handle qualified as Gensym
-import Library.Logger.Rule.Hint qualified as H
 import Path.IO
 
 data Handle = Handle

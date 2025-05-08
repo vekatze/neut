@@ -16,6 +16,7 @@ module Kernel.Parse.Move.Internal.Handle.Unused
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
@@ -27,7 +28,6 @@ import Kernel.Parse.Rule.VarDefKind
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL
-import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 data Handle = Handle

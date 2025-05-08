@@ -6,6 +6,8 @@ module Command.Zen.Move.Zen
   )
 where
 
+import Aux.CommandParser.Rule.Config.Zen
+import Aux.Error.Rule.EIO (EIO)
 import Command.Common.Move.Build qualified as Build
 import Command.Common.Move.Fetch qualified as Fetch
 import Control.Monad.Except (liftEither)
@@ -20,8 +22,6 @@ import Kernel.Common.Rule.Module (Module (moduleZenConfig), extractModule)
 import Kernel.Common.Rule.OutputKind
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig qualified as Z
-import Library.CommandParser.Rule.Config.Zen
-import Library.Error.Rule.EIO (EIO)
 import Path.IO (resolveFile')
 import Prelude hiding (log)
 

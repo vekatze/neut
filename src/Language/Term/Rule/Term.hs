@@ -9,6 +9,7 @@ module Language.Term.Rule.Term
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.IntMap qualified as IntMap
@@ -27,7 +28,6 @@ import Language.Common.Rule.Magic
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Rule.Prim qualified as P
-import Library.Logger.Rule.Hint
 
 type Term = Cofree TermF Hint
 

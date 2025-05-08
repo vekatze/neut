@@ -9,6 +9,7 @@ module Kernel.Common.Rule.LocationTree
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Data.Binary
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
@@ -17,7 +18,6 @@ import GHC.Generics (Generic)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.IsConstLike
-import Library.Logger.Rule.Hint
 
 type ColFrom =
   Int

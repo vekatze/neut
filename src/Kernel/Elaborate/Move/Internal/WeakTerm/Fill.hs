@@ -5,6 +5,7 @@ module Kernel.Elaborate.Move.Internal.WeakTerm.Fill
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
@@ -22,7 +23,6 @@ import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
-import Library.Error.Rule.EIO (EIO)
 import Prelude hiding (lookup)
 
 data Handle = Handle

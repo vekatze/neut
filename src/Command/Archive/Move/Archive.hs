@@ -5,6 +5,8 @@ module Command.Archive.Move.Archive
   )
 where
 
+import Aux.CommandParser.Rule.Config.Archive
+import Aux.Error.Rule.EIO (EIO)
 import Command.Archive.Move.Internal.Archive qualified as Archive
 import Command.Archive.Move.Internal.Module.MakeArchiveEns
 import Command.Archive.Move.Internal.PackageVersion.ChooseNewVersion qualified as PV
@@ -17,8 +19,6 @@ import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module
-import Library.CommandParser.Rule.Config.Archive
-import Library.Error.Rule.EIO (EIO)
 import Path
 
 data Handle = Handle

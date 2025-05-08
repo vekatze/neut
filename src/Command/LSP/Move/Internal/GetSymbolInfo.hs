@@ -3,6 +3,9 @@ module Command.LSP.Move.Internal.GetSymbolInfo
   )
 where
 
+import Aux.CommandParser.Rule.Config.Remark (lspConfig)
+import Aux.Error.Move.Run (liftMaybe)
+import Aux.Error.Rule.EIO (EIO)
 import Command.Common.Move.Check qualified as Check
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
@@ -22,9 +25,6 @@ import Language.LSP.Protocol.Types
 import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
-import Library.CommandParser.Rule.Config.Remark (lspConfig)
-import Library.Error.Move.Run (liftMaybe)
-import Library.Error.Rule.EIO (EIO)
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>

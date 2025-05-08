@@ -4,6 +4,9 @@ module Kernel.Parse.Move.Internal.Discern.PatternMatrix
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
@@ -27,9 +30,6 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Library.Error.Move.Run (raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
 
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311

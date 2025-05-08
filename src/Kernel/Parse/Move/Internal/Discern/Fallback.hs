@@ -1,5 +1,7 @@
 module Kernel.Parse.Move.Internal.Discern.Fallback (getFallbackMatrix) where
 
+import Aux.Error.Move.Run (raiseCritical')
+import Aux.Error.Rule.EIO (EIO)
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Vector qualified as V
@@ -11,8 +13,6 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Library.Error.Move.Run (raiseCritical')
-import Library.Error.Rule.EIO (EIO)
 
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 getFallbackMatrix ::

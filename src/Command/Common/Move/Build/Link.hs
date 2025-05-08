@@ -5,6 +5,11 @@ module Command.Common.Move.Build.Link
   )
 where
 
+import Aux.Color.Rule.Handle qualified as Color
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Move.Debug qualified as Logger
+import Aux.Logger.Rule.Handle qualified as Logger
+import Aux.ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
@@ -20,11 +25,6 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
-import Library.Color.Rule.Handle qualified as Color
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Move.Debug qualified as Logger
-import Library.Logger.Rule.Handle qualified as Logger
-import Library.ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Path
 import Path.IO
 import System.Console.ANSI

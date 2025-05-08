@@ -9,6 +9,13 @@ module Kernel.Unravel.Move.Unravel
   )
 where
 
+import Aux.CodeParser.Move.Parse (runParser)
+import Aux.Error.Move.Run (raiseError, raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Move.Debug qualified as Logger
+import Aux.Logger.Rule.Hint
+import Aux.Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
+import Aux.Path.Move.Read (readText)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
@@ -37,13 +44,6 @@ import Kernel.Parse.Move.Internal.Import qualified as Import
 import Kernel.Parse.Move.Internal.Program (parseImport)
 import Kernel.Unravel.Rule.VisitInfo qualified as VI
 import Language.Common.Rule.ModuleID qualified as MID
-import Library.CodeParser.Move.Parse (runParser)
-import Library.Error.Move.Run (raiseError, raiseError')
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Move.Debug qualified as Logger
-import Library.Logger.Rule.Hint
-import Library.Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
-import Library.Path.Move.Read (readText)
 import Path
 import Path.IO
 

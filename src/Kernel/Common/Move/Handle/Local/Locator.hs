@@ -9,6 +9,10 @@ module Kernel.Common.Move.Handle.Local.Locator
   )
 where
 
+import Aux.Error.Move.Run (raiseError, raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
+import Aux.Path.Move.Read (readText)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils qualified as ListUtils
@@ -30,10 +34,6 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Library.Error.Move.Run (raiseError, raiseError')
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
-import Library.Path.Move.Read (readText)
 import Path
 import Path.IO
 

@@ -5,6 +5,8 @@ module Kernel.Common.Move.Module.GetEnabledPreset
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Rule.Handle qualified as Gensym
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -15,8 +17,6 @@ import Kernel.Common.Rule.Handle.Global.Module qualified as Module
 import Kernel.Common.Rule.Module
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias qualified as MA
-import Library.Error.Rule.EIO (EIO)
-import Library.Gensym.Rule.Handle qualified as Gensym
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

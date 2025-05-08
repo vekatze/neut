@@ -16,6 +16,17 @@ module Kernel.Parse.Move.Internal.RawTerm
   )
 where
 
+import Aux.CodeParser.Move.GetInfo
+import Aux.CodeParser.Move.Parse
+import Aux.CodeParser.Rule.Parser
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint
+import Aux.SyntaxTree.Move.ParseSeries
+import Aux.SyntaxTree.Rule.Block
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
@@ -36,17 +47,6 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Library.CodeParser.Move.GetInfo
-import Library.CodeParser.Move.Parse
-import Library.CodeParser.Rule.Parser
-import Library.Error.Move.Run (raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Gensym.Rule.Handle qualified as Gensym
-import Library.Logger.Rule.Hint
-import Library.SyntaxTree.Move.ParseSeries
-import Library.SyntaxTree.Rule.Block
-import Library.SyntaxTree.Rule.C
-import Library.SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 import Text.Megaparsec.Char (char)
 import Text.Read qualified as R

@@ -6,6 +6,15 @@ module Command.LSP.Move.Internal.Util
   )
 where
 
+import Aux.CodeParser.Rule.Parser (nonSymbolCharSet)
+import Aux.Error.Move.Run (runEIO)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error qualified as E
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Log
+import Aux.Logger.Rule.Log qualified as L
+import Aux.Logger.Rule.LogLevel
+import Aux.Path.Move.Read (readText)
 import Command.LSP.Rule.Lsp
 import Control.Lens hiding (Iso, List)
 import Control.Monad
@@ -23,15 +32,6 @@ import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Library.CodeParser.Rule.Parser (nonSymbolCharSet)
-import Library.Error.Move.Run (runEIO)
-import Library.Error.Rule.EIO (EIO)
-import Library.Error.Rule.Error qualified as E
-import Library.Logger.Rule.Hint
-import Library.Logger.Rule.Log
-import Library.Logger.Rule.Log qualified as L
-import Library.Logger.Rule.LogLevel
-import Library.Path.Move.Read (readText)
 import Path
 
 run :: Global.Handle -> EIO a -> Lsp b (Maybe a)

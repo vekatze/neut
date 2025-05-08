@@ -3,12 +3,12 @@ module Kernel.Parse.Move.Internal.Discern.Struct
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.RawTerm.Rule.Key
-import Library.Error.Move.Run (raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
 
 ensureFieldLinearity ::
   Hint ->

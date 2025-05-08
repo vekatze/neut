@@ -6,14 +6,14 @@ module Kernel.Parse.Move.Internal.Handle.PreDecl
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Language.Common.Rule.ExternalName qualified as EN
-import Library.Error.Move.Run (raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 newtype Handle = Handle

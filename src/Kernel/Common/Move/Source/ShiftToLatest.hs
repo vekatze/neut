@@ -7,6 +7,8 @@ module Kernel.Common.Move.Source.ShiftToLatest
   )
 where
 
+import Aux.Error.Move.Run (raiseError, raiseError')
+import Aux.Error.Rule.EIO (EIO)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -16,8 +18,6 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source (Source (sourceModule))
 import Kernel.Common.Rule.Source qualified as Source
 import Language.Common.Rule.ModuleID qualified as MID
-import Library.Error.Move.Run (raiseError, raiseError')
-import Library.Error.Rule.EIO (EIO)
 import Path
 import Path.IO
 

@@ -8,12 +8,12 @@ module Language.Common.Move.CreateSymbol
   )
 where
 
+import Aux.Gensym.Move.Gensym
+import Aux.Gensym.Rule.Handle
 import Data.Text qualified as T
 import Language.Common.Rule.Const
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
-import Library.Gensym.Move.Gensym
-import Library.Gensym.Rule.Handle
 
 {-# INLINE newTextForHole #-}
 newTextForHole :: Handle -> IO T.Text

@@ -13,6 +13,8 @@ module Language.WeakTerm.Rule.WeakTerm
   )
 where
 
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.LogLevel
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Language.Common.Rule.Annotation qualified as AN
@@ -34,8 +36,6 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
-import Library.Logger.Rule.Hint
-import Library.Logger.Rule.LogLevel
 
 type WeakTerm = Cofree WeakTermF Hint
 

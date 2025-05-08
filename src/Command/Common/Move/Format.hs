@@ -7,6 +7,11 @@ module Command.Common.Move.Format
   )
 where
 
+import Aux.CodeParser.Move.Parse (runParser)
+import Aux.Ens.Move.Parse qualified as EnsParse
+import Aux.Ens.Rule.Ens.ToDoc qualified as Ens
+import Aux.Error.Move.Run (raiseError')
+import Aux.Error.Rule.EIO (EIO)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
@@ -23,11 +28,6 @@ import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
 import Language.RawTerm.Rule.RawStmt.ToDoc qualified as RawProgram
-import Library.CodeParser.Move.Parse (runParser)
-import Library.Ens.Move.Parse qualified as EnsParse
-import Library.Ens.Rule.Ens.ToDoc qualified as Ens
-import Library.Error.Move.Run (raiseError')
-import Library.Error.Rule.EIO (EIO)
 import Path
 import Prelude hiding (log)
 

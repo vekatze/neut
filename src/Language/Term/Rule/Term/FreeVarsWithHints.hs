@@ -1,5 +1,6 @@
 module Language.Term.Rule.Term.FreeVarsWithHints (freeVarsWithHints) where
 
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
@@ -10,7 +11,6 @@ import Language.Common.Rule.Ident
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Term qualified as TM
-import Library.Logger.Rule.Hint
 
 freeVarsWithHints :: TM.Term -> S.Set (Hint, Ident)
 freeVarsWithHints term =

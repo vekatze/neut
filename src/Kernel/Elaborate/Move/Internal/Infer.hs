@@ -8,6 +8,10 @@ module Kernel.Elaborate.Move.Internal.Infer
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -64,10 +68,6 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
-import Library.Error.Move.Run (raiseCritical, raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Gensym.Move.Gensym qualified as Gensym
-import Library.Logger.Rule.Hint
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 

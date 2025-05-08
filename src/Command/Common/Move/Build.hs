@@ -6,6 +6,13 @@ module Command.Common.Move.Build
   )
 where
 
+import Aux.Error.Move.Run (forP, raiseError', runEIO)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error (newError')
+import Aux.Error.Rule.Error qualified as E
+import Aux.Logger.Move.Debug qualified as Logger
+import Aux.Logger.Move.Log qualified as Logger
+import Aux.ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Command.Common.Move.Build.EnsureMain qualified as EnsureMain
 import Command.Common.Move.Build.Execute qualified as Execute
 import Command.Common.Move.Build.Generate qualified as Gen
@@ -48,13 +55,6 @@ import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.Term.Rule.Stmt (getStmtName)
-import Library.Error.Move.Run (forP, raiseError', runEIO)
-import Library.Error.Rule.EIO (EIO)
-import Library.Error.Rule.Error (newError')
-import Library.Error.Rule.Error qualified as E
-import Library.Logger.Move.Debug qualified as Logger
-import Library.Logger.Move.Log qualified as Logger
-import Library.ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Path
 import Path.IO
 import System.Console.ANSI

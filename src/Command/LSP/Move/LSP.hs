@@ -5,13 +5,13 @@ module Command.LSP.Move.LSP
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Command.Common.Move.Fetch qualified as Fetch
 import Command.LSP.Move.Internal.Server qualified as L
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
-import Library.Error.Rule.EIO (EIO)
 
 data Handle = Handle
   { fetchHandle :: Fetch.Handle,

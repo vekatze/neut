@@ -52,6 +52,10 @@ module Kernel.Common.Rule.Module
   )
 where
 
+import Aux.Ens.Rule.Ens qualified as E
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint (Hint, internalHint)
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Catch
@@ -72,10 +76,6 @@ import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
-import Library.Ens.Rule.Ens qualified as E
-import Library.Error.Rule.Error
-import Library.Logger.Rule.Hint (Hint, internalHint)
-import Library.SyntaxTree.Rule.Series qualified as SE
 import Path
 import System.FilePath qualified as FP
 

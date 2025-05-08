@@ -12,6 +12,9 @@ module Kernel.Common.Move.Handle.Global.Module
   )
 where
 
+import Aux.Error.Move.Run (raiseError, raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint qualified as H
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
@@ -25,9 +28,6 @@ import Kernel.Common.Rule.Source qualified as Source
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
-import Library.Error.Move.Run (raiseError, raiseError')
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint qualified as H
 import Path
 import Path.IO
 import System.Environment

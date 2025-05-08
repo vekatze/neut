@@ -7,6 +7,7 @@ module Kernel.Common.Rule.Source
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Control.Monad.Catch
 import Data.Maybe
 import Data.Text qualified as T
@@ -14,7 +15,6 @@ import Kernel.Common.Rule.Artifact qualified as A
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Language.Common.Rule.Const
-import Library.Logger.Rule.Hint
 import Path
 
 data Source = Source

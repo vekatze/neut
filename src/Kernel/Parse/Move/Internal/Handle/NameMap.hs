@@ -10,6 +10,13 @@ module Kernel.Parse.Move.Internal.Handle.NameMap
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Hint qualified as Hint
+import Aux.Logger.Rule.Log (Log, newLog)
+import Aux.Logger.Rule.LogLevel (LogLevel (Error))
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -42,13 +49,6 @@ import Language.Common.Rule.PrimType.FromText qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Library.Error.Move.Run (raiseCritical, raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Error.Rule.Error
-import Library.Logger.Rule.Hint
-import Library.Logger.Rule.Hint qualified as Hint
-import Library.Logger.Rule.Log (Log, newLog)
-import Library.Logger.Rule.LogLevel (LogLevel (Error))
 import Prelude hiding (lookup)
 
 data Handle = Handle

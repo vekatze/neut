@@ -10,6 +10,7 @@ module Language.Common.Rule.DecisionTree
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Data.Binary
 import Data.Maybe (catMaybes)
 import GHC.Generics (Generic)
@@ -19,7 +20,6 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Literal qualified as L
-import Library.Logger.Rule.Hint
 
 data DecisionTree a
   = Leaf [Ident] [(BinderF a, a)] a

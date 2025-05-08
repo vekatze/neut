@@ -7,6 +7,8 @@ module Language.WeakTerm.Move.Subst
   )
 where
 
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Gensym.Rule.Handle qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
@@ -22,8 +24,6 @@ import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars qualified as WT
-import Library.Gensym.Move.Gensym qualified as Gensym
-import Library.Gensym.Rule.Handle qualified as Gensym
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

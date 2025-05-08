@@ -7,6 +7,8 @@ module Language.Common.Rule.GlobalLocator
   )
 where
 
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
@@ -16,8 +18,6 @@ import Language.Common.Rule.Const
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.ModuleAlias hiding (reify)
 import Language.Common.Rule.SourceLocator qualified as SL
-import Library.Error.Rule.Error
-import Library.Logger.Rule.Hint qualified as H
 
 data IdentifiedGlobalLocator = IdentifiedGlobalLocator
   { moduleAlias :: ModuleAlias,

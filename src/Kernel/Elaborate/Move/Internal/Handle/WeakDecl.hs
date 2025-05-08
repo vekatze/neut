@@ -6,6 +6,9 @@ module Kernel.Elaborate.Move.Internal.Handle.WeakDecl
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
@@ -13,9 +16,6 @@ import Data.IORef
 import Language.Common.Rule.ForeignCodType qualified as F
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Library.Error.Move.Run (raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
 import Prelude hiding (lookup)
 
 newtype Handle = Handle

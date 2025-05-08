@@ -1,5 +1,6 @@
 module Language.Term.Rule.Term.Extend (extend, extendStmtKind, extendBinder) where
 
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)
@@ -12,7 +13,6 @@ import Language.Common.Rule.StmtKind
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Term qualified as TM
-import Library.Logger.Rule.Hint
 
 {-# INLINE _m #-}
 _m :: Hint

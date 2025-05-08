@@ -4,10 +4,10 @@ module Kernel.Common.Rule.TopCandidate
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Data.Binary
 import GHC.Generics
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Library.Logger.Rule.Hint
 
 data TopCandidate = TopCandidate
   { loc :: Loc,

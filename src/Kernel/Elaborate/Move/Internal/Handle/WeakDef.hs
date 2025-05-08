@@ -8,6 +8,9 @@ module Kernel.Elaborate.Move.Internal.Handle.WeakDef
   )
 where
 
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -18,9 +21,6 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Opacity qualified as O
 import Language.WeakTerm.Rule.WeakTerm
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Library.Gensym.Move.Gensym qualified as Gensym
-import Library.Gensym.Rule.Handle qualified as Gensym
-import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 type DefMap =

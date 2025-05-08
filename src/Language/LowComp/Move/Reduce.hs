@@ -5,12 +5,12 @@ module Language.LowComp.Move.Reduce
   )
 where
 
+import Aux.Gensym.Rule.Handle qualified as Gensym
 import Data.IntMap qualified as IntMap
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.LowComp.Rule.LowComp.Subst
-import Library.Gensym.Rule.Handle qualified as Gensym
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

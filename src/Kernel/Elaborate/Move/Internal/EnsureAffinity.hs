@@ -5,6 +5,11 @@ module Kernel.Elaborate.Move.Internal.EnsureAffinity
   )
 where
 
+import Aux.Error.Move.Run (raiseCritical)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Log qualified as L
+import Aux.Logger.Rule.LogLevel qualified as L
 import Control.Comonad.Cofree
 import Control.Lens (Bifunctor (bimap))
 import Control.Monad
@@ -35,11 +40,6 @@ import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText qualified as WT
-import Library.Error.Move.Run (raiseCritical)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
-import Library.Logger.Rule.Log qualified as L
-import Library.Logger.Rule.LogLevel qualified as L
 
 type AffineConstraint =
   (TM.Term, TM.Term)

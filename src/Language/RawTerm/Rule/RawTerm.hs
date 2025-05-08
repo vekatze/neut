@@ -26,6 +26,10 @@ module Language.RawTerm.Rule.RawTerm
   )
 where
 
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.LogLevel
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.Text qualified as T
@@ -45,10 +49,6 @@ import Language.RawTerm.Rule.NecessityVariant (NecessityVariant)
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
-import Library.Logger.Rule.Hint
-import Library.Logger.Rule.LogLevel
-import Library.SyntaxTree.Rule.C
-import Library.SyntaxTree.Rule.Series qualified as SE
 
 type RawTerm = Cofree RawTermF Hint
 

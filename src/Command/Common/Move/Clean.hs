@@ -5,6 +5,7 @@ module Command.Common.Move.Clean
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Control.Monad
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -14,7 +15,6 @@ import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Unravel.Move.Unravel qualified as Unravel
-import Library.Error.Rule.EIO (EIO)
 import Path.IO
 import Prelude hiding (log)
 

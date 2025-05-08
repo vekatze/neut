@@ -1,5 +1,15 @@
 module Kernel.Parse.Move.Internal.Discern (discernStmtList) where
 
+import Aux.Error.Move.Run (raiseCritical, raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error qualified as E
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Hint.Reify qualified as Hint
+import Aux.Logger.Rule.Log qualified as L
+import Aux.Logger.Rule.LogLevel qualified as L
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
@@ -76,16 +86,6 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars)
-import Library.Error.Move.Run (raiseCritical, raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Error.Rule.Error qualified as E
-import Library.Gensym.Move.Gensym qualified as Gensym
-import Library.Logger.Rule.Hint
-import Library.Logger.Rule.Hint.Reify qualified as Hint
-import Library.Logger.Rule.Log qualified as L
-import Library.Logger.Rule.LogLevel qualified as L
-import Library.SyntaxTree.Rule.C
-import Library.SyntaxTree.Rule.Series qualified as SE
 import Text.Read qualified as R
 
 discernStmtList :: H.Handle -> Module -> [RawStmt] -> EIO [WeakStmt]

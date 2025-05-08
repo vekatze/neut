@@ -5,6 +5,9 @@ module Command.LSP.Move.Internal.FindDefinition
   )
 where
 
+import Aux.Error.Move.Run (liftMaybe)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint qualified as H
 import Command.LSP.Move.Internal.GetLocationTree qualified as GetLocationTree
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Lens hiding (Iso, List)
@@ -13,9 +16,6 @@ import Kernel.Common.Rule.LocationTree (LocationTree)
 import Kernel.Common.Rule.LocationTree qualified as LT
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Library.Error.Move.Run (liftMaybe)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint qualified as H
 
 data Handle = Handle
   { getSourceHandle :: GetSource.Handle,

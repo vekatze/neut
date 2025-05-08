@@ -11,6 +11,8 @@ module Kernel.Clarify.Move.Internal.Sigma
   )
 where
 
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
@@ -29,8 +31,6 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Comp.Move.CreateVar qualified as Gensym
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
-import Library.Gensym.Move.Gensym qualified as Gensym
-import Library.Gensym.Rule.Handle qualified as Gensym
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

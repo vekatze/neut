@@ -12,6 +12,10 @@ module Kernel.Lower.Move.Lower
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Gensym.Move.Gensym qualified as Gensym
+import Aux.Gensym.Rule.Handle qualified as Gensym
+import Aux.Logger.Rule.Hint (internalHint)
 import Codec.Binary.UTF8.String
 import Control.Monad
 import Control.Monad.Writer.Lazy
@@ -56,10 +60,6 @@ import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
-import Library.Error.Rule.EIO (EIO)
-import Library.Gensym.Move.Gensym qualified as Gensym
-import Library.Gensym.Rule.Handle qualified as Gensym
-import Library.Logger.Rule.Hint (internalHint)
 
 data Handle = Handle
   { arch :: Arch,

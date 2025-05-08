@@ -1,9 +1,9 @@
 module Kernel.Parse.Rule.Vector (swap) where
 
+import Aux.Error.Rule.Error
+import Aux.Logger.Rule.Hint
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Library.Error.Rule.Error
-import Library.Logger.Rule.Hint
 
 swap :: Hint -> Int -> V.Vector a -> Either Error (V.Vector a)
 swap m i xs = do

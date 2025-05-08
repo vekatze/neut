@@ -5,6 +5,7 @@ module Language.WeakTerm.Rule.WeakStmt
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Foreign qualified as F
@@ -12,7 +13,6 @@ import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Library.Logger.Rule.Hint
 
 type WeakForeign =
   F.BaseForeign WT.WeakTerm

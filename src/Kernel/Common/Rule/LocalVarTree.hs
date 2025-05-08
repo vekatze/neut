@@ -6,10 +6,10 @@ module Kernel.Common.Rule.LocalVarTree
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.Rule.Ident
-import Library.Logger.Rule.Hint
 
 data LocalVarTree
   = Leaf

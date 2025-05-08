@@ -17,6 +17,12 @@ module Kernel.Common.Move.Handle.Global.Path
   )
 where
 
+import Aux.Ens.Rule.Ens qualified as E
+import Aux.Ens.Rule.Ens.ToDoc qualified as E
+import Aux.Error.Move.Run (raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Handle qualified as Logger
+import Aux.Path.Move.Read (readText)
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.ByteString.UTF8 qualified as B
@@ -36,12 +42,6 @@ import Kernel.Common.Rule.Source qualified as Src
 import Kernel.Common.Rule.Target qualified as Target
 import Language.Common.Rule.Digest
 import Language.Common.Rule.ModuleID qualified as MID
-import Library.Ens.Rule.Ens qualified as E
-import Library.Ens.Rule.Ens.ToDoc qualified as E
-import Library.Error.Move.Run (raiseError')
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Handle qualified as Logger
-import Library.Path.Move.Read (readText)
 import Path (Abs, Dir, File, Path, (</>))
 import Path qualified as P
 import Path.IO qualified as P

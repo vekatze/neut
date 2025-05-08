@@ -1,5 +1,12 @@
 module Language.RawTerm.Rule.RawStmt.ToDoc (pp, ImportInfo (..)) where
 
+import Aux.Logger.Rule.Hint
+import Aux.PrettyPrinter.Rule.Doc qualified as D
+import Aux.PrettyPrinter.Rule.Piece qualified as PI
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import Aux.SyntaxTree.Rule.Series qualified as SE
+import Aux.SyntaxTree.Rule.Series.ToDoc qualified as SE
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
@@ -15,13 +22,6 @@ import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.RawTerm.ToDoc qualified as RT
-import Library.Logger.Rule.Hint
-import Library.PrettyPrinter.Rule.Doc qualified as D
-import Library.PrettyPrinter.Rule.Piece qualified as PI
-import Library.SyntaxTree.Rule.C
-import Library.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import Library.SyntaxTree.Rule.Series qualified as SE
-import Library.SyntaxTree.Rule.Series.ToDoc qualified as SE
 
 data ImportInfo = ImportInfo
   { presetNames :: [(T.Text, [BN.BaseName])], -- "prelude"

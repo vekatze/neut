@@ -5,6 +5,9 @@ module Command.Common.Move.Build.EnsureMain
   )
 where
 
+import Aux.Error.Move.Run (raiseError)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
 import Control.Monad
 import Data.Text qualified as T
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -15,9 +18,6 @@ import Kernel.Common.Rule.Target
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ModuleID qualified as MID
-import Library.Error.Move.Run (raiseError)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
 
 newtype Handle = Handle
   { envHandle :: Env.Handle

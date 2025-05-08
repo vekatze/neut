@@ -4,6 +4,7 @@ module Kernel.Common.Move.CreateLocalHandle
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Control.Monad.IO.Class
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
@@ -21,7 +22,6 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Library.Error.Rule.EIO (EIO)
 
 data Handle = Handle
   { unusedHandle :: Unused.Handle,

@@ -5,12 +5,12 @@ module Command.Common.Move.Build.Execute
   )
 where
 
+import Aux.Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.Target
-import Library.Error.Rule.EIO (EIO)
 import Path
 
 data Handle = Handle

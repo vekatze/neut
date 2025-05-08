@@ -6,6 +6,10 @@ module Command.Build.Move.Build
   )
 where
 
+import Aux.CommandParser.Rule.Config.Build
+import Aux.Error.Move.Run (raiseError')
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error (Error)
 import Command.Common.Move.Build qualified as Build
 import Command.Common.Move.Fetch qualified as Fetch
 import Control.Monad
@@ -19,10 +23,6 @@ import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Target
-import Library.CommandParser.Rule.Config.Build
-import Library.Error.Move.Run (raiseError')
-import Library.Error.Rule.EIO (EIO)
-import Library.Error.Rule.Error (Error)
 import Prelude hiding (log)
 
 newtype Handle = Handle

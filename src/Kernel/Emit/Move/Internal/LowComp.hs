@@ -5,6 +5,7 @@ module Kernel.Emit.Move.Internal.LowComp
   )
 where
 
+import Aux.Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Builder
@@ -21,7 +22,6 @@ import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LowType qualified as LT
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.LowComp.Rule.LowComp.EmitOp qualified as EmitOp
-import Library.Gensym.Rule.Handle qualified as Gensym
 
 type Label =
   Ident

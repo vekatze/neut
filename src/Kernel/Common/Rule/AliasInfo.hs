@@ -6,13 +6,13 @@ module Kernel.Common.Rule.AliasInfo
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Library.Logger.Rule.Hint
 import Path
 
 data AliasInfo

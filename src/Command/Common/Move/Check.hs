@@ -8,6 +8,12 @@ module Command.Common.Move.Check
   )
 where
 
+import Aux.Error.Move.Run (runEIO)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Error.Rule.Error qualified as E
+import Aux.Logger.Move.Debug qualified as Logger
+import Aux.Logger.Rule.Log
+import Aux.Logger.Rule.Log qualified as L
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
@@ -27,12 +33,6 @@ import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Load.Move.Load qualified as Load
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
-import Library.Error.Move.Run (runEIO)
-import Library.Error.Rule.EIO (EIO)
-import Library.Error.Rule.Error qualified as E
-import Library.Logger.Move.Debug qualified as Logger
-import Library.Logger.Rule.Log
-import Library.Logger.Rule.Log qualified as L
 import Path
 
 newtype Handle = Handle

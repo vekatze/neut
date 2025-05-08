@@ -7,6 +7,11 @@ module Kernel.Parse.Move.Parse
   )
 where
 
+import Aux.CodeParser.Move.Parse (runParser)
+import Aux.Error.Rule.EIO (EIO)
+import Aux.Logger.Rule.Hint
+import Aux.Logger.Rule.Log qualified as L
+import Aux.Logger.Rule.LogLevel qualified as L
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
@@ -41,11 +46,6 @@ import Language.Common.Rule.LocalLocator qualified as LL
 import Language.RawTerm.Rule.RawStmt
 import Language.Term.Rule.Stmt
 import Language.WeakTerm.Rule.WeakStmt
-import Library.CodeParser.Move.Parse (runParser)
-import Library.Error.Rule.EIO (EIO)
-import Library.Logger.Rule.Hint
-import Library.Logger.Rule.Log qualified as L
-import Library.Logger.Rule.LogLevel qualified as L
 
 data Handle = Handle
   { parseHandle :: ParseRT.Handle,

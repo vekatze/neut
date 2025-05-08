@@ -16,6 +16,13 @@ module Language.RawTerm.Rule.RawTerm.ToDoc
   )
 where
 
+import Aux.Logger.Rule.Hint
+import Aux.PrettyPrinter.Rule.Doc qualified as D
+import Aux.PrettyPrinter.Rule.Piece qualified as PI
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.C.ToDoc qualified as C
+import Aux.SyntaxTree.Rule.Series qualified as SE
+import Aux.SyntaxTree.Rule.Series.ToDoc qualified as SE
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -32,13 +39,6 @@ import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Library.Logger.Rule.Hint
-import Library.PrettyPrinter.Rule.Doc qualified as D
-import Library.PrettyPrinter.Rule.Piece qualified as PI
-import Library.SyntaxTree.Rule.C
-import Library.SyntaxTree.Rule.C.ToDoc qualified as C
-import Library.SyntaxTree.Rule.Series qualified as SE
-import Library.SyntaxTree.Rule.Series.ToDoc qualified as SE
 
 pp :: RawTerm -> T.Text
 pp e = do

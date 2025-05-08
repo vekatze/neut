@@ -5,12 +5,12 @@ module Language.RawTerm.Rule.RawPattern
   )
 where
 
+import Aux.Logger.Rule.Hint
+import Aux.SyntaxTree.Rule.C
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Language.Common.Rule.Rune qualified as RU
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
-import Library.Logger.Rule.Hint
-import Library.SyntaxTree.Rule.C
-import Library.SyntaxTree.Rule.Series qualified as SE
 
 data RawPattern
   = Var Name

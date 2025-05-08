@@ -5,6 +5,7 @@ module Kernel.Clarify.Move.Internal.Linearize
   )
 where
 
+import Aux.Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
@@ -13,7 +14,6 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.Magic qualified as M
 import Language.Comp.Rule.Comp qualified as C
-import Library.Gensym.Rule.Handle qualified as Gensym
 
 type Occurrence = Ident
 

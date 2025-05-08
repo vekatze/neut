@@ -4,6 +4,7 @@ module Kernel.Common.Rule.GlobalName
   )
 where
 
+import Aux.Logger.Rule.Hint
 import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.Rule.ArgNum
@@ -12,7 +13,6 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
-import Library.Logger.Rule.Hint
 
 data GlobalName
   = TopLevelFunc ArgNum IsConstLike
