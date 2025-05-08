@@ -3,9 +3,9 @@ module Command.Archive.Move.Internal.Module.GetExistingVersions (getExistingVers
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Data.List qualified as List
 import Data.Maybe
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Path (getBaseName)
 import Kernel.Common.Rule.Module
+import Library.Error.Rule.EIO (EIO)
 import Path.IO
 
 getExistingVersions :: MainModule -> EIO [PV.PackageVersion]

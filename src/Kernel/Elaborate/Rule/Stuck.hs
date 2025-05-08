@@ -16,7 +16,7 @@ import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 data EvalBase
   = VarLocal Ident

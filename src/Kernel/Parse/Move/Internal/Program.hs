@@ -4,9 +4,6 @@ module Kernel.Parse.Move.Internal.Program
   )
 where
 
-import CodeParser.Move.GetInfo
-import CodeParser.Move.Parse
-import CodeParser.Rule.Parser
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
@@ -24,10 +21,13 @@ import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Logger.Rule.Hint
-import SyntaxTree.Move.ParseSeries
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
+import Library.CodeParser.Move.GetInfo
+import Library.CodeParser.Move.Parse
+import Library.CodeParser.Rule.Parser
+import Library.Logger.Rule.Hint
+import Library.SyntaxTree.Move.ParseSeries
+import Library.SyntaxTree.Rule.C
+import Library.SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 
 parseProgram :: Handle -> Parser RawProgram

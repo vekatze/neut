@@ -12,7 +12,6 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.AliasInfo
@@ -31,7 +30,8 @@ import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
 
 data Handle = Handle
   { antecedentHandle :: Antecedent.Handle,

@@ -27,7 +27,7 @@ import Language.Common.Rule.Magic
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Rule.Prim qualified as P
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 type Term = Cofree TermF Hint
 

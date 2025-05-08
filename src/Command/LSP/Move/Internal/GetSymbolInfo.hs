@@ -6,13 +6,10 @@ where
 import Command.Common.Move.Check qualified as Check
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
-import CommandParser.Rule.Config.Remark (lspConfig)
 import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.Move.Run (liftMaybe)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Move.ManageCache (invalidate)
@@ -25,6 +22,9 @@ import Language.LSP.Protocol.Types
 import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
+import Library.CommandParser.Rule.Config.Remark (lspConfig)
+import Library.Error.Move.Run (liftMaybe)
+import Library.Error.Rule.EIO (EIO)
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>

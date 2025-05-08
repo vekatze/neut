@@ -8,8 +8,6 @@ where
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Module.GetModule qualified as GetModule
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
@@ -17,6 +15,8 @@ import Kernel.Common.Rule.Handle.Global.Module qualified as Module
 import Kernel.Common.Rule.Module
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias qualified as MA
+import Library.Error.Rule.EIO (EIO)
+import Library.Gensym.Rule.Handle qualified as Gensym
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

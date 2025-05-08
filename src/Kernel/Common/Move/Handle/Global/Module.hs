@@ -17,7 +17,6 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Handle.Global.Module
 import Kernel.Common.Rule.Module
@@ -27,7 +26,8 @@ import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
-import Logger.Rule.Hint qualified as H
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint qualified as H
 import Path
 import Path.IO
 import System.Environment

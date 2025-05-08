@@ -11,9 +11,6 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
-import Error.Move.Run (runEIO)
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -30,9 +27,12 @@ import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Load.Move.Load qualified as Load
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Log
-import Logger.Rule.Log qualified as L
+import Library.Error.Move.Run (runEIO)
+import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error qualified as E
+import Library.Logger.Move.Debug qualified as Logger
+import Library.Logger.Rule.Log
+import Library.Logger.Rule.Log qualified as L
 import Path
 
 newtype Handle = Handle

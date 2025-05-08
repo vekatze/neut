@@ -8,16 +8,16 @@ where
 import Command.Common.Move.Check qualified as Check
 import Command.Common.Move.Clean qualified as Clean
 import Command.Common.Move.Fetch qualified as Fetch
-import CommandParser.Rule.Config.Get
-import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.ModuleURL (ModuleURL (ModuleURL))
+import Library.CommandParser.Rule.Config.Get
+import Library.CommandParser.Rule.Config.Remark qualified as Remark
+import Library.Error.Rule.EIO (EIO)
 import Prelude hiding (log)
 
 data Handle = Handle

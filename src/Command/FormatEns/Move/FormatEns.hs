@@ -4,13 +4,13 @@ module Command.FormatEns.Move.FormatEns
 where
 
 import Command.Common.Move.Format qualified as Format
-import CommandParser.Rule.Config.FormatEns
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.Rule.EIO (EIO)
+import Library.CommandParser.Rule.Config.FormatEns
+import Library.Error.Rule.EIO (EIO)
+import Library.Path.Move.EnsureFileExistence (ensureFileExistence')
+import Library.Path.Move.Read (readText)
+import Library.Path.Move.Write (printText, writeText)
 import Path.IO
-import Path.Move.EnsureFileExistence (ensureFileExistence')
-import Path.Move.Read (readText)
-import Path.Move.Write (printText, writeText)
 
 format :: Config -> EIO ()
 format cfg = do

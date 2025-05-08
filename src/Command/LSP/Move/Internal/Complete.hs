@@ -18,8 +18,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Move.Run (forP, liftMaybe, runEIO)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -45,7 +43,9 @@ import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.LSP.Protocol.Types
-import Logger.Rule.Hint
+import Library.Error.Move.Run (forP, liftMaybe, runEIO)
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
 
 data Handle = Handle
   { unravelHandle :: Unravel.Handle,

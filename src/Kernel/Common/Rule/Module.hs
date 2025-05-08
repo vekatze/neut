@@ -61,8 +61,6 @@ import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
-import Ens.Rule.Ens qualified as E
-import Error.Rule.Error
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.ModuleURL
@@ -74,9 +72,11 @@ import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
-import Logger.Rule.Hint (Hint, internalHint)
+import Library.Ens.Rule.Ens qualified as E
+import Library.Error.Rule.Error
+import Library.Logger.Rule.Hint (Hint, internalHint)
+import Library.SyntaxTree.Rule.Series qualified as SE
 import Path
-import SyntaxTree.Rule.Series qualified as SE
 import System.FilePath qualified as FP
 
 type SomePath a =

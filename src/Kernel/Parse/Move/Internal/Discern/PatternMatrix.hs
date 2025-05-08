@@ -10,7 +10,6 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Parse.Move.Internal.Discern.Fallback qualified as PATF
@@ -29,7 +28,8 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Noema qualified as N
 import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
 
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311

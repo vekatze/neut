@@ -10,11 +10,6 @@ import Control.Monad.Except (liftEither)
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Ens.Move.Parse qualified as Ens
-import Ens.Rule.Ens (dictFromListVertical')
-import Ens.Rule.Ens qualified as E
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error
 import Kernel.Common.Move.Module.FindModuleFile
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Const (archiveRelDir, cacheRelDir, sourceRelDir)
@@ -31,10 +26,15 @@ import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
-import Logger.Rule.Hint qualified as H
+import Library.Ens.Move.Parse qualified as Ens
+import Library.Ens.Rule.Ens (dictFromListVertical')
+import Library.Ens.Rule.Ens qualified as E
+import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error
+import Library.Logger.Rule.Hint qualified as H
+import Library.SyntaxTree.Rule.Series qualified as SE
 import Path
 import Path.IO
-import SyntaxTree.Rule.Series qualified as SE
 
 fromFilePath :: Path Abs File -> EIO Module
 fromFilePath moduleFilePath = do

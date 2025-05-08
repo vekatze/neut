@@ -5,13 +5,13 @@ module Command.LSP.Move.Internal.Source.Reflect
   )
 where
 
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Module.FindModuleFile qualified as Module
 import Kernel.Common.Move.Module.FromPath qualified as Module
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
+import Library.Error.Rule.EIO (EIO)
 import Path
 
 newtype Handle = Handle

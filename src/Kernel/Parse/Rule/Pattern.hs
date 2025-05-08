@@ -20,7 +20,6 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.Rule.Error
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
@@ -28,7 +27,8 @@ import Language.Common.Rule.Error
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Literal qualified as L
-import Logger.Rule.Hint
+import Library.Error.Rule.Error
+import Library.Logger.Rule.Hint
 
 data Pattern
   = Var Ident

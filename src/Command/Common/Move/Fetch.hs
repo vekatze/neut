@@ -17,11 +17,6 @@ import Data.Containers.ListUtils (nubOrdOn)
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
-import Ens.Move.Parse qualified as EnsParse
-import Ens.Rule.Ens qualified as E
-import Ens.Rule.Ens qualified as SE
-import Error.Move.Run (forP)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Module qualified as Module
@@ -37,13 +32,18 @@ import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
-import Logger.Move.Log qualified as Logger
-import Logger.Rule.Handle qualified as Logger
-import Logger.Rule.Hint
+import Library.Ens.Move.Parse qualified as EnsParse
+import Library.Ens.Rule.Ens qualified as E
+import Library.Ens.Rule.Ens qualified as SE
+import Library.Error.Move.Run (forP)
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Move.Log qualified as Logger
+import Library.Logger.Rule.Handle qualified as Logger
+import Library.Logger.Rule.Hint
+import Library.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import Library.SyntaxTree.Rule.Series qualified as SE
 import Path
 import Path.IO
-import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import SyntaxTree.Rule.Series qualified as SE
 import System.Process (CmdSpec (RawCommand))
 
 data Handle = Handle

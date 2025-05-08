@@ -7,7 +7,6 @@ where
 
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
-import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
@@ -16,6 +15,7 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Comp.Move.Subst qualified as Subst
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
+import Library.Gensym.Rule.Handle qualified as Gensym
 
 data Handle = Handle
   { substHandle :: Subst.Handle,

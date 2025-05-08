@@ -14,8 +14,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Gensym.Move.Gensym qualified as Gensym
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
@@ -67,7 +65,9 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Gensym.Move.Gensym qualified as Gensym
+import Library.Logger.Rule.Hint
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 

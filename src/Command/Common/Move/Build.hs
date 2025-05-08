@@ -21,8 +21,6 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time
-import Error.Move.Run (forP, runEIO)
-import Error.Rule.EIO (EIO)
 import Kernel.Clarify.Move.Clarify qualified as Clarify
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
@@ -53,11 +51,13 @@ import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.Term.Rule.Stmt (getStmtName)
-import Logger.Move.Debug qualified as Logger
-import Logger.Move.Log qualified as Logger
+import Library.Error.Move.Run (forP, runEIO)
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Move.Debug qualified as Logger
+import Library.Logger.Move.Log qualified as Logger
+import Library.ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Path
 import Path.IO
-import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import System.Console.ANSI
 import System.Process (CmdSpec (RawCommand, ShellCommand))
 import UnliftIO.Async

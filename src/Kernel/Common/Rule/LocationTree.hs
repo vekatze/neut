@@ -17,7 +17,7 @@ import GHC.Generics (Generic)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.IsConstLike
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 type ColFrom =
   Int

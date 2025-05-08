@@ -3,7 +3,7 @@ module Language.Common.Rule.Geist (Geist (..)) where
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 data Geist a = Geist
   { loc :: Hint,

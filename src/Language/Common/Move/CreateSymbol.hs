@@ -9,11 +9,11 @@ module Language.Common.Move.CreateSymbol
 where
 
 import Data.Text qualified as T
-import Gensym.Move.Gensym
-import Gensym.Rule.Handle
 import Language.Common.Rule.Const
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
+import Library.Gensym.Move.Gensym
+import Library.Gensym.Rule.Handle
 
 {-# INLINE newTextForHole #-}
 newTextForHole :: Handle -> IO T.Text

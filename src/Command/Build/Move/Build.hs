@@ -8,13 +8,10 @@ where
 
 import Command.Common.Move.Build qualified as Build
 import Command.Common.Move.Fetch qualified as Fetch
-import CommandParser.Rule.Config.Build
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error (Error)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
@@ -23,6 +20,9 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Target
 import Language.Common.Move.Raise (raiseError')
+import Library.CommandParser.Rule.Config.Build
+import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error (Error)
 import Prelude hiding (log)
 
 newtype Handle = Handle

@@ -10,7 +10,7 @@ import Data.IORef
 import Kernel.Common.Rule.Handle.Local.SymLoc
 import Kernel.Common.Rule.LocalVarTree qualified as LVT
 import Language.Common.Rule.Ident
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 new :: IO Handle
 new = do

@@ -1,6 +1,5 @@
 module Main (main) where
 
-import Color.Move.CreateHandle qualified as Color
 import Command.Archive.Move.Archive qualified as Archive
 import Command.Build.Move.Build qualified as Build
 import Command.Check.Move.Check qualified as Check
@@ -13,14 +12,15 @@ import Command.Get.Move.Get qualified as Get
 import Command.LSP.Move.LSP qualified as LSP
 import Command.Version.Move.Version qualified as Version
 import Command.Zen.Move.Zen qualified as Zen
-import CommandParser.Move.Parse qualified as CommandParser
-import CommandParser.Rule.Command qualified as C
-import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.Move.Run (run)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Platform (ensureExecutables)
-import Logger.Move.CreateHandle qualified as Logger
+import Library.Color.Move.CreateHandle qualified as Color
+import Library.CommandParser.Move.Parse qualified as CommandParser
+import Library.CommandParser.Rule.Command qualified as C
+import Library.CommandParser.Rule.Config.Remark qualified as Remark
+import Library.Error.Move.Run (run)
+import Library.Logger.Move.CreateHandle qualified as Logger
 import System.IO
 
 main :: IO ()

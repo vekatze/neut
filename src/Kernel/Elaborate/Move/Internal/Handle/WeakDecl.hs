@@ -10,12 +10,12 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ForeignCodType qualified as F
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
 import Prelude hiding (lookup)
 
 newtype Handle = Handle

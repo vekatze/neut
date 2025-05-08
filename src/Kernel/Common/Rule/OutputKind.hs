@@ -5,8 +5,8 @@ module Kernel.Common.Rule.OutputKind
 where
 
 import Data.Text qualified as T
-import Error.Rule.Error (Error)
 import Language.Common.Rule.Error (newError')
+import Library.Error.Rule.Error (Error)
 
 data OutputKind
   = Object

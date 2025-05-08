@@ -22,9 +22,6 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -59,7 +56,10 @@ import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.LowComp.Rule.LowComp qualified as LC
-import Logger.Rule.Hint (internalHint)
+import Library.Error.Rule.EIO (EIO)
+import Library.Gensym.Move.Gensym qualified as Gensym
+import Library.Gensym.Rule.Handle qualified as Gensym
+import Library.Logger.Rule.Hint (internalHint)
 
 data Handle = Handle
   { arch :: Arch,

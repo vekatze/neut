@@ -27,7 +27,7 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm (reflectOpacity)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do

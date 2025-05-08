@@ -12,7 +12,6 @@ module Kernel.Clarify.Move.Internal.Utility
 where
 
 import Data.IntMap qualified as IntMap
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -25,6 +24,7 @@ import Language.Comp.Move.Subst qualified as Subst
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase
 import Language.Comp.Rule.EnumCase qualified as EC
+import Library.Gensym.Rule.Handle qualified as Gensym
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

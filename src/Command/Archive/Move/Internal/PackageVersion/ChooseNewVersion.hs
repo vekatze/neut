@@ -9,10 +9,10 @@ import Command.Archive.Move.Internal.Module.GetExistingVersions
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module (MainModule)
-import Logger.Move.Log qualified as Logger
-import Logger.Rule.Handle qualified as Logger
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Move.Log qualified as Logger
+import Library.Logger.Rule.Handle qualified as Logger
 import Prelude hiding (log)
 
 newtype Handle = Handle

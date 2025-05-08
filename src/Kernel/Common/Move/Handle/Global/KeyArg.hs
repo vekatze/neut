@@ -10,7 +10,6 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Handle.Global.KeyArg
 import Kernel.Common.Rule.Module
 import Language.Common.Move.Raise (raiseError)
@@ -18,7 +17,8 @@ import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.IsConstLike
 import Language.RawTerm.Rule.Key
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 new :: MainModule -> IO Handle

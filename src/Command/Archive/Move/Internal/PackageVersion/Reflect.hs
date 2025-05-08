@@ -5,9 +5,9 @@ import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Monad
 import Data.Maybe
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Module
 import Language.Common.Move.Raise (raiseError')
+import Library.Error.Rule.EIO (EIO)
 import Prelude hiding (log)
 
 reflect :: MainModule -> T.Text -> EIO PV.PackageVersion

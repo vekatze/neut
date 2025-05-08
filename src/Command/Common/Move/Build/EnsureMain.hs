@@ -7,7 +7,6 @@ where
 
 import Control.Monad
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module
@@ -17,7 +16,8 @@ import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ModuleID qualified as MID
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
 
 newtype Handle = Handle
   { envHandle :: Env.Handle

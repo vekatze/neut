@@ -12,15 +12,15 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Opacity qualified as O
 import Language.WeakTerm.Rule.WeakTerm
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint
+import Library.Gensym.Move.Gensym qualified as Gensym
+import Library.Gensym.Rule.Handle qualified as Gensym
+import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 type DefMap =

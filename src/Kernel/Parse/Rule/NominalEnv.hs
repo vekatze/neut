@@ -7,7 +7,7 @@ where
 import Data.Text qualified as T
 import Kernel.Parse.Rule.Layer
 import Language.Common.Rule.Ident
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 type NominalEnv = [(T.Text, (Hint, Ident, Layer))]
 

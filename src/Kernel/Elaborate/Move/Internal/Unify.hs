@@ -13,8 +13,6 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
@@ -44,9 +42,11 @@ import Language.WeakTerm.Rule.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars
 import Language.WeakTerm.Rule.WeakTerm.Holes
 import Language.WeakTerm.Rule.WeakTerm.ToText
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel qualified as L
+import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error qualified as E
+import Library.Logger.Rule.Hint
+import Library.Logger.Rule.Log qualified as L
+import Library.Logger.Rule.LogLevel qualified as L
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
 unify h constraintList = do

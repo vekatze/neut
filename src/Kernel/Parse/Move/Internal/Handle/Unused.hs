@@ -27,7 +27,7 @@ import Kernel.Parse.Rule.VarDefKind
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 data Handle = Handle

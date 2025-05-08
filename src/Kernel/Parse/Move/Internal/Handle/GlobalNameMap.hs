@@ -11,10 +11,10 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.TopNameMap
 import Language.Common.Move.Raise (raiseCritical)
-import Logger.Rule.Hint qualified as Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint qualified as Hint
 import Path
 import Prelude hiding (lookup)
 

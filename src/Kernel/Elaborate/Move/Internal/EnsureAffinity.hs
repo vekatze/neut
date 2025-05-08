@@ -13,7 +13,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Rule.OptimizableData
@@ -37,9 +36,10 @@ import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText qualified as WT
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel qualified as L
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
+import Library.Logger.Rule.Log qualified as L
+import Library.Logger.Rule.LogLevel qualified as L
 
 type AffineConstraint =
   (TM.Term, TM.Term)

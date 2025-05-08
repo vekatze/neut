@@ -15,8 +15,6 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
@@ -45,10 +43,12 @@ import Language.Common.Rule.PrimType.FromText qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Logger.Rule.Hint
-import Logger.Rule.Hint qualified as Hint
-import Logger.Rule.Log (Log, newLog)
-import Logger.Rule.LogLevel (LogLevel (Error))
+import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error
+import Library.Logger.Rule.Hint
+import Library.Logger.Rule.Hint qualified as Hint
+import Library.Logger.Rule.Log (Log, newLog)
+import Library.Logger.Rule.LogLevel (LogLevel (Error))
 import Prelude hiding (lookup)
 
 data Handle = Handle

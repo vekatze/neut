@@ -12,7 +12,6 @@ import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -26,7 +25,8 @@ import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Logger.Rule.Hint qualified as H
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint qualified as H
 
 type InlineLimit =
   Int

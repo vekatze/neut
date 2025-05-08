@@ -13,8 +13,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -24,6 +22,8 @@ import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.FreeVars qualified as TM
+import Library.Gensym.Move.Gensym qualified as Gensym
+import Library.Gensym.Rule.Handle qualified as Gensym
 
 type SubstTerm =
   IntMap.IntMap (Either Ident TM.Term)

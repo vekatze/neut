@@ -19,7 +19,7 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.Literal qualified as L
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 data DecisionTree a
   = Leaf [Ident] [(BinderF a, a)] a

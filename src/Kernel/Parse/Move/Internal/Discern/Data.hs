@@ -13,8 +13,8 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Logger.Rule.Hint
-import SyntaxTree.Rule.Series qualified as SE
+import Library.Logger.Rule.Hint
+import Library.SyntaxTree.Rule.Series qualified as SE
 
 defineData ::
   Hint ->

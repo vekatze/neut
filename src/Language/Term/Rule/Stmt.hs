@@ -19,7 +19,7 @@ import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Term.Rule.Term qualified as TM
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)
 

@@ -1,7 +1,7 @@
 module Kernel.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL) where
 
 import Data.Text qualified as T
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 type UnusedGlobalLocators =
   [(T.Text, [(Hint, T.Text)])]

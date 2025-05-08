@@ -1,10 +1,10 @@
 module Language.Comp.Move.CreateVar (createVar) where
 
 import Data.Text qualified as T
-import Gensym.Rule.Handle
 import Language.Common.Move.CreateSymbol
 import Language.Common.Rule.Ident
 import Language.Comp.Rule.Comp qualified as C
+import Library.Gensym.Rule.Handle
 
 {-# INLINE createVar #-}
 createVar :: Handle -> T.Text -> IO (Ident, C.Value)

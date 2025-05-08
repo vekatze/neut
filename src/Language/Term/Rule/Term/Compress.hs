@@ -12,7 +12,7 @@ import Language.Common.Rule.StmtKind
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Term qualified as TM
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 compress :: TM.Term -> Cofree TM.TermF ()
 compress term =

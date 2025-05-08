@@ -10,10 +10,10 @@ import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Error.Rule.EIO (EIO)
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ExternalName qualified as EN
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 newtype Handle = Handle

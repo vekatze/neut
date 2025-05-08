@@ -17,7 +17,7 @@ import Kernel.Common.Rule.TopCandidate (TopCandidate)
 import Language.Term.Rule.Stmt qualified as Stmt
 import Language.Term.Rule.Term.Compress qualified as TM
 import Language.Term.Rule.Term.Extend qualified as TM
-import Logger.Rule.Log
+import Library.Logger.Rule.Log
 
 data Cache = Cache
   { stmtList :: [Stmt.Stmt],

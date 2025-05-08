@@ -8,10 +8,10 @@ where
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.FindReferences qualified as LSP
 import Control.Lens hiding (Iso, List)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Library.Error.Rule.EIO (EIO)
 
 newtype Handle = Handle
   { findDefinitionHandle :: FindDefinition.Handle

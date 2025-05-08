@@ -7,8 +7,6 @@ module Command.LSP.Move.Internal.GetAllCachesInModule
 where
 
 import Data.Maybe (catMaybes)
-import Error.Move.Run (forP)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Module (getAllSourcePathInModule)
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
@@ -19,6 +17,8 @@ import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target (Target (Peripheral))
+import Library.Error.Move.Run (forP)
+import Library.Error.Rule.EIO (EIO)
 import Path
 
 data Handle = Handle

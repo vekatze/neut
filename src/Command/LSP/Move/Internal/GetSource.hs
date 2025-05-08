@@ -7,12 +7,12 @@ where
 
 import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Lens hiding (Iso, List)
-import Error.Move.Run (liftMaybe)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Source (Source)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Library.Error.Move.Run (liftMaybe)
+import Library.Error.Rule.EIO (EIO)
 
 newtype Handle = Handle
   { sourceReflectHandle :: SourceReflect.Handle

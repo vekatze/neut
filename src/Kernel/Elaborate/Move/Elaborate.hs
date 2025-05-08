@@ -15,9 +15,6 @@ import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
-import Gensym.Move.Trick qualified as Gensym
 import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
@@ -73,8 +70,11 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
+import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error qualified as E
+import Library.Gensym.Move.Trick qualified as Gensym
+import Library.Logger.Rule.Hint
+import Library.Logger.Rule.Log qualified as L
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =

@@ -24,7 +24,6 @@ import Data.Hashable
 import Data.List (find)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Error.Rule.Error
 import GHC.Generics
 import Kernel.Common.Rule.Module hiding (moduleID)
 import Language.Common.Rule.BaseName qualified as BN
@@ -38,7 +37,8 @@ import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Logger.Rule.Hint qualified as H
+import Library.Error.Rule.Error
+import Library.Logger.Rule.Hint qualified as H
 
 newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Generic, Show)

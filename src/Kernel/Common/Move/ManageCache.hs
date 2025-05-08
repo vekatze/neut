@@ -15,7 +15,6 @@ where
 
 import Control.Monad.IO.Class
 import Data.Binary
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Artifact qualified as Artifact
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
@@ -26,6 +25,7 @@ import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
+import Library.Error.Rule.EIO (EIO)
 import Path
 import Path.IO
 

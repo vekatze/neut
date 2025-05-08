@@ -9,7 +9,7 @@ where
 import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.Rule.Ident
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 data LocalVarTree
   = Leaf

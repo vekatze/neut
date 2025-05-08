@@ -7,7 +7,7 @@ where
 
 import Data.IORef
 import Kernel.Common.Rule.Handle.Global.GlobalRemark
-import Logger.Rule.Log qualified as L
+import Library.Logger.Rule.Log qualified as L
 
 new :: IO Handle
 new = do

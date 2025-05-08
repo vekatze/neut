@@ -10,9 +10,6 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
-import Gensym.Move.Gensym qualified as Gensym
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
@@ -80,12 +77,15 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars)
-import Logger.Rule.Hint
-import Logger.Rule.Hint.Reify qualified as Hint
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel qualified as L
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
+import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error qualified as E
+import Library.Gensym.Move.Gensym qualified as Gensym
+import Library.Logger.Rule.Hint
+import Library.Logger.Rule.Hint.Reify qualified as Hint
+import Library.Logger.Rule.Log qualified as L
+import Library.Logger.Rule.LogLevel qualified as L
+import Library.SyntaxTree.Rule.C
+import Library.SyntaxTree.Rule.Series qualified as SE
 import Text.Read qualified as R
 
 discernStmtList :: H.Handle -> Module -> [RawStmt] -> EIO [WeakStmt]

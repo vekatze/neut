@@ -10,7 +10,6 @@ where
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Rule.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Rule.Module
@@ -18,6 +17,7 @@ import Kernel.Common.Rule.Source (Source (sourceModule))
 import Kernel.Common.Rule.Source qualified as Source
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
+import Library.Error.Rule.EIO (EIO)
 import Path
 import Path.IO
 

@@ -10,7 +10,6 @@ where
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
-import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
@@ -18,7 +17,8 @@ import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.ModuleAlias hiding (reify)
 import Language.Common.Rule.SourceLocator qualified as SL
-import Logger.Rule.Hint qualified as H
+import Library.Error.Rule.Error
+import Library.Logger.Rule.Hint qualified as H
 
 data IdentifiedGlobalLocator = IdentifiedGlobalLocator
   { moduleAlias :: ModuleAlias,

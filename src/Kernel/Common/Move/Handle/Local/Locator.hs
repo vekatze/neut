@@ -16,7 +16,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.AliasInfo (MustUpdateTag)
 import Kernel.Common.Rule.GlobalName qualified as GN
@@ -32,10 +31,11 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
+import Library.Path.Move.Read (readText)
 import Path
 import Path.IO
-import Path.Move.Read (readText)
 
 new :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
 new _envHandle _tagHandle source = do

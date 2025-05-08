@@ -32,13 +32,13 @@ import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm
 import Language.RawTerm.Rule.RawTerm qualified as RT
-import Logger.Rule.Hint
-import PrettyPrinter.Rule.Doc qualified as D
-import PrettyPrinter.Rule.Piece qualified as PI
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.C.ToDoc qualified as C
-import SyntaxTree.Rule.Series qualified as SE
-import SyntaxTree.Rule.Series.ToDoc qualified as SE
+import Library.Logger.Rule.Hint
+import Library.PrettyPrinter.Rule.Doc qualified as D
+import Library.PrettyPrinter.Rule.Piece qualified as PI
+import Library.SyntaxTree.Rule.C
+import Library.SyntaxTree.Rule.C.ToDoc qualified as C
+import Library.SyntaxTree.Rule.Series qualified as SE
+import Library.SyntaxTree.Rule.Series.ToDoc qualified as SE
 
 pp :: RawTerm -> T.Text
 pp e = do

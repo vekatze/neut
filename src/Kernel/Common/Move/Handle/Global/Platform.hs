@@ -16,8 +16,6 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Version qualified as V
-import Error.Move.Run (run)
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Arch qualified as Arch
 import Kernel.Common.Rule.Const (envVarClang)
@@ -28,9 +26,11 @@ import Kernel.Common.Rule.Platform qualified as P
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Digest (hashAndEncode)
 import Language.Common.Rule.Error (newError')
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Handle qualified as Logger
-import Logger.Rule.Hint
+import Library.Error.Move.Run (run)
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Move.Debug qualified as Logger
+import Library.Logger.Rule.Handle qualified as Logger
+import Library.Logger.Rule.Hint
 import Path
 import Paths_neut
 import System.Directory

@@ -8,9 +8,9 @@ where
 import Language.Common.Rule.Rune qualified as RU
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
-import Logger.Rule.Hint
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
+import Library.Logger.Rule.Hint
+import Library.SyntaxTree.Rule.C
+import Library.SyntaxTree.Rule.Series qualified as SE
 
 data RawPattern
   = Var Name

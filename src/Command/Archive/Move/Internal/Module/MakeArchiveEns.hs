@@ -9,18 +9,18 @@ import Control.Monad.IO.Class
 import Data.ByteString qualified as B
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
-import Ens.Move.Parse qualified as Ens
-import Ens.Rule.Ens qualified as E
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Module
 import Language.Common.Rule.ModuleDigest (ModuleDigest (..))
 import Language.Common.Rule.ModuleDigest qualified as MD
-import Logger.Rule.Hint
+import Library.Ens.Move.Parse qualified as Ens
+import Library.Ens.Rule.Ens qualified as E
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Rule.Hint
+import Library.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import Library.SyntaxTree.Rule.Series qualified as SE
 import Path
 import Path.IO
-import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import SyntaxTree.Rule.Series qualified as SE
 import System.IO
 import Prelude hiding (log)
 

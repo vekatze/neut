@@ -5,12 +5,10 @@ module Command.Common.Move.Build.Link
   )
 where
 
-import Color.Rule.Handle qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
@@ -22,11 +20,13 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Handle qualified as Logger
+import Library.Color.Rule.Handle qualified as Color
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Move.Debug qualified as Logger
+import Library.Logger.Rule.Handle qualified as Logger
+import Library.ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Path
 import Path.IO
-import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import System.Console.ANSI
 
 data Handle = Handle

@@ -9,7 +9,6 @@ module Kernel.Unravel.Move.Unravel
   )
 where
 
-import CodeParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
@@ -18,7 +17,6 @@ import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
@@ -40,12 +38,14 @@ import Kernel.Parse.Move.Internal.Program (parseImport)
 import Kernel.Unravel.Rule.VisitInfo qualified as VI
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.ModuleID qualified as MID
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Hint
+import Library.CodeParser.Move.Parse (runParser)
+import Library.Error.Rule.EIO (EIO)
+import Library.Logger.Move.Debug qualified as Logger
+import Library.Logger.Rule.Hint
+import Library.Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
+import Library.Path.Move.Read (readText)
 import Path
 import Path.IO
-import Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
-import Path.Move.Read (readText)
 
 type CacheTime =
   Maybe UTCTime

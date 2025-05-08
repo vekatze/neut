@@ -15,13 +15,13 @@ import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.RawTerm.Rule.RawTerm.ToDoc qualified as RT
-import Logger.Rule.Hint
-import PrettyPrinter.Rule.Doc qualified as D
-import PrettyPrinter.Rule.Piece qualified as PI
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import SyntaxTree.Rule.Series qualified as SE
-import SyntaxTree.Rule.Series.ToDoc qualified as SE
+import Library.Logger.Rule.Hint
+import Library.PrettyPrinter.Rule.Doc qualified as D
+import Library.PrettyPrinter.Rule.Piece qualified as PI
+import Library.SyntaxTree.Rule.C
+import Library.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import Library.SyntaxTree.Rule.Series qualified as SE
+import Library.SyntaxTree.Rule.Series.ToDoc qualified as SE
 
 data ImportInfo = ImportInfo
   { presetNames :: [(T.Text, [BN.BaseName])], -- "prelude"

@@ -7,13 +7,13 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Term.Rule.Term qualified as TM
+import Library.Gensym.Move.Gensym qualified as Gensym
+import Library.Gensym.Rule.Handle qualified as Gensym
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

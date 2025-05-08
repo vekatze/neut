@@ -4,7 +4,7 @@ import Control.Comonad.Cofree
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Term.Rule.Prim qualified as Prim
 import Language.Term.Rule.Term qualified as TM
-import Logger.Rule.Hint
+import Library.Logger.Rule.Hint
 
 fromPrimNum :: Hint -> PT.PrimType -> TM.Term
 fromPrimNum m primNum =

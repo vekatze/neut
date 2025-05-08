@@ -11,7 +11,6 @@ import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Error.Rule.EIO (EIO)
 import Kernel.Elaborate.Rule.HoleSubst
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -23,6 +22,7 @@ import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
+import Library.Error.Rule.EIO (EIO)
 import Prelude hiding (lookup)
 
 data Handle = Handle

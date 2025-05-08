@@ -16,9 +16,6 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Error.Rule.EIO (EIO)
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
@@ -70,7 +67,10 @@ import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.Chain (nubFreeVariables)
 import Language.Term.Rule.Term.Chain qualified as TM
 import Language.Term.Rule.Term.FromPrimNum
-import Logger.Rule.Hint
+import Library.Error.Rule.EIO (EIO)
+import Library.Gensym.Move.Gensym qualified as Gensym
+import Library.Gensym.Rule.Handle qualified as Gensym
+import Library.Logger.Rule.Hint
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,

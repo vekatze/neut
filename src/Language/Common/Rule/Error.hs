@@ -8,10 +8,10 @@ module Language.Common.Rule.Error
 where
 
 import Data.Text qualified as T
-import Error.Rule.Error
-import Logger.Rule.Hint
-import Logger.Rule.Log
-import Logger.Rule.LogLevel
+import Library.Error.Rule.Error
+import Library.Logger.Rule.Hint
+import Library.Logger.Rule.Log
+import Library.Logger.Rule.LogLevel
 
 newError :: Hint -> T.Text -> Error
 newError m text = do

@@ -5,9 +5,9 @@ module Kernel.Common.Move.Module.FindModuleFile
 where
 
 import Data.Text qualified as T
-import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Const (moduleFile)
 import Language.Common.Move.Raise (raiseError')
+import Library.Error.Rule.EIO (EIO)
 import Path
 import Path.IO
 

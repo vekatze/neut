@@ -34,8 +34,8 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
-import Logger.Rule.Hint
-import Logger.Rule.LogLevel
+import Library.Logger.Rule.Hint
+import Library.Logger.Rule.LogLevel
 
 type WeakTerm = Cofree WeakTermF Hint
 
