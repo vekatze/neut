@@ -38,6 +38,7 @@ import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Common.Rule.TopNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Language.Common.Rule.ArgNum qualified as AN
@@ -202,7 +203,7 @@ lookup' h m name = do
       return gn
     Nothing -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = DD.getReadableDD mainModule name
+      let name' = readableDD mainModule name
       raiseError m $ "No such top-level name is defined: " <> name'
 
 ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
@@ -212,7 +213,7 @@ ensureDefFreshness h m name = do
   case (Map.lookup name gmap, Map.member name topNameMap) of
     (Just _, False) -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = DD.getReadableDD mainModule name
+      let name' = readableDD mainModule name
       raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
     (Just (mGeist, isConstLike), True) -> do
       liftIO $ removeFromGeistMap h name
@@ -220,7 +221,7 @@ ensureDefFreshness h m name = do
       liftIO $ Tag.insertGlobalVar (tagHandle h) mGeist name isConstLike m
     (Nothing, True) -> do
       let mainModule = Env.getMainModule (envHandle h)
-      let name' = DD.getReadableDD mainModule name
+      let name' = readableDD mainModule name
       raiseError m $ "`" <> name' <> "` is already defined"
     (Nothing, False) ->
       return ()
@@ -230,7 +231,7 @@ ensureGeistFreshness h m name = do
   geistMap <- liftIO $ readIORef (geistMapRef h)
   when (Map.member name geistMap) $ do
     let mainModule = Env.getMainModule (envHandle h)
-    let name' = DD.getReadableDD mainModule name
+    let name' = readableDD mainModule name
     raiseError m $ "`" <> name' <> "` is already defined"
 
 reportMissingDefinitions :: Handle -> EIO ()

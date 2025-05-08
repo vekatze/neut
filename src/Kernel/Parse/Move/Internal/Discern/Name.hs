@@ -20,6 +20,7 @@ import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Const qualified as C
 import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
@@ -77,7 +78,7 @@ resolveVarOrErr h m name = do
       return $ Right globalVar
     _ -> do
       let mainModule = Env.getMainModule (H.envHandle h)
-      let foundNameList' = map (DD.getReadableDD mainModule . fst) foundNameList
+      let foundNameList' = map (readableDD mainModule . fst) foundNameList
       let candInfo = T.concat $ map ("\n- " <>) foundNameList'
       return $ Left $ "This `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 

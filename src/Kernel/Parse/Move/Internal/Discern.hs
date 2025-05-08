@@ -34,6 +34,7 @@ import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as OS
 import Kernel.Common.Rule.Platform qualified as Platform
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Common.Rule.TopCandidate
 import Kernel.Parse.Move.Internal.Discern.Data
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
@@ -1015,7 +1016,7 @@ discernPattern h layer (m, pat) = do
               (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor h m $ Var x
               unless isConstLike $ do
                 let mainModule = Env.getMainModule (H.envHandle h)
-                let consDD' = DD.getReadableDD mainModule consDD
+                let consDD' = readableDD mainModule consDD
                 raiseError m $
                   "The constructor `" <> consDD' <> "` cannot be used as a constant"
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
@@ -1038,7 +1039,7 @@ discernPattern h layer (m, pat) = do
               return ((m, PAT.Cons consInfo), [])
             _ -> do
               let mainModule = Env.getMainModule (H.envHandle h)
-              let dd' = DD.getReadableDD mainModule dd
+              let dd' = readableDD mainModule dd
               raiseError m $
                 "The symbol `" <> dd' <> "` is not defined as a constuctor"
     RP.Cons cons _ mArgs -> do

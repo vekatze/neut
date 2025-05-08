@@ -26,6 +26,7 @@ import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
@@ -560,7 +561,7 @@ ensureArityCorrectness h function expected found = do
     case function of
       m :< WT.VarGlobal _ name -> do
         let mainModule = Env.getMainModule (envHandle h)
-        let name' = DD.getReadableDD mainModule name
+        let name' = readableDD mainModule name
         raiseError m $
           "The function `"
             <> name'

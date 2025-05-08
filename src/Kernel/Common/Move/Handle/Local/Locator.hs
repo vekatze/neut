@@ -27,6 +27,7 @@ import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Local.Locator
 import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Module qualified as Module
+import Kernel.Common.Rule.ReadableDD
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap (TopNameMap)
 import Language.Common.Rule.BaseName qualified as BN
@@ -68,8 +69,8 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
-                let dd' = DD.getReadableDD' (Source.sourceModule currentSource) dd
-                let existingDD' = DD.getReadableDD' (Source.sourceModule currentSource) existingDD
+                let dd' = readableDD' (Source.sourceModule currentSource) dd
+                let existingDD' = readableDD' (Source.sourceModule currentSource) existingDD
                 raiseError m $
                   "This `"
                     <> LL.reify ll
