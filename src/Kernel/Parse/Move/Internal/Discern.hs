@@ -592,11 +592,6 @@ discern h term =
           discern h $ mPin :< RT.Pin c1 (mx, x, c2, c3, t) c4 mys c5 e1' c6 startLoc c7 e2' endLoc
         _ ->
           discern h body
-    _ :< RT.Projection e (mProj, proj) loc -> do
-      t <- liftIO $ RT.createHole (H.gensymHandle h) (blur mProj)
-      let args = (SE.fromList SE.Brace SE.Comma [(mProj, proj, [], [], t)], [])
-      let var = mProj :< RT.Var (Var proj)
-      discern h $ mProj :< RT.Use [] e [] args [] var loc
     _ :< RT.Brace _ (e, _) ->
       discern h e
     m :< RT.Pointer ->

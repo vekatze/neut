@@ -94,7 +94,6 @@ data RawTermF a
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | IncludeText C C Hint (T.Text, C)
   | With (KeywordClause a)
-  | Projection a (Hint, RawIdent) Loc
   | Brace C (a, C)
   | Pointer
   | Void

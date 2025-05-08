@@ -163,33 +163,10 @@ rawTerm' h m headSymbol c = do
               rawTermPiElimCont h (m :< RT.Var name, c)
             ]
 
-rawTermProjection :: Handle -> Parser ([((Hint, T.Text), Loc)], C)
-rawTermProjection h = do
-  choice
-    [ do
-        c1 <- delimiter "::"
-        (mv, c) <- var h
-        loc <- getCurrentLoc
-        (mvs, c') <- rawTermProjection h
-        return ((mv, loc) : mvs, c1 ++ c ++ c'),
-      do
-        return ([], [])
-    ]
-
 rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
-rawTermPiElimCont h (e, c) = do
-  (projections, cProj) <- rawTermProjection h
-  let e'@(m :< _) = foldProjection e projections
+rawTermPiElimCont h (e@(m :< _), c) = do
   argListList <- many $ seriesParen (rawExpr h)
-  return $ foldPiElim m (e', c ++ cProj) argListList
-
-foldProjection :: RT.RawTerm -> [((Hint, T.Text), Loc)] -> RT.RawTerm
-foldProjection e projections =
-  case projections of
-    [] ->
-      e
-    (proj@(mProj, _), loc) : rest ->
-      foldProjection (mProj :< RT.Projection e proj loc) rest
+  return $ foldPiElim m (e, c) argListList
 
 rawTermPi :: Handle -> Parser (RT.RawTerm, C)
 rawTermPi h = do
