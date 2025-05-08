@@ -1,0 +1,17 @@
+module Aux.Logger.Move.Debug (report) where
+
+import Aux.Color.Move.Print qualified as Color
+import Aux.Color.Rule.Text qualified as Color
+import Aux.Logger.Rule.Handle
+import Control.Monad (when)
+import Data.Text qualified as T
+import Data.Time (diffUTCTime, getCurrentTime)
+import System.Console.ANSI
+
+report :: Handle -> T.Text -> IO ()
+report h message = do
+  when (_enableDebugMode h) $ do
+    currentTime <- getCurrentTime
+    let elapsedTime = diffUTCTime currentTime (_baseTime h)
+    let elapsedTime' = Color.pack [SetColor Foreground Vivid Black] (T.pack $ _formatNominalDiffTime elapsedTime)
+    Color.printStdErr (_colorHandle h) $ elapsedTime' <> " " <> Color.pack' message <> "\n"
