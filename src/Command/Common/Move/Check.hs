@@ -14,8 +14,11 @@ import Data.Text qualified as T
 import Error.Move.Run (runEIO)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Move.Module.GetModule qualified as GetModule
 import Kernel.Common.Rule.Cache
+import Kernel.Common.Rule.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.Source (Source (sourceFilePath))
@@ -23,8 +26,6 @@ import Kernel.Common.Rule.Target
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Load.Move.Load qualified as Load
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Parse qualified as Parse

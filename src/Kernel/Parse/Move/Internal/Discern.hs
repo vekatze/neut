@@ -13,6 +13,13 @@ import Data.Vector qualified as V
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
 import Gensym.Move.Gensym qualified as Gensym
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Move.Handle.Local.SymLoc qualified as SymLoc
+import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
+import Kernel.Common.Move.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Rule.Arch qualified as Arch
 import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Const
@@ -21,13 +28,6 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as OS
 import Kernel.Common.Rule.Platform qualified as Platform
 import Kernel.Common.Rule.TopCandidate
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
-import Kernel.Move.Context.Global.Platform qualified as Platform
-import Kernel.Move.Context.Local.Locator qualified as Locator
-import Kernel.Move.Context.Local.SymLoc qualified as SymLoc
-import Kernel.Move.Context.Local.Tag qualified as Tag
-import Kernel.Move.Context.Local.TopCandidate qualified as TopCandidate
 import Kernel.Parse.Move.Internal.Discern.Data
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Name

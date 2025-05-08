@@ -20,18 +20,21 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Move.Run (forP, liftMaybe, runEIO)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Move.Module.GetModule qualified as GetModule
 import Kernel.Common.Rule.Cache qualified as Cache
+import Kernel.Common.Rule.Handle.Global.Antecedent qualified as Antecedent
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.LocalVarTree qualified as LVT
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.RawImportSummary
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.TopCandidate
-import Kernel.Move.Context.Global.Antecedent qualified as Antecedent
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Rule.BaseName qualified as BN

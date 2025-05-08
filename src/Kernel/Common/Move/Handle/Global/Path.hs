@@ -1,6 +1,5 @@
-module Kernel.Move.Context.Global.Path
-  ( Handle (..),
-    new,
+module Kernel.Common.Move.Handle.Global.Path
+  ( new,
     ensureNotInDependencyDir,
     getBaseName,
     getExecutableOutputPath,
@@ -28,15 +27,17 @@ import Data.Time
 import Ens.Rule.Ens qualified as E
 import Ens.Rule.Ens.ToDoc qualified as E
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Global.Path
+import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source qualified as Src
 import Kernel.Common.Rule.Target qualified as Target
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Platform qualified as Platform
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.Digest
 import Language.Common.Rule.ModuleID qualified as MID
@@ -46,16 +47,9 @@ import Path qualified as P
 import Path.IO qualified as P
 import Path.Move.Read (readText)
 
-data Handle = Handle
-  { cacheRef :: IORef (Maybe String),
-    loggerHandle :: Logger.Handle,
-    envHandle :: Env.Handle,
-    platformHandle :: Platform.Handle
-  }
-
 new :: Env.Handle -> Platform.Handle -> Logger.Handle -> IO Handle
-new envHandle platformHandle loggerHandle = do
-  cacheRef <- newIORef Nothing
+new _envHandle _platformHandle _loggerHandle = do
+  _cacheRef <- newIORef Nothing
   return $ Handle {..}
 
 getBaseName :: Path Abs File -> EIO T.Text
@@ -86,20 +80,20 @@ getExecutableOutputPath h targetOrZen mainModule = do
 
 getBuildDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
 getBuildDir h t baseModule = do
-  baseBuildDir <- Platform.getBaseBuildDir (platformHandle h) baseModule
+  baseBuildDir <- Platform.getBaseBuildDir (_platformHandle h) baseModule
   buildSignature <- getBuildSignature h t
   buildPrefix <- P.parseRelDir $ "build-" ++ buildSignature
   return $ baseBuildDir </> buildPrefix
 
 getBuildSignature :: Handle -> Target.Target -> EIO String
 getBuildSignature h t = do
-  sigCache <- liftIO $ readIORef (cacheRef h)
+  sigCache <- liftIO $ readIORef (_cacheRef h)
   case sigCache of
     Just sig -> do
       return sig
     Nothing -> do
-      let clangDigest = Platform.getClangDigest (platformHandle h)
-      let MainModule m = Env.getMainModule (envHandle h)
+      let clangDigest = Platform.getClangDigest (_platformHandle h)
+      let MainModule m = Env.getMainModule (_envHandle h)
       clangOption <- getClangOption t m
       moduleEns' <- liftIO $ readText (moduleLocation m)
       let ens =
@@ -111,7 +105,7 @@ getBuildSignature h t = do
                 ("module-configuration", _m :< E.String moduleEns')
               ]
       let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
-      liftIO $ writeIORef (cacheRef h) $ Just sig
+      liftIO $ writeIORef (_cacheRef h) $ Just sig
       return sig
 
 getClangOption :: Target.Target -> Module -> EIO CL.ClangOption

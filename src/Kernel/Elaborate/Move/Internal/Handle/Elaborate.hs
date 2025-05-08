@@ -12,6 +12,16 @@ import Data.Maybe (fromMaybe)
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Rule.Const (defaultInlineLimit)
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.Rule.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Rule.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Rule.Handle.Global.Path qualified as Path
+import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Rule.Handle.Global.Type qualified as Type
+import Kernel.Common.Rule.Handle.Local.RawImportSummary qualified as RawImportSummary
+import Kernel.Common.Rule.Handle.Local.SymLoc qualified as SymLoc
+import Kernel.Common.Rule.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Rule.Module (Module (moduleInlineLimit))
 import Kernel.Common.Rule.Source
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
@@ -23,16 +33,6 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.WeakTerm.Fill qualified as Fill
 import Kernel.Elaborate.Rule.HoleSubst (HoleSubst)
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
-import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
-import Kernel.Move.Context.Global.OptimizableData qualified as OptimizableData
-import Kernel.Move.Context.Global.Path qualified as Path
-import Kernel.Move.Context.Global.Platform qualified as Platform
-import Kernel.Move.Context.Global.Type qualified as Type
-import Kernel.Move.Context.Local.RawImportSummary qualified as RawImportSummary
-import Kernel.Move.Context.Local.SymLoc qualified as SymLoc
-import Kernel.Move.Context.Local.TopCandidate qualified as TopCandidate
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Language.Common.Rule.Binder

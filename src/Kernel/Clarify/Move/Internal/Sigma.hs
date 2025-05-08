@@ -17,7 +17,8 @@ import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
-import Kernel.Move.Context.Local.Locator qualified as Locator
+import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT

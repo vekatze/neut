@@ -13,11 +13,11 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Const qualified as C
 import Kernel.Common.Rule.GlobalName qualified as GN
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Local.Locator qualified as Locator
-import Kernel.Move.Context.Local.Tag qualified as Tag
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap

@@ -18,6 +18,12 @@ import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
 import Gensym.Move.Trick qualified as Gensym
+import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
+import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Move.Handle.Global.Type qualified as Type
+import Kernel.Common.Move.Handle.Local.RawImportSummary qualified as RawImportSummary
+import Kernel.Common.Move.Handle.Local.SymLoc qualified as SymLoc
+import Kernel.Common.Move.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Const (holeLiteral)
@@ -34,12 +40,6 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
-import Kernel.Move.Context.Global.GlobalRemark qualified as GlobalRemark
-import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
-import Kernel.Move.Context.Global.Type qualified as Type
-import Kernel.Move.Context.Local.RawImportSummary qualified as RawImportSummary
-import Kernel.Move.Context.Local.SymLoc qualified as SymLoc
-import Kernel.Move.Context.Local.TopCandidate qualified as TopCandidate
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as AN

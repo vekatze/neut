@@ -7,10 +7,12 @@ where
 
 import Control.Monad
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Global.Path qualified as Path
+import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Module (extractModule)
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Path qualified as Path
-import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Path.IO

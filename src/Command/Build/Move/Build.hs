@@ -15,12 +15,12 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error (Error)
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Target
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.Raise (raiseError')
 import Prelude hiding (log)

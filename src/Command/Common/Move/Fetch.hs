@@ -22,13 +22,14 @@ import Ens.Rule.Ens qualified as E
 import Ens.Rule.Ens qualified as SE
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.Module qualified as Module
 import Kernel.Common.Move.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Move.RunProcess qualified as RunProcess
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module (keyDependency, keyDigest, keyEnablePreset, keyMirror, moduleLocation)
 import Kernel.Common.Rule.Module qualified as M
 import Kernel.Common.Rule.ModuleURL
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Module qualified as Module
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.Raise (raiseError')
 import Language.Common.Rule.BaseName (isCapitalized)

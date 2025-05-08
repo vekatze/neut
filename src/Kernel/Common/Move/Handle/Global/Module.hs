@@ -1,6 +1,5 @@
-module Kernel.Move.Context.Global.Module
-  ( Handle,
-    new,
+module Kernel.Common.Move.Handle.Global.Module
+  ( new,
     getModuleFilePath,
     getModuleDirByID,
     getModuleCacheMap,
@@ -20,6 +19,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Handle.Global.Module
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Source qualified as Source
@@ -32,13 +32,9 @@ import Path
 import Path.IO
 import System.Environment
 
-newtype Handle = Handle
-  { moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
-  }
-
 new :: IO Handle
 new = do
-  moduleCacheMapRef <- newIORef Map.empty
+  _moduleCacheMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 getModuleFilePath :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs File)
@@ -48,11 +44,11 @@ getModuleFilePath mainModule mHint moduleID = do
 
 getModuleCacheMap :: Handle -> IO (Map.HashMap (Path Abs File) Module)
 getModuleCacheMap h =
-  readIORef (moduleCacheMapRef h)
+  readIORef (_moduleCacheMapRef h)
 
 insertToModuleCacheMap :: Handle -> Path Abs File -> Module -> IO ()
 insertToModuleCacheMap h k v =
-  modifyIORef' (moduleCacheMapRef h) $ Map.insert k v
+  modifyIORef' (_moduleCacheMapRef h) $ Map.insert k v
 
 getModuleDirByID :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs Dir)
 getModuleDirByID (MainModule pivotModule) mHint moduleID = do
@@ -109,21 +105,12 @@ ensureFileModuleSanity filePath mainModule = do
 getAllSourcePathInModule :: Module -> EIO [Path Abs File]
 getAllSourcePathInModule baseModule = do
   (_, filePathList) <- listDirRecur (getSourceDir baseModule)
-  return $ filter hasSourceExtension filePathList
+  return $ filter _hasSourceExtension filePathList
 
 getAllSourceInModule :: Module -> EIO [Source.Source]
 getAllSourceInModule baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
   mapM (sourceFromPath baseModule) sourcePathList
-
-hasSourceExtension :: Path Abs File -> Bool
-hasSourceExtension path =
-  case splitExtension path of
-    Just (_, ext)
-      | ext == sourceFileExtension ->
-          True
-    _ ->
-      False
 
 getDependencyDirPath :: Module -> EIO (Path Abs Dir)
 getDependencyDirPath baseModule = do

@@ -9,14 +9,15 @@ where
 import Data.Maybe (catMaybes)
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Module (getAllSourcePathInModule)
+import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Move.Source.ShiftToLatest qualified as STL
 import Kernel.Common.Rule.Cache
+import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target (Target (Peripheral))
-import Kernel.Move.Context.Global.Module (getAllSourcePathInModule)
-import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 

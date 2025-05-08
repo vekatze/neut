@@ -15,10 +15,10 @@ import Ens.Move.Parse qualified as EnsParse
 import Ens.Rule.Ens.ToDoc qualified as Ens
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Module.GetEnabledPreset qualified as GetEnabledPreset
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module (MainModule (MainModule))
 import Kernel.Common.Rule.Target
 import Kernel.Load.Move.Load qualified as Load
-import Kernel.Move.Context.Global.Env qualified as Env
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Internal.Program qualified as Parse

@@ -14,12 +14,12 @@ import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Emit.Move.Internal.LowComp qualified as EmitLowComp
 import Kernel.Emit.Rule.Builder
 import Kernel.Emit.Rule.LowType
 import Kernel.Emit.Rule.LowValue
 import Kernel.Emit.Rule.PrimType (emitPrimType)
-import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.BaseLowType qualified as BLT

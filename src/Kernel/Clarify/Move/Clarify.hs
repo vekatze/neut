@@ -24,10 +24,12 @@ import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Move.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
+import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Rule.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.OptimizableData qualified as OD
-import Kernel.Move.Context.Global.OptimizableData qualified as OptimizableData
-import Kernel.Move.Context.Global.Platform qualified as Platform
-import Kernel.Move.Context.Local.Locator qualified as Locator
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Language.Common.Move.CreateSymbol qualified as Gensym

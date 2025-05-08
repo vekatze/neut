@@ -11,9 +11,9 @@ import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.Module.GetModule qualified as GetModule
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Global.Module qualified as Module
 import Kernel.Common.Rule.Module
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Module qualified as Module
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ModuleAlias qualified as MA

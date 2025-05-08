@@ -1,6 +1,5 @@
-module Kernel.Move.Context.Local.Tag
-  ( Handle,
-    new,
+module Kernel.Common.Move.Handle.Local.Tag
+  ( new,
     get,
     insertFileLoc,
     insertLocalVar,
@@ -14,6 +13,7 @@ where
 import Control.Monad (unless, when)
 import Data.IORef
 import Data.Text qualified as T
+import Kernel.Common.Rule.Handle.Local.Tag
 import Kernel.Common.Rule.LocationTree qualified as LT
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -23,24 +23,20 @@ import Language.Common.Rule.IsConstLike
 import Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
-newtype Handle = Handle
-  { tagMapRef :: IORef LT.LocationTree
-  }
-
 new :: IO Handle
 new = do
-  tagMapRef <- newIORef LT.empty
+  _tagMapRef <- newIORef LT.empty
   return $ Handle {..}
 
 get :: Handle -> IO LT.LocationTree
 get h =
-  readIORef $ tagMapRef h
+  readIORef $ _tagMapRef h
 
 insertFileLoc :: Handle -> Hint -> Int -> Hint -> IO ()
 insertFileLoc h mUse nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
-    modifyIORef' (tagMapRef h) $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
+    modifyIORef' (_tagMapRef h) $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
 
 insertLocalVar :: Handle -> Hint -> Ident -> Hint -> IO ()
 insertLocalVar h mUse ident@(I (var, varID)) mDef = do
@@ -63,7 +59,7 @@ insert :: Handle -> Hint -> LT.LocType -> Int -> Hint -> IO ()
 insert h mUse locType nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
-    modifyIORef' (tagMapRef h) $ LT.insert locType (l, (c, c + nameLength)) mDef
+    modifyIORef' (_tagMapRef h) $ LT.insert locType (l, (c, c + nameLength)) mDef
 
 insertLocator :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> Int -> Hint -> IO ()
 insertLocator h mUse dd isConstLike nameLength mDef = do

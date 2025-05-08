@@ -1,6 +1,5 @@
-module Kernel.Move.Context.Global.Platform
-  ( Handle,
-    new,
+module Kernel.Common.Move.Handle.Global.Platform
+  ( new,
     getArch,
     getDataSizeValue,
     getDataSize,
@@ -22,7 +21,7 @@ import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Arch qualified as Arch
 import Kernel.Common.Rule.Const (envVarClang)
-import Kernel.Common.Rule.DataSize qualified as DS
+import Kernel.Common.Rule.Handle.Global.Platform
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.OS qualified as O
 import Kernel.Common.Rule.Platform qualified as P
@@ -39,43 +38,14 @@ import System.Environment (lookupEnv)
 import System.Info qualified as SI
 import System.Process (CmdSpec (RawCommand))
 
-data Handle = Handle
-  { arch :: Arch.Arch,
-    os :: O.OS,
-    clangDigest :: T.Text,
-    baseSize :: DS.DataSize
-  }
-
 new :: Logger.Handle -> IO Handle
 new loggerHandle = do
   run loggerHandle $ do
-    arch <- getArch' Nothing
-    baseSize <- Arch.dataSizeOf <$> getArch' Nothing
-    os <- getOS' Nothing
-    clangDigest <- calculateClangDigest loggerHandle
+    _arch <- getArch' Nothing
+    _baseSize <- Arch.dataSizeOf <$> getArch' Nothing
+    _os <- getOS' Nothing
+    _clangDigest <- calculateClangDigest loggerHandle
     return $ Handle {..}
-
-getDataSizeValue :: Handle -> Int
-getDataSizeValue h =
-  DS.reify $ baseSize h
-
-getArch :: Handle -> Arch.Arch
-getArch =
-  arch
-
-getOS :: Handle -> O.OS
-getOS =
-  os
-
-getPlatform :: Handle -> P.Platform
-getPlatform h = do
-  let arch = getArch h
-  let os = getOS h
-  P.Platform {arch, os}
-
-getDataSize :: Handle -> DS.DataSize
-getDataSize =
-  baseSize
 
 getArch' :: Maybe Hint -> EIO Arch.Arch
 getArch' mm = do
@@ -108,10 +78,6 @@ getOS' mm = do
           raiseError m $ "Unknown OS: " <> T.pack os
         Nothing ->
           raiseError' $ "Unknown OS: " <> T.pack os
-
-getClangDigest :: Handle -> T.Text
-getClangDigest = do
-  clangDigest
 
 getClang :: IO String
 getClang = do

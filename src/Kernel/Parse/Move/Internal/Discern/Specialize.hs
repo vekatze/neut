@@ -8,8 +8,8 @@ import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.Vector qualified as V
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Rule.OptimizableData qualified as OD
-import Kernel.Move.Context.Global.OptimizableData qualified as OptimizableData
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema
 import Kernel.Parse.Rule.Pattern

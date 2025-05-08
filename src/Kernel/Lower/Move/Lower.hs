@@ -26,14 +26,15 @@ import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Arch
 import Kernel.Common.Rule.Arch qualified as A
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.DataSize qualified as DS
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Target
 import Kernel.Lower.Rule.Cancel
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Platform qualified as Platform
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN

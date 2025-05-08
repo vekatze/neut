@@ -13,9 +13,10 @@ import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.Path qualified as Path
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.ModuleURL (ModuleURL (ModuleURL))
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Prelude hiding (log)
 

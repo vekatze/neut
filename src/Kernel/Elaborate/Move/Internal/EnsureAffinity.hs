@@ -14,13 +14,13 @@ import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Rule.OptimizableData
 import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Rule.Stuck qualified as Stuck
-import Kernel.Move.Context.Global.OptimizableData qualified as OptimizableData
-import Kernel.Move.Context.Global.Type qualified as Type
 import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.Lam qualified as AttrL

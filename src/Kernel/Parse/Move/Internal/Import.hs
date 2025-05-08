@@ -12,19 +12,22 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Local.RawImportSummary qualified as RawImportSummary
+import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Move.Module.GetEnabledPreset qualified as GetEnabledPreset
 import Kernel.Common.Move.Module.GetModule qualified as GetModule
 import Kernel.Common.Move.Source.ShiftToLatest qualified as STL
 import Kernel.Common.Rule.AliasInfo qualified as AI
 import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Global.Module qualified as Module
+import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Rule.Handle.Local.RawImportSummary qualified as RawImportSummary
+import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Import (ImportItem (..))
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Module qualified as Module
-import Kernel.Move.Context.Local.Locator qualified as Locator
-import Kernel.Move.Context.Local.RawImportSummary qualified as RawImportSummary
-import Kernel.Move.Context.Local.Tag qualified as Tag
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias

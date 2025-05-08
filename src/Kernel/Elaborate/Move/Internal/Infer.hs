@@ -16,7 +16,13 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
+import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
+import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Rule.Const
+import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
@@ -26,11 +32,6 @@ import Kernel.Elaborate.Move.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Elaborate.Move.Internal.Handle.WeakType qualified as WeakType
 import Kernel.Elaborate.Move.Internal.Unify qualified as Unify
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.KeyArg qualified as KeyArg
-import Kernel.Move.Context.Global.OptimizableData qualified as OptimizableData
-import Kernel.Move.Context.Global.Platform qualified as Platform
-import Kernel.Move.Context.Global.Type qualified as Type
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.Annotation qualified as Annotation

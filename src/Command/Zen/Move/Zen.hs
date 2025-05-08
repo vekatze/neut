@@ -13,13 +13,14 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Env qualified as Env
+import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.BuildMode qualified as BM
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module (Module (moduleZenConfig), extractModule)
 import Kernel.Common.Rule.OutputKind
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig qualified as Z
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Global.Path qualified as Path
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Path.IO (resolveFile')
 import Prelude hiding (log)

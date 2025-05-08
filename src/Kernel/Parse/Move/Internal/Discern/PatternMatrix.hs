@@ -11,8 +11,8 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Local.Tag qualified as Tag
+import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Parse.Move.Internal.Discern.Fallback qualified as PATF
 import Kernel.Parse.Move.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Move.Internal.Discern.Noema

@@ -1,6 +1,5 @@
-module Kernel.Move.Context.Global.Type
-  ( Handle,
-    new,
+module Kernel.Common.Move.Handle.Global.Type
+  ( new,
     insert',
     lookup',
     lookupMaybe',
@@ -11,24 +10,21 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Rule.Handle.Global.Type
 import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.WeakTerm.Rule.WeakTerm
 import Logger.Rule.Hint
 import Prelude hiding (lookup)
 
-newtype Handle = Handle
-  { typeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakTerm)
-  }
-
 new :: IO Handle
 new = do
-  typeEnvRef <- newIORef Map.empty
+  _typeEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert' :: Handle -> DD.DefiniteDescription -> WeakTerm -> IO ()
 insert' h k v =
-  modifyIORef' (typeEnvRef h) $ Map.insert k v
+  modifyIORef' (_typeEnvRef h) $ Map.insert k v
 
 lookup' :: Handle -> Hint -> DD.DefiniteDescription -> EIO WeakTerm
 lookup' h m k = do
@@ -41,5 +37,5 @@ lookup' h m k = do
 
 lookupMaybe' :: Handle -> DD.DefiniteDescription -> IO (Maybe WeakTerm)
 lookupMaybe' h k = do
-  typeEnv <- readIORef (typeEnvRef h)
+  typeEnv <- readIORef (_typeEnvRef h)
   return $ Map.lookup k typeEnv

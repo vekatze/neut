@@ -1,10 +1,8 @@
-module Kernel.Move.Context.Global.Env
-  ( Handle,
-    new,
+module Kernel.Common.Move.Handle.Global.Env
+  ( new,
     getBuildMode,
     getMainModule,
     setBuildMode,
-    getSilentMode,
     getMainDefiniteDescriptionByTarget,
   )
 where
@@ -16,6 +14,7 @@ import Error.Move.Run (run)
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Module.FromPath qualified as ModuleReflect
 import Kernel.Common.Rule.BuildMode qualified as BM
+import Kernel.Common.Rule.Handle.Global.Env
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Target qualified as Target
@@ -29,17 +28,11 @@ import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Logger.Rule.Handle qualified as Logger
 import Path
 
-data Handle = Handle
-  { buildModeRef :: IORef BM.BuildMode,
-    enableSilentMode :: Bool,
-    mainModule :: MainModule
-  }
-
 new :: Logger.Handle -> Bool -> Maybe (Path Abs File) -> IO Handle
-new loggerHandle enableSilentMode moduleFilePathOrNone = do
-  buildModeRef <- newIORef BM.Develop
+new loggerHandle _enableSilentMode moduleFilePathOrNone = do
+  _buildModeRef <- newIORef BM.Develop
   run loggerHandle $ do
-    mainModule <-
+    _mainModule <-
       MainModule
         <$> case moduleFilePathOrNone of
           Just moduleFilePath ->
@@ -48,21 +41,13 @@ new loggerHandle enableSilentMode moduleFilePathOrNone = do
             ModuleReflect.fromCurrentPath
     return $ Handle {..}
 
-getMainModule :: Handle -> MainModule
-getMainModule =
-  mainModule
-
 setBuildMode :: Handle -> BM.BuildMode -> IO ()
 setBuildMode h =
-  writeIORef (buildModeRef h)
+  writeIORef (_buildModeRef h)
 
 getBuildMode :: Handle -> IO BM.BuildMode
 getBuildMode h =
-  readIORef (buildModeRef h)
-
-getSilentMode :: Handle -> Bool
-getSilentMode =
-  enableSilentMode
+  readIORef (_buildModeRef h)
 
 getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> EIO DD.DefiniteDescription
 getMainDefiniteDescriptionByTarget h targetOrZen = do

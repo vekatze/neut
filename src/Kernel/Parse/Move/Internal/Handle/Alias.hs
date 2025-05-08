@@ -13,13 +13,15 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
+import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.AliasInfo
+import Kernel.Common.Rule.Handle.Global.Antecedent qualified as Antecedent
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap
-import Kernel.Move.Context.Global.Antecedent qualified as Antecedent
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Local.Locator qualified as Locator
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL

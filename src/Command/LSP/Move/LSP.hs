@@ -10,7 +10,7 @@ import Command.LSP.Move.Internal.Server qualified as L
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Context.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Move.Scene.Init.Global qualified as Global
 
 data Handle = Handle

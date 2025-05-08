@@ -1,6 +1,5 @@
-module Kernel.Move.Context.Global.Artifact
-  ( Handle,
-    new,
+module Kernel.Common.Move.Handle.Global.Artifact
+  ( new,
     insert,
     lookup,
   )
@@ -12,26 +11,23 @@ import Data.IORef
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Rule.Artifact qualified as A
+import Kernel.Common.Rule.Handle.Global.Artifact
 import Language.Common.Move.Raise (raiseCritical')
 import Path
 import Prelude hiding (lookup)
 
-newtype Handle = Handle
-  { artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
-  }
-
 new :: IO Handle
 new = do
-  artifactMapRef <- newIORef Map.empty
+  _artifactMapRef <- newIORef Map.empty
   return $ Handle {..}
 
 insert :: Handle -> Path Abs File -> A.ArtifactTime -> IO ()
 insert h path artifactTime =
-  modifyIORef' (artifactMapRef h) $ Map.insert path artifactTime
+  modifyIORef' (_artifactMapRef h) $ Map.insert path artifactTime
 
 lookup :: Handle -> Path Abs File -> EIO A.ArtifactTime
 lookup h path = do
-  amap <- liftIO $ readIORef (artifactMapRef h)
+  amap <- liftIO $ readIORef (_artifactMapRef h)
   case Map.lookup path amap of
     Just artifactTime ->
       return artifactTime

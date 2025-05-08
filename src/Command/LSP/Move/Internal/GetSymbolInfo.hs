@@ -13,12 +13,12 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Move.ManageCache (invalidate)
 import Kernel.Common.Rule.LocationTree qualified as LT
 import Kernel.Common.Rule.Source (Source (sourceFilePath, sourceModule))
 import Kernel.Common.Rule.Target (Target (Peripheral))
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
-import Kernel.Move.Context.Global.Type qualified as Type
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types

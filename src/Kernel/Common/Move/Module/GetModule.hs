@@ -12,9 +12,10 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Move.Handle.Global.Module qualified as Module
 import Kernel.Common.Move.Module.FromPath qualified as ModuleReflect
+import Kernel.Common.Rule.Handle.Global.Module qualified as Module
 import Kernel.Common.Rule.Module
-import Kernel.Move.Context.Global.Module qualified as Module
 import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.ModuleAlias (ModuleAlias)

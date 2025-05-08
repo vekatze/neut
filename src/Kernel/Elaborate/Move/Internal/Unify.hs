@@ -15,6 +15,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
+import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Hole qualified as Hole
@@ -23,7 +24,6 @@ import Kernel.Elaborate.Rule.Constraint (SuspendedConstraint)
 import Kernel.Elaborate.Rule.Constraint qualified as C
 import Kernel.Elaborate.Rule.HoleSubst qualified as HS
 import Kernel.Elaborate.Rule.Stuck qualified as Stuck
-import Kernel.Move.Context.Global.Type qualified as Type
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Move.Raise (raiseCritical)
 import Language.Common.Rule.Attr.Data qualified as AttrD

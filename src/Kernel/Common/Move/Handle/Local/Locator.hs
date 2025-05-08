@@ -1,6 +1,5 @@
-module Kernel.Move.Context.Local.Locator
-  ( Handle,
-    new,
+module Kernel.Common.Move.Handle.Local.Locator
+  ( new,
     attachCurrentLocator,
     activateSpecifiedNames,
     getStaticFileContent,
@@ -18,13 +17,15 @@ import Data.IORef
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.AliasInfo (MustUpdateTag)
 import Kernel.Common.Rule.GlobalName qualified as GN
+import Kernel.Common.Rule.Handle.Global.Env qualified as Env
+import Kernel.Common.Rule.Handle.Local.Locator
+import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Module qualified as Module
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap (TopNameMap)
-import Kernel.Move.Context.Global.Env qualified as Env
-import Kernel.Move.Context.Local.Tag qualified as Tag
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -36,30 +37,13 @@ import Path
 import Path.IO
 import Path.Move.Read (readText)
 
--- the structure of a name of a global variable:
---
---     some.path.to.item.some-function
---     ----------------- -------------
---     ↑ global locator  ↑ local locator
---     ------------------------------------------------
---     ↑ the definite description of a global variable `some-function` (up-to module alias)
-
-data Handle = Handle
-  { tagHandle :: Tag.Handle,
-    envHandle :: Env.Handle,
-    activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
-    activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
-    activeGlobalLocatorListRef :: IORef [SGL.StrictGlobalLocator],
-    currentGlobalLocatorRef :: IORef (Maybe SGL.StrictGlobalLocator)
-  }
-
 new :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
-new envHandle tagHandle source = do
+new _envHandle _tagHandle source = do
   cgl <- constructGlobalLocator source
-  activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
-  activeStaticFileListRef <- liftIO $ newIORef Map.empty
-  activeGlobalLocatorListRef <- liftIO $ newIORef [cgl, SGL.llvmGlobalLocator]
-  currentGlobalLocatorRef <- liftIO $ newIORef (Just cgl)
+  _activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
+  _activeStaticFileListRef <- liftIO $ newIORef Map.empty
+  _activeGlobalLocatorListRef <- liftIO $ newIORef [cgl, SGL.llvmGlobalLocator]
+  _currentGlobalLocatorRef <- liftIO $ newIORef (Just cgl)
   return $ Handle {..}
 
 activateSpecifiedNames ::
@@ -79,8 +63,8 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
       Just (mDef, gn) -> do
         when mustUpdateTag $
           liftIO $
-            Tag.insertGlobalVar (tagHandle h) m dd (GN.getIsConstLike gn) mDef
-        activeDefiniteDescriptionList <- liftIO $ readIORef (activeDefiniteDescriptionListRef h)
+            Tag.insertGlobalVar (_tagHandle h) m dd (GN.getIsConstLike gn) mDef
+        activeDefiniteDescriptionList <- liftIO $ readIORef (_activeDefiniteDescriptionListRef h)
         case Map.lookup ll activeDefiniteDescriptionList of
           Just existingDD
             | dd /= existingDD -> do
@@ -94,7 +78,7 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
                     <> "\n- "
                     <> existingDD'
           _ ->
-            liftIO $ modifyIORef' (activeDefiniteDescriptionListRef h) $ Map.insert ll dd
+            liftIO $ modifyIORef' (_activeDefiniteDescriptionListRef h) $ Map.insert ll dd
 
 activateStaticFile :: Handle -> Hint -> T.Text -> Path Abs File -> EIO ()
 activateStaticFile h m key path = do
@@ -102,14 +86,14 @@ activateStaticFile h m key path = do
   if b
     then do
       content <- liftIO $ readText path
-      liftIO $ modifyIORef' (activeStaticFileListRef h) $ Map.insert key (path, content)
+      liftIO $ modifyIORef' (_activeStaticFileListRef h) $ Map.insert key (path, content)
     else
       raiseError m $
         "The static file `" <> key <> "` does not exist at: " <> T.pack (toFilePath path)
 
 getStaticFileContent :: Handle -> T.Text -> IO (Maybe (Path Abs File, T.Text))
 getStaticFileContent h key = do
-  activeStaticFileList <- readIORef (activeStaticFileListRef h)
+  activeStaticFileList <- readIORef (_activeStaticFileListRef h)
   return $ Map.lookup key activeStaticFileList
 
 attachCurrentLocator ::
@@ -129,7 +113,7 @@ getNameLifter h = do
 
 getCurrentGlobalLocator :: Handle -> IO SGL.StrictGlobalLocator
 getCurrentGlobalLocator h = do
-  sglOrNone <- readIORef (currentGlobalLocatorRef h)
+  sglOrNone <- readIORef (_currentGlobalLocatorRef h)
   case sglOrNone of
     Just sgl ->
       return sgl
@@ -139,7 +123,7 @@ getCurrentGlobalLocator h = do
 getPossibleReferents :: Handle -> LL.LocalLocator -> IO [DD.DefiniteDescription]
 getPossibleReferents h localLocator = do
   cgl <- getCurrentGlobalLocator h
-  agls <- readIORef (activeGlobalLocatorListRef h)
+  agls <- readIORef (_activeGlobalLocatorListRef h)
   importedDDs <- getImportedReferents h localLocator
   let dds = map (`DD.new` localLocator) agls
   let dd = DD.new cgl localLocator
@@ -147,7 +131,7 @@ getPossibleReferents h localLocator = do
 
 getImportedReferents :: Handle -> LL.LocalLocator -> IO [DD.DefiniteDescription]
 getImportedReferents h ll = do
-  activeDefiniteDescriptionList <- readIORef (activeDefiniteDescriptionListRef h)
+  activeDefiniteDescriptionList <- readIORef (_activeDefiniteDescriptionListRef h)
   return $ maybeToList $ Map.lookup ll activeDefiniteDescriptionList
 
 constructGlobalLocator :: Source.Source -> EIO SGL.StrictGlobalLocator
