@@ -2,7 +2,6 @@ module Kernel.Parse.Rule.Vector (swap) where
 
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Language.Common.Rule.Error
 import Library.Error.Rule.Error
 import Library.Logger.Rule.Hint
 

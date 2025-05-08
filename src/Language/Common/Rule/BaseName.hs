@@ -40,7 +40,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import GHC.Generics
 import Language.Common.Rule.Const
-import Language.Common.Rule.Error
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.PrimType.ToText qualified as PT
 import Library.Error.Rule.Error

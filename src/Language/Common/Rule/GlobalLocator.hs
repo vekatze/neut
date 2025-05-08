@@ -13,7 +13,6 @@ import Data.Text qualified as T
 import GHC.Generics
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
-import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.ModuleAlias hiding (reify)
 import Language.Common.Rule.SourceLocator qualified as SL

@@ -20,7 +20,6 @@ import Kernel.Common.Rule.ZenConfig (ZenConfig (..))
 import Language.Common.Move.Raise (raiseError)
 import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest

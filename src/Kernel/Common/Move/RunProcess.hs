@@ -18,8 +18,8 @@ import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import GHC.IO.Handle qualified as GHC
-import Language.Common.Rule.Error (newError')
 import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error (newError')
 import Library.Logger.Move.Debug qualified as Logger
 import Library.Logger.Rule.Handle qualified as Logger
 import System.Exit

@@ -8,8 +8,8 @@ where
 
 import Control.Monad.Except (MonadError (throwError))
 import Data.Text qualified as T
-import Language.Common.Rule.Error qualified as E
 import Library.Error.Rule.EIO
+import Library.Error.Rule.Error qualified as E
 import Library.Logger.Rule.Hint (Hint)
 
 raiseError :: Hint -> T.Text -> EIO a

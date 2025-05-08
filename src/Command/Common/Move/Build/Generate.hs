@@ -19,8 +19,8 @@ import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.OutputKind qualified as OK
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
-import Language.Common.Rule.Error (newError')
 import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error (newError')
 import Library.Logger.Move.Debug qualified as Logger
 import Library.Logger.Rule.Handle qualified as Logger
 import Library.Path.Move.Write (writeLazyByteString)

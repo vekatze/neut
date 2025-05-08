@@ -46,13 +46,13 @@ import Kernel.Lower.Move.Lower qualified as Lower
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Move.Raise (raiseError')
-import Language.Common.Rule.Error (newError')
-import Language.Common.Rule.Error qualified as E
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.Term.Rule.Stmt (getStmtName)
 import Library.Error.Move.Run (forP, runEIO)
 import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error (newError')
+import Library.Error.Rule.Error qualified as E
 import Library.Logger.Move.Debug qualified as Logger
 import Library.Logger.Move.Log qualified as Logger
 import Library.ProgressIndicator.Move.ShowProgress qualified as Indicator

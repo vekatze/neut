@@ -34,7 +34,6 @@ import Control.Monad
 import Data.Bifunctor
 import Data.List (find, nubBy)
 import Data.Text qualified as T
-import Language.Common.Rule.Error
 import Library.Ens.Rule.EnsType qualified as ET
 import Library.Error.Rule.Error
 import Library.Logger.Rule.Hint

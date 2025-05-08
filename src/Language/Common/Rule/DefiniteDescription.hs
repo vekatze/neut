@@ -28,7 +28,6 @@ import GHC.Generics
 import Kernel.Common.Rule.Module hiding (moduleID)
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
-import Language.Common.Rule.Error
 import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.List (initLast)
 import Language.Common.Rule.LocalLocator qualified as LL

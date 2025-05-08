@@ -25,9 +25,9 @@ import Kernel.Common.Rule.OS qualified as O
 import Kernel.Common.Rule.Platform qualified as P
 import Language.Common.Move.Raise (raiseError, raiseError')
 import Language.Common.Rule.Digest (hashAndEncode)
-import Language.Common.Rule.Error (newError')
 import Library.Error.Move.Run (run)
 import Library.Error.Rule.EIO (EIO)
+import Library.Error.Rule.Error (newError')
 import Library.Logger.Move.Debug qualified as Logger
 import Library.Logger.Rule.Handle qualified as Logger
 import Library.Logger.Rule.Hint
