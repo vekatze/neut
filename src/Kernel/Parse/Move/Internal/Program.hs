@@ -4,9 +4,9 @@ module Kernel.Parse.Move.Internal.Program
   )
 where
 
-import BasicParser.Move.GetInfo
-import BasicParser.Move.Parse
-import BasicParser.Rule.Parser
+import CodeParser.Move.GetInfo
+import CodeParser.Move.Parse
+import CodeParser.Rule.Parser
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe

@@ -7,7 +7,7 @@ module Kernel.Parse.Move.Parse
   )
 where
 
-import BasicParser.Move.Parse (runParser)
+import CodeParser.Move.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map

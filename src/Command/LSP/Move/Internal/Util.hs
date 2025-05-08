@@ -6,7 +6,7 @@ module Command.LSP.Move.Internal.Util
   )
 where
 
-import BasicParser.Rule.Parser (nonSymbolCharSet)
+import CodeParser.Rule.Parser (nonSymbolCharSet)
 import Command.LSP.Rule.Lsp
 import Control.Lens hiding (Iso, List)
 import Control.Monad

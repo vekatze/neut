@@ -1,10 +1,10 @@
-module BasicParser.Move.GetInfo
+module CodeParser.Move.GetInfo
   ( getCurrentHint,
     getCurrentLoc,
   )
 where
 
-import BasicParser.Rule.Parser
+import CodeParser.Rule.Parser
 import Logger.Rule.Hint
 import Logger.Rule.Hint.Reflect (fromSourcePos)
 import Text.Megaparsec
