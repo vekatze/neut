@@ -9,19 +9,15 @@ import Control.Monad
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
-import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
-import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
-import Kernel.Common.Rule.Module (extractModule)
 import Kernel.Common.Rule.Target qualified as Target
 import Path
 import Path.IO
 import Prelude hiding (log)
 
-data Handle = Handle
-  { envHandle :: Env.Handle,
-    pathHandle :: Path.Handle
+newtype Handle = Handle
+  { pathHandle :: Path.Handle
   }
 
 new :: Global.Handle -> Handle
@@ -30,8 +26,7 @@ new (Global.Handle {..}) = do
 
 install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()
 install h targetOrZen dir = do
-  let mainModule = Env.getMainModule (envHandle h)
-  execPath <- Path.getExecutableOutputPath (pathHandle h) targetOrZen (extractModule mainModule)
+  execPath <- Path.getExecutableOutputPath (pathHandle h) targetOrZen
   case targetOrZen of
     Target.Named targetName _ -> do
       execName <- parseRelFile $ T.unpack targetName

@@ -69,7 +69,7 @@ new cfg moduleFilePathOrNone = do
   keyArgHandle <- KeyArg.new mainModule
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  pathHandle <- Path.new envHandle platformHandle loggerHandle
+  pathHandle <- Path.new mainModule platformHandle loggerHandle
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new
@@ -86,7 +86,7 @@ refresh h = do
   keyArgHandle <- KeyArg.new mainModule
   optDataHandle <- OptimizableData.new
   typeHandle <- Type.new
-  pathHandle <- Path.new (envHandle h) (platformHandle h) (loggerHandle h)
+  pathHandle <- Path.new mainModule (platformHandle h) (loggerHandle h)
   globalRemarkHandle <- GlobalRemark.new
   artifactHandle <- Artifact.new
   moduleHandle <- Module.new

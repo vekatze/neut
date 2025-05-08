@@ -44,7 +44,7 @@ new (Global.Handle {..}) = do
 link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()
 link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
   let mainModule = Env.getMainModule (envHandle h)
-  executablePath <- Path.getExecutableOutputPath (pathHandle h) target (extractModule mainModule)
+  executablePath <- Path.getExecutableOutputPath (pathHandle h) target
   isExecutableAvailable <- doesFileExist executablePath
   let freshExecutableAvailable = isJust (A.objectTime artifactTime) && isExecutableAvailable
   if shouldSkipLink || (not didPerformForeignCompilation && freshExecutableAvailable)
@@ -54,7 +54,7 @@ link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceLis
 link' :: Handle -> MainTarget -> MainModule -> [Source.Source] -> EIO ()
 link' h target (MainModule mainModule) sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint (pathHandle h) mainModule OK.Object target
-  outputPath <- Path.getExecutableOutputPath (pathHandle h) target mainModule
+  outputPath <- Path.getExecutableOutputPath (pathHandle h) target
   objectPathList <- mapM (Path.sourceToOutputPath (pathHandle h) (Main target) OK.Object) sourceList
   let moduleList = nubOrdOn moduleID $ map Source.sourceModule sourceList
   foreignDirList <- mapM (Path.getForeignDir (pathHandle h) (Main target)) moduleList

@@ -30,7 +30,6 @@ import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Const
-import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Global.Path
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Module
@@ -47,8 +46,8 @@ import Path qualified as P
 import Path.IO qualified as P
 import Path.Move.Read (readText)
 
-new :: Env.Handle -> Platform.Handle -> Logger.Handle -> IO Handle
-new _envHandle _platformHandle _loggerHandle = do
+new :: MainModule -> Platform.Handle -> Logger.Handle -> IO Handle
+new _mainModule _platformHandle _loggerHandle = do
   _cacheRef <- newIORef Nothing
   return $ Handle {..}
 
@@ -66,15 +65,16 @@ ensureNotInDependencyDir mainModule = do
     _ ->
       return ()
 
-getExecutableOutputPath :: Handle -> Target.MainTarget -> Module -> EIO (Path Abs File)
-getExecutableOutputPath h targetOrZen mainModule = do
+getExecutableOutputPath :: Handle -> Target.MainTarget -> EIO (Path Abs File)
+getExecutableOutputPath h targetOrZen = do
+  let m = extractModule $ _mainModule h
   case targetOrZen of
     Target.Named target _ -> do
-      executableDir <- getExecutableDir h (Target.Main targetOrZen) mainModule
+      executableDir <- getExecutableDir h (Target.Main targetOrZen) m
       P.resolveFile executableDir $ T.unpack target
     Target.Zen path _ -> do
-      zenExecutableDir <- getZenExecutableDir h (Target.Main targetOrZen) mainModule
-      relPath <- getRelPathFromSourceDir mainModule path
+      zenExecutableDir <- getZenExecutableDir h (Target.Main targetOrZen) m
+      relPath <- getRelPathFromSourceDir m path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
       return $ zenExecutableDir </> relPathWithoutExtension
 
@@ -93,7 +93,7 @@ getBuildSignature h t = do
       return sig
     Nothing -> do
       let clangDigest = Platform.getClangDigest (_platformHandle h)
-      let MainModule m = Env.getMainModule (_envHandle h)
+      let MainModule m = _mainModule h
       clangOption <- getClangOption t m
       moduleEns' <- liftIO $ readText (moduleLocation m)
       let ens =

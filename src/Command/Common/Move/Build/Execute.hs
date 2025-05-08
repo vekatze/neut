@@ -7,18 +7,14 @@ where
 
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
-import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.RunProcess qualified as RunProcess
-import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
-import Kernel.Common.Rule.Module (MainModule (MainModule))
 import Kernel.Common.Rule.Target
 import Path
 
 data Handle = Handle
-  { envHandle :: Env.Handle,
-    pathHandle :: Path.Handle,
+  { pathHandle :: Path.Handle,
     runProcessHandle :: RunProcess.Handle
   }
 
@@ -29,6 +25,5 @@ new (Global.Handle {..}) = do
 
 execute :: Handle -> MainTarget -> [String] -> EIO ()
 execute h target args = do
-  let MainModule mainModule = Env.getMainModule (envHandle h)
-  outputPath <- Path.getExecutableOutputPath (pathHandle h) target mainModule
+  outputPath <- Path.getExecutableOutputPath (pathHandle h) target
   RunProcess.run (runProcessHandle h) (toFilePath outputPath) args
