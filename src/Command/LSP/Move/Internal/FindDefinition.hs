@@ -10,9 +10,9 @@ import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Lens hiding (Iso, List)
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.LocationTree (LocationTree)
 import Kernel.Common.Rule.LocationTree qualified as LT
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Logger.Rule.Hint qualified as H

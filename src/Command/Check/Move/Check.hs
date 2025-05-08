@@ -10,8 +10,8 @@ import Command.Common.Move.Fetch qualified as Fetch
 import CommandParser.Rule.Config.Check
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.Log qualified as Logger
 import Logger.Rule.Log qualified as L
 

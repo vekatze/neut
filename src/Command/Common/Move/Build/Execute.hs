@@ -6,6 +6,7 @@ module Command.Common.Move.Build.Execute
 where
 
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.RunProcess qualified as RunProcess
@@ -13,7 +14,6 @@ import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.Module (MainModule (MainModule))
 import Kernel.Common.Rule.Target
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Path
 
 data Handle = Handle

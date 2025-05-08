@@ -9,7 +9,7 @@ import Command.Common.Move.Format qualified as Format
 import CommandParser.Rule.Config.FormatSource
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
-import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Path.IO
 import Path.Move.EnsureFileExistence (ensureFileExistence')
 import Path.Move.Read (readText)

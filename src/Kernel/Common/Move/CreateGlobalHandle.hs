@@ -1,4 +1,4 @@
-module Kernel.Move.Scene.Init.Global
+module Kernel.Common.Move.CreateGlobalHandle
   ( Handle (..),
     new,
     refresh,

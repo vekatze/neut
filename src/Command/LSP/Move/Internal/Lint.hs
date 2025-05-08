@@ -10,8 +10,8 @@ import Command.Common.Move.Fetch qualified as Fetch
 import Command.LSP.Move.Internal.Util (maxDiagNum, report, run)
 import Command.LSP.Rule.Lsp
 import Control.Monad
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.LSP.Server
 
 newtype Handle = Handle

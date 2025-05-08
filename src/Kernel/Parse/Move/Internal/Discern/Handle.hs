@@ -8,6 +8,8 @@ module Kernel.Parse.Move.Internal.Discern.Handle
 where
 
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
+import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Rule.Handle.Global.OptimizableData qualified as OptimizableData
@@ -16,8 +18,6 @@ import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Handle.Local.SymLoc qualified as SymLoc
 import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Handle.Local.TopCandidate qualified as TopCandidate
-import Kernel.Move.Scene.Init.Global qualified as Global
-import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Move.Internal.Handle.PreDecl qualified as PreDecl

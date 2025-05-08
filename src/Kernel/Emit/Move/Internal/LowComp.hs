@@ -11,11 +11,11 @@ import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Emit.Rule.Builder
 import Kernel.Emit.Rule.LowType
 import Kernel.Emit.Rule.LowValue
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify

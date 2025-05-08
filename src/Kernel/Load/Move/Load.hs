@@ -8,11 +8,11 @@ where
 import Data.Text qualified as T
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.Debug qualified as Logger
 import Logger.Rule.Handle qualified as Logger
 import Path.Move.Read (readText)

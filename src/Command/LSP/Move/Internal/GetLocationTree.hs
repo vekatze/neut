@@ -7,13 +7,13 @@ where
 
 import Error.Move.Run (liftMaybe)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.LocationTree qualified as LT
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target (Target (Peripheral))
-import Kernel.Move.Scene.Init.Global qualified as Global
 
 newtype Handle = Handle
   { pathHandle :: Path.Handle

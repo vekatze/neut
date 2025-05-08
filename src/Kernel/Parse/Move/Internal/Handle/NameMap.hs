@@ -17,6 +17,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
@@ -33,7 +34,6 @@ import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Common.Rule.TopNameMap
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Language.Common.Move.Raise (raiseCritical, raiseError)
 import Language.Common.Rule.ArgNum qualified as AN

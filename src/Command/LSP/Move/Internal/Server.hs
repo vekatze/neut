@@ -23,7 +23,7 @@ import Control.Monad.IO.Class
 import Data.Map.Strict qualified as M
 import Data.Maybe
 import Data.Text qualified as T
-import Kernel.Move.Scene.Init.Global qualified as Global
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Language.LSP.Logging
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message

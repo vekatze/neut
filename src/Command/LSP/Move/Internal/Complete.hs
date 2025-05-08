@@ -20,6 +20,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Move.Run (forP, liftMaybe, runEIO)
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
@@ -35,7 +36,6 @@ import Kernel.Common.Rule.RawImportSummary
 import Kernel.Common.Rule.Source
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.TopCandidate
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const (nsSep)

@@ -12,6 +12,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Error.Rule.EIO (EIO)
 import Gensym.Rule.Handle qualified as Gensym
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
+import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Local.RawImportSummary qualified as RawImportSummary
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
@@ -28,8 +30,6 @@ import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Import (ImportItem (..))
 import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Move.Scene.Init.Global qualified as Global
-import Kernel.Move.Scene.Init.Local qualified as Local
 import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused

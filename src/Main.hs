@@ -18,8 +18,8 @@ import CommandParser.Rule.Command qualified as C
 import CommandParser.Rule.Config.Remark qualified as Remark
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Move.Run (run)
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Platform (ensureExecutables)
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Logger.Move.CreateHandle qualified as Logger
 import System.IO
 

@@ -11,9 +11,9 @@ import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Monad.Trans
 import Error.Rule.EIO (EIO)
+import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Source (Source (sourceFilePath, sourceModule))
-import Kernel.Move.Scene.Init.Global qualified as Global
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
