@@ -13,6 +13,7 @@ module Kernel.Parse.Move.Internal.Handle.Unused
     getLocalLocator,
     getStaticFile,
     getVariable,
+    getUnusedLocators,
   )
 where
 
@@ -98,3 +99,9 @@ getVariable :: Handle -> IO [(Hint, Ident, VarDefKind)]
 getVariable h = do
   vars <- readIORef (unusedVariableMapRef h)
   return $ filter (\(_, var, _) -> not (isHole var)) $ IntMap.elems vars
+
+getUnusedLocators :: Handle -> IO (UnusedGlobalLocators, UnusedLocalLocators)
+getUnusedLocators h = do
+  unusedGlobalLocators <- getGlobalLocator h
+  unusedLocalLocators <- getLocalLocator h
+  return (unusedGlobalLocators, unusedLocalLocators)

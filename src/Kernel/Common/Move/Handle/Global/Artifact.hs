@@ -23,7 +23,7 @@ new = do
 
 insert :: Handle -> Path Abs File -> A.ArtifactTime -> IO ()
 insert h path artifactTime =
-  modifyIORef' (_artifactMapRef h) $ Map.insert path artifactTime
+  atomicModifyIORef' (_artifactMapRef h) (\mp -> (Map.insert path artifactTime mp, ()))
 
 lookup :: Handle -> Path Abs File -> EIO A.ArtifactTime
 lookup h path = do

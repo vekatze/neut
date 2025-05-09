@@ -61,8 +61,8 @@ data RawTermF a
   | PiElim a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimExact C a
-  | Data (AttrD.Attr BN.BaseName) BN.BaseName [a]
-  | DataIntro (AttrDI.Attr BN.BaseName) BN.BaseName [a] [a] -- (attr, consName, dataArgs, consArgs)
+  | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | Box a
   | BoxNoema a

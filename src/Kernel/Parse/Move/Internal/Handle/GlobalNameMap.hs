@@ -34,8 +34,8 @@ lookup h m sourcePath = do
     Just topLevelNameInfo -> do
       return topLevelNameInfo
     Nothing ->
-      raiseCritical m $ "Top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
+      raiseCritical m $ "Top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered" <> "\n" <> T.pack (show $ Map.keys smap)
 
 insert :: Handle -> Path Abs File -> TopNameMap -> IO ()
 insert h currentPath nameMap = do
-  modifyIORef' (globalNameMapRef h) $ Map.insert currentPath nameMap
+  atomicModifyIORef' (globalNameMapRef h) (\mp -> (Map.insert currentPath nameMap mp, ()))

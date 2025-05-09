@@ -18,7 +18,7 @@ type ShouldInsertPadding =
   Bool
 
 data Log = Log
-  { position :: Maybe Hint,
+  { position :: Maybe SavedHint,
     shouldInsertPadding :: ShouldInsertPadding,
     logLevel :: LogLevel,
     content :: T.Text
@@ -54,7 +54,7 @@ _logLevelToSGR level =
 newLog :: Hint -> LogLevel -> T.Text -> Log
 newLog m level text = do
   Log
-    { position = Just m,
+    { position = Just (SavedHint m),
       shouldInsertPadding = True,
       logLevel = level,
       content = text

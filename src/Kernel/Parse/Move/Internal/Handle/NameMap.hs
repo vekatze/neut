@@ -1,12 +1,13 @@
 module Kernel.Parse.Move.Internal.Handle.NameMap
   ( Handle,
     new,
-    registerStmtDefine,
+    insert,
     registerGeist,
     reportMissingDefinitions,
     activateTopLevelNames,
-    lookup',
     lookup,
+    getGlobalNames,
+    getGlobalNames',
   )
 where
 
@@ -24,20 +25,12 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
-import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
-import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
-import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
-import Kernel.Common.Rule.GlobalName
 import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
-import Kernel.Common.Rule.Handle.Global.KeyArg qualified as KeyArg
-import Kernel.Common.Rule.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
-import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Handle.Local.Tag qualified as Tag
-import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Common.Rule.ReadableDD
 import Kernel.Common.Rule.TopNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
@@ -48,138 +41,44 @@ import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.PrimOp.FromText qualified as PrimOp
 import Language.Common.Rule.PrimType.FromText qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
-import Language.RawTerm.Rule.Key
+import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Language.Term.Rule.Stmt
 import Prelude hiding (lookup)
 
 data Handle = Handle
   { envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
-    locatorHandle :: Locator.Handle,
-    keyArgHandle :: KeyArg.Handle,
-    optDataHandle :: OptimizableData.Handle,
     tagHandle :: Tag.Handle,
     unusedHandle :: Unused.Handle,
     nameMapRef :: IORef TopNameMap,
     geistMapRef :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike))
   }
 
-new :: Global.Handle -> Locator.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
-new (Global.Handle {..}) locatorHandle unusedHandle tagHandle = do
+new :: Global.Handle -> Unused.Handle -> Tag.Handle -> IO Handle
+new (Global.Handle {..}) unusedHandle tagHandle = do
   nameMapRef <- newIORef Map.empty
   geistMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-registerStmtDefine ::
-  Handle ->
-  IsConstLike ->
-  Hint ->
-  SK.BaseStmtKind DD.DefiniteDescription x t ->
-  DD.DefiniteDescription ->
-  AN.ArgNum ->
-  [Key] ->
-  EIO ()
-registerStmtDefine h isConstLike m stmtKind name allArgNum expArgNames = do
-  case stmtKind of
-    SK.Normal _ ->
-      registerTopLevelFunc h isConstLike m name allArgNum
-    SK.Main {} ->
-      registerTopLevelFunc h isConstLike m name allArgNum
-    SK.Data dataName dataArgs consInfoList -> do
-      registerData h isConstLike m dataName dataArgs consInfoList
-      liftIO $ registerAsUnaryIfNecessary h dataName consInfoList
-      liftIO $ registerAsEnumIfNecessary h dataName dataArgs consInfoList
-    SK.DataIntro {} ->
-      return ()
-  KeyArg.insert (keyArgHandle h) m name isConstLike allArgNum expArgNames
+insert :: Handle -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> EIO ()
+insert h nameArrowList = do
+  forM_ nameArrowList $ \(dd, (m, gn)) -> do
+    ensureDefFreshness h m dd
+    liftIO $ insertToNameMap h dd m gn
 
-registerAsEnumIfNecessary ::
-  Handle ->
-  DD.DefiniteDescription ->
-  [a] ->
-  [(SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
-  IO ()
-registerAsEnumIfNecessary h dataName dataArgs consInfoList =
-  when (hasNoArgs dataArgs consInfoList) $ do
-    OptimizableData.insert (optDataHandle h) dataName OD.Enum
-    forM_ consInfoList $ \(_, consName, _, _, _) -> do
-      OptimizableData.insert (optDataHandle h) consName OD.Enum
-
-hasNoArgs :: [a] -> [(c, DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
-hasNoArgs dataArgs consInfoList =
-  null dataArgs && all (null . (\(_, _, _, consArgs, _) -> consArgs)) consInfoList
-
-registerAsUnaryIfNecessary ::
-  Handle ->
-  DD.DefiniteDescription ->
-  [(b, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
-  IO ()
-registerAsUnaryIfNecessary h dataName consInfoList = do
-  case (isUnary consInfoList, length consInfoList == 1) of
-    (True, _) -> do
-      OptimizableData.insert (optDataHandle h) dataName OD.Unary
-      forM_ consInfoList $ \(_, consName, _, _, _) -> do
-        OptimizableData.insert (optDataHandle h) consName OD.Unary
-    _ ->
-      return ()
-
-isUnary :: [(b, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] -> Bool
-isUnary consInfoList =
-  case consInfoList of
-    [(_, _, _, [_], _)] ->
-      True
-    _ ->
-      False
-
-registerGeist :: Handle -> RT.TopGeist -> EIO ()
+registerGeist :: Handle -> RT.RawGeist DD.DefiniteDescription -> EIO ()
 registerGeist h RT.RawGeist {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractArgs impArgs
-  let expArgNames = map (\(_, x, _, _, _) -> x) expArgs'
   let argNum = AN.fromInt $ length $ impArgs' ++ expArgs'
-  nameLifter <- liftIO $ Locator.getNameLifter (locatorHandle h)
-  let name' = nameLifter $ fst name
+  let name' = fst name
   ensureGeistFreshness h loc name'
   ensureDefFreshness h loc name'
-  KeyArg.insert (keyArgHandle h) loc name' isConstLike argNum expArgNames
   liftIO $ insertToGeistMap h name' loc isConstLike
   liftIO $ insertToNameMap h name' loc $ GN.TopLevelFunc argNum isConstLike
 
-registerTopLevelFunc :: Handle -> IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> EIO ()
-registerTopLevelFunc h isConstLike m topLevelName allArgNum = do
-  registerTopLevelFunc' h m topLevelName $ GN.TopLevelFunc allArgNum isConstLike
-
-registerTopLevelFunc' :: Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> EIO ()
-registerTopLevelFunc' h m topLevelName gn = do
-  ensureDefFreshness h m topLevelName
-  liftIO $ insertToNameMap h topLevelName m gn
-
-registerData ::
-  Handle ->
-  IsConstLike ->
-  Hint ->
-  DD.DefiniteDescription ->
-  [a] ->
-  [(SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
-  EIO ()
-registerData h isConstLike m dataName dataArgs consInfoList = do
-  ensureDefFreshness h m dataName
-  let dataArgNum = AN.fromInt $ length dataArgs
-  let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
-  liftIO $ insertToNameMap h dataName m $ GN.Data dataArgNum consNameArrowList isConstLike
-  forM_ consNameArrowList $ \(consDD, (mCons, gn)) -> do
-    ensureDefFreshness h mCons consDD
-    liftIO $ insertToNameMap h consDD mCons gn
-
-toConsNameArrow ::
-  AN.ArgNum ->
-  (SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
-  (DD.DefiniteDescription, (Hint, GN.GlobalName))
-toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, discriminant) = do
-  let consArgNum = AN.fromInt $ length consArgs
-  (consDD, (m, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
-
-lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO (Maybe (Hint, GlobalName))
+lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO (Maybe (Hint, GN.GlobalName))
 lookup h m name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
   let dataSize = Platform.getDataSize (platformHandle h)
@@ -194,17 +93,6 @@ lookup h m name = do
           return $ Just (m, GN.PrimOp primOp)
       | otherwise -> do
           return Nothing
-
-lookup' :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO (Hint, GlobalName)
-lookup' h m name = do
-  mgn <- lookup h m name
-  case mgn of
-    Just gn ->
-      return gn
-    Nothing -> do
-      let mainModule = Env.getMainModule (envHandle h)
-      let name' = readableDD mainModule name
-      raiseError m $ "No such top-level name is defined: " <> name'
 
 ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
 ensureDefFreshness h m name = do
@@ -243,10 +131,6 @@ reportMissingDefinitions h = do
     then return ()
     else throwError $ MakeError errorList
 
-geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Log
-geistToRemark dd (m, _) =
-  newLog m Error $ "This nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"
-
 insertToNameMap :: Handle -> DD.DefiniteDescription -> Hint -> GN.GlobalName -> IO ()
 insertToNameMap h dd m gn = do
   modifyIORef' (nameMapRef h) $ Map.insert dd (m, gn)
@@ -267,3 +151,70 @@ activateTopLevelNames :: Handle -> TopNameMap -> IO ()
 activateTopLevelNames h namesInSource = do
   forM_ (Map.toList namesInSource) $ \(dd, (mDef, gn)) ->
     insertToNameMap h dd mDef gn
+
+getGlobalNames :: [PostRawStmt] -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
+getGlobalNames stmtList = do
+  concatMap _getGlobalNames stmtList
+
+_getGlobalNames :: PostRawStmt -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
+_getGlobalNames stmt = do
+  case stmt of
+    PostRawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
+      let name = fst $ RT.name geist
+      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let expArgs = RT.extractArgs $ RT.expArgs geist
+      let isConstLike = RT.isConstLike geist
+      let m = RT.loc geist
+      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+      case stmtKind of
+        SK.Normal _ -> do
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+        SK.Main {} ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+        SK.Data dataName dataArgs consInfoList -> do
+          let dataArgNum = AN.fromInt $ length dataArgs
+          let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
+          (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
+        SK.DataIntro {} ->
+          []
+    PostRawStmtNominal {} -> do
+      []
+    PostRawStmtDefineResource _ m (name, _) _ _ _ -> do
+      [(name, (m, GN.TopLevelFunc AN.zero True))]
+    PostRawStmtForeign {} ->
+      []
+
+getGlobalNames' :: [Stmt] -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
+getGlobalNames' stmtList = do
+  concatMap _getGlobalNames' stmtList
+
+_getGlobalNames' :: Stmt -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
+_getGlobalNames' stmt = do
+  case stmt of
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
+      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+      case stmtKind of
+        SK.Normal _ -> do
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+        SK.Main {} ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+        SK.Data dataName dataArgs consInfoList -> do
+          let dataArgNum = AN.fromInt $ length dataArgs
+          let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
+          (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
+        SK.DataIntro {} ->
+          []
+    StmtForeign {} ->
+      []
+
+toConsNameArrow ::
+  AN.ArgNum ->
+  (SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
+  (DD.DefiniteDescription, (Hint, GN.GlobalName))
+toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, discriminant) = do
+  let consArgNum = AN.fromInt $ length consArgs
+  (consDD, (m, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
+
+geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Log
+geistToRemark dd (m, _) =
+  newLog m Error $ "This nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"

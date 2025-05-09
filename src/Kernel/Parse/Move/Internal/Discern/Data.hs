@@ -6,7 +6,7 @@ import Control.Comonad.Cofree hiding (section)
 import Data.Maybe
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
-import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.StmtKind qualified as SK
@@ -18,11 +18,11 @@ import Language.RawTerm.Rule.RawTerm qualified as RT
 
 defineData ::
   Hint ->
-  BN.BaseName ->
+  DD.DefiniteDescription ->
   Maybe (RT.Args RT.RawTerm) ->
-  [RawConsInfo BN.BaseName] ->
+  [RawConsInfo DD.DefiniteDescription] ->
   Loc ->
-  [RawStmt]
+  [PostRawStmt]
 defineData m dataName dataArgsOrNone consInfoList loc = do
   let dataArgs = modifyDataArgs dataArgsOrNone
   let dataArgs' = fromMaybe RT.emptyArgs dataArgsOrNone
@@ -41,7 +41,7 @@ defineData m dataName dataArgsOrNone consInfoList loc = do
             cod = ([], m :< RT.Tau)
           }
   let formRule =
-        RawStmtDefine
+        PostRawStmtDefine
           []
           stmtKind
           ( RT.RawDef
@@ -61,8 +61,8 @@ modifyDataArgs =
 
 modifyConsInfo ::
   D.Discriminant ->
-  [RawConsInfo BN.BaseName] ->
-  [(SavedHint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm], D.Discriminant)]
+  [RawConsInfo DD.DefiniteDescription] ->
+  [(SavedHint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm], D.Discriminant)]
 modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
@@ -72,11 +72,11 @@ modifyConsInfo d consInfoList =
 
 parseDefineDataConstructor ::
   RT.RawTerm ->
-  BN.BaseName ->
+  DD.DefiniteDescription ->
   RT.Args RT.RawTerm ->
-  [RawConsInfo BN.BaseName] ->
+  [RawConsInfo DD.DefiniteDescription] ->
   D.Discriminant ->
-  [RawStmt]
+  [PostRawStmt]
 parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
@@ -97,7 +97,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                 cod = ([], dataType)
               }
       let introRule =
-            RawStmtDefine
+            PostRawStmtDefine
               []
               (SK.DataIntro consName dataArgs' consArgs' discriminant)
               ( RT.RawDef
@@ -113,9 +113,9 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
 
 constructDataType ::
   Hint ->
-  BN.BaseName ->
+  DD.DefiniteDescription ->
   IsConstLike ->
-  [(BN.BaseName, IsConstLike)] ->
+  [(DD.DefiniteDescription, IsConstLike)] ->
   [RawBinder RT.RawTerm] ->
   RT.RawTerm
 constructDataType m dataName isConstLike consNameList dataArgs = do

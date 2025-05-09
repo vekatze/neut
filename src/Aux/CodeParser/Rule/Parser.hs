@@ -9,6 +9,7 @@ where
 
 import Aux.Error.Rule.EIO
 import Aux.Error.Rule.Error qualified as E
+import Aux.Logger.Rule.Hint (SavedHint (SavedHint))
 import Aux.Logger.Rule.Hint.Reflect (fromSourcePos)
 import Aux.Logger.Rule.Log (Log (..))
 import Aux.Logger.Rule.LogLevel (LogLevel (Error))
@@ -27,7 +28,7 @@ createParseError errorBundle = do
   let m = fromSourcePos pos
   E.MakeError
     [ Log
-        { position = Just m,
+        { position = Just (SavedHint m),
           shouldInsertPadding = True,
           logLevel = Error,
           content = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo

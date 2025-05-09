@@ -22,8 +22,10 @@ import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Module (MainModule (MainModule))
 import Kernel.Common.Rule.Target
 import Kernel.Load.Move.Load qualified as Load
+import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
+import Kernel.Parse.Move.Interpret qualified as Interpret
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.RawTerm.Rule.RawStmt.ToDoc (ImportInfo (unusedGlobalLocators, unusedLocalLocators))
@@ -64,18 +66,15 @@ _formatSource h shouldMinimizeImports filePath fileContent = do
       let loadHandle = Load.new (globalHandle h)
       (_, dependenceSeq) <- Unravel.unravel unravelHandle mainModule $ Main (emptyZen filePath)
       contentSeq <- Load.load loadHandle Peripheral dependenceSeq
-      case unsnoc contentSeq of
+      cacheOrProgList <- Parse.parse (globalHandle h) (_replaceLast fileContent contentSeq)
+      case unsnoc cacheOrProgList of
         Nothing ->
           raiseError' "Nothing to format"
-        Just (headItems, (rootSource, __)) -> do
-          forM_ headItems $ \(source, cacheOrContent) -> do
-            localHandle <- Local.new (globalHandle h) source
-            parseHandle <- liftIO $ Parse.new (globalHandle h) localHandle
-            void $ Parse.parse parseHandle Peripheral source cacheOrContent
-          localHandle <- Local.new (globalHandle h) rootSource
-          parseHandle <- liftIO $ Parse.new (globalHandle h) localHandle
-          void $ Parse.parse parseHandle Peripheral rootSource (Right fileContent)
-          (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Parse.getUnusedLocators parseHandle
+        Just (_, (rootLocalHandle, (rootSource, rootCacheOrProg))) -> do
+          interpretHandle <- liftIO $ Interpret.new (globalHandle h) rootLocalHandle
+          _ <- Interpret.interpret interpretHandle Peripheral rootSource rootCacheOrProg
+          let unusedHandle = Local.unusedHandle rootLocalHandle
+          (unusedGlobalLocators, unusedLocalLocators) <- liftIO $ Unused.getUnusedLocators unusedHandle
           program <- runParser filePath fileContent True (Parse.parseProgram parseCoreHandle)
           presetNames <- GetEnabledPreset.getEnabledPreset getEnabledPresetHandle mainModule
           let importInfo = RawProgram.ImportInfo {presetNames, unusedGlobalLocators, unusedLocalLocators}

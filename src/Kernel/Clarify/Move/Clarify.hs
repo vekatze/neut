@@ -321,7 +321,7 @@ clarifyTerm h tenv term =
     _ :< TM.Magic der -> do
       clarifyMagic h tenv der
     m :< TM.Resource _ resourceID _ discarder copier -> do
-      liftedName <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
+      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
       switchValue <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switchValue"
       value <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "value"
       discarder' <-
@@ -561,7 +561,7 @@ clarifyLambda ::
 clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
   case lamKind of
     LK.Fix (_, recFuncName, codType) -> do
-      liftedName <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.muName identity
+      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
@@ -621,7 +621,7 @@ returnClosure h tenv lamID opacity fvs xts e = do
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 1 -- argNum == count(xts) + env
-  name <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName lamID
+  let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
     liftIO $ registerClosure h name opacity xts'' fvs'' e

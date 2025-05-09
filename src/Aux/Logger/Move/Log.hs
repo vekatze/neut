@@ -56,10 +56,10 @@ printErrorIO h l = do
   footerText <- Color.pack' <$> getFooter h
   Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText <> footerText
 
-getLogLocation :: Maybe Hint -> Color.Text
+getLogLocation :: Maybe SavedHint -> Color.Text
 getLogLocation mpos = do
   case mpos of
-    Just pos -> do
+    Just (SavedHint pos) -> do
       Color.pack [SetConsoleIntensity BoldIntensity] $ T.pack (showFilePos pos ++ "\n")
     _ ->
       Color.empty
