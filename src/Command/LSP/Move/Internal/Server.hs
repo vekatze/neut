@@ -1,10 +1,9 @@
 module Command.LSP.Move.Internal.Server
-  ( Handle,
-    new,
-    lsp,
+  ( lsp,
   )
 where
 
+import Aux.CommandParser.Rule.Config.Remark (lspConfig)
 import Colog.Core (LogAction (..), Severity (..), WithSeverity (..))
 import Colog.Core qualified as L
 import Command.Common.Move.Check qualified as Check
@@ -32,16 +31,8 @@ import Language.LSP.Server
 import Prettyprinter
 import System.IO (stdin, stdout)
 
-newtype Handle = Handle
-  { globalHandle :: Global.Handle
-  }
-
-new :: Global.Handle -> Handle
-new globalHandle = do
-  Handle {..}
-
-lsp :: Handle -> IO Int
-lsp h = do
+lsp :: IO Int
+lsp = do
   runQuietServer $
     ServerDefinition
       { defaultConfig = (),
@@ -49,7 +40,7 @@ lsp h = do
         configSection = "Neut",
         onConfigChange = const $ return (),
         doInitialize = \env _req -> pure $ Right env,
-        staticHandlers = const (handlers h),
+        staticHandlers = const handlers,
         interpretHandler = \env -> Iso (runLspT env) liftIO,
         options = lspOptions
       }
@@ -76,20 +67,20 @@ prettyMsg :: (Pretty a) => WithSeverity a -> Doc ann
 prettyMsg l =
   "[" <> viaShow (L.getSeverity l) <> "] " <> pretty (L.getMsg l)
 
-handlers :: Handle -> Handlers (Lsp ())
-handlers h =
+handlers :: Handlers (Lsp ())
+handlers =
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
         return (),
       notificationHandler SMethod_WorkspaceDidChangeConfiguration $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
-        globalHandle <- liftIO $ Global.refresh (globalHandle h)
+        globalHandle <- liftIO $ Global.new lspConfig Nothing
         Lint.lint (Lint.new globalHandle),
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
-        globalHandle <- liftIO $ Global.refresh (globalHandle h)
+        globalHandle <- liftIO $ Global.new lspConfig Nothing
         Lint.lint (Lint.new globalHandle),
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),
@@ -100,7 +91,7 @@ handlers h =
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
-        globalHandle <- liftIO $ Global.refresh (globalHandle h)
+        globalHandle <- liftIO $ Global.new lspConfig Nothing
         completeHandle <- liftIO $ Complete.new globalHandle
         itemListOrNone <- run globalHandle $ Complete.complete completeHandle uri pos
         case itemListOrNone of
@@ -109,7 +100,7 @@ handlers h =
           Just itemList ->
             responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        globalHandle <- liftIO $ Global.refresh (globalHandle h)
+        globalHandle <- liftIO $ Global.new lspConfig Nothing
         let findDefHandle = FindDefinition.new globalHandle
         mLoc <- run globalHandle $ FindDefinition.findDefinition findDefHandle (req ^. J.params)
         case mLoc of
@@ -118,7 +109,7 @@ handlers h =
           Just ((_, loc), _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        globalHandle <- liftIO $ Global.refresh (globalHandle h)
+        globalHandle <- liftIO $ Global.new lspConfig Nothing
         let highlightHandle = Highlight.new globalHandle
         highlightsOrNone <- run globalHandle $ Highlight.highlight highlightHandle $ req ^. J.params
         case highlightsOrNone of
@@ -127,7 +118,7 @@ handlers h =
           Just highlights ->
             responder $ Right $ InL $ List highlights,
       requestHandler SMethod_TextDocumentReferences $ \req responder -> do
-        globalHandle <- liftIO $ Global.refresh (globalHandle h)
+        globalHandle <- liftIO $ Global.new lspConfig Nothing
         referencesHandle <- liftIO $ References.new globalHandle
         refsOrNone <- run globalHandle $ References.references referencesHandle $ req ^. J.params
         case refsOrNone of
@@ -138,13 +129,13 @@ handlers h =
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         fileOrNone <- getVirtualFile (toNormalizedUri uri)
-        globalHandle <- liftIO $ Global.refresh (globalHandle h)
+        globalHandle <- liftIO $ Global.new lspConfig Nothing
         let formatHandle = Format.new globalHandle
         textEditList <- run globalHandle $ Format.format formatHandle False uri fileOrNone
         let textEditList' = concat $ maybeToList textEditList
         responder $ Right $ InL textEditList',
       requestHandler SMethod_TextDocumentHover $ \req responder -> do
-        globalHandle <- liftIO $ Global.refresh (globalHandle h)
+        globalHandle <- liftIO $ Global.new lspConfig Nothing
         textOrNone <- run globalHandle $ GetSymbolInfo.getSymbolInfo (req ^. J.params)
         case textOrNone of
           Nothing ->
@@ -175,7 +166,7 @@ handlers h =
                     responder $ Right $ InR Null
                   Just uri -> do
                     fileOrNone <- getVirtualFile (toNormalizedUri uri)
-                    globalHandle <- liftIO $ Global.refresh (globalHandle h)
+                    globalHandle <- liftIO $ Global.new lspConfig Nothing
                     let formatHandle = Format.new globalHandle
                     textEditList <- run globalHandle $ Format.format formatHandle True uri fileOrNone
                     let textEditList' = concat $ maybeToList textEditList
@@ -185,7 +176,7 @@ handlers h =
                     _ <- sendRequest SMethod_WorkspaceApplyEdit editParams (const (pure ()))
                     responder $ Right $ InR Null
             | commandName == CA.refreshCacheCommandName -> do
-                globalHandle <- liftIO $ Global.refresh (globalHandle h)
+                globalHandle <- liftIO $ Global.new lspConfig Nothing
                 let checkHandle = Check.new globalHandle
                 _ <- run globalHandle $ Check.checkAll checkHandle
                 responder $ Right $ InR Null

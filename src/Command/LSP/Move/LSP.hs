@@ -15,8 +15,7 @@ import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 
 data Handle = Handle
   { fetchHandle :: Fetch.Handle,
-    envHandle :: Env.Handle,
-    lspHandle :: L.Handle
+    envHandle :: Env.Handle
   }
 
 new ::
@@ -25,10 +24,9 @@ new ::
 new globalHandle = do
   let fetchHandle = Fetch.new globalHandle
   let envHandle = Global.envHandle globalHandle
-  let lspHandle = L.new globalHandle
   Handle {..}
 
 lsp :: Handle -> EIO ()
 lsp h = do
   Fetch.fetch (fetchHandle h) (Env.getMainModule (envHandle h))
-  void $ liftIO $ L.lsp (lspHandle h)
+  void $ liftIO L.lsp

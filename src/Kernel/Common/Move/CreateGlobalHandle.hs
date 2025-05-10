@@ -1,7 +1,6 @@
 module Kernel.Common.Move.CreateGlobalHandle
   ( Handle (..),
     new,
-    refresh,
   )
 where
 
@@ -79,34 +78,3 @@ new cfg moduleFilePathOrNone = do
   compDefHandle <- CompDef.new
   globalNameMapHandle <- GlobalNameMap.new
   return $ Handle {..}
-
-refresh :: Handle -> IO Handle
-refresh h = do
-  let mainModule = Env.getMainModule (envHandle h)
-  keyArgHandle <- KeyArg.new mainModule
-  optDataHandle <- OptimizableData.new
-  typeHandle <- Type.new
-  pathHandle <- Path.new mainModule (platformHandle h) (loggerHandle h)
-  globalRemarkHandle <- GlobalRemark.new
-  artifactHandle <- Artifact.new
-  moduleHandle <- Module.new
-  weakDefHandle <- WeakDef.new (gensymHandle h)
-  defHandle <- Definition.new
-  antecedentHandle <- Antecedent.new
-  compDefHandle <- CompDef.new
-  globalNameMapHandle <- GlobalNameMap.new
-  return $
-    h
-      { keyArgHandle,
-        optDataHandle,
-        typeHandle,
-        pathHandle,
-        globalRemarkHandle,
-        artifactHandle,
-        moduleHandle,
-        weakDefHandle,
-        defHandle,
-        antecedentHandle,
-        compDefHandle,
-        globalNameMapHandle
-      }
