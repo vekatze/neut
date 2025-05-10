@@ -24,8 +24,8 @@ define test(): type {
   let but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore = type in
   let _ = but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore in
   // complex name
-  let ♥️a🌟あ🌕α$-$~!?@#%^&+\_ = type in
-  let _ = ♥️a🌟あ🌕α$-$~!?@#%^&+\_ in
+  let ♥️a🌟あ🌕α$-$~!@#%^+\_ = type in
+  let _ = ♥️a🌟あ🌕α$-$~!@#%^+\_ in
   x
 }
 

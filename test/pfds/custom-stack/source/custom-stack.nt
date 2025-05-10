@@ -61,7 +61,8 @@ define main(): unit {
       1
     | Right(pair) =>
       tie Pair(_, right) = pair in
-      {*right}()
+      let f = *right in
+      f()
     }
   in
   let _ = zs in
