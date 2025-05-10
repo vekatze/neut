@@ -45,16 +45,14 @@ printLogIO h l = do
   let locText = getLogLocation $ L.position l
   let levelText = getLogLevel (L.logLevel l)
   let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.shouldInsertPadding l) (L.logLevel l))
-  footerText <- Color.pack' <$> getFooter h
-  Color.printStdOut (_colorHandle h) $ locText <> levelText <> logText <> footerText
+  Color.printStdOut (_colorHandle h) $ locText <> levelText <> logText
 
 printErrorIO :: Handle -> L.Log -> IO ()
 printErrorIO h l = do
   let locText = getLogLocation $ L.position l
   let levelText = getLogLevel (L.logLevel l)
   let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.shouldInsertPadding l) (L.logLevel l))
-  footerText <- Color.pack' <$> getFooter h
-  Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText <> footerText
+  Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText
 
 getLogLocation :: Maybe SavedHint -> Color.Text
 getLogLocation mpos = do
@@ -63,13 +61,6 @@ getLogLocation mpos = do
       Color.pack [SetConsoleIntensity BoldIntensity] $ T.pack (showFilePos pos ++ "\n")
     _ ->
       Color.empty
-
-getFooter :: Handle -> IO T.Text
-getFooter h = do
-  let eoe = getEndOfEntry h
-  if eoe == ""
-    then return ""
-    else return $ eoe <> "\n"
 
 getLogLevel :: L.LogLevel -> Color.Text
 getLogLevel l =
@@ -92,7 +83,3 @@ stylizeLogText str pad = do
   if null ls
     then str
     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
-
-getEndOfEntry :: Handle -> T.Text
-getEndOfEntry =
-  _endOfEntry

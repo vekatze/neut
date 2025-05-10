@@ -61,7 +61,7 @@ data Handle = Handle
 new :: Remark.Config -> Maybe (Path Abs File) -> IO Handle
 new cfg moduleFilePathOrNone = do
   colorHandle <- Color.createHandle (Remark.shouldColorize cfg) (Remark.shouldColorize cfg)
-  loggerHandle <- Logger.createHandle colorHandle (Remark.endOfEntry cfg) (Remark.enableDebugMode cfg)
+  loggerHandle <- Logger.createHandle colorHandle (Remark.enableDebugMode cfg)
   gensymHandle <- Gensym.createHandle
   platformHandle <- Platform.new loggerHandle
   envHandle <- Env.new loggerHandle (Remark.enableSilentMode cfg) moduleFilePathOrNone
