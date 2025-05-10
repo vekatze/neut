@@ -2,6 +2,7 @@ module Aux.Error.Move.Run
   ( runEIO,
     run,
     forP,
+    forP_,
     liftMaybe,
     raiseError,
     raiseError',
@@ -17,7 +18,7 @@ import Aux.Logger.Rule.Handle qualified as Logger
 import Aux.Logger.Rule.Hint
 import Control.Monad.Except (MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Either (partitionEithers)
+import Data.Either (lefts, partitionEithers)
 import Data.Text qualified as T
 import System.Exit
 import UnliftIO.Async (pooledForConcurrently)
@@ -42,6 +43,14 @@ forP xs f = do
   let (errors, results) = partitionEithers xs'
   if null errors
     then return results
+    else throwError $ foldl (<>) (E.MakeError []) errors
+
+forP_ :: [a] -> (a -> EIO ()) -> EIO ()
+forP_ xs f = do
+  xs' <- liftIO $ pooledForConcurrently xs (runEIO . f)
+  let errors = lefts xs'
+  if null errors
+    then return ()
     else throwError $ foldl (<>) (E.MakeError []) errors
 
 liftMaybe :: Maybe a -> EIO a

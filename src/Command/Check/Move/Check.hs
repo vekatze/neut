@@ -8,7 +8,6 @@ where
 import Aux.CommandParser.Rule.Config.Check
 import Aux.Error.Rule.EIO (EIO)
 import Aux.Logger.Move.Log qualified as Logger
-import Aux.Logger.Rule.Log qualified as L
 import Command.Common.Move.Check qualified as Check
 import Command.Common.Move.Fetch qualified as Fetch
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -31,15 +30,9 @@ check h cfg = do
     if shouldCheckAllDependencies cfg
       then Check.checkAll checkHandle
       else Check.check checkHandle
-  if shouldInsertPadding cfg
-    then liftIO $ Logger.printErrorList (Global.loggerHandle (globalHandle h)) logs
-    else liftIO $ Logger.printErrorList (Global.loggerHandle (globalHandle h)) $ map deactivatePadding logs
+  liftIO $ Logger.printErrorList (Global.loggerHandle (globalHandle h)) logs
 
 setup :: Handle -> EIO ()
 setup h = do
   let fetchHandle = Fetch.new (globalHandle h)
   Fetch.fetch fetchHandle $ Env.getMainModule (Global.envHandle (globalHandle h))
-
-deactivatePadding :: L.Log -> L.Log
-deactivatePadding l =
-  l {L.shouldInsertPadding = False}

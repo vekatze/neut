@@ -1,6 +1,7 @@
 module Kernel.Common.Rule.GlobalName
   ( GlobalName (..),
     getIsConstLike,
+    hasNoArgs,
   )
 where
 
@@ -34,4 +35,18 @@ getIsConstLike gn =
     DataIntro _ _ _ isConstLike ->
       isConstLike
     _ ->
+      False
+
+hasNoArgs :: GlobalName -> Bool
+hasNoArgs gn =
+  case gn of
+    TopLevelFunc argNum _ ->
+      argNum == fromInt 0
+    Data argNum _ _ ->
+      argNum == fromInt 0
+    DataIntro dataArgNum consArgNum _ _ ->
+      dataArgNum == fromInt 0 && consArgNum == fromInt 0
+    PrimType _ ->
+      True
+    PrimOp _ ->
       False

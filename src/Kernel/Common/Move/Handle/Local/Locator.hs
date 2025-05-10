@@ -5,7 +5,6 @@ module Kernel.Common.Move.Handle.Local.Locator
     getStaticFileContent,
     activateStaticFile,
     getPossibleReferents,
-    getNameLifter,
   )
 where
 
@@ -43,8 +42,8 @@ new _envHandle _tagHandle source = do
   cgl <- constructGlobalLocator source
   _activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
   _activeStaticFileListRef <- liftIO $ newIORef Map.empty
-  _activeGlobalLocatorListRef <- liftIO $ newIORef [cgl, SGL.llvmGlobalLocator]
-  _currentGlobalLocatorRef <- liftIO $ newIORef (Just cgl)
+  let _activeGlobalLocatorList = [cgl, SGL.llvmGlobalLocator]
+  let _currentGlobalLocator = cgl
   return $ Handle {..}
 
 activateSpecifiedNames ::
@@ -100,31 +99,19 @@ getStaticFileContent h key = do
 attachCurrentLocator ::
   Handle ->
   BN.BaseName ->
-  IO DD.DefiniteDescription
+  DD.DefiniteDescription
 attachCurrentLocator h name = do
-  cgl <- getCurrentGlobalLocator h
-  return $ DD.new cgl $ LL.new name
+  let cgl = getCurrentGlobalLocator h
+  DD.new cgl $ LL.new name
 
-getNameLifter ::
-  Handle ->
-  IO (BN.BaseName -> DD.DefiniteDescription)
-getNameLifter h = do
-  cgl <- getCurrentGlobalLocator h
-  return $ \name -> DD.new cgl $ LL.new name
-
-getCurrentGlobalLocator :: Handle -> IO SGL.StrictGlobalLocator
+getCurrentGlobalLocator :: Handle -> SGL.StrictGlobalLocator
 getCurrentGlobalLocator h = do
-  sglOrNone <- readIORef (_currentGlobalLocatorRef h)
-  case sglOrNone of
-    Just sgl ->
-      return sgl
-    Nothing ->
-      error $ T.unpack "[compiler bug] `currentGlobalLocatorRef` is uninitialized"
+  _currentGlobalLocator h
 
 getPossibleReferents :: Handle -> LL.LocalLocator -> IO [DD.DefiniteDescription]
 getPossibleReferents h localLocator = do
-  cgl <- getCurrentGlobalLocator h
-  agls <- readIORef (_activeGlobalLocatorListRef h)
+  let cgl = getCurrentGlobalLocator h
+  let agls = _activeGlobalLocatorList h
   importedDDs <- getImportedReferents h localLocator
   let dds = map (`DD.new` localLocator) agls
   let dd = DD.new cgl localLocator

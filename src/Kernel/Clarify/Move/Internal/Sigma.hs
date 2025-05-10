@@ -153,8 +153,7 @@ closureEnvS4 h locatorHandle mxts =
       return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
-      -- name <- liftIO $ Locator.attachCurrentLocator (locatorHandle h) $ BN.sigmaName i
-      name <- liftIO $ Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
+      let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
       liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name (sigmaT h mxts) (sigma4 h mxts)
       return $ C.VarGlobal name AN.argNumS4
 

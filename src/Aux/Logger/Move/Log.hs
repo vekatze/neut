@@ -38,38 +38,29 @@ printWarning' h =
 
 printLogWithoutFilePos :: Handle -> L.LogLevel -> T.Text -> IO ()
 printLogWithoutFilePos h level txt =
-  printLog h $ L.Log Nothing True level txt
+  printLog h $ L.Log Nothing level txt
 
 printLogIO :: Handle -> L.Log -> IO ()
 printLogIO h l = do
   let locText = getLogLocation $ L.position l
   let levelText = getLogLevel (L.logLevel l)
-  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.shouldInsertPadding l) (L.logLevel l))
-  footerText <- Color.pack' <$> getFooter h
-  Color.printStdOut (_colorHandle h) $ locText <> levelText <> logText <> footerText
+  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
+  Color.printStdOut (_colorHandle h) $ locText <> levelText <> logText
 
 printErrorIO :: Handle -> L.Log -> IO ()
 printErrorIO h l = do
   let locText = getLogLocation $ L.position l
   let levelText = getLogLevel (L.logLevel l)
-  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.shouldInsertPadding l) (L.logLevel l))
-  footerText <- Color.pack' <$> getFooter h
-  Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText <> footerText
+  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
+  Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText
 
-getLogLocation :: Maybe Hint -> Color.Text
+getLogLocation :: Maybe SavedHint -> Color.Text
 getLogLocation mpos = do
   case mpos of
-    Just pos -> do
+    Just (SavedHint pos) -> do
       Color.pack [SetConsoleIntensity BoldIntensity] $ T.pack (showFilePos pos ++ "\n")
     _ ->
       Color.empty
-
-getFooter :: Handle -> IO T.Text
-getFooter h = do
-  let eoe = getEndOfEntry h
-  if eoe == ""
-    then return ""
-    else return $ eoe <> "\n"
 
 getLogLevel :: L.LogLevel -> Color.Text
 getLogLevel l =
@@ -80,11 +71,9 @@ getLogText str padComp = do
   let logText = stylizeLogText str padComp
   logText <> "\n"
 
-logLevelToPad :: L.ShouldInsertPadding -> L.LogLevel -> T.Text
-logLevelToPad shouldInsertPadding level = do
-  if shouldInsertPadding
-    then T.replicate (T.length (L._logLevelToText level) + 2) " "
-    else ""
+logLevelToPad :: L.LogLevel -> T.Text
+logLevelToPad level = do
+  T.replicate (T.length (L._logLevelToText level) + 2) " "
 
 stylizeLogText :: T.Text -> T.Text -> T.Text
 stylizeLogText str pad = do
@@ -92,7 +81,3 @@ stylizeLogText str pad = do
   if null ls
     then str
     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
-
-getEndOfEntry :: Handle -> T.Text
-getEndOfEntry =
-  _endOfEntry

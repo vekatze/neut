@@ -26,7 +26,6 @@ import Aux.SyntaxTree.Rule.Series.ToDoc qualified as SE
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.Rune qualified as RU
@@ -78,9 +77,9 @@ toDoc term =
           PI.inject $ attachComment c $ toDoc e
         ]
     _ :< Data _ dataName _ ->
-      D.text $ BN.reify dataName
+      D.text $ DD.reify dataName
     _ :< DataIntro _ dataIntroName _ _ ->
-      D.text $ BN.reify dataIntroName
+      D.text $ DD.reify dataIntroName
     _ :< DataElim c isNoetic es patternRowList -> do
       D.join
         [ PI.arrange

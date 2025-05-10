@@ -1,193 +1,247 @@
 module Kernel.Parse.Move.Parse
   ( Handle,
-    new,
     parse,
-    parseCachedStmtList,
-    getUnusedLocators,
   )
 where
 
 import Aux.CodeParser.Move.Parse (runParser)
+import Aux.Error.Move.Run (forP, forP_)
 import Aux.Error.Rule.EIO (EIO)
 import Aux.Logger.Rule.Hint
-import Aux.Logger.Rule.Log qualified as L
-import Aux.Logger.Rule.LogLevel qualified as L
+import Aux.SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
-import Control.Monad.IO.Class
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Bifunctor (Bifunctor (first))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
+import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
-import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
-import Kernel.Common.Move.ManageCache qualified as Cache
+import Kernel.Common.Rule.Cache (Cache)
 import Kernel.Common.Rule.Cache qualified as Cache
-import Kernel.Common.Rule.Handle.Global.Path qualified as Path
+import Kernel.Common.Rule.GlobalName qualified as GN
+import Kernel.Common.Rule.Handle.Global.KeyArg qualified as KeyArg
+import Kernel.Common.Rule.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
-import Kernel.Common.Rule.Import
+import Kernel.Common.Rule.OptimizableData qualified as OD
+import Kernel.Common.Rule.Source (Source)
 import Kernel.Common.Rule.Source qualified as Source
-import Kernel.Common.Rule.Target
-import Kernel.Parse.Move.Internal.Discern qualified as Discern
-import Kernel.Parse.Move.Internal.Discern.Handle qualified as Discern
-import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
+import Kernel.Parse.Move.Internal.Discern.Data (defineData)
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
-import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
-import Kernel.Parse.Move.Internal.Import qualified as Import
 import Kernel.Parse.Move.Internal.Program qualified as Parse
 import Kernel.Parse.Move.Internal.RawTerm qualified as ParseRT
-import Kernel.Parse.Rule.VarDefKind
 import Language.Common.Rule.ArgNum qualified as AN
+import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident.Reify
-import Language.Common.Rule.LocalLocator qualified as LL
-import Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators)
-import Language.Common.Rule.UnusedLocalLocators (UnusedLocalLocators)
+import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.RawStmt
+import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.Term.Rule.Stmt
-import Language.WeakTerm.Rule.WeakStmt
 
 data Handle = Handle
   { parseHandle :: ParseRT.Handle,
-    aliasHandle :: Alias.Handle,
-    locatorHandle :: Locator.Handle,
-    discernHandle :: Discern.Handle,
-    pathHandle :: Path.Handle,
-    importHandle :: Import.Handle,
-    nameMapHandle :: NameMap.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
-    unusedHandle :: Unused.Handle
+    keyArgHandle :: KeyArg.Handle,
+    optDataHandle :: OptimizableData.Handle
   }
 
 new ::
   Global.Handle ->
-  Local.Handle ->
-  IO Handle
-new globalHandle localHandle = do
-  let unusedHandle = Local.unusedHandle localHandle
+  Handle
+new globalHandle = do
   let parseHandle = ParseRT.new (Global.gensymHandle globalHandle)
-  let pathHandle = Global.pathHandle globalHandle
-  let importHandle = Import.new globalHandle localHandle
   let globalNameMapHandle = Global.globalNameMapHandle globalHandle
-  let aliasHandle = Local.aliasHandle localHandle
-  let locatorHandle = Local.locatorHandle localHandle
-  let tagHandle = Local.tagHandle localHandle
-  nameMapHandle <- NameMap.new globalHandle locatorHandle unusedHandle tagHandle
-  let discernHandle = Discern.new globalHandle localHandle nameMapHandle
-  return $ Handle {..}
+  let keyArgHandle = Global.keyArgHandle globalHandle
+  let optDataHandle = Global.optDataHandle globalHandle
+  Handle {..}
 
 parse ::
+  Global.Handle ->
+  [(Source, Either Cache T.Text)] ->
+  EIO [(Local.Handle, (Source, Either Cache PostRawProgram))]
+parse h contentSeq = do
+  let parseHandle = new h
+  cacheOrProgList <- forP contentSeq $ \(source, cacheOrContent) -> do
+    prog <- parse' parseHandle source cacheOrContent
+    localHandle <- Local.new h source
+    let locatorHandle = Local.locatorHandle localHandle
+    return (localHandle, (source, fmap (postprocess locatorHandle) prog))
+  forP_ cacheOrProgList $ \(_, (source, cacheOrProg)) -> do
+    registerTopLevelNames parseHandle source cacheOrProg
+  return cacheOrProgList
+
+parse' ::
   Handle ->
-  Target ->
   Source.Source ->
   Either Cache.Cache T.Text ->
-  EIO (Either Cache.Cache [WeakStmt], [L.Log])
-parse h t source cacheOrContent = do
-  parseSource h t source cacheOrContent
+  EIO (Either Cache.Cache RawProgram)
+parse' h source cacheOrContent = do
+  parseSource h source cacheOrContent
 
 parseSource ::
   Handle ->
-  Target ->
   Source.Source ->
   Either Cache.Cache T.Text ->
-  EIO (Either Cache.Cache [WeakStmt], [L.Log])
-parseSource h t source cacheOrContent = do
+  EIO (Either Cache.Cache RawProgram)
+parseSource h source cacheOrContent = do
   let filePath = Source.sourceFilePath source
   case cacheOrContent of
     Left cache -> do
-      let stmtList = Cache.stmtList cache
-      parseCachedStmtList h stmtList
-      saveTopLevelNames h source $ getStmtName stmtList
-      return (Left cache, Cache.remarkList cache)
+      return $ Left cache
     Right fileContent -> do
       prog <- runParser filePath fileContent True (Parse.parseProgram (parseHandle h))
-      (prog', logs) <- interpret h source (snd prog)
-      tmap <- liftIO $ Tag.get (Discern.tagHandle (discernHandle h))
-      Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap
-      return (Right prog', logs)
+      return $ Right $ snd prog
 
-parseCachedStmtList :: Handle -> [Stmt] -> EIO ()
-parseCachedStmtList h stmtList = do
-  forM_ stmtList $ \stmt -> do
-    case stmt of
-      StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
-        let expArgNames = map (\(_, x, _) -> toText x) expArgs
-        let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
-        NameMap.registerStmtDefine (nameMapHandle h) isConstLike m stmtKind name allArgNum expArgNames
-      StmtForeign {} ->
+postprocess :: Locator.Handle -> RawProgram -> PostRawProgram
+postprocess h (RawProgram m importList stmtList) = do
+  let stmtList' = concatMap (postprocess' h . fst) stmtList
+  PostRawProgram m importList stmtList'
+
+postprocess' :: Locator.Handle -> RawStmt -> [PostRawStmt]
+postprocess' h stmt = do
+  case stmt of
+    RawStmtDefine c stmtKind rawDef@(RT.RawDef {geist}) -> do
+      let geist' = liftGeist h geist
+      let stmtKind' = liftStmtKind h stmtKind
+      [PostRawStmtDefine c stmtKind' (rawDef {RT.geist = geist'})]
+    RawStmtDefineData _ m (name, _) args consInfo loc -> do
+      let name' = Locator.attachCurrentLocator h name
+      let consInfo' = fmap (liftRawCons h) consInfo
+      defineData m name' args (SE.extract consInfo') loc
+    RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) c4 -> do
+      let name' = Locator.attachCurrentLocator h name
+      [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) c4]
+    RawStmtNominal c m geistList -> do
+      let geistList' = fmap (first (liftGeist h)) geistList
+      [PostRawStmtNominal c m geistList']
+    RawStmtForeign m foreignList -> do
+      [PostRawStmtForeign m foreignList]
+
+liftGeist :: Locator.Handle -> RT.RawGeist BN.BaseName -> RT.RawGeist DD.DefiniteDescription
+liftGeist h geist = do
+  fmap (Locator.attachCurrentLocator h) geist
+
+liftStmtKind :: Locator.Handle -> RawStmtKind BN.BaseName -> RawStmtKind DD.DefiniteDescription
+liftStmtKind h stmtKind = do
+  case stmtKind of
+    SK.Normal o ->
+      SK.Normal o
+    SK.Main o t ->
+      SK.Main o t
+    SK.Data name dataArgs consInfo -> do
+      let name' = Locator.attachCurrentLocator h name
+      let f (m, consName, isConstLike, consArgs, loc) = do
+            let consName' = Locator.attachCurrentLocator h consName
+            (m, consName', isConstLike, consArgs, loc)
+      SK.Data name' dataArgs (fmap f consInfo)
+    SK.DataIntro name dataArgs consArgs discriminant -> do
+      let name' = Locator.attachCurrentLocator h name
+      SK.DataIntro name' dataArgs consArgs discriminant
+
+liftRawCons :: Locator.Handle -> RawConsInfo BN.BaseName -> RawConsInfo DD.DefiniteDescription
+liftRawCons h (m, name, isConstLike, consArgs, loc) = do
+  let name' = Locator.attachCurrentLocator h name
+  (m, name', isConstLike, consArgs, loc)
+
+registerTopLevelNames ::
+  Handle ->
+  Source.Source ->
+  Either Cache.Cache PostRawProgram ->
+  EIO ()
+registerTopLevelNames h source cacheOrContent = do
+  case cacheOrContent of
+    Left cache -> do
+      let stmtList = Cache.stmtList cache
+      let nameArrowList = NameMap.getGlobalNames' stmtList
+      liftIO $ saveTopLevelNames h source nameArrowList
+      forM_ stmtList $ registerKeyArg' h
+    Right (PostRawProgram _ _ stmtList) -> do
+      let nameArrowList = NameMap.getGlobalNames stmtList
+      liftIO $ saveTopLevelNames h source nameArrowList
+      forM_ stmtList $ registerKeyArg h
+
+saveTopLevelNames :: Handle -> Source.Source -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> IO ()
+saveTopLevelNames h source nameArrowList = do
+  let nameMap = Map.fromList nameArrowList
+  GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
+  registerOptDataInfo h nameArrowList
+
+registerKeyArg :: Handle -> PostRawStmt -> EIO ()
+registerKeyArg h stmt = do
+  case stmt of
+    PostRawStmtDefine _ _ (RT.RawDef {geist}) -> do
+      let name = fst $ RT.name geist
+      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let expArgs = RT.extractArgs $ RT.expArgs geist
+      let isConstLike = RT.isConstLike geist
+      let m = RT.loc geist
+      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+      let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
+      KeyArg.insert (keyArgHandle h) m name isConstLike allArgNum expArgNames
+    PostRawStmtNominal {} -> do
+      return ()
+    PostRawStmtDefineResource {} -> do
+      return ()
+    PostRawStmtForeign {} ->
+      return ()
+
+registerKeyArg' :: Handle -> Stmt -> EIO ()
+registerKeyArg' h stmt = do
+  case stmt of
+    StmtDefine isConstLike _ (SavedHint m) name impArgs expArgs _ _ -> do
+      let expArgNames = map (\(_, x, _) -> toText x) expArgs
+      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+      KeyArg.insert (keyArgHandle h) m name isConstLike allArgNum expArgNames
+    StmtForeign {} ->
+      return ()
+
+registerOptDataInfo :: Handle -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> IO ()
+registerOptDataInfo h nameArrowList = do
+  forM_ nameArrowList $ \(dd, (_, gn)) -> do
+    case gn of
+      GN.Data dataArgNum consNameArrowList _ -> do
+        registerAsUnaryIfNecessary h dd consNameArrowList
+        registerAsEnumIfNecessary h dd dataArgNum consNameArrowList
+      _ ->
         return ()
 
-interpret :: Handle -> Source.Source -> RawProgram -> EIO ([WeakStmt], [L.Log])
-interpret h currentSource (RawProgram m importList stmtList) = do
-  Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m
-  stmtList' <- Discern.discernStmtList (discernHandle h) (Source.sourceModule currentSource) $ map fst stmtList
-  NameMap.reportMissingDefinitions (nameMapHandle h)
-  saveTopLevelNames h currentSource $ getWeakStmtName stmtList'
-  logs1 <- liftIO $ registerUnusedVariableRemarks h
-  logs2 <- liftIO $ registerUnusedGlobalLocatorRemarks h
-  logs3 <- liftIO $ registerUnusedLocalLocatorRemarks h
-  logs4 <- liftIO $ registerUnusedStaticFileRemarks h
-  return (stmtList', logs1 ++ logs2 ++ logs3 ++ logs4)
+registerAsUnaryIfNecessary ::
+  Handle ->
+  DD.DefiniteDescription ->
+  [(DD.DefiniteDescription, (Hint, GN.GlobalName))] ->
+  IO ()
+registerAsUnaryIfNecessary h dataName consInfoList = do
+  when (isUnary consInfoList) $ do
+    OptimizableData.insert (optDataHandle h) dataName OD.Unary
+    forM_ consInfoList $ \(consName, _) -> do
+      OptimizableData.insert (optDataHandle h) consName OD.Unary
 
-saveTopLevelNames :: Handle -> Source.Source -> [(Hint, DD.DefiniteDescription)] -> EIO ()
-saveTopLevelNames h source topNameList = do
-  globalNameList <- mapM (uncurry $ NameMap.lookup' (nameMapHandle h)) topNameList
-  let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
-  liftIO $ GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
+registerAsEnumIfNecessary ::
+  Handle ->
+  DD.DefiniteDescription ->
+  AN.ArgNum ->
+  [(DD.DefiniteDescription, (Hint, GN.GlobalName))] ->
+  IO ()
+registerAsEnumIfNecessary h dataName dataArgNum consInfoList =
+  when (hasNoArgs dataArgNum consInfoList) $ do
+    OptimizableData.insert (optDataHandle h) dataName OD.Enum
+    forM_ consInfoList $ \(consName, _) -> do
+      OptimizableData.insert (optDataHandle h) consName OD.Enum
 
-getUnusedLocators :: Handle -> IO (UnusedGlobalLocators, UnusedLocalLocators)
-getUnusedLocators h = do
-  unusedGlobalLocators <- Unused.getGlobalLocator (unusedHandle h)
-  unusedLocalLocators <- Unused.getLocalLocator (unusedHandle h)
-  return (unusedGlobalLocators, unusedLocalLocators)
+isUnary :: [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> Bool
+isUnary consInfoList =
+  case consInfoList of
+    [(_, (_, GN.DataIntro _ consArgNum _ _))] ->
+      consArgNum == AN.fromInt 1
+    _ ->
+      False
 
-registerUnusedVariableRemarks :: Handle -> IO [L.Log]
-registerUnusedVariableRemarks h = do
-  unusedVars <- Unused.getVariable (unusedHandle h)
-  return $ flip map unusedVars $ \(mx, x, k) ->
-    case k of
-      Normal ->
-        L.newLog mx L.Warning $
-          "Defined but not used: `" <> toText x <> "`"
-      Borrowed ->
-        L.newLog mx L.Warning $
-          "Borrowed but not used: `" <> toText x <> "`"
-      Relayed ->
-        L.newLog mx L.Warning $
-          "Relayed but not used: `" <> toText x <> "`"
-
-registerUnusedGlobalLocatorRemarks :: Handle -> IO [L.Log]
-registerUnusedGlobalLocatorRemarks h = do
-  unusedGlobalLocatorMap <- Unused.getGlobalLocator (unusedHandle h)
-  let unusedGlobalLocators = concatMap snd unusedGlobalLocatorMap
-  return $ flip map unusedGlobalLocators $ \(m, locatorText) ->
-    L.newLog m L.Warning $
-      "Imported but not used: `" <> locatorText <> "`"
-
-registerUnusedLocalLocatorRemarks :: Handle -> IO [L.Log]
-registerUnusedLocalLocatorRemarks h = do
-  unusedLocalLocatorMap <- Unused.getLocalLocator (unusedHandle h)
-  return $ flip map unusedLocalLocatorMap $ \(ll, m) ->
-    L.newLog m L.Warning $
-      "Imported but not used: `" <> LL.reify ll <> "`"
-
-registerUnusedStaticFileRemarks :: Handle -> IO [L.Log]
-registerUnusedStaticFileRemarks h = do
-  unusedStaticFiles <- Unused.getStaticFile (unusedHandle h)
-  return $ flip map unusedStaticFiles $ \(k, m) ->
-    L.newLog m L.Warning $
-      "Imported but not used: `" <> k <> "`"
-
-activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
-activateImport h m sourceInfoList = do
-  forM_ sourceInfoList $ \importItem -> do
-    case importItem of
-      ImportItem source aliasInfoList -> do
-        let path = Source.sourceFilePath source
-        namesInSource <- GlobalNameMap.lookup (globalNameMapHandle h) m path
-        liftIO $ NameMap.activateTopLevelNames (nameMapHandle h) namesInSource
-        forM_ aliasInfoList $ \aliasInfo ->
-          Alias.activateAliasInfo (aliasHandle h) source namesInSource aliasInfo
-      StaticKey pathList -> do
-        forM_ pathList $ \(key, (mKey, path)) -> do
-          Locator.activateStaticFile (locatorHandle h) mKey key path
+hasNoArgs :: AN.ArgNum -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> Bool
+hasNoArgs dataArgNum consInfoList = do
+  let b1 = dataArgNum == AN.fromInt 0
+  let b2 = all (\(_, (_, gn)) -> GN.hasNoArgs gn) consInfoList
+  b1 && b2

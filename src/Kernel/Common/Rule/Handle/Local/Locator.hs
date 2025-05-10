@@ -26,6 +26,6 @@ data Handle = Handle
     _envHandle :: Env.Handle,
     _activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     _activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
-    _activeGlobalLocatorListRef :: IORef [SGL.StrictGlobalLocator],
-    _currentGlobalLocatorRef :: IORef (Maybe SGL.StrictGlobalLocator)
+    _activeGlobalLocatorList :: [SGL.StrictGlobalLocator],
+    _currentGlobalLocator :: SGL.StrictGlobalLocator
   }

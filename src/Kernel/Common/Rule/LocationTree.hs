@@ -60,11 +60,14 @@ insert lt (l, (cFrom, cTo)) m =
 find :: Line -> Column -> LocationTree -> Maybe (LocType, Hint, ColInterval, DefSymbolLen)
 find l c mp = do
   (colInterval@(colFrom, colTo), lt, SavedHint m) <- snd <$> M.lookupLE (l, c) mp
-  case lt of
-    FileLoc ->
-      return (lt, m, colInterval, colTo - colFrom)
-    SymbolLoc sym ->
-      return (lt, m, colInterval, getLength sym)
+  if colTo < c
+    then Nothing
+    else do
+      case lt of
+        FileLoc ->
+          return (lt, m, colInterval, colTo - colFrom)
+        SymbolLoc sym ->
+          return (lt, m, colInterval, getLength sym)
 
 getLength :: SymbolName -> DefSymbolLen
 getLength s =

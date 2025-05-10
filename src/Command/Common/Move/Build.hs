@@ -22,7 +22,7 @@ import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils (nubOrdOn)
-import Data.Either (isLeft, lefts)
+import Data.Either (lefts)
 import Data.Foldable
 import Data.Maybe
 import Data.Text qualified as T
@@ -30,7 +30,6 @@ import Data.Text.Encoding (decodeUtf8)
 import Data.Time
 import Kernel.Clarify.Move.Clarify qualified as Clarify
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
-import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
@@ -50,6 +49,7 @@ import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Emit.Move.Emit qualified as Emit
 import Kernel.Load.Move.Load qualified as Load
 import Kernel.Lower.Move.Lower qualified as Lower
+import Kernel.Parse.Move.Interpret qualified as Interpret
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Rule.ModuleID qualified as MID
@@ -131,17 +131,15 @@ compile h target outputKindList contentSeq = do
   let completedTitle = getCompletedTitle numOfItems
   let silentMode = Env.getSilentMode (Global.envHandle (globalHandle h))
   hp <- liftIO $ Indicator.new colorHandle silentMode (Just numOfItems) workingTitle completedTitle color
-  contentAsync <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
-    localHandle <- Local.new (globalHandle h) source
-    parseHandle <- liftIO $ Parse.new (globalHandle h) localHandle
+  cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
+  cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+    interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle
+    item <- Interpret.interpret interpretHandle target source cacheOrProg
+    return (localHandle, (source, item))
+  contentAsync <- fmap catMaybes $ forM cacheOrStmtList $ \(localHandle, (source, (cacheOrStmt, logs))) -> do
     elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) localHandle source
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
-    let suffix = if isLeft cacheOrContent then " (cache found)" else ""
-    liftIO $
-      Logger.report (Global.loggerHandle (globalHandle h)) $
-        "Compiling: " <> T.pack (toFilePath $ sourceFilePath source) <> suffix
-    (cacheOrStmtList, logs) <- Parse.parse parseHandle target source cacheOrContent
-    stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmtList
+    stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
     b <- Cache.needsCompilation cacheHandle outputKindList source
     if b

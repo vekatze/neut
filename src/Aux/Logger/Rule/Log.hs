@@ -1,6 +1,5 @@
 module Aux.Logger.Rule.Log
   ( Log (..),
-    ShouldInsertPadding,
     newLog,
     _logLevelToText,
     _logLevelToSGR,
@@ -14,12 +13,8 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import System.Console.ANSI
 
-type ShouldInsertPadding =
-  Bool
-
 data Log = Log
-  { position :: Maybe Hint,
-    shouldInsertPadding :: ShouldInsertPadding,
+  { position :: Maybe SavedHint,
     logLevel :: LogLevel,
     content :: T.Text
   }
@@ -54,8 +49,7 @@ _logLevelToSGR level =
 newLog :: Hint -> LogLevel -> T.Text -> Log
 newLog m level text = do
   Log
-    { position = Just m,
-      shouldInsertPadding = True,
+    { position = Just (SavedHint m),
       logLevel = level,
       content = text
     }

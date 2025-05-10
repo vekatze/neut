@@ -70,7 +70,7 @@ insert h m funcName isConstLike argNum keys = do
               <> "`."
       | otherwise ->
           return ()
-  liftIO $ modifyIORef' (_keyArgMapRef h) $ Map.insert funcName (isConstLike, (argNum, keys))
+  liftIO $ atomicModifyIORef' (_keyArgMapRef h) (\mp -> (Map.insert funcName (isConstLike, (argNum, keys)) mp, ()))
 
 lookup :: Handle -> Hint -> DD.DefiniteDescription -> EIO (AN.ArgNum, [Key])
 lookup h m dataName = do
