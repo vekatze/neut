@@ -65,8 +65,6 @@
 
 - [let x on y1, ..., yn = e1 in e2](#on)
 - [\*e](#e)
-- [use e {x1, ..., xn} in cont](#use-e-x1--xn-in-cont)
-- [e::x](#ex)
 - [if](#if)
 - [when cond { e }](#when-cond--e-)
 - [e1; e2](#e1-e2)
@@ -76,7 +74,6 @@
 - [?t](#t)
 - [[e1, ..., en]](#e1--en)
 - [with / bind](#with--bind)
-- [{e}](#e)
 
 ## `type`
 
@@ -2717,143 +2714,6 @@ This clone is created by copying the content along the type `a`.
 
 The original content is kept intact.
 
-## `use e {x1, ..., xn} in cont`
-
-You can use `use e {x1, ..., xn} in cont` as a shorthand to destructure an ADT that has only one constructor.
-
-### Example
-
-```neut
-data config {
-| Config(
-    path: &text,
-    count: int,
-  )
-}
-
-define use-config(c: config): unit {
-  use c {count} in
-  print-int(count)
-}
-
-// cf.
-define use-config-2(c: config): unit {
-  let Config of {count} = c in
-  print-int(count)
-}
-```
-
-### Syntax
-
-```neut
-use e {x1, ..., xn} in
-cont
-```
-
-### Semantics
-
-`use` is the following syntactic sugar:
-
-```neut
-use e {x1, ..., xn} in
-cont
-
-↓
-
-let K of {x1, ..., xn} = e in
-cont
-```
-
-Here, the `K` is the only constructor of the type of `e`. If the type of e contains more than one constructor, `use` results in a compilation error.
-
-### Type
-
-Derived from the desugared form.
-
-## `e::x`
-
-You can use `e::x` to extract a value from an ADT value.
-
-### Example
-
-```neut
-data config {
-| Config(
-    path: &text,
-    count: int,
-  )
-}
-
-define use-config(c: config): unit {
-  print-int(c::count)
-}
-```
-
-### Syntax
-
-```neut
-e::x
-```
-
-### Semantics
-
-`::` is the following syntactic sugar:
-
-```neut
-e::x
-
-↓
-
-use e {x} in
-x
-```
-
-### Type
-
-Derived from the desugared form.
-
-### Note
-
-One possible use of `::` is to select a function from a record of functions:
-
-```neut
-// dictionary.nt ---------------------------------
-
-...
-
-// declare a record of functions (like signatures in OCaml)
-data trope(k) {
-| Trope(
-    insert: <v>(k, v, dictionary(k, v)) -> dictionary(k, v),
-    lookup: <v>(&k, &dictionary(k, v)) -> ?&v,
-    delete: <v>(k, dictionary(k, v)) -> dictionary(k, v),
-  )
-}
-
-// foo.nt ----------------------------------
-
-import {
-  Dict,
-  ...
-}
-
-// create a record of functions
-inline intdict: Dict.trope(int) {
-  // ... whatever ...
-}
-
-// ... and use a function of the record
-define make-big-dict(): dictionary(int, int) {
-  loop(700000, Dict.empty(), function (acc, _) {
-    let key = random(1000000) in
-    let val = random(1000000) in
-    intdict::insert(key, val, acc) // 🌟
-  })
-}
-```
-
-You can find a working example of such a use case [in the core library](https://github.com/vekatze/neut-core/blob/main/source/bench/random-dict.nt).
-
 ## `if`
 
 You can use `if` as in other languages.
@@ -3305,18 +3165,6 @@ with f {e2}
 
 // (4) -----------------------------------------------------
 
-with f {
-  use e {x1 ..., xn} in
-  cont
-}
-
-↓
-
-use e {x1, ..., xn} in
-with f {cont}
-
-// (5) -----------------------------------------------------
-
 with f {e}
 
 ↓
@@ -3324,7 +3172,7 @@ with f {e}
 e
 ```
 
-The rule `(5)` is used only when all the other rules are unavailable.
+The rule `(4)` is used only when all the other rules are unavailable.
 
 ### Type
 
@@ -3335,38 +3183,6 @@ Derived from the desugared form.
 - `with`/`bind` is the ordinary do-notation except that:
   - it must have an explicit monadic binder, and
   - it doesn't have monadic return.
-
-## `{e}`
-
-`{e}` can be used as parentheses in other languages.
-
-```neut
-              // 🌟
-define foo(f: {(int) -> (bool)} -> bool): bool {
-  let g =
-    function (x: int) {
-      True
-    }
-  in
-  f(g)
-}
-
-
-// cf.
-define bar(f: (int) -> (bool) -> bool): bool {
-  f(10)(True)
-}
-```
-
-### Syntax
-
-```neut
-{e}
-```
-
-### Semantics
-
-The semantics of `{e}` is the same as `e`.
 
 ### Type
 
