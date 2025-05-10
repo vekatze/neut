@@ -1,10 +1,15 @@
 module Language.RawTerm.Rule.RawStmt
-  ( RawProgram (..),
-    RawStmt (..),
+  ( BaseRawProgram (..),
+    RawProgram,
+    BaseRawStmt (..),
+    RawStmt,
+    PostRawStmt (..),
+    PostRawProgram (..),
     RawStmtKind,
     RawConsInfo,
     RawImport (..),
     RawImportItem (..),
+    getPostRawStmtName,
     compareImportItem,
     isImportEmpty,
     mergeImportList,
@@ -18,6 +23,7 @@ import Aux.SyntaxTree.Rule.C
 import Aux.SyntaxTree.Rule.Series qualified as SE
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
+import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.IsConstLike
@@ -26,8 +32,14 @@ import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawTerm qualified as RT
 
-data RawProgram
-  = RawProgram Hint [(RawImport, C)] [(RawStmt, C)]
+data BaseRawProgram a
+  = RawProgram Hint [(RawImport, C)] [(BaseRawStmt a, C)]
+
+type RawProgram =
+  BaseRawProgram BN.BaseName
+
+-- type PostRawProgram =
+--   BaseRawProgram DD.DefiniteDescription
 
 type RawConsInfo a =
   (Hint, a, IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
@@ -35,30 +47,67 @@ type RawConsInfo a =
 type RawStmtKind a =
   SK.BaseStmtKind a (RawBinder RT.RawTerm) ()
 
-data RawStmt
+data BaseRawStmt name
   = RawStmtDefine
       C
-      (RawStmtKind BN.BaseName)
-      RT.TopDef
+      (RawStmtKind name)
+      (RT.RawDef name)
   | RawStmtDefineData
       C
       Hint
-      (BN.BaseName, C)
+      (name, C)
       (Maybe (RT.Args RT.RawTerm))
-      (SE.Series (RawConsInfo BN.BaseName))
+      (SE.Series (RawConsInfo name))
       Loc
   | RawStmtDefineResource
       C
       Hint
-      (BN.BaseName, C)
+      (name, C)
       (C, RT.RawTerm)
       (C, RT.RawTerm)
       C
-  | RawStmtNominal C Hint (SE.Series (RT.TopGeist, Loc))
+  | RawStmtNominal C Hint (SE.Series (RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
+
+type RawStmt =
+  BaseRawStmt BN.BaseName
 
 data RawImport
   = RawImport C Hint (SE.Series RawImportItem) Loc
+
+-- type PostRawStmt =
+--   BaseRawStmt DD.DefiniteDescription
+data PostRawProgram
+  = PostRawProgram Hint [(RawImport, C)] [PostRawStmt]
+
+data PostRawStmt
+  = PostRawStmtDefine
+      C
+      (RawStmtKind DD.DefiniteDescription)
+      (RT.RawDef DD.DefiniteDescription)
+  | PostRawStmtDefineResource
+      C
+      Hint
+      (DD.DefiniteDescription, C)
+      (C, RT.RawTerm)
+      (C, RT.RawTerm)
+      C
+  | PostRawStmtNominal C Hint (SE.Series (RT.RawGeist DD.DefiniteDescription, Loc))
+  | PostRawStmtForeign C (SE.Series RawForeignItem)
+
+getPostRawStmtName :: PostRawStmt -> [(Hint, DD.DefiniteDescription)]
+getPostRawStmtName stmt =
+  case stmt of
+    PostRawStmtDefine _ _ def -> do
+      let m = RT.loc $ RT.geist def
+      let name = fst $ RT.name $ RT.geist def
+      [(m, name)]
+    PostRawStmtDefineResource _ m (name, _) _ _ _ ->
+      [(m, name)]
+    PostRawStmtNominal {} ->
+      []
+    PostRawStmtForeign {} ->
+      []
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))

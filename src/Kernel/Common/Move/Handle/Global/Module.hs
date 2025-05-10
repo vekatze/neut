@@ -48,7 +48,7 @@ getModuleCacheMap h =
 
 insertToModuleCacheMap :: Handle -> Path Abs File -> Module -> IO ()
 insertToModuleCacheMap h k v =
-  modifyIORef' (_moduleCacheMapRef h) $ Map.insert k v
+  atomicModifyIORef' (_moduleCacheMapRef h) (\mp -> (Map.insert k v mp, ()))
 
 getModuleDirByID :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs Dir)
 getModuleDirByID (MainModule pivotModule) mHint moduleID = do

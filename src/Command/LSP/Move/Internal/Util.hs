@@ -60,7 +60,7 @@ maxDiagNum =
 
 remarkToDignostic :: Log -> Maybe (NormalizedUri, Diagnostic)
 remarkToDignostic Log {position, logLevel, content} = do
-  Hint {metaFileName = path, metaLocation = (line, col)} <- position
+  SavedHint (Hint {metaFileName = path, metaLocation = (line, col)}) <- position
   let pos = Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ col - 1}
   let range = Range {_start = pos, _end = pos}
   let uri = toNormalizedUri $ filePathToUri path

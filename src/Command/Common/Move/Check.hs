@@ -8,7 +8,7 @@ module Command.Common.Move.Check
   )
 where
 
-import Aux.Error.Move.Run (runEIO)
+import Aux.Error.Move.Run (forP, runEIO)
 import Aux.Error.Rule.EIO (EIO)
 import Aux.Error.Rule.Error qualified as E
 import Aux.Logger.Move.Debug qualified as Logger
@@ -31,8 +31,10 @@ import Kernel.Common.Rule.Target
 import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate qualified as Elaborate
 import Kernel.Load.Move.Load qualified as Load
+import Kernel.Parse.Move.Interpret qualified as Interpret
 import Kernel.Parse.Move.Parse qualified as Parse
 import Kernel.Unravel.Move.Unravel qualified as Unravel
+import Language.WeakTerm.Rule.WeakStmt (WeakStmt)
 import Path
 
 newtype Handle = Handle
@@ -73,8 +75,13 @@ _check h target baseModule = do
     unravelHandle <- liftIO $ Unravel.new (globalHandle h)
     (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
     contentSeq <- Load.load loadHandle target dependenceSeq
-    forM_ contentSeq $ \(source, cacheOrContent) -> do
-      checkSource h target source cacheOrContent
+    cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
+    cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+      interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle
+      item <- Interpret.interpret interpretHandle target source cacheOrProg
+      return (localHandle, (source, item))
+    forM_ cacheOrStmtList $ \(localHandle, (source, cacheOrContent)) -> do
+      checkSource h localHandle target source cacheOrContent
 
 _check' :: Handle -> Target -> M.Module -> EIO (Maybe Elaborate.Handle)
 _check' h target baseModule = do
@@ -82,23 +89,25 @@ _check' h target baseModule = do
   let loadHandle = Load.new (globalHandle h)
   (_, dependenceSeq) <- Unravel.unravel unravelHandle baseModule target
   contentSeq <- Load.load loadHandle target dependenceSeq
-  case unsnoc contentSeq of
+  cacheOrProgList <- Parse.parse (globalHandle h) contentSeq
+  cacheOrStmtList <- forP cacheOrProgList $ \(localHandle, (source, cacheOrProg)) -> do
+    interpretHandle <- liftIO $ Interpret.new (globalHandle h) localHandle
+    item <- Interpret.interpret interpretHandle target source cacheOrProg
+    return (localHandle, (source, item))
+  case unsnoc cacheOrStmtList of
     Nothing ->
       return Nothing
-    Just (deps, (rootSource, rootCacheOrContent)) -> do
-      forM_ deps $ \(source, cacheOrContent) -> do
-        checkSource h target source cacheOrContent
-      Just <$> checkSource h target rootSource rootCacheOrContent
+    Just (deps, (rootLocalHandle, (rootSource, rootCacheOrContent))) -> do
+      forM_ deps $ \(localHandle, (source, cacheOrContent)) -> do
+        checkSource h localHandle target source cacheOrContent
+      Just <$> checkSource h rootLocalHandle target rootSource rootCacheOrContent
 
-checkSource :: Handle -> Target -> Source -> Either Cache T.Text -> EIO Elaborate.Handle
-checkSource h target source cacheOrContent = do
-  localHandle <- Local.new (globalHandle h) source
-  parseHandle <- liftIO $ Parse.new (globalHandle h) localHandle
+checkSource :: Handle -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> EIO Elaborate.Handle
+checkSource h localHandle target source (cacheOrStmtList, logs) = do
   elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) localHandle source
   liftIO $
     Logger.report (Global.loggerHandle (globalHandle h)) $
       "Checking: " <> T.pack (toFilePath $ sourceFilePath source)
-  (cacheOrStmtList, logs) <- Parse.parse parseHandle target source cacheOrContent
   void $ Elaborate.elaborate elaborateHandle target logs cacheOrStmtList
   return elaborateHandle
 

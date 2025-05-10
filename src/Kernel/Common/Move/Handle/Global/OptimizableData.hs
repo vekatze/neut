@@ -19,7 +19,7 @@ new = do
 
 insert :: Handle -> DD.DefiniteDescription -> OptimizableData -> IO ()
 insert h dd grp = do
-  modifyIORef' (_optDataMapRef h) $ Map.insert dd grp
+  atomicModifyIORef' (_optDataMapRef h) (\mp -> (Map.insert dd grp mp, ()))
 
 lookup :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookup h dd = do
