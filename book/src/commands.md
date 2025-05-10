@@ -118,95 +118,9 @@ define foo(): unit {
 }
 ```
 
-### `--end-of-entry`
-
-`--end-of-entry ANY_STRING` can be used to add separators between compiler diagnostics. This feature is for linter wrappers like flycheck.
-
-For example, suppose we have this ill-typed program:
-
-```neut
-define main(): int {
-  type
-}
-```
-
-When running `neut build TARGET`, the compiler reports errors like the below:
-
-```text
-/path/to/sample/source/hey.nt:1:8
-Error: Expected:
-         () -> unit
-       Found:
-         () -> int64
-/path/to/sample/source/hey.nt:2:3
-Error: Expected:
-         int64
-       Found:
-         type
-```
-
-On the other hand, when running `neut build TARGET --end-of-entry EOE`, the text `EOE` is inserted after each entry:
-
-```text
-/path/to/sample/source/hey.nt:1:8
-Error: Expected:
-         () -> unit
-       Found:
-         () -> int64
-EOE
-/path/to/sample/source/hey.nt:2:3
-Error: Expected:
-         int64
-       Found:
-         type
-EOE
-```
-
-These can be used to parse entries.
-
 ## `neut check`
 
 `neut check` type-checks all the files in the current module. It also creates cache files of the source files for faster compilation.
-
-### `--no-padding`
-
-The compiler prints diagnostics without padding spaces if `--no-padding` is set.
-
-Without `--no-padding`:
-
-```text
-/path/to/sample/source/hey.nt:1:8
-Error: Expected:
-         () -> unit
-       Found:
-         () -> int64
-/path/to/sample/source/hey.nt:2:3
-Error: Expected:
-         int64
-       Found:
-         type
-```
-
-With `--no-padding`:
-
-```text
-/Users/vekatze/Desktop/hey/source/hey.nt:1:8
-Error: Expected:
-  () -> unit
-Found:
-  () -> int64
-/Users/vekatze/Desktop/hey/source/hey.nt:2:3
-Error: Expected:
-  int64
-Found:
-  type
-```
-
-This option is for linter wrappers like flycheck.
-
-### `--end-of-entry`
-
-The same as the one of `neut build`.
 
 ## `neut clean`
 

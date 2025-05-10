@@ -32,7 +32,7 @@ main = do
       let shouldColorize = Remark.shouldColorize loggerConfig
       let enableDebugMode = Remark.enableDebugMode loggerConfig
       colorHandle <- Color.createHandle shouldColorize shouldColorize
-      loggerHandle <- Logger.createHandle colorHandle (Remark.endOfEntry loggerConfig) enableDebugMode
+      loggerHandle <- Logger.createHandle colorHandle enableDebugMode
       run loggerHandle $ do
         case cmd of
           C.Create cfg -> do

@@ -134,15 +134,13 @@ parseVersionOpt = do
 
 parseCheckOpt :: Parser Command
 parseCheckOpt = do
-  padOpt <- flag True False (mconcat [long "no-padding", help "Set this to disable padding of the output"])
   shouldCheckAllDependencies <- flag False True (mconcat [long "full", help "Set this to refresh the caches of all the dependencies"])
   remarkCfg <- remarkConfigOpt
   pure $
     Internal remarkCfg $
       Check $
         Check.Config
-          { Check.shouldInsertPadding = padOpt,
-            Check.shouldCheckAllDependencies = shouldCheckAllDependencies
+          { Check.shouldCheckAllDependencies = shouldCheckAllDependencies
           }
 
 parseArchiveOpt :: Parser Command
@@ -187,15 +185,13 @@ parseFormatEnsOpt = do
 remarkConfigOpt :: Parser Remark.Config
 remarkConfigOpt = do
   shouldColorize <- colorizeOpt
-  eoe <- T.pack <$> endOfEntryOpt
   enableDebugMode <- flag False True (mconcat [long "enable-debug-output", help "Set this to print debug info"])
   enableSilentMode <- flag False True (mconcat [long "silent", help "Set this to enable silent mode"])
   pure
     Remark.Config
       { Remark.shouldColorize = shouldColorize,
         Remark.enableDebugMode = enableDebugMode,
-        Remark.enableSilentMode = enableSilentMode,
-        Remark.endOfEntry = eoe
+        Remark.enableSilentMode = enableSilentMode
       }
 
 outputKindTextListOpt :: Parser [T.Text]
@@ -233,10 +229,6 @@ shouldExecuteOpt =
           help "Run the executable after compilation"
         ]
     )
-
-endOfEntryOpt :: Parser String
-endOfEntryOpt =
-  strOption (mconcat [long "end-of-entry", value "", help "String printed after each entry", metavar "STRING"])
 
 colorizeOpt :: Parser Bool
 colorizeOpt =

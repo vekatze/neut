@@ -4,13 +4,10 @@ module Aux.CommandParser.Rule.Config.Remark
   )
 where
 
-import Data.Text qualified as T
-
 data Config = Config
   { shouldColorize :: Bool,
     enableDebugMode :: Bool,
-    enableSilentMode :: Bool,
-    endOfEntry :: T.Text
+    enableSilentMode :: Bool
   }
 
 lspConfig :: Config
@@ -18,6 +15,5 @@ lspConfig =
   Config
     { shouldColorize = False,
       enableDebugMode = False,
-      enableSilentMode = False,
-      endOfEntry = ""
+      enableSilentMode = False
     }
