@@ -480,7 +480,9 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
       let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
       (body', contChain) <- clarifyDecisionTree h (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
-      let chain = prefixChain ++ contChain
+      let consArgNames = map (\(_, x, _) -> x) consArgs
+      let contChain' = filter (\(_, x, _) -> x `notElem` consArgNames) contChain
+      let chain = prefixChain ++ contChain'
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consDD
       case od of
         Just OD.Enum -> do
