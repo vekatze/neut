@@ -301,7 +301,7 @@ define use-struct<a>(m: monoid(a)): a {
 }
 
 define use-struct-2<a>(m: monoid(a)): a {
-  use m {m-empty, m-op} in
+  let Monoid of {m-empty, m-op} = m in
   let !empty = m-empty in
   m-op(!empty, !empty)
 }

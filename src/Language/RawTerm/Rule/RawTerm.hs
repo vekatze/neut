@@ -23,6 +23,7 @@ module Language.RawTerm.Rule.RawTerm
     decodeLetKind,
     mapEL,
     mapKeywordClause,
+    letKindFromText,
   )
 where
 
@@ -80,7 +81,6 @@ data RawTermF a
   | Hole HoleID
   | Annotation LogLevel (Annot.Annotation ()) a
   | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
-  | Use C a C (Args a) C a Loc
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)
   | Seq (a, C) C a
@@ -93,7 +93,6 @@ data RawTermF a
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | IncludeText C C Hint (T.Text, C)
   | With (KeywordClause a)
-  | Projection a (Hint, RawIdent) Loc
   | Brace C (a, C)
   | Pointer
   | Void
@@ -211,6 +210,20 @@ decodeLetKind letKind =
     Noetic -> "tie"
     Try -> "try"
     Bind -> "bind"
+
+letKindFromText :: T.Text -> Maybe LetKind
+letKindFromText t =
+  case t of
+    "let" ->
+      return $ Plain False
+    "tie" ->
+      return Noetic
+    "try" ->
+      return Try
+    "bind" ->
+      return Bind
+    _ ->
+      Nothing
 
 type VarArg =
   (Hint, RawTerm, C, C, RawTerm)

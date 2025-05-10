@@ -137,11 +137,6 @@ fill h holeSubst term =
       discarder' <- fill h holeSubst discarder
       copier' <- fill h holeSubst copier
       return $ m :< WT.Resource dd resourceID unitType' discarder' copier'
-    m :< WT.Use e xts cont -> do
-      e' <- fill h holeSubst e
-      xts' <- fillBinder h holeSubst xts
-      cont' <- fill h holeSubst cont
-      return $ m :< WT.Use e' xts' cont'
     _ :< WT.Void ->
       return term
 

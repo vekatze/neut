@@ -47,13 +47,6 @@ define test-syntax(): unit {
       Pair(x, y)
     }
   in
-  let _ =
-    {
-      function (x: type) {
-        x
-      }
-    }(type)
-  in
   // exprs in bodies
   let _ =
     function (f: (type) -> type) {
@@ -92,15 +85,18 @@ define test-syntax(): unit {
   in
   let _ =
     f(
-      let _ = type in
-      type,
-      type,
-      let _ = type in
       {
+        let _ = type in
+        type
+      },
+      type,
+      let _ = type in
+      let f =
         function () {
           type
         }
-      }(),
+      in
+      f(),
     )
   in
   Unit

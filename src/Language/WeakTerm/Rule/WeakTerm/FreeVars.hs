@@ -74,10 +74,6 @@ freeVars term =
       let xs2 = freeVars discarder
       let xs3 = freeVars copier
       S.unions [xs1, xs2, xs3]
-    _ :< WT.Use e xts cont -> do
-      let fvs1 = freeVars e
-      let fvs2 = freeVars' xts (freeVars cont)
-      S.union fvs1 fvs2
     _ :< WT.Void ->
       S.empty
 

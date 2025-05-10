@@ -117,12 +117,6 @@ eq (_ :< term1) (_ :< term2)
   | WT.Resource _ id1 _ _ _ <- term1,
     WT.Resource _ id2 _ _ _ <- term2 =
       id1 == id2
-  | WT.Use trope1 xts1 cont1 <- term1,
-    WT.Use trope2 xts2 cont2 <- term2 = do
-      let b1 = eq trope1 trope2
-      let b2 = eqBinder xts1 xts2
-      let b3 = eq cont1 cont2
-      b1 && b2 && b3
   | WT.Void <- term1,
     WT.Void <- term2 =
       True

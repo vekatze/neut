@@ -5,6 +5,7 @@ module Aux.CodeParser.Move.Parse
     delimiter,
     string,
     symbol,
+    symbol',
   )
 where
 
@@ -79,6 +80,10 @@ delimiter expected = do
 symbol :: Parser (T.Text, C)
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+
+symbol' :: Parser (T.Text, C)
+symbol' = do
+  lexeme $ takeWhileP Nothing (`S.notMember` nonSymbolCharSet)
 
 string :: Parser (T.Text, C)
 string =

@@ -88,8 +88,9 @@ define use-item3(a: type, b: type, f: item3(a, b), x: a): b {
 
 define use-item3-noetic(a: type, b: type, f: &item3(a, b), x: a): b {
   case f {
-  | Item3(func) =>
-    {*func}(x)
+  | Item3(func-n) =>
+    let func = *func-n in
+    func(x)
   }
 }
 

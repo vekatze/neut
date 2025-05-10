@@ -15,17 +15,12 @@ import Aux.Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
-import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
-import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
-import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
-import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Common.Rule.ReadableDD
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
@@ -45,11 +40,10 @@ import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
-import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.HoleID qualified as HID
-import Language.Common.Rule.Ident (Ident (..), isHole)
+import Language.Common.Rule.Ident (isHole)
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Literal qualified as L
@@ -58,7 +52,6 @@ import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.StmtKind
 import Language.LowComp.Rule.DeclarationName qualified as DN
-import Language.RawTerm.Rule.Key (Key)
 import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.FromPrimNum qualified as Term
 import Language.Term.Rule.Term.Weaken
@@ -356,45 +349,6 @@ infer h term =
       liftIO $ Constraint.insert (constraintHandle h) tDiscard td
       liftIO $ Constraint.insert (constraintHandle h) tCopy tc
       return (m :< WT.Resource dd resourceID unitType' discarder' copier', m :< WT.Tau)
-    m :< WT.Use e@(mt :< _) xts cont -> do
-      (e', t') <- infer h e
-      t'' <- resolveType h t'
-      case t'' of
-        _ :< WT.Data attr _ dataArgs
-          | AttrD.Attr {..} <- attr,
-            [(consDD, isConstLike')] <- consNameList -> do
-              (_, keyList) <- KeyArg.lookup (keyArgHandle h) m consDD
-              defaultKeyMap <- liftIO $ constructDefaultKeyMap h m keyList
-              let specifiedKeyMap = Map.fromList $ flip map xts $ \(mx, x, t) -> (Ident.toText x, (mx, x, t))
-              let keyMap = Map.union specifiedKeyMap defaultKeyMap
-              reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
-              dataArgs' <- mapM (const $ liftIO $ newTypedHole h m (varEnv h)) [1 .. length dataArgs]
-              cursor <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "cursor"
-              od <- liftIO $ OptimizableData.lookup (optDataHandle h) consDD
-              let freedVars = if mustBypassCursorDealloc od then [] else [cursor]
-              liftIO $ WeakType.insert (weakTypeHandle h) cursor t''
-              (tree', _ :< treeType) <-
-                inferDecisionTree m h $
-                  DT.Switch
-                    (cursor, t'')
-                    ( DT.Unreachable,
-                      [ DT.ConsCase $
-                          DT.ConsCaseRecord
-                            { mCons = m,
-                              consDD = consDD,
-                              isConstLike = isConstLike',
-                              disc = D.zero,
-                              dataArgs = dataArgs',
-                              consArgs = reorderedArgs,
-                              cont = DT.Leaf freedVars (adjustCont m reorderedArgs) cont
-                            }
-                      ]
-                    )
-              return (m :< WT.DataElim False [(cursor, e', t'')] tree', m :< treeType)
-          | otherwise -> do
-              raiseError mt $ "Expected a single-constructor ADT, but found: " <> toText t''
-        _ :< _ -> do
-          raiseError mt $ "Expected an ADT, but found: " <> toText t''
     m :< WT.Void ->
       return (m :< WT.Void, m :< WT.Tau)
 
@@ -418,34 +372,6 @@ inferQuoteSeq h letSeq castDirection = do
       FromNoema ->
         liftIO $ Constraint.insert (constraintHandle h) (m1 :< WT.BoxNoema tInner) tOuter
   return (zip xts' es', h')
-
-mustBypassCursorDealloc :: Maybe OD.OptimizableData -> Bool
-mustBypassCursorDealloc odOrNone =
-  case odOrNone of
-    Just OD.Enum ->
-      True
-    Just OD.Unary ->
-      True
-    _ ->
-      False
-
-adjustCont :: Hint -> [BinderF WT.WeakTerm] -> [(BinderF WT.WeakTerm, WT.WeakTerm)]
-adjustCont m xts =
-  case xts of
-    [] ->
-      []
-    (mx, x, t) : rest ->
-      ((mx, x, t), mx :< WT.Var (ignoreUse x)) : adjustCont m rest
-
-ignoreUse :: Ident -> Ident
-ignoreUse (I (x, i)) =
-  I (expVarPrefix <> x, i)
-
-constructDefaultKeyMap :: Handle -> Hint -> [Key] -> IO (Map.HashMap Key (BinderF WT.WeakTerm))
-constructDefaultKeyMap h m keyList = do
-  names <- mapM (const $ Gensym.newIdentForHole (gensymHandle h)) keyList
-  ts <- mapM (const $ newHole h m $ varEnv h) names
-  return $ Map.fromList $ zipWith (\k (v, t) -> (k, (m, v, t))) keyList $ zip names ts
 
 inferArgs ::
   Handle ->
