@@ -53,7 +53,8 @@ define make-set-signature(a: type, !compare: (a, a) -> ordering): set-signature(
 }
 
 define main(): unit {
-  let int-set-signature = make-set-signature(int, core.int.ord.as-ord::compare) in
+  let Ord of {compare} = core.int.ord.as-ord in
+  let int-set-signature = make-set-signature(int, compare) in
   match int-set-signature {
   | Set of {insert = !insert, member, empty} =>
     let my-set = !insert(10, empty) in
