@@ -27,7 +27,7 @@ newError m text = do
 
 newError' :: T.Text -> Error
 newError' text = do
-  MakeError [Log Nothing True Error text]
+  MakeError [Log Nothing Error text]
 
 newCritical :: Hint -> T.Text -> Error
 newCritical m text = do
@@ -35,4 +35,4 @@ newCritical m text = do
 
 newCritical' :: T.Text -> Error
 newCritical' text = do
-  MakeError [Log Nothing True Critical text]
+  MakeError [Log Nothing Critical text]

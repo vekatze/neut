@@ -38,20 +38,20 @@ printWarning' h =
 
 printLogWithoutFilePos :: Handle -> L.LogLevel -> T.Text -> IO ()
 printLogWithoutFilePos h level txt =
-  printLog h $ L.Log Nothing True level txt
+  printLog h $ L.Log Nothing level txt
 
 printLogIO :: Handle -> L.Log -> IO ()
 printLogIO h l = do
   let locText = getLogLocation $ L.position l
   let levelText = getLogLevel (L.logLevel l)
-  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.shouldInsertPadding l) (L.logLevel l))
+  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
   Color.printStdOut (_colorHandle h) $ locText <> levelText <> logText
 
 printErrorIO :: Handle -> L.Log -> IO ()
 printErrorIO h l = do
   let locText = getLogLocation $ L.position l
   let levelText = getLogLevel (L.logLevel l)
-  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.shouldInsertPadding l) (L.logLevel l))
+  let logText = Color.pack' $ getLogText (L.content l) (logLevelToPad (L.logLevel l))
   Color.printStdErr (_colorHandle h) $ locText <> levelText <> logText
 
 getLogLocation :: Maybe SavedHint -> Color.Text
@@ -71,11 +71,9 @@ getLogText str padComp = do
   let logText = stylizeLogText str padComp
   logText <> "\n"
 
-logLevelToPad :: L.ShouldInsertPadding -> L.LogLevel -> T.Text
-logLevelToPad shouldInsertPadding level = do
-  if shouldInsertPadding
-    then T.replicate (T.length (L._logLevelToText level) + 2) " "
-    else ""
+logLevelToPad :: L.LogLevel -> T.Text
+logLevelToPad level = do
+  T.replicate (T.length (L._logLevelToText level) + 2) " "
 
 stylizeLogText :: T.Text -> T.Text -> T.Text
 stylizeLogText str pad = do

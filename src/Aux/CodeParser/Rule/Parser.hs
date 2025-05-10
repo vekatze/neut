@@ -29,7 +29,6 @@ createParseError errorBundle = do
   E.MakeError
     [ Log
         { position = Just (SavedHint m),
-          shouldInsertPadding = True,
           logLevel = Error,
           content = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
         }
