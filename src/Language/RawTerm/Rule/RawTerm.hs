@@ -74,7 +74,6 @@ data RawTermF a
   | Let LetKind C (PatParam a) C C a C Loc C a Loc
   | LetOn Bool C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | Pin C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | Use C a C C (PatParam a) C Loc C a Loc
   | StaticText a T.Text
   | Rune
   | RuneIntro a R.Rune

@@ -255,20 +255,6 @@ toDoc term =
       D.text "<annot>"
     _ :< Resource dd _ _ _ -> do
       D.text $ DD.localLocator dd
-    _ :< Use c1 e c2 c3 mxt c4 _ c5 cont _ -> do
-      D.join
-        [ PI.arrange
-            [ PI.beforeBareSeries $ D.text "use",
-              PI.bareSeries $ D.join [attachComment c1 $ toDoc e, C.asSuffix c2]
-            ],
-          PI.arrange
-            [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ letArgToDoc mxt, C.asSuffix c4]
-            ],
-          D.text "in",
-          D.line,
-          attachComment c5 $ toDoc cont
-        ]
     _ :< If ifClause elseIfClauseList elseBody -> do
       let ifClause' = decodeKeywordClause "if" $ mapKeywordClause toDoc ifClause
       let elseIfClauseList' = map (decodeKeywordClause "else-if" . mapKeywordClause toDoc) elseIfClauseList
