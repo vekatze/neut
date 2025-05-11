@@ -1,0 +1,16 @@
+{
+  target {
+    neut {
+      main "neut.nt",
+    },
+  },
+  dependency {
+    core {
+      digest "8-TPdZp1-CwYeGturnDL2IS_GUWPHiRvIRYgNuJqD6w",
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-50-48.tar.zst",
+      ],
+      enable-preset true,
+    },
+  },
+}
