@@ -387,8 +387,8 @@ clarifyDecisionTree h tenv isNoetic dataArgsMap tree =
       if isNoetic
         then return (cont', chain)
         else do
-          cont'' <- tidyCursorList h tenv dataArgsMap consumedCursorList cont'
-          return (cont'', chain)
+          (cont'', dataChain) <- tidyCursorList h tenv dataArgsMap consumedCursorList cont'
+          return (cont'', dataChain ++ chain)
     DT.Unreachable -> do
       return (C.Unreachable, [])
     DT.Switch (cursor, t@(m :< _)) (fallbackClause, clauseList) -> do
@@ -439,11 +439,11 @@ getClauseDataGroup h term =
     _ ->
       raiseCritical' "Clarify.isEnumType"
 
-tidyCursorList :: Handle -> TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> EIO C.Comp
+tidyCursorList :: Handle -> TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> EIO (C.Comp, [BinderF TM.Term])
 tidyCursorList h tenv dataArgsMap consumedCursorList cont =
   case consumedCursorList of
     [] ->
-      return cont
+      return (cont, [])
     cursor : rest -> do
       case IntMap.lookup (Ident.toInt cursor) dataArgsMap of
         Nothing ->
@@ -451,9 +451,11 @@ tidyCursorList h tenv dataArgsMap consumedCursorList cont =
         Just (dataArgs, cursorSize) -> do
           let (dataArgVars, dataTypes) = unzip dataArgs
           dataTypes' <- mapM (clarifyTerm h tenv) dataTypes
-          cont' <- tidyCursorList h tenv dataArgsMap rest cont
-          liftIO $ Linearize.linearize (linearizeHandle h) (zip dataArgVars dataTypes') $ do
+          (cont', chain) <- tidyCursorList h tenv dataArgsMap rest cont
+          tmp <- liftIO $ Linearize.linearize (linearizeHandle h) (zip dataArgVars dataTypes') $ do
             C.Free (C.VarLocal cursor) cursorSize cont'
+          let newChain = zipWith (\x t@(m :< _) -> (m, x, t)) dataArgVars dataTypes
+          return (tmp, newChain ++ chain)
 
 clarifyCase ::
   Handle ->
@@ -480,8 +482,9 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
       let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
       let prefixChain = TM.chainOfCaseWithoutCont tenv decisionCase
       (body', contChain) <- clarifyDecisionTree h (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
-      let consArgNames = map (\(_, x, _) -> x) consArgs
-      let contChain' = filter (\(_, x, _) -> x `notElem` consArgNames) contChain
+      let consArgVars = map (\(_, x, _) -> x) consArgs
+      let argVars = dataArgVars ++ consArgVars
+      let contChain' = filter (\(_, x, _) -> x `notElem` argVars) contChain
       let chain = prefixChain ++ contChain'
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consDD
       case od of
