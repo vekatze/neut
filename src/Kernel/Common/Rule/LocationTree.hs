@@ -47,7 +47,7 @@ instance Binary SymbolName
 instance Binary LocType
 
 type LocationTree =
-  M.Map (Line, ColFrom) (ColInterval, LocType, SavedHint)
+  M.Map (Line, ColFrom) (Line, ColInterval, LocType, SavedHint)
 
 empty :: LocationTree
 empty =
@@ -55,12 +55,12 @@ empty =
 
 insert :: LocType -> (Line, ColInterval) -> Hint -> LocationTree -> LocationTree
 insert lt (l, (cFrom, cTo)) m =
-  M.insert (l, cFrom) ((cFrom, cTo), lt, SavedHint m)
+  M.insert (l, cFrom) (l, (cFrom, cTo), lt, SavedHint m)
 
 find :: Line -> Column -> LocationTree -> Maybe (LocType, Hint, ColInterval, DefSymbolLen)
 find l c mp = do
-  (colInterval@(colFrom, colTo), lt, SavedHint m) <- snd <$> M.lookupLE (l, c) mp
-  if colTo < c
+  (line, colInterval@(colFrom, colTo), lt, SavedHint m) <- snd <$> M.lookupLE (l, c) mp
+  if colTo < c || line /= l
     then Nothing
     else do
       case lt of
@@ -90,7 +90,7 @@ isSymLoc lt =
 findRef :: Loc -> LocationTree -> [(FilePath, (Line, ColInterval))]
 findRef loc t = do
   let kvs = M.toList t
-  flip mapMaybe kvs $ \((line, _), (colInterval, lt, SavedHint m)) -> do
+  flip mapMaybe kvs $ \((line, _), (_, colInterval, lt, SavedHint m)) -> do
     if isSymLoc lt && loc == metaLocation m
       then return (metaFileName m, (line, colInterval))
       else Nothing
