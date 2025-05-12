@@ -1,0 +1,53 @@
+import {
+  ansi.color {Blue},
+  ansi.style {Bold},
+  core.file.descriptor {descriptor, stderr, stdout},
+  core.text {_get-content-pointer, text-byte-length},
+  this.aux.color.move.create-handle {create-handle},
+  this.aux.color.rule.handle {Handle, handle},
+  this.aux.color.rule.text {_unpack-with-tone, _unpack-without-tone, color-text, packed},
+  this.aux.color.rule.tone {Foreground, Style},
+}
+
+foreign {
+  dprintf(int, pointer): void,
+}
+
+define _print(d: descriptor, t: &text): unit {
+  let fmt = _get-content-pointer("%.*s\0") in
+  let len = text-byte-length(t) in
+  let val = _get-content-pointer(t) in
+  let _ = magic external dprintf(magic cast(descriptor, int, d), fmt)(len: int, val: pointer) in
+  Unit
+}
+
+define print-stdout(h: &handle, t: &color-text): unit {
+  tie Handle of {colorize-stdout} = h in
+  pin t' =
+    if *colorize-stdout {
+      _unpack-with-tone(t)
+    } else {
+      _unpack-without-tone(t)
+    }
+  in
+  _print(stdout, t')
+}
+
+define print-stderr(h: &handle, t: &color-text): unit {
+  tie Handle of {colorize-stderr} = h in
+  pin t' =
+    if *colorize-stderr {
+      _unpack-with-tone(t)
+    } else {
+      _unpack-without-tone(t)
+    }
+  in
+  _print(stderr, t')
+}
+
+define zen(): unit {
+  pin t' = packed([Foreground(Blue), Style(Bold)], *"sample\n") in
+  pin h = create-handle(False, True) in
+  print-stdout(h, t');
+  print-stderr(h, t')
+}
