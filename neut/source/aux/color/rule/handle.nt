@@ -1,5 +1,5 @@
 data handle {
-| Handle(
+| _Handle(
     colorize-stdout: bool,
     colorize-stderr: bool,
   )

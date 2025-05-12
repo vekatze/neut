@@ -4,8 +4,8 @@ import {
   core.file.descriptor {descriptor, stderr, stdout},
   core.text {_get-content-pointer, text-byte-length},
   this.aux.color.move.create-handle {create-handle},
-  this.aux.color.rule.handle {Handle, handle},
-  this.aux.color.rule.text {_unpack-with-tone, _unpack-without-tone, color-text, packed},
+  this.aux.color.rule.handle {_Handle, handle},
+  this.aux.color.rule.text {_unpacked, _unpacked-uncolored, color-text, packed},
   this.aux.color.rule.tone {Foreground, Style},
 }
 
@@ -22,24 +22,24 @@ define _print(d: descriptor, t: &text): unit {
 }
 
 define print-stdout(h: &handle, t: &color-text): unit {
-  tie Handle of {colorize-stdout} = h in
+  tie _Handle of {colorize-stdout} = h in
   pin t' =
     if *colorize-stdout {
-      _unpack-with-tone(t)
+      _unpacked(t)
     } else {
-      _unpack-without-tone(t)
+      _unpacked-uncolored(t)
     }
   in
   _print(stdout, t')
 }
 
 define print-stderr(h: &handle, t: &color-text): unit {
-  tie Handle of {colorize-stderr} = h in
+  tie _Handle of {colorize-stderr} = h in
   pin t' =
     if *colorize-stderr {
-      _unpack-with-tone(t)
+      _unpacked(t)
     } else {
-      _unpack-without-tone(t)
+      _unpacked-uncolored(t)
     }
   in
   _print(stderr, t')

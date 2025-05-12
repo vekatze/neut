@@ -19,7 +19,7 @@ define packed'(t: text): color-text {
   Join([], t, Empty)
 }
 
-define _unpack-with-tone(t: &color-text): text {
+define _unpacked(t: &color-text): text {
   let b = text-builder.entity.create(64) in
   pin reset = Style(Normal) in
   let _ on b =
@@ -41,7 +41,7 @@ define _unpack-with-tone(t: &color-text): text {
   text-builder.entity.get(b)
 }
 
-define _unpack-without-tone(t: &color-text): text {
+define _unpacked-uncolored(t: &color-text): text {
   let b = text-builder.entity.create(256) in
   let _ on b =
     let f =
@@ -68,10 +68,10 @@ define zen(): unit {
       Join([], *"\n", Empty),
     )
   in
-  pin fragment1 = _unpack-with-tone(t) in
-  pin fragment2 = _unpack-without-tone(t) in
+  pin fragment1 = _unpacked(t) in
+  pin fragment2 = _unpacked-uncolored(t) in
   pin t' = packed([Background(Red), Style(Italic)], *"sample\n") in
-  pin fragment3 = _unpack-with-tone(t') in
+  pin fragment3 = _unpacked(t') in
   print(fragment1);
   print(fragment2);
   print(fragment3);

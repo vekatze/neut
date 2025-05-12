@@ -1,7 +1,7 @@
 import {
   core.bool.show {show-bool},
   core.file.descriptor {descriptor, stderr, stdin, stdout},
-  this.aux.color.rule.handle {Handle, handle},
+  this.aux.color.rule.handle {_Handle, handle},
 }
 
 foreign {
@@ -15,7 +15,7 @@ define _is-tty(d: descriptor): bool {
 define create-handle(should-colorize-stdout: bool, should-colorize-stderr: bool): handle {
   let colorize-stdout = and(should-colorize-stdout, _is-tty(stdout)) in
   let colorize-stderr = and(should-colorize-stderr, _is-tty(stderr)) in
-  Handle of {colorize-stdout, colorize-stderr}
+  _Handle of {colorize-stdout, colorize-stderr}
 }
 
 define zen(): unit {
