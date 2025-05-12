@@ -11,11 +11,11 @@ data color-text {
 | Join(list(tone), text, color-text)
 }
 
-define pack(ts: list(tone), t: text): color-text {
+define packed(ts: list(tone), t: text): color-text {
   Join(ts, t, Empty)
 }
 
-define pack'(t: text): color-text {
+define packed'(t: text): color-text {
   Join([], t, Empty)
 }
 
@@ -70,7 +70,7 @@ define zen(): unit {
   in
   pin fragment1 = _unpack-with-tone(t) in
   pin fragment2 = _unpack-without-tone(t) in
-  pin t' = pack([Background(Red), Style(Italic)], *"sample\n") in
+  pin t' = packed([Background(Red), Style(Italic)], *"sample\n") in
   pin fragment3 = _unpack-with-tone(t') in
   print(fragment1);
   print(fragment2);

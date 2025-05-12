@@ -19,9 +19,8 @@ define create-handle(should-colorize-stdout: bool, should-colorize-stderr: bool)
 }
 
 define zen(): unit {
-  let stdin-tty = eq-int(1, magic external isatty(magic cast(descriptor, int, stdin))) in
-  let stdout-tty = eq-int(1, magic external isatty(magic cast(descriptor, int, stdout))) in
-  let stderr-tty = eq-int(1, magic external isatty(magic cast(descriptor, int, stderr))) in
-  printf("({}, {}, {})\n", [show-bool(stdin-tty), show-bool(stdout-tty), show-bool(stderr-tty)]);
-  Unit
+  let stdin-tty = _is-tty(stdin) in
+  let stdout-tty = _is-tty(stdout) in
+  let stderr-tty = _is-tty(stderr) in
+  printf("({}, {}, {})\n", [show-bool(stdin-tty), show-bool(stdout-tty), show-bool(stderr-tty)])
 }
