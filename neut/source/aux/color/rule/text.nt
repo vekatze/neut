@@ -1,0 +1,47 @@
+import {
+  ansi.color {color},
+}
+
+// module Aux.Color.Rule.Text
+//   ( Text,
+//     empty,
+//     pack,
+//     pack',
+//     _unpackWithSGR,
+//     _unpackWithoutSGR,
+//   )
+// where
+// import Data.String (IsString (..))
+// import Data.Text qualified as T
+// import System.Console.ANSI
+data color-text {
+| Empty
+| Cons(list(color), color-text, color-text)
+}
+
+// data Text
+//   = Nil
+//   | Cons [SGR] T.Text Text
+// empty :: Text
+// empty =
+//   Nil
+// pack :: [SGR] -> T.Text -> Text
+// pack color t =
+//   Cons color t Nil
+// pack' :: T.Text -> Text
+// pack' =
+//   pack []
+// _unpackWithSGR :: Text -> T.Text
+// _unpackWithSGR l =
+//   case l of
+//     Nil ->
+//       ""
+//     Cons color t rest -> do
+//       T.pack (setSGRCode color) <> t <> T.pack (setSGRCode [Reset]) <> _unpackWithSGR rest
+// _unpackWithoutSGR :: Text -> T.Text
+// _unpackWithoutSGR l = do
+//   case l of
+//     Nil ->
+//       ""
+//     Cons _ t rest -> do
+//       t <> _unpackWithoutSGR rest

@@ -12,5 +12,11 @@
       ],
       enable-preset true,
     },
+    ansi {
+      digest "iYuM1zM1lGeZLRayLkf9ojCJz1KftdpcDFhkWqx3Tqc",
+      mirror [
+        "https://github.com/vekatze/ansi-terminal/raw/main/archive/0-4-32.tar.zst",
+      ],
+    },
   },
 }
