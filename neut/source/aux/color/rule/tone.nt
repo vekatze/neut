@@ -1,0 +1,33 @@
+import {
+  ansi.color {color, get-background-tag, get-foreground-tag},
+  ansi.style {style},
+  core.list {for-N},
+  text-builder.entity {builder},
+  text-builder.scene {append-text},
+}
+
+data tone {
+| Foreground(color)
+| Background(color)
+| Style(style)
+}
+
+define _append-tone(b: &builder, t: &tone): unit {
+  case t {
+  | Foreground(c) =>
+    pin tag = get-foreground-tag(*c) in
+    append-text(b, tag)
+  | Background(c) =>
+    pin tag = get-background-tag(*c) in
+    append-text(b, tag)
+  | Style(s) =>
+    pin tag = ansi.style._get-tag(*s) in
+    append-text(b, tag)
+  }
+}
+
+define _append-tones(b: &builder, ts: &list(tone)): unit {
+  for-N(ts, function (t) {
+    _append-tone(b, t)
+  })
+}

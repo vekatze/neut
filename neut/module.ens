@@ -18,5 +18,11 @@
         "https://github.com/vekatze/ansi-terminal/raw/main/archive/0-4-32.tar.zst",
       ],
     },
+    text-builder {
+      digest "TGoMVm8T7oMFnow4GkDJJMhwSvoXGqXegaF4dXbdls8",
+      mirror [
+        "https://github.com/vekatze/text-builder/raw/main/archive/0-1-7.tar.zst",
+      ],
+    },
   },
 }

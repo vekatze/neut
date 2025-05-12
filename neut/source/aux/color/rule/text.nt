@@ -1,47 +1,79 @@
 import {
-  ansi.color {color},
+  ansi.color {Blue, Red},
+  ansi.style {Bold, Italic, Normal},
+  text-builder.entity,
+  text-builder.scene {append-text},
+  this.aux.color.rule.tone {Background, Foreground, Style, _append-tone, _append-tones, tone},
 }
 
-// module Aux.Color.Rule.Text
-//   ( Text,
-//     empty,
-//     pack,
-//     pack',
-//     _unpackWithSGR,
-//     _unpackWithoutSGR,
-//   )
-// where
-// import Data.String (IsString (..))
-// import Data.Text qualified as T
-// import System.Console.ANSI
 data color-text {
 | Empty
-| Cons(list(color), color-text, color-text)
+| Join(list(tone), text, color-text)
 }
 
-// data Text
-//   = Nil
-//   | Cons [SGR] T.Text Text
-// empty :: Text
-// empty =
-//   Nil
-// pack :: [SGR] -> T.Text -> Text
-// pack color t =
-//   Cons color t Nil
-// pack' :: T.Text -> Text
-// pack' =
-//   pack []
-// _unpackWithSGR :: Text -> T.Text
-// _unpackWithSGR l =
-//   case l of
-//     Nil ->
-//       ""
-//     Cons color t rest -> do
-//       T.pack (setSGRCode color) <> t <> T.pack (setSGRCode [Reset]) <> _unpackWithSGR rest
-// _unpackWithoutSGR :: Text -> T.Text
-// _unpackWithoutSGR l = do
-//   case l of
-//     Nil ->
-//       ""
-//     Cons _ t rest -> do
-//       t <> _unpackWithoutSGR rest
+define pack(ts: list(tone), t: text): color-text {
+  Join(ts, t, Empty)
+}
+
+define pack'(t: text): color-text {
+  Join([], t, Empty)
+}
+
+define _unpack-with-tone(t: &color-text): text {
+  let b = text-builder.entity.create(64) in
+  pin reset = Style(Normal) in
+  let _ on b =
+    let f =
+      define loop(t: &color-text): unit {
+        case t {
+        | Empty =>
+          Unit
+        | Join(ts, t, rest) =>
+          _append-tones(b, ts);
+          append-text(b, t);
+          _append-tone(b, reset);
+          loop(rest)
+        }
+      }
+    in
+    f(t)
+  in
+  text-builder.entity.get(b)
+}
+
+define _unpack-without-tone(t: &color-text): text {
+  let b = text-builder.entity.create(256) in
+  let _ on b =
+    let f =
+      define loop(t: &color-text): unit {
+        case t {
+        | Empty =>
+          Unit
+        | Join(_, t, rest) =>
+          append-text(b, t);
+          loop(rest)
+        }
+      }
+    in
+    f(t)
+  in
+  text-builder.entity.get(b)
+}
+
+define zen(): unit {
+  pin t =
+    Join(
+      [Foreground(Blue), Style(Bold)],
+      *"hello",
+      Join([], *"\n", Empty),
+    )
+  in
+  pin fragment1 = _unpack-with-tone(t) in
+  pin fragment2 = _unpack-without-tone(t) in
+  pin t' = pack([Background(Red), Style(Italic)], *"sample\n") in
+  pin fragment3 = _unpack-with-tone(t') in
+  print(fragment1);
+  print(fragment2);
+  print(fragment3);
+  print("sample\n")
+}
