@@ -4,7 +4,7 @@ module Kernel.Common.Move.CreateLocalHandle
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Control.Monad.IO.Class
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator

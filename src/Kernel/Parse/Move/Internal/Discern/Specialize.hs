@@ -4,8 +4,8 @@ module Kernel.Parse.Move.Internal.Discern.Specialize
   )
 where
 
-import Aux.Error.Move.Run (raiseCritical')
-import Aux.Error.Rule.EIO (EIO)
+import Error.Move.Run (raiseCritical')
+import Error.Rule.EIO (EIO)
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.Vector qualified as V

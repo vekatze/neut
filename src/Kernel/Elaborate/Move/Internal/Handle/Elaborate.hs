@@ -7,9 +7,9 @@ module Kernel.Elaborate.Move.Internal.Handle.Elaborate
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint (Hint)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint (Hint)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (fromMaybe)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global

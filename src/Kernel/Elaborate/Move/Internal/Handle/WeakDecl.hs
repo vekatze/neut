@@ -6,9 +6,9 @@ module Kernel.Elaborate.Move.Internal.Handle.WeakDecl
   )
 where
 
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map

@@ -5,8 +5,8 @@ module Command.LSP.Move.Internal.Format
   )
 where
 
-import Aux.Error.Move.Run (liftMaybe)
-import Aux.Error.Rule.EIO (EIO)
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Command.Common.Move.Format qualified as Format
 import Control.Monad.Trans
 import Data.Text qualified as T

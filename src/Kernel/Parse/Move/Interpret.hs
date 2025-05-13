@@ -5,10 +5,10 @@ module Kernel.Parse.Move.Interpret
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint
-import Aux.Logger.Rule.Log qualified as L
-import Aux.Logger.Rule.LogLevel qualified as L
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
 import Control.Monad
 import Control.Monad.IO.Class
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global

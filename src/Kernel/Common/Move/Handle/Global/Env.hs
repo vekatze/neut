@@ -7,9 +7,9 @@ module Kernel.Common.Move.Handle.Global.Env
   )
 where
 
-import Aux.Error.Move.Run (raiseError', run)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Handle qualified as Logger
+import Error.Move.Run (raiseError', run)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Handle qualified as Logger
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T

@@ -1,6 +1,6 @@
 module Command.Archive.Move.Internal.Module.GetExistingVersions (getExistingVersions) where
 
-import Aux.Error.Rule.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Data.List qualified as List
 import Data.Maybe

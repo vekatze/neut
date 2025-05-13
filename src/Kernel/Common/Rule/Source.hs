@@ -7,7 +7,7 @@ module Kernel.Common.Rule.Source
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Monad.Catch
 import Data.Maybe
 import Data.Text qualified as T

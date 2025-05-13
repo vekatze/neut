@@ -5,8 +5,8 @@ module Command.Archive.Move.Archive
   )
 where
 
-import Aux.CommandParser.Rule.Config.Archive
-import Aux.Error.Rule.EIO (EIO)
+import CommandParser.Rule.Config.Archive
+import Error.Rule.EIO (EIO)
 import Command.Archive.Move.Internal.Archive qualified as Archive
 import Command.Archive.Move.Internal.Module.MakeArchiveEns
 import Command.Archive.Move.Internal.PackageVersion.ChooseNewVersion qualified as PV

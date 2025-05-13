@@ -5,11 +5,11 @@ module Command.Common.Move.Build.Link
   )
 where
 
-import Aux.Color.Rule.Handle qualified as Color
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Move.Debug qualified as Logger
-import Aux.Logger.Rule.Handle qualified as Logger
-import Aux.ProgressIndicator.Move.ShowProgress qualified as Indicator
+import Color.Rule.Handle qualified as Color
+import Error.Rule.EIO (EIO)
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe

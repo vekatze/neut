@@ -5,7 +5,7 @@ module Kernel.Common.Move.Handle.Global.GlobalRemark
   )
 where
 
-import Aux.Logger.Rule.Log qualified as L
+import Logger.Rule.Log qualified as L
 import Data.IORef
 import Kernel.Common.Rule.Handle.Global.GlobalRemark
 

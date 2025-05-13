@@ -6,7 +6,7 @@ module Language.Common.Rule.StmtKind
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Data.Binary
 import GHC.Generics
 import Language.Common.Rule.Binder

@@ -8,8 +8,8 @@ module Language.Term.Move.Subst
   )
 where
 
-import Aux.Gensym.Move.Gensym qualified as Gensym
-import Aux.Gensym.Rule.Handle qualified as Gensym
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap

@@ -17,7 +17,7 @@ module Kernel.Parse.Move.Internal.Handle.Unused
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef

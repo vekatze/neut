@@ -7,8 +7,8 @@ module Kernel.Common.Move.Source.ShiftToLatest
   )
 where
 
-import Aux.Error.Move.Run (raiseError, raiseError')
-import Aux.Error.Rule.EIO (EIO)
+import Error.Move.Run (raiseError, raiseError')
+import Error.Rule.EIO (EIO)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T

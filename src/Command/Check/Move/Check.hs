@@ -5,9 +5,9 @@ module Command.Check.Move.Check
   )
 where
 
-import Aux.CommandParser.Rule.Config.Check
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Move.Log qualified as Logger
+import CommandParser.Rule.Config.Check
+import Error.Rule.EIO (EIO)
+import Logger.Move.Log qualified as Logger
 import Command.Common.Move.Check qualified as Check
 import Command.Common.Move.Fetch qualified as Fetch
 import Control.Monad.IO.Class (MonadIO (liftIO))

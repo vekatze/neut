@@ -9,7 +9,7 @@ module Kernel.Elaborate.Rule.Stuck
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Kernel.Elaborate.Rule.Constraint qualified as C
 import Language.Common.Rule.DefiniteDescription qualified as DD

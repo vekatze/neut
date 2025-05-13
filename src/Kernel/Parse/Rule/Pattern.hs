@@ -16,8 +16,8 @@ module Kernel.Parse.Rule.Pattern
   )
 where
 
-import Aux.Error.Rule.Error
-import Aux.Logger.Rule.Hint
+import Error.Rule.Error
+import Logger.Rule.Hint
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T

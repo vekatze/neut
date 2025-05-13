@@ -1,7 +1,7 @@
 module Kernel.Parse.Move.Internal.Discern.Data (defineData) where
 
-import Aux.Logger.Rule.Hint
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import Logger.Rule.Hint
+import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe
 import Language.Common.Rule.Attr.Data qualified as AttrD

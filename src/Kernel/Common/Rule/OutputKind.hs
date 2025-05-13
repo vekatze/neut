@@ -4,7 +4,7 @@ module Kernel.Common.Rule.OutputKind
   )
 where
 
-import Aux.Error.Rule.Error (Error, newError')
+import Error.Rule.Error (Error, newError')
 import Data.Text qualified as T
 
 data OutputKind

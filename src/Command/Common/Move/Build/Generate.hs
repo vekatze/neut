@@ -6,11 +6,11 @@ module Command.Common.Move.Build.Generate
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error (newError')
-import Aux.Logger.Move.Debug qualified as Logger
-import Aux.Logger.Rule.Handle qualified as Logger
-import Aux.Path.Move.Write (writeLazyByteString)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error (newError')
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Path.Move.Write (writeLazyByteString)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L

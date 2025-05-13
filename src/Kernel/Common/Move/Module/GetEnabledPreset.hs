@@ -5,8 +5,8 @@ module Kernel.Common.Move.Module.GetEnabledPreset
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Rule.Handle qualified as Gensym
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T

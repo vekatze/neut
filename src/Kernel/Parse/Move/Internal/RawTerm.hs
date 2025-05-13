@@ -16,17 +16,17 @@ module Kernel.Parse.Move.Internal.RawTerm
   )
 where
 
-import Aux.CodeParser.Move.GetInfo
-import Aux.CodeParser.Move.Parse
-import Aux.CodeParser.Rule.Parser
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint
-import Aux.SyntaxTree.Move.ParseSeries
-import Aux.SyntaxTree.Rule.Block
-import Aux.SyntaxTree.Rule.C
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import CodeParser.Move.GetInfo
+import CodeParser.Move.Parse
+import CodeParser.Rule.Parser
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint
+import SyntaxTree.Move.ParseSeries
+import SyntaxTree.Rule.Block
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)

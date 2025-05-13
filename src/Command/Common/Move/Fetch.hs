@@ -7,16 +7,16 @@ module Command.Common.Move.Fetch
   )
 where
 
-import Aux.Ens.Move.Parse qualified as EnsParse
-import Aux.Ens.Rule.Ens qualified as E
-import Aux.Ens.Rule.Ens qualified as SE
-import Aux.Error.Move.Run (forP, raiseError')
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Move.Log qualified as Logger
-import Aux.Logger.Rule.Handle qualified as Logger
-import Aux.Logger.Rule.Hint
-import Aux.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import Ens.Move.Parse qualified as EnsParse
+import Ens.Rule.Ens qualified as E
+import Ens.Rule.Ens qualified as SE
+import Error.Move.Run (forP, raiseError')
+import Error.Rule.EIO (EIO)
+import Logger.Move.Log qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Logger.Rule.Hint
+import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import SyntaxTree.Rule.Series qualified as SE
 import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Comonad.Cofree
 import Control.Monad

@@ -5,7 +5,7 @@ module Command.LSP.Move.Internal.References
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.FindReferences qualified as LSP
 import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC

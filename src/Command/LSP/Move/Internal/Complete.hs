@@ -5,9 +5,9 @@ module Command.LSP.Move.Internal.Complete
   )
 where
 
-import Aux.Error.Move.Run (forP, liftMaybe, runEIO)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (forP, liftMaybe, runEIO)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
 import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Monad

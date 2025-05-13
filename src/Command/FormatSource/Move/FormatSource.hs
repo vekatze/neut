@@ -5,11 +5,11 @@ module Command.FormatSource.Move.FormatSource
   )
 where
 
-import Aux.CommandParser.Rule.Config.FormatSource
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Path.Move.EnsureFileExistence (ensureFileExistence')
-import Aux.Path.Move.Read (readText)
-import Aux.Path.Move.Write (printText, writeText)
+import CommandParser.Rule.Config.FormatSource
+import Error.Rule.EIO (EIO)
+import Path.Move.EnsureFileExistence (ensureFileExistence')
+import Path.Move.Read (readText)
+import Path.Move.Write (printText, writeText)
 import Command.Common.Move.Format qualified as Format
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global

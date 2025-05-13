@@ -5,12 +5,12 @@ module Kernel.Parse.Move.Internal.Import
   )
 where
 
-import Aux.Error.Move.Run (raiseCritical, raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint
-import Aux.SyntaxTree.Rule.C
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import Error.Move.Run (raiseCritical, raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class

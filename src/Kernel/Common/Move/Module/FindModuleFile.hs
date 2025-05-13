@@ -4,8 +4,8 @@ module Kernel.Common.Move.Module.FindModuleFile
   )
 where
 
-import Aux.Error.Move.Run (raiseError')
-import Aux.Error.Rule.EIO (EIO)
+import Error.Move.Run (raiseError')
+import Error.Rule.EIO (EIO)
 import Data.Text qualified as T
 import Kernel.Common.Rule.Const (moduleFile)
 import Path

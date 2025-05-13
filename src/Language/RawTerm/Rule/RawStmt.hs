@@ -18,9 +18,9 @@ module Language.RawTerm.Rule.RawStmt
   )
 where
 
-import Aux.Logger.Rule.Hint
-import Aux.SyntaxTree.Rule.C
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import Logger.Rule.Hint
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD

@@ -8,9 +8,9 @@ module Kernel.Elaborate.Move.Internal.Handle.WeakDef
   )
 where
 
-import Aux.Gensym.Move.Gensym qualified as Gensym
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map

@@ -5,12 +5,12 @@ module Command.Common.Move.SaveModule
   )
 where
 
-import Aux.Ens.Rule.Ens
-import Aux.Ens.Rule.Ens.ToDoc qualified as Ens
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Move.Debug qualified as Logger
-import Aux.Logger.Rule.Handle qualified as Logger
-import Aux.Path.Move.Write (writeText)
+import Ens.Rule.Ens
+import Ens.Rule.Ens.ToDoc qualified as Ens
+import Error.Rule.EIO (EIO)
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Path.Move.Write (writeText)
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T

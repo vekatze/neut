@@ -10,7 +10,7 @@ module Kernel.Common.Move.Handle.Local.Tag
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Monad (unless, when)
 import Data.IORef
 import Data.Text qualified as T

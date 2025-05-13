@@ -52,10 +52,10 @@ module Kernel.Common.Rule.Module
   )
 where
 
-import Aux.Ens.Rule.Ens qualified as E
-import Aux.Error.Rule.Error
-import Aux.Logger.Rule.Hint (Hint, internalHint)
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import Ens.Rule.Ens qualified as E
+import Error.Rule.Error
+import Logger.Rule.Hint (Hint, internalHint)
+import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Catch

@@ -3,7 +3,7 @@ module Command.LSP.Move.Internal.Server
   )
 where
 
-import Aux.CommandParser.Rule.Config.Remark (lspConfig)
+import CommandParser.Rule.Config.Remark (lspConfig)
 import Colog.Core (LogAction (..), Severity (..), WithSeverity (..))
 import Colog.Core qualified as L
 import Command.Common.Move.Check qualified as Check

@@ -6,9 +6,9 @@ module Kernel.Parse.Move.Internal.Handle.GlobalNameMap
   )
 where
 
-import Aux.Error.Move.Run (raiseCritical)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint qualified as Hint
+import Error.Move.Run (raiseCritical)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint qualified as Hint
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map

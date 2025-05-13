@@ -5,11 +5,11 @@ module Kernel.Load.Move.Load
   )
 where
 
-import Aux.Error.Move.Run (forP)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Move.Debug qualified as Logger
-import Aux.Logger.Rule.Handle qualified as Logger
-import Aux.Path.Move.Read (readText)
+import Error.Move.Run (forP)
+import Error.Rule.EIO (EIO)
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Path.Move.Read (readText)
 import Data.Text qualified as T
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.ManageCache qualified as Cache

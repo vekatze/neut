@@ -5,9 +5,9 @@ module Command.Get.Move.Get
   )
 where
 
-import Aux.CommandParser.Rule.Config.Get
-import Aux.CommandParser.Rule.Config.Remark qualified as Remark
-import Aux.Error.Rule.EIO (EIO)
+import CommandParser.Rule.Config.Get
+import CommandParser.Rule.Config.Remark qualified as Remark
+import Error.Rule.EIO (EIO)
 import Command.Common.Move.Check qualified as Check
 import Command.Common.Move.Clean qualified as Clean
 import Command.Common.Move.Fetch qualified as Fetch

@@ -3,9 +3,9 @@ module Command.LSP.Move.Internal.GetSymbolInfo
   )
 where
 
-import Aux.CommandParser.Rule.Config.Remark (lspConfig)
-import Aux.Error.Move.Run (liftMaybe)
-import Aux.Error.Rule.EIO (EIO)
+import CommandParser.Rule.Config.Remark (lspConfig)
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Command.Common.Move.Check qualified as Check
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.GetSource qualified as GetSource

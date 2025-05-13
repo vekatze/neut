@@ -33,8 +33,8 @@ module Language.Common.Rule.BaseName
   )
 where
 
-import Aux.Error.Rule.Error
-import Aux.Logger.Rule.Hint qualified as H
+import Error.Rule.Error
+import Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.Char (isUpper)
 import Data.Hashable

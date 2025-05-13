@@ -8,8 +8,8 @@ module Language.Common.Move.CreateSymbol
   )
 where
 
-import Aux.Gensym.Move.Gensym
-import Aux.Gensym.Rule.Handle
+import Gensym.Move.Gensym
+import Gensym.Rule.Handle
 import Data.Text qualified as T
 import Language.Common.Rule.Const
 import Language.Common.Rule.Ident

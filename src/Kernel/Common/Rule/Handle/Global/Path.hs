@@ -3,7 +3,7 @@ module Kernel.Common.Rule.Handle.Global.Path
   )
 where
 
-import Aux.Logger.Rule.Handle qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Data.IORef
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Module

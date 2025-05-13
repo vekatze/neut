@@ -6,7 +6,7 @@ module Kernel.Common.Rule.LocalVarTree
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.Rule.Ident

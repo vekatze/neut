@@ -13,8 +13,8 @@ module Language.WeakTerm.Rule.WeakTerm
   )
 where
 
-import Aux.Logger.Rule.Hint
-import Aux.Logger.Rule.LogLevel
+import Logger.Rule.Hint
+import Logger.Rule.LogLevel
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Language.Common.Rule.Annotation qualified as AN

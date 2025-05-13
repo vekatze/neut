@@ -8,7 +8,7 @@ module Language.Term.Rule.Stmt
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.Maybe

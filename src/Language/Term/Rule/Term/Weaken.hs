@@ -6,7 +6,7 @@ module Language.Term.Rule.Term.Weaken
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List qualified as List

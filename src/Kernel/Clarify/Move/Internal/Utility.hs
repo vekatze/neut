@@ -11,7 +11,7 @@ module Kernel.Clarify.Move.Internal.Utility
   )
 where
 
-import Aux.Gensym.Rule.Handle qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Data.IntMap qualified as IntMap
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Language.Common.Move.CreateSymbol qualified as Gensym

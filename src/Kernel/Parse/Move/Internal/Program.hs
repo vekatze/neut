@@ -4,14 +4,14 @@ module Kernel.Parse.Move.Internal.Program
   )
 where
 
-import Aux.CodeParser.Move.GetInfo
-import Aux.CodeParser.Move.Parse
-import Aux.CodeParser.Rule.Parser
-import Aux.Error.Move.Run (raiseError)
-import Aux.Logger.Rule.Hint
-import Aux.SyntaxTree.Move.ParseSeries
-import Aux.SyntaxTree.Rule.C
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import CodeParser.Move.GetInfo
+import CodeParser.Move.Parse
+import CodeParser.Rule.Parser
+import Error.Move.Run (raiseError)
+import Logger.Rule.Hint
+import SyntaxTree.Move.ParseSeries
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe

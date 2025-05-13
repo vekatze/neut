@@ -5,7 +5,7 @@ module Command.LSP.Move.LSP
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Command.Common.Move.Fetch qualified as Fetch
 import Command.LSP.Move.Internal.Server qualified as L
 import Control.Monad

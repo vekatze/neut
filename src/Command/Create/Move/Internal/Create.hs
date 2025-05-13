@@ -6,11 +6,11 @@ module Command.Create.Move.Internal.Create
   )
 where
 
-import Aux.Error.Move.Run (raiseError')
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Move.Log qualified as Logger
-import Aux.Logger.Rule.Handle qualified as Logger
-import Aux.Path.Move.Write (writeText)
+import Error.Move.Run (raiseError')
+import Error.Rule.EIO (EIO)
+import Logger.Move.Log qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Path.Move.Write (writeText)
 import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))

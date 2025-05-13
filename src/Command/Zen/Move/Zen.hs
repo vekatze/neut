@@ -6,8 +6,8 @@ module Command.Zen.Move.Zen
   )
 where
 
-import Aux.CommandParser.Rule.Config.Zen
-import Aux.Error.Rule.EIO (EIO)
+import CommandParser.Rule.Config.Zen
+import Error.Rule.EIO (EIO)
 import Command.Common.Move.Build qualified as Build
 import Command.Common.Move.Fetch qualified as Fetch
 import Control.Monad.Except (liftEither)

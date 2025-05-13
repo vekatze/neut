@@ -6,8 +6,8 @@ module Language.Term.Rule.Term.Chain
   )
 where
 
-import Aux.Logger.Rule.Hint
-import Aux.Logger.Rule.Hint.Reify (toString)
+import Logger.Rule.Hint
+import Logger.Rule.Hint.Reify (toString)
 import Control.Comonad.Cofree
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap

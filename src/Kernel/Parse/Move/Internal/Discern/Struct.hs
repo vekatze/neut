@@ -3,9 +3,9 @@ module Kernel.Parse.Move.Internal.Discern.Struct
   )
 where
 
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Language.RawTerm.Rule.Key
