@@ -1,0 +1,85 @@
+import {
+  binary-builder.entity {builder, create, get},
+  binary-builder.scene {append-int8},
+  core.binary {binary, binary-access, binary-length},
+  marshal.class {Marshal, _proceed, marshal},
+}
+
+data log-level {
+| Note
+| Warning
+| Error
+| Critical
+}
+
+define _encode(b: &builder, v: &log-level): unit {
+  case v {
+  | Note =>
+    append-int8(b, 0)
+  | Warning =>
+    append-int8(b, 1)
+  | Error =>
+    append-int8(b, 2)
+  | Critical =>
+    append-int8(b, 3)
+  }
+}
+
+define _decode(bytes: &binary, cursor-ref: &cell(int)): ?log-level {
+  let cursor = core.cell.clone(cursor-ref) in
+  if lt-int(binary-length(bytes), add-int(cursor, 1)) {
+    none
+  } else {
+    let i = binary-access(bytes, add-int(cursor, 0)) in
+    _proceed(cursor-ref, 1);
+    match i {
+    | 0 =>
+      Right(Note)
+    | 1 =>
+      Right(Warning)
+    | 2 =>
+      Right(Error)
+    | 3 =>
+      Right(Critical)
+    | _ =>
+      none
+    }
+  }
+}
+
+define _necess(x: log-level): meta log-level {
+  quote {x}
+}
+
+inline as-marshal: marshal(log-level) {
+  Marshal of {
+    encode = _encode,
+    decode = _decode,
+    necess = _necess,
+  }
+}
+
+define zen(): unit {
+  let buf = create(8) in
+  pin val = Critical in
+  let _ on buf = _encode(buf, val) in
+  pin b = get(buf) in
+  pin cursor-ref = new-cell(0) in
+  let mval = _decode(b, cursor-ref) in
+  match mval {
+  | Left(_) =>
+    print("error\n")
+  | Right(log-level) =>
+    print("right\n");
+    match log-level {
+    | Note =>
+      print("note\n")
+    | Warning =>
+      print("warning\n")
+    | Error =>
+      print("error\n")
+    | Critical =>
+      print("critical\n")
+    }
+  }
+}

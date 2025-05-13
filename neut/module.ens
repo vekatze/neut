@@ -24,5 +24,23 @@
         "https://github.com/vekatze/text-builder/raw/main/archive/0-1-7.tar.zst",
       ],
     },
+    time {
+      digest "8eiJcAoh6NCannOyZZsiya24wOQaOdDVdaO9TVaqRG8",
+      mirror [
+        "https://github.com/vekatze/time-nt/raw/main/archive/0-4-33.tar.zst",
+      ],
+    },
+    marshal {
+      digest "UAx3E07omnuPy6HI1kggn0Mfj0dWu_h0QuNGptBwzPw",
+      mirror [
+        "https://github.com/vekatze/marshal/raw/main/archive/0-1-22.tar.zst",
+      ],
+    },
+    binary-builder {
+      digest "BbgBbhEOXxlB02Cm-Q_x9jqNm4WCG_7RpvLyxeqF0yM",
+      mirror [
+        "https://github.com/vekatze/binary-builder/raw/main/archive/0-1-24.tar.zst",
+      ],
+    },
   },
 }
