@@ -1,7 +1,7 @@
 {
   target {
     neut {
-      main "neut.nt",
+      main "main.nt",
     },
   },
   dependency {
