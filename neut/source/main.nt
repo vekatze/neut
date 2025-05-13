@@ -1,0 +1,10 @@
+import {
+  this.aux.color.move.create-handle,
+  this.aux.color.move.print,
+}
+
+define main(): unit {
+  this.aux.color.move.create-handle.zen();
+  this.aux.color.move.print.zen();
+  print("Hello, world!\n")
+}

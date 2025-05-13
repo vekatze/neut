@@ -18,3 +18,4 @@ bin/
 /package.yaml
 node_modules/
 dist/
+cache/

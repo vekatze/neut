@@ -1,0 +1,6 @@
+data handle {
+| _Handle(
+    colorize-stdout: bool,
+    colorize-stderr: bool,
+  )
+}

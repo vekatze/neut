@@ -1,0 +1,28 @@
+{
+  target {
+    neut {
+      main "main.nt",
+    },
+  },
+  dependency {
+    core {
+      digest "8-TPdZp1-CwYeGturnDL2IS_GUWPHiRvIRYgNuJqD6w",
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-50-48.tar.zst",
+      ],
+      enable-preset true,
+    },
+    ansi {
+      digest "iYuM1zM1lGeZLRayLkf9ojCJz1KftdpcDFhkWqx3Tqc",
+      mirror [
+        "https://github.com/vekatze/ansi-terminal/raw/main/archive/0-4-32.tar.zst",
+      ],
+    },
+    text-builder {
+      digest "TGoMVm8T7oMFnow4GkDJJMhwSvoXGqXegaF4dXbdls8",
+      mirror [
+        "https://github.com/vekatze/text-builder/raw/main/archive/0-1-7.tar.zst",
+      ],
+    },
+  },
+}
