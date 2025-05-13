@@ -3,7 +3,7 @@ import {
   ansi.style {Bold, Italic, Normal},
   text-builder.entity,
   text-builder.scene {append-text},
-  this.aux.color.rule.tone {Background, Foreground, Style, _append-tone, _append-tones, tone},
+  this.color.rule.tone {Background, Foreground, Style, _append-tone, _append-tones, tone},
 }
 
 data color-text {

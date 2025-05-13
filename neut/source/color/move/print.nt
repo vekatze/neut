@@ -3,10 +3,10 @@ import {
   ansi.style {Bold},
   core.file.descriptor {descriptor, stderr, stdout},
   core.text {_get-content-pointer, text-byte-length},
-  this.aux.color.move.create-handle {create-handle},
-  this.aux.color.rule.handle {_Handle, handle},
-  this.aux.color.rule.text {_unpacked, _unpacked-uncolored, color-text, packed},
-  this.aux.color.rule.tone {Foreground, Style},
+  this.color.move.create-handle {create-handle},
+  this.color.rule.handle {_Handle, handle},
+  this.color.rule.text {_unpacked, _unpacked-uncolored, color-text, packed},
+  this.color.rule.tone {Foreground, Style},
 }
 
 foreign {

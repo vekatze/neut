@@ -1,7 +1,7 @@
 import {
   core.bool.show {show-bool},
   core.file.descriptor {descriptor, stderr, stdin, stdout},
-  this.aux.color.rule.handle {_Handle, handle},
+  this.color.rule.handle {_Handle, handle},
 }
 
 foreign {
