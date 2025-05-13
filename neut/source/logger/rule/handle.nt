@@ -1,0 +1,19 @@
+import {
+  core.int.show {show-int},
+  core.text {format},
+  this.color.rule.handle,
+  time.time {Time, _format-nanoseconds, time},
+}
+
+data handle {
+| _Handle(
+    color-handle: this.color.rule.handle.handle,
+    enable-debug-mode: bool,
+    base-time: time,
+  )
+}
+
+define _show-time(m: time): text {
+  let Time of {seconds = s, nanoseconds = ns} = m in
+  format("{}{}", [show-int(s), _format-nanoseconds(ns, 6)])
+}
