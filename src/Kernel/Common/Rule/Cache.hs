@@ -8,7 +8,7 @@ module Kernel.Common.Rule.Cache
   )
 where
 
-import Aux.Logger.Rule.Log
+import Logger.Rule.Log
 import Data.Binary
 import GHC.Generics
 import Kernel.Common.Rule.LocalVarTree qualified as LVT

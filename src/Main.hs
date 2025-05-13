@@ -1,11 +1,11 @@
 module Main (main) where
 
-import Aux.Color.Move.CreateHandle qualified as Color
-import Aux.CommandParser.Move.Parse qualified as CommandParser
-import Aux.CommandParser.Rule.Command qualified as C
-import Aux.CommandParser.Rule.Config.Remark qualified as Remark
-import Aux.Error.Move.Run (run)
-import Aux.Logger.Move.CreateHandle qualified as Logger
+import Color.Move.CreateHandle qualified as Color
+import CommandParser.Move.Parse qualified as CommandParser
+import CommandParser.Rule.Command qualified as C
+import CommandParser.Rule.Config.Remark qualified as Remark
+import Error.Move.Run (run)
+import Logger.Move.CreateHandle qualified as Logger
 import Command.Archive.Move.Archive qualified as Archive
 import Command.Build.Move.Build qualified as Build
 import Command.Check.Move.Check qualified as Check

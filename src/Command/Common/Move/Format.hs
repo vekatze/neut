@@ -7,11 +7,11 @@ module Command.Common.Move.Format
   )
 where
 
-import Aux.CodeParser.Move.Parse (runParser)
-import Aux.Ens.Move.Parse qualified as EnsParse
-import Aux.Ens.Rule.Ens.ToDoc qualified as Ens
-import Aux.Error.Move.Run (raiseError')
-import Aux.Error.Rule.EIO (EIO)
+import CodeParser.Move.Parse (runParser)
+import Ens.Move.Parse qualified as EnsParse
+import Ens.Rule.Ens.ToDoc qualified as Ens
+import Error.Move.Run (raiseError')
+import Error.Rule.EIO (EIO)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T

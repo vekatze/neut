@@ -12,9 +12,9 @@ module Kernel.Common.Move.Handle.Global.Module
   )
 where
 
-import Aux.Error.Move.Run (raiseError, raiseError')
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint qualified as H
+import Error.Move.Run (raiseError, raiseError')
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint qualified as H
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map

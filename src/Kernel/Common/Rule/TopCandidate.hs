@@ -4,7 +4,7 @@ module Kernel.Common.Rule.TopCandidate
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Data.Binary
 import GHC.Generics
 import Language.Common.Rule.DefiniteDescription qualified as DD

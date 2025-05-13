@@ -5,9 +5,9 @@ module Language.WeakTerm.Move.Reduce
   )
 where
 
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint qualified as H
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint qualified as H
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class

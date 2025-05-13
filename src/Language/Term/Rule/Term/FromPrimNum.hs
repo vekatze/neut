@@ -1,6 +1,6 @@
 module Language.Term.Rule.Term.FromPrimNum (fromPrimNum) where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Term.Rule.Prim qualified as Prim

@@ -5,9 +5,9 @@ module Command.Common.Move.Build.EnsureMain
   )
 where
 
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
 import Control.Monad
 import Data.Text qualified as T
 import Kernel.Common.Move.Handle.Global.Env qualified as Env

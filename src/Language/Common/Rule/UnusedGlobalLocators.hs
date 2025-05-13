@@ -1,6 +1,6 @@
 module Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL) where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Data.Text qualified as T
 
 type UnusedGlobalLocators =

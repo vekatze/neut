@@ -1,12 +1,12 @@
 module Language.RawTerm.Rule.RawStmt.ToDoc (pp, ImportInfo (..)) where
 
-import Aux.Logger.Rule.Hint
-import Aux.PrettyPrinter.Rule.Doc qualified as D
-import Aux.PrettyPrinter.Rule.Piece qualified as PI
-import Aux.SyntaxTree.Rule.C
-import Aux.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import Aux.SyntaxTree.Rule.Series qualified as SE
-import Aux.SyntaxTree.Rule.Series.ToDoc qualified as SE
+import Logger.Rule.Hint
+import PrettyPrinter.Rule.Doc qualified as D
+import PrettyPrinter.Rule.Piece qualified as PI
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import SyntaxTree.Rule.Series qualified as SE
+import SyntaxTree.Rule.Series.ToDoc qualified as SE
 import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T

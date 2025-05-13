@@ -1,11 +1,11 @@
 module Command.Archive.Move.Internal.Module.MakeArchiveEns (makeArchiveEns) where
 
-import Aux.Ens.Move.Parse qualified as Ens
-import Aux.Ens.Rule.Ens qualified as E
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint
-import Aux.SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import Ens.Move.Parse qualified as Ens
+import Ens.Rule.Ens qualified as E
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
+import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
+import SyntaxTree.Rule.Series qualified as SE
 import Command.Archive.Move.Internal.Module.GetExistingVersions
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Comonad.Cofree

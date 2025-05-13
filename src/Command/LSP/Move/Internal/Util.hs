@@ -6,15 +6,15 @@ module Command.LSP.Move.Internal.Util
   )
 where
 
-import Aux.CodeParser.Rule.Parser (nonSymbolCharSet)
-import Aux.Error.Move.Run (runEIO)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error qualified as E
-import Aux.Logger.Rule.Hint
-import Aux.Logger.Rule.Log
-import Aux.Logger.Rule.Log qualified as L
-import Aux.Logger.Rule.LogLevel
-import Aux.Path.Move.Read (readText)
+import CodeParser.Rule.Parser (nonSymbolCharSet)
+import Error.Move.Run (runEIO)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
+import Logger.Rule.Hint
+import Logger.Rule.Log
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel
+import Path.Move.Read (readText)
 import Command.LSP.Rule.Lsp
 import Control.Lens hiding (Iso, List)
 import Control.Monad

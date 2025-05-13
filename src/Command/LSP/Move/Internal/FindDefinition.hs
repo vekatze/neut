@@ -5,9 +5,9 @@ module Command.LSP.Move.Internal.FindDefinition
   )
 where
 
-import Aux.Error.Move.Run (liftMaybe)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint qualified as H
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint qualified as H
 import Command.LSP.Move.Internal.GetLocationTree qualified as GetLocationTree
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
 import Control.Lens hiding (Iso, List)

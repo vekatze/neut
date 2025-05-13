@@ -5,7 +5,7 @@ module Command.LSP.Move.Internal.Highlight
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.FindReferences qualified as LSP
 import Control.Lens hiding (Iso, List)

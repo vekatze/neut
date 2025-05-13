@@ -11,13 +11,13 @@ module Kernel.Parse.Move.Internal.Handle.NameMap
   )
 where
 
-import Aux.Error.Move.Run (raiseCritical, raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error
-import Aux.Logger.Rule.Hint
-import Aux.Logger.Rule.Hint qualified as Hint
-import Aux.Logger.Rule.Log (Log, newLog)
-import Aux.Logger.Rule.LogLevel (LogLevel (Error))
+import Error.Move.Run (raiseCritical, raiseError)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error
+import Logger.Rule.Hint
+import Logger.Rule.Hint qualified as Hint
+import Logger.Rule.Log (Log, newLog)
+import Logger.Rule.LogLevel (LogLevel (Error))
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))

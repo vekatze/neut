@@ -5,7 +5,7 @@ module Command.Common.Move.Build.Install
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Control.Monad
 import Data.Text qualified as T
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global

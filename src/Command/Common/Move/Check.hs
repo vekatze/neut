@@ -8,12 +8,12 @@ module Command.Common.Move.Check
   )
 where
 
-import Aux.Error.Move.Run (forP, runEIO)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error qualified as E
-import Aux.Logger.Move.Debug qualified as Logger
-import Aux.Logger.Rule.Log
-import Aux.Logger.Rule.Log qualified as L
+import Error.Move.Run (forP, runEIO)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Log
+import Logger.Rule.Log qualified as L
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T

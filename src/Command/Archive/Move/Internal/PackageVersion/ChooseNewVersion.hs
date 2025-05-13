@@ -5,9 +5,9 @@ module Command.Archive.Move.Internal.PackageVersion.ChooseNewVersion
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Move.Log qualified as Logger
-import Aux.Logger.Rule.Handle qualified as Logger
+import Error.Rule.EIO (EIO)
+import Logger.Move.Log qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Command.Archive.Move.Internal.Module.GetExistingVersions
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Monad

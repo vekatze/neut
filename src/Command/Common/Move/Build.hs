@@ -6,13 +6,13 @@ module Command.Common.Move.Build
   )
 where
 
-import Aux.Error.Move.Run (forP, raiseError', runEIO)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error (newError')
-import Aux.Error.Rule.Error qualified as E
-import Aux.Logger.Move.Debug qualified as Logger
-import Aux.Logger.Move.Log qualified as Logger
-import Aux.ProgressIndicator.Move.ShowProgress qualified as Indicator
+import Error.Move.Run (forP, raiseError', runEIO)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error (newError')
+import Error.Rule.Error qualified as E
+import Logger.Move.Debug qualified as Logger
+import Logger.Move.Log qualified as Logger
+import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Command.Common.Move.Build.EnsureMain qualified as EnsureMain
 import Command.Common.Move.Build.Execute qualified as Execute
 import Command.Common.Move.Build.Generate qualified as Gen

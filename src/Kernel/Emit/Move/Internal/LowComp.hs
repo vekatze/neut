@@ -5,7 +5,7 @@ module Kernel.Emit.Move.Internal.LowComp
   )
 where
 
-import Aux.Gensym.Rule.Handle qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Builder

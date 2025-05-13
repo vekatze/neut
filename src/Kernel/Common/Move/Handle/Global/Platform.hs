@@ -11,12 +11,12 @@ module Kernel.Common.Move.Handle.Global.Platform
   )
 where
 
-import Aux.Error.Move.Run (raiseError, raiseError', run)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error (newError')
-import Aux.Logger.Move.Debug qualified as Logger
-import Aux.Logger.Rule.Handle qualified as Logger
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (raiseError, raiseError', run)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error (newError')
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Logger.Rule.Hint
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T

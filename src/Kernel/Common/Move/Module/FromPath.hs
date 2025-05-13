@@ -4,14 +4,14 @@ module Kernel.Common.Move.Module.FromPath
   )
 where
 
-import Aux.Ens.Move.Parse qualified as Ens
-import Aux.Ens.Rule.Ens (dictFromListVertical')
-import Aux.Ens.Rule.Ens qualified as E
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error
-import Aux.Logger.Rule.Hint qualified as H
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import Ens.Move.Parse qualified as Ens
+import Ens.Rule.Ens (dictFromListVertical')
+import Ens.Rule.Ens qualified as E
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error
+import Logger.Rule.Hint qualified as H
+import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)

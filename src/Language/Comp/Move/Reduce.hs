@@ -5,7 +5,7 @@ module Language.Comp.Move.Reduce
   )
 where
 
-import Aux.Gensym.Rule.Handle qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Language.Common.Move.CreateSymbol qualified as Gensym

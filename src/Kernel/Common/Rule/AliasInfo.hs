@@ -6,7 +6,7 @@ module Kernel.Common.Rule.AliasInfo
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN

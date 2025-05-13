@@ -5,9 +5,9 @@ module Command.Archive.Move.Internal.Archive
   )
 where
 
-import Aux.Ens.Rule.Ens qualified as E
-import Aux.Error.Move.Run (raiseError')
-import Aux.Error.Rule.EIO (EIO)
+import Ens.Rule.Ens qualified as E
+import Error.Move.Run (raiseError')
+import Error.Rule.EIO (EIO)
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Monad

@@ -4,12 +4,12 @@ module Kernel.Elaborate.Move.Internal.Unify
   )
 where
 
-import Aux.Error.Move.Run (raiseCritical)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error qualified as E
-import Aux.Logger.Rule.Hint
-import Aux.Logger.Rule.Log qualified as L
-import Aux.Logger.Rule.LogLevel qualified as L
+import Error.Move.Run (raiseCritical)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
+import Logger.Rule.Hint
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))

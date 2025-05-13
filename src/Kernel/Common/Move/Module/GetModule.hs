@@ -6,10 +6,10 @@ module Kernel.Common.Move.Module.GetModule
   )
 where
 
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint qualified as H
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint qualified as H
 import Control.Monad
 import Control.Monad.IO.Unlift (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map

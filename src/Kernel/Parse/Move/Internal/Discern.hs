@@ -1,15 +1,15 @@
 module Kernel.Parse.Move.Internal.Discern (discernStmtList) where
 
-import Aux.Error.Move.Run (raiseCritical, raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Error.Rule.Error qualified as E
-import Aux.Gensym.Move.Gensym qualified as Gensym
-import Aux.Logger.Rule.Hint
-import Aux.Logger.Rule.Hint.Reify qualified as Hint
-import Aux.Logger.Rule.Log qualified as L
-import Aux.Logger.Rule.LogLevel qualified as L
-import Aux.SyntaxTree.Rule.C
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import Error.Move.Run (raiseCritical, raiseError)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
+import Gensym.Move.Gensym qualified as Gensym
+import Logger.Rule.Hint
+import Logger.Rule.Hint.Reify qualified as Hint
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)

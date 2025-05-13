@@ -3,7 +3,7 @@ module Kernel.Common.Rule.TopNameMap
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Data.HashMap.Strict qualified as Map
 import Kernel.Common.Rule.GlobalName qualified as GN
 import Language.Common.Rule.DefiniteDescription qualified as DD

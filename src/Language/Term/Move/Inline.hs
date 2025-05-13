@@ -5,10 +5,10 @@ module Language.Term.Move.Inline
   )
 where
 
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class

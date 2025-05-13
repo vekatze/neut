@@ -1,6 +1,6 @@
 module Language.Term.Rule.Term.Extend (extend, extendStmtKind, extendBinder) where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)

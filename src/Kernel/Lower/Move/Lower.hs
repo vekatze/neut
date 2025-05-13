@@ -12,10 +12,10 @@ module Kernel.Lower.Move.Lower
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Move.Gensym qualified as Gensym
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint (internalHint)
+import Error.Rule.EIO (EIO)
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint (internalHint)
 import Codec.Binary.UTF8.String
 import Control.Monad
 import Control.Monad.Writer.Lazy

@@ -5,8 +5,8 @@ module Kernel.Common.Move.Handle.Global.Artifact
   )
 where
 
-import Aux.Error.Move.Run (raiseCritical')
-import Aux.Error.Rule.EIO (EIO)
+import Error.Move.Run (raiseCritical')
+import Error.Rule.EIO (EIO)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef

@@ -5,7 +5,7 @@ module Kernel.Common.Move.Handle.Local.SymLoc
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Control.Monad (unless)
 import Data.IORef
 import Kernel.Common.Rule.Handle.Local.SymLoc

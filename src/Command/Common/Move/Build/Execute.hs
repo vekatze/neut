@@ -5,7 +5,7 @@ module Command.Common.Move.Build.Execute
   )
 where
 
-import Aux.Error.Rule.EIO (EIO)
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
 import Kernel.Common.Move.RunProcess qualified as RunProcess

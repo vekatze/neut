@@ -6,9 +6,9 @@ module Kernel.Parse.Move.Internal.Discern.Name
   )
 where
 
-import Aux.Error.Move.Run (raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)

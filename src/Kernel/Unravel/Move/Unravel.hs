@@ -9,13 +9,13 @@ module Kernel.Unravel.Move.Unravel
   )
 where
 
-import Aux.CodeParser.Move.Parse (runParser)
-import Aux.Error.Move.Run (raiseError, raiseError')
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Move.Debug qualified as Logger
-import Aux.Logger.Rule.Hint
-import Aux.Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
-import Aux.Path.Move.Read (readText)
+import CodeParser.Move.Parse (runParser)
+import Error.Move.Run (raiseError, raiseError')
+import Error.Rule.EIO (EIO)
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Hint
+import Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
+import Path.Move.Read (readText)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable

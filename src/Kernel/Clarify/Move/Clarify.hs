@@ -9,11 +9,11 @@ module Kernel.Clarify.Move.Clarify
   )
 where
 
-import Aux.Error.Move.Run (raiseCritical, raiseCritical')
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Move.Gensym qualified as Gensym
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (raiseCritical, raiseCritical')
+import Error.Rule.EIO (EIO)
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))

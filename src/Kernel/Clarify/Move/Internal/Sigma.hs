@@ -11,8 +11,8 @@ module Kernel.Clarify.Move.Internal.Sigma
   )
 where
 
-import Aux.Gensym.Move.Gensym qualified as Gensym
-import Aux.Gensym.Rule.Handle qualified as Gensym
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize

@@ -5,8 +5,8 @@ module Command.LSP.Move.Internal.GetSource
   )
 where
 
-import Aux.Error.Move.Run (liftMaybe)
-import Aux.Error.Rule.EIO (EIO)
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Lens hiding (Iso, List)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global

@@ -7,8 +7,8 @@ module Kernel.Parse.Move.Internal.Discern.Handle
   )
 where
 
-import Aux.Gensym.Rule.Handle qualified as Gensym
-import Aux.Logger.Rule.Hint
+import Gensym.Rule.Handle qualified as Gensym
+import Logger.Rule.Hint
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env

@@ -5,8 +5,8 @@ module Language.Term.Move.Refresh
   )
 where
 
-import Aux.Gensym.Move.Gensym qualified as Gensym
-import Aux.Gensym.Rule.Handle qualified as Gensym
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Language.Common.Rule.Attr.Lam qualified as AttrL

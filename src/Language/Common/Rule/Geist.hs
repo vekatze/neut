@@ -1,6 +1,6 @@
 module Language.Common.Rule.Geist (Geist (..)) where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident
 import Language.Common.Rule.IsConstLike

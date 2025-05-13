@@ -4,11 +4,11 @@ module Kernel.Parse.Move.Parse
   )
 where
 
-import Aux.CodeParser.Move.Parse (runParser)
-import Aux.Error.Move.Run (forP, forP_)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Logger.Rule.Hint
-import Aux.SyntaxTree.Rule.Series qualified as SE
+import CodeParser.Move.Parse (runParser)
+import Error.Move.Run (forP, forP_)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
+import SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Bifunctor (Bifunctor (first))

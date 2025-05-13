@@ -8,10 +8,10 @@ module Kernel.Elaborate.Move.Internal.Infer
   )
 where
 
-import Aux.Error.Move.Run (raiseCritical, raiseError)
-import Aux.Error.Rule.EIO (EIO)
-import Aux.Gensym.Move.Gensym qualified as Gensym
-import Aux.Logger.Rule.Hint
+import Error.Move.Run (raiseCritical, raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Move.Gensym qualified as Gensym
+import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))

@@ -1,7 +1,7 @@
 module Command.Archive.Move.Internal.PackageVersion.Reflect (reflect) where
 
-import Aux.Error.Move.Run (raiseError')
-import Aux.Error.Rule.EIO (EIO)
+import Error.Move.Run (raiseError')
+import Error.Rule.EIO (EIO)
 import Command.Archive.Move.Internal.Module.GetExistingVersions
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Control.Monad

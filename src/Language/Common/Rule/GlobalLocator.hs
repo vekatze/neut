@@ -7,8 +7,8 @@ module Language.Common.Rule.GlobalLocator
   )
 where
 
-import Aux.Error.Rule.Error
-import Aux.Logger.Rule.Hint qualified as H
+import Error.Rule.Error
+import Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T

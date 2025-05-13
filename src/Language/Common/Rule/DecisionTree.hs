@@ -10,7 +10,7 @@ module Language.Common.Rule.DecisionTree
   )
 where
 
-import Aux.Logger.Rule.Hint
+import Logger.Rule.Hint
 import Data.Binary
 import Data.Maybe (catMaybes)
 import GHC.Generics (Generic)
