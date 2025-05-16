@@ -21,8 +21,8 @@ define _print(d: descriptor, t: &text): unit {
   Unit
 }
 
-define print-stdout(h: &color-kit, t: &color-text): unit {
-  tie _Color-Kit of {colorize-stdout} = h in
+define print-stdout(k: &color-kit, t: &color-text): unit {
+  tie _Color-Kit of {colorize-stdout} = k in
   pin t' =
     if *colorize-stdout {
       _unpacked(t)
@@ -33,8 +33,8 @@ define print-stdout(h: &color-kit, t: &color-text): unit {
   _print(stdout, t')
 }
 
-define print-stderr(h: &color-kit, t: &color-text): unit {
-  tie _Color-Kit of {colorize-stderr} = h in
+define print-stderr(k: &color-kit, t: &color-text): unit {
+  tie _Color-Kit of {colorize-stderr} = k in
   pin t' =
     if *colorize-stderr {
       _unpacked(t)
