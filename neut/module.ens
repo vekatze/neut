@@ -19,9 +19,9 @@
       ],
     },
     text-builder {
-      digest "TGoMVm8T7oMFnow4GkDJJMhwSvoXGqXegaF4dXbdls8",
+      digest "9vj7T4kaxUC30Mi663_2Fo6mqgjpjmiP8DMJvzy6LiQ",
       mirror [
-        "https://github.com/vekatze/text-builder/raw/main/archive/0-1-7.tar.zst",
+        "https://github.com/vekatze/text-builder/raw/main/archive/0-1-8.tar.zst",
       ],
     },
     time {
@@ -30,16 +30,16 @@
         "https://github.com/vekatze/time-nt/raw/main/archive/0-4-33.tar.zst",
       ],
     },
-    marshal {
-      digest "UAx3E07omnuPy6HI1kggn0Mfj0dWu_h0QuNGptBwzPw",
+    binary-builder {
+      digest "zfua2iL8odSDr0cu6MRzKjo3USep_AKoiqcLKpZ3Yn0",
       mirror [
-        "https://github.com/vekatze/marshal/raw/main/archive/0-1-22.tar.zst",
+        "https://github.com/vekatze/binary-builder/raw/main/archive/0-1-25.tar.zst",
       ],
     },
-    binary-builder {
-      digest "BbgBbhEOXxlB02Cm-Q_x9jqNm4WCG_7RpvLyxeqF0yM",
+    sero {
+      digest "1F0rcxvE7Cx4_mKUcx0rt5o0fTnhtQqrYnDV7xW21gk",
       mirror [
-        "https://github.com/vekatze/binary-builder/raw/main/archive/0-1-24.tar.zst",
+        "https://github.com/vekatze/marshal/raw/main/archive/0-1-23.tar.zst",
       ],
     },
   },

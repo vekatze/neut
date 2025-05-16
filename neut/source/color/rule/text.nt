@@ -1,8 +1,9 @@
 import {
   ansi.color {Blue, Red},
   ansi.style {Bold, Italic, Normal},
-  text-builder.entity,
-  text-builder.scene {append-text},
+  text-builder.move.append {append-text},
+  text-builder.move.extract {extract},
+  text-builder.move.make-builder {make-builder},
   this.color.rule.tone {Background, Foreground, Style, _append-tone, _append-tones, tone},
 }
 
@@ -20,7 +21,7 @@ define packed'(t: text): color-text {
 }
 
 define _unpacked(t: &color-text): text {
-  let b = text-builder.entity.create(64) in
+  let b = make-builder(64) in
   pin reset = Style(Normal) in
   let _ on b =
     let f =
@@ -38,11 +39,11 @@ define _unpacked(t: &color-text): text {
     in
     f(t)
   in
-  text-builder.entity.get(b)
+  extract(b)
 }
 
 define _unpacked-uncolored(t: &color-text): text {
-  let b = text-builder.entity.create(256) in
+  let b = make-builder(256) in
   let _ on b =
     let f =
       define loop(t: &color-text): unit {
@@ -57,7 +58,7 @@ define _unpacked-uncolored(t: &color-text): text {
     in
     f(t)
   in
-  text-builder.entity.get(b)
+  extract(b)
 }
 
 define zen(): unit {

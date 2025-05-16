@@ -2,8 +2,8 @@ import {
   ansi.color {color, get-background-tag, get-foreground-tag},
   ansi.style {style},
   core.list {for-N},
-  text-builder.entity {builder},
-  text-builder.scene {append-text},
+  text-builder.move.append {append-text},
+  text-builder.rule.builder {builder},
 }
 
 data tone {
