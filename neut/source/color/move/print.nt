@@ -3,8 +3,8 @@ import {
   ansi.style {Bold},
   core.file.descriptor {descriptor, stderr, stdout},
   core.text {_get-content-pointer, text-byte-length},
-  this.color.move.make-kit {make-kit},
-  this.color.rule.kit {_Kit, kit},
+  this.color.move.make-color-kit {make-color-kit},
+  this.color.rule.color-kit {_Color-Kit, color-kit},
   this.color.rule.text {_unpacked, _unpacked-uncolored, color-text, packed},
   this.color.rule.tone {Foreground, Style},
 }
@@ -21,8 +21,8 @@ define _print(d: descriptor, t: &text): unit {
   Unit
 }
 
-define print-stdout(h: &kit, t: &color-text): unit {
-  tie _Kit of {colorize-stdout} = h in
+define print-stdout(h: &color-kit, t: &color-text): unit {
+  tie _Color-Kit of {colorize-stdout} = h in
   pin t' =
     if *colorize-stdout {
       _unpacked(t)
@@ -33,8 +33,8 @@ define print-stdout(h: &kit, t: &color-text): unit {
   _print(stdout, t')
 }
 
-define print-stderr(h: &kit, t: &color-text): unit {
-  tie _Kit of {colorize-stderr} = h in
+define print-stderr(h: &color-kit, t: &color-text): unit {
+  tie _Color-Kit of {colorize-stderr} = h in
   pin t' =
     if *colorize-stderr {
       _unpacked(t)
@@ -47,7 +47,7 @@ define print-stderr(h: &kit, t: &color-text): unit {
 
 define zen(): unit {
   pin t' = packed([Foreground(Blue), Style(Bold)], *"sample\n") in
-  pin h = make-kit(False, True) in
+  pin h = make-color-kit(False, True) in
   print-stdout(h, t');
   print-stderr(h, t')
 }
