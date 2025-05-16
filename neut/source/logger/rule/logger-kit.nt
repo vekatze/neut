@@ -1,13 +1,13 @@
 import {
   core.int.show {show-int},
   core.text {format},
-  this.color.rule.handle,
+  this.color.rule.color-kit {color-kit},
   time.time {Time, _format-nanoseconds, time},
 }
 
-data handle {
-| _Handle(
-    color-handle: this.color.rule.handle.handle,
+data logger-kit {
+| _Logger-Kit(
+    color-kit: color-kit,
     enable-debug-mode: bool,
     base-time: time,
   )
