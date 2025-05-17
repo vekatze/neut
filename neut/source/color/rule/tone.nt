@@ -1,9 +1,11 @@
 import {
-  ansi.color {color, get-background-tag, get-foreground-tag},
+  ansi.color {_get-color-code, color, get-background-tag},
   ansi.style {style},
+  core.int.show {show-int},
   core.list {for-N},
-  text-builder.entity {builder},
-  text-builder.scene {append-text},
+  core.text {format},
+  text-builder.move.append {append-text},
+  text-builder.rule.builder {builder},
 }
 
 data tone {
@@ -12,10 +14,15 @@ data tone {
 | Style(style)
 }
 
+define get-intense-foreground-tag(c: color): text {
+  let color-code = _get-color-code(c) in
+  format("\u{1b}[{}m", [show-int(add-int(90, color-code))])
+}
+
 define _append-tone(b: &builder, t: &tone): unit {
   case t {
   | Foreground(c) =>
-    pin tag = get-foreground-tag(*c) in
+    pin tag = get-intense-foreground-tag(*c) in
     append-text(b, tag)
   | Background(c) =>
     pin tag = get-background-tag(*c) in

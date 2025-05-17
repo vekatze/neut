@@ -19,9 +19,27 @@
       ],
     },
     text-builder {
-      digest "TGoMVm8T7oMFnow4GkDJJMhwSvoXGqXegaF4dXbdls8",
+      digest "9vj7T4kaxUC30Mi663_2Fo6mqgjpjmiP8DMJvzy6LiQ",
       mirror [
-        "https://github.com/vekatze/text-builder/raw/main/archive/0-1-7.tar.zst",
+        "https://github.com/vekatze/text-builder/raw/main/archive/0-1-8.tar.zst",
+      ],
+    },
+    time {
+      digest "8eiJcAoh6NCannOyZZsiya24wOQaOdDVdaO9TVaqRG8",
+      mirror [
+        "https://github.com/vekatze/time-nt/raw/main/archive/0-4-33.tar.zst",
+      ],
+    },
+    binary-builder {
+      digest "zfua2iL8odSDr0cu6MRzKjo3USep_AKoiqcLKpZ3Yn0",
+      mirror [
+        "https://github.com/vekatze/binary-builder/raw/main/archive/0-1-25.tar.zst",
+      ],
+    },
+    sero {
+      digest "eFSN6_y5bqueHbMQ2euhSwvC36S-PVtG7d2kMRC_2pk",
+      mirror [
+        "https://github.com/vekatze/marshal/raw/main/archive/0-1-24.tar.zst",
       ],
     },
   },

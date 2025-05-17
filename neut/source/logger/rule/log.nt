@@ -1,0 +1,49 @@
+import {
+  ansi.style {Bold},
+  core.list {for-each-N},
+  this.color.rule.text {Empty, color-text, join, packed, packed'},
+  this.color.rule.tone {Style},
+  this.logger.rule.hint {hint, show-file-pos},
+  this.logger.rule.log-level {_log-level-to-pad, _log-level-to-text, _log-level-to-tone, log-level},
+}
+
+data log {
+| Log(
+    position: ?hint,
+    level: log-level,
+    content: text,
+  )
+}
+
+define _show-position(h: &?hint): color-text {
+  case h {
+  | Left(_) =>
+    Empty
+  | Right(h) =>
+    join(packed([Style(Bold)], show-file-pos(h)), packed'(*"\n"))
+  }
+}
+
+define _show-level(l: log-level): color-text {
+  packed(_log-level-to-tone(l), core.text.append(_log-level-to-text(l), ": "))
+}
+
+define _show-content(level: log-level, content: text): color-text {
+  pin pad = _log-level-to-pad(level) in
+  pin adjusted-content =
+    let lines on content = core.text.split(content, "\n") in
+    match lines {
+    | Nil =>
+      content
+    | Cons(head, tail) =>
+      pin tail = tail in
+      let tail' =
+        for-each-N(tail, function (t) {
+          core.text.append(pad, t)
+        })
+      in
+      core.text.intercalate(Cons(head, tail'), *"\n")
+    }
+  in
+  packed'(core.text.append(adjusted-content, "\n"))
+}
