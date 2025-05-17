@@ -37,9 +37,9 @@
       ],
     },
     sero {
-      digest "1F0rcxvE7Cx4_mKUcx0rt5o0fTnhtQqrYnDV7xW21gk",
+      digest "eFSN6_y5bqueHbMQ2euhSwvC36S-PVtG7d2kMRC_2pk",
       mirror [
-        "https://github.com/vekatze/marshal/raw/main/archive/0-1-23.tar.zst",
+        "https://github.com/vekatze/marshal/raw/main/archive/0-1-24.tar.zst",
       ],
     },
   },
