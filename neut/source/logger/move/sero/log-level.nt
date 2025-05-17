@@ -1,0 +1,73 @@
+import {
+  core.box {axiom-T},
+  sero.move.decode {decode},
+  sero.move.encode {encode},
+  sero.move.instance.int8 {int8-sero},
+  sero.rule.get-kit {get-kit},
+  sero.rule.put-kit {put-kit},
+  sero.rule.sero {Sero, sero},
+  this.logger.rule.log-level {Critical, Error, Note, Warning, log-level},
+}
+
+define _put(k: &put-kit, v: &log-level): unit {
+  let Sero of {put} = int8-sero in
+  case v {
+  | Note =>
+    pin v = 0 in
+    put(k, v)
+  | Warning =>
+    pin v = 1 in
+    put(k, v)
+  | Error =>
+    pin v = 2 in
+    put(k, v)
+  | Critical =>
+    pin v = 3 in
+    put(k, v)
+  }
+}
+
+define _get(k: &get-kit): ?meta log-level {
+  let Sero of {get} = int8-sero in
+  try value = get(k) in
+  match axiom-T(value) {
+  | 0 =>
+    Right(box {Note})
+  | 1 =>
+    Right(box {Warning})
+  | 2 =>
+    Right(box {Error})
+  | 3 =>
+    Right(box {Critical})
+  | _ =>
+    none
+  }
+}
+
+inline log-level-sero: sero(log-level) {
+  Sero of {
+    put = _put,
+    get = _get,
+  }
+}
+
+define zen(): unit {
+  pin val = Critical in
+  let foo = decode(log-level-sero, encode(log-level-sero, val, 8)) in
+  match foo {
+  | Left(_) =>
+    print("error\n")
+  | Right(log-level) =>
+    print("right\n");
+    match log-level {
+    | Note =>
+      print("note\n")
+    | Warning =>
+      print("warning\n")
+    | Error =>
+      print("error\n")
+    | Critical =>
+      print("critical\n")
+    }
+  }
+}
