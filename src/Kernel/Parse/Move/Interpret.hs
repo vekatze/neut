@@ -5,20 +5,23 @@ module Kernel.Parse.Move.Interpret
   )
 where
 
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel qualified as L
 import Control.Monad
 import Control.Monad.IO.Class
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Move.Handle.Local.RawImportSummary qualified as RawImportSummary
+import Kernel.Common.Move.Handle.Local.SymLoc qualified as SymLoc
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
+import Kernel.Common.Move.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Rule.Handle.Local.RawImportSummary qualified as RawImportSummary
+import Kernel.Common.Rule.Handle.Local.SymLoc qualified as SymLoc
+import Kernel.Common.Rule.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Rule.Import
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
@@ -34,6 +37,9 @@ import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.RawTerm.Rule.RawStmt
 import Language.WeakTerm.Rule.WeakStmt
+import Logger.Rule.Hint
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
 
 data Handle = Handle
   { aliasHandle :: Alias.Handle,
@@ -43,7 +49,10 @@ data Handle = Handle
     importHandle :: Import.Handle,
     nameMapHandle :: NameMap.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
-    unusedHandle :: Unused.Handle
+    unusedHandle :: Unused.Handle,
+    symLocHandle :: SymLoc.Handle,
+    topCandidateHandle :: TopCandidate.Handle,
+    rawImportSummaryHandle :: RawImportSummary.Handle
   }
 
 new ::
@@ -59,6 +68,9 @@ new globalHandle localHandle = do
   let locatorHandle = Local.locatorHandle localHandle
   let tagHandle = Local.tagHandle localHandle
   nameMapHandle <- NameMap.new globalHandle unusedHandle tagHandle
+  let symLocHandle = Local.symLocHandle localHandle
+  let topCandidateHandle = Local.topCandidateHandle localHandle
+  let rawImportSummaryHandle = Local.rawImportSummaryHandle localHandle
   let discernHandle = Discern.new globalHandle localHandle nameMapHandle
   return $ Handle {..}
 
@@ -76,6 +88,15 @@ interpret h t source cacheOrContent = do
       (prog', logs) <- interpret' h source prog
       tmap <- liftIO $ Tag.get (Discern.tagHandle (discernHandle h))
       Cache.saveLocationCache (pathHandle h) t source $ Cache.LocationCache tmap
+      localVarTree <- liftIO $ SymLoc.get (symLocHandle h)
+      topCandidate <- liftIO $ TopCandidate.get (topCandidateHandle h)
+      rawImportSummary <- liftIO $ RawImportSummary.get (rawImportSummaryHandle h)
+      Cache.saveCompletionCache (pathHandle h) t source $
+        Cache.CompletionCache
+          { Cache.localVarTree = localVarTree,
+            Cache.topCandidate = topCandidate,
+            Cache.rawImportSummary = rawImportSummary
+          }
       return (Right prog', logs)
 
 interpret' :: Handle -> Source.Source -> PostRawProgram -> EIO ([WeakStmt], [L.Log])

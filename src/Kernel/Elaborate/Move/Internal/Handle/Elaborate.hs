@@ -7,11 +7,10 @@ module Kernel.Elaborate.Move.Internal.Handle.Elaborate
   )
 where
 
-import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
-import Logger.Rule.Hint (Hint)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (fromMaybe)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Rule.Const (defaultInlineLimit)
@@ -22,9 +21,6 @@ import Kernel.Common.Rule.Handle.Global.OptimizableData qualified as Optimizable
 import Kernel.Common.Rule.Handle.Global.Path qualified as Path
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.Handle.Global.Type qualified as Type
-import Kernel.Common.Rule.Handle.Local.RawImportSummary qualified as RawImportSummary
-import Kernel.Common.Rule.Handle.Local.SymLoc qualified as SymLoc
-import Kernel.Common.Rule.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Rule.Module (Module (moduleInlineLimit))
 import Kernel.Common.Rule.Source
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
@@ -42,6 +38,7 @@ import Language.Term.Rule.Term qualified as TM
 import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Logger.Rule.Hint (Hint)
 
 data Handle = Handle
   { globalHandle :: Global.Handle,
@@ -58,9 +55,6 @@ data Handle = Handle
     keyArgHandle :: KeyArg.Handle,
     localLogsHandle :: LocalLogs.Handle,
     pathHandle :: Path.Handle,
-    symLocHandle :: SymLoc.Handle,
-    topCandidateHandle :: TopCandidate.Handle,
-    rawImportSummaryHandle :: RawImportSummary.Handle,
     globalRemarkHandle :: GlobalRemark.Handle,
     weakTypeHandle :: WeakType.Handle,
     optDataHandle :: OptimizableData.Handle,

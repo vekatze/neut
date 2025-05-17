@@ -5,12 +5,6 @@ module Kernel.Elaborate.Move.Elaborate
   )
 where
 
-import Error.Move.Run (raiseCritical, raiseError)
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
-import Gensym.Move.Trick qualified as Gensym
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -21,12 +15,13 @@ import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Move.Run (raiseCritical, raiseError)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
+import Gensym.Move.Trick qualified as Gensym
 import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
-import Kernel.Common.Move.Handle.Local.RawImportSummary qualified as RawImportSummary
-import Kernel.Common.Move.Handle.Local.SymLoc qualified as SymLoc
-import Kernel.Common.Move.Handle.Local.TopCandidate qualified as TopCandidate
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Const (holeLiteral)
@@ -75,6 +70,8 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
+import Logger.Rule.Hint
+import Logger.Rule.Log qualified as L
 
 getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =
@@ -107,9 +104,6 @@ synthesizeStmtList h t logs stmtList = do
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
   -- mapM_ (viewStmt . weakenStmt) stmtList'
-  localVarTree <- liftIO $ SymLoc.get (symLocHandle h)
-  topCandidate <- liftIO $ TopCandidate.get (topCandidateHandle h)
-  rawImportSummary <- liftIO $ RawImportSummary.get (rawImportSummaryHandle h)
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
   let logs' = logs ++ localLogs
@@ -118,12 +112,6 @@ synthesizeStmtList h t logs stmtList = do
       { Cache.stmtList = stmtList',
         Cache.remarkList = logs',
         Cache.countSnapshot = countSnapshot
-      }
-  Cache.saveCompletionCache (pathHandle h) t (currentSource h) $
-    Cache.CompletionCache
-      { Cache.localVarTree = localVarTree,
-        Cache.topCandidate = topCandidate,
-        Cache.rawImportSummary = rawImportSummary
       }
   liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs'
   return stmtList'
