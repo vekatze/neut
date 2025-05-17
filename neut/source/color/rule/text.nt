@@ -61,6 +61,15 @@ define _unpacked-uncolored(t: &color-text): text {
   extract(b)
 }
 
+define join(t1: color-text, t2: color-text): color-text {
+  match t1 {
+  | Empty =>
+    t2
+  | Join(tones, content, rest) =>
+    Join(tones, content, join(rest, t2))
+  }
+}
+
 define zen(): unit {
   pin t =
     Join(

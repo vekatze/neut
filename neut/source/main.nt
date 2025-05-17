@@ -1,10 +1,12 @@
 import {
   this.color.move.make-color-kit,
   this.color.move.print,
+  this.logger.move.print,
 }
 
 define main(): unit {
   this.color.move.make-color-kit.zen();
   this.color.move.print.zen();
+  this.logger.move.print.zen();
   print("Hello, world!\n")
 }

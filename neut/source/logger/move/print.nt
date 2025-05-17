@@ -1,0 +1,87 @@
+import {
+  ansi.color {Black},
+  core.list {fold-right-N},
+  this.color.move.make-color-kit {make-color-kit},
+  this.color.move.print {print-stderr, print-stdout},
+  this.color.rule.text {join, packed, packed'},
+  this.color.rule.tone {Foreground},
+  this.logger.move.make-logger-kit {make-logger-kit},
+  this.logger.rule.hint {new-hint},
+  this.logger.rule.log {Log, _show-content, _show-level, _show-position, log},
+  this.logger.rule.log-level {Note, Warning, log-level},
+  this.logger.rule.logger-kit {_Logger-Kit, _show-time, logger-kit},
+  time.time {get-time, sub-time},
+}
+
+define print-log(k: &logger-kit, l: &log): unit {
+  tie _Logger-Kit of {color-kit} = k in
+  tie Log of {position, level, content} = l in
+  let position-text = _show-position(position) in
+  let level-text = _show-level(*level) in
+  let content-text = _show-content of {level = *level, content = *content} in
+  pin log-text = join(position-text, join(level-text, content-text)) in
+  print-stdout(color-kit, log-text)
+}
+
+define print-log-error(k: &logger-kit, l: &log): unit {
+  tie _Logger-Kit of {color-kit} = k in
+  tie Log of {position, level, content} = l in
+  let position-text = _show-position(position) in
+  let level-text = _show-level(*level) in
+  let content-text = _show-content of {level = *level, content = *content} in
+  pin log-text = join(position-text, join(level-text, content-text)) in
+  print-stderr(color-kit, log-text)
+}
+
+define print-log-list(k: &logger-kit, ls: &list(log)): unit {
+  fold-right-N(ls, Unit, function (l, _) {
+    print-log(k, l)
+  })
+}
+
+define print-log-error-list(k: &logger-kit, ls: &list(log)): unit {
+  fold-right-N(ls, Unit, function (l, _) {
+    print-log-error(k, l)
+  })
+}
+
+define _print-log-without-position(k: &logger-kit, l: log-level, content: text): unit {
+  pin l = Log of {position = none, level = l, content} in
+  print-log(k, l)
+}
+
+define print-note(k: &logger-kit, content: text): unit {
+  _print-log-without-position(k, Note, content)
+}
+
+define print-warning(k: &logger-kit, content: text): unit {
+  _print-log-without-position(k, Warning, content)
+}
+
+define report(k: &logger-kit, message: text): unit {
+  tie _Logger-Kit of {color-kit, enable-debug-mode, base-time} = k in
+  when *enable-debug-mode {
+    let current-time = get-time() in
+    let elapsed-time = sub-time(current-time, *base-time) in
+    let time-text = packed([Foreground(Black)], _show-time(elapsed-time)) in
+    pin debug-text = join(time-text, join(packed'(*" "), join(packed'(message), packed'(*"\n")))) in
+    print-stderr(color-kit, debug-text)
+  }
+}
+
+define zen(): unit {
+  let color-kit = make-color-kit(True, True) in
+  pin k = make-logger-kit(color-kit, True) in
+  let m = new-hint(12, 3456, "/Users/foo/path/to/file.nt") in
+  pin l =
+    Log of {
+      position = Right(m),
+      level = Note,
+      content = *"Lorem ipsum.\nProin non hendrerit neque, id rhoncus nisi.",
+    }
+  in
+  print-log(k, l);
+  print-warning(k, *"Nullam non dui a felis viverra molestie eget id mauris.");
+  print-note(k, *"Aenean tortor ligula, efficitur id viverra ac, mattis in orci.\nDonec mattis ex quis scelerisque faucibus.");
+  report(k, *"Donec sit amet euismod felis.\nVivamus ac lectus fermentum, blandit purus at, consectetur orci.")
+}
