@@ -11,22 +11,19 @@ module Kernel.Parse.Move.Internal.Handle.NameMap
   )
 where
 
-import Error.Move.Run (raiseCritical, raiseError)
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error
-import Logger.Rule.Hint
-import Logger.Rule.Hint qualified as Hint
-import Logger.Rule.Log (Log, newLog)
-import Logger.Rule.LogLevel (LogLevel (Error))
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Error.Move.Run (raiseCritical, raiseError)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
+import Kernel.Common.Rule.GlobalName (getIsConstLike)
 import Kernel.Common.Rule.GlobalName qualified as GN
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
@@ -44,6 +41,10 @@ import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.Term.Rule.Stmt
+import Logger.Rule.Hint
+import Logger.Rule.Hint qualified as Hint
+import Logger.Rule.Log (Log, newLog)
+import Logger.Rule.LogLevel (LogLevel (Error))
 import Prelude hiding (lookup)
 
 data Handle = Handle
@@ -64,7 +65,7 @@ new (Global.Handle {..}) unusedHandle tagHandle = do
 insert :: Handle -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> EIO ()
 insert h nameArrowList = do
   forM_ nameArrowList $ \(dd, (m, gn)) -> do
-    ensureDefFreshness h m dd
+    ensureDefFreshness h m dd (getIsConstLike gn)
     liftIO $ insertToNameMap h dd m gn
 
 registerGeist :: Handle -> RT.RawGeist DD.DefiniteDescription -> EIO ()
@@ -74,7 +75,7 @@ registerGeist h RT.RawGeist {..} = do
   let argNum = AN.fromInt $ length $ impArgs' ++ expArgs'
   let name' = fst name
   ensureGeistFreshness h loc name'
-  ensureDefFreshness h loc name'
+  ensureDefFreshness h loc name' isConstLike
   liftIO $ insertToGeistMap h name' loc isConstLike
   liftIO $ insertToNameMap h name' loc $ GN.TopLevelFunc argNum isConstLike
 
@@ -94,8 +95,8 @@ lookup h m name = do
       | otherwise -> do
           return Nothing
 
-ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
-ensureDefFreshness h m name = do
+ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> Bool -> EIO ()
+ensureDefFreshness h m name isConstLike = do
   gmap <- liftIO $ readIORef (geistMapRef h)
   topNameMap <- liftIO $ readIORef (nameMapRef h)
   case (Map.lookup name gmap, Map.member name topNameMap) of
@@ -103,10 +104,18 @@ ensureDefFreshness h m name = do
       let mainModule = Env.getMainModule (envHandle h)
       let name' = readableDD mainModule name
       raiseCritical m $ "`" <> name' <> "` is defined nominally but not registered in the top name map"
-    (Just (mGeist, isConstLike), True) -> do
-      liftIO $ removeFromGeistMap h name
-      liftIO $ removeFromDefNameMap h name
-      liftIO $ Tag.insertGlobalVar (tagHandle h) mGeist name isConstLike m
+    (Just (mGeist, isConstLike'), True) -> do
+      let mainModule = Env.getMainModule (envHandle h)
+      let name' = readableDD mainModule name
+      case (isConstLike', isConstLike) of
+        (True, False) -> do
+          raiseError m $ "`" <> name' <> "` is declared as a constant, but defined as a non-constant"
+        (False, True) -> do
+          raiseError m $ "`" <> name' <> "` is declared as a non-constant, but defined as a constant"
+        _ -> do
+          liftIO $ removeFromGeistMap h name
+          liftIO $ removeFromDefNameMap h name
+          liftIO $ Tag.insertGlobalVar (tagHandle h) mGeist name isConstLike m
     (Nothing, True) -> do
       let mainModule = Env.getMainModule (envHandle h)
       let name' = readableDD mainModule name
