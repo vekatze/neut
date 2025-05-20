@@ -19,20 +19,15 @@ where
 import CodeParser.Move.GetInfo
 import CodeParser.Move.Parse
 import CodeParser.Rule.Parser
-import Error.Move.Run (raiseError)
-import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
-import Logger.Rule.Hint
-import SyntaxTree.Move.ParseSeries
-import SyntaxTree.Rule.Block
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Rule.Const
 import Language.Common.Move.CreateSymbol (newTextForHole)
 import Language.Common.Rule.BaseName qualified as BN
@@ -47,6 +42,11 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Logger.Rule.Hint
+import SyntaxTree.Move.ParseSeries
+import SyntaxTree.Rule.Block
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 import Text.Megaparsec.Char (char)
 import Text.Read qualified as R
@@ -125,8 +125,6 @@ rawTerm' h m headSymbol c = do
       rawTermIf h m c
     "when" -> do
       rawTermWhen h m c
-    "with" -> do
-      rawTermWith h m c
     "rune" -> do
       rawTermRune m c
     "type" -> do
@@ -639,11 +637,6 @@ rawTermBrace h = do
   m <- getCurrentHint
   (c1, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.Brace c1 e, c)
-
-rawTermWith :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermWith h m c0 = do
-  (withClause, c) <- rawTermClause h c0
-  return (m :< RT.With withClause, c)
 
 rawTermBox :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermBox h m c1 = do
