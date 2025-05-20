@@ -350,11 +350,6 @@ discern h term =
       let contAddition = map (\(myUse, y) -> (Ident.toText y, (myUse, y, H.currentLayer h))) ysCont
       hCont <- liftIO $ H.extendByNominalEnv h VDK.Relayed contAddition
       (mxt', e2'') <- discernBinderWithBody' hCont mxt startLoc endLoc e2'
-      case pat of
-        RP.Var _ ->
-          liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
-        _ ->
-          return ()
       when mustIgnoreRelayedVars $ do
         forM_ ysCont $ \(_, y) -> liftIO (Unused.deleteVariable (H.unusedHandle h) y)
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
