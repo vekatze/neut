@@ -4,6 +4,7 @@ module Kernel.Common.Move.RunProcess
     Handle,
     new,
     run,
+    runProcess,
     run00,
     run01,
     run10,
@@ -11,18 +12,19 @@ module Kernel.Common.Move.RunProcess
   )
 where
 
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error (newError')
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Handle qualified as Logger
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error (newError')
 import GHC.IO.Handle qualified as GHC
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import System.Exit
+import System.Process (waitForProcess)
 import System.Process qualified as P
 
 data Spec = Spec
@@ -86,6 +88,14 @@ run h procName optionList = do
       return ()
     Left err ->
       throwError $ newError' err
+
+runProcess :: Handle -> String -> [String] -> IO ExitCode
+runProcess h procName optionList = do
+  let spec = Spec {cmdspec = P.RawCommand procName optionList, cwd = Nothing}
+  reportCommand h spec
+  P.withCreateProcess (fromSpec spec) $
+    \_ _ _ processHandle -> do
+      waitForProcess processHandle
 
 run00 :: Handle -> Spec -> IO (Either ErrorText ())
 run00 h spec = do

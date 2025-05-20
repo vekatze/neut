@@ -5,6 +5,7 @@ module Command.Common.Move.Build.Execute
   )
 where
 
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Path qualified as Path
@@ -26,4 +27,5 @@ new (Global.Handle {..}) = do
 execute :: Handle -> MainTarget -> [String] -> EIO ()
 execute h target args = do
   outputPath <- Path.getExecutableOutputPath (pathHandle h) target
-  RunProcess.run (runProcessHandle h) (toFilePath outputPath) args
+  _ <- liftIO $ RunProcess.runProcess (runProcessHandle h) (toFilePath outputPath) args
+  return ()
