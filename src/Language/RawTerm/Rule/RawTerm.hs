@@ -27,10 +27,6 @@ module Language.RawTerm.Rule.RawTerm
   )
 where
 
-import Logger.Rule.Hint
-import Logger.Rule.LogLevel
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.Text qualified as T
@@ -50,6 +46,10 @@ import Language.RawTerm.Rule.NecessityVariant (NecessityVariant)
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
+import Logger.Rule.Hint
+import Logger.Rule.LogLevel
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 
 type RawTerm = Cofree RawTermF Hint
 
@@ -92,7 +92,6 @@ data RawTermF a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | IncludeText C C Hint (T.Text, C)
-  | With (KeywordClause a)
   | Brace C (a, C)
   | Pointer
   | Void
@@ -200,7 +199,6 @@ data LetKind
   = Plain MustIgnoreRelayedVars
   | Noetic
   | Try
-  | Bind
 
 {-# INLINE decodeLetKind #-}
 decodeLetKind :: LetKind -> T.Text
@@ -209,7 +207,6 @@ decodeLetKind letKind =
     Plain _ -> "let"
     Noetic -> "tie"
     Try -> "try"
-    Bind -> "bind"
 
 letKindFromText :: T.Text -> Maybe LetKind
 letKindFromText t =
@@ -220,8 +217,6 @@ letKindFromText t =
       return Noetic
     "try" ->
       return Try
-    "bind" ->
-      return Bind
     _ ->
       Nothing
 

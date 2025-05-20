@@ -16,13 +16,6 @@ module Language.RawTerm.Rule.RawTerm.ToDoc
   )
 where
 
-import Logger.Rule.Hint
-import PrettyPrinter.Rule.Doc qualified as D
-import PrettyPrinter.Rule.Piece qualified as PI
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.C.ToDoc qualified as C
-import SyntaxTree.Rule.Series qualified as SE
-import SyntaxTree.Rule.Series.ToDoc qualified as SE
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
@@ -38,6 +31,13 @@ import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawPattern qualified as RP
 import Language.RawTerm.Rule.RawTerm
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Logger.Rule.Hint
+import PrettyPrinter.Rule.Doc qualified as D
+import PrettyPrinter.Rule.Piece qualified as PI
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.C.ToDoc qualified as C
+import SyntaxTree.Rule.Series qualified as SE
+import SyntaxTree.Rule.Series.ToDoc qualified as SE
 
 pp :: RawTerm -> T.Text
 pp e = do
@@ -304,8 +304,6 @@ toDoc term =
         [ PI.inject $ D.text "include-text",
           PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap D.text args
         ]
-    _ :< With withClause -> do
-      decodeKeywordClause "with" $ mapKeywordClause toDoc withClause
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
     _ :< Pointer ->

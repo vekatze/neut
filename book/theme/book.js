@@ -18,7 +18,6 @@ hljs.registerLanguage("neut", function (hljs) {
       $pattern: /[\w-]+/,
       keyword: [
         "attach",
-        "bind",
         "box",
         "case",
         "data",
@@ -49,7 +48,6 @@ hljs.registerLanguage("neut", function (hljs) {
         "try",
         "use",
         "when",
-        "with",
       ].join(" "),
       builtin: [
         "_",
