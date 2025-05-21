@@ -5,13 +5,13 @@ module Command.Archive.Move.Internal.Archive
   )
 where
 
-import Ens.Rule.Ens qualified as E
-import Error.Move.Run (raiseError')
-import Error.Rule.EIO (EIO)
 import Command.Archive.Rule.PackageVersion qualified as PV
 import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Monad
 import Data.Text qualified as T
+import Ens.Rule.Ens qualified as E
+import Error.Move.Run (raiseError')
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.RunProcess qualified as RunProcess
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
@@ -35,7 +35,6 @@ archive h packageVersion fullEns moduleRootDir contents = do
   withSystemTempDir "archive" $ \tempRootDir -> do
     SaveModule.save (saveModuleHandle h) (tempRootDir </> moduleFile) fullEns
     copyModuleContents tempRootDir moduleRootDir contents
-    makeReadOnly tempRootDir
     makeArchiveFromTempDir h packageVersion tempRootDir
 
 makeArchiveFromTempDir :: Handle -> PV.PackageVersion -> Path Abs Dir -> EIO ()
@@ -56,13 +55,6 @@ copyModuleContents tempRootDir moduleRootDir contents = do
       Right filePath -> do
         ensureDir $ parent $ tempRootDir </> filePath
         copyFile (moduleRootDir </> filePath) (tempRootDir </> filePath)
-
-makeReadOnly :: Path Abs Dir -> EIO ()
-makeReadOnly tempRootDir = do
-  (_, filePathList) <- listDirRecur tempRootDir
-  forM_ filePathList $ \filePath -> do
-    p <- getPermissions filePath
-    setPermissions filePath $ p {writable = False}
 
 getArchiveFilePath :: MainModule -> T.Text -> EIO (Path Abs File)
 getArchiveFilePath (MainModule mainModule) versionText = do
