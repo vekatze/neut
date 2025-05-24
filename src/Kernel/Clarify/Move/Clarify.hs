@@ -180,7 +180,7 @@ clarifyStmt h stmt =
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody h IntMap.empty dataArgs t
-                  return $ C.Def f O.Opaque (map fst dataArgs') t'
+                  return $ C.Def f O.Clear (map fst dataArgs') t'
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
