@@ -9,11 +9,6 @@ module Kernel.Clarify.Move.Clarify
   )
 where
 
-import Error.Move.Run (raiseCritical, raiseCritical')
-import Error.Rule.EIO (EIO)
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -21,6 +16,10 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Error.Move.Run (raiseCritical, raiseCritical')
+import Error.Rule.EIO (EIO)
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
@@ -71,6 +70,7 @@ import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.Chain (nubFreeVariables)
 import Language.Term.Rule.Term.Chain qualified as TM
 import Language.Term.Rule.Term.FromPrimNum
+import Logger.Rule.Hint
 
 data Handle = Handle
   { gensymHandle :: Gensym.Handle,
@@ -566,7 +566,7 @@ clarifyLambda ::
 clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
   case lamKind of
     LK.Fix (_, recFuncName, codType) -> do
-      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName identity
+      let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName recFuncName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
