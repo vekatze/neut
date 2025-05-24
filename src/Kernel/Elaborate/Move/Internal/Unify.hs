@@ -4,12 +4,6 @@ module Kernel.Elaborate.Move.Internal.Unify
   )
 where
 
-import Error.Move.Run (raiseCritical)
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel qualified as L
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -19,6 +13,9 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Move.Run (raiseCritical)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Move.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Move.Internal.Handle.Elaborate
@@ -47,6 +44,9 @@ import Language.WeakTerm.Rule.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.FreeVars
 import Language.WeakTerm.Rule.WeakTerm.Holes
 import Language.WeakTerm.Rule.WeakTerm.ToText
+import Logger.Rule.Hint
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
 
 unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
 unify h constraintList = do
@@ -169,8 +169,8 @@ simplify h susList constraintList =
                   yt2 <- liftIO $ asWeakBinder h m2 e2
                   cs' <- liftIO $ simplifyBinder h orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
                   simplify h susList $ cs' ++ cs
-              | AttrL.Attr {lamKind = LK.Normal codType1} <- kind1,
-                AttrL.Attr {lamKind = LK.Normal codType2} <- kind2,
+              | AttrL.Attr {lamKind = LK.Normal _ codType1} <- kind1,
+                AttrL.Attr {lamKind = LK.Normal _ codType2} <- kind2,
                 length impArgs1 == length impArgs2,
                 length expArgs1 == length expArgs2 -> do
                   cod1 <- liftIO $ asWeakBinder h m1 codType1

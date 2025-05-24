@@ -5,10 +5,10 @@ module Language.Term.Move.Refresh
   )
 where
 
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
@@ -47,12 +47,12 @@ refresh h term =
           e' <- refresh h e
           let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
           return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
-        LK.Normal codType -> do
+        LK.Normal name codType -> do
           impArgs' <- refreshBinder h impArgs
           expArgs' <- refreshBinder h expArgs
           codType' <- refresh h codType
           e' <- refresh h e
-          let lamAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = newLamID}
+          let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
           return (m :< TM.PiIntro lamAttr impArgs' expArgs' e')
     m :< TM.PiElim e es -> do
       e' <- refresh h e

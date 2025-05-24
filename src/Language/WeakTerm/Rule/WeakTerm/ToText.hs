@@ -1,6 +1,7 @@
 module Language.WeakTerm.Rule.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable, showDomArgList) where
 
 import Control.Comonad.Cofree
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
@@ -45,8 +46,10 @@ toText term =
             <> toText codType
             <> " "
             <> inBrace (toText e)
-        AttrL.Attr {lamKind = LK.Normal codType} -> do
+        AttrL.Attr {lamKind = LK.Normal mName codType} -> do
+          let name = fromMaybe "" mName
           "function "
+            <> name
             <> showImpArgs impArgs
             <> inParen (showDomArgList expArgs)
             <> ": "

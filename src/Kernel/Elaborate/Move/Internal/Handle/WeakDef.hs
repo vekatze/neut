@@ -8,19 +8,19 @@ module Kernel.Elaborate.Move.Internal.Handle.WeakDef
   )
 where
 
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Opacity qualified as O
 import Language.WeakTerm.Rule.WeakTerm
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Logger.Rule.Hint
 import Prelude hiding (lookup, read)
 
 type DefMap =
@@ -50,7 +50,7 @@ insert' h opacity m name impArgs expArgs codType e =
   when (opacity == O.Clear) $ do
     i <- Gensym.newCount (gensymHandle h)
     modifyIORef' (weakDefMapRef h) $
-      Map.insert name (m :< WT.PiIntro (AttrL.normal i codType) impArgs expArgs e)
+      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) impArgs expArgs e)
 
 read' :: Handle -> IO DefMap
 read' h =

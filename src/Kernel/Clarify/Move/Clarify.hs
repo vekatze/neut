@@ -16,6 +16,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Data.Text qualified as T
 import Error.Move.Run (raiseCritical, raiseCritical')
 import Error.Rule.EIO (EIO)
 import Gensym.Move.Gensym qualified as Gensym
@@ -573,7 +574,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
       let attr = AttrVG.new argNum
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
-        return $ AttrL.normal c codType
+        return $ AttrL.normal' (Just (Ident.toText recFuncName)) c codType
       let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
@@ -582,9 +583,9 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
         liftedBody'' <- liftIO $ Linearize.linearize (linearizeHandle h) liftedArgs liftedBody'
         liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (O.Opaque, map fst liftedArgs, liftedBody'')
       clarifyTerm h tenv lamApp
-    LK.Normal _ -> do
+    LK.Normal mName _ -> do
       e' <- clarifyTerm h (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
-      returnClosure h tenv identity O.Clear fvs mxts e'
+      returnClosure h tenv identity mName O.Clear fvs mxts e'
 
 clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> EIO (Ident, C.Comp, C.Value)
 clarifyPlus h tenv e = do
@@ -609,24 +610,25 @@ clarifyPrimOp h tenv op m = do
   (xs, varList) <- liftIO $ mapAndUnzipM (const (Gensym.createVar (gensymHandle h) "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
   lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-  returnClosure h tenv lamID O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
+  returnClosure h tenv lamID (Just "primOp") O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   Handle ->
   TM.TypeEnv ->
   Int ->
+  Maybe T.Text ->
   O.Opacity ->
   [BinderF TM.Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   EIO C.Comp
-returnClosure h tenv lamID opacity fvs xts e = do
+returnClosure h tenv lamID mName opacity fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 1 -- argNum == count(xts) + env
-  let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName lamID
+  let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
     liftIO $ registerClosure h name opacity xts'' fvs'' e

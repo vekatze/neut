@@ -1,6 +1,5 @@
 module Language.Term.Rule.Term.Compress (compress, compressStmtKind, compressBinder) where
 
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)
@@ -13,6 +12,7 @@ import Language.Common.Rule.StmtKind
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
 
 compress :: TM.Term -> Cofree TM.TermF ()
 compress term =
@@ -82,8 +82,8 @@ compressLet ((m, x, t), e) =
 compressAttr :: AttrL.Attr TM.Term -> AttrL.Attr (Cofree TM.TermF ())
 compressAttr (AttrL.Attr {lamKind, identity}) =
   case lamKind of
-    LK.Normal codType ->
-      AttrL.normal identity (compress codType)
+    LK.Normal name codType ->
+      AttrL.normal' name identity (compress codType)
     LK.Fix xt ->
       AttrL.Attr {lamKind = LK.Fix (compressBinder xt), identity}
 

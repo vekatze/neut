@@ -7,13 +7,13 @@ module Language.WeakTerm.Move.Subst
   )
 where
 
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -69,12 +69,12 @@ subst h sub term =
               e' <- subst h sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< WT.PiIntro fixAttr impArgs' expArgs' e')
-            LK.Normal codType -> do
+            LK.Normal mName codType -> do
               (impArgs', sub') <- subst' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               codType' <- subst h sub'' codType
               e' <- subst h sub'' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = newLamID}
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal mName codType', identity = newLamID}
               return (m :< WT.PiIntro lamAttr impArgs' expArgs' e')
     m :< WT.PiElim e es -> do
       e' <- subst h sub e

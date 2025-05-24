@@ -5,11 +5,6 @@ module Kernel.Elaborate.Move.Internal.EnsureAffinity
   )
 where
 
-import Error.Move.Run (raiseCritical)
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel qualified as L
 import Control.Comonad.Cofree
 import Control.Lens (Bifunctor (bimap))
 import Control.Monad
@@ -18,6 +13,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
+import Error.Move.Run (raiseCritical)
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Rule.OptimizableData
@@ -40,6 +37,9 @@ import Language.Term.Rule.Term.Weaken (weaken)
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText qualified as WT
+import Logger.Rule.Hint
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel qualified as L
 
 type AffineConstraint =
   (TM.Term, TM.Term)
@@ -151,7 +151,7 @@ analyze h term = do
           cs4 <- analyze (extendHandle (mx, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
-        LK.Normal codType -> do
+        LK.Normal _ codType -> do
           (cs1, h') <- analyzeBinder h impArgs
           (cs2, h'') <- analyzeBinder h' expArgs
           cs3 <- analyze h'' codType

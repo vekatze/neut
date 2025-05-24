@@ -154,7 +154,7 @@ type DefInfo =
   RawDef RawIdent
 
 type FuncInfo =
-  RawDef ()
+  RawDef (Maybe T.Text)
 
 type TopGeist =
   RawGeist BN.BaseName
@@ -179,7 +179,7 @@ lam loc m varList codType e =
           { geist =
               RawGeist
                 { loc = m,
-                  name = ((), []),
+                  name = (Nothing, []),
                   isConstLike = False,
                   impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
                   expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),

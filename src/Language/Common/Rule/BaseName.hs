@@ -138,9 +138,13 @@ sigmaName :: Int -> BaseName
 sigmaName i =
   MakeBaseName $ "sigma;" <> T.pack (show i)
 
-lambdaName :: Int -> BaseName
-lambdaName i =
-  MakeBaseName $ "lambda;" <> T.pack (show i)
+lambdaName :: Maybe T.Text -> Int -> BaseName
+lambdaName mName i =
+  case mName of
+    Just name ->
+      MakeBaseName $ "lambda;" <> name <> ";" <> T.pack (show i)
+    Nothing ->
+      MakeBaseName $ "lambda;anon;" <> T.pack (show i)
 
 muName :: Ident -> Int -> BaseName
 muName x i =
