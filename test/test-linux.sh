@@ -15,6 +15,7 @@ for target_dir in "$@"; do
     echo $(basename $i)
     (
       exit_code=0
+      rm -r ./cache
       NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT clean
       ASAN_OPTIONS=detect_leaks=1 NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build $(basename $i) --execute 2>&1 > /dev/null
       output=$(ASAN_OPTIONS=detect_leaks=1 NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build $(basename $i) --execute 2>&1 > actual)

@@ -1,6 +1,5 @@
 module Language.Term.Rule.Term.Extend (extend, extendStmtKind, extendBinder) where
 
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)
@@ -13,6 +12,7 @@ import Language.Common.Rule.StmtKind
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
 
 {-# INLINE _m #-}
 _m :: Hint
@@ -89,8 +89,8 @@ extendLet ((m, x, t), e) =
 extendAttr :: AttrL.Attr (Cofree TM.TermF ()) -> AttrL.Attr TM.Term
 extendAttr AttrL.Attr {lamKind, identity} =
   case lamKind of
-    LK.Normal codType ->
-      AttrL.normal identity (extend codType)
+    LK.Normal name codType ->
+      AttrL.normal' name identity (extend codType)
     LK.Fix xt ->
       AttrL.Attr {lamKind = LK.Fix (extendBinder xt), identity}
 

@@ -241,6 +241,7 @@ discern h term =
       return $ m :< WT.Pi impArgs' expArgs' t'
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
+      let (name, _) = RT.name geist
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       (impArgs', h') <- discernBinder h impArgs endLoc
@@ -248,7 +249,7 @@ discern h term =
       codType' <- discern h'' $ snd $ RT.cod geist
       body' <- discern h'' body
       ensureLayerClosedness m h'' body'
-      return $ m :< WT.PiIntro (AttrL.normal lamID codType') impArgs' expArgs' body'
+      return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist

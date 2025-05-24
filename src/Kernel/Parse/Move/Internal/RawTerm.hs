@@ -177,7 +177,12 @@ rawTermPi h = do
 rawTermPiIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPiIntro h m c0 = do
   (defInfo, c) <- parseDef h $ do
-    return ((), [])
+    mName <- optional symbol
+    case mName of
+      Nothing ->
+        return (Nothing, [])
+      Just (name, c) ->
+        return (Just name, c)
   return (m :< RT.PiIntro c0 defInfo, c)
 
 rawTermKeyValuePair :: Handle -> Parser ((Hint, Key, C, C, RT.RawTerm), C)

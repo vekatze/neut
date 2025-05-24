@@ -58,7 +58,7 @@ toDoc term =
           PI.inject $ attachComment c $ toDoc cod
         ]
     _ :< PiIntro c def -> do
-      decodeDef (const D.Nil) "function" c def
+      decodeDef lambdaNameToDoc "function" c def
     _ :< PiIntroFix c def -> do
       decodeDef (nameToDoc . N.Var) "define" c def
     _ :< PiElim e c args -> do
@@ -484,6 +484,14 @@ nameToDoc varOrLocator =
         else D.text var
     N.Locator locator ->
       D.text $ Locator.reify locator
+
+lambdaNameToDoc :: Maybe T.Text -> D.Doc
+lambdaNameToDoc mName =
+  case mName of
+    Just name ->
+      D.text name
+    Nothing ->
+      D.Nil
 
 isMultiLine :: [D.Doc] -> Bool
 isMultiLine docList =

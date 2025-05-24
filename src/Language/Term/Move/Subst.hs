@@ -8,13 +8,13 @@ module Language.Term.Move.Subst
   )
 where
 
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -72,12 +72,12 @@ subst h sub term =
               e' <- subst h sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
-            LK.Normal codType -> do
+            LK.Normal name codType -> do
               (impArgs', sub') <- substBinder h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               codType' <- subst h sub'' codType
               e' <- subst h sub'' e
-              let lamAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = newLamID}
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
               return (m :< TM.PiIntro lamAttr impArgs' expArgs' e')
     m :< TM.PiElim e es -> do
       e' <- subst h sub e

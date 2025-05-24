@@ -5,9 +5,6 @@ module Language.WeakTerm.Move.Reduce
   )
 where
 
-import Error.Move.Run (raiseError)
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint qualified as H
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
@@ -15,6 +12,8 @@ import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -27,6 +26,7 @@ import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Logger.Rule.Hint qualified as H
 
 type InlineLimit =
   Int
@@ -86,7 +86,7 @@ reduce' h term = do
       e' <- reduce' h e
       es' <- mapM (reduce' h) es
       case e' of
-        (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal _} impArgs expArgs body)
+        (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts

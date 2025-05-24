@@ -125,7 +125,7 @@ elaborateStmt h stmt = do
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       codType' <- elaborate' h codType
-      let dummyAttr = AttrL.Attr {lamKind = LK.Normal codType', identity = 0}
+      let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
@@ -425,9 +425,9 @@ elaborateLet h (xt, e) = do
 elaborateLamAttr :: Handle -> AttrL.Attr WT.WeakTerm -> EIO (AttrL.Attr TM.Term)
 elaborateLamAttr h (AttrL.Attr {lamKind, identity}) =
   case lamKind of
-    LK.Normal codType -> do
+    LK.Normal name codType -> do
       codType' <- elaborate' h codType
-      return $ AttrL.Attr {lamKind = LK.Normal codType', identity}
+      return $ AttrL.Attr {lamKind = LK.Normal name codType', identity}
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder h xt
       return $ AttrL.Attr {lamKind = LK.Fix xt', identity}

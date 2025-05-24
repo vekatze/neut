@@ -8,15 +8,14 @@ module Kernel.Elaborate.Move.Internal.Infer
   )
 where
 
-import Error.Move.Run (raiseCritical, raiseError)
-import Error.Rule.EIO (EIO)
-import Gensym.Move.Gensym qualified as Gensym
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Error.Move.Run (raiseCritical, raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Move.Gensym qualified as Gensym
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
@@ -62,6 +61,7 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
+import Logger.Rule.Hint
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -175,13 +175,13 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h'') codType' tBody
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e'
           return (term', piType)
-        LK.Normal codType -> do
+        LK.Normal name codType -> do
           (impArgs', h') <- inferBinder' h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           codType' <- inferType h'' codType
           (e', t') <- infer h'' e
           liftIO $ Constraint.insert (constraintHandle h'') codType' t'
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal codType'}) impArgs' expArgs' e'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' expArgs' e'
           return (term', m :< WT.Pi impArgs' expArgs' t')
     m :< WT.PiElim e es -> do
       etl <- infer h e

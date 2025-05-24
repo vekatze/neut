@@ -5,11 +5,12 @@ module Language.Common.Rule.LamKind
 where
 
 import Data.Binary
+import Data.Text qualified as T
 import GHC.Generics
 import Language.Common.Rule.Binder
 
 data LamKindF a
-  = Normal a
+  = Normal (Maybe T.Text) a
   | Fix (BinderF a)
   deriving (Show, Generic)
 

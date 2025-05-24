@@ -5,10 +5,6 @@ module Language.Term.Move.Inline
   )
 where
 
-import Error.Move.Run (raiseError)
-import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
@@ -17,6 +13,9 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
 import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
@@ -31,6 +30,7 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Move.Refresh qualified as Refresh
 import Language.Term.Move.Subst qualified as Subst
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)
@@ -104,7 +104,7 @@ inline' h term = do
       es' <- mapM (inline' h) es
       let Handle {dmap} = h
       case e' of
-        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal _}) impArgs expArgs body)
+        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
               if all TM.isValue es'
