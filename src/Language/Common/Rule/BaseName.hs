@@ -33,17 +33,19 @@ module Language.Common.Rule.BaseName
   )
 where
 
-import Error.Rule.Error
-import Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.Char (isUpper)
 import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.Const
+import Language.Common.Rule.Ident (Ident)
+import Language.Common.Rule.Ident.Reify (toText)
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.PrimType.ToText qualified as PT
+import Logger.Rule.Hint qualified as H
 import Prelude hiding (length)
 
 newtype BaseName = MakeBaseName {reify :: T.Text}
@@ -140,9 +142,9 @@ lambdaName :: Int -> BaseName
 lambdaName i =
   MakeBaseName $ "lambda;" <> T.pack (show i)
 
-muName :: Int -> BaseName
-muName i =
-  MakeBaseName $ "mu;" <> T.pack (show i)
+muName :: Ident -> Int -> BaseName
+muName x i =
+  MakeBaseName $ "mu;" <> toText x <> ";" <> T.pack (show i)
 
 resourceName :: Int -> BaseName
 resourceName i =
