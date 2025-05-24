@@ -6,13 +6,6 @@ module Command.Common.Move.Build
   )
 where
 
-import Error.Move.Run (forP, raiseError', runEIO)
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error (newError')
-import Error.Rule.Error qualified as E
-import Logger.Move.Debug qualified as Logger
-import Logger.Move.Log qualified as Logger
-import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import Command.Common.Move.Build.EnsureMain qualified as EnsureMain
 import Command.Common.Move.Build.Execute qualified as Execute
 import Command.Common.Move.Build.Generate qualified as Gen
@@ -28,6 +21,10 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time
+import Error.Move.Run (forP, raiseError', runEIO)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error (newError')
+import Error.Rule.Error qualified as E
 import Kernel.Clarify.Move.Clarify qualified as Clarify
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
@@ -55,8 +52,11 @@ import Kernel.Unravel.Move.Unravel qualified as Unravel
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.LowComp.Rule.LowComp qualified as LC
 import Language.Term.Rule.Stmt (getStmtName)
+import Logger.Move.Debug qualified as Logger
+import Logger.Move.Log qualified as Logger
 import Path
 import Path.IO
+import ProgressIndicator.Move.ShowProgress qualified as Indicator
 import System.Console.ANSI
 import System.Process (CmdSpec (RawCommand, ShellCommand))
 import UnliftIO.Async
@@ -141,11 +141,11 @@ compile h target outputKindList contentSeq = do
     let ensureMainHandle = EnsureMain.new (Global.envHandle (globalHandle h))
     stmtList <- Elaborate.elaborate elaborateHandle target logs cacheOrStmt
     EnsureMain.ensureMain ensureMainHandle target source (map snd $ getStmtName stmtList)
+    clarifyHandle <- liftIO $ Clarify.new (globalHandle h) localHandle
+    stmtList' <- Clarify.clarify clarifyHandle stmtList
     b <- Cache.needsCompilation cacheHandle outputKindList source
     if b
       then do
-        clarifyHandle <- liftIO $ Clarify.new (globalHandle h) localHandle
-        stmtList' <- Clarify.clarify clarifyHandle stmtList
         fmap Just $ liftIO $ async $ runEIO $ do
           lowerHandle <- liftIO $ Lower.new (globalHandle h)
           virtualCode <- Lower.lower lowerHandle stmtList'
