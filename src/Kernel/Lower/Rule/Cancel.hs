@@ -142,17 +142,17 @@ findAlloc size scenario =
       (allocID, memOpList') <- findAllocInMemOpList size memOpList
       return ([allocID], Simple memOpList')
     Complex memOpList scenarioList cont -> do
-      case distributeMaybe $ map (findAlloc size) scenarioList of
-        Just allocScenarioList -> do
-          let (allocListList, scenarioList') = unzip allocScenarioList
-          return (concat allocListList, Complex memOpList scenarioList' cont)
+      case findAllocInMemOpList size memOpList of
+        Just (allocID, memOpList') -> do
+          return ([allocID], Complex memOpList' scenarioList cont)
         Nothing -> do
-          case findAlloc size cont of
-            Just (allocList, cont') ->
-              return (allocList, Complex memOpList scenarioList cont')
+          case distributeMaybe $ map (findAlloc size) scenarioList of
+            Just allocScenarioList -> do
+              let (allocListList, scenarioList') = unzip allocScenarioList
+              return (concat allocListList, Complex memOpList scenarioList' cont)
             Nothing -> do
-              (allocID, memOpList') <- findAllocInMemOpList size memOpList
-              return ([allocID], Complex memOpList' scenarioList cont)
+              (allocList, cont') <- findAlloc size cont
+              return (allocList, Complex memOpList scenarioList cont')
 
 distributeMaybe :: [Maybe a] -> Maybe [a]
 distributeMaybe xs =
