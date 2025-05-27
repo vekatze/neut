@@ -11,7 +11,6 @@ Below is the list of configurations of `module.ens`.
 - [archive](#archive)
 - [cache](#cache)
 - [source](#source)
-- [prefix](#prefix)
 - [foreign](#foreign)
 - [static](#static)
 - [preset](#preset)
@@ -240,44 +239,6 @@ The field `source` defines the path of the directory to store source files. It s
 ```
 
 The field `source` is optional. The default value of `source` is `./source/`.
-
-## `prefix`
-
-The field `prefix` defines the aliases of source files. It should look like the following:
-
-```ens
-{
-  // ..
-  prefix {
-    Foo "this.foo",
-    // ..
-    Bar "this.item.bar",
-  },
-  // ..
-}
-```
-
-Each field in `prefix` specifies an alias of the specified source file. For example, given the definition above, the code
-
-```neut
-import {
-  this.foo,
-  this.item.bar {some-func},
-}
-```
-
-can be rewritten into the following:
-
-```neut
-import {
-  Foo,
-  Bar {some-func},
-}
-```
-
-The prefixes specified in a `module.ens` of a module can be used only in the module.
-
-The field `prefix` is optional. The default value of `prefix` is `{}`.
 
 ## `foreign`
 
