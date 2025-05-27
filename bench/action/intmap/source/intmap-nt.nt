@@ -1,15 +1,14 @@
 import {
-  IntMap {insert, intmap},
   core.control {grow},
   core.environment {get-argv},
   core.int.parse {parse-int},
-  core.intmap {lookup},
+  core.int.show {show-int},
+  core.intmap {empty, insert, intmap, lookup},
   core.random {random-int},
-  core.text.io {print-int},
 }
 
 define make-big-dict(size: int): intmap(int) {
-  grow(IntMap.empty, size, function (acc, _) {
+  grow(empty, size, function (acc, _) {
     let key = random-int(1000000) in
     let val = random-int(1000000) in
     insert(acc, key, val)
@@ -32,7 +31,7 @@ define random-lookup-sum(count: int, d: &intmap(int)): unit {
       add-int(acc, val)
     })
   in
-  print-int(rsum)
+  printf("{}\n", [show-int(rsum)])
 }
 
 define main(): unit {

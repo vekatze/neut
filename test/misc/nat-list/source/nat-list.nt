@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data nat {
@@ -26,6 +26,5 @@ define nat-list-sum(xs: list(nat)): int {
 }
 
 define main(): unit {
-  print-int(nat-list-sum(Cons(Succ(Zero), Cons(Succ(Zero), Nil))));
-  print("\n")
+  printf("{}\n", [show-int(nat-list-sum(Cons(Succ(Zero), Cons(Succ(Zero), Nil))))])
 }

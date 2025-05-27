@@ -1,8 +1,10 @@
 import {
   core.bool {False, True, bool},
   core.either {Right, none},
+  core.int.show {show-int},
+  core.list,
   core.text,
-  core.text.io {print, print-int},
+  core.text.io {printf},
   core.unit {unit},
 }
 
@@ -95,6 +97,5 @@ define main(): unit {
   in
   let _ = !zs in
   let _ = !xs in
-  print-int(calc);
-  print("\n")
+  printf("{}\n", [show-int(calc)])
 }

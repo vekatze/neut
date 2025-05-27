@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data custom-stack(a) {
@@ -67,6 +67,5 @@ define main(): unit {
   in
   let _ = zs in
   let _ = !xs in
-  print-int(calc);
-  print("\n")
+  printf("{}\n", [show-int(calc)])
 }

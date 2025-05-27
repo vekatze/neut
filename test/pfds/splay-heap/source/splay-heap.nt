@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data heap(a) {
@@ -148,6 +148,5 @@ define main(): unit {
       add-int(v1, v2)
     }
   in
-  print-int(result);
-  print("\n")
+  printf("{}\n", [show-int(result)])
 }

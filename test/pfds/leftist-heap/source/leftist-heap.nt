@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 // leftist heap
@@ -123,15 +123,15 @@ define main(): unit {
   let mh = delete-min(h) in
   match mh {
   | Left(_) =>
-    print-int(100)
+    printf("{}\n", [show-int(100)])
   | Right(h) =>
     let h = !insert(9, h) in
     let min on h =
       match find-min(h) {
       | Left(_) =>
-        print-int(100)
+        printf("{}\n", [show-int(100)])
       | Right(value) =>
-        print-int(value)
+        printf("{}\n", [show-int(value)])
       }
     in
     let _ = h in

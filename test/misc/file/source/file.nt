@@ -1,14 +1,14 @@
 import {
-  FF,
-  FM,
   core.file {close, open},
+  core.file.flag,
+  core.file.mode {default-file-mode},
   core.system {system},
   core.text.io {read, write},
 }
 
 define use-file(): system(unit) {
-  try file = open("./test", FF.for-rw, FM.default-file-mode) in
-  try _ = write("hey\n", file) in
+  try file = open("./test", core.file.flag.for-rw, default-file-mode) in
+  try _ = write(file, "hey\n") in
   try _ = read(file, 1024) in
   close(file)
 }

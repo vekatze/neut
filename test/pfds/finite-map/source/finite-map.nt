@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data finite-map(a, b) {
@@ -88,6 +88,5 @@ define main(): unit {
     }
   in
   let _ = !mymap in
-  print-int(result);
-  print("\n")
+  printf("{}\n", [show-int(result)])
 }

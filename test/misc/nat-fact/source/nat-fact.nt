@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data nat {
@@ -56,6 +56,5 @@ define interpret(n: nat): int {
 
 define main(): unit {
   let n5 = Succ(Succ(Succ(Succ(Succ(Zero))))) in
-  print-int(interpret(fact(n5)));
-  print("\n")
+  printf("{}\n", [show-int(interpret(fact(n5)))])
 }

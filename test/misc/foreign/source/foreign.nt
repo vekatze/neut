@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 foreign {
@@ -8,6 +8,5 @@ foreign {
 
 define main(): unit {
   let x: int = 10 in
-  print-int(magic external add_const(x));
-  print("\n")
+  printf("{}\n", [show-int(magic external add_const(x))])
 }

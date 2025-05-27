@@ -1,5 +1,5 @@
 import {
-  V,
+  core.vector,
 }
 
 define identity(a: type, x: a): a {
@@ -13,7 +13,6 @@ define test(): type {
   // definite description in current module
   let _ = this.var.test in
   let _ = core.vector.vector in
-  let _ = V.vector in
   // non-ascii long name
   let もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る = type in
   let _ = identity(type, もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る) in

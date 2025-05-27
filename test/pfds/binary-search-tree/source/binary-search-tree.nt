@@ -1,6 +1,6 @@
 import {
   core.int.ord,
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data set(a) {
@@ -65,10 +65,9 @@ define main(): unit {
     let result on my-set = member(5, my-set) in
     let _ = my-set in
     if result {
-      print-int(1)
+      printf("{}\n", [show-int(1)])
     } else {
-      print-int(2)
+      printf("{}\n", [show-int(2)])
     }
-  };
-  print("\n")
+  }
 }

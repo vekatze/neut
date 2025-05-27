@@ -1,7 +1,6 @@
 import {
-  Ext,
-  core.c-int {C-Int},
   core.channel {receive, send},
+  core.foreign {sleep},
   core.list {length},
 }
 
@@ -136,13 +135,13 @@ define test-behavior(): unit {
   let tmp on ch-clone =
     let f =
       detach {
-        Ext.sleep(C-Int(1));
+        let _ = sleep(1) in
         send(ch-clone, 3)
       }
     in
     let g =
       detach {
-        Ext.sleep(C-Int(1));
+        let _ = sleep(1) in
         send(ch-clone, 4)
       }
     in

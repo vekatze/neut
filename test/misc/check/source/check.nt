@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data nat {
@@ -25,6 +25,5 @@ define main(): unit {
   let z0 = nil-cons-cons(!n0) in
   let z1 = nil-cons-cons(n1) in
   let z2 = nil-cons-cons(n2) in
-  print-int(add-int(z0, add-int(z1, z2)));
-  print("\n")
+  printf("{}\n", [show-int(add-int(z0, add-int(z1, z2)))])
 }
