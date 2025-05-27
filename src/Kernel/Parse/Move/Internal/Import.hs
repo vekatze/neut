@@ -5,17 +5,14 @@ module Kernel.Parse.Move.Internal.Import
   )
 where
 
-import Error.Move.Run (raiseCritical, raiseError)
-import Error.Rule.EIO (EIO)
-import Gensym.Rule.Handle qualified as Gensym
-import Logger.Rule.Hint
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Error.Move.Run (raiseCritical, raiseError)
+import Error.Rule.EIO (EIO)
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -38,13 +35,15 @@ import Kernel.Parse.Move.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.Unused qualified as Unused
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.ModuleAlias (ModuleAlias (ModuleAlias))
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.Rule.RawStmt
+import Logger.Rule.Hint
 import Path
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 
 type LocatorText =
   T.Text
@@ -84,7 +83,7 @@ interpretImport h m currentSource importList = do
         case rawImportItem of
           RawImportItem mItem (locatorText, _) localLocatorList -> do
             let localLocatorList' = SE.extract localLocatorList
-            interpretImportItem h True (Source.sourceModule currentSource) mItem locatorText localLocatorList'
+            interpretImportItem h True mItem locatorText localLocatorList'
           RawStaticKey _ _ keys -> do
             let keys' = SE.extract keys
             interpretImportItemStatic h (Source.sourceModule currentSource) keys'
@@ -112,28 +111,15 @@ interpretImportItemStatic h currentModule keyList = do
 interpretImportItem ::
   Handle ->
   AI.MustUpdateTag ->
-  Module ->
   Hint ->
   LocatorText ->
   [(Hint, LL.LocalLocator)] ->
   EIO [ImportItem]
-interpretImportItem h mustUpdateTag currentModule m locatorText localLocatorList = do
+interpretImportItem h mustUpdateTag m locatorText localLocatorList = do
   baseNameList <- liftEither $ BN.bySplit m locatorText
   case baseNameList of
     [] ->
       raiseCritical m "Scene.Parse.Import: empty parse locator"
-    [baseName]
-      | Just (moduleAlias, sourceLocator) <- Map.lookup baseName (modulePrefixMap currentModule) -> do
-          sgl <- Alias.resolveLocatorAlias (aliasHandle h) m moduleAlias sourceLocator
-          source <- getSource h mustUpdateTag m sgl locatorText
-          let gla = GLA.GlobalLocatorAlias baseName
-          when mustUpdateTag $ do
-            liftIO $ Unused.insertGlobalLocator (unusedHandle h) (SGL.reify sgl) m locatorText
-            forM_ localLocatorList $ \(ml, ll) ->
-              liftIO $ Unused.insertLocalLocator (unusedHandle h) ll ml
-          return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList, AI.Prefix m gla sgl]]
-      | otherwise ->
-          raiseError m $ "No such prefix is defined: " <> BN.reify baseName
     aliasText : locator ->
       case SL.fromBaseNameList locator of
         Nothing ->
@@ -171,4 +157,4 @@ interpretPreset h m currentModule = do
   presetInfo <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
   fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do
     let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
-    interpretImportItem h False currentModule m locatorText presetLocalLocatorList'
+    interpretImportItem h False m locatorText presetLocalLocatorList'

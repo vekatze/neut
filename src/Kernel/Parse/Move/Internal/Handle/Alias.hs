@@ -7,14 +7,13 @@ module Kernel.Parse.Move.Internal.Handle.Alias
   )
 where
 
-import Error.Move.Run (raiseError)
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.AliasInfo
@@ -26,18 +25,17 @@ import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.TopNameMap
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.GlobalLocator qualified as GL
-import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
+import Logger.Rule.Hint
 
 data Handle = Handle
   { antecedentHandle :: Antecedent.Handle,
     locatorHandle :: Locator.Handle,
     envHandle :: Env.Handle,
-    locatorAliasMapRef :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     moduleAliasMapRef :: IORef (Map.HashMap ModuleAlias ModuleDigest)
   }
 
@@ -48,20 +46,7 @@ new antecedentHandle locatorHandle envHandle source = do
   currentAliasList <- getModuleDigestAliasList antecedentHandle currentModule
   let aliasMap = Map.fromList $ Maybe.catMaybes [additionalDigestAlias] ++ currentAliasList
   moduleAliasMapRef <- newIORef aliasMap
-  locatorAliasMapRef <- newIORef Map.empty
   return $ Handle {..}
-
-registerGlobalLocatorAlias ::
-  Handle ->
-  Hint ->
-  GLA.GlobalLocatorAlias ->
-  SGL.StrictGlobalLocator ->
-  EIO ()
-registerGlobalLocatorAlias h m from to = do
-  locatorAliasMap <- liftIO $ readIORef (locatorAliasMapRef h)
-  if Map.member from locatorAliasMap
-    then raiseError m $ "The alias is already defined: " <> BN.reify (GLA.reify from)
-    else liftIO $ modifyIORef' (locatorAliasMapRef h) $ Map.insert from to
 
 resolveAlias ::
   Handle ->
@@ -77,14 +62,6 @@ resolveAlias h m gl = do
           { SGL.moduleID = moduleID,
             SGL.sourceLocator = sourceLocator
           }
-    GL.GlobalLocatorAlias alias -> do
-      aliasMap <- liftIO $ readIORef (locatorAliasMapRef h)
-      case Map.lookup alias aliasMap of
-        Just sgl ->
-          return sgl
-        Nothing ->
-          raiseError m $
-            "No such global locator alias is defined: " <> BN.reify (GLA.reify alias)
 
 resolveLocatorAlias ::
   Handle ->
@@ -140,8 +117,6 @@ getLatestCompatibleDigest h mc = do
 activateAliasInfo :: Handle -> Source.Source -> TopNameMap -> AliasInfo -> EIO ()
 activateAliasInfo h source topNameMap aliasInfo =
   case aliasInfo of
-    Prefix m from to ->
-      registerGlobalLocatorAlias h m from to
     Use shouldUpdateTag strictGlobalLocator localLocatorList ->
       Locator.activateSpecifiedNames (locatorHandle h) source topNameMap shouldUpdateTag strictGlobalLocator localLocatorList
 
