@@ -24,6 +24,7 @@ import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
+import Kernel.Clarify.Move.Internal.Sigma (immediateS4)
 import Kernel.Clarify.Move.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
@@ -266,11 +267,10 @@ clarifyTerm h tenv term =
           e' <- clarifyTerm h tenv e
           liftIO $ callClosure h e' es'
     _ :< TM.Data _ name dataArgs -> do
-      (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus h tenv) dataArgs
       let argNum = AN.fromInt $ length dataArgs + 1
-      return $
-        Utility.bindLet (zip zs dataArgs') $
-          C.PiElimDownElim (C.VarGlobal name argNum) (xs ++ [C.SigmaIntro []])
+      let cls = C.UpIntro $ C.SigmaIntro [immediateS4, C.SigmaIntro [], C.VarGlobal name argNum]
+      dataArgs' <- mapM (clarifyPlus h tenv) dataArgs
+      liftIO $ callClosure h cls dataArgs'
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
