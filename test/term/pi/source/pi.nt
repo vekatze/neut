@@ -1,6 +1,6 @@
 import {
-  Keyword,
-  Term,
+  this.pi-keyword,
+  this.pi-term,
 }
 
 define test-syntax(): unit {
@@ -70,7 +70,7 @@ define test-resource(): unit {
 define main(): unit {
   test-syntax();
   test-resource();
-  Term.test-syntax();
-  Term.test-resource();
-  Keyword.test-syntax()
+  this.pi-term.test-syntax();
+  this.pi-term.test-resource();
+  this.pi-keyword.test-syntax()
 }

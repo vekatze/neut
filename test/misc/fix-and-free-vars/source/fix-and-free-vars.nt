@@ -1,6 +1,6 @@
 import {
+  core.int.show {show-int},
   core.list {length},
-  core.text.io {print-int},
 }
 
 define main(): unit {
@@ -50,6 +50,5 @@ define main(): unit {
       }
     }
   in
-  print-int(multiple-free-var(3));
-  print("\n")
+  printf("{}\n", [show-int(multiple-free-var(3))])
 }

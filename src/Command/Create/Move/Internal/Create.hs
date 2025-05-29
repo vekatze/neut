@@ -6,17 +6,14 @@ module Command.Create.Move.Internal.Create
   )
 where
 
-import Error.Move.Run (raiseError')
-import Error.Rule.EIO (EIO)
-import Logger.Move.Log qualified as Logger
-import Logger.Rule.Handle qualified as Logger
-import Path.Move.Write (writeText)
 import Command.Common.Move.SaveModule qualified as SaveModule
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Error.Move.Run (raiseError')
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Const
@@ -26,8 +23,11 @@ import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
+import Logger.Move.Log qualified as Logger
+import Logger.Rule.Handle qualified as Logger
 import Path
 import Path.IO
+import Path.Move.Write (writeText)
 
 data Handle = Handle
   { saveModuleHandle :: SaveModule.Handle,
@@ -78,7 +78,6 @@ constructDefaultModule moduleName mTargetName = do
         moduleLocation = moduleRootDir </> moduleFile,
         moduleStaticFiles = Map.empty,
         moduleForeign = Foreign {input = [], output = [], script = []},
-        modulePrefixMap = Map.empty,
         moduleInlineLimit = Nothing,
         modulePresetMap = Map.empty
       }

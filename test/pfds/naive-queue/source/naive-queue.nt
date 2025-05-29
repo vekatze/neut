@@ -1,6 +1,6 @@
 import {
+  core.int.show {show-int},
   core.list {reverse},
-  core.text.io {print-int},
 }
 
 data queue(a) {
@@ -92,6 +92,5 @@ define main(): unit {
       add-int(v1, v2)
     }
   in
-  print-int(result);
-  print("\n")
+  printf("{}\n", [show-int(result)])
 }

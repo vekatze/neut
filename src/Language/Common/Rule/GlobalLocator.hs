@@ -7,17 +7,16 @@ module Language.Common.Rule.GlobalLocator
   )
 where
 
-import Error.Rule.Error
-import Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
+import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
-import Language.Common.Rule.GlobalLocatorAlias qualified as GLA
 import Language.Common.Rule.ModuleAlias hiding (reify)
 import Language.Common.Rule.SourceLocator qualified as SL
+import Logger.Rule.Hint qualified as H
 
 data IdentifiedGlobalLocator = IdentifiedGlobalLocator
   { moduleAlias :: ModuleAlias,
@@ -29,9 +28,8 @@ instance Binary IdentifiedGlobalLocator
 
 instance Hashable IdentifiedGlobalLocator
 
-data GlobalLocator
+newtype GlobalLocator
   = GlobalLocator IdentifiedGlobalLocator
-  | GlobalLocatorAlias GLA.GlobalLocatorAlias
   deriving (Generic, Show, Eq)
 
 instance Binary GlobalLocator
@@ -43,15 +41,11 @@ reify gl =
   case gl of
     GlobalLocator (IdentifiedGlobalLocator {moduleAlias, sourceLocator}) -> do
       BN.reify (extract moduleAlias) <> nsSep <> SL.toText sourceLocator
-    GlobalLocatorAlias alias ->
-      BN.reify $ GLA.reify alias
 
 reflect :: H.Hint -> T.Text -> Either Error GlobalLocator
 reflect m rawTxt = do
   baseNameList <- BN.bySplit m rawTxt
   case baseNameList of
-    [baseName] ->
-      return $ GlobalLocatorAlias (GLA.GlobalLocatorAlias baseName)
     prefix : rest
       | Just locator <- SL.fromBaseNameList rest ->
           return (GlobalLocator (IdentifiedGlobalLocator (ModuleAlias prefix) locator))

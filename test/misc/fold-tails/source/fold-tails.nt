@@ -1,6 +1,6 @@
 import {
+  core.int.show {show-int},
   core.list {for-each},
-  core.text.io {print-int},
 }
 
 data nat {
@@ -112,6 +112,5 @@ define main(): unit {
   let _ = !result-nat in
   let _ = !result-nat in
   let result = interpret(!result-nat) in
-  print-int(result);
-  print("\n")
+  printf("{}\n", [show-int(result)])
 }

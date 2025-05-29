@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data expr() {
@@ -26,6 +26,5 @@ define main(): unit {
   let e1 = Add(Num(1), Num(2)) in
   let e2 = Mul(Num(3), Num(1023)) in
   let e3 = Sub(e2, e1) in
-  print-int(interpret(e3));
-  print("\n")
+  printf("{}\n", [show-int(interpret(e3))])
 }

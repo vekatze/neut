@@ -1,14 +1,13 @@
 import {
   core.cell {borrow, mutate},
+  core.int.show {show-int},
   core.list {length},
-  core.text.io {print-int},
 }
 
 define bar(xs-cell: &cell(list(int))): unit {
   borrow(xs-cell, function (xs) {
     let len = length(xs) in
-    print-int(len);
-    print("\n");
+    printf("{}\n", [show-int(len)]);
     quote {Unit}
   })
 }

@@ -52,10 +52,6 @@ module Kernel.Common.Rule.Module
   )
 where
 
-import Ens.Rule.Ens qualified as E
-import Error.Rule.Error
-import Logger.Rule.Hint (Hint, internalHint)
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Catch
@@ -65,18 +61,21 @@ import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
+import Ens.Rule.Ens qualified as E
+import Error.Rule.Error
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Target qualified as Target
 import Kernel.Common.Rule.ZenConfig
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
+import Logger.Rule.Hint (Hint, internalHint)
 import Path
+import SyntaxTree.Rule.Series qualified as SE
 import System.FilePath qualified as FP
 
 type SomePath a =
@@ -121,7 +120,6 @@ data Module = Module
     moduleLocation :: Path Abs File,
     moduleForeign :: Foreign,
     moduleStaticFiles :: Map.HashMap T.Text (Path Rel File),
-    modulePrefixMap :: Map.HashMap BN.BaseName (MA.ModuleAlias, SL.SourceLocator),
     moduleInlineLimit :: Maybe Int,
     modulePresetMap :: PresetMap
   }
@@ -284,7 +282,6 @@ toDefaultEns someModule =
         getExtraContentInfo someModule,
         getForeignInfo someModule,
         getInlineLimitInfo someModule,
-        getPrefixMapInfo someModule,
         getPresetMapInfo someModule,
         getAntecedentInfo someModule,
         getDependencyInfo someModule
@@ -377,16 +374,6 @@ getForeignInfo someModule = do
                 (keyForeignScript, _m :< E.List (seriesFromList cmdList))
               ]
         )
-
-getPrefixMapInfo :: Module -> Maybe (T.Text, E.Ens)
-getPrefixMapInfo someModule = do
-  if Map.null (modulePrefixMap someModule)
-    then Nothing
-    else do
-      let prefixMapDict = flip Map.map (modulePrefixMap someModule) $ \(alias, locator) ->
-            _m :< E.String (GL.reify (GL.GlobalLocator $ GL.IdentifiedGlobalLocator alias locator))
-      let prefixMapDict' = Map.mapKeys BN.reify prefixMapDict
-      return (keyPrefix, E.dictFromList _m (Map.toList prefixMapDict'))
 
 getPresetMapInfo :: Module -> Maybe (T.Text, E.Ens)
 getPresetMapInfo someModule = do

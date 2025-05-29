@@ -5,9 +5,6 @@ module Command.LSP.Move.Internal.Complete
   )
 where
 
-import Error.Move.Run (forP, liftMaybe, runEIO)
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint
 import Command.LSP.Move.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Move.Internal.Source.Reflect qualified as SourceReflect
 import Control.Monad
@@ -18,9 +15,10 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (maybeToList)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Move.Run (forP, liftMaybe, runEIO)
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Move.Handle.Global.Env qualified as Env
@@ -44,8 +42,8 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.ModuleAlias qualified as MA
 import Language.Common.Rule.ModuleID qualified as MID
-import Language.Common.Rule.SourceLocator qualified as SL
 import Language.LSP.Protocol.Types
+import Logger.Rule.Hint
 
 data Handle = Handle
   { unravelHandle :: Unravel.Handle,
@@ -130,9 +128,8 @@ adjustTopCandidate h summaryOrNone currentSource loc prefixSummary candInfo = do
       Nothing ->
         return []
       Just locator -> do
-        prefixList <- getPrefixList h (sourceModule currentSource) candSource
         let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
-        return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource prefixSummary locator loc prefixList) candList
+        return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource prefixSummary locator loc) candList
 
 identToCompletionItem :: T.Text -> CompletionItem
 identToCompletionItem x = do
@@ -145,10 +142,9 @@ topCandidateToCompletionItem ::
   FastPresetSummary ->
   T.Text ->
   Loc ->
-  [T.Text] ->
   TopCandidate ->
   [CompletionItem]
-topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSummary locator cursorLoc prefixList topCandidate = do
+topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSummary locator cursorLoc topCandidate = do
   if candIsInCurrentSource && cursorLoc < loc topCandidate
     then []
     else do
@@ -156,8 +152,7 @@ topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSum
       let ll = DD.localLocator baseDD
       let fullyQualified = FullyQualified locator ll
       let bare = Bare locator ll
-      let prefixed = map (`Prefixed` ll) prefixList
-      let cands = filter (isProperCand importSummaryOrNone) (fullyQualified : bare : prefixed)
+      let cands = filter (isProperCand importSummaryOrNone) [fullyQualified, bare]
       flip map cands $ \cand -> do
         let inPresetImport = isInPresetImport presetSummary cand
         let needsTextEdit = not candIsInCurrentSource && not inPresetImport
@@ -352,20 +347,6 @@ fromCandidateKind candidateKind =
       CompletionItemKind_Constructor
     Function ->
       CompletionItemKind_Function
-
-getPrefixList :: Handle -> Module -> Source -> EIO [T.Text]
-getPrefixList h baseModule source = do
-  if moduleID baseModule /= moduleID (sourceModule source)
-    then return []
-    else do
-      revMap <- liftIO $ Antecedent.getReverseMap (antecedentHandle h)
-      locatorList <- maybeToList <$> getHumanReadableLocator revMap baseModule source
-      let prefixInfo = Map.toList $ modulePrefixMap baseModule
-      return $ map (BN.reify . fst) $ filter (\(_, cod) -> uncurry reifyPrefixCod cod `elem` locatorList) prefixInfo
-
-reifyPrefixCod :: MA.ModuleAlias -> SL.SourceLocator -> T.Text
-reifyPrefixCod alias sl =
-  MA.reify alias <> "." <> SL.toText sl
 
 getHumanReadableLocator :: Antecedent.RevMap -> Module -> Source -> EIO (Maybe T.Text)
 getHumanReadableLocator revMap baseModule source = do

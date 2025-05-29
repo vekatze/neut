@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data bar(a: type) {
@@ -64,7 +64,6 @@ define main(): unit {
   let some-stream = int-stream(3) in
   // value = 3 + 1 + 1 = 5
   let value = get-head(int, get-tail(int, get-tail(int, some-stream))) in
-  print-int(add-int(k, value));
   // 24
-  print("\n")
+  printf("{}\n", [show-int(add-int(k, value))])
 }

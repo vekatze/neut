@@ -290,19 +290,19 @@ define use-let(): unit {
 
 ```neut
 data item {
-| Item(int, bool)
+| Item(i: int, b: bool)
 }
 
-define use-item(x: item): unit {
+define use-item(x: item): int {
   // 🌟 use `let` with a pattern
-  let Item(i, b) = x in // ← here
-  print-int(i)
+  let Item(i, _) = x in // ← here
+  i
 }
 
-define use-item-2(x: item): unit {
+define use-item-2(x: item): int {
   // 🌟 use `let` with an of-pattern
   let Item of {i} = x in
-  print-int(i)
+  i
 }
 ```
 
@@ -849,7 +849,7 @@ define use-id(): unit {
 
 ```neut
 define foo(x: int, y: bool, some-path: &text): unit {
-  // whatever
+  // ...
 }
 
 define use-foo(): unit {
@@ -1879,7 +1879,6 @@ define bar(): thread(int) {
       1
     }
   in
-  whatever();
   f
 }
 ```
@@ -2051,7 +2050,7 @@ define sample(): int {
     // peek the content of a cell using `borrow`
     borrow(xs-cell, function (xs) {
       let len = length(xs) in
-      print-int(len); // => 1
+      printf("{}\n", [show-int(len)]); // => 1
       box {Unit}
     })
 
@@ -2063,7 +2062,7 @@ define sample(): int {
     // get the length of the list in the cell, again
     borrow(xs-cell, function (xs) {
       let len = length(xs) in
-      print-int(len); // => 2
+      printf("{}\n", [show-int(len)]); // => 1
       box {Unit}
     })
 
@@ -2256,7 +2255,7 @@ define malloc-then-free(): unit {
 
   // loads and print a value
   let value = magic load(int, ptr) in // 🌟 load
-  print-int(value); // => 123
+  printf("{}\n", [show-int(value)]); // => 123
 
   // tells the compiler to treat the content of {..} as a value
   let v =
@@ -2618,14 +2617,14 @@ Please do not confuse a hole with the `_` in `let _ = e1 in e2`.
 ### Example
 
 ```neut
-define play-with-let-on(): unit {
+define play-with-let-on(): int {
   let xs: list(int) = [1, 2, 3] in
   let len on xs =
     // the type of `xs` is `&list(int)` here
     length(xs)
   in
   // the type of `xs` is `list(int)` here
-  print-int(len)
+  add-int(len, 42)
 }
 ```
 
@@ -2864,13 +2863,13 @@ Derived from the desugared form.
 
 ```neut
 define get-value-or-fail(): either(error, int) {
-  // .. whatever ..
+  //  ...
 }
 
-define foo(): unit {
+define foo(): either(error, int) {
   try x1 = get-value-or-fail() in
   try x2 = get-value-or-fail() in
-  print-int(add-int(x1, x2))
+  Right(add-int(x1, x2))
 }
 ```
 

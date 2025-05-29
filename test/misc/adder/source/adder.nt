@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 define make-adder(x: int): (int) -> int {
@@ -12,6 +12,5 @@ define make-adder(x: int): (int) -> int {
 }
 
 define main(): unit {
-  print-int(make-adder(3)(7));
-  print("\n")
+  printf("{}\n", [show-int(make-adder(3)(7))])
 }

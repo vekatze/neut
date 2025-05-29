@@ -4,20 +4,18 @@ module Kernel.Common.Move.Module.FromPath
   )
 where
 
-import Ens.Move.Parse qualified as Ens
-import Ens.Rule.Ens (dictFromListVertical')
-import Ens.Rule.Ens qualified as E
-import Error.Move.Run (raiseError)
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error
-import Logger.Rule.Hint qualified as H
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Ens.Move.Parse qualified as Ens
+import Ens.Rule.Ens (dictFromListVertical')
+import Ens.Rule.Ens qualified as E
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error
 import Kernel.Common.Move.Module.FindModuleFile
 import Kernel.Common.Rule.ClangOption qualified as CL
 import Kernel.Common.Rule.Const (archiveRelDir, cacheRelDir, sourceRelDir)
@@ -25,15 +23,15 @@ import Kernel.Common.Rule.Module
 import Kernel.Common.Rule.ModuleURL
 import Kernel.Common.Rule.Target
 import Kernel.Common.Rule.ZenConfig (ZenConfig (..))
-import Language.Common.Rule.BaseName (isCapitalized)
 import Language.Common.Rule.BaseName qualified as BN
-import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.ModuleAlias
 import Language.Common.Rule.ModuleDigest
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
+import Logger.Rule.Hint qualified as H
 import Path
 import Path.IO
+import SyntaxTree.Rule.Series qualified as SE
 
 fromFilePath :: Path Abs File -> EIO Module
 fromFilePath moduleFilePath = do
@@ -57,8 +55,6 @@ fromFilePath moduleFilePath = do
   sourceDir <- interpretDirPath sourceDirEns
   foreignDictEns <- liftEither $ E.access' keyForeign (emptyForeign m) ens
   foreignDict <- interpretForeignDict (parent moduleFilePath) foreignDictEns
-  (mPrefix, prefixEns) <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary
-  prefixMap <- liftEither $ interpretPrefixMap mPrefix prefixEns
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
   (mPreset, presetEns) <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary
   presetMap <- liftEither $ interpretPresetMap mPreset presetEns
@@ -77,7 +73,6 @@ fromFilePath moduleFilePath = do
         moduleLocation = moduleFilePath,
         moduleStaticFiles = staticFileMap,
         moduleForeign = foreignDict,
-        modulePrefixMap = prefixMap,
         moduleInlineLimit = mInlineLimit,
         modulePresetMap = presetMap
       }
@@ -85,19 +80,6 @@ fromFilePath moduleFilePath = do
 fromCurrentPath :: EIO Module
 fromCurrentPath = do
   getCurrentModuleFilePath >>= fromFilePath
-
-interpretPrefixMap ::
-  H.Hint ->
-  SE.Series (T.Text, E.Ens) ->
-  Either Error (Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator))
-interpretPrefixMap m ens = do
-  kvs' <- forM ens $ \(k, v) -> do
-    k' <- BN.reflect m k
-    unless (isCapitalized k') $ do
-      Left $ newError m $ "Prefixes must be capitalized, but found: " <> BN.reify k'
-    v' <- E.toString v >>= uncurry GL.reflectLocator
-    return (k', v')
-  return $ Map.fromList $ SE.extract kvs'
 
 interpretPresetMap ::
   H.Hint ->

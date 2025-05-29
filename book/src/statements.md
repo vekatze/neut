@@ -20,31 +20,29 @@ import {
   ZZ,
   sample.buz,
   this.foo,
-  this.item.bar {some-func, other-func},
+  this.foo.bar {some-func, other-func},
 }
 ```
 
 `import` can only be at the top of a file.
 
-### Regular Entry
-
-A regular entry in `import` is something like the following:
+Every item in `import` is something like the following:
 
 - `this.foo`
-- `this.item.bar {some-func, other-func}`
+- `this.foo.bar {some-func, other-func}`
 - `sample.buz`
 
-A regular entry starts from the alias of the module (`this`, `sample`). The alias of the module is specified in `dependency` in `module.ens`. If the file we want to import is inside the current module, we'll write `this`.
+An import item starts from the alias of the module (`this`, `sample`). The alias of the module is specified in `dependency` in `module.ens`. If the file we want to import is inside the current module, we'll write `this`.
 
-The remaining part of the regular entry is the relative path from the source directory. For example, if we want to import `(source-dir)/item/bar`, we'll have to write `item.bar` after the alias of the module.
+The remaining part of the item is the relative path from the source directory. For example, if we want to import `(source-dir)/foo/bar`, we'll have to write `foo.bar` after the alias of the module.
 
-A regular entry can be constructed by concatenating the alias and the path with `.`. In the case of `this.item.bar`, the alias part is `this`, and the path part is `item.bar`.
+An import item can be constructed by concatenating the alias and the path with `.`. In the case of `this.foo.bar`, the alias part is `this`, and the path part is `foo.bar`.
 
 You can specify names in `{}`. The names specified here can be used without qualifiers:
 
 ```neut
 import {
-  this.item.bar {some-func},
+  this.foo.bar {some-func},
 }
 
 define yo(): unit {
@@ -56,11 +54,11 @@ Unlisted names must be qualified:
 
 ```neut
 import {
-  this.item.bar,
+  this.foo.bar,
 }
 
 define yo(): unit {
-  this.item.bar.some-func(arg-1, arg-2)
+  this.foo.bar.some-func(arg-1, arg-2)
 }
 ```
 
@@ -73,48 +71,6 @@ import {
 ```
 
 For more on static files, please see [the section in Modules](modules.md#static).
-
-### Prefix Entry
-
-A prefix entry in `import` is something like `Qux` or `ZZ`. That is, a capitalized name that doesn't contain any `.`.
-
-A prefix entry in `import` must be defined in the `prefix` of the current module's `module.ens`. Suppose that `module.ens` contains the following:
-
-```ens
-{
-  // ..
-  prefix {
-    Qux "this.item.bar",
-  },
-  // ..
-}
-```
-
-Then, the code
-
-```neut
-import {
-  this.item.bar,
-}
-
-define use-some-func(): unit {
-  this.item.bar.some-func()
-}
-```
-
-can be rewritten into:
-
-```neut
-import {
-  Qux,
-}
-
-define use-some-func(): unit {
-  Qux.some-func()
-}
-```
-
-You may also want to see the explanation of `prefix` in [Modules](./modules.md).
 
 ## `define`
 
@@ -457,7 +413,7 @@ Suppose that you have a C source file with the following definition:
 ```c
 // add_const.c
 
-int neut_myapp_v1_add_const(int value) {
+int64_t neut_myapp_v1_add_const(int64_t value) {
   return value + 100;
 }
 ```
@@ -469,10 +425,9 @@ foreign {
   neut_myapp_v1_add_const(int): int,
 }
 
-define main(): unit {
+define my-func(): int {
   let x: int = 10 in
-  print-int(magic external neut_myapp_v1_add_const(x)); // ← `magic external` is used here
-  print("\n")
+  magic external neut_myapp_v1_add_const(x)
 }
 ```
 

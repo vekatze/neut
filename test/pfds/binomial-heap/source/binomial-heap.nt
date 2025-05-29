@@ -1,6 +1,6 @@
 import {
+  core.int.show {show-int},
   core.list {reverse},
-  core.text.io {print-int},
 }
 
 data tree(a) {
@@ -159,6 +159,5 @@ define main(): unit {
     }
   in
   let _ = h in
-  print-int(maybe-min);
-  print("\n")
+  printf("{}\n", [show-int(maybe-min)])
 }

@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 // random access list via numerical representation
@@ -175,7 +175,6 @@ define main(): unit {
   let v3-modified on xs = find-and-get(2, xs) in
   // 10
   let _ = xs in
-  print-int(add-int(v1, add-int(v2, add-int(v3-modified, v4))));
   // 1 + 4 + 10 + 3 = 18
-  print("\n")
+  printf("{}\n", [show-int(add-int(v1, add-int(v2, add-int(v3-modified, v4))))])
 }

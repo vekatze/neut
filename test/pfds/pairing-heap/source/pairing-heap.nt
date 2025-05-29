@@ -1,5 +1,5 @@
 import {
-  core.text.io {print-int},
+  core.int.show {show-int},
 }
 
 data heap(a) {
@@ -81,6 +81,5 @@ define main(): unit {
     }
   in
   let _ = h in
-  print-int(maybe-min);
-  print("\n")
+  printf("{}\n", [show-int(maybe-min)])
 }

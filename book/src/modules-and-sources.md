@@ -113,21 +113,15 @@ The above code defines a function `main` that returns a value of type `unit`. Th
 Let's try editing the code as follows:
 
 ```neut
-// sample.nt
-
-import {
-  core.text.io {print-int},
-}
-
 define main(): unit {
-  print-int(42) // `print-int` is also defined in `core`
+  print("Yo\n")
 }
 ```
 
 Then, build and execute the project:
 
 ```sh
-neut build sample --execute # => 42
+neut build sample --execute # => Yo
 ```
 
 You should be able to see that the result changes accordingly.
@@ -139,16 +133,12 @@ Of course, you can define a function:
 ```neut
 // sample.nt
 
-import {
-  core.text.io {print-int},
-}
-
 define get-int(): int {
   42
 }
 
 define main(): unit {
-  print-int(get-int())
+  printf("{}\n", [show-int(get-int())]) // => 42
 }
 ```
 
@@ -156,10 +146,6 @@ A function can take arguments. Let's rewrite `sample.nt` as follows:
 
 ```neut
 // sample.nt
-
-import {
-  core.text.io {print-int},
-}
 
 define increment(x: int): int {
   add-int(x, 1)
@@ -170,7 +156,7 @@ define my-add(x: int, y: int): int {
 }
 
 define main(): unit {
-  print-int(my-add(10, increment(10))) // # => 21
+  printf("{}\n", [my-add(10, increment(10))]) // # => 21
 }
 ```
 
@@ -250,12 +236,11 @@ Dependencies can be used in your code, of course:
 // new-item.nt
 
 import {
-  core.text.io {print-int},
   some-name.sample {my-add}, // imports `my-add` in `source/sample.nt`
 }
 
 define main(): unit {
-  print-int(my-add(10, 11)) // ← using `my-add`
+  printf("{}\n", [my-add(10, 11)]) // ← using `my-add`
 }
 ```
 
@@ -277,13 +262,12 @@ You can also use the fully-qualified form of `my-add`:
 // new-item.nt
 
 import {
-  core.text.io {print-int},
   some-name.sample, // removed `{my-add}`
 }
 
 define main(): unit {
   // ↓ using the fully-qualified form of `my-add`
-  print-int(some-name.sample.my-add(10, 11))
+  printf("{}\n", [some-name.sample.my-add(10, 11)])
 }
 ```
 
@@ -322,53 +306,3 @@ define main(): unit {
 ```
 
 That is, the name of the current module is always `this`.
-
-### Defining Aliases for Files
-
-Aliases for files can also be defined. Let's look again at the example of fully-qualified names:
-
-```neut
-// new-item.nt
-
-import {
-  core.text.io {print-int},
-  some-name.sample,
-}
-
-define main(): unit {
-  print-int(some-name.sample.my-add(10, 11))
-}
-```
-
-Let's define an alias for `some-name.sample`. Edit the `module.ens` as follows:
-
-```ens
-{
-  target {..},
-  prefix {                  //
-    S "some-name.sample",   // ← alias: S == some-name.sample
-  },                        //
-  dependency {..},
-}
-```
-
-The `new-item.nt` can then be rewritten as follows:
-
-```neut
-// new-item.nt
-
-import {
-  core.text.io {print-int},
-  S, // == some-name.sample
-}
-
-define main(): unit {
-  print-int(S.my-add(10, 11)) // S.my-add == some-name.sample.my-add
-}
-```
-
-<div class="info-block">
-
-Unlike Haskell, these prefixes are defined per module, not per file. The prefixes of a module must be consistent throughout the module.
-
-</div>

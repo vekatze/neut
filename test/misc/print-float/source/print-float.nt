@@ -1,8 +1,7 @@
 import {
-  core.text.io {print-float},
+  core.float.show {show-float},
 }
 
 define main(): unit {
-  print-float(4.2);
-  print("\n")
+  printf("{}\n", [show-float(4.2)])
 }

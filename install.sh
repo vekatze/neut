@@ -142,8 +142,8 @@ printf $BLUE "note: "
 echo "please restart your shell after adding the following environment variables to your shell config:"
 
 echo ""
-echo "export NEUT_CORE_MODULE_URL=\"https://github.com/vekatze/neut-core/raw/main/archive/0-50-48.tar.zst\""
-echo "export NEUT_CORE_MODULE_DIGEST=\"8-TPdZp1-CwYeGturnDL2IS_GUWPHiRvIRYgNuJqD6w\""
+echo "export NEUT_CORE_MODULE_URL=\"https://github.com/vekatze/neut-core/raw/main/archive/0-51-2.tar.zst\""
+echo "export NEUT_CORE_MODULE_DIGEST=\"TIYhEvNvLjw6bcUjGYbiOzcVQKbeE70Y4sMNT6L7sCs\""
 
 if command -v apt-get >/dev/null 2>&1; then
   echo "export NEUT_CLANG=$CLANG"
