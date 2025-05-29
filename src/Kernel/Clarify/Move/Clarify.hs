@@ -170,29 +170,36 @@ clarifyStmt h stmt =
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs _ e -> do
       let xts = impArgs ++ expArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
-      let tenv = TM.insTypeEnv xts IntMap.empty
+      envArg <- liftIO $ makeEnvArg h
+      let xts'' = xts' ++ [envArg]
       case stmtKind of
         Data name dataArgs consInfoList -> do
           od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
           case od of
             Just OD.Enum -> do
-              clarifyStmtDefineBody' h name xts' Sigma.returnImmediateS4
+              clarifyStmtDefineBody' h name xts'' Sigma.returnImmediateS4
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody h IntMap.empty dataArgs t
-                  return $ C.Def f O.Clear (map fst dataArgs') t'
+                  return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg]) t'
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM (clarifyDataClause h) dataInfo
               liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque dataInfo')
-                >>= clarifyStmtDefineBody' h name xts'
+                >>= clarifyStmtDefineBody' h name xts''
         _ -> do
-          e' <- clarifyStmtDefineBody h tenv xts' e
-          return $ C.Def f (toLowOpacity stmtKind) (map fst xts') e'
+          let tenv = TM.insTypeEnv xts IntMap.empty
+          e' <- clarifyStmtDefineBody h tenv xts'' e
+          return $ C.Def f (toLowOpacity stmtKind) (map fst xts'') e'
     StmtForeign foreignList ->
       return $ C.Foreign foreignList
+
+makeEnvArg :: Handle -> IO (Ident, C.Comp)
+makeEnvArg h = do
+  x <- Gensym.newIdentFromText (gensymHandle h) "env"
+  return (x, Sigma.returnImmediateS4)
 
 clarifyBinderBody ::
   Handle ->
@@ -244,7 +251,7 @@ clarifyTerm h tenv term =
           C.SigmaIntro
             [ Sigma.immediateS4,
               C.SigmaIntro [],
-              C.VarGlobal x argNum
+              C.VarGlobal x (AN.succ argNum)
             ]
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
@@ -260,9 +267,10 @@ clarifyTerm h tenv term =
           liftIO $ callClosure h e' es'
     _ :< TM.Data _ name dataArgs -> do
       (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus h tenv) dataArgs
+      let argNum = AN.fromInt $ length dataArgs + 1
       return $
         Utility.bindLet (zip zs dataArgs') $
-          C.PiElimDownElim (C.VarGlobal name (AN.fromInt (length dataArgs))) xs
+          C.PiElimDownElim (C.VarGlobal name argNum) (xs ++ [C.SigmaIntro []])
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
