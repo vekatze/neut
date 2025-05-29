@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Benchmarks - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Benchmarks - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/benchmarks.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html" class="active"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="benchmarks"><a class="header" href="#benchmarks">Benchmarks</a></h1>
+<p>You can find the source files for the following benchmarks <a href="https://github.com/vekatze/neut/tree/main/bench/action">here</a>.</p>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#bubble-sort">Bubble Sort</a></li>
+<li><a href="#dictionary-create--lookup">Dictionary (Create &amp; Lookup)</a></li>
+<li><a href="#intmap-create--lookup">IntMap (Create &amp; Lookup)</a></li>
+<li><a href="#notes">Notes</a></li>
+</ul>
+<h2 id="bubble-sort"><a class="header" href="#bubble-sort">Bubble Sort</a></h2>
+<p>This test creates a random list of length <code>N</code> and performs bubble-sort on the list<sup class="footnote-reference"><a href="#bubble">1</a></sup>.</p>
+<h3 id="linux-amd64"><a class="header" href="#linux-amd64">Linux (AMD64)</a></h3>
+<p><img src="./image/graph/amd64-linux/bubble.png" alt="bubble sort" title="bubble sort" /></p>
+<h3 id="macos-arm64"><a class="header" href="#macos-arm64">macOS (ARM64)</a></h3>
+<p><img src="./image/graph/arm64-darwin/bubble.png" alt="bubble sort" title="bubble sort" /></p>
+<h2 id="dictionary-create--lookup"><a class="header" href="#dictionary-create--lookup">Dictionary (Create &amp; Lookup)</a></h2>
+<p>This test creates a random dictionary of size <code>N</code> and performs random lookups from the dictionary for <code>N</code> times.</p>
+<h3 id="linux-amd64-1"><a class="header" href="#linux-amd64-1">Linux (AMD64)</a></h3>
+<p><img src="./image/graph/amd64-linux/dictionary.png" alt="dictionary" title="dictionary" /></p>
+<h3 id="macos-arm64-1"><a class="header" href="#macos-arm64-1">macOS (ARM64)</a></h3>
+<p><img src="./image/graph/arm64-darwin/dictionary.png" alt="dictionary" title="dictionary" /></p>
+<h2 id="intmap-create--lookup"><a class="header" href="#intmap-create--lookup">IntMap (Create &amp; Lookup)</a></h2>
+<p>This test creates a random intmap of size <code>N</code> and performs random lookups from the intmap for <code>N</code> times.</p>
+<h3 id="linux-amd64-2"><a class="header" href="#linux-amd64-2">Linux (AMD64)</a></h3>
+<p><img src="./image/graph/amd64-linux/intmap.png" alt="IntMap" title="IntMap" /></p>
+<h3 id="macos-arm64-2"><a class="header" href="#macos-arm64-2">macOS (ARM64)</a></h3>
+<p><img src="./image/graph/arm64-darwin/intmap.png" alt="IntMap" title="IntMap" /></p>
+<h2 id="notes"><a class="header" href="#notes">Notes</a></h2>
+<p>I used the following hardware in the above benchmarks:</p>
+<div class="table-wrapper"><table><thead><tr><th>Platform</th><th>Hardware</th></tr></thead><tbody>
+<tr><td>Linux (AMD64)</td><td>HP OMEN 16 2023 (7840HS, 32 GB, Debian)</td></tr>
+<tr><td>macOS (ARM64)</td><td>Apple MacBook Pro 14 (M1 Max, 32 GB)</td></tr>
+</tbody></table>
+</div>
+<p>I used the following commands to run benchmarks and generate the graphs:</p>
+<pre><code class="language-sh">just bench-linux amd64-linux # Linux (AMD64)
+just bench-darwin arm64-darwin # macOS (ARM64)
+</code></pre>
+<p>You may want to read <a href="https://github.com/vekatze/neut/blob/main/build/Dockerfile">the Dockerfile in the repository</a> to get the list of additional dependencies for running benchmarks. The list includes npm, hyperfine, etc.</p>
+<p>Please tell me (hopefully gently) if some of the results are unfair because of reasons I overlooked.</p>
+<div class="footnote-definition" id="bubble"><sup class="footnote-definition-label">1</sup>
+<p>I honestly don't know why the faster one changes depending on the environment here. Please let me know if you find out why.</p>
+</div>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="how-to-execute-types.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html" class="active"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>
