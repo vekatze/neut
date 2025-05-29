@@ -137,6 +137,5 @@ define main(): unit {
     let _ = h in
     let _ = min in
     Unit
-  };
-  print("\n")
+  }
 }
