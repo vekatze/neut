@@ -4,6 +4,7 @@ module Kernel.Elaborate.Move.Internal.Handle.Elaborate
     reduce,
     fill,
     inline,
+    inlineBinder,
   )
 where
 
@@ -95,3 +96,8 @@ inline h m e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap m (inlineLimit h)
   Inline.inline inlineHandle e
+
+inlineBinder :: Handle -> BinderF TM.Term -> EIO (BinderF TM.Term)
+inlineBinder h (m, x, t) = do
+  t' <- inline h m t
+  return (m, x, t')

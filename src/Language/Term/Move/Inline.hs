@@ -29,6 +29,8 @@ import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
 import Language.Term.Move.Refresh qualified as Refresh
 import Language.Term.Move.Subst qualified as Subst
+import Language.Term.Rule.Prim qualified as P
+import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Term qualified as TM
 import Logger.Rule.Hint
 
@@ -72,33 +74,28 @@ inline' h term = do
   detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
   case term of
+    _ :< TM.Tau {} ->
+      return term
+    _ :< TM.Var {} ->
+      return term
+    _ :< TM.VarGlobal {} ->
+      return term
     m :< TM.Pi impArgs expArgs cod -> do
-      impArgs' <- do
-        let (ms, xs, ts) = unzip3 impArgs
-        ts' <- mapM (inline' h) ts
-        return $ zip3 ms xs ts'
-      expArgs' <- do
-        let (ms, xs, ts) = unzip3 expArgs
-        ts' <- mapM (inline' h) ts
-        return $ zip3 ms xs ts'
+      impArgs' <- mapM (inlineBinder h) impArgs
+      expArgs' <- mapM (inlineBinder h) expArgs
       cod' <- inline' h cod
       return (m :< TM.Pi impArgs' expArgs' cod')
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      impArgs' <- do
-        let (ms, xs, ts) = unzip3 impArgs
-        ts' <- mapM (inline' h) ts
-        return $ zip3 ms xs ts'
-      expArgs' <- do
-        let (ms, xs, ts) = unzip3 expArgs
-        ts' <- mapM (inline' h) ts
-        return $ zip3 ms xs ts'
+      impArgs' <- mapM (inlineBinder h) impArgs
+      expArgs' <- mapM (inlineBinder h) expArgs
       e' <- inline' h e
       case lamKind of
-        LK.Fix (mx, x, t) -> do
-          t' <- inline' h t
-          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' expArgs' e')
-        _ ->
-          return (m :< TM.PiIntro attr impArgs' expArgs' e')
+        LK.Fix (mx, x, codType) -> do
+          codType' <- inline' h codType
+          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e')
+        LK.Normal mName codType -> do
+          codType' <- inline' h codType
+          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Normal mName codType'}) impArgs' expArgs' e')
     m :< TM.PiElim e es -> do
       e' <- inline' h e
       es' <- mapM (inline' h) es
@@ -168,12 +165,19 @@ inline' h term = do
     m :< TM.Box t -> do
       t' <- inline' h t
       return $ m :< TM.Box t'
+    m :< TM.BoxNoema t -> do
+      t' <- inline' h t
+      return $ m :< TM.BoxNoema t'
     m :< TM.BoxIntro letSeq e -> do
-      let (xts, es) = unzip letSeq
-      xts' <- mapM (inlineBinder h) xts
-      es' <- mapM (inline' h) es
+      letSeq' <- mapM (bimapM (inlineBinder h) (inline' h)) letSeq
       e' <- inline' h e
-      return $ m :< TM.BoxIntro (zip xts' es') e'
+      return $ m :< TM.BoxIntro letSeq' e'
+    m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
+      castSeq' <- mapM (bimapM (inlineBinder h) (inline' h)) castSeq
+      e1' <- inline' h e1
+      e2' <- inline' h e2
+      uncastSeq' <- mapM (bimapM (inlineBinder h) (inline' h)) uncastSeq
+      return $ m :< TM.BoxElim castSeq' mxt e1' uncastSeq' e2'
     m :< TM.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- inline' h e1
       case opacity of
@@ -185,6 +189,24 @@ inline' h term = do
           t' <- inline' h t
           e2' <- inline' h e2
           return $ m :< TM.Let opacity (mx, x, t') e1' e2'
+    m :< TM.Prim prim -> do
+      case prim of
+        P.Type _ ->
+          return term
+        P.Value pv ->
+          case pv of
+            PV.Int intType size value -> do
+              intType' <- inline h intType
+              return $ m :< TM.Prim (P.Value (PV.Int intType' size value))
+            PV.Float floatType size value -> do
+              floatType' <- inline h floatType
+              return $ m :< TM.Prim (P.Value (PV.Float floatType' size value))
+            PV.Op {} ->
+              return term
+            PV.StaticText {} ->
+              return term
+            PV.Rune {} ->
+              return term
     (m :< TM.Magic magic) -> do
       case magic of
         M.Cast _ _ e ->
@@ -192,8 +214,13 @@ inline' h term = do
         _ -> do
           magic' <- traverse (inline' h) magic
           return (m :< TM.Magic magic')
-    _ ->
+    _ :< TM.Void ->
       return term
+    m :< TM.Resource dd resourceID unitType discarder copier -> do
+      unitType' <- inline' h unitType
+      discarder' <- inline' h discarder
+      copier' <- inline' h copier
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
 
 inlineBinder :: Handle -> BinderF TM.Term -> EIO (BinderF TM.Term)
 inlineBinder h (m, x, t) = do

@@ -103,7 +103,7 @@ synthesizeStmtList h t logs stmtList = do
   (stmtList', affineErrorList) <- bimap concat concat . unzip <$> mapM (elaborateStmt h) stmtList
   unless (null affineErrorList) $ do
     throwError $ E.MakeError affineErrorList
-  -- mapM_ (viewStmt . weakenStmt) stmtList'
+  -- mapM_ (liftIO . viewStmt . weakenStmt) stmtList'
   countSnapshot <- liftIO $ Gensym.getCount (gensymHandle h)
   localLogs <- liftIO $ LocalLogs.get (localLogsHandle h)
   let logs' = logs ++ localLogs
@@ -130,11 +130,13 @@ elaborateStmt h stmt = do
         affHandle <- liftIO $ EnsureAffinity.new h
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
       e'' <- inline h m e'
+      impArgs'' <- mapM (inlineBinder h) impArgs'
+      expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inline h m codType'
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
-      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType'' e''
+      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
     WeakStmtNominal _ geistList -> do
@@ -650,3 +652,12 @@ fillHole h m holeID es = do
           liftIO $ Subst.subst (substHandle h) s e
       | otherwise ->
           raiseError m "Arity mismatch"
+
+-- viewStmt :: WeakStmt -> IO ()
+-- viewStmt stmt = do
+--   case stmt of
+--     WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
+--       let attr = AttrL.Attr {lamKind = LK.Normal Nothing codType, identity = 0}
+--       putStrLn $ T.unpack $ DD.reify x <> "\n" <> toText (m :< WT.Pi impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
+--     _ ->
+--       return ()
