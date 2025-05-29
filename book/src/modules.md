@@ -396,22 +396,21 @@ As an example, suppose a file in `MMM` contains an `import` like the following:
 
 ```neut
 import {
-  sample.foo {my-func, other-func},
-  sample.item.bar {hoge, pohe},
+  sample.foo {my-func},
 }
 
-define buz() {
+define buz(): int {
   let i = my-func() in
-  print-int(i)
+  add-int(i, 10)
 }
 ```
 
 This code is the same as the following since the preset is enabled:
 
 ```neut
-define buz() {
+define buz(): int {
   let i = my-func() in
-  print-int(i)
+  add-int(i, 10)
 }
 ```
 

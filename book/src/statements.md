@@ -413,7 +413,7 @@ Suppose that you have a C source file with the following definition:
 ```c
 // add_const.c
 
-int neut_myapp_v1_add_const(int value) {
+int64_t neut_myapp_v1_add_const(int64_t value) {
   return value + 100;
 }
 ```
@@ -425,10 +425,9 @@ foreign {
   neut_myapp_v1_add_const(int): int,
 }
 
-define main(): unit {
+define my-func(): int {
   let x: int = 10 in
-  print-int(magic external neut_myapp_v1_add_const(x)); // ← `magic external` is used here
-  print("\n")
+  magic external neut_myapp_v1_add_const(x)
 }
 ```
 

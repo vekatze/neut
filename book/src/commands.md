@@ -365,7 +365,7 @@ The behavior of `foo` can be inspected rapidly by defining a function named `zen
 ```neut
 // the type of `zen` must be `() -> unit`
 define zen(): unit {
-  print-int(foo(10))
+  printf("{}\n", [show-int(foo(10))])
 }
 ```
 
