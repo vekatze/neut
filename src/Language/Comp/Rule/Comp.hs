@@ -7,6 +7,8 @@ module Language.Comp.Rule.Comp
     IsReducible,
     DefMap,
     fromDefTuple,
+    intValue0,
+    intValue1,
   )
 where
 
@@ -24,7 +26,7 @@ import Language.Common.Rule.Magic
 import Language.Common.Rule.Opacity
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimOp
-import Language.Comp.Rule.EnumCase
+import Language.Comp.Rule.EnumCase hiding (Int)
 
 data Value
   = VarLocal Ident
@@ -108,3 +110,11 @@ fromDefTuple (dd, (opacity, args, body)) =
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)
+
+intValue0 :: Value
+intValue0 =
+  Int (IntSize 1) 0
+
+intValue1 :: Value
+intValue1 =
+  Int (IntSize 1) 1

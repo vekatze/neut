@@ -173,7 +173,8 @@ clarifyStmt h stmt =
       let xts = impArgs ++ expArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
       envArg <- liftIO $ makeEnvArg h
-      let xts'' = xts' ++ [envArg]
+      switchArg <- liftIO $ makeSwitchArg h
+      let xts'' = xts' ++ [envArg, switchArg]
       case stmtKind of
         Data name dataArgs consInfoList -> do
           od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
@@ -183,7 +184,7 @@ clarifyStmt h stmt =
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody h IntMap.empty dataArgs t
-                  return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg]) t'
+                  return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg, switchArg]) t'
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
@@ -201,6 +202,11 @@ clarifyStmt h stmt =
 makeEnvArg :: Handle -> IO (Ident, C.Comp)
 makeEnvArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "env"
+  return (x, Sigma.returnImmediateS4)
+
+makeSwitchArg :: Handle -> IO (Ident, C.Comp)
+makeSwitchArg h = do
+  x <- Gensym.newIdentFromText (gensymHandle h) "sw"
   return (x, Sigma.returnImmediateS4)
 
 clarifyBinderBody ::
@@ -253,7 +259,7 @@ clarifyTerm h tenv term =
           C.SigmaIntro
             [ Sigma.immediateS4,
               C.SigmaIntro [],
-              C.VarGlobal x (AN.succ argNum)
+              C.VarGlobal x (AN.add argNum (AN.fromInt 2))
             ]
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
@@ -268,7 +274,7 @@ clarifyTerm h tenv term =
           e' <- clarifyTerm h tenv e
           liftIO $ callClosure h e' es'
     _ :< TM.Data _ name dataArgs -> do
-      let argNum = AN.fromInt $ length dataArgs + 1
+      let argNum = AN.fromInt $ length dataArgs + 2
       let cls = C.UpIntro $ C.SigmaIntro [immediateS4, C.SigmaIntro [], C.VarGlobal name argNum]
       dataArgs' <- mapM (clarifyPlus h tenv) dataArgs
       liftIO $ callClosure h cls dataArgs'
@@ -631,7 +637,7 @@ returnClosure h tenv lamID mName opacity fvs xts e = do
   xts'' <- dropFst <$> clarifyBinder h tenv xts
   fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
-  let argNum = AN.fromInt $ length xts'' + 1 -- argNum == count(xts) + env
+  let argNum = AN.fromInt $ length xts'' + 2 -- argNum == count(xts) + env
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID
   isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) name
   unless isAlreadyRegistered $ do
@@ -649,7 +655,8 @@ registerClosure ::
 registerClosure h name opacity xts1 xts2 e = do
   e' <- liftIO $ Linearize.linearize (linearizeHandle h) (xts2 ++ xts1) e
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
-  let args = map fst xts1 ++ [envVarName]
+  (switchVarName, _) <- Gensym.createVar (gensymHandle h) "switch"
+  let args = map fst xts1 ++ [envVarName, switchVarName]
   body <- liftIO $ Reduce.reduce (reduceHandle h) $ C.SigmaElim True (map fst xts2) envVar e'
   AuxEnv.insert (auxEnvHandle h) name (opacity, args, body)
 
@@ -664,7 +671,7 @@ callClosure h e zexes = do
           True
           [typeVarName, envVarName, lamVarName]
           closureVar
-          (C.PiElimDownElim lamVar (xs ++ [envVar]))
+          (C.PiElimDownElim lamVar (xs ++ [envVar, C.intValue0]))
       )
 
 newClosureNames :: Handle -> IO ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
