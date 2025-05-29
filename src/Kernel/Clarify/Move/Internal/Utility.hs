@@ -11,8 +11,8 @@ module Kernel.Clarify.Move.Internal.Utility
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Data.IntMap qualified as IntMap
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -40,18 +40,18 @@ new gensymHandle substHandle auxEnvHandle baseSize = do
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Handle -> Ident -> C.Comp -> IO C.Comp
-toAffineApp h x t = do
+toAffineApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
+toAffineApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 0, C.VarLocal x])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 0, v])
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Handle -> Ident -> C.Comp -> IO C.Comp
-toRelevantApp h x t = do
+toRelevantApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
+toRelevantApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 1, C.VarLocal x])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 1, v])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =

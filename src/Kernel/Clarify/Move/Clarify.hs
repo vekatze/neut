@@ -26,6 +26,7 @@ import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Move.Internal.Sigma (immediateS4)
 import Kernel.Clarify.Move.Internal.Sigma qualified as Sigma
+import Kernel.Clarify.Move.Internal.Utility (toRelevantApp)
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
@@ -355,17 +356,12 @@ embody h tenv xets cont =
     [] ->
       clarifyTerm h tenv cont
     (mxt@(_, x, t), e) : rest -> do
-      (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus h tenv t
+      t' <- clarifyTerm h tenv t
       (valueVarName, value, valueVar) <- clarifyPlus h tenv e
+      relApp <- liftIO $ toRelevantApp (utilityHandle h) valueVar t'
       cont' <- embody h (TM.insTypeEnv [mxt] tenv) rest cont
-      cont'' <- liftIO $ Linearize.linearize (linearizeHandle h) [(x, typeExp)] cont'
-      return $
-        Utility.bindLet
-          [ (typeExpVarName, typeExp),
-            (valueVarName, value),
-            (x, C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize (baseSize h)) 1, valueVar])
-          ]
-          cont''
+      cont'' <- liftIO $ Linearize.linearize (linearizeHandle h) [(x, t')] cont'
+      return $ Utility.bindLet [(valueVarName, value), (x, relApp)] cont''
 
 type Size =
   Int

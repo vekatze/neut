@@ -5,9 +5,9 @@ module Kernel.Clarify.Move.Internal.Linearize
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
@@ -41,7 +41,7 @@ linearize h binder e =
       case newNameList of
         [] -> do
           hole <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "unit"
-          discardUnusedVar <- Utility.toAffineApp (utilityHandle h) x t
+          discardUnusedVar <- Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
           return $ C.UpElim True hole discardUnusedVar e''
         [z] ->
           return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
@@ -64,7 +64,7 @@ insertHeader h localName z1 zs t e = do
       return $ C.UpElim True z1 (C.UpIntro (C.VarLocal localName)) e
     z2 : rest -> do
       e' <- insertHeader h localName z2 rest t e
-      copyRelevantVar <- Utility.toRelevantApp (utilityHandle h) localName t
+      copyRelevantVar <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal localName) t
       return $ C.UpElim True z1 copyRelevantVar e'
 
 distinguishVar :: Handle -> Ident -> Ident -> IO ([Occurrence], Ident)
