@@ -63,7 +63,7 @@ data Comp
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
   | UpElim IsReducible Ident Comp Comp
-  | EnumElim [(Int, Value)] Value (Label, Comp) [(EnumCase, Comp)]
+  | EnumElim [(Int, Value)] Value (Label, Comp) [(EnumCase, (Label, Comp))]
   | Primitive Primitive
   | Free Value Int Comp
   | Unreachable
@@ -90,9 +90,9 @@ instance Show Comp where
       Unreachable ->
         "⊥"
 
-showEnumCase :: (EnumCase, Comp) -> String
-showEnumCase (ec, c) = do
-  "\n<" ++ show ec ++ ">\n" ++ show c
+showEnumCase :: (EnumCase, (Label, Comp)) -> String
+showEnumCase (ec, (l, c)) = do
+  "\n<" ++ show ec ++ " " ++ show l ++ ">\n" ++ show c
 
 type ShouldDeallocate = Bool
 

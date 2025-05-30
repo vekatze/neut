@@ -70,7 +70,7 @@ emitLowComp h lowComp =
       ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
       return $ op <> ret
     LC.Switch (d, lowType) (defaultLabel, defaultBranch) branchList (phiTgt, cont) -> do
-      labelList <- liftIO $ constructLabelList h branchList
+      let labelList = map (\(_, (l, _)) -> l) branchList
       let switchOpStr =
             emitOp $
               unwordsL
@@ -81,7 +81,7 @@ emitLowComp h lowComp =
                   emitValue (LC.VarLocal defaultLabel),
                   showBranchList lowType $ zip (map fst branchList) labelList
                 ]
-      let labelBranchList = zip labelList (map snd branchList) <> [(defaultLabel, defaultBranch)]
+      let labelBranchList = map snd branchList <> [(defaultLabel, defaultBranch)]
       confluenceLabel <- Gensym.newIdentFromText (gensymHandle h) "confluence"
       case currentLabel h of
         Nothing ->
@@ -157,16 +157,6 @@ emitOp s =
 emitLabel :: Builder -> Builder
 emitLabel s =
   s <> ":"
-
-constructLabelList :: Handle -> [a] -> IO [Ident]
-constructLabelList h input =
-  case input of
-    [] ->
-      return []
-    (_ : rest) -> do
-      label <- Gensym.newIdentFromText (gensymHandle h) "case"
-      labelList <- constructLabelList h rest
-      return $ label : labelList
 
 showBranchList :: LT.LowType -> [(Integer, Ident)] -> Builder
 showBranchList lowType xs =

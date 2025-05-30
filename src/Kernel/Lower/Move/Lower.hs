@@ -179,9 +179,10 @@ lowerComp h term =
     C.EnumElim fvInfo v (defaultLabel, defaultBranch) branchList -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
-      let (keys, clauses) = unzip branchList
+      let (keys, labelClauses) = unzip branchList
+      let (labels, clauses) = unzip labelClauses
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
-      let branchList' = zip keys clauses'
+      let branchList' = zip keys (zip labels clauses')
       case (defaultBranch', clauses') of
         (C.Unreachable, [clause]) ->
           lowerComp h clause
@@ -447,16 +448,20 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
       return cont
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: Handle -> C.Comp -> [(EC.EnumCase, C.Comp)] -> EIO (LC.Comp, [(Integer, LC.Comp)])
+constructSwitch ::
+  Handle ->
+  C.Comp ->
+  [(EC.EnumCase, (C.Label, C.Comp))] ->
+  EIO (LC.Comp, [(Integer, (LC.Label, LC.Comp))])
 constructSwitch h defaultBranch switch =
   case switch of
     [] -> do
       defaultBranch' <- lowerComp h defaultBranch
       return (defaultBranch', [])
-    (EC.Int i, code) : rest -> do
+    (EC.Int i, (label, code)) : rest -> do
       code' <- lowerComp h code
       (defaultBranch', caseList) <- constructSwitch h defaultBranch rest
-      return (defaultBranch', (i, code') : caseList)
+      return (defaultBranch', (i, (label, code')) : caseList)
 
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
 newValueLocal h name = do

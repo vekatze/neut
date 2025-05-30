@@ -99,9 +99,10 @@ getEnumElim h idents d defaultBranch branchList = do
   let sub = IntMap.fromList oldToNew
   defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
   defaultBranch' <- Subst.subst (substHandle h) sub defaultBranch
-  let (labels, clauses) = unzip branchList
+  let (tags, clauses) = unzip branchList
+  labels <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "case") clauses
   clauses' <- mapM (Subst.subst (substHandle h) sub) clauses
-  return $ C.EnumElim newToOld d (defaultLabel, defaultBranch') (zip labels clauses')
+  return $ C.EnumElim newToOld d (defaultLabel, defaultBranch') (zip tags (zip labels clauses'))
 
 getSub :: Gensym.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
 getSub h idents = do
