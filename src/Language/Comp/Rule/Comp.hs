@@ -6,6 +6,7 @@ module Language.Comp.Rule.Comp
     SubstValue,
     IsReducible,
     DefMap,
+    Label,
     fromDefTuple,
     intValue0,
     intValue1,
@@ -54,12 +55,15 @@ instance Show Value where
 
 type IsReducible = Bool
 
+type Label =
+  Ident
+
 data Comp
   = PiElimDownElim Value [Value] -- ((force v) v1 ... vn)
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
   | UpElim IsReducible Ident Comp Comp
-  | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)]
+  | EnumElim [(Int, Value)] Value (Label, Comp) [(EnumCase, Comp)]
   | Primitive Primitive
   | Free Value Int Comp
   | Unreachable

@@ -104,9 +104,9 @@ reduce h term =
               return C.Unreachable
             _ ->
               return $ C.UpElim isReducible x e1' e2'
-    C.EnumElim fvInfo _ defaultBranch [] -> do
+    C.EnumElim fvInfo _ (_, defaultBranch) [] -> do
       Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch >>= reduce h
-    C.EnumElim fvInfo v defaultBranch les -> do
+    C.EnumElim fvInfo v (defaultLabel, defaultBranch) les -> do
       case v of
         C.Int _ l
           | Just body <- lookup (EC.Int (fromInteger l)) les -> do
@@ -117,7 +117,7 @@ reduce h term =
           let (ls, es) = unzip les
           defaultBranch' <- reduce h defaultBranch
           es' <- mapM (reduce h) es
-          return $ C.EnumElim fvInfo v defaultBranch' (zip ls es')
+          return $ C.EnumElim fvInfo v (defaultLabel, defaultBranch') (zip ls es')
     C.Free x size cont -> do
       cont' <- reduce h cont
       return $ C.Free x size cont'

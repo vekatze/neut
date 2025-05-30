@@ -5,12 +5,12 @@ module Kernel.Emit.Move.Internal.LowComp
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Emit.Rule.Builder
@@ -69,8 +69,7 @@ emitLowComp h lowComp =
                 ]
       ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
       return $ op <> ret
-    LC.Switch (d, lowType) defaultBranch branchList (phiTgt, cont) -> do
-      defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
+    LC.Switch (d, lowType) (defaultLabel, defaultBranch) branchList (phiTgt, cont) -> do
       labelList <- liftIO $ constructLabelList h branchList
       let switchOpStr =
             emitOp $

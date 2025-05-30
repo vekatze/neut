@@ -176,7 +176,7 @@ lowerComp h term =
       e1' <- lowerComp h e1
       e2' <- lowerComp h e2
       return $ commConv x e1' e2'
-    C.EnumElim fvInfo v defaultBranch branchList -> do
+    C.EnumElim fvInfo v (defaultLabel, defaultBranch) branchList -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
@@ -193,7 +193,7 @@ lowerComp h term =
           (castVar, castValue) <- liftIO $ newValueLocal h "cast"
           (phiVar, phi) <- liftIO $ newValueLocal h "phi"
           lowerValueLetCast h castVar v t
-            =<< return (LC.Switch (castValue, t) defaultCase caseList (phiVar, LC.Return phi))
+            =<< return (LC.Switch (castValue, t) (defaultLabel, defaultCase) caseList (phiVar, LC.Return phi))
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
