@@ -183,18 +183,12 @@ lowerComp h term =
       let (labels, clauses) = unzip labelClauses
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
       let branchList' = zip keys (zip labels clauses')
-      case (defaultBranch', clauses') of
-        -- (C.Unreachable, [clause]) ->
-        --   lowerComp h clause
-        -- (_, []) ->
-        --   lowerComp h defaultBranch'
-        _ -> do
-          (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
-          let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
-          cont' <- lowerComp h cont
-          (castVar, castValue) <- liftIO $ newValueLocal h "cast"
-          lowerValueLetCast h castVar v t
-            =<< return (LC.Switch (castValue, t) (defaultLabel, defaultCase) caseList (phiList, goalLabel, cont'))
+      (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
+      let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+      cont' <- lowerComp h cont
+      (castVar, castValue) <- liftIO $ newValueLocal h "cast"
+      lowerValueLetCast h castVar v t
+        =<< return (LC.Switch (castValue, t) (defaultLabel, defaultCase) caseList (phiList, goalLabel, cont'))
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"

@@ -51,7 +51,11 @@ reduce h term =
       if not shouldDeallocate
         then do
           e' <- reduce h e
-          return $ C.SigmaElim shouldDeallocate xs v e'
+          case e' of
+            C.Unreachable ->
+              return C.Unreachable
+            _ ->
+              return $ C.SigmaElim shouldDeallocate xs v e'
         else do
           case v of
             C.SigmaIntro ds
@@ -96,12 +100,12 @@ reduce h term =
         _ -> do
           e2' <- reduce h e2
           case e2' of
+            C.Unreachable ->
+              return C.Unreachable
             C.UpIntro (C.VarLocal y)
               | x == y,
                 isReducible ->
                   return e1' -- eta-reduce
-            C.Unreachable ->
-              return C.Unreachable
             _ ->
               return $ C.UpElim isReducible x e1' e2'
     C.EnumElim fvInfo _ (_, defaultBranch) [] phiVarList _ cont -> do
@@ -119,10 +123,18 @@ reduce h term =
           defaultBranch' <- reduce h defaultBranch
           es' <- mapM (reduce h) es
           cont' <- reduce h cont
-          return $ C.EnumElim fvInfo v (defaultLabel, defaultBranch') (zip cs (zip ls es')) phiVarList label cont'
+          case (defaultBranch', es') of
+            (C.Unreachable, [clause]) -> do
+              graftReduce h term fvInfo clause phiVarList cont'
+            _ ->
+              return $ C.EnumElim fvInfo v (defaultLabel, defaultBranch') (zip cs (zip ls es')) phiVarList label cont'
     C.Free x size cont -> do
       cont' <- reduce h cont
-      return $ C.Free x size cont'
+      case cont' of
+        C.Unreachable ->
+          return C.Unreachable
+        _ ->
+          return $ C.Free x size cont'
     C.Unreachable ->
       return term
     C.Phi {} ->
