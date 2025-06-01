@@ -66,9 +66,8 @@ analyze lowComp = do
           insert (Free size ptr freeID) scenario
         _ ->
           scenario
-    LC.Switch _ (_, defaultBranch) cles (_, _, cont) -> do
-      let (_, les) = unzip cles
-      let (_, es) = unzip les
+    LC.Switch _ defaultBranch ces (_, _, cont) -> do
+      let (_, es) = unzip ces
       let contAllocInfo = analyze cont
       case defaultBranch of
         LC.Unreachable -> do
@@ -203,13 +202,12 @@ cancel' ctx lowComp =
               cont'
         _ ->
           LC.Cont op cont'
-    LC.Switch d (defaultLabel, defaultBranch) cles (phi, label, cont) -> do
+    LC.Switch d defaultBranch ces (phi, label, cont) -> do
       let defaultBranch' = cancel' ctx defaultBranch
-      let (cs, les) = unzip cles
-      let (ls, es) = unzip les
+      let (cs, es) = unzip ces
       let es' = map (cancel' ctx) es
       let cont' = cancel' ctx cont
-      LC.Switch d (defaultLabel, defaultBranch') (zip cs (zip ls es')) (phi, label, cont')
+      LC.Switch d defaultBranch' (zip cs es') (phi, label, cont')
     LC.TailCall {} ->
       lowComp
     LC.Unreachable ->

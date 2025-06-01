@@ -176,19 +176,18 @@ lowerComp h term =
       e1' <- lowerComp h e1
       e2' <- lowerComp h e2
       return $ commConv x e1' e2'
-    C.EnumElim fvInfo v (defaultLabel, defaultBranch) branchList phiList goalLabel cont -> do
+    C.EnumElim fvInfo v defaultBranch branchList phiList goalLabel cont -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
-      let (keys, labelClauses) = unzip branchList
-      let (labels, clauses) = unzip labelClauses
+      let (keys, clauses) = unzip branchList
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
-      let branchList' = zip keys (zip labels clauses')
+      let branchList' = zip keys clauses'
       (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
       let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
       cont' <- lowerComp h cont
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
-        =<< return (LC.Switch (castValue, t) (defaultLabel, defaultCase) caseList (phiList, goalLabel, cont'))
+        =<< return (LC.Switch (castValue, t) defaultCase caseList (phiList, goalLabel, cont'))
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
@@ -449,17 +448,17 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
 constructSwitch ::
   Handle ->
   C.Comp ->
-  [(EC.EnumCase, (C.Label, C.Comp))] ->
-  EIO (LC.Comp, [(Integer, (LC.Label, LC.Comp))])
+  [(EC.EnumCase, C.Comp)] ->
+  EIO (LC.Comp, [(Integer, LC.Comp)])
 constructSwitch h defaultBranch switch =
   case switch of
     [] -> do
       defaultBranch' <- lowerComp h defaultBranch
       return (defaultBranch', [])
-    (EC.Int i, (label, code)) : rest -> do
+    (EC.Int i, code) : rest -> do
       code' <- lowerComp h code
       (defaultBranch', caseList) <- constructSwitch h defaultBranch rest
-      return (defaultBranch', (i, (label, code')) : caseList)
+      return (defaultBranch', (i, code') : caseList)
 
 newValueLocal :: Handle -> T.Text -> IO (Ident, LC.Value)
 newValueLocal h name = do

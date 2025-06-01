@@ -97,23 +97,19 @@ getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] ->
 getEnumElim h idents d defaultBranch branchList = do
   (newToOld, oldToNew) <- getSub (gensymHandle h) idents
   let sub = IntMap.fromList oldToNew
-  defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
   defaultBranch' <- Subst.subst (substHandle h) sub defaultBranch
   let (tags, clauses) = unzip branchList
-  labels <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "case") clauses
   clauses' <- mapM (Subst.subst (substHandle h) sub) clauses
-  let defaultClause = (defaultLabel, defaultBranch')
-  let clauseList = zip labels clauses'
   goalLabel <- Gensym.newIdentFromText (gensymHandle h) "goal"
-  defaultClause' <- adjustBranch h goalLabel defaultClause
-  clauseList' <- mapM (adjustBranch h goalLabel) clauseList
+  defaultClause' <- adjustBranch h goalLabel defaultBranch'
+  clauseList' <- mapM (adjustBranch h goalLabel) clauses'
   resultVar <- Gensym.newIdentFromText (gensymHandle h) "result"
   return $ C.EnumElim newToOld d defaultClause' (zip tags clauseList') [resultVar] goalLabel $ C.UpIntro (C.VarLocal resultVar)
 
-adjustBranch :: Handle -> C.Label -> (C.Label, C.Comp) -> IO (C.Label, C.Comp)
-adjustBranch h goalLabel (label, body) = do
+adjustBranch :: Handle -> C.Label -> C.Comp -> IO C.Comp
+adjustBranch h goalLabel body = do
   (phiVarName, phiVar) <- Gensym.createVar (gensymHandle h) "phi"
-  return (label, C.UpElim False phiVarName body $ C.Phi goalLabel [phiVar])
+  return $ C.UpElim False phiVarName body $ C.Phi goalLabel [phiVar]
 
 getSub :: Gensym.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
 getSub h idents = do

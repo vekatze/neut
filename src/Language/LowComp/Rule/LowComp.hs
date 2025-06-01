@@ -64,7 +64,7 @@ data Comp
   -- `CompCont` is `CompLet` that discards the result of Op. This `CompCont` is required separately
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
   | Cont Op Comp
-  | Switch (Value, LowType) (Label, Comp) [(Integer, (Label, Comp))] ([Ident], Label, Comp)
+  | Switch (Value, LowType) Comp [(Integer, Comp)] ([Ident], Label, Comp)
   | TailCall LowType Value [(LowType, Value)] -- tail call
   | Unreachable -- for empty case analysis
   | Phi Label [Value]

@@ -65,8 +65,9 @@ emitLowComp h lowComp =
                 ]
       ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
       return $ op <> ret
-    LC.Switch (d, lowType) (defaultLabel, defaultBranch) branchList (phiList, goalLabel, cont) -> do
-      let labelList = map (\(_, (l, _)) -> l) branchList
+    LC.Switch (d, lowType) defaultBranch branchList (phiList, goalLabel, cont) -> do
+      defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
+      labelList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "case") branchList
       let switchOpStr =
             emitOp $
               unwordsL
@@ -77,12 +78,11 @@ emitLowComp h lowComp =
                   emitValue (LC.VarLocal defaultLabel),
                   showBranchList lowType $ zip (map fst branchList) labelList
                 ]
-      let labelBranchList = map snd branchList <> [(defaultLabel, defaultBranch)]
+      let labelBranchList = zip labelList (map snd branchList) <> [(defaultLabel, defaultBranch)]
       case currentLabel h of
         Nothing ->
           return ()
         Just current -> do
-          -- bypass switch clauses and get the confluence block
           liftIO $ modifyIORef' (labelMapRef h) $ IntMap.insert (toInt current) goalLabel
       blockAsmList <-
         forM labelBranchList $ \(label, branch) -> do

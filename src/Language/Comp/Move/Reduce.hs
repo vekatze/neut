@@ -108,18 +108,17 @@ reduce h term =
                   return e1' -- eta-reduce
             _ ->
               return $ C.UpElim isReducible x e1' e2'
-    C.EnumElim fvInfo _ (_, defaultBranch) [] phiVarList _ cont -> do
+    C.EnumElim fvInfo _ defaultBranch [] phiVarList _ cont -> do
       graftReduce h term fvInfo defaultBranch phiVarList cont
-    C.EnumElim fvInfo v (defaultLabel, defaultBranch) cles phiVarList label cont -> do
+    C.EnumElim fvInfo v defaultBranch ces phiVarList label cont -> do
       case v of
         C.Int _ l
-          | Just (_, body) <- lookup (EC.Int (fromInteger l)) cles -> do
+          | Just body <- lookup (EC.Int (fromInteger l)) ces -> do
               graftReduce h term fvInfo body phiVarList cont
           | otherwise -> do
               graftReduce h term fvInfo defaultBranch phiVarList cont
         _ -> do
-          let (cs, les) = unzip cles
-          let (ls, es) = unzip les
+          let (cs, es) = unzip ces
           defaultBranch' <- reduce h defaultBranch
           es' <- mapM (reduce h) es
           cont' <- reduce h cont
@@ -127,7 +126,7 @@ reduce h term =
             (C.Unreachable, [clause]) -> do
               graftReduce h term fvInfo clause phiVarList cont'
             _ ->
-              return $ C.EnumElim fvInfo v (defaultLabel, defaultBranch') (zip cs (zip ls es')) phiVarList label cont'
+              return $ C.EnumElim fvInfo v defaultBranch' (zip cs es') phiVarList label cont'
     C.Free x size cont -> do
       cont' <- reduce h cont
       case cont' of
