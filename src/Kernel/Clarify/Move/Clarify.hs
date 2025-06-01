@@ -121,10 +121,10 @@ clarify h stmtList = do
     case stmt of
       C.Def x opacity args e -> do
         e' <- liftIO $ Reduce.reduce (reduceHandle h) e
-        -- printNote' "==================="
-        -- printNote' $ DD.reify x
-        -- printNote' $ T.pack $ show args
-        -- printNote' $ T.pack $ show e'
+        -- liftIO $ putStrLn $ T.unpack "==================="
+        -- liftIO $ putStrLn $ T.unpack $ DD.reify x
+        -- liftIO $ putStrLn $ T.unpack $ T.pack $ show args
+        -- liftIO $ putStrLn $ T.unpack $ T.pack $ show e'
         return $ C.Def x opacity args e'
       C.Foreign {} ->
         return stmt

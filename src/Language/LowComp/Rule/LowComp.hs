@@ -10,6 +10,7 @@ module Language.LowComp.Rule.LowComp
     DefContent,
     Label,
     nop,
+    getPhiList,
   )
 where
 
@@ -31,6 +32,7 @@ data Value
   | VarTextName T.Text
   | Int Integer
   | Float FloatSize Double
+  | SigmaIntro Value
   | Null
 
 instance Show Value where
@@ -50,6 +52,8 @@ instance Show Value where
         show f
       Null ->
         "null"
+      SigmaIntro {} ->
+        "phi-source"
 
 type Label =
   Ident
@@ -60,9 +64,10 @@ data Comp
   -- `CompCont` is `CompLet` that discards the result of Op. This `CompCont` is required separately
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
   | Cont Op Comp
-  | Switch (Value, LowType) (Label, Comp) [(Integer, (Label, Comp))] (Ident, Comp)
+  | Switch (Value, LowType) (Label, Comp) [(Integer, (Label, Comp))] ([Ident], Label, Comp)
   | TailCall LowType Value [(LowType, Value)] -- tail call
   | Unreachable -- for empty case analysis
+  | Phi Label [Value]
   deriving (Show)
 
 type AllocID =
@@ -109,3 +114,21 @@ type StaticTextInfo = (T.Text, (Builder, Int))
 nop :: Value -> Op
 nop v =
   Bitcast v Pointer Pointer
+
+getPhiList :: Comp -> Maybe [Value]
+getPhiList comp =
+  case comp of
+    Phi _ vs ->
+      return vs
+    Return _ ->
+      Nothing
+    Let _ _ cont ->
+      getPhiList cont
+    Cont _ cont ->
+      getPhiList cont
+    Switch _ _ _ (_, _, cont) ->
+      getPhiList cont
+    TailCall {} ->
+      Nothing
+    Unreachable ->
+      Nothing

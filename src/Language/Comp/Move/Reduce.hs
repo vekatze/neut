@@ -104,26 +104,44 @@ reduce h term =
               return C.Unreachable
             _ ->
               return $ C.UpElim isReducible x e1' e2'
-    C.EnumElim fvInfo _ (_, defaultBranch) [] -> do
-      Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch >>= reduce h
-    C.EnumElim fvInfo v (defaultLabel, defaultBranch) cles -> do
+    C.EnumElim fvInfo _ (_, defaultBranch) [] phiVarList _ cont -> do
+      graftReduce h term fvInfo defaultBranch phiVarList cont
+    C.EnumElim fvInfo v (defaultLabel, defaultBranch) cles phiVarList label cont -> do
       case v of
         C.Int _ l
           | Just (_, body) <- lookup (EC.Int (fromInteger l)) cles -> do
-              Subst.subst (substHandle h) (IntMap.fromList fvInfo) body >>= reduce h
+              graftReduce h term fvInfo body phiVarList cont
           | otherwise -> do
-              Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch >>= reduce h
+              graftReduce h term fvInfo defaultBranch phiVarList cont
         _ -> do
           let (cs, les) = unzip cles
           let (ls, es) = unzip les
           defaultBranch' <- reduce h defaultBranch
           es' <- mapM (reduce h) es
-          return $ C.EnumElim fvInfo v (defaultLabel, defaultBranch') (zip cs (zip ls es'))
+          cont' <- reduce h cont
+          return $ C.EnumElim fvInfo v (defaultLabel, defaultBranch') (zip cs (zip ls es')) phiVarList label cont'
     C.Free x size cont -> do
       cont' <- reduce h cont
       return $ C.Free x size cont'
     C.Unreachable ->
       return term
+    C.Phi {} ->
+      return term
+
+graftReduce ::
+  Handle ->
+  C.Comp ->
+  [(Int, C.Value)] ->
+  C.Comp ->
+  [Ident] ->
+  C.Comp ->
+  IO C.Comp
+graftReduce h origTerm fvInfo e phiVarList cont =
+  case C.graft e phiVarList cont of
+    Just e' -> do
+      Subst.subst (substHandle h) (IntMap.fromList fvInfo) e' >>= reduce h
+    Nothing ->
+      return origTerm -- unreachable
 
 extractIdent :: C.Value -> Maybe Ident
 extractIdent term =

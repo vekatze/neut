@@ -114,18 +114,25 @@ distinguishComp h z term =
         else do
           (vs2, e2') <- distinguishComp h z e2
           return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
-    C.EnumElim fvInfo d defaultBranch branchList -> do
+    C.EnumElim fvInfo d defaultBranch branchList phiVarList label cont -> do
       let (vs, ds) = unzip fvInfo
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
       let fvInfo' = zip vs ds'
-      (vs', d') <- distinguishValue h z d
-      return (concat vss ++ vs', C.EnumElim fvInfo' d' defaultBranch branchList)
+      (vs1, d') <- distinguishValue h z d
+      if z `elem` phiVarList
+        then return (concat vss ++ vs1, C.EnumElim fvInfo' d' defaultBranch branchList phiVarList label cont)
+        else do
+          (vs2, cont') <- distinguishComp h z cont
+          return (concat vss ++ vs1 ++ vs2, C.EnumElim fvInfo' d' defaultBranch branchList phiVarList label cont')
     C.Free x size cont -> do
       (vs1, x') <- distinguishValue h z x
       (vs2, cont') <- distinguishComp h z cont
       return (vs1 ++ vs2, C.Free x' size cont')
     C.Unreachable ->
       return ([], term)
+    C.Phi label ds -> do
+      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
+      return (concat vss, C.Phi label ds')
 
 distinguishPrimitive :: Handle -> Ident -> C.Primitive -> IO ([Occurrence], C.Primitive)
 distinguishPrimitive h z term =

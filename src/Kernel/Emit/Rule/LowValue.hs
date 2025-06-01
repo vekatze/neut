@@ -40,6 +40,8 @@ emitValue lowValue =
       doubleDec x
     LC.Null ->
       "null"
+    LC.SigmaIntro {} ->
+      error "unreachable"
 
 showArgs :: [(LT.LowType, LC.Value)] -> Builder
 showArgs tds =

@@ -176,7 +176,7 @@ lowerComp h term =
       e1' <- lowerComp h e1
       e2' <- lowerComp h e2
       return $ commConv x e1' e2'
-    C.EnumElim fvInfo v (defaultLabel, defaultBranch) branchList -> do
+    C.EnumElim fvInfo v (defaultLabel, defaultBranch) branchList phiList goalLabel cont -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, labelClauses) = unzip branchList
@@ -184,17 +184,17 @@ lowerComp h term =
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
       let branchList' = zip keys (zip labels clauses')
       case (defaultBranch', clauses') of
-        (C.Unreachable, [clause]) ->
-          lowerComp h clause
-        (_, []) ->
-          lowerComp h defaultBranch'
+        -- (C.Unreachable, [clause]) ->
+        --   lowerComp h clause
+        -- (_, []) ->
+        --   lowerComp h defaultBranch'
         _ -> do
           (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
           let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+          cont' <- lowerComp h cont
           (castVar, castValue) <- liftIO $ newValueLocal h "cast"
-          (phiVar, phi) <- liftIO $ newValueLocal h "phi"
           lowerValueLetCast h castVar v t
-            =<< return (LC.Switch (castValue, t) (defaultLabel, defaultCase) caseList (phiVar, LC.Return phi))
+            =<< return (LC.Switch (castValue, t) (defaultLabel, defaultCase) caseList (phiList, goalLabel, cont'))
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
@@ -203,6 +203,10 @@ lowerComp h term =
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
+    C.Phi goalLabel ds -> do
+      (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
+      lowerValues h (zip argVars ds)
+        =<< return (LC.Phi goalLabel argValues)
 
 lowerCompPrimitive :: Handle -> Ident -> C.Primitive -> LC.Comp -> EIO LC.Comp
 lowerCompPrimitive h resultVar codeOp cont =
@@ -530,13 +534,15 @@ commConv x lowComp cont2 =
     LC.Cont op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Cont op cont
-    LC.Switch (d, t) defaultCase caseList (phiVar, cont) -> do
+    LC.Switch (d, t) defaultCase caseList (phiVar, goalLabel, cont) -> do
       let cont' = commConv x cont cont2
-      LC.Switch (d, t) defaultCase caseList (phiVar, cont')
+      LC.Switch (d, t) defaultCase caseList (phiVar, goalLabel, cont')
     LC.TailCall codType d ds ->
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable
+    LC.Phi _ _ ->
+      LC.Unreachable -- shouldn't occur
 
 defaultForeignList :: A.Arch -> [F.Foreign]
 defaultForeignList arch =
