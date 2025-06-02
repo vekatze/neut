@@ -550,11 +550,10 @@ discernMagic h m magic =
 modifyLetContinuation ::
   H.Handle ->
   (Hint, RP.RawPattern) ->
-  Loc ->
   N.IsNoetic ->
   RT.RawTerm ->
   EIO (RawIdent, RT.RawTerm)
-modifyLetContinuation h pat endLoc isNoetic cont@(mCont :< _) =
+modifyLetContinuation h pat isNoetic cont@(mCont :< _) =
   case pat of
     (_, RP.Var (Var x))
       | not (isConsName x) ->
@@ -568,7 +567,7 @@ modifyLetContinuation h pat endLoc isNoetic cont@(mCont :< _) =
               []
               isNoetic
               (SE.fromList'' [mCont :< RT.Var (Var tmp)])
-              (SE.fromList SE.Brace SE.Bar [(SE.fromList'' [pat], [], cont, endLoc)])
+              (SE.fromList SE.Brace SE.Bar [(SE.fromList'' [pat], [], cont)])
         )
 
 bind ::
@@ -661,13 +660,11 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
               SE.Bar
               [ ( SE.fromList'' [(blur m, RP.Var true)],
                   [],
-                  ifBody,
-                  fakeLoc
+                  ifBody
                 ),
                 ( SE.fromList'' [(blur m, RP.Var false)],
                   [],
-                  elseBody,
-                  fakeLoc
+                  elseBody
                 )
               ]
           )
@@ -682,8 +679,8 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           ( SE.fromList
               SE.Brace
               SE.Bar
-              [ (SE.fromList'' [(blur m, RP.Var true)], [], ifBody, fakeLoc),
-                (SE.fromList'' [(blur m, RP.Var false)], [], cont, fakeLoc)
+              [ (SE.fromList'' [(blur m, RP.Var true)], [], ifBody),
+                (SE.fromList'' [(blur m, RP.Var false)], [], cont)
               ]
           )
 
@@ -705,7 +702,7 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
   let opacity = WT.Clear
   let discernLet' isNoetic = do
         e1' <- discern h e1
-        (x, e2') <- modifyLetContinuation h (mx, pat) endLoc isNoetic e2
+        (x, e2') <- modifyLetContinuation h (mx, pat) isNoetic e2
         (mxt', e2'') <- discernBinderWithBody' h (mx, x, c1, c2, t) startLoc endLoc e2'
         liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
         return $ m :< WT.Let opacity mxt' e1' e2''
@@ -721,7 +718,7 @@ discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
       let eitherType = m' :< RT.piElim eitherTypeInner [leftType, t]
       e1' <- discern h e1
       tmpVar <- liftIO $ Gensym.newText (H.gensymHandle h)
-      eitherCont <- constructEitherBinder h m mx m1 pat tmpVar e2 endLoc
+      eitherCont <- constructEitherBinder h m mx m1 pat tmpVar e2
       (mxt', eitherCont') <- discernBinderWithBody' h (mx, tmpVar, c1, c2, eitherType) startLoc endLoc eitherCont
       return $ m :< WT.Let opacity mxt' e1' eitherCont'
 
@@ -733,9 +730,8 @@ constructEitherBinder ::
   RP.RawPattern ->
   RawIdent ->
   Cofree RT.RawTermF Hint ->
-  Loc ->
   EIO RT.RawTerm
-constructEitherBinder h m mx m1 pat tmpVar cont endLoc = do
+constructEitherBinder h m mx m1 pat tmpVar cont = do
   let m' = blur m
   let mx' = blur mx
   let m1' = blur m1
@@ -746,14 +742,12 @@ constructEitherBinder h m mx m1 pat tmpVar cont endLoc = do
   let longClause =
         ( SE.fromList'' [(mx', RP.Cons eitherR [] (RP.Paren (SE.fromList' [(mx, pat)])))],
           [],
-          cont,
-          endLoc
+          cont
         )
   let shortClause =
         ( SE.fromList'' [(m', RP.Cons eitherL [] (RP.Paren (SE.fromList' [(m', RP.Var (Var earlyRetVar))])))],
           [],
-          m' :< RT.piElim eitherVarL [m' :< RT.Var (Var earlyRetVar)],
-          fakeLoc
+          m' :< RT.piElim eitherVarL [m' :< RT.Var (Var earlyRetVar)]
         )
   return $
     m'
@@ -838,7 +832,7 @@ discernPatternRow ::
   H.Handle ->
   RP.RawPatternRow RT.RawTerm ->
   EIO (PAT.PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
-discernPatternRow h (patList, _, body, _) = do
+discernPatternRow h (patList, _, body) = do
   (patList', body') <- discernPatternRow' h (SE.extract patList) [] body
   return (V.fromList patList', body')
 

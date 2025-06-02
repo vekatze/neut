@@ -525,8 +525,7 @@ rawTermPatternRow h patternSize = do
               <> "`"
       cArrow <- delimiter "=>"
       (body, c) <- rawExpr h
-      loc <- getCurrentLoc
-      return ((patternList, cArrow, body, loc), c)
+      return ((patternList, cArrow, body), c)
 
 rawTermPattern :: Handle -> Parser ((Hint, RP.RawPattern), C)
 rawTermPattern h = do

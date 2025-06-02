@@ -541,7 +541,7 @@ decodeIntrospectClause (mKey, c, body) = do
   decodeDoubleArrowClause (key, c, body)
 
 decodePatternRow :: RP.RawPatternRow RawTerm -> (D.Doc, T.Text, D.Doc)
-decodePatternRow (patArgs, c, body, _) = do
+decodePatternRow (patArgs, c, body) = do
   let patArgs' = SE.decode $ fmap (decodePattern . snd) patArgs
   decodeDoubleArrowClause (patArgs', c, body)
 
