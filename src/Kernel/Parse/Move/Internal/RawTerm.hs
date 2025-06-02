@@ -161,7 +161,7 @@ rawTerm' h m headSymbol c = do
 
 rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont h (e@(m :< _), c) = do
-  argListList <- many $ seriesParen (rawExpr h)
+  argListList <- many $ seriesParen (rawTerm h)
   return $ foldPiElim m (e, c) argListList
 
 rawTermPi :: Handle -> Parser (RT.RawTerm, C)
@@ -427,40 +427,40 @@ rawTermMagicBase k parser = do
 rawTermMagicCast :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCast h m c = do
   rawTermMagicBase "cast" $ do
-    castFrom <- rawExpr h
+    castFrom <- rawTerm h
     c3 <- delimiter ","
-    castTo <- rawExpr h
+    castTo <- rawTerm h
     c4 <- delimiter ","
-    value <- rawExpr h
+    value <- rawTerm h
     c6 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Cast c1 (c2, castFrom) (c3, castTo) (c4, value) c6)
 
 rawTermMagicStore :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicStore h m c = do
   rawTermMagicBase "store" $ do
-    t <- rawExpr h
+    t <- rawTerm h
     c3 <- delimiter ","
-    value <- rawExpr h
+    value <- rawTerm h
     c4 <- delimiter ","
-    pointer <- rawExpr h
+    pointer <- rawTerm h
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 (c2, t) (c3, value) (c4, pointer) c5)
 
 rawTermMagicLoad :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicLoad h m c = do
   rawTermMagicBase "load" $ do
-    t <- rawExpr h
+    t <- rawTerm h
     c3 <- delimiter ","
-    pointer <- rawExpr h
+    pointer <- rawTerm h
     c4 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, t) (c3, pointer) c4)
 
 rawTermMagicAlloca :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicAlloca h m c = do
   rawTermMagicBase "alloca" $ do
-    t <- rawExpr h
+    t <- rawTerm h
     c3 <- delimiter ","
-    size <- rawExpr h
+    size <- rawTerm h
     c4 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, t) (c3, size) c4)
 
@@ -470,18 +470,18 @@ rawTermMagicExternal h m c0 = do
   mUse <- getCurrentHint
   (extFunName, cExt) <- symbol
   let extFunName' = EN.ExternalName extFunName
-  (es, c2) <- seriesParen (rawExpr h)
+  (es, c2) <- seriesParen (rawTerm h)
   choice
     [ do
-        (s, c) <- seriesParen (rawExprAndLowType h)
+        (s, c) <- seriesParen (rawTermAndLowType h)
         return (m :< RT.Magic c0 (RT.External c1 mUse extFunName' cExt es (Just (c2, s))), c),
       return (m :< RT.Magic c0 (RT.External c1 mUse extFunName' cExt es Nothing), c2)
     ]
 
-rawExprAndLowType :: Handle -> Parser (RT.VarArg, C)
-rawExprAndLowType h = do
+rawTermAndLowType :: Handle -> Parser (RT.VarArg, C)
+rawTermAndLowType h = do
   m <- getCurrentHint
-  (e, c1) <- rawExpr h
+  (e, c1) <- rawTerm h
   c2 <- delimiter ":"
   (t, c) <- rawTerm h
   return ((m, e, c1, c2, t), c)
@@ -491,7 +491,7 @@ rawTermMagicGlobal h m c = do
   rawTermMagicBase "global" $ do
     (globalVarName, c3) <- string
     c4 <- delimiter ","
-    lt <- rawExpr h
+    lt <- rawTerm h
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
 
@@ -645,7 +645,7 @@ rawTermBrace h = do
 
 rawTermBox :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermBox h m c1 = do
-  (t, c) <- rawExpr h
+  (t, c) <- rawTerm h
   return (m :< RT.Box t, c1 ++ c)
 
 rawTermBoxIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
@@ -740,7 +740,7 @@ typeWithoutIdent h = do
 rawTermListIntro :: Handle -> Parser (RT.RawTerm, C)
 rawTermListIntro h = do
   m <- getCurrentHint
-  (es, c) <- seriesBracket $ rawExpr h
+  (es, c) <- seriesBracket $ rawTerm h
   return (m :< RT.ListIntro es, c)
 
 rawTermPiElimExact :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
