@@ -97,6 +97,8 @@ reduce h term =
           let sub = IntMap.fromList $ zip intList (map C.VarLocal ys')
           ey' <- Subst.subst (substHandle h) sub ey
           reduce h $ C.SigmaElim b ys' vy $ C.UpElim isReducible x ey' e2 -- commutative conversion
+        C.Unreachable ->
+          return C.Unreachable
         _ -> do
           e2' <- reduce h e2
           case e2' of
@@ -122,11 +124,7 @@ reduce h term =
           defaultBranch' <- reduce h defaultBranch
           es' <- mapM (reduce h) es
           cont' <- reduce h cont
-          case (defaultBranch', es') of
-            (C.Unreachable, [clause]) -> do
-              graftReduce h term fvInfo clause phiVarList cont'
-            _ ->
-              return $ C.EnumElim fvInfo v defaultBranch' (zip cs es') phiVarList cont'
+          return $ C.EnumElim fvInfo v defaultBranch' (zip cs es') phiVarList cont'
     C.Free x size cont -> do
       cont' <- reduce h cont
       case cont' of

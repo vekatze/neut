@@ -95,15 +95,19 @@ registerSwitcher h opacity name aff rel = do
 
 getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> IO C.Comp
 getEnumElim h idents d defaultBranch branchList = do
-  (newToOld, oldToNew) <- getSub (gensymHandle h) idents
-  let sub = IntMap.fromList oldToNew
-  defaultBranch' <- Subst.subst (substHandle h) sub defaultBranch
-  let (tags, clauses) = unzip branchList
-  clauses' <- mapM (Subst.subst (substHandle h) sub) clauses
-  defaultClause' <- adjustBranch h defaultBranch'
-  clauseList' <- mapM (adjustBranch h) clauses'
-  resultVar <- Gensym.newIdentFromText (gensymHandle h) "result"
-  return $ C.EnumElim newToOld d defaultClause' (zip tags clauseList') [resultVar] $ C.UpIntro (C.VarLocal resultVar)
+  case prune defaultBranch branchList of
+    Nothing ->
+      return C.Unreachable
+    Just (defaultBranch', branchList') -> do
+      (newToOld, oldToNew) <- getSub (gensymHandle h) idents
+      let sub = IntMap.fromList oldToNew
+      defaultBranch'' <- Subst.subst (substHandle h) sub defaultBranch'
+      let (tags, clauses) = unzip branchList'
+      clauses' <- mapM (Subst.subst (substHandle h) sub) clauses
+      defaultClause' <- adjustBranch h defaultBranch''
+      clauseList' <- mapM (adjustBranch h) clauses'
+      resultVar <- Gensym.newIdentFromText (gensymHandle h) "result"
+      return $ C.EnumElim newToOld d defaultClause' (zip tags clauseList') [resultVar] $ C.UpIntro (C.VarLocal resultVar)
 
 adjustBranch :: Handle -> C.Comp -> IO C.Comp
 adjustBranch h body = do
@@ -116,3 +120,14 @@ getSub h idents = do
   let newToOld = zip (map toInt newIdents) (map C.VarLocal idents)
   let oldToNew = zip (map toInt idents) (map C.VarLocal newIdents)
   return (newToOld, oldToNew)
+
+prune :: C.Comp -> [(EnumCase, C.Comp)] -> Maybe (C.Comp, [(EnumCase, C.Comp)])
+prune defaultBranch branchList = do
+  let branchList' = filter (\(_, branch) -> not $ C.isUnreachable branch) branchList
+  case (C.isUnreachable defaultBranch, branchList') of
+    (False, _) ->
+      Just (defaultBranch, branchList')
+    (True, []) ->
+      Nothing
+    (True, (_, b) : rest) ->
+      Just (b, rest)

@@ -520,7 +520,7 @@ commConv :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
 commConv x lowComp cont2 =
   case lowComp of
     LC.Return d ->
-      LC.Let x (LC.nop d) cont2 -- nop
+      LC.Let x (LC.nop d) cont2
     LC.Let y op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Let y op cont

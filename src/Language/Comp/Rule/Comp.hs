@@ -12,6 +12,7 @@ module Language.Comp.Rule.Comp
     intValue1,
     getPhiList,
     graft,
+    isUnreachable,
   )
 where
 
@@ -183,3 +184,27 @@ bind xvs e =
       e
     (x, v) : rest ->
       UpElim True x (UpIntro v) $ bind rest e
+
+isUnreachable :: Comp -> Bool
+isUnreachable comp =
+  case comp of
+    PiElimDownElim {} ->
+      False
+    SigmaElim _ _ _ cont ->
+      isUnreachable cont
+    UpIntro {} ->
+      False
+    UpElim _ _ e1 e2 ->
+      isUnreachable e1 || isUnreachable e2
+    EnumElim _ _ defaultBranch branchList _ cont -> do
+      let b1 = isUnreachable cont
+      let b2 = isUnreachable defaultBranch && all (isUnreachable . snd) branchList
+      b1 || b2
+    Primitive {} ->
+      False
+    Free _ _ cont ->
+      isUnreachable cont
+    Unreachable ->
+      True
+    Phi {} ->
+      False

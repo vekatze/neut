@@ -117,7 +117,7 @@ emitLowComp h lowComp =
       a <- emitLowComp h cont
       return $ lowOp <> a
     LC.Unreachable -> do
-      emitLowComp h $ LC.Return LC.Null
+      return $ emitOp "unreachable"
 
 resolveLabelList :: IntMap.IntMap Ident -> [Ident] -> [Ident]
 resolveLabelList labelMapRef xs =
