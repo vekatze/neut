@@ -652,26 +652,25 @@ registerClosure ::
   [(Ident, C.Comp)] ->
   C.Comp ->
   IO ()
-registerClosure h name opacity xts1 xts2 e = do
-  e' <- liftIO $ Linearize.linearize (linearizeHandle h) (xts2 ++ xts1) e
+registerClosure h name opacity xts fvs e = do
+  e' <- liftIO $ Linearize.linearize (linearizeHandle h) (fvs ++ xts) e
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
   (normalEnvVarName, normalEnvVar) <- Gensym.createVar (gensymHandle h) "env"
   (noeticEnvVarName, noeticEnvVar) <- Gensym.createVar (gensymHandle h) "env"
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
-  let args = map fst xts1 ++ [envVarName, switchVarName]
-  let envVarList = map fst xts2
-  let normalBranch = C.SigmaElim True (map fst xts2) normalEnvVar (C.Phi $ map (C.VarLocal . fst) xts2)
-  noeticBranch <- Sigma.sigmaNoetic (sigmaHandle h) xts2 noeticEnvVar
-  let term =
+  let normalPrefix = lambdaPrefixNormal fvs normalEnvVar
+  noeticPrefix <- lambdaPrefixNoetic h fvs noeticEnvVar
+  let lambdaBody =
         C.EnumElim
           [(Ident.toInt normalEnvVarName, envVar), (Ident.toInt noeticEnvVarName, envVar)]
           switchVar
-          normalBranch
-          [(EC.Int 1, noeticBranch)]
-          envVarList
+          normalPrefix
+          [(EC.Int 1, noeticPrefix)]
+          (map fst fvs)
           e'
-  body <- liftIO $ Reduce.reduce (reduceHandle h) term
-  AuxEnv.insert (auxEnvHandle h) name (opacity, args, body)
+  lambdaBody' <- liftIO $ Reduce.reduce (reduceHandle h) lambdaBody
+  let args = map fst xts ++ [envVarName, switchVarName]
+  AuxEnv.insert (auxEnvHandle h) name (opacity, args, lambdaBody')
 
 callClosure :: Handle -> N.IsNoetic -> C.Comp -> [(Ident, C.Comp, C.Value)] -> IO C.Comp
 callClosure h isNoetic e zexes = do
@@ -705,3 +704,22 @@ dropFst :: [(a, b, c)] -> [(b, c)]
 dropFst xyzs = do
   let (_, ys, zs) = unzip3 xyzs
   zip ys zs
+
+lambdaPrefixNormal ::
+  [(Ident, C.Comp)] ->
+  C.Value ->
+  C.Comp
+lambdaPrefixNormal fvs envVar = do
+  C.SigmaElim True (map fst fvs) envVar (C.Phi $ map (C.VarLocal . fst) fvs)
+
+lambdaPrefixNoetic ::
+  Handle ->
+  [(Ident, C.Comp)] ->
+  C.Value ->
+  IO C.Comp
+lambdaPrefixNoetic h fvs envVar = do
+  -- as == [APP-1, ..., APP-n]
+  as <- forM fvs $ \(x, t) -> Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
+  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") fvs
+  body <- Linearize.linearize (linearizeHandle h) fvs $ Utility.bindLet (zip varNameList as) $ C.Phi varList
+  return $ C.SigmaElim False (map fst fvs) envVar body
