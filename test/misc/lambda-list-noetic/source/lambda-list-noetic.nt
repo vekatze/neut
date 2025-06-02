@@ -1,0 +1,73 @@
+import {
+  core.int.show {show-int},
+}
+
+data nat {
+| Zero
+| Succ(nat)
+}
+
+define interpret(n: nat): int {
+  match n {
+  | Zero =>
+    0
+  | Succ(m) =>
+    add-int(1, interpret(m))
+  }
+}
+
+define add-nat(x: nat, y: nat): nat {
+  match x {
+  | Zero =>
+    y
+  | Succ(m) =>
+    add-nat(m, Succ(y))
+  }
+}
+
+define mul-nat(x: nat, !y: nat): nat {
+  match x {
+  | Zero =>
+    Zero
+  | Succ(m) =>
+    add-nat(mul-nat(m, !y), !y)
+  }
+}
+
+define fold(a: type, fs: &list((a) -> a), x: a): a {
+  case fs {
+  | Nil =>
+    x
+  | Cons(f, rest) =>
+    let _ = rest in
+    let _ = rest in
+    f(fold(a, rest, x))
+  }
+}
+
+define main(): unit {
+  let n1 = Succ(Zero) in
+  let !n2 = Succ(n1) in
+  let !n3 = Succ(!n2) in
+  let add2 =
+    function (x) {
+      add-nat(x, !n2)
+    }
+  in
+  let mul3 =
+    function (x) {
+      mul-nat(x, !n3)
+    }
+  in
+  let !mul9 =
+    function (x) {
+      mul-nat(x, mul-nat(!n3, !n3))
+    }
+  in
+  let _ = !mul9 in
+  let fs = Cons(add2, Cons(mul3, Cons(!mul9, Nil))) in
+  let gs = fs in
+  pin hs = gs in
+  // 2 + (3 * (9 * 3)) = 83
+  printf("{}\n", [show-int(interpret(fold(_, hs, !n3)))])
+}
