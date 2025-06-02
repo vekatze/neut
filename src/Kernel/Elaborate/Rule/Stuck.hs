@@ -9,7 +9,6 @@ module Kernel.Elaborate.Rule.Stuck
   )
 where
 
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Kernel.Elaborate.Rule.Constraint qualified as C
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -17,6 +16,7 @@ import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Logger.Rule.Hint
 
 data EvalBase
   = VarLocal Ident
@@ -43,7 +43,7 @@ asStuckedTerm term =
       Just (Hole h es, m :< Base)
     m :< WT.Prim prim ->
       Just (Prim prim, m :< Base)
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim False e es -> do
       (base, ctx) <- asStuckedTerm e
       return (base, m :< PiElim ctx es)
     _ ->
@@ -55,7 +55,7 @@ resume e ctx =
     _ :< Base ->
       e
     m :< PiElim ctx' args ->
-      m :< WT.PiElim (resume e ctx') args -- inferred pi-elims are explicit
+      m :< WT.PiElim False (resume e ctx') args -- inferred pi-elims are explicit
 
 asPairList :: EvalCtx -> EvalCtx -> Maybe [C.Constraint]
 asPairList ctx1 ctx2 =

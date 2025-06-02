@@ -36,10 +36,10 @@ extend term =
       let expArgs' = map extendBinder expArgs
       let e' = extend e
       _m :< TM.PiIntro attr' impArgs' expArgs' e'
-    _ :< TM.PiElim e es -> do
+    _ :< TM.PiElim b e es -> do
       let e' = extend e
       let es' = map extend es
-      _m :< TM.PiElim e' es'
+      _m :< TM.PiElim b e' es'
     _ :< TM.Data attr name es -> do
       let es' = map extend es
       _m :< TM.Data attr name es'

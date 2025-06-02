@@ -82,39 +82,42 @@ reduce' h term = do
           return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' expArgs' e')
         _ ->
           return (m :< WT.PiIntro attr impArgs' expArgs' e')
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim isNoetic e es -> do
       e' <- reduce' h e
       es' <- mapM (reduce' h) es
-      case e' of
-        (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impArgs expArgs body)
-          | xts <- impArgs ++ expArgs,
-            length xts == length es' -> do
-              let xs = map (\(_, x, _) -> Ident.toInt x) xts
-              let sub = IntMap.fromList $ zip xs (map Right es')
-              liftIO (Subst.subst (substHandle h) sub body) >>= reduce' h
-        (_ :< WT.Prim (WP.Value (WPV.Op op)))
-          | Just (op', cod) <- WPV.reflectFloatUnaryOp op,
-            [Just value] <- map asPrimFloatValue es' -> do
-              let floatType = m :< WT.Prim (WP.Type cod)
-              return $ m :< WT.Prim (WP.Value (WPV.Float floatType (op' value)))
-          | Just (op', cod) <- WPV.reflectIntegerBinaryOp op,
-            [Just value1, Just value2] <- map asPrimIntegerValue es' -> do
-              let intType = m :< WT.Prim (WP.Type cod)
-              return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
-          | Just (op', cod) <- WPV.reflectFloatBinaryOp op,
-            [Just value1, Just value2] <- map asPrimFloatValue es' -> do
-              let floatType = m :< WT.Prim (WP.Type cod)
-              return $ m :< WT.Prim (WP.Value (WPV.Float floatType (op' value1 value2)))
-          | Just (op', cod) <- WPV.reflectIntegerCmpOp op,
-            [Just value1, Just value2] <- map asPrimIntegerValue es' -> do
-              let intType = m :< WT.Prim (WP.Type cod)
-              return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
-          | Just (op', cod) <- WPV.reflectFloatCmpOp op,
-            [Just value1, Just value2] <- map asPrimFloatValue es' -> do
-              let intType = m :< WT.Prim (WP.Type cod)
-              return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
-        _ ->
-          return $ m :< WT.PiElim e' es'
+      if isNoetic
+        then return $ m :< WT.PiElim isNoetic e' es'
+        else do
+          case e' of
+            (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impArgs expArgs body)
+              | xts <- impArgs ++ expArgs,
+                length xts == length es' -> do
+                  let xs = map (\(_, x, _) -> Ident.toInt x) xts
+                  let sub = IntMap.fromList $ zip xs (map Right es')
+                  liftIO (Subst.subst (substHandle h) sub body) >>= reduce' h
+            (_ :< WT.Prim (WP.Value (WPV.Op op)))
+              | Just (op', cod) <- WPV.reflectFloatUnaryOp op,
+                [Just value] <- map asPrimFloatValue es' -> do
+                  let floatType = m :< WT.Prim (WP.Type cod)
+                  return $ m :< WT.Prim (WP.Value (WPV.Float floatType (op' value)))
+              | Just (op', cod) <- WPV.reflectIntegerBinaryOp op,
+                [Just value1, Just value2] <- map asPrimIntegerValue es' -> do
+                  let intType = m :< WT.Prim (WP.Type cod)
+                  return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
+              | Just (op', cod) <- WPV.reflectFloatBinaryOp op,
+                [Just value1, Just value2] <- map asPrimFloatValue es' -> do
+                  let floatType = m :< WT.Prim (WP.Type cod)
+                  return $ m :< WT.Prim (WP.Value (WPV.Float floatType (op' value1 value2)))
+              | Just (op', cod) <- WPV.reflectIntegerCmpOp op,
+                [Just value1, Just value2] <- map asPrimIntegerValue es' -> do
+                  let intType = m :< WT.Prim (WP.Type cod)
+                  return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
+              | Just (op', cod) <- WPV.reflectFloatCmpOp op,
+                [Just value1, Just value2] <- map asPrimFloatValue es' -> do
+                  let intType = m :< WT.Prim (WP.Type cod)
+                  return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
+            _ ->
+              return $ m :< WT.PiElim isNoetic e' es'
     m :< WT.PiElimExact e -> do
       e' <- reduce' h e
       return $ m :< WT.PiElimExact e'

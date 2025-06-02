@@ -265,19 +265,19 @@ clarifyTerm h tenv term =
       return Sigma.returnClosureS4
     _ :< TM.PiIntro attr impArgs expArgs e -> do
       clarifyLambda h tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs) e
-    _ :< TM.PiElim e es -> do
+    _ :< TM.PiElim b e es -> do
       es' <- mapM (clarifyPlus h tenv) es
       case e of
         _ :< TM.Prim (P.Value (PV.Op op)) ->
           return $ callPrimOp op es'
         _ -> do
           e' <- clarifyTerm h tenv e
-          liftIO $ callClosure h e' es'
+          liftIO $ callClosure h b e' es'
     _ :< TM.Data _ name dataArgs -> do
       let argNum = AN.fromInt $ length dataArgs + 2
       let cls = C.UpIntro $ C.SigmaIntro [immediateS4, C.SigmaIntro [], C.VarGlobal name argNum]
       dataArgs' <- mapM (clarifyPlus h tenv) dataArgs
-      liftIO $ callClosure h cls dataArgs'
+      liftIO $ callClosure h False cls dataArgs'
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
@@ -341,10 +341,10 @@ clarifyTerm h tenv term =
       switchValue <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switchValue"
       value <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "value"
       discarder' <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value])
+        clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [m :< TM.Var value])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       copier' <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value])
+        clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [m :< TM.Var value])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       enumElim <-
         liftIO $
@@ -439,9 +439,9 @@ getClauseDataGroup h term =
   case term of
     _ :< TM.Data _ dataName _ -> do
       liftIO $ OptimizableData.lookup (optDataHandle h) dataName
-    _ :< TM.PiElim (_ :< TM.Data _ dataName _) _ -> do
+    _ :< TM.PiElim _ (_ :< TM.Data _ dataName _) _ -> do
       liftIO $ OptimizableData.lookup (optDataHandle h) dataName
-    _ :< TM.PiElim (_ :< TM.VarGlobal _ dataName) _ -> do
+    _ :< TM.PiElim _ (_ :< TM.VarGlobal _ dataName) _ -> do
       liftIO $ OptimizableData.lookup (optDataHandle h) dataName
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
       return $ Just OD.Enum
@@ -585,7 +585,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $ AttrL.normal' (Just (Ident.toText recFuncName)) c codType
-      let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
+      let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) appArgs')
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
@@ -673,18 +673,19 @@ registerClosure h name opacity xts1 xts2 e = do
   body <- liftIO $ Reduce.reduce (reduceHandle h) term
   AuxEnv.insert (auxEnvHandle h) name (opacity, args, body)
 
-callClosure :: Handle -> C.Comp -> [(Ident, C.Comp, C.Value)] -> IO C.Comp
-callClosure h e zexes = do
+callClosure :: Handle -> N.IsNoetic -> C.Comp -> [(Ident, C.Comp, C.Value)] -> IO C.Comp
+callClosure h isNoetic e zexes = do
+  let flag = if isNoetic then C.intValue1 else C.intValue0
   let (zs, es', xs) = unzip3 zexes
   ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames h
   return $
     Utility.bindLet
       ((closureVarName, e) : zip zs es')
       ( C.SigmaElim
-          True
+          (not isNoetic)
           [typeVarName, envVarName, lamVarName]
           closureVar
-          (C.PiElimDownElim lamVar (xs ++ [envVar, C.intValue0]))
+          (C.PiElimDownElim lamVar (xs ++ [envVar, flag]))
       )
 
 newClosureNames :: Handle -> IO ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))

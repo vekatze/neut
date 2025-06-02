@@ -6,8 +6,6 @@ module Language.Term.Rule.Term.Chain
   )
 where
 
-import Logger.Rule.Hint
-import Logger.Rule.Hint.Reify (toString)
 import Control.Comonad.Cofree
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap
@@ -19,6 +17,8 @@ import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
+import Logger.Rule.Hint.Reify (toString)
 
 chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
 chainOf tenv term =
@@ -37,7 +37,7 @@ chainOf' tenv term =
       []
     _ :< TM.PiIntro attr impArgs expArgs e ->
       chainOfBinder tenv (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr attr]) [e]
-    _ :< TM.PiElim e es -> do
+    _ :< TM.PiElim _ e es -> do
       let xs1 = chainOf' tenv e
       let xs2 = concatMap (chainOf' tenv) es
       xs1 ++ xs2

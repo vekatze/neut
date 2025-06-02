@@ -157,7 +157,7 @@ analyze h term = do
           cs3 <- analyze h'' codType
           cs4 <- analyze h'' e
           return $ cs1 ++ cs2 ++ cs3 ++ cs4
-    _ :< TM.PiElim e es -> do
+    _ :< TM.PiElim _ e es -> do
       cs <- analyze h e
       css <- mapM (analyze h) es
       return $ cs ++ concat css

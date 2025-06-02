@@ -96,38 +96,41 @@ inline' h term = do
         LK.Normal mName codType -> do
           codType' <- inline' h codType
           return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Normal mName codType'}) impArgs' expArgs' e')
-    m :< TM.PiElim e es -> do
+    m :< TM.PiElim isNoetic e es -> do
       e' <- inline' h e
       es' <- mapM (inline' h) es
-      let Handle {dmap} = h
-      case e' of
-        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgs expArgs body)
-          | xts <- impArgs ++ expArgs,
-            length xts == length es' -> do
-              if all TM.isValue es'
-                then do
-                  let (_, xs, _) = unzip3 xts
-                  let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
-                  _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                  inline' h $ m :< body'
-                else do
-                  (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
-                  inline' h $ bind (zip xts' es') (m :< body')
-        (_ :< TM.VarGlobal _ dd)
-          | Just (xts, body) <- Map.lookup dd dmap -> do
-              if all TM.isValue es'
-                then do
-                  let (_, xs, _) = unzip3 xts
-                  let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
-                  _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                  inline' h body''
-                else do
-                  (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
-                  body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                  inline' h $ bind (zip xts' es') body''
-        _ ->
-          return (m :< TM.PiElim e' es')
+      if isNoetic
+        then return $ m :< TM.PiElim isNoetic e' es'
+        else do
+          let Handle {dmap} = h
+          case e' of
+            (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgs expArgs body)
+              | xts <- impArgs ++ expArgs,
+                length xts == length es' -> do
+                  if all TM.isValue es'
+                    then do
+                      let (_, xs, _) = unzip3 xts
+                      let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
+                      _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                      inline' h $ m :< body'
+                    else do
+                      (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
+                      inline' h $ bind (zip xts' es') (m :< body')
+            (_ :< TM.VarGlobal _ dd)
+              | Just (xts, body) <- Map.lookup dd dmap -> do
+                  if all TM.isValue es'
+                    then do
+                      let (_, xs, _) = unzip3 xts
+                      let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
+                      _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                      body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                      inline' h body''
+                    else do
+                      (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
+                      body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                      inline' h $ bind (zip xts' es') body''
+            _ ->
+              return (m :< TM.PiElim isNoetic e' es')
     m :< TM.Data attr name es -> do
       es' <- mapM (inline' h) es
       return $ m :< TM.Data attr name es'
