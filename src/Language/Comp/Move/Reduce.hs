@@ -5,9 +5,9 @@ module Language.Comp.Move.Reduce
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
@@ -51,7 +51,11 @@ reduce h term =
       if not shouldDeallocate
         then do
           e' <- reduce h e
-          return $ C.SigmaElim shouldDeallocate xs v e'
+          case e' of
+            C.Unreachable ->
+              return C.Unreachable
+            _ ->
+              return $ C.SigmaElim shouldDeallocate xs v e'
         else do
           case v of
             C.SigmaIntro ds
@@ -93,36 +97,60 @@ reduce h term =
           let sub = IntMap.fromList $ zip intList (map C.VarLocal ys')
           ey' <- Subst.subst (substHandle h) sub ey
           reduce h $ C.SigmaElim b ys' vy $ C.UpElim isReducible x ey' e2 -- commutative conversion
+        C.Unreachable ->
+          return C.Unreachable
         _ -> do
           e2' <- reduce h e2
           case e2' of
+            C.Unreachable ->
+              return C.Unreachable
             C.UpIntro (C.VarLocal y)
               | x == y,
                 isReducible ->
                   return e1' -- eta-reduce
-            C.Unreachable ->
-              return C.Unreachable
             _ ->
               return $ C.UpElim isReducible x e1' e2'
-    C.EnumElim fvInfo _ defaultBranch [] -> do
-      Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch >>= reduce h
-    C.EnumElim fvInfo v defaultBranch les -> do
+    C.EnumElim fvInfo _ defaultBranch [] phiVarList cont -> do
+      graftReduce h term fvInfo defaultBranch phiVarList cont
+    C.EnumElim fvInfo v defaultBranch ces phiVarList cont -> do
       case v of
         C.Int _ l
-          | Just body <- lookup (EC.Int (fromInteger l)) les -> do
-              Subst.subst (substHandle h) (IntMap.fromList fvInfo) body >>= reduce h
+          | Just body <- lookup (EC.Int (fromInteger l)) ces -> do
+              graftReduce h term fvInfo body phiVarList cont
           | otherwise -> do
-              Subst.subst (substHandle h) (IntMap.fromList fvInfo) defaultBranch >>= reduce h
+              graftReduce h term fvInfo defaultBranch phiVarList cont
         _ -> do
-          let (ls, es) = unzip les
+          let (cs, es) = unzip ces
           defaultBranch' <- reduce h defaultBranch
           es' <- mapM (reduce h) es
-          return $ C.EnumElim fvInfo v defaultBranch' (zip ls es')
+          cont' <- reduce h cont
+          return $ C.EnumElim fvInfo v defaultBranch' (zip cs es') phiVarList cont'
     C.Free x size cont -> do
       cont' <- reduce h cont
-      return $ C.Free x size cont'
+      case cont' of
+        C.Unreachable ->
+          return C.Unreachable
+        _ ->
+          return $ C.Free x size cont'
     C.Unreachable ->
       return term
+    C.Phi {} ->
+      return term
+
+graftReduce ::
+  Handle ->
+  C.Comp ->
+  [(Int, C.Value)] ->
+  C.Comp ->
+  [Ident] ->
+  C.Comp ->
+  IO C.Comp
+graftReduce h origTerm fvInfo e phiVarList cont =
+  case C.graft e phiVarList cont of
+    Just e' -> do
+      Subst.subst (substHandle h) (IntMap.fromList fvInfo) e' >>= reduce h
+    Nothing ->
+      return origTerm -- unreachable
 
 extractIdent :: C.Value -> Maybe Ident
 extractIdent term =

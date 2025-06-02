@@ -11,8 +11,8 @@ module Kernel.Clarify.Move.Internal.Utility
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Data.IntMap qualified as IntMap
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -40,18 +40,18 @@ new gensymHandle substHandle auxEnvHandle baseSize = do
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Handle -> Ident -> C.Comp -> IO C.Comp
-toAffineApp h x t = do
+toAffineApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
+toAffineApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 0, C.VarLocal x])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 0, v])
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Handle -> Ident -> C.Comp -> IO C.Comp
-toRelevantApp h x t = do
+toRelevantApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
+toRelevantApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 1, C.VarLocal x])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 1, v])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =
@@ -95,12 +95,24 @@ registerSwitcher h opacity name aff rel = do
 
 getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> IO C.Comp
 getEnumElim h idents d defaultBranch branchList = do
-  (newToOld, oldToNew) <- getSub (gensymHandle h) idents
-  let sub = IntMap.fromList oldToNew
-  defaultBranch' <- Subst.subst (substHandle h) sub defaultBranch
-  let (labels, clauses) = unzip branchList
-  clauses' <- mapM (Subst.subst (substHandle h) sub) clauses
-  return $ C.EnumElim newToOld d defaultBranch' (zip labels clauses')
+  case prune defaultBranch branchList of
+    Nothing ->
+      return C.Unreachable
+    Just (defaultBranch', branchList') -> do
+      (newToOld, oldToNew) <- getSub (gensymHandle h) idents
+      let sub = IntMap.fromList oldToNew
+      defaultBranch'' <- Subst.subst (substHandle h) sub defaultBranch'
+      let (tags, clauses) = unzip branchList'
+      clauses' <- mapM (Subst.subst (substHandle h) sub) clauses
+      defaultClause' <- adjustBranch h defaultBranch''
+      clauseList' <- mapM (adjustBranch h) clauses'
+      resultVar <- Gensym.newIdentFromText (gensymHandle h) "result"
+      return $ C.EnumElim newToOld d defaultClause' (zip tags clauseList') [resultVar] $ C.UpIntro (C.VarLocal resultVar)
+
+adjustBranch :: Handle -> C.Comp -> IO C.Comp
+adjustBranch h body = do
+  (phiVarName, phiVar) <- Gensym.createVar (gensymHandle h) "phi"
+  return $ C.UpElim False phiVarName body $ C.Phi [phiVar]
 
 getSub :: Gensym.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
 getSub h idents = do
@@ -108,3 +120,14 @@ getSub h idents = do
   let newToOld = zip (map toInt newIdents) (map C.VarLocal idents)
   let oldToNew = zip (map toInt idents) (map C.VarLocal newIdents)
   return (newToOld, oldToNew)
+
+prune :: C.Comp -> [(EnumCase, C.Comp)] -> Maybe (C.Comp, [(EnumCase, C.Comp)])
+prune defaultBranch branchList = do
+  let branchList' = filter (\(_, branch) -> not $ C.isUnreachable branch) branchList
+  case (C.isUnreachable defaultBranch, branchList') of
+    (False, _) ->
+      Just (defaultBranch, branchList')
+    (True, []) ->
+      Nothing
+    (True, (_, b) : rest) ->
+      Just (b, rest)

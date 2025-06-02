@@ -186,7 +186,7 @@ getUnitType h m = do
   locator <- liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- resolveName h m (Locator locator)
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
-  return $ m :< WT.PiElim (m :< WT.VarGlobal attr unitDD) []
+  return $ m :< WT.PiElim False (m :< WT.VarGlobal attr unitDD) []
 
 toCandidateKind :: SK.StmtKind a -> CandidateKind
 toCandidateKind stmtKind =
@@ -280,9 +280,10 @@ discern h term =
               e' <- discern h $ m :< RT.piElim newChannelDD []
               return $ m :< WT.Actual e'
         _ -> do
+          let isNoetic = False -- overwritten later in `infer`
           e' <- discern h e
           es' <- mapM (discern h) $ SE.extract es
-          return $ m :< WT.PiElim e' es'
+          return $ m :< WT.PiElim isNoetic e' es'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, _) <- resolveName h m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
@@ -290,8 +291,9 @@ discern h term =
       (argNum, keyList) <- KeyArg.lookup (H.keyArgHandle h) m dd
       vs' <- mapM (discern h) vs
       args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
+      let isNoetic = False -- overwritten later in `infer`
       let isConstLike = False
-      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
+      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'

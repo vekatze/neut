@@ -76,10 +76,10 @@ subst h sub term =
               e' <- subst h sub'' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal mName codType', identity = newLamID}
               return (m :< WT.PiIntro lamAttr impArgs' expArgs' e')
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim b e es -> do
       e' <- subst h sub e
       es' <- mapM (subst h sub) es
-      return $ m :< WT.PiElim e' es'
+      return $ m :< WT.PiElim b e' es'
     m :< WT.PiElimExact e -> do
       e' <- subst h sub e
       return $ m :< WT.PiElimExact e'

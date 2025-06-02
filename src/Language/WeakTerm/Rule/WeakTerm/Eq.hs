@@ -44,8 +44,9 @@ eq (_ :< term1) (_ :< term2)
           b1 && b2
         _ ->
           False
-  | WT.PiElim f1 args1 <- term1,
-    WT.PiElim f2 args2 <- term2 = do
+  | WT.PiElim isNoetic1 f1 args1 <- term1,
+    WT.PiElim isNoetic2 f2 args2 <- term2,
+    isNoetic1 == isNoetic2 = do
       let b1 = eq f1 f2
       let b2 = all (uncurry eq) $ zip args1 args2
       b1 && b2

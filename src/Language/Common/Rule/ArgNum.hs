@@ -5,11 +5,13 @@ module Language.Common.Rule.ArgNum
     reify,
     argNumS4,
     add,
+    succ,
   )
 where
 
 import Data.Binary
 import GHC.Generics
+import Prelude hiding (succ)
 
 newtype ArgNum = MakeArgNum {reify :: Int}
   deriving (Generic, Eq, Show)
@@ -32,3 +34,7 @@ argNumS4 =
 add :: ArgNum -> ArgNum -> ArgNum
 add (MakeArgNum i1) (MakeArgNum i2) =
   MakeArgNum (i1 + i2)
+
+succ :: ArgNum -> ArgNum
+succ (MakeArgNum x) =
+  MakeArgNum (x + 1)

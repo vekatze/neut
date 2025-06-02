@@ -5,9 +5,9 @@ module Kernel.Clarify.Move.Internal.Linearize
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident
@@ -41,7 +41,7 @@ linearize h binder e =
       case newNameList of
         [] -> do
           hole <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "unit"
-          discardUnusedVar <- Utility.toAffineApp (utilityHandle h) x t
+          discardUnusedVar <- Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
           return $ C.UpElim True hole discardUnusedVar e''
         [z] ->
           return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
@@ -64,7 +64,7 @@ insertHeader h localName z1 zs t e = do
       return $ C.UpElim True z1 (C.UpIntro (C.VarLocal localName)) e
     z2 : rest -> do
       e' <- insertHeader h localName z2 rest t e
-      copyRelevantVar <- Utility.toRelevantApp (utilityHandle h) localName t
+      copyRelevantVar <- Utility.toRelevantApp (utilityHandle h) (C.VarLocal localName) t
       return $ C.UpElim True z1 copyRelevantVar e'
 
 distinguishVar :: Handle -> Ident -> Ident -> IO ([Occurrence], Ident)
@@ -114,18 +114,25 @@ distinguishComp h z term =
         else do
           (vs2, e2') <- distinguishComp h z e2
           return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
-    C.EnumElim fvInfo d defaultBranch branchList -> do
+    C.EnumElim fvInfo d defaultBranch branchList phiVarList cont -> do
       let (vs, ds) = unzip fvInfo
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
       let fvInfo' = zip vs ds'
-      (vs', d') <- distinguishValue h z d
-      return (concat vss ++ vs', C.EnumElim fvInfo' d' defaultBranch branchList)
+      (vs1, d') <- distinguishValue h z d
+      if z `elem` phiVarList
+        then return (concat vss ++ vs1, C.EnumElim fvInfo' d' defaultBranch branchList phiVarList cont)
+        else do
+          (vs2, cont') <- distinguishComp h z cont
+          return (concat vss ++ vs1 ++ vs2, C.EnumElim fvInfo' d' defaultBranch branchList phiVarList cont')
     C.Free x size cont -> do
       (vs1, x') <- distinguishValue h z x
       (vs2, cont') <- distinguishComp h z cont
       return (vs1 ++ vs2, C.Free x' size cont')
     C.Unreachable ->
       return ([], term)
+    C.Phi ds -> do
+      (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
+      return (concat vss, C.Phi ds')
 
 distinguishPrimitive :: Handle -> Ident -> C.Primitive -> IO ([Occurrence], C.Primitive)
 distinguishPrimitive h z term =

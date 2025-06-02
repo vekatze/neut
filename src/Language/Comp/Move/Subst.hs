@@ -5,8 +5,8 @@ module Language.Comp.Move.Subst
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Data.IntMap qualified as IntMap
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Comp.Rule.Comp qualified as C
@@ -45,11 +45,14 @@ substComp h sub term =
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
       e2' <- substComp h sub' e2
       return $ C.UpElim isReducible x' e1' e2'
-    C.EnumElim fvInfo v defaultBranch branchList -> do
+    C.EnumElim fvInfo v defaultBranch branchList phiVar cont -> do
       let (is, ds) = unzip fvInfo
       let ds' = map (substValue sub) ds
       let v' = substValue sub v
-      return $ C.EnumElim (zip is ds') v' defaultBranch branchList
+      phiVar' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) phiVar
+      let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt phiVar) (map C.VarLocal phiVar'))) sub
+      cont' <- substComp h sub' cont
+      return $ C.EnumElim (zip is ds') v' defaultBranch branchList phiVar' cont'
     C.Primitive theta -> do
       let theta' = substPrimitive sub theta
       return $ C.Primitive theta'
@@ -59,6 +62,8 @@ substComp h sub term =
       return $ C.Free x' size cont'
     C.Unreachable ->
       return term
+    C.Phi vs -> do
+      return $ C.Phi (map (substValue sub) vs)
 
 substValue :: C.SubstValue -> C.Value -> C.Value
 substValue sub term =

@@ -1,6 +1,5 @@
 module Language.Term.Rule.Term.FreeVarsWithHints (freeVarsWithHints) where
 
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
@@ -11,6 +10,7 @@ import Language.Common.Rule.Ident
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
 
 freeVarsWithHints :: TM.Term -> S.Set (Hint, Ident)
 freeVarsWithHints term =
@@ -25,7 +25,7 @@ freeVarsWithHints term =
       freeVarsWithHints' (impArgs ++ expArgs) (freeVarsWithHints t)
     _ :< TM.PiIntro k impArgs expArgs e ->
       freeVarsWithHints' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsWithHints e)
-    _ :< TM.PiElim e es -> do
+    _ :< TM.PiElim _ e es -> do
       let xs = freeVarsWithHints e
       let ys = S.unions $ map freeVarsWithHints es
       S.union xs ys

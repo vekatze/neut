@@ -13,8 +13,6 @@ module Language.WeakTerm.Rule.WeakTerm
   )
 where
 
-import Logger.Rule.Hint
-import Logger.Rule.LogLevel
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Language.Common.Rule.Annotation qualified as AN
@@ -36,6 +34,8 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
+import Logger.Rule.Hint
+import Logger.Rule.LogLevel
 
 type WeakTerm = Cofree WeakTermF Hint
 
@@ -45,7 +45,7 @@ data WeakTermF a
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | Pi [BinderF a] [BinderF a] a
   | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
-  | PiElim a [a]
+  | PiElim N.IsNoetic a [a]
   | PiElimExact a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)

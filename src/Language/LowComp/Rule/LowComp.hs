@@ -8,7 +8,9 @@ module Language.LowComp.Rule.LowComp
     LowCodeInfo,
     Def,
     DefContent,
+    Label,
     nop,
+    getPhiList,
   )
 where
 
@@ -50,15 +52,19 @@ instance Show Value where
       Null ->
         "null"
 
+type Label =
+  Ident
+
 data Comp
   = Return Value -- UpIntro
   | Let Ident Op Comp -- UpElim
   -- `CompCont` is `CompLet` that discards the result of Op. This `CompCont` is required separately
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
   | Cont Op Comp
-  | Switch (Value, LowType) Comp [(Integer, Comp)] (Ident, Comp)
+  | Switch (Value, LowType) Comp [(Integer, Comp)] ([Ident], Comp)
   | TailCall LowType Value [(LowType, Value)] -- tail call
   | Unreachable -- for empty case analysis
+  | Phi [Value]
   deriving (Show)
 
 type AllocID =
@@ -105,3 +111,21 @@ type StaticTextInfo = (T.Text, (Builder, Int))
 nop :: Value -> Op
 nop v =
   Bitcast v Pointer Pointer
+
+getPhiList :: Comp -> Maybe [Value]
+getPhiList comp =
+  case comp of
+    Phi vs ->
+      return vs
+    Return _ ->
+      Nothing
+    Let _ _ cont ->
+      getPhiList cont
+    Cont _ cont ->
+      getPhiList cont
+    Switch _ _ _ (_, cont) ->
+      getPhiList cont
+    TailCall {} ->
+      Nothing
+    Unreachable ->
+      Nothing

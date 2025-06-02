@@ -31,10 +31,10 @@ compress term =
       let expArgs' = map compressBinder expArgs
       let e' = compress e
       () :< TM.PiIntro attr' impArgs' expArgs' e'
-    _ :< TM.PiElim e es -> do
+    _ :< TM.PiElim b e es -> do
       let e' = compress e
       let es' = map compress es
-      () :< TM.PiElim e' es'
+      () :< TM.PiElim b e' es'
     _ :< TM.Data attr name es -> do
       let es' = map compress es
       () :< TM.Data attr name es'

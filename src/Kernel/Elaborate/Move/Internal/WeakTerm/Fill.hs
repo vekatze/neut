@@ -5,13 +5,13 @@ module Kernel.Elaborate.Move.Internal.WeakTerm.Fill
   )
 where
 
-import Error.Rule.EIO (EIO)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Error.Rule.EIO (EIO)
 import Kernel.Elaborate.Rule.HoleSubst
 import Language.Common.Rule.Annotation qualified as AN
 import Language.Common.Rule.Attr.Lam qualified as AttrL
@@ -59,10 +59,10 @@ fill h holeSubst term =
         _ -> do
           e' <- fill h holeSubst e
           return $ m :< WT.PiIntro attr impArgs' expArgs' e'
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim b e es -> do
       e' <- fill h holeSubst e
       es' <- mapM (fill h holeSubst) es
-      return $ m :< WT.PiElim e' es'
+      return $ m :< WT.PiElim b e' es'
     m :< WT.PiElimExact e -> do
       e' <- fill h holeSubst e
       return $ m :< WT.PiElimExact e'

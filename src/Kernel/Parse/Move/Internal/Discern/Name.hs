@@ -6,15 +6,14 @@ module Kernel.Parse.Move.Internal.Discern.Name
   )
 where
 
-import Error.Move.Run (raiseError)
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.Const qualified as C
@@ -43,6 +42,7 @@ import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Logger.Rule.Hint
 
 {-# INLINE resolveName #-}
 resolveName :: H.Handle -> Hint -> Name -> EIO (DD.DefiniteDescription, (Hint, GN.GlobalName))
@@ -140,7 +140,7 @@ interpretGlobalName h m dd gn = do
       let attr = AttrVG.Attr {..}
       let e = m :< WT.VarGlobal attr dd
       if isConstLike
-        then return $ m :< WT.PiElim e []
+        then return $ m :< WT.PiElim False e []
         else return e
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
@@ -160,7 +160,7 @@ interpretTopLevelFunc ::
 interpretTopLevelFunc m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim (m :< WT.VarGlobal attr dd) []
+    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) []
     else m :< WT.VarGlobal attr dd
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> EIO WT.WeakTerm

@@ -5,12 +5,14 @@ module Kernel.Emit.Move.Internal.LowComp
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Builder
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Data.List (transpose)
+import Data.Maybe (fromMaybe)
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Rule.Handle.Global.Platform qualified as Platform
 import Kernel.Emit.Rule.Builder
@@ -30,15 +32,15 @@ data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     emitOpHandle :: EmitOp.Handle,
     retType :: Builder,
-    phiInfo :: Maybe (Ident, Label),
     currentLabel :: Maybe Label,
+    goalLabel :: Maybe Label,
     labelMapRef :: IORef (IntMap.IntMap Ident)
   }
 
 new :: Global.Handle -> Builder -> IO Handle
 new globalHandle retType = do
-  let phiInfo = Nothing
   let currentLabel = Nothing
+  let goalLabel = Nothing
   labelMapRef <- liftIO $ newIORef IntMap.empty
   let baseSize = Platform.getDataSizeValue (Global.platformHandle globalHandle)
   let emitOpHandle = EmitOp.new baseSize
@@ -48,14 +50,15 @@ new globalHandle retType = do
 emitLowComp :: Handle -> LC.Comp -> IO [Builder]
 emitLowComp h lowComp =
   case lowComp of
-    LC.Return d ->
-      case phiInfo h of
-        Nothing ->
-          return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
-        Just (phiSrcVar, rendezvous) -> do
-          let lowOp = emitLowOp (emitOpHandle h) (emitValue (LC.VarLocal phiSrcVar) <> " = ") $ LC.Bitcast d LT.Pointer LT.Pointer
-          let brOp = emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal rendezvous)]
-          return $ lowOp <> brOp
+    LC.Return d -> do
+      return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
+    LC.Phi _ -> do
+      case goalLabel h of
+        Nothing -> do
+          -- unreachable
+          error $ "compiler bug: no goal label is found for the block `" <> show (currentLabel h) <> "`"
+        Just goalLabel ->
+          return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal goalLabel)]
     LC.TailCall codType f args -> do
       tmp <- Gensym.newIdentFromText (gensymHandle h) "tmp"
       let op =
@@ -69,9 +72,9 @@ emitLowComp h lowComp =
                 ]
       ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
       return $ op <> ret
-    LC.Switch (d, lowType) defaultBranch branchList (phiTgt, cont) -> do
+    LC.Switch (d, lowType) defaultBranch branchList (phiList, cont) -> do
       defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
-      labelList <- liftIO $ constructLabelList h branchList
+      labelList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "case") branchList
       let switchOpStr =
             emitOp $
               unwordsL
@@ -82,34 +85,29 @@ emitLowComp h lowComp =
                   emitValue (LC.VarLocal defaultLabel),
                   showBranchList lowType $ zip (map fst branchList) labelList
                 ]
-      let labelBranchList = zip labelList (map snd branchList) <> [(defaultLabel, defaultBranch)]
-      confluenceLabel <- Gensym.newIdentFromText (gensymHandle h) "confluence"
+      let labelBranchList = (defaultLabel, defaultBranch) : zip labelList (map snd branchList)
+      goalLabel <- Gensym.newIdentFromText (gensymHandle h) "goal"
       case currentLabel h of
         Nothing ->
           return ()
         Just current -> do
-          -- bypass switch clauses and get the confluence block
-          liftIO $ modifyIORef' (labelMapRef h) $ IntMap.insert (toInt current) confluenceLabel
-      phiSrcVarList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "phi") labelBranchList
+          liftIO $ modifyIORef' (labelMapRef h) $ IntMap.insert (toInt current) goalLabel
       blockAsmList <-
-        forM (zip labelBranchList phiSrcVarList) $ \((label, branch), phiSrcVar) -> do
-          let newPhiInfo = Just (phiSrcVar, confluenceLabel)
-          a <- emitLowComp (h {phiInfo = newPhiInfo, currentLabel = Just label}) branch
+        forM labelBranchList $ \(label, branch) -> do
+          a <- emitLowComp (h {currentLabel = Just label, goalLabel = Just goalLabel}) branch
           return $ emitLabel ("_" <> intDec (toInt label)) : a
-      let allLabelList = map fst labelBranchList
-      currentLabelMap <- liftIO $ readIORef $ labelMapRef h
-      let resolvedLabelList = resolveLabelList currentLabelMap allLabelList
-      let phiOp =
-            unwordsL
-              [ "phi",
-                emitLowType LT.Pointer,
-                emitPhiList $ zip phiSrcVarList resolvedLabelList
-              ]
-      let phiOpStr = emitOp $ emitValue (LC.VarLocal phiTgt) <> " = " <> phiOp
-      rendezvousBlock <- do
-        a <- emitLowComp (h {currentLabel = Just confluenceLabel}) cont
-        return $ emitLabel ("_" <> intDec (toInt confluenceLabel)) : phiOpStr <> a
-      return $ switchOpStr <> concat blockAsmList <> rendezvousBlock
+      goalBlock <- do
+        currentLabelMap <- liftIO $ readIORef $ labelMapRef h
+        let (allLabelList, allBranchList) = unzip labelBranchList
+        let resolvedLabelList = resolveLabelList currentLabelMap allLabelList
+        let phiValueListList = transpose $ map (fromMaybe [] . LC.getPhiList) allBranchList
+        let phiOpList = flip map (zip phiList phiValueListList) $ \(phiTgt, vs) -> do
+              let phiOp = unwordsL ["phi", emitLowType LT.Pointer, emitPhiList $ zip vs resolvedLabelList]
+              emitOp $ emitValue (LC.VarLocal phiTgt) <> " = " <> phiOp
+        let phiOpStr = concat phiOpList
+        a <- emitLowComp (h {currentLabel = Just goalLabel}) cont
+        return $ emitLabel ("_" <> intDec (toInt goalLabel)) : phiOpStr <> a
+      return $ switchOpStr <> concat blockAsmList <> goalBlock
     LC.Cont op cont -> do
       let lowOp = emitLowOp (emitOpHandle h) "" op
       a <- emitLowComp h cont
@@ -119,7 +117,7 @@ emitLowComp h lowComp =
       a <- emitLowComp h cont
       return $ lowOp <> a
     LC.Unreachable -> do
-      emitLowComp h $ LC.Return LC.Null
+      return $ emitOp "unreachable"
 
 resolveLabelList :: IntMap.IntMap Ident -> [Ident] -> [Ident]
 resolveLabelList labelMapRef xs =
@@ -137,19 +135,19 @@ emitLowOp :: EmitOp.Handle -> Builder -> LC.Op -> [Builder]
 emitLowOp ax prefix op = do
   emitOp $ prefix <> EmitOp.emitLowOp ax op
 
-emitPhiList :: [(Ident, Ident)] -> Builder
-emitPhiList identLabelList =
-  case identLabelList of
+emitPhiList :: [(LC.Value, Ident)] -> Builder
+emitPhiList valueLabelList =
+  case valueLabelList of
     [] ->
       ""
-    [(ident, label)] ->
-      "[" <> emitValue (LC.VarLocal ident) <> ", " <> emitValue (LC.VarLocal label) <> "]"
-    (ident, label) : rest ->
-      showIdentLabel ident label <> ", " <> emitPhiList rest
+    [(value, label)] ->
+      "[" <> emitValue value <> ", " <> emitValue (LC.VarLocal label) <> "]"
+    (value, label) : rest ->
+      showValueLabel value label <> ", " <> emitPhiList rest
 
-showIdentLabel :: Ident -> Ident -> Builder
-showIdentLabel ident label =
-  "[" <> emitValue (LC.VarLocal ident) <> ", " <> emitValue (LC.VarLocal label) <> "]"
+showValueLabel :: LC.Value -> Ident -> Builder
+showValueLabel value label =
+  "[" <> emitValue value <> ", " <> emitValue (LC.VarLocal label) <> "]"
 
 emitOp :: Builder -> [Builder]
 emitOp s =
@@ -158,16 +156,6 @@ emitOp s =
 emitLabel :: Builder -> Builder
 emitLabel s =
   s <> ":"
-
-constructLabelList :: Handle -> [a] -> IO [Ident]
-constructLabelList h input =
-  case input of
-    [] ->
-      return []
-    (_ : rest) -> do
-      label <- Gensym.newIdentFromText (gensymHandle h) "case"
-      labelList <- constructLabelList h rest
-      return $ label : labelList
 
 showBranchList :: LT.LowType -> [(Integer, Ident)] -> Builder
 showBranchList lowType xs =

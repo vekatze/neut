@@ -176,24 +176,18 @@ lowerComp h term =
       e1' <- lowerComp h e1
       e2' <- lowerComp h e2
       return $ commConv x e1' e2'
-    C.EnumElim fvInfo v defaultBranch branchList -> do
+    C.EnumElim fvInfo v defaultBranch branchList phiList cont -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
       let branchList' = zip keys clauses'
-      case (defaultBranch', clauses') of
-        (C.Unreachable, [clause]) ->
-          lowerComp h clause
-        (_, []) ->
-          lowerComp h defaultBranch'
-        _ -> do
-          (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
-          let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
-          (castVar, castValue) <- liftIO $ newValueLocal h "cast"
-          (phiVar, phi) <- liftIO $ newValueLocal h "phi"
-          lowerValueLetCast h castVar v t
-            =<< return (LC.Switch (castValue, t) defaultCase caseList (phiVar, LC.Return phi))
+      (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
+      let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+      cont' <- lowerComp h cont
+      (castVar, castValue) <- liftIO $ newValueLocal h "cast"
+      lowerValueLetCast h castVar v t
+        =<< return (LC.Switch (castValue, t) defaultCase caseList (phiList, cont'))
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
@@ -202,6 +196,10 @@ lowerComp h term =
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
+    C.Phi ds -> do
+      (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
+      lowerValues h (zip argVars ds)
+        =<< return (LC.Phi argValues)
 
 lowerCompPrimitive :: Handle -> Ident -> C.Primitive -> LC.Comp -> EIO LC.Comp
 lowerCompPrimitive h resultVar codeOp cont =
@@ -447,7 +445,11 @@ freeIfNecessary h shouldDeallocate pointer len cont = do
       return cont
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: Handle -> C.Comp -> [(EC.EnumCase, C.Comp)] -> EIO (LC.Comp, [(Integer, LC.Comp)])
+constructSwitch ::
+  Handle ->
+  C.Comp ->
+  [(EC.EnumCase, C.Comp)] ->
+  EIO (LC.Comp, [(Integer, LC.Comp)])
 constructSwitch h defaultBranch switch =
   case switch of
     [] -> do
@@ -518,7 +520,7 @@ commConv :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
 commConv x lowComp cont2 =
   case lowComp of
     LC.Return d ->
-      LC.Let x (LC.nop d) cont2 -- nop
+      LC.Let x (LC.nop d) cont2
     LC.Let y op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Let y op cont
@@ -532,6 +534,8 @@ commConv x lowComp cont2 =
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable
+    LC.Phi _ ->
+      LC.Unreachable -- shouldn't occur
 
 defaultForeignList :: A.Arch -> [F.Foreign]
 defaultForeignList arch =

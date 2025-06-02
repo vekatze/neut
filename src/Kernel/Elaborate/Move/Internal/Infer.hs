@@ -183,7 +183,7 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h'') codType' t'
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' expArgs' e'
           return (term', m :< WT.Pi impArgs' expArgs' t')
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim _ e es -> do
       etl <- infer h e
       etls <- mapM (infer h) es
       inferPiElim h m etl etls
@@ -198,7 +198,7 @@ infer h term =
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
           codType' <- liftIO $ Subst.subst (substHandle h) sub codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim e' expArgs'')
+          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim False e' expArgs'')
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
@@ -450,7 +450,14 @@ inferPiElim h m (e, t) expArgs = do
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim e (map fst args), m :< cod')
+      return (m :< WT.PiElim False e (map fst args), m :< cod')
+    _ :< WT.BoxNoema (_ :< WT.Pi impPiArgs expPiArgs cod) -> do
+      ensureArityCorrectness h e (length expPiArgs) (length expArgs)
+      impArgs <- mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impPiArgs]
+      let args = impArgs ++ expArgs
+      let piArgs = impPiArgs ++ expPiArgs
+      _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
+      return (m :< WT.PiElim True e (map fst args), m :< cod')
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toText t'
 
@@ -467,7 +474,7 @@ inferPiElimExplicit h m (e, t) args = do
       let piArgs = impPiArgs ++ expPiArgs
       ensureArityCorrectness h e (length piArgs) (length args)
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim e (map fst args), m :< cod')
+      return (m :< WT.PiElim False e (map fst args), m :< cod')
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toText t'
 
@@ -621,11 +628,11 @@ reduceWeakType' h sub e = do
               liftIO (Subst.subst (substHandle h) s body) >>= reduceWeakType' h sub
           | otherwise ->
               raiseError m "Arity mismatch"
-    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
+    m :< WT.PiElim False (_ :< WT.VarGlobal _ name) args -> do
       lamOrNone <- liftIO $ lookupDefinition h name
       case lamOrNone of
         Just lam ->
-          reduceWeakType' h sub $ m :< WT.PiElim lam args
+          reduceWeakType' h sub $ m :< WT.PiElim False lam args
         Nothing -> do
           return e'
     _ ->

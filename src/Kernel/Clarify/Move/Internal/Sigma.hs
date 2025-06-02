@@ -11,10 +11,10 @@ module Kernel.Clarify.Move.Internal.Sigma
   )
 where
 
-import Gensym.Move.Gensym qualified as Gensym
-import Gensym.Rule.Handle qualified as Gensym
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Gensym.Move.Gensym qualified as Gensym
+import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
@@ -101,7 +101,8 @@ sigmaT ::
 sigmaT h mxts argVar = do
   xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- forM xts $ uncurry $ Utility.toAffineApp (utilityHandle h)
+  as <- forM xts $ \(x, t) -> do
+    Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
   ys <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") xts
   body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
   return $ C.SigmaElim True (map fst xts) argVar body'
@@ -128,7 +129,8 @@ sigma4 ::
 sigma4 h mxts argVar = do
   xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
   -- as == [APP-1, ..., APP-n]
-  as <- forM xts $ uncurry $ Utility.toRelevantApp (utilityHandle h)
+  as <- forM xts $ \(x, t) -> do
+    Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") xts
   body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'

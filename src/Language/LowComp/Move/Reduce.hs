@@ -5,8 +5,8 @@ module Language.LowComp.Move.Reduce
   )
 where
 
-import Gensym.Rule.Handle qualified as Gensym
 import Data.IntMap qualified as IntMap
+import Gensym.Rule.Handle qualified as Gensym
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.LowComp.Rule.LowComp qualified as LC
@@ -44,15 +44,16 @@ reduce' h sub lowComp = do
       let op' = substOp sub op
       cont' <- reduce' h sub cont
       return $ LC.Cont op' cont'
-    LC.Switch (d, t) defaultBranch les (phi, cont) -> do
+    LC.Switch (d, t) defaultBranch ces (phiList, cont) -> do
       let d' = substLowValue sub d
-      let (ls, es) = unzip les
+      let (cs, es) = unzip ces
       defaultBranch' <- reduce' h sub defaultBranch
       es' <- mapM (reduce' h sub) es
-      phi' <- Gensym.newIdentFromIdent (gensymHandle h) phi
-      let sub' = IntMap.insert (Ident.toInt phi) (LC.VarLocal phi') sub
+      phiList' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) phiList
+      let newSub = IntMap.fromList $ zipWith (\x y -> (Ident.toInt x, LC.VarLocal y)) phiList phiList'
+      let sub' = IntMap.union newSub sub
       cont' <- reduce' h sub' cont
-      return $ LC.Switch (d', t) defaultBranch' (zip ls es') (phi', cont')
+      return $ LC.Switch (d', t) defaultBranch' (zip cs es') (phiList', cont')
     LC.TailCall codType d tds -> do
       let d' = substLowValue sub d
       let (ts, ds) = unzip tds
@@ -60,3 +61,6 @@ reduce' h sub lowComp = do
       return $ LC.TailCall codType d' (zip ts ds')
     LC.Unreachable ->
       return LC.Unreachable
+    LC.Phi ds -> do
+      let ds' = map (substLowValue sub) ds
+      return $ LC.Phi ds'

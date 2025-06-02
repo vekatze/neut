@@ -13,7 +13,7 @@ inline heap(a: type): type {
   list(tree(a))
 }
 
-define join(a: type, cmp: (a, a) -> ordering, t1: tree(a), t2: tree(a)): tree(a) {
+define join(a: type, cmp: &(a, a) -> ordering, t1: tree(a), t2: tree(a)): tree(a) {
   match t1, t2 {
   | Node(r1, !x1, children1), Node(r2, !x2, children2) =>
     match cmp(!x1, !x2) {
@@ -32,7 +32,7 @@ define rank(a: type, t: &tree(a)): int {
   }
 }
 
-define insert-tree(a: type, !cmp: (a, a) -> ordering, t: tree(a), h: heap(a)): heap(a) {
+define insert-tree(a: type, cmp: &(a, a) -> ordering, t: tree(a), h: heap(a)): heap(a) {
   match h {
   | Nil =>
     [t]
@@ -42,16 +42,16 @@ define insert-tree(a: type, !cmp: (a, a) -> ordering, t: tree(a), h: heap(a)): h
     if lt-int(r, r1) {
       Cons(t, Cons(t1, rest))
     } else {
-      insert-tree(a, !cmp, join(a, !cmp, t, t1), rest)
+      insert-tree(a, cmp, join(a, cmp, t, t1), rest)
     }
   }
 }
 
-define insert(a: type, cmp: (a, a) -> ordering, value: a, h: heap(a)): heap(a) {
+define insert(a: type, cmp: &(a, a) -> ordering, value: a, h: heap(a)): heap(a) {
   insert-tree(a, cmp, Node(0, value, Nil), h)
 }
 
-define merge(a: type, !cmp: (a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(a) {
+define merge(a: type, cmp: &(a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
   | Nil, h2 =>
     h2
@@ -61,11 +61,11 @@ define merge(a: type, !cmp: (a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(
     let r1 on t1 = rank(a, t1) in
     let r2 on t2 = rank(a, t2) in
     if lt-int(r1, r2) {
-      Cons(t1, merge(a, !cmp, ts1, Cons(t2, ts2)))
+      Cons(t1, merge(a, cmp, ts1, Cons(t2, ts2)))
     } else-if gt-int(r1, r2) {
-      Cons(t2, merge(a, !cmp, Cons(t1, ts1), ts2))
+      Cons(t2, merge(a, cmp, Cons(t1, ts1), ts2))
     } else {
-      insert-tree(a, !cmp, join(a, !cmp, t1, t2), merge(a, !cmp, ts1, ts2))
+      insert-tree(a, cmp, join(a, cmp, t1, t2), merge(a, cmp, ts1, ts2))
     }
   }
 }
@@ -77,7 +77,7 @@ define root(a: type, t: &tree(a)): a {
   }
 }
 
-define find-min(a: type, !cmp: (a, a) -> ordering, h: &heap(a)): ?a {
+define find-min(a: type, cmp: &(a, a) -> ordering, h: &heap(a)): ?a {
   let helper =
     define self(!cand: a, h: &heap(a)): a {
       case h {
@@ -85,7 +85,7 @@ define find-min(a: type, !cmp: (a, a) -> ordering, h: &heap(a)): ?a {
         !cand
       | Cons(t, ts) =>
         let !root-head = root(a, t) in
-        match !cmp(!root-head, !cand) {
+        match cmp(!root-head, !cand) {
         | LT =>
           self(!root-head, ts)
         | _ =>
@@ -103,18 +103,18 @@ define find-min(a: type, !cmp: (a, a) -> ordering, h: &heap(a)): ?a {
   }
 }
 
-define remove-min-tree(a: type, !cmp: (a, a) -> ordering, h: heap(a)): ?pair(tree(a), heap(a)) {
+define remove-min-tree(a: type, cmp: &(a, a) -> ordering, h: heap(a)): ?pair(tree(a), heap(a)) {
   match h {
   | Nil =>
     none
   | Cons(t, Nil) =>
     Right(Pair(t, Nil))
   | Cons(t, ts) =>
-    try Pair(cand, ts-adjusted) = remove-min-tree(a, !cmp, ts) in
+    try Pair(cand, ts-adjusted) = remove-min-tree(a, cmp, ts) in
     let c on t, cand =
       let root-head = root(a, t) in
       let root-cand = root(a, cand) in
-      !cmp(root-head, root-cand)
+      cmp(root-head, root-cand)
     in
     match c {
     | LT =>
@@ -125,9 +125,9 @@ define remove-min-tree(a: type, !cmp: (a, a) -> ordering, h: heap(a)): ?pair(tre
   }
 }
 
-define delete-min(a: type, !cmp: (a, a) -> ordering, h: heap(a)): ?heap(a) {
-  try Pair(Node(_, _, ts1), ts2): pair(tree(a), heap(a)) = remove-min-tree(a, !cmp, h) in
-  Right(merge(a, !cmp, reverse(ts1), ts2))
+define delete-min(a: type, cmp: &(a, a) -> ordering, h: heap(a)): ?heap(a) {
+  try Pair(Node(_, _, ts1), ts2): pair(tree(a), heap(a)) = remove-min-tree(a, cmp, h) in
+  Right(merge(a, cmp, reverse(ts1), ts2))
 }
 
 define compare-int(x: int, y: int): ordering {
@@ -142,6 +142,7 @@ define compare-int(x: int, y: int): ordering {
 
 define main(): unit {
   let h: heap(int) = Nil in
+  pin compare-int = compare-int in
   let h = insert(int, compare-int, 3, h) in
   let h = insert(int, compare-int, 4, h) in
   let h = insert(int, compare-int, 2, h) in
