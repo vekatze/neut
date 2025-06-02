@@ -33,12 +33,14 @@ data Handle = Handle
     emitOpHandle :: EmitOp.Handle,
     retType :: Builder,
     currentLabel :: Maybe Label,
+    goalLabel :: Maybe Label,
     labelMapRef :: IORef (IntMap.IntMap Ident)
   }
 
 new :: Global.Handle -> Builder -> IO Handle
 new globalHandle retType = do
   let currentLabel = Nothing
+  let goalLabel = Nothing
   labelMapRef <- liftIO $ newIORef IntMap.empty
   let baseSize = Platform.getDataSizeValue (Global.platformHandle globalHandle)
   let emitOpHandle = EmitOp.new baseSize
@@ -50,8 +52,12 @@ emitLowComp h lowComp =
   case lowComp of
     LC.Return d -> do
       return $ emitOp $ unwordsL ["ret", retType h, emitValue d]
-    LC.Phi goalLabel _ -> do
-      return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal goalLabel)]
+    LC.Phi _ -> do
+      case goalLabel h of
+        Nothing ->
+          error "no goalLabel is found"
+        Just goalLabel ->
+          return $ emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal goalLabel)]
     LC.TailCall codType f args -> do
       tmp <- Gensym.newIdentFromText (gensymHandle h) "tmp"
       let op =
@@ -86,7 +92,7 @@ emitLowComp h lowComp =
           liftIO $ modifyIORef' (labelMapRef h) $ IntMap.insert (toInt current) goalLabel
       blockAsmList <-
         forM labelBranchList $ \(label, branch) -> do
-          a <- emitLowComp (h {currentLabel = Just label}) branch
+          a <- emitLowComp (h {currentLabel = Just label, goalLabel = Just goalLabel}) branch
           return $ emitLabel ("_" <> intDec (toInt label)) : a
       currentLabelMap <- liftIO $ readIORef $ labelMapRef h
       let allLabelList = map fst labelBranchList

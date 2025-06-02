@@ -61,6 +61,6 @@ reduce' h sub lowComp = do
       return $ LC.TailCall codType d' (zip ts ds')
     LC.Unreachable ->
       return LC.Unreachable
-    LC.Phi label ds -> do
+    LC.Phi ds -> do
       let ds' = map (substLowValue sub) ds
-      return $ LC.Phi label ds'
+      return $ LC.Phi ds'

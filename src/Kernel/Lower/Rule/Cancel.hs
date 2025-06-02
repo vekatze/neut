@@ -81,7 +81,7 @@ analyze lowComp = do
       emptyScenario
     LC.Unreachable ->
       emptyScenario
-    LC.Phi _ _ ->
+    LC.Phi _ ->
       emptyScenario
 
 insert :: MemOp -> Scenario -> Scenario

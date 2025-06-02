@@ -101,15 +101,15 @@ getEnumElim h idents d defaultBranch branchList = do
   let (tags, clauses) = unzip branchList
   clauses' <- mapM (Subst.subst (substHandle h) sub) clauses
   goalLabel <- Gensym.newIdentFromText (gensymHandle h) "goal"
-  defaultClause' <- adjustBranch h goalLabel defaultBranch'
-  clauseList' <- mapM (adjustBranch h goalLabel) clauses'
+  defaultClause' <- adjustBranch h defaultBranch'
+  clauseList' <- mapM (adjustBranch h) clauses'
   resultVar <- Gensym.newIdentFromText (gensymHandle h) "result"
   return $ C.EnumElim newToOld d defaultClause' (zip tags clauseList') [resultVar] goalLabel $ C.UpIntro (C.VarLocal resultVar)
 
-adjustBranch :: Handle -> C.Label -> C.Comp -> IO C.Comp
-adjustBranch h goalLabel body = do
+adjustBranch :: Handle -> C.Comp -> IO C.Comp
+adjustBranch h body = do
   (phiVarName, phiVar) <- Gensym.createVar (gensymHandle h) "phi"
-  return $ C.UpElim False phiVarName body $ C.Phi goalLabel [phiVar]
+  return $ C.UpElim False phiVarName body $ C.Phi [phiVar]
 
 getSub :: Gensym.Handle -> [Ident] -> IO ([(Int, C.Value)], [(Int, C.Value)])
 getSub h idents = do

@@ -196,10 +196,10 @@ lowerComp h term =
         =<< lowerComp h cont
     C.Unreachable ->
       return LC.Unreachable
-    C.Phi goalLabel ds -> do
+    C.Phi ds -> do
       (argVars, argValues) <- mapAndUnzipM (const $ liftIO $ newValueLocal h "arg") ds
       lowerValues h (zip argVars ds)
-        =<< return (LC.Phi goalLabel argValues)
+        =<< return (LC.Phi argValues)
 
 lowerCompPrimitive :: Handle -> Ident -> C.Primitive -> LC.Comp -> EIO LC.Comp
 lowerCompPrimitive h resultVar codeOp cont =
@@ -534,7 +534,7 @@ commConv x lowComp cont2 =
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable
-    LC.Phi _ _ ->
+    LC.Phi _ ->
       LC.Unreachable -- shouldn't occur
 
 defaultForeignList :: A.Arch -> [F.Foreign]

@@ -67,7 +67,7 @@ data Comp
   | Switch (Value, LowType) Comp [(Integer, Comp)] ([Ident], Label, Comp)
   | TailCall LowType Value [(LowType, Value)] -- tail call
   | Unreachable -- for empty case analysis
-  | Phi Label [Value]
+  | Phi [Value]
   deriving (Show)
 
 type AllocID =
@@ -118,7 +118,7 @@ nop v =
 getPhiList :: Comp -> Maybe [Value]
 getPhiList comp =
   case comp of
-    Phi _ vs ->
+    Phi vs ->
       return vs
     Return _ ->
       Nothing

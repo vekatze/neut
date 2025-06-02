@@ -25,7 +25,6 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
-import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.Magic
 import Language.Common.Rule.Opacity
 import Language.Common.Rule.PrimNumSize
@@ -70,7 +69,7 @@ data Comp
   | Primitive Primitive
   | Free Value Int Comp
   | Unreachable
-  | Phi Label [Value]
+  | Phi [Value]
 
 instance Show Comp where
   show c =
@@ -93,8 +92,8 @@ instance Show Comp where
         "free(" ++ show x ++ ", " ++ show size ++ ")\n" ++ show cont
       Unreachable ->
         "⊥"
-      Phi label ds ->
-        "phi" <> "<" <> T.unpack (Ident.toText' label) <> ">" <> "(" ++ intercalate "," (map show ds) ++ ")"
+      Phi ds ->
+        "phi" <> "(" ++ intercalate "," (map show ds) ++ ")"
 
 showEnumCase :: (EnumCase, Comp) -> String
 showEnumCase (ec, c) = do
@@ -132,7 +131,7 @@ intValue1 =
 getPhiList :: Comp -> Maybe [Value]
 getPhiList e =
   case e of
-    Phi _ ds ->
+    Phi ds ->
       return ds
     PiElimDownElim {} ->
       Nothing
@@ -154,7 +153,7 @@ getPhiList e =
 graft :: Comp -> [Ident] -> Comp -> Maybe Comp
 graft e1 phiVarList cont =
   case e1 of
-    Phi _ vs -> do
+    Phi vs -> do
       return $ bind (zip phiVarList vs) cont
     PiElimDownElim {} ->
       Nothing
