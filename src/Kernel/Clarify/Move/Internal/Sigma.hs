@@ -8,6 +8,7 @@ module Kernel.Clarify.Move.Internal.Sigma
     returnClosureS4,
     closureEnvS4,
     returnSigmaDataS4,
+    sigmaNoetic,
   )
 where
 
@@ -208,6 +209,18 @@ sigmaData h resourceHandler dataInfo arg = do
 sigmaBinderT :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
 sigmaBinderT h xts v = do
   sigmaT h (Left returnImmediateS4 : map Right xts) v
+
+sigmaNoetic ::
+  Handle ->
+  [(Ident, C.Comp)] ->
+  C.Value ->
+  IO C.Comp
+sigmaNoetic h xts envVar = do
+  -- as == [APP-1, ..., APP-n]
+  as <- forM xts $ \(x, t) -> Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
+  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.createVar (gensymHandle h) "pair") xts
+  body <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.Phi varList
+  return $ C.SigmaElim False (map fst xts) envVar body
 
 discriminantToEnumCase :: D.Discriminant -> EC.EnumCase
 discriminantToEnumCase discriminant =

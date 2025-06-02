@@ -655,9 +655,22 @@ registerClosure ::
 registerClosure h name opacity xts1 xts2 e = do
   e' <- liftIO $ Linearize.linearize (linearizeHandle h) (xts2 ++ xts1) e
   (envVarName, envVar) <- Gensym.createVar (gensymHandle h) "env"
-  (switchVarName, _) <- Gensym.createVar (gensymHandle h) "switch"
+  (normalEnvVarName, normalEnvVar) <- Gensym.createVar (gensymHandle h) "env"
+  (noeticEnvVarName, noeticEnvVar) <- Gensym.createVar (gensymHandle h) "env"
+  (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
   let args = map fst xts1 ++ [envVarName, switchVarName]
-  body <- liftIO $ Reduce.reduce (reduceHandle h) $ C.SigmaElim True (map fst xts2) envVar e'
+  let envVarList = map fst xts2
+  let normalBranch = C.SigmaElim True (map fst xts2) normalEnvVar (C.Phi $ map (C.VarLocal . fst) xts2)
+  noeticBranch <- Sigma.sigmaNoetic (sigmaHandle h) xts2 noeticEnvVar
+  let term =
+        C.EnumElim
+          [(Ident.toInt normalEnvVarName, envVar), (Ident.toInt noeticEnvVarName, envVar)]
+          switchVar
+          normalBranch
+          [(EC.Int 1, noeticBranch)]
+          envVarList
+          e'
+  body <- liftIO $ Reduce.reduce (reduceHandle h) term
   AuxEnv.insert (auxEnvHandle h) name (opacity, args, body)
 
 callClosure :: Handle -> C.Comp -> [(Ident, C.Comp, C.Value)] -> IO C.Comp
