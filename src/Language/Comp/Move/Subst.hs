@@ -45,14 +45,14 @@ substComp h sub term =
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
       e2' <- substComp h sub' e2
       return $ C.UpElim isReducible x' e1' e2'
-    C.EnumElim fvInfo v defaultBranch branchList phiVar label cont -> do
+    C.EnumElim fvInfo v defaultBranch branchList phiVar cont -> do
       let (is, ds) = unzip fvInfo
       let ds' = map (substValue sub) ds
       let v' = substValue sub v
       phiVar' <- mapM (Gensym.newIdentFromIdent (gensymHandle h)) phiVar
       let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt phiVar) (map C.VarLocal phiVar'))) sub
       cont' <- substComp h sub' cont
-      return $ C.EnumElim (zip is ds') v' defaultBranch branchList phiVar' label cont'
+      return $ C.EnumElim (zip is ds') v' defaultBranch branchList phiVar' cont'
     C.Primitive theta -> do
       let theta' = substPrimitive sub theta
       return $ C.Primitive theta'

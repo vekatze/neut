@@ -71,7 +71,8 @@ emitLowComp h lowComp =
                 ]
       ret <- emitLowComp h $ LC.Return (LC.VarLocal tmp)
       return $ op <> ret
-    LC.Switch (d, lowType) defaultBranch branchList (phiList, goalLabel, cont) -> do
+    LC.Switch (d, lowType) defaultBranch branchList (phiList, cont) -> do
+      goalLabel <- Gensym.newIdentFromText (gensymHandle h) "goal"
       defaultLabel <- Gensym.newIdentFromText (gensymHandle h) "default"
       labelList <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "case") branchList
       let switchOpStr =

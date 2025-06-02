@@ -44,7 +44,7 @@ reduce' h sub lowComp = do
       let op' = substOp sub op
       cont' <- reduce' h sub cont
       return $ LC.Cont op' cont'
-    LC.Switch (d, t) defaultBranch ces (phiList, label, cont) -> do
+    LC.Switch (d, t) defaultBranch ces (phiList, cont) -> do
       let d' = substLowValue sub d
       let (cs, es) = unzip ces
       defaultBranch' <- reduce' h sub defaultBranch
@@ -53,7 +53,7 @@ reduce' h sub lowComp = do
       let newSub = IntMap.fromList $ zipWith (\x y -> (Ident.toInt x, LC.VarLocal y)) phiList phiList'
       let sub' = IntMap.union newSub sub
       cont' <- reduce' h sub' cont
-      return $ LC.Switch (d', t) defaultBranch' (zip cs es') (phiList', label, cont')
+      return $ LC.Switch (d', t) defaultBranch' (zip cs es') (phiList', cont')
     LC.TailCall codType d tds -> do
       let d' = substLowValue sub d
       let (ts, ds) = unzip tds

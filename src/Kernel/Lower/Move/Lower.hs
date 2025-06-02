@@ -176,7 +176,7 @@ lowerComp h term =
       e1' <- lowerComp h e1
       e2' <- lowerComp h e2
       return $ commConv x e1' e2'
-    C.EnumElim fvInfo v defaultBranch branchList phiList goalLabel cont -> do
+    C.EnumElim fvInfo v defaultBranch branchList phiList cont -> do
       let sub = IntMap.fromList fvInfo
       defaultBranch' <- liftIO $ Subst.subst (substHandle h) sub defaultBranch >>= Reduce.reduce (reduceHandle h)
       let (keys, clauses) = unzip branchList
@@ -187,7 +187,7 @@ lowerComp h term =
       cont' <- lowerComp h cont
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
-        =<< return (LC.Switch (castValue, t) defaultCase caseList (phiList, goalLabel, cont'))
+        =<< return (LC.Switch (castValue, t) defaultCase caseList (phiList, cont'))
     C.Free x size cont -> do
       freeID <- liftIO $ Gensym.newCount (gensymHandle h)
       (ptrVar, ptr) <- liftIO $ newValueLocal h "ptr"
@@ -527,9 +527,9 @@ commConv x lowComp cont2 =
     LC.Cont op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Cont op cont
-    LC.Switch (d, t) defaultCase caseList (phiVar, goalLabel, cont) -> do
+    LC.Switch (d, t) defaultCase caseList (phiVar, cont) -> do
       let cont' = commConv x cont cont2
-      LC.Switch (d, t) defaultCase caseList (phiVar, goalLabel, cont')
+      LC.Switch (d, t) defaultCase caseList (phiVar, cont')
     LC.TailCall codType d ds ->
       LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->

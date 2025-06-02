@@ -65,7 +65,7 @@ data Comp
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
   | UpElim IsReducible Ident Comp Comp
-  | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)] [Ident] Label Comp
+  | EnumElim [(Int, Value)] Value Comp [(EnumCase, Comp)] [Ident] Comp
   | Primitive Primitive
   | Free Value Int Comp
   | Unreachable
@@ -84,8 +84,8 @@ instance Show Comp where
       UpElim isReducible x c1 c2 -> do
         let modifier = if isReducible then "" else "*"
         "let" ++ modifier ++ " " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
-      EnumElim sub v c1 caseList phiVarList label cont -> do
-        "switch " ++ show sub ++ " " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList) ++ "\n" <> show label <> ":\nphi " <> show phiVarList <> " = (parent) in\n" <> show cont
+      EnumElim sub v c1 caseList phiVarList cont -> do
+        "switch " ++ show sub ++ " " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList) ++ "\nphi " <> show phiVarList <> " = (parent) in\n" <> show cont
       Primitive prim ->
         "(" ++ show prim ++ ")"
       Free x size cont ->
@@ -141,7 +141,7 @@ getPhiList e =
       Nothing
     UpElim _ _ _ cont ->
       getPhiList cont
-    EnumElim _ _ _ _ _ _ cont ->
+    EnumElim _ _ _ _ _ cont ->
       getPhiList cont
     Primitive {} ->
       Nothing
@@ -165,9 +165,9 @@ graft e1 phiVarList cont =
     UpElim flag x e2 e3 -> do
       e3' <- graft e3 phiVarList cont
       return $ UpElim flag x e2 e3'
-    EnumElim fvInfo v defaultBranch branchList ys goalLabel e2 -> do
+    EnumElim fvInfo v defaultBranch branchList ys e2 -> do
       e2' <- graft e2 phiVarList cont
-      return $ EnumElim fvInfo v defaultBranch branchList ys goalLabel e2'
+      return $ EnumElim fvInfo v defaultBranch branchList ys e2'
     Primitive {} ->
       Nothing
     Free v size e2 -> do
