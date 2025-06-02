@@ -32,7 +32,6 @@ data Value
   | VarTextName T.Text
   | Int Integer
   | Float FloatSize Double
-  | SigmaIntro Value
   | Null
 
 instance Show Value where
@@ -52,8 +51,6 @@ instance Show Value where
         show f
       Null ->
         "null"
-      SigmaIntro {} ->
-        "phi-source"
 
 type Label =
   Ident
