@@ -280,7 +280,7 @@ discern h term =
               e' <- discern h $ m :< RT.piElim newChannelDD []
               return $ m :< WT.Actual e'
         _ -> do
-          let isNoetic = False -- overridden in `infer`
+          let isNoetic = False -- overwritten later in `infer`
           e' <- discern h e
           es' <- mapM (discern h) $ SE.extract es
           return $ m :< WT.PiElim isNoetic e' es'
@@ -291,7 +291,7 @@ discern h term =
       (argNum, keyList) <- KeyArg.lookup (H.keyArgHandle h) m dd
       vs' <- mapM (discern h) vs
       args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
-      let isNoetic = False -- overridden in `infer`
+      let isNoetic = False -- overwritten later in `infer`
       let isConstLike = False
       return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.PiElimExact _ e -> do

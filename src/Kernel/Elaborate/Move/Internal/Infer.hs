@@ -452,7 +452,6 @@ inferPiElim h m (e, t) expArgs = do
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
       return (m :< WT.PiElim False e (map fst args), m :< cod')
     _ :< WT.BoxNoema (_ :< WT.Pi impPiArgs expPiArgs cod) -> do
-      -- liftIO $ putStrLn "boxNoema-app"
       ensureArityCorrectness h e (length expPiArgs) (length expArgs)
       impArgs <- mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impPiArgs]
       let args = impArgs ++ expArgs
