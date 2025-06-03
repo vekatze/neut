@@ -143,9 +143,9 @@ coreRuneRune :: T.Text
 coreRuneRune =
   core <> nsSep <> "rune" <> nsSep <> "_Rune"
 
-coreTrickUnsafePanic :: T.Text
-coreTrickUnsafePanic =
-  core <> nsSep <> "trick" <> nsSep <> "unsafe-panic"
+coreTrickPanic :: T.Text
+coreTrickPanic =
+  core <> nsSep <> "trick" <> nsSep <> "panic"
 
 coreTrickAssert :: T.Text
 coreTrickAssert =
@@ -159,13 +159,13 @@ coreThreadAttach :: T.Text
 coreThreadAttach =
   core <> nsSep <> "thread" <> nsSep <> "attach"
 
-coreCellNewCell :: T.Text
-coreCellNewCell =
-  core <> nsSep <> "cell" <> nsSep <> "_new-cell"
+coreCellMakeCell :: T.Text
+coreCellMakeCell =
+  core <> nsSep <> "cell" <> nsSep <> "_make-cell"
 
-coreChannelNewChannel :: T.Text
-coreChannelNewChannel =
-  core <> nsSep <> "channel" <> nsSep <> "_new-channel"
+coreChannelMakeChannel :: T.Text
+coreChannelMakeChannel =
+  core <> nsSep <> "channel" <> nsSep <> "_make-channel"
 
 coreBoxEmbody :: T.Text
 coreBoxEmbody =

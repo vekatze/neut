@@ -269,14 +269,14 @@ discern h term =
     m :< RT.PiElim e _ es -> do
       case e of
         _ :< RT.Var (Var c)
-          | c == "new-cell",
+          | c == "make-cell",
             [arg] <- SE.extract es -> do
-              newCellDD <- liftEither $ locatorToVarGlobal m coreCellNewCell
+              newCellDD <- liftEither $ locatorToVarGlobal m coreCellMakeCell
               e' <- discern h $ m :< RT.piElim newCellDD [arg]
               return $ m :< WT.Actual e'
-          | c == "new-channel",
+          | c == "make-channel",
             [] <- SE.extract es -> do
-              newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelNewChannel
+              newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelMakeChannel
               e' <- discern h $ m :< RT.piElim newChannelDD []
               return $ m :< WT.Actual e'
         _ -> do
@@ -430,7 +430,7 @@ discern h term =
       listCons <- liftEither $ locatorToVarGlobal m' coreListCons
       discern h $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
-      panic <- liftEither $ locatorToVarGlobal m coreTrickUnsafePanic
+      panic <- liftEither $ locatorToVarGlobal m coreTrickPanic
       textType <- liftEither $ locatorToVarGlobal m coreText
       discern h $
         asOpaqueValue $
