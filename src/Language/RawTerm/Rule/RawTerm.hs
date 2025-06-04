@@ -84,6 +84,7 @@ data RawTermF a
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)
   | Seq (a, C) C a
+  | SeqEnd a
   | ListIntro (SE.Series a)
   | Admit
   | Detach C C (a, C)

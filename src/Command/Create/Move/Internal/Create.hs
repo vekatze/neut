@@ -93,4 +93,4 @@ createMainFile :: Module -> IO ()
 createMainFile newModule = do
   ensureDir $ getSourceDir newModule
   forM_ (getTargetPathList newModule) $ \mainFilePath -> do
-    writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"
+    writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\");\n}\n"

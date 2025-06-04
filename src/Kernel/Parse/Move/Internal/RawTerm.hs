@@ -79,8 +79,12 @@ rawExpr h = do
               choice
                 [ do
                     c1 <- delimiter ";"
-                    (e2, c2) <- rawExpr h
-                    return (m :< RT.Seq e1 c1 e2, c2),
+                    mExpr <- optional $ rawExpr h
+                    case mExpr of
+                      Just (e2, c2) ->
+                        return (m :< RT.Seq e1 c1 e2, c2)
+                      Nothing ->
+                        return (m :< RT.SeqEnd (fst e1), snd e1 ++ c1),
                   return e1
                 ]
 

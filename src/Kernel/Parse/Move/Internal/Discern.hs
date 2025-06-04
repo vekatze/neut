@@ -418,6 +418,11 @@ discern h term =
       hole <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
       unit <- liftEither $ locatorToVarGlobal m coreUnit
       discern h $ bind fakeLoc fakeLoc (m, hole, [], [], unit) e1 e2
+    m :< RT.SeqEnd e1 -> do
+      hole <- liftIO $ Gensym.newTextForHole (H.gensymHandle h)
+      unit <- liftEither $ locatorToVarGlobal m coreUnit
+      unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
+      discern h $ bind fakeLoc fakeLoc (m, hole, [], [], unit) e1 unitUnit
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
       boolTrue <- liftEither $ locatorToName (blur m) coreBoolTrue

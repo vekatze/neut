@@ -273,6 +273,8 @@ toDoc term =
       decodeKeywordClause "when" $ mapKeywordClause toDoc whenClause
     _ :< Seq (e1, c1) c2 e2 -> do
       D.join [toDoc e1, D.text ";", D.line, attachComment (c1 ++ c2) $ toDoc e2]
+    _ :< SeqEnd e1 -> do
+      D.join [toDoc e1, D.text ";"]
     _ :< ListIntro es -> do
       SE.decode $ fmap toDoc es
     _ :< Admit ->
