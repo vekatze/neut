@@ -26,7 +26,7 @@ New(10, 20)
 
 // ↓ (compile)
 
-let ptr = malloc({2-words}) in
+let ptr = malloc({2-words});
 store(ptr[0], 10); // ptr[0] := 10
 store(ptr[1], 20); // ptr[1] := 20
 ptr
@@ -46,7 +46,7 @@ The `v` can be copied as follows:
 
 ```neut
 // copy `v`, keeping the original `v` intact
-let ptr = malloc({2-words}) in
+let ptr = malloc({2-words});
 store(ptr[0], v[0]); // ptr[0] := v[0]
 store(ptr[1], v[1]); // ptr[1] := v[1]
 ptr
@@ -65,7 +65,7 @@ define exp-item(selector, v) {
     free(v)
   } else {
     // copy `v`
-    let ptr = malloc({2-words}) in
+    let ptr = malloc({2-words});
     store(ptr[0], v[0]);
     store(ptr[1], v[1]);
     ptr
@@ -96,30 +96,30 @@ We'll call such a closed function a resource exponential of `a`.
 This `exp-item` is called when a variable isn't used:
 
 ```neut
-let x = New(10, 20) in
+let x = New(10, 20);
 print("hello") // `x` isn't used
 
 // ↓ (compile)
 
-let x = New(10, 20) in
-let _ = exp-item(0, x) in // discard `x` by passing 0 as `selector`
+let x = New(10, 20);
+let _ = exp-item(0, x); // discard `x` by passing 0 as `selector`
 print("hello")
 ```
 
 This `exp-item` is also called when a variable is used more than twice:
 
 ```neut
-let x = New(10, 20) in
-let a = foo(x) in // first use of `x`
-let b = bar(x) in // second use of `x`
+let x = New(10, 20);
+let a = foo(x); // first use of `x`
+let b = bar(x); // second use of `x`
 cont(a, b)
 
 // ↓ (compile)
 
-let x = New(10, 20) in
-let x-copy = exp-item(1, x) in // copy `x` by passing 1 as `selector`
-let a = foo(x-copy) in
-let b = bar(x) in
+let x = New(10, 20);
+let x-copy = exp-item(1, x); // copy `x` by passing 1 as `selector`
+let a = foo(x-copy);
+let b = bar(x);
 cont(a, b)
 ```
 
@@ -169,7 +169,7 @@ This can be done because the internal representation of `a` is a function that c
 
 ```neut
 define foo(a: type, x: a): pair(a, a) {
-  let x-clone = a(1, x) in
+  let x-clone = a(1, x);
   Pair(x, x-clone)
 }
 ```
@@ -208,34 +208,34 @@ With that in mind, the resource exponential of `list(a)` will be something like 
 ```neut
 define exp-list(selector, v) {
   if selector == 0 {
-    let d = get-discriminant(v) in
+    let d = get-discriminant(v);
     if d == 0 {
       // discard Nil
       free(v)
     } else {
       // discard Cons
-      let a = v[0] in
-      let cons-head = v[1] in
-      let cons-tail = v[2] in
+      let a = v[0];
+      let cons-head = v[1];
+      let cons-tail = v[2];
       free(v);
-      let () = a(0, v[1]) in // ← discard the head of cons using v[0]
+      let () = a(0, v[1]); // ← discard the head of cons using v[0]
       exp-list(0, v[2])
     }
   } else {
-    let d = get-discriminant(v) in
+    let d = get-discriminant(v);
     if d == 0 {
       // copy Nil
-      let ptr = malloc({2-words}) in
-      let a = v[0] in
+      let ptr = malloc({2-words});
+      let a = v[0];
       store(ptr[0], a);
       store(ptr[1], d);
       ptr
     } else {
       // copy Cons
-      let ptr = malloc({4-words}) in
-      let a = v[0] in
-      let cons-head-copy = a(1, v[2]) in // ← copy the head of cons using v[0]
-      let cons-tail-copy = exp-list(1, v[3]) in
+      let ptr = malloc({4-words});
+      let a = v[0];
+      let cons-head-copy = a(1, v[2]); // ← copy the head of cons using v[0]
+      let cons-tail-copy = exp-list(1, v[3]);
       store(ptr[0], a);
       store(ptr[1], d);
       store(ptr[2], cons-head-copy);
@@ -258,21 +258,20 @@ Suppose we have a function like the below:
 
 ```neut
 define foo(a: type): int {
-  let x: int = 10 in
-  let y = type in
+  let x: int = 10;
+  let y = type;
   let f =
-    function (z: a) {  // lambda function
-      let foo = x in   // ← x is a free var of this lambda
-      let bar = y in   // ← y is also a free var of this lambda
-      let buz = z in
+    function (z: a) {  // lambda
+      let foo = x;     // ← x is a free var of this lambda
+      let bar = y;     // ← y is also a free var of this lambda
+      let buz = z;
       bar
-    }
-  in
+    };
   0
 }
 ```
 
-Let's see how the `lambda` inside the function is compiled.
+Let's see how the `function` is compiled.
 
 ### Extracting a Closed Chain From a Lambda
 
@@ -317,14 +316,14 @@ Knowing its internal representation, we can now discard/copy a closure. To copy 
 ```neut
 // copy a closure `cls`
 
-let env-type = cls[0] in // get the type of the environment
-let env      = cls[1] in // get the pointer to the environment
-let label    = cls[2] in // get the label to the function
+let env-type = cls[0]; // get the type of the environment
+let env      = cls[1]; // get the pointer to the environment
+let label    = cls[2]; // get the label to the function
 
-let env-clone = env-type(1, env) in // copy the environment using the type of it
+let env-clone = env-type(1, env); // copy the environment using the type of it
 
 // allocate new memory region for our new closure
-let new-ptr = malloc(mul-int(3, word-size)) in
+let new-ptr = malloc(mul-int(3, word-size));
 
 // store cloned values
 store(new-ptr[0], env-type);  // remember that a type is an immediate
@@ -350,8 +349,8 @@ define base.#.cls(action-selector, cls) {
     // discard
 
     // discard the environment using the type of it
-    let env-type = cls[0] in
-    let env      = cls[1] in
+    let env-type = cls[0];
+    let env      = cls[1];
     env-type(0, env);
 
     // discard the tuple of the closure
@@ -360,14 +359,14 @@ define base.#.cls(action-selector, cls) {
     // copy
 
     // get the original values
-    let env-type = cls[0] in
-    let env      = cls[1] in
-    let label    = cls[2] in
+    let env-type = cls[0];
+    let env      = cls[1];
+    let label    = cls[2];
 
     // copy the environment using the type of it
-    let env-clone = env-type(1, env) in
+    let env-clone = env-type(1, env);
 
-    let new-ptr = malloc(mul-int(3, word-size)) in
+    let new-ptr = malloc(mul-int(3, word-size));
     // copy the original values
     store(new-ptr[0], env-type);
     store(new-ptr[1], env-clone);

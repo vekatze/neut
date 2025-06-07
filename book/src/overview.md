@@ -34,7 +34,7 @@ define noisy-length<a>(xs: my-list(a)): int {
   | Nil =>
     0
   | Cons(_, ys) =>
-    let my-message = "hey\n" in
+    let my-message = "hey\n";
     print(my-message);
     add-int(1, noisy-length(ys))
   }
@@ -49,14 +49,14 @@ For example, if a variable is used twice, a translation like the following happe
 
 ```neut
 // (before)
-let xs: list(a) = [value-1, value-2] in
+let xs: list(a) = [value-1, value-2];
 some-func(xs, xs) // `xs` is used twice
 
 // ↓
 
 // (after)
-let xs: list(a) = [value-1, value-2] in
-let (xs1, xs2) = copy-list-a(xs) in  // `xs` is used once
+let xs: list(a) = [value-1, value-2];
+let (xs1, xs2) = copy-list-a(xs);  // `xs` is used once
 some-func(xs1, xs2)
 ```
 

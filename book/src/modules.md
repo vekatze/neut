@@ -336,8 +336,8 @@ import {
 }
 
 define use-some-file(): unit {
-  let t1: &text = include-text(some-file) in
-  let t2: &text = include-text(other-file) in
+  let t1: &text = include-text(some-file);
+  let t2: &text = include-text(other-file);
   print(t1);
   print(t2)
 }
@@ -400,7 +400,7 @@ import {
 }
 
 define buz(): int {
-  let i = my-func() in
+  let i = my-func();
   add-int(i, 10)
 }
 ```
@@ -409,7 +409,7 @@ This code is the same as the following since the preset is enabled:
 
 ```neut
 define buz(): int {
-  let i = my-func() in
+  let i = my-func();
   add-int(i, 10)
 }
 ```

@@ -22,7 +22,7 @@
 - [function (x1: a1, ..., xn: an) { e }](#function-x1-a1--xn-an--e-)
 - [define f(x1: a1, ..., xn: an): c { e }](#define-fx1-a1--xn-an-c--e-)
 - [e(e1, ..., en)](#ee1--en)
-- [e of {x1 = e1, ..., xn = en}](#e-of-x1--e1--xn--en)
+- [e of {x1 := e1, ..., xn := en}](#e-of-x1--e1--xn--en)
 - [exact e](#exact-e)
 
 ### ADT
@@ -48,8 +48,8 @@
 
 ### Channel and Cell
 
-- [new-channel](#new-channel)
-- [new-cell](#new-cell)
+- [make-channel](#make-channel)
+- [make-cell](#make-cell)
 
 ### Miscs
 
@@ -63,14 +63,14 @@
 
 ### Syntactic Sugar
 
-- [let x on y1, ..., yn = e1 in e2](#on)
+- [let x on y1, ..., yn = e1; e2](#on)
 - [\*e](#e)
 - [if](#if)
 - [when cond { e }](#when-cond--e-)
 - [e1; e2](#e1-e2)
-- [try x = e1 in e2](#try-x--e1-in-e2)
-- [tie x = e1 in e2](#tie-x--e1-in-e2)
-- [pin x = e1 in e2](#pin-x--e1-in-e2)
+- [try x = e1; e2](#try-x--e1-e2)
+- [tie x = e1; e2](#tie-x--e1-e2)
+- [pin x = e1; e2](#pin-x--e1-e2)
 - [?t](#t)
 - [[e1, ..., en]](#e1--en)
 
@@ -83,7 +83,7 @@
 ```neut
 define sample(): unit {
   // `type` used as a term
-  let foo = type in
+  let foo = type;
   Unit
 }
 
@@ -118,24 +118,23 @@ type
 ```neut
 define sample(): unit {
   // defining/using various local variables
-  let x = Unit in
-  let foo = x in
-  let 'bar = foo in
-  let buz' = 'bar in
-  let _h-e-l-l-o = buz' in
-  let αβγ = _h-e-l-l-o in
-  let theSpreadingWideMyNarrowHandsToGatherParadise = αβγ in
-  let 冥きより冥き道にぞ入りぬべきはるかに照らせ山の端の月 = Unit in
-  let _ = Unit in
+  let x = Unit;
+  let foo = x;
+  let 'bar = foo;
+  let buz' = 'bar;
+  let _h-e-l-l-o = buz';
+  let αβγ = _h-e-l-l-o;
+  let theSpreadingWideMyNarrowHandsToGatherParadise = αβγ;
+  let 冥きより冥き道にぞ入りぬべきはるかに照らせ山の端の月 = Unit;
+  let _ = Unit;
 
   // shadowing (not reassignment)
-  let x = Unit in
-  let x = type in
+  let x = Unit;
+  let x = type;
   let x =
     function (x: bool) {
       x // x: bool
-    }
-  in
+    };
   Unit
 }
 ```
@@ -144,7 +143,7 @@ define sample(): unit {
 
 The name of a local variable must satisfy the following conditions:
 
-- It doesn't contain any of `=() "\n\t:;,<>[]{}/*|`
+- It doesn't contain any of ``=() `\"\n\t:;,<>[]{}/*|&?``
 - It doesn't start with `A, B, .., Z` (the upper case alphabets)
 
 ### Semantics
@@ -171,14 +170,12 @@ If the content of a variable `x` is an immediate value, `x` is compiled into the
 ```neut
 import {
   core.bool {bool},
-  B,
 }
 
 define sample(): unit {
   // using top-level variables
-  let _ = bool // using an imported top-level name
-  let _ = core.bool.bool // using the definite description of `core.bool.bool`
-  let _ = B.bool // using a prefixed top-level name
+  let _ = bool; // using an imported top-level name
+  let _ = core.bool.bool; // using the definite description of `core.bool.bool`
   Unit
 }
 ```
@@ -187,7 +184,7 @@ define sample(): unit {
 
 The name of a top-level variable is a (possibly) dot-separated symbols, where each symbol must satisfy the following conditions:
 
-- It doesn't contain any of `=() "\n\t:;,<>[]{}/*|`
+- It doesn't contain any of ``=() `\"\n\t:;,<>[]{}/*|&?``
 
 ### Semantics
 
@@ -264,23 +261,23 @@ Incidentally, these 3-word tuples are optimized away as long as top-level variab
 
 ```neut
 define use-let(): unit {
-  // 🌟 `let`
-  let t = "test" in
+  // `let`
+  let t = "test";
   print(t)
 }
 
 define use-let(): unit {
-  let bar =
-    // 🌟 nested `let`
-    let foo = some-func() in
+  let bar = {
+    // nested `let`
+    let foo = some-func();
     other-func(foo)
-  in
+  };
   do-something(bar)
 }
 
 define use-let(): unit {
-  // 🌟 `let` with a type annotation
-  let t: &text = "test" in
+  // `let` with a type annotation
+  let t: &text = "test";
   print(t)
 }
 
@@ -294,14 +291,14 @@ data item {
 }
 
 define use-item(x: item): int {
-  // 🌟 use `let` with a pattern
-  let Item(i, _) = x in // ← here
+  // use `let` with a pattern
+  let Item(i, _) = x; // ← here
   i
 }
 
 define use-item-2(x: item): int {
-  // 🌟 use `let` with an of-pattern
-  let Item of {i} = x in
+  // use `let` with an of-pattern
+  let Item of {i} = x;
   i
 }
 ```
@@ -309,31 +306,31 @@ define use-item-2(x: item): int {
 ### Syntax
 
 ```neut
-let x = e1 in e2
+let x = e1; e2
 
-let x: t = e1 in e2
+let x: t = e1; e2
 ```
 
 ### Semantics
 
-`let x = e1 in e2` binds the result of `e1` to the variable `x`. This `x` can then be used in `e2`.
+`let x = e1; e2` binds the result of `e1` to the variable `x`. This `x` can then be used in `e2`.
 
 ### Type
 
 ```neut
 Γ ⊢ e1: a     Γ, x: a ⊢ e2: b
 -----------------------------
-   Γ ⊢ let x = e1 in e2: b
+   Γ ⊢ let x = e1; e2: b
 ```
 
 ### Note
 
-(1) `let x = e1 in e2` isn't exactly the same as `{function (x) {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1 in e2`.
+(1) `let x = e1; e2` isn't exactly the same as `{function (x) {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1; e2`.
 
 (2) When a pattern is passed, `let` is the following syntactic sugar:
 
 ```neut
-let pat = x in
+let pat = x;
 cont
 
 ↓
@@ -350,9 +347,9 @@ match x {
 
 ```neut
 define foo(): unit {
-  let _: int = 100 in
+  let _: int = 100;
   //           ^^^
-  let _: int16 = 100 in
+  let _: int16 = 100;
   //             ^^^
   Unit
 }
@@ -386,10 +383,10 @@ The type of an integer is unknown in itself. It must be inferred to be one of th
 
 ```neut
 define foo(): unit {
-  let _: float = 3.8 in
+  let _: float = 3.8;
   //             ^^^
-  let _: float32 = 3.8 in
-  //             ^^^^^^
+  let _: float32 = 3.8;
+  //               ^^^
   Unit
 }
 
@@ -421,11 +418,11 @@ The type of an integer is unknown in itself. It must be inferred to be one of th
 
 ```neut
 define foo(): unit {
-  let _: rune = `A` in
+  let _: rune = `A`;
   //            ^^^
-  let _: rune = `\n` in
+  let _: rune = `\n`;
   //            ^^^
-  let _: rune = `\n` in
+  let _: rune = `\n`;
   //            ^^^
   Unit
 }
@@ -470,7 +467,8 @@ You can see this by calling the following function:
 ```neut
 define print-star(): unit {
   // prints "⭐"
-  printf("{}\n", [core.text.singleton(magic cast(int32, rune, 0xE2AD90))])
+  pin t = core.text.singleton(magic cast(int32, rune, 0xe2ad90));
+  print-line(t)
 }
 ```
 
@@ -480,7 +478,7 @@ define print-star(): unit {
 
 ```neut
 define foo(): unit {
-  let _: &text = "test" in
+  let _: &text = "test";
   //             ^^^^^^
   Unit
 }
@@ -606,10 +604,9 @@ A function type is compiled into a pointer to `base.#.cls`. For more, please see
 define use-function(): int {
   let f =
     function (x: int, y: int) {
-      let z = add-int(x, y) in
+      let z = add-int(x, y);
       mul-int(z, z)
-    }
-  in
+    };
   f(10, 20)
 }
 ```
@@ -632,8 +629,7 @@ define return-int(x: meta int): meta () -> int {
     function () {
       letbox result =
         // here is layer 0
-        x // ← error
-      in
+        x; // ← error
       result
     }
   }
@@ -669,17 +665,16 @@ A `function` is compiled into a three-word closure. For more, please see [How to
 
 ```neut
 define use-define(): int {
-  let c = 10 in
+  let c = 10;
   let f =
-    // 🌟 term-level `define` with a free variable `c`
+    // term-level `define` with a free variable `c`
     define some-recursive-func(x: int): int {
       if eq-int(x, 0) {
         0
       } else {
         add-int(c, some-recursive-func(sub-int(x, 1)))
       }
-    }
-  in
+    };
   f(100)
 }
 ```
@@ -715,17 +710,16 @@ A term-level `define` is lifted to a top-level definition using lambda lifting. 
 
 ```neut
 define use-define(): int {
-  let c = 10 in
+  let c = 10;
   let f =
-    // 🌟 term-level `define` with a free variable `c`
+    // term-level `define` with a free variable `c`
     define some-recursive-func(x: int): int {
       if eq-int(x, 0) {
         0
       } else {
         add-int(c, some-recursive-func(sub-int(x, 1)))
       }
-    }
-  in
+    };
   f(100)
 }
 ```
@@ -741,19 +735,17 @@ define some-recursive-func(c: int, x: int): int {
     let f =
       function (x: int) {
         some-recursive-func(c, x)
-      }
-    in
+      };
     add-int(c, f(sub-int(x, 1)))
   }
 }
 
 define use-define(): int {
-  let c = 10 in
+  let c = 10;
   let f =
     function (x: int) {
       some-recursive-func(c, x)
-    }
-  in
+    };
   f(100)
 }
 ```
@@ -778,11 +770,11 @@ Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` 
 
 ```neut
 define use-function(): unit {
-  let _ = foo() in
+  let _ = foo();
   //      ^^^^^
-  let _ = bar(1) in
+  let _ = bar(1);
   //      ^^^^^^
-  let _ = buz("hello", True) in
+  let _ = buz("hello", True);
   //      ^^^^^^^^^^^^^^^^^^
   Unit
 }
@@ -841,9 +833,9 @@ define use-id(): unit {
 }
 ```
 
-## `e of {x1 = e1, ..., xn = en}`
+## `e of {x1 := e1, ..., xn := en}`
 
-`e of {x1 = e1, ..., xn = en}` is an alternative notation of function application.
+`e of {x1 := e1, ..., xn := en}` is an alternative notation of function application.
 
 ### Example
 
@@ -853,11 +845,10 @@ define foo(x: int, y: bool, some-path: &text): unit {
 }
 
 define use-foo(): unit {
-  // 🌟
   foo of {
-    x = 10,
-    y = True,
-    some-path = "/path/to/file",
+    x := 10,
+    y := True,
+    some-path := "/path/to/file",
   }
 }
 ```
@@ -865,7 +856,7 @@ define use-foo(): unit {
 ### Syntax
 
 ```neut
-e of {x1 = e1, ..., xn = en}
+e of {x1 := e1, ..., xn := en}
 ```
 
 ### Semantics
@@ -891,9 +882,9 @@ data config {
 
 inline some-config {
   Config of {
-    count = 10,
-    colorize = True,
-    path = "/path/to/file", // you can reorder arguments
+    count := 10,
+    colorize := True,
+    path := "/path/to/file", // you can reorder arguments
   }
 }
 ```
@@ -902,11 +893,10 @@ If the argument is a variable that has the same name as the parameter, you can u
 
 ```neut
 define use-foo(): unit {
-  let x = 10 in
-  let y = True in
-  let some-path = "/path/to/file"
-  // 🌟
-  foo of {x, y, some-path}
+  let x = 10;
+  let y = True;
+  let some-path = "/path/to/file";
+  foo of {x, y, some-path} // == foo of {x := x, y := y, some-path := some-path}
 }
 ```
 
@@ -922,8 +912,7 @@ define id<a>(x: a): a {
 }
 
 define use-id() {
-                           // 🌟
-  let g: (x: int) -> int = exact id in
+  let g: (x: int) -> int = exact id;
   Unit
 }
 ```
@@ -936,7 +925,7 @@ define id<a>(x: a): a {
 }
 
 define use-id() {
-  let g: (x: int) -> int = id in
+  let g: (x: int) -> int = id;
   Unit
 }
 ```
@@ -1246,9 +1235,8 @@ Given a type `a: type`, `meta a` is the type of `a` in the "outer" layer.
 ### Example
 
 ```neut
-                     // 🌟
 define axiom-T<a>(x: meta a): a {
-  letbox-T result = x in
+  letbox-T result = x;
   result
 }
 ```
@@ -1365,9 +1353,9 @@ box x1, ..., xn { e }
 
 ↓
 
-let x1 = copy-noema(x1) in
+let x1 = copy-noema(x1);
 ...
-let xn = copy-noema(xn) in
+let xn = copy-noema(xn);
 e
 ```
 
@@ -1450,8 +1438,6 @@ Incidentally, the rule "The body of `define` is at layer 0" is not really necess
 
 ### Note
 
-"But what after all is the `&` in `&a`?" ―Let's give an answer to this question.
-
 Firstly, observe that the following derivation is admissible in Neut:
 
 ```neut
@@ -1515,8 +1501,7 @@ define roundtrip(x: meta a): meta a {
     // here is layer -1
     letbox tmp =
       // here is layer 0
-      x
-    in
+      x;
     tmp
   }
 }
@@ -1527,8 +1512,7 @@ define try-borrowing(x: int): unit {
   letbox tmp on x =
     // here is layer 1
     // x: &int (at layer 1)
-    some-func(x)
-  in
+    some-func(x);
   // here is layer 0
   // x: int (at layer 0)
   Unit
@@ -1538,28 +1522,28 @@ define try-borrowing(x: int): unit {
 ### Syntax
 
 ```neut
-letbox result = e1 in
+letbox result = e1;
 e2
 
-letbox result on x1, ..., xn = e1 in
+letbox result on x1, ..., xn = e1;
 e2
 ```
 
 ### Semantics
 
 ```neut
-letbox result on x1, ..., xn = e1 in
+letbox result on x1, ..., xn = e1;
 e2
 
 ↓
 
-let x1 = unsafe-cast(a1, &a1, x) in
+let x1 = unsafe-cast(a1, &a1, x);
 ...
-let xn = unsafe-cast(an, &an, xn) in
-let result = e1 in
-let x1 = unsafe-cast(&a1, a1, x) in
+let xn = unsafe-cast(an, &an, xn);
+let result = e1;
+let x1 = unsafe-cast(&a1, a1, x);
 ...
-let xn = unsafe-cast(&an, an, xn) in
+let xn = unsafe-cast(&an, an, xn);
 cont
 ```
 
@@ -1569,12 +1553,12 @@ cont
 Γ1; ...; Γn, &Δ ⊢ e1: meta a
 Γ1; ...; Γn; Δ, Δ', x: a ⊢ e2: b
 ------------------------------------------------ (□-elim-K)
-Γ1; ...; Γn; Δ, Δ' ⊢ letbox x on Δ = e1 in e2: b
+Γ1; ...; Γn; Δ, Δ' ⊢ letbox x on Δ = e1; e2: b
 ```
 
 ### Note
 
-Given a term `e1` at layer n + 1, `letbox x = e1 in e2` is at layer n:
+Given a term `e1` at layer n + 1, `letbox x = e1; e2` is at layer n:
 
 ```neut
 define roundtrip(x: meta a): meta a {
@@ -1582,8 +1566,7 @@ define roundtrip(x: meta a): meta a {
     // here is layer -1 (= n)
     letbox tmp =
       // here is layer 0 (= n + 1)
-      x
-    in
+      x;
     // here is layer -1 (= n)
     tmp
   }
@@ -1598,8 +1581,7 @@ define use-letbox-error(x: meta int): int {
   // x: meta int (at layer 0)
   letbox tmp =
     // here is layer 1
-    x // error: use of a variable at layer 0 (≠ 1)
-  in
+    x; // error: use of a variable at layer 0 (≠ 1)
   // here is layer 0
   tmp
 }
@@ -1611,12 +1593,12 @@ We can incorporate variables outside `letbox` by using `on`:
 define use-letbox(x: int): int {
   // here is layer 0
   // x: int (at layer 0)
-  letbox tmp on x =
+  letbox tmp on x = {
     // here is layer 1
     // x: &int (at layer 1)
-    let _ = x in // ok
+    let _ = x; // ok
     box { Unit }
-  in
+  };
   // here is layer 0
   10
 }
@@ -1634,8 +1616,7 @@ define extract-value-from-meta(x: meta int): int {
   // x: meta int (at layer 0)
   letbox-T tmp =
     // here is layer 0
-    x // ok
-  in
+    x; // ok
   // here is layer 0
   tmp
 }
@@ -1644,28 +1625,28 @@ define extract-value-from-meta(x: meta int): int {
 ### Syntax
 
 ```neut
-letbox-T result = e1 in
+letbox-T result = e1;
 e2
 
-letbox-T result on x1, ..., xn = e1 in
+letbox-T result on x1, ..., xn = e1;
 e2
 ```
 
 ### Semantics
 
 ```neut
-letbox-T result on x1, ..., xn = e1 in
+letbox-T result on x1, ..., xn = e1;
 e2
 
 ↓
 
-let x1 = unsafe-cast(a1, &a1, x) in
+let x1 = unsafe-cast(a1, &a1, x);
 ...
-let xn = unsafe-cast(an, &an, xn) in
-let result = e1 in
-let x1 = unsafe-cast(&a1, a1, x) in
+let xn = unsafe-cast(an, &an, xn);
+let result = e1;
+let x1 = unsafe-cast(&a1, a1, x);
 ...
-let xn = unsafe-cast(&an, an, xn) in
+let xn = unsafe-cast(&an, an, xn);
 cont
 ```
 
@@ -1675,7 +1656,7 @@ cont
 Γ1; ...; Γn, &Δ ⊢ e1: meta a
 Γ1; ...; Γn, Δ, Δ', x: a ⊢ e2: b
 -------------------------------------------------- (□-elim-T)
-Γ1; ...; Γn, Δ, Δ' ⊢ letbox-T x on Δ = e1 in e2: b
+Γ1; ...; Γn, Δ, Δ' ⊢ letbox-T x on Δ = e1; e2: b
 ```
 
 Note that the layer of `e1`, `e2`, `letbox-T (..)` are the same.
@@ -1689,8 +1670,7 @@ define extract-value-from-meta(x: meta int): int {
   // here is layer 0
   letbox-T tmp =
     // here is layer 0
-    x
-  in
+    x;
   // here is layer 0
   tmp
 }
@@ -1705,8 +1685,7 @@ define extract-value-from-meta(x: int): int {
   letbox-T tmp on x =
     // here is layer 0
     // x: &int (at layer 0)
-    x
-  in
+    x;
   // here is layer 0
   // x: int (at layer 0)
   tmp
@@ -1877,8 +1856,7 @@ define bar(): thread(int) {
     detach {
       print("fA");
       1
-    }
-  in
+    };
   f
 }
 ```
@@ -1919,7 +1897,7 @@ define foo(f: thread(int)): int {
 }
 
 define bar(f: thread((int) -> bool)): bool {
-  let k = attach { f } in
+  let k = attach { f };
   k(100)
 }
 ```
@@ -1948,36 +1926,34 @@ It also `free`s the 3-word + 1-byte tuple that represents a thread after getting
 
 - `attach` internally uses pthread.
 
-## `new-channel`
+## `make-channel`
 
-You can create channels using `new-channel` and send/receive values using them.
+You can create channels using `make-channel` and send/receive values using them.
 
 ### Example
 
 ```neut
 define sample(): unit {
-  let ch0 = new-channel() in
-  let ch1 = new-channel() in
+  let ch0 = make-channel();
+  let ch1 = make-channel();
   // use channels after turning them into noemata
-  let result on ch0, ch1 =
+  let result on ch0, ch1 = {
     let f =
       detach {
-        let message0 = receive(ch0) in // receive value from ch0
+        let message0 = receive(ch0); // receive value from ch0
         send(ch1, add-int(message0, 1)); // send value to ch1
         message0
-      }
-    in
+      };
     let g =
       detach {
-        let message1 = receive(ch1) in // receive value from ch1
+        let message1 = receive(ch1); // receive value from ch1
         add-int(message1, 1)
-      }
-    in
+      };
     send(ch0, 0); // send value to ch0
-    let v1 = attach { f } in
-    let v2 = attach { g } in
+    let v1 = attach { f };
+    let v2 = attach { g };
     print("hey")
-  in
+  };
   // ... cont ...
 }
 ```
@@ -1985,12 +1961,12 @@ define sample(): unit {
 ### Syntax
 
 ```neut
-new-channel()
+make-channel()
 ```
 
 ### Semantics
 
-`new-channel` creates a new channel that can be used to send/receive values between threads.
+`make-channel` creates a new channel that can be used to send/receive values between threads.
 
 The internal representation of `channel(a)` is something like the below:
 
@@ -2012,7 +1988,7 @@ The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used t
 ```neut
 Γ ⊢ a: type
 -----------------------------
-Γ ⊢ new-channel(): channel(a)
+Γ ⊢ make-channel(): channel(a)
 ```
 
 You must use an "actual" type at the position of `a` in the typing rule above.
@@ -2025,23 +2001,23 @@ For more, see [let-on](#on).
 - You'll use a channel after turning them into a noema (as in the example above).
 - You can use `send: <a>(ch: &channel, x: a) -> unit` to enqueue a value to the channel.
 - You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
-- `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
+- `make-channel: <a>() -> channel(a)` is a normal function defined in the core library.
 
-## `new-cell`
+## `make-cell`
 
-You can create a mutable cell using `new-cell`.
+You can create a mutable cell using `make-cell`.
 
 ### Example
 
 ```neut
 define sample(): int {
-  let xs: list(int) = [] in
+  let xs: list(int) = [];
 
-  // create a new cell using `new-cell`
-  let xs-cell = new-cell(xs) in
+  // create a new cell using `make-cell`
+  let xs-cell = make-cell(xs);
 
   // create a noema of a cell
-  let result on xs-cell =
+  let result on xs-cell = {
     // mutate the cell using `mutate` (add an element)
     mutate(xs-cell, function (xs) {
       Cons(1, xs)
@@ -2049,8 +2025,8 @@ define sample(): int {
 
     // peek the content of a cell using `borrow`
     borrow(xs-cell, function (xs) {
-      let len = length(xs) in
-      printf("{}\n", [show-int(len)]); // => 1
+      let len = length(xs);
+      print-int(len); // => 1
       box {Unit}
     })
 
@@ -2061,13 +2037,13 @@ define sample(): int {
 
     // get the length of the list in the cell, again
     borrow(xs-cell, function (xs) {
-      let len = length(xs) in
-      printf("{}\n", [show-int(len)]); // => 1
+      let len = length(xs);
+      print-int(len); // => 2
       box {Unit}
     })
 
     ...
-  in
+  };
   ...
 }
 ```
@@ -2075,12 +2051,12 @@ define sample(): int {
 ### Syntax
 
 ```neut
-new-cell(initial-value)
+make-cell(initial-value)
 ```
 
 ### Semantics
 
-`new-cell` creates a new thread-safe mutable cell of type `cell(a)`, which can be manipulated using following functions:
+`make-cell` creates a new thread-safe mutable cell of type `cell(a)`, which can be manipulated using following functions:
 
 ```neut
 // mutate the content of a cell by `f`
@@ -2101,7 +2077,7 @@ extract<a>(c: cell(a)): a
 ```neut
 Γ ⊢ e: a
 -----------------------------
-Γ ⊢ new-cell(e): cell(a)
+Γ ⊢ make-cell(e): cell(a)
 ```
 
 You must use an "actual" type at the position of `a` in the typing rule above.
@@ -2243,26 +2219,25 @@ inline stdin: descriptor {
 
 define malloc-then-free(): unit {
   // allocates memory region (stack)
-  let ptr = magic alloca(int64, 2) in // allocates (64 / 8) * 2 = 16 byte
+  let ptr = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 byte
 
   // allocates memory region (heap)
-  let size: int = 10 in
-  let ptr: pointer = magic external malloc(size) in // 🌟 external
+  let size: int = 10;
+  let ptr: pointer = magic external malloc(size); // 🌟 external
 
   // stores a value
-  let value: int = 123 in
+  let value: int = 123;
   magic store(int, value, ptr); // 🌟 store
 
   // loads and print a value
-  let value = magic load(int, ptr) in // 🌟 load
-  printf("{}\n", [show-int(value)]); // => 123
+  let value = magic load(int, ptr); // 🌟 load
+  print-int(value); // => 123
 
   // tells the compiler to treat the content of {..} as a value
   let v =
     magic opaque-value {
       get-some-c-constant-using-FFI()
-    }
-  in
+    };
 
   // frees the pointer and return
   magic external free(ptr); // 🌟 external
@@ -2461,7 +2436,7 @@ import {
 }
 
 define use-some-file(): unit {
-  let t &text = include-text(some-file) in
+  let t: &text = include-text(some-file);
   print(t)
 }
 ```
@@ -2608,21 +2583,20 @@ _
 
 ### Note
 
-Please do not confuse a hole with the `_` in `let _ = e1 in e2`.
+Please do not confuse a hole with the `_` in `let _ = e1; e2`.
 
 ## `on`
 
-`let x on y = e1 in e2` can be used to introduce noetic values in a specific scope.
+`let x on y = e1; e2` can be used to introduce noetic values in a specific scope.
 
 ### Example
 
 ```neut
 define play-with-let-on(): int {
-  let xs: list(int) = [1, 2, 3] in
+  let xs: list(int) = [1, 2, 3];
   let len on xs =
     // the type of `xs` is `&list(int)` here
-    length(xs)
-  in
+    length(xs);
   // the type of `xs` is `list(int)` here
   add-int(len, 42)
 }
@@ -2631,19 +2605,19 @@ define play-with-let-on(): int {
 ### Syntax
 
 ```neut
-let y on x1, ..., xn = e1 in
+let y on x1, ..., xn = e1;
 e2
 ```
 
 ### Semantics
 
 ```neut
-let result on x1, ..., xn = e1 in
+let result on x1, ..., xn = e1;
 e2
 
 // ↓ desugar
 
-letbox-T result on x1, ..., xn = quote {e1} in
+letbox-T result on x1, ..., xn = quote {e1};
 e2
 ```
 
@@ -2691,7 +2665,7 @@ where the function `embody` is defined in the core library as follows:
 
 // □A -> A (Axiom T)
 inline axiom-T<a>(x: meta a): a {
-  letbox-T x' = x in
+  letbox-T x' = x;
   x'
 }
 
@@ -2735,8 +2709,7 @@ define bar(b1: bool, b2: bool): unit {
       "yo"
     } else {
       "pohe"
-    }
-  in
+    };
   print(tmp)
 }
 ```
@@ -2847,7 +2820,7 @@ e2
 `e1; e2` is the following syntactic sugar:
 
 ```neut
-let _: unit = e1 in
+let _: unit = e1;
 e2
 ```
 
@@ -2855,7 +2828,7 @@ e2
 
 Derived from the desugared form.
 
-## `try x = e1 in e2`
+## `try x = e1; e2`
 
 `try` is a shorthand for `match` + `either`.
 
@@ -2867,8 +2840,8 @@ define get-value-or-fail(): either(error, int) {
 }
 
 define foo(): either(error, int) {
-  try x1 = get-value-or-fail() in
-  try x2 = get-value-or-fail() in
+  try x1 = get-value-or-fail();
+  try x2 = get-value-or-fail();
   Right(add-int(x1, x2))
 }
 ```
@@ -2876,13 +2849,13 @@ define foo(): either(error, int) {
 ### Syntax
 
 ```neut
-try x = e1 in
+try x = e1;
 e2
 ```
 
 ### Semantics
 
-`try x = e1 in e2` is a shorthand of the below:
+`try x = e1; e2` is a shorthand of the below:
 
 ```neut
 match e1 {
@@ -2908,7 +2881,7 @@ data either(a, b) {
 }
 ```
 
-## `tie x = e1 in e2`
+## `tie x = e1; e2`
 
 You can use `tie` as a "noetic" `let`.
 
@@ -2923,7 +2896,7 @@ data config {
 }
 
 define use-noetic-config(c: &config): int {
-  tie Config of {foo} = c in
+  tie Config of {foo} = c;
   *foo
 }
 ```
@@ -2931,13 +2904,13 @@ define use-noetic-config(c: &config): int {
 ### Syntax
 
 ```neut
-tie x = e1 in
+tie x = e1;
 e2
 ```
 
 ### Semantics
 
-`tie x = e1 in e2` is a shorthand of the below:
+`tie x = e1; e2` is a shorthand of the below:
 
 ```neut
 case e1 {
@@ -2950,26 +2923,26 @@ case e1 {
 
 Derived from the desugared form.
 
-## `pin x = e1 in e2`
+## `pin x = e1; e2`
 
 You can use `pin` to create a value and use it as a noema.
 
 ### Example
 
 ```neut
-// before
+// without `pin`
 define foo(): unit {
-  let xs = make-list(123) in
-  let result on xs = some-func(xs) in
-  let _ = xs in
+  let xs = make-list(123);
+  let result on xs = some-func(xs);
+  let _ = xs;
   result
 }
 
 ↓
 
-// after
+// with `pin`
 define foo(): unit {
-  pin xs = make-list(123) in
+  pin xs = make-list(123);
   some-func(xs)
 }
 ```
@@ -2977,21 +2950,21 @@ define foo(): unit {
 ### Syntax
 
 ```neut
-pin x = e1 in
+pin x = e1;
 e2
 ```
 
 ### Semantics
 
 ```neut
-pin x = e1 in
+pin x = e1;
 e2
 
 ↓
 
-let x = e1 in
-let tmp on x = e2 in
-let _ = x in
+let x = e1;
+let tmp on x = e2;
+let _ = x;
 tmp
 ```
 
