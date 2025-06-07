@@ -194,7 +194,7 @@ rawTermKeyValuePair h = do
   ((m, key), c1) <- var h
   choice
     [ do
-        c2 <- delimiter "="
+        c2 <- delimiter ":="
         (value, c) <- rawTerm h
         return ((m, key, c1, c2, value), c),
       do
@@ -585,7 +585,7 @@ rawTermPatternKeyValuePair h = do
   (from, c1) <- symbol
   choice
     [ do
-        c2 <- delimiter "="
+        c2 <- delimiter ":="
         ((mTo, to), c) <- rawTermPattern h
         return ((from, (mTo, c1 ++ c2, to)), c),
       do

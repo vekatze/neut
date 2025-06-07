@@ -538,7 +538,7 @@ decPiElimKeyItem' (k, c, b, d) = do
     else
       PI.arrange
         [ PI.horizontal $ D.text k,
-          PI.horizontal $ D.text "=",
+          PI.horizontal $ D.text ":=",
           decodeClauseBody c d
         ]
 
@@ -595,7 +595,7 @@ decodePatternKeyValue (k, (_, c, v)) = do
     _ ->
       PI.arrange
         [ PI.inject $ D.text k,
-          PI.clauseDelimiter $ D.text "=",
+          PI.clauseDelimiter $ D.text ":=",
           PI.inject $ attachComment c $ decodePattern v
         ]
 
