@@ -215,9 +215,9 @@ rawTermLet h mLet letKind c1 = do
       ]
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
-  (e1, c6) <- rawExpr h
+  (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
-  c7 <- delimiter "in"
+  c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
   case (letKind, SE.isEmpty noeticVarList) of
@@ -242,9 +242,9 @@ rawTermBoxElim h mLet nv c1 = do
       ]
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
-  (e1, c6) <- rawExpr h
+  (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
-  c7 <- delimiter "in"
+  c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
   return (mLet :< RT.BoxElim nv False c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
@@ -262,9 +262,9 @@ rawTermPin h m c1 = do
         return $ SE.emptySeries' Nothing SE.Comma
       ]
   c5 <- delimiter "="
-  (e1, c6) <- rawExpr h
+  (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
-  c7 <- delimiter "in"
+  c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
   return (m :< RT.Pin c1 (mx, x, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)

@@ -115,9 +115,8 @@ toDoc term =
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+              decodeLetBody c3 e c4
             ],
-          D.text "in",
           D.line,
           attachComment c5 $ toDoc cont
         ]
@@ -131,9 +130,8 @@ toDoc term =
             ],
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+              decodeLetBody c3 e c4
             ],
-          D.text "in",
           D.line,
           attachComment c5 $ toDoc cont
         ]
@@ -146,9 +144,8 @@ toDoc term =
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+              decodeLetBody c3 e c4
             ],
-          D.text "in",
           D.line,
           attachComment c5 $ toDoc cont
         ]
@@ -161,9 +158,8 @@ toDoc term =
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ toDoc e1, C.asSuffix c4]
+              decodeLetBody c3 e1 c4
             ],
-          D.text "in",
           D.line,
           attachComment c5 $ toDoc e2
         ]
@@ -334,6 +330,15 @@ decodeKeywordClause k ((c1, (cond, c2)), body) = do
           ],
         decodeBlock body
       ]
+
+decodeLetBody :: C -> RawTerm -> C -> PI.Piece
+decodeLetBody c1 e c2 = do
+  case e of
+    _ :< Brace c3 (e', c4) -> do
+      let block = decodeBlock (c3, (toDoc e', c4))
+      PI.inject $ D.join [D.text " ", attachComment c1 block, D.text ";", C.asSuffix c2]
+    _ ->
+      PI.letBody $ D.join [attachComment c1 $ toDoc e, D.text ";", C.asSuffix c2]
 
 decodeBlock :: EL D.Doc -> D.Doc
 decodeBlock (c1, (body, c2)) = do

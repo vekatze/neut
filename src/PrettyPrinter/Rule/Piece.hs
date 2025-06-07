@@ -6,6 +6,7 @@ module PrettyPrinter.Rule.Piece
     parameter,
     beforeBareSeries,
     bareSeries,
+    letBody,
     delimiter,
     delimiterLeftAligned,
     clauseDelimiter,
@@ -110,6 +111,14 @@ bareSeries doc =
     { content = doc,
       singleModifier = _appendSpace,
       multiModifier = \d -> D.join [D.nest D.indent $ D.join [D.line, d], D.line]
+    }
+
+letBody :: D.Doc -> Piece
+letBody doc =
+  Piece
+    { content = doc,
+      singleModifier = id,
+      multiModifier = \d -> D.join [D.nest D.indent $ D.join [D.line, d]]
     }
 
 beforeBareSeries :: D.Doc -> Piece
