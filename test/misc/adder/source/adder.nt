@@ -1,6 +1,5 @@
 import {
   core.int.io {print-int-line},
-  core.list {for-each},
 }
 
 define make-adder(x: int): (int) -> int {
