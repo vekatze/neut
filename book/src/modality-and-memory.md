@@ -36,15 +36,13 @@ A variable defined at layer n can only be used at the same layer. For example, t
 ```neut
 define bar(): unit {
   // here is layer 0
-  let x = Unit in // ← `x` is defined at layer 0
+  let x = Unit; // ← `x` is defined at layer 0
 
   ... // ← some layer operations here
 
   // layer 3 (for example)
   let v2 =
-    x // ← Error: `x` is used at layer 3 (≠ 0)
-  in
-
+    x; // ← Error: `x` is used at layer 3 (≠ 0)
   ...
 }
 
@@ -86,9 +84,9 @@ box x1, ..., xn { e }
 
 ↓ // (compile)
 
-let x1 = COPY(a1, x1) in
+let x1 = COPY(a1, x1);
 ...
-let xn = COPY(an, xn) in
+let xn = COPY(an, xn);
 e
 ```
 
@@ -105,15 +103,15 @@ define use-letbox(x: int, y: bool, z: text): int {
   // - x: int
   // - y: bool
   // - z: text
-  letbox extracted-value on x, y =
+  letbox extracted-value on x, y = {
     // here is layer 1 (== layer(outer) + 1)
     // free variables:
     // - x: &int
     // - y: &bool
     // - (z is unavailable here because of layer mismatch)
     some-func(x, y);
-    box {42}
-  in
+    box {42};
+  };
   // here is layer 0
   // free variables:
   // - x: int
@@ -131,20 +129,20 @@ Some notes on `letbox`:
 `letbox` behaves as follows:
 
 ```neut
-letbox v on x1, ..., xn = e1 in
+letbox v on x1, ..., xn = e1;
 e2
 
 ↓ // (compile)
 
-let x1 = cast(a1, &a1, x1) in // cast x1: a1 → &a1
-...                           // ...
-let xn = cast(an, &an, xn) in // cast xn: an → &an
+let x1 = cast(a1, &a1, x1); // cast x1: a1 → &a1
+...                         // ...
+let xn = cast(an, &an, xn); // cast xn: an → &an
 
-let v  = e1 in
+let v  = e1;
 
-let x1 = cast(&a1, a1, x1) in // cast x1: &a1 → a1
-...                           // ...
-let xn = cast(&an, an, xn) in // cast xn: &an → an
+let x1 = cast(&a1, a1, x1); // cast x1: &a1 → a1
+...                         // ...
+let xn = cast(&an, an, xn); // cast xn: &an → an
 
 e2
 ```
@@ -160,10 +158,10 @@ Sometimes you want to use a term of type `meta a` without shifting your current 
 ```neut
 define use-letbox-T(x: int, y: bool): int {
   // here is layer 0
-    letbox-T value on x, y =
+  letbox-T value on x, y = {
     // here is layer 0 (== layer(outer))
     box {42}
-  in
+  };
   // here is layer 0
   value // == 42
 }
@@ -173,7 +171,7 @@ define use-letbox-T(x: int, y: bool): int {
 
 ```neut
 define axiom-T<a>(x: meta a): a {
-  letbox-T tmp = x in
+  letbox-T tmp = x;
   tmp
 }
 ```
@@ -218,12 +216,12 @@ We've seen the two constructs `let-on` and `*e`. Though they might have initiall
 We can now desugar `let-on` as follows:
 
 ```neut
-let x on y, z = e1 in
+let x on y, z = e1;
 e2
 
 ↓ // desugar
 
-letbox-T x on y, z = quote {e1} in
+letbox-T x on y, z = quote {e1};
 e2
 ```
 
@@ -238,7 +236,7 @@ Using the `axiom-T` we defined above, we can also desugar `*e` as follows:
 
 ↓ // desugar
 
-let x = e in
+let x = e;
 axiom-T(box x {x})
 ```
 
@@ -253,22 +251,21 @@ Without this rule, you could do something like the following:
 ```neut
 define joker(): () -> unit {
   // layer 0
-  let xs: list(int) = [1, 2, 3] in
+  let xs: list(int) = [1, 2, 3];
   letbox f on xs =
     // layer 1
     // xs: &list(int), at 1
     box {
       // layer 0
       function () { // ★
-        letbox k =
+        letbox k = {
           // 1
-          let len = length(xs) in
+          let len = length(xs);
           box {Unit}
-        in
+        };
         Unit
       }
-    }
-  in
+    };
   f
 }
 ```

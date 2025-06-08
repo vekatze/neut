@@ -8,7 +8,7 @@ define foo(
   🌟🌟🌟: type,
   竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int,
 ): type {
-  let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね in
+  let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね;
   if FOO {
     (a) -> 🌟🌟🌟
   } else {
@@ -17,65 +17,65 @@ define foo(
 }
 
 define bar(a: type, some-value: a): unit {
-  let _ = some-value in
+  let _ = some-value;
   Unit
 }
 
 define test-syntax(): unit {
   let _ =
     foo of {
-      a = int,
-      FOO = True,
-      🌟🌟🌟 = list(null),
-      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
-        let x = 10 in
-        let y = 20 in
+      a := int,
+      FOO := True,
+      🌟🌟🌟 := list(null),
+      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
+        let x = 10;
+        let y = 20;
         add-int(x, y)
       },
     }
-  in
+ ;
   let _ =
     foo of {
-      a = int,
-      🌟🌟🌟 = list(null),
-      FOO = False,
-      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
-        let x = 10 in
-        let y = 20 in
+      a := int,
+      🌟🌟🌟 := list(null),
+      FOO := False,
+      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
+        let x = 10;
+        let y = 20;
         add-int(x, y)
       },
     }
-  in
+ ;
   let _ =
     foo of {
-      🌟🌟🌟 = list(null),
-      a = {
+      🌟🌟🌟 := list(null),
+      a := {
         foo of {
-          竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
-            let x = 10 in
-            let y = 20 in
+          竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
+            let x = 10;
+            let y = 20;
             add-int(x, y)
           },
-          a = int,
-          🌟🌟🌟 = list(null),
-          FOO = True,
+          a := int,
+          🌟🌟🌟 := list(null),
+          FOO := True,
         }
       },
-      FOO = False,
-      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
-        let x = 10 in
-        let y = 20 in
+      FOO := False,
+      竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね := {
+        let x = 10;
+        let y = 20;
         add-int(x, y)
       },
     }
-  in
+ ;
   let _ =
     // hole-notation + keyword arguments
     bar of {
-      a = _,
-      some-value = type,
+      a := _,
+      some-value := type,
     }
-  in
+ ;
   Unit
 }
 
@@ -83,6 +83,6 @@ define def-func-using-of(
   arg-1: int,
   arg-2: type,
 ): type {
-  let _ = arg-1 in
+  let _ = arg-1;
   arg-2
 }

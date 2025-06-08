@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 // random access list via numerical representation
@@ -28,8 +28,8 @@ define size(a: type, t: &tree(a)): int {
 }
 
 define join(a: type, t1: tree(a), t2: tree(a)): tree(a) {
-  let s1 on t1 = size(_, t1) in
-  let s2 on t2 = size(_, t2) in
+  let s1 on t1 = size(_, t1);
+  let s2 on t2 = size(_, t2);
   Node(add-int(s1, s2), t1, t2)
 }
 
@@ -40,7 +40,7 @@ define cons-tree(a: type, t: tree(a), ts: R-list(a)): R-list(a) {
   | New(Cons(DigitZero, rest)) =>
     New(Cons(DigitOne(t), rest))
   | New(Cons(DigitOne(t0), rest)) =>
-    let New(ts-new) = cons-tree(a, join(_, t, t0), New(rest)) in
+    let New(ts-new) = cons-tree(a, join(_, t, t0), New(rest));
     New(Cons(DigitZero, ts-new))
   }
 }
@@ -50,7 +50,7 @@ define cons(a: type, x: a, ts: R-list(a)): R-list(a) {
 }
 
 define uncons-tree(a: type, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
-  let New(xs) = ts in
+  let New(xs) = ts;
   match xs {
   | Nil =>
     none
@@ -82,7 +82,7 @@ define lookup-tree(a: type, i: int, t: &tree(a)): ?a {
       none
     }
   | Node(w, t1, t2) =>
-    let w-div-2 = div-int(*w, 2) in
+    let w-div-2 = div-int(*w, 2);
     if lt-int(i, w-div-2) {
       lookup-tree(a, i, t1)
     } else {
@@ -98,7 +98,7 @@ define lookup-list(a: type, i: int, xs: &list(digit(a))): ?a {
   | Cons(DigitZero, rest) =>
     lookup-list(_, i, rest)
   | Cons(DigitOne(t), rest) =>
-    let s = size(_, t) in
+    let s = size(_, t);
     if lt-int(i, s) {
       lookup-tree(_, i, t)
     } else {
@@ -108,7 +108,7 @@ define lookup-list(a: type, i: int, xs: &list(digit(a))): ?a {
 }
 
 define lookup(a: type, i: int, xs: &R-list(a)): ?a {
-  tie New(xs) = xs in
+  tie New(xs) = xs;
   lookup-list(_, i, xs)
 }
 
@@ -121,7 +121,7 @@ define update-tree(a: type, i: int, x: a, t: tree(a)): tree(a) {
       Leaf(v)
     }
   | Node(w, t1, t2) =>
-    let w-div-2 = div-int(w, 2) in
+    let w-div-2 = div-int(w, 2);
     if lt-int(i, w-div-2) {
       Node(w, update-tree(_, i, x, t1), t2)
     } else {
@@ -135,14 +135,14 @@ define update(a: type, i: int, x: a, xs: R-list(a)): R-list(a) {
   | New([]) =>
     New([])
   | New(Cons(DigitZero, ts)) =>
-    let New(new-xs) = update(_, i, x, New(ts)) in
+    let New(new-xs) = update(_, i, x, New(ts));
     New(Cons(DigitZero, new-xs))
   | New(Cons(DigitOne(t), ts)) =>
-    let s on t = size(_, t) in
+    let s on t = size(_, t);
     if lt-int(i, s) {
       New(Cons(DigitOne(update-tree(_, i, x, t)), ts))
     } else {
-      let New(new-xs) = update(_, sub-int(i, s), x, New(ts)) in
+      let New(new-xs) = update(_, sub-int(i, s), x, New(ts));
       New(Cons(DigitOne(t), new-xs))
     }
   }
@@ -158,23 +158,23 @@ define find-and-get(i: int, xs: &R-list(int)): int {
 }
 
 define main(): unit {
-  let xs: R-list(int) = New([]) in
-  let xs = cons(_, 3, xs) in
-  let xs = cons(_, 2, xs) in
-  let xs = cons(_, 4, xs) in
-  let xs = cons(_, 1, xs) in
-  let v1 on xs = find-and-get(0, xs) in
+  let xs: R-list(int) = New([]);
+  let xs = cons(_, 3, xs);
+  let xs = cons(_, 2, xs);
+  let xs = cons(_, 4, xs);
+  let xs = cons(_, 1, xs);
+  let v1 on xs = find-and-get(0, xs);
   // 1
-  let v2 on xs = find-and-get(1, xs) in
+  let v2 on xs = find-and-get(1, xs);
   // 4
-  let _ on xs = find-and-get(2, xs) in
+  let _ on xs = find-and-get(2, xs);
   // 2
-  let v4 on xs = find-and-get(3, xs) in
+  let v4 on xs = find-and-get(3, xs);
   // 3
-  let xs = update(_, 2, 10, xs) in
-  let v3-modified on xs = find-and-get(2, xs) in
+  let xs = update(_, 2, 10, xs);
+  let v3-modified on xs = find-and-get(2, xs);
   // 10
-  let _ = xs in
+  let _ = xs;
   // 1 + 4 + 10 + 3 = 18
-  printf("{}\n", [show-int(add-int(v1, add-int(v2, add-int(v3-modified, v4))))])
+  print-int-line(add-int(v1, add-int(v2, add-int(v3-modified, v4))))
 }

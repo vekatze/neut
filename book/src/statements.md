@@ -103,9 +103,9 @@ define use-foo(): int {
 
 ```neut
 define use-func-with-implicit-arg(): int {
-  let x = 10 in
-  let y = identity-1(int, x) in // ← explicit version
-  let z = identity-2(x) in      // ← implicit version
+  let x = 10;
+  let y = identity-1(int, x); // ← explicit version
+  let z = identity-2(x);      // ← implicit version
   z
 }
 ```
@@ -122,7 +122,7 @@ define empty-list<a>: list(a) {
 }
 
 define use-constants(): list(int) {
-  let x = foo in
+  let x = foo;
   empty-list
 }
 ```
@@ -139,7 +139,7 @@ define empty-list<a>(): list(a) {
 }
 
 define use-constants(): list(int) {
-  let x = foo() in
+  let x = foo();
   empty-list()
 }
 ```
@@ -186,9 +186,7 @@ inline foo(x: int, y: int): int {
 
 ```neut
 define use-inline-foo(): int {
-  let val =
-    foo(10, 20)
-  in
+  let val = foo(10, 20);
   val
 }
 ```
@@ -197,12 +195,12 @@ The compiler will translate the above code into the following:
 
 ```neut
 define use-inline-foo(): int {
-  let val =
-    let tmp1 = 10 in
-    let tmp2 = 20 in
+  let val = {
+    let x = 10;
+    let y = 20;
     print("foo");
-    add-int(tmp1, tmp2)
-  in
+    add-int(x, y)
+  };
   val
 }
 ```
@@ -219,7 +217,7 @@ inline empty-list<a>: list(a) {
 }
 
 define use-constants(): list(int) {
-  let x = foo in
+  let x = foo;
   empty-list
 }
 ```
@@ -236,7 +234,7 @@ inline empty-list<a>(): list(a) {
 }
 
 define use-constants(): list(int) {
-  let x = foo() in
+  let x = foo();
   empty-list()
 }
 ```
@@ -299,7 +297,7 @@ define length-noetic<a>(xs: &list(a)): int {
 
 define use-config(c: config) {
   // pattern-matching in `let` is also possible
-  let Config of {count, some-path} = c in
+  let Config of {count, some-path} = c;
   print(count)
 }
 ```
@@ -336,8 +334,8 @@ resource boxed-int {
   },
   // copier: (pointer) -> pointer
   function (v: pointer) {
-    let orig-value = load-int(v) in
-    let new-ptr = malloc(1) in
+    let orig-value = load-int(v);
+    let new-ptr = malloc(1);
     magic store(int, orig-value, new-ptr);
     new-ptr
   },
@@ -345,7 +343,7 @@ resource boxed-int {
 
 // provide a way to introduce new boxed integer
 define create-new-boxed-int(x: int): boxed-int {
-  let new-ptr = malloc(8) in
+  let new-ptr = malloc(8);
   store-int(x, new-ptr);
   magic cast(int, boxed-int, new-ptr)
 }
@@ -426,7 +424,7 @@ foreign {
 }
 
 define my-func(): int {
-  let x: int = 10 in
+  let x: int = 10;
   magic external neut_myapp_v1_add_const(x)
 }
 ```

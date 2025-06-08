@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 data heap(a) {
@@ -67,19 +67,18 @@ define compare-int(x: int, y: int): ordering {
 }
 
 define main(): unit {
-  let h: heap(int) = Leaf in
-  let h = insert(_, compare-int, 10, h) in
-  let h = insert(_, compare-int, 3, h) in
-  let h = insert(_, compare-int, 8, h) in
-  let h = insert(_, compare-int, 2, h) in
+  let h: heap(int) = Leaf;
+  let h = insert(_, compare-int, 10, h);
+  let h = insert(_, compare-int, 3, h);
+  let h = insert(_, compare-int, 8, h);
+  let h = insert(_, compare-int, 2, h);
   let maybe-min on h =
     match find-min(_, h) {
     | Left(_) =>
       10
     | Right(min) =>
       min
-    }
-  in
-  let _ = h in
-  printf("{}\n", [show-int(maybe-min)])
+    };
+  let _ = h;
+  print-int-line(maybe-min);
 }

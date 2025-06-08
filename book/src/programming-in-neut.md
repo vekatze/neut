@@ -16,10 +16,10 @@ You can use `let` to define variables:
 
 ```neut
 define hey(): unit {
-  let x = "hello" in
-  let y: int = 100 in
-  let z: float = 3.8 in
-  print("hey")
+  let x = "hello";
+  let y: int = 100;
+  let z: float = 3.8;
+  print("hey");
 }
 ```
 
@@ -27,39 +27,54 @@ The compiler warns about unused variables (`x`, `y`, and `z` in the example abov
 
 ```neut
 define hey(): unit {
-  let _ = "hello" in
-  let _: int = 100 in
-  let _: float = 3.8 in
-  print("hey")
+  let _ = "hello";
+  let _: int = 100;
+  let _: float = 3.8;
+  print("hey");
 }
 ```
 
-`let`s can be nested:
+`let`s can be nested using `{..}`:
 
 ```neut
 define hey(): unit {
-  let x =
-    let y: int = 100 in
-    let z: float = 3.8 in
+  let x = {
+    let y: int = 100;
+    let z: float = 3.8;
     "hello"
-  in
-  print(x) // => hello
+  };
+  print(x); // => hello
 }
 ```
 
-You can use `e1; e2` as syntactic sugar for `let _: unit = e1 in e2`:
+You can use `e1; e2` as syntactic sugar for `let _: unit = e1; e2`:
 
 ```neut
 define hey(): unit {
   print("a");
-  print("b")
+  print("b");
 }
 
 // ↓ (desugar)
 
 define hey(): unit {
-  let _ = print("a") in
-  print("b")
+  let _ = print("a");
+  print("b");
+}
+```
+
+You can use `e;` as syntactic sugar for `let _: unit = e; Unit`:
+
+```neut
+define hey(): unit {
+  print("hey"); // using a trailing semicolon
+}
+
+↓
+
+define hey(): unit {
+  let _: unit = print("hey");
+  Unit
 }
 ```
 
@@ -99,7 +114,7 @@ define id<a>(x: a): a {
 }
 
 define use-id(): int {
-  let str = 10 in
+  let str = 10;
   id(str) // calling `id` without specifying `a` explicitly
 }
 ```
@@ -121,7 +136,7 @@ define id(a: type, x: a): a {
 
 // using `id`
 define use-id(): int {
-  let str = 10 in
+  let str = 10;
   id(int, str) // ← the first argument `int` is now made explicit
 }
 ```
@@ -139,8 +154,7 @@ define foo() {
       } else {
         add-int(x, 1)
       }
-    }
-  in
+    };
   f(10, False) // → 11
 }
 ```
@@ -157,8 +171,7 @@ define foo() {
         print("hello\n");
         print-multiple-hellos(sub-int(counter, 1))
       }
-    }
-  in
+    };
   f(10) // prints 10 "hello"s
 }
 ```
@@ -188,8 +201,8 @@ The syntactic sugar `of` can be used to rewrite the above `use-my-func` as follo
 ```neut
 define use-my-func(): int {
   my-func of {
-    x = 10,
-    y = 20,
+    x := 10,
+    y := 20,
   }
 }
 ```
@@ -253,8 +266,8 @@ define make-my-list(): my-list(int) {
 
 define make-config(): config {
   Config of {
-    count = 10,
-    cond = True,
+    count := 10,
+    cond := True,
   }
 }
 ```
@@ -299,8 +312,7 @@ define yo(xs: my-list(int)): int {
       0
     | My-Cons(_, _) =>
       1
-    }
-  in
+    };
   val
 }
 ```
@@ -314,21 +326,19 @@ define foo(): unit {
   let t1: thread(unit) =
     // creates a thread
     detach {
-      let value = some-heavy-computation() in
+      let value = some-heavy-computation();
       print(value)
-    }
-  in
+    };
   let t2: thread(unit) =
     // creates a thread
     detach {
-      let value = other-heavy-computation() in
+      let value = other-heavy-computation();
       print(value)
-    }
-  in
+    };
   // wait
-  let result-1 = attach { t1 } in
+  let result-1 = attach { t1 };
   // wait
-  let result-2 = attach { t2 } in
+  let result-2 = attach { t2 };
   Unit
 }
 ```
@@ -422,7 +432,7 @@ define fact(n: int): int {
   if eq-int(n, 0) {
     1
   } else {
-    let next = sub-int(n, 1) in
+    let next = sub-int(n, 1);
     mul-int(n, fact(next))
   }
 }

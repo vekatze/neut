@@ -5,12 +5,12 @@ module Language.RawTerm.Rule.RawPattern
   )
 where
 
-import Logger.Rule.Hint
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 import Language.Common.Rule.Rune qualified as RU
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
+import Logger.Rule.Hint
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 
 data RawPattern
   = Var Name
@@ -23,4 +23,4 @@ data ConsArgs
   | Of (SE.Series (Key, (Hint, C, RawPattern)))
 
 type RawPatternRow a =
-  (SE.Series (Hint, RawPattern), C, a, Loc)
+  (SE.Series (Hint, RawPattern), C, a)

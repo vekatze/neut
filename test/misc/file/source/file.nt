@@ -7,9 +7,9 @@ import {
 }
 
 define use-file(): system(unit) {
-  try file = open("./test", core.file.flag.for-rw, default-file-mode) in
-  try _ = write(file, "hey\n") in
-  try _ = read(file, 1024) in
+  try file = open("./test", core.file.flag.for-rw, default-file-mode);
+  try _ = write(file, "hey\n");
+  try _ = read(file, 1024);
   close(file)
 }
 

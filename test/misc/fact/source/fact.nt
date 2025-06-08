@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 define fact(x: int): int {
@@ -11,5 +11,5 @@ define fact(x: int): int {
 }
 
 define main(): unit {
-  printf("{}\n", [show-int(fact(5))])
+  print-int-line(fact(5))
 }

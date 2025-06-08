@@ -19,7 +19,7 @@ define discard-or-copy-value(action-selector, value) {
     discard-value(value);
     Unit
   } else {
-    let new-value = copy-value(value) in
+    let new-value = copy-value(value);
     new-value
   }
 }
@@ -41,7 +41,7 @@ Note that the variable `xs` isn't used. Because of that, the compiler translates
 
 ```neut
 define foo(xs: list(int)): unit {
-  let f = list(int) in
+  let f = list(int);
   f(0, xs); // passing `0` to discard `xs`
   Unit
 }
@@ -63,8 +63,8 @@ Note that the variable `!xs` is used twice. Because of that, the compiler transl
 
 ```neut
 define foo(!xs: list(int)): unit {
-  let f = list(int) in
-  let xs-clone = f(1, !xs) in // passing `1` to copy `xs`
+  let f = list(int);
+  let xs-clone = f(1, !xs); // passing `1` to copy `xs`
   some-func(xs-clone, !xs)
 }
 ```
@@ -186,10 +186,6 @@ define foo(v: int, xs: int-list): int-list {
 
 At this time, the `free` against `xs` at `(X')` can't be optimized away since there exists a branch (namely, `(Y')`) that doesn't perform `malloc` that is of the same size as `xs`.
 
-### How Effective Is This Optimization?
-
-Please see [here](./static-memory-management.md#how-effective-is-this-optimization).
-
 ## Name Resolution
 
 ### Resolving Module Aliases
@@ -203,7 +199,7 @@ import {
 
 define use-external-module-function(): text {
            // 🌟
-  let value = core.text.io.get-line() in
+  let value = core.text.io.get-line();
   ...
 }
 ```
@@ -251,7 +247,7 @@ import {
 
 define use-my-function(): text {
            // 🌟
-  let value = this.path.to.file.my-function() in
+  let value = this.path.to.file.my-function();
   ...
 }
 ```

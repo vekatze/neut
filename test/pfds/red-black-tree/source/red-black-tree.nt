@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 data color {
@@ -60,8 +60,7 @@ define insert(a: type, !cmp: (a, a) -> ordering, !x: a, t: tree(a)): tree(a) {
           balance(a, c, left, !y, self(right))
         }
       }
-    }
-  in
+    };
   match helper(t) {
   | Leaf =>
     // shouldn't occur
@@ -82,7 +81,7 @@ define compare-int(!x: () -> int, !y: () -> int): ordering {
 }
 
 define main(): unit {
-  let t: tree(() -> int) = Leaf in
+  let t: tree(() -> int) = Leaf;
   let t =
     insert(
       _,
@@ -91,8 +90,7 @@ define main(): unit {
         3
       },
       t,
-    )
-  in
+    );
   let t =
     insert(
       _,
@@ -101,8 +99,7 @@ define main(): unit {
         4
       },
       t,
-    )
-  in
+    );
   let t =
     insert(
       _,
@@ -111,8 +108,7 @@ define main(): unit {
         2
       },
       t,
-    )
-  in
+    );
   let t =
     insert(
       _,
@@ -121,8 +117,7 @@ define main(): unit {
         9
       },
       t,
-    )
-  in
+    );
   let t =
     insert(
       _,
@@ -131,8 +126,7 @@ define main(): unit {
         100
       },
       t,
-    )
-  in
+    );
   let t =
     insert(
       _,
@@ -141,8 +135,7 @@ define main(): unit {
         8
       },
       t,
-    )
-  in
+    );
   let t =
     insert(
       _,
@@ -151,8 +144,7 @@ define main(): unit {
         1
       },
       t,
-    )
-  in
+    );
   let b on t =
     member(
       _,
@@ -161,15 +153,13 @@ define main(): unit {
         5
       },
       t,
-    )
-  in
-  let _ = t in
+    );
+  let _ = t;
   let result: int =
     if b {
       1
     } else {
       2
-    }
-  in
-  printf("{}\n", [show-int(result)])
+    };
+  print-int-line(result);
 }

@@ -104,7 +104,7 @@ Let's see the content of `source/sample.nt`:
 // sample.nt
 
 define main(): unit {
-  print("Hello, world!\n") // `print` is defined in `core`
+  print("Hello, world!\n"); // `print` is defined in `core`
 }
 ```
 
@@ -114,7 +114,7 @@ Let's try editing the code as follows:
 
 ```neut
 define main(): unit {
-  print("Yo\n")
+  print("Yo\n");
 }
 ```
 
@@ -133,12 +133,16 @@ Of course, you can define a function:
 ```neut
 // sample.nt
 
+import {
+  core.int.io {print-int},
+}
+
 define get-int(): int {
   42
 }
 
 define main(): unit {
-  printf("{}\n", [show-int(get-int())]) // => 42
+  print-int(get-int()); // => 42
 }
 ```
 
@@ -146,6 +150,10 @@ A function can take arguments. Let's rewrite `sample.nt` as follows:
 
 ```neut
 // sample.nt
+
+import {
+  core.int.io {print-int},
+}
 
 define increment(x: int): int {
   add-int(x, 1)
@@ -156,7 +164,7 @@ define my-add(x: int, y: int): int {
 }
 
 define main(): unit {
-  printf("{}\n", [my-add(10, increment(10))]) // # => 21
+  print-int(my-add(10, increment(10))); // => 21
 }
 ```
 
@@ -193,7 +201,7 @@ neut create new-item
 cd new-item
 
 # adds a sample module that contains `my-add` and `increment` to your module
-neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1.tar.zst
+neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1-0.tar.zst
 ```
 
 The command `neut get` fetches the tarball from the specified URL and adds it to the current module. The module can then be used as `some-name` in your module.
@@ -213,7 +221,7 @@ The information of the newly-added module is saved to `module.ens`:
     some-name {
       digest "..",
       mirror [
-        "https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1.tar.zst",
+        "https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1-0.tar.zst",
       ],
     },
   },
@@ -236,11 +244,12 @@ Dependencies can be used in your code, of course:
 // new-item.nt
 
 import {
+  core.int.io {print-int},
   some-name.sample {my-add}, // imports `my-add` in `source/sample.nt`
 }
 
 define main(): unit {
-  printf("{}\n", [my-add(10, 11)]) // ← using `my-add`
+  print-int(my-add(10, 11)); // ← using `my-add`
 }
 ```
 
@@ -262,12 +271,13 @@ You can also use the fully-qualified form of `my-add`:
 // new-item.nt
 
 import {
+  core.int.io {print-int},
   some-name.sample, // removed `{my-add}`
 }
 
 define main(): unit {
   // ↓ using the fully-qualified form of `my-add`
-  printf("{}\n", [some-name.sample.my-add(10, 11)])
+  print-int(some-name.sample.my-add(10, 11));
 }
 ```
 
@@ -287,7 +297,7 @@ Let's try creating a new file `new-item/source/foo/greet.nt` with the following 
 // foo/greet.nt
 
 define yo(): unit {
-  print("Yo")
+  print("Yo");
 }
 ```
 
@@ -301,7 +311,7 @@ import {
 }
 
 define main(): unit {
-  yo()
+  yo();
 }
 ```
 

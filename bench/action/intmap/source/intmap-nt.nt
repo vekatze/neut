@@ -1,16 +1,16 @@
 import {
   core.control {grow},
   core.environment {get-argv},
+  core.int.io {print-int-line},
   core.int.parse {parse-int},
-  core.int.show {show-int},
   core.intmap {empty, insert, intmap, lookup},
   core.random {random-int},
 }
 
 define make-big-dict(size: int): intmap(int) {
   grow(empty, size, function (acc, _) {
-    let key = random-int(1000000) in
-    let val = random-int(1000000) in
+    let key = random-int(1000000);
+    let val = random-int(1000000);
     insert(acc, key, val)
   })
 }
@@ -18,39 +18,34 @@ define make-big-dict(size: int): intmap(int) {
 define random-lookup-sum(count: int, d: &intmap(int)): unit {
   let rsum =
     grow(0, count, function (acc, _) {
-      let key = random-int(1000000) in
+      let key = random-int(1000000);
       let val on key =
         match lookup(d, *key) {
         | Left(_) =>
           0
         | Right(v) =>
           *v
-        }
-      in
-      let _ = key in
+        };
+      let _ = key;
       add-int(acc, val)
-    })
-  in
-  printf("{}\n", [show-int(rsum)])
+    });
+  print-int-line(rsum);
 }
 
 define main(): unit {
-  let args = get-argv() in
+  let args = get-argv();
   match args {
   | [_, size-str] =>
-    let _ on size-str =
-      match parse-int(size-str) {
-      | Right(size) =>
-        let big-dict = make-big-dict(size) in
-        let _ on big-dict = random-lookup-sum(size, big-dict) in
-        let _ = big-dict in
-        Unit
-      | Left(_) =>
-        printf("couldn't parse `{}` as an integer\n", [*size-str])
-      }
-    in
-    let _ = size-str in
-    Unit
+    pin size-str = size-str;
+    match parse-int(size-str) {
+    | Right(size) =>
+      pin big-dict = make-big-dict(size);
+      random-lookup-sum(size, big-dict);
+    | Left(_) =>
+      print("couldn't parse `");
+      print(size-str);
+      print("` as an integer\n");
+    }
   | _ =>
     print("usage: intmap-nt SIZE\n")
   }

@@ -4,7 +4,7 @@ import {
 }
 
 define main(): unit {
-  let _ = some-func in
-  let _ = other-func-X in
+  let _ = some-func;
+  let _ = other-func-X;
   other-func-Y()
 }

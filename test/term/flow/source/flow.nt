@@ -5,39 +5,35 @@ import {
 }
 
 define test-syntax(): unit {
-  let _ = thread(type) in
-  let _ = (thread(type)) -> type in
-  let _ = (type) -> thread(type) in
-  let _ = (thread(type), thread(type)) -> (thread(type)) -> thread(type) in
-  let _ = thread(thread(type)) in
-  let _ = detach {Unit} in
+  let _ = thread(type);
+  let _ = (thread(type)) -> type;
+  let _ = (type) -> thread(type);
+  let _ = (thread(type), thread(type)) -> (thread(type)) -> thread(type);
+  let _ = thread(thread(type));
+  let _ = detach {Unit};
   let _ =
     detach {
-      let _ = Unit in
-      let _ = Unit in
+      let _ = Unit;
+      let _ = Unit;
       Unit
-    }
-  in
+    };
   let _ =
     function () {
       let fl =
         detach {
-          let _ = Unit in
+          let _ = Unit;
           Unit
-        }
-      in
+        };
       Unit;
       attach {fl}
-    }
-  in
+    };
   let _ =
     function (fl: thread(unit)) {
       attach {
-        let _ = Unit in
+        let _ = Unit;
         fl
       }
-    }
-  in
+    };
   Unit
 }
 
@@ -45,7 +41,7 @@ define some-list(len: int, acc: list(int)): list(int) {
   if eq-int(len, 0) {
     acc
   } else {
-    let val = len in
+    let val = len;
     some-list(sub-int(len, 1), Cons(val, acc))
   }
 }
@@ -59,7 +55,7 @@ define send-all(xs: list(int), ch: &channel(int), acc: list(thread(unit))): list
   | Nil =>
     acc
   | Cons(y, rest) =>
-    let fl = detach-send(y, ch) in
+    let fl = detach-send(y, ch);
     send-all(rest, ch, Cons(fl, acc))
   }
 }
@@ -69,8 +65,8 @@ define receive-one-by-one(xs: list(thread(unit)), ch: &channel(int)): unit {
   | Nil =>
     Unit
   | Cons(fl, rest) =>
-    let _ = attach {fl} in
-    let _ = receive(ch) in
+    let _ = attach {fl};
+    let _ = receive(ch);
     receive-one-by-one(rest, ch)
   }
 }
@@ -82,77 +78,75 @@ define receive-all-at-once(xs: list(thread(unit)), ch: &channel(int)): unit {
       | Nil =>
         Unit
       | Cons(z, zs) =>
-        let _ = attach {z} in
+        let _ = attach {z};
         wait-all(zs)
       }
-    }
-  in
-  let size on xs = length(xs) in
+    };
+  let size on xs = length(xs);
   wait-all(xs);
   let receive-all =
     define receive-all(count: int) {
       if eq-int(count, 0) {
         Unit
       } else {
-        let _ = receive(ch) in
+        let _ = receive(ch);
         receive-all(sub-int(count, 1))
       }
-    }
-  in
+    };
   receive-all(size)
 }
 
 define test-behavior(): unit {
-  let ch = new-channel() in
-  let _ on ch =
-    let fl1 =
+  let ch = make-channel();
+  let _ on ch = {
+    let fl1 = {
       detach {
-        let xs = some-list(1000, []) in
-        let fs = send-all(xs, ch, []) in
+        let xs = some-list(1000, []);
+        let fs = send-all(xs, ch, []);
         receive-one-by-one(fs, ch);
         Unit
       }
-    in
-    let fl2 =
+    };
+    let fl2 = {
       detach {
-        let xs = some-list(1000, []) in
-        let fs = send-all(xs, ch, []) in
+        let xs = some-list(1000, []);
+        let fs = send-all(xs, ch, []);
         receive-all-at-once(fs, ch);
         Unit
       }
-    in
+    };
     attach {fl1};
     attach {fl2}
-  in
-  let _ = ch in
-  let ch = new-channel() in
-  let !ch: channel(int) = ch in
-  let _ = !ch in
-  let _ on !ch = send(!ch, 1) in
-  let ch = !ch in
-  let ch-clone = ch in
-  let _ on ch-clone = send(ch-clone, 1) in
-  let tmp on ch-clone =
-    let f =
+  };
+  let _ = ch;
+  let ch = make-channel();
+  let !ch: channel(int) = ch;
+  let _ = !ch;
+  let _ on !ch = send(!ch, 1);
+  let ch = !ch;
+  let ch-clone = ch;
+  let _ on ch-clone = send(ch-clone, 1);
+  let tmp on ch-clone = {
+    let f = {
       detach {
-        let _ = sleep(1) in
+        let _ = sleep(1);
         send(ch-clone, 3)
       }
-    in
-    let g =
+    };
+    let g = {
       detach {
-        let _ = sleep(1) in
+        let _ = sleep(1);
         send(ch-clone, 4)
       }
-    in
-    let _ = receive(ch-clone) in
-    let _ = receive(ch-clone) in
-    let _ = receive(ch-clone) in
+    };
+    let _ = receive(ch-clone);
+    let _ = receive(ch-clone);
+    let _ = receive(ch-clone);
     attach {f};
     attach {g}
-  in
-  let _ = ch-clone in
-  let _ = tmp in
+  };
+  let _ = ch-clone;
+  let _ = tmp;
   Unit
 }
 

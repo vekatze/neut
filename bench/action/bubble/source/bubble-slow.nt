@@ -47,27 +47,28 @@ define rand-list(len: int, acc: int-list): int-list {
   if eq-int(len, 0) {
     acc
   } else {
-    let val = random-int(10000) in
+    let val = random-int(10000);
     rand-list(sub-int(len, 1), My-Cons(val, acc))
   }
 }
 
 define main(): unit {
-  let args = get-argv() in
+  let args = get-argv();
   match args {
   | [_, size-str] =>
     let _ on size-str =
       match parse-int(size-str) {
       | Right(size) =>
-        let some-list = rand-list(size, My-Nil) in
-        let some-list = sort(some-list, My-Nil) in
-        let _ = some-list in
+        let some-list = rand-list(size, My-Nil);
+        let some-list = sort(some-list, My-Nil);
+        let _ = some-list;
         Unit
       | Left(_) =>
-        printf("couldn't parse `{}` as an integer\n", [*size-str])
-      }
-    in
-    let _ = size-str in
+        print("couldn't parse `");
+        print(size-str);
+        print("` as an integer\n");
+      };
+    let _ = size-str;
     Unit
   | _ =>
     print("usage: bubble-nt SIZE\n")

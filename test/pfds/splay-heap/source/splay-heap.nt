@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 data heap(a) {
@@ -22,11 +22,11 @@ define split(a: type, !cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(hea
         match !cmp(!w, !pivot) {
         | LT =>
           // go right
-          let Pair(!right-right-small, right-right-big) = split(_, !cmp, !pivot, right-right) in
+          let Pair(!right-right-small, right-right-big) = split(_, !cmp, !pivot, right-right);
           Pair(Node(Node(left, !v, !right-right-small), !w, !right-right-small), right-right-big)
         | _ =>
           // go left
-          let Pair(right-left-small, right-left-big) = split(_, !cmp, !pivot, right-left) in
+          let Pair(right-left-small, right-left-big) = split(_, !cmp, !pivot, right-left);
           Pair(Node(left, !v, right-left-small), Node(right-left-big, !w, right-right))
         }
       }
@@ -39,11 +39,11 @@ define split(a: type, !cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(hea
         match !cmp(!w, !pivot) {
         | LT =>
           // go right
-          let Pair(left-right-small, left-right-big) = split(_, !cmp, !pivot, left-right) in
+          let Pair(left-right-small, left-right-big) = split(_, !cmp, !pivot, left-right);
           Pair(Node(left-left, !w, left-right-small), Node(left-right-big, !v, right))
         | _ =>
           // go left
-          let Pair(left-left-small, left-left-big) = split(_, !cmp, !pivot, left-left) in
+          let Pair(left-left-small, left-left-big) = split(_, !cmp, !pivot, left-left);
           Pair(left-left-small, Node(left-left-big, !w, Node(left-right, !v, right)))
         }
       }
@@ -52,7 +52,7 @@ define split(a: type, !cmp: (a, a) -> ordering, !pivot: a, t: heap(a)): pair(hea
 }
 
 define insert(a: type, cmp: (a, a) -> ordering, !x: a, t: heap(a)): heap(a) {
-  let Pair(smaller, bigger) = split(_, cmp, !x, t) in
+  let Pair(smaller, bigger) = split(_, cmp, !x, t);
   Node(smaller, !x, bigger)
 }
 
@@ -76,7 +76,7 @@ define delete-min(a: type, t: heap(a)): ?heap(a) {
   | Node(Node(Leaf, _, t12), y, t2) =>
     Right(Node(t12, y, t2))
   | Node(Node(t11, x, t12), y, t2) =>
-    try t11 = delete-min(a, t11) in
+    try t11 = delete-min(a, t11);
     Right(Node(t11, x, Node(t12, y, t2)))
   }
 }
@@ -91,10 +91,10 @@ define sum(xs: &list(int)): int {
 }
 
 define compare-int-list(xs: list(int), ys: list(int)): ordering {
-  let x on xs = sum(xs) in
-  let y on ys = sum(ys) in
-  let _ = xs in
-  let _ = ys in
+  let x on xs = sum(xs);
+  let y on ys = sum(ys);
+  let _ = xs;
+  let _ = ys;
   if lt-int(x, y) {
     LT
   } else-if gt-int(x, y) {
@@ -105,48 +105,45 @@ define compare-int-list(xs: list(int), ys: list(int)): ordering {
 }
 
 define main(): unit {
-  let h: heap(list(int)) = Leaf in
-  let h = insert(_, compare-int-list, [1, 2], h) in
-  let h = insert(_, compare-int-list, [10], h) in
-  let h = insert(_, compare-int-list, [5], h) in
+  let h: heap(list(int)) = Leaf;
+  let h = insert(_, compare-int-list, [1, 2], h);
+  let h = insert(_, compare-int-list, [10], h);
+  let h = insert(_, compare-int-list, [5], h);
   // v1 = 3
   let v1 on h =
     match find-min(_, h) {
     | Right(xs) =>
-      let v on xs = sum(xs) in
+      let v on xs = sum(xs);
       // xs = [1, 2]
-      let _ = xs in
+      let _ = xs;
       v
       // v = 3
     | Left(_) =>
       4
-    }
-  in
-  let mh = delete-min(_, h) in
+    };
+  let mh = delete-min(_, h);
   let result =
     match mh {
     | Left(_) =>
       3
     | Right(h) =>
-      let h = insert(_, compare-int-list, [4, 8], h) in
-      let h = insert(_, compare-int-list, [1, 1], h) in
+      let h = insert(_, compare-int-list, [4, 8], h);
+      let h = insert(_, compare-int-list, [1, 1], h);
       // v2 = 2
       let v2 on h =
         match find-min(_, h) {
         | Right(xs) =>
-          let v on xs = sum(xs) in
+          let v on xs = sum(xs);
           // xs = [1, 1]
-          let _ = xs in
+          let _ = xs;
           v
           // v = 2
         | Left(_) =>
           4
-        }
-      in
-      let _ = h in
+        };
+      let _ = h;
       // v1 + v2 = 3 + 2 = 5
       add-int(v1, v2)
-    }
-  in
-  printf("{}\n", [show-int(result)])
+    };
+  print-int-line(result);
 }

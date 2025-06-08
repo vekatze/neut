@@ -11,8 +11,8 @@ resource noisy-boxed-int {
   },
   function (v: pointer) {
     print("copied.\n");
-    let orig-value = load-int(v) in
-    let new-ptr = malloc(C-Size(1)) in
+    let orig-value = load-int(v);
+    let new-ptr = malloc(C-Size(1));
     magic store(int, orig-value, new-ptr);
     new-ptr
   },
@@ -20,15 +20,15 @@ resource noisy-boxed-int {
 
 // provide a way to introduce new boxed integer
 define create-new-noisy-boxed-int(x: int): noisy-boxed-int {
-  let new-ptr = malloc(C-Size(1)) in
+  let new-ptr = malloc(C-Size(1));
   store-int(x, new-ptr);
   magic cast(pointer, noisy-boxed-int, new-ptr)
 }
 
 define main(): unit {
-  let !i = create-new-noisy-boxed-int(10) in
-  let _ = !i in
-  let _ = !i in
-  let _ = !i in
+  let !i = create-new-noisy-boxed-int(10);
+  let _ = !i;
+  let _ = !i;
+  let _ = !i;
   Unit
 }

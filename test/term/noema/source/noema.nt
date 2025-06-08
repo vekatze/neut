@@ -4,44 +4,44 @@ import {
 }
 
 define test-syntax(): unit {
-  let _ = &list(type) in
-  let _ = &list(&list(type)) in
-  let _ = (&type, &list((&list(type)) -> &list(type))) -> &list(type) in
-  let xs: list(int) = [1, 2, 3] in
-  let _ on xs =
-    let _ on xs =
-      let l1 = length(*xs) in
-      let l2 = length(*xs) in
+  let _ = &list(type);
+  let _ = &list(&list(type));
+  let _ = (&type, &list((&list(type)) -> &list(type))) -> &list(type);
+  let xs: list(int) = [1, 2, 3];
+  let _ on xs = {
+    let _ on xs = {
+      let l1 = length(*xs);
+      let l2 = length(*xs);
       add-int(l1, l2)
-    in
-    let _ = length(xs) in
-    let !xs-copy = *xs in
-    let _ = xs in
-    let _ = xs in
-    let _ = xs in
-    let _ = !xs-copy in
-    let _ = !xs-copy in
-    let _ = !xs-copy in
+    };
+    let _ = length(xs);
+    let !xs-copy = *xs;
+    let _ = xs;
+    let _ = xs;
+    let _ = xs;
+    let _ = !xs-copy;
+    let _ = !xs-copy;
+    let _ = !xs-copy;
     case xs {
     | Nil =>
       length(xs)
     | Cons(_, ys) =>
       length(ys)
     }
-  in
-  let !xs = xs in
-  // let _ = xs in
-  let ys = !xs in
-  let zs = !xs in
-  let _ on !xs, ys, zs =
-    let v1 = length(!xs) in
-    let v2 = length(ys) in
-    let v3 = length(zs) in
+  };
+  let !xs = xs;
+  // let _ = xs;
+  let ys = !xs;
+  let zs = !xs;
+  let _ on !xs, ys, zs = {
+    let v1 = length(!xs);
+    let v2 = length(ys);
+    let v3 = length(zs);
     add-int(v1, add-int(v2, v3))
-  in
-  let _ = !xs in
-  let _ = ys in
-  let _ = zs in
+  };
+  let _ = !xs;
+  let _ = ys;
+  let _ = zs;
   Unit
 }
 
@@ -60,28 +60,28 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
   let val =
     case t {
     | App(Abs(x, !t'), Var(e)) =>
-      let _ = Var(e) in
-      let !t' = *!t' in
-      let _ = !t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = !t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = !t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = x in
+      let _ = Var(e);
+      let !t' = *!t';
+      let _ = !t';
+      let _ = x;
+      let _ = Var(e);
+      let _ = !t';
+      let _ = x;
+      let _ = Var(e);
+      let _ = !t';
+      let _ = x;
+      let _ = Var(e);
+      let _ = x;
+      let _ = Var(e);
+      let _ = x;
       Bar
     | App(Abs(x, _), App(Var(_), App(_, App(w, _)))) =>
-      let !foo = *w in
-      let _ = !foo in
-      let _ = !foo in
-      let _ = !foo in
-      let _ = !foo in
-      let _ = x in
+      let !foo = *w;
+      let _ = !foo;
+      let _ = !foo;
+      let _ = !foo;
+      let _ = !foo;
+      let _ = x;
       Foo
     | App(Abs(_, _), App(App(_, App(_, _)), Var(_))) =>
       Bar
@@ -90,16 +90,15 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
     | App(App(Abs(_, _), Var(_)), App(App(_, App(_, _)), Var(_))) =>
       Bar
     | t =>
-      let !t = *t in
-      let _ = !t in
-      let _ = !t in
-      let _ = !t in
+      let !t = *t;
+      let _ = !t;
+      let _ = !t;
+      let _ = !t;
       Foo
-    }
-  in
+    };
   match val {
   | Foo =>
-    let _ = val in
+    let _ = val;
     *t
   | Bar =>
     *t
@@ -107,36 +106,33 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
 }
 
 define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
-  let !foo = Var("test") in
+  let !foo = Var("test");
   let f =
     function () {
       !foo
-    }
-  in
+    };
   let g =
     function () {
       !foo
-    }
-  in
+    };
   let h =
     function () {
       !foo
-    }
-  in
+    };
   case t {
   | Var(x) =>
-    let _ = f in
+    let _ = f;
     case t {
     | Var(_) =>
-      let _ = g in
-      let _ = x in
+      let _ = g;
+      let _ = x;
       *t
     | Abs(_, t) =>
-      let !val = *t in
-      let _ = !val in
-      let _ = !val in
-      let _ = !val in
-      let _ = !val in
+      let !val = *t;
+      let _ = !val;
+      let _ = !val;
+      let _ = !val;
+      let _ = !val;
       !val
     | _ =>
       *t
@@ -146,12 +142,12 @@ define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
     | App(_, e2) =>
       *e2
     | _ =>
-      let _ = t in
-      let _ = t in
+      let _ = t;
+      let _ = t;
       *t
     }
   | App(t1, _) =>
-    let _ = g in
+    let _ = g;
     let !k =
       if False {
         h
@@ -159,11 +155,10 @@ define unbalanced-freevars-in-branches(a: type, t: &term(a)): term(a) {
         function () {
           Var("pohe")
         }
-      }
-    in
-    let _ = !k in
-    let _ = !k in
-    let _ = !k in
+      };
+    let _ = !k;
+    let _ = !k;
+    let _ = !k;
     *t1
   }
 }
@@ -173,8 +168,8 @@ data ctx {
 }
 
 define with-ctx(c: &ctx): unit {
-  tie Ctx(counter) = c in
-  let current-value = clone(counter) in
+  tie Ctx(counter) = c;
+  let current-value = clone(counter);
   if eq-int(current-value, 0) {
     print("stop\n")
   } else {
@@ -187,25 +182,25 @@ define with-ctx(c: &ctx): unit {
 }
 
 define test-resource(): unit {
-  let t1 = Var(Foo) in
-  let t2 = Abs(Bar, Var(Bar)) in
-  let t3 = App(Abs(Bar, Var(Bar)), Var(Foo)) in
-  let t4 = Abs(Bar, App(Var(Bar), Var(Bar))) in
-  let _ on t1 = nested-enum-match(t1) in
-  let _ on t2 = nested-enum-match(t2) in
-  let _ on t3 = nested-enum-match(t3) in
-  let _ on t4 = nested-enum-match(t4) in
-  let _ on t1 = unbalanced-freevars-in-branches(_, t1) in
-  let _ on t2 = unbalanced-freevars-in-branches(_, t2) in
-  let _ on t3 = unbalanced-freevars-in-branches(_, t3) in
-  let _ on t4 = unbalanced-freevars-in-branches(_, t4) in
-  let _ = t1 in
-  let _ = t2 in
-  let _ = t3 in
-  let _ = t4 in
-  let c = Ctx(new-cell(5)) in
-  let _ on c = with-ctx(c) in
-  let _ = c in
+  let t1 = Var(Foo);
+  let t2 = Abs(Bar, Var(Bar));
+  let t3 = App(Abs(Bar, Var(Bar)), Var(Foo));
+  let t4 = Abs(Bar, App(Var(Bar), Var(Bar)));
+  let _ on t1 = nested-enum-match(t1);
+  let _ on t2 = nested-enum-match(t2);
+  let _ on t3 = nested-enum-match(t3);
+  let _ on t4 = nested-enum-match(t4);
+  let _ on t1 = unbalanced-freevars-in-branches(_, t1);
+  let _ on t2 = unbalanced-freevars-in-branches(_, t2);
+  let _ on t3 = unbalanced-freevars-in-branches(_, t3);
+  let _ on t4 = unbalanced-freevars-in-branches(_, t4);
+  let _ = t1;
+  let _ = t2;
+  let _ = t3;
+  let _ = t4;
+  let c = Ctx(make-cell(5));
+  let _ on c = with-ctx(c);
+  let _ = c;
   Unit
 }
 

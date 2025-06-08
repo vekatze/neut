@@ -1,6 +1,6 @@
 import {
+  core.int.io {print-int-line},
   core.int.ord,
-  core.int.show {show-int},
 }
 
 data set(a) {
@@ -12,16 +12,17 @@ data set-signature(a) {
 | Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
 }
 
-define make-set-signature(a: type, !compare: (a, a) -> ordering): set-signature(a) {
+define make-set-signature(a: type, !compare: (&a, &a) -> ordering): set-signature(a) {
   Set of {
-    empty = Leaf,
-    insert = {
+    empty := Leaf,
+    insert := {
       define insert(!new-value: a, haystack: set(a)): set(a) {
         match haystack {
         | Leaf =>
           Node(Leaf, !new-value, Leaf)
         | Node(left, !x, right) =>
-          match !compare(!new-value, !x) {
+          let b on !new-value, !x = !compare(!new-value, !x);
+          match b {
           | LT =>
             Node(insert(!new-value, left), !x, right)
           | EQ =>
@@ -32,13 +33,14 @@ define make-set-signature(a: type, !compare: (a, a) -> ordering): set-signature(
         }
       }
     },
-    member = {
+    member := {
       define member(!needle: a, haystack: &set(a)) {
         case haystack {
         | Leaf =>
           False
         | Node(left, x, right) =>
-          match !compare(!needle, *x) {
+          let b on !needle = !compare(!needle, x);
+          match b {
           | LT =>
             member(!needle, left)
           | EQ =>
@@ -53,21 +55,21 @@ define make-set-signature(a: type, !compare: (a, a) -> ordering): set-signature(
 }
 
 define main(): unit {
-  let Ord of {compare} = core.int.ord.as-ord in
-  let int-set-signature = make-set-signature(int, compare) in
+  let Ord of {compare} = core.int.ord.as-ord;
+  let int-set-signature = make-set-signature(int, compare);
   match int-set-signature {
-  | Set of {insert = !insert, member, empty} =>
-    let my-set = !insert(10, empty) in
-    let my-set = !insert(20, my-set) in
-    let my-set = !insert(20, my-set) in
-    let my-set = !insert(20, my-set) in
-    let my-set = !insert(30, my-set) in
-    let result on my-set = member(5, my-set) in
-    let _ = my-set in
+  | Set of {insert := !insert, member, empty} =>
+    let my-set = !insert(10, empty);
+    let my-set = !insert(20, my-set);
+    let my-set = !insert(20, my-set);
+    let my-set = !insert(20, my-set);
+    let my-set = !insert(30, my-set);
+    let result on my-set = member(5, my-set);
+    let _ = my-set;
     if result {
-      printf("{}\n", [show-int(1)])
+      print-int-line(1);
     } else {
-      printf("{}\n", [show-int(2)])
+      print-int-line(2);
     }
   }
 }

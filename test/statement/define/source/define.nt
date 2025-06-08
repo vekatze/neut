@@ -1,13 +1,13 @@
-define no-type-ascription(): _ {
+define no-type-ascription() {
   Unit
 }
 
-define hole-in-ascription(): _ {
+define hole-in-ascription() {
   Unit
 }
 
 define complex-term-in-ascription(): {
-  let _: type = type in
+  let _: type = type;
   unit
 } {
   Unit
@@ -66,14 +66,13 @@ define implicit-2<a, b>(x: a, y: b): pair(a, b) {
 }
 
 define main(): unit {
-  let _ = is-even(12345) in
-  let _ = implicit-0(&text, "hello") in
-  let _ = implicit-1("hello") in
-  let _ = implicit-2("hello", type) in
+  let _ = is-even(12345);
+  let _ = implicit-0(&text, "hello");
+  let _ = implicit-1("hello");
+  let _ = implicit-2("hello", type);
   let local-func-with-imp-args =
     function <a>(x: a) {
       x
-    }
-  in
+    };
   local-func-with-imp-args(Unit)
 }

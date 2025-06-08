@@ -6,62 +6,62 @@ data nat {
 data empty {}
 
 define affine-nat(): unit {
-  let _ = Zero in
-  let _ = Succ(Zero) in
-  let _ = Succ(Succ(Zero)) in
+  let _ = Zero;
+  let _ = Succ(Zero);
+  let _ = Succ(Succ(Zero));
   Unit
 }
 
 define relevant-nat(): unit {
-  let !zero = Zero in
-  let !one = Succ(Zero) in
-  let !two = Succ(Succ(Zero)) in
-  let _ = !zero in
-  let _ = !zero in
-  let _ = !one in
-  let _ = !one in
-  let _ = !two in
-  let _ = !two in
+  let !zero = Zero;
+  let !one = Succ(Zero);
+  let !two = Succ(Succ(Zero));
+  let _ = !zero;
+  let _ = !zero;
+  let _ = !one;
+  let _ = !one;
+  let _ = !two;
+  let _ = !two;
   Unit
 }
 
 define affine-list(): unit {
-  let _: list(nat) = [] in
-  let _ = [Zero] in
-  let _ = [Succ(Zero), Zero] in
+  let _: list(nat) = [];
+  let _ = [Zero];
+  let _ = [Succ(Zero), Zero];
   Unit
 }
 
 define relevant-list(): unit {
-  let !zero: list(nat) = [] in
-  let !one = [Zero] in
-  let !two = [Succ(Zero), Zero] in
-  let _ = !zero in
-  let _ = !zero in
-  let _ = !one in
-  let _ = !one in
-  let _ = !two in
-  let _ = !two in
+  let !zero: list(nat) = [];
+  let !one = [Zero];
+  let !two = [Succ(Zero), Zero];
+  let _ = !zero;
+  let _ = !zero;
+  let _ = !one;
+  let _ = !one;
+  let _ = !two;
+  let _ = !two;
   Unit
 }
 
 define affine-either(): unit {
-  let _: either(bool, list(nat)) = Left(True) in
-  let _: either(bool, list(nat)) = Right([Zero]) in
-  let _: either(bool, list(nat)) = Right([Succ(Zero), Zero]) in
+  let _: either(bool, list(nat)) = Left(True);
+  let _: either(bool, list(nat)) = Right([Zero]);
+  let _: either(bool, list(nat)) = Right([Succ(Zero), Zero]);
   Unit
 }
 
 define relevant-either(): unit {
-  let !foo: either(bool, list(nat)) = Left(True) in
-  let !bar: either(bool, list(nat)) = Right([Zero]) in
-  let !buz: either(bool, list(nat)) = Right([Succ(Zero), Zero]) in
-  let _ = !foo in
-  let _ = !foo in
-  let _ = !bar in
-  let _ = !bar in
-  let _ = !buz in
-  let _ = !buz in
+  let !foo: either(bool, list(nat)) = Left(True);
+  let !bar: either(bool, list(nat)) = Right([Zero]);
+  let !buz: either(bool, list(nat)) = Right([Succ(Zero), Zero]);
+  let _ = !foo;
+  let _ = !foo;
+  let _ = !bar;
+  let _ = !bar;
+  let _ = !buz;
+  let _ = !buz;
   Unit
 }
 
@@ -106,9 +106,8 @@ define using-if(): int {
       }
     } else {
       Unit
-    }
-  in
-  let some-cond = True in
+    };
+  let some-cond = True;
   when some-cond {
     print("hey")
   };
@@ -125,22 +124,22 @@ define nested-enum-match(t: term(my-enum)): my-enum {
   let val =
     match t {
     | App(Abs(x, !t'), Var(e)) =>
-      let _ = Var(e) in
-      let _ = !t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = !t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = !t' in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = x in
-      let _ = Var(e) in
-      let _ = x in
+      let _ = Var(e);
+      let _ = !t';
+      let _ = x;
+      let _ = Var(e);
+      let _ = !t';
+      let _ = x;
+      let _ = Var(e);
+      let _ = !t';
+      let _ = x;
+      let _ = Var(e);
+      let _ = x;
+      let _ = Var(e);
+      let _ = x;
       x
     | App(Abs(x, _), App(Var(_), App(_, App(_, _)))) =>
-      let _ = x in
+      let _ = x;
       x
     | App(Abs(x, _), App(App(_, App(_, _)), Var(_))) =>
       x
@@ -149,15 +148,14 @@ define nested-enum-match(t: term(my-enum)): my-enum {
     | App(App(Abs(x, _), Var(_)), App(App(_, App(_, _)), Var(_))) =>
       x
     | !t =>
-      let _ = !t in
-      let _ = !t in
-      let _ = !t in
+      let _ = !t;
+      let _ = !t;
+      let _ = !t;
       Foo
-    }
-  in
+    };
   match val {
   | Foo =>
-    let _ = val in
+    let _ = val;
     Bar
   | Bar =>
     Foo
@@ -165,29 +163,26 @@ define nested-enum-match(t: term(my-enum)): my-enum {
 }
 
 define unbalanced-freevars-in-branches(a: type, !t: term(a)): term(a) {
-  let !foo = Var("test") in
+  let !foo = Var("test");
   let f =
     function () {
       !foo
-    }
-  in
+    };
   let g =
     function () {
       !foo
-    }
-  in
+    };
   let h =
     function () {
       !foo
-    }
-  in
+    };
   match !t {
   | Var(x) =>
-    let _ = f in
+    let _ = f;
     match !t {
     | Var(y) =>
-      let _ = g in
-      let _ = x in
+      let _ = g;
+      let _ = x;
       Var(y)
     | Abs(_, t) =>
       t
@@ -199,12 +194,12 @@ define unbalanced-freevars-in-branches(a: type, !t: term(a)): term(a) {
     | App(_, e2) =>
       e2
     | _ =>
-      let _ = !t in
-      let _ = !t in
+      let _ = !t;
+      let _ = !t;
       !t
     }
   | App(t1, _) =>
-    let _ = g in
+    let _ = g;
     let !k =
       if False {
         h
@@ -212,11 +207,10 @@ define unbalanced-freevars-in-branches(a: type, !t: term(a)): term(a) {
         function () {
           Var("pohe")
         }
-      }
-    in
-    let _ = !k in
-    let _ = !k in
-    let _ = !k in
+      };
+    let _ = !k;
+    let _ = !k;
+    let _ = !k;
     t1
   }
 }
@@ -286,23 +280,23 @@ data monoid(a) {
 
 define list-monoid(a: type): monoid(list(a)) {
   Monoid of {
-    m-op = {
+    m-op := {
       function (xs, ys) {
         core.list.append(xs, ys)
       }
     },
-    m-empty = [],
+    m-empty := [],
   }
 }
 
 define use-struct<a>(m: monoid(a)): a {
-  let Monoid of {m-empty = !empty, m-op} = m in
+  let Monoid of {m-empty := !empty, m-op} = m;
   m-op(!empty, !empty)
 }
 
 define use-struct-2<a>(m: monoid(a)): a {
-  let Monoid of {m-empty, m-op} = m in
-  let !empty = m-empty in
+  let Monoid of {m-empty, m-op} = m;
+  let !empty = m-empty;
   m-op(!empty, !empty)
 }
 
@@ -316,41 +310,41 @@ define test-resource(): unit {
 }
 
 define test-match(): unit {
-  let !t1 = Var("text") in
-  let !t2 = Abs("foo", Var("foo")) in
-  let !t3 = App(Abs("foo", Var("foo")), Var("buz")) in
-  let _ = local-completeness(_, !t1) in
-  let _ = local-completeness(_, !t2) in
-  let _ = local-completeness(_, !t3) in
-  let _ = nested-match(_, !t1) in
-  let _ = nested-match(_, !t2) in
-  let _ = nested-match(_, !t3) in
-  let !t1 = Var(Foo) in
-  let !t2 = Abs(Bar, Var(Bar)) in
-  let !t3 = App(Abs(Bar, Var(Bar)), Var(Foo)) in
-  let !t4 = Abs(Bar, App(Var(Bar), Var(Bar))) in
-  let _ = nested-enum-match(!t1) in
-  let _ = nested-enum-match(!t2) in
-  let _ = nested-enum-match(!t3) in
-  let _ = nested-enum-match(!t4) in
-  let _ = unbalanced-freevars-in-branches(_, !t1) in
-  let _ = unbalanced-freevars-in-branches(_, !t2) in
-  let _ = unbalanced-freevars-in-branches(_, !t3) in
-  let _ = unbalanced-freevars-in-branches(_, !t4) in
-  let n: int = 10 in
-  let !xs: list(int) = [1, 2, 3] in
-  let _ = literal-match(n) in
-  let _ on n = literal-match-N(n) in
-  let _ = literal-match-in-cons(!xs) in
-  let _ on !xs = literal-match-in-cons-N(!xs) in
-  let _ = n in
-  let _ = !xs in
-  let _: list(int) = use-struct(list-monoid(_)) in
-  let _: list(bool) = use-struct(list-monoid(_)) in
-  let _: list(() -> int) = use-struct(list-monoid(_)) in
-  let _: list(int) = use-struct-2(list-monoid(_)) in
-  let _: list(bool) = use-struct-2(list-monoid(_)) in
-  let _: list(() -> int) = use-struct-2(list-monoid(_)) in
+  let !t1 = Var("text");
+  let !t2 = Abs("foo", Var("foo"));
+  let !t3 = App(Abs("foo", Var("foo")), Var("buz"));
+  let _ = local-completeness(_, !t1);
+  let _ = local-completeness(_, !t2);
+  let _ = local-completeness(_, !t3);
+  let _ = nested-match(_, !t1);
+  let _ = nested-match(_, !t2);
+  let _ = nested-match(_, !t3);
+  let !t1 = Var(Foo);
+  let !t2 = Abs(Bar, Var(Bar));
+  let !t3 = App(Abs(Bar, Var(Bar)), Var(Foo));
+  let !t4 = Abs(Bar, App(Var(Bar), Var(Bar)));
+  let _ = nested-enum-match(!t1);
+  let _ = nested-enum-match(!t2);
+  let _ = nested-enum-match(!t3);
+  let _ = nested-enum-match(!t4);
+  let _ = unbalanced-freevars-in-branches(_, !t1);
+  let _ = unbalanced-freevars-in-branches(_, !t2);
+  let _ = unbalanced-freevars-in-branches(_, !t3);
+  let _ = unbalanced-freevars-in-branches(_, !t4);
+  let n: int = 10;
+  let !xs: list(int) = [1, 2, 3];
+  let _ = literal-match(n);
+  let _ on n = literal-match-N(n);
+  let _ = literal-match-in-cons(!xs);
+  let _ on !xs = literal-match-in-cons-N(!xs);
+  let _ = n;
+  let _ = !xs;
+  let _: list(int) = use-struct(list-monoid(_));
+  let _: list(bool) = use-struct(list-monoid(_));
+  let _: list(() -> int) = use-struct(list-monoid(_));
+  let _: list(int) = use-struct-2(list-monoid(_));
+  let _: list(bool) = use-struct-2(list-monoid(_));
+  let _: list(() -> int) = use-struct-2(list-monoid(_));
   Unit
 }
 

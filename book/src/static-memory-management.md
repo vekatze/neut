@@ -17,8 +17,8 @@ In Neut, the content of a variable is copied if the variable is used more than o
 ```neut
 // before compilation (pseudo code)
 define foo(xs: list(int)): list(int) {
-  let ys = xs in // using `xs` (1)
-  let zs = xs in // using `xs` (2)
+  let ys = xs; // using `xs` (1)
+  let zs = xs; // using `xs` (2)
   some-func(ys);
   other-func(zs);
   xs // using `xs` (3)
@@ -30,10 +30,10 @@ In the code above, `xs` is used three times. Therefore, its content is copied tw
 ```neut
 // after compilation (pseudo-code)
 define foo(xs: list(int)): list(int) {
-  let xs1 = COPY(list(int), xs) in
-  let xs2 = COPY(list(int), xs) in
-  let ys = xs1 in
-  let zs = xs2 in
+  let xs1 = COPY(list(int), xs);
+  let xs2 = COPY(list(int), xs);
+  let ys = xs1;
+  let zs = xs2;
   some-func(ys);
   other-func(zs);
   xs
@@ -109,8 +109,8 @@ define increment(xs: int-list): int-list {
   | Nil =>
     Nil
   | Cons(y, ys) =>
-    let foo = add-int(y, 1) in
-    let bar = increment(ys) in
+    let foo = add-int(y, 1);
+    let bar = increment(ys);
     Cons(foo, bar)
   }
 }
@@ -158,7 +158,7 @@ Now, consider the following code:
 
 ```neut
 define use-length(!xs: list(int)): unit {
-  let len = length(!xs) in
+  let len = length(!xs);
   some-function(len, !xs)
 }
 ```
@@ -184,8 +184,7 @@ define use-length(xs: list(int)): unit {
   // xs: list(int)
   let len on xs =
     // xs: &list(int)
-    length(xs)
-  in
+    length(xs);
   // xs: list(int)
   some-function(len, xs)
 }
@@ -196,14 +195,14 @@ define use-length(xs: list(int)): unit {
 Conceptually, `on` can be seen as the following syntactic sugar:
 
 ```neut
-let v on x = e in
+let v on x = e;
 cont
 
 // ↓ desugar
 
-let x = unsafe-cast(a, &a, x) in // cast: `a` ~> `&a`
-let v = e in                     // (use `&a` in `e`)
-let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
+let x = unsafe-cast(a, &a, x); // cast: `a` ~> `&a`
+let v = e;                     // (use `&a` in `e`)
+let x = unsafe-cast(&a, a, x); // uncast: `&a` ~> `a`
 cont
 ```
 
@@ -212,8 +211,8 @@ cont
 ```neut
 // xs: list(int)
 // ...
-let ys on xs = xs in
-let _ = xs in // (*)
+let ys on xs = xs;
+let _ = xs; // (*)
 cont
 ```
 
@@ -257,7 +256,7 @@ define length(xs: &list(int)): int {
 }
 
 define use-length(xs: list(int)): unit {
-  let len on xs = length(xs) in
+  let len on xs = length(xs);
   some-function(len, xs)
 }
 ```

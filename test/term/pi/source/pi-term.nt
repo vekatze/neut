@@ -3,107 +3,92 @@ define test-syntax(): unit {
   let _ =
     function () {
       type
-    }
-  in
+    };
   // unary
   let _: (type) -> type =
     function (x) {
       x
-    }
-  in
+    };
   let _ =
     function (x: type) {
       x
-    }
-  in
+    };
   // binary
   let _: (type, type) -> type =
     function (x, _) {
       x
-    }
-  in
+    };
   let _: (type, type) -> type =
     function (_, y) {
       y
-    }
-  in
+    };
   let _: (type, type) -> type =
     function (x: type, _) {
       x
-    }
-  in
+    };
   let _: (type, type) -> type =
     function (_, y: type) {
       y
-    }
-  in
+    };
   let _: (type, type) -> type =
     function (x: type, _) {
       x
-    }
-  in
+    };
   let _ =
     function (x: type, y: type) {
       Pair(x, y)
-    }
-  in
+    };
   // exprs in bodies
   let _ =
     function (f: (type) -> type) {
       f(type)
-    }
-  in
+    };
   let _ =
     function (f: (type) -> type) {
-      let _ = f(type) in
+      let _ = f(type);
       type
-    }
-  in
+    };
   let _ =
     function (_: (type) -> type) {
       Unit;
       Unit
-    }
-  in
+    };
   // (unnecessarily) complex type
   let _ =
     function (
       x:
       {
-        let _ = type in
+        let _ = type;
         (type, type) -> type
       },
       _: {(type) -> type},
     ) {
       x
-    }
-  in
+    };
   let f =
     function (_: type, _: type, _: type) {
       type
-    }
-  in
+    };
   let _ =
     f(
       {
-        let _ = type in
+        let _ = type;
         type
       },
       type,
-      let _ = type in
-      let f =
-        function () {
-          type
-        }
-      in
-      f(),
-    )
-  in
+      {
+        let f =
+          function () {
+            type
+          };
+        f()
+      },
+    );
   Unit
 }
 
 define sample(): type {
-  let _ = type in
+  let _ = type;
   Unit;
   (type, type) -> type
 }
@@ -116,9 +101,8 @@ define affine-lam1(): unit {
   let lam1 =
     opaque(_, function () {
       type
-    })
-  in
-  let _ = lam1 in
+    });
+  let _ = lam1;
   Unit
 }
 
@@ -126,10 +110,9 @@ define relevant-lam1(): unit {
   let !lam1 =
     opaque(_, function () {
       type
-    })
-  in
-  let _ = !lam1 in
-  let _ = !lam1 in
+    });
+  let _ = !lam1;
+  let _ = !lam1;
   Unit
 }
 
@@ -137,15 +120,13 @@ define affine-lam2(): unit {
   let lam1 =
     opaque(_, function () {
       type
-    })
-  in
+    });
   let lam2 =
     opaque(_, function () {
-      let v = lam1 in
+      let v = lam1;
       v
-    })
-  in
-  let _ = lam2 in
+    });
+  let _ = lam2;
   Unit
 }
 
@@ -153,16 +134,14 @@ define relevant-lam2(): unit {
   let lam1 =
     opaque(_, function () {
       type
-    })
-  in
+    });
   let !lam2 =
     opaque(_, function () {
-      let v = lam1 in
+      let v = lam1;
       v
-    })
-  in
-  let _ = !lam2 in
-  let _ = !lam2 in
+    });
+  let _ = !lam2;
+  let _ = !lam2;
   Unit
 }
 
@@ -170,22 +149,19 @@ define affine-lam3(): unit {
   let !lam1 =
     opaque(_, function () {
       type
-    })
-  in
+    });
   let lam2 =
     opaque(_, function () {
-      let v = !lam1 in
+      let v = !lam1;
       v
-    })
-  in
+    });
   let lam3 =
     opaque(_, function (_: (type) -> type) {
-      let _ = !lam1 in
-      let v2 = lam2 in
+      let _ = !lam1;
+      let v2 = lam2;
       v2
-    })
-  in
-  let _ = lam3 in
+    });
+  let _ = lam3;
   Unit
 }
 
@@ -193,23 +169,20 @@ define relevant-lam3(): unit {
   let !lam1 =
     opaque(_, function () {
       type
-    })
-  in
+    });
   let lam2 =
     opaque(_, function () {
-      let v = !lam1 in
+      let v = !lam1;
       v
-    })
-  in
+    });
   let !lam3 =
     opaque(_, function (_: (type) -> type) {
-      let _ = !lam1 in
-      let v2 = lam2 in
+      let _ = !lam1;
+      let v2 = lam2;
       v2
-    })
-  in
-  let _ = !lam3 in
-  let _ = !lam3 in
+    });
+  let _ = !lam3;
+  let _ = !lam3;
   Unit
 }
 
@@ -217,31 +190,27 @@ define affine-lam4(): unit {
   let !lam1 =
     opaque(_, function () {
       type
-    })
-  in
+    });
   let !lam2 =
     opaque(_, function () {
-      let v = !lam1 in
+      let v = !lam1;
       v
-    })
-  in
+    });
   let !lam3 =
     opaque(_, function (_: (type) -> type) {
-      let _ = !lam1 in
-      let v2 = !lam2 in
+      let _ = !lam1;
+      let v2 = !lam2;
       v2
-    })
-  in
-  let _ = !lam3 in
+    });
+  let _ = !lam3;
   let lam4 =
     opaque(_, function (_: (type) -> type) {
-      let _ = !lam1 in
-      let _ = !lam2 in
-      let v3 = !lam3 in
+      let _ = !lam1;
+      let _ = !lam2;
+      let v3 = !lam3;
       v3
-    })
-  in
-  let _ = lam4 in
+    });
+  let _ = lam4;
   Unit
 }
 
@@ -249,97 +218,93 @@ define relevant-lam4(): unit {
   let !lam1 =
     opaque(_, function () {
       type
-    })
-  in
+    });
   let !lam2 =
     opaque(_, function () {
-      let v = !lam1 in
+      let v = !lam1;
       v
-    })
-  in
+    });
   let !lam3 =
     opaque(_, function (_: (type) -> type) {
-      let _ = !lam1 in
-      let v2 = !lam2 in
+      let _ = !lam1;
+      let v2 = !lam2;
       v2
-    })
-  in
-  let _ = !lam3 in
+    });
+  let _ = !lam3;
   let !lam4 =
     opaque(_, function (_: (type) -> type) {
-      let _ = !lam1 in
-      let _ = !lam2 in
-      let v3 = !lam3 in
+      let _ = !lam1;
+      let _ = !lam2;
+      let v3 = !lam3;
       v3
-    })
-  in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
-  let _ = !lam4 in
+    });
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
+  let _ = !lam4;
   Unit
 }
 

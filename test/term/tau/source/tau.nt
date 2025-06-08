@@ -4,24 +4,24 @@ import {
 }
 
 define test-syntax(): type {
-  let _: type = type in
-  let _: type = type in
+  let _: type = type;
+  let _: type = type;
   type
 }
 
 define affine-type(): type {
-  let _ = type in
+  let _ = type;
   type
 }
 
 define linear-type(): type {
-  let x = type in
+  let x = type;
   x
 }
 
 define relevant-type(): type {
-  let x = type in
-  let _ = x in
+  let x = type;
+  let _ = x;
   x
 }
 
@@ -30,17 +30,17 @@ define type-is-type(): type {
 }
 
 define pi-is-type(): type {
-  let _: type = () -> type in
-  let _: type = (type) -> type in
-  let _: type = (type, type, type) -> type in
+  let _: type = () -> type;
+  let _: type = (type) -> type;
+  let _: type = (type, type, type) -> type;
   type
 }
 
 define data-is-type(): type {
-  let _: type = null in
-  let _: type = unit in
-  let _: type = bool in
-  let _: type = list(type) in
+  let _: type = null;
+  let _: type = unit;
+  let _: type = bool;
+  let _: type = list(type);
   type
 }
 
@@ -53,26 +53,26 @@ define thread-is-type(a: type): type {
 }
 
 define resource-is-type(): type {
-  let _: type = text in
-  let _: type = vector(text) in
+  let _: type = text;
+  let _: type = vector(text);
   type
 }
 
 define test-semantics(): type {
-  let _ = affine-type() in
-  let _ = linear-type() in
-  let _ = relevant-type() in
-  let _ = type-is-type() in
-  let _ = pi-is-type() in
-  let _ = data-is-type() in
-  let _ = noema-is-type(type) in
-  let _ = thread-is-type(type) in
-  let _ = resource-is-type() in
+  let _ = affine-type();
+  let _ = linear-type();
+  let _ = relevant-type();
+  let _ = type-is-type();
+  let _ = pi-is-type();
+  let _ = data-is-type();
+  let _ = noema-is-type(type);
+  let _ = thread-is-type(type);
+  let _ = resource-is-type();
   type
 }
 
 define main(): unit {
-  let _ = test-syntax() in
-  let _ = test-semantics() in
+  let _ = test-syntax();
+  let _ = test-semantics();
   Unit
 }

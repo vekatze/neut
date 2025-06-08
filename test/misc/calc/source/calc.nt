@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 data expr() {
@@ -23,8 +23,8 @@ define interpret(e: expr()): int {
 }
 
 define main(): unit {
-  let e1 = Add(Num(1), Num(2)) in
-  let e2 = Mul(Num(3), Num(1023)) in
-  let e3 = Sub(e2, e1) in
-  printf("{}\n", [show-int(interpret(e3))])
+  let e1 = Add(Num(1), Num(2));
+  let e2 = Mul(Num(3), Num(1023));
+  let e3 = Sub(e2, e1);
+  print-int-line(interpret(e3))
 }

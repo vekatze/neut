@@ -1,10 +1,10 @@
 import {
   core.environment {get-argc, get-argv},
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 define main(): unit {
-  let _ = get-argv() in
-  let argc = get-argc() in
-  printf("{}\n", [show-int(argc)])
+  let _ = get-argv();
+  let argc = get-argc();
+  print-int-line(argc)
 }

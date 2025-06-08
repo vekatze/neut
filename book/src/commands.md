@@ -316,12 +316,6 @@ When the option `--minimize-imports` is set, `format-source` removes all the unu
 
 `neut format-ens path/to/source/file.ens` formats specified ens file and outputs the result to stdout.
 
-You can also pass `-` to receive input from stdin:
-
-```sh
-cat module.ens | neut format-ens -
-```
-
 ### `--in-place`
 
 When the option `--in-place` is set, `format-source` performs in-place update.
@@ -336,7 +330,7 @@ Thus, the type of the function `zen` must be `() -> unit`:
 
 ```neut
 define zen(): unit {
-  print("hello, world!\n")
+  print("hello, world!\n");
 }
 ```
 
@@ -363,9 +357,8 @@ define foo(x: int): int {
 The behavior of `foo` can be inspected rapidly by defining a function named `zen` in the file:
 
 ```neut
-// the type of `zen` must be `() -> unit`
 define zen(): unit {
-  printf("{}\n", [show-int(foo(10))])
+  print-int(foo(10));
 }
 ```
 

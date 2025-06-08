@@ -115,9 +115,8 @@ toDoc term =
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+              decodeLetBody c3 e c4
             ],
-          D.text "in",
           D.line,
           attachComment c5 $ toDoc cont
         ]
@@ -131,9 +130,8 @@ toDoc term =
             ],
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+              decodeLetBody c3 e c4
             ],
-          D.text "in",
           D.line,
           attachComment c5 $ toDoc cont
         ]
@@ -146,9 +144,8 @@ toDoc term =
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+              decodeLetBody c3 e c4
             ],
-          D.text "in",
           D.line,
           attachComment c5 $ toDoc cont
         ]
@@ -161,9 +158,8 @@ toDoc term =
               ++ decodeNoeticVarList noeticVarList,
           PI.arrange
             [ PI.beforeBareSeries $ D.text "=",
-              PI.bareSeries $ D.join [attachComment c3 $ toDoc e1, C.asSuffix c4]
+              decodeLetBody c3 e1 c4
             ],
-          D.text "in",
           D.line,
           attachComment c5 $ toDoc e2
         ]
@@ -273,6 +269,8 @@ toDoc term =
       decodeKeywordClause "when" $ mapKeywordClause toDoc whenClause
     _ :< Seq (e1, c1) c2 e2 -> do
       D.join [toDoc e1, D.text ";", D.line, attachComment (c1 ++ c2) $ toDoc e2]
+    _ :< SeqEnd e1 -> do
+      D.join [toDoc e1, D.text ";"]
     _ :< ListIntro es -> do
       SE.decode $ fmap toDoc es
     _ :< Admit ->
@@ -332,6 +330,15 @@ decodeKeywordClause k ((c1, (cond, c2)), body) = do
           ],
         decodeBlock body
       ]
+
+decodeLetBody :: C -> RawTerm -> C -> PI.Piece
+decodeLetBody c1 e c2 = do
+  case e of
+    _ :< Brace c3 (e', c4) -> do
+      let block = decodeBlock (c3, (toDoc e', c4))
+      PI.inject $ D.join [D.text " ", attachComment c1 block, D.text ";", C.asSuffix c2]
+    _ ->
+      PI.letBody $ D.join [attachComment c1 $ toDoc e, D.text ";", C.asSuffix c2]
 
 decodeBlock :: EL D.Doc -> D.Doc
 decodeBlock (c1, (body, c2)) = do
@@ -531,7 +538,7 @@ decPiElimKeyItem' (k, c, b, d) = do
     else
       PI.arrange
         [ PI.horizontal $ D.text k,
-          PI.horizontal $ D.text "=",
+          PI.horizontal $ D.text ":=",
           decodeClauseBody c d
         ]
 
@@ -541,7 +548,7 @@ decodeIntrospectClause (mKey, c, body) = do
   decodeDoubleArrowClause (key, c, body)
 
 decodePatternRow :: RP.RawPatternRow RawTerm -> (D.Doc, T.Text, D.Doc)
-decodePatternRow (patArgs, c, body, _) = do
+decodePatternRow (patArgs, c, body) = do
   let patArgs' = SE.decode $ fmap (decodePattern . snd) patArgs
   decodeDoubleArrowClause (patArgs', c, body)
 
@@ -588,7 +595,7 @@ decodePatternKeyValue (k, (_, c, v)) = do
     _ ->
       PI.arrange
         [ PI.inject $ D.text k,
-          PI.clauseDelimiter $ D.text "=",
+          PI.clauseDelimiter $ D.text ":=",
           PI.inject $ attachComment c $ decodePattern v
         ]
 

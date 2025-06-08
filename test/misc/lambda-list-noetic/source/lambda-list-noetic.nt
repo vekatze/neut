@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 data nat {
@@ -39,35 +39,32 @@ define fold(a: type, fs: &list((a) -> a), x: a): a {
   | Nil =>
     x
   | Cons(f, rest) =>
-    let _ = rest in
-    let _ = rest in
+    let _ = rest;
+    let _ = rest;
     f(fold(a, rest, x))
   }
 }
 
 define main(): unit {
-  let n1 = Succ(Zero) in
-  let !n2 = Succ(n1) in
-  let !n3 = Succ(!n2) in
+  let n1 = Succ(Zero);
+  let !n2 = Succ(n1);
+  let !n3 = Succ(!n2);
   let add2 =
     function (x) {
       add-nat(x, !n2)
-    }
-  in
+    };
   let mul3 =
     function (x) {
       mul-nat(x, !n3)
-    }
-  in
+    };
   let !mul9 =
     function (x) {
       mul-nat(x, mul-nat(!n3, !n3))
-    }
-  in
-  let _ = !mul9 in
-  let fs = Cons(add2, Cons(mul3, Cons(!mul9, Nil))) in
-  let gs = fs in
-  pin hs = gs in
+    };
+  let _ = !mul9;
+  let fs = Cons(add2, Cons(mul3, Cons(!mul9, Nil)));
+  let gs = fs;
+  pin hs = gs;
   // 2 + (3 * (9 * 3)) = 83
-  printf("{}\n", [show-int(interpret(fold(_, hs, !n3)))])
+  print-int-line(interpret(fold(_, hs, !n3)))
 }

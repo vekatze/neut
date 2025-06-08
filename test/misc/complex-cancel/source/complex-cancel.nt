@@ -35,14 +35,14 @@ define test2(x: joker): int {
     | L(v2) =>
       match v2 {
       | L(v3) =>
-        let _ = L(v3) in
+        let _ = L(v3);
         1
       | R(_) =>
         1
         // !
       }
     | R(_) =>
-      let _ = R(10) in
+      let _ = R(10);
       1
     }
   | R(_) =>
@@ -51,15 +51,15 @@ define test2(x: joker): int {
 }
 
 define main(): unit {
-  let _ = test(L(L(L(L(R(10)))))) in
-  let _ = test(L(L(L(R(10))))) in
-  let _ = test(L(L(R(10)))) in
-  let _ = test(L(R(10))) in
-  let _ = test(R(10)) in
-  let _ = test2(L(L(L(L(R(10)))))) in
-  let _ = test2(L(L(L(R(10))))) in
-  let _ = test2(L(L(R(10)))) in
-  let _ = test2(L(R(10))) in
-  let _ = test2(R(10)) in
+  let _ = test(L(L(L(L(R(10))))));
+  let _ = test(L(L(L(R(10)))));
+  let _ = test(L(L(R(10))));
+  let _ = test(L(R(10)));
+  let _ = test(R(10));
+  let _ = test2(L(L(L(L(R(10))))));
+  let _ = test2(L(L(L(R(10)))));
+  let _ = test2(L(L(R(10))));
+  let _ = test2(L(R(10)));
+  let _ = test2(R(10));
   Unit
 }

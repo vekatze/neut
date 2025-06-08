@@ -79,8 +79,12 @@ rawExpr h = do
               choice
                 [ do
                     c1 <- delimiter ";"
-                    (e2, c2) <- rawExpr h
-                    return (m :< RT.Seq e1 c1 e2, c2),
+                    mExpr <- optional $ rawExpr h
+                    case mExpr of
+                      Just (e2, c2) ->
+                        return (m :< RT.Seq e1 c1 e2, c2)
+                      Nothing ->
+                        return (m :< RT.SeqEnd (fst e1), snd e1 ++ c1),
                   return e1
                 ]
 
@@ -161,7 +165,7 @@ rawTerm' h m headSymbol c = do
 
 rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont h (e@(m :< _), c) = do
-  argListList <- many $ seriesParen (rawExpr h)
+  argListList <- many $ seriesParen (rawTerm h)
   return $ foldPiElim m (e, c) argListList
 
 rawTermPi :: Handle -> Parser (RT.RawTerm, C)
@@ -190,7 +194,7 @@ rawTermKeyValuePair h = do
   ((m, key), c1) <- var h
   choice
     [ do
-        c2 <- delimiter "="
+        c2 <- delimiter ":="
         (value, c) <- rawTerm h
         return ((m, key, c1, c2, value), c),
       do
@@ -211,9 +215,9 @@ rawTermLet h mLet letKind c1 = do
       ]
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
-  (e1, c6) <- rawExpr h
+  (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
-  c7 <- delimiter "in"
+  c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
   case (letKind, SE.isEmpty noeticVarList) of
@@ -238,9 +242,9 @@ rawTermBoxElim h mLet nv c1 = do
       ]
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
-  (e1, c6) <- rawExpr h
+  (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
-  c7 <- delimiter "in"
+  c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
   return (mLet :< RT.BoxElim nv False c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
@@ -258,9 +262,9 @@ rawTermPin h m c1 = do
         return $ SE.emptySeries' Nothing SE.Comma
       ]
   c5 <- delimiter "="
-  (e1, c6) <- rawExpr h
+  (e1, c6) <- rawTerm h
   loc <- getCurrentLoc
-  c7 <- delimiter "in"
+  c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
   return (m :< RT.Pin c1 (mx, x, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
@@ -427,40 +431,40 @@ rawTermMagicBase k parser = do
 rawTermMagicCast :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCast h m c = do
   rawTermMagicBase "cast" $ do
-    castFrom <- rawExpr h
+    castFrom <- rawTerm h
     c3 <- delimiter ","
-    castTo <- rawExpr h
+    castTo <- rawTerm h
     c4 <- delimiter ","
-    value <- rawExpr h
+    value <- rawTerm h
     c6 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Cast c1 (c2, castFrom) (c3, castTo) (c4, value) c6)
 
 rawTermMagicStore :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicStore h m c = do
   rawTermMagicBase "store" $ do
-    t <- rawExpr h
+    t <- rawTerm h
     c3 <- delimiter ","
-    value <- rawExpr h
+    value <- rawTerm h
     c4 <- delimiter ","
-    pointer <- rawExpr h
+    pointer <- rawTerm h
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 (c2, t) (c3, value) (c4, pointer) c5)
 
 rawTermMagicLoad :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicLoad h m c = do
   rawTermMagicBase "load" $ do
-    t <- rawExpr h
+    t <- rawTerm h
     c3 <- delimiter ","
-    pointer <- rawExpr h
+    pointer <- rawTerm h
     c4 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, t) (c3, pointer) c4)
 
 rawTermMagicAlloca :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicAlloca h m c = do
   rawTermMagicBase "alloca" $ do
-    t <- rawExpr h
+    t <- rawTerm h
     c3 <- delimiter ","
-    size <- rawExpr h
+    size <- rawTerm h
     c4 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Alloca c1 (c2, t) (c3, size) c4)
 
@@ -470,18 +474,18 @@ rawTermMagicExternal h m c0 = do
   mUse <- getCurrentHint
   (extFunName, cExt) <- symbol
   let extFunName' = EN.ExternalName extFunName
-  (es, c2) <- seriesParen (rawExpr h)
+  (es, c2) <- seriesParen (rawTerm h)
   choice
     [ do
-        (s, c) <- seriesParen (rawExprAndLowType h)
+        (s, c) <- seriesParen (rawTermAndLowType h)
         return (m :< RT.Magic c0 (RT.External c1 mUse extFunName' cExt es (Just (c2, s))), c),
       return (m :< RT.Magic c0 (RT.External c1 mUse extFunName' cExt es Nothing), c2)
     ]
 
-rawExprAndLowType :: Handle -> Parser (RT.VarArg, C)
-rawExprAndLowType h = do
+rawTermAndLowType :: Handle -> Parser (RT.VarArg, C)
+rawTermAndLowType h = do
   m <- getCurrentHint
-  (e, c1) <- rawExpr h
+  (e, c1) <- rawTerm h
   c2 <- delimiter ":"
   (t, c) <- rawTerm h
   return ((m, e, c1, c2, t), c)
@@ -491,7 +495,7 @@ rawTermMagicGlobal h m c = do
   rawTermMagicBase "global" $ do
     (globalVarName, c3) <- string
     c4 <- delimiter ","
-    lt <- rawExpr h
+    lt <- rawTerm h
     c5 <- optional $ delimiter ","
     return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt) c5)
 
@@ -525,8 +529,7 @@ rawTermPatternRow h patternSize = do
               <> "`"
       cArrow <- delimiter "=>"
       (body, c) <- rawExpr h
-      loc <- getCurrentLoc
-      return ((patternList, cArrow, body, loc), c)
+      return ((patternList, cArrow, body), c)
 
 rawTermPattern :: Handle -> Parser ((Hint, RP.RawPattern), C)
 rawTermPattern h = do
@@ -582,7 +585,7 @@ rawTermPatternKeyValuePair h = do
   (from, c1) <- symbol
   choice
     [ do
-        c2 <- delimiter "="
+        c2 <- delimiter ":="
         ((mTo, to), c) <- rawTermPattern h
         return ((from, (mTo, c1 ++ c2, to)), c),
       do
@@ -645,7 +648,7 @@ rawTermBrace h = do
 
 rawTermBox :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermBox h m c1 = do
-  (t, c) <- rawExpr h
+  (t, c) <- rawTerm h
   return (m :< RT.Box t, c1 ++ c)
 
 rawTermBoxIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
@@ -740,7 +743,7 @@ typeWithoutIdent h = do
 rawTermListIntro :: Handle -> Parser (RT.RawTerm, C)
 rawTermListIntro h = do
   m <- getCurrentHint
-  (es, c) <- seriesBracket $ rawExpr h
+  (es, c) <- seriesBracket $ rawTerm h
   return (m :< RT.ListIntro es, c)
 
 rawTermPiElimExact :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
