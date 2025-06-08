@@ -1,9 +1,11 @@
 import {
   core.text {singleton},
+  core.text.io {print-line},
 }
 
 define print-rune(r: rune): unit {
-  printf("{}\n", [singleton(r)])
+  pin t = singleton(r);
+  print-line(t)
 }
 
 define main(): unit {
@@ -29,7 +31,7 @@ define main(): unit {
   | _ =>
     print("other\n")
   };
-  let p: either(pair(rune, type), type) = Left(Pair(`x`, type)) in
+  let p: either(pair(rune, type), type) = Left(Pair(`x`, type));
   match p {
   | Right(_) =>
     print("right\n")

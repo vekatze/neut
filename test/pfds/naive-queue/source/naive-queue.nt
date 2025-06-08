@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
   core.list {reverse},
 }
 
@@ -39,7 +39,7 @@ define tail(a: type, q: queue(a)): ?queue(a) {
 }
 
 define snoc(a: type, v: a, q: queue(a)): queue(a) {
-  let Queue(xs, ys) = q in
+  let Queue(xs, ys) = q;
   sanitize(_, Queue(xs, Cons(v, ys)))
 }
 
@@ -53,44 +53,41 @@ define sum(xs: &list(int)): int {
 }
 
 define main(): unit {
-  let q: queue(list(int)) = empty(_) in
-  let q = snoc(_, [2], q) in
-  let q = snoc(_, [5], q) in
-  let q = snoc(_, [1], q) in
+  let q: queue(list(int)) = empty(_);
+  let q = snoc(_, [2], q);
+  let q = snoc(_, [5], q);
+  let q = snoc(_, [1], q);
   // v1 == 2
   let v1 on q =
     match head(_, q) {
     | Right(xs1) =>
-      let v1 on xs1 = sum(xs1) in
-      let _ = xs1 in
+      let v1 on xs1 = sum(xs1);
+      let _ = xs1;
       v1
     | Left(_) =>
       4
-    }
-  in
-  let mq = tail(_, q) in
+    };
+  let mq = tail(_, q);
   let result =
     match mq {
     | Left(_) =>
       1
     | Right(q) =>
-      let q = snoc(_, [3], q) in
-      let q = snoc(_, [8], q) in
+      let q = snoc(_, [3], q);
+      let q = snoc(_, [8], q);
       // v2 = 5
       let v2 on q =
         match head(_, q) {
         | Right(xs) =>
-          let v on xs = sum(xs) in
-          let _ = xs in
+          let v on xs = sum(xs);
+          let _ = xs;
           v
         | Left(_) =>
           4
-        }
-      in
-      let _ = q in
+        };
+      let _ = q;
       // 2 + 5 = 7
       add-int(v1, v2)
-    }
-  in
-  printf("{}\n", [show-int(result)])
+    };
+  print-int-line(result);
 }

@@ -1,7 +1,7 @@
 import {
-  core.float.show {show-float},
+  core.float.io {print-float-line},
 }
 
 define main(): unit {
-  printf("{}\n", [show-float(4.2)])
+  print-float-line(4.2, 6);
 }

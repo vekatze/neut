@@ -1,16 +1,16 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
+  core.list {for-each},
 }
 
 define make-adder(x: int): (int) -> int {
   let adder =
     function (y) {
       add-int(x, y)
-    }
-  in
+    };
   adder
 }
 
 define main(): unit {
-  printf("{}\n", [show-int(make-adder(3)(7))])
+  print-int-line(make-adder(3)(7));
 }

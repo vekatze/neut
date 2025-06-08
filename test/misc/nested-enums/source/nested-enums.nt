@@ -14,8 +14,8 @@ define joker(x: unit, y: bool): dummy(int) {
 }
 
 define main(): unit {
-  let _ = joker(Unit, True) in
-  let _ = joker(Unit, False) in
+  let _ = joker(Unit, True);
+  let _ = joker(Unit, False);
   print("\n");
   Unit
 }

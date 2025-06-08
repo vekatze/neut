@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 data nat {
@@ -19,11 +19,11 @@ define nil-cons-cons(xs: nat): int {
 }
 
 define main(): unit {
-  let !n0 = Zero in
-  let n1 = Succ(!n0) in
-  let n2 = Succ(Succ(Zero)) in
-  let z0 = nil-cons-cons(!n0) in
-  let z1 = nil-cons-cons(n1) in
-  let z2 = nil-cons-cons(n2) in
-  printf("{}\n", [show-int(add-int(z0, add-int(z1, z2)))])
+  let !n0 = Zero;
+  let n1 = Succ(!n0);
+  let n2 = Succ(Succ(Zero));
+  let z0 = nil-cons-cons(!n0);
+  let z1 = nil-cons-cons(n1);
+  let z2 = nil-cons-cons(n2);
+  print-int-line(add-int(z0, add-int(z1, z2)))
 }

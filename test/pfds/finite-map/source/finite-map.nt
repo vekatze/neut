@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 data finite-map(a, b) {
@@ -17,8 +17,8 @@ data finite-map-signature(a, b) {
 
 define make-finite-map(a: type, b: type, !compare: (a, a) -> ordering): finite-map-signature(a, b) {
   Finite-Map of {
-    empty = Leaf,
-    insert = {
+    empty := Leaf,
+    insert := {
       define insert(!key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
         match haystack {
         | Leaf =>
@@ -35,7 +35,7 @@ define make-finite-map(a: type, b: type, !compare: (a, a) -> ordering): finite-m
         }
       }
     },
-    lookup = {
+    lookup := {
       define lookup(!key: a, haystack: &finite-map(a, b)): ?b {
         case haystack {
         | Leaf =>
@@ -66,14 +66,14 @@ define compare-int(x: int, y: int): ordering {
 }
 
 define main(): unit {
-  let Finite-Map of {empty, insert = !insert, lookup} = make-finite-map(_, _, compare-int) in
-  let mymap = !insert(1, [type], empty) in
-  let mymap = !insert(2, [type, type], mymap) in
-  let mymap = !insert(2, [type, type], mymap) in
-  let mymap = !insert(2, [int], mymap) in
-  let !mymap = !insert(3, [() -> int], mymap) in
-  let _ = !mymap in
-  let _ = !mymap in
+  let Finite-Map of {empty, insert := !insert, lookup} = make-finite-map(_, _, compare-int);
+  let mymap = !insert(1, [type], empty);
+  let mymap = !insert(2, [type, type], mymap);
+  let mymap = !insert(2, [type, type], mymap);
+  let mymap = !insert(2, [int], mymap);
+  let !mymap = !insert(3, [() -> int], mymap);
+  let _ = !mymap;
+  let _ = !mymap;
   let result on !mymap =
     match lookup(2, !mymap) {
     | Left(_) =>
@@ -85,8 +85,7 @@ define main(): unit {
       | Cons(_, _) =>
         20
       }
-    }
-  in
-  let _ = !mymap in
-  printf("{}\n", [show-int(result)])
+    };
+  let _ = !mymap;
+  print-int-line(result);
 }

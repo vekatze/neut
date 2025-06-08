@@ -62,7 +62,7 @@ data top {
 }
 
 define yo(x: top): unit {
-  let Top(_, _) = x in
+  let Top(_, _) = x;
   Unit
 }
 
@@ -79,12 +79,12 @@ data bar {
 }
 
 define buz(c: &config): &text {
-  tie Config of {counter, func, path} = c in
-  let _: int = *counter in
-  let _ = *counter in
-  let f = *func in
-  let _ = f(3) in
-  let _ = *func in
+  tie Config of {counter, func, path} = c;
+  let _: int = *counter;
+  let _ = *counter;
+  let f = *func;
+  let _ = f(3);
+  let _ = *func;
   *path
 }
 

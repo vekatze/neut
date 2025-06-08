@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 // leftist heap
@@ -21,7 +21,7 @@ data heap-signature(a) {
 }
 
 define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signature(a) {
-  let !merge =
+  let !merge = {
     let !rank =
       function (h: &heap(a)) {
         case h {
@@ -30,19 +30,17 @@ define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signatur
         | Node(r, _, _, _) =>
           *r
         }
-      }
-    in
+      };
     let !make-Node =
       function (x: a, l: heap(a), r: heap(a)) {
-        let rank1 on l = !rank(l) in
-        let rank2 on r = !rank(r) in
+        let rank1 on l = !rank(l);
+        let rank2 on r = !rank(r);
         if ge-int(rank1, rank2) {
           Node(add-int(rank2, 1), x, l, r)
         } else {
           Node(add-int(rank1, 1), x, r, l)
         }
-      }
-    in
+      };
     define merge(h1: heap(a), h2: heap(a)): heap(a) {
       match h1, h2 {
       | h1, Leaf =>
@@ -58,10 +56,10 @@ define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signatur
         }
       }
     }
-  in
+  };
   Heap of {
-    empty = Leaf,
-    is-empty = {
+    empty := Leaf,
+    is-empty := {
       function (h: &heap(a)) {
         case h {
         | Leaf =>
@@ -71,13 +69,13 @@ define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signatur
         }
       }
     },
-    insert = {
+    insert := {
       function (x: a, h: heap(a)) {
         !merge(Node(1, x, Leaf, Leaf), h)
       }
     },
-    merge = !merge,
-    find-min = {
+    merge := !merge,
+    find-min := {
       function (h: &heap(a)) {
         case h {
         | Leaf =>
@@ -87,7 +85,7 @@ define make-heap-signature(a: type, !compare: (a, a) -> ordering): heap-signatur
         }
       }
     },
-    delete-min = {
+    delete-min := {
       function (h: heap(a)) {
         match h {
         | Leaf =>
@@ -111,31 +109,30 @@ define compare-int(x: int, y: int): ordering {
 }
 
 define main(): unit {
-  let int-heap-signature = make-heap-signature(_, compare-int) in
-  let Heap of {empty, insert = !insert, delete-min, find-min} = int-heap-signature in
-  let h = empty in
-  let h = !insert(10, h) in
-  let h = !insert(2, h) in
-  let h = !insert(5, h) in
-  let h = !insert(8, h) in
-  let h = !insert(1, h) in
-  let h = !insert(3, h) in
-  let mh = delete-min(h) in
+  let int-heap-signature = make-heap-signature(_, compare-int);
+  let Heap of {empty, insert := !insert, delete-min, find-min} = int-heap-signature;
+  let h = empty;
+  let h = !insert(10, h);
+  let h = !insert(2, h);
+  let h = !insert(5, h);
+  let h = !insert(8, h);
+  let h = !insert(1, h);
+  let h = !insert(3, h);
+  let mh = delete-min(h);
   match mh {
   | Left(_) =>
-    printf("{}\n", [show-int(100)])
+    print-int-line(100);
   | Right(h) =>
-    let h = !insert(9, h) in
+    let h = !insert(9, h);
     let min on h =
       match find-min(h) {
       | Left(_) =>
-        printf("{}\n", [show-int(100)])
+        print-int-line(100);
       | Right(value) =>
-        printf("{}\n", [show-int(value)])
-      }
-    in
-    let _ = h in
-    let _ = min in
+        print-int-line(value)
+      };
+    let _ = h;
+    let _ = min;
     Unit
   }
 }

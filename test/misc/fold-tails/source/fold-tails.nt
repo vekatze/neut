@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
   core.list {for-each},
 }
 
@@ -72,31 +72,30 @@ define head(xs: list(nat)): nat {
 }
 
 define main(): unit {
-  let !n = Succ(Succ(Succ(Zero))) in
-  let _ = !n in
-  let _ = !n in
-  let _ = !n in
-  let !m = mul-nat(!n, mul-nat(!n, !n)) in
+  let !n = Succ(Succ(Succ(Zero)));
+  let _ = !n;
+  let _ = !n;
+  let _ = !n;
+  let !m = mul-nat(!n, mul-nat(!n, !n));
   // 27
-  let _ = !m in
-  let _ = !m in
+  let _ = !m;
+  let _ = !m;
   // [27, 26, 25, ..., 1]
-  let xs = gen(!m) in
+  let xs = gen(!m);
   // [[26, ...], [25, ...], ..., [1, ...]]
-  let !yss = tails(_, xs) in
-  let _ = !yss in
-  let _ = !yss in
+  let !yss = tails(_, xs);
+  let _ = !yss;
+  let _ = !yss;
   let !zs =
     // [26, ..., 1]
     for-each(!yss, function (l) {
       head(l)
-    })
-  in
-  let _ = !zs in
-  let _ = !zs in
-  let _ = !zs in
-  let _ = !zs in
-  let _ = !zs in
+    });
+  let _ = !zs;
+  let _ = !zs;
+  let _ = !zs;
+  let _ = !zs;
+  let _ = !zs;
   let !result-nat =
     // 26 + ... + 1 = 351
     fold-r(
@@ -107,10 +106,9 @@ define main(): unit {
       },
       Zero,
       !zs,
-    )
-  in
-  let _ = !result-nat in
-  let _ = !result-nat in
-  let result = interpret(!result-nat) in
-  printf("{}\n", [show-int(result)])
+    );
+  let _ = !result-nat;
+  let _ = !result-nat;
+  let result = interpret(!result-nat);
+  print-int-line(result);
 }

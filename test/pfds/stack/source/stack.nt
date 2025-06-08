@@ -1,10 +1,7 @@
 import {
   core.bool {False, True, bool},
   core.either {Right, none},
-  core.int.show {show-int},
-  core.list,
-  core.text,
-  core.text.io {printf},
+  core.int.io {print-int-line},
   core.unit {unit},
 }
 
@@ -76,26 +73,26 @@ define suffixes-noetic(a: type, xs: &stack(a)): stack(&stack(a)) {
 }
 
 define main(): unit {
-  let !xs = empty(int) in
-  let ys = Cons(10, !xs) in
-  let zs = Cons(30, Cons(20, ys)) in
-  let !zs = update(_, zs, 1, 20000) in
-  let _ = suffixes(_, !zs) in
-  let calc on !zs, !xs =
-    let b = is-empty(_, !zs) in
-    let _ = is-empty(_, !xs) in
-    let _ = head(_, !zs) in
-    let _ = suffixes-noetic(_, !zs) in
-    let _ = head(_, !xs) in
-    let _ = tail(_, !zs) in
-    let _ = tail(_, !zs) in
+  let !xs = empty(int);
+  let ys = Cons(10, !xs);
+  let zs = Cons(30, Cons(20, ys));
+  let !zs = update(_, zs, 1, 20000);
+  let _ = suffixes(_, !zs);
+  let calc on !zs, !xs = {
+    let b = is-empty(_, !zs);
+    let _ = is-empty(_, !xs);
+    let _ = head(_, !zs);
+    let _ = suffixes-noetic(_, !zs);
+    let _ = head(_, !xs);
+    let _ = tail(_, !zs);
+    let _ = tail(_, !zs);
     if b {
       1
     } else {
       2
     }
-  in
-  let _ = !zs in
-  let _ = !xs in
-  printf("{}\n", [show-int(calc)])
+  };
+  let _ = !zs;
+  let _ = !xs;
+  print-int-line(calc);
 }

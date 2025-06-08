@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
   core.list {reverse},
 }
 
@@ -37,8 +37,8 @@ define insert-tree(a: type, cmp: &(a, a) -> ordering, t: tree(a), h: heap(a)): h
   | Nil =>
     [t]
   | Cons(t1, rest) =>
-    let r on t = rank(a, t) in
-    let r1 on t1 = rank(a, t1) in
+    let r on t = rank(a, t);
+    let r1 on t1 = rank(a, t1);
     if lt-int(r, r1) {
       Cons(t, Cons(t1, rest))
     } else {
@@ -58,8 +58,8 @@ define merge(a: type, cmp: &(a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(
   | h1, Nil =>
     h1
   | Cons(t1, ts1), Cons(t2, ts2) =>
-    let r1 on t1 = rank(a, t1) in
-    let r2 on t2 = rank(a, t2) in
+    let r1 on t1 = rank(a, t1);
+    let r2 on t2 = rank(a, t2);
     if lt-int(r1, r2) {
       Cons(t1, merge(a, cmp, ts1, Cons(t2, ts2)))
     } else-if gt-int(r1, r2) {
@@ -84,7 +84,7 @@ define find-min(a: type, cmp: &(a, a) -> ordering, h: &heap(a)): ?a {
       | Nil =>
         !cand
       | Cons(t, ts) =>
-        let !root-head = root(a, t) in
+        let !root-head = root(a, t);
         match cmp(!root-head, !cand) {
         | LT =>
           self(!root-head, ts)
@@ -92,13 +92,12 @@ define find-min(a: type, cmp: &(a, a) -> ordering, h: &heap(a)): ?a {
           self(!cand, ts)
         }
       }
-    }
-  in
+    };
   case h {
   | Nil =>
     none
   | Cons(t, ts) =>
-    let r = root(a, t) in
+    let r = root(a, t);
     Right(helper(r, ts))
   }
 }
@@ -110,12 +109,12 @@ define remove-min-tree(a: type, cmp: &(a, a) -> ordering, h: heap(a)): ?pair(tre
   | Cons(t, Nil) =>
     Right(Pair(t, Nil))
   | Cons(t, ts) =>
-    try Pair(cand, ts-adjusted) = remove-min-tree(a, cmp, ts) in
-    let c on t, cand =
-      let root-head = root(a, t) in
-      let root-cand = root(a, cand) in
+    try Pair(cand, ts-adjusted) = remove-min-tree(a, cmp, ts);
+    let c on t, cand = {
+      let root-head = root(a, t);
+      let root-cand = root(a, cand);
       cmp(root-head, root-cand)
-    in
+    };
     match c {
     | LT =>
       Right(Pair(t, Cons(cand, ts-adjusted)))
@@ -126,7 +125,7 @@ define remove-min-tree(a: type, cmp: &(a, a) -> ordering, h: heap(a)): ?pair(tre
 }
 
 define delete-min(a: type, cmp: &(a, a) -> ordering, h: heap(a)): ?heap(a) {
-  try Pair(Node(_, _, ts1), ts2): pair(tree(a), heap(a)) = remove-min-tree(a, cmp, h) in
+  try Pair(Node(_, _, ts1), ts2): pair(tree(a), heap(a)) = remove-min-tree(a, cmp, h);
   Right(merge(a, cmp, reverse(ts1), ts2))
 }
 
@@ -141,24 +140,23 @@ define compare-int(x: int, y: int): ordering {
 }
 
 define main(): unit {
-  let h: heap(int) = Nil in
-  pin compare-int = compare-int in
-  let h = insert(int, compare-int, 3, h) in
-  let h = insert(int, compare-int, 4, h) in
-  let h = insert(int, compare-int, 2, h) in
-  let h = insert(int, compare-int, 9, h) in
-  let h = insert(int, compare-int, 100, h) in
-  let h = insert(int, compare-int, 8, h) in
-  let !h = insert(int, compare-int, 1, h) in
-  let h = merge(int, compare-int, !h, !h) in
+  let h: heap(int) = Nil;
+  pin compare-int = compare-int;
+  let h = insert(int, compare-int, 3, h);
+  let h = insert(int, compare-int, 4, h);
+  let h = insert(int, compare-int, 2, h);
+  let h = insert(int, compare-int, 9, h);
+  let h = insert(int, compare-int, 100, h);
+  let h = insert(int, compare-int, 8, h);
+  let !h = insert(int, compare-int, 1, h);
+  let h = merge(int, compare-int, !h, !h);
   let maybe-min on h =
     match find-min(int, compare-int, h) {
     | Left(_) =>
       10
     | Right(min) =>
       min
-    }
-  in
-  let _ = h in
-  printf("{}\n", [show-int(maybe-min)])
+    };
+  let _ = h;
+  print-int-line(maybe-min);
 }

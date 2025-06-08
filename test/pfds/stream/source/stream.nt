@@ -17,7 +17,7 @@ data stream(a) {
 }
 
 define append(a: type, xs: stream(a), ys: stream(a)): stream(a) {
-  let Stream(k) = xs in
+  let Stream(k) = xs;
   match k() {
   | Nil =>
     ys
@@ -34,7 +34,7 @@ define take(a: type, n: int, xs: stream(a)): stream(a) {
       Nil
     })
   } else {
-    let Stream(k) = xs in
+    let Stream(k) = xs;
     match k() {
     | Nil =>
       Stream(function () {
@@ -54,8 +54,7 @@ define main(): unit {
       Cons(1, Stream(function () {
         Nil
       }))
-    })
-  in
-  let _ = my-stream in
+    });
+  let _ = my-stream;
   Unit
 }

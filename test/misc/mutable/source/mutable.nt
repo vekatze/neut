@@ -1,26 +1,26 @@
 import {
   core.cell {borrow, mutate},
-  core.int.show {show-int},
+  core.int.io {print-int-line},
   core.list {length},
 }
 
 define bar(xs-cell: &cell(list(int))): unit {
   borrow(xs-cell, function (xs) {
-    let len = length(xs) in
-    printf("{}\n", [show-int(len)]);
+    let len = length(xs);
+    print-int-line(len);
     quote {Unit}
   })
 }
 
 define main(): unit {
-  let xs: list(int) = Cons(1, Cons(2, Nil)) in
-  let xs-cell = new-cell(xs) in
-  let _ on xs-cell =
-    let _ = bar(xs-cell) in
+  let xs: list(int) = Cons(1, Cons(2, Nil));
+  let xs-cell = make-cell(xs);
+  let _ on xs-cell = {
+    let _ = bar(xs-cell);
     mutate(xs-cell, function (xs) {
       Cons(4, xs)
     });
-    let _ = bar(xs-cell) in
+    let _ = bar(xs-cell);
     mutate(xs-cell, function (_) {
       Nil
     });
@@ -28,7 +28,7 @@ define main(): unit {
       Cons(4, xs)
     });
     bar(xs-cell)
-  in
-  let _ = xs-cell in
+  };
+  let _ = xs-cell;
   Unit
 }

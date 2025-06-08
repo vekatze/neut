@@ -1,10 +1,10 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
   core.list {length},
 }
 
 define main(): unit {
-  let !xs: list(int) = [] in
+  let !xs: list(int) = [];
   let no-free-var =
     define foo(c: int): int {
       if eq-int(c, 0) {
@@ -12,43 +12,40 @@ define main(): unit {
       } else {
         foo(sub-int(c, 1))
       }
-    }
-  in
-  let _ = no-free-var(3) in
+    };
+  let _ = no-free-var(3);
   let single-free-var =
     define free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
-        let _ = !xs in
-        let _ on !xs = length(!xs) in
-        let _ = !xs in
+        let _ = !xs;
+        let _ on !xs = length(!xs);
+        let _ = !xs;
         1
       } else {
         free-vars-in-recursion(sub-int(c, 1))
       }
-    }
-  in
-  let _ = single-free-var(3) in
-  let !ys = !xs in
-  let !zs = !xs in
-  let !ws: list(int) = [] in
+    };
+  let _ = single-free-var(3);
+  let !ys = !xs;
+  let !zs = !xs;
+  let !ws: list(int) = [];
   let multiple-free-var =
     define free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
-        let _ = !xs in
-        let _ = !xs in
-        let _ = !ys in
-        let _ on !ys = length(!ys) in
-        let _ on !zs = length(!zs) in
-        let _ = !ys in
-        let _ = !zs in
+        let _ = !xs;
+        let _ = !xs;
+        let _ = !ys;
+        let _ on !ys = length(!ys);
+        let _ on !zs = length(!zs);
+        let _ = !ys;
+        let _ = !zs;
         1
       } else {
-        let _ = !xs in
-        let _ = !ys in
-        let _ = !ws in
+        let _ = !xs;
+        let _ = !ys;
+        let _ = !ws;
         free-vars-in-recursion(sub-int(c, 1))
       }
-    }
-  in
-  printf("{}\n", [show-int(multiple-free-var(3))])
+    };
+  print-int-line(multiple-free-var(3))
 }

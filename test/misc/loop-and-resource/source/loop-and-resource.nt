@@ -1,20 +1,19 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 define loop(!f: (int) -> ?int): unit {
   let k =
     define self(count: int): unit {
-      let value-or-none = !f(count) in
+      let value-or-none = !f(count);
       match value-or-none {
       | Left(_) =>
         Unit
       | Right(value) =>
-        printf("{}\n", [show-int(value)]);
+        print-int-line(value);
         self(sub-int(count, 1))
       }
-    }
-  in
+    };
   k(5)
 }
 

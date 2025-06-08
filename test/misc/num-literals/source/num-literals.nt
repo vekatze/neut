@@ -1,6 +1,6 @@
 import {
   core.c-int {c-int, from-c-int},
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 define foo(): c-int {
@@ -20,5 +20,5 @@ define buz(): my-float {
 }
 
 define main(): unit {
-  printf("{}\n", [show-int(from-c-int(foo()))])
+  print-int-line(from-c-int(foo()));
 }

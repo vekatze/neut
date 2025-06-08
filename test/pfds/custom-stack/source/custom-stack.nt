@@ -1,5 +1,5 @@
 import {
-  core.int.show {show-int},
+  core.int.io {print-int-line},
 }
 
 data custom-stack(a) {
@@ -39,33 +39,32 @@ define tail(a: type, xs: &custom-stack(a)): ?&custom-stack(a) {
 }
 
 define main(): unit {
-  let !xs = empty(() -> int) in
+  let !xs = empty(() -> int);
   let !v =
     Pair(function () {
       1
     }, function () {
       2
-    })
-  in
-  let ys = C(!v, !xs) in
-  let zs = C(!v, C(!v, ys)) in
-  let calc on zs, !xs =
-    let _ = is-empty(_, zs) in
-    let _ = is-empty(_, !xs) in
-    let h = head(_, zs) in
-    let _ = head(_, !xs) in
-    let _ = tail(_, zs) in
-    let _ = tail(_, zs) in
+    });
+  let ys = C(!v, !xs);
+  let zs = C(!v, C(!v, ys));
+  let calc on zs, !xs = {
+    let _ = is-empty(_, zs);
+    let _ = is-empty(_, !xs);
+    let h = head(_, zs);
+    let _ = head(_, !xs);
+    let _ = tail(_, zs);
+    let _ = tail(_, zs);
     match h {
     | Left(_) =>
       1
     | Right(pair) =>
-      tie Pair(_, right) = pair in
-      let f = *right in
+      tie Pair(_, right) = pair;
+      let f = *right;
       f()
     }
-  in
-  let _ = zs in
-  let _ = !xs in
-  printf("{}\n", [show-int(calc)])
+  };
+  let _ = zs;
+  let _ = !xs;
+  print-int-line(calc);
 }

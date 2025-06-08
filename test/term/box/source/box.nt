@@ -1,102 +1,100 @@
 import {
   core.control {discard},
-  core.int.show {show-int},
+  core.int.io {print-int-line},
   core.list {length},
 }
 
 define axiom-K<a, b>(f: meta (a) -> b, x: meta a): meta b {
   box {
-    letbox f' = f in
-    letbox x' = x in
+    letbox f' = f;
+    letbox x' = x;
     f'(x')
   }
 }
 
 define axiom-T<a>(x: meta a): a {
-  letbox-T x' = x in
+  letbox-T x' = x;
   x'
 }
 
 define test-syntax(): unit {
   // box-intro, box-elim
-  letbox x = box {Unit} in
-  letbox y on x = box x {x} in
-  letbox _ on x, y =
-    let _ = y in
+  letbox x = box {Unit};
+  letbox y on x = box x {x};
+  letbox _ on x, y = {
+    let _ = y;
     box x {x}
-  in
-  letbox _ on x, y =
-    let _ = type in
+  };
+  letbox _ on x, y = {
+    let _ = type;
     box x, y {
-      let _ = y in
+      let _ = y;
       x
     }
-  in
-  let _ = x in
-  let _ = y in
+  };
+  let _ = x;
+  let _ = y;
   // box-elim-T
-  letbox-T x = box {Unit} in
-  letbox-T y on x = box x {x} in
-  letbox-T _ on x, y =
-    let _ = y in
+  letbox-T x = box {Unit};
+  letbox-T y on x = box x {x};
+  letbox-T _ on x, y = {
+    let _ = y;
     box x {x}
-  in
-  letbox-T _ on x =
-    let _ = y in
+  };
+  letbox-T _ on x = {
+    let _ = y;
     box x {x}
-  in
+  };
   // let-on (= letbox-T + quote)
-  let len: int on x =
-    let _: &unit = x in
+  let len: int on x = {
+    let _: &unit = x;
     1234
-  in
-  let _ = len in
-  let _ = x in
+  };
+  let _ = len;
+  let _ = x;
   Unit
 }
 
 define test-resource(xs: list(int)): unit {
   // letbox
-  letbox len on xs = quote {length(xs)} in
-  printf("{}\n", [show-int(len)]);
+  letbox len on xs = quote {length(xs)};
+  print-int-line(len);
   // letbox + box
   letbox len on xs =
     // layer 1
     box xs {
       // layer 0
-      let !ys = xs in
+      let !ys = xs;
       discard(!ys);
       discard(!ys);
-      let len on !ys = length(!ys) in
+      let len on !ys = length(!ys);
       discard(!ys);
       len
-    }
-  in
-  printf("{}\n", [show-int(len)]);
+    };
+  print-int-line(len);
   // letbox-T
-  letbox-T len on xs = quote {length(xs)} in
-  printf("{}\n", [show-int(len)]);
+  letbox-T len on xs = quote {length(xs)};
+  print-int-line(len);
   // letbox-T + box
   letbox-T len on xs =
     // layer 0
     box xs {
       // layer -1
-      let !ys = xs in
+      let !ys = xs;
       discard(!ys);
       discard(!ys);
-      let len on !ys = length(!ys) in
+      let len on !ys = length(!ys);
       discard(!ys);
       len
-    }
-  in
+    };
   discard(xs);
-  printf("{}\n", [show-int(len)]);
+  print-int-line(len);
   Unit
 }
 
 define complex(): () -> unit {
   // layer 0
-  let xs: list(int) = [1, 2, 3, 4] in
+  let xs: list(int) = [1, 2, 3, 4];
   letbox f on xs =
     // layer 1
     // xs: &list(int) at layer 1
@@ -104,19 +102,18 @@ define complex(): () -> unit {
       // layer 0
       // xs: list(int) at layer 0
       function () {
-        letbox k on xs =
+        letbox k on xs = {
           // 1
           // xs: &list(int) at layer 1
-          let len = length(xs) in
-          printf("{}\n", [show-int(len)]);
+          let len = length(xs);
+          print-int-line(len);
           box {Unit}
-        in
-        let _ = k in
-        let _ = xs in
+        };
+        let _ = k;
+        let _ = xs;
         Unit
       }
-    }
-  in
+    };
   discard(xs);
   f
 }

@@ -5,65 +5,65 @@ import {
 
 define test-syntax(): unit {
   // nullary
-  let _ = () -> type in
+  let _ = () -> type;
   // general, non-dependent
-  let _ = (type) -> type in
-  let _ = (() -> type) -> type in
-  let _ = (() -> (type) -> type) -> type in
-  let _ = (((type) -> type) -> type) -> type in
+  let _ = (type) -> type;
+  let _ = (() -> type) -> type;
+  let _ = (() -> (type) -> type) -> type;
+  let _ = (((type) -> type) -> type) -> type;
   // general, dependent
-  let _ = (a: type, a) -> a in
-  let _ = (a: type, a) -> a in
-  let _ = (a: type, a) -> list(type) in
-  let _ = (a: type, list(type)) -> a in
-  let _ = (a: type, a) -> &list(type) in
-  let _ = (a: type, &list(type)) -> a in
-  let _ = (a: type, a) -> thread(list(type)) in
-  let _ = (a: type, thread(list(type))) -> a in
-  let _ = (a: type, a) -> type in
-  let _ = (a: type, (a) -> a) -> type in
-  let _ = (a: type, ((a) -> a) -> a) -> type in
+  let _ = (a: type, a) -> a;
+  let _ = (a: type, a) -> a;
+  let _ = (a: type, a) -> list(type);
+  let _ = (a: type, list(type)) -> a;
+  let _ = (a: type, a) -> &list(type);
+  let _ = (a: type, &list(type)) -> a;
+  let _ = (a: type, a) -> thread(list(type));
+  let _ = (a: type, thread(list(type))) -> a;
+  let _ = (a: type, a) -> type;
+  let _ = (a: type, (a) -> a) -> type;
+  let _ = (a: type, ((a) -> a) -> a) -> type;
   // simplified
-  let _ = (type) -> type in
-  let _ = ({(type) -> type}) -> type in
-  let _ = (type) -> (type) -> list(type) in
-  let _ = (type) -> {(type) -> type} in
-  let _ = (type) -> {(type) -> list(type)} in
-  let _ = (type) -> {(list(type)) -> type} in
-  let _ = (type) -> {(type) -> &list(type)} in
-  let _ = (type) -> {(&list(type)) -> type} in
-  let _ = (type) -> {(type) -> thread(list(type))} in
-  let _ = (type) -> {(thread(list(type))) -> type} in
-  let _ = (type) -> {({(type) -> type}) -> type} in
-  let _ = (type) -> {(type) -> {(type) -> type}} in
-  let _ = (type) -> {({(type) -> type}) -> {(type) -> type}} in
-  let _ = ({(type) -> type}) -> {({(type) -> type}) -> {(type) -> type}} in
-  let _ = ({({(type) -> type}) -> {(type) -> type}}) -> {({(type) -> type}) -> {(type) -> type}} in
+  let _ = (type) -> type;
+  let _ = ({(type) -> type}) -> type;
+  let _ = (type) -> (type) -> list(type);
+  let _ = (type) -> {(type) -> type};
+  let _ = (type) -> {(type) -> list(type)};
+  let _ = (type) -> {(list(type)) -> type};
+  let _ = (type) -> {(type) -> &list(type)};
+  let _ = (type) -> {(&list(type)) -> type};
+  let _ = (type) -> {(type) -> thread(list(type))};
+  let _ = (type) -> {(thread(list(type))) -> type};
+  let _ = (type) -> {({(type) -> type}) -> type};
+  let _ = (type) -> {(type) -> {(type) -> type}};
+  let _ = (type) -> {({(type) -> type}) -> {(type) -> type}};
+  let _ = ({(type) -> type}) -> {({(type) -> type}) -> {(type) -> type}};
+  let _ = ({({(type) -> type}) -> {(type) -> type}}) -> {({(type) -> type}) -> {(type) -> type}};
   // complex
-  let _ = (a: type, m: (type, type) -> type) -> ({(s: type) -> (a) -> m(s, a)}) -> a in
+  let _ = (a: type, m: (type, type) -> type) -> ({(s: type) -> (a) -> m(s, a)}) -> a;
   Unit
 }
 
 define affine-pi(): type {
-  let _ = (type) -> type in
+  let _ = (type) -> type;
   type
 }
 
 define linear-pi(): type {
-  let x = (type) -> type in
+  let x = (type) -> type;
   x
 }
 
 define relevant-pi(): type {
-  let x = (type) -> type in
-  let _ = x in
+  let x = (type) -> type;
+  let _ = x;
   x
 }
 
 define test-resource(): unit {
-  let _ = affine-pi() in
-  let _ = linear-pi() in
-  let _ = relevant-pi() in
+  let _ = affine-pi();
+  let _ = linear-pi();
+  let _ = relevant-pi();
   Unit
 }
 
