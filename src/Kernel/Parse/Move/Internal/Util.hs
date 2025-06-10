@@ -28,8 +28,11 @@ readIntMaybe :: T.Text -> [(Char, Integer)] -> T.Text -> Maybe Integer
 readIntMaybe prefix charMap t = do
   (suffix, sign) <- readSign t
   suffix' <- T.stripPrefix prefix suffix
-  v <- interpretAsInteger charMap 1 0 suffix'
-  return $ sign * v
+  if T.length suffix' <= 0
+    then Nothing
+    else do
+      v <- interpretAsInteger charMap 1 0 suffix'
+      return $ sign * v
 
 readSign :: T.Text -> Maybe (T.Text, Integer)
 readSign t = do
