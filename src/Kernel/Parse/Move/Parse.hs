@@ -5,15 +5,13 @@ module Kernel.Parse.Move.Parse
 where
 
 import CodeParser.Move.Parse (runParser)
-import Error.Move.Run (forP, forP_)
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Bifunctor (Bifunctor (first))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Error.Move.Run (forP, forP_)
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Global.KeyArg qualified as KeyArg
@@ -41,6 +39,8 @@ import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Language.Term.Rule.Stmt
+import Logger.Rule.Hint
+import SyntaxTree.Rule.Series qualified as SE
 
 data Handle = Handle
   { parseHandle :: ParseRT.Handle,
@@ -179,9 +179,9 @@ registerKeyArg h stmt = do
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let isConstLike = RT.isConstLike geist
       let m = RT.loc geist
-      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
-      let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
-      KeyArg.insert (keyArgHandle h) m name isConstLike allArgNum expArgNames
+      let impKeys = map (\(_, x, _, _, _) -> x) impArgs
+      let expKeys = map (\(_, x, _, _, _) -> x) expArgs
+      KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
     PostRawStmtNominal {} -> do
       return ()
     PostRawStmtDefineResource {} -> do
@@ -193,9 +193,9 @@ registerKeyArg' :: Handle -> Stmt -> EIO ()
 registerKeyArg' h stmt = do
   case stmt of
     StmtDefine isConstLike _ (SavedHint m) name impArgs expArgs _ _ -> do
-      let expArgNames = map (\(_, x, _) -> toText x) expArgs
-      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
-      KeyArg.insert (keyArgHandle h) m name isConstLike allArgNum expArgNames
+      let impKeys = map (\(_, x, _) -> toText x) impArgs
+      let expKeys = map (\(_, x, _) -> toText x) expArgs
+      KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
     StmtForeign {} ->
       return ()
 

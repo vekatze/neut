@@ -6,6 +6,7 @@ import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
+import Data.List ((\\))
 import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -25,6 +26,7 @@ import Kernel.Common.Rule.Arch qualified as Arch
 import Kernel.Common.Rule.BuildMode qualified as BM
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.GlobalName qualified as GN
+import Kernel.Common.Rule.Handle.Global.KeyArg (ExpKey, ImpKey, _showKeyList)
 import Kernel.Common.Rule.OS qualified as OS
 import Kernel.Common.Rule.Platform qualified as Platform
 import Kernel.Common.Rule.ReadableDD
@@ -292,21 +294,20 @@ discern h term =
             Nothing -> do
               expArgs' <- mapM (discern h) $ SE.extract expArgs
               return $ m :< WT.PiElim isNoetic e' Nothing expArgs'
-    m :< RT.PiElimByKey name _ mImpArgs kvs -> do
+    m :< RT.PiElimByKey name _ kvs -> do
       (dd, _) <- resolveName h m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       ensureFieldLinearity m ks S.empty S.empty
-      (argNum, keyList) <- KeyArg.lookup (H.keyArgHandle h) m dd
+      (impKeys, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
       vs' <- mapM (discern h) vs
-      args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
+      let kvs' = Map.fromList $ zip ks vs'
+      impArgs <- liftIO $ resolveImpKeys h m impKeys kvs'
+      expArgs <- resolveExpKeys h m expKeys kvs'
+      checkRedundancy m impKeys expKeys kvs'
       let isNoetic = False -- overwritten later in `infer`
       let isConstLike = False
-      case mImpArgs of
-        Just impArgs -> do
-          impArgs' <- mapM (discern h) $ SE.extract impArgs
-          return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (Just impArgs') args
-        Nothing ->
-          return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) Nothing args
+      let argNum = AN.fromInt $ length $ impKeys ++ expKeys
+      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (Just impArgs) expArgs
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
@@ -957,12 +958,13 @@ discernPattern h layer (m, pat) = do
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
           ensureFieldLinearity m ks S.empty S.empty
-          (_, keyList) <- KeyArg.lookup (H.keyArgHandle h) m consName
-          defaultKeyMap <- liftIO $ constructDefaultKeyMap h m keyList
+          (_, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m consName
+          defaultKeyMap <- liftIO $ constructDefaultKeyMap h m expKeys
           let specifiedKeyMap = Map.fromList $ zip ks mvs
-          let keyMap = Map.union specifiedKeyMap defaultKeyMap
-          reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
-          (patList', hList) <- mapAndUnzipM (discernPattern h layer) reorderedArgs
+          let kvs' = Map.union specifiedKeyMap defaultKeyMap
+          expArgs <- resolveExpKeys h m expKeys kvs'
+          checkRedundancy m [] expKeys kvs'
+          (patList', hList) <- mapAndUnzipM (discernPattern h layer) expArgs
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -1064,3 +1066,38 @@ interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
   Tag.insertExternalName (H.tagHandle h) m name m
   PreDecl.insert (H.preDeclHandle h) name m
   return $ F.Foreign m name lts' cod
+
+resolveImpKeys :: H.Handle -> Hint -> [ImpKey] -> Map.HashMap Key WT.WeakTerm -> IO [WT.WeakTerm]
+resolveImpKeys h m impKeys kvs = do
+  case impKeys of
+    [] ->
+      return []
+    impKey : rest -> do
+      args <- resolveImpKeys h m rest kvs
+      case Map.lookup impKey kvs of
+        Just value -> do
+          return $ value : args
+        Nothing -> do
+          hole <- WT.createHole (H.gensymHandle h) m []
+          return $ hole : args
+
+resolveExpKeys :: H.Handle -> Hint -> [ExpKey] -> Map.HashMap Key a -> EIO [a]
+resolveExpKeys h m expKeys kvs = do
+  case expKeys of
+    [] ->
+      return []
+    expKey : rest -> do
+      args <- resolveExpKeys h m rest kvs
+      case Map.lookup expKey kvs of
+        Just value -> do
+          return $ value : args
+        Nothing -> do
+          raiseError m $ "The field `" <> expKey <> "` is missing"
+
+checkRedundancy :: Hint -> [ImpKey] -> [ExpKey] -> Map.HashMap Key a -> EIO ()
+checkRedundancy m impKeys expKeys kvs = do
+  let keys = Map.keys kvs
+  let diff = keys \\ (impKeys ++ expKeys)
+  if null diff
+    then return ()
+    else raiseError m $ "The following field(s) are redundant:\n" <> _showKeyList diff
