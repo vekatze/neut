@@ -186,7 +186,7 @@ getUnitType h m = do
   locator <- liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- resolveName h m (Locator locator)
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
-  return $ m :< WT.PiElim False (m :< WT.VarGlobal attr unitDD) []
+  return $ m :< WT.PiElim False (m :< WT.VarGlobal attr unitDD) Nothing []
 
 toCandidateKind :: SK.StmtKind a -> CandidateKind
 toCandidateKind stmtKind =
@@ -266,25 +266,33 @@ discern h term =
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
-    m :< RT.PiElim e _ es -> do
+    m :< RT.PiElim e _ mImpArgs expArgs -> do
       case e of
         _ :< RT.Var (Var c)
           | c == "make-cell",
-            [arg] <- SE.extract es -> do
+            Nothing <- mImpArgs,
+            [arg] <- SE.extract expArgs -> do
               newCellDD <- liftEither $ locatorToVarGlobal m coreCellMakeCell
               e' <- discern h $ m :< RT.piElim newCellDD [arg]
               return $ m :< WT.Actual e'
           | c == "make-channel",
-            [] <- SE.extract es -> do
+            Nothing <- mImpArgs,
+            [] <- SE.extract expArgs -> do
               newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelMakeChannel
               e' <- discern h $ m :< RT.piElim newChannelDD []
               return $ m :< WT.Actual e'
         _ -> do
           let isNoetic = False -- overwritten later in `infer`
           e' <- discern h e
-          es' <- mapM (discern h) $ SE.extract es
-          return $ m :< WT.PiElim isNoetic e' es'
-    m :< RT.PiElimByKey name _ kvs -> do
+          case mImpArgs of
+            Just impArgs -> do
+              impArgs' <- mapM (discern h) $ SE.extract impArgs
+              expArgs' <- mapM (discern h) $ SE.extract expArgs
+              return $ m :< WT.PiElim isNoetic e' (Just impArgs') expArgs'
+            Nothing -> do
+              expArgs' <- mapM (discern h) $ SE.extract expArgs
+              return $ m :< WT.PiElim isNoetic e' Nothing expArgs'
+    m :< RT.PiElimByKey name _ mImpArgs kvs -> do
       (dd, _) <- resolveName h m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       ensureFieldLinearity m ks S.empty S.empty
@@ -293,7 +301,12 @@ discern h term =
       args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isNoetic = False -- overwritten later in `infer`
       let isConstLike = False
-      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
+      case mImpArgs of
+        Just impArgs -> do
+          impArgs' <- mapM (discern h) $ SE.extract impArgs
+          return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (Just impArgs') args
+        Nothing ->
+          return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) Nothing args
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'

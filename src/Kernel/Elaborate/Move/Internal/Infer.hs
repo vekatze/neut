@@ -183,10 +183,11 @@ infer h term =
           liftIO $ Constraint.insert (constraintHandle h'') codType' t'
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' expArgs' e'
           return (term', m :< WT.Pi impArgs' expArgs' t')
-    m :< WT.PiElim _ e es -> do
+    m :< WT.PiElim _ e impArgs expArgs -> do
       etl <- infer h e
-      etls <- mapM (infer h) es
-      inferPiElim h m etl etls
+      impArgs' <- mapM (mapM (infer h)) impArgs
+      expArgs' <- mapM (infer h) expArgs
+      inferPiElim h m etl impArgs' expArgs'
     m :< WT.PiElimExact e -> do
       (e', t) <- infer h e
       t' <- resolveType h t
@@ -198,7 +199,7 @@ infer h term =
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
           codType' <- liftIO $ Subst.subst (substHandle h) sub codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim False e' expArgs'')
+          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim False e' Nothing expArgs'')
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
@@ -439,25 +440,38 @@ inferPiElim ::
   Handle ->
   Hint ->
   (WT.WeakTerm, WT.WeakTerm) ->
+  Maybe [(WT.WeakTerm, WT.WeakTerm)] ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
   EIO (WT.WeakTerm, WT.WeakTerm)
-inferPiElim h m (e, t) expArgs = do
+inferPiElim h m (e, t) impArgs expArgs = do
   t' <- resolveType h t
   case t' of
-    _ :< WT.Pi impPiArgs expPiArgs cod -> do
-      ensureArityCorrectness h e (length expPiArgs) (length expArgs)
-      impArgs <- mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impPiArgs]
-      let args = impArgs ++ expArgs
-      let piArgs = impPiArgs ++ expPiArgs
+    _ :< WT.Pi impParams expParams cod -> do
+      ensureArityCorrectness h e (length expParams) (length expArgs)
+      impArgs' <- do
+        case impArgs of
+          Nothing -> do
+            mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impParams]
+          Just impArgs' -> do
+            ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
+            return impArgs'
+      let args = impArgs' ++ expArgs
+      let piArgs = impParams ++ expParams
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim False e (map fst args), m :< cod')
-    _ :< WT.BoxNoema (_ :< WT.Pi impPiArgs expPiArgs cod) -> do
-      ensureArityCorrectness h e (length expPiArgs) (length expArgs)
-      impArgs <- mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impPiArgs]
-      let args = impArgs ++ expArgs
-      let piArgs = impPiArgs ++ expPiArgs
+      return (m :< WT.PiElim False e Nothing (map fst args), m :< cod')
+    _ :< WT.BoxNoema (_ :< WT.Pi impParams expParams cod) -> do
+      ensureArityCorrectness h e (length expParams) (length expArgs)
+      impArgs' <- do
+        case impArgs of
+          Nothing -> do
+            mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impParams]
+          Just impArgs' -> do
+            ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
+            return impArgs'
+      let args = impArgs' ++ expArgs
+      let piArgs = impParams ++ expParams
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim True e (map fst args), m :< cod')
+      return (m :< WT.PiElim True e Nothing (map fst args), m :< cod')
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toText t'
 
@@ -474,7 +488,7 @@ inferPiElimExplicit h m (e, t) args = do
       let piArgs = impPiArgs ++ expPiArgs
       ensureArityCorrectness h e (length piArgs) (length args)
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim False e (map fst args), m :< cod')
+      return (m :< WT.PiElim False e Nothing (map fst args), m :< cod')
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toText t'
 
@@ -508,6 +522,29 @@ ensureArityCorrectness h function expected found = do
           "This function expects "
             <> T.pack (show expected)
             <> " arguments, but found "
+            <> T.pack (show found)
+            <> "."
+
+ensureImplicitArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> EIO ()
+ensureImplicitArityCorrectness h function expected found = do
+  when (expected /= found) $ do
+    case function of
+      m :< WT.VarGlobal _ name -> do
+        let mainModule = Env.getMainModule (envHandle h)
+        let name' = readableDD mainModule name
+        raiseError m $
+          "The function `"
+            <> name'
+            <> "` expects "
+            <> T.pack (show expected)
+            <> " implicit arguments, but found "
+            <> T.pack (show found)
+            <> "."
+      m :< _ ->
+        raiseError m $
+          "This function expects "
+            <> T.pack (show expected)
+            <> " implicit arguments, but found "
             <> T.pack (show found)
             <> "."
 
@@ -628,11 +665,11 @@ reduceWeakType' h sub e = do
               liftIO (Subst.subst (substHandle h) s body) >>= reduceWeakType' h sub
           | otherwise ->
               raiseError m "Arity mismatch"
-    m :< WT.PiElim False (_ :< WT.VarGlobal _ name) args -> do
+    m :< WT.PiElim False (_ :< WT.VarGlobal _ name) impArgs args -> do
       lamOrNone <- liftIO $ lookupDefinition h name
       case lamOrNone of
         Just lam ->
-          reduceWeakType' h sub $ m :< WT.PiElim False lam args
+          reduceWeakType' h sub $ m :< WT.PiElim False lam impArgs args
         Nothing -> do
           return e'
     _ ->

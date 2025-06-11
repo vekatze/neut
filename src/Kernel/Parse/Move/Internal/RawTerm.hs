@@ -10,7 +10,7 @@ module Kernel.Parse.Move.Internal.RawTerm
     parseGeist,
     parseDefInfoCod,
     typeWithoutIdent,
-    parseImplicitArgs,
+    parseImplicitParams,
     keyword,
     baseName,
   )
@@ -156,22 +156,36 @@ rawTerm' h m headSymbol c = do
             ]
         else do
           name <- interpretVarName m headSymbol
+          mImpArgs <- parseImplicitArgs h
           choice
             [ do
                 (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
-                return (m :< RT.PiElimByKey name c kvs, c'),
-              rawTermPiElimCont h (m :< RT.Var name, c)
+                case mImpArgs of
+                  Just (impArgs, cImp) ->
+                    return (m :< RT.PiElimByKey name (c ++ cImp) (Just impArgs) kvs, c')
+                  Nothing ->
+                    return (m :< RT.PiElimByKey name c Nothing kvs, c'),
+              rawTermPiElimCont h (m :< RT.Var name, c) mImpArgs
             ]
 
-rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
-rawTermPiElimCont h (e@(m :< _), c) = do
+rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Maybe (SE.Series RT.RawTerm, C) -> Parser (RT.RawTerm, C)
+rawTermPiElimCont h (e@(m :< _), c) mImpArgs = do
   argListList <- many $ seriesParen (rawTerm h)
-  return $ foldPiElim m (e, c) argListList
+  return $ foldPiElim m (e, c) mImpArgs argListList
+
+parseImplicitArgs :: Handle -> Parser (Maybe (SE.Series RT.RawTerm, C))
+parseImplicitArgs h =
+  choice
+    [ do
+        foo <- seriesAngle $ rawTerm h
+        return (Just foo),
+      return Nothing
+    ]
 
 rawTermPi :: Handle -> Parser (RT.RawTerm, C)
 rawTermPi h = do
   m <- getCurrentHint
-  impArgs <- parseImplicitArgs h
+  impArgs <- parseImplicitParams h
   expArgs <- seriesParen (choice [try $ var h >>= preAscription h, typeWithoutIdent h])
   cArrow <- delimiter "->"
   (cod, c) <- rawTerm h
@@ -348,7 +362,7 @@ parseGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
-  impArgs <- parseImplicitArgs h
+  impArgs <- parseImplicitParams h
   (isConstLike, expArgs@(expSeries, _)) <- do
     choice
       [ do
@@ -361,16 +375,12 @@ parseGeist h nameParser = do
   (c2, (cod, c)) <- parseDefInfoCod h m
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = (c2, cod)}, c)
 
-parseImplicitArgs :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm), C)
-parseImplicitArgs h =
+parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm), C)
+parseImplicitParams h =
   choice
-    [ parseImplicitArgs' h,
+    [ seriesAngle $ preBinder h,
       return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
     ]
-
-parseImplicitArgs' :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm), C)
-parseImplicitArgs' h =
-  seriesAngle $ preBinder h
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> EIO ()
 ensureArgumentLinearity foundVarSet vs =
@@ -705,14 +715,19 @@ keyValueArgs p = do
 foldPiElim ::
   Hint ->
   (RT.RawTerm, C) ->
+  Maybe (SE.Series RT.RawTerm, C) ->
   [(SE.Series RT.RawTerm, C)] ->
   (RT.RawTerm, C)
-foldPiElim m (e, c) argListList =
+foldPiElim m (e, c) mImpArgs argListList =
   case argListList of
     [] ->
       (e, c)
     (args, c1) : rest ->
-      foldPiElim m (m :< RT.PiElim e c args, c1) rest
+      case mImpArgs of
+        Nothing ->
+          foldPiElim m (m :< RT.PiElim e c Nothing args, c1) Nothing rest
+        Just (impArgs, cImp) ->
+          foldPiElim m (m :< RT.PiElim e (c ++ cImp) (Just impArgs) args, c1) Nothing rest
 
 preBinder :: Handle -> Parser (RawBinder RT.RawTerm, C)
 preBinder h = do

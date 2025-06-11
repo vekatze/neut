@@ -23,8 +23,8 @@ holes term =
       holes' (impArgs ++ expArgs) (holes t)
     _ :< WT.PiIntro k impArgs expArgs e ->
       holes' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e)
-    _ :< WT.PiElim _ e es ->
-      S.unions $ map holes $ e : es
+    _ :< WT.PiElim _ e impArgs expArgs ->
+      S.unions $ map holes $ e : (fromMaybe [] impArgs ++ expArgs)
     _ :< WT.PiElimExact e ->
       holes e
     _ :< WT.Data _ _ es ->

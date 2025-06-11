@@ -59,10 +59,11 @@ fill h holeSubst term =
         _ -> do
           e' <- fill h holeSubst e
           return $ m :< WT.PiIntro attr impArgs' expArgs' e'
-    m :< WT.PiElim b e es -> do
+    m :< WT.PiElim b e impArgs expArgs -> do
       e' <- fill h holeSubst e
-      es' <- mapM (fill h holeSubst) es
-      return $ m :< WT.PiElim b e' es'
+      impArgs' <- mapM (mapM (fill h holeSubst)) impArgs
+      expArgs' <- mapM (fill h holeSubst) expArgs
+      return $ m :< WT.PiElim b e' impArgs' expArgs'
     m :< WT.PiElimExact e -> do
       e' <- fill h holeSubst e
       return $ m :< WT.PiElimExact e'

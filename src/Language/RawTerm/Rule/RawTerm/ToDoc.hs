@@ -61,14 +61,16 @@ toDoc term =
       decodeDef lambdaNameToDoc "function" c def
     _ :< PiIntroFix c def -> do
       decodeDef (nameToDoc . N.Var) "define" c def
-    _ :< PiElim e c args -> do
+    _ :< PiElim e c impArgs expArgs -> do
       PI.arrange
         [ PI.inject $ toDoc e,
-          PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc args
+          PI.inject $ decodeImpArgs impArgs,
+          PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
         ]
-    _ :< PiElimByKey name c kvs -> do
+    _ :< PiElimByKey name c impArgs kvs -> do
       PI.arrange
         [ PI.inject $ nameToDoc name,
+          PI.inject $ decodeImpArgs impArgs,
           PI.inject $ attachComment c $ decPiElimKey kvs
         ]
     _ :< PiElimExact c e ->
@@ -348,6 +350,14 @@ decodeBlock (c1, (body, c2)) = do
       D.line,
       D.text "}"
     ]
+
+decodeImpArgs :: Maybe (SE.Series RawTerm) -> D.Doc
+decodeImpArgs mImpArgs =
+  case mImpArgs of
+    Nothing ->
+      D.Nil
+    Just series -> do
+      SE.decodeHorizontallyIfPossible $ fmap toDoc series
 
 decodeArgs :: Args RawTerm -> D.Doc
 decodeArgs (series, c) = do
