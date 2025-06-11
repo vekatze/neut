@@ -140,7 +140,7 @@ interpretGlobalName h m dd gn = do
       let attr = AttrVG.Attr {..}
       let e = m :< WT.VarGlobal attr dd
       if isConstLike
-        then return $ m :< WT.PiElim False e []
+        then return $ m :< WT.PiElim False e Nothing []
         else return e
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
@@ -160,7 +160,7 @@ interpretTopLevelFunc ::
 interpretTopLevelFunc m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) []
+    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) Nothing []
     else m :< WT.VarGlobal attr dd
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> EIO WT.WeakTerm

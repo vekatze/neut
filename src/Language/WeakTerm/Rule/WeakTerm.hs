@@ -45,7 +45,7 @@ data WeakTermF a
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | Pi [BinderF a] [BinderF a] a
   | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
-  | PiElim N.IsNoetic a [a]
+  | PiElim N.IsNoetic a (Maybe [a]) [a]
   | PiElimExact a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)

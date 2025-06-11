@@ -13,6 +13,7 @@ import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Move.Run (raiseCritical, raiseError)
@@ -218,8 +219,9 @@ elaborate' h term =
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       e' <- elaborate' h e
       return $ m :< TM.PiIntro kind' impArgs' expArgs' e'
-    m :< WT.PiElim b e es -> do
+    m :< WT.PiElim b e impArgs expArgs -> do
       e' <- elaborate' h e
+      let es = fromMaybe [] impArgs ++ expArgs
       es' <- mapM (elaborate' h) es
       return $ m :< TM.PiElim b e' es'
     m :< WT.PiElimExact {} -> do
@@ -625,11 +627,11 @@ reduceWeakType h e = do
   case e' of
     m :< WT.Hole hole es ->
       fillHole h m hole es >>= reduceWeakType h
-    m :< WT.PiElim False (_ :< WT.VarGlobal _ name) args -> do
+    m :< WT.PiElim False (_ :< WT.VarGlobal _ name) impArgs args -> do
       mLam <- liftIO $ WeakDef.lookup' (weakDefHandle h) name
       case mLam of
         Just lam ->
-          reduceWeakType h $ m :< WT.PiElim False lam args
+          reduceWeakType h $ m :< WT.PiElim False lam impArgs args
         Nothing -> do
           return e'
     _ ->

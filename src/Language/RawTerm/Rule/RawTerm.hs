@@ -59,8 +59,8 @@ data RawTermF a
   | Pi (Args a) (Args a) C a Loc
   | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
-  | PiElim a C (SE.Series a)
-  | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
+  | PiElim a C (Maybe (SE.Series a)) (SE.Series a)
+  | PiElimByKey Name C (Maybe (SE.Series a)) (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimExact C a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
@@ -169,7 +169,7 @@ getDefName def =
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =
-  PiElim e [] (SE.fromList' es)
+  PiElim e [] Nothing (SE.fromList' es)
 
 lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm -> RawTerm
 lam loc m varList codType e =

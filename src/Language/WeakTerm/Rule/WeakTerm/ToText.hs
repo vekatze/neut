@@ -56,13 +56,17 @@ toText term =
             <> toText codType
             <> " "
             <> inBrace (toText e)
-    _ :< WT.PiElim _ e es -> do
+    _ :< WT.PiElim _ e impArgs expArgs -> do
       case e of
         _ :< WT.VarGlobal attr _
           | AttrVG.isConstLike attr ->
               toText e
         _ -> do
-          showApp (toText e) (map toText es)
+          case impArgs of
+            Just impArgs' ->
+              showApp' (toText e) (map toText impArgs') (map toText expArgs)
+            Nothing ->
+              showApp (toText e) (map toText expArgs)
     _ :< WT.PiElimExact e -> do
       "exact " <> toText e
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
@@ -177,6 +181,10 @@ showDomArgList mxts =
 showApp :: T.Text -> [T.Text] -> T.Text
 showApp e es =
   e <> inParen (T.intercalate ", " es)
+
+showApp' :: T.Text -> [T.Text] -> [T.Text] -> T.Text
+showApp' e impArgs expArgs =
+  e <> inAngleBracket (T.intercalate ", " impArgs) <> inParen (T.intercalate ", " expArgs)
 
 showVariable :: Ident -> T.Text
 showVariable x =

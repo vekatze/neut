@@ -28,7 +28,7 @@ type EvalCtx = Cofree EvalCtxF Hint
 
 data EvalCtxF a
   = Base
-  | PiElim a [WT.WeakTerm]
+  | PiElim a (Maybe [WT.WeakTerm]) [WT.WeakTerm]
 
 type Stuck = (EvalBase, EvalCtx)
 
@@ -43,9 +43,9 @@ asStuckedTerm term =
       Just (Hole h es, m :< Base)
     m :< WT.Prim prim ->
       Just (Prim prim, m :< Base)
-    m :< WT.PiElim False e es -> do
+    m :< WT.PiElim False e impArgs expArgs -> do
       (base, ctx) <- asStuckedTerm e
-      return (base, m :< PiElim ctx es)
+      return (base, m :< PiElim ctx impArgs expArgs)
     _ ->
       Nothing
 
@@ -54,19 +54,30 @@ resume e ctx =
   case ctx of
     _ :< Base ->
       e
-    m :< PiElim ctx' args ->
-      m :< WT.PiElim False (resume e ctx') args -- inferred pi-elims are explicit
+    m :< PiElim ctx' impArgs expArgs ->
+      m :< WT.PiElim False (resume e ctx') impArgs expArgs -- inferred pi-elims are explicit
 
 asPairList :: EvalCtx -> EvalCtx -> Maybe [C.Constraint]
 asPairList ctx1 ctx2 =
   case (ctx1, ctx2) of
     (_ :< Base, _ :< Base) ->
       Just []
-    (_ :< PiElim ctx1' args1, _ :< PiElim ctx2' args2)
-      | length args1 /= length args2 ->
+    (_ :< PiElim ctx1' impArgs1 expArgs1, _ :< PiElim ctx2' impArgs2 expArgs2)
+      | Nothing <- impArgs1,
+        Just _ <- impArgs2 ->
           Nothing
-      | otherwise -> do
+      | Just _ <- impArgs1,
+        Nothing <- impArgs2 ->
+          Nothing
+      | length expArgs1 /= length expArgs2 ->
+          Nothing
+      | Just impArgs1' <- impArgs1,
+        Just impArgs2' <- impArgs2 -> do
           pairList <- asPairList ctx1' ctx2'
-          return $ zipWith C.Eq args1 args2 ++ pairList
+          return $ zipWith C.Eq impArgs1' impArgs2' ++ zipWith C.Eq expArgs1 expArgs2 ++ pairList
+      | Nothing <- impArgs1,
+        Nothing <- impArgs2 -> do
+          pairList <- asPairList ctx1' ctx2'
+          return $ zipWith C.Eq expArgs1 expArgs2 ++ pairList
     _ ->
       Nothing
