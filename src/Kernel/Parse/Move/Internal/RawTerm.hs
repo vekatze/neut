@@ -156,16 +156,14 @@ rawTerm' h m headSymbol c = do
             ]
         else do
           name <- interpretVarName m headSymbol
-          mImpArgs <- parseImplicitArgs h
+
           choice
             [ do
                 (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
-                case mImpArgs of
-                  Just (impArgs, cImp) ->
-                    return (m :< RT.PiElimByKey name (c ++ cImp) (Just impArgs) kvs, c')
-                  Nothing ->
-                    return (m :< RT.PiElimByKey name c Nothing kvs, c'),
-              rawTermPiElimCont h (m :< RT.Var name, c) mImpArgs
+                return (m :< RT.PiElimByKey name c kvs, c'),
+              do
+                mImpArgs <- parseImplicitArgs h
+                rawTermPiElimCont h (m :< RT.Var name, c) mImpArgs
             ]
 
 rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Maybe (SE.Series RT.RawTerm, C) -> Parser (RT.RawTerm, C)

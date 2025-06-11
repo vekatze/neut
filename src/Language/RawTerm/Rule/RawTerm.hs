@@ -60,7 +60,7 @@ data RawTermF a
   | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
   | PiElim a C (Maybe (SE.Series a)) (SE.Series a)
-  | PiElimByKey Name C (Maybe (SE.Series a)) (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
+  | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimExact C a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)

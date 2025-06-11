@@ -1,5 +1,7 @@
 module Kernel.Common.Rule.Handle.Global.KeyArg
   ( Handle (..),
+    ExpKey,
+    ImpKey,
     _eqKeys,
     _showKeys,
     _showKeyList,
@@ -10,16 +12,21 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
 import Kernel.Common.Rule.Module
-import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.Const (holeVarPrefix)
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.IsConstLike
 import Language.RawTerm.Rule.Key
 import Prelude hiding (lookup, read)
 
+type ExpKey =
+  Key
+
+type ImpKey =
+  Key
+
 data Handle = Handle
   { _mainModule :: MainModule,
-    _keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key])))
+    _keyArgMapRef :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, ([ImpKey], [ExpKey])))
   }
 
 isHole :: Key -> Bool

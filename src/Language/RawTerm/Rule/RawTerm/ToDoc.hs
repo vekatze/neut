@@ -67,10 +67,9 @@ toDoc term =
           PI.inject $ decodeImpArgs impArgs,
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
         ]
-    _ :< PiElimByKey name c impArgs kvs -> do
+    _ :< PiElimByKey name c kvs -> do
       PI.arrange
         [ PI.inject $ nameToDoc name,
-          PI.inject $ decodeImpArgs impArgs,
           PI.inject $ attachComment c $ decPiElimKey kvs
         ]
     _ :< PiElimExact c e ->
