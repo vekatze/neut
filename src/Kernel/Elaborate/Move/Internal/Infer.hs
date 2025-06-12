@@ -195,9 +195,9 @@ infer h term =
         _ :< WT.Pi impArgs expArgs codType -> do
           holes <- liftIO $ mapM (const $ newHole h m $ varEnv h) impArgs
           let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impArgs) (map Right holes)
-          (expArgs', _) <- liftIO $ Subst.subst' (substHandle h) sub expArgs
+          (expArgs', sub') <- liftIO $ Subst.subst' (substHandle h) sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
-          codType' <- liftIO $ Subst.subst (substHandle h) sub codType
+          codType' <- liftIO $ Subst.subst (substHandle h) sub' codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
           infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim False e' Nothing expArgs'')
         _ ->
@@ -223,20 +223,20 @@ infer h term =
       t' <- inferType h t
       return (m :< WT.BoxNoema t', m :< WT.Tau)
     m :< WT.BoxIntro letSeq e -> do
-      (letSeq', h') <- inferQuoteSeq h letSeq FromNoema
-      (e', t) <- infer h' e
+      letSeq' <- inferQuoteSeq h letSeq FromNoema
+      (e', t) <- infer h e
       return (m :< WT.BoxIntro letSeq' e', m :< WT.Box t)
     m :< WT.BoxIntroQuote e -> do
       (e', t) <- infer h e
       liftIO $ Constraint.insertActualityConstraint (constraintHandle h) t
       return (m :< WT.BoxIntroQuote e', m :< WT.Box t)
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
-      (castSeq', h1) <- inferQuoteSeq h castSeq ToNoema
-      (e1', t1) <- infer h1 e1
-      (mxt'@(mx, _, t1'), h2) <- inferBinder1 h1 mxt
-      liftIO $ Constraint.insert (constraintHandle h1) (mx :< WT.Box t1') t1
-      (uncastSeq', h3) <- inferQuoteSeq h2 uncastSeq FromNoema
-      (e2', t2) <- infer h3 e2
+      castSeq' <- inferQuoteSeq h castSeq ToNoema
+      (e1', t1) <- infer h e1
+      mxt'@(mx, _, t1') <- inferBinder1 h mxt
+      liftIO $ Constraint.insert (constraintHandle h) (mx :< WT.Box t1') t1
+      uncastSeq' <- inferQuoteSeq h uncastSeq FromNoema
+      (e2', t2) <- infer h e2
       return (m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2', t2)
     _ :< WT.Actual e -> do
       (e', t') <- infer h e
@@ -361,18 +361,18 @@ inferQuoteSeq ::
   Handle ->
   [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
   CastDirection ->
-  EIO ([(BinderF WT.WeakTerm, WT.WeakTerm)], Handle)
+  EIO [(BinderF WT.WeakTerm, WT.WeakTerm)]
 inferQuoteSeq h letSeq castDirection = do
   let (xts, es) = unzip letSeq
-  (xts', h') <- inferBinder' h xts
-  (es', ts) <- mapAndUnzipM (infer h') es
+  xts' <- inferBinder'' h xts
+  (es', ts) <- mapAndUnzipM (infer h) es
   forM_ (zip xts' ts) $ \((m1, _, tInner), tOuter@(m2 :< _)) -> do
     case castDirection of
       ToNoema ->
         liftIO $ Constraint.insert (constraintHandle h) tInner (m2 :< WT.BoxNoema tOuter)
       FromNoema ->
         liftIO $ Constraint.insert (constraintHandle h) (m1 :< WT.BoxNoema tInner) tOuter
-  return (zip xts' es', h')
+  return (zip xts' es')
 
 inferArgs ::
   Handle ->
@@ -427,14 +427,28 @@ inferBinder' h binder =
       (xts', h') <- inferBinder' (extendHandle' (mx, x, t') h) xts
       return ((mx, x, t') : xts', h')
 
+inferBinder'' ::
+  Handle ->
+  [BinderF WT.WeakTerm] ->
+  EIO [BinderF WT.WeakTerm]
+inferBinder'' h binder =
+  case binder of
+    [] -> do
+      return []
+    ((mx, x, t) : xts) -> do
+      t' <- inferType h t
+      liftIO $ WeakType.insert (weakTypeHandle h) x t'
+      xts' <- inferBinder'' h xts
+      return $ (mx, x, t') : xts'
+
 inferBinder1 ::
   Handle ->
   BinderF WT.WeakTerm ->
-  EIO (BinderF WT.WeakTerm, Handle)
+  EIO (BinderF WT.WeakTerm)
 inferBinder1 h (mx, x, t) = do
   t' <- inferType h t
   liftIO $ WeakType.insert (weakTypeHandle h) x t'
-  return ((mx, x, t'), extendHandle' (mx, x, t') h)
+  return (mx, x, t')
 
 inferPiElim ::
   Handle ->
@@ -681,4 +695,5 @@ lookupDefinition h name = do
 
 newHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakTerm
 newHole h m varEnv = do
-  WT.createHole (gensymHandle h) m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
+  (e, _) <- newTypedHole h m varEnv
+  return e

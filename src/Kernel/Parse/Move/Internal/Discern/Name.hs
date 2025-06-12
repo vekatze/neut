@@ -138,7 +138,8 @@ interpretGlobalName h m dd gn = do
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
-      let e = m :< WT.VarGlobal attr dd
+      let e = wrapWithExactIfNecessary m dataArgNum $ m :< WT.VarGlobal attr dd
+      -- let e = m :< WT.VarGlobal attr dd
       if isConstLike
         then return $ m :< WT.PiElim False e Nothing []
         else return e
@@ -150,6 +151,12 @@ interpretGlobalName h m dd gn = do
           castFromIntToBool h $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
         _ ->
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
+
+wrapWithExactIfNecessary :: Hint -> AN.ArgNum -> WT.WeakTerm -> WT.WeakTerm
+wrapWithExactIfNecessary m dataArgNum e =
+  if AN.reify dataArgNum > 0
+    then m :< WT.PiElimExact e
+    else e
 
 interpretTopLevelFunc ::
   Hint ->
