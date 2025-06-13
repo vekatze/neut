@@ -26,6 +26,7 @@ import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.Magic
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PiKind (PiKind)
 import Language.Term.Rule.Prim qualified as P
 import Logger.Rule.Hint
 
@@ -37,7 +38,7 @@ data TermF a
   = Tau
   | Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
-  | Pi [BinderF a] [BinderF a] a
+  | Pi PiKind [BinderF a] [BinderF a] a
   | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
   | PiElim N.IsNoetic a [a]
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]

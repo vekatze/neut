@@ -61,6 +61,7 @@ import Language.Common.Rule.Literal qualified as LI
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
@@ -240,7 +241,7 @@ discern h term =
       (expArgs', h'') <- discernBinder h' (RT.extractArgs expArgs) endLoc
       t' <- discern h'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO (Unused.deleteVariable (H.unusedHandle h'') x)
-      return $ m :< WT.Pi impArgs' expArgs' t'
+      return $ m :< WT.Pi PK.normal impArgs' expArgs' t'
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       let (name, _) = RT.name geist

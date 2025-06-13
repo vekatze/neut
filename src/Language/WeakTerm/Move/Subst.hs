@@ -49,11 +49,11 @@ subst h sub term =
           return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.Pi impArgs expArgs t -> do
+    m :< WT.Pi piKind impArgs expArgs t -> do
       (impArgs', sub') <- subst' h sub impArgs
       (expArgs', sub'') <- subst' h sub' expArgs
       t' <- subst h sub'' t
-      return $ m :< WT.Pi impArgs' expArgs' t'
+      return $ m :< WT.Pi piKind impArgs' expArgs' t'
     m :< WT.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
       let fvs = S.map Ident.toInt $ WT.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub

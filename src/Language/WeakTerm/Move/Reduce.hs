@@ -55,7 +55,7 @@ reduce' h term = do
   detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
   case term of
-    m :< WT.Pi impArgs expArgs cod -> do
+    m :< WT.Pi piKind impArgs expArgs cod -> do
       impArgs' <- do
         let (ms, xs, ts) = unzip3 impArgs
         ts' <- mapM (reduce' h) ts
@@ -65,7 +65,7 @@ reduce' h term = do
         ts' <- mapM (reduce' h) ts
         return $ zip3 ms xs ts'
       cod' <- reduce' h cod
-      return $ m :< WT.Pi impArgs' expArgs' cod'
+      return $ m :< WT.Pi piKind impArgs' expArgs' cod'
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       impArgs' <- do
         let (ms, xs, ts) = unzip3 impArgs

@@ -33,6 +33,7 @@ import Language.Common.Rule.GlobalLocator qualified as GL
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimNumSize qualified as PNS
 import Language.Common.Rule.PrimOp qualified as PO
 import Language.Common.Rule.PrimType qualified as PT
@@ -179,7 +180,7 @@ castFromIntToBool h e@(m :< _) = do
   t <- liftIO $ WT.createHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
-  let cmpOpType cod = m :< WT.Pi [] [(m, x1, t), (m, x2, t)] cod
+  let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, x1, t), (m, x2, t)] cod
   return $ m :< WT.Magic (M.WeakMagic $ M.Cast (cmpOpType i1) (cmpOpType bool) e)
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)

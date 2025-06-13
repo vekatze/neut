@@ -56,9 +56,11 @@ import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.IsConstLike (IsConstLike)
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.StmtKind
+import Language.Common.Rule.StmtKind qualified as SK
 import Language.LowComp.Rule.DeclarationName qualified as DN
 import Language.Term.Rule.Prim qualified as P
 import Language.Term.Rule.PrimValue qualified as PV
@@ -160,8 +162,12 @@ elaborateGeist h (G.Geist {..}) = do
 insertStmt :: Handle -> Stmt -> EIO ()
 insertStmt h stmt = do
   case stmt of
-    StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs t e -> do
-      liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi impArgs expArgs t
+    StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs t e -> do
+      case stmtKind of
+        SK.DataIntro {} ->
+          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs t
+        _ ->
+          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs t
       liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (impArgs ++ expArgs) e
     StmtForeign _ -> do
       return ()
@@ -208,11 +214,11 @@ elaborate' h term =
       return $ m :< TM.Var x
     m :< WT.VarGlobal name argNum ->
       return $ m :< TM.VarGlobal name argNum
-    m :< WT.Pi impArgs expArgs t -> do
+    m :< WT.Pi piKind impArgs expArgs t -> do
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       t' <- elaborate' h t
-      return $ m :< TM.Pi impArgs' expArgs' t'
+      return $ m :< TM.Pi piKind impArgs' expArgs' t'
     m :< WT.PiIntro kind impArgs expArgs e -> do
       kind' <- elaborateLamAttr h kind
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
@@ -371,7 +377,7 @@ strictify' h m t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi impArgs expArgs _
+        _ :< WT.Pi _ impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictify' h m arg
         _ ->
@@ -390,7 +396,7 @@ strictifyDecimalType h m x t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi impArgs expArgs _
+        _ :< WT.Pi _ impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictifyDecimalType h m x arg
         _ ->
@@ -407,7 +413,7 @@ strictifyFloatType h m x t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi impArgs expArgs _
+        _ :< WT.Pi _ impArgs expArgs _
           | [(_, _, arg)] <- impArgs ++ expArgs -> do
               strictifyFloatType h m x arg
         _ ->

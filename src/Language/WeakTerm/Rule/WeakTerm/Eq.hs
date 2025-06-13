@@ -23,8 +23,8 @@ eq (_ :< term1) (_ :< term2)
   | WT.VarGlobal _ dd1 <- term1,
     WT.VarGlobal _ dd2 <- term2 =
       dd1 == dd2
-  | WT.Pi impArgs1 expArgs1 cod1 <- term1,
-    WT.Pi impArgs2 expArgs2 cod2 <- term2 = do
+  | WT.Pi _ impArgs1 expArgs1 cod1 <- term1,
+    WT.Pi _ impArgs2 expArgs2 cod2 <- term2 = do
       let b1 = eqBinder (impArgs1 ++ expArgs1) (impArgs2 ++ expArgs2)
       let b2 = eq cod1 cod2
       b1 && b2

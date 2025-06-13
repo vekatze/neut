@@ -152,7 +152,7 @@ simplify h susList constraintList =
         then simplify h susList cs
         else do
           case (expected', actual') of
-            (m1 :< WT.Pi impArgs1 expArgs1 cod1, m2 :< WT.Pi impArgs2 expArgs2 cod2)
+            (m1 :< WT.Pi _ impArgs1 expArgs1 cod1, m2 :< WT.Pi _ impArgs2 expArgs2 cod2)
               | length impArgs1 == length impArgs2,
                 length expArgs1 == length expArgs2 -> do
                   xt1 <- liftIO $ asWeakBinder h m1 cod1
@@ -430,7 +430,7 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (typeHandle h) m consName
   case t of
-    _ :< WT.Pi impArgs expArgs _ -> do
+    _ :< WT.Pi _ impArgs expArgs _ -> do
       return $ impArgs ++ expArgs
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t

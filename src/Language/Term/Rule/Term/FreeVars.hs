@@ -20,7 +20,7 @@ freeVars term =
       S.singleton x
     _ :< TM.VarGlobal {} ->
       S.empty
-    _ :< TM.Pi impArgs expArgs t ->
+    _ :< TM.Pi _ impArgs expArgs t ->
       freeVars' (impArgs ++ expArgs) (freeVars t)
     _ :< TM.PiIntro k impArgs expArgs e ->
       freeVars' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e)

@@ -80,11 +80,11 @@ inline' h term = do
       return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi impArgs expArgs cod -> do
+    m :< TM.Pi piKind impArgs expArgs cod -> do
       impArgs' <- mapM (inlineBinder h) impArgs
       expArgs' <- mapM (inlineBinder h) expArgs
       cod' <- inline' h cod
-      return (m :< TM.Pi impArgs' expArgs' cod')
+      return (m :< TM.Pi piKind impArgs' expArgs' cod')
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       impArgs' <- mapM (inlineBinder h) impArgs
       expArgs' <- mapM (inlineBinder h) expArgs

@@ -31,6 +31,7 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Magic
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PiKind (PiKind)
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
@@ -43,7 +44,7 @@ data WeakTermF a
   = Tau
   | Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
-  | Pi [BinderF a] [BinderF a] a
+  | Pi PiKind [BinderF a] [BinderF a] a
   | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
   | PiElim N.IsNoetic a (Maybe [a]) [a]
   | PiElimExact a

@@ -43,11 +43,11 @@ fill h holeSubst term =
       return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.Pi impArgs expArgs t -> do
+    m :< WT.Pi piKind impArgs expArgs t -> do
       impArgs' <- fillBinder h holeSubst impArgs
       expArgs' <- fillBinder h holeSubst expArgs
       t' <- fill h holeSubst t
-      return $ m :< WT.Pi impArgs' expArgs' t'
+      return $ m :< WT.Pi piKind impArgs' expArgs' t'
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       impArgs' <- fillBinder h holeSubst impArgs
       expArgs' <- fillBinder h holeSubst expArgs

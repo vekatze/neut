@@ -52,11 +52,11 @@ subst h sub term =
           return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi impArgs expArgs t -> do
+    m :< TM.Pi piKind impArgs expArgs t -> do
       (impArgs', sub') <- substBinder h sub impArgs
       (expArgs', sub'') <- substBinder h sub' expArgs
       t' <- subst h sub'' t
-      return (m :< TM.Pi impArgs' expArgs' t')
+      return (m :< TM.Pi piKind impArgs' expArgs' t')
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
       let fvs = S.map Ident.toInt $ TM.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub

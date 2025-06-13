@@ -32,11 +32,11 @@ refresh h term =
       return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi impArgs expArgs t -> do
+    m :< TM.Pi piKind impArgs expArgs t -> do
       impArgs' <- refreshBinder h impArgs
       expArgs' <- refreshBinder h expArgs
       t' <- refresh h t
-      return (m :< TM.Pi impArgs' expArgs' t')
+      return (m :< TM.Pi piKind impArgs' expArgs' t')
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
       newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
       case lamKind of

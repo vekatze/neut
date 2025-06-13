@@ -31,6 +31,7 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.FreeVarsWithHints (freeVarsWithHints)
 import Language.Term.Rule.Term.Weaken (weaken)
@@ -135,7 +136,7 @@ analyze h term = do
       analyzeVar h m x
     _ :< TM.VarGlobal {} -> do
       return []
-    _ :< TM.Pi impArgs expArgs t -> do
+    _ :< TM.Pi _ impArgs expArgs t -> do
       (cs1, h') <- analyzeBinder h impArgs
       (cs2, h'') <- analyzeBinder h' expArgs
       cs3 <- analyze h'' t
@@ -146,7 +147,7 @@ analyze h term = do
           (cs1, h') <- analyzeBinder h impArgs
           (cs2, h'') <- analyzeBinder h' expArgs
           cs3 <- analyze h'' codType
-          let piType = m :< TM.Pi impArgs expArgs codType
+          let piType = m :< TM.Pi PK.normal impArgs expArgs codType
           liftIO $ insertRelevantVar x h''
           cs4 <- analyze (extendHandle (mx, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
@@ -390,7 +391,7 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
-    _ :< WT.Pi impArgs expArgs _ -> do
+    _ :< WT.Pi _ impArgs expArgs _ -> do
       return $ impArgs ++ expArgs
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t

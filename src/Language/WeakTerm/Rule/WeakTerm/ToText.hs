@@ -15,6 +15,7 @@ import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimOp qualified as PO
 import Language.Common.Rule.PrimType.ToText qualified as PT
 import Language.Common.Rule.Rune qualified as RU
@@ -31,10 +32,16 @@ toText term =
       showVariable x
     _ :< WT.VarGlobal _ x ->
       showGlobalVariable x
-    _ :< WT.Pi impArgs expArgs cod -> do
-      if null impArgs
-        then inParen (showDomArgList expArgs) <> " -> " <> toText cod
-        else showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+    _ :< WT.Pi piKind impArgs expArgs cod -> do
+      case piKind of
+        PK.Normal isConstLike ->
+          if isConstLike
+            then showImpArgs impArgs <> " " <> toText cod
+            else showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+        PK.DataIntro isConstLike -> do
+          if isConstLike
+            then showDataImpArgs impArgs <> toText cod
+            else showDataImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
@@ -130,6 +137,12 @@ showImpArgs impArgs =
     else do
       inAngleBracket $ showImpDomArgList impArgs
 
+showDataImpArgs :: [BinderF WT.WeakTerm] -> T.Text
+showDataImpArgs impArgs =
+  if null impArgs
+    then ""
+    else "∀ " <> T.intercalate " " (map showImpDomArg' impArgs) <> ". "
+
 showImpDomArgList :: [BinderF WT.WeakTerm] -> T.Text
 showImpDomArgList mxts =
   T.intercalate ", " $ map showImpDomArg mxts
@@ -141,6 +154,14 @@ showImpDomArg (_, x, t) =
       showVariable x
     _ ->
       showVariable x <> ": " <> toText t
+
+showImpDomArg' :: BinderF WT.WeakTerm -> T.Text
+showImpDomArg' (_, x, t) =
+  case t of
+    _ :< WT.Tau ->
+      showVariable x
+    _ ->
+      "(" <> showVariable x <> ": " <> toText t <> ")"
 
 inParen :: T.Text -> T.Text
 inParen s =
