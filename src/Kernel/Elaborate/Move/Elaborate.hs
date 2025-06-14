@@ -207,10 +207,10 @@ elaborateStmtKind h stmtKind =
       consArgsList' <- mapM (mapM $ elaborateWeakBinder h) consArgsList
       let consInfoList' = zip5 ms consNameList constLikeList consArgsList' discriminantList
       return $ Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs consArgs discriminant -> do
+    DataIntro dataName dataArgs expConsArgs discriminant -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
-      consArgs' <- mapM (elaborateWeakBinder h) consArgs
-      return $ DataIntro dataName dataArgs' consArgs' discriminant
+      expConsArgs' <- mapM (elaborateWeakBinder h) expConsArgs
+      return $ DataIntro dataName dataArgs' expConsArgs' discriminant
 
 elaborate' :: Handle -> WT.WeakTerm -> EIO TM.Term
 elaborate' h term =
@@ -387,11 +387,11 @@ strictify' h m t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi _ impArgs expArgs _
+        _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
           | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
               strictify' h m arg
         _ ->
-          raiseNonStrictType m (weaken t')
+          raiseNonStrictType m consType
     _ :< _ ->
       raiseNonStrictType m (weaken t')
 
@@ -406,7 +406,7 @@ strictifyDecimalType h m x t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi _ impArgs expArgs _
+        _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
           | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
               strictifyDecimalType h m x arg
         _ ->

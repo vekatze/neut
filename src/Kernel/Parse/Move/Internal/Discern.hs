@@ -179,12 +179,12 @@ discernStmtKind h stmtKind m =
       let consNameList' = consNameList
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
       return $ SK.Data dataName dataArgs' consInfoList'
-    SK.DataIntro dataName dataArgs consArgs discriminant -> do
+    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
       (dataArgs', h') <- discernBinder' h dataArgs
-      (consArgs', h'') <- discernBinder' h' consArgs
+      (expConsArgs', h'') <- discernBinder' h' expConsArgs
       forM_ (H.nameEnv h'') $ \(_, (_, newVar, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
-      return $ SK.DataIntro dataName dataArgs' consArgs' discriminant
+      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
 
 getUnitType :: H.Handle -> Hint -> EIO WT.WeakTerm
 getUnitType h m = do
@@ -299,7 +299,8 @@ discern h term =
               expArgs' <- mapM (discern h) $ SE.extract expArgs
               return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
-      (dd, _) <- resolveName h m name
+      (dd, (_, gn)) <- resolveName h m name
+      _ :< func <- interpretGlobalName h m dd gn
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       ensureFieldLinearity m ks S.empty S.empty
       (impKeys, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
@@ -309,9 +310,7 @@ discern h term =
       expArgs <- resolveExpKeys h m expKeys kvs'
       checkRedundancy m impKeys expKeys kvs'
       let isNoetic = False -- overwritten later in `infer`
-      let isConstLike = False
-      let argNum = AN.fromInt $ length $ impKeys ++ expKeys
-      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (ImpArgs.PartiallySpecified impArgs) expArgs
+      return $ m :< WT.PiElim isNoetic (m :< func) (ImpArgs.PartiallySpecified impArgs) expArgs
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'

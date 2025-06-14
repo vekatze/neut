@@ -129,10 +129,10 @@ inferStmtKind h stmtKind =
         (consArgs', _) <- inferBinder' varEnv consArgs
         return (m, dd, constLike, consArgs', discriminant)
       return $ Data dataName dataArgs' consInfoList'
-    DataIntro consName dataArgs consArgs discriminant -> do
+    DataIntro consName dataArgs expConsArgs discriminant -> do
       (dataArgs', varEnv) <- inferBinder' h dataArgs
-      (consArgs', _) <- inferBinder' varEnv consArgs
-      return $ DataIntro consName dataArgs' consArgs' discriminant
+      (expConsArgs', _) <- inferBinder' varEnv expConsArgs
+      return $ DataIntro consName dataArgs' expConsArgs' discriminant
 
 getIntType :: Platform.Handle -> Hint -> EIO WT.WeakTerm
 getIntType h m = do
@@ -524,7 +524,6 @@ inferPiElim h m (e, t) impArgs expArgs = do
             ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             return impArgs'
           ImpArgs.PartiallySpecified impArgs' -> do
-            ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             resolvePartiallySpecifiedArgs h m impArgs' impParams
       let args = impArgs' ++ expArgs
       let impBinders = map fst impParams
@@ -541,31 +540,12 @@ inferPiElim h m (e, t) impArgs expArgs = do
             ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             return impArgs'
           ImpArgs.PartiallySpecified impArgs' -> do
-            ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             resolvePartiallySpecifiedArgs h m impArgs' impParams
       let args = impArgs' ++ expArgs
       let impBinders = map fst impParams
       let piArgs = impBinders ++ expParams
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
       return (m :< WT.PiElim True e ImpArgs.Unspecified (map fst args), m :< cod')
-    _ ->
-      raiseError m $ "Expected a function type, but got: " <> toText t'
-
-inferPiElimExplicit ::
-  Handle ->
-  Hint ->
-  (WT.WeakTerm, WT.WeakTerm) ->
-  [(WT.WeakTerm, WT.WeakTerm)] ->
-  EIO (WT.WeakTerm, WT.WeakTerm)
-inferPiElimExplicit h m (e, t) args = do
-  t' <- resolveType h t
-  case t' of
-    _ :< WT.Pi _ impPiArgs expPiArgs cod -> do
-      let impBinders = map fst impPiArgs
-      let piArgs = impBinders ++ expPiArgs
-      ensureArityCorrectness h e (length piArgs) (length args)
-      _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim False e ImpArgs.Unspecified (map fst args), m :< cod')
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toText t'
 
@@ -709,9 +689,16 @@ inferClause h cursorType@(_ :< cursorTypeInner) decisionCase = do
       (consArgs', extendedVarEnv) <- inferBinder' h consArgs
       let argNum = AN.fromInt $ length dataArgs + length consArgs
       let attr = AttrVG.Attr {..}
-      consTerm <- infer h $ m :< WT.VarGlobal attr consDD
-      (_, tPat) <- inferPiElimExplicit h m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
-      liftIO $ Constraint.insert (constraintHandle h) cursorType tPat
+      let dataArgs' = ImpArgs.FullySpecified $ map fst typedDataArgs'
+      consTerm@(_, consType) <- infer h $ m :< WT.PiElim False (m :< WT.VarGlobal attr consDD) dataArgs' []
+      let impConsArgs = ImpArgs.FullySpecified []
+      let expConsArgs = map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+      if isConstLike
+        then do
+          liftIO $ Constraint.insert (constraintHandle h) cursorType consType
+        else do
+          (_, tPat) <- inferPiElim h m consTerm impConsArgs expConsArgs
+          liftIO $ Constraint.insert (constraintHandle h) cursorType tPat
       (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
       return
         ( DT.ConsCase
@@ -768,8 +755,10 @@ createImpArgValue h m ((_, _, paramType), maybeDefault) =
       (defaultValue', defaultType) <- infer h defaultValue
       liftIO $ Constraint.insert (constraintHandle h) paramType defaultType
       return defaultValue'
-    Nothing ->
-      liftIO $ newHole h m (varEnv h)
+    Nothing -> do
+      (holeValue, holeType) <- liftIO $ newTypedHole h m (varEnv h)
+      liftIO $ Constraint.insert (constraintHandle h) paramType holeType
+      return holeValue
 
 createImpArgValueFromParam ::
   Handle ->

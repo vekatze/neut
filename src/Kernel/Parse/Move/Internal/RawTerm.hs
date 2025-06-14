@@ -11,6 +11,7 @@ module Kernel.Parse.Move.Internal.RawTerm
     parseDefInfoCod,
     typeWithoutIdent,
     parseImplicitParams,
+    parseImplicitParamsMaybe,
     keyword,
     baseName,
   )
@@ -380,6 +381,15 @@ parseImplicitParams h =
         (s, c) <- seriesAngle $ preBinderWithDefault h
         return (s, c),
       return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
+    ]
+
+parseImplicitParamsMaybe :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawTerm, Maybe RT.RawTerm)), C)
+parseImplicitParamsMaybe h =
+  choice
+    [ do
+        (s, c) <- seriesAngle $ preBinderWithDefault h
+        return (Just s, c),
+      return (Nothing, [])
     ]
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> EIO ()

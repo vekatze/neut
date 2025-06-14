@@ -6,6 +6,7 @@ module SyntaxTree.Rule.Series
     emptySeries,
     emptySeries',
     emptySeriesPC,
+    emptySeriesAC,
     fromList,
     fromList',
     fromList'',
@@ -30,11 +31,11 @@ module SyntaxTree.Rule.Series
   )
 where
 
-import SyntaxTree.Rule.C (C)
 import Data.Bifunctor
 import Data.List (nubBy, sortBy)
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
+import SyntaxTree.Rule.C (C)
 
 data Separator
   = Comma
@@ -144,6 +145,11 @@ cons x xs =
 emptySeriesPC :: Series a
 emptySeriesPC =
   emptySeries (Just Paren) Comma
+
+-- ac: angle comma
+emptySeriesAC :: Series a
+emptySeriesAC =
+  emptySeries (Just Angle) Comma
 
 fromList :: Container -> Separator -> [a] -> Series a
 fromList container separator xs =

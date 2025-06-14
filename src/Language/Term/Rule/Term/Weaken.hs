@@ -15,6 +15,7 @@ import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.StmtKind
@@ -27,7 +28,6 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm (reflectOpacity)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Logger.Rule.Hint
 
 weakenStmt :: Stmt -> WeakStmt
@@ -206,10 +206,10 @@ weakenStmtKind stmtKind =
       let consArgsList' = map (map weakenBinder) consArgsList
       let consInfoList' = List.zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs consArgs discriminant -> do
+    DataIntro dataName dataArgs expConsArgs discriminant -> do
       let dataArgs' = map weakenBinder dataArgs
-      let consArgs' = map weakenBinder consArgs
-      DataIntro dataName dataArgs' consArgs' discriminant
+      let expConsArgs' = map weakenBinder expConsArgs
+      DataIntro dataName dataArgs' expConsArgs' discriminant
 
 weakenForeign :: F.Foreign -> WT.WeakForeign
 weakenForeign foreignItem@(F.Foreign m _ _ _) =

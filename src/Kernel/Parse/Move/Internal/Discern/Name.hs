@@ -30,6 +30,7 @@ import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.GlobalLocator qualified as GL
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Magic qualified as M
@@ -43,7 +44,6 @@ import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Logger.Rule.Hint
 
 {-# INLINE resolveName #-}
@@ -140,11 +140,7 @@ interpretGlobalName h m dd gn = do
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
-      let e = wrapWithExactIfNecessary m dataArgNum $ m :< WT.VarGlobal attr dd
-      -- let e = m :< WT.VarGlobal attr dd
-      if isConstLike
-        then return $ m :< WT.PiElim False e ImpArgs.Unspecified []
-        else return e
+      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
     GN.PrimOp primOp ->
@@ -153,12 +149,6 @@ interpretGlobalName h m dd gn = do
           castFromIntToBool h $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
         _ ->
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
-
-wrapWithExactIfNecessary :: Hint -> AN.ArgNum -> WT.WeakTerm -> WT.WeakTerm
-wrapWithExactIfNecessary m dataArgNum e =
-  if AN.reify dataArgNum > 0
-    then m :< WT.PiElimExact e
-    else e
 
 interpretTopLevelFunc ::
   Hint ->

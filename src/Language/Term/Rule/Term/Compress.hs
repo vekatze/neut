@@ -157,7 +157,7 @@ compressStmtKind stmtKind =
       let consArgsList' = map (map compressBinder) consArgsList
       let consInfoList' = zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs consArgs discriminant -> do
+    DataIntro dataName dataArgs expConsArgs discriminant -> do
       let dataArgs' = map compressBinder dataArgs
-      let consArgs' = map compressBinder consArgs
-      DataIntro dataName dataArgs' consArgs' discriminant
+      let expConsArgs' = map compressBinder expConsArgs
+      DataIntro dataName dataArgs' expConsArgs' discriminant

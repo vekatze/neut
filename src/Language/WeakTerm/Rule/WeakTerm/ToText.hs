@@ -14,6 +14,7 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimOp qualified as PO
@@ -22,7 +23,6 @@ import Language.Common.Rule.Rune qualified as RU
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Language.Common.Rule.ImpArgs qualified as ImpArgs
 
 toText :: WT.WeakTerm -> T.Text
 toText term =
@@ -39,10 +39,8 @@ toText term =
           if isConstLike
             then showImpArgs impArgs <> " " <> toText cod
             else showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
-        PK.DataIntro isConstLike -> do
-          if isConstLike
-            then showDataImpArgs impArgs <> toText cod
-            else showDataImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+        PK.DataIntro _ -> do
+          showDataImpArgs impArgs <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
@@ -137,8 +135,7 @@ showImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
 showImpArgs impArgs =
   if null impArgs
     then ""
-    else do
-      inAngleBracket $ showImpDomArgList impArgs
+    else inAngleBracket $ showImpDomArgList impArgs
 
 showDataImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
 showDataImpArgs impArgs =
@@ -151,13 +148,13 @@ showImpDomArgList mxts =
   T.intercalate ", " $ map showImpDomArgWithDefault mxts
 
 showImpDomArgWithDefault :: (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> T.Text
-showImpDomArgWithDefault ((_, x, t), maybeDefault) =
-  let baseArg = case t of
-        _ :< WT.Tau -> showVariable x
-        _ -> showVariable x <> ": " <> toText t
-   in case maybeDefault of
-        Nothing -> baseArg
-        Just defaultValue -> baseArg <> " := " <> toText defaultValue
+showImpDomArgWithDefault ((_, x, _), maybeDefault) = do
+  let baseArg = showVariable x
+  case maybeDefault of
+    Nothing ->
+      baseArg
+    Just defaultValue ->
+      baseArg <> " := " <> toText defaultValue
 
 showDataImpArgWithDefault :: (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> T.Text
 showDataImpArgWithDefault ((_, x, t), maybeDefault) =

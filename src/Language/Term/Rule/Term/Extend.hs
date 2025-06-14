@@ -164,7 +164,7 @@ extendStmtKind stmtKind =
       let consArgsList' = map (map extendBinder) consArgsList
       let consInfoList' = zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs consArgs discriminant -> do
+    DataIntro dataName dataArgs expConsArgs discriminant -> do
       let dataArgs' = map extendBinder dataArgs
-      let consArgs' = map extendBinder consArgs
-      DataIntro dataName dataArgs' consArgs' discriminant
+      let expConsArgs' = map extendBinder expConsArgs
+      DataIntro dataName dataArgs' expConsArgs' discriminant
