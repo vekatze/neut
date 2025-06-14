@@ -44,7 +44,6 @@ import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident (isHole)
 import Language.Common.Rule.Ident.Reify qualified as Ident
-import Language.Common.Rule.ImpArgs qualified as ImpArg
 import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Literal qualified as L
@@ -484,6 +483,27 @@ inferBinder1 h (mx, x, t) = do
   liftIO $ WeakType.insert (weakTypeHandle h) x t'
   return (mx, x, t')
 
+resolvePartiallySpecifiedArgs ::
+  Handle ->
+  Hint ->
+  [Maybe (WT.WeakTerm, WT.WeakTerm)] ->
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  EIO [(WT.WeakTerm, WT.WeakTerm)]
+resolvePartiallySpecifiedArgs h m partialArgs impParams = do
+  let pairs = zip partialArgs impParams
+  mapM resolveArg pairs
+  where
+    resolveArg (mArg, (_, mDefault)) = do
+      case mArg of
+        Just arg ->
+          return arg
+        Nothing -> do
+          case mDefault of
+            Just defaultValue ->
+              infer h defaultValue
+            Nothing -> do
+              liftIO $ newTypedHole h m (varEnv h)
+
 inferPiElim ::
   Handle ->
   Hint ->
@@ -503,6 +523,9 @@ inferPiElim h m (e, t) impArgs expArgs = do
           ImpArgs.FullySpecified impArgs' -> do
             ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             return impArgs'
+          ImpArgs.PartiallySpecified impArgs' -> do
+            ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
+            resolvePartiallySpecifiedArgs h m impArgs' impParams
       let args = impArgs' ++ expArgs
       let impBinders = map fst impParams
       let piArgs = impBinders ++ expParams
@@ -512,11 +535,14 @@ inferPiElim h m (e, t) impArgs expArgs = do
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgs' <- do
         case impArgs of
-          ImpArg.Unspecified -> do
+          ImpArgs.Unspecified -> do
             mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impParams]
           ImpArgs.FullySpecified impArgs' -> do
             ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             return impArgs'
+          ImpArgs.PartiallySpecified impArgs' -> do
+            ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
+            resolvePartiallySpecifiedArgs h m impArgs' impParams
       let args = impArgs' ++ expArgs
       let impBinders = map fst impParams
       let piArgs = impBinders ++ expParams

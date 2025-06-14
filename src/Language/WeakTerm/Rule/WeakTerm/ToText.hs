@@ -75,6 +75,8 @@ toText term =
               showApp' (toText e) (map toText impArgs') (map toText expArgs)
             ImpArgs.Unspecified ->
               showApp (toText e) (map toText expArgs)
+            ImpArgs.PartiallySpecified impArgs' ->
+              showApp' (toText e) (map toText (ImpArgs.extract (ImpArgs.PartiallySpecified impArgs'))) (map toText expArgs)
     _ :< WT.PiElimExact e -> do
       "exact " <> toText e
     _ :< WT.Data (AttrD.Attr {..}) name es -> do

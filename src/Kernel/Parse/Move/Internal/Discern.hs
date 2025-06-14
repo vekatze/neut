@@ -56,6 +56,7 @@ import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Literal qualified as LI
 import Language.Common.Rule.Magic qualified as M
@@ -80,7 +81,6 @@ import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars)
 import Logger.Rule.Hint
 import Logger.Rule.Hint.Reify qualified as Hint
@@ -305,13 +305,13 @@ discern h term =
       (impKeys, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
       vs' <- mapM (discern h) vs
       let kvs' = Map.fromList $ zip ks vs'
-      impArgs <- liftIO $ resolveImpKeys h m impKeys kvs'
+      let impArgs = resolveImpKeys h m impKeys kvs'
       expArgs <- resolveExpKeys h m expKeys kvs'
       checkRedundancy m impKeys expKeys kvs'
       let isNoetic = False -- overwritten later in `infer`
       let isConstLike = False
       let argNum = AN.fromInt $ length $ impKeys ++ expKeys
-      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (ImpArgs.FullySpecified impArgs) expArgs
+      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (ImpArgs.PartiallySpecified impArgs) expArgs
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
@@ -1090,19 +1090,18 @@ interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
   PreDecl.insert (H.preDeclHandle h) name m
   return $ F.Foreign m name lts' cod
 
-resolveImpKeys :: H.Handle -> Hint -> [ImpKey] -> Map.HashMap Key WT.WeakTerm -> IO [WT.WeakTerm]
+resolveImpKeys :: H.Handle -> Hint -> [ImpKey] -> Map.HashMap Key WT.WeakTerm -> [Maybe WT.WeakTerm]
 resolveImpKeys h m impKeys kvs = do
   case impKeys of
     [] ->
-      return []
+      []
     impKey : rest -> do
-      args <- resolveImpKeys h m rest kvs
+      let args = resolveImpKeys h m rest kvs
       case Map.lookup impKey kvs of
         Just value -> do
-          return $ value : args
+          Just value : args
         Nothing -> do
-          hole <- WT.createHole (H.gensymHandle h) m []
-          return $ hole : args
+          Nothing : args
 
 resolveExpKeys :: H.Handle -> Hint -> [ExpKey] -> Map.HashMap Key a -> EIO [a]
 resolveExpKeys h m expKeys kvs = do
