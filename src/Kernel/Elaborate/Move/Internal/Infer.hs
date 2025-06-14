@@ -42,7 +42,7 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.HoleID qualified as HID
-import Language.Common.Rule.Ident (Ident, isHole)
+import Language.Common.Rule.Ident (isHole)
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Literal qualified as L
@@ -71,10 +71,7 @@ inferStmt :: Handle -> WeakStmt -> EIO WeakStmt
 inferStmt h stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
-      let (impBinders, impDefaults) = unzip impArgs
-      (impBinders', h') <- inferBinder' h impBinders
-      impDefaults' <- mapM (traverse (inferType h')) impDefaults
-      let impArgs' = zip impBinders' impDefaults'
+      (impArgs', h') <- inferImpBinder h impArgs
       (expArgs', h'') <- inferBinder' h' expArgs
       codType' <- inferType h'' codType
       case stmtKind of
@@ -101,7 +98,7 @@ inferStmt h stmt =
 
 inferGeist :: Handle -> G.Geist WT.WeakTerm -> EIO (G.Geist WT.WeakTerm)
 inferGeist h (G.Geist {..}) = do
-  (impArgs', h') <- inferBinderWithMaybeType h impArgs
+  (impArgs', h') <- inferImpBinder h impArgs
   (expArgs', h'') <- inferBinder' h' expArgs
   cod' <- inferType h'' cod
   liftIO $ insertType h'' name $ loc :< WT.Pi PK.normal impArgs' expArgs' cod'
@@ -169,14 +166,14 @@ infer h term =
       _ :< t <- Type.lookup' (typeHandle h) m name
       return (term, m :< t)
     m :< WT.Pi piKind impArgs expArgs t -> do
-      (impArgs', h') <- inferPiBinderWithMaybeType h impArgs
+      (impArgs', h') <- inferImpBinder h impArgs
       (expArgs', h'') <- inferPiBinder h' expArgs
       t' <- inferType h'' t
       return (m :< WT.Pi piKind impArgs' expArgs' t', m :< WT.Tau)
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
-          (impArgs', h') <- inferBinderWithMaybeType h impArgs
+          (impArgs', h') <- inferImpBinder h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           codType' <- inferType h'' codType
           let impArgsWithDefaults = impArgs'
@@ -187,7 +184,7 @@ infer h term =
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e'
           return (term', piType)
         LK.Normal name codType -> do
-          (impArgs', h') <- inferBinderWithMaybeType h impArgs
+          (impArgs', h') <- inferImpBinder h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           codType' <- inferType h'' codType
           (e', t') <- infer h'' e
@@ -206,7 +203,7 @@ infer h term =
       case t' of
         _ :< WT.Pi _ impArgs expArgs codType -> do
           let impBinders = map fst impArgs
-          impValues <- liftIO $ mapM (createImpArgValue h m) impArgs
+          impValues <- mapM (createImpArgValue h m) impArgs
           let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impBinders) (map Right impValues)
           (expArgs', sub') <- liftIO $ Subst.subst' (substHandle h) sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
@@ -426,35 +423,27 @@ inferPiBinder h binder =
       (xtls', h') <- inferPiBinder (extendHandle (mx, x, t') h) xts
       return ((mx, x, t') : xtls', h')
 
-inferPiBinderWithMaybeType ::
+inferImpBinder ::
   Handle ->
   [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
   EIO ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], Handle)
-inferPiBinderWithMaybeType h binderList =
+inferImpBinder h binderList =
   case binderList of
     [] -> do
       return ([], h)
-    (((mx, x, t), maybeType) : rest) -> do
+    (((mx, x, t), mDefaultValue) : rest) -> do
       t' <- inferType h t
-      maybeType' <- traverse (inferType h) maybeType
+      mDefaultValue' <-
+        case mDefaultValue of
+          Nothing ->
+            return Nothing
+          Just defaultValue -> do
+            (defaultValue', defaultType) <- infer h defaultValue
+            liftIO $ Constraint.insert (constraintHandle h) t' defaultType
+            return (Just defaultValue')
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
-      (rest', h') <- inferPiBinderWithMaybeType (extendHandle (mx, x, t') h) rest
-      return (((mx, x, t'), maybeType') : rest', h')
-
-inferBinderWithMaybeType ::
-  Handle ->
-  [((Hint, Ident, WT.WeakTerm), Maybe WT.WeakTerm)] ->
-  EIO ([((Hint, Ident, WT.WeakTerm), Maybe WT.WeakTerm)], Handle)
-inferBinderWithMaybeType h binderList =
-  case binderList of
-    [] -> do
-      return ([], h)
-    (((mx, x, t), maybeType) : rest) -> do
-      t' <- inferType h t
-      maybeType' <- traverse (inferType h) maybeType
-      liftIO $ WeakType.insert (weakTypeHandle h) x t'
-      (rest', h') <- inferBinderWithMaybeType (extendHandle (mx, x, t') h) rest
-      return (((mx, x, t'), maybeType') : rest', h')
+      (rest', h') <- inferImpBinder (extendHandle (mx, x, t') h) rest
+      return (((mx, x, t'), mDefaultValue') : rest', h')
 
 inferBinder' ::
   Handle ->
@@ -744,23 +733,26 @@ newHole h m varEnv = do
   (e, _) <- newTypedHole h m varEnv
   return e
 
-createImpArgValue :: Handle -> Hint -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> IO WT.WeakTerm
-createImpArgValue h m (_, maybeDefault) =
+createImpArgValue :: Handle -> Hint -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> EIO WT.WeakTerm
+createImpArgValue h m ((_, _, paramType), maybeDefault) =
   case maybeDefault of
     Just defaultValue -> do
-      return defaultValue
+      (defaultValue', defaultType) <- infer h defaultValue
+      liftIO $ Constraint.insert (constraintHandle h) paramType defaultType
+      return defaultValue'
     Nothing ->
-      newHole h m (varEnv h)
+      liftIO $ newHole h m (varEnv h)
 
 createImpArgValueFromParam ::
   Handle ->
   Hint ->
   (BinderF WT.WeakTerm, Maybe WT.WeakTerm) ->
   EIO (WT.WeakTerm, WT.WeakTerm)
-createImpArgValueFromParam h m (_, maybeDefault) =
+createImpArgValueFromParam h m ((_, _, paramType), maybeDefault) =
   case maybeDefault of
     Just defaultValue -> do
       (defaultValue', defaultType) <- infer h defaultValue
-      return (defaultValue', defaultType)
+      liftIO $ Constraint.insert (constraintHandle h) paramType defaultType
+      return (defaultValue', paramType) -- Return parameter type, not inferred type
     Nothing -> do
       liftIO $ newTypedHole h m (varEnv h)
