@@ -739,13 +739,31 @@ preBinder h = do
 
 preBinderWithDefault :: Handle -> Parser ((RawBinder RT.RawTerm, Maybe RT.RawTerm), C)
 preBinderWithDefault h = do
-  (binder, c1) <- preBinder h
+  ((m, x), varC) <- var h
   choice
     [ do
         c2 <- delimiter ":="
         (defaultValue, c3) <- rawTerm h
-        return ((binder, Just defaultValue), c1 ++ c2 ++ c3),
-      return ((binder, Nothing), c1)
+        hole <- liftIO $ RT.createHole (gensymHandle h) m
+        let binder = (m, x, varC, [], hole)
+        return ((binder, Just defaultValue), c2 ++ c3),
+      do
+        c1 <- delimiter ":"
+        (a, c2) <- rawTerm h
+        choice
+          [ do
+              c3 <- delimiter ":="
+              (defaultValue, c4) <- rawTerm h
+              let binder = (m, x, varC, c1, a)
+              return ((binder, Just defaultValue), c2 ++ c3 ++ c4),
+            do
+              let binder = (m, x, varC, c1, a)
+              return ((binder, Nothing), c2)
+          ],
+      do
+        hole <- liftIO $ RT.createHole (gensymHandle h) m
+        let binder = (m, x, varC, [], hole)
+        return ((binder, Nothing), [])
     ]
 
 preAscription :: Handle -> ((Hint, T.Text), C) -> Parser (RawBinder RT.RawTerm, C)
