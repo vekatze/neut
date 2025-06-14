@@ -13,6 +13,7 @@ import Data.IntMap qualified as IntMap
 import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Debug.Trace
 import Error.Move.Run (raiseCritical)
 import Error.Rule.EIO (EIO)
 import Error.Rule.Error qualified as E
@@ -153,34 +154,38 @@ simplify h susList constraintList =
         else do
           case (expected', actual') of
             (m1 :< WT.Pi _ impArgs1 expArgs1 cod1, m2 :< WT.Pi _ impArgs2 expArgs2 cod2)
-              | length impArgs1 == length impArgs2,
+              | Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 impArgs2,
                 length expArgs1 == length expArgs2 -> do
                   xt1 <- liftIO $ asWeakBinder h m1 cod1
                   xt2 <- liftIO $ asWeakBinder h m2 cod2
-                  let impBinders1 = map fst impArgs1
-                  let impBinders2 = map fst impArgs2
+                  let (impBinders1, impBinders2) = unzip impBinders
+                  let impEqs' = map (,orig) impConstraints
                   cs' <- liftIO $ simplifyBinder h orig (impBinders1 ++ expArgs1 ++ [xt1]) (impBinders2 ++ expArgs2 ++ [xt2])
-                  simplify h susList $ cs' ++ cs
+                  simplify h susList $ cs' ++ impEqs' ++ cs
             (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
               | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
                 AttrL.Attr {lamKind = LK.Fix xt2@(_, x2, _)} <- kind2,
                 x1 == x2,
-                length impArgs1 == length impArgs2,
+                Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 impArgs2,
                 length expArgs1 == length expArgs2 -> do
                   yt1 <- liftIO $ asWeakBinder h m1 e1
                   yt2 <- liftIO $ asWeakBinder h m2 e2
-                  cs' <- liftIO $ simplifyBinder h orig (xt1 : map fst impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : map fst impArgs2 ++ expArgs2 ++ [yt2])
-                  simplify h susList $ cs' ++ cs
+                  let (impBinders1, impBinders2) = unzip impBinders
+                  let impEqs' = map (,orig) impConstraints
+                  cs' <- liftIO $ simplifyBinder h orig (xt1 : impBinders1 ++ expArgs1 ++ [yt1]) (xt2 : impBinders2 ++ expArgs2 ++ [yt2])
+                  simplify h susList $ cs' ++ impEqs' ++ cs
               | AttrL.Attr {lamKind = LK.Normal _ codType1} <- kind1,
                 AttrL.Attr {lamKind = LK.Normal _ codType2} <- kind2,
-                length impArgs1 == length impArgs2,
+                Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 impArgs2,
                 length expArgs1 == length expArgs2 -> do
                   cod1 <- liftIO $ asWeakBinder h m1 codType1
                   xt1 <- liftIO $ asWeakBinder h m1 e1
                   cod2 <- liftIO $ asWeakBinder h m2 codType2
                   xt2 <- liftIO $ asWeakBinder h m2 e2
-                  cs' <- liftIO $ simplifyBinder h orig (map fst impArgs1 ++ expArgs1 ++ [cod1, xt1]) (map fst impArgs2 ++ expArgs2 ++ [cod2, xt2])
-                  simplify h susList $ cs' ++ cs
+                  let (impBinders1, impBinders2) = unzip impBinders
+                  let impEqs' = map (,orig) impConstraints
+                  cs' <- liftIO $ simplifyBinder h orig (impBinders1 ++ expArgs1 ++ [cod1, xt1]) (impBinders2 ++ expArgs2 ++ [cod2, xt2])
+                  simplify h susList $ cs' ++ impEqs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,
                 length es1 == length es2 -> do
@@ -465,3 +470,28 @@ simplifyInteger h m t orig = do
                   simplifyInteger (increment h) m (Stuck.resume lam evalCtx) orig
             _ -> do
               return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
+
+createDefaultConstraints ::
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  Maybe ([(BinderF WT.WeakTerm, BinderF WT.WeakTerm)], [C.Constraint])
+createDefaultConstraints impArgs1 impArgs2 = do
+  case (impArgs1, impArgs2) of
+    ([], []) ->
+      Just ([], [])
+    (_ : _, []) ->
+      trace "found mismatch" Nothing
+    ([], _ : _) ->
+      trace "found mismatch" Nothing
+    ((binder1, me1) : rest1, (binder2, me2) : rest2) -> do
+      case (me1, me2) of
+        (Nothing, Nothing) -> do
+          (binders, cs) <- createDefaultConstraints rest1 rest2
+          return ((binder1, binder2) : binders, cs)
+        (Just _, Nothing) ->
+          Nothing
+        (Nothing, Just _) ->
+          Nothing
+        (Just e1, Just e2) -> do
+          (binders, cs) <- createDefaultConstraints rest1 rest2
+          return ((binder1, binder2) : binders, C.Eq e1 e2 : cs)

@@ -206,8 +206,8 @@ infer h term =
       case t' of
         _ :< WT.Pi _ impArgs expArgs codType -> do
           let impBinders = map fst impArgs
-          holes <- liftIO $ mapM (const $ newHole h m $ varEnv h) impBinders
-          let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impBinders) (map Right holes)
+          impValues <- liftIO $ mapM (createImpArgValue h m) impArgs
+          let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impBinders) (map Right impValues)
           (expArgs', sub') <- liftIO $ Subst.subst' (substHandle h) sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
           codType' <- liftIO $ Subst.subst (substHandle h) sub' codType
@@ -508,7 +508,7 @@ inferPiElim h m (e, t) impArgs expArgs = do
       impArgs' <- do
         case impArgs of
           Nothing -> do
-            mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impParams]
+            mapM (createImpArgValueFromParam h m) impParams
           Just impArgs' -> do
             ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             return impArgs'
@@ -743,3 +743,24 @@ newHole :: Handle -> Hint -> BoundVarEnv -> IO WT.WeakTerm
 newHole h m varEnv = do
   (e, _) <- newTypedHole h m varEnv
   return e
+
+createImpArgValue :: Handle -> Hint -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> IO WT.WeakTerm
+createImpArgValue h m (_, maybeDefault) =
+  case maybeDefault of
+    Just defaultValue -> do
+      return defaultValue
+    Nothing ->
+      newHole h m (varEnv h)
+
+createImpArgValueFromParam ::
+  Handle ->
+  Hint ->
+  (BinderF WT.WeakTerm, Maybe WT.WeakTerm) ->
+  EIO (WT.WeakTerm, WT.WeakTerm)
+createImpArgValueFromParam h m (_, maybeDefault) =
+  case maybeDefault of
+    Just defaultValue -> do
+      (defaultValue', defaultType) <- infer h defaultValue
+      return (defaultValue', defaultType)
+    Nothing -> do
+      liftIO $ newTypedHole h m (varEnv h)

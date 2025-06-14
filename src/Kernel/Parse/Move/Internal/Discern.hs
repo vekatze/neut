@@ -817,7 +817,7 @@ discernBinderWithDefaults h binder endLoc =
       return ([], h)
     ((mx, x, _, _, t), maybeDefault) : xts -> do
       t' <- discern h t
-      maybeDefault' <- traverse (discern h) maybeDefault
+      maybeDefault' <- traverse (discern h {H.nameEnv = []}) maybeDefault -- default values must be closed
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
       (xts', h'') <- discernBinderWithDefaults h' xts endLoc
