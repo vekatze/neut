@@ -10,6 +10,7 @@ module Language.RawTerm.Rule.RawTerm.ToDoc
     decodeDef,
     decGeist,
     decodeImpParams,
+    decodeImpParamsWithDefaults,
     attachComment,
     decodeBlock,
     decodeKeywordClause,
@@ -52,7 +53,7 @@ toDoc term =
       nameToDoc varOrLocator
     _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do
       PI.arrange
-        [ PI.container $ decodeImpParams (fmap fst impArgs),
+        [ PI.container $ decodeImpParamsWithDefaults impArgs,
           PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
@@ -420,6 +421,14 @@ piIntroArgToDoc (m, x, c1, c2, t) = do
   let x' = nameToDoc $ N.Var x
   paramToDoc (m, x', c1, c2, t)
 
+piIntroArgWithDefaultToDoc :: (RawBinder RawTerm, Maybe RawTerm) -> D.Doc
+piIntroArgWithDefaultToDoc ((m, x, c1, c2, t), maybeDefault) = do
+  let x' = nameToDoc $ N.Var x
+  let baseParam = paramToDoc (m, x', c1, c2, t)
+  case maybeDefault of
+    Nothing -> baseParam
+    Just defaultValue -> D.join [baseParam, D.text " := ", toDoc defaultValue]
+
 varArgToDoc :: VarArg -> D.Doc
 varArgToDoc (m, e, c1, c2, t) = do
   let e' = toDoc e
@@ -456,13 +465,13 @@ decGeist
       _ :< RT.Hole {} ->
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams (fmap fst impArgs),
+            PI.inject $ decodeImpParamsWithDefaults impArgs,
             PI.inject $ attachComment c1 $ decodeExpParams isConstLike expArgs
           ]
       _ ->
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams (fmap fst impArgs),
+            PI.inject $ decodeImpParamsWithDefaults impArgs,
             PI.inject $ attachComment c1 $ decodeExpParams isConstLike expArgs,
             PI.horizontal $ attachComment c2 $ D.text ":",
             PI.inject $ attachComment c3 $ toDoc cod
@@ -473,6 +482,12 @@ decodeImpParams impParams =
   if SE.isEmpty impParams
     then D.Nil
     else SE.decode $ fmap piIntroArgToDoc impParams
+
+decodeImpParamsWithDefaults :: SE.Series (RawBinder RawTerm, Maybe RawTerm) -> D.Doc
+decodeImpParamsWithDefaults impParams =
+  if SE.isEmpty impParams
+    then D.Nil
+    else SE.decode $ fmap piIntroArgWithDefaultToDoc impParams
 
 decodeExpParams :: Bool -> SE.Series (RawBinder RawTerm) -> D.Doc
 decodeExpParams isConstLike expParams =

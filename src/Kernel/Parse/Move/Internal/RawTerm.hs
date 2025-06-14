@@ -377,8 +377,8 @@ parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm, Maybe 
 parseImplicitParams h =
   choice
     [ do
-        (s, c) <- seriesAngle $ preBinder h
-        return (fmap (,Nothing) s, c),
+        (s, c) <- seriesAngle $ preBinderWithDefault h
+        return (s, c),
       return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
     ]
 
@@ -735,6 +735,17 @@ preBinder h = do
   choice
     [ preAscription h mxc,
       preAscription' h mxc
+    ]
+
+preBinderWithDefault :: Handle -> Parser ((RawBinder RT.RawTerm, Maybe RT.RawTerm), C)
+preBinderWithDefault h = do
+  (binder, c1) <- preBinder h
+  choice
+    [ do
+        c2 <- delimiter ":="
+        (defaultValue, c3) <- rawTerm h
+        return ((binder, Just defaultValue), c1 ++ c2 ++ c3),
+      return ((binder, Nothing), c1)
     ]
 
 preAscription :: Handle -> ((Hint, T.Text), C) -> Parser (RawBinder RT.RawTerm, C)
