@@ -157,7 +157,9 @@ simplify h susList constraintList =
                 length expArgs1 == length expArgs2 -> do
                   xt1 <- liftIO $ asWeakBinder h m1 cod1
                   xt2 <- liftIO $ asWeakBinder h m2 cod2
-                  cs' <- liftIO $ simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
+                  let impBinders1 = map fst impArgs1
+                  let impBinders2 = map fst impArgs2
+                  cs' <- liftIO $ simplifyBinder h orig (impBinders1 ++ expArgs1 ++ [xt1]) (impBinders2 ++ expArgs2 ++ [xt2])
                   simplify h susList $ cs' ++ cs
             (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
               | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
@@ -431,7 +433,8 @@ getConsArgTypes h m consName = do
   t <- Type.lookup' (typeHandle h) m consName
   case t of
     _ :< WT.Pi _ impArgs expArgs _ -> do
-      return $ impArgs ++ expArgs
+      let impBinders = map fst impArgs
+      return $ impBinders ++ expArgs
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
 

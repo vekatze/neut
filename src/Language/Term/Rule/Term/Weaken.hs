@@ -52,7 +52,7 @@ weaken term =
     m :< TM.VarGlobal g argNum ->
       m :< WT.VarGlobal g argNum
     m :< TM.Pi piKind impArgs expArgs t ->
-      m :< WT.Pi piKind (map weakenBinder impArgs) (map weakenBinder expArgs) (weaken t)
+      m :< WT.Pi piKind (map (bimap weakenBinder (fmap weaken)) impArgs) (map weakenBinder expArgs) (weaken t)
     m :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = weakenAttr attr
       let impArgs' = map weakenBinder impArgs

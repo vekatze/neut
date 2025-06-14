@@ -241,7 +241,8 @@ discern h term =
       (expArgs', h'') <- discernBinder h' (RT.extractArgs expArgs) endLoc
       t' <- discern h'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO (Unused.deleteVariable (H.unusedHandle h'') x)
-      return $ m :< WT.Pi PK.normal impArgs' expArgs' t'
+      let impArgsWithDefaults = map (,Nothing) impArgs'
+      return $ m :< WT.Pi PK.normal impArgsWithDefaults expArgs' t'
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       let (name, _) = RT.name geist

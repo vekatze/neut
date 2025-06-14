@@ -163,11 +163,12 @@ insertStmt :: Handle -> Stmt -> EIO ()
 insertStmt h stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs t e -> do
+      let impArgsWithDefaults = map (,Nothing) impArgs
       case stmtKind of
         SK.DataIntro {} ->
-          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs expArgs t
+          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.DataIntro isConstLike) impArgsWithDefaults expArgs t
         _ ->
-          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgs expArgs t
+          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgsWithDefaults expArgs t
       liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (impArgs ++ expArgs) e
     StmtForeign _ -> do
       return ()
@@ -215,7 +216,10 @@ elaborate' h term =
     m :< WT.VarGlobal name argNum ->
       return $ m :< TM.VarGlobal name argNum
     m :< WT.Pi piKind impArgs expArgs t -> do
-      impArgs' <- mapM (elaborateWeakBinder h) impArgs
+      impArgs' <- forM impArgs $ \(binder, maybeType) -> do
+        binder' <- elaborateWeakBinder h binder
+        maybeType' <- traverse (elaborate' h) maybeType
+        return (binder', maybeType')
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       t' <- elaborate' h t
       return $ m :< TM.Pi piKind impArgs' expArgs' t'
@@ -378,7 +382,7 @@ strictify' h m t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi _ impArgs expArgs _
-          | [(_, _, arg)] <- impArgs ++ expArgs -> do
+          | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
               strictify' h m arg
         _ ->
           raiseNonStrictType m (weaken t')
@@ -397,7 +401,7 @@ strictifyDecimalType h m x t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi _ impArgs expArgs _
-          | [(_, _, arg)] <- impArgs ++ expArgs -> do
+          | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
               strictifyDecimalType h m x arg
         _ ->
           raiseNonDecimalType m x (weaken t')
@@ -414,7 +418,7 @@ strictifyFloatType h m x t = do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi _ impArgs expArgs _
-          | [(_, _, arg)] <- impArgs ++ expArgs -> do
+          | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
               strictifyFloatType h m x arg
         _ ->
           raiseNonFloatType m x (weaken t')

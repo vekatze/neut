@@ -47,7 +47,7 @@ toText term =
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
           "define "
             <> showVariable x
-            <> showImpArgs impArgs
+            <> showImpArgsOld impArgs
             <> inParen (showDomArgList expArgs)
             <> ": "
             <> toText codType
@@ -57,7 +57,7 @@ toText term =
           let name = fromMaybe "" mName
           "function "
             <> name
-            <> showImpArgs impArgs
+            <> showImpArgsOld impArgs
             <> inParen (showDomArgList expArgs)
             <> ": "
             <> toText codType
@@ -130,21 +130,32 @@ toText term =
     _ :< WT.Void ->
       "void"
 
-showImpArgs :: [BinderF WT.WeakTerm] -> T.Text
+showImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
 showImpArgs impArgs =
   if null impArgs
     then ""
     else do
       inAngleBracket $ showImpDomArgList impArgs
 
-showDataImpArgs :: [BinderF WT.WeakTerm] -> T.Text
+showImpArgsOld :: [BinderF WT.WeakTerm] -> T.Text
+showImpArgsOld impArgs =
+  if null impArgs
+    then ""
+    else do
+      inAngleBracket $ showImpDomArgListOld impArgs
+
+showDataImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
 showDataImpArgs impArgs =
   if null impArgs
     then ""
-    else "∀ " <> T.intercalate " " (map showImpDomArg' impArgs) <> ". "
+    else "∀ " <> T.intercalate " " (map (showImpDomArg' . fst) impArgs) <> ". "
 
-showImpDomArgList :: [BinderF WT.WeakTerm] -> T.Text
+showImpDomArgList :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
 showImpDomArgList mxts =
+  T.intercalate ", " $ map (showImpDomArg . fst) mxts
+
+showImpDomArgListOld :: [BinderF WT.WeakTerm] -> T.Text
+showImpDomArgListOld mxts =
   T.intercalate ", " $ map showImpDomArg mxts
 
 showImpDomArg :: BinderF WT.WeakTerm -> T.Text

@@ -137,7 +137,8 @@ analyze h term = do
     _ :< TM.VarGlobal {} -> do
       return []
     _ :< TM.Pi _ impArgs expArgs t -> do
-      (cs1, h') <- analyzeBinder h impArgs
+      let impBinders = map fst impArgs
+      (cs1, h') <- analyzeBinder h impBinders
       (cs2, h'') <- analyzeBinder h' expArgs
       cs3 <- analyze h'' t
       return $ cs1 ++ cs2 ++ cs3
@@ -147,7 +148,8 @@ analyze h term = do
           (cs1, h') <- analyzeBinder h impArgs
           (cs2, h'') <- analyzeBinder h' expArgs
           cs3 <- analyze h'' codType
-          let piType = m :< TM.Pi PK.normal impArgs expArgs codType
+          let impArgsWithDefaults = map (,Nothing) impArgs
+          let piType = m :< TM.Pi PK.normal impArgsWithDefaults expArgs codType
           liftIO $ insertRelevantVar x h''
           cs4 <- analyze (extendHandle (mx, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
@@ -392,7 +394,8 @@ getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
     _ :< WT.Pi _ impArgs expArgs _ -> do
-      return $ impArgs ++ expArgs
+      let impBinders = map fst impArgs
+      return $ impBinders ++ expArgs
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
 

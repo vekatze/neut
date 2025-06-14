@@ -19,8 +19,9 @@ holes term =
       S.empty
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.Pi _ impArgs expArgs t ->
-      holes' (impArgs ++ expArgs) (holes t)
+    _ :< WT.Pi _ impArgs expArgs t -> do
+      let impBinders = map fst impArgs
+      holes' (impBinders ++ expArgs) (holes t)
     _ :< WT.PiIntro k impArgs expArgs e ->
       holes' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e)
     _ :< WT.PiElim _ e impArgs expArgs ->

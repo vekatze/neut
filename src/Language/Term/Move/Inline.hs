@@ -81,7 +81,10 @@ inline' h term = do
     _ :< TM.VarGlobal {} ->
       return term
     m :< TM.Pi piKind impArgs expArgs cod -> do
-      impArgs' <- mapM (inlineBinder h) impArgs
+      impArgs' <- mapM (\(binder, maybeType) -> do
+        binder' <- inlineBinder h binder
+        maybeType' <- traverse (inline' h) maybeType
+        return (binder', maybeType')) impArgs
       expArgs' <- mapM (inlineBinder h) expArgs
       cod' <- inline' h cod
       return (m :< TM.Pi piKind impArgs' expArgs' cod')

@@ -53,7 +53,7 @@ subst h sub term =
     _ :< TM.VarGlobal {} ->
       return term
     m :< TM.Pi piKind impArgs expArgs t -> do
-      (impArgs', sub') <- substBinder h sub impArgs
+      (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
       (expArgs', sub'') <- substBinder h sub' expArgs
       t' <- subst h sub'' t
       return (m :< TM.Pi piKind impArgs' expArgs' t')
@@ -278,3 +278,20 @@ substVar sub x =
       x'
     _ ->
       x
+
+substBinderWithMaybeType ::
+  Handle ->
+  SubstTerm ->
+  [(BinderF TM.Term, Maybe TM.Term)] ->
+  IO ([(BinderF TM.Term, Maybe TM.Term)], SubstTerm)
+substBinderWithMaybeType h sub binderList =
+  case binderList of
+    [] -> do
+      return ([], sub)
+    (((m, x, t), maybeType) : rest) -> do
+      t' <- subst h sub t
+      maybeType' <- traverse (subst h sub) maybeType
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      (rest', sub'') <- substBinderWithMaybeType h sub' rest
+      return (((m, x', t'), maybeType') : rest', sub'')

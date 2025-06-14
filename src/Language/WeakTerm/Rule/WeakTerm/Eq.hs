@@ -25,9 +25,12 @@ eq (_ :< term1) (_ :< term2)
       dd1 == dd2
   | WT.Pi _ impArgs1 expArgs1 cod1 <- term1,
     WT.Pi _ impArgs2 expArgs2 cod2 <- term2 = do
-      let b1 = eqBinder (impArgs1 ++ expArgs1) (impArgs2 ++ expArgs2)
-      let b2 = eq cod1 cod2
-      b1 && b2
+      let b1 = eqImpArgs impArgs1 impArgs2
+      let impBinders1 = map fst impArgs1
+      let impBinders2 = map fst impArgs2
+      let b2 = eqBinder (impBinders1 ++ expArgs1) (impBinders2 ++ expArgs2)
+      let b3 = eq cod1 cod2
+      b1 && b2 && b3
   | WT.PiIntro kind1 impArgs1 expArgs1 body1 <- term1,
     WT.PiIntro kind2 impArgs2 expArgs2 body2 <- term2,
     length impArgs1 == length impArgs2,
@@ -131,6 +134,32 @@ eq (_ :< term1) (_ :< term2)
   | WT.Void <- term1,
     WT.Void <- term2 =
       True
+  | otherwise =
+      False
+
+eqImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> Bool
+eqImpArgs impArgs1 impArgs2
+  | [] <- impArgs1,
+    [] <- impArgs2 =
+      True
+  | ((_, x1, t1), maybeType1) : rest1 <- impArgs1,
+    ((_, x2, t2), maybeType2) : rest2 <- impArgs2 = do
+      let b1 = x1 == x2
+      let b2 = eq t1 t2
+      let b3 = eqMaybeType maybeType1 maybeType2
+      let b4 = eqImpArgs rest1 rest2
+      b1 && b2 && b3 && b4
+  | otherwise =
+      False
+
+eqMaybeType :: Maybe WT.WeakTerm -> Maybe WT.WeakTerm -> Bool
+eqMaybeType maybeType1 maybeType2
+  | Nothing <- maybeType1,
+    Nothing <- maybeType2 =
+      True
+  | Just t1 <- maybeType1,
+    Just t2 <- maybeType2 =
+      eq t1 t2
   | otherwise =
       False
 

@@ -50,7 +50,7 @@ subst h sub term =
     _ :< WT.VarGlobal {} ->
       return term
     m :< WT.Pi piKind impArgs expArgs t -> do
-      (impArgs', sub') <- subst' h sub impArgs
+      (impArgs', sub') <- substWithMaybeType h sub impArgs
       (expArgs', sub'') <- subst' h sub' expArgs
       t' <- subst h sub'' t
       return $ m :< WT.Pi piKind impArgs' expArgs' t'
@@ -301,6 +301,23 @@ substLeafVar sub leafVar =
       Nothing
     Nothing ->
       return leafVar
+
+substWithMaybeType ::
+  Handle ->
+  WT.SubstWeakTerm ->
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  IO ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], WT.SubstWeakTerm)
+substWithMaybeType h sub binderList =
+  case binderList of
+    [] -> do
+      return ([], sub)
+    (((m, x, t), maybeType) : rest) -> do
+      t' <- subst h sub t
+      maybeType' <- traverse (subst h sub) maybeType
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      (rest', sub'') <- substWithMaybeType h sub' rest
+      return (((m, x', t'), maybeType') : rest', sub'')
 
 substVar :: WT.SubstWeakTerm -> Ident -> Ident
 substVar sub x =

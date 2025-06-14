@@ -57,9 +57,13 @@ reduce' h term = do
   case term of
     m :< WT.Pi piKind impArgs expArgs cod -> do
       impArgs' <- do
-        let (ms, xs, ts) = unzip3 impArgs
+        let binders = map fst impArgs
+        let maybeTypes = map snd impArgs
+        let (ms, xs, ts) = unzip3 binders
         ts' <- mapM (reduce' h) ts
-        return $ zip3 ms xs ts'
+        maybeTypes' <- mapM (traverse (reduce' h)) maybeTypes
+        let binders' = zip3 ms xs ts'
+        return $ zip binders' maybeTypes'
       expArgs' <- do
         let (ms, xs, ts) = unzip3 expArgs
         ts' <- mapM (reduce' h) ts

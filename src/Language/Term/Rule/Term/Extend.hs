@@ -29,7 +29,7 @@ extend term =
     _ :< TM.VarGlobal g argNum ->
       _m :< TM.VarGlobal g argNum
     _ :< TM.Pi piKind impArgs expArgs t ->
-      _m :< TM.Pi piKind (map extendBinder impArgs) (map extendBinder expArgs) (extend t)
+      _m :< TM.Pi piKind (map (bimap extendBinder (fmap extend)) impArgs) (map extendBinder expArgs) (extend t)
     _ :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = extendAttr attr
       let impArgs' = map extendBinder impArgs

@@ -44,7 +44,7 @@ fill h holeSubst term =
     _ :< WT.VarGlobal {} ->
       return term
     m :< WT.Pi piKind impArgs expArgs t -> do
-      impArgs' <- fillBinder h holeSubst impArgs
+      impArgs' <- fillBinderWithMaybeType h holeSubst impArgs
       expArgs' <- fillBinder h holeSubst expArgs
       t' <- fill h holeSubst t
       return $ m :< WT.Pi piKind impArgs' expArgs' t'
@@ -154,6 +154,21 @@ fillBinder h holeSubst binder =
       t' <- fill h holeSubst t
       xts' <- fillBinder h holeSubst xts
       return $ (m, x, t') : xts'
+
+fillBinderWithMaybeType ::
+  Handle ->
+  HoleSubst ->
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  EIO [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)]
+fillBinderWithMaybeType h holeSubst binderList =
+  case binderList of
+    [] -> do
+      return []
+    ((m, x, t), maybeType) : rest -> do
+      t' <- fill h holeSubst t
+      maybeType' <- traverse (fill h holeSubst) maybeType
+      rest' <- fillBinderWithMaybeType h holeSubst rest
+      return $ ((m, x, t'), maybeType') : rest'
 
 fillLet ::
   Handle ->

@@ -33,7 +33,7 @@ refresh h term =
     _ :< TM.VarGlobal {} ->
       return term
     m :< TM.Pi piKind impArgs expArgs t -> do
-      impArgs' <- refreshBinder h impArgs
+      impArgs' <- refreshBinderWithMaybeType h impArgs
       expArgs' <- refreshBinder h expArgs
       t' <- refresh h t
       return (m :< TM.Pi piKind impArgs' expArgs' t')
@@ -226,3 +226,17 @@ refreshCase h decisionCase = do
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
+
+refreshBinderWithMaybeType ::
+  Handle ->
+  [(BinderF TM.Term, Maybe TM.Term)] ->
+  IO [(BinderF TM.Term, Maybe TM.Term)]
+refreshBinderWithMaybeType h binderList =
+  case binderList of
+    [] -> do
+      return []
+    ((binder, maybeType) : rest) -> do
+      binder' <- refreshBinder h [binder]
+      maybeType' <- traverse (refresh h) maybeType
+      rest' <- refreshBinderWithMaybeType h rest
+      return ((head binder', maybeType') : rest')
