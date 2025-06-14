@@ -66,14 +66,14 @@ subst h sub term =
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
             LK.Fix xt -> do
-              (impArgs', sub') <- substBinder h sub impArgs
+              (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               ([xt'], sub''') <- substBinder h sub'' [xt]
               e' <- subst h sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
             LK.Normal name codType -> do
-              (impArgs', sub') <- substBinder h sub impArgs
+              (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               codType' <- subst h sub'' codType
               e' <- subst h sub'' e
@@ -145,6 +145,23 @@ substBinder h sub binder =
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', sub'') <- substBinder h sub' xts
       return ((m, x', t') : xts', sub'')
+
+substBinderWithMaybeType ::
+  Handle ->
+  SubstTerm ->
+  [(BinderF TM.Term, Maybe TM.Term)] ->
+  IO ([(BinderF TM.Term, Maybe TM.Term)], SubstTerm)
+substBinderWithMaybeType h sub binderList =
+  case binderList of
+    [] -> do
+      return ([], sub)
+    (((m, x, t), maybeType) : xts) -> do
+      t' <- subst h sub t
+      maybeType' <- traverse (subst h sub) maybeType
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      (xts', sub'') <- substBinderWithMaybeType h sub' xts
+      return (((m, x', t'), maybeType') : xts', sub'')
 
 subst' ::
   Handle ->
@@ -279,19 +296,3 @@ substVar sub x =
     _ ->
       x
 
-substBinderWithMaybeType ::
-  Handle ->
-  SubstTerm ->
-  [(BinderF TM.Term, Maybe TM.Term)] ->
-  IO ([(BinderF TM.Term, Maybe TM.Term)], SubstTerm)
-substBinderWithMaybeType h sub binderList =
-  case binderList of
-    [] -> do
-      return ([], sub)
-    (((m, x, t), maybeType) : rest) -> do
-      t' <- subst h sub t
-      maybeType' <- traverse (subst h sub) maybeType
-      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
-      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
-      (rest', sub'') <- substBinderWithMaybeType h sub' rest
-      return (((m, x', t'), maybeType') : rest', sub'')

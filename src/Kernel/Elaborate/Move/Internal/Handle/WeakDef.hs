@@ -50,7 +50,7 @@ insert' h opacity m name impArgs expArgs codType e =
   when (opacity == O.Clear) $ do
     i <- Gensym.newCount (gensymHandle h)
     modifyIORef' (weakDefMapRef h) $
-      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) impArgs expArgs e)
+      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) (map (,Nothing) impArgs) expArgs e)
 
 read' :: Handle -> IO DefMap
 read' h =

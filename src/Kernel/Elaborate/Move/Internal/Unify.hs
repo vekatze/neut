@@ -169,7 +169,7 @@ simplify h susList constraintList =
                 length expArgs1 == length expArgs2 -> do
                   yt1 <- liftIO $ asWeakBinder h m1 e1
                   yt2 <- liftIO $ asWeakBinder h m2 e2
-                  cs' <- liftIO $ simplifyBinder h orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
+                  cs' <- liftIO $ simplifyBinder h orig (xt1 : map fst impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : map fst impArgs2 ++ expArgs2 ++ [yt2])
                   simplify h susList $ cs' ++ cs
               | AttrL.Attr {lamKind = LK.Normal _ codType1} <- kind1,
                 AttrL.Attr {lamKind = LK.Normal _ codType2} <- kind2,
@@ -179,7 +179,7 @@ simplify h susList constraintList =
                   xt1 <- liftIO $ asWeakBinder h m1 e1
                   cod2 <- liftIO $ asWeakBinder h m2 codType2
                   xt2 <- liftIO $ asWeakBinder h m2 e2
-                  cs' <- liftIO $ simplifyBinder h orig (impArgs1 ++ expArgs1 ++ [cod1, xt1]) (impArgs2 ++ expArgs2 ++ [cod2, xt2])
+                  cs' <- liftIO $ simplifyBinder h orig (map fst impArgs1 ++ expArgs1 ++ [cod1, xt1]) (map fst impArgs2 ++ expArgs2 ++ [cod2, xt2])
                   simplify h susList $ cs' ++ cs
             (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
               | name1 == name2,

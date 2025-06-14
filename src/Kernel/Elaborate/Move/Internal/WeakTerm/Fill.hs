@@ -49,7 +49,7 @@ fill h holeSubst term =
       t' <- fill h holeSubst t
       return $ m :< WT.Pi piKind impArgs' expArgs' t'
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      impArgs' <- fillBinder h holeSubst impArgs
+      impArgs' <- fillBinderWithMaybeType h holeSubst impArgs
       expArgs' <- fillBinder h holeSubst expArgs
       case lamKind of
         LK.Fix xt -> do

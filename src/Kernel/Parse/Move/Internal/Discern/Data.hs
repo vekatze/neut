@@ -1,7 +1,5 @@
 module Kernel.Parse.Move.Internal.Discern.Data (defineData) where
 
-import Logger.Rule.Hint
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe
 import Language.Common.Rule.Attr.Data qualified as AttrD
@@ -15,6 +13,8 @@ import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawIdent
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Logger.Rule.Hint
+import SyntaxTree.Rule.Series qualified as SE
 
 defineData ::
   Hint ->
@@ -36,7 +36,7 @@ defineData m dataName dataArgsOrNone consInfoList loc = do
           { loc = m,
             name = (dataName, []),
             isConstLike = isConstLike,
-            impArgs = RT.emptyArgs,
+            impArgs = RT.emptyImpArgs,
             expArgs = dataArgs',
             cod = ([], m :< RT.Tau)
           }
@@ -92,7 +92,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
               { loc = m,
                 name = (consName, []),
                 isConstLike = isConstLike,
-                impArgs = dataArgs,
+                impArgs = let (series, c) = dataArgs in (fmap (,Nothing) series, c),
                 expArgs = (consArgs, []),
                 cod = ([], dataType)
               }

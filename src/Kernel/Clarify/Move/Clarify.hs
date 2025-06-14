@@ -264,7 +264,7 @@ clarifyTerm h tenv term =
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
     _ :< TM.PiIntro attr impArgs expArgs e -> do
-      clarifyLambda h tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs) e
+      clarifyLambda h tenv attr (TM.chainOf tenv [term]) (map fst impArgs ++ expArgs) e
     _ :< TM.PiElim b e es -> do
       es' <- mapM (clarifyPlus h tenv) es
       case e of

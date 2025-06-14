@@ -72,9 +72,13 @@ reduce' h term = do
       return $ m :< WT.Pi piKind impArgs' expArgs' cod'
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       impArgs' <- do
-        let (ms, xs, ts) = unzip3 impArgs
+        let binders = map fst impArgs
+        let maybeTypes = map snd impArgs
+        let (ms, xs, ts) = unzip3 binders
         ts' <- mapM (reduce' h) ts
-        return $ zip3 ms xs ts'
+        maybeTypes' <- mapM (traverse (reduce' h)) maybeTypes
+        let binders' = zip3 ms xs ts'
+        return $ zip binders' maybeTypes'
       expArgs' <- do
         let (ms, xs, ts) = unzip3 expArgs
         ts' <- mapM (reduce' h) ts
@@ -95,17 +99,17 @@ reduce' h term = do
         else do
           case e' of
             (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams expParams body)
-              | xts <- impParams ++ expParams,
+              | xts <- map fst impParams ++ expParams,
                 Nothing <- impArgs',
                 length xts == length expArgs' -> do
                   let xs = map (\(_, x, _) -> Ident.toInt x) xts
                   let sub = IntMap.fromList $ zip xs (map Right expArgs')
                   liftIO (Subst.subst (substHandle h) sub body) >>= reduce' h
             (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams expParams body)
-              | xts <- impParams ++ expParams,
+              | xts <- map fst impParams ++ expParams,
                 Just impArgs'' <- impArgs',
                 args <- impArgs'' ++ expArgs',
-                length impArgs'' == length impParams,
+                length impArgs'' == length (map fst impParams),
                 length xts == length args -> do
                   let xs = map (\(_, x, _) -> Ident.toInt x) xts
                   let sub = IntMap.fromList $ zip xs (map Right args)

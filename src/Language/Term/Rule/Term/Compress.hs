@@ -27,7 +27,7 @@ compress term =
       () :< TM.Pi piKind (map (bimap compressBinder (fmap compress)) impArgs) (map compressBinder expArgs) (compress t)
     _ :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = compressAttr attr
-      let impArgs' = map compressBinder impArgs
+      let impArgs' = map (bimap compressBinder (fmap compress)) impArgs
       let expArgs' = map compressBinder expArgs
       let e' = compress e
       () :< TM.PiIntro attr' impArgs' expArgs' e'

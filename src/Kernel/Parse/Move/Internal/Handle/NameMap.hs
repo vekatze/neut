@@ -71,7 +71,7 @@ insert h nameArrowList = do
 registerGeist :: Handle -> RT.RawGeist DD.DefiniteDescription -> EIO ()
 registerGeist h RT.RawGeist {..} = do
   let expArgs' = RT.extractArgs expArgs
-  let impArgs' = RT.extractArgs impArgs
+  let impArgs' = RT.extractImpArgs impArgs
   let argNum = AN.fromInt $ length $ impArgs' ++ expArgs'
   let name' = fst name
   ensureGeistFreshness h loc name'
@@ -170,7 +170,7 @@ _getGlobalNames stmt = do
   case stmt of
     PostRawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
       let name = fst $ RT.name geist
-      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let isConstLike = RT.isConstLike geist
       let m = RT.loc geist

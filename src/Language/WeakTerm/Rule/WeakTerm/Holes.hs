@@ -23,7 +23,7 @@ holes term =
       let impBinders = map fst impArgs
       holes' (impBinders ++ expArgs) (holes t)
     _ :< WT.PiIntro k impArgs expArgs e ->
-      holes' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e)
+      holes' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e)
     _ :< WT.PiElim _ e impArgs expArgs ->
       S.unions $ map holes $ e : (fromMaybe [] impArgs ++ expArgs)
     _ :< WT.PiElimExact e ->

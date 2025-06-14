@@ -15,7 +15,10 @@ module Language.RawTerm.Rule.RawTerm
     VarArg,
     getDefName,
     emptyArgs,
+    emptyImpArgs,
     extractArgs,
+    extractImpArgs,
+    extractImpArgsWithDefaults,
     lam,
     piElim,
     pushCommentToKeywordClause,
@@ -56,7 +59,7 @@ type RawTerm = Cofree RawTermF Hint
 data RawTermF a
   = Tau
   | Var Name
-  | Pi (Args a) (Args a) C a Loc
+  | Pi (SE.Series (RawBinder a, Maybe a), C) (Args a) C a Loc
   | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
   | PiElim a C (Maybe (SE.Series a)) (SE.Series a)
@@ -107,8 +110,20 @@ emptyArgs :: Args a
 emptyArgs =
   (SE.emptySeriesPC, [])
 
+emptyImpArgs :: (SE.Series (RawBinder a, Maybe a), C)
+emptyImpArgs =
+  (SE.emptySeriesPC, [])
+
 extractArgs :: Args a -> [RawBinder a]
 extractArgs (series, _) =
+  SE.extract series
+
+extractImpArgs :: (SE.Series (RawBinder a, Maybe a), C) -> [RawBinder a]
+extractImpArgs (series, _) =
+  map fst $ SE.extract series
+
+extractImpArgsWithDefaults :: (SE.Series (RawBinder a, Maybe a), C) -> [(RawBinder a, Maybe a)]
+extractImpArgsWithDefaults (series, _) =
   SE.extract series
 
 type KeywordClause a =
@@ -130,7 +145,7 @@ data RawGeist a = RawGeist
   { loc :: Hint,
     name :: (a, C),
     isConstLike :: IsConstLike,
-    impArgs :: Args RawTerm,
+    impArgs :: (SE.Series (RawBinder RawTerm, Maybe RawTerm), C),
     expArgs :: Args RawTerm,
     cod :: (C, RawTerm)
   }

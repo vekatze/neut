@@ -3,6 +3,7 @@ module Language.WeakTerm.Move.Subst
     new,
     subst,
     subst',
+    substWithMaybeType',
     substDecisionTree,
   )
 where
@@ -63,14 +64,14 @@ subst h sub term =
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
             LK.Fix xt -> do
-              (impArgs', sub') <- subst' h sub impArgs
+              (impArgs', sub') <- substWithMaybeType' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               ([xt'], sub''') <- subst' h sub'' [xt]
               e' <- subst h sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< WT.PiIntro fixAttr impArgs' expArgs' e')
             LK.Normal mName codType -> do
-              (impArgs', sub') <- subst' h sub impArgs
+              (impArgs', sub') <- substWithMaybeType' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               codType' <- subst h sub'' codType
               e' <- subst h sub'' e
@@ -180,6 +181,23 @@ subst' h sub binder =
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', sub'') <- subst' h sub' xts
       return ((m, x', t') : xts', sub'')
+
+substWithMaybeType' ::
+  Handle ->
+  WT.SubstWeakTerm ->
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  IO ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], WT.SubstWeakTerm)
+substWithMaybeType' h sub binderList =
+  case binderList of
+    [] -> do
+      return ([], sub)
+    (((m, x, t), maybeType) : xts) -> do
+      t' <- subst h sub t
+      maybeType' <- traverse (subst h sub) maybeType
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      (xts', sub'') <- substWithMaybeType' h sub' xts
+      return (((m, x', t'), maybeType') : xts', sub'')
 
 subst'' ::
   Handle ->

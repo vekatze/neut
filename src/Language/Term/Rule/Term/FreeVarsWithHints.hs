@@ -25,7 +25,7 @@ freeVarsWithHints term =
       let impBinders = map fst impArgs
       freeVarsWithHints' (impBinders ++ expArgs) (freeVarsWithHints t)
     _ :< TM.PiIntro k impArgs expArgs e ->
-      freeVarsWithHints' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsWithHints e)
+      freeVarsWithHints' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsWithHints e)
     _ :< TM.PiElim _ e es -> do
       let xs = freeVarsWithHints e
       let ys = S.unions $ map freeVarsWithHints es

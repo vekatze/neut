@@ -131,7 +131,7 @@ elaborateStmt h stmt = do
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
-        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr (map fst impArgs') expArgs' e'
+        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
       e'' <- inline h m e'
       impArgs'' <- mapM (inlineBinderWithMaybeType h) impArgs'
       expArgs'' <- mapM (inlineBinder h) expArgs'
@@ -154,7 +154,9 @@ elaborateStmt h stmt = do
 
 elaborateGeist :: Handle -> G.Geist WT.WeakTerm -> EIO (G.Geist TM.Term)
 elaborateGeist h (G.Geist {..}) = do
-  impArgs' <- mapM (elaborateWeakBinder h) impArgs
+  impArgs' <- mapM (\(binder, maybeType) -> do
+    (binder', maybeType') <- elaborateWeakBinderWithMaybeType h (binder, maybeType)
+    return (binder', maybeType')) impArgs
   expArgs' <- mapM (elaborateWeakBinder h) expArgs
   cod' <- elaborate' h cod
   return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
@@ -225,7 +227,7 @@ elaborate' h term =
       return $ m :< TM.Pi piKind impArgs' expArgs' t'
     m :< WT.PiIntro kind impArgs expArgs e -> do
       kind' <- elaborateLamAttr h kind
-      impArgs' <- mapM (elaborateWeakBinder h) impArgs
+      impArgs' <- mapM (elaborateWeakBinderWithMaybeType h) impArgs
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       e' <- elaborate' h e
       return $ m :< TM.PiIntro kind' impArgs' expArgs' e'

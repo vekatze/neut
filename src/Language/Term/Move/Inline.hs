@@ -81,15 +81,18 @@ inline' h term = do
     _ :< TM.VarGlobal {} ->
       return term
     m :< TM.Pi piKind impArgs expArgs cod -> do
-      impArgs' <- mapM (\(binder, maybeType) -> do
+      impArgs' <- forM impArgs $ \(binder, maybeType) -> do
         binder' <- inlineBinder h binder
         maybeType' <- traverse (inline' h) maybeType
-        return (binder', maybeType')) impArgs
+        return (binder', maybeType')
       expArgs' <- mapM (inlineBinder h) expArgs
       cod' <- inline' h cod
       return (m :< TM.Pi piKind impArgs' expArgs' cod')
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      impArgs' <- mapM (inlineBinder h) impArgs
+      impArgs' <- forM impArgs $ \(binder, maybeType) -> do
+        binder' <- inlineBinder h binder
+        maybeType' <- traverse (inline' h) maybeType
+        return (binder', maybeType')
       expArgs' <- mapM (inlineBinder h) expArgs
       e' <- inline' h e
       case lamKind of
@@ -108,7 +111,7 @@ inline' h term = do
           let Handle {dmap} = h
           case e' of
             (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgs expArgs body)
-              | xts <- impArgs ++ expArgs,
+              | xts <- map fst impArgs ++ expArgs,
                 length xts == length es' -> do
                   if all TM.isValue es'
                     then do

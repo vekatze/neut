@@ -37,12 +37,12 @@ eq (_ :< term1) (_ :< term2)
     length expArgs1 == length expArgs2 =
       case (kind1, kind2) of
         (AttrL.Attr {lamKind = LK.Normal _ codType1}, AttrL.Attr {lamKind = LK.Normal _ codType2}) -> do
-          let b1 = eqBinder (impArgs1 ++ expArgs1) (impArgs2 ++ expArgs2)
+          let b1 = eqBinder (map fst impArgs1 ++ expArgs1) (map fst impArgs2 ++ expArgs2)
           let b2 = eq body1 body2
           let b3 = eq codType1 codType2
           b1 && b2 && b3
         (AttrL.Attr {lamKind = LK.Fix mxt1}, AttrL.Attr {lamKind = LK.Fix mxt2}) -> do
-          let b1 = eqBinder (impArgs1 ++ expArgs1 ++ [mxt1]) (impArgs2 ++ expArgs2 ++ [mxt2])
+          let b1 = eqBinder (map fst impArgs1 ++ expArgs1 ++ [mxt1]) (map fst impArgs2 ++ expArgs2 ++ [mxt2])
           let b2 = eq body1 body2
           b1 && b2
         _ ->

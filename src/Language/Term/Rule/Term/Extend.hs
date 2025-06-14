@@ -32,7 +32,7 @@ extend term =
       _m :< TM.Pi piKind (map (bimap extendBinder (fmap extend)) impArgs) (map extendBinder expArgs) (extend t)
     _ :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = extendAttr attr
-      let impArgs' = map extendBinder impArgs
+      let impArgs' = map (bimap extendBinder (fmap extend)) impArgs
       let expArgs' = map extendBinder expArgs
       let e' = extend e
       _m :< TM.PiIntro attr' impArgs' expArgs' e'

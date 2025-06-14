@@ -42,7 +42,7 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.HoleID qualified as HID
-import Language.Common.Rule.Ident (isHole)
+import Language.Common.Rule.Ident (Ident, isHole)
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Literal qualified as L
@@ -101,11 +101,10 @@ inferStmt h stmt =
 
 inferGeist :: Handle -> G.Geist WT.WeakTerm -> EIO (G.Geist WT.WeakTerm)
 inferGeist h (G.Geist {..}) = do
-  (impArgs', h') <- inferBinder' h impArgs
+  (impArgs', h') <- inferBinderWithMaybeType h impArgs
   (expArgs', h'') <- inferBinder' h' expArgs
   cod' <- inferType h'' cod
-  let impArgsWithDefaults = map (,Nothing) impArgs'
-  liftIO $ insertType h'' name $ loc :< WT.Pi PK.normal impArgsWithDefaults expArgs' cod'
+  liftIO $ insertType h'' name $ loc :< WT.Pi PK.normal impArgs' expArgs' cod'
   return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
 insertType :: Handle -> DD.DefiniteDescription -> WT.WeakTerm -> IO ()
@@ -177,10 +176,10 @@ infer h term =
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
-          (impArgs', h') <- inferBinder' h impArgs
+          (impArgs', h') <- inferBinderWithMaybeType h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           codType' <- inferType h'' codType
-          let impArgsWithDefaults = map (,Nothing) impArgs'
+          let impArgsWithDefaults = impArgs'
           let piType = m :< WT.Pi PK.normal impArgsWithDefaults expArgs' codType'
           liftIO $ WeakType.insert (weakTypeHandle h) x piType
           (e', tBody) <- infer h'' e
@@ -188,13 +187,13 @@ infer h term =
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e'
           return (term', piType)
         LK.Normal name codType -> do
-          (impArgs', h') <- inferBinder' h impArgs
+          (impArgs', h') <- inferBinderWithMaybeType h impArgs
           (expArgs', h'') <- inferBinder' h' expArgs
           codType' <- inferType h'' codType
           (e', t') <- infer h'' e
           liftIO $ Constraint.insert (constraintHandle h'') codType' t'
           let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' expArgs' e'
-          let impArgsWithDefaults = map (,Nothing) impArgs'
+          let impArgsWithDefaults = impArgs'
           return (term', m :< WT.Pi PK.normal impArgsWithDefaults expArgs' t')
     m :< WT.PiElim _ e impArgs expArgs -> do
       etl <- infer h e
@@ -440,6 +439,21 @@ inferPiBinderWithMaybeType h binderList =
       maybeType' <- traverse (inferType h) maybeType
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       (rest', h') <- inferPiBinderWithMaybeType (extendHandle (mx, x, t') h) rest
+      return (((mx, x, t'), maybeType') : rest', h')
+
+inferBinderWithMaybeType ::
+  Handle ->
+  [((Hint, Ident, WT.WeakTerm), Maybe WT.WeakTerm)] ->
+  EIO ([((Hint, Ident, WT.WeakTerm), Maybe WT.WeakTerm)], Handle)
+inferBinderWithMaybeType h binderList =
+  case binderList of
+    [] -> do
+      return ([], h)
+    (((mx, x, t), maybeType) : rest) -> do
+      t' <- inferType h t
+      maybeType' <- traverse (inferType h) maybeType
+      liftIO $ WeakType.insert (weakTypeHandle h) x t'
+      (rest', h') <- inferBinderWithMaybeType (extendHandle (mx, x, t') h) rest
       return (((mx, x, t'), maybeType') : rest', h')
 
 inferBinder' ::

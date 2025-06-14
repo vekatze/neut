@@ -55,7 +55,7 @@ weaken term =
       m :< WT.Pi piKind (map (bimap weakenBinder (fmap weaken)) impArgs) (map weakenBinder expArgs) (weaken t)
     m :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = weakenAttr attr
-      let impArgs' = map weakenBinder impArgs
+      let impArgs' = map (bimap weakenBinder (fmap weaken)) impArgs
       let expArgs' = map weakenBinder expArgs
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' e'

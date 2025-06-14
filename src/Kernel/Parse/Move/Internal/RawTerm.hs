@@ -373,10 +373,12 @@ parseGeist h nameParser = do
   (c2, (cod, c)) <- parseDefInfoCod h m
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = (c2, cod)}, c)
 
-parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm), C)
+parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm, Maybe RT.RawTerm), C)
 parseImplicitParams h =
   choice
-    [ seriesAngle $ preBinder h,
+    [ do
+        (s, c) <- seriesAngle $ preBinder h
+        return (fmap (,Nothing) s, c),
       return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
     ]
 

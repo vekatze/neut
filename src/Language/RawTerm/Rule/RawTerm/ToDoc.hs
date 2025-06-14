@@ -52,7 +52,7 @@ toDoc term =
       nameToDoc varOrLocator
     _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do
       PI.arrange
-        [ PI.container $ decodeImpParams impArgs,
+        [ PI.container $ decodeImpParams (fmap fst impArgs),
           PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
@@ -456,13 +456,13 @@ decGeist
       _ :< RT.Hole {} ->
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams impArgs,
+            PI.inject $ decodeImpParams (fmap fst impArgs),
             PI.inject $ attachComment c1 $ decodeExpParams isConstLike expArgs
           ]
       _ ->
         PI.arrange
           [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams impArgs,
+            PI.inject $ decodeImpParams (fmap fst impArgs),
             PI.inject $ attachComment c1 $ decodeExpParams isConstLike expArgs,
             PI.horizontal $ attachComment c2 $ D.text ":",
             PI.inject $ attachComment c3 $ toDoc cod

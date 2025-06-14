@@ -41,14 +41,14 @@ refresh h term =
       newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
       case lamKind of
         LK.Fix xt -> do
-          impArgs' <- refreshBinder h impArgs
+          impArgs' <- refreshBinderWithMaybeType h impArgs
           expArgs' <- refreshBinder h expArgs
           [xt'] <- refreshBinder h [xt]
           e' <- refresh h e
           let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
           return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
         LK.Normal name codType -> do
-          impArgs' <- refreshBinder h impArgs
+          impArgs' <- refreshBinderWithMaybeType h impArgs
           expArgs' <- refreshBinder h expArgs
           codType' <- refresh h codType
           e' <- refresh h e

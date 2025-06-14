@@ -47,7 +47,7 @@ toText term =
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
           "define "
             <> showVariable x
-            <> showImpArgsOld impArgs
+            <> showImpArgsOld (map fst impArgs)
             <> inParen (showDomArgList expArgs)
             <> ": "
             <> toText codType
@@ -57,7 +57,7 @@ toText term =
           let name = fromMaybe "" mName
           "function "
             <> name
-            <> showImpArgsOld impArgs
+            <> showImpArgsOld (map fst impArgs)
             <> inParen (showDomArgList expArgs)
             <> ": "
             <> toText codType
