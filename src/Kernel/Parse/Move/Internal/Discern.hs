@@ -80,6 +80,7 @@ import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.Rule.WeakTerm.FreeVars (freeVars)
 import Logger.Rule.Hint
 import Logger.Rule.Hint.Reify qualified as Hint
@@ -190,7 +191,7 @@ getUnitType h m = do
   locator <- liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- resolveName h m (Locator locator)
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
-  return $ m :< WT.PiElim False (m :< WT.VarGlobal attr unitDD) Nothing []
+  return $ m :< WT.PiElim False (m :< WT.VarGlobal attr unitDD) ImpArgs.Unspecified []
 
 toCandidateKind :: SK.StmtKind a -> CandidateKind
 toCandidateKind stmtKind =
@@ -293,10 +294,10 @@ discern h term =
             Just impArgs -> do
               impArgs' <- mapM (discern h) $ SE.extract impArgs
               expArgs' <- mapM (discern h) $ SE.extract expArgs
-              return $ m :< WT.PiElim isNoetic e' (Just impArgs') expArgs'
+              return $ m :< WT.PiElim isNoetic e' (ImpArgs.FullySpecified impArgs') expArgs'
             Nothing -> do
               expArgs' <- mapM (discern h) $ SE.extract expArgs
-              return $ m :< WT.PiElim isNoetic e' Nothing expArgs'
+              return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, _) <- resolveName h m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
@@ -310,7 +311,7 @@ discern h term =
       let isNoetic = False -- overwritten later in `infer`
       let isConstLike = False
       let argNum = AN.fromInt $ length $ impKeys ++ expKeys
-      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (Just impArgs) expArgs
+      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (ImpArgs.FullySpecified impArgs) expArgs
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'

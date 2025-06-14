@@ -16,6 +16,7 @@ import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Logger.Rule.Hint
 
 data EvalBase
@@ -28,7 +29,7 @@ type EvalCtx = Cofree EvalCtxF Hint
 
 data EvalCtxF a
   = Base
-  | PiElim a (Maybe [WT.WeakTerm]) [WT.WeakTerm]
+  | PiElim a (ImpArgs.ImpArgs WT.WeakTerm) [WT.WeakTerm]
 
 type Stuck = (EvalBase, EvalCtx)
 
@@ -63,20 +64,20 @@ asPairList ctx1 ctx2 =
     (_ :< Base, _ :< Base) ->
       Just []
     (_ :< PiElim ctx1' impArgs1 expArgs1, _ :< PiElim ctx2' impArgs2 expArgs2)
-      | Nothing <- impArgs1,
-        Just _ <- impArgs2 ->
+      | ImpArgs.Unspecified <- impArgs1,
+        ImpArgs.FullySpecified _ <- impArgs2 ->
           Nothing
-      | Just _ <- impArgs1,
-        Nothing <- impArgs2 ->
+      | ImpArgs.FullySpecified _ <- impArgs1,
+        ImpArgs.Unspecified <- impArgs2 ->
           Nothing
       | length expArgs1 /= length expArgs2 ->
           Nothing
-      | Just impArgs1' <- impArgs1,
-        Just impArgs2' <- impArgs2 -> do
+      | ImpArgs.FullySpecified impArgs1' <- impArgs1,
+        ImpArgs.FullySpecified impArgs2' <- impArgs2 -> do
           pairList <- asPairList ctx1' ctx2'
           return $ zipWith C.Eq impArgs1' impArgs2' ++ zipWith C.Eq expArgs1 expArgs2 ++ pairList
-      | Nothing <- impArgs1,
-        Nothing <- impArgs2 -> do
+      | ImpArgs.Unspecified <- impArgs1,
+        ImpArgs.Unspecified <- impArgs2 -> do
           pairList <- asPairList ctx1' ctx2'
           return $ zipWith C.Eq expArgs1 expArgs2 ++ pairList
     _ ->

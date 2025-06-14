@@ -43,6 +43,7 @@ import Language.WeakTerm.Move.CreateHole qualified as WT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Logger.Rule.Hint
 
 {-# INLINE resolveName #-}
@@ -142,7 +143,7 @@ interpretGlobalName h m dd gn = do
       let e = wrapWithExactIfNecessary m dataArgNum $ m :< WT.VarGlobal attr dd
       -- let e = m :< WT.VarGlobal attr dd
       if isConstLike
-        then return $ m :< WT.PiElim False e Nothing []
+        then return $ m :< WT.PiElim False e ImpArgs.Unspecified []
         else return e
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
@@ -168,7 +169,7 @@ interpretTopLevelFunc ::
 interpretTopLevelFunc m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) Nothing []
+    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
     else m :< WT.VarGlobal attr dd
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> EIO WT.WeakTerm

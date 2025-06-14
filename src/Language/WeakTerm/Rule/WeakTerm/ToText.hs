@@ -22,6 +22,7 @@ import Language.Common.Rule.Rune qualified as RU
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 
 toText :: WT.WeakTerm -> T.Text
 toText term =
@@ -70,9 +71,9 @@ toText term =
               toText e
         _ -> do
           case impArgs of
-            Just impArgs' ->
+            ImpArgs.FullySpecified impArgs' ->
               showApp' (toText e) (map toText impArgs') (map toText expArgs)
-            Nothing ->
+            ImpArgs.Unspecified ->
               showApp (toText e) (map toText expArgs)
     _ :< WT.PiElimExact e -> do
       "exact " <> toText e

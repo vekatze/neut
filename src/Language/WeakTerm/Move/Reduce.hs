@@ -26,6 +26,7 @@ import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Logger.Rule.Hint qualified as H
 
 type InlineLimit =
@@ -92,7 +93,7 @@ reduce' h term = do
           return (m :< WT.PiIntro attr impArgs' expArgs' e')
     m :< WT.PiElim isNoetic e impArgs expArgs -> do
       e' <- reduce' h e
-      impArgs' <- mapM (mapM (reduce h)) impArgs
+      impArgs' <- ImpArgs.traverseImpArgs (reduce h) impArgs
       expArgs' <- mapM (reduce' h) expArgs
       if isNoetic
         then return $ m :< WT.PiElim isNoetic e' impArgs' expArgs'
@@ -100,14 +101,14 @@ reduce' h term = do
           case e' of
             (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams expParams body)
               | xts <- map fst impParams ++ expParams,
-                Nothing <- impArgs',
+                ImpArgs.Unspecified <- impArgs',
                 length xts == length expArgs' -> do
                   let xs = map (\(_, x, _) -> Ident.toInt x) xts
                   let sub = IntMap.fromList $ zip xs (map Right expArgs')
                   liftIO (Subst.subst (substHandle h) sub body) >>= reduce' h
             (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams expParams body)
               | xts <- map fst impParams ++ expParams,
-                Just impArgs'' <- impArgs',
+                ImpArgs.FullySpecified impArgs'' <- impArgs',
                 args <- impArgs'' ++ expArgs',
                 length impArgs'' == length (map fst impParams),
                 length xts == length args -> do
@@ -115,27 +116,27 @@ reduce' h term = do
                   let sub = IntMap.fromList $ zip xs (map Right args)
                   liftIO (Subst.subst (substHandle h) sub body) >>= reduce' h
             (_ :< WT.Prim (WP.Value (WPV.Op op)))
-              | Nothing <- impArgs',
+              | ImpArgs.Unspecified <- impArgs',
                 Just (op', cod) <- WPV.reflectFloatUnaryOp op,
                 [Just value] <- map asPrimFloatValue expArgs' -> do
                   let floatType = m :< WT.Prim (WP.Type cod)
                   return $ m :< WT.Prim (WP.Value (WPV.Float floatType (op' value)))
-              | Nothing <- impArgs',
+              | ImpArgs.Unspecified <- impArgs',
                 Just (op', cod) <- WPV.reflectIntegerBinaryOp op,
                 [Just value1, Just value2] <- map asPrimIntegerValue expArgs' -> do
                   let intType = m :< WT.Prim (WP.Type cod)
                   return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
-              | Nothing <- impArgs',
+              | ImpArgs.Unspecified <- impArgs',
                 Just (op', cod) <- WPV.reflectFloatBinaryOp op,
                 [Just value1, Just value2] <- map asPrimFloatValue expArgs' -> do
                   let floatType = m :< WT.Prim (WP.Type cod)
                   return $ m :< WT.Prim (WP.Value (WPV.Float floatType (op' value1 value2)))
-              | Nothing <- impArgs',
+              | ImpArgs.Unspecified <- impArgs',
                 Just (op', cod) <- WPV.reflectIntegerCmpOp op,
                 [Just value1, Just value2] <- map asPrimIntegerValue expArgs' -> do
                   let intType = m :< WT.Prim (WP.Type cod)
                   return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
-              | Nothing <- impArgs',
+              | ImpArgs.Unspecified <- impArgs',
                 Just (op', cod) <- WPV.reflectFloatCmpOp op,
                 [Just value1, Just value2] <- map asPrimFloatValue expArgs' -> do
                   let intType = m :< WT.Prim (WP.Type cod)

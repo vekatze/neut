@@ -22,6 +22,7 @@ import Language.Common.Rule.LamKind qualified as LK
 import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
 import Prelude hiding (lookup)
 
@@ -61,7 +62,7 @@ fill h holeSubst term =
           return $ m :< WT.PiIntro attr impArgs' expArgs' e'
     m :< WT.PiElim b e impArgs expArgs -> do
       e' <- fill h holeSubst e
-      impArgs' <- mapM (mapM (fill h holeSubst)) impArgs
+      impArgs' <- ImpArgs.traverseImpArgs (fill h holeSubst) impArgs
       expArgs' <- mapM (fill h holeSubst) expArgs
       return $ m :< WT.PiElim b e' impArgs' expArgs'
     m :< WT.PiElimExact e -> do

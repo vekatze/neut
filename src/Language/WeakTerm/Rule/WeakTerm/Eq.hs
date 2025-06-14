@@ -10,6 +10,7 @@ import Language.Common.Rule.Magic qualified as M
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 
 -- syntactic equality
 eq :: WT.WeakTerm -> WT.WeakTerm -> Bool
@@ -49,15 +50,15 @@ eq (_ :< term1) (_ :< term2)
           b1 && b2 && b3
         _ ->
           False
-  | WT.PiElim isNoetic1 f1 Nothing expArgs1 <- term1,
-    WT.PiElim isNoetic2 f2 Nothing expArgs2 <- term2,
+  | WT.PiElim isNoetic1 f1 ImpArgs.Unspecified expArgs1 <- term1,
+    WT.PiElim isNoetic2 f2 ImpArgs.Unspecified expArgs2 <- term2,
     length expArgs1 == length expArgs2,
     isNoetic1 == isNoetic2 = do
       let b1 = eq f1 f2
       let b2 = all (uncurry eq) $ zip expArgs1 expArgs2
       b1 && b2
-  | WT.PiElim isNoetic1 f1 (Just impArgs1) expArgs1 <- term1,
-    WT.PiElim isNoetic2 f2 (Just impArgs2) expArgs2 <- term2,
+  | WT.PiElim isNoetic1 f1 (ImpArgs.FullySpecified impArgs1) expArgs1 <- term1,
+    WT.PiElim isNoetic2 f2 (ImpArgs.FullySpecified impArgs2) expArgs2 <- term2,
     length impArgs1 == length impArgs2,
     length expArgs1 == length expArgs2,
     isNoetic1 == isNoetic2 = do

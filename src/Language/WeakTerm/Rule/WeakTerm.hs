@@ -28,6 +28,7 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Foreign
 import Language.Common.Rule.HoleID
 import Language.Common.Rule.Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.Magic
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
@@ -46,7 +47,7 @@ data WeakTermF a
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | Pi PiKind [(BinderF a, Maybe a)] [BinderF a] a
   | PiIntro (AttrL.Attr a) [(BinderF a, Maybe a)] [BinderF a] a
-  | PiElim N.IsNoetic a (Maybe [a]) [a]
+  | PiElim N.IsNoetic a (ImpArgs.ImpArgs a) [a]
   | PiElimExact a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)

@@ -13,7 +13,6 @@ import Data.Bifunctor
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
-import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Move.Run (raiseCritical, raiseError)
@@ -53,6 +52,7 @@ import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.IsConstLike (IsConstLike)
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
@@ -154,9 +154,13 @@ elaborateStmt h stmt = do
 
 elaborateGeist :: Handle -> G.Geist WT.WeakTerm -> EIO (G.Geist TM.Term)
 elaborateGeist h (G.Geist {..}) = do
-  impArgs' <- mapM (\(binder, maybeType) -> do
-    (binder', maybeType') <- elaborateWeakBinderWithMaybeType h (binder, maybeType)
-    return (binder', maybeType')) impArgs
+  impArgs' <-
+    mapM
+      ( \(binder, maybeType) -> do
+          (binder', maybeType') <- elaborateWeakBinderWithMaybeType h (binder, maybeType)
+          return (binder', maybeType')
+      )
+      impArgs
   expArgs' <- mapM (elaborateWeakBinder h) expArgs
   cod' <- elaborate' h cod
   return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
@@ -233,7 +237,7 @@ elaborate' h term =
       return $ m :< TM.PiIntro kind' impArgs' expArgs' e'
     m :< WT.PiElim b e impArgs expArgs -> do
       e' <- elaborate' h e
-      let es = fromMaybe [] impArgs ++ expArgs
+      let es = ImpArgs.extract impArgs ++ expArgs
       es' <- mapM (elaborate' h) es
       return $ m :< TM.PiElim b e' es'
     m :< WT.PiElimExact {} -> do

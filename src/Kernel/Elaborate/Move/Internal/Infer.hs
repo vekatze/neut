@@ -44,6 +44,8 @@ import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident (isHole)
 import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArg
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Literal qualified as L
 import Language.Common.Rule.Magic qualified as M
@@ -194,7 +196,7 @@ infer h term =
           return (term', m :< WT.Pi PK.normal impArgsWithDefaults expArgs' t')
     m :< WT.PiElim _ e impArgs expArgs -> do
       etl <- infer h e
-      impArgs' <- mapM (mapM (infer h)) impArgs
+      impArgs' <- ImpArgs.traverseImpArgs (infer h) impArgs
       expArgs' <- mapM (infer h) expArgs
       inferPiElim h m etl impArgs' expArgs'
     m :< WT.PiElimExact e -> do
@@ -209,7 +211,7 @@ infer h term =
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
           codType' <- liftIO $ Subst.subst (substHandle h) sub' codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim False e' Nothing expArgs'')
+          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim False e' ImpArgs.Unspecified expArgs'')
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
@@ -486,7 +488,7 @@ inferPiElim ::
   Handle ->
   Hint ->
   (WT.WeakTerm, WT.WeakTerm) ->
-  Maybe [(WT.WeakTerm, WT.WeakTerm)] ->
+  ImpArgs.ImpArgs (WT.WeakTerm, WT.WeakTerm) ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
   EIO (WT.WeakTerm, WT.WeakTerm)
 inferPiElim h m (e, t) impArgs expArgs = do
@@ -496,30 +498,30 @@ inferPiElim h m (e, t) impArgs expArgs = do
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgs' <- do
         case impArgs of
-          Nothing -> do
+          ImpArgs.Unspecified -> do
             mapM (createImpArgValueFromParam h m) impParams
-          Just impArgs' -> do
+          ImpArgs.FullySpecified impArgs' -> do
             ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             return impArgs'
       let args = impArgs' ++ expArgs
       let impBinders = map fst impParams
       let piArgs = impBinders ++ expParams
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim False e Nothing (map fst args), m :< cod')
+      return (m :< WT.PiElim False e ImpArgs.Unspecified (map fst args), m :< cod')
     _ :< WT.BoxNoema (_ :< WT.Pi _ impParams expParams cod) -> do
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgs' <- do
         case impArgs of
-          Nothing -> do
+          ImpArg.Unspecified -> do
             mapM (const $ liftIO $ newTypedHole h m $ varEnv h) [1 .. length impParams]
-          Just impArgs' -> do
+          ImpArgs.FullySpecified impArgs' -> do
             ensureImplicitArityCorrectness h e (length impParams) (length impArgs')
             return impArgs'
       let args = impArgs' ++ expArgs
       let impBinders = map fst impParams
       let piArgs = impBinders ++ expParams
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim True e Nothing (map fst args), m :< cod')
+      return (m :< WT.PiElim True e ImpArgs.Unspecified (map fst args), m :< cod')
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toText t'
 
@@ -537,7 +539,7 @@ inferPiElimExplicit h m (e, t) args = do
       let piArgs = impBinders ++ expPiArgs
       ensureArityCorrectness h e (length piArgs) (length args)
       _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim False e Nothing (map fst args), m :< cod')
+      return (m :< WT.PiElim False e ImpArgs.Unspecified (map fst args), m :< cod')
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toText t'
 

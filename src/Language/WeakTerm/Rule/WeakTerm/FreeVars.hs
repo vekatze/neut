@@ -8,6 +8,7 @@ import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 freeVars :: WT.WeakTerm -> S.Set Ident
@@ -26,7 +27,7 @@ freeVars term =
       freeVars' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e)
     _ :< WT.PiElim _ e impArgs expArgs -> do
       let xs = freeVars e
-      let ys = S.unions $ map freeVars (fromMaybe [] impArgs ++ expArgs)
+      let ys = S.unions $ map freeVars (ImpArgs.extract impArgs ++ expArgs)
       S.union xs ys
     _ :< WT.PiElimExact e -> do
       freeVars e

@@ -24,6 +24,7 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.Rule.WeakTerm.FreeVars qualified as WT
 
 newtype Handle = Handle
@@ -79,7 +80,7 @@ subst h sub term =
               return (m :< WT.PiIntro lamAttr impArgs' expArgs' e')
     m :< WT.PiElim b e impArgs expArgs -> do
       e' <- subst h sub e
-      impArgs' <- mapM (mapM (subst h sub)) impArgs
+      impArgs' <- ImpArgs.traverseImpArgs (subst h sub) impArgs
       expArgs' <- mapM (subst h sub) expArgs
       return $ m :< WT.PiElim b e' impArgs' expArgs'
     m :< WT.PiElimExact e -> do

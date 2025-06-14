@@ -27,6 +27,7 @@ import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakStmt
 import Language.WeakTerm.Rule.WeakTerm (reflectOpacity)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Logger.Rule.Hint
 
 weakenStmt :: Stmt -> WeakStmt
@@ -62,7 +63,7 @@ weaken term =
     m :< TM.PiElim b e es -> do
       let e' = weaken e
       let es' = map weaken es
-      m :< WT.PiElim b e' Nothing es'
+      m :< WT.PiElim b e' ImpArgs.Unspecified es'
     m :< TM.Data attr name es -> do
       let es' = map weaken es
       m :< WT.Data attr name es'
