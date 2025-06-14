@@ -8,7 +8,7 @@ module Kernel.Common.Rule.Cache
   )
 where
 
-import Logger.Rule.Log
+import Data.Bifunctor
 import Data.Binary
 import GHC.Generics
 import Kernel.Common.Rule.LocalVarTree qualified as LVT
@@ -18,6 +18,7 @@ import Kernel.Common.Rule.TopCandidate (TopCandidate)
 import Language.Term.Rule.Stmt qualified as Stmt
 import Language.Term.Rule.Term.Compress qualified as TM
 import Language.Term.Rule.Term.Extend qualified as TM
+import Logger.Rule.Log
 
 data Cache = Cache
   { stmtList :: [Stmt.Stmt],
@@ -72,7 +73,7 @@ compressStmt stmt =
   case stmt of
     Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
       let stmtKind' = TM.compressStmtKind stmtKind
-      let impArgs' = map TM.compressBinder impArgs
+      let impArgs' = map (bimap TM.compressBinder (fmap TM.compress)) impArgs
       let expArgs' = map TM.compressBinder expArgs
       let codType' = TM.compress codType
       let e' = TM.compress e
@@ -85,7 +86,7 @@ extendStmt stmt =
   case stmt of
     Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
       let stmtKind' = TM.extendStmtKind stmtKind
-      let impArgs' = map TM.extendBinder impArgs
+      let impArgs' = map (bimap TM.extendBinder (fmap TM.extend)) impArgs
       let expArgs' = map TM.extendBinder expArgs
       let codType' = TM.extend codType
       let e' = TM.extend e

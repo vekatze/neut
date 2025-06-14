@@ -113,7 +113,7 @@ discernStmt h stmt = do
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
-      return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
+      return [WeakStmtDefine isConstLike stmtKind' m functionName (map (,Nothing) impArgs') expArgs' codType' body']
     PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) _ -> do
       registerTopLevelName h stmt
       t' <- discern h $ m :< RT.Tau

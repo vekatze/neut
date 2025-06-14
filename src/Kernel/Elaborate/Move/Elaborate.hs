@@ -125,15 +125,15 @@ elaborateStmt h stmt = do
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
       stmtKind' <- elaborateStmtKind h stmtKind
       e' <- elaborate' h e
-      impArgs' <- mapM (elaborateWeakBinder h) impArgs
+      impArgs' <- mapM (elaborateWeakBinderWithMaybeType h) impArgs
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       codType' <- elaborate' h codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
-        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
+        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr (map fst impArgs') expArgs' e'
       e'' <- inline h m e'
-      impArgs'' <- mapM (inlineBinder h) impArgs'
+      impArgs'' <- mapM (inlineBinderWithMaybeType h) impArgs'
       expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inline h m codType'
       when isConstLike $ do
@@ -163,13 +163,13 @@ insertStmt :: Handle -> Stmt -> EIO ()
 insertStmt h stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs t e -> do
-      let impArgsWithDefaults = map (,Nothing) impArgs
+      let impArgsWithDefaults = impArgs
       case stmtKind of
         SK.DataIntro {} ->
           liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.DataIntro isConstLike) impArgsWithDefaults expArgs t
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgsWithDefaults expArgs t
-      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (impArgs ++ expArgs) e
+      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e
     StmtForeign _ -> do
       return ()
   insertWeakStmt h $ weakenStmt stmt
@@ -178,7 +178,7 @@ insertWeakStmt :: Handle -> WeakStmt -> EIO ()
 insertWeakStmt h stmt = do
   case stmt of
     WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
-      liftIO $ WeakDef.insert' (weakDefHandle h) (toOpacity stmtKind) m f impArgs expArgs codType e
+      liftIO $ WeakDef.insert' (weakDefHandle h) (toOpacity stmtKind) m f (map fst impArgs) expArgs codType e
     WeakStmtNominal {} -> do
       return ()
     WeakStmtForeign foreignList ->
@@ -429,6 +429,18 @@ elaborateWeakBinder :: Handle -> BinderF WT.WeakTerm -> EIO (BinderF TM.Term)
 elaborateWeakBinder h (m, x, t) = do
   t' <- elaborate' h t
   return (m, x, t')
+
+elaborateWeakBinderWithMaybeType :: Handle -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> EIO (BinderF TM.Term, Maybe TM.Term)
+elaborateWeakBinderWithMaybeType h ((m, x, t), maybeType) = do
+  t' <- elaborate' h t
+  maybeType' <- traverse (elaborate' h) maybeType
+  return ((m, x, t'), maybeType')
+
+inlineBinderWithMaybeType :: Handle -> (BinderF TM.Term, Maybe TM.Term) -> EIO (BinderF TM.Term, Maybe TM.Term)
+inlineBinderWithMaybeType h ((m, x, t), maybeType) = do
+  t' <- inline h m t
+  maybeType' <- traverse (inline h m) maybeType
+  return ((m, x, t'), maybeType')
 
 elaborateLet :: Handle -> (BinderF WT.WeakTerm, WT.WeakTerm) -> EIO (BinderF TM.Term, TM.Term)
 elaborateLet h (xt, e) = do

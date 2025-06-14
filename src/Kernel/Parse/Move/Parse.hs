@@ -193,7 +193,7 @@ registerKeyArg' :: Handle -> Stmt -> EIO ()
 registerKeyArg' h stmt = do
   case stmt of
     StmtDefine isConstLike _ (SavedHint m) name impArgs expArgs _ _ -> do
-      let impKeys = map (\(_, x, _) -> toText x) impArgs
+      let impKeys = map (\((_, x, _), _) -> toText x) impArgs
       let expKeys = map (\(_, x, _) -> toText x) expArgs
       KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
     StmtForeign {} ->

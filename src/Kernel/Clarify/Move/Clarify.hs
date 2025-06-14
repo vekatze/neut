@@ -170,7 +170,7 @@ clarifyStmt :: Handle -> Stmt -> EIO C.CompStmt
 clarifyStmt h stmt =
   case stmt of
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs _ e -> do
-      let xts = impArgs ++ expArgs
+      let xts = map fst impArgs ++ expArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h

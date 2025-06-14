@@ -34,7 +34,7 @@ weakenStmt stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs codType e -> do
       let stmtKind' = weakenStmtKind stmtKind
-      let impArgs' = map weakenBinder impArgs
+      let impArgs' = map (bimap weakenBinder (fmap weaken)) impArgs
       let expArgs' = map weakenBinder expArgs
       let codType' = weaken codType
       let e' = weaken e

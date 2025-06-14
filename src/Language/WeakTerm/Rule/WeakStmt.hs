@@ -26,7 +26,7 @@ data WeakStmt
       WeakStmtKind
       Hint
       DD.DefiniteDescription
-      [BinderF WT.WeakTerm]
+      [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)]
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm

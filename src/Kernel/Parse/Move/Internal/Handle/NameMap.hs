@@ -201,7 +201,8 @@ _getGlobalNames' :: Stmt -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
 _getGlobalNames' stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
-      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+      let impBinders = map fst impArgs
+      let allArgNum = AN.fromInt $ length $ impBinders ++ expArgs
       case stmtKind of
         SK.Normal _ -> do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]

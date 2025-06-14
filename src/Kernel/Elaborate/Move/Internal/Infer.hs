@@ -71,22 +71,24 @@ inferStmt :: Handle -> WeakStmt -> EIO WeakStmt
 inferStmt h stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
-      (impArgs', h') <- inferBinder' h impArgs
+      let (impBinders, impDefaults) = unzip impArgs
+      (impBinders', h') <- inferBinder' h impBinders
+      impDefaults' <- mapM (traverse (inferType h')) impDefaults
+      let impArgs' = zip impBinders' impDefaults'
       (expArgs', h'') <- inferBinder' h' expArgs
       codType' <- inferType h'' codType
-      let impArgsWithDefaults = map (,Nothing) impArgs'
       case stmtKind of
         SK.DataIntro {} -> do
-          liftIO $ insertType h'' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgsWithDefaults expArgs' codType'
+          liftIO $ insertType h'' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' expArgs' codType'
         _ ->
-          liftIO $ insertType h'' x $ m :< WT.Pi (PK.Normal isConstLike) impArgsWithDefaults expArgs' codType'
+          liftIO $ insertType h'' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' codType'
       stmtKind' <- inferStmtKind h'' stmtKind
       (e', te) <- infer h'' e
       liftIO $ Constraint.insert (constraintHandle h'') codType' te
       case getMainUnitType stmtKind of
         Just unitType -> do
           let expected = m :< WT.Pi PK.normal [] [] unitType
-          let actual = m :< WT.Pi PK.normal impArgsWithDefaults expArgs' codType'
+          let actual = m :< WT.Pi PK.normal impArgs' expArgs' codType'
           liftIO $ Constraint.insert (constraintHandle h'') expected actual
         Nothing ->
           return ()

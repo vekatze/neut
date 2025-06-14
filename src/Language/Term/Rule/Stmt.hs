@@ -29,7 +29,7 @@ data StmtF a
       (SK.StmtKind a)
       SavedHint
       DD.DefiniteDescription
-      [BinderF a]
+      [(BinderF a, Maybe a)]
       [BinderF a]
       a
       a
