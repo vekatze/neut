@@ -684,7 +684,7 @@ inferClause h cursorType@(_ :< cursorTypeInner) decisionCase = do
       let m = mCons
       let (dataTermList, _) = unzip dataArgs
       typedDataArgs' <- mapM (infer h) dataTermList
-      (consArgs', extendedVarEnv) <- inferBinder' h consArgs
+      consArgs' <- inferBinder'' h consArgs
       let argNum = AN.fromInt $ length dataArgs + length consArgs
       let attr = AttrVG.Attr {..}
       let dataArgs' = ImpArgs.FullySpecified $ map fst typedDataArgs'
@@ -697,7 +697,7 @@ inferClause h cursorType@(_ :< cursorTypeInner) decisionCase = do
         else do
           (_, tPat) <- inferPiElim h m consTerm impConsArgs expConsArgs
           liftIO $ Constraint.insert (constraintHandle h) cursorType tPat
-      (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
+      (cont', tCont) <- inferDecisionTree m h cont
       return
         ( DT.ConsCase
             record
