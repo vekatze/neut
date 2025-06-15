@@ -423,7 +423,7 @@ strictifyFloatType h m x t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi _ impArgs expArgs _
+        _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
           | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
               strictifyFloatType h m x arg
         _ ->
