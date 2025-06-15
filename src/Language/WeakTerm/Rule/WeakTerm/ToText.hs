@@ -157,13 +157,14 @@ showImpDomArgWithDefault ((_, x, _), maybeDefault) = do
       baseArg <> " := " <> toText defaultValue
 
 showDataImpArgWithDefault :: (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> T.Text
-showDataImpArgWithDefault ((_, x, t), maybeDefault) =
-  let baseArg = case t of
-        _ :< WT.Tau -> showVariable x
-        _ -> "(" <> showVariable x <> ": " <> toText t <> ")"
-   in case maybeDefault of
-        Nothing -> baseArg
-        Just defaultValue -> "(" <> baseArg <> " := " <> toText defaultValue <> ")"
+showDataImpArgWithDefault ((_, x, t), maybeDefault) = do
+  let baseArg =
+        case t of
+          _ :< WT.Tau -> showVariable x
+          _ -> "(" <> showVariable x <> ": " <> toText t <> ")"
+  case maybeDefault of
+    Nothing -> baseArg
+    Just defaultValue -> "(" <> baseArg <> " := " <> toText defaultValue <> ")"
 
 inParen :: T.Text -> T.Text
 inParen s =
