@@ -237,9 +237,10 @@ elaborate' h term =
       return $ m :< TM.PiIntro kind' impArgs' expArgs' e'
     m :< WT.PiElim b e impArgs expArgs -> do
       e' <- elaborate' h e
-      let es = ImpArgs.extract impArgs ++ expArgs
-      es' <- mapM (elaborate' h) es
-      return $ m :< TM.PiElim b e' es'
+      let impArgs' = ImpArgs.extract impArgs
+      impArgs'' <- mapM (elaborate' h) impArgs'
+      expArgs' <- mapM (elaborate' h) expArgs
+      return $ m :< TM.PiElim b e' impArgs'' expArgs'
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.Data attr name es -> do

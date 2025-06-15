@@ -25,10 +25,11 @@ freeVars term =
       freeVars' (impBinders ++ expArgs) (freeVars t)
     _ :< TM.PiIntro k impArgs expArgs e ->
       freeVars' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e)
-    _ :< TM.PiElim _ e es -> do
+    _ :< TM.PiElim _ e impArgs expArgs -> do
       let xs = freeVars e
-      let ys = S.unions $ map freeVars es
-      S.union xs ys
+      let ys1 = S.unions $ map freeVars impArgs
+      let ys2 = S.unions $ map freeVars expArgs
+      S.unions [xs, ys1, ys2]
     _ :< TM.Data _ _ es ->
       S.unions $ map freeVars es
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do

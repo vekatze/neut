@@ -160,10 +160,11 @@ analyze h term = do
           cs3 <- analyze h'' codType
           cs4 <- analyze h'' e
           return $ cs1 ++ cs2 ++ cs3 ++ cs4
-    _ :< TM.PiElim _ e es -> do
+    _ :< TM.PiElim _ e impArgs expArgs -> do
       cs <- analyze h e
-      css <- mapM (analyze h) es
-      return $ cs ++ concat css
+      css1 <- mapM (analyze h) impArgs
+      css2 <- mapM (analyze h) expArgs
+      return $ cs ++ concat css1 ++ concat css2
     _ :< TM.Data _ _ es -> do
       css <- mapM (analyze $ deactivateExpCheck h) es
       return $ concat css

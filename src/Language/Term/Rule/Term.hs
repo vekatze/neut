@@ -40,7 +40,7 @@ data TermF a
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | Pi PiKind [(BinderF a, Maybe a)] [BinderF a] a
   | PiIntro (AttrL.Attr a) [(BinderF a, Maybe a)] [BinderF a] a
-  | PiElim N.IsNoetic a [a]
+  | PiElim N.IsNoetic a [a] [a]
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)

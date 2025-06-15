@@ -54,10 +54,11 @@ refresh h term =
           e' <- refresh h e
           let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
           return (m :< TM.PiIntro lamAttr impArgs' expArgs' e')
-    m :< TM.PiElim b e es -> do
+    m :< TM.PiElim b e impArgs expArgs -> do
       e' <- refresh h e
-      es' <- mapM (refresh h) es
-      return (m :< TM.PiElim b e' es')
+      impArgs' <- mapM (refresh h) impArgs
+      expArgs' <- mapM (refresh h) expArgs
+      return (m :< TM.PiElim b e' impArgs' expArgs')
     m :< TM.Data attr name es -> do
       es' <- mapM (refresh h) es
       return $ m :< TM.Data attr name es'

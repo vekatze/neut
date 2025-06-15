@@ -265,14 +265,16 @@ clarifyTerm h tenv term =
       return Sigma.returnClosureS4
     _ :< TM.PiIntro attr impArgs expArgs e -> do
       clarifyLambda h tenv attr (TM.chainOf tenv [term]) (map fst impArgs ++ expArgs) e
-    _ :< TM.PiElim b e es -> do
-      es' <- mapM (clarifyPlus h tenv) es
+    _ :< TM.PiElim b e impArgs expArgs -> do
+      impArgs' <- mapM (clarifyPlus h tenv) impArgs
+      expArgs' <- mapM (clarifyPlus h tenv) expArgs
+      let allArgs = impArgs' ++ expArgs'
       case e of
         _ :< TM.Prim (P.Value (PV.Op op)) ->
-          return $ callPrimOp op es'
+          return $ callPrimOp op allArgs
         _ -> do
           e' <- clarifyTerm h tenv e
-          liftIO $ callClosure h b e' es'
+          liftIO $ callClosure h b e' allArgs
     _ :< TM.Data _ name dataArgs -> do
       let argNum = AN.fromInt $ length dataArgs + 2
       let cls = C.UpIntro $ C.SigmaIntro [immediateS4, C.SigmaIntro [], C.VarGlobal name argNum]
@@ -341,10 +343,10 @@ clarifyTerm h tenv term =
       switchValue <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switchValue"
       value <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "value"
       discarder' <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [m :< TM.Var value])
+        clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var value])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       copier' <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [m :< TM.Var value])
+        clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var value])
           >>= liftIO . Reduce.reduce (reduceHandle h)
       enumElim <-
         liftIO $
@@ -439,9 +441,9 @@ getClauseDataGroup h term =
   case term of
     _ :< TM.Data _ dataName _ -> do
       liftIO $ OptimizableData.lookup (optDataHandle h) dataName
-    _ :< TM.PiElim _ (_ :< TM.Data _ dataName _) _ -> do
+    _ :< TM.PiElim _ (_ :< TM.Data _ dataName _) _ _ -> do
       liftIO $ OptimizableData.lookup (optDataHandle h) dataName
-    _ :< TM.PiElim _ (_ :< TM.VarGlobal _ dataName) _ -> do
+    _ :< TM.PiElim _ (_ :< TM.VarGlobal _ dataName) _ _ -> do
       liftIO $ OptimizableData.lookup (optDataHandle h) dataName
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
       return $ Just OD.Enum
@@ -585,7 +587,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $ AttrL.normal' (Just (Ident.toText recFuncName)) c codType
-      let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) appArgs')
+      let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) [] appArgs')
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e

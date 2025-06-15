@@ -60,10 +60,11 @@ weaken term =
       let expArgs' = map weakenBinder expArgs
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' e'
-    m :< TM.PiElim b e es -> do
+    m :< TM.PiElim b e impArgs expArgs -> do
       let e' = weaken e
-      let es' = map weaken es
-      m :< WT.PiElim b e' ImpArgs.Unspecified es'
+      let impArgs' = ImpArgs.FullySpecified $ map weaken impArgs
+      let expArgs' = map weaken expArgs
+      m :< WT.PiElim b e' impArgs' expArgs'
     m :< TM.Data attr name es -> do
       let es' = map weaken es
       m :< WT.Data attr name es'
