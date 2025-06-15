@@ -525,11 +525,10 @@ inferPiElim h m (e, t) impArgs expArgs = do
             return impArgs'
           ImpArgs.PartiallySpecified impArgs' -> do
             resolvePartiallySpecifiedArgs h m impArgs' impParams
-      let args = impArgs' ++ expArgs
       let impBinders = map fst impParams
       let piArgs = impBinders ++ expParams
-      _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim False e ImpArgs.Unspecified (map fst args), m :< cod')
+      _ :< cod' <- inferArgs h IntMap.empty m (impArgs' ++ expArgs) piArgs cod
+      return (m :< WT.PiElim False e (ImpArgs.FullySpecified (map fst impArgs')) (map fst expArgs), m :< cod')
     _ :< WT.BoxNoema (_ :< WT.Pi _ impParams expParams cod) -> do
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgs' <- do
@@ -541,11 +540,10 @@ inferPiElim h m (e, t) impArgs expArgs = do
             return impArgs'
           ImpArgs.PartiallySpecified impArgs' -> do
             resolvePartiallySpecifiedArgs h m impArgs' impParams
-      let args = impArgs' ++ expArgs
       let impBinders = map fst impParams
       let piArgs = impBinders ++ expParams
-      _ :< cod' <- inferArgs h IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim True e ImpArgs.Unspecified (map fst args), m :< cod')
+      _ :< cod' <- inferArgs h IntMap.empty m (impArgs' ++ expArgs) piArgs cod
+      return (m :< WT.PiElim True e (ImpArgs.FullySpecified (map fst impArgs')) (map fst expArgs), m :< cod')
     _ ->
       raiseError m $ "Expected a function type, but got: " <> toText t'
 
@@ -770,6 +768,6 @@ createImpArgValueFromParam h m ((_, _, paramType), maybeDefault) =
     Just defaultValue -> do
       (defaultValue', defaultType) <- infer h defaultValue
       liftIO $ Constraint.insert (constraintHandle h) paramType defaultType
-      return (defaultValue', paramType) -- Return parameter type, not inferred type
+      return (defaultValue', defaultType)
     Nothing -> do
       liftIO $ newTypedHole h m (varEnv h)
