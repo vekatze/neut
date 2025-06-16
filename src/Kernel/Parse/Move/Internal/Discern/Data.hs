@@ -104,7 +104,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
             if isConstLikeConsInfo consInfo
               then m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
               else
-                RT.genLam (endLoc consInfo) m [] (map (,[]) expConsArgs) dataType $
+                RT.lam (endLoc consInfo) m (map (,[]) expConsArgs) dataType $
                   m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
       let introRule =
             PostRawStmtDefine

@@ -20,7 +20,6 @@ module Language.RawTerm.Rule.RawTerm
     extractImpArgs,
     extractImpArgsWithDefaults,
     lam,
-    genLam,
     piElim,
     pushCommentToKeywordClause,
     extractFromKeywordClause,
@@ -200,35 +199,6 @@ lam loc m varList codType e =
                   isConstLike = False,
                   impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
                   expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),
-                  cod = ([], codType)
-                },
-            leadingComment = [],
-            body = e,
-            trailingComment = [],
-            endLoc = loc
-          }
-      )
-
-genLam ::
-  Loc ->
-  Hint ->
-  [((RawBinder RawTerm, Maybe RawTerm), C)] ->
-  [(RawBinder RawTerm, C)] ->
-  RawTerm ->
-  RawTerm ->
-  RawTerm
-genLam loc m impParams expParams codType e =
-  m
-    :< PiIntro
-      []
-      ( RawDef
-          { geist =
-              RawGeist
-                { loc = m,
-                  name = (Nothing, []),
-                  isConstLike = False,
-                  impArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma impParams, []),
-                  expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma expParams, []),
                   cod = ([], codType)
                 },
             leadingComment = [],
