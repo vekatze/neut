@@ -7,9 +7,11 @@ module Language.RawTerm.Rule.RawTerm.ToDoc
     typeAnnot,
     decodeArgs,
     decodeArgs',
+    decodeArgsMaybe,
     decodeDef,
     decGeist,
     decodeImpParams,
+    decodeImpParamsMaybe,
     attachComment,
     decodeBlock,
     decodeKeywordClause,
@@ -369,6 +371,14 @@ decodeArgs (series, c) = do
           D.line
         ]
 
+decodeArgsMaybe :: Maybe (SE.Series (RawBinder RawTerm)) -> D.Doc
+decodeArgsMaybe mArgs = do
+  case mArgs of
+    Nothing ->
+      D.Nil
+    Just args ->
+      decodeArgs (args, [])
+
 decodeArgs' :: Args RawTerm -> D.Doc
 decodeArgs' (series, c) = do
   if null c
@@ -420,6 +430,14 @@ piIntroArgToDoc (m, x, c1, c2, t) = do
   let x' = nameToDoc $ N.Var x
   paramToDoc (m, x', c1, c2, t)
 
+piIntroArgWithDefaultToDoc :: (RawBinder RawTerm, Maybe RawTerm) -> D.Doc
+piIntroArgWithDefaultToDoc ((m, x, c1, c2, t), maybeDefault) = do
+  let x' = nameToDoc $ N.Var x
+  let baseParam = paramToDoc (m, x', c1, c2, t)
+  case maybeDefault of
+    Nothing -> baseParam
+    Just defaultValue -> D.join [baseParam, D.text " := ", toDoc defaultValue]
+
 varArgToDoc :: VarArg -> D.Doc
 varArgToDoc (m, e, c1, c2, t) = do
   let e' = toDoc e
@@ -468,11 +486,15 @@ decGeist
             PI.inject $ attachComment c3 $ toDoc cod
           ]
 
-decodeImpParams :: SE.Series (RawBinder RawTerm) -> D.Doc
+decodeImpParams :: SE.Series (RawBinder RawTerm, Maybe RawTerm) -> D.Doc
 decodeImpParams impParams =
   if SE.isEmpty impParams
     then D.Nil
-    else SE.decode $ fmap piIntroArgToDoc impParams
+    else SE.decode $ fmap piIntroArgWithDefaultToDoc impParams
+
+decodeImpParamsMaybe :: Maybe (SE.Series (RawBinder RawTerm, Maybe RawTerm)) -> D.Doc
+decodeImpParamsMaybe =
+  maybe D.Nil decodeImpParams
 
 decodeExpParams :: Bool -> SE.Series (RawBinder RawTerm) -> D.Doc
 decodeExpParams isConstLike expParams =
@@ -502,12 +524,8 @@ nameToDoc varOrLocator =
       D.text $ Locator.reify locator
 
 lambdaNameToDoc :: Maybe T.Text -> D.Doc
-lambdaNameToDoc mName =
-  case mName of
-    Just name ->
-      D.text name
-    Nothing ->
-      D.Nil
+lambdaNameToDoc =
+  maybe D.Nil D.text
 
 isMultiLine :: [D.Doc] -> Bool
 isMultiLine docList =

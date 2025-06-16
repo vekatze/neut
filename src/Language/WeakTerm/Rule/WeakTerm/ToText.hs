@@ -1,4 +1,4 @@
-module Language.WeakTerm.Rule.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable, showDomArgList) where
+module Language.WeakTerm.Rule.WeakTerm.ToText (toText) where
 
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
@@ -14,7 +14,9 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimOp qualified as PO
 import Language.Common.Rule.PrimType.ToText qualified as PT
 import Language.Common.Rule.Rune qualified as RU
@@ -31,10 +33,14 @@ toText term =
       showVariable x
     _ :< WT.VarGlobal _ x ->
       showGlobalVariable x
-    _ :< WT.Pi impArgs expArgs cod -> do
-      if null impArgs
-        then inParen (showDomArgList expArgs) <> " -> " <> toText cod
-        else showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+    _ :< WT.Pi piKind impArgs expArgs cod -> do
+      case piKind of
+        PK.Normal isConstLike ->
+          if isConstLike
+            then showImpArgs impArgs <> " " <> toText cod
+            else showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+        PK.DataIntro _ -> do
+          showDataImpArgs impArgs <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
@@ -63,10 +69,12 @@ toText term =
               toText e
         _ -> do
           case impArgs of
-            Just impArgs' ->
+            ImpArgs.FullySpecified impArgs' ->
               showApp' (toText e) (map toText impArgs') (map toText expArgs)
-            Nothing ->
+            ImpArgs.Unspecified ->
               showApp (toText e) (map toText expArgs)
+            ImpArgs.PartiallySpecified impArgs' ->
+              showApp' (toText e) (map toText (ImpArgs.extract (ImpArgs.PartiallySpecified impArgs'))) (map toText expArgs)
     _ :< WT.PiElimExact e -> do
       "exact " <> toText e
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
@@ -123,24 +131,40 @@ toText term =
     _ :< WT.Void ->
       "void"
 
-showImpArgs :: [BinderF WT.WeakTerm] -> T.Text
+showImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
 showImpArgs impArgs =
   if null impArgs
     then ""
-    else do
-      inAngleBracket $ showImpDomArgList impArgs
+    else inAngleBracket $ showImpDomArgList impArgs
 
-showImpDomArgList :: [BinderF WT.WeakTerm] -> T.Text
+showDataImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
+showDataImpArgs impArgs =
+  if null impArgs
+    then ""
+    else "∀ " <> T.intercalate " " (map showDataImpArgWithDefault impArgs) <> ". "
+
+showImpDomArgList :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
 showImpDomArgList mxts =
-  T.intercalate ", " $ map showImpDomArg mxts
+  T.intercalate ", " $ map showImpDomArgWithDefault mxts
 
-showImpDomArg :: BinderF WT.WeakTerm -> T.Text
-showImpDomArg (_, x, t) =
-  case t of
-    _ :< WT.Tau ->
-      showVariable x
-    _ ->
-      showVariable x <> ": " <> toText t
+showImpDomArgWithDefault :: (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> T.Text
+showImpDomArgWithDefault ((_, x, _), maybeDefault) = do
+  let baseArg = showVariable x
+  case maybeDefault of
+    Nothing ->
+      baseArg
+    Just defaultValue ->
+      baseArg <> " := " <> toText defaultValue
+
+showDataImpArgWithDefault :: (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> T.Text
+showDataImpArgWithDefault ((_, x, t), maybeDefault) = do
+  let baseArg =
+        case t of
+          _ :< WT.Tau -> showVariable x
+          _ -> "(" <> showVariable x <> ": " <> toText t <> ")"
+  case maybeDefault of
+    Nothing -> baseArg
+    Just defaultValue -> "(" <> baseArg <> " := " <> toText defaultValue <> ")"
 
 inParen :: T.Text -> T.Text
 inParen s =

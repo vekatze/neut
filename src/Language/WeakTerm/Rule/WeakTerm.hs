@@ -28,9 +28,11 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Foreign
 import Language.Common.Rule.HoleID
 import Language.Common.Rule.Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.Magic
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PiKind (PiKind)
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
@@ -43,9 +45,9 @@ data WeakTermF a
   = Tau
   | Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
-  | Pi [BinderF a] [BinderF a] a
-  | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
-  | PiElim N.IsNoetic a (Maybe [a]) [a]
+  | Pi PiKind [(BinderF a, Maybe a)] [BinderF a] a
+  | PiIntro (AttrL.Attr a) [(BinderF a, Maybe a)] [BinderF a] a
+  | PiElim N.IsNoetic a (ImpArgs.ImpArgs a) [a]
   | PiElimExact a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)

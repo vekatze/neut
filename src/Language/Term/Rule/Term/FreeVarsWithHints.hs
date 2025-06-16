@@ -21,14 +21,16 @@ freeVarsWithHints term =
       S.singleton (m, x)
     _ :< TM.VarGlobal {} ->
       S.empty
-    _ :< TM.Pi impArgs expArgs t ->
-      freeVarsWithHints' (impArgs ++ expArgs) (freeVarsWithHints t)
+    _ :< TM.Pi _ impArgs expArgs t -> do
+      let impBinders = map fst impArgs
+      freeVarsWithHints' (impBinders ++ expArgs) (freeVarsWithHints t)
     _ :< TM.PiIntro k impArgs expArgs e ->
-      freeVarsWithHints' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsWithHints e)
-    _ :< TM.PiElim _ e es -> do
+      freeVarsWithHints' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVarsWithHints e)
+    _ :< TM.PiElim _ e impArgs expArgs -> do
       let xs = freeVarsWithHints e
-      let ys = S.unions $ map freeVarsWithHints es
-      S.union xs ys
+      let ys1 = S.unions $ map freeVarsWithHints impArgs
+      let ys2 = S.unions $ map freeVarsWithHints expArgs
+      S.unions [xs, ys1, ys2]
     _ :< TM.Data _ _ es ->
       S.unions $ map freeVarsWithHints es
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do

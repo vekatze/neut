@@ -3,16 +3,15 @@ module Command.LSP.Move.Internal.GetSymbolInfo
   )
 where
 
-import CommandParser.Rule.Config.Remark (lspConfig)
-import Error.Move.Run (liftMaybe)
-import Error.Rule.EIO (EIO)
 import Command.Common.Move.Check qualified as Check
 import Command.LSP.Move.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Move.Internal.GetSource qualified as GetSource
-import Control.Comonad.Cofree
+import CommandParser.Rule.Config.Remark (lspConfig)
 import Control.Monad.Trans
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Error.Move.Run (liftMaybe)
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.Type qualified as Type
 import Kernel.Common.Move.ManageCache (invalidate)
@@ -23,7 +22,6 @@ import Kernel.Elaborate.Move.Elaborate qualified as Elaborate
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.Term.Rule.Term.Weaken (weaken)
-import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Language.WeakTerm.Rule.WeakTerm.ToText
 
 getSymbolInfo ::
@@ -50,14 +48,10 @@ getSymbolInfo params = do
           t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
           t' <- Elaborate.elaborate' handle t
           return $ toText $ weaken t'
-        LT.Global dd isConstLike -> do
+        LT.Global dd _ -> do
           let typeHandle = Global.typeHandle h
           t <- lift (liftIO $ Type.lookupMaybe' typeHandle dd) >>= liftMaybe
-          case (t, isConstLike) of
-            (_ :< WT.Pi _ _ cod, True) ->
-              return $ toText cod
-            _ ->
-              return $ toText t
+          return $ toText t
         LT.Foreign {} -> do
           liftMaybe Nothing
 

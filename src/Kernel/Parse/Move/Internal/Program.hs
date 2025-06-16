@@ -7,16 +7,11 @@ where
 import CodeParser.Move.GetInfo
 import CodeParser.Move.Parse
 import CodeParser.Rule.Parser
-import Error.Move.Run (raiseError)
-import Logger.Rule.Hint
-import SyntaxTree.Move.ParseSeries
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Monad
 import Control.Monad.Trans
-import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Move.Run (raiseError)
 import Kernel.Parse.Move.Internal.RawTerm
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.ExternalName qualified as EN
@@ -28,6 +23,10 @@ import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Logger.Rule.Hint
+import SyntaxTree.Move.ParseSeries
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec
 
 parseProgram :: Handle -> Parser RawProgram
@@ -164,14 +163,12 @@ parseDataArgs h = do
 
 parseDefineDataClause :: Handle -> Parser (RawConsInfo BN.BaseName, C)
 parseDefineDataClause h = do
-  m <- getCurrentHint
-  (consName, c1) <- baseName
-  unless (isConsName (BN.reify consName)) $ do
-    lift $ raiseError m "The name of a constructor must be capitalized"
-  (consArgsOrNone, loc, c2) <- parseConsArgs h
-  let consArgs = fromMaybe SE.emptySeriesPC consArgsOrNone
-  let isConstLike = isNothing consArgsOrNone
-  return ((m, consName, isConstLike, consArgs, loc), c1 ++ c2)
+  loc <- getCurrentHint
+  (name, c1) <- baseName
+  unless (isConsName (BN.reify name)) $ do
+    lift $ raiseError loc "The name of a constructor must be capitalized"
+  (expArgs, endLoc, c2) <- parseConsArgs h
+  return (RawConsInfo {loc, name, expArgs, endLoc}, c1 ++ c2)
 
 parseConsArgs :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
 parseConsArgs h = do

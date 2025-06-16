@@ -23,18 +23,19 @@ compress term =
       () :< TM.Var x
     _ :< TM.VarGlobal g argNum ->
       () :< TM.VarGlobal g argNum
-    _ :< TM.Pi impArgs expArgs t ->
-      () :< TM.Pi (map compressBinder impArgs) (map compressBinder expArgs) (compress t)
+    _ :< TM.Pi piKind impArgs expArgs t ->
+      () :< TM.Pi piKind (map (bimap compressBinder (fmap compress)) impArgs) (map compressBinder expArgs) (compress t)
     _ :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = compressAttr attr
-      let impArgs' = map compressBinder impArgs
+      let impArgs' = map (bimap compressBinder (fmap compress)) impArgs
       let expArgs' = map compressBinder expArgs
       let e' = compress e
       () :< TM.PiIntro attr' impArgs' expArgs' e'
-    _ :< TM.PiElim b e es -> do
+    _ :< TM.PiElim b e impArgs expArgs -> do
       let e' = compress e
-      let es' = map compress es
-      () :< TM.PiElim b e' es'
+      let impArgs' = map compress impArgs
+      let expArgs' = map compress expArgs
+      () :< TM.PiElim b e' impArgs' expArgs'
     _ :< TM.Data attr name es -> do
       let es' = map compress es
       () :< TM.Data attr name es'
@@ -157,7 +158,7 @@ compressStmtKind stmtKind =
       let consArgsList' = map (map compressBinder) consArgsList
       let consInfoList' = zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs consArgs discriminant -> do
+    DataIntro dataName dataArgs expConsArgs discriminant -> do
       let dataArgs' = map compressBinder dataArgs
-      let consArgs' = map compressBinder consArgs
-      DataIntro dataName dataArgs' consArgs' discriminant
+      let expConsArgs' = map compressBinder expConsArgs
+      DataIntro dataName dataArgs' expConsArgs' discriminant

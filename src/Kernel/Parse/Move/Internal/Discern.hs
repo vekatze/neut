@@ -56,11 +56,13 @@ import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Literal qualified as LI
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
@@ -97,13 +99,13 @@ discernStmt h stmt = do
   case stmt of
     PostRawStmtDefine _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
       registerTopLevelName h stmt
-      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let (_, codType) = RT.cod geist
       let m = RT.loc geist
       let functionName = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      (impArgs', nenv) <- discernBinder h impArgs endLoc
+      (impArgs', nenv) <- discernBinderWithDefaults h impArgsWithDefaults endLoc
       (expArgs', nenv') <- discernBinder nenv expArgs endLoc
       codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind h stmtKind m
@@ -111,6 +113,7 @@ discernStmt h stmt = do
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m functionName isConstLike m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
+      liftIO $ forM_ (map fst impArgs') $ Tag.insertBinder (H.tagHandle h)
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
     PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) _ -> do
@@ -134,11 +137,11 @@ discernStmt h stmt = do
 
 discernGeist :: H.Handle -> Loc -> RT.RawGeist DD.DefiniteDescription -> EIO (G.Geist WT.WeakTerm)
 discernGeist h endLoc geist = do
-  let impArgs = RT.extractArgs $ RT.impArgs geist
+  let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
-  (impArgs', h') <- discernBinder h impArgs endLoc
+  (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
   (expArgs', h'') <- discernBinder h' expArgs endLoc
-  forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO $ Unused.deleteVariable (H.unusedHandle h) x
+  forM_ (map fst impArgs' ++ expArgs') $ \(_, x, _) -> liftIO $ Unused.deleteVariable (H.unusedHandle h) x
   cod' <- discern h'' $ snd $ RT.cod geist
   let m = RT.loc geist
   let dd = fst $ RT.name geist
@@ -176,19 +179,19 @@ discernStmtKind h stmtKind m =
       let consNameList' = consNameList
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
       return $ SK.Data dataName dataArgs' consInfoList'
-    SK.DataIntro dataName dataArgs consArgs discriminant -> do
+    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
       (dataArgs', h') <- discernBinder' h dataArgs
-      (consArgs', h'') <- discernBinder' h' consArgs
+      (expConsArgs', h'') <- discernBinder' h' expConsArgs
       forM_ (H.nameEnv h'') $ \(_, (_, newVar, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
-      return $ SK.DataIntro dataName dataArgs' consArgs' discriminant
+      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
 
 getUnitType :: H.Handle -> Hint -> EIO WT.WeakTerm
 getUnitType h m = do
   locator <- liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- resolveName h m (Locator locator)
   let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
-  return $ m :< WT.PiElim False (m :< WT.VarGlobal attr unitDD) Nothing []
+  return $ m :< WT.PiElim False (m :< WT.VarGlobal attr unitDD) ImpArgs.Unspecified []
 
 toCandidateKind :: SK.StmtKind a -> CandidateKind
 toCandidateKind stmtKind =
@@ -236,28 +239,29 @@ discern h term =
           (dd, (_, gn)) <- resolveName h m name
           interpretGlobalName h m dd gn
     m :< RT.Pi impArgs expArgs _ t endLoc -> do
-      (impArgs', h') <- discernBinder h (RT.extractArgs impArgs) endLoc
+      let impArgsWithDefaults = RT.extractImpArgsWithDefaults impArgs
+      (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
       (expArgs', h'') <- discernBinder h' (RT.extractArgs expArgs) endLoc
       t' <- discern h'' t
-      forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> liftIO (Unused.deleteVariable (H.unusedHandle h'') x)
-      return $ m :< WT.Pi impArgs' expArgs' t'
+      forM_ (map fst impArgs' ++ expArgs') $ \(_, x, _) -> liftIO (Unused.deleteVariable (H.unusedHandle h'') x)
+      return $ m :< WT.Pi PK.normal impArgs' expArgs' t'
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       let (name, _) = RT.name geist
-      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
-      (impArgs', h') <- discernBinder h impArgs endLoc
+      (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
       (expArgs', h'') <- discernBinder h' expArgs endLoc
       codType' <- discern h'' $ snd $ RT.cod geist
       body' <- discern h'' body
       ensureLayerClosedness m h'' body'
       return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
-      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let mx = RT.loc geist
       let (x, _) = RT.name geist
-      (impArgs', h') <- discernBinder h impArgs endLoc
+      (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
       (expArgs', h'') <- discernBinder h' expArgs endLoc
       codType' <- discern h'' $ snd $ RT.cod geist
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
@@ -290,24 +294,23 @@ discern h term =
             Just impArgs -> do
               impArgs' <- mapM (discern h) $ SE.extract impArgs
               expArgs' <- mapM (discern h) $ SE.extract expArgs
-              return $ m :< WT.PiElim isNoetic e' (Just impArgs') expArgs'
+              return $ m :< WT.PiElim isNoetic e' (ImpArgs.FullySpecified impArgs') expArgs'
             Nothing -> do
               expArgs' <- mapM (discern h) $ SE.extract expArgs
-              return $ m :< WT.PiElim isNoetic e' Nothing expArgs'
+              return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
-      (dd, _) <- resolveName h m name
+      (dd, (_, gn)) <- resolveName h m name
+      _ :< func <- interpretGlobalName h m dd gn
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       ensureFieldLinearity m ks S.empty S.empty
       (impKeys, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
       vs' <- mapM (discern h) vs
       let kvs' = Map.fromList $ zip ks vs'
-      impArgs <- liftIO $ resolveImpKeys h m impKeys kvs'
+      let impArgs = resolveImpKeys h m impKeys kvs'
       expArgs <- resolveExpKeys h m expKeys kvs'
       checkRedundancy m impKeys expKeys kvs'
       let isNoetic = False -- overwritten later in `infer`
-      let isConstLike = False
-      let argNum = AN.fromInt $ length $ impKeys ++ expKeys
-      return $ m :< WT.PiElim isNoetic (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (Just impArgs) expArgs
+      return $ m :< WT.PiElim isNoetic (m :< func) (ImpArgs.PartiallySpecified impArgs) expArgs
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
@@ -803,6 +806,25 @@ discernBinder h binder endLoc =
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
       return ((mx, x', t') : xts', h'')
 
+discernBinderWithDefaults ::
+  H.Handle ->
+  [(RawBinder RT.RawTerm, Maybe RT.RawTerm)] ->
+  Loc ->
+  EIO ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], H.Handle)
+discernBinderWithDefaults h binder endLoc =
+  case binder of
+    [] -> do
+      return ([], h)
+    ((mx, x, _, _, t), maybeDefault) : xts -> do
+      t' <- discern h t
+      maybeDefault' <- traverse (discern h {H.nameEnv = []}) maybeDefault -- default values must be closed
+      x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+      h' <- liftIO $ H.extend' h mx x' VDK.Normal
+      (xts', h'') <- discernBinderWithDefaults h' xts endLoc
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
+      liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
+      return (((mx, x', t'), maybeDefault') : xts', h'')
+
 discernBinder' ::
   H.Handle ->
   [RawBinder RT.RawTerm] ->
@@ -1067,19 +1089,18 @@ interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
   PreDecl.insert (H.preDeclHandle h) name m
   return $ F.Foreign m name lts' cod
 
-resolveImpKeys :: H.Handle -> Hint -> [ImpKey] -> Map.HashMap Key WT.WeakTerm -> IO [WT.WeakTerm]
+resolveImpKeys :: H.Handle -> Hint -> [ImpKey] -> Map.HashMap Key WT.WeakTerm -> [Maybe WT.WeakTerm]
 resolveImpKeys h m impKeys kvs = do
   case impKeys of
     [] ->
-      return []
+      []
     impKey : rest -> do
-      args <- resolveImpKeys h m rest kvs
+      let args = resolveImpKeys h m rest kvs
       case Map.lookup impKey kvs of
         Just value -> do
-          return $ value : args
+          Just value : args
         Nothing -> do
-          hole <- WT.createHole (H.gensymHandle h) m []
-          return $ hole : args
+          Nothing : args
 
 resolveExpKeys :: H.Handle -> Hint -> [ExpKey] -> Map.HashMap Key a -> EIO [a]
 resolveExpKeys h m expKeys kvs = do

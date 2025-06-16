@@ -8,6 +8,7 @@ import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.HoleID
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 
 holes :: WT.WeakTerm -> S.Set HoleID
@@ -19,12 +20,13 @@ holes term =
       S.empty
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.Pi impArgs expArgs t ->
-      holes' (impArgs ++ expArgs) (holes t)
+    _ :< WT.Pi _ impArgs expArgs t -> do
+      let impBinders = map fst impArgs
+      holes' (impBinders ++ expArgs) (holes t)
     _ :< WT.PiIntro k impArgs expArgs e ->
-      holes' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e)
+      holes' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e)
     _ :< WT.PiElim _ e impArgs expArgs ->
-      S.unions $ map holes $ e : (fromMaybe [] impArgs ++ expArgs)
+      S.unions $ map holes $ e : (ImpArgs.extract impArgs ++ expArgs)
     _ :< WT.PiElimExact e ->
       holes e
     _ :< WT.Data _ _ es ->

@@ -30,9 +30,11 @@ import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.GlobalLocator qualified as GL
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimNumSize qualified as PNS
 import Language.Common.Rule.PrimOp qualified as PO
 import Language.Common.Rule.PrimType qualified as PT
@@ -138,10 +140,7 @@ interpretGlobalName h m dd gn = do
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
-      let e = m :< WT.VarGlobal attr dd
-      if isConstLike
-        then return $ m :< WT.PiElim False e Nothing []
-        else return e
+      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
     GN.PrimOp primOp ->
@@ -160,7 +159,7 @@ interpretTopLevelFunc ::
 interpretTopLevelFunc m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) Nothing []
+    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
     else m :< WT.VarGlobal attr dd
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> EIO WT.WeakTerm
@@ -172,7 +171,7 @@ castFromIntToBool h e@(m :< _) = do
   t <- liftIO $ WT.createHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
-  let cmpOpType cod = m :< WT.Pi [] [(m, x1, t), (m, x2, t)] cod
+  let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, x1, t), (m, x2, t)] cod
   return $ m :< WT.Magic (M.WeakMagic $ M.Cast (cmpOpType i1) (cmpOpType bool) e)
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)

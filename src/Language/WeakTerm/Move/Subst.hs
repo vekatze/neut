@@ -3,6 +3,7 @@ module Language.WeakTerm.Move.Subst
     new,
     subst,
     subst',
+    substWithMaybeType',
     substDecisionTree,
   )
 where
@@ -23,6 +24,7 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
 import Language.Common.Rule.LamKind qualified as LK
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.Rule.WeakTerm.FreeVars qualified as WT
 
 newtype Handle = Handle
@@ -49,11 +51,11 @@ subst h sub term =
           return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.Pi impArgs expArgs t -> do
-      (impArgs', sub') <- subst' h sub impArgs
+    m :< WT.Pi piKind impArgs expArgs t -> do
+      (impArgs', sub') <- substWithMaybeType h sub impArgs
       (expArgs', sub'') <- subst' h sub' expArgs
       t' <- subst h sub'' t
-      return $ m :< WT.Pi impArgs' expArgs' t'
+      return $ m :< WT.Pi piKind impArgs' expArgs' t'
     m :< WT.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
       let fvs = S.map Ident.toInt $ WT.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
@@ -63,14 +65,14 @@ subst h sub term =
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
             LK.Fix xt -> do
-              (impArgs', sub') <- subst' h sub impArgs
+              (impArgs', sub') <- substWithMaybeType' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               ([xt'], sub''') <- subst' h sub'' [xt]
               e' <- subst h sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< WT.PiIntro fixAttr impArgs' expArgs' e')
             LK.Normal mName codType -> do
-              (impArgs', sub') <- subst' h sub impArgs
+              (impArgs', sub') <- substWithMaybeType' h sub impArgs
               (expArgs', sub'') <- subst' h sub' expArgs
               codType' <- subst h sub'' codType
               e' <- subst h sub'' e
@@ -78,7 +80,7 @@ subst h sub term =
               return (m :< WT.PiIntro lamAttr impArgs' expArgs' e')
     m :< WT.PiElim b e impArgs expArgs -> do
       e' <- subst h sub e
-      impArgs' <- mapM (mapM (subst h sub)) impArgs
+      impArgs' <- ImpArgs.traverseImpArgs (subst h sub) impArgs
       expArgs' <- mapM (subst h sub) expArgs
       return $ m :< WT.PiElim b e' impArgs' expArgs'
     m :< WT.PiElimExact e -> do
@@ -180,6 +182,23 @@ subst' h sub binder =
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', sub'') <- subst' h sub' xts
       return ((m, x', t') : xts', sub'')
+
+substWithMaybeType' ::
+  Handle ->
+  WT.SubstWeakTerm ->
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  IO ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], WT.SubstWeakTerm)
+substWithMaybeType' h sub binderList =
+  case binderList of
+    [] -> do
+      return ([], sub)
+    (((m, x, t), maybeType) : xts) -> do
+      t' <- subst h sub t
+      maybeType' <- traverse (subst h sub) maybeType
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      (xts', sub'') <- substWithMaybeType' h sub' xts
+      return (((m, x', t'), maybeType') : xts', sub'')
 
 subst'' ::
   Handle ->
@@ -301,6 +320,23 @@ substLeafVar sub leafVar =
       Nothing
     Nothing ->
       return leafVar
+
+substWithMaybeType ::
+  Handle ->
+  WT.SubstWeakTerm ->
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  IO ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], WT.SubstWeakTerm)
+substWithMaybeType h sub binderList =
+  case binderList of
+    [] -> do
+      return ([], sub)
+    (((m, x, t), maybeType) : rest) -> do
+      t' <- subst h sub t
+      maybeType' <- traverse (subst h sub) maybeType
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      (rest', sub'') <- substWithMaybeType h sub' rest
+      return (((m, x', t'), maybeType') : rest', sub'')
 
 substVar :: WT.SubstWeakTerm -> Ident -> Ident
 substVar sub x =

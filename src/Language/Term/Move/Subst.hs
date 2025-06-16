@@ -52,11 +52,11 @@ subst h sub term =
           return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi impArgs expArgs t -> do
-      (impArgs', sub') <- substBinder h sub impArgs
+    m :< TM.Pi piKind impArgs expArgs t -> do
+      (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
       (expArgs', sub'') <- substBinder h sub' expArgs
       t' <- subst h sub'' t
-      return (m :< TM.Pi impArgs' expArgs' t')
+      return (m :< TM.Pi piKind impArgs' expArgs' t')
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
       let fvs = S.map Ident.toInt $ TM.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
@@ -66,23 +66,24 @@ subst h sub term =
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
             LK.Fix xt -> do
-              (impArgs', sub') <- substBinder h sub impArgs
+              (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               ([xt'], sub''') <- substBinder h sub'' [xt]
               e' <- subst h sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
             LK.Normal name codType -> do
-              (impArgs', sub') <- substBinder h sub impArgs
+              (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
               (expArgs', sub'') <- substBinder h sub' expArgs
               codType' <- subst h sub'' codType
               e' <- subst h sub'' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
               return (m :< TM.PiIntro lamAttr impArgs' expArgs' e')
-    m :< TM.PiElim b e es -> do
+    m :< TM.PiElim b e impArgs expArgs -> do
       e' <- subst h sub e
-      es' <- mapM (subst h sub) es
-      return (m :< TM.PiElim b e' es')
+      impArgs' <- mapM (subst h sub) impArgs
+      expArgs' <- mapM (subst h sub) expArgs
+      return (m :< TM.PiElim b e' impArgs' expArgs')
     m :< TM.Data attr name es -> do
       es' <- mapM (subst h sub) es
       return $ m :< TM.Data attr name es'
@@ -145,6 +146,23 @@ substBinder h sub binder =
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', sub'') <- substBinder h sub' xts
       return ((m, x', t') : xts', sub'')
+
+substBinderWithMaybeType ::
+  Handle ->
+  SubstTerm ->
+  [(BinderF TM.Term, Maybe TM.Term)] ->
+  IO ([(BinderF TM.Term, Maybe TM.Term)], SubstTerm)
+substBinderWithMaybeType h sub binderList =
+  case binderList of
+    [] -> do
+      return ([], sub)
+    (((m, x, t), maybeType) : xts) -> do
+      t' <- subst h sub t
+      maybeType' <- traverse (subst h sub) maybeType
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      (xts', sub'') <- substBinderWithMaybeType h sub' xts
+      return (((m, x', t'), maybeType') : xts', sub'')
 
 subst' ::
   Handle ->
@@ -278,3 +296,4 @@ substVar sub x =
       x'
     _ ->
       x
+

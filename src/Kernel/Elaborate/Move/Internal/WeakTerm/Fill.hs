@@ -22,6 +22,7 @@ import Language.Common.Rule.LamKind qualified as LK
 import Language.WeakTerm.Move.Reduce qualified as Reduce
 import Language.WeakTerm.Move.Subst qualified as Subst
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.Rule.WeakTerm.ToText (toText)
 import Prelude hiding (lookup)
 
@@ -43,13 +44,13 @@ fill h holeSubst term =
       return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.Pi impArgs expArgs t -> do
-      impArgs' <- fillBinder h holeSubst impArgs
+    m :< WT.Pi piKind impArgs expArgs t -> do
+      impArgs' <- fillBinderWithMaybeType h holeSubst impArgs
       expArgs' <- fillBinder h holeSubst expArgs
       t' <- fill h holeSubst t
-      return $ m :< WT.Pi impArgs' expArgs' t'
+      return $ m :< WT.Pi piKind impArgs' expArgs' t'
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      impArgs' <- fillBinder h holeSubst impArgs
+      impArgs' <- fillBinderWithMaybeType h holeSubst impArgs
       expArgs' <- fillBinder h holeSubst expArgs
       case lamKind of
         LK.Fix xt -> do
@@ -61,7 +62,7 @@ fill h holeSubst term =
           return $ m :< WT.PiIntro attr impArgs' expArgs' e'
     m :< WT.PiElim b e impArgs expArgs -> do
       e' <- fill h holeSubst e
-      impArgs' <- mapM (mapM (fill h holeSubst)) impArgs
+      impArgs' <- ImpArgs.traverseImpArgs (fill h holeSubst) impArgs
       expArgs' <- mapM (fill h holeSubst) expArgs
       return $ m :< WT.PiElim b e' impArgs' expArgs'
     m :< WT.PiElimExact e -> do
@@ -154,6 +155,21 @@ fillBinder h holeSubst binder =
       t' <- fill h holeSubst t
       xts' <- fillBinder h holeSubst xts
       return $ (m, x, t') : xts'
+
+fillBinderWithMaybeType ::
+  Handle ->
+  HoleSubst ->
+  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
+  EIO [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)]
+fillBinderWithMaybeType h holeSubst binderList =
+  case binderList of
+    [] -> do
+      return []
+    ((m, x, t), maybeType) : rest -> do
+      t' <- fill h holeSubst t
+      maybeType' <- traverse (fill h holeSubst) maybeType
+      rest' <- fillBinderWithMaybeType h holeSubst rest
+      return $ ((m, x, t'), maybeType') : rest'
 
 fillLet ::
   Handle ->

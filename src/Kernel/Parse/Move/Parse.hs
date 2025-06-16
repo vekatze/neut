@@ -138,14 +138,14 @@ liftStmtKind h stmtKind = do
             let consName' = Locator.attachCurrentLocator h consName
             (m, consName', isConstLike, consArgs, loc)
       SK.Data name' dataArgs (fmap f consInfo)
-    SK.DataIntro name dataArgs consArgs discriminant -> do
+    SK.DataIntro name dataArgs expConsArgs discriminant -> do
       let name' = Locator.attachCurrentLocator h name
-      SK.DataIntro name' dataArgs consArgs discriminant
+      SK.DataIntro name' dataArgs expConsArgs discriminant
 
 liftRawCons :: Locator.Handle -> RawConsInfo BN.BaseName -> RawConsInfo DD.DefiniteDescription
-liftRawCons h (m, name, isConstLike, consArgs, loc) = do
+liftRawCons h (RawConsInfo {loc, name, expArgs, endLoc}) = do
   let name' = Locator.attachCurrentLocator h name
-  (m, name', isConstLike, consArgs, loc)
+  RawConsInfo {loc, name = name', expArgs, endLoc}
 
 registerTopLevelNames ::
   Handle ->
@@ -173,15 +173,20 @@ saveTopLevelNames h source nameArrowList = do
 registerKeyArg :: Handle -> PostRawStmt -> EIO ()
 registerKeyArg h stmt = do
   case stmt of
-    PostRawStmtDefine _ _ (RT.RawDef {geist}) -> do
+    PostRawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
       let name = fst $ RT.name geist
-      let impArgs = RT.extractArgs $ RT.impArgs geist
-      let expArgs = RT.extractArgs $ RT.expArgs geist
       let isConstLike = RT.isConstLike geist
       let m = RT.loc geist
-      let impKeys = map (\(_, x, _, _, _) -> x) impArgs
-      let expKeys = map (\(_, x, _, _, _) -> x) expArgs
-      KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
+      case stmtKind of
+        SK.DataIntro _ _ expConsArgs _ -> do
+          let expKeys = map (\(_, x, _, _, _) -> x) expConsArgs
+          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys
+        _ -> do
+          let impArgs = RT.extractImpArgs $ RT.impArgs geist
+          let expArgs = RT.extractArgs $ RT.expArgs geist
+          let impKeys = map (\(_, x, _, _, _) -> x) impArgs
+          let expKeys = map (\(_, x, _, _, _) -> x) expArgs
+          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
     PostRawStmtNominal {} -> do
       return ()
     PostRawStmtDefineResource {} -> do
@@ -192,10 +197,15 @@ registerKeyArg h stmt = do
 registerKeyArg' :: Handle -> Stmt -> EIO ()
 registerKeyArg' h stmt = do
   case stmt of
-    StmtDefine isConstLike _ (SavedHint m) name impArgs expArgs _ _ -> do
-      let impKeys = map (\(_, x, _) -> toText x) impArgs
-      let expKeys = map (\(_, x, _) -> toText x) expArgs
-      KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
+      case stmtKind of
+        SK.DataIntro _ _ expConsArgs _ -> do
+          let expKeys = map (\(_, x, _) -> toText x) expConsArgs
+          KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys
+        _ -> do
+          let impKeys = map (\((_, x, _), _) -> toText x) impArgs
+          let expKeys = map (\(_, x, _) -> toText x) expArgs
+          KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
     StmtForeign {} ->
       return ()
 

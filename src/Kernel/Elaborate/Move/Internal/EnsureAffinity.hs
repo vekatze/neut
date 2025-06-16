@@ -31,6 +31,7 @@ import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
+import Language.Common.Rule.PiKind qualified as PK
 import Language.Term.Rule.Term qualified as TM
 import Language.Term.Rule.Term.FreeVarsWithHints (freeVarsWithHints)
 import Language.Term.Rule.Term.Weaken (weaken)
@@ -135,32 +136,35 @@ analyze h term = do
       analyzeVar h m x
     _ :< TM.VarGlobal {} -> do
       return []
-    _ :< TM.Pi impArgs expArgs t -> do
-      (cs1, h') <- analyzeBinder h impArgs
+    _ :< TM.Pi _ impArgs expArgs t -> do
+      let impBinders = map fst impArgs
+      (cs1, h') <- analyzeBinder h impBinders
       (cs2, h'') <- analyzeBinder h' expArgs
       cs3 <- analyze h'' t
       return $ cs1 ++ cs2 ++ cs3
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
-          (cs1, h') <- analyzeBinder h impArgs
+          (cs1, h') <- analyzeBinder h (map fst impArgs)
           (cs2, h'') <- analyzeBinder h' expArgs
           cs3 <- analyze h'' codType
-          let piType = m :< TM.Pi impArgs expArgs codType
+          let impArgsWithDefaults = impArgs
+          let piType = m :< TM.Pi PK.normal impArgsWithDefaults expArgs codType
           liftIO $ insertRelevantVar x h''
           cs4 <- analyze (extendHandle (mx, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
         LK.Normal _ codType -> do
-          (cs1, h') <- analyzeBinder h impArgs
+          (cs1, h') <- analyzeBinder h (map fst impArgs)
           (cs2, h'') <- analyzeBinder h' expArgs
           cs3 <- analyze h'' codType
           cs4 <- analyze h'' e
           return $ cs1 ++ cs2 ++ cs3 ++ cs4
-    _ :< TM.PiElim _ e es -> do
+    _ :< TM.PiElim _ e impArgs expArgs -> do
       cs <- analyze h e
-      css <- mapM (analyze h) es
-      return $ cs ++ concat css
+      css1 <- mapM (analyze h) impArgs
+      css2 <- mapM (analyze h) expArgs
+      return $ cs ++ concat css1 ++ concat css2
     _ :< TM.Data _ _ es -> do
       css <- mapM (analyze $ deactivateExpCheck h) es
       return $ concat css
@@ -390,8 +394,9 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
-    _ :< WT.Pi impArgs expArgs _ -> do
-      return $ impArgs ++ expArgs
+    _ :< WT.Pi _ impArgs expArgs _ -> do
+      let impBinders = map fst impArgs
+      return $ impBinders ++ expArgs
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
 

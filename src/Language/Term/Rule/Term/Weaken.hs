@@ -15,6 +15,7 @@ import Language.Common.Rule.Binder
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.Ident
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.StmtKind
@@ -34,7 +35,7 @@ weakenStmt stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs codType e -> do
       let stmtKind' = weakenStmtKind stmtKind
-      let impArgs' = map weakenBinder impArgs
+      let impArgs' = map (bimap weakenBinder (fmap weaken)) impArgs
       let expArgs' = map weakenBinder expArgs
       let codType' = weaken codType
       let e' = weaken e
@@ -51,18 +52,19 @@ weaken term =
       m :< WT.Var x
     m :< TM.VarGlobal g argNum ->
       m :< WT.VarGlobal g argNum
-    m :< TM.Pi impArgs expArgs t ->
-      m :< WT.Pi (map weakenBinder impArgs) (map weakenBinder expArgs) (weaken t)
+    m :< TM.Pi piKind impArgs expArgs t ->
+      m :< WT.Pi piKind (map (bimap weakenBinder (fmap weaken)) impArgs) (map weakenBinder expArgs) (weaken t)
     m :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = weakenAttr attr
-      let impArgs' = map weakenBinder impArgs
+      let impArgs' = map (bimap weakenBinder (fmap weaken)) impArgs
       let expArgs' = map weakenBinder expArgs
       let e' = weaken e
       m :< WT.PiIntro attr' impArgs' expArgs' e'
-    m :< TM.PiElim b e es -> do
+    m :< TM.PiElim b e impArgs expArgs -> do
       let e' = weaken e
-      let es' = map weaken es
-      m :< WT.PiElim b e' Nothing es'
+      let impArgs' = ImpArgs.FullySpecified $ map weaken impArgs
+      let expArgs' = map weaken expArgs
+      m :< WT.PiElim b e' impArgs' expArgs'
     m :< TM.Data attr name es -> do
       let es' = map weaken es
       m :< WT.Data attr name es'
@@ -205,10 +207,10 @@ weakenStmtKind stmtKind =
       let consArgsList' = map (map weakenBinder) consArgsList
       let consInfoList' = List.zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs consArgs discriminant -> do
+    DataIntro dataName dataArgs expConsArgs discriminant -> do
       let dataArgs' = map weakenBinder dataArgs
-      let consArgs' = map weakenBinder consArgs
-      DataIntro dataName dataArgs' consArgs' discriminant
+      let expConsArgs' = map weakenBinder expConsArgs
+      DataIntro dataName dataArgs' expConsArgs' discriminant
 
 weakenForeign :: F.Foreign -> WT.WeakForeign
 weakenForeign foreignItem@(F.Foreign m _ _ _) =

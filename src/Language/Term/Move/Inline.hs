@@ -80,13 +80,19 @@ inline' h term = do
       return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi impArgs expArgs cod -> do
-      impArgs' <- mapM (inlineBinder h) impArgs
+    m :< TM.Pi piKind impArgs expArgs cod -> do
+      impArgs' <- forM impArgs $ \(binder, maybeType) -> do
+        binder' <- inlineBinder h binder
+        maybeType' <- traverse (inline' h) maybeType
+        return (binder', maybeType')
       expArgs' <- mapM (inlineBinder h) expArgs
       cod' <- inline' h cod
-      return (m :< TM.Pi impArgs' expArgs' cod')
+      return (m :< TM.Pi piKind impArgs' expArgs' cod')
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      impArgs' <- mapM (inlineBinder h) impArgs
+      impArgs' <- forM impArgs $ \(binder, maybeType) -> do
+        binder' <- inlineBinder h binder
+        maybeType' <- traverse (inline' h) maybeType
+        return (binder', maybeType')
       expArgs' <- mapM (inlineBinder h) expArgs
       e' <- inline' h e
       case lamKind of
@@ -96,41 +102,44 @@ inline' h term = do
         LK.Normal mName codType -> do
           codType' <- inline' h codType
           return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Normal mName codType'}) impArgs' expArgs' e')
-    m :< TM.PiElim isNoetic e es -> do
+    m :< TM.PiElim isNoetic e impArgs expArgs -> do
       e' <- inline' h e
-      es' <- mapM (inline' h) es
+      impArgs' <- mapM (inline' h) impArgs
+      expArgs' <- mapM (inline' h) expArgs
       if isNoetic
-        then return $ m :< TM.PiElim isNoetic e' es'
+        then return $ m :< TM.PiElim isNoetic e' impArgs' expArgs'
         else do
           let Handle {dmap} = h
           case e' of
-            (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgs expArgs body)
-              | xts <- impArgs ++ expArgs,
-                length xts == length es' -> do
-                  if all TM.isValue es'
+            (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgsBinder expArgsBinder body)
+              | xts <- map fst impArgsBinder ++ expArgsBinder,
+                length xts == length (impArgs' ++ expArgs') -> do
+                  let allArgs = impArgs' ++ expArgs'
+                  if all TM.isValue allArgs
                     then do
                       let (_, xs, _) = unzip3 xts
-                      let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
+                      let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
                       _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                       inline' h $ m :< body'
                     else do
                       (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
-                      inline' h $ bind (zip xts' es') (m :< body')
+                      inline' h $ bind (zip xts' allArgs) (m :< body')
             (_ :< TM.VarGlobal _ dd)
               | Just (xts, body) <- Map.lookup dd dmap -> do
-                  if all TM.isValue es'
+                  let allArgs = impArgs' ++ expArgs'
+                  if all TM.isValue allArgs
                     then do
                       let (_, xs, _) = unzip3 xts
-                      let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
+                      let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
                       _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
                       body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                       inline' h body''
                     else do
                       (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
                       body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                      inline' h $ bind (zip xts' es') body''
+                      inline' h $ bind (zip xts' allArgs) body''
             _ ->
-              return (m :< TM.PiElim isNoetic e' es')
+              return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
     m :< TM.Data attr name es -> do
       es' <- mapM (inline' h) es
       return $ m :< TM.Data attr name es'

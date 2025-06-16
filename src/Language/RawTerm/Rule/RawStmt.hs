@@ -6,7 +6,7 @@ module Language.RawTerm.Rule.RawStmt
     PostRawStmt (..),
     PostRawProgram (..),
     RawStmtKind,
-    RawConsInfo,
+    RawConsInfo (..),
     RawImport (..),
     RawImportItem (..),
     getPostRawStmtName,
@@ -18,19 +18,18 @@ module Language.RawTerm.Rule.RawStmt
   )
 where
 
-import Logger.Rule.Hint
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 import Data.Text qualified as T
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as F
-import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawTerm qualified as RT
+import Logger.Rule.Hint
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 
 data BaseRawProgram a
   = RawProgram Hint [(RawImport, C)] [(BaseRawStmt a, C)]
@@ -38,11 +37,13 @@ data BaseRawProgram a
 type RawProgram =
   BaseRawProgram BN.BaseName
 
--- type PostRawProgram =
---   BaseRawProgram DD.DefiniteDescription
-
-type RawConsInfo a =
-  (Hint, a, IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
+data RawConsInfo a
+  = RawConsInfo
+  { loc :: Hint,
+    name :: a,
+    expArgs :: Maybe (SE.Series (RawBinder RT.RawTerm)),
+    endLoc :: Loc
+  }
 
 type RawStmtKind a =
   SK.BaseStmtKind a (RawBinder RT.RawTerm) ()
@@ -75,8 +76,6 @@ type RawStmt =
 data RawImport
   = RawImport C Hint (SE.Series RawImportItem) Loc
 
--- type PostRawStmt =
---   BaseRawStmt DD.DefiniteDescription
 data PostRawProgram
   = PostRawProgram Hint [(RawImport, C)] [PostRawStmt]
 

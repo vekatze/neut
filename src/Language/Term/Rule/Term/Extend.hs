@@ -28,18 +28,19 @@ extend term =
       _m :< TM.Var x
     _ :< TM.VarGlobal g argNum ->
       _m :< TM.VarGlobal g argNum
-    _ :< TM.Pi impArgs expArgs t ->
-      _m :< TM.Pi (map extendBinder impArgs) (map extendBinder expArgs) (extend t)
+    _ :< TM.Pi piKind impArgs expArgs t ->
+      _m :< TM.Pi piKind (map (bimap extendBinder (fmap extend)) impArgs) (map extendBinder expArgs) (extend t)
     _ :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = extendAttr attr
-      let impArgs' = map extendBinder impArgs
+      let impArgs' = map (bimap extendBinder (fmap extend)) impArgs
       let expArgs' = map extendBinder expArgs
       let e' = extend e
       _m :< TM.PiIntro attr' impArgs' expArgs' e'
-    _ :< TM.PiElim b e es -> do
+    _ :< TM.PiElim b e impArgs expArgs -> do
       let e' = extend e
-      let es' = map extend es
-      _m :< TM.PiElim b e' es'
+      let impArgs' = map extend impArgs
+      let expArgs' = map extend expArgs
+      _m :< TM.PiElim b e' impArgs' expArgs'
     _ :< TM.Data attr name es -> do
       let es' = map extend es
       _m :< TM.Data attr name es'
@@ -164,7 +165,7 @@ extendStmtKind stmtKind =
       let consArgsList' = map (map extendBinder) consArgsList
       let consInfoList' = zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs consArgs discriminant -> do
+    DataIntro dataName dataArgs expConsArgs discriminant -> do
       let dataArgs' = map extendBinder dataArgs
-      let consArgs' = map extendBinder consArgs
-      DataIntro dataName dataArgs' consArgs' discriminant
+      let expConsArgs' = map extendBinder expConsArgs
+      DataIntro dataName dataArgs' expConsArgs' discriminant
