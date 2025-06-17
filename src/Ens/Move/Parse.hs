@@ -7,25 +7,25 @@ where
 import CodeParser.Move.GetInfo
 import CodeParser.Move.Parse
 import CodeParser.Rule.Parser qualified as P
-import Ens.Rule.Ens qualified as E
-import Error.Move.Run (raiseError)
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint
-import Path.Move.Read (readText)
-import SyntaxTree.Move.ParseSeries
-import SyntaxTree.Rule.C
-import SyntaxTree.Rule.Series qualified as SE
 import Control.Comonad.Cofree
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Ens.Rule.Ens qualified as E
+import Error.Move.Run (raiseError)
+import Error.Rule.EIO (EIO)
+import Logger.Rule.Hint
 import Path
+import Path.Move.Read (readTextFromPath)
+import SyntaxTree.Move.ParseSeries
+import SyntaxTree.Rule.C
+import SyntaxTree.Rule.Series qualified as SE
 import Text.Megaparsec hiding (runParser)
 import Text.Read (readMaybe)
 
 fromFilePath :: Path Abs File -> EIO (C, (E.Ens, C))
 fromFilePath path = do
-  fileContent <- liftIO $ readText path
+  fileContent <- readTextFromPath path
   fromFilePath' path fileContent
 
 fromFilePath' :: Path Abs File -> T.Text -> EIO (C, (E.Ens, C))

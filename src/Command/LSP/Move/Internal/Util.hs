@@ -7,18 +7,11 @@ module Command.LSP.Move.Internal.Util
 where
 
 import CodeParser.Rule.Parser (nonSymbolCharSet)
-import Error.Move.Run (runEIO)
-import Error.Rule.EIO (EIO)
-import Error.Rule.Error qualified as E
-import Logger.Rule.Hint
-import Logger.Rule.Log
-import Logger.Rule.Log qualified as L
-import Logger.Rule.LogLevel
-import Path.Move.Read (readText)
 import Command.LSP.Rule.Lsp
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Except (runExceptT)
 import Data.Aeson.Types qualified as A
 import Data.Function (on)
 import Data.List (sortBy, sortOn)
@@ -26,13 +19,21 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Move.Run (runEIO)
+import Error.Rule.EIO (EIO)
+import Error.Rule.Error qualified as E
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Language.LSP.Diagnostics (partitionBySource)
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
+import Logger.Rule.Hint
+import Logger.Rule.Log
+import Logger.Rule.Log qualified as L
+import Logger.Rule.LogLevel
 import Path
+import Path.Move.Read (readTextFromPath)
 
 run :: Global.Handle -> EIO a -> Lsp b (Maybe a)
 run h comp = do
@@ -86,8 +87,12 @@ updateCol uri diags = do
       return []
     Just path -> do
       let diags' = sortOn (\diag -> diag ^. J.range . J.start) diags
-      content <- readText path
-      return $ updateCol' (zip [0 ..] $ T.lines content) diags'
+      contentOrError <- runExceptT $ readTextFromPath path
+      case contentOrError of
+        Left _ ->
+          return []
+        Right content ->
+          return $ updateCol' (zip [0 ..] $ T.lines content) diags'
 
 updateCol' :: [(Int, T.Text)] -> [Diagnostic] -> [Diagnostic]
 updateCol' sourceLines diags =

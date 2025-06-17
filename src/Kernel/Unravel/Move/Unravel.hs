@@ -10,12 +10,6 @@ module Kernel.Unravel.Move.Unravel
 where
 
 import CodeParser.Move.Parse (runParser)
-import Error.Move.Run (raiseError, raiseError')
-import Error.Rule.EIO (EIO)
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Hint
-import Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
-import Path.Move.Read (readText)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
@@ -24,6 +18,8 @@ import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Text qualified as T
 import Data.Time
+import Error.Move.Run (raiseError, raiseError')
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.CreateLocalHandle qualified as Local
 import Kernel.Common.Move.Handle.Global.Antecedent qualified as Antecedent
@@ -44,8 +40,12 @@ import Kernel.Parse.Move.Internal.Import qualified as Import
 import Kernel.Parse.Move.Internal.Program (parseImport)
 import Kernel.Unravel.Rule.VisitInfo qualified as VI
 import Language.Common.Rule.ModuleID qualified as MID
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Hint
 import Path
 import Path.IO
+import Path.Move.EnsureFileExistence (ensureFileExistence, ensureFileExistence')
+import Path.Move.Read (readTextFromPath)
 
 type CacheTime =
   Maybe UTCTime
@@ -348,7 +348,7 @@ parseSourceHeader :: Handle -> Local.Handle -> Source.Source -> EIO [ImportItem]
 parseSourceHeader h localHandle currentSource = do
   ensureSourceExistence currentSource
   let filePath = Source.sourceFilePath currentSource
-  fileContent <- liftIO $ readText filePath
+  fileContent <- readTextFromPath filePath
   (_, importList) <- runParser filePath fileContent False parseImport
   let m = newSourceHint filePath
   let importHandle = Import.new (globalHandle h) localHandle
