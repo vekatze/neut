@@ -8,10 +8,6 @@ module Kernel.Common.Move.Handle.Local.Locator
   )
 where
 
-import Error.Move.Run (raiseError, raiseError')
-import Error.Rule.EIO (EIO)
-import Logger.Rule.Hint
-import Path.Move.Read (readText)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils qualified as ListUtils
@@ -19,6 +15,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
+import Error.Move.Run (raiseError, raiseError')
+import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Rule.AliasInfo (MustUpdateTag)
 import Kernel.Common.Rule.GlobalName qualified as GN
@@ -34,8 +32,10 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
+import Logger.Rule.Hint
 import Path
 import Path.IO
+import Path.Move.Read (readTextFromPath)
 
 new :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
 new _envHandle _tagHandle source = do
@@ -85,7 +85,7 @@ activateStaticFile h m key path = do
   b <- doesFileExist path
   if b
     then do
-      content <- liftIO $ readText path
+      content <- readTextFromPath path
       liftIO $ modifyIORef' (_activeStaticFileListRef h) $ Map.insert key (path, content)
     else
       raiseError m $

@@ -5,17 +5,17 @@ module Kernel.Load.Move.Load
   )
 where
 
+import Data.Text qualified as T
 import Error.Move.Run (forP)
 import Error.Rule.EIO (EIO)
-import Logger.Move.Debug qualified as Logger
-import Logger.Rule.Handle qualified as Logger
-import Path.Move.Read (readText)
-import Data.Text qualified as T
 import Kernel.Common.Move.CreateGlobalHandle qualified as Global
 import Kernel.Common.Move.ManageCache qualified as Cache
 import Kernel.Common.Rule.Cache qualified as Cache
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Common.Rule.Target
+import Logger.Move.Debug qualified as Logger
+import Logger.Rule.Handle qualified as Logger
+import Path.Move.Read (readTextFromPath)
 import UnliftIO (MonadIO (liftIO))
 
 data Handle = Handle
@@ -42,4 +42,4 @@ _load h t source = do
     Just cache -> do
       return $ Left cache
     Nothing -> do
-      fmap Right $ liftIO . readText $ Source.sourceFilePath source
+      fmap Right $ readTextFromPath $ Source.sourceFilePath source
