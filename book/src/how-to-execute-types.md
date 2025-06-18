@@ -42,7 +42,7 @@ A value `v` of type `item` can be discarded as follows:
 free(v)
 ```
 
-The `v` can be copied as follows:
+The value `v` can be copied as follows:
 
 ```neut
 // copy `v`, keeping the original `v` intact

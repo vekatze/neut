@@ -3,7 +3,7 @@
 You can improve this book, this language, or this world by:
 
 - Writing libraries or executables
-- Opening PRs to fix typos, grammatical errors, or whatever in this book
+- Opening PRs to fix typos, grammatical errors, or other issues in this book
 - Finding bugs and reporting them on GitHub, hopefully with PRs
 - Sharing the language on SNS
 - Starring the [repository](https://github.com/vekatze/neut)
