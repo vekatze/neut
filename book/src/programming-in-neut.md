@@ -347,7 +347,7 @@ define foo(): unit {
 
 `attach` receives a term of type `thread(t)` and returns a term of type `t`. Internally, `attach` waits for a given thread to finish and extracts its result.
 
-## Miscs
+## Miscellaneous
 
 ### `nominal`
 
@@ -444,7 +444,7 @@ The type of `assert ".." { .. }` is `unit`.
 
 If you pass `--mode release` to `neut build`, `assert` does nothing.
 
-### Misc
+### Miscellaneous
 
 - Additional syntactic sugar is also available. For more, please see the [language reference](./terms.md#syntactic-sugar).
-- If you want to call foreign functions (FFI), please see the [here](statements.md#foreign).
+- If you want to call foreign functions (FFI), please see [here](statements.md#foreign).

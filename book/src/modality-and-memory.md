@@ -17,7 +17,7 @@ Below, we’ll first introduce the concept of layers, and then see how to use `m
 
 ### Layers and Variables
 
-Every term in Neut has an integer called layer. Conceptually, a layer can be seen as the level at which a piece of data  lives.
+Every term in Neut has an integer called layer. Conceptually, a layer can be seen as the level at which a piece of data lives.
 
 The body of a `define` starts at layer 0:
 

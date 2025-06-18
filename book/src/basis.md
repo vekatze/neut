@@ -5,7 +5,7 @@
 - [On Executing Types](./basis.md#on-executing-types)
 - [Allocation Canceling](./basis.md#allocation-canceling)
 - [Name Resolution](./basis.md#name-resolution)
-- [Leading Bars and Trailing Commas](./basis.html#leading-bars-and-trailing-commas)
+- [Leading Bars and Trailing Commas](./basis.md#leading-bars-and-trailing-commas)
 - [Compiler Configuration](./basis.md#compiler-configuration)
 - [Other Basic Facts](./basis.md#other-basic-facts)
 
@@ -275,7 +275,7 @@ jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
 
 Thus, the resulting assembly file contains symbols like the above.
 
-## Trailing Commas and Leading Bars
+## Leading Bars and Trailing Commas
 
 ### Comma-Separated Sequences (And-Sequences)
 

@@ -47,14 +47,14 @@ Suppose that your module has the following `target` in `module.ens`:
       main "foo.nt",
     },
     bar {
-      main "item/whatever.nt"
+      main "item/yo.nt"
     },
   },
   // ..
 }
 ```
 
-In this case, your module has two targets: `foo` and `bar`. The entry point of `foo` is the `main` function in `(source-dir)/foo.nt`. The entry point of `bar` is the `main` function in `(source-dir)/item/whatever.nt`.
+In this case, your module has two targets: `foo` and `bar`. The entry point of `foo` is the `main` function in `(source-dir)/foo.nt`. The entry point of `bar` is the `main` function in `(source-dir)/item/yo.nt`.
 
 The names in `target` can be specified when running `neut build`. For example, given the above definition of `target`, you can run `neut build foo`.
 
@@ -129,7 +129,7 @@ You can add `build-option` to a target as follows:
       // ↓ here
       build-option [
         "$(pkg-config openssl --libs --cflags)",
-        "whatever",
+        // ...
       ],
     },
   },

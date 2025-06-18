@@ -185,7 +185,7 @@ You can extract a resulting tarball to see that `antecedent` information is inde
 
 <div class="info-block">
 
-The `module.ens` in your module isn't modified by `archive`. This subcommand creates a new `module.ens` and put it into the tarball.
+The `module.ens` in your module isn't modified by `archive`. This subcommand creates a new `module.ens` and puts it into the tarball.
 
 </div>
 
@@ -290,7 +290,7 @@ The `mirror` is a list of URLs that can be used to obtain the tarball.
 
 <div class="info-block">
 
-Modules in Neut are distinguished by their digests.
+Modules in Neut are distinguished by their digests (checksums).
 
 </div>
 
@@ -318,7 +318,7 @@ When the option `--minimize-imports` is set, `format-source` removes all the unu
 
 ### `--in-place`
 
-When the option `--in-place` is set, `format-source` performs in-place update.
+When the option `--in-place` is set, `format-ens` performs in-place update.
 
 ## `neut zen`
 

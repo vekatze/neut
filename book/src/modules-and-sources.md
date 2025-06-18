@@ -128,7 +128,7 @@ You should be able to see that the result changes accordingly.
 
 ### Defining Functions
 
-Of course, you can define a function:
+You can also define your own functions:
 
 ```neut
 // sample.nt
@@ -146,7 +146,7 @@ define main(): unit {
 }
 ```
 
-A function can take arguments. Let's rewrite `sample.nt` as follows:
+Functions can also take arguments. Let's rewrite `sample.nt` as follows:
 
 ```neut
 // sample.nt

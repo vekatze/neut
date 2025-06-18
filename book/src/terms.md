@@ -51,7 +51,7 @@
 - [make-channel](#make-channel)
 - [make-cell](#make-cell)
 
-### Miscs
+### Miscellaneous
 
 - [quote](#quote)
 - [magic](#magic)
@@ -402,7 +402,7 @@ The same as LLVM floats.
 
 ### Type
 
-The type of an integer is unknown in itself. It must be inferred to be one of the following types:
+The type of a float is unknown in itself. It must be inferred to be one of the following types:
 
 - `float16`
 - `float32`
@@ -2447,7 +2447,7 @@ define use-some-file(): unit {
 include-text(key)
 ```
 
-### Sematics
+### Semantics
 
 The compiler expands `include-text(foo)` into the content of `foo` at compile time.
 
@@ -2483,7 +2483,7 @@ define my-complex-function(): unit {
 admit
 ```
 
-### Sematics
+### Semantics
 
 Evaluating `admit` will exit the program, displaying a message like the following:
 

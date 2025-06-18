@@ -261,7 +261,7 @@ define use-length(xs: list(int)): unit {
 }
 ```
 
-The code doesn't copy `xs` anymore, as you can see from the fact that it doesn't contain `!`.
+The code doesn't copy `xs` anymore, as you can see from the fact that it no longer contains `!`.
 
 ### Using a Noema: Embodying
 
