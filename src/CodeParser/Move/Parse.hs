@@ -10,13 +10,13 @@ module CodeParser.Move.Parse
 where
 
 import CodeParser.Rule.Parser
-import Error.Rule.EIO (EIO)
-import SyntaxTree.Rule.C
 import Control.Monad
 import Control.Monad.Error.Class (MonadError (throwError))
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Error.Rule.EIO (EIO)
 import Path
+import SyntaxTree.Rule.C
 import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L
@@ -43,18 +43,34 @@ skipSpace :: Parser ()
 skipSpace =
   L.space asciiSpaceOrNewLine1 empty empty
 
-comment :: Parser T.Text
-comment = do
-  skipSpace
+skipSpaceWithoutNewline :: Parser ()
+skipSpaceWithoutNewline =
+  void $ takeWhileP (Just "space") (== ' ')
+
+comment :: CommentType -> Parser Comment
+comment commentType = do
   chunk "//"
-  takeWhileP (Just "character") (/= '\n')
+  text <- takeWhileP (Just "character") (/= '\n')
+  return $ Comment commentType text
+
+lineComment :: Parser Comment
+lineComment = do
+  skipSpace
+  comment LineComment
 
 {-# INLINE spaceConsumer #-}
 spaceConsumer :: Parser C
 spaceConsumer =
   hidden $ do
+    skipSpaceWithoutNewline
+    maybeInlineComment <- optional (comment InlineComment)
     skipSpace
-    many (comment <* skipSpace)
+    lineComments <- many (lineComment <* skipSpace)
+    case maybeInlineComment of
+      Nothing ->
+        return lineComments
+      Just ic ->
+        return (ic : lineComments)
 
 {-# INLINE asciiSpaceOrNewLine1 #-}
 asciiSpaceOrNewLine1 :: Parser ()
