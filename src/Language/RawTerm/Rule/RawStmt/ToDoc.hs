@@ -19,6 +19,7 @@ import Logger.Rule.Hint
 import PrettyPrinter.Rule.Doc qualified as D
 import PrettyPrinter.Rule.Piece qualified as PI
 import SyntaxTree.Rule.C
+import SyntaxTree.Rule.C.ToDoc qualified as C
 import SyntaxTree.Rule.Series (Series (hasOptionalSeparator))
 import SyntaxTree.Rule.Series qualified as SE
 import SyntaxTree.Rule.Series.ToDoc qualified as SE
@@ -41,17 +42,17 @@ decTopDocList :: C -> [(Maybe D.Doc, C)] -> D.Doc
 decTopDocList c docList =
   case docList of
     [] ->
-      RT.attachComment c D.Nil
+      attachStmtComment c D.Nil
     [(Nothing, c')] ->
-      RT.attachComment (c ++ c') D.Nil
+      attachStmtComment (c ++ c') D.Nil
     [(Just doc, c')] ->
       if null c'
-        then RT.attachComment c $ D.join [doc, D.line]
-        else RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' []]
+        then attachStmtComment c $ D.join [doc, D.line]
+        else attachStmtComment c $ D.join [doc, D.line, D.line, decTopDocList c' []]
     (Nothing, c') : rest ->
       decTopDocList (c ++ c') rest
     (Just doc, c') : rest -> do
-      RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
+      attachStmtComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
 decImport :: ImportInfo -> RawImport -> Maybe D.Doc
 decImport importInfo importStmt = do
@@ -65,7 +66,7 @@ decImport importInfo importStmt = do
         then Nothing
         else do
           return $
-            RT.attachComment c $
+            attachStmtComment c $
               D.join
                 [ D.text "import ",
                   SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
@@ -189,7 +190,7 @@ decStmt stmt =
         _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
-      RT.attachComment (c1 ++ c2) $
+      attachStmtComment (c1 ++ c2) $
         D.join
           [ D.text "data ",
             D.text (BN.reify dataName),
@@ -207,21 +208,21 @@ decStmt stmt =
                 separator = SE.Comma,
                 hasOptionalSeparator = True
               }
-      RT.attachComment (c1 ++ c2) $
+      attachStmtComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
             PI.horizontal $ D.text (BN.reify name),
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]
     RawStmtNominal c _ geistList -> do
-      RT.attachComment c $
+      attachStmtComment c $
         D.join
           [ D.text "nominal ",
             SE.decode $ fmap (decTopGeist . fst) geistList
           ]
     RawStmtForeign c foreignList -> do
       let foreignList' = SE.decode $ fmap decForeignItem foreignList
-      RT.attachComment c $
+      attachStmtComment c $
         D.join
           [ D.text "foreign ",
             foreignList'
@@ -254,3 +255,7 @@ decConsInfo (RawConsInfo {name = consName, expArgs}) = do
 decTopGeist :: RT.TopGeist -> D.Doc
 decTopGeist = do
   RT.decGeist (D.text . BN.reify)
+
+attachStmtComment :: C -> D.Doc -> D.Doc
+attachStmtComment c doc =
+  D.join [C.asStmtPrefix c, doc]

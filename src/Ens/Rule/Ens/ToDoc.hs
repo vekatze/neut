@@ -40,4 +40,4 @@ dictItemToDoc (k, v) =
 
 commentToDoc :: C -> [D.Doc]
 commentToDoc c = do
-  foldr (\com acc -> [D.line, D.text "//", D.text com] ++ acc) [] c
+  foldr (\com acc -> [D.line, D.text "//", D.text (commentText com)] ++ acc) [] c

@@ -540,6 +540,8 @@ isMultiLine docList =
           isMultiLine $ next : rest
         D.Line {} ->
           True
+        D.InlineComment {} ->
+          True
 
 decPiElimKey :: SE.Series (Hint, Key, C, C, RawTerm) -> D.Doc
 decPiElimKey kvs = do
