@@ -48,29 +48,26 @@ new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> Handle
 new gensymHandle linearizeHandle utilityHandle = do
   Handle {..}
 
-defaultTag :: C.Value
-defaultTag = C.Int (IntSize 64) 42
-
 registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
   Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $
-    ResourceSpec {discard = immediateT, copy = immediate4, tag = defaultTag}
+    ResourceSpec {discard = immediateT, copy = immediate4, tag = makeTag Immediate}
 
 registerImmediateTypeS4 :: Handle -> IO ()
 registerImmediateTypeS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
   Utility.registerSwitcher (utilityHandle h) O.Clear DD.immType $
-    ResourceSpec {discard = immediateT, copy = immediate4, tag = defaultTag}
+    ResourceSpec {discard = immediateT, copy = immediate4, tag = makeTag Type}
 
 registerImmediateEnumS4 :: Handle -> IO ()
 registerImmediateEnumS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
   Utility.registerSwitcher (utilityHandle h) O.Clear DD.immEnum $
-    ResourceSpec {discard = immediateT, copy = immediate4, tag = defaultTag}
+    ResourceSpec {discard = immediateT, copy = immediate4, tag = makeTag Enum}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -80,6 +77,7 @@ registerClosureS4 h = do
     DD.cls
     O.Clear
     [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
+    (makeTag Pi)
 
 returnImmediateS4 :: C.Comp
 returnImmediateS4 = do
@@ -114,13 +112,14 @@ registerSigmaS4 ::
   DD.DefiniteDescription ->
   O.Opacity ->
   [Either C.Comp (Ident, C.Comp)] ->
+  C.Value ->
   IO ()
-registerSigmaS4 h name opacity mxts = do
-  Utility.registerSwitcher (utilityHandle h) opacity name $ makeSigmaResourceSpec h mxts
+registerSigmaS4 h name opacity mxts tag = do
+  Utility.registerSwitcher (utilityHandle h) opacity name $ makeSigmaResourceSpec h mxts tag
 
-makeSigmaResourceSpec :: Handle -> [Either C.Comp (Ident, C.Comp)] -> ResourceSpec
-makeSigmaResourceSpec h mxts =
-  ResourceSpec {discard = sigmaT h mxts, copy = sigma4 h mxts, tag = defaultTag}
+makeSigmaResourceSpec :: Handle -> [Either C.Comp (Ident, C.Comp)] -> C.Value -> ResourceSpec
+makeSigmaResourceSpec h mxts tag =
+  ResourceSpec {discard = sigmaT h mxts, copy = sigma4 h mxts, tag = tag}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -200,7 +199,7 @@ closureEnvS4 h locatorHandle mxts =
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
       let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
-      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name $ makeSigmaResourceSpec h mxts
+      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name $ makeSigmaResourceSpec h mxts (makeTag Opaque)
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
@@ -213,7 +212,7 @@ returnSigmaDataS4 h dataName opacity dataInfo = do
   let discard = sigmaDataT h dataInfo
   let copy = sigmaData4 h dataInfo
   let dataName' = DD.getFormDD dataName
-  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {discard, copy, tag = defaultTag}
+  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {discard, copy, tag = makeTag Algebraic}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
@@ -256,3 +255,34 @@ sigmaBinderT h xts v = do
 discriminantToEnumCase :: D.Discriminant -> EC.EnumCase
 discriminantToEnumCase discriminant =
   EC.Int (D.reify discriminant)
+
+data TypeTag
+  = Immediate
+  | Type
+  | Pi
+  | Algebraic
+  | Enum
+  | Binary
+  | Vector
+  | Opaque
+
+makeTag :: TypeTag -> C.Value
+makeTag tag = do
+  C.Int (IntSize 64) $
+    case tag of
+      Immediate ->
+        0
+      Type ->
+        1
+      Pi ->
+        2
+      Algebraic ->
+        3
+      Enum ->
+        4
+      Binary ->
+        5
+      Vector ->
+        6
+      Opaque ->
+        7
