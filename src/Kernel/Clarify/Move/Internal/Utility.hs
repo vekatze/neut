@@ -1,5 +1,6 @@
 module Kernel.Clarify.Move.Internal.Utility
   ( Handle,
+    ResourceSpec (..),
     new,
     toAffineApp,
     toRelevantApp,
@@ -82,15 +83,21 @@ makeSwitcher h compAff compRel = do
   enumElim <- getEnumElim h [argVarName] switchVar rel [(EC.Int 0, aff)]
   return ([switchVarName, argVarName], enumElim)
 
+data ResourceSpec
+  = ResourceSpec
+  { discard :: C.Value -> IO C.Comp,
+    copy :: C.Value -> IO C.Comp
+  }
+
 registerSwitcher ::
   Handle ->
   O.Opacity ->
   DD.DefiniteDescription ->
-  (C.Value -> IO C.Comp) ->
-  (C.Value -> IO C.Comp) ->
+  ResourceSpec ->
   IO ()
-registerSwitcher h opacity name aff rel = do
-  (args, e) <- makeSwitcher h aff rel
+registerSwitcher h opacity name resourceSpec = do
+  let ResourceSpec {discard, copy} = resourceSpec
+  (args, e) <- makeSwitcher h discard copy
   AuxEnv.insert (auxEnvHandle h) name (opacity, args, e)
 
 getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> IO C.Comp

@@ -20,6 +20,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Gensym.Move.Gensym qualified as Gensym
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
+import Kernel.Clarify.Move.Internal.Utility (ResourceSpec (ResourceSpec))
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
@@ -50,19 +51,22 @@ registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm immediateT immediate4
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $
+    ResourceSpec {discard = immediateT, copy = immediate4}
 
 registerImmediateTypeS4 :: Handle -> IO ()
 registerImmediateTypeS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immType immediateT immediate4
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immType $
+    ResourceSpec {discard = immediateT, copy = immediate4}
 
 registerImmediateEnumS4 :: Handle -> IO ()
 registerImmediateEnumS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immEnum immediateT immediate4
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immEnum $
+    ResourceSpec {discard = immediateT, copy = immediate4}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -108,7 +112,11 @@ registerSigmaS4 ::
   [Either C.Comp (Ident, C.Comp)] ->
   IO ()
 registerSigmaS4 h name opacity mxts = do
-  Utility.registerSwitcher (utilityHandle h) opacity name (sigmaT h mxts) (sigma4 h mxts)
+  Utility.registerSwitcher (utilityHandle h) opacity name $ makeSigmaResourceSpec h mxts
+
+makeSigmaResourceSpec :: Handle -> [Either C.Comp (Ident, C.Comp)] -> ResourceSpec
+makeSigmaResourceSpec h mxts =
+  ResourceSpec {discard = sigmaT h mxts, copy = sigma4 h mxts}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -188,7 +196,7 @@ closureEnvS4 h locatorHandle mxts =
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
       let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
-      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name (sigmaT h mxts) (sigma4 h mxts)
+      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name $ makeSigmaResourceSpec h mxts
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
@@ -198,10 +206,10 @@ returnSigmaDataS4 ::
   [(D.Discriminant, [(Ident, C.Comp)])] ->
   IO C.Comp
 returnSigmaDataS4 h dataName opacity dataInfo = do
-  let aff = sigmaDataT h dataInfo
-  let rel = sigmaData4 h dataInfo
+  let discard = sigmaDataT h dataInfo
+  let copy = sigmaData4 h dataInfo
   let dataName' = DD.getFormDD dataName
-  Utility.registerSwitcher (utilityHandle h) opacity dataName' aff rel
+  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {discard, copy}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
