@@ -96,8 +96,8 @@ weaken term =
       m :< WT.Prim (weakenPrim prim)
     m :< TM.Magic magic -> do
       m :< WT.Magic (weakenMagic m magic)
-    m :< TM.Resource dd resourceID unitType discarder copier -> do
-      m :< WT.Resource dd resourceID (weaken unitType) (weaken discarder) (weaken copier)
+    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
+      m :< WT.Resource dd resourceID (weaken unitType) (weaken discarder) (weaken copier) (weaken typeTag)
     m :< TM.Void ->
       m :< WT.Void
 

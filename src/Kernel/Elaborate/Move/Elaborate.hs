@@ -368,11 +368,12 @@ elaborate' h term =
           let typeRemark = L.newLog m remarkLevel message
           liftIO $ LocalLogs.insert (localLogsHandle h) typeRemark
           return e'
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
+    m :< WT.Resource dd resourceID unitType discarder copier typeTag -> do
       unitType' <- elaborate' h unitType
       discarder' <- elaborate' h discarder
       copier' <- elaborate' h copier
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
+      typeTag' <- elaborate' h typeTag
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
     m :< WT.Void ->
       return $ m :< TM.Void
 

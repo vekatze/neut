@@ -225,11 +225,12 @@ analyze h term = do
           cs2 <- analyze h arg1
           cs3 <- analyze h arg2
           return $ cs1 ++ cs2 ++ cs3
-    _ :< TM.Resource _ _ unitType discarder copier -> do
+    _ :< TM.Resource _ _ unitType discarder copier typeTag -> do
       cs1 <- analyze h unitType
       cs2 <- analyze h discarder
       cs3 <- analyze h copier
-      return $ cs1 ++ cs2 ++ cs3
+      cs4 <- analyze h typeTag
+      return $ cs1 ++ cs2 ++ cs3 ++ cs4
     _ :< TM.Void ->
       return []
 

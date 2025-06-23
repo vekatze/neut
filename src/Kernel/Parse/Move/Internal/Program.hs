@@ -195,7 +195,7 @@ parseResource h = do
   (name, c2) <- baseName
   (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
-    [discarder, copier] -> do
-      return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
+    [discarder, copier, typeTag] -> do
+      return (RawStmtDefineResource c1 m (name, c2) discarder copier typeTag (SE.trailingComment handlers), c)
     _ ->
-      failure Nothing (S.fromList [asLabel "discarder and copier"])
+      failure Nothing (S.fromList [asLabel "discarder, copier, and type-tag"])

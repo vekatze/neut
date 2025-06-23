@@ -131,8 +131,8 @@ eq (_ :< term1) (_ :< term2)
   | WT.Annotation _ _ e1 <- term1,
     WT.Annotation _ _ e2 <- term2 =
       eq e1 e2
-  | WT.Resource _ id1 _ _ _ <- term1,
-    WT.Resource _ id2 _ _ _ <- term2 =
+  | WT.Resource _ id1 _ _ _ _ <- term1,
+    WT.Resource _ id2 _ _ _ _ <- term2 =
       id1 == id2
   | WT.Void <- term1,
     WT.Void <- term2 =

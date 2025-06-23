@@ -74,8 +74,8 @@ extend term =
       _m :< TM.Prim (extendPrim prim)
     _ :< TM.Magic der -> do
       _m :< TM.Magic (fmap extend der)
-    _ :< TM.Resource dd resourceID unitType discarder copier -> do
-      _m :< TM.Resource dd resourceID (extend unitType) (extend discarder) (extend copier)
+    _ :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
+      _m :< TM.Resource dd resourceID (extend unitType) (extend discarder) (extend copier) (extend typeTag)
     _ :< TM.Void ->
       _m :< TM.Void
 

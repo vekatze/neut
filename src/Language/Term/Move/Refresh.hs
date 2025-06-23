@@ -98,11 +98,12 @@ refresh h term =
     m :< TM.Magic der -> do
       der' <- traverse (refresh h) der
       return (m :< TM.Magic der')
-    m :< TM.Resource dd resourceID unitType discarder copier -> do
+    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
       unitType' <- refresh h unitType
       discarder' <- refresh h discarder
       copier' <- refresh h copier
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
+      typeTag' <- refresh h typeTag
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
     _ :< TM.Void ->
       return term
 

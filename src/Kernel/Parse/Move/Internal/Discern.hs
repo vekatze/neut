@@ -116,10 +116,10 @@ discernStmt h stmt = do
       liftIO $ forM_ (map fst impArgs') $ Tag.insertBinder (H.tagHandle h)
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
-    PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) _ -> do
+    PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) (_, typeTag) _ -> do
       registerTopLevelName h stmt
       t' <- discern h $ m :< RT.Tau
-      e' <- discern h $ m :< RT.Resource dd [] (discarder, []) (copier, [])
+      e' <- discern h $ m :< RT.Resource dd [] (discarder, []) (copier, []) (typeTag, [])
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
@@ -420,12 +420,13 @@ discern h term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Resource dd _ (discarder, _) (copier, _) -> do
+    m :< RT.Resource dd _ (discarder, _) (copier, _) (typeTag, _) -> do
       unitType <- liftEither (locatorToVarGlobal m coreUnit) >>= discern h
       resourceID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       discarder' <- discern h discarder
       copier' <- discern h copier
-      return $ m :< WT.Resource dd resourceID unitType discarder' copier'
+      typeTag' <- discern h typeTag
+      return $ m :< WT.Resource dd resourceID unitType discarder' copier' typeTag'
     m :< RT.If ifClause elseIfClauseList (_, (elseBody, _)) -> do
       let (ifCond, ifBody) = RT.extractFromKeywordClause ifClause
       boolTrue <- liftEither $ locatorToName (blur m) coreBoolTrue

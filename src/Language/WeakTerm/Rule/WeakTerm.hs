@@ -63,7 +63,7 @@ data WeakTermF a
   | Magic (WeakMagic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation LogLevel (AN.Annotation a) a
-  | Resource DD.DefiniteDescription Int a a a
+  | Resource DD.DefiniteDescription Int a a a a
   | Void
 
 type SubstWeakTerm =

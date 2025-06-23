@@ -123,11 +123,12 @@ subst h sub term =
     m :< TM.Magic der -> do
       der' <- traverse (subst h sub) der
       return (m :< TM.Magic der')
-    m :< TM.Resource dd resourceID unitType discarder copier -> do
+    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
       unitType' <- subst h sub unitType
       discarder' <- subst h sub discarder
       copier' <- subst h sub copier
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
+      typeTag' <- subst h sub typeTag
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
     _ :< TM.Void ->
       return term
 

@@ -69,8 +69,8 @@ holes term =
         AN.Type t -> do
           let xs2 = holes t
           S.union xs1 xs2
-    _ :< WT.Resource _ _ unitType discarder copier -> do
-      S.unions $ map holes [unitType, discarder, copier]
+    _ :< WT.Resource _ _ unitType discarder copier typeTag -> do
+      S.unions $ map holes [unitType, discarder, copier, typeTag]
     _ :< WT.Void ->
       S.empty
 

@@ -66,6 +66,7 @@ data BaseRawStmt name
       (name, C)
       (C, RT.RawTerm)
       (C, RT.RawTerm)
+      (C, RT.RawTerm)
       C
   | RawStmtNominal C Hint (SE.Series (RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
@@ -90,6 +91,7 @@ data PostRawStmt
       (DD.DefiniteDescription, C)
       (C, RT.RawTerm)
       (C, RT.RawTerm)
+      (C, RT.RawTerm)
       C
   | PostRawStmtNominal C Hint (SE.Series (RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
@@ -101,7 +103,7 @@ getPostRawStmtName stmt =
       let m = RT.loc $ RT.geist def
       let name = fst $ RT.name $ RT.geist def
       [(m, name)]
-    PostRawStmtDefineResource _ m (name, _) _ _ _ ->
+    PostRawStmtDefineResource _ m (name, _) _ _ _ _ ->
       [(m, name)]
     PostRawStmtNominal {} ->
       []

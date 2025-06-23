@@ -358,17 +358,20 @@ infer h term =
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
+    m :< WT.Resource dd resourceID unitType discarder copier typeTag -> do
       unitType' <- inferType h unitType
       (discarder', td) <- infer (h {varEnv = []}) discarder
       (copier', tc) <- infer (h {varEnv = []}) copier
+      (typeTag', tt) <- infer (h {varEnv = []}) typeTag
       x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "_"
       resourceType <- liftIO $ newHole h m []
       let tDiscard = m :< WT.Pi PK.normal [] [(m, x, resourceType)] unitType'
       let tCopy = m :< WT.Pi PK.normal [] [(m, x, resourceType)] resourceType
+      intType <- getIntType (platformHandle h) m
       liftIO $ Constraint.insert (constraintHandle h) tDiscard td
       liftIO $ Constraint.insert (constraintHandle h) tCopy tc
-      return (m :< WT.Resource dd resourceID unitType' discarder' copier', m :< WT.Tau)
+      liftIO $ Constraint.insert (constraintHandle h) intType tt
+      return (m :< WT.Resource dd resourceID unitType' discarder' copier' typeTag', m :< WT.Tau)
     m :< WT.Void ->
       return (m :< WT.Void, m :< WT.Tau)
 

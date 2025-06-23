@@ -62,11 +62,12 @@ freeVars term =
           S.empty
     _ :< TM.Magic der ->
       foldMap freeVars der
-    _ :< TM.Resource _ _ unitType discarder copier -> do
+    _ :< TM.Resource _ _ unitType discarder copier typeTag -> do
       let xs1 = freeVars unitType
       let xs2 = freeVars discarder
       let xs3 = freeVars copier
-      S.unions [xs1, xs2, xs3]
+      let xs4 = freeVars typeTag
+      S.unions [xs1, xs2, xs3, xs4]
     _ :< TM.Void ->
       S.empty
 

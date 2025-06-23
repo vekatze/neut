@@ -228,11 +228,12 @@ inline' h term = do
           return (m :< TM.Magic magic')
     _ :< TM.Void ->
       return term
-    m :< TM.Resource dd resourceID unitType discarder copier -> do
+    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
       unitType' <- inline' h unitType
       discarder' <- inline' h discarder
       copier' <- inline' h copier
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
+      typeTag' <- inline' h typeTag
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
 
 inlineBinder :: Handle -> BinderF TM.Term -> EIO (BinderF TM.Term)
 inlineBinder h (m, x, t) = do

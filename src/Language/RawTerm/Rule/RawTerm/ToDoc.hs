@@ -264,7 +264,7 @@ toDoc term =
       D.text "_"
     _ :< Annotation {} -> do
       D.text "<annot>"
-    _ :< Resource dd _ _ _ -> do
+    _ :< Resource dd _ _ _ _ -> do
       D.text $ DD.localLocator dd
     _ :< If ifClause elseIfClauseList elseBody -> do
       let ifClause' = decodeKeywordClause "if" $ mapKeywordClause toDoc ifClause

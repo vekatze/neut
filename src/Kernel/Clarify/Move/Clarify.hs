@@ -340,7 +340,7 @@ clarifyTerm h tenv term =
               clarifyTerm h tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.intSize32 (RU.asInt r)))
     _ :< TM.Magic der -> do
       clarifyMagic h tenv der
-    m :< TM.Resource _ resourceID _ discarder copier -> do
+    m :< TM.Resource _ resourceID _ discarder copier _typeTag -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
       switchValue <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switchValue"
       value <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "value"
