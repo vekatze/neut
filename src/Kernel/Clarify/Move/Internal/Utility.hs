@@ -75,20 +75,19 @@ makeSwitcher ::
   ResourceSpec ->
   IO ([Ident], C.Comp)
 makeSwitcher h resourceSpec = do
-  let ResourceSpec {discard, copy, tag} = resourceSpec
-  (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
-  (argVarName, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-  aff <- discard argVar
-  rel <- copy argVar
-  let tagBranch = C.UpIntro tag
-  enumElim <- getEnumElim h [argVarName] switchVar tagBranch [(EC.Int 0, aff), (EC.Int 1, rel)]
+  let ResourceSpec {discard, copy, tagMaker} = resourceSpec
+  let (argVarName, _) = arg resourceSpec
+  let (switchVarName, switchVar) = switch resourceSpec
+  enumElim <- getEnumElim h [argVarName] switchVar tagMaker [(EC.Int 0, discard), (EC.Int 1, copy)]
   return ([switchVarName, argVarName], enumElim)
 
 data ResourceSpec
   = ResourceSpec
-  { discard :: C.Value -> IO C.Comp,
-    copy :: C.Value -> IO C.Comp,
-    tag :: C.Value
+  { switch :: (Ident, C.Value),
+    arg :: (Ident, C.Value),
+    discard :: C.Comp,
+    copy :: C.Comp,
+    tagMaker :: C.Comp
   }
 
 registerSwitcher ::

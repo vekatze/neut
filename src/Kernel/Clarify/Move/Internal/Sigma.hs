@@ -50,24 +50,30 @@ new gensymHandle linearizeHandle utilityHandle = do
 
 registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
-  let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
-  let immediate4 arg = return $ C.UpIntro arg
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $
-    ResourceSpec {discard = immediateT, copy = immediate4, tag = makeTag Immediate}
+  switch <- Gensym.createVar (gensymHandle h) "switch"
+  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+  let discard = C.UpIntro $ C.SigmaIntro []
+  let copy = C.UpIntro argVar
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $ do
+    ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker Immediate}
 
 registerImmediateTypeS4 :: Handle -> IO ()
 registerImmediateTypeS4 h = do
-  let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
-  let immediate4 arg = return $ C.UpIntro arg
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immType $
-    ResourceSpec {discard = immediateT, copy = immediate4, tag = makeTag Type}
+  switch <- Gensym.createVar (gensymHandle h) "switch"
+  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+  let discard = C.UpIntro $ C.SigmaIntro []
+  let copy = C.UpIntro argVar
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immType $ do
+    ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker Type}
 
 registerImmediateEnumS4 :: Handle -> IO ()
 registerImmediateEnumS4 h = do
-  let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
-  let immediate4 arg = return $ C.UpIntro arg
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immEnum $
-    ResourceSpec {discard = immediateT, copy = immediate4, tag = makeTag Enum}
+  switch <- Gensym.createVar (gensymHandle h) "switch"
+  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+  let discard = C.UpIntro $ C.SigmaIntro []
+  let copy = C.UpIntro argVar
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immEnum $ do
+    ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker Enum}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -77,7 +83,7 @@ registerClosureS4 h = do
     DD.cls
     O.Clear
     [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
-    (makeTag Pi)
+    (newTagMaker Pi)
 
 returnImmediateS4 :: C.Comp
 returnImmediateS4 = do
@@ -112,14 +118,19 @@ registerSigmaS4 ::
   DD.DefiniteDescription ->
   O.Opacity ->
   [Either C.Comp (Ident, C.Comp)] ->
-  C.Value ->
+  C.Comp ->
   IO ()
-registerSigmaS4 h name opacity mxts tag = do
-  Utility.registerSwitcher (utilityHandle h) opacity name $ makeSigmaResourceSpec h mxts tag
+registerSigmaS4 h name opacity mxts tagMaker = do
+  resourceSpec <- makeSigmaResourceSpec h mxts tagMaker
+  Utility.registerSwitcher (utilityHandle h) opacity name resourceSpec
 
-makeSigmaResourceSpec :: Handle -> [Either C.Comp (Ident, C.Comp)] -> C.Value -> ResourceSpec
-makeSigmaResourceSpec h mxts tag =
-  ResourceSpec {discard = sigmaT h mxts, copy = sigma4 h mxts, tag = tag}
+makeSigmaResourceSpec :: Handle -> [Either C.Comp (Ident, C.Comp)] -> C.Comp -> IO ResourceSpec
+makeSigmaResourceSpec h mxts tagMaker = do
+  switch <- Gensym.createVar (gensymHandle h) "switch"
+  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+  discard <- sigmaT h mxts argVar
+  copy <- sigma4 h mxts argVar
+  return $ ResourceSpec {switch, arg, discard, copy, tagMaker}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -199,7 +210,8 @@ closureEnvS4 h locatorHandle mxts =
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
       let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
-      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name $ makeSigmaResourceSpec h mxts (makeTag Opaque)
+      resourceSpec <- makeSigmaResourceSpec h mxts (newTagMaker Opaque)
+      liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear name resourceSpec
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
@@ -209,10 +221,12 @@ returnSigmaDataS4 ::
   [(D.Discriminant, [(Ident, C.Comp)])] ->
   IO C.Comp
 returnSigmaDataS4 h dataName opacity dataInfo = do
-  let discard = sigmaDataT h dataInfo
-  let copy = sigmaData4 h dataInfo
+  switch <- Gensym.createVar (gensymHandle h) "switch"
+  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+  discard <- sigmaDataT h dataInfo argVar
+  copy <- sigmaData4 h dataInfo argVar
   let dataName' = DD.getFormDD dataName
-  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {discard, copy, tag = makeTag Algebraic}
+  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker Algebraic}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
@@ -266,23 +280,24 @@ data TypeTag
   | Vector
   | Opaque
 
-makeTag :: TypeTag -> C.Value
-makeTag tag = do
-  C.Int (IntSize 64) $
-    case tag of
-      Immediate ->
-        0
-      Type ->
-        1
-      Pi ->
-        2
-      Algebraic ->
-        3
-      Enum ->
-        4
-      Binary ->
-        5
-      Vector ->
-        6
-      Opaque ->
-        7
+newTagMaker :: TypeTag -> C.Comp
+newTagMaker tag = do
+  C.UpIntro $
+    C.Int (IntSize 64) $
+      case tag of
+        Immediate ->
+          0
+        Type ->
+          1
+        Pi ->
+          2
+        Algebraic ->
+          3
+        Enum ->
+          4
+        Opaque ->
+          5
+        Binary ->
+          6
+        Vector ->
+          7

@@ -340,22 +340,23 @@ clarifyTerm h tenv term =
               clarifyTerm h tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.intSize32 (RU.asInt r)))
     _ :< TM.Magic der -> do
       clarifyMagic h tenv der
-    m :< TM.Resource _ resourceID _ discarder copier _typeTag -> do
+    m :< TM.Resource _ resourceID _ discarder copier typeTag -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
-      switchValue <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switchValue"
-      value <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "value"
-      discarder' <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var value])
+      switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
+      arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
+      discard <-
+        clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var argVarName])
           >>= liftIO . Reduce.reduce (reduceHandle h)
-      copier' <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var value])
+      copy <-
+        clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var argVarName])
           >>= liftIO . Reduce.reduce (reduceHandle h)
-      enumElim <-
-        liftIO $
-          Utility.getEnumElim (utilityHandle h) [value] (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
+      tagMaker <-
+        clarifyTerm h IntMap.empty typeTag
+          >>= liftIO . Reduce.reduce (reduceHandle h)
+      let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, tagMaker}
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
-        liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (O.Clear, [switchValue, value], enumElim)
+        liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
     _ :< TM.Void ->
       return Sigma.returnImmediateS4
