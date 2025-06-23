@@ -569,6 +569,13 @@ clarifyMagic h tenv der = do
       return $ C.Primitive (C.Magic (M.Global name lt))
     M.OpaqueValue e ->
       clarifyTerm h tenv e
+    M.CallType func arg1 arg2 -> do
+      (funcVarName, func', funcVar) <- clarifyPlus h tenv func
+      (arg1VarName, arg1', arg1Var) <- clarifyPlus h tenv arg1
+      (arg2VarName, arg2', arg2Var) <- clarifyPlus h tenv arg2
+      return $
+        Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
+          C.Primitive (C.Magic (M.CallType funcVar arg1Var arg2Var))
 
 clarifyLambda ::
   Handle ->

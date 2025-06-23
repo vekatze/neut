@@ -247,6 +247,7 @@ data RawMagic
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
   | Global C (EL EN.ExternalName) (EL RawTerm) (Maybe C)
   | OpaqueValue C (EL RawTerm)
+  | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm)
 
 -- elem
 type EL a =

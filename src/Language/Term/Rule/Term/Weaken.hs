@@ -121,6 +121,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.Global name (WT.fromBaseLowType m t)
     M.OpaqueValue e ->
       M.WeakMagic $ M.OpaqueValue (weaken e)
+    M.CallType func arg1 arg2 ->
+      M.WeakMagic $ M.CallType (weaken func) (weaken arg1) (weaken arg2)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =

@@ -568,6 +568,11 @@ discernMagic h m magic =
     RT.OpaqueValue _ (_, (e, _)) -> do
       e' <- discern h e
       return $ M.WeakMagic $ M.OpaqueValue e'
+    RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) -> do
+      func' <- discern h func
+      arg1' <- discern h arg1
+      arg2' <- discern h arg2
+      return $ M.WeakMagic $ M.CallType func' arg1' arg2'
 
 modifyLetContinuation ::
   H.Handle ->

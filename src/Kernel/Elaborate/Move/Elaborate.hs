@@ -354,6 +354,11 @@ elaborate' h term =
         M.OpaqueValue e -> do
           e' <- elaborate' h e
           return $ m :< TM.Magic (M.OpaqueValue e')
+        M.CallType func arg1 arg2 -> do
+          func' <- elaborate' h func
+          arg1' <- elaborate' h arg1
+          arg2' <- elaborate' h arg2
+          return $ m :< TM.Magic (M.CallType func' arg1' arg2')
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' h e
       case annot of

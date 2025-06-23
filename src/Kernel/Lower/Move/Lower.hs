@@ -260,6 +260,18 @@ lowerCompPrimitive h resultVar codeOp cont =
           uncast h resultVar (LC.VarExternal name) t' cont
         M.OpaqueValue e ->
           lowerValue h resultVar e cont
+        M.CallType func arg1 arg2 -> do
+          (funcVar, funcValue) <- liftIO $ newValueLocal h "func"
+          (arg1Var, arg1Value) <- liftIO $ newValueLocal h "arg1"
+          (arg2Var, arg2Value) <- liftIO $ newValueLocal h "arg2"
+          let arg1Type = LT.Pointer
+          let arg2Type = LT.Pointer
+          let resultType = LT.Pointer
+          lowerValue h funcVar func
+            =<< lowerValue h arg1Var arg1
+            =<< lowerValue h arg2Var arg2
+            =<< return . LC.Let resultVar (LC.Call resultType funcValue [(arg1Type, arg1Value), (arg2Type, arg2Value)])
+            =<< return cont
 
 lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> EIO LC.Comp
 lowerCompPrimOp h resultVar op vs cont = do

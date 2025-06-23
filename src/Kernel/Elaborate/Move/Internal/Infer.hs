@@ -345,6 +345,14 @@ infer h term =
         M.OpaqueValue e -> do
           (e', t) <- infer h e
           return (m :< WT.Magic (M.WeakMagic $ M.OpaqueValue e'), t)
+        M.CallType func arg1 arg2 -> do
+          func' <- inferType h func
+          (arg1', t1) <- infer h arg1
+          (arg2', _) <- infer h arg2
+          intType <- getIntType (platformHandle h) m
+          liftIO $ Constraint.insert (constraintHandle h) intType t1
+          resultType <- liftIO $ newHole h m (varEnv h)
+          return (m :< WT.Magic (M.WeakMagic $ M.CallType func' arg1' arg2'), resultType)
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer h e
       case annot of

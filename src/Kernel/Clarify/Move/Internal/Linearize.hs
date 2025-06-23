@@ -167,3 +167,8 @@ distinguishPrimitive h z term =
         M.OpaqueValue e -> do
           (vs, e') <- distinguishValue h z e
           return (vs, C.Magic (M.OpaqueValue e'))
+        M.CallType func arg1 arg2 -> do
+          (vs1, func') <- distinguishValue h z func
+          (vs2, arg1') <- distinguishValue h z arg1
+          (vs3, arg2') <- distinguishValue h z arg2
+          return (vs1 <> vs2 <> vs3, C.Magic (M.CallType func' arg1' arg2'))
