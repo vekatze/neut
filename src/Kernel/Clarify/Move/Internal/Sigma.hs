@@ -2,9 +2,13 @@ module Kernel.Clarify.Move.Internal.Sigma
   ( Handle (..),
     new,
     registerImmediateS4,
+    registerImmediateTypeS4,
+    registerImmediateEnumS4,
     registerClosureS4,
     immediateS4,
     returnImmediateS4,
+    returnImmediateTypeS4,
+    returnImmediateEnumS4,
     returnClosureS4,
     closureEnvS4,
     returnSigmaDataS4,
@@ -48,6 +52,18 @@ registerImmediateS4 h = do
   let immediate4 arg = return $ C.UpIntro arg
   Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm immediateT immediate4
 
+registerImmediateTypeS4 :: Handle -> IO ()
+registerImmediateTypeS4 h = do
+  let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
+  let immediate4 arg = return $ C.UpIntro arg
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immType immediateT immediate4
+
+registerImmediateEnumS4 :: Handle -> IO ()
+registerImmediateEnumS4 h = do
+  let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
+  let immediate4 arg = return $ C.UpIntro arg
+  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immEnum immediateT immediate4
+
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
   (env, envVar) <- Gensym.createVar (gensymHandle h) "env"
@@ -61,6 +77,14 @@ returnImmediateS4 :: C.Comp
 returnImmediateS4 = do
   C.UpIntro immediateS4
 
+returnImmediateTypeS4 :: C.Comp
+returnImmediateTypeS4 = do
+  C.UpIntro immediateTypeS4
+
+returnImmediateEnumS4 :: C.Comp
+returnImmediateEnumS4 = do
+  C.UpIntro immediateEnumS4
+
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
   C.UpIntro $ C.VarGlobal DD.cls AN.argNumS4
@@ -68,6 +92,14 @@ returnClosureS4 = do
 immediateS4 :: C.Value
 immediateS4 = do
   C.VarGlobal DD.imm AN.argNumS4
+
+immediateTypeS4 :: C.Value
+immediateTypeS4 = do
+  C.VarGlobal DD.immType AN.argNumS4
+
+immediateEnumS4 :: C.Value
+immediateEnumS4 = do
+  C.VarGlobal DD.immEnum AN.argNumS4
 
 registerSigmaS4 ::
   Handle ->

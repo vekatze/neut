@@ -23,6 +23,8 @@ module Language.Common.Rule.BaseName
     internalBaseName,
     cons,
     imm,
+    immType,
+    immEnum,
     cls,
     cell,
     arrayType,
@@ -125,6 +127,14 @@ new =
 imm :: BaseName
 imm =
   MakeBaseName "imm"
+
+immType :: BaseName
+immType =
+  MakeBaseName "imm-type"
+
+immEnum :: BaseName
+immEnum =
+  MakeBaseName "imm-enum"
 
 cls :: BaseName
 cls =

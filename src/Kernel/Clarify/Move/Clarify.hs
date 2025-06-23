@@ -163,6 +163,8 @@ registerFoundationalTypes h = do
 getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO C.DefMap
 getBaseAuxEnv auxEnvHandle sigmaHandle = do
   Sigma.registerImmediateS4 sigmaHandle
+  Sigma.registerImmediateTypeS4 sigmaHandle
+  Sigma.registerImmediateEnumS4 sigmaHandle
   Sigma.registerClosureS4 sigmaHandle
   AuxEnv.get auxEnvHandle
 
@@ -180,7 +182,7 @@ clarifyStmt h stmt =
           od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
           case od of
             Just OD.Enum -> do
-              clarifyStmtDefineBody' h name xts'' Sigma.returnImmediateS4
+              clarifyStmtDefineBody' h name xts'' Sigma.returnImmediateEnumS4
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody h IntMap.empty dataArgs t
@@ -250,7 +252,7 @@ clarifyTerm :: Handle -> TM.TypeEnv -> TM.Term -> EIO C.Comp
 clarifyTerm h tenv term =
   case term of
     _ :< TM.Tau -> do
-      return Sigma.returnImmediateS4
+      return Sigma.returnImmediateTypeS4
     _ :< TM.Var x -> do
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.VarGlobal (AttrVG.Attr {..}) x -> do

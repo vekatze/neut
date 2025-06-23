@@ -8,6 +8,8 @@ module Language.Common.Rule.DefiniteDescription
     newByGlobalLocator,
     getFormDD,
     imm,
+    immType,
+    immEnum,
     cls,
     toBuilder,
     llvmGlobalLocator,
@@ -15,13 +17,12 @@ module Language.Common.Rule.DefiniteDescription
   )
 where
 
-import Error.Rule.Error
-import Logger.Rule.Hint qualified as H
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Hashable
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Error.Rule.Error
 import GHC.Generics
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Const
@@ -32,6 +33,7 @@ import Language.Common.Rule.ModuleDigest qualified as MD
 import Language.Common.Rule.ModuleID qualified as MID
 import Language.Common.Rule.SourceLocator qualified as SL
 import Language.Common.Rule.StrictGlobalLocator qualified as SGL
+import Logger.Rule.Hint qualified as H
 
 newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Generic, Show)
@@ -120,6 +122,14 @@ localLocator dd = do
 imm :: DefiniteDescription
 imm =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.imm
+
+immType :: DefiniteDescription
+immType =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immType
+
+immEnum :: DefiniteDescription
+immEnum =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immEnum
 
 cls :: DefiniteDescription
 cls =
