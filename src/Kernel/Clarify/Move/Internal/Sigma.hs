@@ -4,11 +4,13 @@ module Kernel.Clarify.Move.Internal.Sigma
     registerImmediateS4,
     registerImmediateTypeS4,
     registerImmediateEnumS4,
+    registerImmediateNoemaS4,
     registerClosureS4,
     immediateS4,
     returnImmediateS4,
     returnImmediateTypeS4,
     returnImmediateEnumS4,
+    returnImmediateNoemaS4,
     returnClosureS4,
     closureEnvS4,
     returnSigmaDataS4,
@@ -48,32 +50,30 @@ new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> Handle
 new gensymHandle linearizeHandle utilityHandle = do
   Handle {..}
 
-registerImmediateS4 :: Handle -> IO ()
-registerImmediateS4 h = do
+registerImmediateGeneralS4 :: Handle -> DD.DefiniteDescription -> TypeTag -> IO ()
+registerImmediateGeneralS4 h name typeTag = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   let discard = C.UpIntro $ C.SigmaIntro []
   let copy = C.UpIntro argVar
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $ do
-    ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker Immediate}
+  Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
+    ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker typeTag}
+
+registerImmediateS4 :: Handle -> IO ()
+registerImmediateS4 h = do
+  registerImmediateGeneralS4 h DD.imm Immediate
 
 registerImmediateTypeS4 :: Handle -> IO ()
 registerImmediateTypeS4 h = do
-  switch <- Gensym.createVar (gensymHandle h) "switch"
-  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-  let discard = C.UpIntro $ C.SigmaIntro []
-  let copy = C.UpIntro argVar
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immType $ do
-    ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker Type}
+  registerImmediateGeneralS4 h DD.immType Type
 
 registerImmediateEnumS4 :: Handle -> IO ()
 registerImmediateEnumS4 h = do
-  switch <- Gensym.createVar (gensymHandle h) "switch"
-  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-  let discard = C.UpIntro $ C.SigmaIntro []
-  let copy = C.UpIntro argVar
-  Utility.registerSwitcher (utilityHandle h) O.Clear DD.immEnum $ do
-    ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker Enum}
+  registerImmediateGeneralS4 h DD.immEnum Enum
+
+registerImmediateNoemaS4 :: Handle -> IO ()
+registerImmediateNoemaS4 h = do
+  registerImmediateGeneralS4 h DD.immNoema Noema
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -83,7 +83,7 @@ registerClosureS4 h = do
     DD.cls
     O.Clear
     [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
-    (newTagMaker Pi)
+    (newTagMaker Function)
 
 returnImmediateS4 :: C.Comp
 returnImmediateS4 = do
@@ -96,6 +96,10 @@ returnImmediateTypeS4 = do
 returnImmediateEnumS4 :: C.Comp
 returnImmediateEnumS4 = do
   C.UpIntro immediateEnumS4
+
+returnImmediateNoemaS4 :: C.Comp
+returnImmediateNoemaS4 = do
+  C.UpIntro immediateNoemaS4
 
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
@@ -112,6 +116,10 @@ immediateTypeS4 = do
 immediateEnumS4 :: C.Value
 immediateEnumS4 = do
   C.VarGlobal DD.immEnum AN.argNumS4
+
+immediateNoemaS4 :: C.Value
+immediateNoemaS4 = do
+  C.VarGlobal DD.immNoema AN.argNumS4
 
 registerSigmaS4 ::
   Handle ->
@@ -271,33 +279,36 @@ discriminantToEnumCase discriminant =
   EC.Int (D.reify discriminant)
 
 data TypeTag
-  = Immediate
+  = Opaque
   | Type
-  | Pi
+  | Function
   | Algebraic
+  | Noema
   | Enum
+  | Immediate
   | Binary
   | Vector
-  | Opaque
 
 newTagMaker :: TypeTag -> C.Comp
 newTagMaker tag = do
   C.UpIntro $
     C.Int (IntSize 64) $
       case tag of
-        Immediate ->
+        Opaque ->
           0
         Type ->
           1
-        Pi ->
+        Function ->
           2
         Algebraic ->
           3
-        Enum ->
+        Noema ->
           4
-        Opaque ->
+        Enum ->
           5
-        Binary ->
+        Immediate ->
           6
-        Vector ->
+        Binary ->
           7
+        Vector ->
+          8

@@ -10,6 +10,7 @@ module Language.Common.Rule.DefiniteDescription
     imm,
     immType,
     immEnum,
+    immNoema,
     cls,
     toBuilder,
     llvmGlobalLocator,
@@ -130,6 +131,10 @@ immType =
 immEnum :: DefiniteDescription
 immEnum =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immEnum
+
+immNoema :: DefiniteDescription
+immNoema =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immNoema
 
 cls :: DefiniteDescription
 cls =

@@ -165,6 +165,7 @@ getBaseAuxEnv auxEnvHandle sigmaHandle = do
   Sigma.registerImmediateS4 sigmaHandle
   Sigma.registerImmediateTypeS4 sigmaHandle
   Sigma.registerImmediateEnumS4 sigmaHandle
+  Sigma.registerImmediateNoemaS4 sigmaHandle
   Sigma.registerClosureS4 sigmaHandle
   AuxEnv.get auxEnvHandle
 
@@ -308,7 +309,7 @@ clarifyTerm h tenv term =
     _ :< TM.Box t -> do
       clarifyTerm h tenv t
     _ :< TM.BoxNoema {} ->
-      return Sigma.returnImmediateS4
+      return Sigma.returnImmediateNoemaS4
     _ :< TM.BoxIntro letSeq e -> do
       embody h tenv letSeq e
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
