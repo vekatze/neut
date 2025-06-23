@@ -72,21 +72,23 @@ bindLetWithReducibility isReducible binder cont =
 
 makeSwitcher ::
   Handle ->
-  (C.Value -> IO C.Comp) ->
-  (C.Value -> IO C.Comp) ->
+  ResourceSpec ->
   IO ([Ident], C.Comp)
-makeSwitcher h compAff compRel = do
+makeSwitcher h resourceSpec = do
+  let ResourceSpec {discard, copy, tag} = resourceSpec
   (switchVarName, switchVar) <- Gensym.createVar (gensymHandle h) "switch"
   (argVarName, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-  aff <- compAff argVar
-  rel <- compRel argVar
-  enumElim <- getEnumElim h [argVarName] switchVar rel [(EC.Int 0, aff)]
+  aff <- discard argVar
+  rel <- copy argVar
+  let tagBranch = C.UpIntro tag
+  enumElim <- getEnumElim h [argVarName] switchVar tagBranch [(EC.Int 0, aff), (EC.Int 1, rel)]
   return ([switchVarName, argVarName], enumElim)
 
 data ResourceSpec
   = ResourceSpec
   { discard :: C.Value -> IO C.Comp,
-    copy :: C.Value -> IO C.Comp
+    copy :: C.Value -> IO C.Comp,
+    tag :: C.Value
   }
 
 registerSwitcher ::
@@ -96,8 +98,7 @@ registerSwitcher ::
   ResourceSpec ->
   IO ()
 registerSwitcher h opacity name resourceSpec = do
-  let ResourceSpec {discard, copy} = resourceSpec
-  (args, e) <- makeSwitcher h discard copy
+  (args, e) <- makeSwitcher h resourceSpec
   AuxEnv.insert (auxEnvHandle h) name (opacity, args, e)
 
 getEnumElim :: Handle -> [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> IO C.Comp

@@ -33,6 +33,7 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PrimNumSize (IntSize (IntSize))
 import Language.Comp.Move.CreateVar qualified as Gensym
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
@@ -47,26 +48,29 @@ new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> Handle
 new gensymHandle linearizeHandle utilityHandle = do
   Handle {..}
 
+defaultTag :: C.Value
+defaultTag = C.Int (IntSize 64) 42
+
 registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
   Utility.registerSwitcher (utilityHandle h) O.Clear DD.imm $
-    ResourceSpec {discard = immediateT, copy = immediate4}
+    ResourceSpec {discard = immediateT, copy = immediate4, tag = defaultTag}
 
 registerImmediateTypeS4 :: Handle -> IO ()
 registerImmediateTypeS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
   Utility.registerSwitcher (utilityHandle h) O.Clear DD.immType $
-    ResourceSpec {discard = immediateT, copy = immediate4}
+    ResourceSpec {discard = immediateT, copy = immediate4, tag = defaultTag}
 
 registerImmediateEnumS4 :: Handle -> IO ()
 registerImmediateEnumS4 h = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
   Utility.registerSwitcher (utilityHandle h) O.Clear DD.immEnum $
-    ResourceSpec {discard = immediateT, copy = immediate4}
+    ResourceSpec {discard = immediateT, copy = immediate4, tag = defaultTag}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -116,7 +120,7 @@ registerSigmaS4 h name opacity mxts = do
 
 makeSigmaResourceSpec :: Handle -> [Either C.Comp (Ident, C.Comp)] -> ResourceSpec
 makeSigmaResourceSpec h mxts =
-  ResourceSpec {discard = sigmaT h mxts, copy = sigma4 h mxts}
+  ResourceSpec {discard = sigmaT h mxts, copy = sigma4 h mxts, tag = defaultTag}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -209,7 +213,7 @@ returnSigmaDataS4 h dataName opacity dataInfo = do
   let discard = sigmaDataT h dataInfo
   let copy = sigmaData4 h dataInfo
   let dataName' = DD.getFormDD dataName
-  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {discard, copy}
+  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {discard, copy, tag = defaultTag}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
