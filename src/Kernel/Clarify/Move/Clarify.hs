@@ -44,6 +44,7 @@ import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Binder
+import Language.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
@@ -55,6 +56,7 @@ import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity (isOpaque)
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PrimNumSize (dataSizeToIntSize)
 import Language.Common.Rule.PrimNumSize qualified as PNS
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
@@ -86,12 +88,12 @@ data Handle = Handle
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     compDefHandle :: CompDef.Handle,
-    baseSize :: Int
+    baseSize :: DS.DataSize
   }
 
 new :: Global.Handle -> Local.Handle -> IO Handle
 new (Global.Handle {..}) (Local.Handle {..}) = do
-  let baseSize = Platform.getDataSizeValue platformHandle
+  let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
   defMap <- CompDef.get compDefHandle
   let substHandle = Subst.new gensymHandle
@@ -139,7 +141,7 @@ newMain :: Global.Handle -> IO MainHandle
 newMain Global.Handle {..} = do
   mainAuxEnvHandle <- AuxEnv.new
   defMap <- CompDef.get compDefHandle
-  let baseSize = Platform.getDataSizeValue platformHandle
+  let baseSize = Platform.getDataSize platformHandle
   let compSubstHandle = CompSubst.new gensymHandle
   let mainReduceHandle = Reduce.new compSubstHandle gensymHandle defMap
   let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle baseSize
@@ -287,7 +289,7 @@ clarifyTerm h tenv term =
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
-          return $ C.UpIntro $ C.Int (PNS.IntSize (baseSize h)) (D.reify discriminant)
+          return $ C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)
         Just OD.Unary
           | [e] <- consArgs ->
               clarifyTerm h tenv e
@@ -299,7 +301,7 @@ clarifyTerm h tenv term =
             Utility.bindLet (zip zs es) $
               C.UpIntro $
                 C.SigmaIntro $
-                  C.Int (PNS.IntSize (baseSize h)) (D.reify discriminant) : xs
+                  C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant) : xs
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (m,,m :< TM.Tau) xs
@@ -337,8 +339,8 @@ clarifyTerm h tenv term =
             PV.StaticText _ text ->
               return $ C.UpIntro $ C.VarStaticText text
             PV.Rune r -> do
-              let t = fromPrimNum m (PT.Int PNS.intSize32)
-              clarifyTerm h tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.intSize32 (RU.asInt r)))
+              let t = fromPrimNum m (PT.Int PNS.IntSize32)
+              clarifyTerm h tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.IntSize32 (RU.asInt r)))
     _ :< TM.Magic der -> do
       clarifyMagic h tenv der
     m :< TM.Resource _ resourceID _ discarder copier typeTag -> do

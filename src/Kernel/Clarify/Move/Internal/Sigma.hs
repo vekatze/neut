@@ -35,7 +35,7 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
-import Language.Common.Rule.PrimNumSize (IntSize (IntSize))
+import Language.Common.Rule.PrimNumSize (IntSize (..))
 import Language.Comp.Move.CreateVar qualified as Gensym
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
@@ -292,7 +292,7 @@ data TypeTag
 newTagMaker :: TypeTag -> C.Comp
 newTagMaker tag = do
   C.UpIntro $
-    C.Int (IntSize 64) $
+    C.Int IntSize64 $
       case tag of
         Opaque ->
           0

@@ -16,6 +16,7 @@ import Data.IntMap qualified as IntMap
 import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Language.Common.Move.CreateSymbol qualified as Gensym
+import Language.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify
@@ -31,10 +32,10 @@ data Handle = Handle
   { gensymHandle :: Gensym.Handle,
     substHandle :: Subst.Handle,
     auxEnvHandle :: AuxEnv.Handle,
-    baseSize :: Int
+    baseSize :: DS.DataSize
   }
 
-new :: Gensym.Handle -> Subst.Handle -> AuxEnv.Handle -> Int -> Handle
+new :: Gensym.Handle -> Subst.Handle -> AuxEnv.Handle -> DS.DataSize -> Handle
 new gensymHandle substHandle auxEnvHandle baseSize = do
   Handle {..}
 
@@ -44,7 +45,7 @@ new gensymHandle substHandle auxEnvHandle baseSize = do
 toAffineApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toAffineApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 0, v])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (dataSizeToIntSize (baseSize h)) 0, v])
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
@@ -52,7 +53,7 @@ toAffineApp h v t = do
 toRelevantApp :: Handle -> C.Value -> C.Comp -> IO C.Comp
 toRelevantApp h v t = do
   (expVarName, expVar) <- Gensym.createVar (gensymHandle h) "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize (baseSize h)) 1, v])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (dataSizeToIntSize (baseSize h)) 1, v])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =

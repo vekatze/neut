@@ -50,7 +50,6 @@ import Language.Common.Rule.LowType qualified as LT
 import Language.Common.Rule.LowType.FromBaseLowType qualified as LT
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.PrimNumSize
-import Language.Common.Rule.PrimNumSize.ToInt
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Comp.Move.Reduce qualified as Reduce
@@ -63,7 +62,7 @@ import Logger.Rule.Hint (internalHint)
 
 data Handle = Handle
   { arch :: Arch,
-    baseSize :: Int,
+    baseSize :: DS.DataSize,
     gensymHandle :: Gensym.Handle,
     envHandle :: Env.Handle,
     reduceHandle :: Reduce.Handle,
@@ -76,7 +75,7 @@ data Handle = Handle
 new :: Global.Handle -> IO Handle
 new (Global.Handle {..}) = do
   let arch = Platform.getArch platformHandle
-  let baseSize = Platform.getDataSizeValue platformHandle
+  let baseSize = Platform.getDataSize platformHandle
   let substHandle = Subst.new gensymHandle
   defMap <- CompDef.get compDefHandle
   let reduceHandle = Reduce.new substHandle gensymHandle defMap
@@ -183,7 +182,7 @@ lowerComp h term =
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
       let branchList' = zip keys clauses'
       (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
-      let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+      let t = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
       cont' <- lowerComp h cont
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
@@ -227,7 +226,7 @@ lowerCompPrimitive h resultVar codeOp cont =
             =<< uncast h resultVar tmp valueLowType' cont
         M.Alloca t size -> do
           let t' = LT.fromBaseLowType t
-          let indexType = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+          let indexType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
           (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
           (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h sizeVar size indexType
@@ -291,6 +290,16 @@ lowerValueLetCastPrimArgs h xdts cont =
       lowerValueLetCast h x d (LT.PrimNum t)
         =<< lowerValueLetCastPrimArgs h rest cont
 
+floatSizeToIntSize :: FloatSize -> IntSize
+floatSizeToIntSize floatSize =
+  case floatSize of
+    FloatSize16 ->
+      IntSize16
+    FloatSize32 ->
+      IntSize32
+    FloatSize64 ->
+      IntSize64
+
 cast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
 cast h var v lowType cont = do
   case lowType of
@@ -298,7 +307,7 @@ cast h var v lowType cont = do
       return $ LC.Let var (LC.PointerToInt v LT.Pointer lowType) cont
     LT.PrimNum (PT.Float size) -> do
       let floatType = LT.PrimNum $ PT.Float size
-      let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt size
+      let intType = LT.PrimNum $ PT.Int $ floatSizeToIntSize size
       (tmp, tmpVar) <- liftIO $ newValueLocal h "tmp"
       return $
         LC.Let tmp (LC.PointerToInt v LT.Pointer intType) $
@@ -313,7 +322,7 @@ uncast h var castedValue lowType cont = do
       return $ LC.Let var (LC.IntToPointer castedValue lowType LT.Pointer) cont
     LT.PrimNum (PT.Float i) -> do
       let floatType = LT.PrimNum $ PT.Float i
-      let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt i
+      let intType = LT.PrimNum $ PT.Int $ floatSizeToIntSize i
       (tmp, tmpVar) <- liftIO $ newValueLocal h "tmp"
       return $
         LC.Let tmp (LC.Bitcast castedValue floatType intType) $
@@ -334,7 +343,7 @@ allocateBasePointer h resultVar aggType cont = do
       (sizeVar, sizeValue) <- liftIO $ newValueLocal h "result"
       (castVar, castValue) <- liftIO $ newValueLocal h "result"
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
-      let lowInt = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
       return . getElemPtr sizeVar LC.Null elemType [toInteger len]
         =<< cast h castVar sizeValue lowInt
         =<< return (LC.Let resultVar (LC.Alloc castValue len allocID) cont)
@@ -500,7 +509,7 @@ getDefinedNameSet h = do
 
 getElemPtr :: Ident -> LC.Value -> LT.LowType -> [Integer] -> LC.Comp -> LC.Comp
 getElemPtr var value valueType indexList cont = do
-  let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int intSize32)) indexList
+  let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int IntSize32)) indexList
   LC.Let var (LC.GetElementPtr (value, valueType) indexList') cont
 
 getElemPtrList :: LC.Value -> [Ident] -> LT.LowType -> LC.Comp -> LC.Comp
@@ -557,4 +566,4 @@ defaultForeignList arch =
 
 getWordType :: A.Arch -> BLT.BaseLowType
 getWordType arch =
-  BLT.PrimNum $ BPT.Int $ BPT.Explicit $ IntSize $ DS.reify $ A.dataSizeOf arch
+  BLT.PrimNum $ BPT.Int $ BPT.Explicit $ dataSizeToIntSize $ A.dataSizeOf arch

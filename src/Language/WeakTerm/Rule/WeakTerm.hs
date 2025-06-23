@@ -23,6 +23,7 @@ import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.BasePrimType qualified as BPT
 import Language.Common.Rule.Binder
+import Language.Common.Rule.DataSize (DataSize)
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Foreign
@@ -93,9 +94,9 @@ reflectOpacity opacity =
     O.Clear ->
       Clear
 
-intTypeBySize :: Hint -> Int -> WeakTerm
+intTypeBySize :: Hint -> DataSize -> WeakTerm
 intTypeBySize m size =
-  m :< Prim (WP.Type $ PT.Int $ IntSize size)
+  m :< Prim (WP.Type $ PT.Int $ dataSizeToIntSize size)
 
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =

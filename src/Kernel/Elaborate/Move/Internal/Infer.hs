@@ -136,7 +136,7 @@ inferStmtKind h stmtKind =
 
 getIntType :: Platform.Handle -> Hint -> EIO WT.WeakTerm
 getIntType h m = do
-  let baseSize = Platform.getDataSizeValue h
+  let baseSize = Platform.getDataSize h
   return $ WT.intTypeBySize m baseSize
 
 getMainUnitType :: StmtKind WT.WeakTerm -> Maybe WT.WeakTerm

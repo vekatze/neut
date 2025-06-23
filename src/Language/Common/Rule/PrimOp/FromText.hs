@@ -35,14 +35,14 @@ fromText dataSize name
           | Just op <- asIntBinaryOp opStr ->
               return $ PrimBinaryOp op primType primType
           | Just op <- asIntCmpOp opStr ->
-              return $ PrimCmpOp op primType (PT.Int $ IntSize 1)
+              return $ PrimCmpOp op primType (PT.Int IntSize1)
         PT.Float {}
           | Just op <- asFloatUnaryOp opStr ->
               return $ PrimUnaryOp op primType primType
           | Just op <- asFloatBinaryOp opStr ->
               return $ PrimBinaryOp op primType primType
           | Just op <- asFloatCmpOp opStr ->
-              return $ PrimCmpOp op primType (PT.Int $ IntSize 1)
+              return $ PrimCmpOp op primType (PT.Int IntSize1)
         _ ->
           Nothing
   | otherwise =

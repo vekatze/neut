@@ -42,7 +42,7 @@ new globalHandle retType = do
   let currentLabel = Nothing
   let goalLabel = Nothing
   labelMapRef <- liftIO $ newIORef IntMap.empty
-  let baseSize = Platform.getDataSizeValue (Global.platformHandle globalHandle)
+  let baseSize = Platform.getDataSize (Global.platformHandle globalHandle)
   let emitOpHandle = EmitOp.new baseSize
   let gensymHandle = Global.gensymHandle globalHandle
   return $ Handle {..}

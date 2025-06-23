@@ -9,8 +9,20 @@ import Language.Common.Rule.PrimNumSize
 intSizeToInt :: IntSize -> Int
 intSizeToInt intSize =
   case intSize of
-    IntSize size ->
-      size
+    IntSize1 ->
+      1
+    IntSize2 ->
+      2
+    IntSize4 ->
+      4
+    IntSize8 ->
+      8
+    IntSize16 ->
+      16
+    IntSize32 ->
+      32
+    IntSize64 ->
+      64
 
 floatSizeToInt :: FloatSize -> Int
 floatSizeToInt floatSize =
