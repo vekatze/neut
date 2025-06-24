@@ -5,7 +5,6 @@ module Kernel.Clarify.Move.Clarify
     newMain,
     clarify,
     clarifyEntryPoint,
-    registerFoundationalTypes,
   )
 where
 
@@ -154,12 +153,6 @@ clarifyEntryPoint h = do
   forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce (mainReduceHandle h) e
     return $ C.Def x opacity args e'
-
-registerFoundationalTypes :: Handle -> IO ()
-registerFoundationalTypes h = do
-  AuxEnv.clear (auxEnvHandle h)
-  auxEnv <- getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
-  forM_ (Map.toList auxEnv) $ uncurry $ CompDef.insert (compDefHandle h)
 
 getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO C.DefMap
 getBaseAuxEnv auxEnvHandle sigmaHandle = do
