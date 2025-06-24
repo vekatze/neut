@@ -35,7 +35,6 @@ immTypeTagMap :: [(DD.DefiniteDescription, TypeTag)]
 immTypeTagMap =
   [ (DD.immType, Type),
     (DD.immNoema, Noema),
-    (DD.immEnum, Enum),
     (DD.immInt1, Int1),
     (DD.immInt2, Int2),
     (DD.immInt4, Int4),

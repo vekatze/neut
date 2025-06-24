@@ -8,7 +8,6 @@ module Language.Common.Rule.DefiniteDescription
     newByGlobalLocator,
     getFormDD,
     immType,
-    immEnum,
     immNoema,
     immInt1,
     immInt2,
@@ -135,10 +134,6 @@ localLocator dd = do
 immType :: DefiniteDescription
 immType =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immType
-
-immEnum :: DefiniteDescription
-immEnum =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immEnum
 
 immNoema :: DefiniteDescription
 immNoema =
