@@ -34,6 +34,7 @@ import Kernel.Common.Rule.Arch qualified as A
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Target
+import Kernel.Common.Rule.TypeTag (baseTypeTagMap)
 import Kernel.Lower.Rule.Cancel
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
@@ -92,8 +93,8 @@ makeBaseDeclEnv arch = do
 lower :: Handle -> [C.CompStmt] -> EIO LC.LowCode
 lower h stmtList = do
   liftIO $ registerInternalNames h stmtList
-  liftIO $ insDeclEnv h (DN.In DD.imm) AN.argNumS4
-  liftIO $ insDeclEnv h (DN.In DD.cls) AN.argNumS4
+  liftIO $ forM baseTypeTagMap $ \(dd, _) ->
+    insDeclEnv h (DN.In dd) AN.argNumS4
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeNormal <$> liftIO (summarize h stmtList')
 

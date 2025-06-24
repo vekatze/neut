@@ -24,7 +24,6 @@ import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
-import Kernel.Clarify.Move.Internal.Sigma (immediateS4)
 import Kernel.Clarify.Move.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Move.Internal.Utility (toRelevantApp)
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
@@ -165,9 +164,6 @@ registerFoundationalTypes h = do
 getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO C.DefMap
 getBaseAuxEnv auxEnvHandle sigmaHandle = do
   Sigma.registerImmediateS4 sigmaHandle
-  Sigma.registerImmediateTypeS4 sigmaHandle
-  Sigma.registerImmediateEnumS4 sigmaHandle
-  Sigma.registerImmediateNoemaS4 sigmaHandle
   Sigma.registerClosureS4 sigmaHandle
   AuxEnv.get auxEnvHandle
 
@@ -207,12 +203,12 @@ clarifyStmt h stmt =
 makeEnvArg :: Handle -> IO (Ident, C.Comp)
 makeEnvArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "env"
-  return (x, Sigma.returnImmediateS4)
+  return (x, Sigma.returnImmediateNullS4) -- top-level function's env is always null
 
 makeSwitchArg :: Handle -> IO (Ident, C.Comp)
 makeSwitchArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "sw"
-  return (x, Sigma.returnImmediateS4)
+  return (x, Sigma.returnImmediateIntS4 PNS.IntSize64)
 
 clarifyBinderBody ::
   Handle ->
@@ -262,7 +258,7 @@ clarifyTerm h tenv term =
       return $
         C.UpIntro $
           C.SigmaIntro
-            [ Sigma.immediateS4,
+            [ Sigma.immediateNullS4,
               C.SigmaIntro [],
               C.VarGlobal x (AN.add argNum (AN.fromInt 2))
             ]
@@ -282,7 +278,7 @@ clarifyTerm h tenv term =
           liftIO $ callClosure h b e' allArgs
     _ :< TM.Data _ name dataArgs -> do
       let argNum = AN.fromInt $ length dataArgs + 2
-      let cls = C.UpIntro $ C.SigmaIntro [immediateS4, C.SigmaIntro [], C.VarGlobal name argNum]
+      let cls = C.UpIntro $ C.SigmaIntro [Sigma.immediateNullS4, C.SigmaIntro [], C.VarGlobal name argNum]
       dataArgs' <- mapM (clarifyPlus h tenv) dataArgs
       liftIO $ callClosure h False cls dataArgs'
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
@@ -326,8 +322,16 @@ clarifyTerm h tenv term =
       return $ Utility.bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
     m :< TM.Prim prim ->
       case prim of
-        P.Type _ ->
-          return Sigma.returnImmediateS4
+        P.Type primType ->
+          case primType of
+            PT.Int intSize ->
+              return $ Sigma.returnImmediateIntS4 intSize
+            PT.Float floatSize ->
+              return $ Sigma.returnImmediateFloatS4 floatSize
+            PT.Rune ->
+              return Sigma.returnImmediateRuneS4
+            PT.Pointer ->
+              return Sigma.returnImmediatePointerS4
         P.Value primValue ->
           case primValue of
             PV.Int _ size l ->
@@ -362,7 +366,7 @@ clarifyTerm h tenv term =
         liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
     _ :< TM.Void ->
-      return Sigma.returnImmediateS4
+      return Sigma.returnImmediateNullS4
 
 embody :: Handle -> TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> EIO C.Comp
 embody h tenv xets cont =

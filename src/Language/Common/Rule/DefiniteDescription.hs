@@ -7,10 +7,22 @@ module Language.Common.Rule.DefiniteDescription
     getLocatorPair,
     newByGlobalLocator,
     getFormDD,
-    imm,
     immType,
     immEnum,
     immNoema,
+    immInt1,
+    immInt2,
+    immInt4,
+    immInt8,
+    immInt16,
+    immInt32,
+    immInt64,
+    immFloat16,
+    immFloat32,
+    immFloat64,
+    immRune,
+    immPointer,
+    immNull,
     cls,
     toBuilder,
     llvmGlobalLocator,
@@ -120,10 +132,6 @@ localLocator dd = do
     _ ->
       error "Rule.DefiniteDescription.localLocator"
 
-imm :: DefiniteDescription
-imm =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.imm
-
 immType :: DefiniteDescription
 immType =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immType
@@ -135,6 +143,58 @@ immEnum =
 immNoema :: DefiniteDescription
 immNoema =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immNoema
+
+immInt1 :: DefiniteDescription
+immInt1 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immInt1
+
+immInt2 :: DefiniteDescription
+immInt2 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immInt2
+
+immInt4 :: DefiniteDescription
+immInt4 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immInt4
+
+immInt8 :: DefiniteDescription
+immInt8 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immInt8
+
+immInt16 :: DefiniteDescription
+immInt16 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immInt16
+
+immInt32 :: DefiniteDescription
+immInt32 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immInt32
+
+immInt64 :: DefiniteDescription
+immInt64 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immInt64
+
+immFloat16 :: DefiniteDescription
+immFloat16 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immFloat16
+
+immFloat32 :: DefiniteDescription
+immFloat32 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immFloat32
+
+immFloat64 :: DefiniteDescription
+immFloat64 =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immFloat64
+
+immRune :: DefiniteDescription
+immRune =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immRune
+
+immPointer :: DefiniteDescription
+immPointer =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immPointer
+
+immNull :: DefiniteDescription
+immNull =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.immNull
 
 cls :: DefiniteDescription
 cls =

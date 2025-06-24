@@ -2,15 +2,16 @@ module Kernel.Clarify.Move.Internal.Sigma
   ( Handle (..),
     new,
     registerImmediateS4,
-    registerImmediateTypeS4,
-    registerImmediateEnumS4,
-    registerImmediateNoemaS4,
     registerClosureS4,
-    immediateS4,
-    returnImmediateS4,
+    immediateNullS4,
     returnImmediateTypeS4,
     returnImmediateEnumS4,
     returnImmediateNoemaS4,
+    returnImmediateIntS4,
+    returnImmediateFloatS4,
+    returnImmediateRuneS4,
+    returnImmediatePointerS4,
+    returnImmediateNullS4,
     returnClosureS4,
     closureEnvS4,
     returnSigmaDataS4,
@@ -26,6 +27,7 @@ import Kernel.Clarify.Move.Internal.Utility (ResourceSpec (ResourceSpec))
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Rule.Handle.Local.Locator qualified as Locator
+import Kernel.Common.Rule.TypeTag
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
 import Language.Common.Rule.BaseLowType qualified as BLT
@@ -35,7 +37,7 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Opacity qualified as O
-import Language.Common.Rule.PrimNumSize (IntSize (..))
+import Language.Common.Rule.PrimNumSize (FloatSize (..), IntSize (..))
 import Language.Comp.Move.CreateVar qualified as Gensym
 import Language.Comp.Rule.Comp qualified as C
 import Language.Comp.Rule.EnumCase qualified as EC
@@ -50,30 +52,15 @@ new :: Gensym.Handle -> Linearize.Handle -> Utility.Handle -> Handle
 new gensymHandle linearizeHandle utilityHandle = do
   Handle {..}
 
-registerImmediateGeneralS4 :: Handle -> DD.DefiniteDescription -> TypeTag -> IO ()
-registerImmediateGeneralS4 h name typeTag = do
-  switch <- Gensym.createVar (gensymHandle h) "switch"
-  arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-  let discard = C.UpIntro $ C.SigmaIntro []
-  let copy = C.UpIntro argVar
-  Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
-    ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker typeTag}
-
 registerImmediateS4 :: Handle -> IO ()
 registerImmediateS4 h = do
-  registerImmediateGeneralS4 h DD.imm Immediate
-
-registerImmediateTypeS4 :: Handle -> IO ()
-registerImmediateTypeS4 h = do
-  registerImmediateGeneralS4 h DD.immType Type
-
-registerImmediateEnumS4 :: Handle -> IO ()
-registerImmediateEnumS4 h = do
-  registerImmediateGeneralS4 h DD.immEnum Enum
-
-registerImmediateNoemaS4 :: Handle -> IO ()
-registerImmediateNoemaS4 h = do
-  registerImmediateGeneralS4 h DD.immNoema Noema
+  forM_ immTypeTagMap $ \(name, typeTag) -> do
+    switch <- Gensym.createVar (gensymHandle h) "switch"
+    arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
+    let discard = C.UpIntro $ C.SigmaIntro []
+    let copy = C.UpIntro argVar
+    Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
+      ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker typeTag}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -82,44 +69,68 @@ registerClosureS4 h = do
     h
     DD.cls
     O.Clear
-    [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
+    [Right (env, returnImmediateTypeS4), Left (C.UpIntro envVar), Left returnImmediatePointerS4]
     (newTagMaker Function)
-
-returnImmediateS4 :: C.Comp
-returnImmediateS4 = do
-  C.UpIntro immediateS4
 
 returnImmediateTypeS4 :: C.Comp
 returnImmediateTypeS4 = do
-  C.UpIntro immediateTypeS4
+  C.UpIntro (C.VarGlobal DD.immType AN.argNumS4)
 
 returnImmediateEnumS4 :: C.Comp
 returnImmediateEnumS4 = do
-  C.UpIntro immediateEnumS4
+  C.UpIntro (C.VarGlobal DD.immEnum AN.argNumS4)
 
 returnImmediateNoemaS4 :: C.Comp
 returnImmediateNoemaS4 = do
-  C.UpIntro immediateNoemaS4
+  C.UpIntro (C.VarGlobal DD.immNoema AN.argNumS4)
+
+returnImmediateIntS4 :: IntSize -> C.Comp
+returnImmediateIntS4 intSize = do
+  case intSize of
+    IntSize1 ->
+      C.UpIntro (C.VarGlobal DD.immInt1 AN.argNumS4)
+    IntSize2 ->
+      C.UpIntro (C.VarGlobal DD.immInt2 AN.argNumS4)
+    IntSize4 ->
+      C.UpIntro (C.VarGlobal DD.immInt4 AN.argNumS4)
+    IntSize8 ->
+      C.UpIntro (C.VarGlobal DD.immInt8 AN.argNumS4)
+    IntSize16 ->
+      C.UpIntro (C.VarGlobal DD.immInt16 AN.argNumS4)
+    IntSize32 ->
+      C.UpIntro (C.VarGlobal DD.immInt32 AN.argNumS4)
+    IntSize64 ->
+      C.UpIntro (C.VarGlobal DD.immInt64 AN.argNumS4)
+
+returnImmediateFloatS4 :: FloatSize -> C.Comp
+returnImmediateFloatS4 floatSize = do
+  case floatSize of
+    FloatSize16 ->
+      C.UpIntro (C.VarGlobal DD.immFloat16 AN.argNumS4)
+    FloatSize32 ->
+      C.UpIntro (C.VarGlobal DD.immFloat32 AN.argNumS4)
+    FloatSize64 ->
+      C.UpIntro (C.VarGlobal DD.immFloat64 AN.argNumS4)
+
+returnImmediateRuneS4 :: C.Comp
+returnImmediateRuneS4 = do
+  C.UpIntro (C.VarGlobal DD.immRune AN.argNumS4)
+
+returnImmediatePointerS4 :: C.Comp
+returnImmediatePointerS4 = do
+  C.UpIntro (C.VarGlobal DD.immPointer AN.argNumS4)
+
+returnImmediateNullS4 :: C.Comp
+returnImmediateNullS4 = do
+  C.UpIntro immediateNullS4
 
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
   C.UpIntro $ C.VarGlobal DD.cls AN.argNumS4
 
-immediateS4 :: C.Value
-immediateS4 = do
-  C.VarGlobal DD.imm AN.argNumS4
-
-immediateTypeS4 :: C.Value
-immediateTypeS4 = do
-  C.VarGlobal DD.immType AN.argNumS4
-
-immediateEnumS4 :: C.Value
-immediateEnumS4 = do
-  C.VarGlobal DD.immEnum AN.argNumS4
-
-immediateNoemaS4 :: C.Value
-immediateNoemaS4 = do
-  C.VarGlobal DD.immNoema AN.argNumS4
+immediateNullS4 :: C.Value
+immediateNullS4 = do
+  C.VarGlobal DD.immNull AN.argNumS4
 
 registerSigmaS4 ::
   Handle ->
@@ -214,7 +225,7 @@ closureEnvS4 ::
 closureEnvS4 h locatorHandle mxts =
   case mxts of
     [] ->
-      return immediateS4 -- performance optimization; not necessary for correctness
+      return immediateNullS4 -- performance optimization; not necessary for correctness
     _ -> do
       i <- Gensym.newCount (gensymHandle h)
       let name = Locator.attachCurrentLocator locatorHandle $ BN.sigmaName i
@@ -243,7 +254,7 @@ sigmaData4 h = do
 
 sigmaBinder4 :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
 sigmaBinder4 h xts v = do
-  sigma4 h (Left returnImmediateS4 : map Right xts) v
+  sigma4 h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v
 
 sigmaDataT :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
 sigmaDataT h = do
@@ -272,43 +283,13 @@ sigmaData h resourceHandler dataInfo arg = do
 
 sigmaBinderT :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
 sigmaBinderT h xts v = do
-  sigmaT h (Left returnImmediateS4 : map Right xts) v
+  sigmaT h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v
 
 discriminantToEnumCase :: D.Discriminant -> EC.EnumCase
 discriminantToEnumCase discriminant =
   EC.Int (D.reify discriminant)
 
-data TypeTag
-  = Opaque
-  | Type
-  | Function
-  | Algebraic
-  | Noema
-  | Enum
-  | Immediate
-  | Binary
-  | Vector
-
 newTagMaker :: TypeTag -> C.Comp
 newTagMaker tag = do
   C.UpIntro $
-    C.Int IntSize64 $
-      case tag of
-        Opaque ->
-          0
-        Type ->
-          1
-        Function ->
-          2
-        Algebraic ->
-          3
-        Noema ->
-          4
-        Enum ->
-          5
-        Immediate ->
-          6
-        Binary ->
-          7
-        Vector ->
-          8
+    C.Int IntSize64 (typeTagToInteger tag)
