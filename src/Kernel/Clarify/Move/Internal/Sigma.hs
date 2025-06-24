@@ -244,8 +244,10 @@ returnSigmaDataS4 h dataName opacity dataInfo = do
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaDataT h dataInfo argVar
   copy <- sigmaData4 h dataInfo argVar
+  consSizeClause <- sigmaConsSize h dataInfo argVar
   let dataName' = DD.getFormDD dataName
-  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {switch, arg, defaultClause = newTagMaker Algebraic, clauses = [discard, copy]}
+  Utility.registerSwitcher (utilityHandle h) opacity dataName' $
+    ResourceSpec {switch, arg, defaultClause = consSizeClause, clauses = [discard, copy, newTagMaker Algebraic]}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
@@ -280,6 +282,19 @@ sigmaData h resourceHandler dataInfo arg = do
       return $
         C.UpElim False localName (C.UpIntro arg) $
           C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal localName)))) enumElim
+
+sigmaConsSize ::
+  Handle ->
+  [(D.Discriminant, [(Ident, C.Comp)])] ->
+  C.Value ->
+  IO C.Comp
+sigmaConsSize h dataInfo arg = do
+  let discList' = map (discriminantToEnumCase . fst) dataInfo
+  let branchList = map (\(_, consArgs) -> C.UpIntro $ C.Int IntSize64 (toInteger $ length consArgs)) dataInfo
+  let defaultBranch = C.UpIntro (C.Int IntSize64 (-1))
+  (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
+  enumElim <- Utility.getEnumElim (utilityHandle h) [] discVar defaultBranch (zip discList' branchList)
+  return $ C.UpElim True disc (C.UpIntro arg) enumElim
 
 sigmaBinderT :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
 sigmaBinderT h xts v = do
