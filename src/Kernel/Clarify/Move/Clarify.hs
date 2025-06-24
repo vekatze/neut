@@ -355,7 +355,7 @@ clarifyTerm h tenv term =
         tagMaker <-
           clarifyTerm h IntMap.empty typeTag
             >>= liftIO . Reduce.reduce (reduceHandle h)
-        let resourceSpec = Utility.ResourceSpec {switch, arg, discard, copy, tagMaker}
+        let resourceSpec = Utility.ResourceSpec {switch, arg, defaultClause = tagMaker, clauses = [discard, copy]}
         liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
     _ :< TM.Void ->

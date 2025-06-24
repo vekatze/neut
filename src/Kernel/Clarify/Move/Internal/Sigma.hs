@@ -60,7 +60,7 @@ registerImmediateS4 h = do
     let discard = C.UpIntro $ C.SigmaIntro []
     let copy = C.UpIntro argVar
     Utility.registerSwitcher (utilityHandle h) O.Clear name $ do
-      ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker typeTag}
+      ResourceSpec {switch, arg, defaultClause = newTagMaker typeTag, clauses = [discard, copy]}
 
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
@@ -149,7 +149,7 @@ makeSigmaResourceSpec h mxts tagMaker = do
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   discard <- sigmaT h mxts argVar
   copy <- sigma4 h mxts argVar
-  return $ ResourceSpec {switch, arg, discard, copy, tagMaker}
+  return $ ResourceSpec {switch, arg, defaultClause = tagMaker, clauses = [discard, copy]}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -245,7 +245,7 @@ returnSigmaDataS4 h dataName opacity dataInfo = do
   discard <- sigmaDataT h dataInfo argVar
   copy <- sigmaData4 h dataInfo argVar
   let dataName' = DD.getFormDD dataName
-  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {switch, arg, discard, copy, tagMaker = newTagMaker Algebraic}
+  Utility.registerSwitcher (utilityHandle h) opacity dataName' $ ResourceSpec {switch, arg, defaultClause = newTagMaker Algebraic, clauses = [discard, copy]}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
