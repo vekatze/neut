@@ -219,14 +219,16 @@ sigmaStoreTypeClause ::
   IO C.Comp
 sigmaStoreTypeClause h consName xts argVar = do
   let consNameText = C.UpIntro $ C.VarStaticText $ DD.localLocator consName
+  let size = toInteger $ length xts
   a0 <- do
+    (pointerVarName, pointerVar) <- Gensym.createVar (gensymHandle h) "pointer"
     (textVarName, textVar) <- Gensym.createVar (gensymHandle h) "text"
     return $
-      C.UpElim True textVarName consNameText $
-        C.Primitive $
-          C.Magic $
-            M.Store BLT.Pointer (C.SigmaIntro []) textVar argVar
-  let size = toInteger $ length xts
+      C.UpElim True pointerVarName (C.Primitive $ C.ShiftPointer argVar size 0) $
+        C.UpElim True textVarName consNameText $
+          C.Primitive $
+            C.Magic $
+              M.Store BLT.Pointer (C.SigmaIntro []) textVar pointerVar
   as <- forM (zip [1 ..] (drop 1 xts)) $ \(index, (_, t)) -> do
     (pointerVarName, pointerVar) <- Gensym.createVar (gensymHandle h) "pointer"
     (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
@@ -243,6 +245,19 @@ sigmaStoreTypeClause h consName xts argVar = do
         C.UpIntro $
           C.SigmaIntro []
   return $ C.SigmaElim False (map fst xts) argVar body'
+
+sigmaEnumConsName ::
+  Handle ->
+  [(DD.DefiniteDescription, D.Discriminant)] ->
+  C.Value ->
+  IO C.Comp
+sigmaEnumConsName h enumInfo arg = do
+  let discList' = map (discriminantToEnumCase . snd) enumInfo
+  let branchList = map (\(name, _) -> C.UpIntro $ C.VarStaticText $ DD.localLocator name) enumInfo
+  let defaultBranch = C.UpIntro (C.SigmaIntro [])
+  (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
+  enumElim <- Utility.getEnumElim (utilityHandle h) [] discVar defaultBranch (zip discList' branchList)
+  return $ C.UpElim True disc (C.UpIntro arg) enumElim
 
 closureEnvS4 ::
   Handle ->
@@ -283,17 +298,19 @@ returnSigmaEnumS4 ::
   Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
-  [D.Discriminant] ->
+  [(DD.DefiniteDescription, D.Discriminant)] ->
   IO C.Comp
-returnSigmaEnumS4 h dataName opacity discriminantList = do
+returnSigmaEnumS4 h dataName opacity enumInfo = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
   let discard = C.UpIntro $ C.SigmaIntro []
   let copy = C.UpIntro argVar
-  consSizeClause <- sigmaEnumConsSize h discriminantList argVar
+  consSizeClause <- sigmaEnumConsSize h (map snd enumInfo) argVar
+  defaultClause <- sigmaEnumConsName h enumInfo argVar
   let dataName' = DD.getFormDD dataName
+  let clauses = [discard, copy, newTagMaker Enum, consSizeClause]
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, defaultClause = consSizeClause, clauses = [discard, copy, newTagMaker Enum]}
+    ResourceSpec {switch, arg, defaultClause, clauses}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: Handle -> [(DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp

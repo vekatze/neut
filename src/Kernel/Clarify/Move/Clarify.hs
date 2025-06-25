@@ -174,8 +174,8 @@ clarifyStmt h stmt =
           od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
           case od of
             Just OD.Enum -> do
-              let discrimintList = map (\(_, _, _, _, d) -> d) consInfoList
-              liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear discrimintList)
+              let enumInfo = map (\(_, consName, _, _, d) -> (consName, d)) consInfoList
+              liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear enumInfo)
                 >>= clarifyStmtDefineBody' h name xts''
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do

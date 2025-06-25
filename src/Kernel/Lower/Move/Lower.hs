@@ -208,8 +208,8 @@ lowerCompPrimitive h resultVar codeOp cont =
       lowerCompPrimOp h resultVar op vs cont
     C.ShiftPointer v size index -> do
       (ptrVar, ptr) <- liftIO $ newValueLocal h "func"
-      let aggType = AggTypeStruct $ map (const LT.Pointer) [1 .. size]
-      let indexList' = [(LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
+      let aggType = AggTypeArray (fromInteger size) LT.Pointer
+      let indexList' = [(LC.Int 0, LT.PrimNum $ PT.Int IntSize32), (LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
       lowerValue h ptrVar v
         =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
     C.Magic der -> do
