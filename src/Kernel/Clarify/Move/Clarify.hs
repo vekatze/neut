@@ -174,7 +174,7 @@ clarifyStmt h stmt =
           od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
           case od of
             Just OD.Enum -> do
-              let enumInfo = map (\(_, consName, _, _, d) -> (consName, d)) consInfoList
+              let enumInfo = map (\(_, consName, isConstLike, _, d) -> (consName, isConstLike, d)) consInfoList
               liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear enumInfo)
                 >>= clarifyStmtDefineBody' h name xts''
             Just OD.Unary
@@ -184,7 +184,7 @@ clarifyStmt h stmt =
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
-              let dataInfo = map (\(_, consName, _, consArgs, discriminant) -> (consName, discriminant, dataArgs, consArgs)) consInfoList
+              let dataInfo = map (\(_, consName, isConstLike, consArgs, discriminant) -> (consName, isConstLike, discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM (clarifyDataClause h) dataInfo
               liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque dataInfo')
                 >>= clarifyStmtDefineBody' h name xts''
@@ -383,12 +383,19 @@ type DataArgsMap = IntMap.IntMap ([(Ident, TM.Term)], Size)
 
 clarifyDataClause ::
   Handle ->
-  (DD.DefiniteDescription, D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
-  EIO (DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])
-clarifyDataClause h (consName, discriminant, dataArgs, consArgs) = do
-  let args = dataArgs ++ consArgs
-  args' <- dropFst <$> clarifyBinder h IntMap.empty args
-  return (consName, discriminant, args')
+  (DD.DefiniteDescription, Bool, D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
+  EIO Sigma.DataConstructorInfo
+clarifyDataClause h (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
+  args <- dropFst <$> clarifyBinder h IntMap.empty (dataArgsVal ++ consArgsVal)
+  let (dataArgs', consArgs') = splitAt (length dataArgsVal) args
+  return $
+    Sigma.DataConstructorInfo
+      { Sigma.consName = consNameVal,
+        Sigma.isConstLike = isConstLikeVal,
+        Sigma.discriminant = discriminantVal,
+        Sigma.dataArgs = dataArgs',
+        Sigma.consArgs = consArgs'
+      }
 
 clarifyDecisionTree ::
   Handle ->
