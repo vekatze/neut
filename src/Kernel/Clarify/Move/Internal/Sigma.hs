@@ -213,12 +213,21 @@ sigma4 h xts argVar = do
 --   return unit
 sigmaStoreTypeClause ::
   Handle ->
+  DD.DefiniteDescription ->
   [(Ident, C.Comp)] ->
   C.Value ->
   IO C.Comp
-sigmaStoreTypeClause h xts argVar = do
+sigmaStoreTypeClause h consName xts argVar = do
+  let consNameText = C.UpIntro $ C.VarStaticText $ DD.localLocator consName
+  a0 <- do
+    (textVarName, textVar) <- Gensym.createVar (gensymHandle h) "text"
+    return $
+      C.UpElim True textVarName consNameText $
+        C.Primitive $
+          C.Magic $
+            M.Store BLT.Pointer (C.SigmaIntro []) textVar argVar
   let size = toInteger $ length xts
-  as <- forM (zip [0 ..] xts) $ \(index, (_, t)) -> do
+  as <- forM (zip [1 ..] (drop 1 xts)) $ \(index, (_, t)) -> do
     (pointerVarName, pointerVar) <- Gensym.createVar (gensymHandle h) "pointer"
     (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
     return $
@@ -230,7 +239,7 @@ sigmaStoreTypeClause h xts argVar = do
   ys <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") xts
   body' <-
     Linearize.linearizeDuplicatedVariables (linearizeHandle h) xts $
-      Utility.bindLet (zip ys as) $
+      Utility.bindLet (zip ys (a0 : as)) $
         C.UpIntro $
           C.SigmaIntro []
   return $ C.SigmaElim False (map fst xts) argVar body'
@@ -255,7 +264,7 @@ returnSigmaDataS4 ::
   Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
-  [(D.Discriminant, [(Ident, C.Comp)])] ->
+  [(DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])] ->
   IO C.Comp
 returnSigmaDataS4 h dataName opacity dataInfo = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
@@ -287,37 +296,34 @@ returnSigmaEnumS4 h dataName opacity discriminantList = do
     ResourceSpec {switch, arg, defaultClause = consSizeClause, clauses = [discard, copy, newTagMaker Enum]}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
-sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
+sigmaData4 :: Handle -> [(DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
 sigmaData4 h = do
   sigmaData h (sigmaBinder4 h)
 
-sigmaDataT :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
+sigmaDataT :: Handle -> [(DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
 sigmaDataT h = do
   sigmaData h (sigmaBinderT h)
 
-sigmaStoreType :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
+sigmaStoreType :: Handle -> [(DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
 sigmaStoreType h = do
-  sigmaData
-    h
-    ( \xts v -> do
-        x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
-        sigmaStoreTypeClause h ((x, returnImmediateIntS4 IntSize64) : xts) v
-    )
+  sigmaData h $ \consName xts v -> do
+    x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
+    sigmaStoreTypeClause h consName ((x, returnImmediateIntS4 IntSize64) : xts) v
 
-sigmaBinder4 :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
-sigmaBinder4 h xts v = do
+sigmaBinder4 :: Handle -> DD.DefiniteDescription -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
+sigmaBinder4 h _consName xts v = do
   x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
   sigma4 h ((x, returnImmediateIntS4 IntSize64) : xts) v
 
-sigmaBinderT :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
-sigmaBinderT h xts v = do
+sigmaBinderT :: Handle -> DD.DefiniteDescription -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
+sigmaBinderT h _consName xts v = do
   x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
   sigmaT h ((x, returnImmediateIntS4 IntSize64) : xts) v
 
 sigmaData ::
   Handle ->
-  ([(Ident, C.Comp)] -> C.Value -> IO C.Comp) ->
-  [(D.Discriminant, [(Ident, C.Comp)])] ->
+  (DD.DefiniteDescription -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp) ->
+  [(DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])] ->
   C.Value ->
   IO C.Comp
 sigmaData h resourceHandler dataInfo arg = do
@@ -325,10 +331,10 @@ sigmaData h resourceHandler dataInfo arg = do
     [] ->
       return $ C.UpIntro arg
     _ -> do
-      let (discList, binderList) = unzip dataInfo
+      let (consNameList, discList, binderList) = unzip3 dataInfo
       let discList' = map discriminantToEnumCase discList
       localName <- Gensym.newIdentFromText (gensymHandle h) "local"
-      binderList' <- mapM (`resourceHandler` C.VarLocal localName) binderList
+      binderList' <- zipWithM (\consName binder -> resourceHandler consName binder (C.VarLocal localName)) consNameList binderList
       (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
       enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
@@ -337,12 +343,12 @@ sigmaData h resourceHandler dataInfo arg = do
 
 sigmaDataConsSize ::
   Handle ->
-  [(D.Discriminant, [(Ident, C.Comp)])] ->
+  [(DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])] ->
   C.Value ->
   IO C.Comp
 sigmaDataConsSize h dataInfo arg = do
-  let discList' = map (discriminantToEnumCase . fst) dataInfo
-  let branchList = flip map dataInfo $ \(_, consArgs) -> do
+  let discList' = map (discriminantToEnumCase . (\(_, disc, _) -> disc)) dataInfo
+  let branchList = flip map dataInfo $ \(_, _, consArgs) -> do
         C.UpIntro $ C.Int IntSize64 (toInteger $ length consArgs + 1) -- `+1` is for discriminants
   let defaultBranch = C.UpIntro (C.Int IntSize64 (-1))
   (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"

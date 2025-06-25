@@ -184,7 +184,7 @@ clarifyStmt h stmt =
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
-              let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
+              let dataInfo = map (\(_, consName, _, consArgs, discriminant) -> (consName, discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM (clarifyDataClause h) dataInfo
               liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque dataInfo')
                 >>= clarifyStmtDefineBody' h name xts''
@@ -383,12 +383,12 @@ type DataArgsMap = IntMap.IntMap ([(Ident, TM.Term)], Size)
 
 clarifyDataClause ::
   Handle ->
-  (D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
-  EIO (D.Discriminant, [(Ident, C.Comp)])
-clarifyDataClause h (discriminant, dataArgs, consArgs) = do
+  (DD.DefiniteDescription, D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
+  EIO (DD.DefiniteDescription, D.Discriminant, [(Ident, C.Comp)])
+clarifyDataClause h (consName, discriminant, dataArgs, consArgs) = do
   let args = dataArgs ++ consArgs
   args' <- dropFst <$> clarifyBinder h IntMap.empty args
-  return (discriminant, args')
+  return (consName, discriminant, args')
 
 clarifyDecisionTree ::
   Handle ->
