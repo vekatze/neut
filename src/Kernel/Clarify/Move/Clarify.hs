@@ -649,7 +649,7 @@ returnClosure ::
 returnClosure h tenv lamID mName opacity fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
-  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) $ map Right fvs''
+  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 2 -- argNum == count(xts) + env
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID

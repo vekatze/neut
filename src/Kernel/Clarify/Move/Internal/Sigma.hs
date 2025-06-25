@@ -65,11 +65,13 @@ registerImmediateS4 h = do
 registerClosureS4 :: Handle -> IO ()
 registerClosureS4 h = do
   (env, envVar) <- Gensym.createVar (gensymHandle h) "env"
+  hole1 <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
+  hole2 <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
   registerSigmaS4
     h
     DD.cls
     O.Clear
-    [Right (env, returnImmediateTypeS4), Left (C.UpIntro envVar), Left returnImmediatePointerS4]
+    [(env, returnImmediateTypeS4), (hole1, C.UpIntro envVar), (hole2, returnImmediatePointerS4)]
     (newTagMaker Function)
 
 returnImmediateTypeS4 :: C.Comp
@@ -132,19 +134,19 @@ registerSigmaS4 ::
   Handle ->
   DD.DefiniteDescription ->
   O.Opacity ->
-  [Either C.Comp (Ident, C.Comp)] ->
+  [(Ident, C.Comp)] ->
   C.Comp ->
   IO ()
-registerSigmaS4 h name opacity mxts tagMaker = do
-  resourceSpec <- makeSigmaResourceSpec h mxts tagMaker
+registerSigmaS4 h name opacity xts tagMaker = do
+  resourceSpec <- makeSigmaResourceSpec h xts tagMaker
   Utility.registerSwitcher (utilityHandle h) opacity name resourceSpec
 
-makeSigmaResourceSpec :: Handle -> [Either C.Comp (Ident, C.Comp)] -> C.Comp -> IO ResourceSpec
-makeSigmaResourceSpec h mxts tagMaker = do
+makeSigmaResourceSpec :: Handle -> [(Ident, C.Comp)] -> C.Comp -> IO ResourceSpec
+makeSigmaResourceSpec h xts tagMaker = do
   switch <- Gensym.createVar (gensymHandle h) "switch"
   arg@(_, argVar) <- Gensym.createVar (gensymHandle h) "arg"
-  discard <- sigmaT h mxts argVar
-  copy <- sigma4 h mxts argVar
+  discard <- sigmaT h xts argVar
+  copy <- sigma4 h xts argVar
   return $ ResourceSpec {switch, arg, defaultClause = tagMaker, clauses = [discard, copy]}
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -164,12 +166,10 @@ makeSigmaResourceSpec h mxts tagMaker = do
 --
 sigmaT ::
   Handle ->
-  [Either C.Comp (Ident, C.Comp)] ->
+  [(Ident, C.Comp)] ->
   C.Value ->
   IO C.Comp
-sigmaT h mxts argVar = do
-  xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
-  -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
+sigmaT h xts argVar = do
   as <- forM xts $ \(x, t) -> do
     Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
   ys <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") xts
@@ -192,11 +192,10 @@ sigmaT h mxts argVar = do
 --     return (x1', ..., xn')
 sigma4 ::
   Handle ->
-  [Either C.Comp (Ident, C.Comp)] ->
+  [(Ident, C.Comp)] ->
   C.Value ->
   IO C.Comp
-sigma4 h mxts argVar = do
-  xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
+sigma4 h xts argVar = do
   -- as == [APP-1, ..., APP-n]
   as <- forM xts $ \(x, t) -> do
     Utility.toRelevantApp (utilityHandle h) (C.VarLocal x) t
@@ -214,12 +213,11 @@ sigma4 h mxts argVar = do
 --   return unit
 sigmaStoreTypeClause ::
   Handle ->
-  [Either C.Comp (Ident, C.Comp)] ->
+  [(Ident, C.Comp)] ->
   C.Value ->
   IO C.Comp
-sigmaStoreTypeClause h mxts argVar = do
-  let size = toInteger $ length mxts
-  xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
+sigmaStoreTypeClause h xts argVar = do
+  let size = toInteger $ length xts
   as <- forM (zip [0 ..] xts) $ \(index, (_, t)) -> do
     (pointerVarName, pointerVar) <- Gensym.createVar (gensymHandle h) "pointer"
     (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
@@ -237,19 +235,10 @@ sigmaStoreTypeClause h mxts argVar = do
           C.SigmaIntro []
   return $ C.SigmaElim False (map fst xts) argVar body'
 
-supplyName :: Gensym.Handle -> Either b (Ident, b) -> IO (Ident, b)
-supplyName h mName =
-  case mName of
-    Right (x, t) ->
-      return (x, t)
-    Left t -> do
-      x <- Gensym.newIdentFromText h "unused-sigarg"
-      return (x, t)
-
 closureEnvS4 ::
   Handle ->
   Locator.Handle ->
-  [Either C.Comp (Ident, C.Comp)] ->
+  [(Ident, C.Comp)] ->
   IO C.Value
 closureEnvS4 h locatorHandle mxts =
   case mxts of
@@ -308,15 +297,22 @@ sigmaDataT h = do
 
 sigmaStoreType :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
 sigmaStoreType h = do
-  sigmaData h (\xts v -> sigmaStoreTypeClause h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v)
+  sigmaData
+    h
+    ( \xts v -> do
+        x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
+        sigmaStoreTypeClause h ((x, returnImmediateIntS4 IntSize64) : xts) v
+    )
 
 sigmaBinder4 :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
 sigmaBinder4 h xts v = do
-  sigma4 h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v
+  x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
+  sigma4 h ((x, returnImmediateIntS4 IntSize64) : xts) v
 
 sigmaBinderT :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
 sigmaBinderT h xts v = do
-  sigmaT h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v
+  x <- Gensym.newIdentFromText (gensymHandle h) "unused-sigarg"
+  sigmaT h ((x, returnImmediateIntS4 IntSize64) : xts) v
 
 sigmaData ::
   Handle ->
