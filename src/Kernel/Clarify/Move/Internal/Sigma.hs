@@ -204,6 +204,39 @@ sigma4 h mxts argVar = do
   body' <- Linearize.linearize (linearizeHandle h) xts $ Utility.bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
+-- lam z.
+--   let-without-free (x1, ..., xn) := z;
+--   <∀i. copy xi if xi is used multiple times>;
+--   z[0] = t0;
+--   z[1] = t1;
+--   ...
+--   z[n] = tn;
+--   return unit
+sigmaStoreTypeClause ::
+  Handle ->
+  [Either C.Comp (Ident, C.Comp)] ->
+  C.Value ->
+  IO C.Comp
+sigmaStoreTypeClause h mxts argVar = do
+  let size = toInteger $ length mxts
+  xts <- liftIO $ mapM (supplyName (gensymHandle h)) mxts
+  as <- forM (zip [0 ..] xts) $ \(index, (_, t)) -> do
+    (pointerVarName, pointerVar) <- Gensym.createVar (gensymHandle h) "pointer"
+    (typeVarName, typeVar) <- Gensym.createVar (gensymHandle h) "type"
+    return $
+      C.UpElim True pointerVarName (C.Primitive $ C.ShiftPointer argVar size index) $
+        C.UpElim True typeVarName t $
+          C.Primitive $
+            C.Magic $
+              M.Store BLT.Pointer (C.SigmaIntro []) typeVar pointerVar
+  ys <- mapM (const $ Gensym.newIdentFromText (gensymHandle h) "arg") xts
+  body' <-
+    Linearize.linearizeDuplicatedVariables (linearizeHandle h) xts $
+      Utility.bindLet (zip ys as) $
+        C.UpIntro $
+          C.SigmaIntro []
+  return $ C.SigmaElim False (map fst xts) argVar body'
+
 supplyName :: Gensym.Handle -> Either b (Ident, b) -> IO (Ident, b)
 supplyName h mName =
   case mName of
@@ -242,8 +275,10 @@ returnSigmaDataS4 h dataName opacity dataInfo = do
   copy <- sigmaData4 h dataInfo argVar
   consSizeClause <- sigmaDataConsSize h dataInfo argVar
   let dataName' = DD.getFormDD dataName
+  let clauses = [discard, copy, newTagMaker Algebraic, consSizeClause]
+  defaultClause <- sigmaStoreType h dataInfo argVar
   Utility.registerSwitcher (utilityHandle h) opacity dataName' $
-    ResourceSpec {switch, arg, defaultClause = consSizeClause, clauses = [discard, copy, newTagMaker Algebraic]}
+    ResourceSpec {switch, arg, defaultClause, clauses}
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 returnSigmaEnumS4 ::
@@ -267,13 +302,21 @@ sigmaData4 :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C
 sigmaData4 h = do
   sigmaData h (sigmaBinder4 h)
 
+sigmaDataT :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
+sigmaDataT h = do
+  sigmaData h (sigmaBinderT h)
+
+sigmaStoreType :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
+sigmaStoreType h = do
+  sigmaData h (\xts v -> sigmaStoreTypeClause h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v)
+
 sigmaBinder4 :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
 sigmaBinder4 h xts v = do
   sigma4 h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v
 
-sigmaDataT :: Handle -> [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> IO C.Comp
-sigmaDataT h = do
-  sigmaData h (sigmaBinderT h)
+sigmaBinderT :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
+sigmaBinderT h xts v = do
+  sigmaT h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v
 
 sigmaData ::
   Handle ->
@@ -322,10 +365,6 @@ sigmaEnumConsSize h discList arg = do
   (disc, discVar) <- Gensym.createVar (gensymHandle h) "disc"
   enumElim <- Utility.getEnumElim (utilityHandle h) [] discVar defaultBranch (zip discList' branchList)
   return $ C.UpElim True disc (C.UpIntro arg) enumElim
-
-sigmaBinderT :: Handle -> [(Ident, C.Comp)] -> C.Value -> IO C.Comp
-sigmaBinderT h xts v = do
-  sigmaT h (Left (returnImmediateIntS4 IntSize64) : map Right xts) v
 
 discriminantToEnumCase :: D.Discriminant -> EC.EnumCase
 discriminantToEnumCase discriminant =

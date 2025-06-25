@@ -104,6 +104,7 @@ type ShouldDeallocate = Bool
 
 data Primitive
   = PrimOp PrimOp [Value]
+  | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
   | Magic (Magic BaseLowType Value)
   deriving (Show)
 
