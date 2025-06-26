@@ -164,7 +164,7 @@ interpretTopLevelFunc m dd argNum isConstLike = do
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> EIO WT.WeakTerm
 castFromIntToBool h e@(m :< _) = do
-  let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
+  let i1 = m :< WT.Prim (WP.Type (PT.Int PNS.IntSize1))
   l <- liftEither $ DD.getLocatorPair m C.coreBool
   (dd, (_, gn)) <- resolveLocator h m l False
   bool <- interpretGlobalName h m dd gn

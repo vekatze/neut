@@ -248,11 +248,23 @@ toDoc term =
             [ attachComment (c ++ c1) $ D.text "magic opaque-value ",
               decodeBrace True c2 e c3
             ]
+        CallType c1 func arg1 arg2 -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic call-type",
+              SE.decode $
+                SE.fromListWithComment
+                  (Just SE.Paren)
+                  SE.Comma
+                  [ RT.mapEL toDoc func,
+                    RT.mapEL toDoc arg1,
+                    RT.mapEL toDoc arg2
+                  ]
+            ]
     _ :< Hole {} ->
       D.text "_"
     _ :< Annotation {} -> do
       D.text "<annot>"
-    _ :< Resource dd _ _ _ -> do
+    _ :< Resource dd _ _ _ _ -> do
       D.text $ DD.localLocator dd
     _ :< If ifClause elseIfClauseList elseBody -> do
       let ifClause' = decodeKeywordClause "if" $ mapKeywordClause toDoc ifClause

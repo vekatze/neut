@@ -112,9 +112,9 @@ postprocess' h stmt = do
       let name' = Locator.attachCurrentLocator h name
       let consInfo' = fmap (liftRawCons h) consInfo
       defineData m name' args (SE.extract consInfo') loc
-    RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) c4 -> do
+    RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, typeTag) c5 -> do
       let name' = Locator.attachCurrentLocator h name
-      [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) c4]
+      [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, typeTag) c5]
     RawStmtNominal c m geistList -> do
       let geistList' = fmap (first (liftGeist h)) geistList
       [PostRawStmtNominal c m geistList']

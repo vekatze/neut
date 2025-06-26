@@ -2,6 +2,7 @@ import {
   core.c-size {C-Size},
   core.external {free, malloc},
   core.memory {load-int, store-int},
+  core.type-tag {Opaque, type-tag-to-int},
 }
 
 resource noisy-boxed-int {
@@ -16,6 +17,7 @@ resource noisy-boxed-int {
     magic store(int, orig-value, new-ptr);
     new-ptr
   },
+  type-tag-to-int(Opaque),
 }
 
 // provide a way to introduce new boxed integer

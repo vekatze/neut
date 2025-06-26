@@ -439,7 +439,8 @@ rawTermMagic h m c = do
       rawTermMagicAlloca h m c,
       rawTermMagicExternal h m c,
       rawTermMagicOpaqueValue h m c,
-      rawTermMagicGlobal h m c
+      rawTermMagicGlobal h m c,
+      rawTermMagicCallType h m c
     ]
 
 rawTermMagicBase :: T.Text -> Parser (C -> C -> a) -> Parser (a, C)
@@ -524,6 +525,16 @@ rawTermMagicOpaqueValue h m c0 = do
   c1 <- keyword "opaque-value"
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.Magic c0 (RT.OpaqueValue c1 (c2, e)), c)
+
+rawTermMagicCallType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicCallType h m c = do
+  rawTermMagicBase "call-type" $ do
+    func <- rawTerm h
+    c3 <- delimiter ","
+    arg1 <- rawTerm h
+    c4 <- delimiter ","
+    arg2 <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.CallType c1 (c2, func) (c3, arg1) (c4, arg2))
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do

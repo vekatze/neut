@@ -104,6 +104,7 @@ type ShouldDeallocate = Bool
 
 data Primitive
   = PrimOp PrimOp [Value]
+  | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
   | Magic (Magic BaseLowType Value)
   deriving (Show)
 
@@ -123,11 +124,11 @@ type DefMap =
 
 intValue0 :: Value
 intValue0 =
-  Int (IntSize 1) 0
+  Int IntSize1 0
 
 intValue1 :: Value
 intValue1 =
-  Int (IntSize 1) 1
+  Int IntSize1 1
 
 getPhiList :: Comp -> Maybe [Value]
 getPhiList e =

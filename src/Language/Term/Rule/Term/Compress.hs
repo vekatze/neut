@@ -67,8 +67,8 @@ compress term =
       () :< TM.Prim (compressPrim prim)
     _ :< TM.Magic der -> do
       () :< TM.Magic (fmap compress der)
-    _ :< TM.Resource dd resourceID unitType discarder copier -> do
-      () :< TM.Resource dd resourceID (compress unitType) (compress discarder) (compress copier)
+    _ :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
+      () :< TM.Resource dd resourceID (compress unitType) (compress discarder) (compress copier) (compress typeTag)
     _ :< TM.Void ->
       () :< TM.Void
 

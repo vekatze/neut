@@ -9,7 +9,6 @@ import CodeParser.Move.Parse
 import CodeParser.Rule.Parser
 import Control.Monad
 import Control.Monad.Trans
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Error.Move.Run (raiseError)
 import Kernel.Parse.Move.Internal.RawTerm
@@ -195,7 +194,7 @@ parseResource h = do
   (name, c2) <- baseName
   (handlers, c) <- seriesBrace $ rawExpr h
   case SE.elems handlers of
-    [discarder, copier] -> do
-      return (RawStmtDefineResource c1 m (name, c2) discarder copier (SE.trailingComment handlers), c)
+    [discarder, copier, typeTag] -> do
+      return (RawStmtDefineResource c1 m (name, c2) discarder copier typeTag (SE.trailingComment handlers), c)
     _ ->
-      failure Nothing (S.fromList [asLabel "discarder and copier"])
+      lift $ raiseError m $ "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)

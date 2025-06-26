@@ -136,7 +136,7 @@ inferStmtKind h stmtKind =
 
 getIntType :: Platform.Handle -> Hint -> EIO WT.WeakTerm
 getIntType h m = do
-  let baseSize = Platform.getDataSizeValue h
+  let baseSize = Platform.getDataSize h
   return $ WT.intTypeBySize m baseSize
 
 getMainUnitType :: StmtKind WT.WeakTerm -> Maybe WT.WeakTerm
@@ -345,22 +345,33 @@ infer h term =
         M.OpaqueValue e -> do
           (e', t) <- infer h e
           return (m :< WT.Magic (M.WeakMagic $ M.OpaqueValue e'), t)
+        M.CallType func arg1 arg2 -> do
+          func' <- inferType h func
+          (arg1', t1) <- infer h arg1
+          (arg2', _) <- infer h arg2
+          intType <- getIntType (platformHandle h) m
+          liftIO $ Constraint.insert (constraintHandle h) intType t1
+          resultType <- liftIO $ newHole h m (varEnv h)
+          return (m :< WT.Magic (M.WeakMagic $ M.CallType func' arg1' arg2'), resultType)
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer h e
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
+    m :< WT.Resource dd resourceID unitType discarder copier typeTag -> do
       unitType' <- inferType h unitType
       (discarder', td) <- infer (h {varEnv = []}) discarder
       (copier', tc) <- infer (h {varEnv = []}) copier
+      (typeTag', tt) <- infer (h {varEnv = []}) typeTag
       x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "_"
       resourceType <- liftIO $ newHole h m []
       let tDiscard = m :< WT.Pi PK.normal [] [(m, x, resourceType)] unitType'
       let tCopy = m :< WT.Pi PK.normal [] [(m, x, resourceType)] resourceType
+      intType <- getIntType (platformHandle h) m
       liftIO $ Constraint.insert (constraintHandle h) tDiscard td
       liftIO $ Constraint.insert (constraintHandle h) tCopy tc
-      return (m :< WT.Resource dd resourceID unitType' discarder' copier', m :< WT.Tau)
+      liftIO $ Constraint.insert (constraintHandle h) intType tt
+      return (m :< WT.Resource dd resourceID unitType' discarder' copier' typeTag', m :< WT.Tau)
     m :< WT.Void ->
       return (m :< WT.Void, m :< WT.Tau)
 

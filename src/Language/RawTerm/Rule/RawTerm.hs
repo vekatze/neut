@@ -83,7 +83,7 @@ data RawTermF a
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation LogLevel (Annot.Annotation ()) a
-  | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
+  | Resource DD.DefiniteDescription C (a, C) (a, C) (a, C) -- DD is only for printing
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)
   | Seq (a, C) C a
@@ -247,6 +247,7 @@ data RawMagic
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
   | Global C (EL EN.ExternalName) (EL RawTerm) (Maybe C)
   | OpaqueValue C (EL RawTerm)
+  | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm)
 
 -- elem
 type EL a =

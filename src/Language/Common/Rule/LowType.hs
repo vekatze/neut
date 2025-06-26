@@ -2,6 +2,7 @@ module Language.Common.Rule.LowType (LowType (..), textType, textTypeInner) wher
 
 import Data.Binary
 import GHC.Generics qualified as G
+import Language.Common.Rule.DataSize (DataSize)
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimType qualified as PT
 
@@ -20,14 +21,14 @@ instance Show LowType where
 
 instance Binary LowType
 
-textType :: Int -> Int -> LowType
+textType :: DataSize -> Int -> LowType
 textType baseSize len =
   Struct
-    [ PrimNum $ PT.Int $ IntSize baseSize,
-      PrimNum $ PT.Int $ IntSize baseSize,
+    [ PrimNum $ PT.Int $ dataSizeToIntSize baseSize,
+      PrimNum $ PT.Int $ dataSizeToIntSize baseSize,
       textTypeInner len
     ]
 
 textTypeInner :: Int -> LowType
 textTypeInner len =
-  Array len (PrimNum $ PT.Int $ IntSize 8)
+  Array len (PrimNum $ PT.Int IntSize8)

@@ -5,7 +5,6 @@ module Kernel.Clarify.Move.Clarify
     newMain,
     clarify,
     clarifyEntryPoint,
-    registerFoundationalTypes,
   )
 where
 
@@ -24,7 +23,6 @@ import Gensym.Rule.Handle qualified as Gensym
 import Kernel.Clarify.Move.Internal.Handle.AuxEnv qualified as AuxEnv
 import Kernel.Clarify.Move.Internal.Handle.CompDef qualified as CompDef
 import Kernel.Clarify.Move.Internal.Linearize qualified as Linearize
-import Kernel.Clarify.Move.Internal.Sigma (immediateS4)
 import Kernel.Clarify.Move.Internal.Sigma qualified as Sigma
 import Kernel.Clarify.Move.Internal.Utility (toRelevantApp)
 import Kernel.Clarify.Move.Internal.Utility qualified as Utility
@@ -44,6 +42,7 @@ import Language.Common.Rule.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Rule.BaseLowType qualified as BLT
 import Language.Common.Rule.BaseName qualified as BN
 import Language.Common.Rule.Binder
+import Language.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
@@ -55,6 +54,7 @@ import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity (isOpaque)
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.PrimNumSize (dataSizeToIntSize)
 import Language.Common.Rule.PrimNumSize qualified as PNS
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
@@ -86,12 +86,12 @@ data Handle = Handle
     reduceHandle :: Reduce.Handle,
     substHandle :: Subst.Handle,
     compDefHandle :: CompDef.Handle,
-    baseSize :: Int
+    baseSize :: DS.DataSize
   }
 
 new :: Global.Handle -> Local.Handle -> IO Handle
 new (Global.Handle {..}) (Local.Handle {..}) = do
-  let baseSize = Platform.getDataSizeValue platformHandle
+  let baseSize = Platform.getDataSize platformHandle
   auxEnvHandle <- AuxEnv.new
   defMap <- CompDef.get compDefHandle
   let substHandle = Subst.new gensymHandle
@@ -139,7 +139,7 @@ newMain :: Global.Handle -> IO MainHandle
 newMain Global.Handle {..} = do
   mainAuxEnvHandle <- AuxEnv.new
   defMap <- CompDef.get compDefHandle
-  let baseSize = Platform.getDataSizeValue platformHandle
+  let baseSize = Platform.getDataSize platformHandle
   let compSubstHandle = CompSubst.new gensymHandle
   let mainReduceHandle = Reduce.new compSubstHandle gensymHandle defMap
   let utilityHandle = Utility.new gensymHandle compSubstHandle mainAuxEnvHandle baseSize
@@ -153,12 +153,6 @@ clarifyEntryPoint h = do
   forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce (mainReduceHandle h) e
     return $ C.Def x opacity args e'
-
-registerFoundationalTypes :: Handle -> IO ()
-registerFoundationalTypes h = do
-  AuxEnv.clear (auxEnvHandle h)
-  auxEnv <- getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h)
-  forM_ (Map.toList auxEnv) $ uncurry $ CompDef.insert (compDefHandle h)
 
 getBaseAuxEnv :: AuxEnv.Handle -> Sigma.Handle -> IO C.DefMap
 getBaseAuxEnv auxEnvHandle sigmaHandle = do
@@ -180,7 +174,9 @@ clarifyStmt h stmt =
           od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
           case od of
             Just OD.Enum -> do
-              clarifyStmtDefineBody' h name xts'' Sigma.returnImmediateS4
+              let enumInfo = map (\(_, consName, isConstLike, _, d) -> (consName, isConstLike, d)) consInfoList
+              liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear enumInfo)
+                >>= clarifyStmtDefineBody' h name xts''
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody h IntMap.empty dataArgs t
@@ -188,7 +184,7 @@ clarifyStmt h stmt =
               | otherwise ->
                   raiseCritical m "Found a broken unary data"
             _ -> do
-              let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
+              let dataInfo = map (\(_, consName, isConstLike, consArgs, discriminant) -> (consName, isConstLike, discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM (clarifyDataClause h) dataInfo
               liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque dataInfo')
                 >>= clarifyStmtDefineBody' h name xts''
@@ -202,12 +198,12 @@ clarifyStmt h stmt =
 makeEnvArg :: Handle -> IO (Ident, C.Comp)
 makeEnvArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "env"
-  return (x, Sigma.returnImmediateS4)
+  return (x, Sigma.returnImmediateNullS4) -- top-level function's env is always null
 
 makeSwitchArg :: Handle -> IO (Ident, C.Comp)
 makeSwitchArg h = do
   x <- Gensym.newIdentFromText (gensymHandle h) "sw"
-  return (x, Sigma.returnImmediateS4)
+  return (x, Sigma.returnImmediateIntS4 PNS.IntSize64)
 
 clarifyBinderBody ::
   Handle ->
@@ -250,14 +246,14 @@ clarifyTerm :: Handle -> TM.TypeEnv -> TM.Term -> EIO C.Comp
 clarifyTerm h tenv term =
   case term of
     _ :< TM.Tau -> do
-      return Sigma.returnImmediateS4
+      return Sigma.returnImmediateTypeS4
     _ :< TM.Var x -> do
       return $ C.UpIntro $ C.VarLocal x
     _ :< TM.VarGlobal (AttrVG.Attr {..}) x -> do
       return $
         C.UpIntro $
           C.SigmaIntro
-            [ Sigma.immediateS4,
+            [ Sigma.immediateNullS4,
               C.SigmaIntro [],
               C.VarGlobal x (AN.add argNum (AN.fromInt 2))
             ]
@@ -277,14 +273,14 @@ clarifyTerm h tenv term =
           liftIO $ callClosure h b e' allArgs
     _ :< TM.Data _ name dataArgs -> do
       let argNum = AN.fromInt $ length dataArgs + 2
-      let cls = C.UpIntro $ C.SigmaIntro [immediateS4, C.SigmaIntro [], C.VarGlobal name argNum]
+      let cls = C.UpIntro $ C.SigmaIntro [Sigma.immediateNullS4, C.SigmaIntro [], C.VarGlobal name argNum]
       dataArgs' <- mapM (clarifyPlus h tenv) dataArgs
       liftIO $ callClosure h False cls dataArgs'
     m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- liftIO $ OptimizableData.lookup (optDataHandle h) consName
       case od of
         Just OD.Enum ->
-          return $ C.UpIntro $ C.Int (PNS.IntSize (baseSize h)) (D.reify discriminant)
+          return $ C.UpIntro $ C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant)
         Just OD.Unary
           | [e] <- consArgs ->
               clarifyTerm h tenv e
@@ -296,7 +292,7 @@ clarifyTerm h tenv term =
             Utility.bindLet (zip zs es) $
               C.UpIntro $
                 C.SigmaIntro $
-                  C.Int (PNS.IntSize (baseSize h)) (D.reify discriminant) : xs
+                  C.Int (dataSizeToIntSize (baseSize h)) (D.reify discriminant) : xs
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (m,,m :< TM.Tau) xs
@@ -306,7 +302,7 @@ clarifyTerm h tenv term =
     _ :< TM.Box t -> do
       clarifyTerm h tenv t
     _ :< TM.BoxNoema {} ->
-      return Sigma.returnImmediateS4
+      return Sigma.returnImmediateNoemaS4
     _ :< TM.BoxIntro letSeq e -> do
       embody h tenv letSeq e
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
@@ -321,8 +317,16 @@ clarifyTerm h tenv term =
       return $ Utility.bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
     m :< TM.Prim prim ->
       case prim of
-        P.Type _ ->
-          return Sigma.returnImmediateS4
+        P.Type primType ->
+          case primType of
+            PT.Int intSize ->
+              return $ Sigma.returnImmediateIntS4 intSize
+            PT.Float floatSize ->
+              return $ Sigma.returnImmediateFloatS4 floatSize
+            PT.Rune ->
+              return Sigma.returnImmediateRuneS4
+            PT.Pointer ->
+              return Sigma.returnImmediatePointerS4
         P.Value primValue ->
           case primValue of
             PV.Int _ size l ->
@@ -334,29 +338,30 @@ clarifyTerm h tenv term =
             PV.StaticText _ text ->
               return $ C.UpIntro $ C.VarStaticText text
             PV.Rune r -> do
-              let t = fromPrimNum m (PT.Int PNS.intSize32)
-              clarifyTerm h tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.intSize32 (RU.asInt r)))
+              let t = fromPrimNum m (PT.Int PNS.IntSize32)
+              clarifyTerm h tenv $ m :< TM.Prim (P.Value (PV.Int t PNS.IntSize32 (RU.asInt r)))
     _ :< TM.Magic der -> do
       clarifyMagic h tenv der
-    m :< TM.Resource _ resourceID _ discarder copier -> do
+    m :< TM.Resource _ resourceID _ discarder copier typeTag -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.resourceName resourceID
-      switchValue <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "switchValue"
-      value <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "value"
-      discarder' <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var value])
-          >>= liftIO . Reduce.reduce (reduceHandle h)
-      copier' <-
-        clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var value])
-          >>= liftIO . Reduce.reduce (reduceHandle h)
-      enumElim <-
-        liftIO $
-          Utility.getEnumElim (utilityHandle h) [value] (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
-        liftIO $ AuxEnv.insert (auxEnvHandle h) liftedName (O.Clear, [switchValue, value], enumElim)
+        switch <- liftIO $ Gensym.createVar (gensymHandle h) "switch"
+        arg@(argVarName, _) <- liftIO $ Gensym.createVar (gensymHandle h) "arg"
+        discard <-
+          clarifyTerm h IntMap.empty (m :< TM.PiElim False discarder [] [m :< TM.Var argVarName])
+            >>= liftIO . Reduce.reduce (reduceHandle h)
+        copy <-
+          clarifyTerm h IntMap.empty (m :< TM.PiElim False copier [] [m :< TM.Var argVarName])
+            >>= liftIO . Reduce.reduce (reduceHandle h)
+        tagMaker <-
+          clarifyTerm h IntMap.empty typeTag
+            >>= liftIO . Reduce.reduce (reduceHandle h)
+        let resourceSpec = Utility.ResourceSpec {switch, arg, defaultClause = tagMaker, clauses = [discard, copy]}
+        liftIO $ Utility.registerSwitcher (utilityHandle h) O.Clear liftedName resourceSpec
       return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
     _ :< TM.Void ->
-      return Sigma.returnImmediateS4
+      return Sigma.returnImmediateNullS4
 
 embody :: Handle -> TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> EIO C.Comp
 embody h tenv xets cont =
@@ -378,12 +383,19 @@ type DataArgsMap = IntMap.IntMap ([(Ident, TM.Term)], Size)
 
 clarifyDataClause ::
   Handle ->
-  (D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
-  EIO (D.Discriminant, [(Ident, C.Comp)])
-clarifyDataClause h (discriminant, dataArgs, consArgs) = do
-  let args = dataArgs ++ consArgs
-  args' <- dropFst <$> clarifyBinder h IntMap.empty args
-  return (discriminant, args')
+  (DD.DefiniteDescription, Bool, D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
+  EIO Sigma.DataConstructorInfo
+clarifyDataClause h (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
+  args <- dropFst <$> clarifyBinder h IntMap.empty (dataArgsVal ++ consArgsVal)
+  let (dataArgs', consArgs') = splitAt (length dataArgsVal) args
+  return $
+    Sigma.DataConstructorInfo
+      { Sigma.consName = consNameVal,
+        Sigma.isConstLike = isConstLikeVal,
+        Sigma.discriminant = discriminantVal,
+        Sigma.dataArgs = dataArgs',
+        Sigma.consArgs = consArgs'
+      }
 
 clarifyDecisionTree ::
   Handle ->
@@ -567,6 +579,13 @@ clarifyMagic h tenv der = do
       return $ C.Primitive (C.Magic (M.Global name lt))
     M.OpaqueValue e ->
       clarifyTerm h tenv e
+    M.CallType func arg1 arg2 -> do
+      (funcVarName, func', funcVar) <- clarifyPlus h tenv func
+      (arg1VarName, arg1', arg1Var) <- clarifyPlus h tenv arg1
+      (arg2VarName, arg2', arg2Var) <- clarifyPlus h tenv arg2
+      return $
+        Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
+          C.Primitive (C.Magic (M.CallType funcVar arg1Var arg2Var))
 
 clarifyLambda ::
   Handle ->
@@ -637,7 +656,7 @@ returnClosure ::
 returnClosure h tenv lamID mName opacity fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts
-  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) $ map Right fvs''
+  fvEnvSigma <- liftIO $ Sigma.closureEnvS4 (sigmaHandle h) (locatorHandle h) fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 2 -- argNum == count(xts) + env
   let name = Locator.attachCurrentLocator (locatorHandle h) $ BN.lambdaName mName lamID

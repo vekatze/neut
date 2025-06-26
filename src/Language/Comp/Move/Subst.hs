@@ -91,6 +91,8 @@ substPrimitive sub c =
     C.PrimOp op vs -> do
       let vs' = map (substValue sub) vs
       C.PrimOp op vs'
+    C.ShiftPointer v size index ->
+      C.ShiftPointer (substValue sub v) size index
     C.Magic der -> do
       let der' = fmap (substValue sub) der
       C.Magic der'

@@ -51,7 +51,7 @@ data TermF a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
   | Magic (Magic BaseLowType a)
-  | Resource DD.DefiniteDescription ID a a a
+  | Resource DD.DefiniteDescription ID a a a a
   | Void
   deriving (Show, Generic)
 

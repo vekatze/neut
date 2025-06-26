@@ -354,6 +354,11 @@ elaborate' h term =
         M.OpaqueValue e -> do
           e' <- elaborate' h e
           return $ m :< TM.Magic (M.OpaqueValue e')
+        M.CallType func arg1 arg2 -> do
+          func' <- elaborate' h func
+          arg1' <- elaborate' h arg1
+          arg2' <- elaborate' h arg2
+          return $ m :< TM.Magic (M.CallType func' arg1' arg2')
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' h e
       case annot of
@@ -363,11 +368,12 @@ elaborate' h term =
           let typeRemark = L.newLog m remarkLevel message
           liftIO $ LocalLogs.insert (localLogsHandle h) typeRemark
           return e'
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
+    m :< WT.Resource dd resourceID unitType discarder copier typeTag -> do
       unitType' <- elaborate' h unitType
       discarder' <- elaborate' h discarder
       copier' <- elaborate' h copier
-      return $ m :< TM.Resource dd resourceID unitType' discarder' copier'
+      typeTag' <- elaborate' h typeTag
+      return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
     m :< WT.Void ->
       return $ m :< TM.Void
 

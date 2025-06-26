@@ -134,11 +134,12 @@ fill h holeSubst term =
         AN.Type t -> do
           t' <- fill h holeSubst t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
-    m :< WT.Resource dd resourceID unitType discarder copier -> do
+    m :< WT.Resource dd resourceID unitType discarder copier typeTag -> do
       unitType' <- fill h holeSubst unitType
       discarder' <- fill h holeSubst discarder
       copier' <- fill h holeSubst copier
-      return $ m :< WT.Resource dd resourceID unitType' discarder' copier'
+      typeTag' <- fill h holeSubst typeTag
+      return $ m :< WT.Resource dd resourceID unitType' discarder' copier' typeTag'
     _ :< WT.Void ->
       return term
 

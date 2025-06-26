@@ -71,11 +71,12 @@ freeVars term =
         AN.Type t -> do
           let xs2 = freeVars t
           S.union xs1 xs2
-    _ :< WT.Resource _ _ unitType discarder copier -> do
+    _ :< WT.Resource _ _ unitType discarder copier typeTag -> do
       let xs1 = freeVars unitType
       let xs2 = freeVars discarder
       let xs3 = freeVars copier
-      S.unions [xs1, xs2, xs3]
+      let xs4 = freeVars typeTag
+      S.unions [xs1, xs2, xs3, xs4]
     _ :< WT.Void ->
       S.empty
 

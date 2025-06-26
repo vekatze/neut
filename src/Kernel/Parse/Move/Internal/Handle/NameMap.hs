@@ -188,7 +188,7 @@ _getGlobalNames stmt = do
           []
     PostRawStmtNominal {} -> do
       []
-    PostRawStmtDefineResource _ m (name, _) _ _ _ -> do
+    PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
       [(name, (m, GN.TopLevelFunc AN.zero True))]
     PostRawStmtForeign {} ->
       []

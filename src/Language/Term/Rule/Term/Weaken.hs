@@ -96,8 +96,8 @@ weaken term =
       m :< WT.Prim (weakenPrim prim)
     m :< TM.Magic magic -> do
       m :< WT.Magic (weakenMagic m magic)
-    m :< TM.Resource dd resourceID unitType discarder copier -> do
-      m :< WT.Resource dd resourceID (weaken unitType) (weaken discarder) (weaken copier)
+    m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
+      m :< WT.Resource dd resourceID (weaken unitType) (weaken discarder) (weaken copier) (weaken typeTag)
     m :< TM.Void ->
       m :< WT.Void
 
@@ -121,6 +121,8 @@ weakenMagic m magic = do
       M.WeakMagic $ M.Global name (WT.fromBaseLowType m t)
     M.OpaqueValue e ->
       M.WeakMagic $ M.OpaqueValue (weaken e)
+    M.CallType func arg1 arg2 ->
+      M.WeakMagic $ M.CallType (weaken func) (weaken arg1) (weaken arg2)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =

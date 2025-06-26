@@ -34,6 +34,7 @@ import Kernel.Common.Rule.Arch qualified as A
 import Kernel.Common.Rule.Const
 import Kernel.Common.Rule.Handle.Global.Env qualified as Env
 import Kernel.Common.Rule.Target
+import Kernel.Common.Rule.TypeTag (baseTypeTagMap)
 import Kernel.Lower.Rule.Cancel
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.ArgNum qualified as AN
@@ -50,7 +51,6 @@ import Language.Common.Rule.LowType qualified as LT
 import Language.Common.Rule.LowType.FromBaseLowType qualified as LT
 import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.PrimNumSize
-import Language.Common.Rule.PrimNumSize.ToInt
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Comp.Move.Reduce qualified as Reduce
@@ -63,7 +63,7 @@ import Logger.Rule.Hint (internalHint)
 
 data Handle = Handle
   { arch :: Arch,
-    baseSize :: Int,
+    baseSize :: DS.DataSize,
     gensymHandle :: Gensym.Handle,
     envHandle :: Env.Handle,
     reduceHandle :: Reduce.Handle,
@@ -76,7 +76,7 @@ data Handle = Handle
 new :: Global.Handle -> IO Handle
 new (Global.Handle {..}) = do
   let arch = Platform.getArch platformHandle
-  let baseSize = Platform.getDataSizeValue platformHandle
+  let baseSize = Platform.getDataSize platformHandle
   let substHandle = Subst.new gensymHandle
   defMap <- CompDef.get compDefHandle
   let reduceHandle = Reduce.new substHandle gensymHandle defMap
@@ -93,8 +93,8 @@ makeBaseDeclEnv arch = do
 lower :: Handle -> [C.CompStmt] -> EIO LC.LowCode
 lower h stmtList = do
   liftIO $ registerInternalNames h stmtList
-  liftIO $ insDeclEnv h (DN.In DD.imm) AN.argNumS4
-  liftIO $ insDeclEnv h (DN.In DD.cls) AN.argNumS4
+  liftIO $ forM baseTypeTagMap $ \(dd, _) ->
+    insDeclEnv h (DN.In dd) AN.argNumS4
   stmtList' <- catMaybes <$> mapM (lowerStmt h) stmtList
   LC.LowCodeNormal <$> liftIO (summarize h stmtList')
 
@@ -183,7 +183,7 @@ lowerComp h term =
       clauses' <- liftIO $ mapM (Subst.subst (substHandle h) sub >=> Reduce.reduce (reduceHandle h)) clauses
       let branchList' = zip keys clauses'
       (defaultCase, caseList) <- constructSwitch h defaultBranch' branchList'
-      let t = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+      let t = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
       cont' <- lowerComp h cont
       (castVar, castValue) <- liftIO $ newValueLocal h "cast"
       lowerValueLetCast h castVar v t
@@ -206,6 +206,12 @@ lowerCompPrimitive h resultVar codeOp cont =
   case codeOp of
     C.PrimOp op vs ->
       lowerCompPrimOp h resultVar op vs cont
+    C.ShiftPointer v size index -> do
+      (ptrVar, ptr) <- liftIO $ newValueLocal h "func"
+      let aggType = AggTypeArray (fromInteger size) LT.Pointer
+      let indexList' = [(LC.Int 0, LT.PrimNum $ PT.Int IntSize32), (LC.Int index, LT.PrimNum $ PT.Int IntSize32)]
+      lowerValue h ptrVar v
+        =<< return (LC.Let resultVar (LC.GetElementPtr (ptr, toLowType aggType) indexList') cont)
     C.Magic der -> do
       case der of
         M.Cast _ _ value -> do
@@ -227,7 +233,7 @@ lowerCompPrimitive h resultVar codeOp cont =
             =<< uncast h resultVar tmp valueLowType' cont
         M.Alloca t size -> do
           let t' = LT.fromBaseLowType t
-          let indexType = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+          let indexType = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
           (sizeVar, sizeValue) <- liftIO $ newValueLocal h "size"
           (ptrVar, ptrValue) <- liftIO $ newValueLocal h "ptr"
           lowerValueLetCast h sizeVar size indexType
@@ -260,6 +266,18 @@ lowerCompPrimitive h resultVar codeOp cont =
           uncast h resultVar (LC.VarExternal name) t' cont
         M.OpaqueValue e ->
           lowerValue h resultVar e cont
+        M.CallType func arg1 arg2 -> do
+          (funcVar, funcValue) <- liftIO $ newValueLocal h "func"
+          (arg1Var, arg1Value) <- liftIO $ newValueLocal h "arg1"
+          (arg2Var, arg2Value) <- liftIO $ newValueLocal h "arg2"
+          let arg1Type = LT.Pointer
+          let arg2Type = LT.Pointer
+          let resultType = LT.Pointer
+          lowerValue h funcVar func
+            =<< lowerValue h arg1Var arg1
+            =<< lowerValue h arg2Var arg2
+            =<< return . LC.Let resultVar (LC.Call resultType funcValue [(arg1Type, arg1Value), (arg2Type, arg2Value)])
+            =<< return cont
 
 lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> EIO LC.Comp
 lowerCompPrimOp h resultVar op vs cont = do
@@ -279,6 +297,16 @@ lowerValueLetCastPrimArgs h xdts cont =
       lowerValueLetCast h x d (LT.PrimNum t)
         =<< lowerValueLetCastPrimArgs h rest cont
 
+floatSizeToIntSize :: FloatSize -> IntSize
+floatSizeToIntSize floatSize =
+  case floatSize of
+    FloatSize16 ->
+      IntSize16
+    FloatSize32 ->
+      IntSize32
+    FloatSize64 ->
+      IntSize64
+
 cast :: Handle -> Ident -> LC.Value -> LT.LowType -> LC.Comp -> EIO LC.Comp
 cast h var v lowType cont = do
   case lowType of
@@ -286,7 +314,7 @@ cast h var v lowType cont = do
       return $ LC.Let var (LC.PointerToInt v LT.Pointer lowType) cont
     LT.PrimNum (PT.Float size) -> do
       let floatType = LT.PrimNum $ PT.Float size
-      let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt size
+      let intType = LT.PrimNum $ PT.Int $ floatSizeToIntSize size
       (tmp, tmpVar) <- liftIO $ newValueLocal h "tmp"
       return $
         LC.Let tmp (LC.PointerToInt v LT.Pointer intType) $
@@ -301,7 +329,7 @@ uncast h var castedValue lowType cont = do
       return $ LC.Let var (LC.IntToPointer castedValue lowType LT.Pointer) cont
     LT.PrimNum (PT.Float i) -> do
       let floatType = LT.PrimNum $ PT.Float i
-      let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt i
+      let intType = LT.PrimNum $ PT.Int $ floatSizeToIntSize i
       (tmp, tmpVar) <- liftIO $ newValueLocal h "tmp"
       return $
         LC.Let tmp (LC.Bitcast castedValue floatType intType) $
@@ -322,7 +350,7 @@ allocateBasePointer h resultVar aggType cont = do
       (sizeVar, sizeValue) <- liftIO $ newValueLocal h "result"
       (castVar, castValue) <- liftIO $ newValueLocal h "result"
       allocID <- liftIO $ Gensym.newCount (gensymHandle h)
-      let lowInt = LT.PrimNum $ PT.Int $ IntSize (baseSize h)
+      let lowInt = LT.PrimNum $ PT.Int $ dataSizeToIntSize (baseSize h)
       return . getElemPtr sizeVar LC.Null elemType [toInteger len]
         =<< cast h castVar sizeValue lowInt
         =<< return (LC.Let resultVar (LC.Alloc castValue len allocID) cont)
@@ -488,7 +516,7 @@ getDefinedNameSet h = do
 
 getElemPtr :: Ident -> LC.Value -> LT.LowType -> [Integer] -> LC.Comp -> LC.Comp
 getElemPtr var value valueType indexList cont = do
-  let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int intSize32)) indexList
+  let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int IntSize32)) indexList
   LC.Let var (LC.GetElementPtr (value, valueType) indexList') cont
 
 getElemPtrList :: LC.Value -> [Ident] -> LT.LowType -> LC.Comp -> LC.Comp
@@ -545,4 +573,4 @@ defaultForeignList arch =
 
 getWordType :: A.Arch -> BLT.BaseLowType
 getWordType arch =
-  BLT.PrimNum $ BPT.Int $ BPT.Explicit $ IntSize $ DS.reify $ A.dataSizeOf arch
+  BLT.PrimNum $ BPT.Int $ BPT.Explicit $ dataSizeToIntSize $ A.dataSizeOf arch

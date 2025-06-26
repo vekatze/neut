@@ -2,6 +2,7 @@ module Kernel.Clarify.Move.Internal.Linearize
   ( Handle (..),
     new,
     linearize,
+    linearizeDuplicatedVariables,
   )
 where
 
@@ -43,6 +44,28 @@ linearize h binder e =
           hole <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "unit"
           discardUnusedVar <- Utility.toAffineApp (utilityHandle h) (C.VarLocal x) t
           return $ C.UpElim True hole discardUnusedVar e''
+        [z] ->
+          return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
+        z : zs -> do
+          localName <- liftIO $ Gensym.newIdentFromText (gensymHandle h) $ toText x <> "-local"
+          e''' <- insertHeader h localName z zs t e''
+          return $ C.UpElim False localName (C.UpIntro (C.VarLocal x)) e'''
+
+linearizeDuplicatedVariables ::
+  Handle ->
+  [(Ident, C.Comp)] ->
+  C.Comp ->
+  IO C.Comp
+linearizeDuplicatedVariables h binder e =
+  case binder of
+    [] ->
+      return e
+    (x, t) : xts -> do
+      e' <- linearizeDuplicatedVariables h xts e
+      (newNameList, e'') <- distinguishComp h x e'
+      case newNameList of
+        [] -> do
+          return e''
         [z] ->
           return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
         z : zs -> do
@@ -140,6 +163,9 @@ distinguishPrimitive h z term =
     C.PrimOp op ds -> do
       (vss, ds') <- mapAndUnzipM (distinguishValue h z) ds
       return (concat vss, C.PrimOp op ds')
+    C.ShiftPointer v size index -> do
+      (vs, v') <- distinguishValue h z v
+      return (vs, C.ShiftPointer v' size index)
     C.Magic magic -> do
       case magic of
         M.Cast from to value -> do
@@ -167,3 +193,8 @@ distinguishPrimitive h z term =
         M.OpaqueValue e -> do
           (vs, e') <- distinguishValue h z e
           return (vs, C.Magic (M.OpaqueValue e'))
+        M.CallType func arg1 arg2 -> do
+          (vs1, func') <- distinguishValue h z func
+          (vs2, arg1') <- distinguishValue h z arg1
+          (vs3, arg2') <- distinguishValue h z arg2
+          return (vs1 <> vs2 <> vs3, C.Magic (M.CallType func' arg1' arg2'))

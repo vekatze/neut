@@ -11,20 +11,20 @@ import Data.Text.Encoding qualified as TE
 import Kernel.Emit.Rule.LowType
 import Kernel.Emit.Rule.LowValue
 import Kernel.Emit.Rule.PrimType
+import Language.Common.Rule.DataSize (DataSize)
 import Language.Common.Rule.LowType qualified as LT
 import Language.Common.Rule.PrimNumSize
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
 import Language.LowComp.Rule.LowComp qualified as LC
 
-data Handle = Handle
-  { baseSize :: Int,
-    intType :: LT.LowType
+newtype Handle = Handle
+  { intType :: LT.LowType
   }
 
-new :: Int -> Handle
+new :: DataSize -> Handle
 new baseSize = do
-  let intType = LT.PrimNum $ PT.Int $ IntSize baseSize
+  let intType = LT.PrimNum $ PT.Int $ dataSizeToIntSize baseSize
   Handle {..}
 
 emitLowOp :: Handle -> LC.Op -> Builder

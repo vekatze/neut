@@ -5,12 +5,12 @@ import Language.Common.Rule.Attr.Lam qualified as AttrL
 import Language.Common.Rule.Binder (BinderF)
 import Language.Common.Rule.DecisionTree qualified as DT
 import Language.Common.Rule.ForeignCodType qualified as FCT
+import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.Magic qualified as M
 import Language.WeakTerm.Rule.WeakPrim qualified as WP
 import Language.WeakTerm.Rule.WeakPrimValue qualified as WPV
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
-import Language.Common.Rule.ImpArgs qualified as ImpArgs
 
 -- syntactic equality
 eq :: WT.WeakTerm -> WT.WeakTerm -> Bool
@@ -131,8 +131,8 @@ eq (_ :< term1) (_ :< term2)
   | WT.Annotation _ _ e1 <- term1,
     WT.Annotation _ _ e2 <- term2 =
       eq e1 e2
-  | WT.Resource _ id1 _ _ _ <- term1,
-    WT.Resource _ id2 _ _ _ <- term2 =
+  | WT.Resource _ id1 _ _ _ _ <- term1,
+    WT.Resource _ id2 _ _ _ _ <- term2 =
       id1 == id2
   | WT.Void <- term1,
     WT.Void <- term2 =
@@ -299,6 +299,12 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
   | M.OpaqueValue e1 <- m1,
     M.OpaqueValue e2 <- m2 = do
       eq e1 e2
+  | M.CallType func1 switch1 arg1 <- m1,
+    M.CallType func2 switch2 arg2 <- m2 = do
+      let b1 = eq func1 func2
+      let b2 = eq switch1 switch2
+      let b3 = eq arg1 arg2
+      b1 && b2 && b3
   | otherwise =
       False
 

@@ -19,6 +19,7 @@ data Magic t a
   | External [t] (FCT.ForeignCodType t) EN.ExternalName [a] [(a, t)]
   | Global EN.ExternalName t
   | OpaqueValue a
+  | CallType a a a
   deriving (Show, Eq, G.Generic)
 
 instance (Binary a) => Binary (Magic BaseLowType a)
@@ -41,6 +42,8 @@ instance Functor (Magic BaseLowType) where
         Global name lt
       OpaqueValue e ->
         OpaqueValue (f e)
+      CallType func arg1 arg2 ->
+        CallType (f func) (f arg1) (f arg2)
 
 instance Foldable (Magic BaseLowType) where
   foldMap f der =
@@ -59,6 +62,8 @@ instance Foldable (Magic BaseLowType) where
         mempty
       OpaqueValue e ->
         f e
+      CallType func arg1 arg2 ->
+        f func <> f arg1 <> f arg2
 
 instance Traversable (Magic BaseLowType) where
   traverse f der =
@@ -79,6 +84,8 @@ instance Traversable (Magic BaseLowType) where
         pure $ Global name lt
       OpaqueValue e ->
         OpaqueValue <$> f e
+      CallType func arg1 arg2 ->
+        CallType <$> f func <*> f arg1 <*> f arg2
 
 newtype WeakMagic a = WeakMagic (Magic a a)
 
@@ -102,6 +109,8 @@ instance Functor WeakMagic where
         WeakMagic (Global name (f t))
       OpaqueValue e ->
         WeakMagic (OpaqueValue (f e))
+      CallType func arg1 arg2 ->
+        WeakMagic (CallType (f func) (f arg1) (f arg2))
 
 instance Foldable WeakMagic where
   foldMap f (WeakMagic der) =
@@ -125,6 +134,8 @@ instance Foldable WeakMagic where
         f t
       OpaqueValue e ->
         f e
+      CallType func arg1 arg2 ->
+        f func <> f arg1 <> f arg2
 
 instance Traversable WeakMagic where
   traverse f (WeakMagic der) =
@@ -162,3 +173,8 @@ instance Traversable WeakMagic where
       OpaqueValue e -> do
         e' <- f e
         return $ WeakMagic $ OpaqueValue e'
+      CallType func arg1 arg2 -> do
+        func' <- f func
+        arg1' <- f arg1
+        arg2' <- f arg2
+        return $ WeakMagic $ CallType func' arg1' arg2'

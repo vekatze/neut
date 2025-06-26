@@ -38,7 +38,7 @@ asLowInt dataSize s =
         (c, rest)
           | c == intTypeName,
             Just n <- readMaybe $ T.unpack rest,
-            Just size <- asIntSize dataSize n ->
+            Just size <- intToIntSize dataSize n ->
               Just size
           | otherwise ->
               Nothing
@@ -57,37 +57,7 @@ asLowFloat dataSize s =
         (c, rest)
           | c == floatTypeName,
             Just n <- readMaybe $ T.unpack rest,
-            Just size <- asFloatSize dataSize n ->
+            Just size <- intToFloatSize dataSize n ->
               Just size
           | otherwise ->
               Nothing
-
-asIntSize :: DS.DataSize -> Int -> Maybe IntSize
-asIntSize dataSize size =
-  if 1 <= size && size <= DS.reify dataSize
-    then Just $ IntSize size
-    else Nothing
-
-asFloatSize :: DS.DataSize -> Int -> Maybe FloatSize
-asFloatSize dataSize size =
-  if size > DS.reify dataSize
-    then Nothing
-    else case size of
-      16 ->
-        Just FloatSize16
-      32 ->
-        Just FloatSize32
-      64 ->
-        Just FloatSize64
-      _ ->
-        Nothing
-
-dataSizeToFloatSize :: DS.DataSize -> FloatSize
-dataSizeToFloatSize dataSize =
-  case dataSize of
-    DS.DataSize64 ->
-      FloatSize64
-
-dataSizeToIntSize :: DS.DataSize -> IntSize
-dataSizeToIntSize dataSize =
-  IntSize $ DS.reify dataSize

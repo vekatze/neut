@@ -23,6 +23,7 @@ import Kernel.Emit.Rule.LowValue
 import Kernel.Emit.Rule.PrimType (emitPrimType)
 import Language.Common.Move.CreateSymbol qualified as Gensym
 import Language.Common.Rule.BaseLowType qualified as BLT
+import Language.Common.Rule.DataSize qualified as DS
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.Ident.Reify
@@ -58,7 +59,7 @@ emit h lowCode = do
 emitLowCodeInfo :: Handle -> LC.LowCodeInfo -> IO ([Builder], [Builder])
 emitLowCodeInfo h (declEnv, defList, staticTextList) = do
   let declStrList = emitDeclarations declEnv
-  let baseSize = Platform.getDataSizeValue (Global.platformHandle (globalHandle h))
+  let baseSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
   let staticTextList' = map (emitStaticText baseSize) staticTextList
   defStrList <- concat <$> mapM (emitDefinitions h) defList
   return (declStrList <> staticTextList', defStrList)
@@ -97,7 +98,7 @@ emitGlobalExt name lt =
 
 type StaticTextInfo = (T.Text, (Builder, Int))
 
-emitStaticText :: Int -> StaticTextInfo -> Builder
+emitStaticText :: DS.DataSize -> StaticTextInfo -> Builder
 emitStaticText baseSize (from, (text, len)) = do
   "@"
     <> TE.encodeUtf8Builder ("\"" <> from <> "\"")
@@ -105,10 +106,10 @@ emitStaticText baseSize (from, (text, len)) = do
     <> emitLowType (LT.textType baseSize len)
     <> " {"
     <> "i"
-    <> intDec baseSize
+    <> intDec (DS.reify baseSize)
     <> " 0, "
     <> "i"
-    <> intDec baseSize
+    <> intDec (DS.reify baseSize)
     <> " "
     <> intDec len
     <> ", "
@@ -133,8 +134,8 @@ emitDefinitions h (name, (args, body)) = do
 
 emitMain :: Handle -> LC.DefContent -> IO [Builder]
 emitMain h (args, body) = do
-  let baseSize = Platform.getDataSizeValue (Global.platformHandle (globalHandle h))
-  let mainType = emitPrimType $ PT.Int (IntSize baseSize)
+  let baseSize = Platform.getDataSize (Global.platformHandle (globalHandle h))
+  let mainType = emitPrimType $ PT.Int (dataSizeToIntSize baseSize)
   let args' = map (emitValue . LC.VarLocal) args
   emitDefinition h mainType "main" args' body
 
