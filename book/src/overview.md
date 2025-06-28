@@ -7,7 +7,7 @@ Its key features include:
 <ul class="star-list">
   <li>Full λ-calculus support</li>
   <li>Predictable automatic memory management</li>
-  <li>The ability to achieve both of the above without extra type annotations</li>
+  <li>The ability to achieve both of the above without additional type annotations</li>
 </ul>
 
 Neut doesn't use a GC. Instead, it takes a _type-directed approach_ for memory management.

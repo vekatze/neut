@@ -59,7 +59,7 @@ define bar(xs: list(int)): unit {
 }
 ```
 
-Ignoring the arguments to `COPY`, this translation ensures that each variable occurs linearly (i.e. exactly once). This forms the basis of memory management in Neut.
+Ignoring the arguments to `COPY`, this translation ensures that each variable occurs linearly (i.e., exactly once). This forms the basis of memory management in Neut.
 
 If you're interested in how Neut implements this translation, see [How to Execute Types](./how-to-execute-types.md).
 
@@ -91,7 +91,7 @@ define make-pair(x: int): pair(int, int) {
 }
 ```
 
-The compiler accepts this code since we can "copy" integers for free (by using the same value twice).
+The compiler accepts this code since we can "copy" integers for free (by reusing the same value).
 
 ## Optimization: Reusing Memory
 

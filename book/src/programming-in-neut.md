@@ -172,7 +172,7 @@ define foo() {
         print-multiple-hellos(sub-int(counter, 1))
       }
     };
-  f(10) // prints 10 "hello"s
+  f(10) // prints "hello" 10 times
 }
 ```
 
