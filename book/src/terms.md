@@ -2241,6 +2241,11 @@ define malloc-then-free(): unit {
 
   // frees the pointer and return
   magic external free(ptr); // 🌟 external
+
+  // call types as functions
+  let t: text = *"hello";
+  magic call-type(text, 0, t); // discard
+
   Unit
 }
 
@@ -2262,31 +2267,91 @@ magic opaque-value { e }
 magic external func-name(e1, ..., en)
 
 magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
+
+magic external call-type(some-type, switch, arg)
 ```
 
 A "lowtype" is a term that reduces to one of the following:
 
-- `int1`, `int2`, ..., `int64`
+- `int1`, `int2`, `int4`, `int8`, `int16`, `int32`, `int64`
 - `float16`, `float32`, `float64`
 - `pointer`
 
 You can also use `int` and `float` as a lowtype. These are just syntactic sugar for `int64` and `float64`, respectively.
 
-### Semantics
+### Semantics (cast)
 
 `magic cast (a, b, e)` casts the term `e` from the type `a` to `b`. `cast` does nothing at runtime.
 
+### Semantics (store)
+
 `magic store(lowtype, value, address)` stores a value `value` to `address`. This is the same as `store` [in LLVM](https://llvm.org/docs/LangRef.html#store-instruction).
+
+### Semantics (load)
 
 `magic load(lowtype, address)` loads a value from `address`. This is the same as `load` [in LLVM](https://llvm.org/docs/LangRef.html#load-instruction).
 
-`magic alloca(lowtype, num-of-elems)` allocates memory region on the stack frame. This is the same as `alloca` [in LLVM](https://llvm.org/docs/LangRef.html#alloca-instruction).
+### Semantics (alloca)
+
+`magic alloca(lowtype, num-of-elems)` allocates a memory region on the stack frame. This is the same as `alloca` [in LLVM](https://llvm.org/docs/LangRef.html#alloca-instruction).
+
+### Semantics (opaque-value)
 
 `magic opaque-value { e }` tells the compiler to treat the term `e` as a value. You may want to use this in combination with `define` or `inline` that don't have any explicit arguments.
 
+### Semantics (external)
+
 `magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 
-`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like printf in C. A use of such varidic `external` can be found in the core library [here](https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/text/io.nt#L43).
+`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like printf in C. A use of such variadic `external` can be found in the core library [here](https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/text/io.nt#L43).
+
+### Semantics (call-type)
+
+Neut compiles types into functions. The first argument of such a function is usually 0 or 1, but we can actually pass other integers using `call-type`.
+
+`magic call-type(some-type, switch, arg)` treats `some-type` as a function pointer and calls `some-type(switch, arg)`.
+
+`magic call-type(some-type, 0, value)` discards `value`.
+
+`magic call-type(some-type, 1, value)` copies `value` and returns a new value.
+
+`magic call-type(some-type, 2, value)` ignores `value` and returns an integer `i` if `some-type` is the `i`th constructor of the type `type-tag` defined [here](https://github.com/vekatze/neut-core/blob/main/source/type-tag.nt). For example,
+
+- `call-type(type, 2, Unit)` returns 1 since the tag of `type` is `Type`,
+- `call-type(bool, 2, Unit)` returns 5 since the tag of `bool` is `Enum`,
+- `call-type(list(int), 2, Unit)` returns 3 since the tag of `list(int)` is `Algebraic`.
+
+`magic call-type(some-type, 3, i)` is defined only if `some-type` is an ADT or an enum. If `some-type` is an ADT, this term returns the number of arguments for the ADT's `i`th constructor, or `-1` if the `i`th constructor doesn't exist. If `some-type` is an enum, this term returns `0` if the `i`th constructor exists, or `-1` if not.
+
+`magic call-type(some-type, 4, value)` is defined only if `some-type` is an ADT or an enum. If `some-type` is an ADT, this term assumes that `value` has the following structure:
+
+```neut
+(discriminant, arg-1, ..., arg-n, any, any)
+```
+
+where
+
+```neut
+(discriminant, arg-1, ..., arg-n)
+```
+
+is the internal structure of terms of type `some-type`. Given that, `magic call-type(some-type, 4, value)` replaces the content of `value` as follows:
+
+```neut
+(cons-name, type(arg-1), ..., type(arg-n), v1, v2)
+```
+
+where
+
+- `cons-name` is the constructor's name (`&text`).
+- `v1` is the number of data arguments.
+  - Here, "data arguments" refers to the `a` in `data list(a) {..}`.
+- `v2` is 1 if and only if the constructor doesn't have arguments.
+  - For example, `v2` for `Nil` is 1. `v2` for `Empty()` and `Cons(a, list(a))` is 0.
+
+If `some-type` is an enum, `magic call-type(some-type, 4, i)` returns the `i`th constructor's name (`&text`).
+
+`magic call-type(some-type, 4, value)` is intended to be used with `magic alloca`.
 
 ### Type
 
@@ -2343,7 +2408,18 @@ You can also use `int` and `float` as a lowtype. These are just syntactic sugar 
 (func is a foreign function)
 ---------------------------------------------------------------------------------
 Γ ⊢ magic external func(e1, ..., en)(e{n+1}: t{n+1}, ..., e{n+m}: t{n+m}): t
+
+
+Γ ⊢ some-type: type
+Γ ⊢ switch: int
+------------------------------------------------------
+Γ ⊢ magic call-type(some-type, switch, arg): t
+
 ```
+
+### Note
+
+`call-type` can be used, for example, to inspect the structure of a term at runtime. The function `vet` defined [here](https://github.com/vekatze/neut-core/blob/main/source/debug.nt), for example, inspects its argument's structure and prints it.
 
 ## `introspect`
 

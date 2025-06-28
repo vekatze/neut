@@ -314,14 +314,17 @@ resource my-new-type {
   function (value: pointer) {
     // .. create a new clone of the value and return it as int ..
   },
+  tag, // integer value
 }
 ```
 
-`resource` takes two terms. The first term ("discarder") receives a value of the type and discards the value. The second term ("copier") receives a value of the type and returns the clone of the value (keeping the original value intact).
+`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is a tag that is used when calling `magic call-type(t, 2, (..))`.
 
 The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
 
-The type of a copier is `(int) -> int` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
+The type of a copier is `(a) -> a` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
+
+The type of a tag is `int`.
 
 For example, the following is a definition of a "boxed" integer type with some noisy messages:
 
@@ -339,6 +342,12 @@ resource boxed-int {
     magic store(int, orig-value, new-ptr);
     new-ptr
   },
+  // You should use `type-tag-to-int(Opaque)` as long as the structure of your
+  // resource type isn't the same as one of the `type-tag` values defined in `core.type-tag`.
+  // If your resource type has the same structure as one of the `type-tag` values, you can
+  // use something like `type-tag-to-int(Int32)` so it can be, for example,
+  // printed using `core.debug.vet: (&a) -> unit`.
+  type-tag-to-int(Opaque),
 }
 
 // provide a way to introduce new boxed integer
