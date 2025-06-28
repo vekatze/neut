@@ -302,7 +302,7 @@ You can import dependencies from source files. See the notes on `import` in [Sta
 
 ## `neut format-source`
 
-`neut format-source path/to/source/file.nt` formats specified source file and outputs the result to stdout.
+`neut format-source path/to/source/file.nt` formats the specified source file and outputs the result to stdout.
 
 ### `--in-place`
 
@@ -314,7 +314,7 @@ When the option `--minimize-imports` is set, `format-source` removes all the unu
 
 ## `neut format-ens`
 
-`neut format-ens path/to/source/file.ens` formats specified ens file and outputs the result to stdout.
+`neut format-ens path/to/source/file.ens` formats the specified ens file and outputs the result to stdout.
 
 ### `--in-place`
 

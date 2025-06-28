@@ -788,10 +788,10 @@ e(e1, ..., en)
 
 ### Semantics
 
-Given a funciton application `e(e1, ..., en)` the system does the following:
+Given a function application `e(e1, ..., en)` the system does the following:
 
 1. Computes `e`, `e1`, ..., `en` into values `v`, `v1`, ..., `vn`
-2. Extracts the content of the closure `v`, obtaining the label of the closed function and the tuple of the free variables
+2. Extracts the contents from the closure `v`, obtaining the tuple of its free variables and a function label
 3. Deallocates the tuple of the closure `v`
 4. Calls the function label with the tuple and `v1, ..., vn` as arguments
 

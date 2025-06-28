@@ -307,7 +307,7 @@ define use-config(c: config) {
 `resource` defines a new type by specifying how to discard/copy the values of the type. It should look like the following:
 
 ```neut
-resource my-new-type {
+resource my-type {
   function (value: pointer) {
     // .. discard the value ..
   },
@@ -318,13 +318,13 @@ resource my-new-type {
 }
 ```
 
-`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is a tag that is used when calling `magic call-type(t, 2, (..))`.
+`resource` takes three terms. The first term ("discarder") receives a value of the type and discards it. The second term ("copier") receives a value of the type and returns a clone of the value (keeping the original value intact). The third term is a tag that is returned when calling `magic call-type(my-type, 2, (..))`.
 
 The type of a discarder is `(a) -> unit` for some `a`. You might want to call functions like `free` in this term.
 
 The type of a copier is `(a) -> a` for some `a`. This `a` must be the same as the `a` used in the discarder. You might want to call functions like `malloc` in this term.
 
-The type of a tag is `int`.
+The type of a tag is `int`. See also: [Semantics (call-type)](./terms.md#semantics-call-type)
 
 For example, the following is a definition of a "boxed" integer type with some noisy messages:
 

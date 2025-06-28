@@ -1,6 +1,6 @@
 # Modules
 
-A directory (including its all children) is a _module_ if it contains a file named `module.ens`.
+A directory (including all its children) is a _module_ if it contains a file named `module.ens`.
 
 Below is the list of configurations of `module.ens`.
 
@@ -200,7 +200,7 @@ The field `dependency` is optional. The default value of `dependency` is `{}`.
 
 ## `archive`
 
-The field `archive` defines the path of the directory into which the subcommand `neut archive` store tarballs. It should look like the following:
+The field `archive` defines the path of the directory into which the subcommand `neut archive` stores tarballs. It should look like the following:
 
 ```ens
 {
@@ -214,7 +214,7 @@ The field `archive` is optional. The default value of `archive` is `./archive/`.
 
 ## `cache`
 
-The field `cache` defines the path of the directory to store object files, executables, dependencies, etc. It should look like the following:
+The field `cache` defines the path of the directory in which to store object files, executables, dependencies, etc. It should look like the following:
 
 ```ens
 {

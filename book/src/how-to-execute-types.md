@@ -82,7 +82,7 @@ More generally, a type `a` is translated into a pointer to a closed function lik
 ```neut
 define exp-a(selector, v) {
   if selector == 0 {
-    // a proceduce that discards `v`
+    // a procedure that discards `v`
   } else {
     // a procedure that copies `v` (keeping the original `v` intact)
   }
