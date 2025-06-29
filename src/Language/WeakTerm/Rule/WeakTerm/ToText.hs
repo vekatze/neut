@@ -14,7 +14,6 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.HoleID qualified as HID
 import Language.Common.Rule.Ident
 import Language.Common.Rule.Ident.Reify qualified as Ident
-import Language.Common.Rule.ImpArgs qualified as ImpArgs
 import Language.Common.Rule.LamKind qualified as LK
 import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimOp qualified as PO
@@ -37,10 +36,10 @@ toText term =
       case piKind of
         PK.Normal isConstLike ->
           if isConstLike
-            then showImpArgs impArgs <> " " <> toText cod
+            then showImpArgsForAll impArgs <> toText cod
             else showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
         PK.DataIntro _ -> do
-          showDataImpArgs impArgs <> toText cod
+          showImpArgsForAll impArgs <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
@@ -62,19 +61,13 @@ toText term =
             <> toText codType
             <> " "
             <> inBrace (toText e)
-    _ :< WT.PiElim _ e impArgs expArgs -> do
+    _ :< WT.PiElim _ e _ expArgs -> do
       case e of
         _ :< WT.VarGlobal attr _
           | AttrVG.isConstLike attr ->
               toText e
         _ -> do
-          case impArgs of
-            ImpArgs.FullySpecified impArgs' ->
-              showApp' (toText e) (map toText impArgs') (map toText expArgs)
-            ImpArgs.Unspecified ->
-              showApp (toText e) (map toText expArgs)
-            ImpArgs.PartiallySpecified impArgs' ->
-              showApp' (toText e) (map toText (ImpArgs.extract (ImpArgs.PartiallySpecified impArgs'))) (map toText expArgs)
+          showApp (toText e) (map toText expArgs)
     _ :< WT.PiElimExact e -> do
       "exact " <> toText e
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
@@ -137,8 +130,8 @@ showImpArgs impArgs =
     then ""
     else inAngleBracket $ showImpDomArgList impArgs
 
-showDataImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
-showDataImpArgs impArgs =
+showImpArgsForAll :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
+showImpArgsForAll impArgs =
   if null impArgs
     then ""
     else "∀ " <> T.intercalate " " (map showDataImpArgWithDefault impArgs) <> ". "
@@ -205,10 +198,6 @@ showDomArgList mxts =
 showApp :: T.Text -> [T.Text] -> T.Text
 showApp e es =
   e <> inParen (T.intercalate ", " es)
-
-showApp' :: T.Text -> [T.Text] -> [T.Text] -> T.Text
-showApp' e impArgs expArgs =
-  e <> inAngleBracket (T.intercalate ", " impArgs) <> inParen (T.intercalate ", " expArgs)
 
 showVariable :: Ident -> T.Text
 showVariable x =
