@@ -1,0 +1,39 @@
+name: Tests on Linux
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'bin/**'
+      - 'book/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'bin/**'
+      - 'book/**'
+
+env:
+  NEUT_DOCKER_IMAGE: neut-haskell-amd64
+  NEUT_DOCKER_PATH: ./neut-haskell-amd64.tar
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: extractions/setup-just@v1
+      - uses: actions/cache@v3
+        id: cache-docker-image
+        with:
+          path: ${{ env.NEUT_DOCKER_PATH }}
+          key: ${{ runner.os }}-${{ hashFiles('./build/Dockerfile') }}-${{ hashFiles('./build/package.template.yaml') }}-${{ hashFiles('./stack.yaml') }}
+      - if: steps.cache-docker-image.outputs.cache-hit == 'true'
+        run: docker load -i ${NEUT_DOCKER_PATH}
+      - if: steps.cache-docker-image.outputs.cache-hit != 'true'
+        run: just build-image-amd64-linux
+      - run: just build-compiler-amd64-linux
+      - run: just test-amd64-linux
+      - if: steps.cache-docker-image.outputs.cache-hit != 'true'
+        run: docker save ${NEUT_DOCKER_IMAGE} -o ${NEUT_DOCKER_PATH}
