@@ -105,10 +105,10 @@ define my-func3(): (int, bool) -> bool {
 }
 ```
 
-`define` can also define a function with implicit arguments (or "generics"):
+`define` can also define a function with implicit parameters (or "generics"):
 
 ```neut
-// The `a` in the angle bracket is the implicit argument of `id`
+// The `a` in the angle bracket is the implicit parameter of `id`
 define id<a>(x: a): a {
   x
 }
@@ -127,7 +127,7 @@ define id<a: type>(x: a): a { // `type` is the type of types
 }
 ```
 
-You can define `id` without using any implicit arguments as follows (just for comparison):
+You can define `id` without using any implicit parameters as follows (just for comparison):
 
 ```neut
 define id(a: type, x: a): a {
@@ -236,7 +236,7 @@ data my-list(a) {
 //     | My-Cons a (my-list a)
 ```
 
-Arguments in constructors can optionally have explicit names:
+Parameters in constructors can optionally have explicit names:
 
 ```neut
 data config {

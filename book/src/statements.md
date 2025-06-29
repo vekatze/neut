@@ -85,7 +85,7 @@ define identity-1(a: type, x: a): a {
   x
 }
 
-// a function with an implicit argument
+// a function with an implicit parameter
 define identity-2<a>(x: a): a {
   x
 }
@@ -99,7 +99,7 @@ define use-foo(): int {
 }
 ```
 
-`define` can optionally have implicit arguments, as in `identity-2` in the above example. The compiler inserts these implicit arguments at compile time, so you don't have to write them explicitly:
+`define` can optionally have implicit parameters, as in `identity-2` in the above example. The compiler inserts these implicit parameters at compile time, so you don't have to write them explicitly:
 
 ```neut
 define use-func-with-implicit-arg(): int {
@@ -110,7 +110,7 @@ define use-func-with-implicit-arg(): int {
 }
 ```
 
-You can also use `define` without any explicit arguments:
+You can also use `define` without any explicit parameters:
 
 ```neut
 define foo: int {
@@ -144,7 +144,7 @@ define use-constants(): list(int) {
 }
 ```
 
-The compiler tries to reduce the body of a `define` into a value at compile time if the `define` doesn't have any explicit arguments. The compiler reports an error if it can't get a value. For example, the following should result in an error:
+The compiler tries to reduce the body of a `define` into a value at compile time if the `define` doesn't have any explicit parameters. The compiler reports an error if it can't get a value. For example, the following should result in an error:
 
 ```neut
 define bar: int {
@@ -205,7 +205,7 @@ define use-inline-foo(): int {
 }
 ```
 
-You can also use `inline` without any explicit arguments:
+You can also use `inline` without any explicit parameters:
 
 ```neut
 inline foo: int {
@@ -239,7 +239,7 @@ define use-constants(): list(int) {
 }
 ```
 
-The compiler tries to reduce the body of an `inline` into a value at compile time if the `inline` doesn't have any explicit arguments. The compiler reports an error if it can't get a value. For example, the following should result in an error:
+The compiler tries to reduce the body of an `inline` into a value at compile time if the `inline` doesn't have any explicit parameters. The compiler reports an error if it can't get a value. For example, the following should result in an error:
 
 ```neut
 inline bar: int {
@@ -488,7 +488,7 @@ data c-int {
 }
 ```
 
-The type of each argument in every foreign entry must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation. For example, the `c-int` in `exit(c-int): void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
+The type of each parameter in every foreign entry must be a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation. For example, the `c-int` in `exit(c-int): void` is valid because it compiles to `int32` (thanks to an optimization like Haskell's `newtype`).
 
 The resulting type of every foreign entry must be `void` or a term that compiles to one of `int{N}`, `float{N}`, or `pointer` during compilation.
 
