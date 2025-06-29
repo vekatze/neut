@@ -137,10 +137,10 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc cont
         ]
-    _ :< LetOn _ c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
+    _ :< LetOn letKind c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
       D.join
         [ PI.arrange $
-            [ PI.beforeBareSeries $ D.text "let",
+            [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
               PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
             ]
               ++ decodeNoeticVarList noeticVarList,

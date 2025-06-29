@@ -222,13 +222,9 @@ rawTermLet h mLet letKind c1 = do
   c7 <- delimiter ";"
   (e2, c) <- rawExpr h
   endLoc <- getCurrentLoc
-  case (letKind, SE.isEmpty noeticVarList) of
-    (RT.Plain _, False) -> do
-      return (mLet :< RT.LetOn False c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
-    (_, False) ->
-      lift $ raiseError mLet $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
-    _ ->
-      return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
+  if SE.isEmpty noeticVarList
+    then return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 c5 e1 c6 loc c7 e2 endLoc, c)
+    else return (mLet :< RT.LetOn letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermBoxElim :: Handle -> Hint -> NV.NecessityVariant -> C -> Parser (RT.RawTerm, C)
 rawTermBoxElim h mLet nv c1 = do

@@ -370,9 +370,31 @@ discern h term =
       discern h $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
-    m :< RT.LetOn mustIgnoreRelayedVars _ pat _ mys _ e1 _ startLoc _ e2 endLoc -> do
-      let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
-      discern h $ m :< RT.BoxElim VariantT mustIgnoreRelayedVars [] pat [] mys [] e1' [] startLoc [] e2 endLoc
+    m :< RT.LetOn letKind _ pat _ mys _ e1@(m1 :< _) _ startLoc _ e2 endLoc -> do
+      case letKind of
+        RT.Plain mustIgnoreRelayedVars -> do
+          let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
+          discern h $ m :< RT.BoxElim VariantT mustIgnoreRelayedVars [] pat [] mys [] e1' [] startLoc [] e2 endLoc
+        RT.Noetic -> do
+          raiseError m $ "`on` cannot be used with: `" <> RT.decodeLetKind letKind <> "`"
+        RT.Try -> do
+          tmpType <- liftIO $ RT.createHole (H.gensymHandle h) m1
+          tmpVar <- liftIO $ Var <$> Gensym.newTextFromText (H.gensymHandle h) "tmp-try"
+          discern h $
+            m
+              :< RT.LetOn
+                (RT.Plain False)
+                []
+                (m1, RP.Var tmpVar, [], [], tmpType)
+                []
+                mys
+                []
+                e1
+                []
+                startLoc
+                []
+                (m :< RT.Let RT.Try [] pat [] [] (m :< RT.Var tmpVar) [] startLoc [] e2 endLoc)
+                endLoc
     m :< RT.Pin _ mxt@(mx, x, _, _, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       let m2' = blur m2
       let x' = SE.fromListWithComment Nothing SE.Comma [([], ((mx, x), []))]
@@ -383,14 +405,14 @@ discern h term =
       if isNoetic
         then do
           let mxt' = (mx, RP.Var (Var x), [], [], t)
-          let outerLet cont = m :< RT.LetOn False [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
+          let outerLet cont = m :< RT.LetOn (RT.Plain False) [] mxt' [] mys [] e1 [] startLoc [] cont endLoc
           discern h $
             outerLet $
-              m :< RT.LetOn True [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
+              m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
         else do
           discern h $
             bind startLoc endLoc mxt e1 $
-              m :< RT.LetOn True [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
+              m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
     m :< RT.StaticText s str -> do
       s' <- discern h s
       case parseText str of
