@@ -800,14 +800,14 @@ Given a function application `e(e1, ..., en)` the system does the following:
 ```neut
 Γ ⊢ e: <x1: a1, .., xn: an>(y1: b1, .., ym: bm) -> c    Γ ⊢ e1: b1  ..   Γ ⊢ em: bm
 ---------------------------------------------------------------------------------------
-    Γ ⊢ e(e1, .., en): c[x1 := ?M1, .., xn := ?Mn, y1 := e1, .., ym := em]
+    Γ ⊢ e(e1, .., em): c[x1 := ?M1, .., xn := ?Mn, y1 := e1, .., ym := em]
 ```
 
 The `?Mi`s in the above rule are metavariables that must be inferred by the compiler.
 
 ### Note
 
-If the function `e` contains implicit arguments, holes are inserted automatically.
+If the function `e` contains implicit parameters, holes are inserted automatically.
 
 For example, consider the following code:
 
@@ -902,7 +902,7 @@ define use-foo(): unit {
 
 ## `exact e`
 
-Given a function `e`, `exact e` supplies all the implicit variables of `e` by inserting holes.
+Given a function `e`, `exact e` supplies all the implicit parameters of `e` by inserting holes.
 
 ### Example
 
@@ -966,7 +966,7 @@ Here, `?Mi`s are metavariables that must be inferred by the type checker.
 
 ### Note
 
-As you can see from its semantics, an `exact` is just a shorthand of a "hole-application".
+As you can see from its semantics, an `exact` is just a shorthand of a "hole-application" that fills in implicit parameters.
 
 ## ADT Formation
 
@@ -2321,7 +2321,7 @@ Neut compiles types into functions. The first argument of such a function is usu
 - `call-type(bool, 2, Unit)` returns 5 since the tag of `bool` is `Enum`,
 - `call-type(list(int), 2, Unit)` returns 3 since the tag of `list(int)` is `Algebraic`.
 
-`magic call-type(some-type, 3, i)` is defined only if `some-type` is an ADT or an enum. If `some-type` is an ADT, this term returns the number of arguments for the ADT's `i`th constructor, or `-1` if the `i`th constructor doesn't exist. If `some-type` is an enum, this term returns `0` if the `i`th constructor exists, or `-1` if not.
+`magic call-type(some-type, 3, i)` is defined only if `some-type` is an ADT or an enum. If `some-type` is an ADT, this term returns the number of parameters for the ADT's `i`th constructor, or `-1` if the `i`th constructor doesn't exist. If `some-type` is an enum, this term returns `0` if the `i`th constructor exists, or `-1` if not.
 
 `magic call-type(some-type, 4, value)` is defined only if `some-type` is an ADT or an enum. If `some-type` is an ADT, this term assumes that `value` has the following structure:
 
@@ -2344,9 +2344,9 @@ is the internal structure of terms of type `some-type`. Given that, `magic call-
 where
 
 - `cons-name` is the constructor's name (`&text`).
-- `v1` is the number of data arguments.
-  - Here, "data arguments" refers to the `a` in `data list(a) {..}`.
-- `v2` is 1 if and only if the constructor doesn't have arguments.
+- `v1` is the number of data parameters.
+  - Here, "data parameters" refers to the `a` in `data list(a) {..}`.
+- `v2` is 1 if and only if the constructor doesn't have parameters.
   - For example, `v2` for `Nil` is 1. `v2` for `Empty()` and `Cons(a, list(a))` is 0.
 
 If `some-type` is an enum, `magic call-type(some-type, 4, i)` returns the `i`th constructor's name (`&text`).
