@@ -272,17 +272,15 @@ discern h term =
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
-    m :< RT.PiElim e _ mImpArgs expArgs -> do
+    m :< RT.PiElim e _ expArgs -> do
       case e of
         _ :< RT.Var (Var c)
           | c == "make-cell",
-            Nothing <- mImpArgs,
             [arg] <- SE.extract expArgs -> do
               newCellDD <- liftEither $ locatorToVarGlobal m coreCellMakeCell
               e' <- discern h $ m :< RT.piElim newCellDD [arg]
               return $ m :< WT.Actual e'
           | c == "make-channel",
-            Nothing <- mImpArgs,
             [] <- SE.extract expArgs -> do
               newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelMakeChannel
               e' <- discern h $ m :< RT.piElim newChannelDD []
@@ -290,17 +288,11 @@ discern h term =
         _ -> do
           let isNoetic = False -- overwritten later in `infer`
           e' <- discern h e
-          case mImpArgs of
-            Just impArgs -> do
-              impArgs' <- mapM (discern h) $ SE.extract impArgs
-              expArgs' <- mapM (discern h) $ SE.extract expArgs
-              return $ m :< WT.PiElim isNoetic e' (ImpArgs.FullySpecified impArgs') expArgs'
-            Nothing -> do
-              expArgs' <- mapM (discern h) $ SE.extract expArgs
-              return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
+          expArgs' <- mapM (discern h) $ SE.extract expArgs
+          return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, (_, gn)) <- resolveName h m name
-      _ :< func <- interpretGlobalName h m dd gn
+      _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       ensureFieldLinearity m ks S.empty S.empty
       (impKeys, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd

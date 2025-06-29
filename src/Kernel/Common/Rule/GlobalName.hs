@@ -2,10 +2,10 @@ module Kernel.Common.Rule.GlobalName
   ( GlobalName (..),
     getIsConstLike,
     hasNoArgs,
+    disableConstLikeFlag,
   )
 where
 
-import Logger.Rule.Hint
 import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.Rule.ArgNum
@@ -14,6 +14,7 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
+import Logger.Rule.Hint
 
 data GlobalName
   = TopLevelFunc ArgNum IsConstLike
@@ -50,3 +51,15 @@ hasNoArgs gn =
       True
     PrimOp _ ->
       False
+
+disableConstLikeFlag :: GlobalName -> GlobalName
+disableConstLikeFlag gn =
+  case gn of
+    TopLevelFunc argNum _ ->
+      TopLevelFunc argNum False
+    Data argNum consInfo _ ->
+      Data argNum consInfo False
+    DataIntro dataArgNum consArgNum discriminant False ->
+      DataIntro dataArgNum consArgNum discriminant False
+    _ ->
+      gn

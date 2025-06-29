@@ -157,29 +157,18 @@ rawTerm' h m headSymbol c = do
             ]
         else do
           name <- interpretVarName m headSymbol
-
           choice
             [ do
                 (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
                 return (m :< RT.PiElimByKey name c kvs, c'),
               do
-                mImpArgs <- parseImplicitArgs h
-                rawTermPiElimCont h (m :< RT.Var name, c) mImpArgs
+                rawTermPiElimCont h (m :< RT.Var name, c)
             ]
 
-rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Maybe (SE.Series RT.RawTerm, C) -> Parser (RT.RawTerm, C)
-rawTermPiElimCont h (e@(m :< _), c) mImpArgs = do
+rawTermPiElimCont :: Handle -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
+rawTermPiElimCont h (e@(m :< _), c) = do
   argListList <- many $ seriesParen (rawTerm h)
-  return $ foldPiElim m (e, c) mImpArgs argListList
-
-parseImplicitArgs :: Handle -> Parser (Maybe (SE.Series RT.RawTerm, C))
-parseImplicitArgs h =
-  choice
-    [ do
-        foo <- seriesAngle $ rawTerm h
-        return (Just foo),
-      return Nothing
-    ]
+  return $ foldPiElim m (e, c) argListList
 
 rawTermPi :: Handle -> Parser (RT.RawTerm, C)
 rawTermPi h = do
@@ -736,19 +725,14 @@ keyValueArgs p = do
 foldPiElim ::
   Hint ->
   (RT.RawTerm, C) ->
-  Maybe (SE.Series RT.RawTerm, C) ->
   [(SE.Series RT.RawTerm, C)] ->
   (RT.RawTerm, C)
-foldPiElim m (e, c) mImpArgs argListList =
+foldPiElim m (e, c) argListList =
   case argListList of
     [] ->
       (e, c)
     (args, c1) : rest ->
-      case mImpArgs of
-        Nothing ->
-          foldPiElim m (m :< RT.PiElim e c Nothing args, c1) Nothing rest
-        Just (impArgs, cImp) ->
-          foldPiElim m (m :< RT.PiElim e (c ++ cImp) (Just impArgs) args, c1) Nothing rest
+      foldPiElim m (m :< RT.PiElim e c args, c1) rest
 
 preBinder :: Handle -> Parser (RawBinder RT.RawTerm, C)
 preBinder h = do
