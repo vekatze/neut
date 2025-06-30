@@ -272,7 +272,7 @@ discern h term =
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
-    m :< RT.PiElim e _ expArgs -> do
+    m :< RT.PiElim _ e _ expArgs -> do
       case e of
         _ :< RT.Var (Var c)
           | c == "make-cell",

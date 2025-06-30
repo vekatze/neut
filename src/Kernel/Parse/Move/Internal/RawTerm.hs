@@ -728,7 +728,7 @@ foldPiElim m (e, c) argListList =
     [] ->
       (e, c)
     (args, c1) : rest ->
-      foldPiElim m (m :< RT.PiElim e c args, c1) rest
+      foldPiElim m (m :< RT.PiElim RT.Normal e c args, c1) rest
 
 preBinder :: Handle -> Parser (RawBinder RT.RawTerm, C)
 preBinder h = do

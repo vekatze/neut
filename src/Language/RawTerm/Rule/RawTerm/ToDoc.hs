@@ -63,7 +63,7 @@ toDoc term =
       decodeDef lambdaNameToDoc "function" c def
     _ :< PiIntroFix c def -> do
       decodeDef (nameToDoc . N.Var) "define" c def
-    _ :< PiElim e c expArgs -> do
+    _ :< PiElim _ e c expArgs -> do
       PI.arrange
         [ PI.inject $ toDoc e,
           PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs

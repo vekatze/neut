@@ -5,6 +5,7 @@ module Language.RawTerm.Rule.RawTerm
     TopDef,
     TopGeist,
     LetKind (..),
+    PiElimKind (..),
     RawMagic (..),
     KeywordClause,
     EL,
@@ -62,7 +63,7 @@ data RawTermF a
   | Pi (SE.Series (RawBinder a, Maybe a), C) (Args a) C a Loc
   | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
-  | PiElim a C (SE.Series a)
+  | PiElim PiElimKind a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimExact C a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
@@ -184,7 +185,7 @@ getDefName def =
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =
-  PiElim e [] (SE.fromList' es)
+  PiElim Normal e [] (SE.fromList' es)
 
 lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm -> RawTerm
 lam loc m varList codType e =
@@ -215,6 +216,9 @@ data LetKind
   = Plain MustIgnoreRelayedVars
   | Noetic
   | Try
+
+data PiElimKind
+  = Normal
 
 {-# INLINE decodeLetKind #-}
 decodeLetKind :: LetKind -> T.Text
