@@ -219,6 +219,7 @@ data LetKind
 
 data PiElimKind
   = Normal
+  | FoldRight
 
 {-# INLINE decodeLetKind #-}
 decodeLetKind :: LetKind -> T.Text

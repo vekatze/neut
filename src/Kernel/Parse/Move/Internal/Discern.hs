@@ -272,24 +272,28 @@ discern h term =
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
-    m :< RT.PiElim _ e _ expArgs -> do
-      case e of
-        _ :< RT.Var (Var c)
-          | c == "make-cell",
-            [arg] <- SE.extract expArgs -> do
-              newCellDD <- liftEither $ locatorToVarGlobal m coreCellMakeCell
-              e' <- discern h $ m :< RT.piElim newCellDD [arg]
-              return $ m :< WT.Actual e'
-          | c == "make-channel",
-            [] <- SE.extract expArgs -> do
-              newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelMakeChannel
-              e' <- discern h $ m :< RT.piElim newChannelDD []
-              return $ m :< WT.Actual e'
-        _ -> do
-          let isNoetic = False -- overwritten later in `infer`
-          e' <- discern h e
-          expArgs' <- mapM (discern h) $ SE.extract expArgs
-          return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
+    m :< RT.PiElim piElimKind e _ expArgs -> do
+      case piElimKind of
+        RT.FoldRight ->
+          undefined
+        RT.Normal -> do
+          case e of
+            _ :< RT.Var (Var c)
+              | c == "make-cell",
+                [arg] <- SE.extract expArgs -> do
+                  newCellDD <- liftEither $ locatorToVarGlobal m coreCellMakeCell
+                  e' <- discern h $ m :< RT.piElim newCellDD [arg]
+                  return $ m :< WT.Actual e'
+              | c == "make-channel",
+                [] <- SE.extract expArgs -> do
+                  newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelMakeChannel
+                  e' <- discern h $ m :< RT.piElim newChannelDD []
+                  return $ m :< WT.Actual e'
+            _ -> do
+              let isNoetic = False -- overwritten later in `infer`
+              e' <- discern h e
+              expArgs' <- mapM (discern h) $ SE.extract expArgs
+              return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, (_, gn)) <- resolveName h m name
       _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
