@@ -72,14 +72,18 @@ toDoc term =
             ]
         FoldRight -> do
           PI.arrange
-            [ PI.horizontal $ D.text "fold-right",
+            [ PI.inject $ D.text "fold-right",
+              PI.inject $ D.text "<",
               PI.inject $ toDoc e,
+              PI.inject $ D.text ">",
               PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
             ]
         FoldLeft -> do
           PI.arrange
-            [ PI.horizontal $ D.text "fold-left",
+            [ PI.inject $ D.text "fold-left",
+              PI.inject $ D.text "<",
               PI.inject $ toDoc e,
+              PI.inject $ D.text ">",
               PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
             ]
     _ :< PiElimByKey name c kvs -> do

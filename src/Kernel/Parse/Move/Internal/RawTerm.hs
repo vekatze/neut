@@ -800,25 +800,21 @@ rawTermPiElimExact h m c1 = do
   (e, c) <- rawTerm h
   return (m :< RT.PiElimExact c1 e, c)
 
-funcSymbol :: Hint -> Parser (Name, C)
-funcSymbol m = do
-  (headSymbol, c) <- symbol'
-  name <- interpretVarName m headSymbol
-  return (name, c)
-
 rawTermFoldRight :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermFoldRight h m c = do
-  mSymbol <- getCurrentHint
-  (f, c1) <- funcSymbol mSymbol
-  (args, c2) <- seriesParen (rawTerm h)
-  return (m :< RT.PiElim RT.FoldRight (mSymbol :< RT.Var f) (c ++ c1) args, c2)
+  c1 <- delimiter "<"
+  (e, c2) <- rawTerm h
+  c3 <- delimiter ">"
+  (args, c4) <- seriesParen (rawTerm h)
+  return (m :< RT.PiElim RT.FoldRight e (c ++ c1 ++ c2 ++ c3) args, c4)
 
 rawTermFoldLeft :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermFoldLeft h m c = do
-  mSymbol <- getCurrentHint
-  (f, c1) <- funcSymbol mSymbol
-  (args, c2) <- seriesParen (rawTerm h)
-  return (m :< RT.PiElim RT.FoldLeft (mSymbol :< RT.Var f) (c ++ c1) args, c2)
+  c1 <- delimiter "<"
+  (e, c2) <- rawTerm h
+  c3 <- delimiter ">"
+  (args, c4) <- seriesParen (rawTerm h)
+  return (m :< RT.PiElim RT.FoldLeft e (c ++ c1 ++ c2 ++ c3) args, c4)
 
 rawTermIntrospect :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermIntrospect h m c1 = do
