@@ -274,10 +274,15 @@ discern h term =
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
     m :< RT.PiElim piElimKind e _ expArgs -> do
       case piElimKind of
-        RT.FoldRight ->
-          undefined
-        RT.FoldLeft ->
-          undefined
+        RT.FoldRight -> do
+          let args = SE.extract expArgs
+          let m' = blur m
+          foldedTerm <- buildFoldRight m' e args
+          discern h foldedTerm
+        RT.FoldLeft -> do
+          let args = SE.extract expArgs
+          foldedTerm <- buildFoldLeft m e args
+          discern h foldedTerm
         RT.Normal -> do
           case e of
             _ :< RT.Var (Var c)
@@ -1148,3 +1153,25 @@ checkRedundancy m impKeys expKeys kvs = do
   if null diff
     then return ()
     else raiseError m $ "The following field(s) are redundant:\n" <> _showKeyList diff
+
+buildFoldRight :: Hint -> RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
+buildFoldRight m func argList =
+  case argList of
+    [] -> do
+      raiseError m "`fold-right` requires at least one argument"
+    [lastArg] ->
+      return lastArg
+    (firstArg : restArgs) -> do
+      restTerm <- buildFoldRight m func restArgs
+      return $ m :< RT.PiElim RT.Normal func [] (SE.fromList' [firstArg, restTerm])
+
+buildFoldLeft :: Hint -> RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
+buildFoldLeft m func argList =
+  case argList of
+    [] -> do
+      raiseError m "`fold-left` requires at least one argument"
+    [singleArg] ->
+      return singleArg
+    (firstArg : secondArg : restArgs) -> do
+      let headTerm = m :< RT.PiElim RT.Normal func [] (SE.fromList' [firstArg, secondArg])
+      buildFoldLeft m func $ headTerm : restArgs
