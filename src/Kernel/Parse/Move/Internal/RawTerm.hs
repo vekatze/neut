@@ -128,6 +128,8 @@ rawTerm' h m headSymbol c = do
       rawTermPiElimExact h m c
     "fold-right" -> do
       rawTermFoldRight h m c
+    "fold-left" -> do
+      rawTermFoldLeft h m c
     "if" -> do
       rawTermIf h m c
     "when" -> do
@@ -803,6 +805,12 @@ rawTermFoldRight h m c = do
   (e, c1) <- rawTerm h
   (args, c2) <- seriesParen (rawTerm h)
   return (m :< RT.PiElim RT.FoldRight e (c ++ c1) args, c2)
+
+rawTermFoldLeft :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermFoldLeft h m c = do
+  (e, c1) <- rawTerm h
+  (args, c2) <- seriesParen (rawTerm h)
+  return (m :< RT.PiElim RT.FoldLeft e (c ++ c1) args, c2)
 
 rawTermIntrospect :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermIntrospect h m c1 = do

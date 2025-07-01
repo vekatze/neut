@@ -276,6 +276,8 @@ discern h term =
       case piElimKind of
         RT.FoldRight ->
           undefined
+        RT.FoldLeft ->
+          undefined
         RT.Normal -> do
           case e of
             _ :< RT.Var (Var c)
