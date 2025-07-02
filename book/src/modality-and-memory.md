@@ -266,8 +266,14 @@ define joker(): () -> unit {
         Unit
       }
     };
-  f
+  f // function with xs: &list(int) as a free variable
+  // FREE(xs)
+}
+
+define main(): unit {
+  let f = joker();
+  f(); // xs used after freed here
 }
 ```
 
-This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario. Hence, Neut’s layer rules prohibit capturing a higher-layer variable in a lower-layer function.
+This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario in the body of the main function. Hence, Neut’s layer rules prohibit capturing a higher-layer variable in a lower-layer function.
