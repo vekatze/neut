@@ -333,9 +333,7 @@ newtype AffineConstraintError
 
 constructErrorMessageAffine :: AffineConstraintError -> L.Log
 constructErrorMessageAffine (AffineConstraintError t) =
-  L.newLog (WT.metaOf t) L.Error $
-    "The type of this affine variable is not affine, but:\n"
-      <> WT.toText t
+  L.newLog (WT.metaOf t) L.Error "Variable name must start with `!` to be copyable"
 
 simplifyAffine ::
   Handle ->
@@ -400,9 +398,8 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
-    _ :< WT.Pi _ impArgs expArgs _ -> do
-      let impBinders = map fst impArgs
-      return $ impBinders ++ expArgs
+    _ :< WT.Pi (PK.DataIntro _) impArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' _dataType) -> do
+      return $ map fst impArgs ++ expArgs ++ map fst impArgs' ++ expArgs'
     _ ->
       raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
 
