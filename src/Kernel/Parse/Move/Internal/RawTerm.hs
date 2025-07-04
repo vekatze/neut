@@ -805,7 +805,7 @@ rawTermFoldRight h m c = do
   c1 <- delimiter "<"
   (e, c2) <- rawTerm h
   c3 <- delimiter ">"
-  (args, c4) <- seriesParen (rawTerm h)
+  (args, c4) <- seriesBracket (rawTerm h)
   return (m :< RT.PiElim RT.FoldRight e (c ++ c1 ++ c2 ++ c3) args, c4)
 
 rawTermFoldLeft :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
@@ -813,7 +813,7 @@ rawTermFoldLeft h m c = do
   c1 <- delimiter "<"
   (e, c2) <- rawTerm h
   c3 <- delimiter ">"
-  (args, c4) <- seriesParen (rawTerm h)
+  (args, c4) <- seriesBracket (rawTerm h)
   return (m :< RT.PiElim RT.FoldLeft e (c ++ c1 ++ c2 ++ c3) args, c4)
 
 rawTermIntrospect :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
