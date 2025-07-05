@@ -14,6 +14,7 @@ module SyntaxTree.Rule.Series
     pushComment,
     singleton,
     cons,
+    snoc,
     replace,
     joinC,
     assoc,
@@ -140,6 +141,10 @@ uncons xs =
 cons :: (C, a) -> Series a -> Series a
 cons x xs =
   xs {elems = x : elems xs}
+
+snoc :: Series a -> (C, a) -> Series a
+snoc xs x =
+  xs {elems = elems xs ++ [x]}
 
 -- pc: paren comma
 emptySeriesPC :: Series a

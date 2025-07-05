@@ -31,7 +31,7 @@ data WeakStmt
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
-  | WeakStmtVariadic VariadicKind Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
+  | WeakStmtVariadic VariadicKind Hint DD.DefiniteDescription
   | WeakStmtNominal Hint [G.Geist WT.WeakTerm]
   | WeakStmtForeign [WT.WeakForeign]
 
@@ -44,7 +44,7 @@ getWeakStmtName' stmt =
   case stmt of
     WeakStmtDefine _ _ m name _ _ _ _ ->
       [(m, name)]
-    WeakStmtVariadic _ m name _ _ ->
+    WeakStmtVariadic _ m name ->
       [(m, name)]
     WeakStmtNominal {} ->
       []

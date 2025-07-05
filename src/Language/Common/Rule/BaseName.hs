@@ -44,6 +44,8 @@ module Language.Common.Rule.BaseName
     free,
     reservedAlias,
     extend,
+    node,
+    tip,
   )
 where
 
@@ -235,6 +237,14 @@ cons =
 form :: BaseName
 form =
   MakeBaseName "form"
+
+node :: BaseName
+node =
+  MakeBaseName "node"
+
+tip :: BaseName
+tip =
+  MakeBaseName "tip"
 
 malloc :: BaseName
 malloc =

@@ -52,6 +52,8 @@ toDoc term =
       D.text "type"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
+    _ :< VarGlobal dd _ ->
+      D.text $ DD.reify dd -- unreachable
     _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do
       PI.arrange
         [ PI.container $ decodeImpParams impArgs,
@@ -90,6 +92,11 @@ toDoc term =
       PI.arrange
         [ PI.inject $ nameToDoc name,
           PI.inject $ attachComment c $ decPiElimKey kvs
+        ]
+    _ :< PiElimVariadic name c es -> do
+      PI.arrange
+        [ PI.inject $ attachComment c $ nameToDoc name,
+          PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
         ]
     _ :< PiElimExact c e ->
       PI.arrange

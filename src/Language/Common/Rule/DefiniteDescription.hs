@@ -7,6 +7,8 @@ module Language.Common.Rule.DefiniteDescription
     getLocatorPair,
     newByGlobalLocator,
     getFormDD,
+    getNodeDD,
+    getTipDD,
     immType,
     immNoema,
     immInt1,
@@ -87,6 +89,18 @@ getFormDD :: DefiniteDescription -> DefiniteDescription
 getFormDD dd = do
   MakeDefiniteDescription
     { reify = reify dd <> "#" <> BN.reify BN.form
+    }
+
+getNodeDD :: DefiniteDescription -> DefiniteDescription
+getNodeDD dd = do
+  MakeDefiniteDescription
+    { reify = reify dd <> "#" <> BN.reify BN.node
+    }
+
+getTipDD :: DefiniteDescription -> DefiniteDescription
+getTipDD dd = do
+  MakeDefiniteDescription
+    { reify = reify dd <> "#" <> BN.reify BN.tip
     }
 
 moduleID :: DefiniteDescription -> T.Text

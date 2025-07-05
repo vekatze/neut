@@ -40,10 +40,8 @@ weakenStmt stmt = do
       let codType' = weaken codType
       let e' = weaken e
       WeakStmtDefine isConstLike stmtKind' m name impArgs' expArgs' codType' e'
-    StmtVariadic kind m name node tip -> do
-      let node' = weaken node
-      let tip' = weaken tip
-      WeakStmtVariadic kind m name node' tip'
+    StmtVariadic kind m name -> do
+      WeakStmtVariadic kind m name
     StmtForeign foreignList ->
       WeakStmtForeign $ map weakenForeign foreignList
 

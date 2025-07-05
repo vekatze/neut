@@ -74,9 +74,10 @@ data BaseRawStmt name
       C
       Hint
       (name, C)
-      (C, RT.RawTerm)
-      (C, RT.RawTerm)
+      (C, RT.RawTerm, RT.RawTerm)
+      (C, RT.RawTerm, RT.RawTerm)
       C
+      Loc
   | RawStmtNominal C Hint (SE.Series (RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
 
@@ -104,12 +105,8 @@ data PostRawStmt
       C
   | PostRawStmtVariadic
       VariadicKind
-      C
       Hint
-      (DD.DefiniteDescription, C)
-      (C, RT.RawTerm)
-      (C, RT.RawTerm)
-      C
+      DD.DefiniteDescription
   | PostRawStmtNominal C Hint (SE.Series (RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
 
@@ -122,7 +119,7 @@ getPostRawStmtName stmt =
       [(m, name)]
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ ->
       [(m, name)]
-    PostRawStmtVariadic _ _ m (name, _) _ _ _ ->
+    PostRawStmtVariadic _ m name ->
       [(m, name)]
     PostRawStmtNominal {} ->
       []

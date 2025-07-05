@@ -167,6 +167,9 @@ rawTerm' h m headSymbol c = do
                 (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
                 return (m :< RT.PiElimByKey name c kvs, c'),
               do
+                (es, c') <- seriesBracket $ rawTerm h
+                return (m :< RT.PiElimVariadic name c es, c'),
+              do
                 rawTermPiElimCont h (m :< RT.Var name, c)
             ]
 

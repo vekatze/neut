@@ -142,10 +142,8 @@ elaborateStmt h stmt = do
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
-    WeakStmtVariadic kind m dd node tip -> do
-      node' <- elaborate' h node
-      tip' <- elaborate' h tip
-      return ([StmtVariadic kind m dd node' tip'], [])
+    WeakStmtVariadic kind m dd -> do
+      return ([StmtVariadic kind m dd], [])
     WeakStmtNominal _ geistList -> do
       mapM_ (elaborateGeist h) geistList
       return ([], [])

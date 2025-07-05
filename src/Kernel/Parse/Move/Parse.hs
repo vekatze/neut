@@ -27,6 +27,7 @@ import Kernel.Common.Rule.OptimizableData qualified as OD
 import Kernel.Common.Rule.Source (Source)
 import Kernel.Common.Rule.Source qualified as Source
 import Kernel.Parse.Move.Internal.Discern.Data (defineData)
+import Kernel.Parse.Move.Internal.Discern.Variadic (defineVariadic)
 import Kernel.Parse.Move.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
 import Kernel.Parse.Move.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Move.Internal.Program qualified as Parse
@@ -115,9 +116,9 @@ postprocess' h stmt = do
     RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, typeTag) c5 -> do
       let name' = Locator.attachCurrentLocator h name
       [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, typeTag) c5]
-    RawStmtVariadic kind c m (name, c1) (c2, discarder) (c3, copier) c4 -> do
+    RawStmtVariadic kind _ m (name, _) (_, node, nodeType) (_, tip, tipType) _ loc -> do
       let name' = Locator.attachCurrentLocator h name
-      [PostRawStmtVariadic kind c m (name', c1) (c2, discarder) (c3, copier) c4]
+      defineVariadic kind m name' (node, nodeType) (tip, tipType) loc
     RawStmtNominal c m geistList -> do
       let geistList' = fmap (first (liftGeist h)) geistList
       [PostRawStmtNominal c m geistList']

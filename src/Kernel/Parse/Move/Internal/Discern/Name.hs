@@ -3,6 +3,8 @@ module Kernel.Parse.Move.Internal.Discern.Name
     resolveConstructor,
     resolveLocator,
     interpretGlobalName,
+    interpretFoldName,
+    resolveDefiniteDescription,
   )
 where
 
@@ -12,7 +14,7 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
-import Error.Move.Run (raiseError)
+import Error.Move.Run (raiseCritical, raiseError)
 import Error.Rule.EIO (EIO)
 import Kernel.Common.Move.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Move.Handle.Local.Tag qualified as Tag
@@ -38,6 +40,7 @@ import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimNumSize qualified as PNS
 import Language.Common.Rule.PrimOp qualified as PO
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.VariadicKind (VariadicKind)
 import Language.RawTerm.Rule.Locator qualified as L
 import Language.RawTerm.Rule.Name
 import Language.WeakTerm.Move.CreateHole qualified as WT
@@ -106,6 +109,20 @@ resolveLocator h m (gl, ll) shouldInsertTag = do
         liftIO $ Tag.insertLocator (H.tagHandle h) m dd (GN.getIsConstLike gn) (glLen + llLen + sepLen) mDef
       return globalVar
 
+resolveDefiniteDescription ::
+  H.Handle ->
+  Hint ->
+  DD.DefiniteDescription ->
+  EIO GN.GlobalName
+resolveDefiniteDescription h m dd = do
+  cand' <- NameMap.lookup (H.nameMapHandle h) m dd
+  let foundName = candFilter (dd, cand')
+  case foundName of
+    Nothing ->
+      raiseCritical m $ "Undefined definite description: " <> DD.reify dd
+    Just (_, (_, gn)) -> do
+      return gn
+
 resolveConstructor ::
   H.Handle ->
   Hint ->
@@ -149,6 +166,16 @@ interpretGlobalName h m dd gn = do
           castFromIntToBool h $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
         _ ->
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
+    GN.Fold _ ->
+      raiseError m $ "`" <> DD.reify dd <> "` must be used with arguments"
+
+interpretFoldName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> EIO VariadicKind
+interpretFoldName m dd gn = do
+  case gn of
+    GN.Fold kind ->
+      return kind
+    _ -> do
+      raiseError m $ "`" <> DD.reify dd <> "` is not a macro"
 
 interpretTopLevelFunc ::
   Hint ->

@@ -66,6 +66,7 @@ import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
+import Language.Common.Rule.VariadicKind (VariadicKind (VariadicLeft, VariadicRight))
 import Language.RawTerm.Move.CreateHole qualified as RT
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
@@ -123,11 +124,10 @@ discernStmt h stmt = do
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
-    PostRawStmtVariadic kind _ m (dd, _) (_, node) (_, tip) _ -> do
+    PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
-      node' <- discern h node
-      tip' <- discern h tip
-      return [WeakStmtVariadic kind m dd node' tip']
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
+      return [WeakStmtVariadic kind m dd]
     PostRawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
         NameMap.registerGeist (H.nameMapHandle h) geist
@@ -242,6 +242,8 @@ discern h term =
         _ -> do
           (dd, (_, gn)) <- resolveName h m name
           interpretGlobalName h m dd gn
+    m :< RT.VarGlobal dd gn -> do
+      interpretGlobalName h m dd gn
     m :< RT.Pi impArgs expArgs _ t endLoc -> do
       let impArgsWithDefaults = RT.extractImpArgsWithDefaults impArgs
       (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
@@ -318,6 +320,20 @@ discern h term =
       checkRedundancy m impKeys expKeys kvs'
       let isNoetic = False -- overwritten later in `infer`
       return $ m :< WT.PiElim isNoetic (m :< func) (ImpArgs.PartiallySpecified impArgs) expArgs
+    m :< RT.PiElimVariadic name _ es -> do
+      (dd, (_, gn)) <- resolveName h m name
+      kind <- interpretFoldName m dd gn
+      let nodeDD = DD.getNodeDD dd
+      let tipDD = DD.getTipDD dd
+      nodeGN <- resolveDefiniteDescription h m nodeDD
+      tipGN <- resolveDefiniteDescription h m tipDD
+      let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
+      let tipTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal tipDD tipGN)) []
+      case kind of
+        VariadicLeft -> do
+          discern h $ m :< RT.PiElim RT.FoldLeft nodeTM [] (SE.cons ([], tipTM) es)
+        VariadicRight -> do
+          discern h $ m :< RT.PiElim RT.FoldRight nodeTM [] (SE.snoc es ([], tipTM))
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
