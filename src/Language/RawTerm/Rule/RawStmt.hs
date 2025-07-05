@@ -24,8 +24,8 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.LocalLocator qualified as LL
+import Language.Common.Rule.RuleKind
 import Language.Common.Rule.StmtKind qualified as SK
-import Language.Common.Rule.VariadicKind
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
@@ -70,7 +70,7 @@ data BaseRawStmt name
       (C, RT.RawTerm)
       C
   | RawStmtVariadic
-      VariadicKind
+      RuleKind
       C
       Hint
       (name, C)
@@ -104,7 +104,7 @@ data PostRawStmt
       (C, RT.RawTerm)
       C
   | PostRawStmtVariadic
-      VariadicKind
+      RuleKind
       Hint
       DD.DefiniteDescription
   | PostRawStmtNominal C Hint (SE.Series (RT.RawGeist DD.DefiniteDescription, Loc))

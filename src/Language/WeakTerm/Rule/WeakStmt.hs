@@ -10,8 +10,8 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.Geist qualified as G
 import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.RuleKind (RuleKind)
 import Language.Common.Rule.StmtKind qualified as SK
-import Language.Common.Rule.VariadicKind (VariadicKind)
 import Language.WeakTerm.Rule.WeakTerm qualified as WT
 import Logger.Rule.Hint
 
@@ -31,7 +31,7 @@ data WeakStmt
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
-  | WeakStmtVariadic VariadicKind Hint DD.DefiniteDescription
+  | WeakStmtVariadic RuleKind Hint DD.DefiniteDescription
   | WeakStmtNominal Hint [G.Geist WT.WeakTerm]
   | WeakStmtForeign [WT.WeakForeign]
 

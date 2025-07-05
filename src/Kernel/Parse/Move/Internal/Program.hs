@@ -17,8 +17,8 @@ import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.RuleKind
 import Language.Common.Rule.StmtKind qualified as SK
-import Language.Common.Rule.VariadicKind
 import Language.RawTerm.Move.CreateHole qualified as RT
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.RawBinder
@@ -65,8 +65,8 @@ parseStmt h = do
       parseInline h,
       parseNominal h,
       parseResource h,
-      parseVariadic h VariadicLeft,
-      parseVariadic h VariadicRight,
+      parseVariadic h FoldLeft,
+      parseVariadic h FoldRight,
       parseForeign h
     ]
 
@@ -203,9 +203,9 @@ parseResource h = do
     _ ->
       lift $ raiseError m $ "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
 
-parseVariadic :: Handle -> VariadicKind -> Parser (RawStmt, C)
+parseVariadic :: Handle -> RuleKind -> Parser (RawStmt, C)
 parseVariadic h vk = do
-  let k = variadicKindToKeyword vk
+  let k = ruleKindToKeyword vk
   c1 <- keyword k
   m <- getCurrentHint
   (name, c2) <- baseName

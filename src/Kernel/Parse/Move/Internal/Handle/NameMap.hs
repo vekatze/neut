@@ -187,7 +187,7 @@ _getGlobalNames stmt = do
         SK.DataIntro {} ->
           []
     PostRawStmtVariadic kind m name -> do
-      [(name, (m, GN.Fold kind))]
+      [(name, (m, GN.Rule kind))]
     PostRawStmtNominal {} -> do
       []
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
@@ -217,7 +217,7 @@ _getGlobalNames' stmt = do
         SK.DataIntro {} ->
           []
     StmtVariadic kind (SavedHint m) name -> do
-      [(name, (m, GN.Fold kind))]
+      [(name, (m, GN.Rule kind))]
     StmtForeign {} ->
       []
 

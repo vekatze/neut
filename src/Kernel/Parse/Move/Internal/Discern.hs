@@ -64,9 +64,9 @@ import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.RuleKind (RuleKind (FoldLeft, FoldRight))
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
-import Language.Common.Rule.VariadicKind (VariadicKind (VariadicLeft, VariadicRight))
 import Language.RawTerm.Move.CreateHole qualified as RT
 import Language.RawTerm.Rule.Key
 import Language.RawTerm.Rule.Name
@@ -323,9 +323,9 @@ discern h term =
       checkRedundancy m impKeys expKeys kvs'
       let isNoetic = False -- overwritten later in `infer`
       return $ m :< WT.PiElim isNoetic (m :< func) (ImpArgs.PartiallySpecified impArgs) expArgs
-    m :< RT.PiElimVariadic name _ es -> do
+    m :< RT.PiElimRule name _ es -> do
       (dd, (_, gn)) <- resolveName h m name
-      kind <- interpretFoldName m dd gn
+      kind <- interpretRuleName m dd gn
       let nodeDD = DD.getNodeDD dd
       let tipDD = DD.getTipDD dd
       nodeGN <- resolveDefiniteDescription h m nodeDD
@@ -333,9 +333,9 @@ discern h term =
       let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
       let tipTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal tipDD tipGN)) []
       case kind of
-        VariadicLeft -> do
+        FoldLeft -> do
           discern h $ m :< RT.PiElim RT.FoldLeft nodeTM [] (SE.cons ([], tipTM) es)
-        VariadicRight -> do
+        FoldRight -> do
           discern h $ m :< RT.PiElim RT.FoldRight nodeTM [] (SE.snoc es ([], tipTM))
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e

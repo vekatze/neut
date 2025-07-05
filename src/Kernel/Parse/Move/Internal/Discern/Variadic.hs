@@ -2,15 +2,15 @@ module Kernel.Parse.Move.Internal.Discern.Variadic (defineVariadic) where
 
 import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.RuleKind (RuleKind)
 import Language.Common.Rule.StmtKind qualified as SK
-import Language.Common.Rule.VariadicKind (VariadicKind)
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
 import SyntaxTree.Rule.Series qualified as SE
 
 defineVariadic ::
-  VariadicKind ->
+  RuleKind ->
   Hint ->
   DD.DefiniteDescription ->
   (RT.RawTerm, RT.RawTerm) ->

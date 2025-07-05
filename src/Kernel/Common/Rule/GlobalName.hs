@@ -13,7 +13,7 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
-import Language.Common.Rule.VariadicKind (VariadicKind)
+import Language.Common.Rule.RuleKind (RuleKind)
 import Logger.Rule.Hint
 
 data GlobalName
@@ -22,7 +22,7 @@ data GlobalName
   | PrimOp PrimOp
   | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
   | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
-  | Fold VariadicKind
+  | Rule RuleKind
   deriving (Generic)
 
 getIsConstLike :: GlobalName -> IsConstLike
@@ -46,7 +46,7 @@ hasNoArgs gn =
       argNum == fromInt 0
     DataIntro dataArgNum consArgNum _ _ ->
       dataArgNum == fromInt 0 && consArgNum == fromInt 0
-    Fold {} ->
+    Rule {} ->
       False
     PrimType _ ->
       True

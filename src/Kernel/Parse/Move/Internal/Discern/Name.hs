@@ -3,7 +3,7 @@ module Kernel.Parse.Move.Internal.Discern.Name
     resolveConstructor,
     resolveLocator,
     interpretGlobalName,
-    interpretFoldName,
+    interpretRuleName,
     resolveDefiniteDescription,
   )
 where
@@ -40,7 +40,7 @@ import Language.Common.Rule.PiKind qualified as PK
 import Language.Common.Rule.PrimNumSize qualified as PNS
 import Language.Common.Rule.PrimOp qualified as PO
 import Language.Common.Rule.PrimType qualified as PT
-import Language.Common.Rule.VariadicKind (VariadicKind)
+import Language.Common.Rule.RuleKind (RuleKind)
 import Language.RawTerm.Rule.Locator qualified as L
 import Language.RawTerm.Rule.Name
 import Language.WeakTerm.Move.CreateHole qualified as WT
@@ -166,13 +166,13 @@ interpretGlobalName h m dd gn = do
           castFromIntToBool h $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
         _ ->
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
-    GN.Fold _ ->
+    GN.Rule _ ->
       raiseError m $ "`" <> DD.reify dd <> "` must be used with arguments"
 
-interpretFoldName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> EIO VariadicKind
-interpretFoldName m dd gn = do
+interpretRuleName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> EIO RuleKind
+interpretRuleName m dd gn = do
   case gn of
-    GN.Fold kind ->
+    GN.Rule kind ->
       return kind
     _ -> do
       raiseError m $ "`" <> DD.reify dd <> "` is not a macro"

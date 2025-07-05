@@ -8,10 +8,10 @@ import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.RuleKind (ruleKindToKeyword)
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Language.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
-import Language.Common.Rule.VariadicKind (variadicKindToKeyword)
 import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
@@ -216,7 +216,7 @@ decStmt stmt =
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]
     RawStmtVariadic kind c1 _ (name, c2) (cn, node, _) (ct, tip, _) trailingComment _ -> do
-      let k = variadicKindToKeyword kind
+      let k = ruleKindToKeyword kind
       let series =
             SE.Series
               { elems = [(cn, node), (ct, tip)],

@@ -93,7 +93,7 @@ toDoc term =
         [ PI.inject $ nameToDoc name,
           PI.inject $ attachComment c $ decPiElimKey kvs
         ]
-    _ :< PiElimVariadic name c es -> do
+    _ :< PiElimRule name c es -> do
       PI.arrange
         [ PI.inject $ attachComment c $ nameToDoc name,
           PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es

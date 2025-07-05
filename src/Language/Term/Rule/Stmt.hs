@@ -17,8 +17,8 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.RuleKind (RuleKind)
 import Language.Common.Rule.StmtKind qualified as SK
-import Language.Common.Rule.VariadicKind (VariadicKind)
 import Language.Term.Rule.Term qualified as TM
 import Logger.Rule.Hint
 
@@ -34,7 +34,7 @@ data StmtF a
       [BinderF a]
       a
       a
-  | StmtVariadic VariadicKind SavedHint DD.DefiniteDescription
+  | StmtVariadic RuleKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
   deriving (Generic)
 
