@@ -111,8 +111,9 @@ discernStmt h stmt = do
       stmtKind' <- discernStmtKind h stmtKind m
       body' <- discern nenv' body
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m functionName isConstLike m
-      liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
-        TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
+      when (metaShouldSaveLocation m) $ do
+        liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
+          TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
       liftIO $ forM_ (map fst impArgs') $ Tag.insertBinder (H.tagHandle h)
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
@@ -127,6 +128,8 @@ discernStmt h stmt = do
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
+      liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
+        TopCandidate {loc = metaLocation m, dd = dd, kind = Function}
       return [WeakStmtVariadic kind m dd]
     PostRawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do

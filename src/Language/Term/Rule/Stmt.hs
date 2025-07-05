@@ -34,7 +34,7 @@ data StmtF a
       [BinderF a]
       a
       a
-  | StmtVariadic VariadicKind Hint DD.DefiniteDescription
+  | StmtVariadic VariadicKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
   deriving (Generic)
 
@@ -55,7 +55,7 @@ getStmtName' stmt =
   case stmt of
     StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
       return (m, name)
-    StmtVariadic _ m name ->
+    StmtVariadic _ (SavedHint m) name ->
       return (m, name)
     StmtForeign _ ->
       Nothing

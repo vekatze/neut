@@ -143,7 +143,7 @@ elaborateStmt h stmt = do
       insertStmt h result
       return ([result], remarks)
     WeakStmtVariadic kind m dd -> do
-      return ([StmtVariadic kind m dd], [])
+      return ([StmtVariadic kind (SavedHint m) dd], [])
     WeakStmtNominal _ geistList -> do
       mapM_ (elaborateGeist h) geistList
       return ([], [])

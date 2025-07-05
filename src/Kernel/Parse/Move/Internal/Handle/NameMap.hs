@@ -216,7 +216,7 @@ _getGlobalNames' stmt = do
           (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
         SK.DataIntro {} ->
           []
-    StmtVariadic kind m name -> do
+    StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, GN.Fold kind))]
     StmtForeign {} ->
       []
