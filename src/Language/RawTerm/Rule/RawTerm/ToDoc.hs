@@ -304,7 +304,10 @@ toDoc term =
     _ :< SeqEnd e1 -> do
       D.join [toDoc e1, D.text ";"]
     _ :< ListIntro es -> do
-      SE.decode $ fmap toDoc es
+      PI.arrange
+        [ PI.inject $ D.text "List",
+          PI.inject $ SE.decode $ fmap toDoc es
+        ]
     _ :< Admit ->
       D.text "admit"
     m :< Detach c1 c2 (e, c3) -> do
@@ -632,7 +635,10 @@ decodePattern pat = do
           let kvs' = SE.decode $ fmap decodePatternKeyValue kvs
           D.join [name', attachComment c kvs']
     RP.ListIntro patList -> do
-      SE.decode $ fmap (decodePattern . snd) patList
+      PI.arrange
+        [ PI.inject $ D.text "List",
+          PI.inject $ SE.decode $ fmap (decodePattern . snd) patList
+        ]
     RP.RuneIntro r ->
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
