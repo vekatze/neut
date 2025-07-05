@@ -115,6 +115,9 @@ postprocess' h stmt = do
     RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, typeTag) c5 -> do
       let name' = Locator.attachCurrentLocator h name
       [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, typeTag) c5]
+    RawStmtVariadic kind c m (name, c1) (c2, discarder) (c3, copier) c4 -> do
+      let name' = Locator.attachCurrentLocator h name
+      [PostRawStmtVariadic kind c m (name', c1) (c2, discarder) (c3, copier) c4]
     RawStmtNominal c m geistList -> do
       let geistList' = fmap (first (liftGeist h)) geistList
       [PostRawStmtNominal c m geistList']
@@ -191,6 +194,8 @@ registerKeyArg h stmt = do
       return ()
     PostRawStmtDefineResource {} -> do
       return ()
+    PostRawStmtVariadic {} -> do
+      return ()
     PostRawStmtForeign {} ->
       return ()
 
@@ -206,6 +211,8 @@ registerKeyArg' h stmt = do
           let impKeys = map (\((_, x, _), _) -> toText x) impArgs
           let expKeys = map (\(_, x, _) -> toText x) expArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
+    StmtVariadic {} ->
+      return ()
     StmtForeign {} ->
       return ()
 

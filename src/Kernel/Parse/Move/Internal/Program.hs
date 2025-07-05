@@ -18,6 +18,7 @@ import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.StmtKind qualified as SK
+import Language.Common.Rule.VariadicKind
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawStmt
@@ -63,6 +64,8 @@ parseStmt h = do
       parseInline h,
       parseNominal h,
       parseResource h,
+      parseVariadic h VariadicLeft,
+      parseVariadic h VariadicRight,
       parseForeign h
     ]
 
@@ -198,3 +201,16 @@ parseResource h = do
       return (RawStmtDefineResource c1 m (name, c2) discarder copier typeTag (SE.trailingComment handlers), c)
     _ ->
       lift $ raiseError m $ "`resource` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
+
+parseVariadic :: Handle -> VariadicKind -> Parser (RawStmt, C)
+parseVariadic h vk = do
+  let k = variadicKindToKeyword vk
+  c1 <- keyword k
+  m <- getCurrentHint
+  (name, c2) <- baseName
+  (handlers, c) <- seriesBrace $ rawExpr h
+  case SE.elems handlers of
+    [node, tip] -> do
+      return (RawStmtVariadic vk c1 m (name, c2) node tip (SE.trailingComment handlers), c)
+    _ -> do
+      lift $ raiseError m $ "`" <> k <> "` must have 2 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)

@@ -25,6 +25,7 @@ import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as F
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.StmtKind qualified as SK
+import Language.Common.Rule.VariadicKind
 import Language.RawTerm.Rule.RawBinder
 import Language.RawTerm.Rule.RawTerm qualified as RT
 import Logger.Rule.Hint
@@ -68,6 +69,14 @@ data BaseRawStmt name
       (C, RT.RawTerm)
       (C, RT.RawTerm)
       C
+  | RawStmtVariadic
+      VariadicKind
+      C
+      Hint
+      (name, C)
+      (C, RT.RawTerm)
+      (C, RT.RawTerm)
+      C
   | RawStmtNominal C Hint (SE.Series (RT.RawGeist name, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
 
@@ -93,6 +102,14 @@ data PostRawStmt
       (C, RT.RawTerm)
       (C, RT.RawTerm)
       C
+  | PostRawStmtVariadic
+      VariadicKind
+      C
+      Hint
+      (DD.DefiniteDescription, C)
+      (C, RT.RawTerm)
+      (C, RT.RawTerm)
+      C
   | PostRawStmtNominal C Hint (SE.Series (RT.RawGeist DD.DefiniteDescription, Loc))
   | PostRawStmtForeign C (SE.Series RawForeignItem)
 
@@ -104,6 +121,8 @@ getPostRawStmtName stmt =
       let name = fst $ RT.name $ RT.geist def
       [(m, name)]
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ ->
+      [(m, name)]
+    PostRawStmtVariadic _ _ m (name, _) _ _ _ ->
       [(m, name)]
     PostRawStmtNominal {} ->
       []

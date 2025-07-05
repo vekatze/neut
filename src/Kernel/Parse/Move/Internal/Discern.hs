@@ -123,6 +123,11 @@ discernStmt h stmt = do
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
+    PostRawStmtVariadic kind _ m (dd, _) (_, node) (_, tip) _ -> do
+      registerTopLevelName h stmt
+      node' <- discern h node
+      tip' <- discern h tip
+      return [WeakStmtVariadic kind m dd node' tip']
     PostRawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
         NameMap.registerGeist (H.nameMapHandle h) geist

@@ -11,6 +11,7 @@ import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Language.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
+import Language.Common.Rule.VariadicKind (variadicKindToKeyword)
 import Language.RawTerm.Rule.Name qualified as N
 import Language.RawTerm.Rule.RawStmt
 import Language.RawTerm.Rule.RawTerm qualified as RT
@@ -211,6 +212,23 @@ decStmt stmt =
       attachStmtComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
+            PI.horizontal $ D.text (BN.reify name),
+            PI.inject $ SE.decode $ fmap RT.toDoc series
+          ]
+    RawStmtVariadic kind c1 _ (name, c2) node tip trailingComment -> do
+      let k = variadicKindToKeyword kind
+      let series =
+            SE.Series
+              { elems = [node, tip],
+                trailingComment,
+                prefix = Nothing,
+                container = Just SE.Brace,
+                separator = SE.Comma,
+                hasOptionalSeparator = True
+              }
+      attachStmtComment (c1 ++ c2) $
+        PI.arrange
+          [ PI.horizontal $ D.text k,
             PI.horizontal $ D.text (BN.reify name),
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]

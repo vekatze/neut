@@ -142,6 +142,10 @@ elaborateStmt h stmt = do
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
+    WeakStmtVariadic kind m dd node tip -> do
+      node' <- elaborate' h node
+      tip' <- elaborate' h tip
+      return ([StmtVariadic kind m dd node' tip'], [])
     WeakStmtNominal _ geistList -> do
       mapM_ (elaborateGeist h) geistList
       return ([], [])
@@ -176,6 +180,8 @@ insertStmt h stmt = do
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgsWithDefaults expArgs t
       liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e
+    StmtVariadic {} ->
+      return ()
     StmtForeign _ -> do
       return ()
   insertWeakStmt h $ weakenStmt stmt
@@ -186,6 +192,8 @@ insertWeakStmt h stmt = do
     WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
       liftIO $ WeakDef.insert' (weakDefHandle h) (toOpacity stmtKind) m f (map fst impArgs) expArgs codType e
     WeakStmtNominal {} -> do
+      return ()
+    WeakStmtVariadic {} -> do
       return ()
     WeakStmtForeign foreignList ->
       forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do

@@ -186,6 +186,8 @@ _getGlobalNames stmt = do
           (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
         SK.DataIntro {} ->
           []
+    PostRawStmtVariadic {} -> do
+      []
     PostRawStmtNominal {} -> do
       []
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
@@ -214,6 +216,8 @@ _getGlobalNames' stmt = do
           (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
         SK.DataIntro {} ->
           []
+    StmtVariadic {} -> do
+      []
     StmtForeign {} ->
       []
 
