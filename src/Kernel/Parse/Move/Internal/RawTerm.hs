@@ -126,10 +126,6 @@ rawTerm' h m headSymbol c = do
       rawTermFlowElim h m c
     "exact" -> do
       rawTermPiElimExact h m c
-    "fold-right" -> do
-      rawTermFoldRight h m c
-    "fold-left" -> do
-      rawTermFoldLeft h m c
     "if" -> do
       rawTermIf h m c
     "when" -> do
@@ -725,7 +721,7 @@ foldPiElim m (e, c) argListList =
     [] ->
       (e, c)
     (args, c1) : rest ->
-      foldPiElim m (m :< RT.PiElim RT.Normal e c args, c1) rest
+      foldPiElim m (m :< RT.PiElim e c args, c1) rest
 
 preBinder :: Handle -> Parser (RawBinder RT.RawTerm, C)
 preBinder h = do
@@ -786,22 +782,6 @@ rawTermPiElimExact :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPiElimExact h m c1 = do
   (e, c) <- rawTerm h
   return (m :< RT.PiElimExact c1 e, c)
-
-rawTermFoldRight :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermFoldRight h m c = do
-  c1 <- delimiter "<"
-  (e, c2) <- rawTerm h
-  c3 <- delimiter ">"
-  (args, c4) <- seriesBracket (rawTerm h)
-  return (m :< RT.PiElim RT.FoldRight e (c ++ c1 ++ c2 ++ c3) args, c4)
-
-rawTermFoldLeft :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermFoldLeft h m c = do
-  c1 <- delimiter "<"
-  (e, c2) <- rawTerm h
-  c3 <- delimiter ">"
-  (args, c4) <- seriesBracket (rawTerm h)
-  return (m :< RT.PiElim RT.FoldLeft e (c ++ c1 ++ c2 ++ c3) args, c4)
 
 rawTermIntrospect :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermIntrospect h m c1 = do

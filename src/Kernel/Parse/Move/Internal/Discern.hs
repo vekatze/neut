@@ -281,35 +281,24 @@ discern h term =
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
-    m :< RT.PiElim piElimKind e _ expArgs -> do
-      case piElimKind of
-        RT.FoldRight -> do
-          let args = SE.extract expArgs
-          let m' = blur m
-          foldedTerm <- buildFoldRight m' e args
-          discern h foldedTerm
-        RT.FoldLeft -> do
-          let args = SE.extract expArgs
-          foldedTerm <- buildFoldLeft m e args
-          discern h foldedTerm
-        RT.Normal -> do
-          case e of
-            _ :< RT.Var (Var c)
-              | c == "make-cell",
-                [arg] <- SE.extract expArgs -> do
-                  newCellDD <- liftEither $ locatorToVarGlobal m coreCellMakeCell
-                  e' <- discern h $ m :< RT.piElim newCellDD [arg]
-                  return $ m :< WT.Actual e'
-              | c == "make-channel",
-                [] <- SE.extract expArgs -> do
-                  newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelMakeChannel
-                  e' <- discern h $ m :< RT.piElim newChannelDD []
-                  return $ m :< WT.Actual e'
-            _ -> do
-              let isNoetic = False -- overwritten later in `infer`
-              e' <- discern h e
-              expArgs' <- mapM (discern h) $ SE.extract expArgs
-              return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
+    m :< RT.PiElim e _ expArgs -> do
+      case e of
+        _ :< RT.Var (Var c)
+          | c == "make-cell",
+            [arg] <- SE.extract expArgs -> do
+              newCellDD <- liftEither $ locatorToVarGlobal m coreCellMakeCell
+              e' <- discern h $ m :< RT.piElim newCellDD [arg]
+              return $ m :< WT.Actual e'
+          | c == "make-channel",
+            [] <- SE.extract expArgs -> do
+              newChannelDD <- liftEither $ locatorToVarGlobal m coreChannelMakeChannel
+              e' <- discern h $ m :< RT.piElim newChannelDD []
+              return $ m :< WT.Actual e'
+        _ -> do
+          let isNoetic = False -- overwritten later in `infer`
+          e' <- discern h e
+          expArgs' <- mapM (discern h) $ SE.extract expArgs
+          return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, (_, gn)) <- resolveName h m name
       _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
@@ -332,11 +321,15 @@ discern h term =
       tipGN <- resolveDefiniteDescription h m tipDD
       let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
       let tipTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal tipDD tipGN)) []
+      let args = SE.extract es
+      let m' = blur m
       case kind of
         FoldLeft -> do
-          discern h $ m :< RT.PiElim RT.FoldLeft nodeTM [] (SE.cons ([], tipTM) es)
+          foldedTerm <- buildFoldLeft m' nodeTM (tipTM : args)
+          discern h foldedTerm
         FoldRight -> do
-          discern h $ m :< RT.PiElim RT.FoldRight nodeTM [] (SE.snoc es ([], tipTM))
+          foldedTerm <- buildFoldRight m' nodeTM (args ++ [tipTM])
+          discern h foldedTerm
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
@@ -1154,7 +1147,7 @@ buildFoldRight m func argList =
       return lastArg
     (firstArg : restArgs) -> do
       restTerm <- buildFoldRight m func restArgs
-      return $ m :< RT.PiElim RT.Normal func [] (SE.fromList' [firstArg, restTerm])
+      return $ m :< RT.PiElim func [] (SE.fromList' [firstArg, restTerm])
 
 buildFoldLeft :: Hint -> RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
 buildFoldLeft m func argList =
@@ -1164,5 +1157,5 @@ buildFoldLeft m func argList =
     [singleArg] ->
       return singleArg
     (firstArg : secondArg : restArgs) -> do
-      let headTerm = m :< RT.PiElim RT.Normal func [] (SE.fromList' [firstArg, secondArg])
+      let headTerm = m :< RT.PiElim func [] (SE.fromList' [firstArg, secondArg])
       buildFoldLeft m func $ headTerm : restArgs
