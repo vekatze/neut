@@ -310,11 +310,6 @@ toDoc term =
       D.join [toDoc e1, D.text ";", D.line, attachComment (c1 ++ c2) $ toDoc e2]
     _ :< SeqEnd e1 -> do
       D.join [toDoc e1, D.text ";"]
-    _ :< ListIntro es -> do
-      PI.arrange
-        [ PI.inject $ D.text "List",
-          PI.inject $ SE.decode $ fmap toDoc es
-        ]
     _ :< Admit ->
       D.text "admit"
     m :< Detach c1 c2 (e, c3) -> do

@@ -93,7 +93,6 @@ data RawTermF a
   | When (KeywordClause a)
   | Seq (a, C) C a
   | SeqEnd a
-  | ListIntro (SE.Series a)
   | Admit
   | Detach C C (a, C)
   | Attach C C (a, C)

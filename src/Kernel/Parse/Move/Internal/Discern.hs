@@ -492,11 +492,6 @@ discern h term =
       boolFalse <- liftEither $ locatorToName (blur m) coreBoolFalse
       unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
       discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
-    m :< RT.ListIntro es -> do
-      let m' = m {metaShouldSaveLocation = False}
-      listNil <- liftEither $ locatorToVarGlobal m' coreListNil
-      listCons <- liftEither $ locatorToVarGlobal m' coreListCons
-      discern h $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
       panic <- liftEither $ locatorToVarGlobal m coreTrickPanic
       textType <- liftEither $ locatorToVarGlobal m coreText
@@ -675,14 +670,6 @@ bind' mustIgnoreRelayedVars loc endLoc (m, x, c1, c2, t) e cont =
       []
       cont
       endLoc
-
-foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
-foldListApp m listNil listCons es =
-  case es of
-    [] ->
-      listNil
-    e : rest ->
-      m :< RT.piElim listCons [e, foldListApp m listNil listCons rest]
 
 lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, RT.RawTerm)] -> EIO RT.RawTerm
 lookupIntrospectiveClause m value clauseList =

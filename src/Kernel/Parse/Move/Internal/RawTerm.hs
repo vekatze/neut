@@ -144,8 +144,6 @@ rawTerm' h m headSymbol c = do
       rawTermVoid m c
     "admit" -> do
       rawTermAdmit m c
-    "List" -> do
-      rawTermListIntro h
     "_" -> do
       rawTermHole h m c
     _ -> do
@@ -783,12 +781,6 @@ typeWithoutIdent h = do
   x <- liftIO $ newTextForHole (gensymHandle h)
   (t, c) <- rawTerm h
   return ((m, x, [], [], t), c)
-
-rawTermListIntro :: Handle -> Parser (RT.RawTerm, C)
-rawTermListIntro h = do
-  m <- getCurrentHint
-  (es, c) <- seriesBracket $ rawTerm h
-  return (m :< RT.ListIntro es, c)
 
 rawTermPiElimExact :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPiElimExact h m c1 = do
