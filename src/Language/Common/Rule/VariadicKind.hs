@@ -19,6 +19,6 @@ variadicKindToKeyword :: VariadicKind -> T.Text
 variadicKindToKeyword vk =
   case vk of
     VariadicLeft ->
-      "variadic-left"
+      "rule-left"
     VariadicRight ->
-      "variadic-right"
+      "rule-right"
