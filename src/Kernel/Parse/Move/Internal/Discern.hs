@@ -68,7 +68,6 @@ import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
 import Language.RawTerm.Move.CreateHole qualified as RT
 import Language.RawTerm.Rule.Key
-import Language.RawTerm.Rule.Locator qualified as L
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.NecessityVariant
 import Language.RawTerm.Rule.RawBinder
@@ -1028,27 +1027,8 @@ discernPattern h layer (m, pat) = do
                     args = patList'
                   }
           return ((m, PAT.Cons consInfo), concat hList)
-    RP.ListIntro patList -> do
-      let m' = m {metaShouldSaveLocation = False}
-      listNil <- liftEither $ DD.getLocatorPair m' coreListNil
-      listCons <- liftEither $ locatorToName m' coreListCons
-      discernPattern h layer $ foldListAppPat m' listNil listCons $ SE.extract patList
     RP.RuneIntro r -> do
       return ((m, PAT.Literal (LI.Rune r)), [])
-
-foldListAppPat ::
-  Hint ->
-  L.Locator ->
-  Name ->
-  [(Hint, RP.RawPattern)] ->
-  (Hint, RP.RawPattern)
-foldListAppPat m listNil listCons es =
-  case es of
-    [] ->
-      (m, RP.Var $ Locator listNil)
-    pat : rest -> do
-      let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons [] (RP.Paren (SE.fromList' [pat, rest'])))
 
 constructDefaultKeyMap :: H.Handle -> Hint -> [Key] -> IO (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap h m keyList = do

@@ -564,18 +564,9 @@ rawTermPattern h = do
 
 rawTermPatternBasic :: Handle -> Hint -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
 rawTermPatternBasic h m headSymbol c = do
-  case headSymbol of
-    "List" -> do
-      rawTermPatternListIntro h m c
-    _ -> do
-      if T.null headSymbol
-        then rawTermPatternRuneIntro m c
-        else rawTermPatternConsOrVar h m headSymbol c
-
-rawTermPatternListIntro :: Handle -> Hint -> C -> Parser ((Hint, RP.RawPattern), C)
-rawTermPatternListIntro h m c1 = do
-  (patList, c2) <- seriesBracket $ rawTermPattern h
-  return ((m, RP.ListIntro patList), c1 ++ c2)
+  if T.null headSymbol
+    then rawTermPatternRuneIntro m c
+    else rawTermPatternConsOrVar h m headSymbol c
 
 rawTermPatternRuneIntro :: Hint -> C -> Parser ((Hint, RP.RawPattern), C)
 rawTermPatternRuneIntro m c1 = do

@@ -634,11 +634,6 @@ decodePattern pat = do
         RP.Of kvs -> do
           let kvs' = SE.decode $ fmap decodePatternKeyValue kvs
           D.join [name', attachComment c kvs']
-    RP.ListIntro patList -> do
-      PI.arrange
-        [ PI.inject $ D.text "List",
-          PI.inject $ SE.decode $ fmap (decodePattern . snd) patList
-        ]
     RP.RuneIntro r ->
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
