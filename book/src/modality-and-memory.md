@@ -277,3 +277,80 @@ define main(): unit {
 ```
 
 This example would wrongly allow a function at layer 0 (`★`) to keep a reference to data (`xs`) that, after the outer `letbox` completes, could be deallocated, leading to a use-after-free scenario in the body of the main function. Hence, Neut’s layer rules prohibit capturing a higher-layer variable in a lower-layer function.
+
+### Using `meta`
+
+To help understand how to use `meta` types and how they enforce memory safety suppose the following scenario:
+
+We have the following function in our codebase which is used to parse input and store backups of it, which is crucial for the bussiness.
+```neut
+define backup-parse<a>(transformer: binary -> a): a {
+  let !input: binary = get-next-input();
+  write-to-file(input-backup, bin-to-hex(!input)); // !input is copied
+  transformer(!input) // !input is copied... again
+}
+```
+Lately our system has been recieving huge chunks of input which has skyrocketed our operating costs due to the input being needlessly copied.
+
+#### Using noetic values
+The following snippet is our previous code rewritten to use noetic values in order to avoid copies.
+```neut
+define backup-parse<a>(transformer: &binary -> a): a {
+  let input: binary = get-next-input();
+  let result on binary = {
+    write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
+    transformer(binary) // no redundant copies thanks to the use of noetic values!
+  }
+  result
+}
+```
+We avoided needless copies, we run our tests to make sure all works as intended, and oh no! It doesn't even compile! To see why it is like this see the following usage of the function:
+```neut
+define id-bin(arg: &binary): &binary {
+  arg
+}
+
+define backup-parse<a>(transformer: &binary -> a): a {
+  let input: binary = get-next-input();
+  let result on binary = {
+    write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
+    transformer(binary) // no redundant copies thanks to the use of noetic values!
+  }
+  result
+  // FREE(input)
+}
+
+define zen(): unit {
+  let joker = backup-parse(id-bin);
+  write-to-file(somefile, bin-to-hex(joker));
+  Unit
+}
+```
+Inside `backup-parse` the value of `result` is a reference to `input` which is freed when the function finishes. We later use the obtained value inside `zen` to write to `somefile`. We have used the `input` after it has been freed. The type system avoids use-after-free with this restriction.
+
+#### Using `meta` to circumvent the issue
+In order to compile we must restrict the value a call `transformer` evaluates to. We need that whatever `transformer` returns is valid in the outer layer, that is, outside of `backup-parse`. To achieve this we rewrite it to the following:
+```neut
+define backup-parse<a>(transformer: &binary -> meta a): a {
+  let input: binary = get-next-input();
+  letbox-T result on binary = {
+    write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
+    transformer(binary) // no redundant copies thanks to the use of noetic values!
+  }
+  result
+  // FREE(input)
+}
+```
+Now or function compiles, but there is something that doesn't, our `id-bin` function.
+```neut
+define id-bin(arg: &binary): &binary {
+  arg
+}
+```
+It's type signature is `&binary -> &binary`, but we would need it to be `&binary -> meta &binary`, so let's rewrite it:
+```neut
+define id-bin(arg: &binary): &binary {
+  quote {arg}
+}
+```
+But this won't compile either because we have a layer mismatch! In short, the use of the `meta` specifier forbids us from using functions that would cause misuse of memory.
