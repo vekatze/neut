@@ -14,8 +14,7 @@ import Command.LSP.Internal.GetSymbolInfo qualified as GetSymbolInfo
 import Command.LSP.Internal.Highlight qualified as Highlight
 import Command.LSP.Internal.Lint qualified as Lint
 import Command.LSP.Internal.References qualified as References
-import Command.LSP.Internal.Util (getUriParam, run)
-import Command.LSP.LSP
+import Command.LSP.Internal.Util (Lsp, getUriParam, run)
 import CommandParser.Config.Remark (lspConfig)
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
@@ -183,3 +182,23 @@ handlers =
           _ ->
             responder $ Right $ InR Null
     ]
+
+lspOptions :: Options
+lspOptions =
+  defaultOptions
+    { optTextDocumentSync =
+        Just
+          TextDocumentSyncOptions
+            { _openClose = Just True,
+              _change = Just TextDocumentSyncKind_Incremental,
+              _willSave = Just False,
+              _willSaveWaitUntil = Just False,
+              _save = Just $ InR $ SaveOptions {_includeText = Just False}
+            },
+      optCompletionTriggerCharacters = Just ['.'],
+      optExecuteCommandCommands =
+        Just
+          [ CA.minimizeImportsCommandName,
+            CA.refreshCacheCommandName
+          ]
+    }

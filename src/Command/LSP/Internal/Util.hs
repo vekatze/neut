@@ -3,11 +3,11 @@ module Command.LSP.Internal.Util
     report,
     maxDiagNum,
     getUriParam,
+    Lsp,
   )
 where
 
 import CodeParser.Parser (nonSymbolCharSet)
-import Command.LSP.LSP
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
@@ -34,6 +34,9 @@ import Logger.Log qualified as L
 import Logger.LogLevel
 import Path
 import Path.Read (readTextFromPath)
+
+type Lsp config =
+  LspT config IO
 
 run :: Global.Handle -> EIO a -> Lsp b (Maybe a)
 run h comp = do

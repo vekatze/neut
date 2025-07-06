@@ -10,7 +10,7 @@ import Command.Create.Create qualified as Create
 import Command.FormatEns.FormatEns qualified as FormatEns
 import Command.FormatSource.FormatSource qualified as FormatSource
 import Command.Get.Get qualified as Get
-import Command.LSP.MoveLSP qualified as LSP
+import Command.LSP.LSP qualified as LSP
 import Command.Version.Version qualified as Version
 import Command.Zen.Zen qualified as Zen
 import CommandParser.Command qualified as C

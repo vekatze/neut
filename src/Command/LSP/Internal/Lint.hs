@@ -7,8 +7,7 @@ where
 
 import Command.Common.Check qualified as Check
 import Command.Common.Fetch qualified as Fetch
-import Command.LSP.Internal.Util (maxDiagNum, report, run)
-import Command.LSP.LSP
+import Command.LSP.Internal.Util (Lsp, maxDiagNum, report, run)
 import Control.Monad
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
