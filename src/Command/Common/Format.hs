@@ -7,7 +7,7 @@ module Command.Common.Format
   )
 where
 
-import CodeParser.Parse (runParser)
+import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T

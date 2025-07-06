@@ -18,7 +18,6 @@ module Kernel.Parse.Internal.RawTerm
 where
 
 import CodeParser.GetInfo
-import CodeParser.Parse
 import CodeParser.Parser
 import Control.Comonad.Cofree
 import Control.Monad

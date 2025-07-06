@@ -5,7 +5,6 @@ module Ens.Parse
 where
 
 import CodeParser.GetInfo
-import CodeParser.Parse
 import CodeParser.Parser qualified as P
 import Control.Comonad.Cofree
 import Control.Monad.Trans
@@ -30,7 +29,7 @@ fromFilePath path = do
 
 fromFilePath' :: Path Abs File -> T.Text -> EIO (C, (E.Ens, C))
 fromFilePath' filePath fileContent = do
-  runParser filePath fileContent True parseEns
+  P.runParser filePath fileContent True parseEns
 
 parseEns :: P.Parser (E.Ens, C)
 parseEns = do
@@ -61,7 +60,7 @@ parseBool m = do
 
 parseString :: Hint -> P.Parser (E.Ens, C)
 parseString m = do
-  (x, c) <- string
+  (x, c) <- P.string
   return (m :< E.String x, c)
 
 parseList :: Hint -> P.Parser (E.Ens, C)
@@ -79,7 +78,7 @@ parseDictionary m = do
 parseKeyValuePair :: P.Parser ((C, (Hint, (T.Text, E.Ens))), C)
 parseKeyValuePair = do
   m <- getCurrentHint
-  (k, cLead) <- symbol
+  (k, cLead) <- P.symbol
   (v, cTrail) <- parseEns
   return ((cLead, (m, (k, v))), cTrail)
 
@@ -96,7 +95,7 @@ ensureKeyLinearity mks foundKeySet =
 
 integer :: P.Parser (Integer, C)
 integer = do
-  (s, c) <- symbol
+  (s, c) <- P.symbol
   case readMaybe (T.unpack s) of
     Just value ->
       return (value, c)
@@ -105,7 +104,7 @@ integer = do
 
 float :: P.Parser (Double, C)
 float = do
-  (s, c) <- symbol
+  (s, c) <- P.symbol
   case readMaybe (T.unpack s) of
     Just value ->
       return (value, c)
@@ -114,7 +113,7 @@ float = do
 
 bool :: P.Parser (Bool, C)
 bool = do
-  (s, c) <- symbol
+  (s, c) <- P.symbol
   case s of
     "true" ->
       return (True, c)

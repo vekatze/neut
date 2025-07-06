@@ -9,7 +9,7 @@ module Kernel.Unravel.Unravel
   )
 where
 
-import CodeParser.Parse (runParser)
+import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable

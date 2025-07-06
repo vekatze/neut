@@ -13,7 +13,6 @@ module SyntaxTree.ParseSeries
 where
 
 import CodeParser.GetInfo
-import CodeParser.Parse
 import CodeParser.Parser
 import Logger.Hint
 import SyntaxTree.C

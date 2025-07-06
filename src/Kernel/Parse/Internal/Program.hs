@@ -5,7 +5,6 @@ module Kernel.Parse.Internal.Program
 where
 
 import CodeParser.GetInfo
-import CodeParser.Parse
 import CodeParser.Parser
 import Control.Monad
 import Control.Monad.Trans
