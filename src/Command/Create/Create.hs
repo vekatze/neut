@@ -8,7 +8,7 @@ where
 import Command.Common.Check qualified as Check
 import Command.Common.Fetch qualified as Fetch
 import Command.Common.SaveModule qualified as SaveModule
-import Command.Create.Internal.MoveCreate qualified as Create
+import Command.Create.Internal qualified as Create
 import CommandParser.Config.Create
 import CommandParser.Config.Remark qualified as Remark
 import Control.Monad

@@ -1,4 +1,4 @@
-module Command.Create.Internal.MoveCreate
+module Command.Create.Internal
   ( Handle,
     new,
     createNewProject,
