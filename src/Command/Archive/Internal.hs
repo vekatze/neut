@@ -1,4 +1,4 @@
-module Command.Archive.Internal.MoveArchive
+module Command.Archive.Internal
   ( Handle,
     new,
     archive,

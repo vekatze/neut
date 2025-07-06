@@ -5,7 +5,7 @@ module Command.Archive.Archive
   )
 where
 
-import Command.Archive.Internal.MoveArchive qualified as Archive
+import Command.Archive.Internal qualified as Archive
 import Command.Archive.Module.MakeArchiveEns
 import Command.Archive.PackageVersion.ChooseNewVersion qualified as PV
 import Command.Archive.PackageVersion.Reflect qualified as PV
