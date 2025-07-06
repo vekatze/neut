@@ -1,26 +1,26 @@
 module Main (main) where
 
-import Color.Move.CreateHandle qualified as Color
-import CommandParser.Move.Parse qualified as CommandParser
-import CommandParser.Rule.Command qualified as C
-import CommandParser.Rule.Config.Remark qualified as Remark
-import Error.Move.Run (run)
-import Logger.Move.CreateHandle qualified as Logger
-import Command.Archive.Move.Archive qualified as Archive
-import Command.Build.Move.Build qualified as Build
-import Command.Check.Move.Check qualified as Check
-import Command.Clean.Move.Clean qualified as Clean
-import Command.Common.Move.SaveModule qualified as SaveModule
-import Command.Create.Move.Create qualified as Create
-import Command.FormatEns.Move.FormatEns qualified as FormatEns
-import Command.FormatSource.Move.FormatSource qualified as FormatSource
-import Command.Get.Move.Get qualified as Get
-import Command.LSP.Move.LSP qualified as LSP
-import Command.Version.Move.Version qualified as Version
-import Command.Zen.Move.Zen qualified as Zen
+import Color.CreateHandle qualified as Color
+import Command.Archive.Archive qualified as Archive
+import Command.Build.Build qualified as Build
+import Command.Check.Check qualified as Check
+import Command.Clean.Clean qualified as Clean
+import Command.Common.SaveModule qualified as SaveModule
+import Command.Create.Create qualified as Create
+import Command.FormatEns.FormatEns qualified as FormatEns
+import Command.FormatSource.FormatSource qualified as FormatSource
+import Command.Get.Get qualified as Get
+import Command.LSP.MoveLSP qualified as LSP
+import Command.Version.Version qualified as Version
+import Command.Zen.Zen qualified as Zen
+import CommandParser.Command qualified as C
+import CommandParser.Config.Remark qualified as Remark
+import CommandParser.Parse qualified as CommandParser
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Kernel.Common.Move.CreateGlobalHandle qualified as Global
-import Kernel.Common.Move.Handle.Global.Platform (ensureExecutables)
+import Error.Run (run)
+import Kernel.Common.CreateGlobalHandle qualified as Global
+import Kernel.Common.Handle.Global.Platform (ensureExecutables)
+import Logger.CreateHandle qualified as Logger
 import System.IO
 
 main :: IO ()
