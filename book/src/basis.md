@@ -313,4 +313,4 @@ The default values are as follows:
 - Neut is impure
 - The type of `main` must be `() -> unit`
 - A module named `core` is treated specially (treated as the "prelude" library)
-  - Syntactic constructs like `[1, 2, 3]` depends on functions in `core`
+  - Syntactic constructs like `List[1, 2, 3]` depends on functions in `core`

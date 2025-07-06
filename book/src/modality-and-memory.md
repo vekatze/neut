@@ -251,7 +251,7 @@ Without this rule, you could do something like the following:
 ```neut
 define joker(): () -> unit {
   // layer 0
-  let xs: list(int) = [1, 2, 3];
+  let xs: list(int) = List[1, 2, 3];
   letbox f on xs =
     // layer 1
     // xs: &list(int), at 1
