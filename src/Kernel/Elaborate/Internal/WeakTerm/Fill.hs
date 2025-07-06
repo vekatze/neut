@@ -22,8 +22,8 @@ import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.WeakTerm.Reduce qualified as Reduce
 import Language.WeakTerm.Subst qualified as Subst
+import Language.WeakTerm.ToText (toText)
 import Language.WeakTerm.WeakTerm qualified as WT
-import Language.WeakTerm.WeakTerm.ToText (toText)
 import Prelude hiding (lookup)
 
 data Handle = Handle

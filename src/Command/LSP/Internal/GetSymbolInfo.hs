@@ -21,8 +21,8 @@ import Kernel.Common.Target (Target (Peripheral))
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Language.Term.Term.Weaken (weaken)
-import Language.WeakTerm.WeakTerm.ToText
+import Language.Term.Weaken (weaken)
+import Language.WeakTerm.ToText
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>

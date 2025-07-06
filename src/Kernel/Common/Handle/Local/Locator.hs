@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Local.Locator
-  ( Handle,
+  ( Handle (..),
     new,
     attachCurrentLocator,
     activateSpecifiedNames,
@@ -24,7 +24,6 @@ import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.ReadableDD
-import Kernel.Common.RuleHandle.Local.Locator
 import Kernel.Common.Source qualified as Source
 import Kernel.Common.TopNameMap (TopNameMap)
 import Language.Common.BaseName qualified as BN
@@ -36,6 +35,23 @@ import Logger.Hint
 import Path
 import Path.IO
 import Path.Read (readTextFromPath)
+
+-- the structure of a name of a global variable:
+--
+--     some.path.to.item.some-function
+--     ----------------- -------------
+--     ↑ global locator  ↑ local locator
+--     ------------------------------------------------
+--     ↑ the definite description of a global variable `some-function` (up-to module alias)
+
+data Handle = Handle
+  { _tagHandle :: Tag.Handle,
+    _envHandle :: Env.Handle,
+    _activeDefiniteDescriptionListRef :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
+    _activeStaticFileListRef :: IORef (Map.HashMap T.Text (Path Abs File, T.Text)),
+    _activeGlobalLocatorList :: [SGL.StrictGlobalLocator],
+    _currentGlobalLocator :: SGL.StrictGlobalLocator
+  }
 
 new :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
 new _envHandle _tagHandle source = do

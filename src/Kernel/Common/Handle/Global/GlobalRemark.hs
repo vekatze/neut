@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Global.GlobalRemark
-  ( Handle,
+  ( Handle (..),
     new,
     insert,
     get,
@@ -7,8 +7,11 @@ module Kernel.Common.Handle.Global.GlobalRemark
 where
 
 import Data.IORef
-import Kernel.Common.RuleHandle.Global.GlobalRemark
 import Logger.Log qualified as L
+
+newtype Handle = Handle
+  { _globalRemarkListRef :: IORef [L.Log]
+  }
 
 new :: IO Handle
 new = do

@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Local.Tag
-  ( Handle,
+  ( Handle (..),
     new,
     get,
     insertFileLoc,
@@ -15,7 +15,6 @@ import Control.Monad (unless, when)
 import Data.IORef
 import Data.Text qualified as T
 import Kernel.Common.LocationTree qualified as LT
-import Kernel.Common.RuleHandle.Local.Tag
 import Language.Common.Binder
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
@@ -23,6 +22,10 @@ import Language.Common.Ident
 import Language.Common.IsConstLike
 import Logger.Hint
 import Prelude hiding (lookup, read)
+
+newtype Handle = Handle
+  { _tagMapRef :: IORef LT.LocationTree
+  }
 
 new :: IO Handle
 new = do

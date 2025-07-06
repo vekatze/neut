@@ -53,16 +53,16 @@ import Language.Common.PrimType qualified as PT
 import Language.Common.StmtKind
 import Language.Common.StmtKind qualified as SK
 import Language.LowComp.DeclarationName qualified as DN
+import Language.Term.FromPrimNum qualified as Term
 import Language.Term.Term qualified as TM
-import Language.Term.Term.FromPrimNum qualified as Term
-import Language.Term.Term.Weaken
+import Language.Term.Weaken
 import Language.WeakTerm.CreateHole qualified as WT
 import Language.WeakTerm.Subst qualified as Subst
+import Language.WeakTerm.ToText (toText)
 import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
-import Language.WeakTerm.WeakTerm.ToText (toText)
 import Logger.Hint
 
 type BoundVarEnv = [BinderF WT.WeakTerm]

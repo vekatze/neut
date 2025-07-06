@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Global.Env
-  ( Handle,
+  ( Handle (..),
     new,
     getBuildMode,
     getMainModule,
@@ -18,7 +18,6 @@ import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as Module
 import Kernel.Common.Module.FromPath qualified as ModuleReflect
-import Kernel.Common.RuleHandle.Global.Env
 import Kernel.Common.Target qualified as Target
 import Language.Common.BaseName qualified as BN
 import Language.Common.DefiniteDescription qualified as DD
@@ -28,6 +27,20 @@ import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Logger.Handle qualified as Logger
 import Path
+
+data Handle = Handle
+  { _buildModeRef :: IORef BM.BuildMode,
+    _enableSilentMode :: Bool,
+    _mainModule :: MainModule
+  }
+
+getMainModule :: Handle -> MainModule
+getMainModule =
+  _mainModule
+
+getSilentMode :: Handle -> Bool
+getSilentMode =
+  _enableSilentMode
 
 new :: Logger.Handle -> Bool -> Maybe (Path Abs File) -> IO Handle
 new loggerHandle _enableSilentMode moduleFilePathOrNone = do

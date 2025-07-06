@@ -1,4 +1,4 @@
-module Language.WeakTerm.WeakTerm.Holes (holes) where
+module Language.WeakTerm.Holes (holes) where
 
 import Control.Comonad.Cofree
 import Data.Maybe

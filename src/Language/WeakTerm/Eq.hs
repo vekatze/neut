@@ -1,4 +1,4 @@
-module Language.WeakTerm.WeakTerm.Eq (eq) where
+module Language.WeakTerm.Eq (eq) where
 
 import Control.Comonad.Cofree
 import Language.Common.Attr.Lam qualified as AttrL

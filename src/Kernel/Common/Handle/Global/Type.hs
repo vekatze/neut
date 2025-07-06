@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Global.Type
-  ( Handle,
+  ( Handle (..),
     new,
     insert',
     lookup',
@@ -12,11 +12,14 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Error.EIO (EIO)
 import Error.Run (raiseCritical)
-import Kernel.Common.RuleHandle.Global.Type
 import Language.Common.DefiniteDescription qualified as DD
 import Language.WeakTerm.WeakTerm
 import Logger.Hint
 import Prelude hiding (lookup)
+
+newtype Handle = Handle
+  { _typeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakTerm)
+  }
 
 new :: IO Handle
 new = do

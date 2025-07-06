@@ -24,8 +24,8 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
+import Language.WeakTerm.FreeVars qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
-import Language.WeakTerm.WeakTerm.FreeVars qualified as WT
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

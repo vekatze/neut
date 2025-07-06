@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Local.TopCandidate
-  ( Handle,
+  ( Handle (..),
     new,
     insert,
     get,
@@ -7,8 +7,11 @@ module Kernel.Common.Handle.Local.TopCandidate
 where
 
 import Data.IORef
-import Kernel.Common.RuleHandle.Local.TopCandidate
 import Kernel.Common.TopCandidate
+
+newtype Handle = Handle
+  { _topCandidateEnvRef :: IORef [TopCandidate]
+  }
 
 new :: IO Handle
 new = do

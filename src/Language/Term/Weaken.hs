@@ -1,4 +1,4 @@
-module Language.Term.Term.Weaken
+module Language.Term.Weaken
   ( weaken,
     weakenBinder,
     weakenStmt,

@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Local.SymLoc
-  ( Handle,
+  ( Handle (..),
     new,
     insert,
     get,
@@ -9,9 +9,12 @@ where
 import Control.Monad (unless)
 import Data.IORef
 import Kernel.Common.LocalVarTree qualified as LVT
-import Kernel.Common.RuleHandle.Local.SymLoc
 import Language.Common.Ident
 import Logger.Hint
+
+newtype Handle = Handle
+  { _localVarMapRef :: IORef LVT.LocalVarTree
+  }
 
 new :: IO Handle
 new = do

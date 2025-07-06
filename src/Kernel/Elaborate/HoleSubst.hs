@@ -11,8 +11,8 @@ where
 import Data.IntMap qualified as IntMap
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
+import Language.WeakTerm.Holes
 import Language.WeakTerm.WeakTerm
-import Language.WeakTerm.WeakTerm.Holes
 import Prelude hiding (lookup)
 
 newtype HoleSubst = HoleSubst (IntMap.IntMap ([Ident], WeakTerm))

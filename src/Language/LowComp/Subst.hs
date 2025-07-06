@@ -1,4 +1,4 @@
-module Language.LowComp.LowComp.Subst
+module Language.LowComp.Subst
   ( substOp,
     substLowValue,
     SubstLowComp,

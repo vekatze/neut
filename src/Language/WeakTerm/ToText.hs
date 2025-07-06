@@ -1,4 +1,4 @@
-module Language.WeakTerm.WeakTerm.ToText (toText) where
+module Language.WeakTerm.ToText (toText) where
 
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)

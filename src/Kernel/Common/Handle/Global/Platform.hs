@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Global.Platform
-  ( Handle,
+  ( Handle (..),
     new,
     getArch,
     getDataSizeValue,
@@ -25,8 +25,8 @@ import Kernel.Common.Const (envVarClang)
 import Kernel.Common.Module
 import Kernel.Common.OS qualified as O
 import Kernel.Common.Platform qualified as P
-import Kernel.Common.RuleHandle.Global.Platform
 import Kernel.Common.RunProcess qualified as RunProcess
+import Language.Common.DataSize qualified as DS
 import Language.Common.Digest (hashAndEncode)
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
@@ -37,6 +37,39 @@ import System.Directory
 import System.Environment (lookupEnv)
 import System.Info qualified as SI
 import System.Process (CmdSpec (RawCommand))
+
+data Handle = Handle
+  { _arch :: Arch.Arch,
+    _os :: O.OS,
+    _clangDigest :: T.Text,
+    _baseSize :: DS.DataSize
+  }
+
+getDataSizeValue :: Handle -> Int
+getDataSizeValue h =
+  DS.reify $ _baseSize h
+
+getArch :: Handle -> Arch.Arch
+getArch =
+  _arch
+
+getOS :: Handle -> O.OS
+getOS =
+  _os
+
+getPlatform :: Handle -> P.Platform
+getPlatform h = do
+  let arch = getArch h
+  let os = getOS h
+  P.Platform {arch, os}
+
+getDataSize :: Handle -> DS.DataSize
+getDataSize =
+  _baseSize
+
+getClangDigest :: Handle -> T.Text
+getClangDigest =
+  _clangDigest
 
 new :: Logger.Handle -> IO Handle
 new loggerHandle = do

@@ -1,4 +1,4 @@
-module Language.Term.Term.Extend (extend, extendStmtKind, extendBinder) where
+module Language.Term.Extend (extend, extendStmtKind, extendBinder) where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor

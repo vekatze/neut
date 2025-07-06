@@ -1,4 +1,4 @@
-module Language.Term.Term.Chain
+module Language.Term.Chain
   ( chainOf,
     chainOfDecisionTree,
     chainOfCaseWithoutCont,

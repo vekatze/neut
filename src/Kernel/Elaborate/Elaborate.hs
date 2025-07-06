@@ -66,13 +66,13 @@ import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
 import Language.Term.Term qualified as TM
-import Language.Term.Term.Weaken
+import Language.Term.Weaken
 import Language.WeakTerm.Subst qualified as Subst
+import Language.WeakTerm.ToText
 import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
-import Language.WeakTerm.WeakTerm.ToText
 import Logger.Hint
 import Logger.Log qualified as L
 

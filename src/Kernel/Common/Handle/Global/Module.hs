@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Global.Module
-  ( Handle,
+  ( Handle (..),
     new,
     getModuleFilePath,
     getModuleDirByID,
@@ -10,6 +10,7 @@ module Kernel.Common.Handle.Global.Module
     sourceFromPath,
     getAllSourcePathInModule,
     getAllSourceInModule,
+    _hasSourceExtension,
   )
 where
 
@@ -23,7 +24,6 @@ import Error.Run (raiseError, raiseError')
 import Kernel.Common.Const
 import Kernel.Common.Module
 import Kernel.Common.ModuleURL
-import Kernel.Common.RuleHandle.Global.Module
 import Kernel.Common.Source qualified as Source
 import Language.Common.ModuleDigest
 import Language.Common.ModuleDigest qualified as MD
@@ -32,6 +32,19 @@ import Logger.Hint qualified as H
 import Path
 import Path.IO
 import System.Environment
+
+newtype Handle = Handle
+  { _moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
+  }
+
+_hasSourceExtension :: Path Abs File -> Bool
+_hasSourceExtension path =
+  case splitExtension path of
+    Just (_, ext)
+      | ext == sourceFileExtension ->
+          True
+    _ ->
+      False
 
 new :: IO Handle
 new = do

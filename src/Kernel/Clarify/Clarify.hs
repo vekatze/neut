@@ -63,14 +63,14 @@ import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
 import Language.Comp.Reduce qualified as Reduce
 import Language.Comp.Subst qualified as CompSubst
+import Language.Term.Chain (nubFreeVariables)
+import Language.Term.Chain qualified as TM
+import Language.Term.FromPrimNum
 import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Stmt
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
-import Language.Term.Term.Chain (nubFreeVariables)
-import Language.Term.Term.Chain qualified as TM
-import Language.Term.Term.FromPrimNum
 import Logger.Hint
 
 data Handle = Handle

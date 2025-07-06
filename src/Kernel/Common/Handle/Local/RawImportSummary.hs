@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Local.RawImportSummary
-  ( Handle,
+  ( Handle (..),
     new,
     set,
     get,
@@ -8,8 +8,11 @@ where
 
 import Data.IORef
 import Kernel.Common.RawImportSummary qualified as RIS
-import Kernel.Common.RuleHandle.Local.RawImportSummary
 import Language.RawTerm.RawStmt (RawImport)
+
+newtype Handle = Handle
+  { _importEnvRef :: IORef (Maybe RIS.RawImportSummary)
+  }
 
 new :: IO Handle
 new = do

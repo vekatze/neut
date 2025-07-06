@@ -36,15 +36,15 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.PrimType qualified as PT
+import Language.WeakTerm.Eq qualified as WT
+import Language.WeakTerm.FreeVars
+import Language.WeakTerm.Holes
 import Language.WeakTerm.Subst qualified as Subst
+import Language.WeakTerm.ToText
 import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as Subst
 import Language.WeakTerm.WeakTerm qualified as WT
-import Language.WeakTerm.WeakTerm.Eq qualified as WT
-import Language.WeakTerm.WeakTerm.FreeVars
-import Language.WeakTerm.WeakTerm.Holes
-import Language.WeakTerm.WeakTerm.ToText
 import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as L

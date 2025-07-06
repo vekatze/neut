@@ -1,4 +1,4 @@
-module Language.Term.Term.FromPrimNum (fromPrimNum) where
+module Language.Term.FromPrimNum (fromPrimNum) where
 
 import Control.Comonad.Cofree
 import Language.Common.PrimType qualified as PT

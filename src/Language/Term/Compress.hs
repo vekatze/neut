@@ -1,4 +1,4 @@
-module Language.Term.Term.Compress (compress, compressStmtKind, compressBinder) where
+module Language.Term.Compress (compress, compressStmtKind, compressBinder) where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor

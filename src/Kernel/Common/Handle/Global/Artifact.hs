@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Global.Artifact
-  ( Handle,
+  ( Handle (..),
     new,
     insert,
     lookup,
@@ -13,9 +13,12 @@ import Data.Text qualified as T
 import Error.EIO (EIO)
 import Error.Run (raiseCritical')
 import Kernel.Common.Artifact qualified as A
-import Kernel.Common.RuleHandle.Global.Artifact
 import Path
 import Prelude hiding (lookup)
+
+newtype Handle = Handle
+  { _artifactMapRef :: IORef (Map.HashMap (Path Abs File) A.ArtifactTime)
+  }
 
 new :: IO Handle
 new = do

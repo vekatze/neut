@@ -22,8 +22,8 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
+import Language.Term.FreeVars qualified as TM
 import Language.Term.Term qualified as TM
-import Language.Term.Term.FreeVars qualified as TM
 
 type SubstTerm =
   IntMap.IntMap (Either Ident TM.Term)

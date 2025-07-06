@@ -10,7 +10,7 @@ import Gensym.Handle qualified as Gensym
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.Ident.Reify qualified as Ident
 import Language.LowComp.LowComp qualified as LC
-import Language.LowComp.LowComp.Subst
+import Language.LowComp.Subst
 
 newtype Handle = Handle
   { gensymHandle :: Gensym.Handle

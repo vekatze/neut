@@ -32,12 +32,12 @@ import Language.Common.Ident.Reify
 import Language.Common.LamKind qualified as LK
 import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
+import Language.Term.FreeVarsWithHints (freeVarsWithHints)
 import Language.Term.Term qualified as TM
-import Language.Term.Term.FreeVarsWithHints (freeVarsWithHints)
-import Language.Term.Term.Weaken (weaken)
+import Language.Term.Weaken (weaken)
 import Language.WeakTerm.Subst qualified as Subst
+import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
-import Language.WeakTerm.WeakTerm.ToText qualified as WT
 import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as L

@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Global.Path
-  ( Handle,
+  ( Handle (..),
     new,
     ensureNotInDependencyDir,
     getBaseName,
@@ -35,7 +35,6 @@ import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as M
 import Kernel.Common.OutputKind qualified as OK
-import Kernel.Common.RuleHandle.Global.Path
 import Kernel.Common.Source qualified as Src
 import Kernel.Common.Target qualified as Target
 import Language.Common.Digest
@@ -45,6 +44,13 @@ import Path (Abs, Dir, File, Path, (</>))
 import Path qualified as P
 import Path.IO qualified as P
 import Path.Read (readTextFromPath)
+
+data Handle = Handle
+  { _mainModule :: MainModule,
+    _cacheRef :: IORef (Maybe String),
+    _loggerHandle :: Logger.Handle,
+    _platformHandle :: Platform.Handle
+  }
 
 new :: MainModule -> Platform.Handle -> Logger.Handle -> IO Handle
 new _mainModule _platformHandle _loggerHandle = do

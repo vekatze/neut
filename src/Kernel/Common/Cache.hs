@@ -15,9 +15,9 @@ import Kernel.Common.LocalVarTree qualified as LVT
 import Kernel.Common.LocationTree qualified as LT
 import Kernel.Common.RawImportSummary
 import Kernel.Common.TopCandidate (TopCandidate)
+import Language.Term.Compress qualified as TM
+import Language.Term.Extend qualified as TM
 import Language.Term.Stmt qualified as Stmt
-import Language.Term.Term.Compress qualified as TM
-import Language.Term.Term.Extend qualified as TM
 import Logger.Log
 
 data Cache = Cache

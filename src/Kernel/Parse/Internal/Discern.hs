@@ -78,11 +78,11 @@ import Language.RawTerm.RawPattern qualified as RP
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
 import Language.WeakTerm.CreateHole qualified as WT
+import Language.WeakTerm.FreeVars (freeVars)
 import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakStmt
 import Language.WeakTerm.WeakTerm qualified as WT
-import Language.WeakTerm.WeakTerm.FreeVars (freeVars)
 import Logger.Hint
 import Logger.Hint.Reify qualified as Hint
 import Logger.Log qualified as L

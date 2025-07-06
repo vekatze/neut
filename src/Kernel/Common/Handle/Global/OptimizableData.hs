@@ -1,5 +1,5 @@
 module Kernel.Common.Handle.Global.OptimizableData
-  ( Handle,
+  ( Handle (..),
     new,
     insert,
     lookup,
@@ -9,9 +9,12 @@ where
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Kernel.Common.OptimizableData
-import Kernel.Common.RuleHandle.Global.OptimizableData
 import Language.Common.DefiniteDescription qualified as DD
 import Prelude hiding (lookup)
+
+newtype Handle = Handle
+  { _optDataMapRef :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData)
+  }
 
 new :: IO Handle
 new = do
