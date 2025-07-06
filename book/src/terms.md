@@ -72,7 +72,6 @@
 - [tie x = e1; e2](#tie-x--e1-e2)
 - [pin x = e1; e2](#pin-x--e1-e2)
 - [?t](#t)
-- [List[e1, ..., en]](#liste1--en)
 
 ## `type`
 
@@ -3082,36 +3081,3 @@ either(unit, t)
 
 Derived from the syntactic sugar.
 
-## `List[e1, ..., en]`
-
-You can use `List[e1, ..., en]` to construct a list.
-
-### Example
-
-```neut
-define make-int-list(): list(int) {
-  List[1, 2, 3, 4, 5]
-}
-```
-
-### Syntax
-
-```neut
-List[e1, ..., en] // n >= 0
-```
-
-### Semantics
-
-`List[e1, ..., en]` is the following syntactic sugar:
-
-```neut
-List[e1, ..., en]
-
-↓
-
-Cons(e1, Cons(..., Cons(en, Nil)...))
-```
-
-### Type
-
-Derived from the desugared form.

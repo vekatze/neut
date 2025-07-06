@@ -7,6 +7,8 @@
 - [inline](#inline)
 - [data](#data)
 - [resource](#resource)
+- [rule-right](#rule-right)
+- [rule-left](#rule-left)
 - [nominal](#nominal)
 - [foreign](#foreign)
 
@@ -363,6 +365,122 @@ A value of type `boxed-int` prints `"discarded!\n"` when the value is discarded.
 `resource` can be used to define low-level types like arrays.
 
 You can find an example usage of `resource` in the `binary.nt` in the [core library](https://github.com/vekatze/neut-core/blob/main/source/binary.nt).
+
+## `rule-right`
+
+`rule-right` defines a macro-like construct that expands bracketed expressions in a fold-right manner. It should look like the following:
+
+```neut
+rule-right name {
+  leaf,
+  node,
+  root,
+}
+```
+
+Once defined, `name` can be used with square brackets to accept variable-length arguments:
+
+```neut
+name[x, y, z, w]
+```
+
+This expands in a fold-right manner to:
+
+```neut
+root(node(x, node(y, node(z, node(w, leaf(4))))))
+```
+
+where the `4` is the length of `[x, y, z, w]`.
+
+### Example: List Construction
+
+The `List` construct available in the core library is defined using `rule-right`:
+
+```neut
+rule-right List {
+  function leaf<a>(_: int): list(a) {
+    Nil
+  },
+  function node<a>(x: a, acc: list(a)): list(a) {
+    Cons(x, acc)
+  },
+  function root<a>(x: a): a {
+    x
+  },
+}
+```
+
+With this definition, `List[x, y, z]` simplifies as follows:
+
+```neut
+List[x, y, z]
+
+↓
+
+root(node(x, node(y, node(z, leaf(3)))))
+
+↓
+
+Cons(1, Cons(2, Cons(3, Nil)))
+```
+
+## `rule-left`
+
+`rule-left` defines a macro-like construct that expands bracketed expressions in a fold-left manner. It should look like the following:
+
+```neut
+rule-left name {
+  leaf,
+  node,
+  root,
+}
+```
+
+Once defined, `name` can be used with square brackets to accept variable-length arguments:
+
+```neut
+name[x, y, z, w]
+```
+
+This expands in a fold-left manner to:
+
+```neut
+root(node(node(node(node(leaf(4), x), y), z), w))
+```
+
+where the `4` is the length of `[x, y, z, w]`.
+
+### Example: Vector Construction
+
+The `Vector` construct can be defined using `rule-left` for dynamic array initialization:
+
+```neut
+rule-left Vector {
+  function leaf<a>(size: int): vector(a) {
+    make(size)
+  },
+  function node<a>(acc: vector(a), x: a): vector(a) {
+    push-back(acc, x)
+  },
+  function root<a>(x: a): a {
+    x
+  },
+}
+```
+
+With this definition, `Vector[a, b, c]` simplifies as follows:
+
+```neut
+Vector[a, b, c]
+
+↓
+
+root(node(node(node(leaf(3), a), b), c),)
+
+↓
+
+push-back(push-back(push-back(make(3), a), b), c)
+```
 
 ## `nominal`
 
