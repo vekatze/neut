@@ -9,7 +9,7 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Ens.Ens
-import Ens.Ens.ToDoc qualified as Ens
+import Ens.ToDoc qualified as Ens
 import Error.EIO (EIO)
 import Kernel.Common.Module
 import Logger.Debug qualified as Logger

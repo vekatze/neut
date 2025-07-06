@@ -26,7 +26,7 @@ import Data.IORef
 import Data.Text qualified as T
 import Data.Time
 import Ens.Ens qualified as E
-import Ens.Ens.ToDoc qualified as E
+import Ens.ToDoc qualified as E
 import Error.EIO (EIO)
 import Error.Run (raiseError')
 import Kernel.Common.ClangOption qualified as CL

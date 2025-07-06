@@ -1,4 +1,4 @@
-module Language.Common.Const where
+module Language.Common.Const (module Language.Common.Const) where
 
 import Data.Text qualified as T
 

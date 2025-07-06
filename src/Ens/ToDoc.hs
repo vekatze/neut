@@ -1,4 +1,4 @@
-module Ens.Ens.ToDoc (pp) where
+module Ens.ToDoc (pp) where
 
 import Control.Comonad.Cofree
 import Data.Char (isSpace)

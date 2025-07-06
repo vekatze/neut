@@ -1,4 +1,4 @@
-module Kernel.Common.Const where
+module Kernel.Common.Const (module Kernel.Common.Const) where
 
 import Data.Text qualified as T
 import Path

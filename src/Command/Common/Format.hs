@@ -11,8 +11,8 @@ import CodeParser.Parse (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
-import Ens.Ens.ToDoc qualified as Ens
 import Ens.Parse qualified as EnsParse
+import Ens.ToDoc qualified as Ens
 import Error.EIO (EIO)
 import Error.Run (raiseError')
 import Kernel.Common.CreateGlobalHandle qualified as Global

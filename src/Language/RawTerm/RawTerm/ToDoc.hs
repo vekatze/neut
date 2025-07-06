@@ -1,20 +1,14 @@
 {- HLINT ignore "Use list comprehension" -}
 
 module Language.RawTerm.RawTerm.ToDoc
-  ( pp,
-    toDoc,
+  ( toDoc,
     nameToDoc,
     typeAnnot,
-    decodeArgs,
     decodeArgs',
     decodeArgsMaybe,
     decodeDef,
     decGeist,
-    decodeImpParams,
-    decodeImpParamsMaybe,
     attachComment,
-    decodeBlock,
-    decodeKeywordClause,
   )
 where
 
@@ -40,10 +34,6 @@ import SyntaxTree.C
 import SyntaxTree.C.ToDoc qualified as C
 import SyntaxTree.Series qualified as SE
 import SyntaxTree.Series.ToDoc qualified as SE
-
-pp :: RawTerm -> T.Text
-pp e = do
-  D.layout $ toDoc e
 
 toDoc :: RawTerm -> D.Doc
 toDoc term =
@@ -501,10 +491,6 @@ decodeImpParams impParams =
   if SE.isEmpty impParams
     then D.Nil
     else SE.decode $ fmap piIntroArgWithDefaultToDoc impParams
-
-decodeImpParamsMaybe :: Maybe (SE.Series (RawBinder RawTerm, Maybe RawTerm)) -> D.Doc
-decodeImpParamsMaybe =
-  maybe D.Nil decodeImpParams
 
 decodeExpParams :: Bool -> SE.Series (RawBinder RawTerm) -> D.Doc
 decodeExpParams isConstLike expParams =
