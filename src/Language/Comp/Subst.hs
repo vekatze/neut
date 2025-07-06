@@ -2,6 +2,8 @@ module Language.Comp.Subst
   ( Handle,
     new,
     subst,
+    substValue,
+    substPrimitive,
   )
 where
 
