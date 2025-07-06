@@ -452,7 +452,7 @@ where the `4` is the length of `[x, y, z, w]`.
 
 ### Example: Vector Construction
 
-The `Vector` construct can be defined using `rule-left` for dynamic array initialization:
+The `Vector` construct available in the core library is defined using `rule-left`:
 
 ```neut
 rule-left Vector {
