@@ -4,7 +4,7 @@ import {
 }
 
 define main(): unit {
-  let !xs: list(int) = [];
+  let !xs: list(int) = List[];
   let no-free-var =
     define foo(c: int): int {
       if eq-int(c, 0) {
@@ -28,7 +28,7 @@ define main(): unit {
   let _ = single-free-var(3);
   let !ys = !xs;
   let !zs = !xs;
-  let !ws: list(int) = [];
+  let !ws: list(int) = List[];
   let multiple-free-var =
     define free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {

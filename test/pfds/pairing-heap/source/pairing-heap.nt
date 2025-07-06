@@ -33,7 +33,7 @@ define merge(a: type, cmp: (a, a) -> ordering, h1: heap(a), h2: heap(a)): heap(a
 }
 
 define insert(a: type, cmp: (a, a) -> ordering, x: a, h: heap(a)): heap(a) {
-  merge(_, cmp, Node(x, []), h)
+  merge(_, cmp, Node(x, List[]), h)
 }
 
 define merge-pairs(a: type, !cmp: (a, a) -> ordering, hs: list(heap(a))): heap(a) {

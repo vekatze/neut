@@ -35,7 +35,7 @@ define rank(a: type, t: &tree(a)): int {
 define insert-tree(a: type, cmp: &(a, a) -> ordering, t: tree(a), h: heap(a)): heap(a) {
   match h {
   | Nil =>
-    [t]
+    List[t]
   | Cons(t1, rest) =>
     let r on t = rank(a, t);
     let r1 on t1 = rank(a, t1);

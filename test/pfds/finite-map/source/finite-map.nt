@@ -67,11 +67,11 @@ define compare-int(x: int, y: int): ordering {
 
 define main(): unit {
   let Finite-Map of {empty, insert := !insert, lookup} = make-finite-map(_, _, compare-int);
-  let mymap = !insert(1, [type], empty);
-  let mymap = !insert(2, [type, type], mymap);
-  let mymap = !insert(2, [type, type], mymap);
-  let mymap = !insert(2, [int], mymap);
-  let !mymap = !insert(3, [() -> int], mymap);
+  let mymap = !insert(1, List[type], empty);
+  let mymap = !insert(2, List[type, type], mymap);
+  let mymap = !insert(2, List[type, type], mymap);
+  let mymap = !insert(2, List[int], mymap);
+  let !mymap = !insert(3, List[() -> int], mymap);
   let _ = !mymap;
   let _ = !mymap;
   let result on !mymap =

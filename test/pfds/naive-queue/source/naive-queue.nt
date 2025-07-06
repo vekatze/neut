@@ -8,7 +8,7 @@ data queue(a) {
 }
 
 define empty(a: type): queue(a) {
-  Queue([], [])
+  Queue(List[], List[])
 }
 
 define head(a: type, q: &queue(a)): ?a {
@@ -22,8 +22,8 @@ define head(a: type, q: &queue(a)): ?a {
 
 define sanitize(a: type, q: queue(a)): queue(a) {
   match q {
-  | Queue([], ys) =>
-    Queue(reverse(ys), [])
+  | Queue(Nil, ys) =>
+    Queue(reverse(ys), List[])
   | q =>
     q
   }
@@ -54,9 +54,9 @@ define sum(xs: &list(int)): int {
 
 define main(): unit {
   let q: queue(list(int)) = empty(_);
-  let q = snoc(_, [2], q);
-  let q = snoc(_, [5], q);
-  let q = snoc(_, [1], q);
+  let q = snoc(_, List[2], q);
+  let q = snoc(_, List[5], q);
+  let q = snoc(_, List[1], q);
   // v1 == 2
   let v1 on q =
     match head(_, q) {
@@ -73,8 +73,8 @@ define main(): unit {
     | Left(_) =>
       1
     | Right(q) =>
-      let q = snoc(_, [3], q);
-      let q = snoc(_, [8], q);
+      let q = snoc(_, List[3], q);
+      let q = snoc(_, List[8], q);
       // v2 = 5
       let v2 on q =
         match head(_, q) {

@@ -55,7 +55,7 @@ define rand-list(len: int, acc: int-list): int-list {
 define main(): unit {
   let args = get-argv();
   match args {
-  | [_, size-str] =>
+  | Cons(_, Cons(size-str, Nil)) =>
     let _ on size-str =
       match parse-int(size-str) {
       | Right(size) =>
