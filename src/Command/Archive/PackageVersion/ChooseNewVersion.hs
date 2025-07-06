@@ -12,7 +12,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.EIO (EIO)
 import Kernel.Common.Module (MainModule)
 import Logger.Handle qualified as Logger
-import Logger.MoveLog qualified as Logger
+import Logger.Print qualified as Logger
 import Prelude hiding (log)
 
 newtype Handle = Handle

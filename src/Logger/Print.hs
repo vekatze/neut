@@ -1,4 +1,4 @@
-module Logger.MoveLog
+module Logger.Print
   ( printErrorList,
     printNote',
     printLog,

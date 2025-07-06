@@ -19,7 +19,7 @@ import Error.EIO
 import Error.Error qualified as E
 import Logger.Handle qualified as Logger
 import Logger.Hint
-import Logger.MoveLog qualified as Logger
+import Logger.Print qualified as Logger
 import System.Exit
 import UnliftIO.Async (pooledForConcurrently)
 

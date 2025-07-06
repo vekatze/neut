@@ -12,7 +12,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
-import Logger.MoveLog qualified as Logger
+import Logger.Print qualified as Logger
 
 newtype Handle = Handle
   { globalHandle :: Global.Handle

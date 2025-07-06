@@ -37,7 +37,7 @@ import Language.Common.ModuleDigest qualified as MD
 import Language.Common.ModuleID qualified as MID
 import Logger.Handle qualified as Logger
 import Logger.Hint
-import Logger.MoveLog qualified as Logger
+import Logger.Print qualified as Logger
 import Path
 import Path.IO
 import SyntaxTree.Series (Series (hasOptionalSeparator))

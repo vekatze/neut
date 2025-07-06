@@ -23,7 +23,7 @@ import Kernel.Common.ZenConfig
 import Language.Common.ModuleID qualified as MID
 import Language.Common.SourceLocator qualified as SL
 import Logger.Handle qualified as Logger
-import Logger.MoveLog qualified as Logger
+import Logger.Print qualified as Logger
 import Path
 import Path.IO
 import Path.Write (writeText)

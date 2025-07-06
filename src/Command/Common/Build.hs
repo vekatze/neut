@@ -53,7 +53,7 @@ import Language.Common.ModuleID qualified as MID
 import Language.LowComp.LowComp qualified as LC
 import Language.Term.Stmt (getStmtName)
 import Logger.Debug qualified as Logger
-import Logger.MoveLog qualified as Logger
+import Logger.Print qualified as Logger
 import Path
 import Path.IO
 import ProgressIndicator.ShowProgress qualified as Indicator
