@@ -211,9 +211,13 @@ parseVariadic h vk = do
   (name, c2) <- baseName
   (handlers, loc, c) <- seriesBrace' $ rawExpr h
   case SE.elems handlers of
-    [(cNode, node), (cTip, tip)] -> do
+    [(cLeaf, leaf), (cNode, node), (cRoot, root)] -> do
       nodeType <- liftIO $ RT.createHole (gensymHandle h) m
-      tipType <- liftIO $ RT.createHole (gensymHandle h) m
-      return (RawStmtVariadic vk c1 m (name, c2) (cNode, node, nodeType) (cTip, tip, tipType) (SE.trailingComment handlers) loc, c)
+      leafType <- liftIO $ RT.createHole (gensymHandle h) m
+      rootType <- liftIO $ RT.createHole (gensymHandle h) m
+      let l = (cLeaf, leaf, leafType)
+      let n = (cNode, node, nodeType)
+      let r = (cRoot, root, rootType)
+      return (RawStmtVariadic vk c1 m (name, c2) l n r (SE.trailingComment handlers) loc, c)
     _ -> do
       lift $ raiseError m $ "`" <> k <> "` must have 2 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)

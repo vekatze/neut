@@ -215,11 +215,11 @@ decStmt stmt =
             PI.horizontal $ D.text (BN.reify name),
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]
-    RawStmtVariadic kind c1 _ (name, c2) (cn, node, _) (ct, tip, _) trailingComment _ -> do
+    RawStmtVariadic kind c1 _ (name, c2) (ct, leaf, _) (cn, node, _) (cr, root, _) trailingComment _ -> do
       let k = ruleKindToKeyword kind
       let series =
             SE.Series
-              { elems = [(cn, node), (ct, tip)],
+              { elems = [(ct, leaf), (cn, node), (cr, root)],
                 trailingComment,
                 prefix = Nothing,
                 container = Just SE.Brace,

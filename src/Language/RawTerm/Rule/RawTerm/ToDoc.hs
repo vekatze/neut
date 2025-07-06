@@ -323,6 +323,8 @@ toDoc term =
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
+    _ :< Int i ->
+      D.text $ T.pack (show i)
     _ :< Pointer ->
       D.text "pointer"
     _ :< Void ->

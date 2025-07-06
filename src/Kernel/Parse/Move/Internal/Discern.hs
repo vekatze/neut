@@ -63,6 +63,7 @@ import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PiKind qualified as PK
+import Language.Common.Rule.PrimNumSize (IntSize (IntSize64))
 import Language.Common.Rule.PrimType qualified as PT
 import Language.Common.Rule.RuleKind (RuleKind (FoldLeft, FoldRight))
 import Language.Common.Rule.StmtKind qualified as SK
@@ -315,21 +316,24 @@ discern h term =
     m :< RT.PiElimRule name _ es -> do
       (dd, (_, gn)) <- resolveName h m name
       kind <- interpretRuleName m dd gn
+      let leafDD = DD.getLeafDD dd
       let nodeDD = DD.getNodeDD dd
-      let tipDD = DD.getTipDD dd
+      let rootDD = DD.getRootDD dd
+      leafGN <- resolveDefiniteDescription h m leafDD
       nodeGN <- resolveDefiniteDescription h m nodeDD
-      tipGN <- resolveDefiniteDescription h m tipDD
+      rootGN <- resolveDefiniteDescription h m rootDD
+      let size = m :< RT.Int (toInteger $ length es)
+      let leafTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal leafDD leafGN)) [size]
       let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
-      let tipTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal tipDD tipGN)) []
+      let rootTM = RT.force (m :< RT.VarGlobal rootDD rootGN)
       let args = SE.extract es
-      let m' = blur m
       case kind of
         FoldLeft -> do
-          foldedTerm <- buildFoldLeft m' nodeTM (tipTM : args)
-          discern h foldedTerm
+          foldedTerm <- buildFoldLeft nodeTM (leafTM : args)
+          discern h (m :< RT.piElim rootTM [foldedTerm])
         FoldRight -> do
-          foldedTerm <- buildFoldRight m' nodeTM (args ++ [tipTM])
-          discern h foldedTerm
+          foldedTerm <- buildFoldRight nodeTM (args ++ [leafTM])
+          discern h (m :< RT.piElim rootTM [foldedTerm])
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
@@ -541,6 +545,9 @@ discern h term =
           raiseError m $ "No such static file is defined: `" <> key <> "`"
     _ :< RT.Brace _ (e, _) ->
       discern h e
+    m :< RT.Int i -> do
+      let intType = m :< WT.Prim (WP.Type $ PT.Int IntSize64)
+      return $ m :< WT.Prim (WP.Value $ WPV.Int intType i)
     m :< RT.Pointer ->
       return $ m :< WT.Prim (WP.Type PT.Pointer)
     m :< RT.Void ->
@@ -1138,24 +1145,24 @@ checkRedundancy m impKeys expKeys kvs = do
     then return ()
     else raiseError m $ "The following field(s) are redundant:\n" <> _showKeyList diff
 
-buildFoldRight :: Hint -> RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
-buildFoldRight m func argList =
+buildFoldRight :: RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
+buildFoldRight func@(mFunc :< _) argList =
   case argList of
     [] -> do
-      raiseError m "`fold-right` requires at least one argument"
+      raiseCritical mFunc "`buildFoldRight` requires at least one argument"
     [lastArg] ->
       return lastArg
     (firstArg : restArgs) -> do
-      restTerm <- buildFoldRight m func restArgs
-      return $ m :< RT.PiElim func [] (SE.fromList' [firstArg, restTerm])
+      restTerm <- buildFoldRight func restArgs
+      return $ mFunc :< RT.piElim func [firstArg, restTerm]
 
-buildFoldLeft :: Hint -> RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
-buildFoldLeft m func argList =
+buildFoldLeft :: RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
+buildFoldLeft func@(mFunc :< _) argList =
   case argList of
     [] -> do
-      raiseError m "`fold-left` requires at least one argument"
-    [singleArg] ->
-      return singleArg
+      raiseCritical mFunc "`buildFoldLeft` requires at least one argument"
+    [firstArg] ->
+      return firstArg
     (firstArg : secondArg : restArgs) -> do
-      let headTerm = m :< RT.PiElim func [] (SE.fromList' [firstArg, secondArg])
-      buildFoldLeft m func $ headTerm : restArgs
+      let headTerm = mFunc :< RT.piElim func [firstArg, secondArg]
+      buildFoldLeft func $ headTerm : restArgs

@@ -116,9 +116,9 @@ postprocess' h stmt = do
     RawStmtDefineResource c m (name, c1) (c2, discarder) (c3, copier) (c4, typeTag) c5 -> do
       let name' = Locator.attachCurrentLocator h name
       [PostRawStmtDefineResource c m (name', c1) (c2, discarder) (c3, copier) (c4, typeTag) c5]
-    RawStmtVariadic kind _ m (name, _) (_, node, nodeType) (_, tip, tipType) _ loc -> do
+    RawStmtVariadic kind _ m (name, _) (_, leaf, leafType) (_, node, nodeType) (_, root, rootType) _ loc -> do
       let name' = Locator.attachCurrentLocator h name
-      defineVariadic kind m name' (node, nodeType) (tip, tipType) loc
+      defineVariadic kind m name' (leaf, leafType) (node, nodeType) (root, rootType) loc
     RawStmtNominal c m geistList -> do
       let geistList' = fmap (first (liftGeist h)) geistList
       [PostRawStmtNominal c m geistList']

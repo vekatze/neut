@@ -15,12 +15,14 @@ defineVariadic ::
   DD.DefiniteDescription ->
   (RT.RawTerm, RT.RawTerm) ->
   (RT.RawTerm, RT.RawTerm) ->
+  (RT.RawTerm, RT.RawTerm) ->
   Loc ->
   [PostRawStmt]
-defineVariadic kind m name (node, nodeType) (tip, tipType) loc = do
+defineVariadic kind m name (leaf, leafType) (node, nodeType) (root, rootType) loc = do
+  let leafDef = makeDef m (DD.getLeafDD name) leaf leafType loc
   let nodeDef = makeDef m (DD.getNodeDD name) node nodeType loc
-  let tipDef = makeDef m (DD.getTipDD name) tip tipType loc
-  [PostRawStmtVariadic kind m name, nodeDef, tipDef]
+  let rootDef = makeDef m (DD.getRootDD name) root rootType loc
+  [PostRawStmtVariadic kind m name, leafDef, nodeDef, rootDef]
 
 makeDef :: Hint -> DD.DefiniteDescription -> RT.RawTerm -> RT.RawTerm -> Loc -> PostRawStmt
 makeDef m name e t loc = do

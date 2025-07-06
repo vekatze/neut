@@ -100,6 +100,7 @@ data RawTermF a
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | IncludeText C C Hint (T.Text, C)
   | Brace C (a, C)
+  | Int Integer
   | Pointer
   | Void
 

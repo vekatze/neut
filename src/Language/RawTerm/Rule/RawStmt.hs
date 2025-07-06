@@ -76,6 +76,7 @@ data BaseRawStmt name
       (name, C)
       (C, RT.RawTerm, RT.RawTerm)
       (C, RT.RawTerm, RT.RawTerm)
+      (C, RT.RawTerm, RT.RawTerm)
       C
       Loc
   | RawStmtNominal C Hint (SE.Series (RT.RawGeist name, Loc))

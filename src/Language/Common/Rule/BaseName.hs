@@ -45,7 +45,8 @@ module Language.Common.Rule.BaseName
     reservedAlias,
     extend,
     node,
-    tip,
+    leaf,
+    root,
   )
 where
 
@@ -242,9 +243,13 @@ node :: BaseName
 node =
   MakeBaseName "node"
 
-tip :: BaseName
-tip =
-  MakeBaseName "tip"
+leaf :: BaseName
+leaf =
+  MakeBaseName "leaf"
+
+root :: BaseName
+root =
+  MakeBaseName "root"
 
 malloc :: BaseName
 malloc =
