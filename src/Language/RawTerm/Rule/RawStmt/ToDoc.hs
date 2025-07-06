@@ -8,6 +8,7 @@ import Language.Common.Rule.ExternalName qualified as EN
 import Language.Common.Rule.ForeignCodType qualified as FCT
 import Language.Common.Rule.LocalLocator qualified as LL
 import Language.Common.Rule.Opacity qualified as O
+import Language.Common.Rule.RuleKind (ruleKindToKeyword)
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
 import Language.Common.Rule.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
@@ -211,6 +212,23 @@ decStmt stmt =
       attachStmtComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
+            PI.horizontal $ D.text (BN.reify name),
+            PI.inject $ SE.decode $ fmap RT.toDoc series
+          ]
+    RawStmtVariadic kind c1 _ (name, c2) (ct, leaf, _) (cn, node, _) (cr, root, _) trailingComment _ -> do
+      let k = ruleKindToKeyword kind
+      let series =
+            SE.Series
+              { elems = [(ct, leaf), (cn, node), (cr, root)],
+                trailingComment,
+                prefix = Nothing,
+                container = Just SE.Brace,
+                separator = SE.Comma,
+                hasOptionalSeparator = True
+              }
+      attachStmtComment (c1 ++ c2) $
+        PI.arrange
+          [ PI.horizontal $ D.text k,
             PI.horizontal $ D.text (BN.reify name),
             PI.inject $ SE.decode $ fmap RT.toDoc series
           ]

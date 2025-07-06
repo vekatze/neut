@@ -78,6 +78,8 @@ compressStmt stmt =
       let codType' = TM.compress codType
       let e' = TM.compress e
       Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
+    Stmt.StmtVariadic kind m name -> do
+      Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
       Stmt.StmtForeign foreignList
 
@@ -91,5 +93,7 @@ extendStmt stmt =
       let codType' = TM.extend codType
       let e' = TM.extend e
       Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
+    Stmt.StmtVariadic kind m name -> do
+      Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
       Stmt.StmtForeign foreignList

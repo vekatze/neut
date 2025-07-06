@@ -8,7 +8,6 @@ module Language.Term.Rule.Stmt
   )
 where
 
-import Logger.Rule.Hint
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.Maybe
@@ -18,8 +17,10 @@ import Language.Common.Rule.DefiniteDescription qualified as DD
 import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.Foreign qualified as F
 import Language.Common.Rule.IsConstLike
+import Language.Common.Rule.RuleKind (RuleKind)
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Term.Rule.Term qualified as TM
+import Logger.Rule.Hint
 
 type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)
 
@@ -33,6 +34,7 @@ data StmtF a
       [BinderF a]
       a
       a
+  | StmtVariadic RuleKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
   deriving (Generic)
 
@@ -52,6 +54,8 @@ getStmtName' :: Stmt -> Maybe (Hint, DD.DefiniteDescription)
 getStmtName' stmt =
   case stmt of
     StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
+      return (m, name)
+    StmtVariadic _ (SavedHint m) name ->
       return (m, name)
     StmtForeign _ ->
       Nothing

@@ -192,6 +192,8 @@ clarifyStmt h stmt =
           let tenv = TM.insTypeEnv xts IntMap.empty
           e' <- clarifyStmtDefineBody h tenv xts'' e
           return $ C.Def f (toLowOpacity stmtKind) (map fst xts'') e'
+    StmtVariadic {} -> do
+      return $ C.Foreign [] -- nop
     StmtForeign foreignList ->
       return $ C.Foreign foreignList
 

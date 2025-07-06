@@ -40,6 +40,8 @@ weakenStmt stmt = do
       let codType' = weaken codType
       let e' = weaken e
       WeakStmtDefine isConstLike stmtKind' m name impArgs' expArgs' codType' e'
+    StmtVariadic kind (SavedHint m) name -> do
+      WeakStmtVariadic kind m name
     StmtForeign foreignList ->
       WeakStmtForeign $ map weakenForeign foreignList
 

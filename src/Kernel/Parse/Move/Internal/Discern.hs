@@ -63,12 +63,13 @@ import Language.Common.Rule.Magic qualified as M
 import Language.Common.Rule.Noema qualified as N
 import Language.Common.Rule.Opacity qualified as O
 import Language.Common.Rule.PiKind qualified as PK
+import Language.Common.Rule.PrimNumSize (IntSize (IntSize64))
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.RuleKind (RuleKind (FoldLeft, FoldRight))
 import Language.Common.Rule.StmtKind qualified as SK
 import Language.Common.Rule.Text.Util
 import Language.RawTerm.Move.CreateHole qualified as RT
 import Language.RawTerm.Rule.Key
-import Language.RawTerm.Rule.Locator qualified as L
 import Language.RawTerm.Rule.Name
 import Language.RawTerm.Rule.NecessityVariant
 import Language.RawTerm.Rule.RawBinder
@@ -111,8 +112,9 @@ discernStmt h stmt = do
       stmtKind' <- discernStmtKind h stmtKind m
       body' <- discern nenv' body
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m functionName isConstLike m
-      liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
-        TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
+      when (metaShouldSaveLocation m) $ do
+        liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
+          TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
       liftIO $ forM_ (map fst impArgs') $ Tag.insertBinder (H.tagHandle h)
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
@@ -124,6 +126,12 @@ discernStmt h stmt = do
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
+    PostRawStmtVariadic kind m dd -> do
+      registerTopLevelName h stmt
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
+      liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
+        TopCandidate {loc = metaLocation m, dd = dd, kind = Function}
+      return [WeakStmtVariadic kind m dd]
     PostRawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
         NameMap.registerGeist (H.nameMapHandle h) geist
@@ -238,6 +246,8 @@ discern h term =
         _ -> do
           (dd, (_, gn)) <- resolveName h m name
           interpretGlobalName h m dd gn
+    m :< RT.VarGlobal dd gn -> do
+      interpretGlobalName h m dd gn
     m :< RT.Pi impArgs expArgs _ t endLoc -> do
       let impArgsWithDefaults = RT.extractImpArgsWithDefaults impArgs
       (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
@@ -303,6 +313,27 @@ discern h term =
       checkRedundancy m impKeys expKeys kvs'
       let isNoetic = False -- overwritten later in `infer`
       return $ m :< WT.PiElim isNoetic (m :< func) (ImpArgs.PartiallySpecified impArgs) expArgs
+    m :< RT.PiElimRule name _ es -> do
+      (dd, (_, gn)) <- resolveName h m name
+      kind <- interpretRuleName m dd gn
+      let leafDD = DD.getLeafDD dd
+      let nodeDD = DD.getNodeDD dd
+      let rootDD = DD.getRootDD dd
+      leafGN <- resolveDefiniteDescription h m leafDD
+      nodeGN <- resolveDefiniteDescription h m nodeDD
+      rootGN <- resolveDefiniteDescription h m rootDD
+      let size = m :< RT.Int (toInteger $ length es)
+      let leafTM = m :< RT.piElim (RT.force (m :< RT.VarGlobal leafDD leafGN)) [size]
+      let nodeTM = RT.force (m :< RT.VarGlobal nodeDD nodeGN)
+      let rootTM = RT.force (m :< RT.VarGlobal rootDD rootGN)
+      let args = SE.extract es
+      case kind of
+        FoldLeft -> do
+          foldedTerm <- buildFoldLeft nodeTM (leafTM : args)
+          discern h (m :< RT.piElim rootTM [foldedTerm])
+        FoldRight -> do
+          foldedTerm <- buildFoldRight nodeTM (args ++ [leafTM])
+          discern h (m :< RT.piElim rootTM [foldedTerm])
     m :< RT.PiElimExact _ e -> do
       e' <- discern h e
       return $ m :< WT.PiElimExact e'
@@ -461,11 +492,6 @@ discern h term =
       boolFalse <- liftEither $ locatorToName (blur m) coreBoolFalse
       unitUnit <- liftEither $ locatorToVarGlobal m coreUnitUnit
       discern h $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
-    m :< RT.ListIntro es -> do
-      let m' = m {metaShouldSaveLocation = False}
-      listNil <- liftEither $ locatorToVarGlobal m' coreListNil
-      listCons <- liftEither $ locatorToVarGlobal m' coreListCons
-      discern h $ foldListApp m' listNil listCons $ SE.extract es
     m :< RT.Admit -> do
       panic <- liftEither $ locatorToVarGlobal m coreTrickPanic
       textType <- liftEither $ locatorToVarGlobal m coreText
@@ -519,6 +545,9 @@ discern h term =
           raiseError m $ "No such static file is defined: `" <> key <> "`"
     _ :< RT.Brace _ (e, _) ->
       discern h e
+    m :< RT.Int i -> do
+      let intType = m :< WT.Prim (WP.Type $ PT.Int IntSize64)
+      return $ m :< WT.Prim (WP.Value $ WPV.Int intType i)
     m :< RT.Pointer ->
       return $ m :< WT.Prim (WP.Type PT.Pointer)
     m :< RT.Void ->
@@ -644,14 +673,6 @@ bind' mustIgnoreRelayedVars loc endLoc (m, x, c1, c2, t) e cont =
       []
       cont
       endLoc
-
-foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
-foldListApp m listNil listCons es =
-  case es of
-    [] ->
-      listNil
-    e : rest ->
-      m :< RT.piElim listCons [e, foldListApp m listNil listCons rest]
 
 lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, RT.RawTerm)] -> EIO RT.RawTerm
 lookupIntrospectiveClause m value clauseList =
@@ -1017,27 +1038,8 @@ discernPattern h layer (m, pat) = do
                     args = patList'
                   }
           return ((m, PAT.Cons consInfo), concat hList)
-    RP.ListIntro patList -> do
-      let m' = m {metaShouldSaveLocation = False}
-      listNil <- liftEither $ DD.getLocatorPair m' coreListNil
-      listCons <- liftEither $ locatorToName m' coreListCons
-      discernPattern h layer $ foldListAppPat m' listNil listCons $ SE.extract patList
     RP.RuneIntro r -> do
       return ((m, PAT.Literal (LI.Rune r)), [])
-
-foldListAppPat ::
-  Hint ->
-  L.Locator ->
-  Name ->
-  [(Hint, RP.RawPattern)] ->
-  (Hint, RP.RawPattern)
-foldListAppPat m listNil listCons es =
-  case es of
-    [] ->
-      (m, RP.Var $ Locator listNil)
-    pat : rest -> do
-      let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons [] (RP.Paren (SE.fromList' [pat, rest'])))
 
 constructDefaultKeyMap :: H.Handle -> Hint -> [Key] -> IO (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap h m keyList = do
@@ -1142,3 +1144,25 @@ checkRedundancy m impKeys expKeys kvs = do
   if null diff
     then return ()
     else raiseError m $ "The following field(s) are redundant:\n" <> _showKeyList diff
+
+buildFoldRight :: RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
+buildFoldRight func@(mFunc :< _) argList =
+  case argList of
+    [] -> do
+      raiseCritical mFunc "`buildFoldRight` requires at least one argument"
+    [lastArg] ->
+      return lastArg
+    (firstArg : restArgs) -> do
+      restTerm <- buildFoldRight func restArgs
+      return $ mFunc :< RT.piElim func [firstArg, restTerm]
+
+buildFoldLeft :: RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
+buildFoldLeft func@(mFunc :< _) argList =
+  case argList of
+    [] -> do
+      raiseCritical mFunc "`buildFoldLeft` requires at least one argument"
+    [firstArg] ->
+      return firstArg
+    (firstArg : secondArg : restArgs) -> do
+      let headTerm = mFunc :< RT.piElim func [firstArg, secondArg]
+      buildFoldLeft func $ headTerm : restArgs

@@ -27,12 +27,14 @@ module Language.RawTerm.Rule.RawTerm
     mapEL,
     mapKeywordClause,
     letKindFromText,
+    force,
   )
 where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.Text qualified as T
+import Kernel.Common.Rule.GlobalName qualified as GN
 import Language.Common.Rule.Annotation qualified as Annot
 import Language.Common.Rule.Attr.Data qualified as AttrD
 import Language.Common.Rule.Attr.DataIntro qualified as AttrDI
@@ -59,11 +61,13 @@ type RawTerm = Cofree RawTermF Hint
 data RawTermF a
   = Tau
   | Var Name
+  | VarGlobal DD.DefiniteDescription GN.GlobalName
   | Pi (SE.Series (RawBinder a, Maybe a), C) (Args a) C a Loc
   | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
   | PiElim a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
+  | PiElimRule Name C (SE.Series a)
   | PiElimExact C a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
@@ -88,7 +92,6 @@ data RawTermF a
   | When (KeywordClause a)
   | Seq (a, C) C a
   | SeqEnd a
-  | ListIntro (SE.Series a)
   | Admit
   | Detach C C (a, C)
   | Attach C C (a, C)
@@ -97,6 +100,7 @@ data RawTermF a
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | IncludeText C C Hint (T.Text, C)
   | Brace C (a, C)
+  | Int Integer
   | Pointer
   | Void
 
@@ -181,6 +185,10 @@ type TopDef =
 getDefName :: RawDef a -> a
 getDefName def =
   fst $ name $ geist def
+
+force :: RawTerm -> RawTerm
+force e@(m :< _) =
+  m :< piElim e []
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =

@@ -6,7 +6,6 @@ module Kernel.Common.Rule.GlobalName
   )
 where
 
-import Data.Binary
 import GHC.Generics (Generic)
 import Language.Common.Rule.ArgNum
 import Language.Common.Rule.DefiniteDescription qualified as DD
@@ -14,6 +13,7 @@ import Language.Common.Rule.Discriminant qualified as D
 import Language.Common.Rule.IsConstLike
 import Language.Common.Rule.PrimOp
 import Language.Common.Rule.PrimType qualified as PT
+import Language.Common.Rule.RuleKind (RuleKind)
 import Logger.Rule.Hint
 
 data GlobalName
@@ -22,9 +22,8 @@ data GlobalName
   | PrimOp PrimOp
   | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
   | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
-  deriving (Show, Generic)
-
-instance Binary GlobalName
+  | Rule RuleKind
+  deriving (Generic)
 
 getIsConstLike :: GlobalName -> IsConstLike
 getIsConstLike gn =
@@ -47,6 +46,8 @@ hasNoArgs gn =
       argNum == fromInt 0
     DataIntro dataArgNum consArgNum _ _ ->
       dataArgNum == fromInt 0 && consArgNum == fromInt 0
+    Rule {} ->
+      False
     PrimType _ ->
       True
     PrimOp _ ->

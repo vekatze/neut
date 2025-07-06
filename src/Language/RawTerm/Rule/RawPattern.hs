@@ -15,7 +15,6 @@ import SyntaxTree.Rule.Series qualified as SE
 data RawPattern
   = Var Name
   | Cons Name C ConsArgs
-  | ListIntro (SE.Series (Hint, RawPattern))
   | RuneIntro RU.Rune
 
 data ConsArgs

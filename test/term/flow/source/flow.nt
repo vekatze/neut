@@ -101,16 +101,16 @@ define test-behavior(): unit {
   let _ on ch = {
     let fl1 = {
       detach {
-        let xs = some-list(1000, []);
-        let fs = send-all(xs, ch, []);
+        let xs = some-list(1000, List[]);
+        let fs = send-all(xs, ch, List[]);
         receive-one-by-one(fs, ch);
         Unit
       }
     };
     let fl2 = {
       detach {
-        let xs = some-list(1000, []);
-        let fs = send-all(xs, ch, []);
+        let xs = some-list(1000, List[]);
+        let fs = send-all(xs, ch, List[]);
         receive-all-at-once(fs, ch);
         Unit
       }

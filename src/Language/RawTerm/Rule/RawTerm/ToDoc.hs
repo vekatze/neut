@@ -52,6 +52,8 @@ toDoc term =
       D.text "type"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
+    _ :< VarGlobal dd _ ->
+      D.text $ DD.reify dd -- unreachable
     _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do
       PI.arrange
         [ PI.container $ decodeImpParams impArgs,
@@ -72,6 +74,11 @@ toDoc term =
       PI.arrange
         [ PI.inject $ nameToDoc name,
           PI.inject $ attachComment c $ decPiElimKey kvs
+        ]
+    _ :< PiElimRule name c es -> do
+      PI.arrange
+        [ PI.inject $ attachComment c $ nameToDoc name,
+          PI.inject $ SE.decodeHorizontallyIfPossible $ fmap toDoc es
         ]
     _ :< PiElimExact c e ->
       PI.arrange
@@ -285,8 +292,6 @@ toDoc term =
       D.join [toDoc e1, D.text ";", D.line, attachComment (c1 ++ c2) $ toDoc e2]
     _ :< SeqEnd e1 -> do
       D.join [toDoc e1, D.text ";"]
-    _ :< ListIntro es -> do
-      SE.decode $ fmap toDoc es
     _ :< Admit ->
       D.text "admit"
     m :< Detach c1 c2 (e, c3) -> do
@@ -318,6 +323,8 @@ toDoc term =
         ]
     _ :< Brace c1 (e, c2) -> do
       decodeBrace False c1 e c2
+    _ :< Int i ->
+      D.text $ T.pack (show i)
     _ :< Pointer ->
       D.text "pointer"
     _ :< Void ->
@@ -613,8 +620,6 @@ decodePattern pat = do
         RP.Of kvs -> do
           let kvs' = SE.decode $ fmap decodePatternKeyValue kvs
           D.join [name', attachComment c kvs']
-    RP.ListIntro patList -> do
-      SE.decode $ fmap (decodePattern . snd) patList
     RP.RuneIntro r ->
       D.text $ "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 

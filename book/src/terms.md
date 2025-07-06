@@ -72,7 +72,6 @@
 - [tie x = e1; e2](#tie-x--e1-e2)
 - [pin x = e1; e2](#pin-x--e1-e2)
 - [?t](#t)
-- [[e1, ..., en]](#e1--en)
 
 ## `type`
 
@@ -2011,7 +2010,7 @@ You can create a mutable cell using `make-cell`.
 
 ```neut
 define sample(): int {
-  let xs: list(int) = [];
+  let xs: list(int) = List[];
 
   // create a new cell using `make-cell`
   let xs-cell = make-cell(xs);
@@ -2669,7 +2668,7 @@ Please do not confuse a hole with the `_` in `let _ = e1; e2`.
 
 ```neut
 define play-with-let-on(): int {
-  let xs: list(int) = [1, 2, 3];
+  let xs: list(int) = List[1, 2, 3];
   let len on xs =
     // the type of `xs` is `&list(int)` here
     length(xs);
@@ -3082,36 +3081,3 @@ either(unit, t)
 
 Derived from the syntactic sugar.
 
-## `[e1, ..., en]`
-
-You can use `[e1, ..., en]` to construct a list.
-
-### Example
-
-```neut
-define make-int-list(): list(int) {
-  [1, 2, 3, 4, 5]
-}
-```
-
-### Syntax
-
-```neut
-[e1, ..., en] // n >= 0
-```
-
-### Semantics
-
-`[e1, ..., en]` is the following syntactic sugar:
-
-```neut
-[e1, ..., en]
-
-↓
-
-Cons(e1, Cons(..., Cons(en, Nil)...))
-```
-
-### Type
-
-Derived from the desugared form.

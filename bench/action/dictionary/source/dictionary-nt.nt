@@ -37,7 +37,7 @@ define main(): unit {
   pin k = core.int.ord.as-ord;
   let args = get-argv();
   match args {
-  | [_, size-str] =>
+  | Cons(_, Cons(size-str, Nil)) =>
     pin size-str = size-str;
     match parse-int(size-str) {
     | Right(size) =>

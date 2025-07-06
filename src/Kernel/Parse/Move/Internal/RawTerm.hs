@@ -148,7 +148,6 @@ rawTerm' h m headSymbol c = do
           choice
             [ rawTermPi h,
               rawTermBrace h,
-              rawTermListIntro h,
               rawTermTextIntro,
               rawTermRuneIntro,
               rawTermBoxNoema h,
@@ -161,6 +160,9 @@ rawTerm' h m headSymbol c = do
             [ do
                 (kvs, c') <- keyValueArgs $ rawTermKeyValuePair h
                 return (m :< RT.PiElimByKey name c kvs, c'),
+              do
+                (es, c') <- seriesBracket $ rawTerm h
+                return (m :< RT.PiElimRule name c es, c'),
               do
                 rawTermPiElimCont h (m :< RT.Var name, c)
             ]
@@ -549,41 +551,32 @@ rawTermPatternRow h patternSize = do
 
 rawTermPattern :: Handle -> Parser ((Hint, RP.RawPattern), C)
 rawTermPattern h = do
-  rawTermPatternBasic h
-
-rawTermPatternBasic :: Handle -> Parser ((Hint, RP.RawPattern), C)
-rawTermPatternBasic h =
-  choice
-    [ rawTermPatternListIntro h,
-      rawTermPatternRuneIntro,
-      rawTermPatternConsOrVar h
-    ]
-
-rawTermPatternListIntro :: Handle -> Parser ((Hint, RP.RawPattern), C)
-rawTermPatternListIntro h = do
   m <- getCurrentHint
-  (patList, c) <- seriesBracket $ rawTermPattern h
-  return ((m, RP.ListIntro patList), c)
+  (headSymbol, c) <- symbol'
+  headSymbol' <-
+    if headSymbol /= "_"
+      then return headSymbol
+      else liftIO $ newTextForHole (gensymHandle h)
+  rawTermPatternBasic h m headSymbol' c
 
-rawTermPatternRuneIntro :: Parser ((Hint, RP.RawPattern), C)
-rawTermPatternRuneIntro = do
-  m <- getCurrentHint
-  (s, c) <- rune
+rawTermPatternBasic :: Handle -> Hint -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
+rawTermPatternBasic h m headSymbol c = do
+  if T.null headSymbol
+    then rawTermPatternRuneIntro m c
+    else rawTermPatternConsOrVar h m headSymbol c
+
+rawTermPatternRuneIntro :: Hint -> C -> Parser ((Hint, RP.RawPattern), C)
+rawTermPatternRuneIntro m c1 = do
+  (s, c2) <- rune
   case RU.make s of
     Right r ->
-      return ((m, RP.RuneIntro r), c)
+      return ((m, RP.RuneIntro r), c1 ++ c2)
     Left e ->
       lift $ raiseError m e
 
-parseName :: Handle -> Parser ((Hint, Name), C)
-parseName h = do
-  ((m, varText), c) <- var h
-  v <- interpretVarName m varText
-  return ((m, v), c)
-
-rawTermPatternConsOrVar :: Handle -> Parser ((Hint, RP.RawPattern), C)
-rawTermPatternConsOrVar h = do
-  ((m, varOrLocator), c1) <- parseName h
+rawTermPatternConsOrVar :: Handle -> Hint -> T.Text -> C -> Parser ((Hint, RP.RawPattern), C)
+rawTermPatternConsOrVar h m headSymbol c1 = do
+  varOrLocator <- interpretVarName m headSymbol
   choice
     [ do
         (patArgs, c) <- seriesParen $ rawTermPattern h
@@ -784,12 +777,6 @@ typeWithoutIdent h = do
   x <- liftIO $ newTextForHole (gensymHandle h)
   (t, c) <- rawTerm h
   return ((m, x, [], [], t), c)
-
-rawTermListIntro :: Handle -> Parser (RT.RawTerm, C)
-rawTermListIntro h = do
-  m <- getCurrentHint
-  (es, c) <- seriesBracket $ rawTerm h
-  return (m :< RT.ListIntro es, c)
 
 rawTermPiElimExact :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPiElimExact h m c1 = do

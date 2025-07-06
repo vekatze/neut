@@ -83,7 +83,7 @@ define delete-min(a: type, t: heap(a)): ?heap(a) {
 
 define sum(xs: &list(int)): int {
   case xs {
-  | [] =>
+  | Nil =>
     0
   | Cons(y, ys) =>
     add-int(*y, sum(ys))
@@ -106,9 +106,9 @@ define compare-int-list(xs: list(int), ys: list(int)): ordering {
 
 define main(): unit {
   let h: heap(list(int)) = Leaf;
-  let h = insert(_, compare-int-list, [1, 2], h);
-  let h = insert(_, compare-int-list, [10], h);
-  let h = insert(_, compare-int-list, [5], h);
+  let h = insert(_, compare-int-list, List[1, 2], h);
+  let h = insert(_, compare-int-list, List[10], h);
+  let h = insert(_, compare-int-list, List[5], h);
   // v1 = 3
   let v1 on h =
     match find-min(_, h) {
@@ -127,8 +127,8 @@ define main(): unit {
     | Left(_) =>
       3
     | Right(h) =>
-      let h = insert(_, compare-int-list, [4, 8], h);
-      let h = insert(_, compare-int-list, [1, 1], h);
+      let h = insert(_, compare-int-list, List[4, 8], h);
+      let h = insert(_, compare-int-list, List[1, 1], h);
       // v2 = 2
       let v2 on h =
         match find-min(_, h) {

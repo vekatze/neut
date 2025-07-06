@@ -119,18 +119,6 @@ coreEitherRight :: T.Text
 coreEitherRight =
   core <> nsSep <> "either" <> nsSep <> "Right"
 
-coreList :: T.Text
-coreList =
-  core <> nsSep <> "list" <> nsSep <> "list"
-
-coreListNil :: T.Text
-coreListNil =
-  core <> nsSep <> "list" <> nsSep <> "Nil"
-
-coreListCons :: T.Text
-coreListCons =
-  core <> nsSep <> "list" <> nsSep <> "Cons"
-
 coreText :: T.Text
 coreText =
   core <> nsSep <> "text" <> nsSep <> "text"

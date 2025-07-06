@@ -49,13 +49,13 @@ For example, if a variable is used twice, a translation like the following happe
 
 ```neut
 // (before)
-let xs: list(a) = [value-1, value-2];
+let xs: list(a) = List[value-1, value-2];
 some-func(xs, xs) // `xs` is used twice
 
 // ↓
 
 // (after)
-let xs: list(a) = [value-1, value-2];
+let xs: list(a) = List[value-1, value-2];
 let (xs1, xs2) = copy-list-a(xs);  // `xs` is used once
 some-func(xs1, xs2)
 ```

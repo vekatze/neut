@@ -26,16 +26,16 @@ define relevant-nat(): unit {
 }
 
 define affine-list(): unit {
-  let _: list(nat) = [];
-  let _ = [Zero];
-  let _ = [Succ(Zero), Zero];
+  let _: list(nat) = List[];
+  let _ = List[Zero];
+  let _ = List[Succ(Zero), Zero];
   Unit
 }
 
 define relevant-list(): unit {
-  let !zero: list(nat) = [];
-  let !one = [Zero];
-  let !two = [Succ(Zero), Zero];
+  let !zero: list(nat) = List[];
+  let !one = List[Zero];
+  let !two = List[Succ(Zero), Zero];
   let _ = !zero;
   let _ = !zero;
   let _ = !one;
@@ -47,15 +47,15 @@ define relevant-list(): unit {
 
 define affine-either(): unit {
   let _: either(bool, list(nat)) = Left(True);
-  let _: either(bool, list(nat)) = Right([Zero]);
-  let _: either(bool, list(nat)) = Right([Succ(Zero), Zero]);
+  let _: either(bool, list(nat)) = Right(List[Zero]);
+  let _: either(bool, list(nat)) = Right(List[Succ(Zero), Zero]);
   Unit
 }
 
 define relevant-either(): unit {
   let !foo: either(bool, list(nat)) = Left(True);
-  let !bar: either(bool, list(nat)) = Right([Zero]);
-  let !buz: either(bool, list(nat)) = Right([Succ(Zero), Zero]);
+  let !bar: either(bool, list(nat)) = Right(List[Zero]);
+  let !buz: either(bool, list(nat)) = Right(List[Succ(Zero), Zero]);
   let _ = !foo;
   let _ = !foo;
   let _ = !bar;
@@ -285,7 +285,7 @@ define list-monoid(a: type): monoid(list(a)) {
         core.list.append(xs, ys)
       }
     },
-    m-empty := [],
+    m-empty := Nil,
   }
 }
 
@@ -332,7 +332,7 @@ define test-match(): unit {
   let _ = unbalanced-freevars-in-branches(_, !t3);
   let _ = unbalanced-freevars-in-branches(_, !t4);
   let n: int = 10;
-  let !xs: list(int) = [1, 2, 3];
+  let !xs: list(int) = List[1, 2, 3];
   let _ = literal-match(n);
   let _ on n = literal-match-N(n);
   let _ = literal-match-in-cons(!xs);

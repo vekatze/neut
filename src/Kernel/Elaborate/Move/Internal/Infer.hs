@@ -91,6 +91,8 @@ inferStmt h stmt =
         Nothing ->
           return ()
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgs' expArgs' codType' e'
+    WeakStmtVariadic kind m dd -> do
+      return $ WeakStmtVariadic kind m dd
     WeakStmtNominal m geistList -> do
       geistList' <- mapM (inferGeist h) geistList
       return $ WeakStmtNominal m geistList'

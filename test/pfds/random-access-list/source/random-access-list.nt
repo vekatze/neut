@@ -35,8 +35,8 @@ define join(a: type, t1: tree(a), t2: tree(a)): tree(a) {
 
 define cons-tree(a: type, t: tree(a), ts: R-list(a)): R-list(a) {
   match ts {
-  | New([]) =>
-    New([DigitOne(t)])
+  | New(Nil) =>
+    New(List[DigitOne(t)])
   | New(Cons(DigitZero, rest)) =>
     New(Cons(DigitOne(t), rest))
   | New(Cons(DigitOne(t0), rest)) =>
@@ -55,7 +55,7 @@ define uncons-tree(a: type, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   | Nil =>
     none
   | Cons(DigitOne(y), Nil) =>
-    Right(Pair(y, New([])))
+    Right(Pair(y, New(List[])))
   | Cons(DigitOne(y), rest) =>
     Right(Pair(y, New(Cons(DigitZero, rest))))
   | Cons(DigitZero, rest) =>
@@ -93,7 +93,7 @@ define lookup-tree(a: type, i: int, t: &tree(a)): ?a {
 
 define lookup-list(a: type, i: int, xs: &list(digit(a))): ?a {
   case xs {
-  | [] =>
+  | Nil =>
     none
   | Cons(DigitZero, rest) =>
     lookup-list(_, i, rest)
@@ -132,8 +132,8 @@ define update-tree(a: type, i: int, x: a, t: tree(a)): tree(a) {
 
 define update(a: type, i: int, x: a, xs: R-list(a)): R-list(a) {
   match xs {
-  | New([]) =>
-    New([])
+  | New(Nil) =>
+    New(Nil)
   | New(Cons(DigitZero, ts)) =>
     let New(new-xs) = update(_, i, x, New(ts));
     New(Cons(DigitZero, new-xs))
@@ -158,7 +158,7 @@ define find-and-get(i: int, xs: &R-list(int)): int {
 }
 
 define main(): unit {
-  let xs: R-list(int) = New([]);
+  let xs: R-list(int) = New(Nil);
   let xs = cons(_, 3, xs);
   let xs = cons(_, 2, xs);
   let xs = cons(_, 4, xs);

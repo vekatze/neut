@@ -35,7 +35,7 @@ define random-lookup-sum(count: int, d: &intmap(int)): unit {
 define main(): unit {
   let args = get-argv();
   match args {
-  | [_, size-str] =>
+  | Cons(_, Cons(size-str, Nil)) =>
     pin size-str = size-str;
     match parse-int(size-str) {
     | Right(size) =>

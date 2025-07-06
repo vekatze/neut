@@ -94,7 +94,7 @@ define test-resource(xs: list(int)): unit {
 
 define complex(): () -> unit {
   // layer 0
-  let xs: list(int) = [1, 2, 3, 4];
+  let xs: list(int) = List[1, 2, 3, 4];
   letbox f on xs =
     // layer 1
     // xs: &list(int) at layer 1
@@ -120,7 +120,7 @@ define complex(): () -> unit {
 
 define main(): unit {
   test-syntax();
-  test-resource([1, 2, 3]);
+  test-resource(List[1, 2, 3]);
   complex()()
 }
 

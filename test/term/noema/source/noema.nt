@@ -7,7 +7,7 @@ define test-syntax(): unit {
   let _ = &list(type);
   let _ = &list(&list(type));
   let _ = (&type, &list((&list(type)) -> &list(type))) -> &list(type);
-  let xs: list(int) = [1, 2, 3];
+  let xs: list(int) = List[1, 2, 3];
   let _ on xs = {
     let _ on xs = {
       let l1 = length(*xs);
