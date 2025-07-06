@@ -24,7 +24,14 @@ jobs:
         with:
           enable-stack: true
           stack-no-global: true
-      - uses: freckle/stack-cache-action@v2
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            .stack-work
+          key: ${{ runner.os }}-stack-${{ hashFiles('**/stack.yaml', '**/build/package.template.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-stack-
       - uses: tecolicom/actions-use-homebrew-tools@v1
         with:
           tools: llvm
