@@ -349,8 +349,8 @@ define id-bin(arg: &binary): &binary {
 ```
 It's type signature is `&binary -> &binary`, but we would need it to be `&binary -> meta &binary`, so let's rewrite it:
 ```neut
-define id-bin(arg: &binary): &binary {
+define id-bin(arg: &binary): meta &binary {
   quote {arg}
 }
 ```
-But this won't compile either because we have a layer mismatch! In short, the use of the `meta` specifier forbids us from using functions that would cause misuse of memory.
+But this won't compile either because we have a layer mismatch! We can try different things in an attempt to create `bin-id: &binary -> meta &binary` but we won't find an implementation that satisfies our requirements. In short, the use of the `meta` specifier forbids us from using functions that would cause misuse of memory.
