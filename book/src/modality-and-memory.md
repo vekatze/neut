@@ -280,31 +280,26 @@ This example would wrongly allow a function at layer 0 (`★`) to keep a referen
 
 ### Using `meta`
 
-To help understand how to use `meta` types and how they enforce memory safety suppose the following scenario:
-
-We have the following function in our codebase which is used to parse input and store backups of it, which is crucial for the bussiness.
+The following function parses data and stores backups of said data.
 ```neut
 define backup-parse<a>(transformer: (binary) -> a): a {
   let !input: binary = get-next-input();
-  write-to-file(input-backup, bin-to-hex(!input)); // !input is copied
+  write-to-file(input-backup, bin-to-hex(!input)); // !input copied
   transformer(!input)
 }
 ```
-Lately our system has been recieving huge chunks of input which has skyrocketed our operating costs due to the input being needlessly copied.
-
-#### Using noetic values
-The following snippet is our previous code rewritten to use noetic values in order to avoid copies.
+This function might get slow if huge chunks of data are processed due to the copy. Rewriting it to use noetic values could look like the following:
 ```neut
 define backup-parse<a>(transformer: (&binary) -> a): a {
   let input: binary = get-next-input();
   let result on binary = {
-    write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
-    transformer(binary) // no redundant copies thanks to the use of noetic values!
-  }
+    write-to-file(input-backup, bin-to-hex(input)); // bin-to-hex takes a &binary now, avoiding the copy
+    transformer(binary)
+  };
   result
 }
 ```
-We avoided needless copies, we run our tests to make sure all works as intended, and oh no! It doesn't even compile! To see why it is like this see the following usage of the function:
+This won't compile because `transformer` contains a free variable `a`. This works as a safety guard, it compiled the following scenario would be possible:
 ```neut
 define id-bin(arg: &binary): &binary {
   arg
@@ -313,9 +308,9 @@ define id-bin(arg: &binary): &binary {
 define backup-parse<a>(transformer: (&binary) -> a): a {
   let input: binary = get-next-input();
   let result on binary = {
-    write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
-    transformer(binary) // no redundant copies thanks to the use of noetic values!
-  }
+    write-to-file(input-backup, bin-to-hex(input));
+    transformer(binary)
+  };
   result
   // FREE(input)
 }
@@ -326,31 +321,65 @@ define zen(): unit {
   Unit
 }
 ```
-Inside `backup-parse` the value of `result` is a reference to `input` which is freed when the function finishes. We later use the obtained value inside `zen` to write to `somefile`. We have used the `input` after it has been freed. The type system avoids use-after-free with this restriction.
+The following happens inside `zen`:
+1. `backup-parse(id-bin)` evaluates to a reference to (the freed) `input`
+2. `joker` holds the (dangling) reference
+3. `bin-to-hex` takes `joker` as an argument, causing an use-after-free
 
-#### Using `meta` to circumvent the issue
-In order to compile we must restrict the value a call `transformer` evaluates to. We need that whatever `transformer` returns is valid in the outer layer, that is, outside of `backup-parse`. To achieve this we rewrite it to the following:
+To fancy the requirements of the type system `meta` must be used as follows.
 ```neut
 define backup-parse<a>(transformer: (&binary) -> meta a): a {
   let input: binary = get-next-input();
   letbox-T result on binary = {
-    write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
-    transformer(binary) // no redundant copies thanks to the use of noetic values!
-  }
+    write-to-file(input-backup, bin-to-hex(input));
+    transformer(binary)
+  };
   result
   // FREE(input)
 }
 ```
-Now or function compiles, but there is something that doesn't, our `id-bin` function.
+The `meta` specifier asserts that the value a call to `transformer` evaluates will be valid on the outer layer (in this case the layer of `zen`, since it's where `backup-parse` has been called). The requirements of the operators that lift values into `meta` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
 ```neut
-define id-bin(arg: &binary): &binary {
-  arg
+define id-bin(arg: &binary): meta binary {
+  box arg { // *arg copied
+    arg
+  }
+}
+
+define backup-parse<a>(transformer: (&binary) -> a): a {
+  let input: binary = get-next-input();
+  let result on binary = {
+    write-to-file(input-backup, bin-to-hex(input));
+    transformer(binary)
+  };
+  result
+  // FREE(input)
+}
+
+define zen(): unit {
+  let joker = backup-parse(id-bin);
+  let _ on joker = write-to-file(somefile, bin-to-hex(joker));
+  Unit
 }
 ```
-It's type signature is `&binary -> &binary`, but we would need it to be `&binary -> meta &binary`, so let's rewrite it:
+Lastly, to avoid the newly introduced copy, the following refactor is possible:
 ```neut
-define id-bin(arg: &binary): meta &binary {
-  quote {arg}
+define write-to-somefile(arg: &binary): meta unit { // used to be id-bin
+  write-to-file(somefile, bin-to-hex(arg));
+  box {Unit}
+}
+
+define backup-parse<a>(transformer: (&binary) -> a): a {
+  let input: binary = get-next-input();
+  let result on binary = {
+    write-to-file(input-backup, bin-to-hex(input));
+    transformer(binary)
+  };
+  result
+  // FREE(input)
+}
+
+define zen(): unit {
+  backup-parse(write-to-somefile)
 }
 ```
-But this won't compile either because we have a layer mismatch! We can try different things in an attempt to create `bin-id: &binary -> meta &binary` but we won't find an implementation that satisfies our requirements. In short, the use of the `meta` specifier forbids us from using functions that would cause misuse of memory.
