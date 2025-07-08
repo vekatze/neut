@@ -287,7 +287,7 @@ We have the following function in our codebase which is used to parse input and 
 define backup-parse<a>(transformer: (binary) -> a): a {
   let !input: binary = get-next-input();
   write-to-file(input-backup, bin-to-hex(!input)); // !input is copied
-  transformer(!input) // !input is copied... again
+  transformer(!input)
 }
 ```
 Lately our system has been recieving huge chunks of input which has skyrocketed our operating costs due to the input being needlessly copied.
