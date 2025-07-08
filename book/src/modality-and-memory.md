@@ -284,7 +284,7 @@ To help understand how to use `meta` types and how they enforce memory safety su
 
 We have the following function in our codebase which is used to parse input and store backups of it, which is crucial for the bussiness.
 ```neut
-define backup-parse<a>(transformer: binary -> a): a {
+define backup-parse<a>(transformer: (binary) -> a): a {
   let !input: binary = get-next-input();
   write-to-file(input-backup, bin-to-hex(!input)); // !input is copied
   transformer(!input) // !input is copied... again
@@ -295,7 +295,7 @@ Lately our system has been recieving huge chunks of input which has skyrocketed 
 #### Using noetic values
 The following snippet is our previous code rewritten to use noetic values in order to avoid copies.
 ```neut
-define backup-parse<a>(transformer: &binary -> a): a {
+define backup-parse<a>(transformer: (&binary) -> a): a {
   let input: binary = get-next-input();
   let result on binary = {
     write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
@@ -310,7 +310,7 @@ define id-bin(arg: &binary): &binary {
   arg
 }
 
-define backup-parse<a>(transformer: &binary -> a): a {
+define backup-parse<a>(transformer: (&binary) -> a): a {
   let input: binary = get-next-input();
   let result on binary = {
     write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
@@ -331,7 +331,7 @@ Inside `backup-parse` the value of `result` is a reference to `input` which is f
 #### Using `meta` to circumvent the issue
 In order to compile we must restrict the value a call `transformer` evaluates to. We need that whatever `transformer` returns is valid in the outer layer, that is, outside of `backup-parse`. To achieve this we rewrite it to the following:
 ```neut
-define backup-parse<a>(transformer: &binary -> meta a): a {
+define backup-parse<a>(transformer: (&binary) -> meta a): a {
   let input: binary = get-next-input();
   letbox-T result on binary = {
     write-to-file(input-backup, bin-to-hex(input)); // We have rewritten bin-to-hex so it takes a noetic value instead
