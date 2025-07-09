@@ -82,7 +82,8 @@ getExecutableOutputPath h targetOrZen = do
       zenExecutableDir <- getZenExecutableDir h (Target.Main targetOrZen) m
       relPath <- getRelPathFromSourceDir m path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
-      return $ zenExecutableDir </> relPathWithoutExtension
+      zenPath <- P.addExtension ".zen" relPathWithoutExtension
+      return $ zenExecutableDir </> zenPath
 
 getBuildDir :: Handle -> Target.Target -> Module -> EIO (Path Abs Dir)
 getBuildDir h t baseModule = do
