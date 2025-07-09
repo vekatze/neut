@@ -28,16 +28,18 @@ import Kernel.Common.Source qualified as Source
 import Language.Common.ModuleDigest
 import Language.Common.ModuleDigest qualified as MD
 import Language.Common.ModuleID qualified as MID
+import Logger.Hint (newSourceHint)
 import Logger.Hint qualified as H
 import Path
 import Path.IO
 import System.Environment
+import System.FilePath (splitDirectories)
 
 newtype Handle = Handle
   { _moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
   }
 
-_hasSourceExtension :: Path Abs File -> Bool
+_hasSourceExtension :: Path a File -> Bool
 _hasSourceExtension path =
   case splitExtension path of
     Just (_, ext)
@@ -109,17 +111,34 @@ sourceFromPath baseModule path = do
       }
 
 ensureFileModuleSanity :: Path Abs File -> Module -> EIO ()
-ensureFileModuleSanity filePath mainModule = do
-  unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
-    raiseError' $
-      "The file `"
-        <> T.pack (toFilePath filePath)
-        <> "` is not in the source directory of current module"
+ensureFileModuleSanity filePath baseModule = do
+  case stripProperPrefix (getSourceDir baseModule) filePath of
+    Nothing -> do
+      raiseError' $
+        "The file `"
+          <> T.pack (toFilePath filePath)
+          <> "` is not in the source directory of current module"
+    Just path -> do
+      let dirList = dropLast $ splitDirectories $ toFilePath path
+      forM_ dirList $ \dir -> do
+        when ('.' `elem` dir) $ do
+          let sourceHint = newSourceHint $ getSourceDir baseModule </> path
+          let srcDir = moduleSourceDir baseModule
+          let errPath = srcDir </> parent path
+          raiseError sourceHint $
+            "Directory names in "
+              <> T.pack (show srcDir)
+              <> " must not contain dots, but found: "
+              <> T.pack (show errPath)
 
 getAllSourcePathInModule :: Module -> EIO [Path Abs File]
 getAllSourcePathInModule baseModule = do
   (_, filePathList) <- listDirRecur (getSourceDir baseModule)
   return $ filter _hasSourceExtension filePathList
+
+dropLast :: [a] -> [a]
+dropLast xs =
+  take (length xs - 1) xs
 
 getAllSourceInModule :: Module -> EIO [Source.Source]
 getAllSourceInModule baseModule = do
