@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Overview - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Overview - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/index.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html" class="active"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="neut-programming-language"><a class="header" href="#neut-programming-language">Neut Programming Language</a></h1>
+<p>Neut is a functional programming language with static memory management.</p>
+<p>Its key features include:</p>
+<ul class="star-list">
+  <li>Full λ-calculus support</li>
+  <li>Predictable automatic memory management</li>
+  <li>The ability to achieve both of the above without additional type annotations</li>
+</ul>
+<p>Neut doesn't use a GC. Instead, it takes a <em>type-directed approach</em> for memory management.</p>
+<h2 id="what-does-it-look-like"><a class="header" href="#what-does-it-look-like">What Does it Look Like?</a></h2>
+<p>Like the following:</p>
+<pre><code class="language-neut">// the obligatory hello world
+define hello(): unit {
+  print(&quot;Hello, world!\n&quot;)
+}
+
+// an algebraic data type
+data my-list(a) {
+| Nil
+| Cons(a, my-list(a))
+}
+
+// a recursive function with pattern matching
+define noisy-length&lt;a&gt;(xs: my-list(a)): int {
+  match xs {
+  | Nil =&gt;
+    0
+  | Cons(_, ys) =&gt;
+    let my-message = &quot;hey\n&quot;;
+    print(my-message);
+    add-int(1, noisy-length(ys))
+  }
+}
+</code></pre>
+<h2 id="static-memory-management--but-how"><a class="header" href="#static-memory-management--but-how">Static Memory Management — But How?</a></h2>
+<p><em>Neut translates a type into a function</em> that can discard/copy the values of the type. By using those functions, the compiler translates programs so that every variable is used exactly once.</p>
+<p>For example, if a variable is used twice, a translation like the following happens:</p>
+<pre><code class="language-neut">// (before)
+let xs: list(a) = List[value-1, value-2];
+some-func(xs, xs) // `xs` is used twice
+
+// ↓
+
+// (after)
+let xs: list(a) = List[value-1, value-2];
+let (xs1, xs2) = copy-list-a(xs);  // `xs` is used once
+some-func(xs1, xs2)
+</code></pre>
+<p>If you need more information, see <a href="./how-to-execute-types.html">How to Execute Types</a>.</p>
+<p>You might wonder: <em>&quot;So do I have to, for example, copy an entire list just to get its length? Isn't that a tragedy?&quot;</em>. This topic is covered in <a href="./static-memory-management.html">Static Memory Management</a> and <a href="./modality-and-memory.html">Modality and Memory</a>. As written there, Neut avoids such copy operations by using the <em>box modality</em>, achieving something like borrowing in Rust.</p>
+<h2 id="quick-list-of-other-features"><a class="header" href="#quick-list-of-other-features">Quick List of Other Features</a></h2>
+<ul>
+<li>Call by value</li>
+<li>Impure</li>
+<li>Compiles to <a href="https://llvm.org/docs/LangRef.html">LLVM IR</a> and binary</li>
+<li>The type system ≒ <a href="https://en.wikipedia.org/wiki/Calculus_of_constructions">CoC</a> + <a href="https://en.wikipedia.org/wiki/Algebraic_data_type">ADT</a> + (recursion) + (T-necessity) - (universe hierarchy)
+<ul>
+<li>That is, the usual one in functional programming, but a bit generalized</li>
+</ul>
+</li>
+<li>Built-in <a href="./lovely-lsp-showcase.html">LSP support</a></li>
+<li>Built-in <a href="./rapid-prototyping.html">rapid prototyping experience</a> like scripting languages</li>
+<li>Built-in formatter like Go</li>
+</ul>
+<hr />
+<p>You can press the &quot;→&quot; key to go to the next page.</p>
+
+            <footer id="footer-paginator">
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="installation.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html" class="active"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Commands - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Commands - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/commands.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html" class="active"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+<p>The command <code>neut</code> has subcommands like <code>neut build</code>, <code>neut get</code>, etc. This section describes those subcommands.</p>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#common-notes">Common Notes</a></li>
+<li><a href="#neut-build">neut build</a></li>
+<li><a href="#neut-check">neut check</a></li>
+<li><a href="#neut-clean">neut clean</a></li>
+<li><a href="#neut-archive">neut archive</a></li>
+<li><a href="#neut-create">neut create</a></li>
+<li><a href="#neut-get">neut get</a></li>
+<li><a href="#neut-format-source">neut format-source</a></li>
+<li><a href="#neut-format-ens">neut format-ens</a></li>
+<li><a href="#neut-zen">neut zen</a></li>
+<li><a href="#neut-lsp">neut lsp</a></li>
+<li><a href="#neut-version">neut version</a></li>
+</ul>
+<h2 id="common-notes"><a class="header" href="#common-notes">Common Notes</a></h2>
+<h3 id="subcommands-and-modules"><a class="header" href="#subcommands-and-modules">Subcommands and Modules</a></h3>
+<p>Most of the subcommands of <code>neut</code> must be executed inside a module. If you execute such a subcommand outside a module, the command will emit an error like the one below:</p>
+<pre><code class="language-sh">neut build foo
+#=&gt; Error: Couldn't find a module file (Context: /Users/foo/Desktop)
+</code></pre>
+<p>Only the following subcommands can be used outside a module:</p>
+<ul>
+<li><code>neut create</code></li>
+<li><code>neut version</code></li>
+</ul>
+<h3 id="shared-command-line-options"><a class="header" href="#shared-command-line-options">Shared command line options:</a></h3>
+<p>Some subcommands share command line options. The list of them is as follows:</p>
+<ul>
+<li><code>--no-color</code> can be used to turn off ANSI colors</li>
+</ul>
+<h2 id="neut-build"><a class="header" href="#neut-build"><code>neut build</code></a></h2>
+<p><code>neut build</code> builds the current module and creates executables. It also creates cache files of the source files for faster compilation.</p>
+<p><code>neut build TARGET</code> builds the target <code>TARGET</code> defined in <code>module.ens</code>. For example, suppose that the <code>module.ens</code> of a module contains the following section:</p>
+<pre><code class="language-ens">{
+  // ..
+  target {
+    foo {
+      main &quot;foo.nt&quot;,
+    },
+    bar {
+      main &quot;item/bar.nt&quot;,
+    },
+  },
+  // ..
+}
+</code></pre>
+<p>In this case, running <code>neut build foo</code> creates the executable <code>foo</code> by building the current module, using the <code>main</code> in <code>foo.nt</code> as the entry point.</p>
+<p>The resulting binaries are put inside the module's build directory. You might want to use the option <code>--install</code> to copy those binaries.</p>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<pre><code class="language-sh"># creates a sample project
+neut create hello
+cd hello
+
+# build and run
+neut build hello --execute # =&gt; &quot;Hello, world!&quot;
+
+# build the module, copy the resulting binary, and execute the binary
+neut build hello --install ./bin
+./bin/hello #=&gt; &quot;Hello, world!&quot;
+</code></pre>
+<h3 id="--execute"><a class="header" href="#--execute"><code>--execute</code></a></h3>
+<p>If you pass <code>--execute</code> to <code>neut build</code>, the resulting binaries are executed after the build.</p>
+<h3 id="--install-dir"><a class="header" href="#--install-dir"><code>--install DIR</code></a></h3>
+<p>If you pass <code>--install DIR</code> to <code>neut build</code>, the resulting binaries are copied to the specified directory.</p>
+<h3 id="--skip-link"><a class="header" href="#--skip-link"><code>--skip-link</code></a></h3>
+<p>By default, <code>neut build</code> builds all the source files into object files and then links them all to create an executable. You can pass <code>--skip-link</code> to <code>neut build</code> to skip the last linking phase.</p>
+<h3 id="--emit"><a class="header" href="#--emit"><code>--emit</code></a></h3>
+<p>You can emit LLVM IR by passing <code>--emit llvm</code> to <code>neut build</code>. In this case, you must also pass <code>--skip-link</code>.</p>
+<h3 id="--mode"><a class="header" href="#--mode"><code>--mode</code></a></h3>
+<p>You can pass <code>--mode {develop,release}</code> like the below:</p>
+<pre><code class="language-sh">neut build my-app --mode release
+</code></pre>
+<p>If you don't specify <code>--mode</code>, the mode defaults to <code>develop</code>.</p>
+<p>The value passed here can be obtained from source files by using <code>introspect</code>:</p>
+<pre><code class="language-neut">define foo(): unit {
+  introspect build-mode {
+  | release =&gt;
+    // ..
+  | develop =&gt;
+    // ..
+  }
+}
+</code></pre>
+<h2 id="neut-check"><a class="header" href="#neut-check"><code>neut check</code></a></h2>
+<p><code>neut check</code> type-checks all the files in the current module. It also creates cache files of the source files for faster compilation.</p>
+<h2 id="neut-clean"><a class="header" href="#neut-clean"><code>neut clean</code></a></h2>
+<p><code>neut clean</code> removes the cache files in the current module's <code>cache</code> directory.</p>
+<p>More specifically, this command removes the following directory in the current module:</p>
+<pre><code class="language-text">(cache-directory)/build/(platform)/(compiler-version)/
+</code></pre>
+<p>An example of a removed directory:</p>
+<pre><code class="language-text">cache/build/arm64-darwin/compiler-0.8.0/
+</code></pre>
+<h2 id="neut-archive"><a class="header" href="#neut-archive"><code>neut archive</code></a></h2>
+<p><code>neut archive VERSION</code> creates a module tarball that can be used by <code>neut get</code>.</p>
+<h3 id="notes-on-versions"><a class="header" href="#notes-on-versions">Notes on Versions</a></h3>
+<p><code>VERSION</code> must be <code>X1-X2-..-Xn</code>, where all the integers are non-negative. For example, the following are valid versions:</p>
+<ul>
+<li><code>1-0</code></li>
+<li><code>0-1-0</code></li>
+<li><code>2-1-3</code></li>
+<li><code>0-0-0-3</code></li>
+</ul>
+<p>When running <code>neut archive VERSION</code>, this command searches the archive directory to get all the compatible older versions. For example, suppose the archive directory contains the following files:</p>
+<ul>
+<li><code>1-0.tar.zst</code></li>
+<li><code>1-1.tar.zst</code></li>
+<li><code>2-0.tar.zst</code></li>
+<li><code>2-1.tar.zst</code></li>
+</ul>
+<p>In this case, the command <code>neut archive 2-2</code> searches the <code>archive</code> directory and gets <code>2-0</code> and <code>2-1</code> as the older compatible versions of <code>2-2</code>. Here, these &quot;older&quot; versions are determined according to <a href="https://semver.org/">Semantic Versioning</a>.</p>
+<p>This command then does the following:</p>
+<ol>
+<li>Computes all the digests of these older compatible tarballs</li>
+<li>Creates a new <code>module.ens</code> that contains the list of the older digests</li>
+<li>Packs the ens file and the other required files to create a tarball <code>2-2.tar.zst</code></li>
+</ol>
+<p>This digest information inside <code>module.ens</code> of <code>2-2.tar.zst</code> should appear like the below:</p>
+<pre><code class="language-ens">{
+  target {..},
+  dependency {..},
+  antecedent [
+    &quot;Bp8RulJ-XGTL9Eovre0yQupJpeS3lGNk8Q6QQYua7ag&quot;, // ← digest of 2-0.tar.zst
+    &quot;zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA&quot;, // ← digest of 2-1.tar.zst
+  ],
+}
+</code></pre>
+<p>This information is then used when resolving dependencies.</p>
+<p>You can extract a resulting tarball to see that <code>antecedent</code> information is indeed there.</p>
+<div class="info-block">
+<p>The <code>module.ens</code> in your module isn't modified by <code>archive</code>. This subcommand creates a new <code>module.ens</code> and puts it into the tarball.</p>
+</div>
+<h3 id="using-the-newest-compatible-version"><a class="header" href="#using-the-newest-compatible-version">Using the Newest Compatible Version</a></h3>
+<p>Consider the following dependency relation:</p>
+<ul>
+<li>Module <code>A</code> depends on <code>B</code> and <code>C</code>.</li>
+<li>Module <code>B</code> depends on <code>D (version 1.1)</code>.</li>
+<li>Module <code>C</code> depends on <code>D (version 1.2)</code>.</li>
+</ul>
+<pre><code class="language-text">A ──&gt; B ──&gt; D (1.1)
+│
+└───&gt; C ──&gt; D (1.2)
+</code></pre>
+<p>Thanks to the <code>antecedent</code> information inside <code>D (1.2)</code>, the compiler can detect that <code>D (1.2)</code> is a newer compatible module of <code>D (1.1)</code>. The compiler utilizes this knowledge to rewrite the above relation into:</p>
+<pre><code class="language-text">A ──&gt; B ──┐
+│         │
+└───&gt; C ──┴──&gt; D (1.2)
+</code></pre>
+<p>The compiler always uses the newest compatible modules in the dependency relation by this procedure.</p>
+<div class="info-block">
+<p>This rewriting won't work if the minor &quot;compatible&quot; version <code>D (1.2)</code> isn't compatible with <code>D (1.1)</code>. This incompatibility is a bug of the library <code>D (1.2)</code> and should be fixed by the module author.</p>
+</div>
+<h3 id="utilizing-the-compatibility-relation"><a class="header" href="#utilizing-the-compatibility-relation">Utilizing the Compatibility Relation</a></h3>
+<p>As an exercise, suppose the following:</p>
+<ol>
+<li>Serious bugs were discovered in <code>D (1.1)</code> and <code>D (1.2)</code></li>
+<li>The grave-look author of <code>D</code> released a bug-fix release <code>D (1.3)</code> in a hurry</li>
+<li>The happy authors of <code>B</code> and <code>C</code> are on a honeymoon vacation in Hawaii</li>
+</ol>
+<p>In this case, we don't have to wait for the authors of <code>B</code> and <code>C</code> to update their dependencies. Instead, we can just add <code>D (1.3)</code> to our module's dependency:</p>
+<pre><code class="language-text">A ──&gt; B ──┐
+│         │
+├───&gt; C ──┴──&gt; D (1.2)
+│
+└────────────&gt; D (1.3)
+</code></pre>
+<p>Then, the compiler automatically rewrites the above relation into:</p>
+<pre><code class="language-text">A ──&gt; B ───┐
+│          │
+├───&gt; C ───┤
+│          │
+└──────────┴──&gt; D (1.3)
+</code></pre>
+<p>So we don't have to rain on their happy parade in Waikiki Beach.</p>
+<h2 id="neut-create"><a class="header" href="#neut-create"><code>neut create</code></a></h2>
+<p><code>neut create NAME</code> creates a directory <code>./NAME/</code> and adds files there to start a new project.</p>
+<h2 id="neut-get"><a class="header" href="#neut-get"><code>neut get</code></a></h2>
+<p><code>neut get ALIAS URL</code> fetches and builds external modules specified by <code>URL</code> and adds it to the current module as a dependency under the name <code>ALIAS</code>.</p>
+<pre><code class="language-sh">neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst
+</code></pre>
+<p>Here, the <code>URL</code> must be the URL of an archive that was created by <code>neut archive</code>.</p>
+<p>After executing <code>neut get</code>, the information of the new module is saved to <code>module.ens</code>:</p>
+<pre><code class="language-ens">{
+  target {
+    // ..
+  },
+  dependency {
+    // ..
+    // 🌟 (something like this is added automatically)
+    some-name {
+      digest &quot;xNmQu6It81lGBy1sKvk5_jE4Qt8w8KgkVgGj0RBbbrk&quot;,
+      mirror [
+        &quot;https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst&quot;,
+      ],
+    },
+    // ..
+  },
+}
+</code></pre>
+<p>The <code>digest</code> is the base64url-encoded checksum of the tarball.</p>
+<p>The <code>mirror</code> is a list of URLs that can be used to obtain the tarball.</p>
+<div class="info-block">
+<p>Modules in Neut are distinguished by their digests (checksums).</p>
+</div>
+<p><code>neut get</code> can be used to &quot;update&quot; dependencies. Suppose you specify an existing <code>ALIAS</code> when running <code>neut get ALIAS URL</code>. In this case, if the digest of the new tarball isn't the same as the existing one, the existing dependency in the ens file is replaced by the newer one. If the digest is the same as the existing one, the <code>URL</code> is added to the list <code>mirror</code>.</p>
+<p>You can remove a dependency in the ens file to &quot;remove&quot; the module from your module.</p>
+<p>You can import dependencies from source files. See the notes on <code>import</code> in <a href="./statements.html#import">Statements</a> for information on how to use definitions in external dependencies.</p>
+<h2 id="neut-format-source"><a class="header" href="#neut-format-source"><code>neut format-source</code></a></h2>
+<p><code>neut format-source path/to/source/file.nt</code> formats the specified source file and outputs the result to stdout.</p>
+<h3 id="--in-place"><a class="header" href="#--in-place"><code>--in-place</code></a></h3>
+<p>When the option <code>--in-place</code> is set, <code>format-source</code> performs in-place update.</p>
+<h3 id="--minimize-imports"><a class="header" href="#--minimize-imports"><code>--minimize-imports</code></a></h3>
+<p>When the option <code>--minimize-imports</code> is set, <code>format-source</code> removes all the unused items in <code>import {..}</code>.</p>
+<h2 id="neut-format-ens"><a class="header" href="#neut-format-ens"><code>neut format-ens</code></a></h2>
+<p><code>neut format-ens path/to/source/file.ens</code> formats the specified ens file and outputs the result to stdout.</p>
+<h3 id="--in-place-1"><a class="header" href="#--in-place-1"><code>--in-place</code></a></h3>
+<p>When the option <code>--in-place</code> is set, <code>format-ens</code> performs in-place update.</p>
+<h2 id="neut-zen"><a class="header" href="#neut-zen"><code>neut zen</code></a></h2>
+<p><code>neut zen path/to/source/file.nt</code> builds and executes specified file as if it were an entry point.</p>
+<p>The subcommand <code>zen</code> treats the function <code>zen</code> inside the given file as its entry point (that is, <code>main</code>).</p>
+<p>Thus, the type of the function <code>zen</code> must be <code>() -&gt; unit</code>:</p>
+<pre><code class="language-neut">define zen(): unit {
+  print(&quot;hello, world!\n&quot;);
+}
+</code></pre>
+<p>This command is intended to be used for rapid prototyping.</p>
+<p>Please see <a href="./rapid-prototyping.html">Rapid Prototyping</a> to see <code>neut zen</code> in action.</p>
+<h3 id="zen-experience"><a class="header" href="#zen-experience">Zen Experience</a></h3>
+<p>Suppose that you created a new function deep inside your module.</p>
+<p>You can technically create a test function for the function and check its behavior. Or modify the main function to call the new function just to see its behavior.</p>
+<p>It might be, however, a bit cumbersome. We'd love to achieve rapid try-and-error cycles in certain circumstances.</p>
+<p>You can use the command <code>zen</code> here. Suppose that a file <code>some-file.nt</code> contains a function <code>foo</code> that is defined as in the below:</p>
+<pre><code class="language-neut">define foo(x: int): int {
+  do-complex-calculation(x)
+}
+</code></pre>
+<p>The behavior of <code>foo</code> can be inspected rapidly by defining a function named <code>zen</code> in the file:</p>
+<pre><code class="language-neut">define zen(): unit {
+  print-int(foo(10));
+}
+</code></pre>
+<p>Then, execute the following command:</p>
+<pre><code class="language-sh">neut zen path/to/some-file.nt # =&gt; (the result of `foo(10)` is printed)
+</code></pre>
+<p>This can be done even if <code>some-file.nt</code> isn't an entrypoint of the module. You can think of functions named <code>zen</code> as alternative <code>main</code>s.</p>
+<h2 id="neut-lsp"><a class="header" href="#neut-lsp"><code>neut lsp</code></a></h2>
+<p><code>neut lsp</code> starts the LSP server. The LSP server has features like linting, jump to definition, etc. More specifically, the LSP server supports the following LSP capabilities:</p>
+<ul>
+<li><code>textDocument/didOpen</code> (lint on open)</li>
+<li><code>textDocument/didSave</code> (lint on save)</li>
+<li><code>textDocument/completion</code> (complete)</li>
+<li><code>textDocument/definition</code> (jump to definition)</li>
+<li><code>textDocument/documentHighlight</code> (highlight symbols)</li>
+<li><code>textDocument/references</code> (find references)</li>
+<li><code>textDocument/formatting</code> (format)</li>
+<li><code>textDocument/hover</code> (show the type of a symbol)</li>
+</ul>
+<p>For more information, please see <a href="./lovely-lsp-showcase.html">Lovely LSP Showcase</a> and <a href="./editor-setup.html">Editor Setup</a>.</p>
+<h2 id="neut-version"><a class="header" href="#neut-version"><code>neut version</code></a></h2>
+<p><code>neut version</code> prints the version of the compiler.</p>
+<h3 id="example-1"><a class="header" href="#example-1">Example</a></h3>
+<pre><code class="language-sh">neut version
+#=&gt; X.Y.Z
+</code></pre>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="language-reference.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="modules.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html" class="active"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>
