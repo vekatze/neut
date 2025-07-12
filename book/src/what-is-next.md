@@ -13,7 +13,6 @@ You can improve this book, this language, or this world by:
 
 I've been enjoying this language by myself and have written several libraries:
 
-- [ansi-terminal](https://github.com/vekatze/ansi-terminal) - A thin layer over ANSI escape sequences
 - [argot](https://github.com/vekatze/argot) - An option parser
 - [ars-postgres](https://github.com/vekatze/ars-postgres) - A PostgreSQL client over libpq
 - [binary-builder](https://github.com/vekatze/binary-builder) - Constructs binary data efficiently
