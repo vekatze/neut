@@ -6,7 +6,7 @@ import {
   sero.instance.int8 {int8-sero},
   sero.put-kit {put-kit},
   sero.sero {Sero, sero},
-  this.logger.rule.log-level {Critical, Error, Note, Warning, log-level},
+  this.logger.log-level {Critical, Error, Note, Warning, log-level},
 }
 
 define _put(k: &put-kit, v: &log-level): unit {

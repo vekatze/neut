@@ -1,7 +1,7 @@
 import {
   core.int.show {show-int},
   core.text {format},
-  this.color.rule.color-kit {color-kit},
+  this.color.color-kit {color-kit},
   time.time {Time, _format-nanoseconds, time},
 }
 

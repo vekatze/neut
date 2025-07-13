@@ -6,10 +6,10 @@ import {
   sero.instance.text {text-sero},
   sero.put-kit {put-kit},
   sero.sero {Sero, sero},
-  this.logger.move.sero.hint {hint-sero},
-  this.logger.move.sero.log-level {log-level-sero},
-  this.logger.rule.log {Log, log},
-  this.logger.rule.log-level {Note},
+  this.logger.log {Log, log},
+  this.logger.log-level {Note},
+  this.logger.sero.hint {hint-sero},
+  this.logger.sero.log-level {log-level-sero},
 }
 
 inline _unit-sero: sero(unit) {

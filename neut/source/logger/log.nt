@@ -1,9 +1,9 @@
 import {
   core.ansi {Bold},
   core.list {for-each-N},
-  this.color.rule.text {Empty, color-text, join, packed, packed'},
-  this.logger.rule.hint {hint, show-file-pos},
-  this.logger.rule.log-level {_log-level-to-pad, _log-level-to-text, _log-level-to-tone, log-level},
+  this.color.text {Empty, color-text, join, packed, packed'},
+  this.logger.hint {hint, show-file-pos},
+  this.logger.log-level {_log-level-to-pad, _log-level-to-text, _log-level-to-tone, log-level},
 }
 
 data log {

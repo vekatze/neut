@@ -1,6 +1,6 @@
 import {
-  this.color.rule.color-kit {color-kit},
-  this.logger.rule.logger-kit {_Logger-Kit, logger-kit},
+  this.color.color-kit {color-kit},
+  this.logger.logger-kit {_Logger-Kit, logger-kit},
   time.time {get-time},
 }
 

@@ -2,9 +2,9 @@ import {
   core.ansi {Blue, Bold, Color, Color-16, Foreground, Vivid},
   core.file.descriptor {descriptor, stderr, stdout},
   core.text {_get-content-pointer, text-byte-length},
-  this.color.move.make-color-kit {make-color-kit},
-  this.color.rule.color-kit {_Color-Kit, color-kit},
-  this.color.rule.text {_unpacked, _unpacked-uncolored, color-text, packed},
+  this.color.color-kit {_Color-Kit, color-kit},
+  this.color.make-color-kit {make-color-kit},
+  this.color.text {_unpacked, _unpacked-uncolored, color-text, packed},
 }
 
 foreign {

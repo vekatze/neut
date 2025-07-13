@@ -1,7 +1,7 @@
 import {
   core.bool.show {show-bool},
   core.file.descriptor {descriptor, stderr, stdin, stdout},
-  this.color.rule.color-kit {_Color-Kit, color-kit},
+  this.color.color-kit {_Color-Kit, color-kit},
 }
 
 foreign {
