@@ -1,50 +1,60 @@
 import {
-  ansi.color {Blue, Red},
-  ansi.style {Bold, Italic, Normal},
-  text-builder.move.append {append-text},
-  text-builder.move.extract {extract},
-  text-builder.move.make-builder {make-builder},
-  this.color.rule.tone {Background, Foreground, Style, _append-tone, _append-tones, tone},
+  core.ansi {
+    Background,
+    Blue,
+    Bold,
+    Color,
+    Color-16,
+    Foreground,
+    Italic,
+    Normal,
+    Red,
+    Set-Style,
+    Vivid,
+    style,
+  },
+  core.list {for-N},
+  core.text-builder {append-ansi, append-text, extract, make-text-builder},
 }
 
 data color-text {
 | Empty
-| Join(list(tone), text, color-text)
+| Join(list(style), text, color-text)
 }
 
-define packed(ts: list(tone), t: text): color-text {
+define packed(ts: list(style), t: text): color-text {
   Join(ts, t, Empty)
 }
 
 define packed'(t: text): color-text {
-  Join([], t, Empty)
+  Join(Nil, t, Empty)
 }
 
 define _unpacked(t: &color-text): text {
-  let b = make-builder(64) in
-  pin reset = Style(Normal) in
-  let _ on b =
+  let b = make-text-builder(64);
+  let _ on b = {
     let f =
       define loop(t: &color-text): unit {
         case t {
         | Empty =>
           Unit
         | Join(ts, t, rest) =>
-          _append-tones(b, ts);
+          for-N(ts, function (t) {
+            append-ansi(b, Set-Style(*t));
+          });
           append-text(b, t);
-          _append-tone(b, reset);
+          append-ansi(b, Set-Style(Normal));
           loop(rest)
         }
-      }
-    in
+      };
     f(t)
-  in
+  };
   extract(b)
 }
 
 define _unpacked-uncolored(t: &color-text): text {
-  let b = make-builder(256) in
-  let _ on b =
+  let b = make-text-builder(256);
+  let _ on b = {
     let f =
       define loop(t: &color-text): unit {
         case t {
@@ -54,10 +64,9 @@ define _unpacked-uncolored(t: &color-text): text {
           append-text(b, t);
           loop(rest)
         }
-      }
-    in
+      };
     f(t)
-  in
+  };
   extract(b)
 }
 
@@ -73,15 +82,14 @@ define join(t1: color-text, t2: color-text): color-text {
 define zen(): unit {
   pin t =
     Join(
-      [Foreground(Blue), Style(Bold)],
+      List[Color(Foreground, Color-16(Vivid, Blue)), Bold],
       *"hello",
-      Join([], *"\n", Empty),
-    )
-  in
-  pin fragment1 = _unpacked(t) in
-  pin fragment2 = _unpacked-uncolored(t) in
-  pin t' = packed([Background(Red), Style(Italic)], *"sample\n") in
-  pin fragment3 = _unpacked(t') in
+      Join(List[], *"\n", Empty),
+    );
+  pin fragment1 = _unpacked(t);
+  pin fragment2 = _unpacked-uncolored(t);
+  pin t' = packed(List[Color(Background, Color-16(Vivid, Red)), Italic], *"sample\n");
+  pin fragment3 = _unpacked(t');
   print(fragment1);
   print(fragment2);
   print(fragment3);

@@ -14,6 +14,6 @@ data logger-kit {
 }
 
 define _show-time(m: time): text {
-  let Time of {seconds = s, nanoseconds = ns} = m in
-  format("{}{}", [show-int(s), _format-nanoseconds(ns, 6)])
+  let Time of {seconds := s, nanoseconds := ns} = m;
+  format("{}{}", List[show-int(s), _format-nanoseconds(ns, 6)])
 }

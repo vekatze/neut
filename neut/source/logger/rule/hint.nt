@@ -22,7 +22,7 @@ define new-hint(line: int, column: int, file-path: &text): hint {
     file-path,
     line,
     column,
-    should-save-location = True,
+    should-save-location := True,
   }
 }
 
@@ -33,24 +33,24 @@ define blur(m: hint): hint {
       file-path,
       line,
       column,
-      should-save-location = False,
+      should-save-location := False,
     }
   | Saved-Hint of {file-path, line, column} =>
     Saved-Hint of {
       file-path,
       line,
       column,
-      should-save-location = False,
+      should-save-location := False,
     }
   }
 }
 
 inline internal-hint: hint {
   Hint of {
-    file-path = "",
-    line = 1,
-    column = 1,
-    should-save-location = False,
+    file-path := "",
+    line := 1,
+    column := 1,
+    should-save-location := False,
   }
 }
 
@@ -61,17 +61,20 @@ define new-source-hint(file-path: &text): hint {
 define show-file-pos(m: &hint): text {
   case m {
   | Hint of {file-path, line, column} =>
-    pin line-text = show-int(*line) in
-    pin column-text = show-int(*column) in
-    core.text.join-N([*file-path, ":", line-text, ":", column-text])
+    pin line-text = show-int(*line);
+    pin column-text = show-int(*column);
+    pin xs = List[**file-path, *":", *line-text, *":", *column-text];
+    core.text.join-N(xs)
   | Saved-Hint of {file-path, line, column} =>
-    pin line-text = show-int(*line) in
-    pin column-text = show-int(*column) in
-    core.text.join-N([file-path, ":", line-text, ":", column-text])
+    pin line-text = show-int(*line);
+    pin column-text = show-int(*column);
+    pin xs = List[*file-path, *":", *line-text, *":", *column-text];
+    core.text.join-N(xs)
   }
 }
 
 define zen(): unit {
-  pin m = new-hint(12, 3456, "/Users/foo/path/to/file.nt") in
-  printf("{}\n", [show-file-pos(m)])
+  pin m = new-hint(12, 3456, "/Users/foo/path/to/file.nt");
+  vet(m)
+  // printf("{}\n", List[show-file-pos(m)])
 }

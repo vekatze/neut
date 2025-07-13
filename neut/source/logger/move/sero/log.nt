@@ -1,11 +1,11 @@
 import {
-  sero.move.decode {decode},
-  sero.move.encode {encode},
-  sero.move.instance.either {either-sero},
-  sero.move.instance.text {text-sero},
-  sero.rule.get-kit {get-kit},
-  sero.rule.put-kit {put-kit},
-  sero.rule.sero {Sero, sero},
+  sero.decode {decode},
+  sero.encode {encode},
+  sero.get-kit {get-kit},
+  sero.instance.either {either-sero},
+  sero.instance.text {text-sero},
+  sero.put-kit {put-kit},
+  sero.sero {Sero, sero},
   this.logger.move.sero.hint {hint-sero},
   this.logger.move.sero.log-level {log-level-sero},
   this.logger.rule.log {Log, log},
@@ -14,12 +14,12 @@ import {
 
 inline _unit-sero: sero(unit) {
   Sero of {
-    put = {
+    put := {
       function (_, _) {
         Unit
       }
     },
-    get = {
+    get := {
       function (_) {
         Right(quote {Unit})
       }
@@ -28,46 +28,46 @@ inline _unit-sero: sero(unit) {
 }
 
 define _put(k: &put-kit, v: &log): unit {
-  let Sero of {put = !put-option-hint} = either-sero(_unit-sero, hint-sero) in
-  let Sero of {put = !put-log-level} = log-level-sero in
-  let Sero of {put = !put-text} = text-sero in
-  tie Log of {position, level, content} = v in
+  let Sero of {put := !put-option-hint} = either-sero(_unit-sero, hint-sero);
+  let Sero of {put := !put-log-level} = log-level-sero;
+  let Sero of {put := !put-text} = text-sero;
+  tie Log of {position, level, content} = v;
   !put-option-hint(k, position);
   !put-log-level(k, level);
   !put-text(k, content)
 }
 
 define _get(k: &get-kit): ?meta log {
-  let Sero of {get = !get-option-hint} = either-sero(_unit-sero, hint-sero) in
-  let Sero of {get = !get-log-level} = log-level-sero in
-  let Sero of {get = !get-text} = text-sero in
-  try position = !get-option-hint(k) in
-  try level = !get-log-level(k) in
-  try content = !get-text(k) in
+  let Sero of {get := !get-option-hint} = either-sero(_unit-sero, hint-sero);
+  let Sero of {get := !get-log-level} = log-level-sero;
+  let Sero of {get := !get-text} = text-sero;
+  try position = !get-option-hint(k);
+  try level = !get-log-level(k);
+  try content = !get-text(k);
   Right(box {
-    letbox position = position in
-    letbox level = level in
-    letbox content = content in
+    letbox position = position;
+    letbox level = level;
+    letbox content = content;
     Log of {position, level, content}
   })
 }
 
 inline log-sero: sero(log) {
   Sero of {
-    put = _put,
-    get = _get,
+    put := _put,
+    get := _get,
   }
 }
 
 define zen(): unit {
-  pin val = Log of {position = none, level = Note, content = *"some text"} in
-  let foo = decode(log-sero, encode(log-sero, val, 8)) in
+  pin val = Log of {position := none, level := Note, content := *"some text"};
+  let foo = decode(log-sero, encode(log-sero, val, 8));
   match foo {
   | Left(_) =>
     print("error\n")
   | Right(l) =>
     print("right\n");
-    let Log of {content} = l in
-    printf("{}\n", [content])
+    pin l = l;
+    vet(l)
   }
 }

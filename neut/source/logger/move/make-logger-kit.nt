@@ -5,6 +5,6 @@ import {
 }
 
 define make-logger-kit(color-kit: color-kit, enable-debug-mode: bool): logger-kit {
-  let base-time = get-time() in
+  let base-time = get-time();
   _Logger-Kit of {color-kit, enable-debug-mode, base-time}
 }
