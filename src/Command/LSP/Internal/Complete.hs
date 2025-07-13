@@ -218,17 +218,17 @@ interpretCand :: Maybe RawImportSummary -> Cand -> Maybe [TextEdit]
 interpretCand importSummaryOrNone cand =
   case importSummaryOrNone of
     Nothing -> do
-      let edit = inImportBlock $ constructEditText cand <> "\n"
-      let pos = Position {_line = 0, _character = 0}
-      Just [TextEdit {_range = Range {_start = pos, _end = pos}, _newText = edit}]
-    Just (summary, loc) -> do
+      Just $ interpretCand' cand
+    Just (summary, _) -> do
       if isAlreadyImported summary cand
         then Nothing
-        else do
-          let prefix = if null summary then "\n" else ""
-          let edit = prefix <> constructEditText cand <> "\n"
-          let pos = locToPosition loc
-          Just [TextEdit {_range = Range {_start = pos, _end = pos}, _newText = edit}]
+        else Just $ interpretCand' cand
+
+interpretCand' :: Cand -> [TextEdit]
+interpretCand' cand = do
+  let edit = inImportBlock $ constructEditText cand <> "\n"
+  let pos = Position {_line = 0, _character = 0}
+  [TextEdit {_range = Range {_start = pos, _end = pos}, _newText = edit}]
 
 reifyCand :: Cand -> T.Text
 reifyCand cand =
@@ -291,10 +291,6 @@ toCompletionItem x =
 positionToLoc :: Position -> Loc
 positionToLoc Position {_line, _character} =
   (fromIntegral $ _line + 1, fromIntegral $ _character + 1)
-
-locToPosition :: Loc -> Position
-locToPosition (line, character) =
-  Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ character - 1}
 
 getAllTopCandidate :: Handle -> Module -> EIO ([(Source, [TopCandidate])], FastPresetSummary)
 getAllTopCandidate h baseModule = do
