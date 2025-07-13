@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Primitives - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Primitives - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/primitives.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html" class="active"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="primitives"><a class="header" href="#primitives">Primitives</a></h1>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<ul>
+<li><a href="#primitive-types-and-functions">Primitive Types and Functions</a></li>
+<li><a href="#core-types-and-functions">Core Types and Functions</a></li>
+</ul>
+<h2 id="primitive-types-and-functions"><a class="header" href="#primitive-types-and-functions">Primitive Types and Functions</a></h2>
+<h3 id="primitive-types"><a class="header" href="#primitive-types">Primitive Types</a></h3>
+<p>Neut supports integers and floats. More specifically, the following types are supported:</p>
+<ul>
+<li>integer types: <code>int1, int2, int4, int8, int16, int32, int64</code></li>
+<li>float types: <code>float16, float32, float64</code></li>
+</ul>
+<p>You can also use <code>int</code> and <code>float</code>. These are just syntactic sugar for <code>int64</code> and <code>float64</code>, respectively.</p>
+<h3 id="primitive-functions"><a class="header" href="#primitive-functions">Primitive Functions</a></h3>
+<p>These primitive types have a lot of primitive functions from LLVM:</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>integers</th><th>floats</th></tr></thead><tbody>
+<tr><td>arithmetics</td><td>add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr</td><td>neg, add, sub, mul, div, rem</td></tr>
+<tr><td>comparison</td><td>eq, ne, gt, ge, lt, le, ugt, uge, ult, ule</td><td>eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true</td></tr>
+</tbody></table>
+</div>
+<p>For example, <code>add-int32</code>, <code>neg-float64</code>, <code>eq-int64</code>, and <code>gt-float32</code> are available.</p>
+<p>Neut uses LLVM's integer types and float types for its primitive types. Thus, the primitive integer types in Neut are signless. More specifically, the signedness of an integer type in Neut resides in functions, not values.</p>
+<p>For example, <code>div-int64</code> interprets its two arguments as signed integers and returns its (signed) result. <code>udiv-int64</code> interprets its two arguments as unsigned integers and returns its (unsigned) result. Integer functions prefixed with <code>u</code> are for unsigned functions.</p>
+<p>The internal representation of the integer types in Neut is the same as that of LLVM. Therefore, they are based on the two's complement representation. That is why Neut doesn't have something like <code>uadd-int64</code>. The <code>u</code>-prefixed integer functions are there only when we need different behaviors for different signednesses.</p>
+<p>The following conversion functions are also available: <code>trunc</code>, <code>zext</code>, <code>sext</code>, <code>fptrunc</code>, <code>fpext</code>, <code>fptoui</code>, <code>fptosi</code>, <code>uitofp</code>, and <code>sitofp</code>.</p>
+<p>For example, <code>trunc-int64-int32</code>, <code>zext-int8-int32</code>, <code>fptoui-float32-int64</code>, and <code>uitofp-int64-float64</code> are available.</p>
+<p>For their detailed behaviors, please refer to <a href="https://llvm.org/docs/LangRef.html">the LLVM language reference</a>.</p>
+<div class="info-block">
+<p>Primitive functions for <code>int</code> and <code>float</code> are also available. For example, you can use <code>div-int</code>, <code>eq-int</code>, <code>add-float</code>, etc.</p>
+</div>
+<h2 id="core-types-and-functions"><a class="header" href="#core-types-and-functions">Core Types and Functions</a></h2>
+<p>The <a href="./modules.html#preset">preset</a> of the core library (something like Prelude in other languages) is imported automatically and provides some types and functions. These types and functions can also be used as primitives. Things like the below are defined in the library:</p>
+<pre><code class="language-neut">data null {}
+
+data unit {
+| Unit
+}
+
+data bool {
+| False
+| True
+}
+
+data list(a) {
+| Nil
+| Cons(a, list(a))
+}
+
+// you can also write `?a` instead of `either(unit, a)`
+data either(a, b) {
+| Left(a)
+| Right(b)
+}
+
+data pair(a, b) {
+| Pair(left: a, right: b)
+}
+</code></pre>
+<p>Functions for those types are also defined in the library. For more, please see <a href="https://github.com/vekatze/neut-core/tree/main/source">the source of the core library</a>.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="terms.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="basis.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html" class="active"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

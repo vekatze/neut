@@ -1,0 +1,46 @@
+name: Tests on macOS
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'test/**'
+              - 'build/**'
+              - 'stack.yaml*'
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: extractions/setup-just@v1
+      - uses: haskell-actions/setup@v2
+        with:
+          enable-stack: true
+          stack-no-global: true
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.stack
+            .stack-work
+          key: ${{ runner.os }}-stack-${{ hashFiles('**/stack.yaml', '**/build/package.template.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-stack-
+      - uses: tecolicom/actions-use-homebrew-tools@v1
+        with:
+          tools: llvm
+      - run: just build-compiler-arm64-darwin
+      - run: just test-arm64-darwin
