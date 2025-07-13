@@ -1,14 +1,13 @@
 import {
   core.ansi {Black, Color, Color-16, Foreground, Vivid},
   core.list {fold-right-N},
-  this.color.make-color-kit {make-color-kit},
+  this.color.color-kit {make-color-kit},
   this.color.print {print-stderr, print-stdout},
   this.color.text {join, packed, packed'},
   this.logger.hint {new-hint},
   this.logger.log {Log, _show-content, _show-level, _show-position, log},
   this.logger.log-level {Note, Warning, log-level},
-  this.logger.logger-kit {_Logger-Kit, _show-time, logger-kit},
-  this.logger.make-logger-kit {make-logger-kit},
+  this.logger.logger-kit {_Logger-Kit, _show-time, logger-kit, make-logger-kit},
   time.time {get-time, sub-time},
 }
 
