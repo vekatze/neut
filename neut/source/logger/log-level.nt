@@ -1,0 +1,41 @@
+import {
+  core.ansi {Blue, Bold, Color, Color-16, Foreground, Magenta, Red, Vivid, style},
+}
+
+data log-level {
+| Note
+| Warning
+| Error
+| Critical
+}
+
+define _log-level-to-text(l: log-level): &text {
+  match l {
+  | Note =>
+    "Note"
+  | Warning =>
+    "Warning"
+  | Error =>
+    "Error"
+  | Critical =>
+    "Critical"
+  }
+}
+
+define _log-level-to-tone(l: log-level): list(style) {
+  match l {
+  | Note =>
+    List[Bold, Color(Foreground, Color-16(Vivid, Blue))]
+  | Warning =>
+    List[Bold, Color(Foreground, Color-16(Vivid, Magenta))]
+  | Error =>
+    List[Bold, Color(Foreground, Color-16(Vivid, Red))]
+  | Critical =>
+    List[Bold, Color(Foreground, Color-16(Vivid, Red))]
+  }
+}
+
+define _log-level-to-pad(l: log-level): text {
+  let len = core.text.length(_log-level-to-text(l));
+  core.text.replicate(" ", add-int(len, 2))
+}

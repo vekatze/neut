@@ -1,6 +1,0 @@
-data color-kit {
-| _Color-Kit(
-    colorize-stdout: bool,
-    colorize-stderr: bool,
-  )
-}

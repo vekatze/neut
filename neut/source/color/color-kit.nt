@@ -1,0 +1,33 @@
+import {
+  core.bool.show {show-bool},
+  core.file.descriptor {descriptor, stderr, stdin, stdout},
+}
+
+data color-kit {
+| _Color-Kit(
+    colorize-stdout: bool,
+    colorize-stderr: bool,
+  )
+}
+
+foreign {
+  isatty(int): int,
+}
+
+define _is-tty(d: descriptor): bool {
+  eq-int(1, magic external isatty(magic cast(descriptor, int, d)))
+}
+
+define make-color-kit(should-colorize-stdout: bool, should-colorize-stderr: bool): color-kit {
+  let colorize-stdout = and(should-colorize-stdout, _is-tty(stdout));
+  let colorize-stderr = and(should-colorize-stderr, _is-tty(stderr));
+  _Color-Kit of {colorize-stdout, colorize-stderr}
+}
+
+define zen(): unit {
+  let stdin-tty = _is-tty(stdin);
+  let stdout-tty = _is-tty(stdout);
+  let stderr-tty = _is-tty(stderr);
+  pin vs = Vector[show-bool(stdin-tty), show-bool(stdout-tty), show-bool(stderr-tty)];
+  vet(vs)
+}

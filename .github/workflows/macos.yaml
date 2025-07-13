@@ -15,9 +15,10 @@ jobs:
         with:
           filters: |
             code:
-              - '!**/*.md'
-              - '!book/**'
-              - '**/*'
+              - 'src/**'
+              - 'test/**'
+              - 'build/**'
+              - 'stack.yaml*'
 
   test:
     needs: changes
