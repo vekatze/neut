@@ -1,5 +1,7 @@
 import {
-  this.logger.log {log},
+  this.logger.hint {hint},
+  this.logger.log {Log, log},
+  this.logger.log-level {Error},
 }
 
 data error {
@@ -11,4 +13,8 @@ define join(es: list(error)): error {
     let Make-Error(rs) = e;
     rs
   })))
+}
+
+define new-error(m: hint, content: text): error {
+  Make-Error(List[Log of {content, level := Error, position := Right(m)}])
 }
