@@ -1,0 +1,18 @@
+import {
+  core.external {exit},
+  this.error.eio {eio},
+  this.error.error {Make-Error},
+  this.logger.logger-kit {logger-kit},
+  this.logger.print {print-log-error-list},
+}
+
+define run<a>(k: &logger-kit, c: eio(a)): a {
+  match c {
+  | Left(Make-Error(xs)) =>
+    let _ on xs = print-log-error-list(k, xs);
+    let _ = xs;
+    exit(1)
+  | Right(v) =>
+    v
+  }
+}
