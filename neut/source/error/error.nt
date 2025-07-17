@@ -5,3 +5,10 @@ import {
 data error {
 | Make-Error(list(log))
 }
+
+define join(es: list(error)): error {
+  Make-Error(core.list.concat(core.list.for-each(es, function (e) {
+    let Make-Error(rs) = e;
+    rs
+  })))
+}
