@@ -26,3 +26,7 @@ define new-error'(content: text): error {
 define new-critical(m: hint, content: text): error {
   Make-Error(List[Log of {content, level := Critical, position := Right(m)}])
 }
+
+define new-critical'(content: text): error {
+  Make-Error(List[Log of {content, level := Critical, position := none}])
+}
