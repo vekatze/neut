@@ -1,7 +1,7 @@
 import {
   this.logger.hint {hint},
   this.logger.log {Log, log},
-  this.logger.log-level {Error},
+  this.logger.log-level {Critical, Error},
 }
 
 data error {
@@ -21,4 +21,8 @@ define new-error(m: hint, content: text): error {
 
 define new-error'(content: text): error {
   Make-Error(List[Log of {content, level := Error, position := none}])
+}
+
+define new-critical(m: hint, content: text): error {
+  Make-Error(List[Log of {content, level := Critical, position := Right(m)}])
 }
