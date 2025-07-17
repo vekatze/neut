@@ -1,0 +1,7 @@
+import {
+  this.logger.log {log},
+}
+
+data error {
+| Make-Error(list(log))
+}
