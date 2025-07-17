@@ -1,0 +1,7 @@
+import {
+  this.error.error {error},
+}
+
+inline eio(a): type {
+  either(error, a)
+}
