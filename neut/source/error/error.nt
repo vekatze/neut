@@ -18,3 +18,7 @@ define join(es: list(error)): error {
 define new-error(m: hint, content: text): error {
   Make-Error(List[Log of {content, level := Error, position := Right(m)}])
 }
+
+define new-error'(content: text): error {
+  Make-Error(List[Log of {content, level := Error, position := none}])
+}
