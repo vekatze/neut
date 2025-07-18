@@ -374,6 +374,11 @@ discern h term =
       body' <- discern h body
       return $ m :< WT.BoxIntroQuote body'
     m :< RT.BoxElim nv mustIgnoreRelayedVars _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
+      case nv of
+        VariantK ->
+          unless (SE.isEmpty mys) $ raiseError m "`on` cannot be used with: `letbox`"
+        VariantT ->
+          return ()
       tmp <- liftIO $ Gensym.newTextFromText (H.gensymHandle h) "tmp"
       let mxt = (mx, tmp, c1, c2, t)
       let m' = blur m
