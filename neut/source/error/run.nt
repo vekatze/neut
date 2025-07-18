@@ -1,5 +1,6 @@
 import {
   core.external {exit},
+  core.list {for-each, is-empty},
   this.error.eio {eio},
   this.error.error {Make-Error},
   this.logger.logger-kit {logger-kit},
@@ -14,5 +15,23 @@ define run<a>(k: &logger-kit, c: eio(a)): a {
     exit(1)
   | Right(v) =>
     v
+  }
+}
+
+define for-parallel<a, b>(xs: list(a), f: &(a) -> eio(b)): eio(list(b)) {
+  let tmp =
+    for-each(xs, function (x) {
+      detach {f(x)}
+    });
+  let tmp2 =
+    for-each(tmp, function (y) {
+      attach {y}
+    });
+  let Pair(errors, results) = core.list.partition(tmp2);
+  let b on errors = is-empty(errors);
+  if b {
+    Right(results)
+  } else {
+    Left(this.error.error.join(errors))
   }
 }
