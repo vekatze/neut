@@ -1,5 +1,6 @@
 import {
-  core.cell {clone, mutate},
+  core.box {axiom-T},
+  core.cell {clone, make-cell, mutate},
   core.list {length},
 }
 
@@ -175,7 +176,7 @@ define with-ctx(c: &ctx): unit {
   } else {
     print("loop\n");
     mutate(counter, function (x) {
-      sub-int(x, 1)
+      quote {sub-int(axiom-T(x), 1)}
     });
     with-ctx(c)
   }
@@ -198,7 +199,7 @@ define test-resource(): unit {
   let _ = t2;
   let _ = t3;
   let _ = t4;
-  let c = Ctx(make-cell(5));
+  let c = Ctx(make-cell(quote {5}));
   let _ on c = with-ctx(c);
   let _ = c;
   Unit
