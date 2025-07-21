@@ -103,51 +103,39 @@ define use-letbox(x: int, y: bool, z: text): int {
   // - x: int
   // - y: bool
   // - z: text
-  letbox extracted-value on x, y = {
+  letbox extracted-value = {
     // here is layer 1 (== layer(outer) + 1)
-    // free variables:
-    // - x: &int
-    // - y: &bool
-    // - (z is unavailable here because of layer mismatch)
-    some-func(x, y);
-    box {42};
+    // (x, y, and z are unavailable here because of layer mismatch)
+    box {
+      // here is layer 0
+      // free variables:
+      // - x: int
+      // - y: bool
+      // - z: text
+      x
+    }
   };
   // here is layer 0
   // free variables:
   // - x: int
   // - y: bool
   // - z: text
-  extracted-value // == 42
+  extracted-value // == x
 }
+
 ```
 
-Some notes on `letbox`:
-
-- The type of `xi` in `on x1, ..., xn` has no restriction.
-- Given `xi: ai`, the type of `xi` inside `letbox` is `&ai`.
-
-`letbox` behaves as follows:
+Operationally, `letbox` is the same as `let`:
 
 ```neut
-letbox v on x1, ..., xn = e1;
+letbox v = e1;
 e2
 
 ↓ // (compile)
 
-let x1 = cast(a1, &a1, x1); // cast x1: a1 → &a1
-...                         // ...
-let xn = cast(an, &an, xn); // cast xn: an → &an
-
 let v  = e1;
-
-let x1 = cast(&a1, a1, x1); // cast x1: &a1 → a1
-...                         // ...
-let xn = cast(&an, an, xn); // cast xn: &an → an
-
 e2
 ```
-
-The `on y1, ..., yn` in `letbox` is optional.
 
 ## More Tools for Boxes
 
@@ -252,20 +240,20 @@ Without this rule, you could do something like the following:
 define joker(): () -> unit {
   // layer 0
   let xs: list(int) = List[1, 2, 3];
-  letbox f on xs =
-    // layer 1
-    // xs: &list(int), at 1
+  letbox-T f on xs = {
+    // layer 0
     box {
-      // layer 0
+      // layer -1
       function () { // ★
         letbox k = {
-          // 1
+          // layer 0
           let len = length(xs);
           box {Unit}
         };
         Unit
       }
-    };
+    }
+  };
   f // function with xs: &list(int) as a free variable
   // FREE(xs)
 }
