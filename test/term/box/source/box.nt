@@ -20,20 +20,7 @@ define axiom-T<a>(x: meta a): a {
 define test-syntax(): unit {
   // box-intro, box-elim
   letbox x = box {Unit};
-  letbox y on x = box x {x};
-  letbox _ on x, y = {
-    let _ = y;
-    box x {x}
-  };
-  letbox _ on x, y = {
-    let _ = type;
-    box x, y {
-      let _ = y;
-      x
-    }
-  };
   let _ = x;
-  let _ = y;
   // box-elim-T
   letbox-T x = box {Unit};
   letbox-T y on x = box x {x};
@@ -56,22 +43,6 @@ define test-syntax(): unit {
 }
 
 define test-resource(xs: list(int)): unit {
-  // letbox
-  letbox len on xs = quote {length(xs)};
-  print-int-line(len);
-  // letbox + box
-  letbox len on xs =
-    // layer 1
-    box xs {
-      // layer 0
-      let !ys = xs;
-      discard(!ys);
-      discard(!ys);
-      let len on !ys = length(!ys);
-      discard(!ys);
-      len
-    };
-  print-int-line(len);
   // letbox-T
   letbox-T len on xs = quote {length(xs)};
   print-int-line(len);
@@ -95,14 +66,14 @@ define test-resource(xs: list(int)): unit {
 define complex(): () -> unit {
   // layer 0
   let xs: list(int) = List[1, 2, 3, 4];
-  letbox f on xs =
+  letbox-T f on xs =
     // layer 1
     // xs: &list(int) at layer 1
     box xs {
       // layer 0
       // xs: list(int) at layer 0
       function () {
-        letbox k on xs = {
+        letbox-T k on xs = {
           // 1
           // xs: &list(int) at layer 1
           let len = length(xs);

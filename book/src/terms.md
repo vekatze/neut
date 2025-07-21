@@ -46,11 +46,6 @@
 - [detach](#detach)
 - [attach](#attach)
 
-### Channel and Cell
-
-- [make-channel](#make-channel)
-- [make-cell](#make-cell)
-
 ### Miscellaneous
 
 - [quote](#quote)
@@ -1508,9 +1503,9 @@ define roundtrip(x: meta a): meta a {
 define try-borrowing(x: int): unit {
   // here is layer 0
   // x: int (at layer 0)
-  letbox tmp on x =
+  letbox tmp =
     // here is layer 1
-    // x: &int (at layer 1)
+    // (thus `x` is not available here)
     some-func(x);
   // here is layer 0
   // x: int (at layer 0)
@@ -1523,36 +1518,27 @@ define try-borrowing(x: int): unit {
 ```neut
 letbox result = e1;
 e2
-
-letbox result on x1, ..., xn = e1;
-e2
 ```
 
 ### Semantics
 
 ```neut
-letbox result on x1, ..., xn = e1;
+letbox result = e1;
 e2
 
 ↓
 
-let x1 = unsafe-cast(a1, &a1, x);
-...
-let xn = unsafe-cast(an, &an, xn);
 let result = e1;
-let x1 = unsafe-cast(&a1, a1, x);
-...
-let xn = unsafe-cast(&an, an, xn);
 cont
 ```
 
 ### Type
 
 ```neut
-Γ1; ...; Γn, &Δ ⊢ e1: meta a
-Γ1; ...; Γn; Δ, Δ', x: a ⊢ e2: b
+Γ1; ...; Γn ⊢ e1: meta a
+Γ1; ...; Γn; Δ, x: a ⊢ e2: b
 ------------------------------------------------ (□-elim-K)
-Γ1; ...; Γn; Δ, Δ' ⊢ letbox x on Δ = e1; e2: b
+Γ1; ...; Γn; Δ ⊢ letbox x = e1; e2: b
 ```
 
 ### Note
@@ -1583,23 +1569,6 @@ define use-letbox-error(x: meta int): int {
     x; // error: use of a variable at layer 0 (≠ 1)
   // here is layer 0
   tmp
-}
-```
-
-We can incorporate variables outside `letbox` by using `on`:
-
-```neut
-define use-letbox(x: int): int {
-  // here is layer 0
-  // x: int (at layer 0)
-  letbox tmp on x = {
-    // here is layer 1
-    // x: &int (at layer 1)
-    let _ = x; // ok
-    box { Unit }
-  };
-  // here is layer 0
-  10
 }
 ```
 
@@ -1924,164 +1893,6 @@ It also `free`s the 3-word + 1-byte tuple that represents a thread after getting
 ### Note
 
 - `attach` internally uses pthread.
-
-## `make-channel`
-
-You can create channels using `make-channel` and send/receive values using them.
-
-### Example
-
-```neut
-define sample(): unit {
-  let ch0 = make-channel();
-  let ch1 = make-channel();
-  // use channels after turning them into noemata
-  let result on ch0, ch1 = {
-    let f =
-      detach {
-        let message0 = receive(ch0); // receive value from ch0
-        send(ch1, add-int(message0, 1)); // send value to ch1
-        message0
-      };
-    let g =
-      detach {
-        let message1 = receive(ch1); // receive value from ch1
-        add-int(message1, 1)
-      };
-    send(ch0, 0); // send value to ch0
-    let v1 = attach { f };
-    let v2 = attach { g };
-    print("hey")
-  };
-  // ... cont ...
-}
-```
-
-### Syntax
-
-```neut
-make-channel()
-```
-
-### Semantics
-
-`make-channel` creates a new channel that can be used to send/receive values between threads.
-
-The internal representation of `channel(a)` is something like the below:
-
-```neut
-(queue, thread-mutex, thread-cond, a)
-```
-
-The `queue` is the place where inter-channel values are enqueued/dequeued. More specifically,
-
-- the function `send: <a>(ch: &channel, x: a) -> unit` enqueues values to there, and
-- the function `receive: <a>(ch: &channel) -> a` dequeues values from there.
-
-The `thread-mutex` is initialized by `pthread_mutex_init(3)`. This field is used to update the queue in a thread-safe way.
-
-The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used to update the queue in a thread-safe way.
-
-### Type
-
-```neut
-Γ ⊢ a: type
------------------------------
-Γ ⊢ make-channel(): channel(a)
-```
-
-You must use an "actual" type at the position of `a` in the typing rule above.
-
-For more, see [let-on](#on).
-
-### Note
-
-- Channels are intended to be used with threads.
-- You'll use a channel after turning them into a noema (as in the example above).
-- You can use `send: <a>(ch: &channel, x: a) -> unit` to enqueue a value to the channel.
-- You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
-- `make-channel: <a>() -> channel(a)` is a normal function defined in the core library.
-
-## `make-cell`
-
-You can create a mutable cell using `make-cell`.
-
-### Example
-
-```neut
-define sample(): int {
-  let xs: list(int) = List[];
-
-  // create a new cell using `make-cell`
-  let xs-cell = make-cell(xs);
-
-  // create a noema of a cell
-  let result on xs-cell = {
-    // mutate the cell using `mutate` (add an element)
-    mutate(xs-cell, function (xs) {
-      Cons(1, xs)
-    });
-
-    // peek the content of a cell using `borrow`
-    borrow(xs-cell, function (xs) {
-      let len = length(xs);
-      print-int(len); // => 1
-      box {Unit}
-    })
-
-    // mutate again
-    mutate(xs-cell, function (xs) {
-      Cons(2, xs)
-    });
-
-    // get the length of the list in the cell, again
-    borrow(xs-cell, function (xs) {
-      let len = length(xs);
-      print-int(len); // => 2
-      box {Unit}
-    })
-
-    ...
-  };
-  ...
-}
-```
-
-### Syntax
-
-```neut
-make-cell(initial-value)
-```
-
-### Semantics
-
-`make-cell` creates a new thread-safe mutable cell of type `cell(a)`, which can be manipulated using following functions:
-
-```neut
-// mutate the content of a cell by `f`
-mutate<a>(c: &cell(a), f: (a) -> a): unit
-
-// borrow the content of a cell and do something
-borrow<a>(c: &cell(a), f: (&a) -> meta b): meta b
-
-// clone the content of a cell
-clone<a>(c: &cell(a)): a
-
-// extract the content from a cell
-extract<a>(c: cell(a)): a
-```
-
-### Type
-
-```neut
-Γ ⊢ e: a
------------------------------
-Γ ⊢ make-cell(e): cell(a)
-```
-
-You must use an "actual" type at the position of `a` in the typing rule above.
-
-For more, see [let-on](#on).
 
 ## `quote`
 
@@ -3080,4 +2891,3 @@ either(unit, t)
 ### Type
 
 Derived from the syntactic sugar.
-

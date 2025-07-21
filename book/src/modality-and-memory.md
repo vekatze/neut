@@ -11,7 +11,7 @@ Here, we'll see how to interact with the box modality `meta`, which enables borr
 
 ## Layers and the Box Modality
 
-In Neut, each type `a` has a corresponding type `meta a`. This type provides a way to work with *layers*, which are similar to lifetimes in other languages.
+In Neut, each type `a` has a corresponding type `meta a`. This type provides a way to work with _layers_, which are similar to lifetimes in other languages.
 
 Below, we’ll first introduce the concept of layers, and then see how to use `meta a`.
 
@@ -103,51 +103,39 @@ define use-letbox(x: int, y: bool, z: text): int {
   // - x: int
   // - y: bool
   // - z: text
-  letbox extracted-value on x, y = {
+  letbox extracted-value = {
     // here is layer 1 (== layer(outer) + 1)
-    // free variables:
-    // - x: &int
-    // - y: &bool
-    // - (z is unavailable here because of layer mismatch)
-    some-func(x, y);
-    box {42};
+    // (x, y, and z are unavailable here because of layer mismatch)
+    box {
+      // here is layer 0
+      // free variables:
+      // - x: int
+      // - y: bool
+      // - z: text
+      x
+    }
   };
   // here is layer 0
   // free variables:
   // - x: int
   // - y: bool
   // - z: text
-  extracted-value // == 42
+  extracted-value // == x
 }
+
 ```
 
-Some notes on `letbox`:
-
-- The type of `xi` in `on x1, ..., xn` has no restriction.
-- Given `xi: ai`, the type of `xi` inside `letbox` is `&ai`.
-
-`letbox` behaves as follows:
+Operationally, `letbox` is the same as `let`:
 
 ```neut
-letbox v on x1, ..., xn = e1;
+letbox v = e1;
 e2
 
 ↓ // (compile)
 
-let x1 = cast(a1, &a1, x1); // cast x1: a1 → &a1
-...                         // ...
-let xn = cast(an, &an, xn); // cast xn: an → &an
-
 let v  = e1;
-
-let x1 = cast(&a1, a1, x1); // cast x1: &a1 → a1
-...                         // ...
-let xn = cast(&an, an, xn); // cast xn: &an → an
-
 e2
 ```
-
-The `on y1, ..., yn` in `letbox` is optional.
 
 ## More Tools for Boxes
 
@@ -252,20 +240,20 @@ Without this rule, you could do something like the following:
 define joker(): () -> unit {
   // layer 0
   let xs: list(int) = List[1, 2, 3];
-  letbox f on xs =
-    // layer 1
-    // xs: &list(int), at 1
+  letbox-T f on xs = {
+    // layer 0
     box {
-      // layer 0
+      // layer -1
       function () { // ★
         letbox k = {
-          // 1
+          // layer 0
           let len = length(xs);
           box {Unit}
         };
         Unit
       }
-    };
+    }
+  };
   f // function with xs: &list(int) as a free variable
   // FREE(xs)
 }
@@ -281,6 +269,7 @@ This example would wrongly allow a function at layer 0 (`★`) to keep a referen
 ### Using `meta`
 
 The following function parses data and stores backups of said data.
+
 ```neut
 define backup-parse<a>(transformer: (binary) -> a): a {
   let !input: binary = get-next-input();
@@ -288,7 +277,9 @@ define backup-parse<a>(transformer: (binary) -> a): a {
   transformer(!input)
 }
 ```
+
 This function might get slow if huge chunks of data are processed due to the copy. Rewriting it to use noetic values could look like the following:
+
 ```neut
 define backup-parse<a>(transformer: (&binary) -> a): a {
   let input: binary = get-next-input();
@@ -299,7 +290,9 @@ define backup-parse<a>(transformer: (&binary) -> a): a {
   result
 }
 ```
+
 This won't compile because `transformer` contains a free variable `a`. This works as a safety guard, it compiled the following scenario would be possible:
+
 ```neut
 define id-bin(arg: &binary): &binary {
   arg
@@ -321,12 +314,15 @@ define zen(): unit {
   Unit
 }
 ```
+
 The following happens inside `zen`:
+
 1. `backup-parse(id-bin)` evaluates to a reference to (the freed) `input`
 2. `joker` holds the (dangling) reference
 3. `bin-to-hex` takes `joker` as an argument, causing an use-after-free
 
 To fancy the requirements of the type system `meta` must be used as follows.
+
 ```neut
 define backup-parse<a>(transformer: (&binary) -> meta a): a {
   let input: binary = get-next-input();
@@ -338,7 +334,9 @@ define backup-parse<a>(transformer: (&binary) -> meta a): a {
   // FREE(input)
 }
 ```
+
 The `meta` specifier asserts that the value a call to `transformer` evaluates will be valid on the outer layer (in this case the layer of `zen`, since it's where `backup-parse` has been called). The requirements of the operators that lift values into `meta` guarantee that this is the case. In order to make the previous example work, `id-bin` could look like the following:
+
 ```neut
 define id-bin(arg: &binary): meta binary {
   box arg { // *arg copied
@@ -362,7 +360,9 @@ define zen(): unit {
   Unit
 }
 ```
+
 Lastly, to avoid the newly introduced copy, the following refactor is possible:
+
 ```neut
 define write-to-somefile(arg: &binary): meta unit { // used to be id-bin
   write-to-file(somefile, bin-to-hex(arg));

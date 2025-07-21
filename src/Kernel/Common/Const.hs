@@ -147,14 +147,6 @@ coreThreadAttach :: T.Text
 coreThreadAttach =
   core <> nsSep <> "thread" <> nsSep <> "attach"
 
-coreCellMakeCell :: T.Text
-coreCellMakeCell =
-  core <> nsSep <> "cell" <> nsSep <> "_make-cell"
-
-coreChannelMakeChannel :: T.Text
-coreChannelMakeChannel =
-  core <> nsSep <> "channel" <> nsSep <> "_make-channel"
-
 coreBoxEmbody :: T.Text
 coreBoxEmbody =
   core <> nsSep <> "box" <> nsSep <> "embody"
