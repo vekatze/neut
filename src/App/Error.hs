@@ -1,4 +1,4 @@
-module Error.Error
+module App.Error
   ( Error (..),
     join,
     newError,

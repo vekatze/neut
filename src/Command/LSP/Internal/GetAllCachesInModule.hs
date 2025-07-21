@@ -6,9 +6,9 @@ module Command.LSP.Internal.GetAllCachesInModule
   )
 where
 
+import App.App (App)
+import App.Run (forP)
 import Data.Maybe (catMaybes)
-import Error.EIO (EIO)
-import Error.Run (forP)
 import Kernel.Common.Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Module (getAllSourcePathInModule)
@@ -30,12 +30,12 @@ new (Global.Handle {..}) = do
   let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}
 
-getAllLocationCachesInModule :: Handle -> Module -> EIO [(Source, LocationCache)]
+getAllLocationCachesInModule :: Handle -> Module -> App [(Source, LocationCache)]
 getAllLocationCachesInModule h baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
   fmap catMaybes $ forP sourcePathList $ \path -> getLocationCache h baseModule path
 
-getLocationCache :: Handle -> Module -> Path Abs File -> EIO (Maybe (Source, LocationCache))
+getLocationCache :: Handle -> Module -> Path Abs File -> App (Maybe (Source, LocationCache))
 getLocationCache h baseModule filePath = do
   source <-
     STL.shiftToLatest (shiftToLatestHandle h) $
@@ -47,12 +47,12 @@ getLocationCache h baseModule filePath = do
     Just cache ->
       return $ Just (source, cache)
 
-getAllCompletionCachesInModule :: Handle -> Module -> EIO [(Source, CompletionCache)]
+getAllCompletionCachesInModule :: Handle -> Module -> App [(Source, CompletionCache)]
 getAllCompletionCachesInModule h baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
   fmap catMaybes $ forP sourcePathList $ \path -> getCompletionCache h baseModule path
 
-getCompletionCache :: Handle -> Module -> Path Abs File -> EIO (Maybe (Source, CompletionCache))
+getCompletionCache :: Handle -> Module -> Path Abs File -> App (Maybe (Source, CompletionCache))
 getCompletionCache h baseModule filePath = do
   source <-
     STL.shiftToLatest (shiftToLatestHandle h) $

@@ -6,6 +6,10 @@ module Command.Common.Build
   )
 where
 
+import App.App (App)
+import App.Error (newError')
+import App.Error qualified as E
+import App.Run (forP, raiseError', runApp)
 import Command.Common.Build.EnsureMain qualified as EnsureMain
 import Command.Common.Build.Execute qualified as Execute
 import Command.Common.Build.Generate qualified as Gen
@@ -21,10 +25,6 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
 import Data.Time
-import Error.EIO (EIO)
-import Error.Error (newError')
-import Error.Error qualified as E
-import Error.Run (forP, raiseError', runEIO)
 import Kernel.Clarify.Clarify qualified as Clarify
 import Kernel.Common.Cache
 import Kernel.Common.ClangOption qualified as CL
@@ -93,7 +93,7 @@ new cfg globalHandle = do
   let _executeArgs = executeArgs cfg
   Handle {..}
 
-buildTarget :: Handle -> M.MainModule -> Target -> EIO ()
+buildTarget :: Handle -> M.MainModule -> Target -> App ()
 buildTarget h (M.MainModule baseModule) target = do
   liftIO $ Logger.report (Global.loggerHandle (globalHandle h)) $ "Building: " <> T.pack (show target)
   target' <- expandClangOptions h target
@@ -118,7 +118,7 @@ buildTarget h (M.MainModule baseModule) target = do
       execute h (_shouldExecute h) ct (_executeArgs h)
       install h (_installDir h) ct
 
-compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> EIO ()
+compile :: Handle -> Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App ()
 compile h target outputKindList contentSeq = do
   let cacheHandle = Cache.new (globalHandle h)
   bs <- mapM (needsCompilation cacheHandle outputKindList . fst) contentSeq
@@ -146,14 +146,14 @@ compile h target outputKindList contentSeq = do
     b <- Cache.needsCompilation cacheHandle outputKindList source
     if b
       then do
-        fmap Just $ liftIO $ async $ runEIO $ do
+        fmap Just $ liftIO $ async $ runApp $ do
           lowerHandle <- liftIO $ Lower.new (globalHandle h)
           virtualCode <- Lower.lower lowerHandle stmtList'
           emit h hp currentTime target outputKindList (Right source) virtualCode
       else return Nothing
   entryPointVirtualCode <- compileEntryPoint h target outputKindList
   entryPointAsync <- forM entryPointVirtualCode $ \(src, code) -> liftIO $ do
-    async $ runEIO $ emit h hp currentTime target outputKindList src code
+    async $ runApp $ emit h hp currentTime target outputKindList src code
   errors <- fmap lefts $ mapM wait $ entryPointAsync ++ contentAsync
   liftIO $ Indicator.close hp
   if null errors
@@ -178,7 +178,7 @@ emit ::
   [OutputKind] ->
   Either MainTarget Source ->
   LC.LowCode ->
-  EIO ()
+  App ()
 emit h progressBar currentTime target outputKindList src code = do
   let emitHandle = Emit.new (globalHandle h)
   let llvmHandle = Gen.new (globalHandle h)
@@ -192,7 +192,7 @@ emit h progressBar currentTime target outputKindList src code = do
         Gen.generateAsm llvmHandle target currentTime src llvmIR'
   liftIO $ Indicator.increment progressBar
 
-getEntryPointCompilationCount :: Handle -> Target -> [OutputKind] -> EIO Int
+getEntryPointCompilationCount :: Handle -> Target -> [OutputKind] -> App Int
 getEntryPointCompilationCount h target outputKindList = do
   case target of
     Peripheral {} ->
@@ -204,7 +204,7 @@ getEntryPointCompilationCount h target outputKindList = do
       b <- Cache.isEntryPointCompilationSkippable pathHandle t outputKindList
       return $ if b then 0 else 1
 
-compileEntryPoint :: Handle -> Target -> [OutputKind] -> EIO [(Either MainTarget Source, LC.LowCode)]
+compileEntryPoint :: Handle -> Target -> [OutputKind] -> App [(Either MainTarget Source, LC.LowCode)]
 compileEntryPoint h target outputKindList = do
   case target of
     Peripheral {} ->
@@ -224,25 +224,25 @@ compileEntryPoint h target outputKindList = do
               >>= Lower.lowerEntryPoint lowerHandle t
           return [(Left t, mainVirtualCode)]
 
-execute :: Handle -> Bool -> MainTarget -> [String] -> EIO ()
+execute :: Handle -> Bool -> MainTarget -> [String] -> App ()
 execute h shouldExecute target args = do
   when shouldExecute $ do
     let executeHandle = Execute.new (globalHandle h)
     Execute.execute executeHandle target args
 
-install :: Handle -> Maybe FilePath -> MainTarget -> EIO ()
+install :: Handle -> Maybe FilePath -> MainTarget -> App ()
 install h filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
   let installHandle = Install.new (globalHandle h)
   mapM_ (Install.install installHandle target) mDir
 
-compileForeign :: Handle -> Target -> [M.Module] -> EIO Bool
+compileForeign :: Handle -> Target -> [M.Module] -> App Bool
 compileForeign h t moduleList = do
   currentTime <- liftIO getCurrentTime
   bs <- forP moduleList (compileForeign' h t currentTime)
   return $ or bs
 
-compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> EIO Bool
+compileForeign' :: Handle -> Target -> UTCTime -> M.Module -> App Bool
 compileForeign' h t currentTime m = do
   sub <- getForeignSubst h t m
   let cmdList = M.script $ M.moduleForeign m
@@ -300,7 +300,7 @@ naiveReplace sub t =
     (from, to) : rest -> do
       T.replace from to (naiveReplace rest t)
 
-getForeignSubst :: Handle -> Target -> M.Module -> EIO [(T.Text, T.Text)]
+getForeignSubst :: Handle -> Target -> M.Module -> App [(T.Text, T.Text)]
 getForeignSubst h t m = do
   clang <- liftIO Platform.getClang
   foreignDir <- Path.getForeignDir (Global.pathHandle (globalHandle h)) t m
@@ -310,7 +310,7 @@ getForeignSubst h t m = do
       ("{{foreign}}", T.pack $ toFilePath foreignDir)
     ]
 
-getInputPathList :: Path Abs Dir -> M.SomePath Rel -> EIO [Path Abs File]
+getInputPathList :: Path Abs Dir -> M.SomePath Rel -> App [Path Abs File]
 getInputPathList moduleRootDir =
   Path.unrollPath . attachPrefixPath moduleRootDir
 
@@ -322,7 +322,7 @@ attachPrefixPath baseDirPath path =
     Right filePath ->
       Right $ baseDirPath </> filePath
 
-expandClangOptions :: Handle -> Target -> EIO Target
+expandClangOptions :: Handle -> Target -> App Target
 expandClangOptions h target =
   case target of
     Main concreteTarget ->
@@ -352,11 +352,11 @@ expandClangOptions h target =
     PeripheralSingle {} ->
       return target
 
-expandOptions :: Handle -> [T.Text] -> EIO [T.Text]
+expandOptions :: Handle -> [T.Text] -> App [T.Text]
 expandOptions h textList =
   map T.strip <$> mapM (expandText h) textList
 
-expandText :: Handle -> T.Text -> EIO T.Text
+expandText :: Handle -> T.Text -> App T.Text
 expandText h t = do
   let spec =
         RunProcess.Spec

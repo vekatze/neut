@@ -4,12 +4,12 @@ module Kernel.Parse.Internal.Program
   )
 where
 
+import App.Run (raiseError)
 import CodeParser.GetInfo
 import CodeParser.Parser
 import Control.Monad
 import Control.Monad.Trans
 import Data.Text qualified as T
-import Error.Run (raiseError)
 import Kernel.Parse.Internal.RawTerm
 import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN

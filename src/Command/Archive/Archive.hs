@@ -5,6 +5,7 @@ module Command.Archive.Archive
   )
 where
 
+import App.App (App)
 import Command.Archive.Internal qualified as Archive
 import Command.Archive.Module.MakeArchiveEns
 import Command.Archive.PackageVersion.ChooseNewVersion qualified as PV
@@ -12,7 +13,6 @@ import Command.Archive.PackageVersion.Reflect qualified as PV
 import Command.Common.SaveModule qualified as SaveModule
 import CommandParser.Config.Archive
 import Data.HashMap.Strict qualified as Map
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -35,7 +35,7 @@ new globalHandle = do
   let archiveHandle = Archive.new runProcessHandle saveModuleHandle envHandle
   Handle {..}
 
-archive :: Handle -> Config -> EIO ()
+archive :: Handle -> Config -> App ()
 archive h cfg = do
   let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule

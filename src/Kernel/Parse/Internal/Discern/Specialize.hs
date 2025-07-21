@@ -4,11 +4,11 @@ module Kernel.Parse.Internal.Discern.Specialize
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical')
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.Vector qualified as V
-import Error.EIO (EIO)
-import Error.Run (raiseCritical')
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Parse.Internal.Discern.Handle qualified as H
@@ -28,7 +28,7 @@ specialize ::
   Ident ->
   Specializer ->
   PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  EIO (PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  App (PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 specialize h isNoetic cursor cons mat = do
   mapMaybeRowM (specializeRow h isNoetic cursor cons) mat
 
@@ -38,7 +38,7 @@ specializeRow ::
   Ident ->
   Specializer ->
   PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  EIO (Maybe (PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm)))
+  App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm)))
 specializeRow h isNoetic cursor specializer (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->

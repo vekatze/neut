@@ -8,10 +8,10 @@ module Language.Common.LocalLocator
   )
 where
 
+import App.Error
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
-import Error.Error
 import GHC.Generics
 import Language.Common.BaseName qualified as BN
 import Logger.Hint qualified as H

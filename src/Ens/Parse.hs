@@ -4,6 +4,8 @@ module Ens.Parse
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import CodeParser.GetInfo
 import CodeParser.Parser qualified as P
 import Control.Comonad.Cofree
@@ -11,8 +13,6 @@ import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Ens.Ens qualified as E
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Logger.Hint
 import Path
 import Path.Read (readTextFromPath)
@@ -22,12 +22,12 @@ import SyntaxTree.Series qualified as SE
 import Text.Megaparsec hiding (runParser)
 import Text.Read (readMaybe)
 
-fromFilePath :: Path Abs File -> EIO (C, (E.Ens, C))
+fromFilePath :: Path Abs File -> App (C, (E.Ens, C))
 fromFilePath path = do
   fileContent <- readTextFromPath path
   fromFilePath' path fileContent
 
-fromFilePath' :: Path Abs File -> T.Text -> EIO (C, (E.Ens, C))
+fromFilePath' :: Path Abs File -> T.Text -> App (C, (E.Ens, C))
 fromFilePath' filePath fileContent = do
   P.runParser filePath fileContent True parseEns
 
@@ -82,7 +82,7 @@ parseKeyValuePair = do
   (v, cTrail) <- parseEns
   return ((cLead, (m, (k, v))), cTrail)
 
-ensureKeyLinearity :: [(Hint, (T.Text, a))] -> S.Set T.Text -> EIO ()
+ensureKeyLinearity :: [(Hint, (T.Text, a))] -> S.Set T.Text -> App ()
 ensureKeyLinearity mks foundKeySet =
   case mks of
     [] ->

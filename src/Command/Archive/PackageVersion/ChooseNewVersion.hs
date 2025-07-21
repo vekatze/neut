@@ -5,11 +5,11 @@ module Command.Archive.PackageVersion.ChooseNewVersion
   )
 where
 
+import App.App (App)
 import Command.Archive.Module.GetExistingVersions
 import Command.Archive.PackageVersion.PackageVersion qualified as PV
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.EIO (EIO)
 import Kernel.Common.Module (MainModule)
 import Logger.Handle qualified as Logger
 import Logger.Print qualified as Logger
@@ -23,7 +23,7 @@ new :: Logger.Handle -> Handle
 new loggerHandle = do
   Handle {..}
 
-chooseNewVersion :: Handle -> MainModule -> EIO PV.PackageVersion
+chooseNewVersion :: Handle -> MainModule -> App PV.PackageVersion
 chooseNewVersion h mainModule = do
   existingVersions <- getExistingVersions mainModule
   newVersion <-

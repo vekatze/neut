@@ -6,12 +6,12 @@ module Kernel.Elaborate.Internal.Handle.WeakDecl
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Language.Common.ForeignCodType qualified as F
 import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -31,7 +31,7 @@ insert :: Handle -> DN.DeclarationName -> [WT.WeakTerm] -> F.ForeignCodType WT.W
 insert h k domList cod =
   modifyIORef' (weakDeclEnvRef h) $ Map.insert k (domList, cod)
 
-lookup :: Handle -> Hint -> DN.DeclarationName -> EIO ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)
+lookup :: Handle -> Hint -> DN.DeclarationName -> App ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)
 lookup h m name = do
   denv <- liftIO $ readIORef (weakDeclEnvRef h)
   case Map.lookup name denv of

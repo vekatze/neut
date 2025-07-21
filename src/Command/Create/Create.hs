@@ -5,6 +5,7 @@ module Command.Create.Create
   )
 where
 
+import App.App (App)
 import Command.Common.Check qualified as Check
 import Command.Common.Fetch qualified as Fetch
 import Command.Common.SaveModule qualified as SaveModule
@@ -13,7 +14,6 @@ import CommandParser.Config.Create
 import CommandParser.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Module (moduleLocation)
@@ -30,7 +30,7 @@ new remarkCfg loggerHandle saveModuleHandle = do
   createHandle <- Create.new saveModuleHandle loggerHandle platformHandle
   return $ Handle {..}
 
-create :: Handle -> Config -> EIO ()
+create :: Handle -> Config -> App ()
 create h cfg = do
   newModule <- Create.constructDefaultModule (moduleName cfg) (targetName cfg)
   Create.createNewProject (createHandle h) (moduleName cfg) newModule

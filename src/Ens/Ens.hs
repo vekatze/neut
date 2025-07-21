@@ -29,13 +29,13 @@ module Ens.Ens
   )
 where
 
+import App.Error
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Bifunctor
 import Data.List (find, nubBy)
 import Data.Text qualified as T
 import Ens.EnsType qualified as ET
-import Error.Error
 import Logger.Hint
 import Path
 import SyntaxTree.C

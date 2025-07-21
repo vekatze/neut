@@ -5,10 +5,10 @@ module Command.LSP.Internal.Highlight
   )
 where
 
+import App.App (App)
 import Command.LSP.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Internal.FindReferences qualified as LSP
 import Control.Lens hiding (Iso, List)
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -26,7 +26,7 @@ highlight ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
   Handle ->
   p ->
-  EIO [DocumentHighlight]
+  App [DocumentHighlight]
 highlight h params = do
   ((_, defLink@(DefinitionLink (LocationLink {_targetRange, _targetUri}))), locTree) <-
     FindDefinition.findDefinition (findDefinitionHandle h) params

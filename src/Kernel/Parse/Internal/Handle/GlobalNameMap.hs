@@ -6,13 +6,13 @@ module Kernel.Parse.Internal.Handle.GlobalNameMap
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseCritical)
 import Kernel.Common.TopNameMap
 import Logger.Hint qualified as Hint
 import Path
@@ -27,7 +27,7 @@ new = do
   globalNameMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-lookup :: Handle -> Hint.Hint -> Path Abs File -> EIO TopNameMap
+lookup :: Handle -> Hint.Hint -> Path Abs File -> App TopNameMap
 lookup h m sourcePath = do
   smap <- liftIO $ readIORef (globalNameMapRef h)
   case Map.lookup sourcePath smap of

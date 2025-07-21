@@ -5,12 +5,12 @@ module Command.Common.Build.Link
   )
 where
 
+import App.App (App)
 import Color.Handle qualified as Color
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Containers.ListUtils (nubOrdOn)
 import Data.Maybe
 import Data.Text qualified as T
-import Error.EIO (EIO)
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -39,7 +39,7 @@ new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
   Handle {..}
 
-link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> EIO ()
+link :: Handle -> MainTarget -> Bool -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceList = do
   executablePath <- Path.getExecutableOutputPath (pathHandle h) target
   isExecutableAvailable <- doesFileExist executablePath
@@ -48,7 +48,7 @@ link h target shouldSkipLink didPerformForeignCompilation artifactTime sourceLis
     then liftIO $ Logger.report (loggerHandle h) "Skipped linking object files"
     else link' h target sourceList
 
-link' :: Handle -> MainTarget -> [Source.Source] -> EIO ()
+link' :: Handle -> MainTarget -> [Source.Source] -> App ()
 link' h target sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint (pathHandle h) OK.Object target
   outputPath <- Path.getExecutableOutputPath (pathHandle h) target
@@ -80,14 +80,14 @@ barColor :: [SGR]
 barColor = do
   [SetColor Foreground Vivid Green]
 
-getForeignDirContent :: Path Abs Dir -> EIO [Path Abs File]
+getForeignDirContent :: Path Abs Dir -> App [Path Abs File]
 getForeignDirContent foreignDir = do
   b <- doesDirExist foreignDir
   if b
     then snd <$> listDirRecur foreignDir
     else return []
 
-link'' :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> EIO ()
+link'' :: Handle -> [String] -> [Path Abs File] -> Path Abs File -> App ()
 link'' h clangOptions objectPathList outputPath = do
   clang <- liftIO Platform.getClang
   ensureDir $ parent outputPath

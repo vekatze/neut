@@ -6,12 +6,12 @@ module Kernel.Common.Module.GetModule
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Control.Monad
 import Control.Monad.IO.Unlift (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Module qualified as Module
@@ -37,7 +37,7 @@ getModule ::
   H.Hint ->
   MID.ModuleID ->
   T.Text ->
-  EIO Module
+  App Module
 getModule h mainModule m moduleID locatorText = do
   nextModuleFilePath <- Module.getModuleFilePath mainModule (Just m) moduleID
   cacheMap <- liftIO $ Module.getModuleCacheMap (moduleHandle h)
@@ -55,7 +55,7 @@ getModule h mainModule m moduleID locatorText = do
       liftIO $ Module.insertToModuleCacheMap (moduleHandle h) nextModuleFilePath nextModule
       return nextModule
 
-getAllDependencies :: Handle -> MainModule -> Module -> EIO [(ModuleAlias, Module)]
+getAllDependencies :: Handle -> MainModule -> Module -> App [(ModuleAlias, Module)]
 getAllDependencies h mainModule baseModule = do
   forM (Map.toList $ moduleDependency baseModule) $ \(alias, dependency) -> do
     let moduleID = MID.Library $ dependencyDigest dependency

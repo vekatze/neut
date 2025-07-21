@@ -7,11 +7,11 @@ module Kernel.Common.Source.ShiftToLatest
   )
 where
 
+import App.App (App)
+import App.Run (raiseError, raiseError')
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError, raiseError')
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Module
 import Kernel.Common.Source (Source (sourceModule))
@@ -30,7 +30,7 @@ new :: Antecedent.Handle -> Handle
 new antecedentHandle = do
   Handle {..}
 
-shiftToLatest :: Handle -> Source.Source -> EIO Source.Source
+shiftToLatest :: Handle -> Source.Source -> App Source.Source
 shiftToLatest h source = do
   shiftMap <- liftIO $ Antecedent.get (antecedentHandle h)
   case Map.lookup (moduleID $ sourceModule source) shiftMap of
@@ -39,7 +39,7 @@ shiftToLatest h source = do
     Just newModule -> do
       getNewerSource source newModule
 
-shiftToLatestModule :: Handle -> Module -> EIO Module
+shiftToLatestModule :: Handle -> Module -> App Module
 shiftToLatestModule h m = do
   shiftMap <- liftIO $ Antecedent.get (antecedentHandle h)
   case Map.lookup (moduleID m) shiftMap of
@@ -48,7 +48,7 @@ shiftToLatestModule h m = do
     Just newModule -> do
       return newModule
 
-getNewerSource :: Source.Source -> Module -> EIO Source.Source
+getNewerSource :: Source.Source -> Module -> App Source.Source
 getNewerSource source newModule = do
   relSourceFilePath <- Source.getRelPathFromSourceDir source
   let newSourceFilePath = getSourceDir newModule </> relSourceFilePath

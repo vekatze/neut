@@ -7,14 +7,14 @@ module Command.Common.Format
   )
 where
 
+import App.App (App)
+import App.Run (raiseError')
 import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Ens.Parse qualified as EnsParse
 import Ens.ToDoc qualified as Ens
-import Error.EIO (EIO)
-import Error.Run (raiseError')
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -43,11 +43,11 @@ new ::
 new globalHandle = do
   Handle {..}
 
-formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> EIO T.Text
+formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
 formatSource h shouldMinimizeImports path content = do
   _formatSource h shouldMinimizeImports path content
 
-formatEns :: Path Abs File -> T.Text -> EIO T.Text
+formatEns :: Path Abs File -> T.Text -> App T.Text
 formatEns path content = do
   ens <- EnsParse.fromFilePath' path content
   return $ Ens.pp ens
@@ -55,7 +55,7 @@ formatEns path content = do
 type ShouldMinimizeImports =
   Bool
 
-_formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> EIO T.Text
+_formatSource :: Handle -> ShouldMinimizeImports -> Path Abs File -> T.Text -> App T.Text
 _formatSource h shouldMinimizeImports filePath fileContent = do
   let MainModule mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   let parseCoreHandle = ParseRT.new (Global.gensymHandle (globalHandle h))

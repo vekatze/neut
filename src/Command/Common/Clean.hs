@@ -5,8 +5,8 @@ module Command.Common.Clean
   )
 where
 
+import App.App (App)
 import Control.Monad
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -31,7 +31,7 @@ new globalHandle = do
   unravelHandle <- Unravel.new globalHandle
   return $ Handle {..}
 
-clean :: Handle -> EIO ()
+clean :: Handle -> App ()
 clean h = do
   let mainModule = Env.getMainModule (envHandle h)
   moduleList <- Unravel.unravelModule (unravelHandle h) (extractModule mainModule)

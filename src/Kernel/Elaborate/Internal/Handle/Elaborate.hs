@@ -8,9 +8,9 @@ module Kernel.Elaborate.Internal.Handle.Elaborate
   )
 where
 
+import App.App (App)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe (fromMaybe)
-import Error.EIO (EIO)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const (defaultInlineLimit)
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -79,25 +79,25 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) currentSource = do
   let currentStep = 0
   return $ Handle {..}
 
-reduce :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+reduce :: Handle -> WT.WeakTerm -> App WT.WeakTerm
 reduce h e = do
   reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) (inlineLimit h)
   Reduce.reduce reduceHandle e
 
-fill :: Handle -> HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
+fill :: Handle -> HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fill h sub e = do
   reduceHandle <- liftIO $ Reduce.new (substHandle h) (WT.metaOf e) (inlineLimit h)
   let substHandle = Subst.new (Global.gensymHandle (globalHandle h))
   let fillHandle = Fill.new substHandle reduceHandle
   Fill.fill fillHandle sub e
 
-inline :: Handle -> Hint -> TM.Term -> EIO TM.Term
+inline :: Handle -> Hint -> TM.Term -> App TM.Term
 inline h m e = do
   dmap <- liftIO $ Definition.get' (defHandle h)
   inlineHandle <- liftIO $ Inline.new (gensymHandle h) dmap m (inlineLimit h)
   Inline.inline inlineHandle e
 
-inlineBinder :: Handle -> BinderF TM.Term -> EIO (BinderF TM.Term)
+inlineBinder :: Handle -> BinderF TM.Term -> App (BinderF TM.Term)
 inlineBinder h (m, x, t) = do
   t' <- inline h m t
   return (m, x, t')

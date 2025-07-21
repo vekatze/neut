@@ -6,13 +6,13 @@ module Command.Zen.Zen
   )
 where
 
+import App.App (App)
 import Command.Common.Build qualified as Build
 import Command.Common.Fetch qualified as Fetch
 import CommandParser.Config.Zen
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe
-import Error.EIO (EIO)
 import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -40,7 +40,7 @@ new globalHandle cfg = do
   let envHandle = Global.envHandle globalHandle
   Handle {..}
 
-zen :: Handle -> Config -> EIO ()
+zen :: Handle -> Config -> App ()
 zen h cfg = do
   setup h cfg
   path <- resolveFile' (filePathString cfg)
@@ -61,7 +61,7 @@ toBuildConfig cfg = do
       executeArgs = args cfg
     }
 
-setup :: Handle -> Config -> EIO ()
+setup :: Handle -> Config -> App ()
 setup h cfg = do
   let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule

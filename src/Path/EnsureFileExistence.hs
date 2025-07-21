@@ -4,22 +4,22 @@ module Path.EnsureFileExistence
   )
 where
 
+import App.App (App)
+import App.Run (raiseError, raiseError')
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError, raiseError')
 import Logger.Hint
 import Path
 import Path.IO
 
-ensureFileExistence :: Path Abs File -> Hint -> EIO ()
+ensureFileExistence :: Path Abs File -> Hint -> App ()
 ensureFileExistence path m = do
   _ensureFileExistence path (Just m)
 
-ensureFileExistence' :: Path Abs File -> EIO ()
+ensureFileExistence' :: Path Abs File -> App ()
 ensureFileExistence' path = do
   _ensureFileExistence path Nothing
 
-_ensureFileExistence :: Path Abs File -> Maybe Hint -> EIO ()
+_ensureFileExistence :: Path Abs File -> Maybe Hint -> App ()
 _ensureFileExistence path mHint = do
   fileExists <- doesFileExist path
   if fileExists

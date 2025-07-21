@@ -7,13 +7,13 @@ module Kernel.Parse.Internal.Handle.Alias
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe qualified as Maybe
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Kernel.Common.AliasInfo
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -50,7 +50,7 @@ resolveAlias ::
   Handle ->
   Hint ->
   GL.GlobalLocator ->
-  EIO SGL.StrictGlobalLocator
+  App SGL.StrictGlobalLocator
 resolveAlias h m gl = do
   case gl of
     GL.GlobalLocator (GL.IdentifiedGlobalLocator {moduleAlias, sourceLocator}) -> do
@@ -66,7 +66,7 @@ resolveLocatorAlias ::
   Hint ->
   ModuleAlias ->
   SL.SourceLocator ->
-  EIO SGL.StrictGlobalLocator
+  App SGL.StrictGlobalLocator
 resolveLocatorAlias h m moduleAlias sourceLocator = do
   moduleID <- resolveModuleAlias h m moduleAlias
   return $
@@ -75,7 +75,7 @@ resolveLocatorAlias h m moduleAlias sourceLocator = do
         SGL.sourceLocator = sourceLocator
       }
 
-resolveModuleAlias :: Handle -> Hint -> ModuleAlias -> EIO MID.ModuleID
+resolveModuleAlias :: Handle -> Hint -> ModuleAlias -> App MID.ModuleID
 resolveModuleAlias h m moduleAlias = do
   aliasMap <- liftIO $ readIORef (moduleAliasMapRef h)
   case Map.lookup moduleAlias aliasMap of
@@ -112,7 +112,7 @@ getLatestCompatibleDigest h mc = do
     Nothing ->
       return mc
 
-activateAliasInfo :: Handle -> Source.Source -> TopNameMap -> AliasInfo -> EIO ()
+activateAliasInfo :: Handle -> Source.Source -> TopNameMap -> AliasInfo -> App ()
 activateAliasInfo h source topNameMap aliasInfo =
   case aliasInfo of
     Use shouldUpdateTag strictGlobalLocator localLocatorList ->

@@ -5,11 +5,11 @@ module Command.LSP.Internal.FindDefinition
   )
 where
 
+import App.App (App)
+import App.Run (liftMaybe)
 import Command.LSP.Internal.GetLocationTree qualified as GetLocationTree
 import Command.LSP.Internal.GetSource qualified as GetSource
 import Control.Lens hiding (Iso, List)
-import Error.EIO (EIO)
-import Error.Run (liftMaybe)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.LocationTree (LocationTree)
 import Kernel.Common.LocationTree qualified as LT
@@ -32,7 +32,7 @@ findDefinition ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
   Handle ->
   p ->
-  EIO ((LT.LocType, DefinitionLink), LocationTree)
+  App ((LT.LocType, DefinitionLink), LocationTree)
 findDefinition h params = do
   src <- GetSource.getSource (getSourceHandle h) params
   locTree <- GetLocationTree.getLocationTree (getLocationTreeHandle h) src

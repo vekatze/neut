@@ -5,6 +5,8 @@ module Language.Term.Inline
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
@@ -13,8 +15,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Gensym.Handle qualified as Gensym
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
@@ -53,7 +53,7 @@ new gensymHandle dmap location inlineLimit = do
   currentStepRef <- liftIO $ newIORef 0
   return $ Handle {..}
 
-inline :: Handle -> TM.Term -> EIO TM.Term
+inline :: Handle -> TM.Term -> App TM.Term
 inline h e = do
   inline' h e
 
@@ -62,14 +62,14 @@ incrementStep h = do
   let Handle {currentStepRef} = h
   modifyIORef' currentStepRef (+ 1)
 
-detectPossibleInfiniteLoop :: Handle -> EIO ()
+detectPossibleInfiniteLoop :: Handle -> App ()
 detectPossibleInfiniteLoop h = do
   let Handle {inlineLimit, currentStepRef, location} = h
   currentStep <- liftIO $ readIORef currentStepRef
   when (inlineLimit < currentStep) $ do
     raiseError location $ "Exceeded max recursion depth of " <> T.pack (show inlineLimit)
 
-inline' :: Handle -> TM.Term -> EIO TM.Term
+inline' :: Handle -> TM.Term -> App TM.Term
 inline' h term = do
   detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
@@ -235,7 +235,7 @@ inline' h term = do
       typeTag' <- inline' h typeTag
       return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
 
-inlineBinder :: Handle -> BinderF TM.Term -> EIO (BinderF TM.Term)
+inlineBinder :: Handle -> BinderF TM.Term -> App (BinderF TM.Term)
 inlineBinder h (m, x, t) = do
   t' <- inline' h t
   return (m, x, t')
@@ -243,7 +243,7 @@ inlineBinder h (m, x, t) = do
 inlineDecisionTree ::
   Handle ->
   DT.DecisionTree TM.Term ->
-  EIO (DT.DecisionTree TM.Term)
+  App (DT.DecisionTree TM.Term)
 inlineDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -260,7 +260,7 @@ inlineDecisionTree h tree =
 inlineCaseList ::
   Handle ->
   DT.CaseList TM.Term ->
-  EIO (DT.CaseList TM.Term)
+  App (DT.CaseList TM.Term)
 inlineCaseList h (fallbackTree, clauseList) = do
   fallbackTree' <- inlineDecisionTree h fallbackTree
   clauseList' <- mapM (inlineCase h) clauseList
@@ -269,7 +269,7 @@ inlineCaseList h (fallbackTree, clauseList) = do
 inlineCase ::
   Handle ->
   DT.Case TM.Term ->
-  EIO (DT.Case TM.Term)
+  App (DT.Case TM.Term)
 inlineCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do

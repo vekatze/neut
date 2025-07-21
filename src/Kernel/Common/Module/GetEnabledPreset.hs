@@ -5,10 +5,10 @@ module Kernel.Common.Module.GetEnabledPreset
   )
 where
 
+import App.App (App)
 import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.EIO (EIO)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -28,7 +28,7 @@ new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
   Handle {..}
 
-getEnabledPreset :: Handle -> Module -> EIO [(T.Text, [BN.BaseName])]
+getEnabledPreset :: Handle -> Module -> App [(T.Text, [BN.BaseName])]
 getEnabledPreset h baseModule = do
   let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
   let mainModule = Env.getMainModule (envHandle h)

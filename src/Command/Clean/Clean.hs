@@ -5,8 +5,8 @@ module Command.Clean.Clean
   )
 where
 
+import App.App (App)
 import Command.Common.Clean qualified as Clean
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Prelude hiding (log)
 
@@ -19,6 +19,6 @@ new globalHandle = do
   cleanHandle <- Clean.new globalHandle
   return $ Handle {..}
 
-clean :: Handle -> EIO ()
+clean :: Handle -> App ()
 clean h = do
   Clean.clean (cleanHandle h)

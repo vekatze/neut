@@ -3,6 +3,8 @@ module Command.LSP.Internal.GetSymbolInfo
   )
 where
 
+import App.App (App)
+import App.Run (liftMaybe)
 import Command.Common.Check qualified as Check
 import Command.LSP.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Internal.GetSource qualified as GetSource
@@ -10,8 +12,6 @@ import CommandParser.Config.Remark (lspConfig)
 import Control.Monad.Trans
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (liftMaybe)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.LocationTree qualified as LT
@@ -27,7 +27,7 @@ import Language.WeakTerm.ToText
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
   p ->
-  EIO T.Text
+  App T.Text
 getSymbolInfo params = do
   h <- liftIO $ Global.new lspConfig Nothing
   let getSourceHandle = GetSource.new h

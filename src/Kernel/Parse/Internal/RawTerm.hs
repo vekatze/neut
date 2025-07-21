@@ -17,6 +17,8 @@ module Kernel.Parse.Internal.RawTerm
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import CodeParser.GetInfo
 import CodeParser.Parser
 import Control.Comonad.Cofree
@@ -25,8 +27,6 @@ import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.Const
 import Language.Common.BaseName qualified as BN
@@ -288,7 +288,7 @@ rawTermLetVarAscription' h =
       return ([], Nothing)
     ]
 
-ensureIdentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> EIO ()
+ensureIdentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureIdentLinearity foundVarSet vs =
   case vs of
     [] ->
@@ -378,7 +378,7 @@ parseImplicitParamsMaybe h =
       return (Nothing, [])
     ]
 
-ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> EIO ()
+ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =
   case vs of
     [] ->
@@ -838,7 +838,7 @@ rawTermRuneIntro = do
     Left e ->
       lift $ raiseError m e
 
-locatorToVarGlobal :: Hint -> T.Text -> EIO RT.RawTerm
+locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do
   (gl, ll) <- liftEither $ DD.getLocatorPair (blur m) text
   return $ rawVar (blur m) (Locator (gl, ll))

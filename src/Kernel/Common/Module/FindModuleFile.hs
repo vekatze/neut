@@ -4,23 +4,23 @@ module Kernel.Common.Module.FindModuleFile
   )
 where
 
+import App.App (App)
+import App.Run (raiseError')
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError')
 import Kernel.Common.Const (moduleFile)
 import Path
 import Path.IO
 
-findModuleFile :: Path Abs Dir -> EIO (Path Abs File)
+findModuleFile :: Path Abs Dir -> App (Path Abs File)
 findModuleFile baseDir = do
   findModuleFile' baseDir baseDir
 
-getCurrentModuleFilePath :: EIO (Path Abs File)
+getCurrentModuleFilePath :: App (Path Abs File)
 getCurrentModuleFilePath = do
   baseDir <- getCurrentDir
   findModuleFile baseDir
 
-findModuleFile' :: Path Abs Dir -> Path Abs Dir -> EIO (Path Abs File)
+findModuleFile' :: Path Abs Dir -> Path Abs Dir -> App (Path Abs File)
 findModuleFile' baseDir moduleRootDirCandidate = do
   let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
   moduleFileExists <- doesFileExist moduleFileCandidate

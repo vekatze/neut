@@ -4,6 +4,9 @@ module Kernel.Elaborate.Internal.Unify
   )
 where
 
+import App.App (App)
+import App.Error qualified as E
+import App.Run (raiseCritical)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -14,9 +17,6 @@ import Data.List (partition)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Debug.Trace
-import Error.EIO (EIO)
-import Error.Error qualified as E
-import Error.Run (raiseCritical)
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Elaborate.Constraint (SuspendedConstraint)
 import Kernel.Elaborate.Constraint qualified as C
@@ -49,7 +49,7 @@ import Logger.Hint
 import Logger.Log qualified as L
 import Logger.LogLevel qualified as L
 
-unify :: Handle -> [C.Constraint] -> EIO HS.HoleSubst
+unify :: Handle -> [C.Constraint] -> App HS.HoleSubst
 unify h constraintList = do
   susList <- unify' h (reverse constraintList)
   case susList of
@@ -58,7 +58,7 @@ unify h constraintList = do
     _ ->
       throwTypeErrors h susList
 
-unifyCurrentConstraints :: Handle -> EIO HS.HoleSubst
+unifyCurrentConstraints :: Handle -> App HS.HoleSubst
 unifyCurrentConstraints h = do
   susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
   cs <- liftIO $ Constraint.get (constraintHandle h)
@@ -67,18 +67,18 @@ unifyCurrentConstraints h = do
   liftIO $ Constraint.setSuspendedConstraints (constraintHandle h) susList'
   liftIO $ Hole.getSubst (holeHandle h)
 
-unify' :: Handle -> [C.Constraint] -> EIO [SuspendedConstraint]
+unify' :: Handle -> [C.Constraint] -> App [SuspendedConstraint]
 unify' h constraintList = do
   susList <- liftIO $ Constraint.getSuspendedConstraints (constraintHandle h)
   simplify h susList $ zip constraintList constraintList
 
-throwTypeErrors :: Handle -> [SuspendedConstraint] -> EIO a
+throwTypeErrors :: Handle -> [SuspendedConstraint] -> App a
 throwTypeErrors h susList = do
   sub <- liftIO $ Hole.getSubst (holeHandle h)
   errorList <- mapM (\(C.SuspendedConstraint (_, (_, c))) -> constraintToRemark h sub c) susList
   throwError $ E.MakeError errorList
 
-constraintToRemark :: Handle -> HS.HoleSubst -> C.Constraint -> EIO L.Log
+constraintToRemark :: Handle -> HS.HoleSubst -> C.Constraint -> App L.Log
 constraintToRemark h sub c = do
   case c of
     C.Actual t -> do
@@ -92,7 +92,7 @@ constraintToRemark h sub c = do
       actual' <- fillAsMuchAsPossible h sub actual
       return $ L.newLog (WT.metaOf actual) L.Error $ constructErrorMessageEq actual' expected'
 
-fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
+fillAsMuchAsPossible :: Handle -> HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fillAsMuchAsPossible h sub e = do
   e' <- reduce h e
   if HS.fillable e' sub
@@ -122,7 +122,7 @@ increment :: Handle -> Handle
 increment h = do
   h {currentStep = currentStep h + 1}
 
-detectPossibleInfiniteLoop :: Handle -> C.Constraint -> EIO ()
+detectPossibleInfiniteLoop :: Handle -> C.Constraint -> App ()
 detectPossibleInfiniteLoop h c = do
   let Handle {inlineLimit, currentStep} = h
   when (inlineLimit < currentStep) $ do
@@ -134,7 +134,7 @@ detectPossibleInfiniteLoop h c = do
             <> " during unification)"
     throwError $ E.MakeError [l {L.content = L.content l <> suffix}]
 
-simplify :: Handle -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> EIO [SuspendedConstraint]
+simplify :: Handle -> [SuspendedConstraint] -> [(C.Constraint, C.Constraint)] -> App [SuspendedConstraint]
 simplify h susList constraintList =
   case constraintList of
     [] ->
@@ -292,7 +292,7 @@ resolveHole ::
   [Ident] ->
   WT.WeakTerm ->
   [(C.Constraint, C.Constraint)] ->
-  EIO [SuspendedConstraint]
+  App [SuspendedConstraint]
 resolveHole h susList hole1 xs e2' cs = do
   liftIO $ Hole.insertSubst (holeHandle h) hole1 xs e2'
   let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member hole1 hs) susList
@@ -372,7 +372,7 @@ simplifyActual ::
   S.Set DD.DefiniteDescription ->
   WT.WeakTerm ->
   C.Constraint ->
-  EIO [SuspendedConstraint]
+  App [SuspendedConstraint]
 simplifyActual h m dataNameSet t orig = do
   detectPossibleInfiniteLoop h orig
   t' <- reduce h t
@@ -433,7 +433,7 @@ getConsArgTypes ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  EIO [BinderF WT.WeakTerm]
+  App [BinderF WT.WeakTerm]
 getConsArgTypes h m consName = do
   t <- Type.lookup' (typeHandle h) m consName
   case t of
@@ -448,7 +448,7 @@ simplifyInteger ::
   Hint ->
   WT.WeakTerm ->
   C.Constraint ->
-  EIO [SuspendedConstraint]
+  App [SuspendedConstraint]
 simplifyInteger h m t orig = do
   detectPossibleInfiniteLoop h orig
   t' <- reduce h t

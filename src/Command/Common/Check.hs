@@ -8,12 +8,12 @@ module Command.Common.Check
   )
 where
 
+import App.App (App)
+import App.Error qualified as E
+import App.Run (forP, runApp)
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Error qualified as E
-import Error.Run (forP, runEIO)
 import Kernel.Common.Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -46,7 +46,7 @@ new ::
 new globalHandle = do
   Handle {..}
 
-check :: Handle -> EIO [Log]
+check :: Handle -> App [Log]
 check h = do
   let M.MainModule mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   liftIO $ _check h Peripheral mainModule
@@ -55,7 +55,7 @@ checkModule :: Handle -> M.Module -> IO [Log]
 checkModule h baseModule = do
   _check h Peripheral baseModule
 
-checkAll :: Handle -> EIO [Log]
+checkAll :: Handle -> App [Log]
 checkAll h = do
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   let getModuleHandle = GetModule.new (globalHandle h)
@@ -63,7 +63,7 @@ checkAll h = do
   forM_ deps $ \(_, m) -> liftIO $ checkModule h m
   liftIO $ checkModule h (extractModule mainModule)
 
-checkSingle :: Handle -> M.Module -> Path Abs File -> EIO (Maybe Elaborate.Handle)
+checkSingle :: Handle -> M.Module -> Path Abs File -> App (Maybe Elaborate.Handle)
 checkSingle h baseModule path = do
   _check' h (PeripheralSingle path) baseModule
 
@@ -82,7 +82,7 @@ _check h target baseModule = do
     forM_ cacheOrStmtList $ \(localHandle, (source, cacheOrContent)) -> do
       checkSource h localHandle target source cacheOrContent
 
-_check' :: Handle -> Target -> M.Module -> EIO (Maybe Elaborate.Handle)
+_check' :: Handle -> Target -> M.Module -> App (Maybe Elaborate.Handle)
 _check' h target baseModule = do
   unravelHandle <- liftIO $ Unravel.new (globalHandle h)
   let loadHandle = Load.new (globalHandle h)
@@ -101,7 +101,7 @@ _check' h target baseModule = do
         checkSource h localHandle target source cacheOrContent
       Just <$> checkSource h rootLocalHandle target rootSource rootCacheOrContent
 
-checkSource :: Handle -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> EIO Elaborate.Handle
+checkSource :: Handle -> Local.Handle -> Target -> Source -> (Either Cache [WeakStmt], [Log]) -> App Elaborate.Handle
 checkSource h localHandle target source (cacheOrStmtList, logs) = do
   elaborateHandle <- liftIO $ Elaborate.new (globalHandle h) localHandle source
   liftIO $
@@ -114,9 +114,9 @@ unsnoc :: [a] -> Maybe ([a], a)
 unsnoc =
   foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
 
-collectLogs :: GlobalRemark.Handle -> EIO () -> IO [L.Log]
+collectLogs :: GlobalRemark.Handle -> App () -> IO [L.Log]
 collectLogs h c = do
-  resultOrErr <- runEIO c
+  resultOrErr <- runApp c
   remarkList <- liftIO $ GlobalRemark.get h
   case resultOrErr of
     Left (E.MakeError logList) ->

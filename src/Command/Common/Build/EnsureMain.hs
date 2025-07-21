@@ -5,10 +5,10 @@ module Command.Common.Build.EnsureMain
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Control.Monad
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Module
 import Kernel.Common.Source
@@ -26,7 +26,7 @@ new :: Env.Handle -> Handle
 new envHandle = do
   Handle {..}
 
-ensureMain :: Handle -> Target -> Source -> [DD.DefiniteDescription] -> EIO ()
+ensureMain :: Handle -> Target -> Source -> [DD.DefiniteDescription] -> App ()
 ensureMain h t source topLevelNameList = do
   case t of
     Main target -> do
@@ -45,7 +45,7 @@ ensureMain h t source topLevelNameList = do
 type EntryPointName =
   T.Text
 
-raiseMissingEntryPoint :: Hint -> EntryPointName -> EIO a
+raiseMissingEntryPoint :: Hint -> EntryPointName -> App a
 raiseMissingEntryPoint m entryPointName = do
   raiseError m $ "`" <> entryPointName <> "` is missing"
 

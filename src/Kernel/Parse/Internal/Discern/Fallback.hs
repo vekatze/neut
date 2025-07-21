@@ -1,10 +1,10 @@
 module Kernel.Parse.Internal.Discern.Fallback (getFallbackMatrix) where
 
+import App.App (App)
+import App.Run (raiseCritical')
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Vector qualified as V
-import Error.EIO (EIO)
-import Error.Run (raiseCritical')
 import Kernel.Parse.Internal.Discern.Handle qualified as H
 import Kernel.Parse.Internal.Discern.Noema
 import Kernel.Parse.Pattern
@@ -20,7 +20,7 @@ getFallbackMatrix ::
   N.IsNoetic ->
   Ident ->
   PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  EIO (PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  App (PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 getFallbackMatrix h isNoetic cursor mat = do
   mapMaybeRowM (fallbackRow h isNoetic cursor) mat
 
@@ -29,7 +29,7 @@ fallbackRow ::
   N.IsNoetic ->
   Ident ->
   PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  EIO (Maybe (PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm)))
+  App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm)))
 fallbackRow h isNoetic cursor (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->

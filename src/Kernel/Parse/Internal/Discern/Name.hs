@@ -8,14 +8,14 @@ module Kernel.Parse.Internal.Discern.Name
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical, raiseError)
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseCritical, raiseError)
 import Kernel.Common.Const qualified as C
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -50,7 +50,7 @@ import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 
 {-# INLINE resolveName #-}
-resolveName :: H.Handle -> Hint -> Name -> EIO (DD.DefiniteDescription, (Hint, GN.GlobalName))
+resolveName :: H.Handle -> Hint -> Name -> App (DD.DefiniteDescription, (Hint, GN.GlobalName))
 resolveName h m name = do
   nameOrErr <- resolveNameOrError h m name
   case nameOrErr of
@@ -60,7 +60,7 @@ resolveName h m name = do
       return pair
 
 {-# INLINE resolveNameOrError #-}
-resolveNameOrError :: H.Handle -> Hint -> Name -> EIO (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveNameOrError :: H.Handle -> Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveNameOrError h m name =
   case name of
     Var var -> do
@@ -68,7 +68,7 @@ resolveNameOrError h m name =
     Locator l -> do
       Right <$> resolveLocator h m l True
 
-resolveVarOrErr :: H.Handle -> Hint -> T.Text -> EIO (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveVarOrErr :: H.Handle -> Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveVarOrErr h m name = do
   localLocator <- liftEither $ LL.reflect m name
   candList <- liftIO $ Locator.getPossibleReferents (H.locatorHandle h) localLocator
@@ -92,7 +92,7 @@ resolveLocator ::
   Hint ->
   L.Locator ->
   Bool ->
-  EIO (DD.DefiniteDescription, (Hint, GN.GlobalName))
+  App (DD.DefiniteDescription, (Hint, GN.GlobalName))
 resolveLocator h m (gl, ll) shouldInsertTag = do
   sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
   let cand = DD.new sgl ll
@@ -113,7 +113,7 @@ resolveDefiniteDescription ::
   H.Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  EIO GN.GlobalName
+  App GN.GlobalName
 resolveDefiniteDescription h m dd = do
   cand' <- NameMap.lookup (H.nameMapHandle h) m dd
   let foundName = candFilter (dd, cand')
@@ -127,7 +127,7 @@ resolveConstructor ::
   H.Handle ->
   Hint ->
   Name ->
-  EIO (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
+  App (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
 resolveConstructor h m s = do
   (dd, (_, gn)) <- resolveName h m s
   case resolveConstructorMaybe dd gn of
@@ -147,7 +147,7 @@ resolveConstructorMaybe dd gn = do
     _ ->
       Nothing
 
-interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> EIO WT.WeakTerm
+interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName h m dd gn = do
   case gn of
     GN.TopLevelFunc argNum isConstLike ->
@@ -169,7 +169,7 @@ interpretGlobalName h m dd gn = do
     GN.Rule _ ->
       raiseError m $ "`" <> DD.reify dd <> "` must be used with arguments"
 
-interpretRuleName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> EIO RuleKind
+interpretRuleName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App RuleKind
 interpretRuleName m dd gn = do
   case gn of
     GN.Rule kind ->
@@ -189,7 +189,7 @@ interpretTopLevelFunc m dd argNum isConstLike = do
     then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
     else m :< WT.VarGlobal attr dd
 
-castFromIntToBool :: H.Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+castFromIntToBool :: H.Handle -> WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool h e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int PNS.IntSize1))
   l <- liftEither $ DD.getLocatorPair m C.coreBool

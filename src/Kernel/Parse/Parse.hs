@@ -4,14 +4,14 @@ module Kernel.Parse.Parse
   )
 where
 
+import App.App (App)
+import App.Run (forP, forP_)
 import CodeParser.Parser (runParser)
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Bifunctor (Bifunctor (first))
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (forP, forP_)
 import Kernel.Common.Cache (Cache)
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -60,7 +60,7 @@ new globalHandle = do
 parse ::
   Global.Handle ->
   [(Source, Either Cache T.Text)] ->
-  EIO [(Local.Handle, (Source, Either Cache PostRawProgram))]
+  App [(Local.Handle, (Source, Either Cache PostRawProgram))]
 parse h contentSeq = do
   let parseHandle = new h
   cacheOrProgList <- forP contentSeq $ \(source, cacheOrContent) -> do
@@ -76,7 +76,7 @@ parse' ::
   Handle ->
   Source.Source ->
   Either Cache.Cache T.Text ->
-  EIO (Either Cache.Cache RawProgram)
+  App (Either Cache.Cache RawProgram)
 parse' h source cacheOrContent = do
   parseSource h source cacheOrContent
 
@@ -84,7 +84,7 @@ parseSource ::
   Handle ->
   Source.Source ->
   Either Cache.Cache T.Text ->
-  EIO (Either Cache.Cache RawProgram)
+  App (Either Cache.Cache RawProgram)
 parseSource h source cacheOrContent = do
   let filePath = Source.sourceFilePath source
   case cacheOrContent of
@@ -152,7 +152,7 @@ registerTopLevelNames ::
   Handle ->
   Source.Source ->
   Either Cache.Cache PostRawProgram ->
-  EIO ()
+  App ()
 registerTopLevelNames h source cacheOrContent = do
   case cacheOrContent of
     Left cache -> do
@@ -171,7 +171,7 @@ saveTopLevelNames h source nameArrowList = do
   GlobalNameMap.insert (globalNameMapHandle h) (Source.sourceFilePath source) nameMap
   registerOptDataInfo h nameArrowList
 
-registerKeyArg :: Handle -> PostRawStmt -> EIO ()
+registerKeyArg :: Handle -> PostRawStmt -> App ()
 registerKeyArg h stmt = do
   case stmt of
     PostRawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
@@ -197,7 +197,7 @@ registerKeyArg h stmt = do
     PostRawStmtForeign {} ->
       return ()
 
-registerKeyArg' :: Handle -> Stmt -> EIO ()
+registerKeyArg' :: Handle -> Stmt -> App ()
 registerKeyArg' h stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do

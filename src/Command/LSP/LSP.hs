@@ -5,11 +5,11 @@ module Command.LSP.LSP
   )
 where
 
+import App.App (App)
 import Command.Common.Fetch qualified as Fetch
 import Command.LSP.Internal.Server qualified as L
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 
@@ -26,7 +26,7 @@ new globalHandle = do
   let envHandle = Global.envHandle globalHandle
   Handle {..}
 
-lsp :: Handle -> EIO ()
+lsp :: Handle -> App ()
 lsp h = do
   Fetch.fetch (fetchHandle h) (Env.getMainModule (envHandle h))
   void $ liftIO L.lsp

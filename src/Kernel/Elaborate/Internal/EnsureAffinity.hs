@@ -5,6 +5,8 @@ module Kernel.Elaborate.Internal.EnsureAffinity
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical)
 import Control.Comonad.Cofree
 import Control.Lens (Bifunctor (bimap))
 import Control.Monad
@@ -13,8 +15,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
-import Error.EIO (EIO)
-import Error.Run (raiseCritical)
 import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.OptimizableData
@@ -64,7 +64,7 @@ new elaborateHandle = do
   let varEnv = IntMap.empty
   return $ Handle {..}
 
-ensureAffinity :: Handle -> TM.Term -> EIO [L.Log]
+ensureAffinity :: Handle -> TM.Term -> App [L.Log]
 ensureAffinity h e = do
   cs <- analyze h e
   synthesize h $ map (bimap weaken weaken) cs
@@ -109,7 +109,7 @@ deactivateExpCheck :: Handle -> Handle
 deactivateExpCheck h =
   h {mustPerformExpCheck = False}
 
-analyzeVar :: Handle -> Hint -> Ident -> EIO [AffineConstraint]
+analyzeVar :: Handle -> Hint -> Ident -> App [AffineConstraint]
 analyzeVar h m x = do
   if isCartesian x || not (mustPerformExpCheck h)
     then return []
@@ -127,7 +127,7 @@ analyzeVar h m x = do
               _ :< t <- lookupTypeEnv (varEnv h) m x
               return [(m :< t, m :< t)]
 
-analyze :: Handle -> TM.Term -> EIO [AffineConstraint]
+analyze :: Handle -> TM.Term -> App [AffineConstraint]
 analyze h term = do
   case term of
     _ :< TM.Tau ->
@@ -237,7 +237,7 @@ analyze h term = do
 analyzeBinder ::
   Handle ->
   [BinderF TM.Term] ->
-  EIO ([AffineConstraint], Handle)
+  App ([AffineConstraint], Handle)
 analyzeBinder h binder =
   case binder of
     [] -> do
@@ -250,7 +250,7 @@ analyzeBinder h binder =
 analyzeLet ::
   Handle ->
   [(BinderF TM.Term, TM.Term)] ->
-  EIO ([AffineConstraint], Handle)
+  App ([AffineConstraint], Handle)
 analyzeLet h xtes =
   case xtes of
     [] ->
@@ -261,7 +261,7 @@ analyzeLet h xtes =
       (cs', h') <- analyzeLet (extendHandle (m, x, t) h) rest
       return (cs0 ++ cs1 ++ cs', h')
 
-lookupTypeEnv :: VarEnv -> Hint -> Ident -> EIO TM.Term
+lookupTypeEnv :: VarEnv -> Hint -> Ident -> App TM.Term
 lookupTypeEnv varEnv m x =
   case IntMap.lookup (toInt x) varEnv of
     Just t ->
@@ -275,7 +275,7 @@ lookupTypeEnv varEnv m x =
 analyzeDecisionTree ::
   Handle ->
   DT.DecisionTree TM.Term ->
-  EIO [AffineConstraint]
+  App [AffineConstraint]
 analyzeDecisionTree h tree =
   case tree of
     DT.Leaf _ letSeq body -> do
@@ -292,7 +292,7 @@ analyzeDecisionTree h tree =
 analyzeClauseList ::
   Handle ->
   DT.CaseList TM.Term ->
-  EIO [AffineConstraint]
+  App [AffineConstraint]
 analyzeClauseList h (fallbackClause, caseList) = do
   newVarSetRef <- liftIO $ newIORef IntMap.empty
   css <- forM caseList $ \c -> do
@@ -311,7 +311,7 @@ analyzeClauseList h (fallbackClause, caseList) = do
 analyzeCase ::
   Handle ->
   DT.Case TM.Term ->
-  EIO [AffineConstraint]
+  App [AffineConstraint]
 analyzeCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase _ _ cont -> do
@@ -323,7 +323,7 @@ analyzeCase h decisionCase = do
       cs3 <- analyzeDecisionTree h' cont
       return $ cs1 ++ cs2 ++ cs3
 
-synthesize :: Handle -> [WeakAffineConstraint] -> EIO [L.Log]
+synthesize :: Handle -> [WeakAffineConstraint] -> App [L.Log]
 synthesize h cs = do
   errorList <- concat <$> mapM (simplifyAffine h S.empty) cs
   return $ map constructErrorMessageAffine errorList
@@ -339,7 +339,7 @@ simplifyAffine ::
   Handle ->
   S.Set DD.DefiniteDescription ->
   WeakAffineConstraint ->
-  EIO [AffineConstraintError]
+  App [AffineConstraintError]
 simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
   t' <- Elaborate.reduce (elaborateHandle h) t
   case t' of
@@ -378,7 +378,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
         _ -> do
           return [AffineConstraintError orig]
 
-substConsArgs :: Handle -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> EIO [BinderF WT.WeakTerm]
+substConsArgs :: Handle -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->
@@ -394,7 +394,7 @@ getConsArgTypes ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  EIO [BinderF WT.WeakTerm]
+  App [BinderF WT.WeakTerm]
 getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of

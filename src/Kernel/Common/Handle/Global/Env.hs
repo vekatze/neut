@@ -9,11 +9,11 @@ module Kernel.Common.Handle.Global.Env
   )
 where
 
+import App.App (App)
+import App.Run (raiseError', run)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError', run)
 import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.Module
 import Kernel.Common.Module qualified as Module
@@ -63,7 +63,7 @@ getBuildMode :: Handle -> IO BM.BuildMode
 getBuildMode h =
   readIORef (_buildModeRef h)
 
-getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> EIO DD.DefiniteDescription
+getMainDefiniteDescriptionByTarget :: Handle -> Target.MainTarget -> App DD.DefiniteDescription
 getMainDefiniteDescriptionByTarget h targetOrZen = do
   let mainModule = getMainModule h
   case targetOrZen of
@@ -77,14 +77,14 @@ getMainDefiniteDescriptionByTarget h targetOrZen = do
       relPath <- Module.getRelPathFromSourceDir (extractModule mainModule) path
       relPathToDD relPath BN.zenName
 
-relPathToDD :: Path Rel File -> BN.BaseName -> EIO DD.DefiniteDescription
+relPathToDD :: Path Rel File -> BN.BaseName -> App DD.DefiniteDescription
 relPathToDD relPath baseName = do
   sourceLocator <- SL.SourceLocator <$> removeExtension relPath
   let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator}
   let ll = LL.new baseName
   return $ DD.new sgl ll
 
-removeExtension :: Path a File -> EIO (Path a File)
+removeExtension :: Path a File -> App (Path a File)
 removeExtension path =
   case splitExtension path of
     Just (path', _) ->

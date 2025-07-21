@@ -1,5 +1,6 @@
 module Command.Archive.Module.MakeArchiveEns (makeArchiveEns) where
 
+import App.App (App)
 import Command.Archive.Module.GetExistingVersions
 import Command.Archive.PackageVersion.PackageVersion qualified as PV
 import Control.Comonad.Cofree
@@ -11,7 +12,6 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Ens.Parse qualified as Ens
-import Error.EIO (EIO)
 import Kernel.Common.Const
 import Kernel.Common.Module
 import Language.Common.ModuleDigest (ModuleDigest (..))
@@ -24,7 +24,7 @@ import SyntaxTree.Series qualified as SE
 import System.IO
 import Prelude hiding (log)
 
-makeArchiveEns :: PV.PackageVersion -> MainModule -> EIO E.FullEns
+makeArchiveEns :: PV.PackageVersion -> MainModule -> App E.FullEns
 makeArchiveEns newVersion targetModule = do
   existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
@@ -34,13 +34,13 @@ makeArchiveEns newVersion targetModule = do
   mergedEns <- liftEither $ E.merge baseEns antecedentEns
   return (c1, (mergedEns, c2))
 
-getPackagePath :: Module -> PV.PackageVersion -> EIO (Path Abs File)
+getPackagePath :: Module -> PV.PackageVersion -> App (Path Abs File)
 getPackagePath targetModule ver = do
   let archiveDir = getArchiveDir targetModule
   let archiveName = PV.reify ver
   resolveFile archiveDir $ T.unpack $ archiveName <> packageFileExtension
 
-getDigest :: Module -> PV.PackageVersion -> EIO ModuleDigest
+getDigest :: Module -> PV.PackageVersion -> App ModuleDigest
 getDigest targetModule ver = do
   path <- getPackagePath targetModule ver
   handle <- liftIO $ openFile (toFilePath path) ReadMode

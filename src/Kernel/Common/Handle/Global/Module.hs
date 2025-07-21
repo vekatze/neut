@@ -14,13 +14,13 @@ module Kernel.Common.Handle.Global.Module
   )
 where
 
+import App.App (App)
+import App.Run (raiseError, raiseError')
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError, raiseError')
 import Kernel.Common.Const
 import Kernel.Common.Module
 import Kernel.Common.ModuleURL
@@ -53,7 +53,7 @@ new = do
   _moduleCacheMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-getModuleFilePath :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs File)
+getModuleFilePath :: MainModule -> Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
 getModuleFilePath mainModule mHint moduleID = do
   moduleDir <- getModuleDirByID mainModule mHint moduleID
   return $ moduleDir </> moduleFile
@@ -66,7 +66,7 @@ insertToModuleCacheMap :: Handle -> Path Abs File -> Module -> IO ()
 insertToModuleCacheMap h k v =
   atomicModifyIORef' (_moduleCacheMapRef h) (\mp -> (Map.insert k v mp, ()))
 
-getModuleDirByID :: MainModule -> Maybe H.Hint -> MID.ModuleID -> EIO (Path Abs Dir)
+getModuleDirByID :: MainModule -> Maybe H.Hint -> MID.ModuleID -> App (Path Abs Dir)
 getModuleDirByID (MainModule pivotModule) mHint moduleID = do
   case moduleID of
     MID.Base -> do
@@ -82,7 +82,7 @@ getModuleDirByID (MainModule pivotModule) mHint moduleID = do
       dependencyDir <- getDependencyDirPath pivotModule
       resolveDir dependencyDir $ T.unpack digest
 
-getCoreModuleURL :: EIO ModuleURL
+getCoreModuleURL :: App ModuleURL
 getCoreModuleURL = do
   mCoreModuleURL <- liftIO $ lookupEnv envVarCoreModuleURL
   case mCoreModuleURL of
@@ -91,7 +91,7 @@ getCoreModuleURL = do
     Nothing ->
       raiseError' $ "The URL of the core module is not specified; set it via " <> T.pack envVarCoreModuleURL
 
-getCoreModuleDigest :: EIO ModuleDigest
+getCoreModuleDigest :: App ModuleDigest
 getCoreModuleDigest = do
   mCoreModuleDigest <- liftIO $ lookupEnv envVarCoreModuleDigest
   case mCoreModuleDigest of
@@ -100,7 +100,7 @@ getCoreModuleDigest = do
     Nothing ->
       raiseError' $ "The digest of the core module is not specified; set it via " <> T.pack envVarCoreModuleDigest
 
-sourceFromPath :: Module -> Path Abs File -> EIO Source.Source
+sourceFromPath :: Module -> Path Abs File -> App Source.Source
 sourceFromPath baseModule path = do
   ensureFileModuleSanity path baseModule
   return $
@@ -110,7 +110,7 @@ sourceFromPath baseModule path = do
         Source.sourceHint = Nothing
       }
 
-ensureFileModuleSanity :: Path Abs File -> Module -> EIO ()
+ensureFileModuleSanity :: Path Abs File -> Module -> App ()
 ensureFileModuleSanity filePath baseModule = do
   case stripProperPrefix (getSourceDir baseModule) filePath of
     Nothing -> do
@@ -131,7 +131,7 @@ ensureFileModuleSanity filePath baseModule = do
               <> " must not contain dots, but found: "
               <> T.pack (show errPath)
 
-getAllSourcePathInModule :: Module -> EIO [Path Abs File]
+getAllSourcePathInModule :: Module -> App [Path Abs File]
 getAllSourcePathInModule baseModule = do
   (_, filePathList) <- listDirRecur (getSourceDir baseModule)
   return $ filter _hasSourceExtension filePathList
@@ -140,12 +140,12 @@ dropLast :: [a] -> [a]
 dropLast xs =
   take (length xs - 1) xs
 
-getAllSourceInModule :: Module -> EIO [Source.Source]
+getAllSourceInModule :: Module -> App [Source.Source]
 getAllSourceInModule baseModule = do
   sourcePathList <- getAllSourcePathInModule baseModule
   mapM (sourceFromPath baseModule) sourcePathList
 
-getDependencyDirPath :: Module -> EIO (Path Abs Dir)
+getDependencyDirPath :: Module -> App (Path Abs Dir)
 getDependencyDirPath baseModule = do
   let moduleRootDir = getModuleRootDir baseModule
   case moduleID baseModule of
@@ -154,6 +154,6 @@ getDependencyDirPath baseModule = do
     _ -> do
       returnDirectory $ moduleRootDir </> moduleCacheDir baseModule </> $(mkRelDir "dependency")
 
-returnDirectory :: Path Abs Dir -> EIO (Path Abs Dir)
+returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
 returnDirectory path =
   ensureDir path >> return path

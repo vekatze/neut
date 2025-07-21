@@ -5,12 +5,12 @@ module Command.LSP.Internal.References
   )
 where
 
+import App.App (App)
 import Command.LSP.Internal.FindDefinition qualified as FindDefinition
 import Command.LSP.Internal.FindReferences qualified as LSP
 import Command.LSP.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Internal.GetSource qualified as GetSource
 import Control.Monad.Trans
-import Error.EIO (EIO)
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Source (Source (sourceFilePath, sourceModule))
@@ -41,7 +41,7 @@ references ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
   Handle ->
   p ->
-  EIO [Location]
+  App [Location]
 references h params = do
   Unravel.registerShiftMap (unravelHandle h)
   currentSource <- GetSource.getSource (getSourceHandle h) params
