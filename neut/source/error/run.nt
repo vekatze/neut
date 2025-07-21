@@ -30,6 +30,18 @@ inline for-each-parallel<a, b>(xs: vector(a), f: (a) -> eio(b)): eio(vector(b)) 
   }
 }
 
+inline for-parallel<a>(xs: vector(a), f: (a) -> eio(unit)): eio(unit) {
+  let ys = core.thread.pool.for-each-parallel(get-cpu-count(), xs, f);
+  let Pair(errors, results) = core.vector.partition(ys);
+  let error-len on errors = core.vector.length(errors);
+  if eq-int(error-len, 0) {
+    let _ = results;
+    Right(Unit)
+  } else {
+    Left(this.error.error.join(errors))
+  }
+}
+
 define zen(): unit {
   let num-of-elems = mul-int(get-cpu-count(), 2);
   pin tmp =
@@ -38,5 +50,11 @@ define zen(): unit {
       let _ = sleep(1);
       Right(add-int(x, 10))
     });
-  vet(tmp)
+  vet(tmp);
+  let _ =
+    for-parallel(Vector["a", "b", "c", "d", "e"], function (x: &text) {
+      vet(x);
+      Right(Unit)
+    });
+  Unit
 }
