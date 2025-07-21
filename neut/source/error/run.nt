@@ -3,7 +3,8 @@ import {
   core.foreign {get-cpu-count, sleep},
   core.thread.pool,
   this.error.eio {eio},
-  this.error.error {Make-Error},
+  this.error.error {Make-Error, new-error},
+  this.logger.hint {hint},
   this.logger.logger-kit {logger-kit},
   this.logger.print {print-log-errors},
 }
@@ -40,6 +41,10 @@ inline for-parallel<a>(xs: vector(a), f: (a) -> eio(unit)): eio(unit) {
   } else {
     Left(this.error.error.join(errors))
   }
+}
+
+define raise-error<a>(m: hint, t: text): eio(a) {
+  Left(new-error(m, t))
 }
 
 define zen(): unit {
