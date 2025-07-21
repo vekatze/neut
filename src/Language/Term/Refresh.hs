@@ -238,7 +238,7 @@ refreshBinderWithMaybeType h binderList =
     [] -> do
       return []
     ((binder, maybeType) : rest) -> do
-      binder' <- refreshBinder h [binder]
+      [binder'] <- refreshBinder h [binder]
       maybeType' <- traverse (refresh h) maybeType
       rest' <- refreshBinderWithMaybeType h rest
-      return ((head binder', maybeType') : rest')
+      return ((binder', maybeType') : rest')

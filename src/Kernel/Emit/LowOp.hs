@@ -73,16 +73,32 @@ emitLowOp ax lowOp =
       case op of
         PrimUnaryOp name dom _ -> do
           let name' = TE.encodeUtf8Builder (T.pack $ show name)
-          emitUnaryOp dom name' (head args)
+          case args of
+            [arg] ->
+              emitUnaryOp dom name' arg
+            _ ->
+              error "Kernel.Emit.LowOp.emitLowOp.PrimUnaryOp"
         PrimBinaryOp name dom _ -> do
           let name' = TE.encodeUtf8Builder (T.pack $ show name)
-          emitBinaryOp dom name' (head args) (args !! 1)
+          case args of
+            [arg1, arg2] ->
+              emitBinaryOp dom name' arg1 arg2
+            _ ->
+              error "Kernel.Emit.LowOp.emitLowOp.PrimBinaryOp"
         PrimCmpOp name dom _ -> do
           let name' = TE.encodeUtf8Builder (T.pack $ show name)
-          emitBinaryOp dom name' (head args) (args !! 1)
+          case args of
+            [arg1, arg2] ->
+              emitBinaryOp dom name' arg1 arg2
+            _ ->
+              error "Kernel.Emit.LowOp.emitLowOp.PrimCmpOp"
         PrimConvOp name dom cod -> do
           let name' = TE.encodeUtf8Builder (T.pack $ show name)
-          emitConvOp name' (head args) (LT.PrimNum dom) (LT.PrimNum cod)
+          case args of
+            [arg] ->
+              emitConvOp name' arg (LT.PrimNum dom) (LT.PrimNum cod)
+            _ ->
+              error "Kernel.Emit.LowOp.emitLowOp.PrimConvOp"
 
 emitUnaryOp :: PT.PrimType -> Builder -> LC.Value -> Builder
 emitUnaryOp t inst d =
