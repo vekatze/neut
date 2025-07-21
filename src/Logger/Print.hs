@@ -78,6 +78,8 @@ logLevelToPad level = do
 stylizeLogText :: T.Text -> T.Text -> T.Text
 stylizeLogText str pad = do
   let ls = T.lines str
-  if null ls
-    then str
-    else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
+  case ls of
+    [] ->
+      str
+    l : rest ->
+      T.intercalate "\n" $ l : map (pad <>) rest

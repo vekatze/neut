@@ -147,7 +147,7 @@ unravelAntecedentArrow h axis currentModule = do
         path' <- Module.getModuleFilePath mainModule Nothing moduleID
         ModuleReflect.fromFilePath path' >>= unravelAntecedentArrow h axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
-      liftIO $ modifyIORef' (traceListRef axis) tail
+      liftIO $ modifyIORef' (traceListRef axis) (drop 1)
       return $ getAntecedentArrow currentModule ++ arrows
 
 unravelModule :: Handle -> Module -> EIO [Module]
@@ -177,7 +177,7 @@ unravelModule' h axis currentModule = do
           then ModuleReflect.fromFilePath path' >>= unravelModule' h axis
           else return []
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
-      liftIO $ modifyIORef' (traceListRef axis) tail
+      liftIO $ modifyIORef' (traceListRef axis) (drop 1)
       return $ currentModule : arrows
 
 unravel'' :: Handle -> Target -> Source.Source -> EIO (A.ArtifactTime, Seq Source.Source)
@@ -213,7 +213,7 @@ pushToTraceSourceList h source =
 
 popFromTraceSourceList :: Handle -> IO ()
 popFromTraceSourceList h =
-  modifyIORef' (traceSourceListRef h) tail
+  modifyIORef' (traceSourceListRef h) (drop 1)
 
 unravelImportItem :: Handle -> Target -> ImportItem -> EIO (A.ArtifactTime, Seq Source.Source)
 unravelImportItem h t importItem = do

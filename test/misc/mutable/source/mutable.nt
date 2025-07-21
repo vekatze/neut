@@ -1,5 +1,6 @@
 import {
-  core.cell {borrow, mutate},
+  core.box {axiom-T},
+  core.cell {borrow, make-cell, mutate},
   core.int.io {print-int-line},
   core.list {length},
 }
@@ -14,18 +15,18 @@ define bar(xs-cell: &cell(list(int))): unit {
 
 define main(): unit {
   let xs: list(int) = Cons(1, Cons(2, Nil));
-  let xs-cell = make-cell(xs);
+  let xs-cell = make-cell(quote {xs});
   let _ on xs-cell = {
     let _ = bar(xs-cell);
     mutate(xs-cell, function (xs) {
-      Cons(4, xs)
+      quote {Cons(4, axiom-T(xs))}
     });
     let _ = bar(xs-cell);
     mutate(xs-cell, function (_) {
-      Nil
+      quote {Nil}
     });
     mutate(xs-cell, function (xs) {
-      Cons(4, xs)
+      quote {Cons(4, axiom-T(xs))}
     });
     bar(xs-cell)
   };

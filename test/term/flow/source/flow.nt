@@ -1,5 +1,5 @@
 import {
-  core.channel {receive, send},
+  core.channel {make-channel, receive, send},
   core.foreign {sleep},
   core.list {length},
 }
@@ -47,7 +47,7 @@ define some-list(len: int, acc: list(int)): list(int) {
 }
 
 define detach-send(x: int, ch: &channel(int)): thread(unit) {
-  detach {send(ch, x)}
+  detach {send(ch, quote {x})}
 }
 
 define send-all(xs: list(int), ch: &channel(int), acc: list(thread(unit))): list(thread(unit)) {
@@ -122,21 +122,21 @@ define test-behavior(): unit {
   let ch = make-channel();
   let !ch: channel(int) = ch;
   let _ = !ch;
-  let _ on !ch = send(!ch, 1);
+  let _ on !ch = send(!ch, quote {1});
   let ch = !ch;
   let ch-clone = ch;
-  let _ on ch-clone = send(ch-clone, 1);
+  let _ on ch-clone = send(ch-clone, quote {1});
   let tmp on ch-clone = {
     let f = {
       detach {
         let _ = sleep(1);
-        send(ch-clone, 3)
+        send(ch-clone, quote {3})
       }
     };
     let g = {
       detach {
         let _ = sleep(1);
-        send(ch-clone, 4)
+        send(ch-clone, quote {4})
       }
     };
     let _ = receive(ch-clone);
