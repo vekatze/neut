@@ -1,16 +1,17 @@
 import {
   core.external {exit},
-  core.list {for-each, is-empty},
+  core.foreign {get-cpu-count, sleep},
+  core.thread.pool,
   this.error.eio {eio},
   this.error.error {Make-Error},
   this.logger.logger-kit {logger-kit},
-  this.logger.print {print-log-error-list},
+  this.logger.print {print-log-errors},
 }
 
 define run<a>(k: &logger-kit, c: eio(a)): a {
   match c {
   | Left(Make-Error(xs)) =>
-    let _ on xs = print-log-error-list(k, xs);
+    let _ on xs = print-log-errors(k, xs);
     let _ = xs;
     exit(1)
   | Right(v) =>
@@ -18,20 +19,24 @@ define run<a>(k: &logger-kit, c: eio(a)): a {
   }
 }
 
-define for-parallel<a, b>(xs: list(a), f: &(a) -> eio(b)): eio(list(b)) {
-  let tmp =
-    for-each(xs, function (x) {
-      detach {f(x)}
-    });
-  let tmp2 =
-    for-each(tmp, function (y) {
-      attach {y}
-    });
-  let Pair(errors, results) = core.list.partition(tmp2);
-  let b on errors = is-empty(errors);
-  if b {
+inline for-each-parallel<a, b>(xs: vector(a), f: (a) -> eio(b)): eio(vector(b)) {
+  let ys = core.thread.pool.for-each-parallel(get-cpu-count(), xs, f);
+  let Pair(errors, results) = core.vector.partition(ys);
+  let error-len on errors = core.vector.length(errors);
+  if eq-int(error-len, 0) {
     Right(results)
   } else {
     Left(this.error.error.join(errors))
   }
+}
+
+define zen(): unit {
+  let num-of-elems = mul-int(get-cpu-count(), 2);
+  pin tmp =
+    for-each-parallel(core.vector.range(0, num-of-elems), function (x) {
+      vet("sleep");
+      let _ = sleep(1);
+      Right(add-int(x, 10))
+    });
+  vet(tmp)
 }
