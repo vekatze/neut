@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Editor Setup - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Editor Setup - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/editor-setup.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html" class="active"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="editor-setup"><a class="header" href="#editor-setup">Editor Setup</a></h1>
+<h2 id="emacs"><a class="header" href="#emacs">Emacs</a></h2>
+<p><a href="https://github.com/vekatze/neut-mode">https://github.com/vekatze/neut-mode</a></p>
+<p><code>neut-mode</code> is an Emacs major mode for Neut. The mode provides syntax highlighting and automatic indentation. It also provides a way to use the LSP server via <code>lsp-mode</code> and <code>eglot</code>.</p>
+<p><code>neut-mode</code> is available on <a href="https://melpa.org/#/neut-mode">Melpa</a>. You can install the package by:</p>
+<pre><code class="language-text">M-x package-install RET neut-mode RET
+</code></pre>
+<p>Below is an example configuration:</p>
+<pre><code class="language-lisp">(use-package neut-mode
+  :init
+  (defun my/neut-initialize ()
+    (interactive)
+    (when (featurep 'lsp-mode)
+      (setq-local lsp-before-save-edits t)
+      (lsp)))
+  (defun my/neut-compile ()
+    (interactive)
+    (compile (concat &quot;neut zen &quot; (buffer-file-name))))
+  (add-hook 'neut-mode-hook 'my/neut-initialize)
+  :bind
+  (:map neut-mode-map
+        (&quot;C-c C-c&quot; . 'my/neut-compile)))
+</code></pre>
+<h2 id="neovim"><a class="header" href="#neovim">Neovim</a></h2>
+<p><a href="https://github.com/vekatze/vim-neut">https://github.com/vekatze/vim-neut</a></p>
+<p>You can install <code>vim-neut</code> for syntax highlighting and automatic indentation.</p>
+<p>The installation process is as usual. Just use your favorite plugin manager like <a href="https://github.com/folke/lazy.nvim">lazy.nvim</a>.</p>
+<p>If you want to use the built-in LSP client, for example, you can do something like the following:</p>
+<pre><code class="language-vim">vim.api.nvim_create_autocmd(&quot;FileType&quot;, {
+  desc = &quot;Launch Neut's LSP server&quot;,
+  pattern = &quot;neut&quot;,
+  callback = function()
+    vim.lsp.start({
+      name = &quot;neut lsp&quot;,
+      cmd = { &quot;neut&quot;, &quot;lsp&quot; },
+      root_dir = vim.fs.dirname(vim.fs.find({ &quot;module.ens&quot; }, { upward = true })[1]),
+    })
+  end
+})
+</code></pre>
+<p>The points are as follows:</p>
+<ul>
+<li>Run <code>neut lsp</code> to start the LSP server</li>
+<li>Look for <code>module.ens</code> to find the root of a module</li>
+</ul>
+<p>You should be able to use any other LSP clients for Neovim.</p>
+<h2 id="vim"><a class="header" href="#vim">Vim</a></h2>
+<p><a href="https://github.com/vekatze/vim-neut">https://github.com/vekatze/vim-neut</a></p>
+<p>You can install <code>vim-neut</code> for syntax highlighting and automatic indentation.</p>
+<p>The installation process is as usual. Just use your favorite plugin manager like <a href="https://github.com/junegunn/vim-plug">vim-plug</a>.</p>
+<p>If you want to use <a href="https://github.com/prabirshrestha/vim-lsp">vim-lsp</a>, for example, you can do something like the following:</p>
+<pre><code class="language-vim">call plug#begin()
+
+&quot; ...
+
+Plug 'vekatze/vim-neut'
+
+Plug 'prabirshrestha/vim-lsp'
+
+&quot; ...
+
+call plug#end()
+
+if executable('neut')
+    au User lsp_setup call lsp#register_server({
+        \ 'name': 'neut',
+        \ 'cmd': {server_info-&gt;['neut', 'lsp']},
+        \ 'allowlist': ['neut'],
+        \ })
+endif
+
+
+function! s:on_lsp_buffer_enabled() abort
+    &quot; ... (see the readme of vim-lsp)
+endfunction
+
+
+augroup lsp_install
+    &quot; ... (see the readme of vim-lsp)
+augroup END
+</code></pre>
+<p>The points are as follows:</p>
+<ul>
+<li>Run <code>neut lsp</code> to start the LSP server</li>
+<li>Look for <code>module.ens</code> to find the root of a module</li>
+</ul>
+<p>You should be able to use any other LSP clients for Vim.</p>
+<h2 id="visual-studio-code"><a class="header" href="#visual-studio-code">Visual Studio Code</a></h2>
+<p><a href="https://github.com/vekatze/vscode-neut">https://github.com/vekatze/vscode-neut</a></p>
+<p>You can install <code>vscode-neut</code> for syntax highlighting, automatic indentation, and LSP support. This extension is available on the <a href="https://marketplace.visualstudio.com/items?itemName=vekatze.vscode-neut">Visual Studio Marketplace</a>.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="rapid-prototyping.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="how-to-execute-types.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html" class="active"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

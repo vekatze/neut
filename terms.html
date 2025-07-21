@@ -1,0 +1,2193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Terms - Neut Programming Language</title>
+    <meta name="description" content="A functional programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Terms - Neut Programming Language" />
+    <meta property="og:description" content="A functional programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/terms.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html" class="active"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="terms"><a class="header" href="#terms">Terms</a></h1>
+<h2 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h2>
+<h3 id="basics"><a class="header" href="#basics">Basics</a></h3>
+<ul>
+<li><a href="#type">type</a></li>
+<li><a href="#local-variables">Local Variables</a></li>
+<li><a href="#top-level-variables">Top-Level Variables</a></li>
+<li><a href="#let">let</a></li>
+</ul>
+<h3 id="primitive-value"><a class="header" href="#primitive-value">Primitive Value</a></h3>
+<ul>
+<li><a href="#integers">Integers</a></li>
+<li><a href="#floats">Floats</a></li>
+<li><a href="#texts">Texts</a></li>
+<li><a href="#runes">Runes</a></li>
+</ul>
+<h3 id="function"><a class="header" href="#function">Function</a></h3>
+<ul>
+<li><a href="#x1-a1--xn-an---b">(x1: a1, ..., xn: an) -&gt; b</a></li>
+<li><a href="#function-x1-a1--xn-an--e-">function (x1: a1, ..., xn: an) { e }</a></li>
+<li><a href="#define-fx1-a1--xn-an-c--e-">define f(x1: a1, ..., xn: an): c { e }</a></li>
+<li><a href="#ee1--en">e(e1, ..., en)</a></li>
+<li><a href="#e-of-x1--e1--xn--en">e of {x1 := e1, ..., xn := en}</a></li>
+<li><a href="#exact-e">exact e</a></li>
+</ul>
+<h3 id="adt"><a class="header" href="#adt">ADT</a></h3>
+<ul>
+<li><a href="#adt-formation">ADT Formation</a></li>
+<li><a href="#constructors-adt-introduction">Constructors</a></li>
+<li><a href="#match">match</a></li>
+</ul>
+<h3 id="necessity-and-noema"><a class="header" href="#necessity-and-noema">Necessity and Noema</a></h3>
+<ul>
+<li><a href="#meta">meta</a></li>
+<li><a href="#a">&amp;a</a></li>
+<li><a href="#box">box</a></li>
+<li><a href="#letbox">letbox</a></li>
+<li><a href="#letbox-t">letbox-T</a></li>
+<li><a href="#case">case</a></li>
+</ul>
+<h3 id="thread"><a class="header" href="#thread">Thread</a></h3>
+<ul>
+<li><a href="#thread">thread</a></li>
+<li><a href="#detach">detach</a></li>
+<li><a href="#attach">attach</a></li>
+</ul>
+<h3 id="miscellaneous"><a class="header" href="#miscellaneous">Miscellaneous</a></h3>
+<ul>
+<li><a href="#quote">quote</a></li>
+<li><a href="#magic">magic</a></li>
+<li><a href="#introspect">introspect</a></li>
+<li><a href="#include-text">include-text</a></li>
+<li><a href="#admit">admit</a></li>
+<li><a href="#assert">assert</a></li>
+<li><a href="#_">_</a></li>
+</ul>
+<h3 id="syntactic-sugar"><a class="header" href="#syntactic-sugar">Syntactic Sugar</a></h3>
+<ul>
+<li><a href="#on">let x on y1, ..., yn = e1; e2</a></li>
+<li><a href="#e">*e</a></li>
+<li><a href="#if">if</a></li>
+<li><a href="#when-cond--e-">when cond { e }</a></li>
+<li><a href="#e1-e2">e1; e2</a></li>
+<li><a href="#try-x--e1-e2">try x = e1; e2</a></li>
+<li><a href="#tie-x--e1-e2">tie x = e1; e2</a></li>
+<li><a href="#pin-x--e1-e2">pin x = e1; e2</a></li>
+<li><a href="#t">?t</a></li>
+</ul>
+<h2 id="type"><a class="header" href="#type"><code>type</code></a></h2>
+<p><code>type</code> is the type of types.</p>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<pre><code class="language-neut">define sample(): unit {
+  // `type` used as a term
+  let foo = type;
+  Unit
+}
+
+// `type` used as a type
+define identity(a: type, x: a): a {
+  x
+}
+</code></pre>
+<h3 id="syntax"><a class="header" href="#syntax">Syntax</a></h3>
+<pre><code class="language-neut">type
+</code></pre>
+<h3 id="semantics"><a class="header" href="#semantics">Semantics</a></h3>
+<p><code>type</code> is compiled into a pointer to <code>base.#.imm</code>.</p>
+<h3 id="type-1"><a class="header" href="#type-1">Type</a></h3>
+<pre><code class="language-neut">(Γ is a context)
+----------------
+  Γ ⊢ type: type
+</code></pre>
+<h2 id="local-variables"><a class="header" href="#local-variables">Local Variables</a></h2>
+<h3 id="example-1"><a class="header" href="#example-1">Example</a></h3>
+<pre><code class="language-neut">define sample(): unit {
+  // defining/using various local variables
+  let x = Unit;
+  let foo = x;
+  let 'bar = foo;
+  let buz' = 'bar;
+  let _h-e-l-l-o = buz';
+  let αβγ = _h-e-l-l-o;
+  let theSpreadingWideMyNarrowHandsToGatherParadise = αβγ;
+  let 冥きより冥き道にぞ入りぬべきはるかに照らせ山の端の月 = Unit;
+  let _ = Unit;
+
+  // shadowing (not reassignment)
+  let x = Unit;
+  let x = type;
+  let x =
+    function (x: bool) {
+      x // x: bool
+    };
+  Unit
+}
+</code></pre>
+<h3 id="syntax-1"><a class="header" href="#syntax-1">Syntax</a></h3>
+<p>The name of a local variable must satisfy the following conditions:</p>
+<ul>
+<li>It doesn't contain any of <code>=() `\&quot;\n\t:;,&lt;&gt;[]{}/*|&amp;?</code></li>
+<li>It doesn't start with <code>A, B, .., Z</code> (the upper case alphabets)</li>
+</ul>
+<h3 id="semantics-1"><a class="header" href="#semantics-1">Semantics</a></h3>
+<p>If the content of a variable <code>x</code> is an immediate value, <code>x</code> is compiled into the name of a register that stores the immediate. Otherwise, <code>x</code> is compiled into the name of a register that stores a pointer to the content.</p>
+<h3 id="type-2"><a class="header" href="#type-2">Type</a></h3>
+<pre><code class="language-neut">  Γ ⊢ a: type
+----------------
+Γ, x: a ⊢ x: a
+</code></pre>
+<h3 id="notes"><a class="header" href="#notes">Notes</a></h3>
+<ul>
+<li>The compiler reports unused variables. You can use the name <code>_</code> to suppress those.</li>
+<li>Variables in Neut are immutable. You'll need <code>core.cell</code> to achieve mutability.</li>
+</ul>
+<h2 id="top-level-variables"><a class="header" href="#top-level-variables">Top-Level Variables</a></h2>
+<h3 id="example-2"><a class="header" href="#example-2">Example</a></h3>
+<pre><code class="language-neut">import {
+  core.bool {bool},
+}
+
+define sample(): unit {
+  // using top-level variables
+  let _ = bool; // using an imported top-level name
+  let _ = core.bool.bool; // using the definite description of `core.bool.bool`
+  Unit
+}
+</code></pre>
+<h3 id="syntax-2"><a class="header" href="#syntax-2">Syntax</a></h3>
+<p>The name of a top-level variable is a (possibly) dot-separated symbols, where each symbol must satisfy the following conditions:</p>
+<ul>
+<li>It doesn't contain any of <code>=() `\&quot;\n\t:;,&lt;&gt;[]{}/*|&amp;?</code></li>
+</ul>
+<h3 id="semantics-2"><a class="header" href="#semantics-2">Semantics</a></h3>
+<p>A top-level variable <code>f</code> is compiled into the following 3-word tuple:</p>
+<pre><code>(base.#.imm, 0, POINTER_TO_FUNCTION(f))
+</code></pre>
+<p>See the Note below for a more detailed explanation.</p>
+<h3 id="type-3"><a class="header" href="#type-3">Type</a></h3>
+<pre><code class="language-neut">(Γ is a context)     (c: a is defined at the top-level)
+-------------------------------------------------------
+                  Γ ⊢ c: a
+</code></pre>
+<h3 id="note"><a class="header" href="#note">Note</a></h3>
+<p>Let's see how top-level variables are compiled. Consider the following top-level functions:</p>
+<pre><code class="language-neut">// (source-dir)/sample.nt
+
+// defining a top-level variable `increment`
+define increment(x: int): int {
+  add-int(x, 1)
+}
+
+define get-increment(): (int) -&gt; int {
+  increment // using a top-level variable `increment`
+}
+</code></pre>
+<p>This <code>increment</code> and <code>get-increment</code> are compiled into LLVM functions like the below:</p>
+<pre><code class="language-llvm">; (build-dir)/path/to/sample.ll
+
+define fastcc ptr @&quot;this.sample.increment&quot;(ptr %_1) {
+  %_2 = ptrtoint ptr %_1 to i64
+  %_3 = add i64 %_2, 1
+  %_4 = inttoptr i64 %_3 to ptr
+  ret ptr %_4
+}
+
+define fastcc ptr @&quot;this.sample.get-increment&quot;() {
+  ; `increment` in `get-increment` is lowered to the following code:
+
+  ; calculate the size of 3-word tuples
+  %_1 = getelementptr ptr, ptr null, i32 3
+  %_2 = ptrtoint ptr %_1 to i64
+  ; allocate memory
+  %_3 = call fastcc ptr @malloc(i64 %_2)
+  ; store contents
+  %_4 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 0
+  %_5 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 1
+  %_6 = getelementptr [3 x ptr], ptr %_3, i32 0, i32 2
+  store ptr @&quot;base.#.imm&quot;, ptr %_4            ; tuple[0] = `base.#.imm`
+  store ptr null, ptr %_5                     ; tuple[1] = null
+  store ptr @&quot;this.sample.increment&quot;, ptr %_6 ; tuple[2] = (function pointer)
+  ; return the pointer to the tuple
+  ret ptr %_3
+}
+</code></pre>
+<p>Incidentally, these 3-word tuples are optimized away as long as top-level variables (functions) are called directly with arguments.</p>
+<h2 id="let"><a class="header" href="#let"><code>let</code></a></h2>
+<h3 id="example-3"><a class="header" href="#example-3">Example</a></h3>
+<pre><code class="language-neut">define use-let(): unit {
+  // `let`
+  let t = &quot;test&quot;;
+  print(t)
+}
+
+define use-let(): unit {
+  let bar = {
+    // nested `let`
+    let foo = some-func();
+    other-func(foo)
+  };
+  do-something(bar)
+}
+
+define use-let(): unit {
+  // `let` with a type annotation
+  let t: &amp;text = &quot;test&quot;;
+  print(t)
+}
+
+</code></pre>
+<p><code>let</code> can be used to destructure an ADT value:</p>
+<pre><code class="language-neut">data item {
+| Item(i: int, b: bool)
+}
+
+define use-item(x: item): int {
+  // use `let` with a pattern
+  let Item(i, _) = x; // ← here
+  i
+}
+
+define use-item-2(x: item): int {
+  // use `let` with an of-pattern
+  let Item of {i} = x;
+  i
+}
+</code></pre>
+<h3 id="syntax-3"><a class="header" href="#syntax-3">Syntax</a></h3>
+<pre><code class="language-neut">let x = e1; e2
+
+let x: t = e1; e2
+</code></pre>
+<h3 id="semantics-3"><a class="header" href="#semantics-3">Semantics</a></h3>
+<p><code>let x = e1; e2</code> binds the result of <code>e1</code> to the variable <code>x</code>. This <code>x</code> can then be used in <code>e2</code>.</p>
+<h3 id="type-4"><a class="header" href="#type-4">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ e1: a     Γ, x: a ⊢ e2: b
+-----------------------------
+   Γ ⊢ let x = e1; e2: b
+</code></pre>
+<h3 id="note-1"><a class="header" href="#note-1">Note</a></h3>
+<p>(1) <code>let x = e1; e2</code> isn't exactly the same as <code>{function (x) {e2}}(e1)</code>. The difference lies in the fact that the type of <code>e2</code> can't depend on <code>x</code> in <code>let x = e1; e2</code>.</p>
+<p>(2) When a pattern is passed, <code>let</code> is the following syntactic sugar:</p>
+<pre><code class="language-neut">let pat = x;
+cont
+
+↓
+
+match x {
+| pat =&gt;
+  cont
+}
+</code></pre>
+<h2 id="integers"><a class="header" href="#integers">Integers</a></h2>
+<h3 id="example-4"><a class="header" href="#example-4">Example</a></h3>
+<pre><code class="language-neut">define foo(): unit {
+  let _: int = 100;
+  //           ^^^
+  let _: int16 = 100;
+  //             ^^^
+  Unit
+}
+
+</code></pre>
+<h3 id="syntax-4"><a class="header" href="#syntax-4">Syntax</a></h3>
+<p><code>3</code>, <code>-16</code>, <code>424242</code>, etc.</p>
+<h3 id="semantics-4"><a class="header" href="#semantics-4">Semantics</a></h3>
+<p>The same as LLVM integers.</p>
+<h3 id="type-5"><a class="header" href="#type-5">Type</a></h3>
+<p>The type of an integer is unknown in itself. It must be inferred to be one of the following types:</p>
+<ul>
+<li><code>int1</code></li>
+<li><code>int2</code></li>
+<li>...</li>
+<li><code>int64</code></li>
+</ul>
+<h3 id="note-2"><a class="header" href="#note-2">Note</a></h3>
+<ul>
+<li>The type <code>int</code> is also available. For more, see <a href="./primitives.html#primitive-types">Primitives</a>.</li>
+</ul>
+<h2 id="floats"><a class="header" href="#floats">Floats</a></h2>
+<h3 id="example-5"><a class="header" href="#example-5">Example</a></h3>
+<pre><code class="language-neut">define foo(): unit {
+  let _: float = 3.8;
+  //             ^^^
+  let _: float32 = 3.8;
+  //               ^^^
+  Unit
+}
+
+</code></pre>
+<h3 id="syntax-5"><a class="header" href="#syntax-5">Syntax</a></h3>
+<p><code>3.8</code>, <code>-0.2329</code>, etc.</p>
+<h3 id="semantics-5"><a class="header" href="#semantics-5">Semantics</a></h3>
+<p>The same as LLVM floats.</p>
+<h3 id="type-6"><a class="header" href="#type-6">Type</a></h3>
+<p>The type of a float is unknown in itself. It must be inferred to be one of the following types:</p>
+<ul>
+<li><code>float16</code></li>
+<li><code>float32</code></li>
+<li><code>float64</code></li>
+</ul>
+<h3 id="note-3"><a class="header" href="#note-3">Note</a></h3>
+<ul>
+<li>The type <code>float</code> is also available. For more, see <a href="./primitives.html#primitive-types">Primitives</a>.</li>
+</ul>
+<h2 id="runes"><a class="header" href="#runes">Runes</a></h2>
+<h3 id="example-6"><a class="header" href="#example-6">Example</a></h3>
+<pre><code class="language-neut">define foo(): unit {
+  let _: rune = `A`;
+  //            ^^^
+  let _: rune = `\n`;
+  //            ^^^
+  let _: rune = `\n`;
+  //            ^^^
+  Unit
+}
+
+</code></pre>
+<h3 id="syntax-6"><a class="header" href="#syntax-6">Syntax</a></h3>
+<p><code>`A`</code>, <code>`\n`</code>, <code>`\u{123}`</code>, etc.</p>
+<p>The available escape sequences in rune literals are the same as those of <a href="./terms.html#texts">text literals</a>.</p>
+<h3 id="semantics-6"><a class="header" href="#semantics-6">Semantics</a></h3>
+<p>The value of a rune literal is a Unicode codepoint encoded in UTF-8.</p>
+<p>The underlying representation of a rune is an int32.</p>
+<h3 id="type-7"><a class="header" href="#type-7">Type</a></h3>
+<pre><code class="language-neut">(Γ is a context)  (c is a rune literal)
+---------------------------------------
+         Γ ⊢ c: rune
+</code></pre>
+<h3 id="note-4"><a class="header" href="#note-4">Note</a></h3>
+<p>(1) You can write <code>`\1234`</code>, for example, to represent U+1234 (<code>`ሴ`</code>).</p>
+<p>(2) We have the following equalities, for example:</p>
+<pre><code class="language-neut">`A` == magic cast(int32, rune, 0x41)
+`Γ` == magic cast(int32, rune, 0xCE93)
+`あ` == magic cast(int32, rune, 0xE38182)
+`⭐` == magic cast(int32, rune, 0xE2AD90)
+</code></pre>
+<p>You can see this by calling the following function:</p>
+<pre><code class="language-neut">define print-star(): unit {
+  // prints &quot;⭐&quot;
+  pin t = core.text.singleton(magic cast(int32, rune, 0xe2ad90));
+  print-line(t)
+}
+</code></pre>
+<h2 id="texts"><a class="header" href="#texts">Texts</a></h2>
+<h3 id="example-7"><a class="header" href="#example-7">Example</a></h3>
+<pre><code class="language-neut">define foo(): unit {
+  let _: &amp;text = &quot;test&quot;;
+  //             ^^^^^^
+  Unit
+}
+
+</code></pre>
+<h3 id="syntax-7"><a class="header" href="#syntax-7">Syntax</a></h3>
+<p><code>&quot;hello&quot;</code>, <code>&quot;Hello, world!\n&quot;</code>, <code>&quot;\u{1f338} ← Cherry Blossom&quot;</code>, etc.</p>
+<p>Below is the list of all the escape sequences in Neut:</p>
+<div class="table-wrapper"><table><thead><tr><th>Escape Sequence</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>\0</code></td><td>U+0000 (null character)</td></tr>
+<tr><td><code>\t</code></td><td>U+0009 (horizontal tab)</td></tr>
+<tr><td><code>\n</code></td><td>U+000A (line feed)</td></tr>
+<tr><td><code>\r</code></td><td>U+000D (carriage return)</td></tr>
+<tr><td><code>\&quot;</code></td><td>U+0022 (double quotation mark)</td></tr>
+<tr><td><code>\\</code></td><td>U+005C (backslash)</td></tr>
+<tr><td><code>\`</code></td><td>U+0060 (backtick)</td></tr>
+<tr><td><code>\u{n}</code></td><td>U+n</td></tr>
+</tbody></table>
+</div>
+<p>The <code>n</code> in <code>\u{n}</code> must be a lowercase hexadecimal number.</p>
+<h3 id="semantics-7"><a class="header" href="#semantics-7">Semantics</a></h3>
+<p>A text literal is compiled into a pointer to a tuple like the following:</p>
+<pre><code class="language-text">(0, length-of-string, array-of-characters)
+</code></pre>
+<p>This tuple is static. More specifically, a global constant like the following is inserted into the resulting IR.</p>
+<pre><code class="language-llvm">@&quot;text-hello&quot; = private unnamed_addr constant {i64, i64, [5 x i8]} {i64 0, i64 5, [5 x i8] c&quot;hello&quot;}
+</code></pre>
+<p>And a text like <code>&quot;hello&quot;: &amp;text</code> is compiled into <code>ptr @&quot;text-hello&quot;</code>.</p>
+<h3 id="type-8"><a class="header" href="#type-8">Type</a></h3>
+<pre><code class="language-neut">(Γ is a context)  (t is a text literal)
+---------------------------------------
+         Γ ⊢ t: &amp;text
+</code></pre>
+<h3 id="note-5"><a class="header" href="#note-5">Note</a></h3>
+<ul>
+<li>In the current implementation, the set of recognized escape sequences like <code>\n</code> or <code>\t</code> are the same as that of Haskell.</li>
+</ul>
+<h2 id="x1-a1--xn-an---b"><a class="header" href="#x1-a1--xn-an---b"><code>(x1: a1, ..., xn: an) -&gt; b</code></a></h2>
+<p><code>(x1: a1, ..., xn: an) -&gt; b</code> is the type of functions.</p>
+<h3 id="example-8"><a class="header" href="#example-8">Example</a></h3>
+<pre><code class="language-neut">// a function that accepts ints and returns bools
+(value: int) -&gt; bool
+
+// this is equivalent to `(_: int) -&gt; bool`:
+(int) -&gt; bool
+
+// use a type variable
+(a: type, x: a) -&gt; a
+
+// make the first argument implicit
+&lt;a: type&gt;(x: a) -&gt; a
+
+// this is equivalent to `&lt;a: _&gt;(x: a) -&gt; a`
+&lt;a&gt;(x: a) -&gt; a
+</code></pre>
+<h3 id="syntax-8"><a class="header" href="#syntax-8">Syntax</a></h3>
+<pre><code class="language-neut">&lt;x1: a1, ..., xn: an&gt;(y1: b1, ..., ym: bm) -&gt; c
+</code></pre>
+<p>The following abbreviations are available:</p>
+<pre><code class="language-neut">(y1: b1, ..., ym: bm) -&gt; c
+
+// ↓
+// &lt;&gt;(y1: b1, ..., ym: bm) -&gt; c
+
+
+(b1, ..., bm) -&gt; c
+
+// ↓
+// (_: b1, ..., _: bm) -&gt; c
+
+
+&lt;a1, ..., an&gt;(y1: b1, ..., ym: bm) -&gt; c
+
+// ↓
+// &lt;a1: _, ..., an: _&gt;(y1: b1, ..., ym: bm) -&gt; c
+</code></pre>
+<h3 id="semantics-8"><a class="header" href="#semantics-8">Semantics</a></h3>
+<p>A function type is compiled into a pointer to <code>base.#.cls</code>. For more, please see <a href="./how-to-execute-types.html">How to Execute Types</a></p>
+<h3 id="type-9"><a class="header" href="#type-9">Type</a></h3>
+<pre><code class="language-neut">  Γ, x1: a1, ..., xn: an, y1: b1, ..., ym: bm ⊢ c: type
+--------------------------------------------------------
+Γ ⊢ &lt;x1: a1, ..., xn: an&gt;(y1: b1, ..., ym: bm) -&gt; c: type
+</code></pre>
+<h2 id="function-x1-a1--xn-an--e-"><a class="header" href="#function-x1-a1--xn-an--e-"><code>function (x1: a1, ..., xn: an) { e }</code></a></h2>
+<p><code>function</code> can be used to create a lambda abstraction (an anonymous function).</p>
+<h3 id="example-9"><a class="header" href="#example-9">Example</a></h3>
+<pre><code class="language-neut">define use-function(): int {
+  let f =
+    function (x: int, y: int) {
+      let z = add-int(x, y);
+      mul-int(z, z)
+    };
+  f(10, 20)
+}
+</code></pre>
+<h3 id="syntax-9"><a class="header" href="#syntax-9">Syntax</a></h3>
+<pre><code class="language-neut">function (x1: a1, ..., xn: an) {
+  e
+}
+</code></pre>
+<p>All the free variables of a <code>function</code> must be at the same layer of the function. For example, the following is not a valid term in Neut:</p>
+<pre><code class="language-neut">define return-int(x: meta int): meta () -&gt; int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    function () {
+      letbox result =
+        // here is layer 0
+        x; // ← error
+      result
+    }
+  }
+}
+</code></pre>
+<p>because the free variable <code>x</code> in the <code>function</code> is at layer 0, whereas the <code>function</code> is at layer -1.</p>
+<p>For more on layers, please see the section on <a href="#box">box</a>, <a href="#letbox">letbox</a>, and <a href="#letbox-t">letbox-T</a>.</p>
+<h3 id="semantics-9"><a class="header" href="#semantics-9">Semantics</a></h3>
+<p>A <code>function</code> is compiled into a three-word closure. For more, please see <a href="./how-to-execute-types.html#advanced-function-types">How to Execute Types</a>.</p>
+<h3 id="type-10"><a class="header" href="#type-10">Type</a></h3>
+<pre><code class="language-neut">    Γ, x1: a1, ..., xn: an ⊢ e: t
+-----------------------------------------
+Γ ⊢ function (x1: a1, ..., xn: an) {e}: t
+
+</code></pre>
+<h3 id="note-6"><a class="header" href="#note-6">Note</a></h3>
+<ul>
+<li>Lambda abstractions defined by <code>function</code> are reduced at compile-time when possible. If you would like to avoid this behavior, consider using <code>define</code>.</li>
+</ul>
+<h2 id="define-fx1-a1--xn-an-c--e-"><a class="header" href="#define-fx1-a1--xn-an-c--e-"><code>define f(x1: a1, ..., xn: an): c { e }</code></a></h2>
+<p><code>define</code> (at the term-level) can be used to create a function with possible recursion.</p>
+<h3 id="example-10"><a class="header" href="#example-10">Example</a></h3>
+<pre><code class="language-neut">define use-define(): int {
+  let c = 10;
+  let f =
+    // term-level `define` with a free variable `c`
+    define some-recursive-func(x: int): int {
+      if eq-int(x, 0) {
+        0
+      } else {
+        add-int(c, some-recursive-func(sub-int(x, 1)))
+      }
+    };
+  f(100)
+}
+</code></pre>
+<h3 id="syntax-10"><a class="header" href="#syntax-10">Syntax</a></h3>
+<pre><code class="language-neut">define name&lt;x1: a1, ..., xn: an&gt;(y1: b1, ..., ym: bm): c {
+  e
+}
+</code></pre>
+<p>The following abbreviations are available:</p>
+<pre><code class="language-neut">define name(y1: b1, ..., ym: bm): c {e}
+
+// ↓
+// define name&lt;&gt;(y1: b1, ..., ym: bm): c {e}
+
+
+define name&lt;a1, ..., an&gt;(y1: b1, ..., ym: bm): c {e}
+
+// ↓
+// define name&lt;a1: _, ..., an: _&gt;(y1: b1, ..., ym: bm) -&gt; c
+</code></pre>
+<p>As in <code>function</code>, all the free variables of a <code>define</code> must be at the same layer of the <code>define</code>.</p>
+<h3 id="semantics-10"><a class="header" href="#semantics-10">Semantics</a></h3>
+<p>A term-level <code>define</code> is lifted to a top-level definition using lambda lifting. For example, consider the following example:</p>
+<pre><code class="language-neut">define use-define(): int {
+  let c = 10;
+  let f =
+    // term-level `define` with a free variable `c`
+    define some-recursive-func(x: int): int {
+      if eq-int(x, 0) {
+        0
+      } else {
+        add-int(c, some-recursive-func(sub-int(x, 1)))
+      }
+    };
+  f(100)
+}
+</code></pre>
+<p>The code above is compiled into something like the below:</p>
+<pre><code class="language-neut">// the free variable `c` is now a parameter
+define some-recursive-func(c: int, x: int): int {
+  if eq-int(x, 0) {
+    0
+  } else {
+    let f =
+      function (x: int) {
+        some-recursive-func(c, x)
+      };
+    add-int(c, f(sub-int(x, 1)))
+  }
+}
+
+define use-define(): int {
+  let c = 10;
+  let f =
+    function (x: int) {
+      some-recursive-func(c, x)
+    };
+  f(100)
+}
+</code></pre>
+<h3 id="type-11"><a class="header" href="#type-11">Type</a></h3>
+<pre><code class="language-neut">Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -&gt; t ⊢ e: t
+------------------------------------------------------------
+     Γ ⊢ (define f(x1: a1, ..., xn: an):t {e}): t
+</code></pre>
+<h3 id="note-7"><a class="header" href="#note-7">Note</a></h3>
+<ul>
+<li>Functions defined by term-level <code>define</code> aren't inlined at compile-time, even if it doesn't contain any recursions.</li>
+</ul>
+<h2 id="ee1--en"><a class="header" href="#ee1--en"><code>e(e1, ..., en)</code></a></h2>
+<p>Given a function <code>e</code> and arguments <code>e1, ..., en</code>, we can write <code>e(e1, ..., en)</code> to write a function application.</p>
+<h3 id="example-11"><a class="header" href="#example-11">Example</a></h3>
+<pre><code class="language-neut">define use-function(): unit {
+  let _ = foo();
+  //      ^^^^^
+  let _ = bar(1);
+  //      ^^^^^^
+  let _ = buz(&quot;hello&quot;, True);
+  //      ^^^^^^^^^^^^^^^^^^
+  Unit
+}
+</code></pre>
+<h3 id="syntax-11"><a class="header" href="#syntax-11">Syntax</a></h3>
+<pre><code class="language-neut">e(e1, ..., en)
+</code></pre>
+<h3 id="semantics-11"><a class="header" href="#semantics-11">Semantics</a></h3>
+<p>Given a function application <code>e(e1, ..., en)</code> the system does the following:</p>
+<ol>
+<li>Computes <code>e</code>, <code>e1</code>, ..., <code>en</code> into values <code>v</code>, <code>v1</code>, ..., <code>vn</code></li>
+<li>Extracts the contents from the closure <code>v</code>, obtaining the tuple of its free variables and a function label</li>
+<li>Deallocates the tuple of the closure <code>v</code></li>
+<li>Calls the function label with the tuple and <code>v1, ..., vn</code> as arguments</li>
+</ol>
+<h3 id="type-12"><a class="header" href="#type-12">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ e: &lt;x1: a1, .., xn: an&gt;(y1: b1, .., ym: bm) -&gt; c    Γ ⊢ e1: b1  ..   Γ ⊢ em: bm
+---------------------------------------------------------------------------------------
+    Γ ⊢ e(e1, .., em): c[x1 := ?M1, .., xn := ?Mn, y1 := e1, .., ym := em]
+</code></pre>
+<p>The <code>?Mi</code>s in the above rule are metavariables that must be inferred by the compiler.</p>
+<h3 id="note-8"><a class="header" href="#note-8">Note</a></h3>
+<p>If the function <code>e</code> contains implicit parameters, holes are inserted automatically.</p>
+<p>For example, consider the following code:</p>
+<pre><code class="language-neut">define id&lt;a&gt;(x: a): a {
+  x
+}
+
+define use-id(): unit {
+  id(Unit)
+}
+</code></pre>
+<p>The <code>id(Unit)</code> in the example above is (conceptually) compiled into the below:</p>
+<pre><code class="language-neut">define _id(a: type, x: a): a {
+  x
+}
+
+define use-id(): unit {
+  _id(_, Unit) // ← a hole `_` is inserted here
+}
+</code></pre>
+<h2 id="e-of-x1--e1--xn--en"><a class="header" href="#e-of-x1--e1--xn--en"><code>e of {x1 := e1, ..., xn := en}</code></a></h2>
+<p><code>e of {x1 := e1, ..., xn := en}</code> is an alternative notation of function application.</p>
+<h3 id="example-12"><a class="header" href="#example-12">Example</a></h3>
+<pre><code class="language-neut">define foo(x: int, y: bool, some-path: &amp;text): unit {
+  // ...
+}
+
+define use-foo(): unit {
+  foo of {
+    x := 10,
+    y := True,
+    some-path := &quot;/path/to/file&quot;,
+  }
+}
+</code></pre>
+<h3 id="syntax-12"><a class="header" href="#syntax-12">Syntax</a></h3>
+<pre><code class="language-neut">e of {x1 := e1, ..., xn := en}
+</code></pre>
+<h3 id="semantics-12"><a class="header" href="#semantics-12">Semantics</a></h3>
+<p>The same as <code>e(e1, ..., en)</code>.</p>
+<h3 id="type-13"><a class="header" href="#type-13">Type</a></h3>
+<p>The same as <code>e(e1, ..., en)</code>.</p>
+<h3 id="note-9"><a class="header" href="#note-9">Note</a></h3>
+<p>This notation might be useful when used in combination with ADTs:</p>
+<pre><code class="language-neut">data config {
+| Config(
+    count: int,
+    path: &amp;text,
+    colorize: bool,
+  )
+}
+
+inline some-config {
+  Config of {
+    count := 10,
+    colorize := True,
+    path := &quot;/path/to/file&quot;, // you can reorder arguments
+  }
+}
+</code></pre>
+<p>If the argument is a variable that has the same name as the parameter, you can use a shorthand notation:</p>
+<pre><code class="language-neut">define use-foo(): unit {
+  let x = 10;
+  let y = True;
+  let some-path = &quot;/path/to/file&quot;;
+  foo of {x, y, some-path} // == foo of {x := x, y := y, some-path := some-path}
+}
+</code></pre>
+<h2 id="exact-e"><a class="header" href="#exact-e"><code>exact e</code></a></h2>
+<p>Given a function <code>e</code>, <code>exact e</code> supplies all the implicit parameters of <code>e</code> by inserting holes.</p>
+<h3 id="example-13"><a class="header" href="#example-13">Example</a></h3>
+<pre><code class="language-neut">define id&lt;a&gt;(x: a): a {
+  x
+}
+
+define use-id() {
+  let g: (x: int) -&gt; int = exact id;
+  Unit
+}
+</code></pre>
+<p>Note that the following won't type-check:</p>
+<pre><code class="language-neut">define id&lt;a&gt;(x: a): a {
+  x
+}
+
+define use-id() {
+  let g: (x: int) -&gt; int = id;
+  Unit
+}
+</code></pre>
+<p>This is because the type of <code>id</code> is <code>&lt;a&gt;(x: a) -&gt; a</code>, not <code>(x: ?M) -&gt; ?M</code>.</p>
+<h3 id="syntax-13"><a class="header" href="#syntax-13">Syntax</a></h3>
+<pre><code class="language-neut">exact e
+</code></pre>
+<h3 id="semantics-13"><a class="header" href="#semantics-13">Semantics</a></h3>
+<p>Given a term <code>e</code> of type <code>&lt;x1: a1, ..., xn: an&gt;(y1: b1, ..., ym: bm) -&gt; c</code>,</p>
+<pre><code class="language-neut">exact e
+</code></pre>
+<p>is translated into the following:</p>
+<pre><code class="language-neut">function (y1: b1, ..., ym: bm) {
+  e(_, ..., _, y1, ..., ym)
+}
+</code></pre>
+<h3 id="type-14"><a class="header" href="#type-14">Type</a></h3>
+<pre><code class="language-neut">       Γ ⊢ e: &lt;x1: a1, ..., xn: an&gt;(y1: b1, ..., ym: bm) -&gt; c
+--------------------------------------------------------------------
+Γ ⊢ exact e: ((y1: b1, ..., ym: bm) -&gt; c)[x1 := ?M1, ..., xn := ?Mn]
+</code></pre>
+<p>Here, <code>?Mi</code>s are metavariables that must be inferred by the type checker.</p>
+<h3 id="note-10"><a class="header" href="#note-10">Note</a></h3>
+<p>As you can see from its semantics, an <code>exact</code> is just a shorthand of a &quot;hole-application&quot; that fills in implicit parameters.</p>
+<h2 id="adt-formation"><a class="header" href="#adt-formation">ADT Formation</a></h2>
+<p>After defining an ADT using the statement <code>data</code>, you can use the ADT.</p>
+<h3 id="example-14"><a class="header" href="#example-14">Example</a></h3>
+<pre><code class="language-neut">data my-nat {
+| Zero
+| Succ(my-nat)
+}
+
+define use-nat-type(): type {
+  // 🌟
+  my-nat
+}
+</code></pre>
+<h3 id="syntax-14"><a class="header" href="#syntax-14">Syntax</a></h3>
+<p>The same as that of top-level variables.</p>
+<h3 id="semantics-14"><a class="header" href="#semantics-14">Semantics</a></h3>
+<p>The same as that of top-level variables.</p>
+<h3 id="type-15"><a class="header" href="#type-15">Type</a></h3>
+<p>If an ADT <code>some-adt</code> is nullary, the type of <code>some-adt</code> is <code>type</code>.</p>
+<p>Otherwise, suppose that an ADT <code>some-adt</code> is defined as follows:</p>
+<pre><code class="language-neut">data some-adt(x1: a1, ..., xn: an) {..}
+</code></pre>
+<p>In this case, the type of <code>some-adt</code> is <code>(x1: a1, ..., xn: an) -&gt; type</code>.</p>
+<h2 id="constructors-adt-introduction"><a class="header" href="#constructors-adt-introduction">Constructors (ADT Introduction)</a></h2>
+<p>After defining an ADT using the statement <code>data</code>, you can use the constructors to construct values of the ADT.</p>
+<h3 id="example-15"><a class="header" href="#example-15">Example</a></h3>
+<pre><code class="language-neut">data my-nat {
+| Zero
+| Succ(my-nat)
+}
+
+define create-nat(): my-nat {
+  // 🌟 (`Succ` and `Zero` are constructors)
+  Succ(Succ(Zero))
+}
+</code></pre>
+<h3 id="syntax-15"><a class="header" href="#syntax-15">Syntax</a></h3>
+<p>The same as that of top-level variables, except that constructors must be capitalized.</p>
+<h3 id="semantics-15"><a class="header" href="#semantics-15">Semantics</a></h3>
+<p>The same as that of top-level variables.</p>
+<h3 id="type-16"><a class="header" href="#type-16">Type</a></h3>
+<p>If a constructor <code>c</code> is nullary, the type of <code>c</code> is the ADT type. For example, consider the following code:</p>
+<pre><code class="language-neut">data some-adt {
+| c1
+}
+
+data other-adt(a: type) {
+| c2
+}
+</code></pre>
+<p>In this case,</p>
+<ul>
+<li>the type of <code>c1</code> is <code>some-adt</code>, and</li>
+<li>the type of <code>c2</code> is <code>other-adt(?M)</code>, where the <code>?M</code> must be inferred by the compiler.</li>
+</ul>
+<p>If a constructor <code>c</code> isn't nullary, the type of <code>c</code> is the function type that takes specified arguments and turns them into the ADT type. For example, consider the following code:</p>
+<pre><code class="language-neut">data some-adt {
+| c1(foo: int)
+}
+
+data other-adt(a: type) {
+| c2(bar: bool, buz: other-adt(a))
+}
+</code></pre>
+<p>In this case,</p>
+<ul>
+<li>the type of <code>c1</code> is <code>(foo: int) -&gt; some-adt</code>, and</li>
+<li>the type of <code>c2</code> is <code>&lt;a: type&gt;(bar: bool, buz: other-adt(a)) -&gt; other-adt(a)</code>.</li>
+</ul>
+<h2 id="match"><a class="header" href="#match"><code>match</code></a></h2>
+<p>You can use <code>match</code> to destructure ADT values or integers.</p>
+<h3 id="example-16"><a class="header" href="#example-16">Example</a></h3>
+<pre><code class="language-neut">data my-nat {
+| Zero
+| Succ(my-nat)
+}
+
+define foo(n: my-nat): int {
+  // 🌟
+  match n {
+  | Zero =&gt;
+    100
+  | Succ(m) =&gt;
+    foo(m)
+  }
+}
+
+define bar(n: my-nat): int {
+  // 🌟 (You can use nested patterns)
+  match n {
+  | Zero =&gt;
+    100
+  | Succ(Succ(m)) =&gt; // ← a nested pattern
+    200
+  | Succ(m) =&gt;
+    foo(m)
+  }
+}
+
+define eq-nat(n1: my-nat, n2: my-nat): bool {
+  // 🌟 (`match` can handle multiple values)
+  match n1, n2 {
+  | Zero, Zero =&gt;
+    True
+  | Succ(m1), Succ(m2) =&gt;
+    eq-nat(m1, m2)
+  | _, _ =&gt;
+    False
+  }
+}
+
+define literal-match(x: int): int {
+  // 🌟 (You can use `match` against integers)
+  match x {
+  | 3 =&gt;
+    30
+  | 5 =&gt;
+    50
+  | _ =&gt;
+    add-int(x, 10)
+  }
+}
+</code></pre>
+<h3 id="syntax-16"><a class="header" href="#syntax-16">Syntax</a></h3>
+<pre><code class="language-neut">match e1, ..., en {
+| pattern-1 =&gt;
+  body-1
+  ...
+| pattern-m =&gt;
+  body-m
+}
+</code></pre>
+<h3 id="semantics-16"><a class="header" href="#semantics-16">Semantics</a></h3>
+<p>The semantics of <code>match</code> is the same as the semantics of ordinary pattern matching, except that ADT values are <em>consumed</em> after branching.</p>
+<p>For example, let's see how <code>my-nat</code> in the following code is used in <code>match</code>:</p>
+<pre><code class="language-neut">data my-nat {
+| Zero
+| Succ(my-nat)
+}
+</code></pre>
+<p>The internal representation of <code>n: my-nat</code> is something like the below:</p>
+<pre><code class="language-neut">Zero:
+  (0) // 1-word tuple
+Succ:
+  (1, pointer-to-m) // 2-word tuple
+</code></pre>
+<p>When evaluating <code>match</code>, the computer inspects the first element of the &quot;tuple&quot; <code>n</code>.</p>
+<pre><code class="language-neut">define foo(n: my-nat): int {
+  // 🌟 (inspects the first element of `n` here)
+  match n {
+  | Zero =&gt;
+    100
+  | Succ(m) =&gt;
+    foo(m)
+  }
+}
+</code></pre>
+<p>If the first element is <code>0</code>, which means that we found an ADT value of <code>Zero</code>, the computer <em>frees</em> the outer tuple of <code>(0)</code>, and then evaluates <code>100</code>.</p>
+<p>If the first element is <code>1</code>, which means that we found an ADT value of <code>Succ</code>, the computer gets the pointer to the second element of <code>n</code>, binds it to <code>m</code>, <em>frees</em> the outer tuple of <code>(1, pointer-to-m)</code>, and then evaluates <code>foo(m)</code>.</p>
+<h3 id="type-17"><a class="header" href="#type-17">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ e1: a1
+...
+Γ ⊢ en: an
+
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ body-1: b
+
+...
+
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ body-m: b
+
+(for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
+(the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
+------------------------------------------------------------------------------
+Γ ⊢ match e1, ..., en {
+    | pat-1 =&gt; body-1
+    ...
+    | pat-m =&gt; body-m
+    }: b
+</code></pre>
+<p>The above might be a bit overwhelming. Please see the following Note for an example.</p>
+<h3 id="note-11"><a class="header" href="#note-11">Note</a></h3>
+<p>An example of the application of the typing rule of <code>match</code>:</p>
+<pre><code class="language-neut">Γ ⊢ n: my-nat
+
+Γ ⊢ Zero: my-nat // pat-1
+Γ ⊢ 100: int // body-1
+
+Γ, m: my-nat ⊢ Succ(m): my-nat // pat-2
+Γ, m: my-nat ⊢ foo(m): int // body-2
+
+(Zero and Succ(m) are patterns for n)
+(the sequence Zero, Succ(m) is a exhaustinve matching against n)
+------------------------------------------------------------------------------
+Γ ⊢ match n {
+    | Zero =&gt; 100
+    | Succ(m) =&gt; foo(m)
+    }: int
+</code></pre>
+<h2 id="meta"><a class="header" href="#meta"><code>meta</code></a></h2>
+<p>Given a type <code>a: type</code>, <code>meta a</code> is the type of <code>a</code> in the &quot;outer&quot; layer.</p>
+<h3 id="example-17"><a class="header" href="#example-17">Example</a></h3>
+<pre><code class="language-neut">define axiom-T&lt;a&gt;(x: meta a): a {
+  letbox-T result = x;
+  result
+}
+</code></pre>
+<h3 id="syntax-17"><a class="header" href="#syntax-17">Syntax</a></h3>
+<pre><code class="language-neut">meta a
+</code></pre>
+<h3 id="semantics-17"><a class="header" href="#semantics-17">Semantics</a></h3>
+<p>For every type <code>a</code>, <code>meta a</code> is compiled into the same term as <code>a</code>.</p>
+<h3 id="type-18"><a class="header" href="#type-18">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ t: type
+----------------
+Γ ⊢ meta t: type
+</code></pre>
+<h3 id="note-12"><a class="header" href="#note-12">Note</a></h3>
+<p><code>meta</code> is the T-necessity operator in that we can construct terms of the following types:</p>
+<ul>
+<li><code>(meta (a) -&gt; b, meta a) -&gt; meta b</code> (Axiom K)</li>
+<li><code>(meta a) -&gt; a</code> (Axiom T)</li>
+</ul>
+<p>Note that <code>meta (a) -&gt; b</code> means <code>meta {(a) -&gt; b}</code> and not <code>(meta a) -&gt; b</code>.</p>
+<h2 id="a"><a class="header" href="#a"><code>&amp;a</code></a></h2>
+<p>Given a type <code>a: type</code>, the <code>&amp;a</code> is the type of noemata over <code>a</code>.</p>
+<h3 id="example-18"><a class="header" href="#example-18">Example</a></h3>
+<pre><code class="language-neut">data my-nat {
+| Zero
+| Succ(my-nat)
+}
+
+                     // 🌟
+define foo-noetic(n: &amp;my-nat): int {
+  case n {
+  | Zero =&gt;
+    100
+  | Succ(m) =&gt;
+    foo-noetic(m)
+  }
+}
+</code></pre>
+<h3 id="syntax-18"><a class="header" href="#syntax-18">Syntax</a></h3>
+<pre><code class="language-neut">&amp;t
+</code></pre>
+<h3 id="semantics-18"><a class="header" href="#semantics-18">Semantics</a></h3>
+<p>For every type <code>a</code>, <code>&amp;a</code> is compiled into <code>base.#.imm</code>.</p>
+<h3 id="type-19"><a class="header" href="#type-19">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ t: type
+-----------
+Γ ⊢ &amp;t: type
+</code></pre>
+<h3 id="note-13"><a class="header" href="#note-13">Note</a></h3>
+<ul>
+<li>Values of type <code>&amp;a</code> can be created using <code>on</code>.</li>
+<li>Values of type <code>&amp;a</code> are expected to be used in combination with <code>case</code> or <code>*e</code>.</li>
+<li>Since <code>&amp;a</code> is compiled into <code>base.#.imm</code>, values of type <code>&amp;a</code> aren't discarded or copied even when used non-linearly.</li>
+<li>See the Note of <a href="#box">box</a> to see the relation between <code>&amp;a</code> and <code>meta a</code></li>
+</ul>
+<h2 id="box"><a class="header" href="#box"><code>box</code></a></h2>
+<p><code>box e</code> can be used to &quot;lift&quot; the layer of <code>e</code>.</p>
+<h3 id="example-19"><a class="header" href="#example-19">Example</a></h3>
+<pre><code class="language-neut">define use-noema&lt;a&gt;(x: &amp;a, y: &amp;a): meta b {
+  // layer 0
+  // - x: &amp;a at layer 0
+  // - y: a  at layer 0
+  box x {
+    // layer -1
+    // x:  a at layer -1
+    // y: &amp;a at layer 0 (cannot be used here; causes a layer error)
+    x
+  }
+}
+</code></pre>
+<h3 id="syntax-19"><a class="header" href="#syntax-19">Syntax</a></h3>
+<pre><code class="language-neut">box x1, ..., xn { e } // n &gt;= 0
+</code></pre>
+<p>We say that this <code>box</code> captures the variables <code>x1, ..., xn</code>.</p>
+<h3 id="semantics-19"><a class="header" href="#semantics-19">Semantics</a></h3>
+<p>Given noetic variables <code>x1: &amp;a1, ..., xn: &amp;an</code>, the term <code>box x1, ..., xn { e }</code> copies all the <code>xi</code>s and execute <code>e</code>:</p>
+<pre><code class="language-neut">box x1, ..., xn { e }
+
+↓
+
+let x1 = copy-noema(x1);
+...
+let xn = copy-noema(xn);
+e
+</code></pre>
+<h3 id="type-20"><a class="header" href="#type-20">Type</a></h3>
+<pre><code class="language-neut">Γ1; ...; Γn; Δ ⊢ e1: a
+------------------------------------- (□-intro)
+Γ1; ...; Γn, &amp;Δ ⊢ box Δ {e1}: meta a
+</code></pre>
+<p>where <code>Γ1; ...; Γn</code> is a sequence of contexts.</p>
+<h3 id="layers"><a class="header" href="#layers">Layers</a></h3>
+<p>The body of <code>define</code> is defined to be at layer 0:</p>
+<pre><code class="language-neut">define some-function(x: int): int {
+  // here is layer 0
+  // `x: int` is a variable at layer 0
+  add-int(x, 1)
+}
+</code></pre>
+<p>Since <code>box e</code> lifts the layer of <code>e</code>, if we use <code>box</code> at layer 0, the layer of <code>e</code> will become -1:</p>
+<pre><code class="language-neut">define use-box(x: int): meta int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    10
+  }
+}
+</code></pre>
+<p><em>In layer n, we can only use variables at the layer</em>. Thus, the following is not a valid term:</p>
+<pre><code class="language-neut">define use-box-error(x: int): meta int {
+  // here is layer 0
+  box {
+    // here is layer -1
+    add-int(x, 1) // error: use of a variable at layer 0 (≠ -1)
+  }
+}
+</code></pre>
+<p>We can incorporate variables outside <code>box</code> by capturing them:</p>
+<pre><code class="language-neut">define use-box-with-noema(x: &amp;int): meta int {
+  // here is layer 0
+  // x: &amp;int at layer 0
+  box x {
+    // here is layer -1
+    // x: int at layer -1
+    add-int(x, 1) // ok
+  }
+}
+</code></pre>
+<p>The body of this term is typed as follows:</p>
+<pre><code class="language-neut">--------------
+x: int ⊢ x: int // layer -1
+---------------------------
+x: int ⊢ add-int(x, 1): int // layer -1
+-------------------------------------------- (□-intro with Δ = (x: int))
+· ; x: &amp;int ⊢ box x {add-int(x, 1)}: meta int  // layer 0
+</code></pre>
+<p>Here, <code>·</code> is the empty context.</p>
+<hr />
+<p>Incidentally, the rule &quot;The body of <code>define</code> is at layer 0&quot; is not really necessary. We can simply replace the 0 with any integer.</p>
+<h3 id="note-14"><a class="header" href="#note-14">Note</a></h3>
+<p>Firstly, observe that the following derivation is admissible in Neut:</p>
+<pre><code class="language-neut">Γ1; ...; Γn; x: a, Δ ⊢ e: b
+-------------------------------- (slide)
+Γ1; ...; Γn, x: meta a; Δ ⊢ e: b
+</code></pre>
+<p>Also, by setting <code>Δ = ·</code> in the typing rule of <code>box</code>, we obtain the following:</p>
+<pre><code class="language-neut">Γ1; ...; Γn; · ⊢ e: a
+-------------------------------- (□-intro')
+Γ1; ...; Γn ⊢ box Δ {e}: meta a
+</code></pre>
+<p>Thus, we can perform the following derivation:</p>
+<pre><code class="language-neut">Γ1; ...; Γn; Δ ⊢ e: a
+----------------------------- (slide)
+...
+----------------------------- (slide)
+Γ1; ...; Γn, meta Δ; · ⊢ e: a
+-------------------------------------  (□-intro')
+Γ1; ...; Γn, meta Δ ⊢ box {e}: meta a
+</code></pre>
+<p>That is to say, the following rule is admissible without using <code>&amp;</code>:</p>
+<pre><code class="language-neut">Γ1; ...; Γn; Δ ⊢ e: a
+------------------------------------- (□-intro-slide)
+Γ1; ...; Γn, meta Δ ⊢ box {e}: meta a
+</code></pre>
+<p>Now, compare the above with the rule of <code>box</code>:</p>
+<pre><code class="language-neut">Γ1; ...; Γn; Δ ⊢ e: a
+------------------------------------- (□-intro)
+Γ1; ...; Γn, &amp;Δ ⊢ box Δ {e}: meta a
+</code></pre>
+<p>As you can see, we can obtain <code>(□-intro)</code> from <code>(□-intro-slide)</code> by replacing <code>meta Δ</code> with <code>&amp;Δ</code>. That is to say, <code>&amp;a</code> is the &quot;structurally-defined&quot; variant of <code>meta a</code>.</p>
+<p>If we write <code>meta Δ</code> instead of <code>&amp;Δ</code> in <code>(□-intro)</code>, the rule is equivalent to <code>(□-intro')</code>. By giving the &quot;structural&quot; part a name different from <code>meta</code>, the rule <code>(□-intro)</code> restricts the way how variables in <code>&amp;Δ</code> (which could have been the same as <code>meta Δ</code>) are used.</p>
+<p>In this sense, <code>&amp;a</code> is the T-necessity modality defined through structural rules.</p>
+<h2 id="letbox"><a class="header" href="#letbox"><code>letbox</code></a></h2>
+<p>You can use <code>letbox</code> to &quot;unlift&quot; terms.</p>
+<h3 id="example-20"><a class="header" href="#example-20">Example</a></h3>
+<pre><code class="language-neut">define roundtrip(x: meta a): meta a {
+  // here is layer 0
+  box {
+    // here is layer -1
+    letbox tmp =
+      // here is layer 0
+      x;
+    tmp
+  }
+}
+
+define try-borrowing(x: int): unit {
+  // here is layer 0
+  // x: int (at layer 0)
+  letbox tmp =
+    // here is layer 1
+    // (thus `x` is not available here)
+    some-func(x);
+  // here is layer 0
+  // x: int (at layer 0)
+  Unit
+}
+</code></pre>
+<h3 id="syntax-20"><a class="header" href="#syntax-20">Syntax</a></h3>
+<pre><code class="language-neut">letbox result = e1;
+e2
+</code></pre>
+<h3 id="semantics-20"><a class="header" href="#semantics-20">Semantics</a></h3>
+<pre><code class="language-neut">letbox result = e1;
+e2
+
+↓
+
+let result = e1;
+cont
+</code></pre>
+<h3 id="type-21"><a class="header" href="#type-21">Type</a></h3>
+<pre><code class="language-neut">Γ1; ...; Γn ⊢ e1: meta a
+Γ1; ...; Γn; Δ, x: a ⊢ e2: b
+------------------------------------------------ (□-elim-K)
+Γ1; ...; Γn; Δ ⊢ letbox x = e1; e2: b
+</code></pre>
+<h3 id="note-15"><a class="header" href="#note-15">Note</a></h3>
+<p>Given a term <code>e1</code> at layer n + 1, <code>letbox x = e1; e2</code> is at layer n:</p>
+<pre><code class="language-neut">define roundtrip(x: meta a): meta a {
+  box {
+    // here is layer -1 (= n)
+    letbox tmp =
+      // here is layer 0 (= n + 1)
+      x;
+    // here is layer -1 (= n)
+    tmp
+  }
+}
+</code></pre>
+<p><em>In layer n, we can only use variables at the layer</em>. Thus, the following is not a valid term:</p>
+<pre><code class="language-neut">define use-letbox-error(x: meta int): int {
+  // here is layer 0
+  // x: meta int (at layer 0)
+  letbox tmp =
+    // here is layer 1
+    x; // error: use of a variable at layer 0 (≠ 1)
+  // here is layer 0
+  tmp
+}
+</code></pre>
+<h2 id="letbox-t"><a class="header" href="#letbox-t"><code>letbox-T</code></a></h2>
+<p>You can use <code>letbox-T</code> to get values from terms of type <code>meta a</code> without changing layers.</p>
+<h3 id="example-21"><a class="header" href="#example-21">Example</a></h3>
+<pre><code class="language-neut">define extract-value-from-meta(x: meta int): int {
+  // here is layer 0
+  // x: meta int (at layer 0)
+  letbox-T tmp =
+    // here is layer 0
+    x; // ok
+  // here is layer 0
+  tmp
+}
+</code></pre>
+<h3 id="syntax-21"><a class="header" href="#syntax-21">Syntax</a></h3>
+<pre><code class="language-neut">letbox-T result = e1;
+e2
+
+letbox-T result on x1, ..., xn = e1;
+e2
+</code></pre>
+<h3 id="semantics-21"><a class="header" href="#semantics-21">Semantics</a></h3>
+<pre><code class="language-neut">letbox-T result on x1, ..., xn = e1;
+e2
+
+↓
+
+let x1 = unsafe-cast(a1, &amp;a1, x);
+...
+let xn = unsafe-cast(an, &amp;an, xn);
+let result = e1;
+let x1 = unsafe-cast(&amp;a1, a1, x);
+...
+let xn = unsafe-cast(&amp;an, an, xn);
+cont
+</code></pre>
+<h3 id="type-22"><a class="header" href="#type-22">Type</a></h3>
+<pre><code class="language-neut">Γ1; ...; Γn, &amp;Δ ⊢ e1: meta a
+Γ1; ...; Γn, Δ, Δ', x: a ⊢ e2: b
+-------------------------------------------------- (□-elim-T)
+Γ1; ...; Γn, Δ, Δ' ⊢ letbox-T x on Δ = e1; e2: b
+</code></pre>
+<p>Note that the layer of <code>e1</code>, <code>e2</code>, <code>letbox-T (..)</code> are the same.</p>
+<h3 id="note-16"><a class="header" href="#note-16">Note</a></h3>
+<p><code>letbox-T</code> doesn't alter layers:</p>
+<pre><code class="language-neut">define extract-value-from-meta(x: meta int): int {
+  // here is layer 0
+  letbox-T tmp =
+    // here is layer 0
+    x;
+  // here is layer 0
+  tmp
+}
+</code></pre>
+<p><code>on</code> doesn't alter the layers of variables, too:</p>
+<pre><code class="language-neut">define extract-value-from-meta(x: int): int {
+  // here is layer 0
+  // x: int (at layer 0)
+  letbox-T tmp on x =
+    // here is layer 0
+    // x: &amp;int (at layer 0)
+    x;
+  // here is layer 0
+  // x: int (at layer 0)
+  tmp
+}
+</code></pre>
+<h2 id="case"><a class="header" href="#case"><code>case</code></a></h2>
+<p>You can use <code>case</code> to inspect noetic ADT values or integers.</p>
+<h3 id="example-22"><a class="header" href="#example-22">Example</a></h3>
+<pre><code class="language-neut">data my-nat {
+| Zero
+| Succ(my-nat)
+}
+
+define foo-noetic(n: &amp;my-nat): int {
+  case n {
+  | Zero =&gt;
+    100
+  | Succ(m) =&gt;
+    // the type of foo-noetic is `(&amp;my-nat) -&gt; int`
+    foo-noetic(m)
+  }
+}
+</code></pre>
+<h3 id="syntax-22"><a class="header" href="#syntax-22">Syntax</a></h3>
+<pre><code class="language-neut">case e1, ..., en {
+| pattern-1 =&gt;
+  body-1
+  ...
+| pattern-m =&gt;
+  body-m
+}
+</code></pre>
+<h3 id="semantics-22"><a class="header" href="#semantics-22">Semantics</a></h3>
+<p>The semantics of <code>case</code> is the same as <code>match</code>, except that <code>case</code> doesn't consume ADT values.</p>
+<h3 id="type-23"><a class="header" href="#type-23">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ e1: a1
+...
+Γ ⊢ en: an
+
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: &amp;t_{1,1}, ..., arg_{1, k_{1}}: &amp;t{1, k_{1}} ⊢ body-1: b
+
+...
+
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: &amp;t_{m,1}, ..., arg_{m, k_{m}}: &amp;t{m, k_{m}} ⊢ body-m: b
+
+(for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
+(the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
+------------------------------------------------------------------------------
+Γ ⊢ case e1, ..., en {
+    | pat-1 =&gt; body-1
+    ...
+    | pat-m =&gt; body-m
+    }: b
+</code></pre>
+<h3 id="note-17"><a class="header" href="#note-17">Note</a></h3>
+<p>An example of the application of the typing rule of <code>case</code>:</p>
+<pre><code class="language-neut">Γ ⊢ n: &amp;my-nat
+
+Γ ⊢ Zero: my-nat // pat-1
+Γ ⊢ 100: int // body-1
+
+Γ, m: my-nat ⊢ Succ(m): my-nat // pat-2
+Γ, m: &amp;my-nat ⊢ foo-noetic(m): int // body-2
+
+(Zero and Succ(m) are patterns for n)
+(the sequence Zero, Succ(m) is a exhaustinve matching against n)
+------------------------------------------------------------------------------
+Γ ⊢ case n {
+    | Zero =&gt; 100
+    | Succ(m) =&gt; foo-noetic(m)
+    }: int
+</code></pre>
+<h2 id="thread-1"><a class="header" href="#thread-1"><code>thread</code></a></h2>
+<p>A <code>thread</code> in Neut is the type of a thread (much like promises in other languages).</p>
+<h3 id="example-23"><a class="header" href="#example-23">Example</a></h3>
+<pre><code class="language-neut">thread(int) // the type of a thread that returns int
+
+thread((int) -&gt; bool) // the type of a thread that returns (int) -&gt; bool
+</code></pre>
+<h3 id="syntax-23"><a class="header" href="#syntax-23">Syntax</a></h3>
+<pre><code class="language-neut">thread(t)
+</code></pre>
+<h3 id="semantics-23"><a class="header" href="#semantics-23">Semantics</a></h3>
+<p>For any type <code>t</code>, the type <code>thread(t)</code> is compiled into a pointer to a closed function that discards and copies the values of the type in the following manner:</p>
+<ul>
+<li>Discard <code>e: thread(t)</code>: Waits the thread <code>e</code> to finish and discard the result along the type <code>t</code>, and then returns 0</li>
+<li>Copy <code>e: thread(t)</code>: Waits the thread <code>e</code> to finish, copies the result along the type <code>t</code>, creates an already-finished thread, and returns it as a clone.</li>
+</ul>
+<p>The type <code>t</code> is inside the internal representation of a term <code>e: thread(t)</code>. Because of that, for any <code>t</code>, <code>thread(t)</code> is compiled to the same closed function. For more, see the following Note.</p>
+<h3 id="type-24"><a class="header" href="#type-24">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ t: type
+----------------
+Γ ⊢ thread(t): type
+</code></pre>
+<h3 id="note-18"><a class="header" href="#note-18">Note</a></h3>
+<p>(1) The internal representation of <code>e: thread(t)</code> is a &quot;3-word + 1-byte&quot; tuple like the below:</p>
+<pre><code class="language-neut">   (thread-id, t, result-value-or-none, finished)
+//  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^
+//  3-word                              1-byte
+</code></pre>
+<p>When a thread is created,</p>
+<ul>
+<li>the value of <code>result-value-or-none</code> is initialized to 0, and</li>
+<li>the value of <code>finished</code> is also initialized to 0.</li>
+</ul>
+<p>When a thread is completed,</p>
+<ul>
+<li>the value <code>result-value-or-none</code> is updated to the result of the thread, and</li>
+<li>the value <code>finished</code> is updated to 1.</li>
+</ul>
+<p>(2) As you can see from the semantics, you must use threads linearly to perform parallel computation.</p>
+<p>(3) A thread in Neut is a thin layer over pthread.</p>
+<h2 id="detach"><a class="header" href="#detach"><code>detach</code></a></h2>
+<p>You can use <code>detach</code> to create a new thread.</p>
+<h3 id="example-24"><a class="header" href="#example-24">Example</a></h3>
+<pre><code class="language-neut">define foo(): thread(int) {
+  detach {
+    print(&quot;fA&quot;);
+    1
+  }
+}
+
+define bar(): thread(int) {
+  let f =
+    detach {
+      print(&quot;fA&quot;);
+      1
+    };
+  f
+}
+</code></pre>
+<h3 id="syntax-24"><a class="header" href="#syntax-24">Syntax</a></h3>
+<pre><code class="language-neut">detach {
+  e
+}
+</code></pre>
+<h3 id="semantics-24"><a class="header" href="#semantics-24">Semantics</a></h3>
+<p><code>detach { e }</code> creates a new thread and starts computation of <code>e</code> in that thread.</p>
+<h3 id="type-25"><a class="header" href="#type-25">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ e: a
+-------------------------
+Γ ⊢ detach { e }: thread(a)
+</code></pre>
+<h3 id="note-19"><a class="header" href="#note-19">Note</a></h3>
+<ul>
+<li><code>detach</code> internally uses pthread.</li>
+</ul>
+<h2 id="attach"><a class="header" href="#attach"><code>attach</code></a></h2>
+<p>You can use <code>detach</code> to wait for a thread and get its result.</p>
+<h3 id="example-25"><a class="header" href="#example-25">Example</a></h3>
+<pre><code class="language-neut">define foo(f: thread(int)): int {
+  attach { f }
+}
+
+define bar(f: thread((int) -&gt; bool)): bool {
+  let k = attach { f };
+  k(100)
+}
+</code></pre>
+<h3 id="syntax-25"><a class="header" href="#syntax-25">Syntax</a></h3>
+<pre><code class="language-neut">attach { e }
+</code></pre>
+<h3 id="semantics-25"><a class="header" href="#semantics-25">Semantics</a></h3>
+<p><code>attach</code> waits given thread to finish and gets its resulting value.</p>
+<p>It also <code>free</code>s the 3-word + 1-byte tuple that represents a thread after getting the result.</p>
+<h3 id="type-26"><a class="header" href="#type-26">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ e: thread(a)
+-------------------
+Γ ⊢ attach { e }: a
+</code></pre>
+<h3 id="note-20"><a class="header" href="#note-20">Note</a></h3>
+<ul>
+<li><code>attach</code> internally uses pthread.</li>
+</ul>
+<h2 id="quote"><a class="header" href="#quote"><code>quote</code></a></h2>
+<p>You can use <code>quote</code> to wrap the types of &quot;safe&quot; values by <code>meta {..}</code>.</p>
+<h3 id="example-26"><a class="header" href="#example-26">Example</a></h3>
+<pre><code class="language-neut">define quote-int(x: int): meta int {
+  quote {x}
+}
+
+define quote-bool(x: bool): meta bool {
+  quote {x}
+}
+
+define quote-function(f: (int) -&gt; bool): meta (int) -&gt; bool {
+  quote {f} // error; won't typecheck
+}
+</code></pre>
+<h3 id="syntax-26"><a class="header" href="#syntax-26">Syntax</a></h3>
+<pre><code class="language-neut">quote {e}
+</code></pre>
+<h3 id="semantics-26"><a class="header" href="#semantics-26">Semantics</a></h3>
+<pre><code class="language-neut">quote {e}
+
+↓
+
+e
+</code></pre>
+<h3 id="type-27"><a class="header" href="#type-27">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ e: a
+(a is an &quot;actual&quot; type)
+-----------------------
+Γ ⊢ quote {e}: meta a
+</code></pre>
+<p>Here, an &quot;actual&quot; type is a type that satisfies all the following conditions:</p>
+<ul>
+<li>It doesn't contain any free variables</li>
+<li>It doesn't contain any noetic types</li>
+<li>It doesn't contain any function types</li>
+<li>It doesn't contain any &quot;dubious&quot; ADTs</li>
+</ul>
+<p>Here, a &quot;dubious&quot; ADT is something like the below:</p>
+<pre><code class="language-neut">// the type `joker-x` is dubious since it contains a noetic argument
+data joker-x {
+| Joker-X(&amp;list(int))
+}
+
+// the type `joker-y` is dubious since it contains a functional argument
+data joker-y {
+| Joker-Y(int -&gt; bool)
+}
+
+// the type `joker-z` is dubious since it contains a dubious ADT argument
+data joker-z {
+| Joker-Z(joker-y)
+}
+</code></pre>
+<h3 id="note-21"><a class="header" href="#note-21">Note</a></h3>
+<p>(1) Unlike <code>box</code>, <code>quote</code> doesn't alter layers.</p>
+<p>(2) <code>quote</code> doesn't add extra expressiveness to the type system. For example, <code>quote</code> on <code>bool</code> can be replaced with <code>box</code> as follows:</p>
+<pre><code class="language-neut">define quote-bool(b: bool): meta bool {
+  quote {b}
+}
+
+↓
+
+define quote-bool(b: bool): meta bool {
+  if b {
+    box {True}
+  } else {
+    box {False}
+  }
+}
+</code></pre>
+<p><code>quote</code> on <code>either(bool, unit)</code> can also be replaced with <code>box</code> as follows:</p>
+<pre><code class="language-neut">define quote-either(x: either(bool, unit)): meta either(bool, unit) {
+  quote {b}
+}
+
+↓
+
+define quote-either(x: either(bool, unit)): meta either(bool, unit) {
+  match x {
+  | Left(b) =&gt;
+    if b {
+      box {Left(True)}
+    } else {
+      box {Left(False)}
+    }
+  | Right(u) =&gt;
+    box {Right(Unit)}
+  }
+}
+</code></pre>
+<p><code>quote</code> is there only for convenience.</p>
+<h2 id="magic"><a class="header" href="#magic"><code>magic</code></a></h2>
+<p>You can use <code>magic</code> to perform weird stuff. Using <code>magic</code> is an unsafe operation.</p>
+<h3 id="example-27"><a class="header" href="#example-27">Example</a></h3>
+<pre><code class="language-neut">// empty type
+data descriptor {}
+
+// add an element to the empty type
+inline stdin: descriptor {
+  magic cast(int, descriptor, 0) // 🌟 cast
+}
+
+define malloc-then-free(): unit {
+  // allocates memory region (stack)
+  let ptr = magic alloca(int64, 2); // allocates (64 / 8) * 2 = 16 byte
+
+  // allocates memory region (heap)
+  let size: int = 10;
+  let ptr: pointer = magic external malloc(size); // 🌟 external
+
+  // stores a value
+  let value: int = 123;
+  magic store(int, value, ptr); // 🌟 store
+
+  // loads and print a value
+  let value = magic load(int, ptr); // 🌟 load
+  print-int(value); // =&gt; 123
+
+  // tells the compiler to treat the content of {..} as a value
+  let v =
+    magic opaque-value {
+      get-some-c-constant-using-FFI()
+    };
+
+  // frees the pointer and return
+  magic external free(ptr); // 🌟 external
+
+  // call types as functions
+  let t: text = *&quot;hello&quot;;
+  magic call-type(text, 0, t); // discard
+
+  Unit
+}
+
+</code></pre>
+<h3 id="syntax-27"><a class="header" href="#syntax-27">Syntax</a></h3>
+<pre><code class="language-neut">magic cast(from-type, to-type, value)
+
+magic store(lowtype, stored-value, address)
+
+magic load(lowtype, address)
+
+magic alloca(lowtype, num-of-elems)
+
+magic opaque-value { e }
+
+magic external func-name(e1, ..., en)
+
+magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
+
+magic external call-type(some-type, switch, arg)
+</code></pre>
+<p>A &quot;lowtype&quot; is a term that reduces to one of the following:</p>
+<ul>
+<li><code>int1</code>, <code>int2</code>, <code>int4</code>, <code>int8</code>, <code>int16</code>, <code>int32</code>, <code>int64</code></li>
+<li><code>float16</code>, <code>float32</code>, <code>float64</code></li>
+<li><code>pointer</code></li>
+</ul>
+<p>You can also use <code>int</code> and <code>float</code> as a lowtype. These are just syntactic sugar for <code>int64</code> and <code>float64</code>, respectively.</p>
+<h3 id="semantics-cast"><a class="header" href="#semantics-cast">Semantics (cast)</a></h3>
+<p><code>magic cast (a, b, e)</code> casts the term <code>e</code> from the type <code>a</code> to <code>b</code>. <code>cast</code> does nothing at runtime.</p>
+<h3 id="semantics-store"><a class="header" href="#semantics-store">Semantics (store)</a></h3>
+<p><code>magic store(lowtype, value, address)</code> stores a value <code>value</code> to <code>address</code>. This is the same as <code>store</code> <a href="https://llvm.org/docs/LangRef.html#store-instruction">in LLVM</a>.</p>
+<h3 id="semantics-load"><a class="header" href="#semantics-load">Semantics (load)</a></h3>
+<p><code>magic load(lowtype, address)</code> loads a value from <code>address</code>. This is the same as <code>load</code> <a href="https://llvm.org/docs/LangRef.html#load-instruction">in LLVM</a>.</p>
+<h3 id="semantics-alloca"><a class="header" href="#semantics-alloca">Semantics (alloca)</a></h3>
+<p><code>magic alloca(lowtype, num-of-elems)</code> allocates a memory region on the stack frame. This is the same as <code>alloca</code> <a href="https://llvm.org/docs/LangRef.html#alloca-instruction">in LLVM</a>.</p>
+<h3 id="semantics-opaque-value"><a class="header" href="#semantics-opaque-value">Semantics (opaque-value)</a></h3>
+<p><code>magic opaque-value { e }</code> tells the compiler to treat the term <code>e</code> as a value. You may want to use this in combination with <code>define</code> or <code>inline</code> that don't have any explicit arguments.</p>
+<h3 id="semantics-external"><a class="header" href="#semantics-external">Semantics (external)</a></h3>
+<p><code>magic external func(e1, ..., en)</code> can be used to call foreign functions (or FFI). See <a href="./statements.html#foreign">foreign in Statements</a> for more information.</p>
+<p><code>magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)</code> can also be used to call variadic foreign functions like printf in C. A use of such variadic <code>external</code> can be found in the core library <a href="https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/text/io.nt#L43">here</a>.</p>
+<h3 id="semantics-call-type"><a class="header" href="#semantics-call-type">Semantics (call-type)</a></h3>
+<p>Neut compiles types into functions. The first argument of such a function is usually 0 or 1, but we can actually pass other integers using <code>call-type</code>.</p>
+<p><code>magic call-type(some-type, switch, arg)</code> treats <code>some-type</code> as a function pointer and calls <code>some-type(switch, arg)</code>.</p>
+<p><code>magic call-type(some-type, 0, value)</code> discards <code>value</code>.</p>
+<p><code>magic call-type(some-type, 1, value)</code> copies <code>value</code> and returns a new value.</p>
+<p><code>magic call-type(some-type, 2, value)</code> ignores <code>value</code> and returns an integer <code>i</code> if <code>some-type</code> is the <code>i</code>th constructor of the type <code>type-tag</code> defined <a href="https://github.com/vekatze/neut-core/blob/main/source/type-tag.nt">here</a>. For example,</p>
+<ul>
+<li><code>call-type(type, 2, Unit)</code> returns 1 since the tag of <code>type</code> is <code>Type</code>,</li>
+<li><code>call-type(bool, 2, Unit)</code> returns 5 since the tag of <code>bool</code> is <code>Enum</code>,</li>
+<li><code>call-type(list(int), 2, Unit)</code> returns 3 since the tag of <code>list(int)</code> is <code>Algebraic</code>.</li>
+</ul>
+<p><code>magic call-type(some-type, 3, i)</code> is defined only if <code>some-type</code> is an ADT or an enum. If <code>some-type</code> is an ADT, this term returns the number of parameters for the ADT's <code>i</code>th constructor, or <code>-1</code> if the <code>i</code>th constructor doesn't exist. If <code>some-type</code> is an enum, this term returns <code>0</code> if the <code>i</code>th constructor exists, or <code>-1</code> if not.</p>
+<p><code>magic call-type(some-type, 4, value)</code> is defined only if <code>some-type</code> is an ADT or an enum. If <code>some-type</code> is an ADT, this term assumes that <code>value</code> has the following structure:</p>
+<pre><code class="language-neut">(discriminant, arg-1, ..., arg-n, any, any)
+</code></pre>
+<p>where</p>
+<pre><code class="language-neut">(discriminant, arg-1, ..., arg-n)
+</code></pre>
+<p>is the internal structure of terms of type <code>some-type</code>. Given that, <code>magic call-type(some-type, 4, value)</code> replaces the content of <code>value</code> as follows:</p>
+<pre><code class="language-neut">(cons-name, type(arg-1), ..., type(arg-n), v1, v2)
+</code></pre>
+<p>where</p>
+<ul>
+<li><code>cons-name</code> is the constructor's name (<code>&amp;text</code>).</li>
+<li><code>v1</code> is the number of data parameters.
+<ul>
+<li>Here, &quot;data parameters&quot; refers to the <code>a</code> in <code>data list(a) {..}</code>.</li>
+</ul>
+</li>
+<li><code>v2</code> is 1 if and only if the constructor doesn't have parameters.
+<ul>
+<li>For example, <code>v2</code> for <code>Nil</code> is 1. <code>v2</code> for <code>Empty()</code> and <code>Cons(a, list(a))</code> is 0.</li>
+</ul>
+</li>
+</ul>
+<p>If <code>some-type</code> is an enum, <code>magic call-type(some-type, 4, i)</code> returns the <code>i</code>th constructor's name (<code>&amp;text</code>).</p>
+<p><code>magic call-type(some-type, 4, value)</code> is intended to be used with <code>magic alloca</code>.</p>
+<h3 id="type-28"><a class="header" href="#type-28">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ t1: type
+Γ ⊢ t2: type
+Γ ⊢ e: t1
+-----------------------------
+Γ ⊢ magic cast(t1, t2, e): t2
+
+
+(t is a lowtype)
+Γ ⊢ stored-value: t
+Γ ⊢ address: pointer
+------------------------------------------------------
+Γ ⊢ magic store(t, stored-value, address): unit
+
+
+(t is a lowtype)
+Γ ⊢ t: type
+Γ ⊢ address: pointer
+------------------------------------------------------
+Γ ⊢ magic load(t, address): t
+
+Γ ⊢ e:t
+------------------------------------------------------
+Γ ⊢ magic opaque-value { e }: t
+
+
+Γ ⊢ e1: t1
+...
+Γ ⊢ en: tn
+Γ ⊢ t: type
+(t1 is a lowtype)
+...
+(tn is a lowtype)
+(t is a lowtype or void)
+(func is a foreign function)
+--------------------------------------------------
+Γ ⊢ magic external func(e1, ..., en): t
+
+
+Γ ⊢ e1: t1
+...
+Γ ⊢ en: tn
+Γ ⊢ e{n+1}: t{n+1}
+...
+Γ ⊢ e{n+m}: t{n+m}
+Γ ⊢ t: type
+(t1 is a lowtype)
+...
+(tm is a lowtype)
+(t is a lowtype or void)
+(func is a foreign function)
+---------------------------------------------------------------------------------
+Γ ⊢ magic external func(e1, ..., en)(e{n+1}: t{n+1}, ..., e{n+m}: t{n+m}): t
+
+
+Γ ⊢ some-type: type
+Γ ⊢ switch: int
+------------------------------------------------------
+Γ ⊢ magic call-type(some-type, switch, arg): t
+
+</code></pre>
+<h3 id="note-22"><a class="header" href="#note-22">Note</a></h3>
+<p><code>call-type</code> can be used, for example, to inspect the structure of a term at runtime. The function <code>vet</code> defined <a href="https://github.com/vekatze/neut-core/blob/main/source/debug.nt">here</a>, for example, inspects its argument's structure and prints it.</p>
+<h2 id="introspect"><a class="header" href="#introspect"><code>introspect</code></a></h2>
+<p>You can use <code>introspect key {..}</code> to introspect the compiler's configuration.</p>
+<h3 id="example-28"><a class="header" href="#example-28">Example</a></h3>
+<pre><code class="language-neut">define arch-dependent-constant(): int {
+  introspect architecture {
+  | arm64 =&gt;
+    1
+  | amd64 =&gt;
+    2
+  }
+}
+
+define os-dependent-constant(): int {
+  introspect operating-system {
+  | linux =&gt;
+    1
+  | default =&gt;
+    // `2` is returned if target-os != linux
+    2
+  }
+}
+</code></pre>
+<h3 id="syntax-28"><a class="header" href="#syntax-28">Syntax</a></h3>
+<pre><code class="language-neut">introspect key {
+| value-1 =&gt;
+  e1
+  ...
+| value-n =&gt;
+  en
+}
+</code></pre>
+<p>You can use the following configuration <code>key</code>s and configuration <code>value</code>s:</p>
+<div class="table-wrapper"><table><thead><tr><th>Configuration Key</th><th>Configuration Value</th></tr></thead><tbody>
+<tr><td><code>architecture</code></td><td><code>amd64</code> or <code>arm64</code></td></tr>
+<tr><td><code>operating-system</code></td><td><code>linux</code> or <code>darwin</code></td></tr>
+<tr><td><code>build-mode</code></td><td><code>develop</code> or <code>release</code></td></tr>
+</tbody></table>
+</div>
+<p>You can also use <code>default</code> as a configuration value to represent a fallback case.</p>
+<h3 id="semantics-27"><a class="header" href="#semantics-27">Semantics</a></h3>
+<p>Firstly, <code>introspect key {v1 =&gt; e1 | ... | vn =&gt; en}</code> looks up the configuration value <code>v</code> of the compiler by <code>key</code>. Then it reads the configuration values <code>v1</code>, ..., <code>vn</code> in this order to find <code>vk</code> that is equal to the <code>v</code>. If such a <code>vk</code> is found, <code>introspect</code> executes the corresponding clause <code>ek</code>. If no such <code>vk</code> is found, <code>introspect</code> will report a compilation error.</p>
+<p>The configuration value <code>default</code> is equal to any configuration values.</p>
+<h3 id="type-29"><a class="header" href="#type-29">Type</a></h3>
+<pre><code class="language-neut">(key is a configuration key)
+
+(v1 is a configuration value)
+Γ ⊢ e1: a
+
+...
+
+(vn is a configuration value)
+Γ ⊢ en: a
+------------------------------------------
+Γ ⊢ introspect key {
+    | v1 =&gt; e1
+      ...
+    | vn =&gt; en
+    }: a
+</code></pre>
+<h3 id="note-23"><a class="header" href="#note-23">Note</a></h3>
+<ul>
+<li>The branching of an <code>introspect</code> is resolved at compile-time.</li>
+</ul>
+<h2 id="include-text"><a class="header" href="#include-text"><code>include-text</code></a></h2>
+<p>You can use <code>include-text</code> to embed the content of a static file into a source file at compile time.</p>
+<h3 id="example-29"><a class="header" href="#example-29">Example</a></h3>
+<pre><code class="language-neut">import {
+  static {some-file}
+}
+
+define use-some-file(): unit {
+  let t: &amp;text = include-text(some-file);
+  print(t)
+}
+</code></pre>
+<h3 id="syntax-29"><a class="header" href="#syntax-29">Syntax</a></h3>
+<pre><code class="language-neut">include-text(key)
+</code></pre>
+<h3 id="semantics-28"><a class="header" href="#semantics-28">Semantics</a></h3>
+<p>The compiler expands <code>include-text(foo)</code> into the content of <code>foo</code> at compile time.</p>
+<p>If <code>foo</code> isn't a key of a UTF-8 file, <code>include-text(foo)</code> reports a compilation error.</p>
+<h3 id="type-30"><a class="header" href="#type-30">Type</a></h3>
+<pre><code class="language-neut">(Γ is a context)    (k is a static file's key)
+----------------------------------------------
+Γ ⊢ include-text(k): &amp;text
+</code></pre>
+<h3 id="note-24"><a class="header" href="#note-24">Note</a></h3>
+<p>You may also want to read <a href="modules.html#static">the section on static files in Modules</a>.</p>
+<h2 id="admit"><a class="header" href="#admit"><code>admit</code></a></h2>
+<p>You can use <code>admit</code> to suppress the type checker and sketch the structure of your program.</p>
+<h3 id="example-30"><a class="header" href="#example-30">Example</a></h3>
+<pre><code class="language-neut">define my-complex-function(): unit {
+  admit
+}
+</code></pre>
+<h3 id="syntax-30"><a class="header" href="#syntax-30">Syntax</a></h3>
+<pre><code class="language-neut">admit
+</code></pre>
+<h3 id="semantics-29"><a class="header" href="#semantics-29">Semantics</a></h3>
+<p>Evaluating <code>admit</code> will exit the program, displaying a message like the following:</p>
+<pre><code class="language-text">admit: /path/to/file.nt:1:2
+</code></pre>
+<p>When <code>admit</code> exits a program, the exit code is 1.</p>
+<h3 id="type-31"><a class="header" href="#type-31">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ t: type
+------------
+Γ ⊢ admit: t
+</code></pre>
+<h3 id="note-25"><a class="header" href="#note-25">Note</a></h3>
+<ul>
+<li><code>admit</code> is the <code>undefined</code> in Haskell.</li>
+<li><code>admit</code> is intended to be used ephemerally during development.</li>
+</ul>
+<h2 id="assert"><a class="header" href="#assert"><code>assert</code></a></h2>
+<p>You can use <code>assert</code> to ensure that a condition is satisfied at run-time.</p>
+<h3 id="example-31"><a class="header" href="#example-31">Example</a></h3>
+<pre><code class="language-neut">define fact(n: int): int {
+  assert &quot;the input must be non-negative&quot; {
+    ge-int(n, 0)
+  };
+  if eq-int(n, 0) {
+    1
+  } else {
+    mul-int(n, fact(sub-int(n, 1)))
+  }
+}
+</code></pre>
+<h3 id="syntax-31"><a class="header" href="#syntax-31">Syntax</a></h3>
+<pre><code class="language-neut">assert &quot;any-string&quot; {
+  e
+}
+</code></pre>
+<h3 id="semantics-30"><a class="header" href="#semantics-30">Semantics</a></h3>
+<p>If the <a href="./commands.html#--mode">build mode</a> is <code>release</code>, <code>assert</code> does nothing.</p>
+<p>Otherwise, <code>assert &quot;description&quot; { condition }</code> evaluates <code>condition</code> and checks if it is <code>True</code>. If it is <code>True</code>, the <code>assert</code> simply evaluates to <code>Unit</code>. Otherwise, it reports that the assertion <code>&quot;description&quot;</code> failed and exits the execution of the program with the exit code <code>1</code>.</p>
+<h3 id="type-32"><a class="header" href="#type-32">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ condition: bool
+--------------------------------------------
+Γ ⊢ assert &quot;description&quot; { condition }: unit
+</code></pre>
+<h2 id="_"><a class="header" href="#_"><code>_</code></a></h2>
+<p><code>_</code> is a hole that must be inferred by the type checker.</p>
+<h3 id="example-32"><a class="header" href="#example-32">Example</a></h3>
+<pre><code class="language-neut">define id(a: type, x: a): a {
+  x
+}
+
+define use-hole(): unit {
+  id(_, Unit) // ← using a hole (inferred to be `unit`)
+}
+</code></pre>
+<h3 id="syntax-32"><a class="header" href="#syntax-32">Syntax</a></h3>
+<pre><code class="language-neut">_
+</code></pre>
+<h3 id="semantics-31"><a class="header" href="#semantics-31">Semantics</a></h3>
+<p><code>_</code> is a hole that must be inferred by the type checker. If the type checker resolves a hole into a term <code>e</code>, this hole behaves the same as <code>e</code>. If the type checker can't resolve a hole, the type checker reports a compilation error.</p>
+<h3 id="type-33"><a class="header" href="#type-33">Type</a></h3>
+<pre><code class="language-neut">Γ ⊢ e[tmp := e1]: a
+-------------------
+Γ ⊢ e[tmp := _]: a
+</code></pre>
+<h3 id="note-26"><a class="header" href="#note-26">Note</a></h3>
+<p>Please do not confuse a hole with the <code>_</code> in <code>let _ = e1; e2</code>.</p>
+<h2 id="on"><a class="header" href="#on"><code>on</code></a></h2>
+<p><code>let x on y = e1; e2</code> can be used to introduce noetic values in a specific scope.</p>
+<h3 id="example-33"><a class="header" href="#example-33">Example</a></h3>
+<pre><code class="language-neut">define play-with-let-on(): int {
+  let xs: list(int) = List[1, 2, 3];
+  let len on xs =
+    // the type of `xs` is `&amp;list(int)` here
+    length(xs);
+  // the type of `xs` is `list(int)` here
+  add-int(len, 42)
+}
+</code></pre>
+<h3 id="syntax-33"><a class="header" href="#syntax-33">Syntax</a></h3>
+<pre><code class="language-neut">let y on x1, ..., xn = e1;
+e2
+</code></pre>
+<h3 id="semantics-32"><a class="header" href="#semantics-32">Semantics</a></h3>
+<pre><code class="language-neut">let result on x1, ..., xn = e1;
+e2
+
+// ↓ desugar
+
+letbox-T result on x1, ..., xn = quote {e1};
+e2
+</code></pre>
+<h3 id="type-34"><a class="header" href="#type-34">Type</a></h3>
+<p>Derived from the desugared form.</p>
+<h2 id="e"><a class="header" href="#e"><code>*e</code></a></h2>
+<p>You can use <code>*e</code> to create a non-noetic value from a noetic value.</p>
+<h3 id="example-34"><a class="header" href="#example-34">Example</a></h3>
+<pre><code class="language-neut">define clone-list&lt;a&gt;(xs: &amp;list(a)): list(a) {
+  case xs {
+  | Nil =&gt;
+    Nil
+  | Cons(y, ys) =&gt;
+    Cons(*y, clone-list(ys))
+  }
+}
+</code></pre>
+<h3 id="syntax-34"><a class="header" href="#syntax-34">Syntax</a></h3>
+<pre><code class="language-neut">*e
+</code></pre>
+<h3 id="semantics-33"><a class="header" href="#semantics-33">Semantics</a></h3>
+<pre><code class="language-neut">*e
+
+↓
+
+embody(e)
+</code></pre>
+<p>where the function <code>embody</code> is defined in the core library as follows:</p>
+<pre><code class="language-neut">// core.box
+
+// □A -&gt; A (Axiom T)
+inline axiom-T&lt;a&gt;(x: meta a): a {
+  letbox-T x' = x;
+  x'
+}
+
+inline embody&lt;a&gt;(x: &amp;a): a {
+  axiom-T(box x {x}) // ← this `box` copies the content of `x`
+}
+</code></pre>
+<h3 id="type-35"><a class="header" href="#type-35">Type</a></h3>
+<p>Derived from the desugared form.</p>
+<h3 id="note-27"><a class="header" href="#note-27">Note</a></h3>
+<p>Intuitively, given a term <code>e: &amp;a</code>, <code>*e: a</code> is a clone of the content of <code>e</code>.</p>
+<p>This clone is created by copying the content along the type <code>a</code>.</p>
+<p>The original content is kept intact.</p>
+<h2 id="if"><a class="header" href="#if"><code>if</code></a></h2>
+<p>You can use <code>if</code> as in other languages.</p>
+<h3 id="example-35"><a class="header" href="#example-35">Example</a></h3>
+<pre><code class="language-neut">define foo(b1: bool): unit {
+  if b1 {
+    print(&quot;hey&quot;)
+  } else {
+    print(&quot;yo&quot;)
+  }
+}
+
+define bar(b1: bool, b2: bool): unit {
+  let tmp =
+    if b1 {
+      &quot;hey&quot;
+    } else-if b2 {
+      &quot;yo&quot;
+    } else {
+      &quot;pohe&quot;
+    };
+  print(tmp)
+}
+</code></pre>
+<h3 id="syntax-35"><a class="header" href="#syntax-35">Syntax</a></h3>
+<pre><code class="language-neut">if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
+</code></pre>
+<h3 id="semantics-34"><a class="header" href="#semantics-34">Semantics</a></h3>
+<p><code>if</code> is the following syntactic sugar:</p>
+<pre><code class="language-neut">if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
+
+↓
+
+match b1 {
+| True =&gt; e1
+| False =&gt;
+  match b2 {
+  | True =&gt; e2
+  | False =&gt;
+    ...
+    match b_{n-1} {
+    | True =&gt; e_{n-1}
+    | False =&gt; en
+    }
+  }
+}
+</code></pre>
+<h3 id="type-36"><a class="header" href="#type-36">Type</a></h3>
+<p>Derived from the desugared form.</p>
+<h2 id="when-cond--e-"><a class="header" href="#when-cond--e-"><code>when cond { e }</code></a></h2>
+<p>You can use <code>when cond { e }</code> to perform <code>e</code> only when <code>cond</code> is true.</p>
+<h3 id="example-36"><a class="header" href="#example-36">Example</a></h3>
+<pre><code class="language-neut">define foo(b1: bool): unit {
+  when b1 {
+    print(&quot;hey&quot;)
+  }
+}
+
+</code></pre>
+<h3 id="syntax-36"><a class="header" href="#syntax-36">Syntax</a></h3>
+<pre><code class="language-neut">when cond {
+  e
+}
+</code></pre>
+<h3 id="semantics-35"><a class="header" href="#semantics-35">Semantics</a></h3>
+<p><code>when</code> is the following syntactic sugar:</p>
+<pre><code class="language-neut">when cond {
+  e
+}
+
+↓
+
+if cond {
+  e
+} else {
+  Unit
+}
+</code></pre>
+<h3 id="type-37"><a class="header" href="#type-37">Type</a></h3>
+<p>Derived from the desugared form.</p>
+<h2 id="e1-e2"><a class="header" href="#e1-e2"><code>e1; e2</code></a></h2>
+<p>You can use <code>e1; e2</code> to perform sequential operations.</p>
+<h3 id="example-37"><a class="header" href="#example-37">Example</a></h3>
+<pre><code class="language-neut">define foo(): unit {
+  print(&quot;hello&quot;);
+  print(&quot;, &quot;);
+  print(&quot;world!&quot;);
+  print(&quot;\n&quot;)
+}
+</code></pre>
+<h3 id="syntax-37"><a class="header" href="#syntax-37">Syntax</a></h3>
+<pre><code class="language-neut">e1;
+e2
+</code></pre>
+<h3 id="semantics-36"><a class="header" href="#semantics-36">Semantics</a></h3>
+<p><code>e1; e2</code> is the following syntactic sugar:</p>
+<pre><code class="language-neut">let _: unit = e1;
+e2
+</code></pre>
+<h3 id="type-38"><a class="header" href="#type-38">Type</a></h3>
+<p>Derived from the desugared form.</p>
+<h2 id="try-x--e1-e2"><a class="header" href="#try-x--e1-e2"><code>try x = e1; e2</code></a></h2>
+<p><code>try</code> is a shorthand for <code>match</code> + <code>either</code>.</p>
+<h3 id="example-38"><a class="header" href="#example-38">Example</a></h3>
+<pre><code class="language-neut">define get-value-or-fail(): either(error, int) {
+  //  ...
+}
+
+define foo(): either(error, int) {
+  try x1 = get-value-or-fail();
+  try x2 = get-value-or-fail();
+  Right(add-int(x1, x2))
+}
+</code></pre>
+<h3 id="syntax-38"><a class="header" href="#syntax-38">Syntax</a></h3>
+<pre><code class="language-neut">try x = e1;
+e2
+</code></pre>
+<h3 id="semantics-37"><a class="header" href="#semantics-37">Semantics</a></h3>
+<p><code>try x = e1; e2</code> is a shorthand of the below:</p>
+<pre><code class="language-neut">match e1 {
+| Left(err) =&gt;
+  Left(err)
+| Right(x) =&gt;
+  e2
+}
+</code></pre>
+<h3 id="type-39"><a class="header" href="#type-39">Type</a></h3>
+<p>Derived from the desugared form.</p>
+<h3 id="note-28"><a class="header" href="#note-28">Note</a></h3>
+<p>The definition of <code>either</code> is as follows:</p>
+<pre><code class="language-neut">data either(a, b) {
+| Left(a)
+| Right(b)
+}
+</code></pre>
+<h2 id="tie-x--e1-e2"><a class="header" href="#tie-x--e1-e2"><code>tie x = e1; e2</code></a></h2>
+<p>You can use <code>tie</code> as a &quot;noetic&quot; <code>let</code>.</p>
+<h3 id="example-39"><a class="header" href="#example-39">Example</a></h3>
+<pre><code class="language-neut">data config {
+| Config(
+    foo: int,
+    bar: bool,
+  )
+}
+
+define use-noetic-config(c: &amp;config): int {
+  tie Config of {foo} = c;
+  *foo
+}
+</code></pre>
+<h3 id="syntax-39"><a class="header" href="#syntax-39">Syntax</a></h3>
+<pre><code class="language-neut">tie x = e1;
+e2
+</code></pre>
+<h3 id="semantics-38"><a class="header" href="#semantics-38">Semantics</a></h3>
+<p><code>tie x = e1; e2</code> is a shorthand of the below:</p>
+<pre><code class="language-neut">case e1 {
+| x =&gt;
+  e2
+}
+</code></pre>
+<h3 id="type-40"><a class="header" href="#type-40">Type</a></h3>
+<p>Derived from the desugared form.</p>
+<h2 id="pin-x--e1-e2"><a class="header" href="#pin-x--e1-e2"><code>pin x = e1; e2</code></a></h2>
+<p>You can use <code>pin</code> to create a value and use it as a noema.</p>
+<h3 id="example-40"><a class="header" href="#example-40">Example</a></h3>
+<pre><code class="language-neut">// without `pin`
+define foo(): unit {
+  let xs = make-list(123);
+  let result on xs = some-func(xs);
+  let _ = xs;
+  result
+}
+
+↓
+
+// with `pin`
+define foo(): unit {
+  pin xs = make-list(123);
+  some-func(xs)
+}
+</code></pre>
+<h3 id="syntax-40"><a class="header" href="#syntax-40">Syntax</a></h3>
+<pre><code class="language-neut">pin x = e1;
+e2
+</code></pre>
+<h3 id="semantics-39"><a class="header" href="#semantics-39">Semantics</a></h3>
+<pre><code class="language-neut">pin x = e1;
+e2
+
+↓
+
+let x = e1;
+let tmp on x = e2;
+let _ = x;
+tmp
+</code></pre>
+<h2 id="t"><a class="header" href="#t"><code>?t</code></a></h2>
+<p>You can use <code>?t</code> to represent an optional type.</p>
+<h3 id="example-41"><a class="header" href="#example-41">Example</a></h3>
+<pre><code class="language-neut">define foo(x: int): ?int {
+  if eq-int(x, 0) {
+    Right(100)
+  } else {
+    Left(Unit)
+  }
+}
+</code></pre>
+<h3 id="syntax-41"><a class="header" href="#syntax-41">Syntax</a></h3>
+<pre><code class="language-neut">?t
+</code></pre>
+<h3 id="semantics-40"><a class="header" href="#semantics-40">Semantics</a></h3>
+<p><code>?t</code> is the following syntactic sugar:</p>
+<pre><code class="language-neut">?t
+
+↓
+
+either(unit, t)
+</code></pre>
+<h3 id="type-41"><a class="header" href="#type-41">Type</a></h3>
+<p>Derived from the syntactic sugar.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="statements.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="primitives.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="tutorial.html"><strong aria-hidden="true">3.</strong> Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="modules-and-sources.html"><strong aria-hidden="true">3.1.</strong> Modules and Sources</a></li><li class="chapter-item expanded "><a href="programming-in-neut.html"><strong aria-hidden="true">3.2.</strong> Programming in Neut</a></li><li class="chapter-item expanded "><a href="static-memory-management.html"><strong aria-hidden="true">3.3.</strong> Static Memory Management</a></li><li class="chapter-item expanded "><a href="modality-and-memory.html"><strong aria-hidden="true">3.4.</strong> Modality and Memory</a></li></ol></li><li class="chapter-item expanded "><a href="language-reference.html"><strong aria-hidden="true">4.</strong> Language Reference</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">4.1.</strong> Commands</a></li><li class="chapter-item expanded "><a href="modules.html"><strong aria-hidden="true">4.2.</strong> Modules</a></li><li class="chapter-item expanded "><a href="statements.html"><strong aria-hidden="true">4.3.</strong> Statements</a></li><li class="chapter-item expanded "><a href="terms.html" class="active"><strong aria-hidden="true">4.4.</strong> Terms</a></li><li class="chapter-item expanded "><a href="primitives.html"><strong aria-hidden="true">4.5.</strong> Primitives</a></li><li class="chapter-item expanded "><a href="basis.html"><strong aria-hidden="true">4.6.</strong> Basis</a></li></ol></li><li class="chapter-item expanded "><a href="what-is-next.html"><strong aria-hidden="true">5.</strong> What is Next?</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="manual-installation.html"><strong aria-hidden="true">6.</strong> Manual Installation</a></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">7.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lovely-lsp-showcase.html"><strong aria-hidden="true">7.1.</strong> Lovely LSP Showcase</a></li><li class="chapter-item expanded "><a href="rapid-prototyping.html"><strong aria-hidden="true">7.2.</strong> Rapid Prototyping</a></li><li class="chapter-item expanded "><a href="editor-setup.html"><strong aria-hidden="true">7.3.</strong> Editor Setup</a></li></ol></li><li class="chapter-item expanded "><a href="how-to-execute-types.html"><strong aria-hidden="true">8.</strong> How to Execute Types</a></li><li class="chapter-item expanded "><a href="benchmarks.html"><strong aria-hidden="true">9.</strong> Benchmarks</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>
