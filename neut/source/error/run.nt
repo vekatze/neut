@@ -3,7 +3,7 @@ import {
   core.foreign {get-cpu-count, sleep},
   core.thread.pool,
   this.error.eio {eio},
-  this.error.error {Make-Error, new-error, new-error'},
+  this.error.error {Make-Error, new-critical, new-error, new-error'},
   this.logger.hint {hint},
   this.logger.logger-kit {logger-kit},
   this.logger.print {print-log-errors},
@@ -49,6 +49,10 @@ define raise-error<a>(m: hint, t: text): eio(a) {
 
 define raise-error'<a>(t: text): eio(a) {
   Left(new-error'(t))
+}
+
+define raise-critical<a>(m: hint, t: text): eio(a) {
+  Left(new-critical(m, t))
 }
 
 define zen(): unit {
