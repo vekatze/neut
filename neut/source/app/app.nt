@@ -1,0 +1,7 @@
+import {
+  this.app.error {error},
+}
+
+inline app(a): type {
+  either(error, a)
+}
