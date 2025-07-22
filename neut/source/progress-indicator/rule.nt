@@ -51,3 +51,15 @@ define _bar-in-progress: &text {
 define _bar-finished: &text {
   "━"
 }
+
+define next(p: progress-indicator): progress-indicator {
+  let _Progress-Indicator of {working-title, completed-title, color, progress} = p;
+  match progress {
+  | Left(_) =>
+    let progress = none;
+    _Progress-Indicator of {working-title, completed-title, color, progress}
+  | Right(Pair(i, count)) =>
+    let progress = Right(Pair(add-int(i, 1), count));
+    _Progress-Indicator of {working-title, completed-title, color, progress}
+  }
+}
