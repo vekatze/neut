@@ -1,0 +1,12 @@
+import {
+  core.ansi {style},
+}
+
+data progress-indicator {
+| _Progress-Indicator(
+    working-title: text,
+    completed-title: text,
+    color: vector(style),
+    progress: ?pair(int, int),
+  )
+}
