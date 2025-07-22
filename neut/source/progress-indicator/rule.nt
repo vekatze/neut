@@ -39,3 +39,7 @@ define _choose-spinner(i: int): &text {
     "⠏"
   }
 }
+
+define _bar-length: int {
+  32
+}
