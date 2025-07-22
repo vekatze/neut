@@ -10,3 +10,7 @@ data progress-indicator {
     progress: ?pair(int, int),
   )
 }
+
+inline frame: type {
+  int
+}
