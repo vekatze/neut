@@ -43,3 +43,7 @@ define _choose-spinner(i: int): &text {
 define _bar-length: int {
   32
 }
+
+define _bar-in-progress: &text {
+  " "
+}
