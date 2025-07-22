@@ -5,8 +5,8 @@ module Command.LSP.Internal.GetLocationTree
   )
 where
 
-import Error.EIO (EIO)
-import Error.Run (liftMaybe)
+import App.App (App)
+import App.Run (liftMaybe)
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -26,7 +26,7 @@ new (Global.Handle {..}) = do
 getLocationTree ::
   Handle ->
   Source ->
-  EIO LT.LocationTree
+  App LT.LocationTree
 getLocationTree h src = do
   cache <- Cache.loadLocationCache (pathHandle h) Peripheral src >>= liftMaybe
   return $ Cache.locationTree cache

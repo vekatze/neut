@@ -37,8 +37,8 @@ define print-log-list(k: &logger-kit, ls: &list(log)): unit {
   })
 }
 
-define print-log-error-list(k: &logger-kit, ls: &list(log)): unit {
-  fold-right-N(ls, Unit, function (l, _) {
+define print-log-errors(k: &logger-kit, ls: &vector(log)): unit {
+  core.vector.fold-right-N(ls, Unit, function (l, _, _) {
     print-log-error(k, l)
   })
 }

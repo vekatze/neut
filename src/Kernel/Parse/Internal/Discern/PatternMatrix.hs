@@ -4,14 +4,14 @@ module Kernel.Parse.Internal.Discern.PatternMatrix
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Local.Tag qualified as Tag
 import Kernel.Common.ReadableDD
@@ -38,7 +38,7 @@ compilePatternMatrix ::
   N.IsNoetic ->
   V.Vector (Hint, Ident) ->
   PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  EIO (DT.DecisionTree WT.WeakTerm)
+  App (DT.DecisionTree WT.WeakTerm)
 compilePatternMatrix h isNoetic occurrences mat =
   case PAT.unconsRow mat of
     Nothing ->
@@ -123,7 +123,7 @@ asLetSeq h binder =
       cont' <- asLetSeq h xes
       return $ ((m, from, hole), to) : cont'
 
-ensurePatternMatrixSanity :: H.Handle -> PAT.PatternMatrix a -> EIO ()
+ensurePatternMatrixSanity :: H.Handle -> PAT.PatternMatrix a -> App ()
 ensurePatternMatrixSanity h mat =
   case PAT.unconsRow mat of
     Nothing ->
@@ -132,11 +132,11 @@ ensurePatternMatrixSanity h mat =
       ensurePatternRowSanity h row
       ensurePatternMatrixSanity h rest
 
-ensurePatternRowSanity :: H.Handle -> PAT.PatternRow a -> EIO ()
+ensurePatternRowSanity :: H.Handle -> PAT.PatternRow a -> App ()
 ensurePatternRowSanity h (patternVector, _) = do
   mapM_ (ensurePatternSanity h) $ V.toList patternVector
 
-ensurePatternSanity :: H.Handle -> (Hint, PAT.Pattern) -> EIO ()
+ensurePatternSanity :: H.Handle -> (Hint, PAT.Pattern) -> App ()
 ensurePatternSanity h (m, pat) =
   case pat of
     PAT.Var v -> do

@@ -5,6 +5,8 @@ module Command.LSP.Internal.Complete
   )
 where
 
+import App.App (App)
+import App.Run (forP, liftMaybe, runApp)
 import Command.LSP.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Internal.Source.Reflect qualified as SourceReflect
 import Control.Monad
@@ -17,8 +19,6 @@ import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (forP, liftMaybe, runEIO)
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Antecedent qualified as Antecedent
@@ -60,23 +60,23 @@ new globalHandle@(Global.Handle {..}) = do
   let gacHandle = GAC.new globalHandle
   return $ Handle {..}
 
-complete :: Handle -> Uri -> Position -> EIO [CompletionItem]
+complete :: Handle -> Uri -> Position -> App [CompletionItem]
 complete h uri pos = do
   Unravel.registerShiftMap (unravelHandle h)
   pathString <- liftMaybe $ uriToFilePath uri
   currentSource <- SourceReflect.reflect (sourceReflectHandle h) pathString >>= liftMaybe
   let loc = positionToLoc pos
-  lift (runEIO $ collectCompletionItems h currentSource loc) >>= liftEither
+  lift (runApp $ collectCompletionItems h currentSource loc) >>= liftEither
 
-collectCompletionItems :: Handle -> Source -> Loc -> EIO [CompletionItem]
+collectCompletionItems :: Handle -> Source -> Loc -> App [CompletionItem]
 collectCompletionItems h currentSource loc = do
   fmap concat $ forP (itemGetterList h) $ \itemGetter -> itemGetter currentSource loc
 
-itemGetterList :: Handle -> [Source -> Loc -> EIO [CompletionItem]]
+itemGetterList :: Handle -> [Source -> Loc -> App [CompletionItem]]
 itemGetterList h =
   [getLocalCompletionItems h, getGlobalCompletionItems h]
 
-getLocalCompletionItems :: Handle -> Source -> Loc -> EIO [CompletionItem]
+getLocalCompletionItems :: Handle -> Source -> Loc -> App [CompletionItem]
 getLocalCompletionItems h source loc = do
   cachePath <- Path.getSourceCompletionCachePath (pathHandle h) Peripheral source
   cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
@@ -88,7 +88,7 @@ getLocalCompletionItems h source loc = do
       let localVarList' = nubOrd $ sort $ map Ident.toText localVarList
       return $ map identToCompletionItem localVarList'
 
-getGlobalCompletionItems :: Handle -> Source -> Loc -> EIO [CompletionItem]
+getGlobalCompletionItems :: Handle -> Source -> Loc -> App [CompletionItem]
 getGlobalCompletionItems h currentSource loc = do
   let baseModule = sourceModule currentSource
   (globalVarList, aliasPresetMap) <- getAllTopCandidate h baseModule
@@ -116,7 +116,7 @@ adjustTopCandidate ::
   Loc ->
   FastPresetSummary ->
   [(Source, [TopCandidate])] ->
-  EIO [CompletionItem]
+  App [CompletionItem]
 adjustTopCandidate h summaryOrNone currentSource loc prefixSummary candInfo = do
   fmap concat $ forM candInfo $ \(candSource, candList) -> do
     revMap <- liftIO $ Antecedent.getReverseMap (antecedentHandle h)
@@ -292,7 +292,7 @@ positionToLoc :: Position -> Loc
 positionToLoc Position {_line, _character} =
   (fromIntegral $ _line + 1, fromIntegral $ _character + 1)
 
-getAllTopCandidate :: Handle -> Module -> EIO ([(Source, [TopCandidate])], FastPresetSummary)
+getAllTopCandidate :: Handle -> Module -> App ([(Source, [TopCandidate])], FastPresetSummary)
 getAllTopCandidate h baseModule = do
   let mainModule = Env.getMainModule (envHandle h)
   dependencies <- GetModule.getAllDependencies (getModuleHandle h) mainModule baseModule
@@ -326,7 +326,7 @@ constructAliasPresetMap :: [(T.Text, Module)] -> AliasPresetMap
 constructAliasPresetMap =
   Map.fromList . map (second modulePresetMap)
 
-getAllTopCandidate' :: Handle -> (MA.ModuleAlias, Module) -> EIO ([(Source, [TopCandidate])], (T.Text, Module))
+getAllTopCandidate' :: Handle -> (MA.ModuleAlias, Module) -> App ([(Source, [TopCandidate])], (T.Text, Module))
 getAllTopCandidate' h (alias, candModule) = do
   cacheSeq <- GAC.getAllCompletionCachesInModule (gacHandle h) candModule
   return (map (second Cache.topCandidate) cacheSeq, (MA.reify alias, candModule))
@@ -341,7 +341,7 @@ fromCandidateKind candidateKind =
     Function ->
       CompletionItemKind_Function
 
-getHumanReadableLocator :: Antecedent.RevMap -> Module -> Source -> EIO (Maybe T.Text)
+getHumanReadableLocator :: Antecedent.RevMap -> Module -> Source -> App (Maybe T.Text)
 getHumanReadableLocator revMap baseModule source = do
   let sourceModuleID = moduleID $ sourceModule source
   baseReadableLocator <- getBaseReadableLocator source

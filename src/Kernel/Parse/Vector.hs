@@ -1,8 +1,8 @@
 module Kernel.Parse.Vector (swap) where
 
+import App.Error
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.Error
 import Logger.Hint
 
 swap :: Hint -> Int -> V.Vector a -> Either Error (V.Vector a)

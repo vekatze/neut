@@ -5,10 +5,10 @@ module Command.LSP.Internal.GetSource
   )
 where
 
+import App.App (App)
+import App.Run (liftMaybe)
 import Command.LSP.Internal.Source.Reflect qualified as SourceReflect
 import Control.Lens hiding (Iso, List)
-import Error.EIO (EIO)
-import Error.Run (liftMaybe)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Source (Source)
 import Language.LSP.Protocol.Lens qualified as J
@@ -27,7 +27,7 @@ getSource ::
   Handle ->
   (J.HasTextDocument p a1, J.HasUri a1 Uri) =>
   p ->
-  EIO Source
+  App Source
 getSource h params = do
   fp <- liftMaybe $ uriToFilePath $ params ^. J.textDocument . J.uri
   SourceReflect.reflect (sourceReflectHandle h) fp >>= liftMaybe

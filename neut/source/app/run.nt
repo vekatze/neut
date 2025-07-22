@@ -1,0 +1,77 @@
+import {
+  core.external {exit},
+  core.foreign {get-cpu-count, sleep},
+  core.thread.pool,
+  this.app.app {app},
+  this.app.error {Make-Error, new-critical, new-critical', new-error, new-error'},
+  this.logger.hint {hint},
+  this.logger.logger-kit {logger-kit},
+  this.logger.print {print-log-errors},
+}
+
+define run<a>(k: &logger-kit, c: app(a)): a {
+  match c {
+  | Left(Make-Error(xs)) =>
+    let _ on xs = print-log-errors(k, xs);
+    let _ = xs;
+    exit(1)
+  | Right(v) =>
+    v
+  }
+}
+
+inline for-each-parallel<a, b>(xs: vector(a), f: (a) -> app(b)): app(vector(b)) {
+  let ys = core.thread.pool.for-each-parallel(get-cpu-count(), xs, f);
+  let Pair(errors, results) = core.vector.partition(ys);
+  let error-len on errors = core.vector.length(errors);
+  if eq-int(error-len, 0) {
+    Right(results)
+  } else {
+    Left(this.app.error.join(errors))
+  }
+}
+
+inline for-parallel<a>(xs: vector(a), f: (a) -> app(unit)): app(unit) {
+  let ys = core.thread.pool.for-each-parallel(get-cpu-count(), xs, f);
+  let Pair(errors, results) = core.vector.partition(ys);
+  let error-len on errors = core.vector.length(errors);
+  if eq-int(error-len, 0) {
+    let _ = results;
+    Right(Unit)
+  } else {
+    Left(this.app.error.join(errors))
+  }
+}
+
+define raise-error<a>(m: hint, t: text): app(a) {
+  Left(new-error(m, t))
+}
+
+define raise-error'<a>(t: text): app(a) {
+  Left(new-error'(t))
+}
+
+define raise-critical<a>(m: hint, t: text): app(a) {
+  Left(new-critical(m, t))
+}
+
+define raise-critical'<a>(t: text): app(a) {
+  Left(new-critical'(t))
+}
+
+define zen(): unit {
+  let num-of-elems = mul-int(get-cpu-count(), 2);
+  pin tmp =
+    for-each-parallel(core.vector.range(0, num-of-elems), function (x) {
+      vet("sleep");
+      let _ = sleep(1);
+      Right(add-int(x, 10))
+    });
+  vet(tmp);
+  let _ =
+    for-parallel(Vector["a", "b", "c", "d", "e"], function (x: &text) {
+      vet(x);
+      Right(Unit)
+    });
+  Unit
+}

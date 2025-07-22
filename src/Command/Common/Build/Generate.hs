@@ -6,13 +6,13 @@ module Command.Common.Build.Generate
   )
 where
 
+import App.App (App)
+import App.Error (newError')
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Time.Clock
-import Error.EIO (EIO)
-import Error.Error (newError')
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -49,7 +49,7 @@ generateObject ::
   UTCTime ->
   Either MainTarget Source ->
   L.ByteString ->
-  EIO ()
+  App ()
 generateObject h target clangOptions timeStamp sourceOrNone llvmCode = do
   case sourceOrNone of
     Right source -> do
@@ -69,7 +69,7 @@ generateAsm ::
   UTCTime ->
   Either MainTarget Source ->
   L.ByteString ->
-  EIO ()
+  App ()
 generateAsm h target timeStamp sourceOrNone llvmCode = do
   case sourceOrNone of
     Right source -> do
@@ -83,12 +83,12 @@ generateAsm h target timeStamp sourceOrNone llvmCode = do
       generateAsm' h llvmCode outputPath
       setModificationTime outputPath timeStamp
 
-generateAsm' :: Handle -> LLVMCode -> Path Abs File -> EIO ()
+generateAsm' :: Handle -> LLVMCode -> Path Abs File -> App ()
 generateAsm' h llvmCode path = do
   liftIO $ Logger.report (loggerHandle h) $ "Saving: " <> T.pack (toFilePath path)
   liftIO $ writeLazyByteString path llvmCode
 
-generateObject' :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> EIO ()
+generateObject' :: Handle -> [ClangOption] -> L.ByteString -> Path Abs File -> App ()
 generateObject' h additionalClangOptions llvm outputPath = do
   clang <- liftIO Platform.getClang
   let optionList = clangBaseOpt outputPath ++ additionalClangOptions

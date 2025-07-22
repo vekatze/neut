@@ -5,10 +5,10 @@ module Command.FormatSource.FormatSource
   )
 where
 
+import App.App (App)
 import Command.Common.Format qualified as Format
 import CommandParser.Config.FormatSource
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Path.IO
 import Path.Read (isStdin, readTextFromPathOrStdin)
@@ -22,7 +22,7 @@ new :: Global.Handle -> Handle
 new globalHandle = do
   Handle {..}
 
-format :: Handle -> Config -> EIO ()
+format :: Handle -> Config -> App ()
 format h cfg = do
   path <- resolveFile' (filePathString cfg)
   content <- readTextFromPathOrStdin path

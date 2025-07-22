@@ -5,12 +5,12 @@ module Command.Common.SaveModule
   )
 where
 
+import App.App (App)
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Ens.Ens
 import Ens.ToDoc qualified as Ens
-import Error.EIO (EIO)
 import Kernel.Common.Module
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
@@ -25,7 +25,7 @@ new :: Logger.Handle -> Handle
 new loggerHandle = do
   Handle {..}
 
-save :: Handle -> Path Abs File -> FullEns -> EIO ()
+save :: Handle -> Path Abs File -> FullEns -> App ()
 save h path (c1, (ens, c2)) = do
   liftIO $ Logger.report (loggerHandle h) $ "Saving ens file to: " <> T.pack (toFilePath path)
   ens' <- liftEither $ stylize ens

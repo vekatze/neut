@@ -5,13 +5,13 @@ module Kernel.Parse.Internal.Import
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical, raiseError)
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseCritical, raiseError)
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.AliasInfo qualified as AI
 import Kernel.Common.Const
@@ -68,7 +68,7 @@ new globalHandle@(Global.Handle {..}) (Local.Handle {..}) = do
   let shiftToLatestHandle = STL.new antecedentHandle
   Handle {..}
 
-interpretImport :: Handle -> Hint -> Source.Source -> [(RawImport, C)] -> EIO [ImportItem]
+interpretImport :: Handle -> Hint -> Source.Source -> [(RawImport, C)] -> App [ImportItem]
 interpretImport h m currentSource importList = do
   presetImportList <- interpretPreset h m (Source.sourceModule currentSource)
   let (importList'@((RawImport _ _ importItemList _)), _) = mergeImportList m importList
@@ -90,7 +90,7 @@ interpretImportItemStatic ::
   Handle ->
   Module ->
   [(Hint, T.Text)] ->
-  EIO [ImportItem]
+  App [ImportItem]
 interpretImportItemStatic h currentModule keyList = do
   currentModule' <- STL.shiftToLatestModule (shiftToLatestHandle h) currentModule
   let moduleRootDir = getModuleRootDir currentModule'
@@ -111,7 +111,7 @@ interpretImportItem ::
   Hint ->
   LocatorText ->
   [(Hint, LL.LocalLocator)] ->
-  EIO [ImportItem]
+  App [ImportItem]
 interpretImportItem h mustUpdateTag m locatorText localLocatorList = do
   baseNameList <- liftEither $ BN.bySplit m locatorText
   case baseNameList of
@@ -131,7 +131,7 @@ interpretImportItem h mustUpdateTag m locatorText localLocatorList = do
           source <- getSource h mustUpdateTag m sgl locatorText
           return [ImportItem source [AI.Use mustUpdateTag sgl localLocatorList]]
 
-getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> EIO Source.Source
+getSource :: Handle -> AI.MustUpdateTag -> Hint -> SGL.StrictGlobalLocator -> LocatorText -> App Source.Source
 getSource h mustUpdateTag m sgl locatorText = do
   let h' = GetModule.Handle {gensymHandle = gensymHandle h, moduleHandle = moduleHandle h}
   let mainModule = Env.getMainModule (envHandle h)
@@ -149,7 +149,7 @@ getSource h mustUpdateTag m sgl locatorText = do
         Source.sourceHint = Just m
       }
 
-interpretPreset :: Handle -> Hint -> Module -> EIO [ImportItem]
+interpretPreset :: Handle -> Hint -> Module -> App [ImportItem]
 interpretPreset h m currentModule = do
   presetInfo <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
   fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do

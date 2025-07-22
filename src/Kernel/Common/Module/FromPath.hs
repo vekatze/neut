@@ -4,6 +4,9 @@ module Kernel.Common.Module.FromPath
   )
 where
 
+import App.App (App)
+import App.Error
+import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (liftEither)
@@ -13,9 +16,6 @@ import Data.Text qualified as T
 import Ens.Ens (dictFromListVertical')
 import Ens.Ens qualified as E
 import Ens.Parse qualified as Ens
-import Error.EIO (EIO)
-import Error.Error
-import Error.Run (raiseError)
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const (archiveRelDir, cacheRelDir, sourceRelDir)
 import Kernel.Common.Module
@@ -33,7 +33,7 @@ import Path
 import Path.IO
 import SyntaxTree.Series qualified as SE
 
-fromFilePath :: Path Abs File -> EIO Module
+fromFilePath :: Path Abs File -> App Module
 fromFilePath moduleFilePath = do
   (_, (ens@(m :< _), _)) <- Ens.fromFilePath moduleFilePath
   targetEns <- liftEither $ E.access' keyTarget E.emptyDict ens >>= E.toDictionary
@@ -77,7 +77,7 @@ fromFilePath moduleFilePath = do
         modulePresetMap = presetMap
       }
 
-fromCurrentPath :: EIO Module
+fromCurrentPath :: App Module
 fromCurrentPath = do
   getCurrentModuleFilePath >>= fromFilePath
 
@@ -92,7 +92,7 @@ interpretPresetMap _ ens = do
     return (k, v')
   return $ Map.fromList kvs
 
-interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> EIO (Map.HashMap TargetName TargetSummary)
+interpretTarget :: (H.Hint, SE.Series (T.Text, E.Ens)) -> App (Map.HashMap TargetName TargetSummary)
 interpretTarget (_, targetDict) = do
   kvs <- forM (SE.extract targetDict) $ \(k, v) -> do
     entryPoint <- liftEither (E.access keyMain v) >>= interpretSourceLocator
@@ -100,12 +100,12 @@ interpretTarget (_, targetDict) = do
     return (k, TargetSummary {entryPoint, clangOption})
   return $ Map.fromList kvs
 
-interpretZenConfig :: E.Ens -> EIO ZenConfig
+interpretZenConfig :: E.Ens -> App ZenConfig
 interpretZenConfig zenDict = do
   clangOption <- interpretClangOption zenDict
   return $ ZenConfig {clangOption}
 
-interpretClangOption :: E.Ens -> EIO CL.ClangOption
+interpretClangOption :: E.Ens -> App CL.ClangOption
 interpretClangOption v = do
   (_, buildOptEnsSeries) <- liftEither $ E.access' keyBuildOption E.emptyList v >>= E.toList
   buildOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract buildOptEnsSeries
@@ -115,7 +115,7 @@ interpretClangOption v = do
   linkOption <- liftEither $ mapM (E.toString >=> return . snd) $ SE.extract linkOptEnsSeries
   return $ CL.new buildOption compileOption linkOption
 
-interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> EIO (Map.HashMap T.Text (Path Rel File))
+interpretStaticFiles :: SE.Series (T.Text, E.Ens) -> App (Map.HashMap T.Text (Path Rel File))
 interpretStaticFiles staticFileDict = do
   kvs <- forM (SE.extract staticFileDict) $ \(staticFileKey, staticFilePathEns) -> do
     (_, staticFilePathText) <- liftEither $ E.toString staticFilePathEns
@@ -123,7 +123,7 @@ interpretStaticFiles staticFileDict = do
     return (staticFileKey, staticFilePath)
   return $ Map.fromList kvs
 
-interpretSourceLocator :: E.Ens -> EIO SL.SourceLocator
+interpretSourceLocator :: E.Ens -> App SL.SourceLocator
 interpretSourceLocator ens = do
   (m, pathString) <- liftEither $ E.toString ens
   case parseRelFile $ T.unpack pathString of
@@ -132,7 +132,7 @@ interpretSourceLocator ens = do
     Nothing ->
       raiseError m $ "Invalid file path: " <> pathString
 
-interpretRelFilePath :: E.Ens -> EIO (Path Rel File)
+interpretRelFilePath :: E.Ens -> App (Path Rel File)
 interpretRelFilePath ens = do
   (m, pathString) <- liftEither $ E.toString ens
   case parseRelFile $ T.unpack pathString of
@@ -143,7 +143,7 @@ interpretRelFilePath ens = do
 
 interpretDependencyDict ::
   (H.Hint, SE.Series (T.Text, E.Ens)) ->
-  EIO (Map.HashMap ModuleAlias Dependency)
+  App (Map.HashMap ModuleAlias Dependency)
 interpretDependencyDict (m, dep) = do
   items <- forM dep $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
@@ -170,7 +170,7 @@ interpretDependencyDict (m, dep) = do
       )
   return $ Map.fromList $ SE.extract items
 
-interpretExtraPath :: Path Abs Dir -> E.Ens -> EIO (SomePath Rel)
+interpretExtraPath :: Path Abs Dir -> E.Ens -> App (SomePath Rel)
 interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- liftEither $ E.toString entity
   if T.last itemPathText == '/'
@@ -186,7 +186,7 @@ interpretExtraPath moduleRootDir entity = do
 interpretForeignDict ::
   Path Abs Dir ->
   E.Ens ->
-  EIO Foreign
+  App Foreign
 interpretForeignDict moduleRootDir ens = do
   (_, input) <- liftEither $ E.access keyForeignInput ens >>= E.toList
   (_, output) <- liftEither $ E.access keyForeignOutput ens >>= E.toList
@@ -196,12 +196,12 @@ interpretForeignDict moduleRootDir ens = do
   script' <- fmap (map snd . SE.extract) $ liftEither $ mapM E.toString script
   return $ Foreign {input = input', script = script', output = output'}
 
-interpretAntecedent :: E.Ens -> EIO ModuleDigest
+interpretAntecedent :: E.Ens -> App ModuleDigest
 interpretAntecedent ens = do
   (_, digestText) <- liftEither $ E.toString ens
   return $ ModuleDigest digestText
 
-interpretDirPath :: E.Ens -> EIO (Path Rel Dir)
+interpretDirPath :: E.Ens -> App (Path Rel Dir)
 interpretDirPath ens = do
   (_, pathText) <- liftEither $ E.toString ens
   parseRelDir $ T.unpack pathText
@@ -215,9 +215,9 @@ ensureExistence ::
   H.Hint ->
   Path Abs Dir ->
   Path Rel t ->
-  (Path Abs t -> EIO Bool) ->
+  (Path Abs t -> App Bool) ->
   T.Text ->
-  EIO ()
+  App ()
 ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker (moduleRootDir </> path)
   unless b $ do

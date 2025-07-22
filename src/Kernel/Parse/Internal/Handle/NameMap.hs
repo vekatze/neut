@@ -11,14 +11,14 @@ module Kernel.Parse.Internal.Handle.NameMap
   )
 where
 
+import App.App (App)
+import App.Error
+import App.Run (raiseCritical, raiseError)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Error.EIO (EIO)
-import Error.Error
-import Error.Run (raiseCritical, raiseError)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.GlobalName (getIsConstLike)
 import Kernel.Common.GlobalName qualified as GN
@@ -59,13 +59,13 @@ new (Global.Handle {..}) unusedHandle tagHandle = do
   geistMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> EIO ()
+insert :: Handle -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))] -> App ()
 insert h nameArrowList = do
   forM_ nameArrowList $ \(dd, (m, gn)) -> do
     ensureDefFreshness h m dd (getIsConstLike gn)
     liftIO $ insertToNameMap h dd m gn
 
-registerGeist :: Handle -> RT.RawGeist DD.DefiniteDescription -> EIO ()
+registerGeist :: Handle -> RT.RawGeist DD.DefiniteDescription -> App ()
 registerGeist h RT.RawGeist {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractImpArgs impArgs
@@ -76,7 +76,7 @@ registerGeist h RT.RawGeist {..} = do
   liftIO $ insertToGeistMap h name' loc isConstLike
   liftIO $ insertToNameMap h name' loc $ GN.TopLevelFunc argNum isConstLike
 
-lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO (Maybe (Hint, GN.GlobalName))
+lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
 lookup h m name = do
   nameMap <- liftIO $ readIORef (nameMapRef h)
   let dataSize = Platform.getDataSize (platformHandle h)
@@ -92,7 +92,7 @@ lookup h m name = do
       | otherwise -> do
           return Nothing
 
-ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> Bool -> EIO ()
+ensureDefFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> Bool -> App ()
 ensureDefFreshness h m name isConstLike = do
   gmap <- liftIO $ readIORef (geistMapRef h)
   topNameMap <- liftIO $ readIORef (nameMapRef h)
@@ -120,7 +120,7 @@ ensureDefFreshness h m name isConstLike = do
     (Nothing, False) ->
       return ()
 
-ensureGeistFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> EIO ()
+ensureGeistFreshness :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App ()
 ensureGeistFreshness h m name = do
   geistMap <- liftIO $ readIORef (geistMapRef h)
   when (Map.member name geistMap) $ do
@@ -128,7 +128,7 @@ ensureGeistFreshness h m name = do
     let name' = readableDD mainModule name
     raiseError m $ "`" <> name' <> "` is already defined"
 
-reportMissingDefinitions :: Handle -> EIO ()
+reportMissingDefinitions :: Handle -> App ()
 reportMissingDefinitions h = do
   geistMap <- liftIO $ readIORef (geistMapRef h)
   let geistNameToHint = Map.toList geistMap

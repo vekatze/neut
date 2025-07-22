@@ -7,6 +7,8 @@ module Command.Common.Fetch
   )
 where
 
+import App.App (App)
+import App.Run (forP, raiseError')
 import Command.Common.SaveModule qualified as SaveModule
 import Control.Comonad.Cofree
 import Control.Monad
@@ -20,8 +22,6 @@ import Data.Text qualified as T
 import Ens.Ens qualified as E
 import Ens.Ens qualified as SE
 import Ens.Parse qualified as EnsParse
-import Error.EIO (EIO)
-import Error.Run (forP, raiseError')
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Module qualified as Module
@@ -59,11 +59,11 @@ new (Global.Handle {..}) = do
   let runProcessHandle = RunProcess.new loggerHandle
   Handle {..}
 
-fetch :: Handle -> M.MainModule -> EIO ()
+fetch :: Handle -> M.MainModule -> App ()
 fetch h (M.MainModule baseModule) = do
   fetchDeps h $ collectDependency baseModule
 
-fetchDeps :: Handle -> [(ModuleAlias, M.Dependency)] -> EIO ()
+fetchDeps :: Handle -> [(ModuleAlias, M.Dependency)] -> App ()
 fetchDeps h deps = do
   deps' <- tidy h deps
   if null deps'
@@ -73,12 +73,12 @@ fetchDeps h deps = do
         installModule h alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
       fetchDeps h next
 
-tidy :: Handle -> [(ModuleAlias, M.Dependency)] -> EIO [(ModuleAlias, M.Dependency)]
+tidy :: Handle -> [(ModuleAlias, M.Dependency)] -> App [(ModuleAlias, M.Dependency)]
 tidy h deps = do
   let deps' = nubOrdOn (M.dependencyDigest . snd) deps
   filterM (fmap not . checkIfInstalled h . M.dependencyDigest . snd) deps'
 
-insertDependency :: Handle -> T.Text -> ModuleURL -> EIO ()
+insertDependency :: Handle -> T.Text -> ModuleURL -> App ()
 insertDependency h aliasName url = do
   aliasName' <- liftEither (BN.reflect' aliasName)
   when (isCapitalized aliasName') $ do
@@ -129,7 +129,7 @@ insertDependency h aliasName url = do
               dependencyPresetEnabled = False
             }
 
-insertCoreDependency :: Handle -> EIO ()
+insertCoreDependency :: Handle -> App ()
 insertCoreDependency h = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
@@ -141,7 +141,7 @@ insertCoreDependency h = do
         dependencyPresetEnabled = True
       }
 
-installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> EIO [(ModuleAlias, M.Dependency)]
+installModule :: Handle -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule h alias mirrorList digest = do
   liftIO $ printInstallationRemark h alias digest
   withSystemTempFile "fetch" $ \tempFilePath tempFileHandle -> do
@@ -161,7 +161,7 @@ installModule h alias mirrorList digest = do
           <> " (actual)"
     installModule' h tempFilePath alias digest
 
-installModule' :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO [(ModuleAlias, M.Dependency)]
+installModule' :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App [(ModuleAlias, M.Dependency)]
 installModule' h archivePath alias digest = do
   extractToDependencyDir h archivePath alias digest
   libModule <- getLibraryModule h alias digest
@@ -175,12 +175,12 @@ collectDependency :: M.Module -> [(ModuleAlias, M.Dependency)]
 collectDependency baseModule = do
   Map.toList $ M.moduleDependency baseModule
 
-checkIfInstalled :: Handle -> MD.ModuleDigest -> EIO Bool
+checkIfInstalled :: Handle -> MD.ModuleDigest -> App Bool
 checkIfInstalled h digest = do
   let mainModule = Env.getMainModule (envHandle h)
   Module.getModuleFilePath mainModule Nothing (MID.Library digest) >>= doesFileExist
 
-getLibraryModule :: Handle -> ModuleAlias -> MD.ModuleDigest -> EIO M.Module
+getLibraryModule :: Handle -> ModuleAlias -> MD.ModuleDigest -> App M.Module
 getLibraryModule h alias digest = do
   let mainModule = Env.getMainModule (envHandle h)
   moduleFilePath <- Module.getModuleFilePath mainModule Nothing (MID.Library digest)
@@ -195,7 +195,7 @@ getLibraryModule h alias digest = do
           <> MD.reify digest
           <> ")."
 
-download :: Handle -> Path Abs File -> ModuleAlias -> [ModuleURL] -> EIO ()
+download :: Handle -> Path Abs File -> ModuleAlias -> [ModuleURL] -> App ()
 download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
   case mirrorList of
     [] ->
@@ -215,14 +215,14 @@ download h tempFilePath ma@(ModuleAlias alias) mirrorList = do
           liftIO $ Logger.printWarning' (loggerHandle h) err
           download h tempFilePath ma rest
 
-extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> EIO ()
+extractToDependencyDir :: Handle -> Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
 extractToDependencyDir h archivePath _ digest = do
   let mainModule = Env.getMainModule (envHandle h)
   moduleDirPath <- Module.getModuleDirByID mainModule Nothing (MID.Library digest)
   ensureDir moduleDirPath
   RunProcess.run (runProcessHandle h) "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
-addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> EIO ()
+addDependencyToModuleFile :: Handle -> ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile h alias dep = do
   let mainModule = Env.getMainModule (envHandle h)
   let mm = M.extractModule mainModule
@@ -256,7 +256,7 @@ makeDependencyEns m alias dep = do
       )
     ]
 
-updateDependencyInModuleFile :: Handle -> Path Abs File -> ModuleAlias -> M.Dependency -> EIO ()
+updateDependencyInModuleFile :: Handle -> Path Abs File -> ModuleAlias -> M.Dependency -> App ()
 updateDependencyInModuleFile h mainModuleFileLoc alias dep = do
   (c1, (baseEns@(m :< _), c2)) <- EnsParse.fromFilePath mainModuleFileLoc
   let depEns = makeDependencyEns' m dep

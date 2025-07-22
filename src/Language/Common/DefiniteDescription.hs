@@ -32,12 +32,12 @@ module Language.Common.DefiniteDescription
   )
 where
 
+import App.Error
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Hashable
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
-import Error.Error
 import GHC.Generics
 import Language.Common.BaseName qualified as BN
 import Language.Common.Const

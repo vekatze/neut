@@ -7,11 +7,11 @@ module Kernel.Common.Handle.Global.Type
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
-import Error.EIO (EIO)
-import Error.Run (raiseCritical)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.WeakTerm.WeakTerm
 import Logger.Hint
@@ -30,7 +30,7 @@ insert' :: Handle -> DD.DefiniteDescription -> WeakTerm -> IO ()
 insert' h k v =
   modifyIORef' (_typeEnvRef h) $ Map.insert k v
 
-lookup' :: Handle -> Hint -> DD.DefiniteDescription -> EIO WeakTerm
+lookup' :: Handle -> Hint -> DD.DefiniteDescription -> App WeakTerm
 lookup' h m k = do
   valueOrNone <- liftIO $ lookupMaybe' h k
   case valueOrNone of

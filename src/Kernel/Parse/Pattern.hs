@@ -16,11 +16,11 @@ module Kernel.Parse.Pattern
   )
 where
 
+import App.Error
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.Error
 import Language.Common.ArgNum qualified as AN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D

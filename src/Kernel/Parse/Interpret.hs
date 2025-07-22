@@ -5,9 +5,9 @@ module Kernel.Parse.Interpret
   )
 where
 
+import App.App (App)
 import Control.Monad
 import Control.Monad.IO.Class
-import Error.EIO (EIO)
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.CreateLocalHandle qualified as Local
@@ -75,7 +75,7 @@ interpret ::
   Target ->
   Source.Source ->
   Either Cache.Cache PostRawProgram ->
-  EIO (Either Cache.Cache [WeakStmt], [L.Log])
+  App (Either Cache.Cache [WeakStmt], [L.Log])
 interpret h t source cacheOrContent = do
   case cacheOrContent of
     Left cache -> do
@@ -95,7 +95,7 @@ interpret h t source cacheOrContent = do
           }
       return (Right prog', logs)
 
-interpret' :: Handle -> Source.Source -> PostRawProgram -> EIO ([WeakStmt], [L.Log])
+interpret' :: Handle -> Source.Source -> PostRawProgram -> App ([WeakStmt], [L.Log])
 interpret' h currentSource (PostRawProgram m importList stmtList) = do
   Import.interpretImport (importHandle h) m currentSource importList >>= activateImport h m
   stmtList'' <- Discern.discernStmtList (discernHandle h) stmtList
@@ -106,7 +106,7 @@ interpret' h currentSource (PostRawProgram m importList stmtList) = do
   logs4 <- liftIO $ registerUnusedStaticFileRemarks h
   return (stmtList'', logs1 ++ logs2 ++ logs3 ++ logs4)
 
-activateImport :: Handle -> Hint -> [ImportItem] -> EIO ()
+activateImport :: Handle -> Hint -> [ImportItem] -> App ()
 activateImport h m sourceInfoList = do
   forM_ sourceInfoList $ \importItem -> do
     case importItem of

@@ -8,13 +8,13 @@ module Kernel.Elaborate.Internal.Infer
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical, raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseCritical, raiseError)
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -67,7 +67,7 @@ import Logger.Hint
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
-inferStmt :: Handle -> WeakStmt -> EIO WeakStmt
+inferStmt :: Handle -> WeakStmt -> App WeakStmt
 inferStmt h stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
@@ -98,7 +98,7 @@ inferStmt h stmt =
     WeakStmtForeign foreignList ->
       return $ WeakStmtForeign foreignList
 
-inferGeist :: Handle -> G.Geist WT.WeakTerm -> EIO (G.Geist WT.WeakTerm)
+inferGeist :: Handle -> G.Geist WT.WeakTerm -> App (G.Geist WT.WeakTerm)
 inferGeist h (G.Geist {..}) = do
   (impArgs', h') <- inferImpBinder h impArgs
   (expArgs', h'') <- inferBinder' h' expArgs
@@ -116,7 +116,7 @@ insertType h dd t = do
       Constraint.insert (constraintHandle h) declaredType t
   Type.insert' (typeHandle h) dd t
 
-inferStmtKind :: Handle -> StmtKind WT.WeakTerm -> EIO (StmtKind WT.WeakTerm)
+inferStmtKind :: Handle -> StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 inferStmtKind h stmtKind =
   case stmtKind of
     Normal {} ->
@@ -135,7 +135,7 @@ inferStmtKind h stmtKind =
       (expConsArgs', _) <- inferBinder' varEnv expConsArgs
       return $ DataIntro consName dataArgs' expConsArgs' discriminant
 
-getIntType :: Platform.Handle -> Hint -> EIO WT.WeakTerm
+getIntType :: Platform.Handle -> Hint -> App WT.WeakTerm
 getIntType h m = do
   let baseSize = Platform.getDataSize h
   return $ WT.intTypeBySize m baseSize
@@ -156,7 +156,7 @@ extendHandle' :: BinderF WT.WeakTerm -> Handle -> Handle
 extendHandle' (mx, x, t) h = do
   h {varEnv = (mx, x, t) : varEnv h}
 
-infer :: Handle -> WT.WeakTerm -> EIO (WT.WeakTerm, WT.WeakTerm)
+infer :: Handle -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer h term =
   case term of
     _ :< WT.Tau ->
@@ -384,7 +384,7 @@ inferQuoteSeq ::
   Handle ->
   [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
   CastDirection ->
-  EIO [(BinderF WT.WeakTerm, WT.WeakTerm)]
+  App [(BinderF WT.WeakTerm, WT.WeakTerm)]
 inferQuoteSeq h letSeq castDirection = do
   let (xts, es) = unzip letSeq
   xts' <- inferBinder'' h xts
@@ -404,7 +404,7 @@ inferArgs ::
   [(WT.WeakTerm, WT.WeakTerm)] ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  EIO WT.WeakTerm
+  App WT.WeakTerm
 inferArgs h sub m args1 args2 cod =
   case (args1, args2) of
     ([], []) ->
@@ -416,7 +416,7 @@ inferArgs h sub m args1 args2 cod =
     _ ->
       raiseCritical m "Invalid argument passed to inferArgs"
 
-inferType :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+inferType :: Handle -> WT.WeakTerm -> App WT.WeakTerm
 inferType h t = do
   (t', u) <- infer h t
   liftIO $ Constraint.insert (constraintHandle h) (WT.metaOf t :< WT.Tau) u
@@ -425,7 +425,7 @@ inferType h t = do
 inferPiBinder ::
   Handle ->
   [BinderF WT.WeakTerm] ->
-  EIO ([BinderF WT.WeakTerm], Handle)
+  App ([BinderF WT.WeakTerm], Handle)
 inferPiBinder h binder =
   case binder of
     [] -> do
@@ -439,7 +439,7 @@ inferPiBinder h binder =
 inferImpBinder ::
   Handle ->
   [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
-  EIO ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], Handle)
+  App ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], Handle)
 inferImpBinder h binderList =
   case binderList of
     [] -> do
@@ -461,7 +461,7 @@ inferImpBinder h binderList =
 inferBinder' ::
   Handle ->
   [BinderF WT.WeakTerm] ->
-  EIO ([BinderF WT.WeakTerm], Handle)
+  App ([BinderF WT.WeakTerm], Handle)
 inferBinder' h binder =
   case binder of
     [] -> do
@@ -475,7 +475,7 @@ inferBinder' h binder =
 inferBinder'' ::
   Handle ->
   [BinderF WT.WeakTerm] ->
-  EIO [BinderF WT.WeakTerm]
+  App [BinderF WT.WeakTerm]
 inferBinder'' h binder =
   case binder of
     [] -> do
@@ -489,7 +489,7 @@ inferBinder'' h binder =
 inferBinder1 ::
   Handle ->
   BinderF WT.WeakTerm ->
-  EIO (BinderF WT.WeakTerm)
+  App (BinderF WT.WeakTerm)
 inferBinder1 h (mx, x, t) = do
   t' <- inferType h t
   liftIO $ WeakType.insert (weakTypeHandle h) x t'
@@ -500,7 +500,7 @@ resolvePartiallySpecifiedArgs ::
   Hint ->
   [Maybe (WT.WeakTerm, WT.WeakTerm)] ->
   [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
-  EIO [(WT.WeakTerm, WT.WeakTerm)]
+  App [(WT.WeakTerm, WT.WeakTerm)]
 resolvePartiallySpecifiedArgs h m partialArgs impParams = do
   let pairs = zip partialArgs impParams
   mapM resolveArg pairs
@@ -522,7 +522,7 @@ inferPiElim ::
   (WT.WeakTerm, WT.WeakTerm) ->
   ImpArgs.ImpArgs (WT.WeakTerm, WT.WeakTerm) ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
-  EIO (WT.WeakTerm, WT.WeakTerm)
+  App (WT.WeakTerm, WT.WeakTerm)
 inferPiElim h m (e, t) impArgs expArgs = do
   t' <- resolveType h t
   case t' of
@@ -569,7 +569,7 @@ newTypedHole h m varEnv = do
   Hole.insert (holeHandle h) (HID.reify i) holeTerm holeType
   return (holeTerm, holeType)
 
-ensureArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> EIO ()
+ensureArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> App ()
 ensureArityCorrectness h function expected found = do
   when (expected /= found) $ do
     case function of
@@ -592,7 +592,7 @@ ensureArityCorrectness h function expected found = do
             <> T.pack (show found)
             <> "."
 
-ensureImplicitArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> EIO ()
+ensureImplicitArityCorrectness :: Handle -> WT.WeakTerm -> Int -> Int -> App ()
 ensureImplicitArityCorrectness h function expected found = do
   when (expected /= found) $ do
     case function of
@@ -627,7 +627,7 @@ primOpToType h m op = do
 inferLet ::
   Handle ->
   (BinderF WT.WeakTerm, WT.WeakTerm) ->
-  EIO (BinderF WT.WeakTerm, WT.WeakTerm)
+  App (BinderF WT.WeakTerm, WT.WeakTerm)
 inferLet h ((mx, x, t), e1) = do
   (e1', t1') <- infer h e1
   t' <- inferType h t >>= resolveType h
@@ -639,7 +639,7 @@ inferDecisionTree ::
   Hint ->
   Handle ->
   DT.DecisionTree WT.WeakTerm ->
-  EIO (DT.DecisionTree WT.WeakTerm, WT.WeakTerm)
+  App (DT.DecisionTree WT.WeakTerm, WT.WeakTerm)
 inferDecisionTree m h tree =
   case tree of
     DT.Leaf ys letSeq body -> do
@@ -660,7 +660,7 @@ inferClauseList ::
   Handle ->
   WT.WeakTerm ->
   DT.CaseList WT.WeakTerm ->
-  EIO (DT.CaseList WT.WeakTerm, WT.WeakTerm)
+  App (DT.CaseList WT.WeakTerm, WT.WeakTerm)
 inferClauseList m h cursorType (fallbackClause, clauseList) = do
   (clauseList', answerTypeList) <- flip mapAndUnzipM clauseList $ inferClause h cursorType
   let mAns = getClauseHint answerTypeList m
@@ -681,7 +681,7 @@ inferClause ::
   Handle ->
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
-  EIO (DT.Case WT.WeakTerm, WT.WeakTerm)
+  App (DT.Case WT.WeakTerm, WT.WeakTerm)
 inferClause h cursorType@(_ :< cursorTypeInner) decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat literal cont -> do
@@ -720,12 +720,12 @@ inferClause h cursorType@(_ :< cursorTypeInner) decisionCase = do
           tCont
         )
 
-resolveType :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+resolveType :: Handle -> WT.WeakTerm -> App WT.WeakTerm
 resolveType h t = do
   sub <- Unify.unifyCurrentConstraints h
   reduceWeakType' h sub t
 
-reduceWeakType' :: Handle -> HS.HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
+reduceWeakType' :: Handle -> HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 reduceWeakType' h sub e = do
   e' <- reduce h e
   case e' of
@@ -758,7 +758,7 @@ newHole h m varEnv = do
   (e, _) <- newTypedHole h m varEnv
   return e
 
-createImpArgValue :: Handle -> Hint -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> EIO WT.WeakTerm
+createImpArgValue :: Handle -> Hint -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> App WT.WeakTerm
 createImpArgValue h m ((_, _, paramType), maybeDefault) =
   case maybeDefault of
     Just defaultValue -> do
@@ -774,7 +774,7 @@ createImpArgValueFromParam ::
   Handle ->
   Hint ->
   (BinderF WT.WeakTerm, Maybe WT.WeakTerm) ->
-  EIO (WT.WeakTerm, WT.WeakTerm)
+  App (WT.WeakTerm, WT.WeakTerm)
 createImpArgValueFromParam h m ((_, _, paramType), maybeDefault) =
   case maybeDefault of
     Just defaultValue -> do

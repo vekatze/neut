@@ -14,14 +14,14 @@ module CodeParser.Parser
   )
 where
 
+import App.App
+import App.Error qualified as E
 import Control.Monad
 import Control.Monad.Error.Class (MonadError (throwError))
 import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
-import Error.EIO
-import Error.Error qualified as E
 import Logger.Hint (SavedHint (SavedHint))
 import Logger.Hint.Reflect (fromSourcePos)
 import Logger.Log (Log (..))
@@ -32,7 +32,7 @@ import Text.Megaparsec hiding (runParser)
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as L
 
-type Parser a = ParsecT Void T.Text EIO a
+type Parser a = ParsecT Void T.Text App a
 
 createParseError :: ParseErrorBundle T.Text Void -> E.Error
 createParseError errorBundle = do
@@ -63,7 +63,7 @@ asLabel s =
 type MustParseWholeFile =
   Bool
 
-runParser :: Path Abs File -> T.Text -> MustParseWholeFile -> Parser a -> EIO (C, a)
+runParser :: Path Abs File -> T.Text -> MustParseWholeFile -> Parser a -> App (C, a)
 runParser filePath fileContent mustParseWholeFile parser = do
   let fileParser = do
         leadingComments <- spaceConsumer

@@ -12,14 +12,14 @@ module Kernel.Common.RunProcess
   )
 where
 
+import App.App (App)
+import App.Error (newError')
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Text.Encoding (decodeUtf8)
-import Error.EIO (EIO)
-import Error.Error (newError')
 import GHC.IO.Handle qualified as GHC
 import Logger.Debug qualified as Logger
 import Logger.Handle qualified as Logger
@@ -79,7 +79,7 @@ indent :: T.Text -> T.Text
 indent t =
   T.intercalate "\n" $ map ("  " <>) $ T.splitOn "\n" t
 
-run :: Handle -> String -> [String] -> EIO ()
+run :: Handle -> String -> [String] -> App ()
 run h procName optionList = do
   let spec = Spec {cmdspec = P.RawCommand procName optionList, cwd = Nothing}
   value <- liftIO $ run00 h spec

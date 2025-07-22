@@ -5,6 +5,8 @@ module Language.WeakTerm.Reduce
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
@@ -12,8 +14,6 @@ import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
@@ -47,11 +47,11 @@ new substHandle location inlineLimit = do
   currentStepRef <- liftIO $ newIORef 0
   return $ Handle {..}
 
-reduce :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+reduce :: Handle -> WT.WeakTerm -> App WT.WeakTerm
 reduce h e = do
   reduce' h e
 
-reduce' :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+reduce' :: Handle -> WT.WeakTerm -> App WT.WeakTerm
 reduce' h term = do
   detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
@@ -212,7 +212,7 @@ reduce' h term = do
     _ ->
       return term
 
-reduceBinder :: Handle -> BinderF WT.WeakTerm -> EIO (BinderF WT.WeakTerm)
+reduceBinder :: Handle -> BinderF WT.WeakTerm -> App (BinderF WT.WeakTerm)
 reduceBinder h (m, x, t) = do
   t' <- reduce' h t
   return (m, x, t')
@@ -220,7 +220,7 @@ reduceBinder h (m, x, t) = do
 reduceDecisionTree ::
   Handle ->
   DT.DecisionTree WT.WeakTerm ->
-  EIO (DT.DecisionTree WT.WeakTerm)
+  App (DT.DecisionTree WT.WeakTerm)
 reduceDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -237,7 +237,7 @@ reduceDecisionTree h tree =
 reduceCaseList ::
   Handle ->
   DT.CaseList WT.WeakTerm ->
-  EIO (DT.CaseList WT.WeakTerm)
+  App (DT.CaseList WT.WeakTerm)
 reduceCaseList h (fallbackTree, clauseList) = do
   fallbackTree' <- reduceDecisionTree h fallbackTree
   clauseList' <- mapM (reduceCase h) clauseList
@@ -246,7 +246,7 @@ reduceCaseList h (fallbackTree, clauseList) = do
 reduceCase ::
   Handle ->
   DT.Case WT.WeakTerm ->
-  EIO (DT.Case WT.WeakTerm)
+  App (DT.Case WT.WeakTerm)
 reduceCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
@@ -316,7 +316,7 @@ asPrimFloatValue term = do
     _ ->
       Nothing
 
-detectPossibleInfiniteLoop :: Handle -> EIO ()
+detectPossibleInfiniteLoop :: Handle -> App ()
 detectPossibleInfiniteLoop h = do
   let Handle {location, currentStepRef, inlineLimit} = h
   currentStep <- liftIO $ readIORef currentStepRef

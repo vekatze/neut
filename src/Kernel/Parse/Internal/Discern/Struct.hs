@@ -3,10 +3,10 @@ module Kernel.Parse.Internal.Discern.Struct
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Language.RawTerm.Key
 import Logger.Hint
 
@@ -15,7 +15,7 @@ ensureFieldLinearity ::
   [Key] ->
   S.Set Key ->
   S.Set Key ->
-  EIO ()
+  App ()
 ensureFieldLinearity m ks found nonLinear =
   case ks of
     [] ->

@@ -8,6 +8,8 @@ module Kernel.Clarify.Clarify
   )
 where
 
+import App.App (App)
+import App.Run (raiseCritical, raiseCritical')
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -16,8 +18,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseCritical, raiseCritical')
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.AuxEnv qualified as AuxEnv
@@ -100,7 +100,7 @@ new (Global.Handle {..}) (Local.Handle {..}) = do
   let sigmaHandle = Sigma.new gensymHandle linearizeHandle utilityHandle
   return $ Handle {..}
 
-clarify :: Handle -> [Stmt] -> EIO [C.CompStmt]
+clarify :: Handle -> [Stmt] -> App [C.CompStmt]
 clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   baseAuxEnv <- AuxEnv.toCompStmtList <$> liftIO (getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h))
@@ -158,7 +158,7 @@ getBaseAuxEnv auxEnvHandle sigmaHandle = do
   Sigma.registerClosureS4 sigmaHandle
   AuxEnv.get auxEnvHandle
 
-clarifyStmt :: Handle -> Stmt -> EIO C.CompStmt
+clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs _ e -> do
@@ -210,7 +210,7 @@ clarifyBinderBody ::
   TM.TypeEnv ->
   [BinderF TM.Term] ->
   TM.Term ->
-  EIO ([(Ident, C.Comp)], C.Comp)
+  App ([(Ident, C.Comp)], C.Comp)
 clarifyBinderBody h tenv xts e =
   case xts of
     [] -> do
@@ -226,7 +226,7 @@ clarifyStmtDefineBody ::
   TM.TypeEnv ->
   [(Ident, C.Comp)] ->
   TM.Term ->
-  EIO C.Comp
+  App C.Comp
 clarifyStmtDefineBody h tenv xts e = do
   clarifyTerm h tenv e
     >>= liftIO . Linearize.linearize (linearizeHandle h) xts
@@ -237,12 +237,12 @@ clarifyStmtDefineBody' ::
   DD.DefiniteDescription ->
   [(Ident, C.Comp)] ->
   C.Comp ->
-  EIO C.CompStmt
+  App C.CompStmt
 clarifyStmtDefineBody' h name xts' dataType = do
   dataType' <- liftIO $ Linearize.linearize (linearizeHandle h) xts' dataType >>= Reduce.reduce (reduceHandle h)
   return $ C.Def name O.Clear (map fst xts') dataType'
 
-clarifyTerm :: Handle -> TM.TypeEnv -> TM.Term -> EIO C.Comp
+clarifyTerm :: Handle -> TM.TypeEnv -> TM.Term -> App C.Comp
 clarifyTerm h tenv term =
   case term of
     _ :< TM.Tau -> do
@@ -363,7 +363,7 @@ clarifyTerm h tenv term =
     _ :< TM.Void ->
       return Sigma.returnImmediateNullS4
 
-embody :: Handle -> TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> EIO C.Comp
+embody :: Handle -> TM.TypeEnv -> [(BinderF TM.Term, TM.Term)] -> TM.Term -> App C.Comp
 embody h tenv xets cont =
   case xets of
     [] ->
@@ -384,7 +384,7 @@ type DataArgsMap = IntMap.IntMap ([(Ident, TM.Term)], Size)
 clarifyDataClause ::
   Handle ->
   (DD.DefiniteDescription, Bool, D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
-  EIO Sigma.DataConstructorInfo
+  App Sigma.DataConstructorInfo
 clarifyDataClause h (consNameVal, isConstLikeVal, discriminantVal, dataArgsVal, consArgsVal) = do
   args <- dropFst <$> clarifyBinder h IntMap.empty (dataArgsVal ++ consArgsVal)
   let (dataArgs', consArgs') = splitAt (length dataArgsVal) args
@@ -403,7 +403,7 @@ clarifyDecisionTree ::
   N.IsNoetic ->
   DataArgsMap ->
   DT.DecisionTree TM.Term ->
-  EIO (C.Comp, [BinderF TM.Term])
+  App (C.Comp, [BinderF TM.Term])
 clarifyDecisionTree h tenv isNoetic dataArgsMap tree =
   case tree of
     DT.Leaf consumedCursorList letSeq cont@(m :< _) -> do
@@ -448,7 +448,7 @@ getFirstClause fallbackClause clauseList =
     clause : _ ->
       clause
 
-getClauseDataGroup :: Handle -> TM.Term -> EIO (Maybe OD.OptimizableData)
+getClauseDataGroup :: Handle -> TM.Term -> App (Maybe OD.OptimizableData)
 getClauseDataGroup h term =
   case term of
     _ :< TM.Data _ dataName _ -> do
@@ -464,7 +464,7 @@ getClauseDataGroup h term =
     _ ->
       raiseCritical' "Clarify.isEnumType"
 
-tidyCursorList :: Handle -> TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> EIO (C.Comp, [BinderF TM.Term])
+tidyCursorList :: Handle -> TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> App (C.Comp, [BinderF TM.Term])
 tidyCursorList h tenv dataArgsMap consumedCursorList cont =
   case consumedCursorList of
     [] ->
@@ -489,7 +489,7 @@ clarifyCase ::
   DataArgsMap ->
   Ident ->
   DT.Case TM.Term ->
-  EIO (EC.EnumCase, C.Comp, [BinderF TM.Term])
+  App (EC.EnumCase, C.Comp, [BinderF TM.Term])
 clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
   case decisionCase of
     DT.LiteralCase _ l cont -> do
@@ -536,12 +536,12 @@ clarifyCase h tenv isNoetic dataArgsMap cursor decisionCase = do
               chain
             )
 
-alignFreeVariable :: Handle -> TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> EIO C.Comp
+alignFreeVariable :: Handle -> TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
 alignFreeVariable h tenv fvs e = do
   fvs' <- dropFst <$> clarifyBinder h tenv fvs
   liftIO $ Linearize.linearize (linearizeHandle h) fvs' e
 
-clarifyMagic :: Handle -> TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Term -> EIO C.Comp
+clarifyMagic :: Handle -> TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Term -> App C.Comp
 clarifyMagic h tenv der = do
   case der of
     M.Cast from to value -> do
@@ -594,7 +594,7 @@ clarifyLambda ::
   [BinderF TM.Term] ->
   [BinderF TM.Term] ->
   TM.Term ->
-  EIO C.Comp
+  App C.Comp
 clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
   case lamKind of
     LK.Fix (_, recFuncName, codType) -> do
@@ -618,13 +618,13 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
       e' <- clarifyTerm h (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
       returnClosure h tenv identity mName O.Clear fvs mxts e'
 
-clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> EIO (Ident, C.Comp, C.Value)
+clarifyPlus :: Handle -> TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus h tenv e = do
   e' <- clarifyTerm h tenv e
   (varName, var) <- liftIO $ Gensym.createVar (gensymHandle h) "var"
   return (varName, e', var)
 
-clarifyBinder :: Handle -> TM.TypeEnv -> [BinderF TM.Term] -> EIO [(Hint, Ident, C.Comp)]
+clarifyBinder :: Handle -> TM.TypeEnv -> [BinderF TM.Term] -> App [(Hint, Ident, C.Comp)]
 clarifyBinder h tenv binder =
   case binder of
     [] ->
@@ -634,7 +634,7 @@ clarifyBinder h tenv binder =
       xts' <- clarifyBinder h (IntMap.insert (Ident.toInt x) t tenv) xts
       return $ (m, x, t') : xts'
 
-clarifyPrimOp :: Handle -> TM.TypeEnv -> PrimOp -> Hint -> EIO C.Comp
+clarifyPrimOp :: Handle -> TM.TypeEnv -> PrimOp -> Hint -> App C.Comp
 clarifyPrimOp h tenv op m = do
   let (domList, _) = getTypeInfo op
   let argTypeList = map (fromPrimNum m) domList
@@ -652,7 +652,7 @@ returnClosure ::
   [BinderF TM.Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
-  EIO C.Comp
+  App C.Comp
 returnClosure h tenv lamID mName opacity fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder h tenv fvs
   xts'' <- dropFst <$> clarifyBinder h tenv xts

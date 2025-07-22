@@ -5,13 +5,13 @@ module Kernel.Elaborate.Internal.WeakTerm.Fill
   )
 where
 
+import App.App (App)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Error.EIO (EIO)
 import Kernel.Elaborate.HoleSubst
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Lam qualified as AttrL
@@ -35,7 +35,7 @@ new :: Subst.Handle -> Reduce.Handle -> Handle
 new substHandle reduceHandle = do
   Handle {..}
 
-fill :: Handle -> HoleSubst -> WT.WeakTerm -> EIO WT.WeakTerm
+fill :: Handle -> HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fill h holeSubst term =
   case term of
     _ :< WT.Tau ->
@@ -147,7 +147,7 @@ fillBinder ::
   Handle ->
   HoleSubst ->
   [BinderF WT.WeakTerm] ->
-  EIO [BinderF WT.WeakTerm]
+  App [BinderF WT.WeakTerm]
 fillBinder h holeSubst binder =
   case binder of
     [] -> do
@@ -161,7 +161,7 @@ fillBinderWithMaybeType ::
   Handle ->
   HoleSubst ->
   [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
-  EIO [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)]
+  App [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)]
 fillBinderWithMaybeType h holeSubst binderList =
   case binderList of
     [] -> do
@@ -176,7 +176,7 @@ fillLet ::
   Handle ->
   HoleSubst ->
   (BinderF WT.WeakTerm, WT.WeakTerm) ->
-  EIO (BinderF WT.WeakTerm, WT.WeakTerm)
+  App (BinderF WT.WeakTerm, WT.WeakTerm)
 fillLet h holeSubst ((m, x, t), e) = do
   e' <- fill h holeSubst e
   t' <- fill h holeSubst t
@@ -186,7 +186,7 @@ fillLetSeq ::
   Handle ->
   HoleSubst ->
   [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
-  EIO [(BinderF WT.WeakTerm, WT.WeakTerm)]
+  App [(BinderF WT.WeakTerm, WT.WeakTerm)]
 fillLetSeq h holeSubst letSeq = do
   case letSeq of
     [] ->
@@ -200,7 +200,7 @@ fillSingleBinder ::
   Handle ->
   HoleSubst ->
   BinderF WT.WeakTerm ->
-  EIO (BinderF WT.WeakTerm)
+  App (BinderF WT.WeakTerm)
 fillSingleBinder h holeSubst (m, x, t) = do
   t' <- fill h holeSubst t
   return (m, x, t')
@@ -210,7 +210,7 @@ fill' ::
   HoleSubst ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  EIO ([BinderF WT.WeakTerm], WT.WeakTerm)
+  App ([BinderF WT.WeakTerm], WT.WeakTerm)
 fill' h holeSubst binder e =
   case binder of
     [] -> do
@@ -227,7 +227,7 @@ fill'' ::
   BinderF WT.WeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  EIO (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
+  App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 fill'' h holeSubst (m, x, t) binder e = do
   (xts', e') <- fill' h holeSubst binder e
   t' <- fill h holeSubst t
@@ -238,7 +238,7 @@ fill''' ::
   HoleSubst ->
   [BinderF WT.WeakTerm] ->
   DT.DecisionTree WT.WeakTerm ->
-  EIO ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
+  App ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
 fill''' h holeSubst binder decisionTree =
   case binder of
     [] -> do
@@ -253,7 +253,7 @@ fillDecisionTree ::
   Handle ->
   HoleSubst ->
   DT.DecisionTree WT.WeakTerm ->
-  EIO (DT.DecisionTree WT.WeakTerm)
+  App (DT.DecisionTree WT.WeakTerm)
 fillDecisionTree h holeSubst tree =
   case tree of
     DT.Leaf xs letSeq e -> do
@@ -271,7 +271,7 @@ fillCaseList ::
   Handle ->
   HoleSubst ->
   DT.CaseList WT.WeakTerm ->
-  EIO (DT.CaseList WT.WeakTerm)
+  App (DT.CaseList WT.WeakTerm)
 fillCaseList h holeSubst (fallbackClause, clauseList) = do
   fallbackClause' <- fillDecisionTree h holeSubst fallbackClause
   clauseList' <- mapM (fillCase h holeSubst) clauseList
@@ -281,7 +281,7 @@ fillCase ::
   Handle ->
   HoleSubst ->
   DT.Case WT.WeakTerm ->
-  EIO (DT.Case WT.WeakTerm)
+  App (DT.Case WT.WeakTerm)
 fillCase h holeSubst decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do

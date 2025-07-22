@@ -7,6 +7,9 @@ module Command.LSP.Internal.Util
   )
 where
 
+import App.App (App)
+import App.Error qualified as E
+import App.Run (runApp)
 import CodeParser.Parser (nonSymbolCharSet)
 import Control.Lens hiding (Iso, List)
 import Control.Monad
@@ -19,9 +22,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Error qualified as E
-import Error.Run (runEIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.GlobalRemark qualified as GlobalRemark
 import Language.LSP.Diagnostics (partitionBySource)
@@ -38,9 +38,9 @@ import Path.Read (readTextFromPath)
 type Lsp config =
   LspT config IO
 
-run :: Global.Handle -> EIO a -> Lsp b (Maybe a)
+run :: Global.Handle -> App a -> Lsp b (Maybe a)
 run h comp = do
-  resultOrErr <- liftIO $ runEIO comp
+  resultOrErr <- liftIO $ runApp comp
   remarkList <- liftIO $ GlobalRemark.get (Global.globalRemarkHandle h)
   case resultOrErr of
     Left (E.MakeError logList) -> do

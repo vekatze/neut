@@ -9,6 +9,8 @@ module Kernel.Common.Handle.Local.Locator
   )
 where
 
+import App.App (App)
+import App.Run (raiseError, raiseError')
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Containers.ListUtils qualified as ListUtils
@@ -16,8 +18,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError, raiseError')
 import Kernel.Common.AliasInfo (MustUpdateTag)
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -53,7 +53,7 @@ data Handle = Handle
     _currentGlobalLocator :: SGL.StrictGlobalLocator
   }
 
-new :: Env.Handle -> Tag.Handle -> Source.Source -> EIO Handle
+new :: Env.Handle -> Tag.Handle -> Source.Source -> App Handle
 new _envHandle _tagHandle source = do
   cgl <- constructGlobalLocator source
   _activeDefiniteDescriptionListRef <- liftIO $ newIORef Map.empty
@@ -69,7 +69,7 @@ activateSpecifiedNames ::
   MustUpdateTag ->
   SGL.StrictGlobalLocator ->
   [(Hint, LL.LocalLocator)] ->
-  EIO ()
+  App ()
 activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
   forM_ lls $ \(m, ll) -> do
     let dd = DD.new sgl ll
@@ -96,7 +96,7 @@ activateSpecifiedNames h currentSource topNameMap mustUpdateTag sgl lls = do
           _ ->
             liftIO $ modifyIORef' (_activeDefiniteDescriptionListRef h) $ Map.insert ll dd
 
-activateStaticFile :: Handle -> Hint -> T.Text -> Path Abs File -> EIO ()
+activateStaticFile :: Handle -> Hint -> T.Text -> Path Abs File -> App ()
 activateStaticFile h m key path = do
   b <- doesFileExist path
   if b
@@ -138,7 +138,7 @@ getImportedReferents h ll = do
   activeDefiniteDescriptionList <- readIORef (_activeDefiniteDescriptionListRef h)
   return $ maybeToList $ Map.lookup ll activeDefiniteDescriptionList
 
-constructGlobalLocator :: Source.Source -> EIO SGL.StrictGlobalLocator
+constructGlobalLocator :: Source.Source -> App SGL.StrictGlobalLocator
 constructGlobalLocator source = do
   sourceLocator <- getSourceLocator source
   return $
@@ -147,13 +147,13 @@ constructGlobalLocator source = do
         SGL.sourceLocator = sourceLocator
       }
 
-getSourceLocator :: Source.Source -> EIO SL.SourceLocator
+getSourceLocator :: Source.Source -> App SL.SourceLocator
 getSourceLocator source = do
   relFilePath <- stripProperPrefix (Module.getSourceDir $ Source.sourceModule source) $ Source.sourceFilePath source
   relFilePath' <- removeExtension relFilePath
   return $ SL.SourceLocator relFilePath'
 
-removeExtension :: Path a File -> EIO (Path a File)
+removeExtension :: Path a File -> App (Path a File)
 removeExtension path =
   case splitExtension path of
     Just (path', _) ->

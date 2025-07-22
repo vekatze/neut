@@ -5,6 +5,9 @@ module Kernel.Elaborate.Elaborate
   )
 where
 
+import App.App (App)
+import App.Error qualified as E
+import App.Run (raiseCritical, raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
@@ -15,9 +18,6 @@ import Data.IntMap qualified as IntMap
 import Data.List (unzip5, zip5)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Error qualified as E
-import Error.Run (raiseCritical, raiseError)
 import Gensym.Trick qualified as Gensym
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.Const (holeLiteral)
@@ -80,7 +80,7 @@ getWeakTypeEnv :: Handle -> IO WeakType.WeakTypeEnv
 getWeakTypeEnv h =
   WeakType.get $ weakTypeHandle h
 
-elaborate :: Handle -> Target -> [L.Log] -> Either Cache.Cache [WeakStmt] -> EIO [Stmt]
+elaborate :: Handle -> Target -> [L.Log] -> Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate h t logs cacheOrStmt = do
   case cacheOrStmt of
     Left cache -> do
@@ -92,14 +92,14 @@ elaborate h t logs cacheOrStmt = do
     Right stmtList -> do
       analyzeStmtList h stmtList >>= synthesizeStmtList h t logs
 
-analyzeStmtList :: Handle -> [WeakStmt] -> EIO [WeakStmt]
+analyzeStmtList :: Handle -> [WeakStmt] -> App [WeakStmt]
 analyzeStmtList h stmtList = do
   forM stmtList $ \stmt -> do
     stmt' <- Infer.inferStmt h stmt
     insertWeakStmt h stmt'
     return stmt'
 
-synthesizeStmtList :: Handle -> Target -> [L.Log] -> [WeakStmt] -> EIO [Stmt]
+synthesizeStmtList :: Handle -> Target -> [L.Log] -> [WeakStmt] -> App [Stmt]
 synthesizeStmtList h t logs stmtList = do
   -- mapM_ viewStmt stmtList
   liftIO (Constraint.get (constraintHandle h)) >>= Unify.unify h >>= liftIO . Hole.setSubst (holeHandle h)
@@ -119,7 +119,7 @@ synthesizeStmtList h t logs stmtList = do
   liftIO $ GlobalRemark.insert (globalRemarkHandle h) logs'
   return stmtList'
 
-elaborateStmt :: Handle -> WeakStmt -> EIO ([Stmt], [L.Log])
+elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [L.Log])
 elaborateStmt h stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
@@ -154,7 +154,7 @@ elaborateStmt h stmt = do
         return $ F.Foreign m externalName domList' cod'
       return ([StmtForeign foreignList'], [])
 
-elaborateGeist :: Handle -> G.Geist WT.WeakTerm -> EIO (G.Geist TM.Term)
+elaborateGeist :: Handle -> G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
 elaborateGeist h (G.Geist {..}) = do
   impArgs' <-
     mapM
@@ -167,7 +167,7 @@ elaborateGeist h (G.Geist {..}) = do
   cod' <- elaborate' h cod
   return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
-insertStmt :: Handle -> Stmt -> EIO ()
+insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs t e -> do
@@ -184,7 +184,7 @@ insertStmt h stmt = do
       return ()
   insertWeakStmt h $ weakenStmt stmt
 
-insertWeakStmt :: Handle -> WeakStmt -> EIO ()
+insertWeakStmt :: Handle -> WeakStmt -> App ()
 insertWeakStmt h stmt = do
   case stmt of
     WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
@@ -199,7 +199,7 @@ insertWeakStmt h stmt = do
         cod' <- mapM (elaborate' h >=> return . weaken) cod
         liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList' cod'
 
-elaborateStmtKind :: Handle -> StmtKind WT.WeakTerm -> EIO (StmtKind TM.Term)
+elaborateStmtKind :: Handle -> StmtKind WT.WeakTerm -> App (StmtKind TM.Term)
 elaborateStmtKind h stmtKind =
   case stmtKind of
     Normal opacity ->
@@ -218,7 +218,7 @@ elaborateStmtKind h stmtKind =
       expConsArgs' <- mapM (elaborateWeakBinder h) expConsArgs
       return $ DataIntro dataName dataArgs' expConsArgs' discriminant
 
-elaborate' :: Handle -> WT.WeakTerm -> EIO TM.Term
+elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
 elaborate' h term =
   case term of
     m :< WT.Tau ->
@@ -383,11 +383,11 @@ elaborate' h term =
     m :< WT.Void ->
       return $ m :< TM.Void
 
-strictify :: Handle -> WT.WeakTerm -> EIO BLT.BaseLowType
+strictify :: Handle -> WT.WeakTerm -> App BLT.BaseLowType
 strictify h t@(mt :< _) =
   strictify' h mt t
 
-strictify' :: Handle -> Hint -> WT.WeakTerm -> EIO BLT.BaseLowType
+strictify' :: Handle -> Hint -> WT.WeakTerm -> App BLT.BaseLowType
 strictify' h m t = do
   t' <- reduceWeakType h t >>= elaborate' h
   case t' of
@@ -408,7 +408,7 @@ strictify' h m t = do
     _ :< _ ->
       raiseNonStrictType m (weaken t')
 
-strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakTerm -> EIO (Either FloatSize IntSize, TM.Term)
+strictifyDecimalType :: Handle -> Hint -> Integer -> WT.WeakTerm -> App (Either FloatSize IntSize, TM.Term)
 strictifyDecimalType h m x t = do
   t' <- reduceWeakType h t >>= elaborate' h
   case t' of
@@ -427,7 +427,7 @@ strictifyDecimalType h m x t = do
     _ :< _ ->
       raiseNonDecimalType m x (weaken t')
 
-strictifyFloatType :: Handle -> Hint -> Double -> WT.WeakTerm -> EIO (FloatSize, TM.Term)
+strictifyFloatType :: Handle -> Hint -> Double -> WT.WeakTerm -> App (FloatSize, TM.Term)
 strictifyFloatType h m x t = do
   t' <- reduceWeakType h t >>= elaborate' h
   case t' of
@@ -444,30 +444,30 @@ strictifyFloatType h m x t = do
     _ :< _ ->
       raiseNonFloatType m x (weaken t')
 
-elaborateWeakBinder :: Handle -> BinderF WT.WeakTerm -> EIO (BinderF TM.Term)
+elaborateWeakBinder :: Handle -> BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder h (m, x, t) = do
   t' <- elaborate' h t
   return (m, x, t')
 
-elaborateWeakBinderWithMaybeType :: Handle -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> EIO (BinderF TM.Term, Maybe TM.Term)
+elaborateWeakBinderWithMaybeType :: Handle -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> App (BinderF TM.Term, Maybe TM.Term)
 elaborateWeakBinderWithMaybeType h ((m, x, t), maybeType) = do
   t' <- elaborate' h t
   maybeType' <- traverse (elaborate' h) maybeType
   return ((m, x, t'), maybeType')
 
-inlineBinderWithMaybeType :: Handle -> (BinderF TM.Term, Maybe TM.Term) -> EIO (BinderF TM.Term, Maybe TM.Term)
+inlineBinderWithMaybeType :: Handle -> (BinderF TM.Term, Maybe TM.Term) -> App (BinderF TM.Term, Maybe TM.Term)
 inlineBinderWithMaybeType h ((m, x, t), maybeType) = do
   t' <- inline h m t
   maybeType' <- traverse (inline h m) maybeType
   return ((m, x, t'), maybeType')
 
-elaborateLet :: Handle -> (BinderF WT.WeakTerm, WT.WeakTerm) -> EIO (BinderF TM.Term, TM.Term)
+elaborateLet :: Handle -> (BinderF WT.WeakTerm, WT.WeakTerm) -> App (BinderF TM.Term, TM.Term)
 elaborateLet h (xt, e) = do
   xt' <- elaborateWeakBinder h xt
   e' <- elaborate' h e
   return (xt', e')
 
-elaborateLamAttr :: Handle -> AttrL.Attr WT.WeakTerm -> EIO (AttrL.Attr TM.Term)
+elaborateLamAttr :: Handle -> AttrL.Attr WT.WeakTerm -> App (AttrL.Attr TM.Term)
 elaborateLamAttr h (AttrL.Attr {lamKind, identity}) =
   case lamKind of
     LK.Normal name codType -> do
@@ -511,7 +511,7 @@ suppress' :: Ident -> Ident
 suppress' (I (_, i)) =
   I (holeLiteral, i)
 
-makeTree :: Hint -> ClauseContext -> EIO (Ident, PatternTree)
+makeTree :: Hint -> ClauseContext -> App (Ident, PatternTree)
 makeTree m ctx =
   case ctx of
     [] ->
@@ -543,7 +543,7 @@ elaborateDecisionTree ::
   Hint ->
   Hint ->
   DT.DecisionTree WT.WeakTerm ->
-  EIO (DT.DecisionTree TM.Term)
+  App (DT.DecisionTree TM.Term)
 elaborateDecisionTree h ctx mOrig m tree =
   case tree of
     DT.Leaf xs letSeq body -> do
@@ -588,7 +588,7 @@ elaborateDecisionTree h ctx mOrig m tree =
                   clauseList' <- mapM (elaborateClause h mOrig cursor ctx) clauseList
                   return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: Handle -> Hint -> Ident -> ClauseContext -> DT.Case WT.WeakTerm -> EIO (DT.Case TM.Term)
+elaborateClause :: Handle -> Hint -> Ident -> ClauseContext -> DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
 elaborateClause h mOrig cursor ctx decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
@@ -610,13 +610,13 @@ elaborateClause h mOrig cursor ctx decisionCase = do
               DT.cont = cont'
             }
 
-raiseNonStrictType :: Hint -> WT.WeakTerm -> EIO a
+raiseNonStrictType :: Hint -> WT.WeakTerm -> App a
 raiseNonStrictType m t = do
   raiseError m $
     "Expected:\n  an integer, a float, or a pointer\nFound:\n  "
       <> toText t
 
-raiseNonDecimalType :: Hint -> Integer -> WT.WeakTerm -> EIO a
+raiseNonDecimalType :: Hint -> Integer -> WT.WeakTerm -> App a
 raiseNonDecimalType m x t = do
   raiseError m $
     "The term `"
@@ -624,7 +624,7 @@ raiseNonDecimalType m x t = do
       <> "` is an integer, but its type is: "
       <> toText t
 
-raiseNonFloatType :: Hint -> Double -> WT.WeakTerm -> EIO a
+raiseNonFloatType :: Hint -> Double -> WT.WeakTerm -> App a
 raiseNonFloatType m x t = do
   raiseError m $
     "The term `"
@@ -632,15 +632,15 @@ raiseNonFloatType m x t = do
       <> "` is a float, but its type is: "
       <> toText t
 
-raiseLiteralNonExhaustivePatternMatching :: Hint -> EIO a
+raiseLiteralNonExhaustivePatternMatching :: Hint -> App a
 raiseLiteralNonExhaustivePatternMatching m =
   raiseError m "Pattern matching on literals must have a fallback clause"
 
-raiseEmptyNonExhaustivePatternMatching :: Hint -> EIO a
+raiseEmptyNonExhaustivePatternMatching :: Hint -> App a
 raiseEmptyNonExhaustivePatternMatching m =
   raiseError m "Empty pattern matching can only be performed on empty ADT values"
 
-reduceType :: Handle -> WT.WeakTerm -> EIO TM.Term
+reduceType :: Handle -> WT.WeakTerm -> App TM.Term
 reduceType h e = do
   reduceWeakType h e >>= elaborate' h
 
@@ -648,7 +648,7 @@ data SwitchSpec
   = LiteralSwitch
   | ConsSwitch [(DD.DefiniteDescription, IsConstLike)]
 
-getSwitchSpec :: Hint -> TM.Term -> EIO SwitchSpec
+getSwitchSpec :: Hint -> TM.Term -> App SwitchSpec
 getSwitchSpec m cursorType = do
   case cursorType of
     _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
@@ -662,7 +662,7 @@ getSwitchSpec m cursorType = do
         "This term is expected to be an ADT value or a literal, but found:\n"
           <> toText (weaken cursorType)
 
-reduceWeakType :: Handle -> WT.WeakTerm -> EIO WT.WeakTerm
+reduceWeakType :: Handle -> WT.WeakTerm -> App WT.WeakTerm
 reduceWeakType h e = do
   e' <- reduce h e
   case e' of
@@ -683,7 +683,7 @@ fillHole ::
   Hint ->
   HID.HoleID ->
   [WT.WeakTerm] ->
-  EIO WT.WeakTerm
+  App WT.WeakTerm
 fillHole h m holeID es = do
   holeSubst <- liftIO $ Hole.getSubst (holeHandle h)
   case HS.lookup holeID holeSubst of

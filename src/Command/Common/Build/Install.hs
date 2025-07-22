@@ -5,9 +5,9 @@ module Command.Common.Build.Install
   )
 where
 
+import App.App (App)
 import Control.Monad
 import Data.Text qualified as T
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Target qualified as Target
@@ -23,7 +23,7 @@ new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
   Handle {..}
 
-install :: Handle -> Target.MainTarget -> Path Abs Dir -> EIO ()
+install :: Handle -> Target.MainTarget -> Path Abs Dir -> App ()
 install h targetOrZen dir = do
   execPath <- Path.getExecutableOutputPath (pathHandle h) targetOrZen
   case targetOrZen of

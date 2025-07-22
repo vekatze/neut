@@ -6,14 +6,14 @@ module Command.Create.Internal
   )
 where
 
+import App.App (App)
+import App.Run (raiseError')
 import Command.Common.SaveModule qualified as SaveModule
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError')
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.Handle.Global.Platform qualified as Platform
@@ -38,7 +38,7 @@ new :: SaveModule.Handle -> Logger.Handle -> Platform.Handle -> IO Handle
 new saveModuleHandle loggerHandle platformHandle = do
   return $ Handle {..}
 
-createNewProject :: Handle -> T.Text -> Module -> EIO ()
+createNewProject :: Handle -> T.Text -> Module -> App ()
 createNewProject h moduleName newModule = do
   let moduleDir = parent $ moduleLocation newModule
   moduleDirExists <- doesDirExist moduleDir
@@ -49,7 +49,7 @@ createNewProject h moduleName newModule = do
       liftIO $ createMainFile newModule
       liftIO $ Logger.printNote' (loggerHandle h) $ "Created a module: " <> moduleName
 
-constructDefaultModule :: T.Text -> Maybe T.Text -> EIO Module
+constructDefaultModule :: T.Text -> Maybe T.Text -> App Module
 constructDefaultModule moduleName mTargetName = do
   let targetName = fromMaybe moduleName mTargetName
   currentDir <- getCurrentDir
@@ -81,7 +81,7 @@ constructDefaultModule moduleName mTargetName = do
         modulePresetMap = Map.empty
       }
 
-createModuleFile :: Handle -> Module -> EIO ()
+createModuleFile :: Handle -> Module -> App ()
 createModuleFile h newModule = do
   ensureDir $ parent $ moduleLocation newModule
   SaveModule.save (saveModuleHandle h) (moduleLocation newModule) ([], (toDefaultEns newModule, []))

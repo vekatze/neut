@@ -52,6 +52,7 @@ module Kernel.Common.Module
   )
 where
 
+import App.Error
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Catch
@@ -62,7 +63,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes, maybeToList)
 import Data.Text qualified as T
 import Ens.Ens qualified as E
-import Error.Error
 import Kernel.Common.ClangOption qualified as CL
 import Kernel.Common.Const
 import Kernel.Common.ModuleURL

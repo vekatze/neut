@@ -1,5 +1,5 @@
-module Error.Run
-  ( runEIO,
+module App.Run
+  ( runApp,
     run,
     forP,
     forP_,
@@ -11,25 +11,25 @@ module Error.Run
   )
 where
 
+import App.App
+import App.Error qualified as E
 import Control.Monad.Except (MonadError (throwError), runExceptT)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Either (lefts, partitionEithers)
 import Data.Text qualified as T
-import Error.EIO
-import Error.Error qualified as E
 import Logger.Handle qualified as Logger
 import Logger.Hint
 import Logger.Print qualified as Logger
 import System.Exit
 import UnliftIO.Async (pooledForConcurrently)
 
-runEIO :: EIO a -> IO (Either E.Error a)
-runEIO =
+runApp :: App a -> IO (Either E.Error a)
+runApp =
   runExceptT
 
-run :: Logger.Handle -> EIO a -> IO a
+run :: Logger.Handle -> App a -> IO a
 run loggerHandle c = do
-  resultOrErr <- liftIO $ runEIO c
+  resultOrErr <- liftIO $ runApp c
   case resultOrErr of
     Left (E.MakeError err) -> do
       liftIO $ Logger.printErrorList loggerHandle err
@@ -37,23 +37,23 @@ run loggerHandle c = do
     Right result ->
       return result
 
-forP :: [a] -> (a -> EIO b) -> EIO [b]
+forP :: [a] -> (a -> App b) -> App [b]
 forP xs f = do
-  xs' <- liftIO $ pooledForConcurrently xs (runEIO . f)
+  xs' <- liftIO $ pooledForConcurrently xs (runApp . f)
   let (errors, results) = partitionEithers xs'
   if null errors
     then return results
     else throwError $ foldl (<>) (E.MakeError []) errors
 
-forP_ :: [a] -> (a -> EIO ()) -> EIO ()
+forP_ :: [a] -> (a -> App ()) -> App ()
 forP_ xs f = do
-  xs' <- liftIO $ pooledForConcurrently xs (runEIO . f)
+  xs' <- liftIO $ pooledForConcurrently xs (runApp . f)
   let errors = lefts xs'
   if null errors
     then return ()
     else throwError $ foldl (<>) (E.MakeError []) errors
 
-liftMaybe :: Maybe a -> EIO a
+liftMaybe :: Maybe a -> App a
 liftMaybe m =
   case m of
     Nothing ->
@@ -61,18 +61,18 @@ liftMaybe m =
     Just v ->
       return v
 
-raiseError :: Hint -> T.Text -> EIO a
+raiseError :: Hint -> T.Text -> App a
 raiseError m t =
   throwError $ E.newError m t
 
-raiseError' :: T.Text -> EIO a
+raiseError' :: T.Text -> App a
 raiseError' t =
   throwError $ E.newError' t
 
-raiseCritical :: Hint -> T.Text -> EIO a
+raiseCritical :: Hint -> T.Text -> App a
 raiseCritical m t =
   throwError $ E.newCritical m t
 
-raiseCritical' :: T.Text -> EIO a
+raiseCritical' :: T.Text -> App a
 raiseCritical' t =
   throwError $ E.newCritical' t

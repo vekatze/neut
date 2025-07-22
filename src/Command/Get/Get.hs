@@ -5,6 +5,7 @@ module Command.Get.Get
   )
 where
 
+import App.App (App)
 import Command.Common.Check qualified as Check
 import Command.Common.Clean qualified as Clean
 import Command.Common.Fetch qualified as Fetch
@@ -12,7 +13,6 @@ import CommandParser.Config.Get
 import CommandParser.Config.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Handle.Global.Path qualified as Path
@@ -38,7 +38,7 @@ new globalHandle remarkCfg = do
   cleanHandle <- Clean.new globalHandle
   return $ Handle {..}
 
-get :: Handle -> Config -> EIO ()
+get :: Handle -> Config -> App ()
 get h cfg = do
   let mainModule = Env.getMainModule (envHandle h)
   Path.ensureNotInDependencyDir mainModule

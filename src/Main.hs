@@ -1,5 +1,6 @@
 module Main (main) where
 
+import App.Run (run)
 import Color.CreateHandle qualified as Color
 import Command.Archive.Archive qualified as Archive
 import Command.Build.Build qualified as Build
@@ -17,7 +18,6 @@ import CommandParser.Command qualified as C
 import CommandParser.Config.Remark qualified as Remark
 import CommandParser.Parse qualified as CommandParser
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Error.Run (run)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Platform (ensureExecutables)
 import Logger.CreateHandle qualified as Logger

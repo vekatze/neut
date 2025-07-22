@@ -1,0 +1,32 @@
+import {
+  this.logger.hint {hint},
+  this.logger.log {Log, log},
+  this.logger.log-level {Critical, Error},
+}
+
+data error {
+| Make-Error(vector(log))
+}
+
+define join(es: vector(error)): error {
+  Make-Error(core.vector.concat(core.vector.for-each(es, function (e, _) {
+    let Make-Error(rs) = e;
+    rs
+  })))
+}
+
+define new-error(m: hint, content: text): error {
+  Make-Error(Vector[Log of {content, level := Error, position := Right(m)}])
+}
+
+define new-error'(content: text): error {
+  Make-Error(Vector[Log of {content, level := Error, position := none}])
+}
+
+define new-critical(m: hint, content: text): error {
+  Make-Error(Vector[Log of {content, level := Critical, position := Right(m)}])
+}
+
+define new-critical'(content: text): error {
+  Make-Error(Vector[Log of {content, level := Critical, position := none}])
+}

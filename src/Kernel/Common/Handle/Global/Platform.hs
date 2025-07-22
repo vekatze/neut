@@ -12,14 +12,14 @@ module Kernel.Common.Handle.Global.Platform
   )
 where
 
+import App.App (App)
+import App.Error (newError')
+import App.Run (raiseError, raiseError', run)
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Version qualified as V
-import Error.EIO (EIO)
-import Error.Error (newError')
-import Error.Run (raiseError, raiseError', run)
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.Const (envVarClang)
 import Kernel.Common.Module
@@ -80,7 +80,7 @@ new loggerHandle = do
     _clangDigest <- calculateClangDigest loggerHandle
     return $ Handle {..}
 
-getArch' :: Maybe Hint -> EIO Arch.Arch
+getArch' :: Maybe Hint -> App Arch.Arch
 getArch' mm = do
   case SI.arch of
     "amd64" ->
@@ -98,7 +98,7 @@ getArch' mm = do
         Nothing ->
           raiseError' $ "Unknown architecture: " <> T.pack arch
 
-getOS' :: Maybe Hint -> EIO O.OS
+getOS' :: Maybe Hint -> App O.OS
 getOS' mm = do
   case SI.os of
     "linux" ->
@@ -121,7 +121,7 @@ getClang = do
     Nothing -> do
       return "clang"
 
-calculateClangDigest :: Logger.Handle -> EIO T.Text
+calculateClangDigest :: Logger.Handle -> App T.Text
 calculateClangDigest h = do
   clang <- liftIO getClang
   let spec = RunProcess.Spec {cmdspec = RawCommand clang ["--version"], cwd = Nothing}
@@ -134,19 +134,19 @@ calculateClangDigest h = do
     Left err ->
       throwError $ newError' err
 
-getPlatformPrefix :: Handle -> EIO (Path Rel Dir)
+getPlatformPrefix :: Handle -> App (Path Rel Dir)
 getPlatformPrefix h = do
   let p = getPlatform h
   parseRelDir $ T.unpack $ P.reify p
 
-getBaseBuildDir :: Handle -> Module -> EIO (Path Abs Dir)
+getBaseBuildDir :: Handle -> Module -> App (Path Abs Dir)
 getBaseBuildDir h baseModule = do
   platformPrefix <- getPlatformPrefix h
   versionDir <- parseRelDir $ "compiler-" ++ V.showVersion version
   let moduleRootDir = getModuleRootDir baseModule
   return $ moduleRootDir </> moduleCacheDir baseModule </> $(mkRelDir "build") </> platformPrefix </> versionDir
 
-ensureExecutables :: EIO ()
+ensureExecutables :: App ()
 ensureExecutables = do
   clang <- liftIO getClang
   mapM_
@@ -157,7 +157,7 @@ ensureExecutables = do
       "zstd"
     ]
 
-ensureExecutable :: String -> EIO ()
+ensureExecutable :: String -> App ()
 ensureExecutable name = do
   mPath <- liftIO $ findExecutable name
   case mPath of

@@ -11,12 +11,12 @@ module Kernel.Common.Handle.Global.KeyArg
   )
 where
 
+import App.App (App)
+import App.Run (raiseError)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (raiseError)
 import Kernel.Common.Module
 import Kernel.Common.ReadableDD
 import Language.Common.Const (holeVarPrefix)
@@ -89,7 +89,7 @@ new _mainModule = do
   _keyArgMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> [ImpKey] -> [ExpKey] -> EIO ()
+insert :: Handle -> Hint -> DD.DefiniteDescription -> IsConstLike -> [ImpKey] -> [ExpKey] -> App ()
 insert h m funcName isConstLike impKeys expKeys = do
   kmap <- liftIO $ readIORef (_keyArgMapRef h)
   case Map.lookup funcName kmap of
@@ -135,7 +135,7 @@ insert h m funcName isConstLike impKeys expKeys = do
   liftIO $ atomicModifyIORef' (_keyArgMapRef h) $ \mp -> do
     (Map.insert funcName (isConstLike, (impKeys, expKeys)) mp, ())
 
-lookup :: Handle -> Hint -> DD.DefiniteDescription -> EIO ([ImpKey], [ExpKey])
+lookup :: Handle -> Hint -> DD.DefiniteDescription -> App ([ImpKey], [ExpKey])
 lookup h m dataName = do
   keyArgMap <- liftIO $ readIORef (_keyArgMapRef h)
   case Map.lookup dataName keyArgMap of

@@ -50,12 +50,12 @@ module Language.Common.BaseName
   )
 where
 
+import App.Error
 import Data.Binary
 import Data.Char (isUpper)
 import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Error.Error
 import GHC.Generics
 import Language.Common.Const
 import Language.Common.Ident (Ident)

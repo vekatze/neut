@@ -6,6 +6,9 @@ module Command.Build.Build
   )
 where
 
+import App.App (App)
+import App.Error (Error)
+import App.Run (raiseError')
 import Command.Common.Build qualified as Build
 import Command.Common.Fetch qualified as Fetch
 import CommandParser.Config.Build
@@ -13,9 +16,6 @@ import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Error (Error)
-import Error.Run (raiseError')
 import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
@@ -35,7 +35,7 @@ new ::
 new globalHandle = do
   Handle {..}
 
-build :: Handle -> Config -> EIO ()
+build :: Handle -> Config -> App ()
 build h cfg = do
   setup h cfg
   buildConfig <- liftEither $ toBuildConfig cfg
@@ -44,7 +44,7 @@ build h cfg = do
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   Build.buildTarget buildHandle mainModule (Main target)
 
-setup :: Handle -> Config -> EIO ()
+setup :: Handle -> Config -> App ()
 setup h cfg = do
   ensureSetupSanity cfg
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
@@ -66,7 +66,7 @@ toBuildConfig cfg = do
         executeArgs = args cfg
       }
 
-getMainTarget :: Handle -> T.Text -> EIO MainTarget
+getMainTarget :: Handle -> T.Text -> App MainTarget
 getMainTarget h targetName = do
   let mainModule = Env.getMainModule (Global.envHandle (globalHandle h))
   case getTarget (extractModule mainModule) targetName of
@@ -75,7 +75,7 @@ getMainTarget h targetName = do
     Nothing ->
       raiseError' $ "No such target exists: " <> targetName
 
-ensureSetupSanity :: Config -> EIO ()
+ensureSetupSanity :: Config -> App ()
 ensureSetupSanity cfg = do
   outputKindList <- liftEither $ mapM OK.fromText $ outputKindTextList cfg
   let willBuildObjects = OK.Object `elem` outputKindList

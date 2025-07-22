@@ -5,7 +5,7 @@ module Command.LSP.Internal.Source.Reflect
   )
 where
 
-import Error.EIO (EIO)
+import App.App (App)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Global.Env qualified as Env
 import Kernel.Common.Module
@@ -22,7 +22,7 @@ new :: Global.Handle -> Handle
 new (Global.Handle {..}) = do
   Handle {..}
 
-reflect :: Handle -> FilePath -> EIO (Maybe Source)
+reflect :: Handle -> FilePath -> App (Maybe Source)
 reflect h srcPath = do
   srcPath' <- parseAbsFile srcPath
   m <- getModule h srcPath'
@@ -34,7 +34,7 @@ reflect h srcPath = do
           sourceHint = Nothing
         }
 
-getModule :: Handle -> Path Abs File -> EIO Module
+getModule :: Handle -> Path Abs File -> App Module
 getModule h srcPath = do
   let srcDir = parent srcPath
   moduleFilePath <- Module.findModuleFile srcDir

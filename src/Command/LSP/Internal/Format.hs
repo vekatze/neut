@@ -5,11 +5,11 @@ module Command.LSP.Internal.Format
   )
 where
 
+import App.App (App)
+import App.Run (liftMaybe)
 import Command.Common.Format qualified as Format
 import Control.Monad.Trans
 import Data.Text qualified as T
-import Error.EIO (EIO)
-import Error.Run (liftMaybe)
 import Kernel.Common.Const
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Language.LSP.Protocol.Types
@@ -26,7 +26,7 @@ new globalHandle = do
   let formatHandle = Format.new globalHandle
   Handle {..}
 
-format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> EIO [TextEdit]
+format :: Handle -> Format.ShouldMinimizeImports -> Uri -> Maybe VirtualFile -> App [TextEdit]
 format h shouldMinimizeImports uri fileOrNone = do
   case fileOrNone of
     Nothing ->
@@ -39,7 +39,7 @@ _format ::
   Format.ShouldMinimizeImports ->
   Uri ->
   VirtualFile ->
-  EIO [TextEdit]
+  App [TextEdit]
 _format h shouldMinimizeImports uri file = do
   path <- liftMaybe (uriToFilePath uri) >>= lift . resolveFile'
   newText <- getFormattedContent h shouldMinimizeImports file path
@@ -54,7 +54,7 @@ _format h shouldMinimizeImports uri file = do
         }
     ]
 
-getFormattedContent :: Handle -> Format.ShouldMinimizeImports -> VirtualFile -> Path Abs File -> EIO T.Text
+getFormattedContent :: Handle -> Format.ShouldMinimizeImports -> VirtualFile -> Path Abs File -> App T.Text
 getFormattedContent h shouldMinimizeImports file path = do
   (_, ext) <- liftMaybe $ splitExtension path
   case (ext == sourceFileExtension, ext == ensFileExtension) of

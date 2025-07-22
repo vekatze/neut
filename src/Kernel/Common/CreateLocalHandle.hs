@@ -4,8 +4,8 @@ module Kernel.Common.CreateLocalHandle
   )
 where
 
+import App.App (App)
 import Control.Monad.IO.Class
-import Error.EIO (EIO)
 import Kernel.Common.CreateGlobalHandle qualified as Global
 import Kernel.Common.Handle.Local.Locator qualified as Locator
 import Kernel.Common.Handle.Local.RawImportSummary qualified as RawImportSummary
@@ -30,7 +30,7 @@ data Handle = Handle
     weakDeclHandle :: WeakDecl.Handle
   }
 
-new :: Global.Handle -> Source.Source -> EIO Handle
+new :: Global.Handle -> Source.Source -> App Handle
 new h source = do
   let envHandle = Global.envHandle h
   let antecedentHandle = Global.antecedentHandle h

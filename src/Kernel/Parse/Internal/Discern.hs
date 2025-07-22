@@ -1,5 +1,8 @@
 module Kernel.Parse.Internal.Discern (discernStmtList) where
 
+import App.App (App)
+import App.Error qualified as E
+import App.Run (raiseCritical, raiseError)
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
@@ -11,9 +14,6 @@ import Data.List qualified as List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Error.EIO (EIO)
-import Error.Error qualified as E
-import Error.Run (raiseCritical, raiseError)
 import Gensym.Gensym qualified as Gensym
 import Kernel.Common.Arch qualified as Arch
 import Kernel.Common.BuildMode qualified as BM
@@ -91,11 +91,11 @@ import SyntaxTree.C
 import SyntaxTree.Series qualified as SE
 import Text.Read qualified as R
 
-discernStmtList :: H.Handle -> [PostRawStmt] -> EIO [WeakStmt]
+discernStmtList :: H.Handle -> [PostRawStmt] -> App [WeakStmt]
 discernStmtList h =
   fmap concat . mapM (discernStmt h)
 
-discernStmt :: H.Handle -> PostRawStmt -> EIO [WeakStmt]
+discernStmt :: H.Handle -> PostRawStmt -> App [WeakStmt]
 discernStmt h stmt = do
   case stmt of
     PostRawStmtDefine _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
@@ -143,7 +143,7 @@ discernStmt h stmt = do
       foreign' <- liftIO $ interpretForeign h foreignList''
       return [WeakStmtForeign foreign']
 
-discernGeist :: H.Handle -> Loc -> RT.RawGeist DD.DefiniteDescription -> EIO (G.Geist WT.WeakTerm)
+discernGeist :: H.Handle -> Loc -> RT.RawGeist DD.DefiniteDescription -> App (G.Geist WT.WeakTerm)
 discernGeist h endLoc geist = do
   let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
@@ -165,12 +165,12 @@ discernGeist h endLoc geist = do
         cod = cod'
       }
 
-registerTopLevelName :: H.Handle -> PostRawStmt -> EIO ()
+registerTopLevelName :: H.Handle -> PostRawStmt -> App ()
 registerTopLevelName h stmt = do
   let arrow = NameMap.getGlobalNames [stmt]
   NameMap.insert (H.nameMapHandle h) arrow
 
-discernStmtKind :: H.Handle -> RawStmtKind DD.DefiniteDescription -> Hint -> EIO (SK.StmtKind WT.WeakTerm)
+discernStmtKind :: H.Handle -> RawStmtKind DD.DefiniteDescription -> Hint -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind h stmtKind m =
   case stmtKind of
     SK.Normal opacity ->
@@ -194,7 +194,7 @@ discernStmtKind h stmtKind m =
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
       return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
 
-getUnitType :: H.Handle -> Hint -> EIO WT.WeakTerm
+getUnitType :: H.Handle -> Hint -> App WT.WeakTerm
 getUnitType h m = do
   locator <- liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- resolveName h m (Locator locator)
@@ -213,7 +213,7 @@ toCandidateKind stmtKind =
     SK.DataIntro {} ->
       Constructor
 
-discern :: H.Handle -> RT.RawTerm -> EIO WT.WeakTerm
+discern :: H.Handle -> RT.RawTerm -> App WT.WeakTerm
 discern h term =
   case term of
     m :< RT.Tau ->
@@ -561,7 +561,7 @@ discernNoeticVarList h mustInsertTagInfo xsOuter = do
       Tag.insertLocalVar (H.tagHandle h) mUse outerVar mDef
     return ((mUse, xInner, t), mDef :< WT.Var outerVar)
 
-discernMagic :: H.Handle -> Hint -> RT.RawMagic -> EIO (M.WeakMagic WT.WeakTerm)
+discernMagic :: H.Handle -> Hint -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
 discernMagic h m magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
@@ -615,7 +615,7 @@ modifyLetContinuation ::
   (Hint, RP.RawPattern) ->
   N.IsNoetic ->
   RT.RawTerm ->
-  EIO (RawIdent, RT.RawTerm)
+  App (RawIdent, RT.RawTerm)
 modifyLetContinuation h pat isNoetic cont@(mCont :< _) =
   case pat of
     (_, RP.Var (Var x))
@@ -666,7 +666,7 @@ bind' mustIgnoreRelayedVars loc endLoc (m, x, c1, c2, t) e cont =
       cont
       endLoc
 
-lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, RT.RawTerm)] -> EIO RT.RawTerm
+lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, RT.RawTerm)] -> App RT.RawTerm
 lookupIntrospectiveClause m value clauseList =
   case clauseList of
     [] ->
@@ -679,7 +679,7 @@ lookupIntrospectiveClause m value clauseList =
     (Nothing, _, clause) : _ ->
       return clause
 
-getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> EIO T.Text
+getIntrospectiveValue :: H.Handle -> Hint -> T.Text -> App T.Text
 getIntrospectiveValue h m key = do
   bm <- liftIO $ Env.getBuildMode (H.envHandle h)
   let p = Platform.getPlatform (H.platformHandle h)
@@ -752,7 +752,7 @@ discernLet ::
   RT.RawTerm ->
   Loc ->
   Loc ->
-  EIO WT.WeakTerm
+  App WT.WeakTerm
 discernLet h m letKind (mx, pat, c1, c2, t) e1@(m1 :< _) e2 startLoc endLoc = do
   let opacity = WT.Clear
   let discernLet' isNoetic = do
@@ -785,7 +785,7 @@ constructEitherBinder ::
   RP.RawPattern ->
   RawIdent ->
   Cofree RT.RawTermF Hint ->
-  EIO RT.RawTerm
+  App RT.RawTerm
 constructEitherBinder h m mx m1 pat tmpVar cont = do
   let m' = blur m
   let mx' = blur mx
@@ -812,7 +812,7 @@ constructEitherBinder h m mx m1 pat tmpVar cont = do
         (SE.fromList'' [m1' :< RT.Var (Var tmpVar)])
         (SE.fromList SE.Brace SE.Bar [longClause, shortClause])
 
-discernIdent :: Hint -> H.Handle -> RawIdent -> EIO (Hint, (Hint, Ident))
+discernIdent :: Hint -> H.Handle -> RawIdent -> App (Hint, (Hint, Ident))
 discernIdent mUse h x =
   case lookup x (H.nameEnv h) of
     Nothing ->
@@ -825,7 +825,7 @@ discernBinder ::
   H.Handle ->
   [RawBinder RT.RawTerm] ->
   Loc ->
-  EIO ([BinderF WT.WeakTerm], H.Handle)
+  App ([BinderF WT.WeakTerm], H.Handle)
 discernBinder h binder endLoc =
   case binder of
     [] -> do
@@ -843,7 +843,7 @@ discernBinderWithDefaults ::
   H.Handle ->
   [(RawBinder RT.RawTerm, Maybe RT.RawTerm)] ->
   Loc ->
-  EIO ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], H.Handle)
+  App ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], H.Handle)
 discernBinderWithDefaults h binder endLoc =
   case binder of
     [] -> do
@@ -861,7 +861,7 @@ discernBinderWithDefaults h binder endLoc =
 discernBinder' ::
   H.Handle ->
   [RawBinder RT.RawTerm] ->
-  EIO ([BinderF WT.WeakTerm], H.Handle)
+  App ([BinderF WT.WeakTerm], H.Handle)
 discernBinder' h binder =
   case binder of
     [] -> do
@@ -880,7 +880,7 @@ discernBinderWithBody' ::
   Loc ->
   Loc ->
   RT.RawTerm ->
-  EIO (BinderF WT.WeakTerm, WT.WeakTerm)
+  App (BinderF WT.WeakTerm, WT.WeakTerm)
 discernBinderWithBody' h (mx, x, _, _, codType) startLoc endLoc e = do
   codType' <- discern h codType
   x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
@@ -892,7 +892,7 @@ discernBinderWithBody' h (mx, x, _, _, codType) startLoc endLoc e = do
 discernPatternMatrix ::
   H.Handle ->
   [RP.RawPatternRow RT.RawTerm] ->
-  EIO (PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  App (PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternMatrix h patternMatrix =
   case List.uncons patternMatrix of
     Nothing ->
@@ -905,7 +905,7 @@ discernPatternMatrix h patternMatrix =
 discernPatternRow ::
   H.Handle ->
   RP.RawPatternRow RT.RawTerm ->
-  EIO (PAT.PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  App (PAT.PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternRow h (patList, _, body) = do
   (patList', body') <- discernPatternRow' h (SE.extract patList) [] body
   return (V.fromList patList', body')
@@ -915,7 +915,7 @@ discernPatternRow' ::
   [(Hint, RP.RawPattern)] ->
   NominalEnv ->
   RT.RawTerm ->
-  EIO ([(Hint, PAT.Pattern)], ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  App ([(Hint, PAT.Pattern)], ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternRow' h patList newVarList body = do
   case patList of
     [] -> do
@@ -928,7 +928,7 @@ discernPatternRow' h patList newVarList body = do
       (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
 
-ensureVariableLinearity :: NominalEnv -> EIO ()
+ensureVariableLinearity :: NominalEnv -> App ()
 ensureVariableLinearity vars = do
   let linearityErrors = getNonLinearOccurrences vars S.empty []
   unless (null linearityErrors) $ throwError $ E.MakeError linearityErrors
@@ -953,7 +953,7 @@ discernPattern ::
   H.Handle ->
   Layer ->
   (Hint, RP.RawPattern) ->
-  EIO ((Hint, PAT.Pattern), NominalEnv)
+  App ((Hint, PAT.Pattern), NominalEnv)
 discernPattern h layer (m, pat) = do
   case pat of
     RP.Var name -> do
@@ -1048,7 +1048,7 @@ locatorToVarGlobal m text = do
   (gl, ll) <- DD.getLocatorPair (blur m) text
   return $ blur m :< RT.Var (Locator (gl, ll))
 
-getLayer :: Hint -> H.Handle -> Ident -> EIO Layer
+getLayer :: Hint -> H.Handle -> Ident -> App Layer
 getLayer m h x =
   case lookup (Ident.toText x) (H.nameEnv h) of
     Nothing ->
@@ -1056,13 +1056,13 @@ getLayer m h x =
     Just (_, _, l) -> do
       return l
 
-findExternalVariable :: Hint -> H.Handle -> WT.WeakTerm -> EIO (Maybe (Ident, Layer))
+findExternalVariable :: Hint -> H.Handle -> WT.WeakTerm -> App (Maybe (Ident, Layer))
 findExternalVariable m h e = do
   let fvs = S.toList $ freeVars e
   ls <- mapM (getLayer m h) fvs
   return $ List.find (\(_, l) -> l > H.currentLayer h) $ zip fvs ls
 
-ensureLayerClosedness :: Hint -> H.Handle -> WT.WeakTerm -> EIO ()
+ensureLayerClosedness :: Hint -> H.Handle -> WT.WeakTerm -> App ()
 ensureLayerClosedness mClosure h e = do
   mvar <- findExternalVariable mClosure h e
   case mvar of
@@ -1080,7 +1080,7 @@ ensureLayerClosedness mClosure h e = do
           <> T.pack (show (H.currentLayer h))
           <> ")"
 
-raiseLayerError :: Hint -> Layer -> Layer -> EIO a
+raiseLayerError :: Hint -> Layer -> Layer -> App a
 raiseLayerError m expected found = do
   raiseError m $
     "Expected layer:\n  "
@@ -1116,7 +1116,7 @@ resolveImpKeys h m impKeys kvs = do
         Nothing -> do
           Nothing : args
 
-resolveExpKeys :: H.Handle -> Hint -> [ExpKey] -> Map.HashMap Key a -> EIO [a]
+resolveExpKeys :: H.Handle -> Hint -> [ExpKey] -> Map.HashMap Key a -> App [a]
 resolveExpKeys h m expKeys kvs = do
   case expKeys of
     [] ->
@@ -1129,7 +1129,7 @@ resolveExpKeys h m expKeys kvs = do
         Nothing -> do
           raiseError m $ "The field `" <> expKey <> "` is missing"
 
-checkRedundancy :: Hint -> [ImpKey] -> [ExpKey] -> Map.HashMap Key a -> EIO ()
+checkRedundancy :: Hint -> [ImpKey] -> [ExpKey] -> Map.HashMap Key a -> App ()
 checkRedundancy m impKeys expKeys kvs = do
   let keys = Map.keys kvs
   let diff = keys \\ (impKeys ++ expKeys)
@@ -1137,7 +1137,7 @@ checkRedundancy m impKeys expKeys kvs = do
     then return ()
     else raiseError m $ "The following field(s) are redundant:\n" <> _showKeyList diff
 
-buildFoldRight :: RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
+buildFoldRight :: RT.RawTerm -> [RT.RawTerm] -> App RT.RawTerm
 buildFoldRight func@(mFunc :< _) argList =
   case argList of
     [] -> do
@@ -1148,7 +1148,7 @@ buildFoldRight func@(mFunc :< _) argList =
       restTerm <- buildFoldRight func restArgs
       return $ mFunc :< RT.piElim func [firstArg, restTerm]
 
-buildFoldLeft :: RT.RawTerm -> [RT.RawTerm] -> EIO RT.RawTerm
+buildFoldLeft :: RT.RawTerm -> [RT.RawTerm] -> App RT.RawTerm
 buildFoldLeft func@(mFunc :< _) argList =
   case argList of
     [] -> do
