@@ -1,0 +1,12 @@
+import {
+  this.color.color-kit {color-kit},
+  this.progress-indicator.rule {progress-indicator},
+}
+
+data inner-kit {
+| _Kit(
+    color-kit: color-kit,
+    progress-indicator-ref: cell(progress-indicator),
+    render-thread: thread(unit),
+  )
+}
