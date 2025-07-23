@@ -398,10 +398,12 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
-    _ :< WT.Pi (PK.DataIntro _) impArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' _dataType) -> do
+    _ :< WT.Pi (PK.DataIntro False) impArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' _dataType) -> do
       return $ map fst impArgs ++ expArgs ++ map fst impArgs' ++ expArgs'
+    _ :< WT.Pi (PK.DataIntro True) impArgs expArgs _dataType -> do
+      return $ map fst impArgs ++ expArgs
     _ ->
-      raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> WT.toText t
+      raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toText t
 
 lookupOptimizableData :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOptimizableData h dd = do

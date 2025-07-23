@@ -35,12 +35,14 @@ import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
+import Language.Common.PiKind qualified as PK
 import Language.Common.PrimType qualified as PT
 import Language.WeakTerm.Eq qualified as WT
 import Language.WeakTerm.FreeVars
 import Language.WeakTerm.Holes
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText
+import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as Subst
@@ -437,11 +439,12 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (typeHandle h) m consName
   case t of
-    _ :< WT.Pi _ impArgs expArgs _ -> do
-      let impBinders = map fst impArgs
-      return $ impBinders ++ expArgs
+    _ :< WT.Pi (PK.DataIntro False) impArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' _dataType) -> do
+      return $ map fst impArgs ++ expArgs ++ map fst impArgs' ++ expArgs'
+    _ :< WT.Pi (PK.DataIntro True) impArgs expArgs _dataType -> do
+      return $ map fst impArgs ++ expArgs
     _ ->
-      raiseCritical m $ "The type of a constructor must be a Π-type, but it's not:\n" <> toText t
+      raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toText t
 
 simplifyInteger ::
   Handle ->
