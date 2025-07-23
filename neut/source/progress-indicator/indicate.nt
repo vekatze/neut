@@ -1,10 +1,12 @@
 import {
-  core.ansi {style},
+  core.ansi {Erase, From-Cursor, Line, Move-Cursor, To-Column, Up, make-ansi-kit-unbuffered, style},
   core.cell {borrow},
+  core.file.descriptor {stdout},
   core.foreign {sleep},
+  core.system {system},
   this.color.color-kit {color-kit},
   this.color.print {print-stdout},
-  this.progress-indicator.rule {frame, progress-indicator, render-in-progress},
+  this.progress-indicator.rule {_Progress-Indicator, frame, progress-indicator, render-in-progress},
 }
 
 data inner-kit {
@@ -19,8 +21,22 @@ inline progress-indicator-kit: type {
   ?inner-kit
 }
 
-define _clear(ref: &progress-indicator): unit {
-  admit
+define _clear<r := rho>(pi: &progress-indicator): system(unit) {
+  pin k = make-ansi-kit-unbuffered(stdout);
+  try _ = r;
+  try _ = core.ansi.write-code(k, Move-Cursor(To-Column(0)));
+  try _ = core.ansi.write-code(k, Erase(Line, From-Cursor));
+  try _ = core.ansi.write-code(k, Move-Cursor(Up(1)));
+  try _ = core.ansi.write-code(k, Erase(Line, From-Cursor));
+  tie _Progress-Indicator of {progress} = pi;
+  case progress {
+  | Left(_) =>
+    Right(Unit)
+  | Right(_) =>
+    try _ = core.ansi.write-code(k, Move-Cursor(Up(1)));
+    try _ = core.ansi.write-code(k, Erase(Line, From-Cursor));
+    Right(Unit)
+  }
 }
 
 define _render(ck: &color-kit, i: frame, ref: &cell(progress-indicator)): unit {
@@ -28,7 +44,7 @@ define _render(ck: &color-kit, i: frame, ref: &cell(progress-indicator)): unit {
     pin t = render-in-progress(i, pi);
     print-stdout(ck, t);
     let _ = sleep(0.033); // 2F
-    _clear(pi);
+    let _ = _clear(pi);
     quote {Unit}
   });
   _render(ck, add-int(i, 1), ref);
