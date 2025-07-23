@@ -10,3 +10,7 @@ data inner-kit {
     render-thread: thread(unit),
   )
 }
+
+inline progress-indicator-kit: type {
+  ?inner-kit
+}
