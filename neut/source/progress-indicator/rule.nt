@@ -89,15 +89,22 @@ define render-in-progress(i: frame, p: &progress-indicator): color-text {
   }
 }
 
+define render-finished(p: &progress-indicator): color-text {
+  tie _Progress-Indicator of {color, completed-title} = p;
+  let check = packed-N(color, "✓ ");
+  let title = packed-N'(completed-title);
+  join(check, join(title, packed-N'("\n")))
+}
+
 define zen(): unit {
   let p =
     _Progress-Indicator of {
-      working-title := *"foo",
-      completed-title := *"bar",
+      working-title := *"Working...",
+      completed-title := *"Completed",
       color := Vector[Color(Foreground, Color-16(Vivid, Green))],
       progress := Right(Pair(0, 20)),
     };
-  let _ =
+  let p =
     grow(p, 30, function (p, i) {
       let _ on p = {
         let t = render-in-progress(i, p);
@@ -107,6 +114,12 @@ define zen(): unit {
       };
       next(p)
     });
+  let _ on p = {
+    pin t = render-finished(p);
+    pin t = _unpacked(t);
+    print-line(t);
+  };
+  let _ = p;
   print-line("done");
   Unit
 }
