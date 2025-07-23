@@ -5,6 +5,8 @@ env:
   NEUT_DOCKER_PATH: ./neut-haskell-amd64.tar
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
