@@ -1,6 +1,10 @@
 import {
+  core.ansi {style},
+  core.cell {borrow},
+  core.foreign {sleep},
   this.color.color-kit {color-kit},
-  this.progress-indicator.rule {progress-indicator},
+  this.color.print {print-stdout},
+  this.progress-indicator.rule {frame, progress-indicator, render-in-progress},
 }
 
 data inner-kit {
@@ -13,4 +17,37 @@ data inner-kit {
 
 inline progress-indicator-kit: type {
   ?inner-kit
+}
+
+define _clear(ref: &progress-indicator): unit {
+  admit
+}
+
+define _render(ck: &color-kit, i: frame, ref: &cell(progress-indicator)): unit {
+  borrow(ref, function (pi) {
+    pin t = render-in-progress(i, pi);
+    print-stdout(ck, t);
+    let _ = sleep(0.033); // 2F
+    _clear(pi);
+    quote {Unit}
+  });
+  _render(ck, add-int(i, 1), ref);
+}
+
+define make-progress-indicator-kit(
+  color-kit: color-kit,
+  silent-mode: bool,
+  num-of-items: ?int,
+  working-title: text,
+  completed-title: text,
+  color: vector(style),
+): progress-indicator-kit {
+  match silent-mode, num-of-items {
+  | True, _ =>
+    admit
+  | _, Right(i) =>
+    admit
+  | _, _ =>
+    admit
+  }
 }
