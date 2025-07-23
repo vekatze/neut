@@ -1,0 +1,188 @@
+import {
+  core.ansi {
+    Color,
+    Color-16,
+    Erase,
+    Foreground,
+    From-Cursor,
+    Green,
+    Line,
+    Move-Cursor,
+    To-Column,
+    Up,
+    Vivid,
+    make-ansi-kit-unbuffered,
+  },
+  core.cell {borrow, make-cell, modify, mutate},
+  core.control {loop},
+  core.file.descriptor {stdout},
+  core.foreign {sleep},
+  core.intmap {intmap},
+  core.system {system},
+  this.color.color-kit {color-kit, make-color-kit},
+  this.color.print {print-stdout},
+  this.progress-indicator.rule {
+    _Progress-Indicator,
+    frame,
+    next,
+    progress-indicator,
+    render-finished,
+    render-in-progress,
+  },
+}
+
+data progress-indicator-kit {
+| _Progress-Indicator-Kit(
+    color-kit: color-kit,
+    counter-ref: cell(int),
+    progress-indicator-ref: cell(progress-indicator),
+    active-ref: cell(intmap(unit)),
+  )
+}
+
+data renderer {
+| _Renderer(
+    id: int,
+    renderer-thread: thread(unit),
+  )
+}
+
+define _clear<r := rho>(pi: &progress-indicator): system(unit) {
+  pin k = make-ansi-kit-unbuffered(stdout);
+  try _ = r;
+  try _ = core.ansi.write-code(k, Move-Cursor(To-Column(0)));
+  try _ = core.ansi.write-code(k, Erase(Line, From-Cursor));
+  tie _Progress-Indicator of {progress} = pi;
+  case progress {
+  | Left(_) =>
+    Right(Unit)
+  | Right(_) =>
+    try _ = core.ansi.write-code(k, Move-Cursor(Up(1)));
+    try _ = core.ansi.write-code(k, Erase(Line, From-Cursor));
+    Right(Unit)
+  }
+}
+
+define _gensym(k: &progress-indicator-kit): int {
+  tie _Progress-Indicator-Kit of {counter-ref} = k;
+  modify(counter-ref, function (counter) {
+    letbox-T counter = counter;
+    Pair(quote {add-int(counter, 1)}, counter)
+  })
+}
+
+define make-progress-indicator-kit(
+  color-kit: color-kit,
+  base-progress-indicator: progress-indicator,
+): progress-indicator-kit {
+  let progress-indicator-ref = make-cell(quote {base-progress-indicator});
+  let active-ref = make-cell(quote {core.intmap.empty});
+  let counter-ref = make-cell(quote {0});
+  _Progress-Indicator-Kit of {color-kit, progress-indicator-ref, active-ref, counter-ref}
+}
+
+define increment(k: &progress-indicator-kit): unit {
+  tie _Progress-Indicator-Kit of {progress-indicator-ref} = k;
+  mutate(progress-indicator-ref, function (p) {
+    box {
+      letbox p = p;
+      next(p)
+    }
+  })
+}
+
+define _render(k: &progress-indicator-kit, id: int, i: frame): unit {
+  tie _Progress-Indicator-Kit of {color-kit, progress-indicator-ref, active-ref} = k;
+  let is-active =
+    borrow(active-ref, function (active) {
+      match core.intmap.lookup(active, id) {
+      | Left(_) =>
+        quote {False}
+      | Right(_) =>
+        quote {True}
+      }
+    });
+  if is-active {
+    borrow(progress-indicator-ref, function (pi) {
+      pin t = render-in-progress(i, pi);
+      print-stdout(color-kit, t);
+      quote {Unit}
+    });
+    let _ = sleep(0.033); // 2F
+    borrow(progress-indicator-ref, function (pi) {
+      let _ = _clear(pi);
+      quote {Unit}
+    });
+    _render(k, id, add-int(i, 1));
+  } else {
+    borrow(progress-indicator-ref, function (pi) {
+      pin t = render-finished(pi);
+      print-stdout(color-kit, t);
+      quote {Unit}
+    });
+  }
+}
+
+define start-rendering(k: &progress-indicator-kit): renderer {
+  tie _Progress-Indicator-Kit of {active-ref} = k;
+  let id = _gensym(k);
+  mutate(active-ref, function (actives) {
+    box {
+      letbox actives = actives;
+      letbox id = quote {id};
+      core.intmap.insert(actives, id, Unit)
+    }
+  });
+  let th = detach {_render(k, id, 0)};
+  _Renderer of {id, renderer-thread := th}
+}
+
+define stop-rendering(k: &progress-indicator-kit, r: renderer): unit {
+  tie _Progress-Indicator-Kit of {active-ref} = k;
+  let _Renderer of {id, renderer-thread} = r;
+  mutate(active-ref, function (actives) {
+    box {
+      letbox actives = actives;
+      letbox id = quote {id};
+      core.intmap.delete(actives, id)
+    }
+  });
+  attach {renderer-thread};
+}
+
+define zen(): unit {
+  {
+    let color-kit = make-color-kit(True, True);
+    let p =
+      _Progress-Indicator of {
+        working-title := *"Working...",
+        completed-title := *"Completed!",
+        color := Vector[Color(Foreground, Color-16(Vivid, Green))],
+        progress := Right(Pair(0, 100)),
+      };
+    pin k = make-progress-indicator-kit(color-kit, p);
+    let r = start-rendering(k);
+    loop(100, function (_) {
+      let _ = sleep(0.01);
+      increment(k);
+    });
+    stop-rendering(k, r);
+  };
+  {
+    let color-kit = make-color-kit(True, True);
+    let p =
+      _Progress-Indicator of {
+        working-title := *"Working...",
+        completed-title := *"Completed!",
+        color := Vector[],
+        progress := none,
+      };
+    pin k = make-progress-indicator-kit(color-kit, p);
+    let r = start-rendering(k);
+    loop(10, function (_) {
+      let _ = sleep(0.1);
+      increment(k);
+    });
+    stop-rendering(k, r);
+  };
+}
