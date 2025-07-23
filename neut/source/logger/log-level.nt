@@ -22,16 +22,16 @@ define _log-level-to-text(l: log-level): &text {
   }
 }
 
-define _log-level-to-tone(l: log-level): list(style) {
+define _log-level-to-tone(l: log-level): vector(style) {
   match l {
   | Note =>
-    List[Bold, Color(Foreground, Color-16(Vivid, Blue))]
+    Vector[Bold, Color(Foreground, Color-16(Vivid, Blue))]
   | Warning =>
-    List[Bold, Color(Foreground, Color-16(Vivid, Magenta))]
+    Vector[Bold, Color(Foreground, Color-16(Vivid, Magenta))]
   | Error =>
-    List[Bold, Color(Foreground, Color-16(Vivid, Red))]
+    Vector[Bold, Color(Foreground, Color-16(Vivid, Red))]
   | Critical =>
-    List[Bold, Color(Foreground, Color-16(Vivid, Red))]
+    Vector[Bold, Color(Foreground, Color-16(Vivid, Red))]
   }
 }
 

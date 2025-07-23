@@ -41,7 +41,7 @@ define print-stderr(k: &color-kit, t: &color-text): unit {
 }
 
 define zen(): unit {
-  pin t' = packed(List[Color(Foreground, Color-16(Vivid, Blue)), Bold], *"sample\n");
+  pin t' = packed(Vector[Color(Foreground, Color-16(Vivid, Blue)), Bold], *"sample\n");
   pin h = make-color-kit(False, True);
   print-stdout(h, t');
   print-stderr(h, t')

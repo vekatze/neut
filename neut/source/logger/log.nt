@@ -1,7 +1,7 @@
 import {
   core.ansi {Bold},
   core.list {for-each-N},
-  this.color.text {Empty, color-text, join, packed, packed'},
+  this.color.text {Empty, color-text, join, packed, packed', packed-N'},
   this.logger.hint {hint, show-file-pos},
   this.logger.log-level {_log-level-to-pad, _log-level-to-text, _log-level-to-tone, log-level},
 }
@@ -19,7 +19,7 @@ define _show-position(h: &?hint): color-text {
   | Left(_) =>
     Empty
   | Right(h) =>
-    join(packed(List[Bold], show-file-pos(h)), packed'(*"\n"))
+    join(packed(Vector[Bold], show-file-pos(h)), packed'(*"\n"))
   }
 }
 
@@ -28,20 +28,22 @@ define _show-level(l: log-level): color-text {
 }
 
 define _show-content(level: log-level, content: text): color-text {
-  pin pad = _log-level-to-pad(level);
-  pin adjusted-content = {
+  let adjusted-content = {
     let lines on content = core.text.split(content, "\n");
     match lines {
     | Nil =>
-      content
+      packed'(content)
     | Cons(head, tail) =>
-      pin tail = tail;
-      let tail' =
+      let pad = _log-level-to-pad(level);
+      let tail' on tail, pad =
         for-each-N(tail, function (t) {
           core.text.append(pad, t)
         });
-      core.text.intercalate(Cons(head, tail'), *"\n")
+      let _ = pad;
+      let _ = tail;
+      let tmp = core.text.intercalate(Cons(head, tail'), *"\n");
+      packed'(tmp)
     }
   };
-  packed'(core.text.append(adjusted-content, "\n"))
+  join(adjusted-content, packed-N'("\n"))
 }
