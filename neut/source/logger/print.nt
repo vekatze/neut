@@ -61,7 +61,7 @@ define report(k: &logger-kit, message: text): unit {
   when *enable-debug-mode {
     let current-time = get-time();
     let elapsed-time = sub-time(current-time, *base-time);
-    let time-text = packed(List[Color(Foreground, Color-16(Vivid, Black))], _show-time(elapsed-time));
+    let time-text = packed(Vector[Color(Foreground, Color-16(Vivid, Black))], _show-time(elapsed-time));
     pin debug-text = join(time-text, join(packed'(*" "), join(packed'(message), packed'(*"\n"))));
     print-stderr(color-kit, debug-text)
   }

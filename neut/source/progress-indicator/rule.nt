@@ -1,0 +1,125 @@
+import {
+  core.ansi {Color, Color-16, Foreground, Green, Vivid, style},
+  core.control {grow},
+  core.float {floor},
+  core.int {min-int},
+  core.int.show {show-int},
+  core.text.io {print-line},
+  this.color.text {Join-TN, _unpacked, color-text, join, packed, packed', packed-N, packed-N'},
+}
+
+data progress-indicator {
+| _Progress-Indicator(
+    working-title: text,
+    completed-title: text,
+    color: vector(style),
+    progress: ?pair(int, int),
+  )
+}
+
+inline frame: type {
+  int
+}
+
+define _choose-spinner(i: int): &text {
+  match rem-int(i, 10) {
+  | 0 =>
+    "⠋"
+  | 1 =>
+    "⠙"
+  | 2 =>
+    "⠹"
+  | 3 =>
+    "⠸"
+  | 4 =>
+    "⠼"
+  | 5 =>
+    "⠴"
+  | 6 =>
+    "⠦"
+  | 7 =>
+    "⠧"
+  | 8 =>
+    "⠇"
+  | _ =>
+    "⠏"
+  }
+}
+
+define _bar-length: int {
+  32
+}
+
+define _bar-in-progress: &text {
+  " "
+}
+
+define _bar-finished: &text {
+  "━"
+}
+
+define next(p: progress-indicator): progress-indicator {
+  let _Progress-Indicator of {working-title, completed-title, color, progress} = p;
+  match progress {
+  | Left(_) =>
+    let progress = none;
+    _Progress-Indicator of {working-title, completed-title, color, progress}
+  | Right(Pair(i, count)) =>
+    let progress = Right(Pair(min-int(add-int(i, 1), count), count));
+    _Progress-Indicator of {working-title, completed-title, color, progress}
+  }
+}
+
+define render-in-progress(i: frame, p: &progress-indicator): color-text {
+  tie _Progress-Indicator of {color, progress, working-title} = p;
+  let spinner = packed-N(color, _choose-spinner(i));
+  let title' = join(spinner, Join-TN(" ", packed-N'(working-title)));
+  case progress {
+  | Left(_) =>
+    title'
+  | Right(Pair(current, size)) =>
+    let frac = div-float(sitofp-int-float(*current), sitofp-int-float(*size));
+    let pivot = fptosi-float-int(floor(mul-float(sitofp-int-float(_bar-length), frac)));
+    let prefix = packed(*color, core.text.replicate(_bar-finished, pivot));
+    let suffix = packed'(core.text.replicate(_bar-in-progress, sub-int(_bar-length, pivot)));
+    let bar = join(prefix, suffix);
+    let current' = packed'(show-int(*current));
+    let size' = packed'(show-int(*size));
+    join(title', Join-TN("\n ", join(bar, Join-TN(" ", join(current', Join-TN("/", size'))))))
+  }
+}
+
+define render-finished(p: &progress-indicator): color-text {
+  tie _Progress-Indicator of {color, completed-title} = p;
+  let check = packed-N(color, "✓ ");
+  let title = packed-N'(completed-title);
+  join(check, join(title, packed-N'("\n")))
+}
+
+define zen(): unit {
+  let p =
+    _Progress-Indicator of {
+      working-title := *"Working...",
+      completed-title := *"Completed",
+      color := Vector[Color(Foreground, Color-16(Vivid, Green))],
+      progress := Right(Pair(0, 20)),
+    };
+  let p =
+    grow(p, 30, function (p, i) {
+      let _ on p = {
+        let t = render-in-progress(i, p);
+        pin t = t;
+        pin k = _unpacked(t);
+        print-line(k);
+      };
+      next(p)
+    });
+  let _ on p = {
+    pin t = render-finished(p);
+    pin t = _unpacked(t);
+    print-line(t);
+  };
+  let _ = p;
+  print-line("done");
+  Unit
+}

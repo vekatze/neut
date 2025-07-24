@@ -13,21 +13,30 @@ import {
     Vivid,
     style,
   },
-  core.list {for-N},
   core.text-builder {append-ansi, append-text, extract, make-text-builder},
 }
 
 data color-text {
 | Empty
-| Join(list(style), text, color-text)
+| Join(vector(style), text, color-text)
+| Join-N(&vector(style), &text, color-text)
+| Join-TN(&text, color-text)
 }
 
-define packed(ts: list(style), t: text): color-text {
+define packed(ts: vector(style), t: text): color-text {
   Join(ts, t, Empty)
 }
 
+define packed-N(ts: &vector(style), t: &text): color-text {
+  Join-N(ts, t, Empty)
+}
+
 define packed'(t: text): color-text {
-  Join(Nil, t, Empty)
+  Join(core.vector.make(4), t, Empty)
+}
+
+define packed-N'(t: &text): color-text {
+  Join-TN(t, Empty)
 }
 
 define _unpacked(t: &color-text): text {
@@ -39,11 +48,21 @@ define _unpacked(t: &color-text): text {
         | Empty =>
           Unit
         | Join(ts, t, rest) =>
-          for-N(ts, function (t) {
+          core.vector.for-N(ts, function (t, _) {
             append-ansi(b, Set-Style(*t));
           });
           append-text(b, t);
           append-ansi(b, Set-Style(Normal));
+          loop(rest)
+        | Join-N(ts, t, rest) =>
+          core.vector.for-N(*ts, function (t, _) {
+            append-ansi(b, Set-Style(*t));
+          });
+          append-text(b, *t);
+          append-ansi(b, Set-Style(Normal));
+          loop(rest)
+        | Join-TN(t, rest) =>
+          append-text(b, *t);
           loop(rest)
         }
       };
@@ -63,6 +82,12 @@ define _unpacked-uncolored(t: &color-text): text {
         | Join(_, t, rest) =>
           append-text(b, t);
           loop(rest)
+        | Join-N(_, t, rest) =>
+          append-text(b, *t);
+          loop(rest)
+        | Join-TN(t, rest) =>
+          append-text(b, *t);
+          loop(rest)
         }
       };
     f(t)
@@ -76,19 +101,35 @@ define join(t1: color-text, t2: color-text): color-text {
     t2
   | Join(tones, content, rest) =>
     Join(tones, content, join(rest, t2))
+  | Join-N(tones, content, rest) =>
+    Join-N(tones, content, join(rest, t2))
+  | Join-TN(t, rest) =>
+    Join-TN(t, join(rest, t2))
   }
+}
+
+rule-right join-full {
+  function leaf(_: int): color-text {
+    Empty
+  },
+  function node-left(d: color-text, acc: color-text): color-text {
+    join(d, acc)
+  },
+  function root<a>(x: a): a {
+    x
+  },
 }
 
 define zen(): unit {
   pin t =
     Join(
-      List[Color(Foreground, Color-16(Vivid, Blue)), Bold],
+      Vector[Color(Foreground, Color-16(Vivid, Blue)), Bold],
       *"hello",
-      Join(List[], *"\n", Empty),
+      Join(Vector[], *"\n", Empty),
     );
   pin fragment1 = _unpacked(t);
   pin fragment2 = _unpacked-uncolored(t);
-  pin t' = packed(List[Color(Background, Color-16(Vivid, Red)), Italic], *"sample\n");
+  pin t' = packed(Vector[Color(Background, Color-16(Vivid, Red)), Italic], *"sample\n");
   pin fragment3 = _unpacked(t');
   print(fragment1);
   print(fragment2);
