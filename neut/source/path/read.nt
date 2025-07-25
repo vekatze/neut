@@ -1,3 +1,15 @@
+import {
+  core.binary {binary},
+  core.binary.io,
+  core.file.descriptor {stdin},
+  core.system {system},
+}
+
 define is-stdin(path: &text): bool {
   eq-text(path, "-")
+}
+
+define _read-binary-from-stdin<r := rho>(): system(binary) {
+  try _ = r;
+  core.binary.io.read(stdin, 1024)
 }
