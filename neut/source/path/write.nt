@@ -1,0 +1,16 @@
+import {
+  core.binary {binary},
+  core.binary.io,
+  core.file {close, open},
+  core.file.flag {Create, W},
+  core.file.mode {default-file-mode},
+  core.system {system},
+}
+
+define _write-binary-to-path<r := rho>(path: &text, content: &binary): system(unit) {
+  try _ = r;
+  try fd = open(path, List[W, Create], default-file-mode);
+  try _ = core.binary.io.write(fd, content);
+  try _ = close(fd);
+  Right(Unit)
+}
