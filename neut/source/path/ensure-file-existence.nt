@@ -1,7 +1,7 @@
 import {
   path.io {is-regular-file},
   this.app.app {app},
-  this.app.error {new-error},
+  this.app.error {new-error, new-error'},
   this.logger.hint {hint},
 }
 
@@ -11,5 +11,14 @@ define ensure-file-existence(path: &text, m: hint): app(unit) {
   } else {
     let message = core.text.append("No such file exists: ", path);
     Left(new-error(m, message))
+  }
+}
+
+define ensure-file-existence'(path: &text): app(unit) {
+  if is-regular-file(path) {
+    Right(Unit)
+  } else {
+    let message = core.text.append("No such file exists: ", path);
+    Left(new-error'(message))
   }
 }
