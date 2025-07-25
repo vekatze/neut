@@ -22,3 +22,13 @@ define ensure-file-existence'(path: &text): app(unit) {
     Left(new-error'(message))
   }
 }
+
+define zen(): unit {
+  pin result = ensure-file-existence'("/etc/bashrc");
+  vet(result);
+  pin result = ensure-file-existence'("/etc/bashrcrc");
+  vet(result);
+  pin result = ensure-file-existence'("/etc/");
+  vet(result);
+  Unit
+}
