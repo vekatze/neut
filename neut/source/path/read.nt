@@ -1,0 +1,3 @@
+define is-stdin(path: &text): bool {
+  eq-text(path, "-")
+}
