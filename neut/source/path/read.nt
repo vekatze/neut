@@ -1,0 +1,45 @@
+import {
+  core.binary {binary},
+  core.binary.io,
+  core.file {close, open},
+  core.file.descriptor {stdin},
+  core.file.flag {R},
+  core.file.mode {default-file-mode},
+  core.system {get-error-message, system},
+  this.app.app {app},
+  this.app.error {new-error'},
+  this.path.ensure-file-existence {ensure-file-existence'},
+}
+
+define is-stdin(path: &text): bool {
+  eq-text(path, "-")
+}
+
+define _read-binary-from-stdin<r := rho>(): system(binary) {
+  try _ = r;
+  core.binary.io.read(stdin, 1024)
+}
+
+define _read-binary-from-path<r := rho>(path: &text): system(binary) {
+  try _ = r;
+  try fd = open(path, List[R], default-file-mode);
+  try content = core.binary.io.read(fd, 4096);
+  try _ = close(fd);
+  Right(content)
+}
+
+define read-text-from-path<r := rho>(path: &text): app(text) {
+  try _ = r;
+  try _ = ensure-file-existence'(path);
+  match _read-binary-from-path(path) {
+  | Left(sys-err) =>
+    Left(new-error'(get-error-message(sys-err)))
+  | Right(content-binary) =>
+    Right(magic cast(binary, text, content-binary))
+  }
+}
+
+define zen(): unit {
+  pin x = read-text-from-path("/etc/bashrc");
+  vet(x);
+}
