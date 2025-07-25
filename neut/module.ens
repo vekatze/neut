@@ -24,5 +24,11 @@
         "https://github.com/vekatze/marshal/raw/main/archive/0-1-34.tar.zst",
       ],
     },
+    path {
+      digest "r55gS01B18Gaeb1RppdoP0yFe4f1JU5Q6qArN5FYTwo",
+      mirror [
+        "https://github.com/vekatze/path-nt/raw/main/archive/0-1-36.tar.zst",
+      ],
+    },
   },
 }
