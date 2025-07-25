@@ -1,7 +1,10 @@
 import {
   core.binary {binary},
   core.binary.io,
+  core.file {close, open},
   core.file.descriptor {stdin},
+  core.file.flag {R},
+  core.file.mode {default-file-mode},
   core.system {system},
 }
 
@@ -12,4 +15,12 @@ define is-stdin(path: &text): bool {
 define _read-binary-from-stdin<r := rho>(): system(binary) {
   try _ = r;
   core.binary.io.read(stdin, 1024)
+}
+
+define _read-binary-from-path<r := rho>(path: &text): system(binary) {
+  try _ = r;
+  try fd = open(path, List[R], default-file-mode);
+  try content = core.binary.io.read(fd, 4096);
+  try _ = close(fd);
+  Right(content)
 }
