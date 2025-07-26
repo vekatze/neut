@@ -1,6 +1,6 @@
 import {
   core.box {axiom-T},
-  core.cell {make-cell, modify, mutate},
+  core.cell {borrow, make-cell, modify, mutate},
 }
 
 data gensym-kit {
@@ -29,6 +29,13 @@ define set-count(k: &gensym-kit, x: int): unit {
   })
 }
 
+define get-count(k: &gensym-kit): int {
+  tie _Gensym-Kit of {counter-ref} = k;
+  borrow(counter-ref, function (x) {
+    quote {*x}
+  })
+}
+
 define zen(): unit {
   pin k = make-gensym-kit();
   pin i = new-count(k);
@@ -38,4 +45,9 @@ define zen(): unit {
   set-count(k, 10);
   pin i = new-count(k);
   vet(i);
+  set-count(k, 20);
+  pin i = get-count(k);
+  pin j = get-count(k);
+  vet(i);
+  vet(j);
 }
