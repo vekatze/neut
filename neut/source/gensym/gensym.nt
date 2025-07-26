@@ -1,0 +1,5 @@
+data gensym-kit {
+| _Gensym-Kit(
+    counte-ref: cell(int),
+  )
+}
