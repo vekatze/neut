@@ -1,5 +1,6 @@
 import {
-  core.cell {make-cell},
+  core.box {axiom-T},
+  core.cell {make-cell, modify},
 }
 
 data gensym-kit {
@@ -11,4 +12,20 @@ data gensym-kit {
 define make-gensym-kit(): gensym-kit {
   let counter-ref = make-cell(quote {0});
   _Gensym-Kit of {counter-ref}
+}
+
+inline new-count(k: &gensym-kit): int {
+  tie _Gensym-Kit of {counter-ref} = k;
+  modify(counter-ref, function (x) {
+    let x = axiom-T(x);
+    Pair(quote {add-int(x, 1)}, x)
+  })
+}
+
+define zen(): unit {
+  pin k = make-gensym-kit();
+  pin i = new-count(k);
+  pin j = new-count(k);
+  vet(i);
+  vet(j);
 }
