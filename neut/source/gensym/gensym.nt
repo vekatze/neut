@@ -1,5 +1,14 @@
+import {
+  core.cell {make-cell},
+}
+
 data gensym-kit {
 | _Gensym-Kit(
-    counte-ref: cell(int),
+    counter-ref: cell(int),
   )
+}
+
+define make-gensym-kit(): gensym-kit {
+  let counter-ref = make-cell(quote {0});
+  _Gensym-Kit of {counter-ref}
 }
