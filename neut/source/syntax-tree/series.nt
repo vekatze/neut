@@ -164,3 +164,19 @@ define _assoc<a>(es: list(pair(comment, pair(a, comment))), c: comment): pair(li
     Pair(Cons(Pair(c11, e1), tmp), c')
   }
 }
+
+define from-list-with-comment<a>(
+  container: container,
+  separator: separator,
+  values: list(pair(comment, pair(a, comment))),
+): series(a) {
+  let Pair(elems, trailing-comment) = _assoc(values, Nil);
+  Series of {
+    elems,
+    trailing-comment,
+    prefix := none,
+    container := Right(container),
+    separator,
+    has-optional-separator := False,
+  }
+}
