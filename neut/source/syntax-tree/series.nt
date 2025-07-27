@@ -17,3 +17,14 @@ data container {
 inline prefix: type {
   ?pair(text, comment)
 }
+
+data series(a) {
+| Series(
+    elems: list(pair(comment, a)),
+    trailing-comment: comment,
+    prefix: prefix,
+    container: ?container,
+    separator: separator,
+    has-optional-separator: bool,
+  )
+}
