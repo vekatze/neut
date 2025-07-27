@@ -133,3 +133,7 @@ define from-list<a>(container: container, separator: separator, values: list(a))
     has-optional-separator := False,
   }
 }
+
+define from-list-paren<a>(values: list(a)): series(a) {
+  from-list(Paren, Comma, values)
+}
