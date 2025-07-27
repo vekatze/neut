@@ -118,3 +118,18 @@ define empty-series-paren-comma<a>(): series(a) {
 define empty-series-angle-comma<a>(): series(a) {
   empty-series(Right(Angle), Comma)
 }
+
+define from-list<a>(container: container, separator: separator, values: list(a)): series(a) {
+  let elems =
+    core.list.for-each(values, function (v) {
+      Pair(Nil, v)
+    });
+  Series of {
+    elems,
+    trailing-comment := Nil,
+    prefix := none,
+    container := Right(container),
+    separator,
+    has-optional-separator := False,
+  }
+}
