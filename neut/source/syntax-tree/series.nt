@@ -50,3 +50,20 @@ define empty-series<a>(container: ?container, separator: separator): series(a) {
     has-optional-separator := False,
   }
 }
+
+define singleton<a>(
+  container: ?container,
+  separator: separator,
+  leading-comment: comment,
+  value: a,
+  trailing-comment: comment,
+): series(a) {
+  Series of {
+    elems := List[Pair(leading-comment, value)],
+    trailing-comment,
+    prefix := Left(Unit),
+    container,
+    separator,
+    has-optional-separator := False,
+  }
+}
