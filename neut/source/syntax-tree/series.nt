@@ -2,3 +2,10 @@ data separator {
 | Comma
 | Bar
 }
+
+data container {
+| Paren
+| Brace
+| Bracket
+| Angle
+}
