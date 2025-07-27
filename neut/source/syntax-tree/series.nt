@@ -206,3 +206,16 @@ define push-comment<a>(comment: comment, s: series(a)): series(a) {
     }
   }
 }
+
+define assoc<a>(s: series(pair(a, comment))): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  let Pair(elems, trailing-comment) = _assoc(elems, trailing-comment);
+  Series of {
+    elems,
+    trailing-comment,
+    prefix,
+    container,
+    separator,
+    has-optional-separator,
+  }
+}
