@@ -180,3 +180,29 @@ define from-list-with-comment<a>(
     has-optional-separator := False,
   }
 }
+
+define push-comment<a>(comment: comment, s: series(a)): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  match elems {
+  | Nil =>
+    Series of {
+      elems := Nil,
+      trailing-comment := core.list.append(comment, trailing-comment),
+      prefix,
+      container,
+      separator,
+      has-optional-separator,
+    }
+  | Cons(first-pair, rest) =>
+    let Pair(first-comment, first-value) = first-pair;
+    let new-first = Pair(core.list.append(comment, first-comment), first-value);
+    Series of {
+      elems := Cons(new-first, rest),
+      trailing-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator,
+    }
+  }
+}
