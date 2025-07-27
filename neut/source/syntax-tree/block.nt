@@ -1,0 +1,11 @@
+import {
+  this.syntax-tree.comment {comment},
+}
+
+data block(a) {
+| Block(
+    leading-comment: comment,
+    content: a,
+    trailing-comment: comment,
+  )
+}
