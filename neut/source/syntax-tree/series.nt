@@ -137,3 +137,18 @@ define from-list<a>(container: container, separator: separator, values: list(a))
 define from-list-paren<a>(values: list(a)): series(a) {
   from-list(Paren, Comma, values)
 }
+
+define from-list-bare<a>(values: list(a)): series(a) {
+  let elems =
+    core.list.for-each(values, function (v) {
+      Pair(Nil, v)
+    });
+  Series of {
+    elems,
+    trailing-comment := Nil,
+    prefix := none,
+    container := none,
+    separator := Comma,
+    has-optional-separator := False,
+  }
+}
