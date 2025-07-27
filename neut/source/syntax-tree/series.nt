@@ -258,3 +258,11 @@ define get-separator-text(sep: separator): &text {
     "|"
   }
 }
+
+define extract<a>(s: series(a)): list(a) {
+  let Series of {elems} = s;
+  core.list.for-each(elems, function (e) {
+    let Pair(_, v) = e;
+    v
+  })
+}
