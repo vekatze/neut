@@ -1,3 +1,7 @@
+import {
+  this.syntax-tree.comment {comment},
+}
+
 data separator {
 | Comma
 | Bar
@@ -8,4 +12,8 @@ data container {
 | Brace
 | Bracket
 | Angle
+}
+
+inline prefix: type {
+  ?pair(text, comment)
 }
