@@ -236,3 +236,16 @@ define join-c<a>(s: series(pair(comment, a))): series(a) {
     has-optional-separator,
   }
 }
+
+define get-container-pair(cont: container): pair(&text, &text) {
+  match cont {
+  | Paren =>
+    Pair("(", ")")
+  | Brace =>
+    Pair("{", "}")
+  | Bracket =>
+    Pair("[", "]")
+  | Angle =>
+    Pair("<", ">")
+  }
+}
