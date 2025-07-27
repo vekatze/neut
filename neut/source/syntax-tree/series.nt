@@ -28,3 +28,14 @@ data series(a) {
     has-optional-separator: bool,
   )
 }
+
+inline for-each<a, b>(xs: series(a), f: (a) -> b): series(b) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  let elems =
+    core.list.for-each(elems, function (p) {
+      let Pair(c, val) = p;
+      let val = f(val);
+      Pair(c, val)
+    });
+  Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}
+}
