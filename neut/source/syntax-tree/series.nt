@@ -152,3 +152,15 @@ define from-list-bare<a>(values: list(a)): series(a) {
     has-optional-separator := False,
   }
 }
+
+define _assoc<a>(es: list(pair(comment, pair(a, comment))), c: comment): pair(list(pair(comment, a)), comment) {
+  match es {
+  | Nil =>
+    Pair(Nil, c)
+  | Cons(Pair(c1, Pair(e, c2)), Nil) =>
+    Pair(List[Pair(c1, e)], core.list.append(c2, c))
+  | Cons(Pair(c11, Pair(e1, c12)), Cons(Pair(c21, Pair(e2, c22)), rest)) =>
+    let Pair(tmp, c') = _assoc(Cons(Pair(core.list.append(c12, c21), Pair(e2, c22)), rest), c);
+    Pair(Cons(Pair(c11, e1), tmp), c')
+  }
+}
