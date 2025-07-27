@@ -98,3 +98,15 @@ define uncons<a>(s: series(a)): ?pair(pair(comment, a), series(a)) {
     Right(Pair(first-elem, remaining-series))
   }
 }
+
+define cons<a>(elem: pair(comment, a), xs: series(a)): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  Series of {
+    elems := Cons(elem, elems),
+    trailing-comment,
+    prefix,
+    container,
+    separator,
+    has-optional-separator,
+  }
+}
