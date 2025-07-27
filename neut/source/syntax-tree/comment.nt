@@ -9,3 +9,7 @@ data comment-item {
     comment-text: text,
   )
 }
+
+inline comment: type {
+  list(comment-item)
+}
