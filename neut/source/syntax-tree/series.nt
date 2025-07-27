@@ -266,3 +266,10 @@ define extract<a>(s: series(a)): list(a) {
     v
   })
 }
+
+define is-empty<a>(s: &series(a)): bool {
+  tie Series of {elems, trailing-comment} = s;
+  let b1 = core.list.is-empty(elems);
+  let b2 = core.list.is-empty(trailing-comment);
+  and(b1, b2)
+}
