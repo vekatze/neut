@@ -79,3 +79,22 @@ inline replace<a, b>(xs: series(pair(a, b)), !new-value: b, predicate: (&a) -> b
     }
   })
 }
+
+define uncons<a>(s: series(a)): ?pair(pair(comment, a), series(a)) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  match elems {
+  | Nil =>
+    none
+  | Cons(first-elem, rest) =>
+    let remaining-series =
+      Series of {
+        elems := rest,
+        trailing-comment,
+        prefix,
+        container,
+        separator,
+        has-optional-separator,
+      };
+    Right(Pair(first-elem, remaining-series))
+  }
+}
