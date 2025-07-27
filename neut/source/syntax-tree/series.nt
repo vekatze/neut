@@ -219,3 +219,20 @@ define assoc<a>(s: series(pair(a, comment))): series(a) {
     has-optional-separator,
   }
 }
+
+define join-c<a>(s: series(pair(comment, a))): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  let new-elems =
+    core.list.for-each(elems, function (e) {
+      let Pair(c1, Pair(c2, v)) = e;
+      Pair(core.list.append(c1, c2), v)
+    });
+  Series of {
+    elems := new-elems,
+    trailing-comment,
+    prefix,
+    container,
+    separator,
+    has-optional-separator,
+  }
+}
