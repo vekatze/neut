@@ -110,3 +110,7 @@ define cons<a>(elem: pair(comment, a), xs: series(a)): series(a) {
     has-optional-separator,
   }
 }
+
+define empty-series-paren-comma<a>(): series(a) {
+  empty-series(Right(Paren), Comma)
+}
