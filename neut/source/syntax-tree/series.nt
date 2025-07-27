@@ -114,3 +114,7 @@ define cons<a>(elem: pair(comment, a), xs: series(a)): series(a) {
 define empty-series-paren-comma<a>(): series(a) {
   empty-series(Right(Paren), Comma)
 }
+
+define empty-series-angle-comma<a>(): series(a) {
+  empty-series(Right(Angle), Comma)
+}
