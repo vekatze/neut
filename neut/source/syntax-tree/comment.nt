@@ -2,3 +2,10 @@ data comment-type {
 | InlineComment
 | LineComment
 }
+
+data comment-item {
+| Comment-item(
+    comment-type: comment-type,
+    comment-text: text,
+  )
+}
