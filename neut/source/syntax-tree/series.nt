@@ -249,3 +249,12 @@ define get-container-pair(cont: container): pair(&text, &text) {
     Pair("<", ">")
   }
 }
+
+define get-separator-text(sep: separator): &text {
+  match sep {
+  | Comma =>
+    ","
+  | Bar =>
+    "|"
+  }
+}
