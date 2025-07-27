@@ -67,3 +67,15 @@ define singleton<a>(
     has-optional-separator := False,
   }
 }
+
+inline replace<a, b>(xs: series(pair(a, b)), !new-value: b, predicate: (&a) -> bool): series(pair(a, b)) {
+  for-each(xs, function (p) {
+    let Pair(k, v) = p;
+    let b on k = predicate(k);
+    if b {
+      Pair(k, !new-value)
+    } else {
+      Pair(k, v)
+    }
+  })
+}
