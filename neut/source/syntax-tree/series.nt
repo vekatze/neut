@@ -341,3 +341,34 @@ define cat-maybes<a>(s: series(?a)): series(a) {
     has-optional-separator,
   }
 }
+
+define _compress-either<a>(
+  c: comment,
+  xs: list(pair(comment, either(comment, a))),
+): pair(comment, list(pair(comment, a))) {
+  match xs {
+  | Nil =>
+    Pair(c, Nil)
+  | Cons(Pair(c1, y), rest) =>
+    match y {
+    | Left(c2) =>
+      _compress-either(core.list.append(c, core.list.append(c1, c2)), rest)
+    | Right(e) =>
+      let Pair(trail, rest') = _compress-either(Nil, rest);
+      Pair(trail, Cons(Pair(core.list.append(c, c1), e), rest'))
+    }
+  }
+}
+
+define compress-either<a>(s: series(either(comment, a))): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  let Pair(trail, elems) = _compress-either(Nil, elems);
+  Series of {
+    elems,
+    trailing-comment := core.list.append(trail, trailing-comment),
+    prefix,
+    container,
+    separator,
+    has-optional-separator,
+  }
+}
