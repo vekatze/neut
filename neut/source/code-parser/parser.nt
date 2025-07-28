@@ -1,6 +1,6 @@
 import {
-  this.syntax-tree.comment {Comment-item, Line-Comment, comment-item, comment-type},
-  zonk.parse {chunk, parsed},
+  this.syntax-tree.comment {Comment-item, Inline-Comment, Line-Comment, comment, comment-item, comment-type},
+  zonk.parse {chunk, many, optional, parsed},
   zonk.zonk-kit {zonk-kit},
 }
 
@@ -94,4 +94,26 @@ define parse-line-comment<r := rho>(k: &zonk-kit): parsed(comment-item) {
   try _ = r;
   try _ = skip-space(k);
   parse-comment-item(k, Line-Comment)
+}
+
+define space-consumer<r := rho>(k: &zonk-kit): parsed(comment) {
+  try _ = r;
+  try _ = skip-space-without-newline(k);
+  try maybe-inline-comment =
+    optional(function (k) {
+      parse-comment-item(k, Inline-Comment)
+    })(k);
+  try _ = skip-space(k);
+  try line-comments =
+    many(function (k) {
+      try c = parse-line-comment(k);
+      try _ = skip-space(k);
+      Right(c)
+    })(k);
+  match maybe-inline-comment {
+  | Left(_) =>
+    Right(line-comments)
+  | Right(ic) =>
+    Right(Cons(ic, line-comments))
+  }
 }
