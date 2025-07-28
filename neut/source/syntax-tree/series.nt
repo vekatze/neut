@@ -82,8 +82,8 @@ inline replace<a, b>(xs: series(pair(a, b)), !new-value: b, predicate: (&a) -> b
   })
 }
 
-define uncons<a>(s: series(a)): ?pair(pair(comment, a), series(a)) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+define uncons<a>(xs: series(a)): ?pair(pair(comment, a), series(a)) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   match elems {
   | Nil =>
     none
@@ -183,8 +183,8 @@ define from-list-with-comment<a>(
   }
 }
 
-define push-comment<a>(comment: comment, s: series(a)): series(a) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+define push-comment<a>(comment: comment, xs: series(a)): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   match elems {
   | Nil =>
     Series of {
@@ -209,8 +209,8 @@ define push-comment<a>(comment: comment, s: series(a)): series(a) {
   }
 }
 
-define assoc<a>(s: series(pair(a, comment))): series(a) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+define assoc<a>(xs: series(pair(a, comment))): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let Pair(elems, trailing-comment) = _assoc(elems, trailing-comment);
   Series of {
     elems,
@@ -222,8 +222,8 @@ define assoc<a>(s: series(pair(a, comment))): series(a) {
   }
 }
 
-define join-c<a>(s: series(pair(comment, a))): series(a) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+define join-c<a>(xs: series(pair(comment, a))): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let new-elems =
     core.list.for-each(elems, function (e) {
       let Pair(c1, Pair(c2, v)) = e;
@@ -261,16 +261,16 @@ define get-separator-text(sep: separator): &text {
   }
 }
 
-define extract<a>(s: series(a)): list(a) {
-  let Series of {elems} = s;
+define extract<a>(xs: series(a)): list(a) {
+  let Series of {elems} = xs;
   core.list.for-each(elems, function (e) {
     let Pair(_, v) = e;
     v
   })
 }
 
-define is-empty<a>(s: &series(a)): bool {
-  tie Series of {elems, trailing-comment} = s;
+define is-empty<a>(xs: &series(a)): bool {
+  tie Series of {elems, trailing-comment} = xs;
   let b1 = core.list.is-empty(elems);
   let b2 = core.list.is-empty(trailing-comment);
   and(b1, b2)
@@ -279,9 +279,9 @@ define is-empty<a>(s: &series(a)): bool {
 define sort-series<a>(
   o: &ord(pair(comment, a)),
   nes: &(pair(comment, a)) -> meta pair(comment, a),
-  s: series(a),
+  xs: series(a),
 ): series(a) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems-vec = core.vector.from-list(elems);
   let elems-vec = core.vector.ord.vector-quicksort(o, nes, elems-vec);
   let elems = core.vector.to-list(elems-vec);
@@ -290,22 +290,22 @@ define sort-series<a>(
 
 define nub-series<a>(
   e: &eq(pair(comment, a)),
-  s: series(a),
+  xs: series(a),
 ): series(a) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems = core.list.eq.nub(e, elems);
   Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
 
-define append-left-biased<a>(s1: &series(a), s2: &series(a)): series(a) {
-  tie Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s1;
+define append-left-biased<a>(xs: &series(a), ys: &series(a)): series(a) {
+  tie Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems1 = elems;
   let tc1 = trailing-comment;
   let p1 = prefix;
   let c1 = container;
   let sep1 = separator;
   let has-optional-separator-1 = has-optional-separator;
-  tie Series of {elems, trailing-comment, has-optional-separator} = s2;
+  tie Series of {elems, trailing-comment, has-optional-separator} = ys;
   Series of {
     elems := core.list.append(*elems1, *elems),
     trailing-comment := core.list.append(*tc1, *trailing-comment),
@@ -330,8 +330,8 @@ define _cat-maybe-pairs<a>(pairs: list(pair(comment, ?a))): list(pair(comment, a
   }
 }
 
-define cat-maybes<a>(s: series(?a)): series(a) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+define cat-maybes<a>(xs: series(?a)): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   Series of {
     elems := _cat-maybe-pairs(elems),
     trailing-comment,
@@ -360,8 +360,8 @@ define _compress-either<a>(
   }
 }
 
-define compress-either<a>(s: series(either(comment, a))): series(a) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+define compress-either<a>(xs: series(either(comment, a))): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let Pair(trail, elems) = _compress-either(Nil, elems);
   Series of {
     elems,
@@ -373,8 +373,8 @@ define compress-either<a>(s: series(either(comment, a))): series(a) {
   }
 }
 
-inline filter<a>(s: series(a), p: (&pair(comment, a)) -> bool): series(a) {
-  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+inline filter<a>(xs: series(a), p: (&pair(comment, a)) -> bool): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   let elems = core.list.filter(elems, p);
   Series of {
     elems,
@@ -386,8 +386,8 @@ inline filter<a>(s: series(a), p: (&pair(comment, a)) -> bool): series(a) {
   }
 }
 
-define has-comment<a>(s: &series(a)): bool {
-  tie Series of {elems, trailing-comment} = s;
+define has-comment<a>(xs: &series(a)): bool {
+  tie Series of {elems, trailing-comment} = xs;
   if not(core.list.is-empty(trailing-comment)) {
     False
   } else {
