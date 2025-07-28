@@ -1,6 +1,6 @@
 import {
   this.syntax-tree.comment {Comment-item, Inline-Comment, Line-Comment, comment, comment-item, comment-type},
-  zonk.parse {chunk, many, optional, parsed},
+  zonk.parse {chunk, many, optional, parsed, zonk},
   zonk.zonk-kit {zonk-kit},
 }
 
@@ -115,5 +115,14 @@ define space-consumer<r := rho>(k: &zonk-kit): parsed(comment) {
     Right(line-comments)
   | Right(ic) =>
     Right(Cons(ic, line-comments))
+  }
+}
+
+inline lexeme<a, r := rho>(p: zonk(a)): zonk(pair(a, comment)) {
+  function (k) {
+    try _ = r;
+    try v = p(k);
+    try c = space-consumer(k);
+    Right(Pair(v, c))
   }
 }
