@@ -1,4 +1,5 @@
 import {
+  core.list.eq,
   core.vector.ord,
   this.syntax-tree.comment {comment},
 }
@@ -275,7 +276,7 @@ define is-empty<a>(s: &series(a)): bool {
   and(b1, b2)
 }
 
-define sort-series-by<a>(
+define sort-series<a>(
   o: &ord(pair(comment, a)),
   nes: &(pair(comment, a)) -> meta pair(comment, a),
   s: series(a),
@@ -284,5 +285,14 @@ define sort-series-by<a>(
   let elems-vec = core.vector.from-list(elems);
   let elems-vec = core.vector.ord.vector-quicksort(o, nes, elems-vec);
   let elems = core.vector.to-list(elems-vec);
+  Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}
+}
+
+define nub-series<a>(
+  e: &eq(pair(comment, a)),
+  s: series(a),
+): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  let elems = core.list.eq.nub(e, elems);
   Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
