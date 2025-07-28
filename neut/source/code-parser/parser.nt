@@ -118,21 +118,19 @@ define space-consumer<r := rho>(k: &zonk-kit): parsed(comment) {
   }
 }
 
-inline lexeme<a, r := rho>(p: zonk(a)): zonk(pair(a, comment)) {
-  function (k) {
-    try _ = r;
-    try v = p(k);
-    try c = space-consumer(k);
-    Right(Pair(v, c))
-  }
+inline lexeme<a, r := rho>(k: &zonk-kit, p: zonk(a)): parsed(pair(a, comment)) {
+  try _ = r;
+  try v = p(k);
+  try c = space-consumer(k);
+  Right(Pair(v, c))
 }
 
 define delimiter<r := rho>(k: &zonk-kit, expected: &text): parsed(comment) {
   try _ = r;
   try Pair(_, c) =
-    lexeme(function (k) {
+    lexeme(k, function (k) {
       try _ = chunk(expected)(k);
       Right(Unit)
-    })(k);
+    });
   Right(c)
 }
