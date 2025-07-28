@@ -1,0 +1,11 @@
+import {
+  this.logger.hint {Hint, hint},
+  zonk.parse {get-point},
+  zonk.point {Point},
+  zonk.zonk-kit {zonk-kit},
+}
+
+define get-current-hint(k: &zonk-kit, file-path: &text): hint {
+  let Point(line, column) = get-point(k);
+  Hint of {line, column, file-path, should-save-location := True}
+}
