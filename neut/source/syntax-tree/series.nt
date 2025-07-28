@@ -315,3 +315,29 @@ define append-left-biased<a>(s1: &series(a), s2: &series(a)): series(a) {
     has-optional-separator := or(*has-optional-separator-1, *has-optional-separator),
   }
 }
+
+define _cat-maybe-pairs<a>(pairs: list(pair(comment, ?a))): list(pair(comment, a)) {
+  match pairs {
+  | Nil =>
+    Nil
+  | Cons(Pair(comment, maybe-value), rest) =>
+    match maybe-value {
+    | Left(_) =>
+      _cat-maybe-pairs(rest)
+    | Right(value) =>
+      Cons(Pair(comment, value), _cat-maybe-pairs(rest))
+    }
+  }
+}
+
+define cat-maybes<a>(s: series(?a)): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  Series of {
+    elems := _cat-maybe-pairs(elems),
+    trailing-comment,
+    prefix,
+    container,
+    separator,
+    has-optional-separator,
+  }
+}
