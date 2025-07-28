@@ -296,3 +296,22 @@ define nub-series<a>(
   let elems = core.list.eq.nub(e, elems);
   Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
+
+define append-left-biased<a>(s1: &series(a), s2: &series(a)): series(a) {
+  tie Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s1;
+  let elems1 = elems;
+  let tc1 = trailing-comment;
+  let p1 = prefix;
+  let c1 = container;
+  let sep1 = separator;
+  let has-optional-separator-1 = has-optional-separator;
+  tie Series of {elems, trailing-comment, has-optional-separator} = s2;
+  Series of {
+    elems := core.list.append(*elems1, *elems),
+    trailing-comment := core.list.append(*tc1, *trailing-comment),
+    prefix := *p1,
+    container := *c1,
+    separator := *sep1,
+    has-optional-separator := or(*has-optional-separator-1, *has-optional-separator),
+  }
+}
