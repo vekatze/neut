@@ -1,6 +1,7 @@
 import {
+  core.vector {push-back, to-list},
   this.syntax-tree.comment {Comment-item, Inline-Comment, Line-Comment, comment, comment-item, comment-type},
-  zonk.parse {chunk, many, optional, parsed, zonk},
+  zonk.parse {any-rune, chunk, many, optional, parsed, zonk},
   zonk.zonk-kit {zonk-kit},
 }
 
@@ -147,4 +148,21 @@ define symbol'<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
   lexeme(k, function (k) {
     zonk.parse.take-while(is-non-symbol-char)(k)
   })
+}
+
+define _string-inner<r := rho>(k: &zonk-kit, cs: vector(rune)): parsed(text) {
+  try _ = r;
+  try v = any-rune(k);
+  match v {
+  | `\\` =>
+    try w = any-rune(k);
+    _string-inner(k, push-back(push-back(cs, `\\`), w))
+  | `"` =>
+    let xs = to-list(cs);
+    let result on xs = core.text.pack(xs);
+    let _ = xs;
+    Right(result)
+  | v =>
+    _string-inner(k, push-back(cs, v))
+  }
 }
