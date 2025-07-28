@@ -1,0 +1,50 @@
+define is-non-symbol-char(r: rune): bool {
+  match r {
+  | `=` =>
+    True
+  | `(` =>
+    True
+  | `)` =>
+    True
+  | ` ` =>
+    True
+  | `\`` =>
+    True
+  | `"` =>
+    True
+  | `\n` =>
+    True
+  | `\t` =>
+    True
+  | `:` =>
+    True
+  | `;` =>
+    True
+  | `,` =>
+    True
+  | `<` =>
+    True
+  | `>` =>
+    True
+  | `[` =>
+    True
+  | `]` =>
+    True
+  | `{` =>
+    True
+  | `}` =>
+    True
+  | `/` =>
+    True
+  | `*` =>
+    True
+  | `|` =>
+    True
+  | `&` =>
+    True
+  | `?` =>
+    True
+  | _ =>
+    False
+  }
+}
