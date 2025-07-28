@@ -1,7 +1,7 @@
 import {
   this.app.app {app},
-  this.syntax-tree.comment {comment},
-  zonk.parse {parsed, zonk},
+  this.syntax-tree.comment {Comment-item, comment, comment-item, comment-type},
+  zonk.parse {chunk, parsed, zonk},
   zonk.zonk-kit {zonk-kit},
 }
 
@@ -79,4 +79,14 @@ define skip-space-without-newline<r := rho>(k: &zonk-kit): parsed(unit) {
       eq-rune(r, ` `)
     })(k);
   Right(Unit)
+}
+
+define parse-comment-item<r := rho>(k: &zonk-kit, comment-type: comment-type): parsed(comment-item) {
+  try _ = r;
+  try _ = chunk("//")(k);
+  try comment-text =
+    zonk.parse.take-while(function (r) {
+      ne-rune(r, `\n`)
+    })(k);
+  Right(Comment-item of {comment-text, comment-type})
 }
