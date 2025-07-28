@@ -385,3 +385,19 @@ inline filter<a>(s: series(a), p: (&pair(comment, a)) -> bool): series(a) {
     has-optional-separator,
   }
 }
+
+define has-comment<a>(s: &series(a)): bool {
+  tie Series of {elems, trailing-comment} = s;
+  if not(core.list.is-empty(trailing-comment)) {
+    False
+  } else {
+    core.list.fold-left-N(False, elems, function (acc, p) {
+      if acc {
+        acc
+      } else {
+        tie Pair(c, _) = p;
+        not(core.list.is-empty(c))
+      }
+    })
+  }
+}
