@@ -166,3 +166,14 @@ define _string-inner<r := rho>(k: &zonk-kit, cs: vector(rune)): parsed(text) {
     _string-inner(k, push-back(cs, v))
   }
 }
+
+define string<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
+  try _ = r;
+  lexeme(k, function (k) {
+    try _ =
+      zonk.parse.satisfy("double quote", function (r) {
+        eq-rune(r, `"`)
+      })(k);
+    _string-inner(k, core.vector.make(8))
+  })
+}
