@@ -1,0 +1,179 @@
+import {
+  core.vector {push-back, to-list},
+  this.syntax-tree.comment {Comment-item, Inline-Comment, Line-Comment, comment, comment-item, comment-type},
+  zonk.parse {any-rune, chunk, many, optional, parsed, zonk},
+  zonk.zonk-kit {zonk-kit},
+}
+
+define is-non-symbol-char(r: rune): bool {
+  match r {
+  | `=` =>
+    True
+  | `(` =>
+    True
+  | `)` =>
+    True
+  | ` ` =>
+    True
+  | `\`` =>
+    True
+  | `"` =>
+    True
+  | `\n` =>
+    True
+  | `\t` =>
+    True
+  | `:` =>
+    True
+  | `;` =>
+    True
+  | `,` =>
+    True
+  | `<` =>
+    True
+  | `>` =>
+    True
+  | `[` =>
+    True
+  | `]` =>
+    True
+  | `{` =>
+    True
+  | `}` =>
+    True
+  | `/` =>
+    True
+  | `*` =>
+    True
+  | `|` =>
+    True
+  | `&` =>
+    True
+  | `?` =>
+    True
+  | _ =>
+    False
+  }
+}
+
+define skip-space<r := rho>(k: &zonk-kit): parsed(unit) {
+  try _ = r;
+  try _ =
+    zonk.parse.take-while(function (r) {
+      match r {
+      | ` ` =>
+        True
+      | `\n` =>
+        True
+      | _ =>
+        False
+      }
+    })(k);
+  Right(Unit)
+}
+
+define skip-space-without-newline<r := rho>(k: &zonk-kit): parsed(unit) {
+  try _ = r;
+  try _ =
+    zonk.parse.take-while(function (r) {
+      eq-rune(r, ` `)
+    })(k);
+  Right(Unit)
+}
+
+define parse-comment-item<r := rho>(k: &zonk-kit, comment-type: comment-type): parsed(comment-item) {
+  try _ = r;
+  try _ = chunk("//")(k);
+  try comment-text =
+    zonk.parse.take-while(function (r) {
+      ne-rune(r, `\n`)
+    })(k);
+  Right(Comment-item of {comment-text, comment-type})
+}
+
+define parse-line-comment<r := rho>(k: &zonk-kit): parsed(comment-item) {
+  try _ = r;
+  try _ = skip-space(k);
+  parse-comment-item(k, Line-Comment)
+}
+
+define space-consumer<r := rho>(k: &zonk-kit): parsed(comment) {
+  try _ = r;
+  try _ = skip-space-without-newline(k);
+  try maybe-inline-comment =
+    optional(function (k) {
+      parse-comment-item(k, Inline-Comment)
+    })(k);
+  try _ = skip-space(k);
+  try line-comments =
+    many(function (k) {
+      try c = parse-line-comment(k);
+      try _ = skip-space(k);
+      Right(c)
+    })(k);
+  match maybe-inline-comment {
+  | Left(_) =>
+    Right(line-comments)
+  | Right(ic) =>
+    Right(Cons(ic, line-comments))
+  }
+}
+
+inline lexeme<a, r := rho>(k: &zonk-kit, p: zonk(a)): parsed(pair(a, comment)) {
+  try _ = r;
+  try v = p(k);
+  try c = space-consumer(k);
+  Right(Pair(v, c))
+}
+
+define delimiter<r := rho>(k: &zonk-kit, expected: &text): parsed(comment) {
+  try _ = r;
+  try Pair(_, c) =
+    lexeme(k, function (k) {
+      try _ = chunk(expected)(k);
+      Right(Unit)
+    });
+  Right(c)
+}
+
+define symbol<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
+  try _ = r;
+  lexeme(k, function (k) {
+    zonk.parse.take-while-1(is-non-symbol-char)(k)
+  })
+}
+
+define symbol'<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
+  try _ = r;
+  lexeme(k, function (k) {
+    zonk.parse.take-while(is-non-symbol-char)(k)
+  })
+}
+
+define _string-inner<r := rho>(k: &zonk-kit, cs: vector(rune)): parsed(text) {
+  try _ = r;
+  try v = any-rune(k);
+  match v {
+  | `\\` =>
+    try w = any-rune(k);
+    _string-inner(k, push-back(push-back(cs, `\\`), w))
+  | `"` =>
+    let xs = to-list(cs);
+    let result on xs = core.text.pack(xs);
+    let _ = xs;
+    Right(result)
+  | v =>
+    _string-inner(k, push-back(cs, v))
+  }
+}
+
+define string<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
+  try _ = r;
+  lexeme(k, function (k) {
+    try _ =
+      zonk.parse.satisfy("double quote", function (r) {
+        eq-rune(r, `"`)
+      })(k);
+    _string-inner(k, core.vector.make(8))
+  })
+}
