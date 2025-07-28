@@ -1,7 +1,6 @@
 import {
-  this.app.app {app},
-  this.syntax-tree.comment {Comment-item, comment, comment-item, comment-type},
-  zonk.parse {chunk, parsed, zonk},
+  this.syntax-tree.comment {Comment-item, Line-Comment, comment-item, comment-type},
+  zonk.parse {chunk, parsed},
   zonk.zonk-kit {zonk-kit},
 }
 
@@ -89,4 +88,10 @@ define parse-comment-item<r := rho>(k: &zonk-kit, comment-type: comment-type): p
       ne-rune(r, `\n`)
     })(k);
   Right(Comment-item of {comment-text, comment-type})
+}
+
+define parse-line-comment<r := rho>(k: &zonk-kit): parsed(comment-item) {
+  try _ = r;
+  try _ = skip-space(k);
+  parse-comment-item(k, Line-Comment)
 }

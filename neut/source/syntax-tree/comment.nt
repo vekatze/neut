@@ -1,6 +1,6 @@
 data comment-type {
-| InlineComment
-| LineComment
+| Inline-Comment
+| Line-Comment
 }
 
 data comment-item {
