@@ -372,3 +372,16 @@ define compress-either<a>(s: series(either(comment, a))): series(a) {
     has-optional-separator,
   }
 }
+
+inline filter<a>(s: series(a), p: (&pair(comment, a)) -> bool): series(a) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = s;
+  let elems = core.list.filter(elems, p);
+  Series of {
+    elems,
+    trailing-comment,
+    prefix,
+    container,
+    separator,
+    has-optional-separator,
+  }
+}
