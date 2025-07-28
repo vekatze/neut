@@ -56,6 +56,22 @@ define is-non-symbol-char(r: rune): bool {
   }
 }
 
+define skip-space<r := rho>(k: &zonk-kit): parsed(unit) {
+  try _ = r;
+  try _ =
+    zonk.parse.take-while(function (r) {
+      match r {
+      | ` ` =>
+        True
+      | `\n` =>
+        True
+      | _ =>
+        False
+      }
+    })(k);
+  Right(Unit)
+}
+
 define skip-space-without-newline<r := rho>(k: &zonk-kit): parsed(unit) {
   try _ = r;
   try _ =
