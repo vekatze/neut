@@ -1,0 +1,21 @@
+import {
+  this.syntax-tree.comment {comment},
+}
+
+data block(a) {
+| Block(
+    leading-comment: comment,
+    content: a,
+    trailing-comment: comment,
+  )
+}
+
+data pointed-block(a) {
+| Pointed-Block(
+    leading-comment: comment,
+    content: a,
+    line: int,
+    column: int,
+    trailing-comment: comment,
+  )
+}
