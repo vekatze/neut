@@ -1,3 +1,10 @@
+import {
+  this.app.app {app},
+  this.syntax-tree.comment {comment},
+  zonk.parse {parsed, zonk},
+  zonk.zonk-kit {zonk-kit},
+}
+
 define is-non-symbol-char(r: rune): bool {
   match r {
   | `=` =>
@@ -47,4 +54,13 @@ define is-non-symbol-char(r: rune): bool {
   | _ =>
     False
   }
+}
+
+define skip-space-without-newline<r := rho>(k: &zonk-kit): parsed(unit) {
+  try _ = r;
+  try _ =
+    zonk.parse.take-while(function (r) {
+      eq-rune(r, ` `)
+    })(k);
+  Right(Unit)
 }
