@@ -31,9 +31,9 @@
       ],
     },
     zonk {
-      digest "O94bJLDz7fbHp_37cFPudj5AOixsRLFqHLdmvEjrwC0",
+      digest "AeBuuDkglx2BEDXbIK7X8XjXHcA9kWfWlsuUxZBs7HY",
       mirror [
-        "https://github.com/vekatze/zonk/raw/main/archive/0-1-53.tar.zst",
+        "https://github.com/vekatze/zonk/raw/main/archive/0-1-55.tar.zst",
       ],
     },
   },
