@@ -42,7 +42,7 @@ inline for-each<a, b>(xs: series(a), f: (a) -> b): series(b) {
   Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
 
-define empty-series<a>(container: ?container, separator: separator): series(a) {
+inline empty-series<a>(container: ?container, separator: separator): series(a) {
   Series of {
     elems := Nil,
     trailing-comment := Nil,
