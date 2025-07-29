@@ -746,6 +746,9 @@ reduceWeakType' h sub e = do
           reduceWeakType' h sub $ m :< WT.PiElim False lam impArgs args
         Nothing -> do
           return e'
+    m :< WT.BoxNoema t -> do
+      t' <- reduceWeakType' h sub t
+      return $ m :< WT.BoxNoema t'
     _ ->
       return e'
 
