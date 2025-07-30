@@ -1,4 +1,5 @@
 import {
+  this.logger.hint {hint},
   this.syntax-tree.series {series},
 }
 
@@ -9,4 +10,8 @@ data ens-f(a: type) {
 | E-String(a, text)
 | E-List(a, series(ens-f(a)))
 | E-Dictionary(a, series(pair(text, ens-f(a))))
+}
+
+inline ens: type {
+  ens-f(hint)
 }
