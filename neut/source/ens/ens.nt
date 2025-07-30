@@ -1,0 +1,12 @@
+import {
+  this.syntax-tree.series {series},
+}
+
+data ens-f(a: type) {
+| E-Int(a, int)
+| E-Float(a, int)
+| E-Bool(a, bool)
+| E-String(a, text)
+| E-List(a, series(ens-f(a)))
+| E-Dictionary(a, series(pair(text, ens-f(a))))
+}
