@@ -1,0 +1,306 @@
+import {
+  this.code-parser.parser {delimiter},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.series {
+    Angle,
+    Bar,
+    Brace,
+    Bracket,
+    Comma,
+    Paren,
+    Series,
+    container,
+    empty-series,
+    get-container-pair,
+    get-separator-text,
+    prefix,
+    separator,
+    series,
+    singleton,
+  },
+  zonk.make-zonk-kit {make-zonk-kit},
+  zonk.parse {get-point, parsed, zonk},
+  zonk.point {point},
+  zonk.zonk-kit {zonk-kit},
+}
+
+define _parse-series-sep-trail<a, r := rho>(
+  k: &zonk-kit,
+  after-sep: bool,
+  con: ?container,
+  sep: separator,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  match p(k) {
+  | Right(Pair(v, c)) =>
+    match delimiter(k, get-separator-text(sep)) {
+    | Right(c-sep) =>
+      try rest = _parse-series-sep-trail(k, True, con, sep, core.list.append(c, c-sep), p);
+      Right(this.syntax-tree.series.cons(Pair(leading-comment, v), rest))
+    | Left(_) =>
+      Right(singleton(con, sep, leading-comment, v, c, False))
+    }
+  | Left(_) =>
+    let Series of {elems, prefix, container, separator} = empty-series(con, sep);
+    Right(Series of {
+      elems,
+      trailing-comment := leading-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator := after-sep,
+    })
+  }
+}
+
+define _parse-series-sep-by<a, r := rho>(
+  k: &zonk-kit,
+  has-optional-separator: bool,
+  con: ?container,
+  sep: separator,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  match p(k) {
+  | Right(Pair(v, c)) =>
+    match delimiter(k, get-separator-text(sep)) {
+    | Right(c-sep) =>
+      try rest = _parse-series-sep-by(k, has-optional-separator, con, sep, core.list.append(c, c-sep), p);
+      Right(this.syntax-tree.series.cons(Pair(leading-comment, v), rest))
+    | Left(_) =>
+      Right(singleton(con, sep, leading-comment, v, c, has-optional-separator))
+    }
+  | Left(_) =>
+    let Series of {elems, prefix, container, separator} = empty-series(con, sep);
+    Right(Series of {
+      elems,
+      trailing-comment := leading-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator := False,
+    })
+  }
+}
+
+define _parse-series-sep-lead<a, r := rho>(
+  k: &zonk-kit,
+  con: ?container,
+  sep: separator,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  match delimiter(k, get-separator-text(sep)) {
+  | Right(c-sep) =>
+    _parse-series-sep-by(k, True, con, sep, core.list.append(leading-comment, c-sep), p)
+  | Left(_) =>
+    _parse-series-sep-by(k, False, con, sep, leading-comment, p)
+  }
+}
+
+define _parse-series-and<a, r := rho>(
+  k: &zonk-kit,
+  con: ?container,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  _parse-series-sep-trail(k, False, con, Comma, leading-comment, p)
+}
+
+define _parse-series-or<a, r := rho>(
+  k: &zonk-kit,
+  con: ?container,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  _parse-series-sep-lead(k, con, Bar, leading-comment, p)
+}
+
+define _parse-series<a, r := rho>(
+  k: &zonk-kit,
+  con: ?container,
+  sep: separator,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  match sep {
+  | Comma =>
+    _parse-series-and(k, con, leading-comment, p)
+  | Bar =>
+    _parse-series-or(k, con, leading-comment, p)
+  }
+}
+
+inline parse-series<a, r := rho>(
+  k: &zonk-kit,
+  prefix: prefix,
+  con: container,
+  sep: separator,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  try _ = r;
+  let Pair(open, close) = get-container-pair(con);
+  try c1 = delimiter(k, open);
+  try se = _parse-series(k, Right(con), sep, c1, p);
+  try c2 = delimiter(k, close);
+  let Series of {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let se =
+    Series of {
+      elems,
+      trailing-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator,
+    };
+  Right(Pair(se, c2))
+}
+
+data locpack(a) {
+| Locpack(
+    series(a),
+    point,
+    comment,
+  )
+}
+
+inline parse-series-with-loc<a, r := rho>(
+  k: &zonk-kit,
+  prefix: prefix,
+  con: container,
+  sep: separator,
+  p: &zonk(pair(a, comment)),
+): parsed(locpack(a)) {
+  try _ = r;
+  let Pair(open, close) = get-container-pair(con);
+  try c1 = delimiter(k, open);
+  try se = _parse-series(k, Right(con), sep, c1, p);
+  let loc = get-point(k);
+  try c2 = delimiter(k, close);
+  let Series of {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let se =
+    Series of {
+      elems,
+      trailing-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator,
+    };
+  Right(Locpack(se, loc, c2))
+}
+
+define parse-bare-series<a, r := rho>(
+  k: &zonk-kit,
+  prefix: prefix,
+  sep: separator,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  try se = _parse-series(k, none, sep, Nil, p);
+  let Series of {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let se =
+    Series of {
+      elems,
+      trailing-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator,
+    };
+  Right(se)
+}
+
+define parse-series-paren<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  parse-series(k, none, Paren, Comma, p)
+}
+
+define parse-series-paren-with-loc<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(locpack(a)) {
+  parse-series-with-loc(k, none, Paren, Comma, p)
+}
+
+define parse-series-brace<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  parse-series(k, none, Brace, Comma, p)
+}
+
+define parse-series-brace-with-loc<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(locpack(a)) {
+  parse-series-with-loc(k, none, Brace, Comma, p)
+}
+
+define parse-series-bracket<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  parse-series(k, none, Bracket, Comma, p)
+}
+
+define parse-series-angle<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  parse-series(k, none, Angle, Comma, p)
+}
+
+define parse-series-brace-list<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  parse-series(k, none, Brace, Bar, p)
+}
+
+define parse-series-brace-list-with-loc<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(locpack(a)) {
+  parse-series-with-loc(k, none, Brace, Bar, p)
+}
+
+define zen(): unit {
+  pin k = make-zonk-kit(*"{}");
+  pin f =
+    function (_) {
+      Right(Pair(Unit, Nil))
+    };
+  pin foo = parse-series-brace(k, f);
+  vet(foo);
+  pin k = make-zonk-kit(*"[  ]  ");
+  pin f =
+    function (_) {
+      Right(Pair(Unit, Nil))
+    };
+  pin foo = parse-series-bracket(k, f);
+  vet(foo);
+  pin k = make-zonk-kit(*"(, )  ");
+  pin f =
+    function (_) {
+      Right(Pair(Unit, Nil))
+    };
+  pin foo = parse-series-paren-with-loc(k, f);
+  vet(foo);
+  pin k = make-zonk-kit(*"{| }  ");
+  pin f =
+    function (_) {
+      Right(Pair(Unit, Nil))
+    };
+  pin foo = parse-series-brace-list(k, f);
+  vet(foo);
+}

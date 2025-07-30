@@ -42,7 +42,7 @@ inline for-each<a, b>(xs: series(a), f: (a) -> b): series(b) {
   Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
 
-define empty-series<a>(container: ?container, separator: separator): series(a) {
+inline empty-series<a>(container: ?container, separator: separator): series(a) {
   Series of {
     elems := Nil,
     trailing-comment := Nil,
@@ -59,6 +59,7 @@ define singleton<a>(
   leading-comment: comment,
   value: a,
   trailing-comment: comment,
+  has-optional-separator: bool,
 ): series(a) {
   Series of {
     elems := List[Pair(leading-comment, value)],
@@ -66,7 +67,7 @@ define singleton<a>(
     prefix := Left(Unit),
     container,
     separator,
-    has-optional-separator := False,
+    has-optional-separator,
   }
 }
 
@@ -239,7 +240,7 @@ define join-c<a>(xs: series(pair(comment, a))): series(a) {
   }
 }
 
-define get-container-pair(cont: container): pair(&text, &text) {
+inline get-container-pair(cont: container): pair(&text, &text) {
   match cont {
   | Paren =>
     Pair("(", ")")
