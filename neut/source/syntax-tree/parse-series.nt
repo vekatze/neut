@@ -179,3 +179,24 @@ inline parse-series-with-loc<a, r := rho>(
     };
   Right(Locpack(se, loc, c2))
 }
+
+define parse-bare-series<a, r := rho>(
+  k: &zonk-kit,
+  prefix: prefix,
+  sep: separator,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  try se = _parse-series(k, none, sep, Nil, p);
+  let Series of {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let se =
+    Series of {
+      elems,
+      trailing-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator,
+    };
+  Right(se)
+}
