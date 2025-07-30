@@ -1,7 +1,7 @@
 import {
   this.code-parser.parser {delimiter},
   this.syntax-tree.comment {comment},
-  this.syntax-tree.series {Series, container, empty-series, get-separator-text, separator, series, singleton},
+  this.syntax-tree.series {Comma, Series, container, empty-series, get-separator-text, separator, series, singleton},
   zonk.parse {parsed, zonk},
   zonk.zonk-kit {zonk-kit},
 }
@@ -82,4 +82,14 @@ define _parse-series-sep-lead<a, r := rho>(
   | Left(_) =>
     _parse-series-sep-by(k, False, con, sep, leading-comment, p)
   }
+}
+
+define _parse-series-and<a, r := rho>(
+  k: &zonk-kit,
+  con: ?container,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  _parse-series-sep-trail(k, False, con, Comma, leading-comment, p)
 }
