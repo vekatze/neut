@@ -59,6 +59,7 @@ define singleton<a>(
   leading-comment: comment,
   value: a,
   trailing-comment: comment,
+  has-optional-separator: bool,
 ): series(a) {
   Series of {
     elems := List[Pair(leading-comment, value)],
@@ -66,7 +67,7 @@ define singleton<a>(
     prefix := Left(Unit),
     container,
     separator,
-    has-optional-separator := False,
+    has-optional-separator,
   }
 }
 

@@ -8,7 +8,7 @@ import {
 
 define _parse-series-sep-trail<a, r := rho>(
   k: &zonk-kit,
-  after-comma: bool,
+  after-sep: bool,
   con: ?container,
   sep: separator,
   leading-comment: comment,
@@ -22,7 +22,7 @@ define _parse-series-sep-trail<a, r := rho>(
       try rest = _parse-series-sep-trail(k, True, con, sep, core.list.append(c, c-sep), p);
       Right(this.syntax-tree.series.cons(Pair(leading-comment, v), rest))
     | Left(_) =>
-      Right(singleton(con, sep, leading-comment, v, c))
+      Right(singleton(con, sep, leading-comment, v, c, False))
     }
   | Left(_) =>
     let Series of {elems, prefix, container, separator} = empty-series(con, sep);
@@ -32,7 +32,54 @@ define _parse-series-sep-trail<a, r := rho>(
       prefix,
       container,
       separator,
-      has-optional-separator := after-comma,
+      has-optional-separator := after-sep,
     })
+  }
+}
+
+define _parse-series-sep-by<a, r := rho>(
+  k: &zonk-kit,
+  has-optional-separator: bool,
+  con: ?container,
+  sep: separator,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  match p(k) {
+  | Right(Pair(v, c)) =>
+    match delimiter(k, get-separator-text(sep)) {
+    | Right(c-sep) =>
+      try rest = _parse-series-sep-by(k, has-optional-separator, con, sep, core.list.append(c, c-sep), p);
+      Right(this.syntax-tree.series.cons(Pair(leading-comment, v), rest))
+    | Left(_) =>
+      Right(singleton(con, sep, leading-comment, v, c, has-optional-separator))
+    }
+  | Left(_) =>
+    let Series of {elems, prefix, container, separator} = empty-series(con, sep);
+    Right(Series of {
+      elems,
+      trailing-comment := leading-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator := False,
+    })
+  }
+}
+
+define _parse-series-sep-lead<a, r := rho>(
+  k: &zonk-kit,
+  con: ?container,
+  sep: separator,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  match delimiter(k, get-separator-text(sep)) {
+  | Right(c-sep) =>
+    _parse-series-sep-by(k, True, con, sep, core.list.append(leading-comment, c-sep), p)
+  | Left(_) =>
+    _parse-series-sep-by(k, False, con, sep, leading-comment, p)
   }
 }
