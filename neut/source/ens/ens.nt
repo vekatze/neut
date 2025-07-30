@@ -1,13 +1,14 @@
 import {
+  core.bool {all},
   this.logger.hint {hint},
   this.syntax-tree.block {block},
-  this.syntax-tree.comment {comment},
-  this.syntax-tree.series {series},
+  this.syntax-tree.comment {comment, comment-item},
+  this.syntax-tree.series {Series, series},
 }
 
 data ens-f(a: type) {
 | E-Int(a, int)
-| E-Float(a, int)
+| E-Float(a, float)
 | E-Bool(a, bool)
 | E-String(a, text)
 | E-List(a, series(ens-f(a)))
@@ -24,4 +25,91 @@ data top-ens {
 
 inline full-ens {
   block(ens)
+}
+
+define _eq-bool(b1: bool, b2: bool): bool {
+  match b1, b2 {
+  | True, True =>
+    True
+  | False, False =>
+    True
+  | _, _ =>
+    False
+  }
+}
+
+nominal {
+  eq-ens(e1: &ens, e2: &ens): bool,
+}
+
+define _eq-ens-list(
+  xs1: &list(pair(list(comment-item), ens)),
+  xs2: &list(pair(list(comment-item), ens)),
+): bool {
+  case xs1, xs2 {
+  | Nil, Nil =>
+    True
+  | Cons(Pair(c1, x1), rest1), Cons(Pair(c2, x2), rest2) =>
+    let b1 = eq-data(c1, c2);
+    let b2 = eq-ens(x1, x2);
+    if and(b1, b2) {
+      _eq-ens-list(rest1, rest2)
+    } else {
+      False
+    }
+  | _, _ =>
+    False
+  }
+}
+
+define _eq-ens-kvs(
+  xs1: &list(pair(list(comment-item), pair(text, ens))),
+  xs2: &list(pair(list(comment-item), pair(text, ens))),
+): bool {
+  case xs1, xs2 {
+  | Nil, Nil =>
+    True
+  | Cons(Pair(c1, Pair(k1, x1)), rest1), Cons(Pair(c2, Pair(k2, x2)), rest2) =>
+    let b1 = eq-data(c1, c2);
+    let b2 = eq-text(k1, k2);
+    let b3 = eq-ens(x1, x2);
+    if all[b1, b2, b3] {
+      _eq-ens-kvs(rest1, rest2)
+    } else {
+      False
+    }
+  | _, _ =>
+    False
+  }
+}
+
+define eq-ens(e1: &ens, e2: &ens): bool {
+  case e1, e2 {
+  | E-Int(_, x1), E-Int(_, x2) =>
+    eq-int(*x1, *x2)
+  | E-Float(_, x1), E-Float(_, x2) =>
+    eq-float(*x1, *x2)
+  | E-Bool(_, x1), E-Bool(_, x2) =>
+    _eq-bool(*x1, *x2)
+  | E-String(_, x1), E-String(_, x2) =>
+    eq-text(x1, x2)
+  | E-List(_, xs1), E-List(_, xs2) =>
+    tie Series of {elems := elems1, trailing-comment := tc1, prefix := p1} = xs1;
+    tie Series of {elems := elems2, trailing-comment := tc2, prefix := p2} = xs2;
+    all[
+      _eq-ens-list(elems1, elems2),
+      eq-data(tc1, tc2),
+      eq-data(p1, p2),
+    ]
+  | E-Dictionary(_, kvs1), E-Dictionary(_, kvs2) =>
+    tie Series of {elems := elems1, trailing-comment := tc1, prefix := p1} = kvs1;
+    tie Series of {elems := elems2, trailing-comment := tc2, prefix := p2} = kvs2;
+    all[
+      _eq-ens-kvs(elems1, elems2),
+      eq-data(tc1, tc2),
+      eq-data(p1, p2),
+    ]
+  | _, _ =>
+    False
+  }
 }
