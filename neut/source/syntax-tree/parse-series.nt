@@ -221,3 +221,10 @@ define parse-series-brace<a>(
 ): parsed(pair(series(a), comment)) {
   parse-series(k, none, Brace, Comma, p)
 }
+
+define parse-series-brace-with-loc<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(locpack(a)) {
+  parse-series-with-loc(k, none, Brace, Comma, p)
+}
