@@ -103,3 +103,19 @@ define _parse-series-or<a, r := rho>(
   try _ = r;
   _parse-series-sep-lead(k, con, Bar, leading-comment, p)
 }
+
+define _parse-series<a, r := rho>(
+  k: &zonk-kit,
+  con: ?container,
+  sep: separator,
+  leading-comment: comment,
+  p: &zonk(pair(a, comment)),
+): parsed(series(a)) {
+  try _ = r;
+  match sep {
+  | Comma =>
+    _parse-series-and(k, con, leading-comment, p)
+  | Bar =>
+    _parse-series-or(k, con, leading-comment, p)
+  }
+}
