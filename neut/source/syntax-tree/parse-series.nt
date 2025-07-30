@@ -1,7 +1,7 @@
 import {
   this.code-parser.parser {delimiter},
   this.syntax-tree.comment {comment},
-  this.syntax-tree.series {Bar, Comma, Paren, Series, container, empty-series, get-container-pair, get-separator-text, prefix, separator, series, singleton},
+  this.syntax-tree.series {Bar, Brace, Comma, Paren, Series, container, empty-series, get-container-pair, get-separator-text, prefix, separator, series, singleton},
   zonk.parse {get-point, parsed, zonk},
   zonk.point {point},
   zonk.zonk-kit {zonk-kit},
@@ -213,4 +213,11 @@ define parse-series-paren-with-loc<a>(
   p: &zonk(pair(a, comment)),
 ): parsed(locpack(a)) {
   parse-series-with-loc(k, none, Paren, Comma, p)
+}
+
+define parse-series-brace<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  parse-series(k, none, Brace, Comma, p)
 }
