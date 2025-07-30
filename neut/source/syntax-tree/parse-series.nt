@@ -1,7 +1,7 @@
 import {
   this.code-parser.parser {delimiter},
   this.syntax-tree.comment {comment},
-  this.syntax-tree.series {Bar, Comma, Series, container, empty-series, get-separator-text, separator, series, singleton},
+  this.syntax-tree.series {Bar, Comma, Series, container, empty-series, get-container-pair, get-separator-text, prefix, separator, series, singleton},
   zonk.parse {parsed, zonk},
   zonk.zonk-kit {zonk-kit},
 }
@@ -118,4 +118,29 @@ define _parse-series<a, r := rho>(
   | Bar =>
     _parse-series-or(k, con, leading-comment, p)
   }
+}
+
+inline parse-series<a, r := rho>(
+  k: &zonk-kit,
+  prefix: prefix,
+  con: container,
+  sep: separator,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  try _ = r;
+  let Pair(open, close) = get-container-pair(con);
+  try c1 = delimiter(k, open);
+  try se = _parse-series(k, Right(con), sep, c1, p);
+  try c2 = delimiter(k, close);
+  let Series of {elems, trailing-comment, container, separator, has-optional-separator} = se;
+  let se =
+    Series of {
+      elems,
+      trailing-comment,
+      prefix,
+      container,
+      separator,
+      has-optional-separator,
+    };
+  Right(Pair(se, c2))
 }

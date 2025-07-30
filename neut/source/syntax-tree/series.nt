@@ -240,7 +240,7 @@ define join-c<a>(xs: series(pair(comment, a))): series(a) {
   }
 }
 
-define get-container-pair(cont: container): pair(&text, &text) {
+inline get-container-pair(cont: container): pair(&text, &text) {
   match cont {
   | Paren =>
     Pair("(", ")")
