@@ -1,7 +1,24 @@
 import {
   this.code-parser.parser {delimiter},
   this.syntax-tree.comment {comment},
-  this.syntax-tree.series {Angle, Bar, Brace, Bracket, Comma, Paren, Series, container, empty-series, get-container-pair, get-separator-text, prefix, separator, series, singleton},
+  this.syntax-tree.series {
+    Angle,
+    Bar,
+    Brace,
+    Bracket,
+    Comma,
+    Paren,
+    Series,
+    container,
+    empty-series,
+    get-container-pair,
+    get-separator-text,
+    prefix,
+    separator,
+    series,
+    singleton,
+  },
+  zonk.make-zonk-kit {make-zonk-kit},
   zonk.parse {get-point, parsed, zonk},
   zonk.point {point},
   zonk.zonk-kit {zonk-kit},
@@ -248,4 +265,42 @@ define parse-series-brace-list<a>(
   p: &zonk(pair(a, comment)),
 ): parsed(pair(series(a), comment)) {
   parse-series(k, none, Brace, Bar, p)
+}
+
+define parse-series-brace-list-with-loc<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(locpack(a)) {
+  parse-series-with-loc(k, none, Brace, Bar, p)
+}
+
+define zen(): unit {
+  pin k = make-zonk-kit(*"{}");
+  pin f =
+    function (_) {
+      Right(Pair(Unit, Nil))
+    };
+  pin foo = parse-series-brace(k, f);
+  vet(foo);
+  pin k = make-zonk-kit(*"[  ]  ");
+  pin f =
+    function (_) {
+      Right(Pair(Unit, Nil))
+    };
+  pin foo = parse-series-bracket(k, f);
+  vet(foo);
+  pin k = make-zonk-kit(*"(, )  ");
+  pin f =
+    function (_) {
+      Right(Pair(Unit, Nil))
+    };
+  pin foo = parse-series-paren-with-loc(k, f);
+  vet(foo);
+  pin k = make-zonk-kit(*"{| }  ");
+  pin f =
+    function (_) {
+      Right(Pair(Unit, Nil))
+    };
+  pin foo = parse-series-brace-list(k, f);
+  vet(foo);
 }
