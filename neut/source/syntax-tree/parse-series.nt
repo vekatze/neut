@@ -242,3 +242,10 @@ define parse-series-angle<a>(
 ): parsed(pair(series(a), comment)) {
   parse-series(k, none, Angle, Comma, p)
 }
+
+define parse-series-brace-list<a>(
+  k: &zonk-kit,
+  p: &zonk(pair(a, comment)),
+): parsed(pair(series(a), comment)) {
+  parse-series(k, none, Brace, Bar, p)
+}
