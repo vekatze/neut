@@ -1,5 +1,6 @@
 import {
   this.logger.hint {hint},
+  this.syntax-tree.block {block},
   this.syntax-tree.comment {comment},
   this.syntax-tree.series {series},
 }
@@ -19,4 +20,8 @@ inline ens: type {
 
 data top-ens {
 | Top-Ens(ens, comment)
+}
+
+inline full-ens {
+  block(ens)
 }
