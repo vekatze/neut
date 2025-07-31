@@ -2,7 +2,7 @@ import {
   core.bool {all},
   this.app.app {app},
   this.app.run {raise-error, text-join},
-  this.ens.ens-type {ens-type, show-ens-type},
+  this.ens.ens-type {ET-Bool, ET-Dictionary, ET-Float, ET-Int, ET-List, ET-String, ens-type, show-ens-type},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.block {block},
   this.syntax-tree.comment {comment, comment-item},
@@ -157,6 +157,23 @@ define raise-type-error<a>(m: hint, expected-type: ens-type, actual-type: ens-ty
     show-ens-type(actual-type),
     "`",
   ])
+}
+
+define type-of(e: &ens): ens-type {
+  case e {
+  | E-Int of {} =>
+    ET-Int
+  | E-Float of {} =>
+    ET-Float
+  | E-Bool of {} =>
+    ET-Bool
+  | E-String of {} =>
+    ET-String
+  | E-List of {} =>
+    ET-List
+  | E-Dictionary of {} =>
+    ET-Dictionary
+  }
 }
 
 define zen(): unit {
