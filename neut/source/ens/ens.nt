@@ -193,6 +193,15 @@ define _hint-of(e: &ens): hint {
   }
 }
 
+define to-string(e: &ens): app(pair(&hint, &text)) {
+  case e {
+  | E-String(m, x) =>
+    Right(Pair(m, x))
+  | _ =>
+    raise-type-error(_hint-of(e), ET-String, type-of(e))
+  }
+}
+
 define to-dictionary(e: &ens): app(pair(&hint, &series(pair(text, ens)))) {
   case e {
   | E-Dictionary(m, kvs) =>
