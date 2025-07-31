@@ -309,6 +309,27 @@ define put(k: &text, v: ens, base: ens): app(ens) {
   Right(E-Dictionary(m, new-dict))
 }
 
+define conservative-update(key-path: &list(text), v: ens, base: ens): app(ens) {
+  case key-path {
+  | Nil =>
+    Right(v)
+  | Cons(k, rest) =>
+    try Pair(m, dict) = to-dictionary(base);
+    try new-dict =
+      this.syntax-tree.series.for-each-E(dict, function (p) {
+        let Pair(kd, vd) = p;
+        let b on kd = eq-text(k, kd);
+        if b {
+          try vd-new = conservative-update(rest, v, vd);
+          Right(Pair(kd, vd-new))
+        } else {
+          Right(Pair(kd, vd))
+        }
+      });
+    Right(E-Dictionary(m, new-dict))
+  }
+}
+
 define zen(): unit {
   pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
   vet(v);

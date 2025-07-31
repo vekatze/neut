@@ -42,6 +42,17 @@ inline for-each<a, b>(xs: series(a), f: (a) -> b): series(b) {
   Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}
 }
 
+inline for-each-E<e, a, b>(xs: series(a), f: (a) -> either(e, b)): either(e, series(b)) {
+  let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
+  try elems =
+    core.list.for-each-E(elems, function (p) {
+      let Pair(c, val) = p;
+      try val = f(val);
+      Right(Pair(c, val))
+    });
+  Right(Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator})
+}
+
 inline empty-series<a>(container: ?container, separator: separator): series(a) {
   Series of {
     elems := Nil,
