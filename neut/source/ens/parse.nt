@@ -2,7 +2,7 @@ import {
   core.float.parse,
   core.int.parse,
   this.code-parser.parser {symbol},
-  this.ens.ens {E-Int, ens},
+  this.ens.ens {E-Float, E-Int, ens},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.comment {comment},
   zonk.make-zonk-kit {make-zonk-kit},
@@ -59,6 +59,12 @@ define _parse-int-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment
   try _ = r;
   try Pair(x, c) = _parse-int(k);
   Right(Pair(E-Int(m, x), c))
+}
+
+define _parse-float-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+  try _ = r;
+  try Pair(x, c) = _parse-float(k);
+  Right(Pair(E-Float(m, x), c))
 }
 
 define zen(): unit {
