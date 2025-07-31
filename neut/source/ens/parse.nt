@@ -36,11 +36,34 @@ define _parse-float<r := rho>(k: &zonk-kit): parsed(pair(float, comment)) {
   }
 }
 
+define _parse-bool<r := rho>(k: &zonk-kit): parsed(pair(bool, comment)) {
+  try _ = r;
+  try Pair(s, c) = symbol(k);
+  let is-true on s = eq-text(s, "true");
+  if is-true {
+    Right(Pair(True, c))
+  } else {
+    let is-false on s = eq-text(s, "false");
+    let _ = s;
+    if is-false {
+      Right(Pair(False, c))
+    } else {
+      report-unexpected-input("bool")
+    }
+  }
+}
+
 define zen(): unit {
   pin k = make-zonk-kit(*"1234");
   pin v = _parse-integer(k);
   vet(v);
   pin k = make-zonk-kit(*"1234.5678");
   pin v = _parse-float(k);
+  vet(v);
+  pin k = make-zonk-kit(*"true // hello");
+  pin v = _parse-bool(k);
+  vet(v);
+  pin k = make-zonk-kit(*"false");
+  pin v = _parse-bool(k);
   vet(v);
 }
