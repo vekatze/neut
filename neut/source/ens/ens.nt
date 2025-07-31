@@ -6,7 +6,7 @@ import {
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.block {block},
   this.syntax-tree.comment {comment, comment-item},
-  this.syntax-tree.series {Brace, Bracket, Comma, Series, empty-series, series},
+  this.syntax-tree.series {Brace, Bracket, Comma, Series, append-left-biased, empty-series, series},
 }
 
 data ens-f(a: type) {
@@ -340,6 +340,72 @@ define empty-dict(m: hint): ens {
 
 define empty-list(m: hint): ens {
   E-List(m, empty-series(Right(Bracket), Comma))
+}
+
+inline _ens-dict: type {
+  list(pair(comment, pair(text, ens)))
+}
+
+define _extract(
+  key: text,
+  kvs: _ens-dict,
+  acc: _ens-dict,
+): either(pair(text, _ens-dict), pair(pair(text, ens), _ens-dict)) {
+  match kvs {
+  | Nil =>
+    Left(Pair(key, core.list.reverse(acc)))
+  | Cons(Pair(c, Pair(k, v)), rest) =>
+    let b on key, k = eq-text(k, key);
+    if b {
+      Right(Pair(Pair(key, v), core.list.append(core.list.reverse(acc), rest)))
+    } else {
+      _extract(key, rest, Cons(Pair(c, Pair(k, v)), acc))
+    }
+  }
+}
+
+// left-biased merge
+define merge(e1: ens, e2: ens): app(ens) {
+  match e1, e2 {
+  | E-Int(m, x1), E-Int of {} =>
+    Right(E-Int(m, x1))
+  | E-Float(m, x1), E-Float of {} =>
+    Right(E-Float(m, x1))
+  | E-Bool(m, x1), E-Bool of {} =>
+    Right(E-Bool(m, x1))
+  | E-String(m, x1), E-String of {} =>
+    Right(E-String(m, x1))
+  | E-List(m, xs1), E-List(_, xs2) =>
+    Right(E-List(m, append-left-biased(xs1, xs2)))
+  | E-Dictionary(m, s1), E-Dictionary(_, s2) =>
+    let Series of {elems := kvs1, trailing-comment, prefix, container, separator, has-optional-separator} = s1;
+    let Series of {elems := kvs2} = s2;
+    let f =
+      define merge-dicts(kvs1: _ens-dict, kvs2: _ens-dict): app(_ens-dict) {
+        match kvs1 {
+        | Nil =>
+          Right(kvs2)
+        | Cons(Pair(c1, Pair(k1, v1)), kvs1-rest) =>
+          match _extract(k1, kvs2, Nil) {
+          | Right(Pair(Pair(k1, v2), kvs2-rest)) =>
+            try new-value = merge(v1, v2);
+            try new-kvs = merge-dicts(kvs1-rest, kvs2-rest);
+            Right(Cons(Pair(c1, Pair(k1, new-value)), new-kvs))
+          | Left(Pair(k1, kvs2-rest)) =>
+            try new-kvs = merge-dicts(kvs1-rest, kvs2-rest);
+            Right(Cons(Pair(c1, Pair(k1, v1)), new-kvs))
+          }
+        }
+      };
+    try elems = f(kvs1, kvs2);
+    Right(E-Dictionary(m, Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}))
+  | e1, e2 =>
+    let t1 on e1 = type-of(e1);
+    let t2 on e2 = type-of(e2);
+    let _ = e2;
+    let m1 = _get-hint(e1);
+    raise-type-error(m1, t1, t2)
+  }
 }
 
 define zen(): unit {
