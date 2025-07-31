@@ -6,7 +6,7 @@ import {
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.block {block},
   this.syntax-tree.comment {comment, comment-item},
-  this.syntax-tree.series {Brace, Comma, Series, empty-series, series},
+  this.syntax-tree.series {Brace, Bracket, Comma, Series, empty-series, series},
 }
 
 data ens-f(a: type) {
@@ -336,6 +336,10 @@ define ens-path(m: hint, path: text): ens {
 
 define empty-dict(m: hint): ens {
   E-Dictionary(m, empty-series(Right(Brace), Comma))
+}
+
+define empty-list(m: hint): ens {
+  E-List(m, empty-series(Right(Bracket), Comma))
 }
 
 define zen(): unit {
