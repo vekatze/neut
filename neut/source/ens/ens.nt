@@ -193,6 +193,15 @@ define _hint-of(e: &ens): hint {
   }
 }
 
+define to-int(e: &ens): app(pair(&hint, int)) {
+  case e {
+  | E-Int(m, x) =>
+    Right(Pair(m, *x))
+  | _ =>
+    raise-type-error(_hint-of(e), ET-Int, type-of(e))
+  }
+}
+
 define to-float(e: &ens): app(pair(&hint, float)) {
   case e {
   | E-Float(m, x) =>
