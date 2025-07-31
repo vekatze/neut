@@ -176,7 +176,24 @@ define type-of(e: &ens): ens-type {
   }
 }
 
-define _get-hint(e: &ens): hint {
+define _get-hint(e: ens): hint {
+  match e {
+  | E-Int(m, _) =>
+    m
+  | E-Float(m, _) =>
+    m
+  | E-Bool(m, _) =>
+    m
+  | E-String(m, _) =>
+    m
+  | E-List(m, _) =>
+    m
+  | E-Dictionary(m, _) =>
+    m
+  }
+}
+
+define _get-hint-N(e: &ens): hint {
   case e {
   | E-Int(m, _) =>
     *m
@@ -193,73 +210,83 @@ define _get-hint(e: &ens): hint {
   }
 }
 
-define to-int(e: &ens): app(pair(&hint, int)) {
+define to-int-N(e: &ens): app(pair(&hint, int)) {
   case e {
   | E-Int(m, x) =>
     Right(Pair(m, *x))
   | _ =>
-    raise-type-error(_get-hint(e), ET-Int, type-of(e))
+    raise-type-error(_get-hint-N(e), ET-Int, type-of(e))
   }
 }
 
-define to-float(e: &ens): app(pair(&hint, float)) {
+define to-float-N(e: &ens): app(pair(&hint, float)) {
   case e {
   | E-Float(m, x) =>
     Right(Pair(m, *x))
   | _ =>
-    raise-type-error(_get-hint(e), ET-Float, type-of(e))
+    raise-type-error(_get-hint-N(e), ET-Float, type-of(e))
   }
 }
 
-define to-bool(e: &ens): app(pair(&hint, bool)) {
+define to-bool-N(e: &ens): app(pair(&hint, bool)) {
   case e {
   | E-Bool(m, x) =>
     Right(Pair(m, *x))
   | _ =>
-    raise-type-error(_get-hint(e), ET-Bool, type-of(e))
+    raise-type-error(_get-hint-N(e), ET-Bool, type-of(e))
   }
 }
 
-define to-string(e: &ens): app(pair(&hint, &text)) {
+define to-string-N(e: &ens): app(pair(&hint, &text)) {
   case e {
   | E-String(m, x) =>
     Right(Pair(m, x))
   | _ =>
-    raise-type-error(_get-hint(e), ET-String, type-of(e))
+    raise-type-error(_get-hint-N(e), ET-String, type-of(e))
   }
 }
 
-define to-dictionary(e: &ens): app(pair(&hint, &series(pair(text, ens)))) {
+define to-dictionary(e: ens): app(pair(hint, series(pair(text, ens)))) {
+  match e {
+  | E-Dictionary(m, kvs) =>
+    Right(Pair(m, kvs))
+  | e =>
+    let t on e = type-of(e);
+    raise-type-error(_get-hint(e), ET-Dictionary, t)
+  }
+}
+
+define to-dictionary-N(e: &ens): app(pair(&hint, &series(pair(text, ens)))) {
   case e {
   | E-Dictionary(m, kvs) =>
     Right(Pair(m, kvs))
   | _ =>
-    raise-type-error(_get-hint(e), ET-Dictionary, type-of(e))
+    raise-type-error(_get-hint-N(e), ET-Dictionary, type-of(e))
   }
 }
 
-define to-list(e: &ens): app(pair(&hint, &series(ens))) {
+define to-list-N(e: &ens): app(pair(&hint, &series(ens))) {
   case e {
   | E-List(m, xs) =>
     Right(Pair(m, xs))
   | _ =>
-    raise-type-error(_get-hint(e), ET-List, type-of(e))
+    raise-type-error(_get-hint-N(e), ET-List, type-of(e))
   }
 }
 
 define access(k: &text, e: &ens): app(&ens) {
-  try Pair(_, dict) = to-dictionary(e);
+  try Pair(_, dict) = to-dictionary-N(e);
   tie Series of {elems} = dict;
   match _lookup(k, elems) {
   | Right(v) =>
     Right(v)
   | Left(_) =>
-    raise-key-not-found-error(_get-hint(e), k)
+    raise-key-not-found-error(_get-hint-N(e), k)
   }
 }
 
 define access-or-default(k: &text, fallback: &ens, e: &ens): app(&ens) {
-  try Pair(_, dict) = to-dictionary(e);
+  try Pair(_, dict) = to-dictionary-N(e);
   tie Series of {elems} = dict;
   match _lookup(k, elems) {
   | Right(v) =>
@@ -273,10 +300,19 @@ define strip(x: full-ens): ens {
   this.syntax-tree.block.extract(x)
 }
 
+define put(k: &text, v: ens, base: ens): app(ens) {
+  try Pair(m, dict) = to-dictionary(base);
+  let new-dict =
+    this.syntax-tree.series.replace(dict, v, function (existing-key) {
+      eq-text(k, existing-key)
+    });
+  Right(E-Dictionary(m, new-dict))
+}
+
 define zen(): unit {
   pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
   vet(v);
   pin e = E-Int(internal-hint, 123);
-  pin v = to-dictionary(e);
+  pin v = to-dictionary-N(e);
   vet(v);
 }
