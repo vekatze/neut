@@ -412,6 +412,10 @@ define inject(e: ens): full-ens {
   Block(Nil, e, Nil)
 }
 
+define dict-from-list<a>(m: a, xs: list(pair(text, ens-f(a)))): ens-f(a) {
+  E-Dictionary(m, this.syntax-tree.series.from-list(Brace, Comma, xs))
+}
+
 define zen(): unit {
   pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
   vet(v);
