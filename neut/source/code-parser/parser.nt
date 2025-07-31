@@ -56,6 +56,10 @@ define is-non-symbol-char(r: rune): bool {
   }
 }
 
+define is-symbol-char(r: rune): bool {
+  not(is-non-symbol-char(r))
+}
+
 define skip-space<r := rho>(k: &zonk-kit): parsed(unit) {
   try _ = r;
   try _ =
@@ -139,14 +143,14 @@ define delimiter<r := rho>(k: &zonk-kit, expected: &text): parsed(comment) {
 define symbol<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
   try _ = r;
   lexeme(k, function (k) {
-    zonk.parse.take-while-1(is-non-symbol-char)(k)
+    zonk.parse.take-while-1(is-symbol-char)(k)
   })
 }
 
 define symbol'<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
   try _ = r;
   lexeme(k, function (k) {
-    zonk.parse.take-while(is-non-symbol-char)(k)
+    zonk.parse.take-while(is-symbol-char)(k)
   })
 }
 

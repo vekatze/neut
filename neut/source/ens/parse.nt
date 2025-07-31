@@ -1,0 +1,28 @@
+import {
+  core.int.parse,
+  this.code-parser.parser {symbol},
+  this.syntax-tree.comment {comment},
+  zonk.make-zonk-kit {make-zonk-kit},
+  zonk.parse {parsed, report-unexpected-input},
+  zonk.zonk-kit {zonk-kit},
+}
+
+define _parse-integer<r := rho>(k: &zonk-kit): parsed(pair(int, comment)) {
+  try _ = r;
+  try Pair(s, c) = symbol(k);
+  let _ on s = vet(s);
+  let int-or-none on s = core.int.parse.parse-int(s);
+  let _ = s;
+  match int-or-none {
+  | Right(v) =>
+    Right(Pair(v, c))
+  | Left(_) =>
+    report-unexpected-input("integer")
+  }
+}
+
+define zen(): unit {
+  pin k = make-zonk-kit(*"1234");
+  pin v = _parse-integer(k);
+  vet(v);
+}
