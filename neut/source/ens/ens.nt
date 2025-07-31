@@ -193,6 +193,15 @@ define _hint-of(e: &ens): hint {
   }
 }
 
+define to-bool(e: &ens): app(pair(&hint, bool)) {
+  case e {
+  | E-Bool(m, x) =>
+    Right(Pair(m, *x))
+  | _ =>
+    raise-type-error(_hint-of(e), ET-Bool, type-of(e))
+  }
+}
+
 define to-string(e: &ens): app(pair(&hint, &text)) {
   case e {
   | E-String(m, x) =>
