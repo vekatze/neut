@@ -1,6 +1,7 @@
 import {
   core.external {exit},
   core.foreign {get-cpu-count, sleep},
+  core.text-builder {text-builder},
   core.thread.pool,
   this.app.app {app},
   this.app.error {Make-Error, new-critical, new-critical', new-error, new-error'},
@@ -57,6 +58,19 @@ define raise-critical<a>(m: hint, t: text): app(a) {
 
 define raise-critical'<a>(t: text): app(a) {
   Left(new-critical'(t))
+}
+
+rule-left text-join {
+  function leaf(_: int): text-builder {
+    core.text-builder.make-text-builder(16)
+  },
+  function node-left(acc: text-builder, d: &text): text-builder {
+    let _ on acc = core.text-builder.append-text(acc, d);
+    acc
+  },
+  function root(x: text-builder): text {
+    core.text-builder.extract(x)
+  },
 }
 
 define zen(): unit {

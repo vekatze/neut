@@ -1,6 +1,8 @@
 import {
   core.bool {all},
-  this.logger.hint {hint},
+  this.app.app {app},
+  this.app.run {raise-error, text-join},
+  this.logger.hint {hint, internal-hint},
   this.syntax-tree.block {block},
   this.syntax-tree.comment {comment, comment-item},
   this.syntax-tree.series {Series, series},
@@ -140,4 +142,13 @@ define has-key(k: &text, e: &ens): bool {
   | _ =>
     False
   }
+}
+
+define raise-key-not-found-error<a>(m: hint, k: &text): app(a) {
+  raise-error(m, text-join["Could not find the required key `", k, "`."])
+}
+
+define zen(): unit {
+  pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
+  vet(v);
 }
