@@ -2,13 +2,15 @@ import {
   core.float.parse,
   core.int.parse,
   this.code-parser.parser {symbol},
+  this.ens.ens {E-Int, ens},
+  this.logger.hint {hint, internal-hint},
   this.syntax-tree.comment {comment},
   zonk.make-zonk-kit {make-zonk-kit},
   zonk.parse {parsed, report-unexpected-input},
   zonk.zonk-kit {zonk-kit},
 }
 
-define _parse-integer<r := rho>(k: &zonk-kit): parsed(pair(int, comment)) {
+define _parse-int<r := rho>(k: &zonk-kit): parsed(pair(int, comment)) {
   try _ = r;
   try Pair(s, c) = symbol(k);
   let _ on s = vet(s);
@@ -18,7 +20,7 @@ define _parse-integer<r := rho>(k: &zonk-kit): parsed(pair(int, comment)) {
   | Right(v) =>
     Right(Pair(v, c))
   | Left(_) =>
-    report-unexpected-input("integer")
+    report-unexpected-input("int")
   }
 }
 
@@ -53,9 +55,15 @@ define _parse-bool<r := rho>(k: &zonk-kit): parsed(pair(bool, comment)) {
   }
 }
 
+define _parse-int-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+  try _ = r;
+  try Pair(x, c) = _parse-int(k);
+  Right(Pair(E-Int(m, x), c))
+}
+
 define zen(): unit {
   pin k = make-zonk-kit(*"1234");
-  pin v = _parse-integer(k);
+  pin v = _parse-int(k);
   vet(v);
   pin k = make-zonk-kit(*"1234.5678");
   pin v = _parse-float(k);
@@ -65,5 +73,8 @@ define zen(): unit {
   vet(v);
   pin k = make-zonk-kit(*"false");
   pin v = _parse-bool(k);
+  vet(v);
+  pin k = make-zonk-kit(*"1234");
+  pin v = _parse-int-ens(k, internal-hint);
   vet(v);
 }
