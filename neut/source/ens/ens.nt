@@ -2,6 +2,7 @@ import {
   core.bool {all},
   this.app.app {app},
   this.app.run {raise-error, text-join},
+  this.ens.ens-type {ens-type, show-ens-type},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.block {block},
   this.syntax-tree.comment {comment, comment-item},
@@ -146,6 +147,16 @@ define has-key(k: &text, e: &ens): bool {
 
 define raise-key-not-found-error<a>(m: hint, k: &text): app(a) {
   raise-error(m, text-join["Could not find the required key `", k, "`."])
+}
+
+define raise-type-error<a>(m: hint, expected-type: ens-type, actual-type: ens-type): app(a) {
+  raise-error(m, text-join[
+    "The value here is expected to be of type `",
+    show-ens-type(expected-type),
+    "`, but is: `",
+    show-ens-type(actual-type),
+    "`",
+  ])
 }
 
 define zen(): unit {
