@@ -113,3 +113,31 @@ define eq-ens(e1: &ens, e2: &ens): bool {
     False
   }
 }
+
+define _lookup<a>(k: &text, kvs: &list(pair(a, pair(text, ens)))): ?&ens {
+  case kvs {
+  | Nil =>
+    none
+  | Cons(Pair(_, Pair(k', v)), rest) =>
+    if eq-text(k, k') {
+      Right(v)
+    } else {
+      _lookup(k, rest)
+    }
+  }
+}
+
+define has-key(k: &text, e: &ens): bool {
+  case e {
+  | E-Dictionary(_, kvs) =>
+    tie Series of {elems} = kvs;
+    match _lookup(k, elems) {
+    | Left(_) =>
+      False
+    | Right(_) =>
+      True
+    }
+  | _ =>
+    False
+  }
+}
