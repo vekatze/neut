@@ -1,4 +1,5 @@
 import {
+  core.float.parse,
   core.int.parse,
   this.code-parser.parser {symbol},
   this.syntax-tree.comment {comment},
@@ -21,8 +22,25 @@ define _parse-integer<r := rho>(k: &zonk-kit): parsed(pair(int, comment)) {
   }
 }
 
+define _parse-float<r := rho>(k: &zonk-kit): parsed(pair(float, comment)) {
+  try _ = r;
+  try Pair(s, c) = symbol(k);
+  let _ on s = vet(s);
+  let float-or-none on s = core.float.parse.parse-float(s);
+  let _ = s;
+  match float-or-none {
+  | Right(v) =>
+    Right(Pair(v, c))
+  | Left(_) =>
+    report-unexpected-input("float")
+  }
+}
+
 define zen(): unit {
   pin k = make-zonk-kit(*"1234");
   pin v = _parse-integer(k);
+  vet(v);
+  pin k = make-zonk-kit(*"1234.5678");
+  pin v = _parse-float(k);
   vet(v);
 }
