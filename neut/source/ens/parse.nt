@@ -1,8 +1,8 @@
 import {
   core.float.parse,
   core.int.parse,
-  this.code-parser.parser {symbol},
-  this.ens.ens {E-Bool, E-Float, E-Int, ens},
+  this.code-parser.parser {string, symbol},
+  this.ens.ens {E-Bool, E-Float, E-Int, E-String, ens},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.comment {comment},
   zonk.make-zonk-kit {make-zonk-kit},
@@ -73,6 +73,12 @@ define _parse-bool-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, commen
   Right(Pair(E-Bool(m, x), c))
 }
 
+define _parse-string-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+  try _ = r;
+  try Pair(x, c) = string(k);
+  Right(Pair(E-String(m, x), c))
+}
+
 define zen(): unit {
   pin k = make-zonk-kit(*"1234");
   pin v = _parse-int(k);
@@ -88,5 +94,8 @@ define zen(): unit {
   vet(v);
   pin k = make-zonk-kit(*"1234");
   pin v = _parse-int-ens(k, internal-hint);
+  vet(v);
+  pin k = make-zonk-kit(*"\"hello\" // test");
+  pin v = _parse-string-ens(k, internal-hint);
   vet(v);
 }
