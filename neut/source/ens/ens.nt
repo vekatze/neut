@@ -176,7 +176,36 @@ define type-of(e: &ens): ens-type {
   }
 }
 
+define _hint-of(e: &ens): hint {
+  case e {
+  | E-Int(m, _) =>
+    *m
+  | E-Float(m, _) =>
+    *m
+  | E-Bool(m, _) =>
+    *m
+  | E-String(m, _) =>
+    *m
+  | E-List(m, _) =>
+    *m
+  | E-Dictionary(m, _) =>
+    *m
+  }
+}
+
+define to-dictionary(e: &ens): app(pair(&hint, &series(pair(text, ens)))) {
+  case e {
+  | E-Dictionary(m, kvs) =>
+    Right(Pair(m, kvs))
+  | _ =>
+    raise-type-error(_hint-of(e), ET-Dictionary, type-of(e))
+  }
+}
+
 define zen(): unit {
   pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
+  vet(v);
+  pin e = E-Int(internal-hint, 123);
+  pin v = to-dictionary(e);
   vet(v);
 }
