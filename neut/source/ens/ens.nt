@@ -269,6 +269,10 @@ define access-or-default(k: &text, fallback: &ens, e: &ens): app(&ens) {
   }
 }
 
+define strip(x: full-ens): ens {
+  this.syntax-tree.block.extract(x)
+}
+
 define zen(): unit {
   pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
   vet(v);
