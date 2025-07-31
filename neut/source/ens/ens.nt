@@ -202,6 +202,15 @@ define to-dictionary(e: &ens): app(pair(&hint, &series(pair(text, ens)))) {
   }
 }
 
+define to-list(e: &ens): app(pair(&hint, &series(ens))) {
+  case e {
+  | E-List(m, xs) =>
+    Right(Pair(m, xs))
+  | _ =>
+    raise-type-error(_hint-of(e), ET-List, type-of(e))
+  }
+}
+
 define zen(): unit {
   pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
   vet(v);
