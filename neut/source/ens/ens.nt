@@ -330,6 +330,10 @@ define conservative-update(key-path: &list(text), v: ens, base: ens): app(ens) {
   }
 }
 
+define ens-path(m: hint, path: text): ens {
+  E-String(m, path)
+}
+
 define zen(): unit {
   pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
   vet(v);
