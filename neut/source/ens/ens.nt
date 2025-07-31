@@ -247,6 +247,17 @@ define to-list(e: &ens): app(pair(&hint, &series(ens))) {
   }
 }
 
+define access(k: &text, e: &ens): app(&ens) {
+  try Pair(_, dict) = to-dictionary(e);
+  tie Series of {elems} = dict;
+  match _lookup(k, elems) {
+  | Right(v) =>
+    Right(v)
+  | Left(_) =>
+    raise-key-not-found-error(_hint-of(e), k)
+  }
+}
+
 define zen(): unit {
   pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
   vet(v);
