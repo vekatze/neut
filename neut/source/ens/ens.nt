@@ -4,7 +4,7 @@ import {
   this.app.run {raise-error, text-join},
   this.ens.ens-type {ET-Bool, ET-Dictionary, ET-Float, ET-Int, ET-List, ET-String, ens-type, show-ens-type},
   this.logger.hint {hint, internal-hint},
-  this.syntax-tree.block {block},
+  this.syntax-tree.block {Block, block},
   this.syntax-tree.comment {comment, comment-item},
   this.syntax-tree.series {Brace, Bracket, Comma, Series, append-left-biased, empty-series, series},
 }
@@ -406,6 +406,10 @@ define merge(e1: ens, e2: ens): app(ens) {
     let m1 = _get-hint(e1);
     raise-type-error(m1, t1, t2)
   }
+}
+
+define inject(e: ens): full-ens {
+  Block(Nil, e, Nil)
 }
 
 define zen(): unit {
