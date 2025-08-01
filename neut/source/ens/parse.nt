@@ -2,9 +2,11 @@ import {
   core.float.parse,
   core.int.parse,
   this.code-parser.parser {string, symbol},
-  this.ens.ens {E-Bool, E-Float, E-Int, E-String, ens},
+  this.ens.ens {E-Bool, E-Float, E-Int, E-List, E-String, ens},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.comment {comment},
+  this.syntax-tree.parse-series {parse-series-bracket},
+  // this.syntax-tree.parse-series {parse-series-bracket},
   zonk.make-zonk-kit {make-zonk-kit},
   zonk.parse {parsed, report-unexpected-input},
   zonk.zonk-kit {zonk-kit},
@@ -77,6 +79,21 @@ define _parse-string-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comm
   try _ = r;
   try Pair(x, c) = string(k);
   Right(Pair(E-String(m, x), c))
+}
+
+nominal {
+  _parse-ens<r := rho>(k: &zonk-kit): parsed(pair(ens, comment)),
+}
+
+define _parse-list<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+  try _ = r;
+  try Pair(ens-series, c) = parse-series-bracket(k, exact _parse-ens);
+  Right(Pair(E-List(m, ens-series), c))
+}
+
+define _parse-ens<r := rho>(k: &zonk-kit): parsed(pair(ens, comment)) {
+  try _ = r;
+  admit
 }
 
 define zen(): unit {
