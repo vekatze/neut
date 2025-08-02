@@ -1,5 +1,5 @@
 import {
-  this.code-parser.parser {delimiter},
+  this.code-parser.parser {delimiter, parser, parser-kit},
   this.syntax-tree.comment {comment},
   this.syntax-tree.series {
     Angle,
@@ -19,22 +19,21 @@ import {
     singleton,
   },
   zonk.make-zonk-kit {make-zonk-kit},
-  zonk.parse {get-point, parsed, zonk},
+  zonk.parse {get-point, parsed},
   zonk.point {point},
-  zonk.zonk-kit {zonk-kit},
 }
 
 inline _parse-series-sep-trail<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   after-sep: bool,
   con: ?container,
   sep: separator,
   leading-comment: comment,
-  !p: zonk(pair(a, comment)),
+  !p: parser(pair(a, comment)),
 ): parsed(series(a)) {
   let f =
     define self<r := rho>(
-      k: &zonk-kit,
+      k: &parser-kit,
       after-sep: bool,
       con: ?container,
       sep: separator,
@@ -67,16 +66,16 @@ inline _parse-series-sep-trail<a, r := rho>(
 }
 
 inline _parse-series-sep-by<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   has-optional-separator: bool,
   con: ?container,
   sep: separator,
   leading-comment: comment,
-  !p: zonk(pair(a, comment)),
+  !p: parser(pair(a, comment)),
 ): parsed(series(a)) {
   let f =
     define self<r := rho>(
-      k: &zonk-kit,
+      k: &parser-kit,
       has-optional-separator: bool,
       con: ?container,
       sep: separator,
@@ -109,11 +108,11 @@ inline _parse-series-sep-by<a, r := rho>(
 }
 
 inline _parse-series-sep-lead<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   con: ?container,
   sep: separator,
   leading-comment: comment,
-  p: zonk(pair(a, comment)),
+  p: parser(pair(a, comment)),
 ): parsed(series(a)) {
   try _ = r;
   match delimiter(k, get-separator-text(sep)) {
@@ -125,31 +124,31 @@ inline _parse-series-sep-lead<a, r := rho>(
 }
 
 inline _parse-series-and<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   con: ?container,
   leading-comment: comment,
-  p: zonk(pair(a, comment)),
+  p: parser(pair(a, comment)),
 ): parsed(series(a)) {
   try _ = r;
   _parse-series-sep-trail(k, False, con, Comma, leading-comment, p)
 }
 
 inline _parse-series-or<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   con: ?container,
   leading-comment: comment,
-  p: zonk(pair(a, comment)),
+  p: parser(pair(a, comment)),
 ): parsed(series(a)) {
   try _ = r;
   _parse-series-sep-lead(k, con, Bar, leading-comment, p)
 }
 
 inline _parse-series<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   con: ?container,
   sep: separator,
   leading-comment: comment,
-  p: zonk(pair(a, comment)),
+  p: parser(pair(a, comment)),
 ): parsed(series(a)) {
   try _ = r;
   match sep {
@@ -161,11 +160,11 @@ inline _parse-series<a, r := rho>(
 }
 
 inline parse-series<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   prefix: prefix,
   con: container,
   sep: separator,
-  p: zonk(pair(a, comment)),
+  p: parser(pair(a, comment)),
 ): parsed(pair(series(a), comment)) {
   try _ = r;
   let Pair(open, close) = get-container-pair(con);
@@ -194,11 +193,11 @@ data locpack(a) {
 }
 
 inline parse-series-with-loc<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   prefix: prefix,
   con: container,
   sep: separator,
-  p: zonk(pair(a, comment)),
+  p: parser(pair(a, comment)),
 ): parsed(locpack(a)) {
   try _ = r;
   let Pair(open, close) = get-container-pair(con);
@@ -220,10 +219,10 @@ inline parse-series-with-loc<a, r := rho>(
 }
 
 inline parse-bare-series<a, r := rho>(
-  k: &zonk-kit,
+  k: &parser-kit,
   prefix: prefix,
   sep: separator,
-  p: zonk(pair(a, comment)),
+  p: parser(pair(a, comment)),
 ): parsed(series(a)) {
   try _ = r;
   try se = _parse-series(k, none, sep, Nil, p);
@@ -241,81 +240,81 @@ inline parse-bare-series<a, r := rho>(
 }
 
 inline parse-series-paren<a>(
-  k: &zonk-kit,
-  p: zonk(pair(a, comment)),
+  k: &parser-kit,
+  p: parser(pair(a, comment)),
 ): parsed(pair(series(a), comment)) {
   parse-series(k, none, Paren, Comma, p)
 }
 
 inline parse-series-paren-with-loc<a>(
-  k: &zonk-kit,
-  p: zonk(pair(a, comment)),
+  k: &parser-kit,
+  p: parser(pair(a, comment)),
 ): parsed(locpack(a)) {
   parse-series-with-loc(k, none, Paren, Comma, p)
 }
 
 inline parse-series-brace<a>(
-  k: &zonk-kit,
-  p: zonk(pair(a, comment)),
+  k: &parser-kit,
+  p: parser(pair(a, comment)),
 ): parsed(pair(series(a), comment)) {
   parse-series(k, none, Brace, Comma, p)
 }
 
 inline parse-series-brace-with-loc<a>(
-  k: &zonk-kit,
-  p: zonk(pair(a, comment)),
+  k: &parser-kit,
+  p: parser(pair(a, comment)),
 ): parsed(locpack(a)) {
   parse-series-with-loc(k, none, Brace, Comma, p)
 }
 
 inline parse-series-bracket<a>(
-  k: &zonk-kit,
-  p: zonk(pair(a, comment)),
+  k: &parser-kit,
+  p: parser(pair(a, comment)),
 ): parsed(pair(series(a), comment)) {
   parse-series(k, none, Bracket, Comma, p)
 }
 
 inline parse-series-angle<a>(
-  k: &zonk-kit,
-  p: zonk(pair(a, comment)),
+  k: &parser-kit,
+  p: parser(pair(a, comment)),
 ): parsed(pair(series(a), comment)) {
   parse-series(k, none, Angle, Comma, p)
 }
 
 inline parse-series-brace-list<a>(
-  k: &zonk-kit,
-  p: zonk(pair(a, comment)),
+  k: &parser-kit,
+  p: parser(pair(a, comment)),
 ): parsed(pair(series(a), comment)) {
   parse-series(k, none, Brace, Bar, p)
 }
 
 inline parse-series-brace-list-with-loc<a>(
-  k: &zonk-kit,
-  p: zonk(pair(a, comment)),
+  k: &parser-kit,
+  p: parser(pair(a, comment)),
 ): parsed(locpack(a)) {
   parse-series-with-loc(k, none, Brace, Bar, p)
 }
 
 define zen(): unit {
-  pin k = make-zonk-kit(*"{}");
+  pin k = make-zonk-kit(*"{}", *"path/to/file.nt");
   pin foo =
     parse-series-brace(k, function (_) {
       Right(Pair(Unit, Nil))
     });
   vet(foo);
-  pin k = make-zonk-kit(*"[  ]  ");
+  pin k = make-zonk-kit(*"[  ]  ", *"path/to/file.nt");
   pin foo =
     parse-series-bracket(k, function (_) {
       Right(Pair(Unit, Nil))
     });
   vet(foo);
-  pin k = make-zonk-kit(*"(, )  ");
+  pin k = make-zonk-kit(*"(, )  ", *"path/to/file.nt");
   pin foo =
     parse-series-paren-with-loc(k, function (_) {
       Right(Pair(Unit, Nil))
     });
   vet(foo);
-  pin k = make-zonk-kit(*"{| }  ");
+  pin k = make-zonk-kit(*"{| }  ", *"path/to/file.nt");
   pin foo =
     parse-series-brace-list(k, function (_) {
       Right(Pair(Unit, Nil))

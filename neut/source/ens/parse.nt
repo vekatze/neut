@@ -1,18 +1,17 @@
 import {
   core.float.parse,
   core.int.parse,
-  this.code-parser.parser {string, symbol},
+  this.code-parser.get-info {get-current-hint},
+  this.code-parser.parser {parser-kit, string, symbol},
   this.ens.ens {E-Bool, E-Float, E-Int, E-List, E-String, ens},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.comment {comment},
   this.syntax-tree.parse-series {parse-series-bracket},
-  // this.syntax-tree.parse-series {parse-series-bracket},
   zonk.make-zonk-kit {make-zonk-kit},
   zonk.parse {parsed, report-unexpected-input},
-  zonk.zonk-kit {zonk-kit},
 }
 
-define _parse-int<r := rho>(k: &zonk-kit): parsed(pair(int, comment)) {
+define _parse-int<r := rho>(k: &parser-kit): parsed(pair(int, comment)) {
   try _ = r;
   try Pair(s, c) = symbol(k);
   let _ on s = vet(s);
@@ -26,7 +25,7 @@ define _parse-int<r := rho>(k: &zonk-kit): parsed(pair(int, comment)) {
   }
 }
 
-define _parse-float<r := rho>(k: &zonk-kit): parsed(pair(float, comment)) {
+define _parse-float<r := rho>(k: &parser-kit): parsed(pair(float, comment)) {
   try _ = r;
   try Pair(s, c) = symbol(k);
   let _ on s = vet(s);
@@ -40,7 +39,7 @@ define _parse-float<r := rho>(k: &zonk-kit): parsed(pair(float, comment)) {
   }
 }
 
-define _parse-bool<r := rho>(k: &zonk-kit): parsed(pair(bool, comment)) {
+define _parse-bool<r := rho>(k: &parser-kit): parsed(pair(bool, comment)) {
   try _ = r;
   try Pair(s, c) = symbol(k);
   let is-true on s = eq-text(s, "true");
@@ -57,62 +56,76 @@ define _parse-bool<r := rho>(k: &zonk-kit): parsed(pair(bool, comment)) {
   }
 }
 
-define _parse-int-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+define _parse-int-ens<r := rho>(k: &parser-kit, m: hint): parsed(pair(ens, comment)) {
   try _ = r;
   try Pair(x, c) = _parse-int(k);
   Right(Pair(E-Int(m, x), c))
 }
 
-define _parse-float-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+define _parse-float-ens<r := rho>(k: &parser-kit, m: hint): parsed(pair(ens, comment)) {
   try _ = r;
   try Pair(x, c) = _parse-float(k);
   Right(Pair(E-Float(m, x), c))
 }
 
-define _parse-bool-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+define _parse-bool-ens<r := rho>(k: &parser-kit, m: hint): parsed(pair(ens, comment)) {
   try _ = r;
   try Pair(x, c) = _parse-bool(k);
   Right(Pair(E-Bool(m, x), c))
 }
 
-define _parse-string-ens<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+define _parse-string-ens<r := rho>(k: &parser-kit, m: hint): parsed(pair(ens, comment)) {
   try _ = r;
   try Pair(x, c) = string(k);
   Right(Pair(E-String(m, x), c))
 }
 
 nominal {
-  _parse-ens<r := rho>(k: &zonk-kit): parsed(pair(ens, comment)),
+  _parse-ens<r := rho>(k: &parser-kit): parsed(pair(ens, comment)),
 }
 
-define _parse-list<r := rho>(k: &zonk-kit, m: hint): parsed(pair(ens, comment)) {
+define _parse-list<r := rho>(k: &parser-kit, m: hint): parsed(pair(ens, comment)) {
   try _ = r;
   try Pair(ens-series, c) = parse-series-bracket(k, exact _parse-ens);
   Right(Pair(E-List(m, ens-series), c))
 }
 
-define _parse-ens<r := rho>(k: &zonk-kit): parsed(pair(ens, comment)) {
+define _parse-key-value-pair<r := rho>(
+  k: &parser-kit,
+): parsed(pair(pair(comment, pair(hint, pair(text, ens))), comment)) {
+  try _ = r;
+  let m = get-current-hint(k);
+  try Pair(key, c-lead) = symbol(k);
+  try Pair(value, c-trail) = _parse-ens(k);
+  Right(Pair(
+    Pair(c-lead, Pair(m, Pair(key, value))),
+    c-trail,
+  ))
+}
+
+define _parse-ens<r := rho>(k: &parser-kit): parsed(pair(ens, comment)) {
   try _ = r;
   admit
 }
 
 define zen(): unit {
-  pin k = make-zonk-kit(*"1234");
+  pin k = make-zonk-kit(*"1234", *"test");
   pin v = _parse-int(k);
   vet(v);
-  pin k = make-zonk-kit(*"1234.5678");
+  pin k = make-zonk-kit(*"1234.5678", *"test");
   pin v = _parse-float(k);
   vet(v);
-  pin k = make-zonk-kit(*"true // hello");
+  pin k = make-zonk-kit(*"true // hello", *"test");
   pin v = _parse-bool(k);
   vet(v);
-  pin k = make-zonk-kit(*"false");
+  pin k = make-zonk-kit(*"false", *"test");
   pin v = _parse-bool(k);
   vet(v);
-  pin k = make-zonk-kit(*"1234");
-  pin v = _parse-int-ens(k, internal-hint);
+  pin k = make-zonk-kit(*"1234", *"test");
+  let m = get-current-hint(k);
+  pin v = _parse-int-ens(k, m);
   vet(v);
-  pin k = make-zonk-kit(*"\"hello\" // test");
+  pin k = make-zonk-kit(*"\"hello\" // test", *"test");
   pin v = _parse-string-ens(k, internal-hint);
   vet(v);
 }
