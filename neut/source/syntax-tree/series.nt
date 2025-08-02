@@ -281,6 +281,11 @@ define extract<a>(xs: series(a)): list(a) {
   })
 }
 
+define extract-N<a>(xs: &series(a)): &list(pair(comment, a)) {
+  tie Series of {elems} = xs;
+  elems
+}
+
 define is-empty<a>(xs: &series(a)): bool {
   tie Series of {elems, trailing-comment} = xs;
   let b1 = core.list.is-empty(elems);

@@ -9,13 +9,21 @@ import {
   this.syntax-tree.series {Brace, Bracket, Comma, Series, append-left-biased, empty-series, series},
 }
 
+inline ens-key-f(a: type): type {
+  pair(a, text)
+}
+
 data ens-f(a: type) {
 | E-Int(a, int)
 | E-Float(a, float)
 | E-Bool(a, bool)
 | E-String(a, text)
 | E-List(a, series(ens-f(a)))
-| E-Dictionary(a, series(pair(text, ens-f(a))))
+| E-Dictionary(a, series(pair(ens-key-f(a), ens-f(a))))
+}
+
+inline ens-key: type {
+  ens-key-f(hint)
 }
 
 inline ens: type {
@@ -66,13 +74,13 @@ define _eq-ens-list(
 }
 
 define _eq-ens-kvs(
-  xs1: &list(pair(list(comment-item), pair(text, ens))),
-  xs2: &list(pair(list(comment-item), pair(text, ens))),
+  xs1: &list(pair(list(comment-item), pair(pair(hint, text), ens))),
+  xs2: &list(pair(list(comment-item), pair(pair(hint, text), ens))),
 ): bool {
   case xs1, xs2 {
   | Nil, Nil =>
     True
-  | Cons(Pair(c1, Pair(k1, x1)), rest1), Cons(Pair(c2, Pair(k2, x2)), rest2) =>
+  | Cons(Pair(c1, Pair(Pair(_, k1), x1)), rest1), Cons(Pair(c2, Pair(Pair(_, k2), x2)), rest2) =>
     let b1 = eq-data(c1, c2);
     let b2 = eq-text(k1, k2);
     let b3 = eq-ens(x1, x2);
@@ -117,11 +125,11 @@ define eq-ens(e1: &ens, e2: &ens): bool {
   }
 }
 
-define _lookup<a>(k: &text, kvs: &list(pair(a, pair(text, ens)))): ?&ens {
+define _lookup<a>(k: &text, kvs: &list(pair(a, pair(pair(hint, text), ens)))): ?&ens {
   case kvs {
   | Nil =>
     none
-  | Cons(Pair(_, Pair(k', v)), rest) =>
+  | Cons(Pair(_, Pair(Pair(_, k'), v)), rest) =>
     if eq-text(k, k') {
       Right(v)
     } else {
@@ -246,7 +254,7 @@ define to-string-N(e: &ens): app(pair(&hint, &text)) {
   }
 }
 
-define to-dictionary(e: ens): app(pair(hint, series(pair(text, ens)))) {
+define to-dictionary(e: ens): app(pair(hint, series(pair(pair(hint, text), ens)))) {
   match e {
   | E-Dictionary(m, kvs) =>
     Right(Pair(m, kvs))
@@ -256,7 +264,7 @@ define to-dictionary(e: ens): app(pair(hint, series(pair(text, ens)))) {
   }
 }
 
-define to-dictionary-N(e: &ens): app(pair(&hint, &series(pair(text, ens)))) {
+define to-dictionary-N(e: &ens): app(pair(&hint, &series(pair(pair(hint, text), ens)))) {
   case e {
   | E-Dictionary(m, kvs) =>
     Right(Pair(m, kvs))
@@ -304,6 +312,7 @@ define put(k: &text, v: ens, base: ens): app(ens) {
   try Pair(m, dict) = to-dictionary(base);
   let new-dict =
     this.syntax-tree.series.replace(dict, v, function (existing-key) {
+      tie Pair(_, existing-key) = existing-key;
       eq-text(k, existing-key)
     });
   Right(E-Dictionary(m, new-dict))
@@ -318,12 +327,13 @@ define conservative-update(key-path: &list(text), v: ens, base: ens): app(ens) {
     try new-dict =
       this.syntax-tree.series.for-each-E(dict, function (p) {
         let Pair(kd, vd) = p;
+        let Pair(m, kd) = kd;
         let b on kd = eq-text(k, kd);
         if b {
           try vd-new = conservative-update(rest, v, vd);
-          Right(Pair(kd, vd-new))
+          Right(Pair(Pair(m, kd), vd-new))
         } else {
-          Right(Pair(kd, vd))
+          Right(Pair(Pair(m, kd), vd))
         }
       });
     Right(E-Dictionary(m, new-dict))
@@ -343,23 +353,26 @@ define empty-list(m: hint): ens {
 }
 
 inline _ens-dict: type {
-  list(pair(comment, pair(text, ens)))
+  list(pair(comment, pair(ens-key, ens)))
 }
 
 define _extract(
-  key: text,
+  key: ens-key,
   kvs: _ens-dict,
   acc: _ens-dict,
-): either(pair(text, _ens-dict), pair(pair(text, ens), _ens-dict)) {
+): either(pair(ens-key, _ens-dict), pair(pair(ens-key, ens), _ens-dict)) {
   match kvs {
   | Nil =>
     Left(Pair(key, core.list.reverse(acc)))
-  | Cons(Pair(c, Pair(k, v)), rest) =>
-    let b on key, k = eq-text(k, key);
+  | Cons(Pair(c, Pair(Pair(m, k), v)), rest) =>
+    let b on key, k = {
+      tie Pair(_, key) = key;
+      eq-text(k, key)
+    };
     if b {
       Right(Pair(Pair(key, v), core.list.append(core.list.reverse(acc), rest)))
     } else {
-      _extract(key, rest, Cons(Pair(c, Pair(k, v)), acc))
+      _extract(key, rest, Cons(Pair(c, Pair(Pair(m, k), v)), acc))
     }
   }
 }
@@ -412,11 +425,11 @@ define inject(e: ens): full-ens {
   Block(Nil, e, Nil)
 }
 
-define dict-from-list<a>(m: a, xs: list(pair(text, ens-f(a)))): ens-f(a) {
+define dict-from-list<a>(m: a, xs: list(pair(ens-key-f(a), ens-f(a)))): ens-f(a) {
   E-Dictionary(m, this.syntax-tree.series.from-list(Brace, Comma, xs))
 }
 
-define dict-from-list-vertical<a>(m: a, xs: list(pair(text, ens-f(a)))): ens-f(a) {
+define dict-from-list-vertical<a>(m: a, xs: list(pair(ens-key-f(a), ens-f(a)))): ens-f(a) {
   let s = this.syntax-tree.series.from-list(Brace, Comma, xs);
   let Series of {elems, trailing-comment, prefix, container, separator} = s;
   E-Dictionary(m, Series of {

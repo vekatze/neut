@@ -1,12 +1,15 @@
 import {
   core.float.parse,
   core.int.parse,
+  core.list {for-each-EN},
+  core.pair {second},
   this.code-parser.get-info {get-current-hint},
   this.code-parser.parser {parser-kit, string, symbol},
-  this.ens.ens {E-Bool, E-Float, E-Int, E-List, E-String, ens},
+  this.ens.ens {E-Bool, E-Dictionary, E-Float, E-Int, E-List, E-String, ens, ens-key},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.comment {comment},
-  this.syntax-tree.parse-series {parse-series-bracket},
+  this.syntax-tree.parse-series {parse-series-brace, parse-series-bracket},
+  this.syntax-tree.series {extract-N},
   zonk.make-zonk-kit {make-zonk-kit},
   zonk.parse {parsed, report-unexpected-input},
 }
@@ -92,20 +95,77 @@ define _parse-list<r := rho>(k: &parser-kit, m: hint): parsed(pair(ens, comment)
 
 define _parse-key-value-pair<r := rho>(
   k: &parser-kit,
-): parsed(pair(pair(comment, pair(hint, pair(text, ens))), comment)) {
+): parsed(pair(pair(comment, pair(ens-key, ens)), comment)) {
   try _ = r;
   let m = get-current-hint(k);
   try Pair(key, c-lead) = symbol(k);
   try Pair(value, c-trail) = _parse-ens(k);
-  Right(Pair(
-    Pair(c-lead, Pair(m, Pair(key, value))),
-    c-trail,
-  ))
+  Right(Pair(Pair(c-lead, Pair(Pair(m, key), value)), c-trail))
+}
+
+define _parse-dictionary<r := rho>(k: &parser-kit, m: hint): parsed(pair(ens, comment)) {
+  try _ = r;
+  try Pair(kvs, c) = parse-series-brace(k, exact _parse-key-value-pair);
+  let kvs = this.syntax-tree.series.for-each(kvs, exact second);
+  Right(Pair(E-Dictionary(m, kvs), c))
 }
 
 define _parse-ens<r := rho>(k: &parser-kit): parsed(pair(ens, comment)) {
   try _ = r;
   admit
+}
+
+define _member(xs: &list(&text), k: &text): bool {
+  case xs {
+  | Nil =>
+    False
+  | Cons(x, rest) =>
+    if eq-text(*x, k) {
+      True
+    } else {
+      _member(rest, k)
+    }
+  }
+}
+
+define _find-duplicate-keys<a, b>(
+  mks: &list(pair(b, pair(ens-key, a))),
+  found-keys: list(&text),
+): ?meta pair(hint, text) {
+  case mks {
+  | Nil =>
+    none
+  | Cons(Pair(_, Pair(Pair(m, k), _)), rest) =>
+    let b on found-keys = _member(found-keys, k);
+    if b {
+      Right(box m, k {Pair(m, k)})
+    } else {
+      _find-duplicate-keys(rest, Cons(k, found-keys))
+    }
+  }
+}
+
+define _validate(e: &ens): either(meta pair(hint, text), unit) {
+  case e {
+  | E-List(_, xs) =>
+    let xs = extract-N(xs);
+    try _ =
+      for-each-EN(xs, function (x) {
+        tie Pair(_, y) = x;
+        _validate(y)
+      });
+    Right(Unit)
+  | E-Dictionary(_, kvs) =>
+    let kvs = extract-N(kvs);
+    match _find-duplicate-keys(kvs, Nil) {
+    | Right(p) =>
+      Left(p)
+    | Left(_) =>
+      Right(Unit)
+    }
+  | _ =>
+    Right(Unit)
+  }
 }
 
 define zen(): unit {
