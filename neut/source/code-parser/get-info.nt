@@ -6,7 +6,7 @@ import {
   zonk.zonk-kit {get-context},
 }
 
-define get-current-hint(k: &parser-kit): hint {
+inline get-current-hint(k: &parser-kit): hint {
   let Point(line, column) = get-point(k);
   let file-path = get-context(k);
   Hint of {line, column, file-path, should-save-location := True}
