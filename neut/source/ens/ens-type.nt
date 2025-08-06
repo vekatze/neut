@@ -1,0 +1,25 @@
+data ens-type {
+| ET-Int
+| ET-Float
+| ET-Bool
+| ET-String
+| ET-List
+| ET-Dictionary
+}
+
+define show-ens-type(t: ens-type): &text {
+  match t {
+  | ET-Int =>
+    "int"
+  | ET-Float =>
+    "float"
+  | ET-Bool =>
+    "bool"
+  | ET-String =>
+    "string"
+  | ET-List =>
+    "list"
+  | ET-Dictionary =>
+    "dictionary"
+  }
+}

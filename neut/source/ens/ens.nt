@@ -1,0 +1,451 @@
+import {
+  core.bool {all},
+  this.app.app {app},
+  this.app.run {raise-error, text-join},
+  this.ens.ens-type {ET-Bool, ET-Dictionary, ET-Float, ET-Int, ET-List, ET-String, ens-type, show-ens-type},
+  this.logger.hint {hint, internal-hint},
+  this.syntax-tree.block {Block, block},
+  this.syntax-tree.comment {comment, comment-item},
+  this.syntax-tree.series {Brace, Bracket, Comma, Series, append-left-biased, empty-series, series},
+}
+
+inline ens-key-f(a: type): type {
+  pair(a, text)
+}
+
+data ens-f(a: type) {
+| E-Int(a, int)
+| E-Float(a, float)
+| E-Bool(a, bool)
+| E-String(a, text)
+| E-List(a, series(ens-f(a)))
+| E-Dictionary(a, series(pair(ens-key-f(a), ens-f(a))))
+}
+
+inline ens-key: type {
+  ens-key-f(hint)
+}
+
+inline ens: type {
+  ens-f(hint)
+}
+
+data top-ens {
+| Top-Ens(ens, comment)
+}
+
+inline full-ens {
+  block(ens)
+}
+
+define _eq-bool(b1: bool, b2: bool): bool {
+  match b1, b2 {
+  | True, True =>
+    True
+  | False, False =>
+    True
+  | _, _ =>
+    False
+  }
+}
+
+nominal {
+  eq-ens(e1: &ens, e2: &ens): bool,
+}
+
+define _eq-ens-list(
+  xs1: &list(pair(list(comment-item), ens)),
+  xs2: &list(pair(list(comment-item), ens)),
+): bool {
+  case xs1, xs2 {
+  | Nil, Nil =>
+    True
+  | Cons(Pair(c1, x1), rest1), Cons(Pair(c2, x2), rest2) =>
+    let b1 = eq-data(c1, c2);
+    let b2 = eq-ens(x1, x2);
+    if and(b1, b2) {
+      _eq-ens-list(rest1, rest2)
+    } else {
+      False
+    }
+  | _, _ =>
+    False
+  }
+}
+
+define _eq-ens-kvs(
+  xs1: &list(pair(list(comment-item), pair(pair(hint, text), ens))),
+  xs2: &list(pair(list(comment-item), pair(pair(hint, text), ens))),
+): bool {
+  case xs1, xs2 {
+  | Nil, Nil =>
+    True
+  | Cons(Pair(c1, Pair(Pair(_, k1), x1)), rest1), Cons(Pair(c2, Pair(Pair(_, k2), x2)), rest2) =>
+    let b1 = eq-data(c1, c2);
+    let b2 = eq-text(k1, k2);
+    let b3 = eq-ens(x1, x2);
+    if all[b1, b2, b3] {
+      _eq-ens-kvs(rest1, rest2)
+    } else {
+      False
+    }
+  | _, _ =>
+    False
+  }
+}
+
+define eq-ens(e1: &ens, e2: &ens): bool {
+  case e1, e2 {
+  | E-Int(_, x1), E-Int(_, x2) =>
+    eq-int(*x1, *x2)
+  | E-Float(_, x1), E-Float(_, x2) =>
+    eq-float(*x1, *x2)
+  | E-Bool(_, x1), E-Bool(_, x2) =>
+    _eq-bool(*x1, *x2)
+  | E-String(_, x1), E-String(_, x2) =>
+    eq-text(x1, x2)
+  | E-List(_, xs1), E-List(_, xs2) =>
+    tie Series of {elems := elems1, trailing-comment := tc1, prefix := p1} = xs1;
+    tie Series of {elems := elems2, trailing-comment := tc2, prefix := p2} = xs2;
+    all[
+      _eq-ens-list(elems1, elems2),
+      eq-data(tc1, tc2),
+      eq-data(p1, p2),
+    ]
+  | E-Dictionary(_, kvs1), E-Dictionary(_, kvs2) =>
+    tie Series of {elems := elems1, trailing-comment := tc1, prefix := p1} = kvs1;
+    tie Series of {elems := elems2, trailing-comment := tc2, prefix := p2} = kvs2;
+    all[
+      _eq-ens-kvs(elems1, elems2),
+      eq-data(tc1, tc2),
+      eq-data(p1, p2),
+    ]
+  | _, _ =>
+    False
+  }
+}
+
+define _lookup<a>(k: &text, kvs: &list(pair(a, pair(pair(hint, text), ens)))): ?&ens {
+  case kvs {
+  | Nil =>
+    none
+  | Cons(Pair(_, Pair(Pair(_, k'), v)), rest) =>
+    if eq-text(k, k') {
+      Right(v)
+    } else {
+      _lookup(k, rest)
+    }
+  }
+}
+
+define has-key(k: &text, e: &ens): bool {
+  case e {
+  | E-Dictionary(_, kvs) =>
+    tie Series of {elems} = kvs;
+    match _lookup(k, elems) {
+    | Left(_) =>
+      False
+    | Right(_) =>
+      True
+    }
+  | _ =>
+    False
+  }
+}
+
+define raise-key-not-found-error<a>(m: hint, k: &text): app(a) {
+  raise-error(m, text-join["Could not find the required key `", k, "`."])
+}
+
+define raise-type-error<a>(m: hint, expected-type: ens-type, actual-type: ens-type): app(a) {
+  raise-error(m, text-join[
+    "The value here is expected to be of type `",
+    show-ens-type(expected-type),
+    "`, but is: `",
+    show-ens-type(actual-type),
+    "`",
+  ])
+}
+
+define type-of(e: &ens): ens-type {
+  case e {
+  | E-Int of {} =>
+    ET-Int
+  | E-Float of {} =>
+    ET-Float
+  | E-Bool of {} =>
+    ET-Bool
+  | E-String of {} =>
+    ET-String
+  | E-List of {} =>
+    ET-List
+  | E-Dictionary of {} =>
+    ET-Dictionary
+  }
+}
+
+define _get-hint(e: ens): hint {
+  match e {
+  | E-Int(m, _) =>
+    m
+  | E-Float(m, _) =>
+    m
+  | E-Bool(m, _) =>
+    m
+  | E-String(m, _) =>
+    m
+  | E-List(m, _) =>
+    m
+  | E-Dictionary(m, _) =>
+    m
+  }
+}
+
+define _get-hint-N(e: &ens): hint {
+  case e {
+  | E-Int(m, _) =>
+    *m
+  | E-Float(m, _) =>
+    *m
+  | E-Bool(m, _) =>
+    *m
+  | E-String(m, _) =>
+    *m
+  | E-List(m, _) =>
+    *m
+  | E-Dictionary(m, _) =>
+    *m
+  }
+}
+
+define to-int-N(e: &ens): app(pair(&hint, int)) {
+  case e {
+  | E-Int(m, x) =>
+    Right(Pair(m, *x))
+  | _ =>
+    raise-type-error(_get-hint-N(e), ET-Int, type-of(e))
+  }
+}
+
+define to-float-N(e: &ens): app(pair(&hint, float)) {
+  case e {
+  | E-Float(m, x) =>
+    Right(Pair(m, *x))
+  | _ =>
+    raise-type-error(_get-hint-N(e), ET-Float, type-of(e))
+  }
+}
+
+define to-bool-N(e: &ens): app(pair(&hint, bool)) {
+  case e {
+  | E-Bool(m, x) =>
+    Right(Pair(m, *x))
+  | _ =>
+    raise-type-error(_get-hint-N(e), ET-Bool, type-of(e))
+  }
+}
+
+define to-string-N(e: &ens): app(pair(&hint, &text)) {
+  case e {
+  | E-String(m, x) =>
+    Right(Pair(m, x))
+  | _ =>
+    raise-type-error(_get-hint-N(e), ET-String, type-of(e))
+  }
+}
+
+define to-dictionary(e: ens): app(pair(hint, series(pair(pair(hint, text), ens)))) {
+  match e {
+  | E-Dictionary(m, kvs) =>
+    Right(Pair(m, kvs))
+  | e =>
+    let t on e = type-of(e);
+    raise-type-error(_get-hint(e), ET-Dictionary, t)
+  }
+}
+
+define to-dictionary-N(e: &ens): app(pair(&hint, &series(pair(pair(hint, text), ens)))) {
+  case e {
+  | E-Dictionary(m, kvs) =>
+    Right(Pair(m, kvs))
+  | _ =>
+    raise-type-error(_get-hint-N(e), ET-Dictionary, type-of(e))
+  }
+}
+
+define to-list-N(e: &ens): app(pair(&hint, &series(ens))) {
+  case e {
+  | E-List(m, xs) =>
+    Right(Pair(m, xs))
+  | _ =>
+    raise-type-error(_get-hint-N(e), ET-List, type-of(e))
+  }
+}
+
+define access(k: &text, e: &ens): app(&ens) {
+  try Pair(_, dict) = to-dictionary-N(e);
+  tie Series of {elems} = dict;
+  match _lookup(k, elems) {
+  | Right(v) =>
+    Right(v)
+  | Left(_) =>
+    raise-key-not-found-error(_get-hint-N(e), k)
+  }
+}
+
+define access-or-default(k: &text, fallback: &ens, e: &ens): app(&ens) {
+  try Pair(_, dict) = to-dictionary-N(e);
+  tie Series of {elems} = dict;
+  match _lookup(k, elems) {
+  | Right(v) =>
+    Right(v)
+  | Left(_) =>
+    Right(fallback)
+  }
+}
+
+define strip(x: full-ens): ens {
+  this.syntax-tree.block.extract(x)
+}
+
+define put(k: &text, v: ens, base: ens): app(ens) {
+  try Pair(m, dict) = to-dictionary(base);
+  let new-dict =
+    this.syntax-tree.series.replace(dict, v, function (existing-key) {
+      tie Pair(_, existing-key) = existing-key;
+      eq-text(k, existing-key)
+    });
+  Right(E-Dictionary(m, new-dict))
+}
+
+define conservative-update(key-path: &list(text), v: ens, base: ens): app(ens) {
+  case key-path {
+  | Nil =>
+    Right(v)
+  | Cons(k, rest) =>
+    try Pair(m, dict) = to-dictionary(base);
+    try new-dict =
+      this.syntax-tree.series.for-each-E(dict, function (p) {
+        let Pair(kd, vd) = p;
+        let Pair(m, kd) = kd;
+        let b on kd = eq-text(k, kd);
+        if b {
+          try vd-new = conservative-update(rest, v, vd);
+          Right(Pair(Pair(m, kd), vd-new))
+        } else {
+          Right(Pair(Pair(m, kd), vd))
+        }
+      });
+    Right(E-Dictionary(m, new-dict))
+  }
+}
+
+define ens-path(m: hint, path: text): ens {
+  E-String(m, path)
+}
+
+define empty-dict(m: hint): ens {
+  E-Dictionary(m, empty-series(Right(Brace), Comma))
+}
+
+define empty-list(m: hint): ens {
+  E-List(m, empty-series(Right(Bracket), Comma))
+}
+
+inline _ens-dict: type {
+  list(pair(comment, pair(ens-key, ens)))
+}
+
+define _extract(
+  key: ens-key,
+  kvs: _ens-dict,
+  acc: _ens-dict,
+): either(pair(ens-key, _ens-dict), pair(pair(ens-key, ens), _ens-dict)) {
+  match kvs {
+  | Nil =>
+    Left(Pair(key, core.list.reverse(acc)))
+  | Cons(Pair(c, Pair(Pair(m, k), v)), rest) =>
+    let b on key, k = {
+      tie Pair(_, key) = key;
+      eq-text(k, key)
+    };
+    if b {
+      Right(Pair(Pair(key, v), core.list.append(core.list.reverse(acc), rest)))
+    } else {
+      _extract(key, rest, Cons(Pair(c, Pair(Pair(m, k), v)), acc))
+    }
+  }
+}
+
+// left-biased merge
+define merge(e1: ens, e2: ens): app(ens) {
+  match e1, e2 {
+  | E-Int(m, x1), E-Int of {} =>
+    Right(E-Int(m, x1))
+  | E-Float(m, x1), E-Float of {} =>
+    Right(E-Float(m, x1))
+  | E-Bool(m, x1), E-Bool of {} =>
+    Right(E-Bool(m, x1))
+  | E-String(m, x1), E-String of {} =>
+    Right(E-String(m, x1))
+  | E-List(m, xs1), E-List(_, xs2) =>
+    Right(E-List(m, append-left-biased(xs1, xs2)))
+  | E-Dictionary(m, s1), E-Dictionary(_, s2) =>
+    let Series of {elems := kvs1, trailing-comment, prefix, container, separator, has-optional-separator} = s1;
+    let Series of {elems := kvs2} = s2;
+    let f =
+      define merge-dicts(kvs1: _ens-dict, kvs2: _ens-dict): app(_ens-dict) {
+        match kvs1 {
+        | Nil =>
+          Right(kvs2)
+        | Cons(Pair(c1, Pair(k1, v1)), kvs1-rest) =>
+          match _extract(k1, kvs2, Nil) {
+          | Right(Pair(Pair(k1, v2), kvs2-rest)) =>
+            try new-value = merge(v1, v2);
+            try new-kvs = merge-dicts(kvs1-rest, kvs2-rest);
+            Right(Cons(Pair(c1, Pair(k1, new-value)), new-kvs))
+          | Left(Pair(k1, kvs2-rest)) =>
+            try new-kvs = merge-dicts(kvs1-rest, kvs2-rest);
+            Right(Cons(Pair(c1, Pair(k1, v1)), new-kvs))
+          }
+        }
+      };
+    try elems = f(kvs1, kvs2);
+    Right(E-Dictionary(m, Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator}))
+  | e1, e2 =>
+    let t1 on e1 = type-of(e1);
+    let t2 on e2 = type-of(e2);
+    let _ = e2;
+    let m1 = _get-hint(e1);
+    raise-type-error(m1, t1, t2)
+  }
+}
+
+define inject(e: ens): full-ens {
+  Block(Nil, e, Nil)
+}
+
+define dict-from-list<a>(m: a, xs: list(pair(ens-key-f(a), ens-f(a)))): ens-f(a) {
+  E-Dictionary(m, this.syntax-tree.series.from-list(Brace, Comma, xs))
+}
+
+define dict-from-list-vertical<a>(m: a, xs: list(pair(ens-key-f(a), ens-f(a)))): ens-f(a) {
+  let s = this.syntax-tree.series.from-list(Brace, Comma, xs);
+  let Series of {elems, trailing-comment, prefix, container, separator} = s;
+  E-Dictionary(m, Series of {
+    elems,
+    trailing-comment,
+    prefix,
+    container,
+    separator,
+    has-optional-separator := True,
+  })
+}
+
+define zen(): unit {
+  pin v: app(int) = raise-key-not-found-error(internal-hint, "test");
+  vet(v);
+  pin e = E-Int(internal-hint, 123);
+  pin v = to-dictionary-N(e);
+  vet(v);
+}

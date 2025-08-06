@@ -5,6 +5,14 @@ import {
   zonk.zonk-kit {zonk-kit},
 }
 
+inline parser-kit: type {
+  zonk-kit(text)
+}
+
+inline parser(a): type {
+  zonk(text, a)
+}
+
 define is-non-symbol-char(r: rune): bool {
   match r {
   | `=` =>
@@ -56,7 +64,11 @@ define is-non-symbol-char(r: rune): bool {
   }
 }
 
-define skip-space<r := rho>(k: &zonk-kit): parsed(unit) {
+define is-symbol-char(r: rune): bool {
+  not(is-non-symbol-char(r))
+}
+
+define skip-space<r := rho>(k: &parser-kit): parsed(unit) {
   try _ = r;
   try _ =
     zonk.parse.take-while(function (r) {
@@ -72,7 +84,7 @@ define skip-space<r := rho>(k: &zonk-kit): parsed(unit) {
   Right(Unit)
 }
 
-define skip-space-without-newline<r := rho>(k: &zonk-kit): parsed(unit) {
+define skip-space-without-newline<r := rho>(k: &parser-kit): parsed(unit) {
   try _ = r;
   try _ =
     zonk.parse.take-while(function (r) {
@@ -81,7 +93,7 @@ define skip-space-without-newline<r := rho>(k: &zonk-kit): parsed(unit) {
   Right(Unit)
 }
 
-define parse-comment-item<r := rho>(k: &zonk-kit, comment-type: comment-type): parsed(comment-item) {
+define parse-comment-item<r := rho>(k: &parser-kit, comment-type: comment-type): parsed(comment-item) {
   try _ = r;
   try _ = chunk("//")(k);
   try comment-text =
@@ -91,13 +103,13 @@ define parse-comment-item<r := rho>(k: &zonk-kit, comment-type: comment-type): p
   Right(Comment-item of {comment-text, comment-type})
 }
 
-define parse-line-comment<r := rho>(k: &zonk-kit): parsed(comment-item) {
+define parse-line-comment<r := rho>(k: &parser-kit): parsed(comment-item) {
   try _ = r;
   try _ = skip-space(k);
   parse-comment-item(k, Line-Comment)
 }
 
-define space-consumer<r := rho>(k: &zonk-kit): parsed(comment) {
+define space-consumer<r := rho>(k: &parser-kit): parsed(comment) {
   try _ = r;
   try _ = skip-space-without-newline(k);
   try maybe-inline-comment =
@@ -119,14 +131,14 @@ define space-consumer<r := rho>(k: &zonk-kit): parsed(comment) {
   }
 }
 
-inline lexeme<a, r := rho>(k: &zonk-kit, p: zonk(a)): parsed(pair(a, comment)) {
+inline lexeme<a, r := rho>(k: &parser-kit, p: parser(a)): parsed(pair(a, comment)) {
   try _ = r;
   try v = p(k);
   try c = space-consumer(k);
   Right(Pair(v, c))
 }
 
-define delimiter<r := rho>(k: &zonk-kit, expected: &text): parsed(comment) {
+define delimiter<r := rho>(k: &parser-kit, expected: &text): parsed(comment) {
   try _ = r;
   try Pair(_, c) =
     lexeme(k, function (k) {
@@ -136,21 +148,21 @@ define delimiter<r := rho>(k: &zonk-kit, expected: &text): parsed(comment) {
   Right(c)
 }
 
-define symbol<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
+define symbol<r := rho>(k: &parser-kit): parsed(pair(text, comment)) {
   try _ = r;
   lexeme(k, function (k) {
-    zonk.parse.take-while-1(is-non-symbol-char)(k)
+    zonk.parse.take-while-1(is-symbol-char)(k)
   })
 }
 
-define symbol'<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
+define symbol'<r := rho>(k: &parser-kit): parsed(pair(text, comment)) {
   try _ = r;
   lexeme(k, function (k) {
-    zonk.parse.take-while(is-non-symbol-char)(k)
+    zonk.parse.take-while(is-symbol-char)(k)
   })
 }
 
-define _string-inner<r := rho>(k: &zonk-kit, cs: vector(rune)): parsed(text) {
+define _string-inner<r := rho>(k: &parser-kit, cs: vector(rune)): parsed(text) {
   try _ = r;
   try v = any-rune(k);
   match v {
@@ -167,7 +179,7 @@ define _string-inner<r := rho>(k: &zonk-kit, cs: vector(rune)): parsed(text) {
   }
 }
 
-define string<r := rho>(k: &zonk-kit): parsed(pair(text, comment)) {
+define string<r := rho>(k: &parser-kit): parsed(pair(text, comment)) {
   try _ = r;
   lexeme(k, function (k) {
     try _ =

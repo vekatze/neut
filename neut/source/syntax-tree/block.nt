@@ -19,3 +19,8 @@ data pointed-block(a) {
     trailing-comment: comment,
   )
 }
+
+define extract<a>(x: block(a)): a {
+  let Block of {content} = x;
+  content
+}
