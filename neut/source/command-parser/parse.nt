@@ -5,12 +5,13 @@ import {
   argot.parse {attempt, end-of-input, optional},
   argot.preset {flag, text-required},
   argot.state {pop-head, pop-key},
-  this.command-parser.command {Archive, Build, Check, Clean, Create, External, Get, Internal, LSP, Show-Version, Zen, command},
+  this.command-parser.command {Archive, Build, Check, Clean, Create, External, Format-Source, Get, Internal, LSP, Show-Version, Zen, command},
   this.command-parser.config.archive {Archive-Config},
   this.command-parser.config.build {Build-Config},
   this.command-parser.config.check {Check-Config},
   this.command-parser.config.clean {Clean-Config},
   this.command-parser.config.create {Create-Config},
+  this.command-parser.config.format-source {Format-Source-Config},
   this.command-parser.config.get {Get-Config},
   this.command-parser.config.log {Log-Config, log-config},
   this.command-parser.config.version {Version-Config},
@@ -98,13 +99,13 @@ inline _parse-clean-command(): argot(command) {
 inline _parse-build-command(): argot(command) {
   function (k) {
     try _ = _parse-argument("build")(k);
-    try target-name = pop-head(k);
     try install-dir = optional(text-required("--install"))(k);
     try build-mode-string = _parse-build-mode()(k);
     try log-config = _parse-log-config-opt()(k);
     try output-kind-text-list = _parse-output-kind-list()(k);
     try should-skip-link = _parse-should-skip-link()(k);
     try should-execute = _parse-should-execute()(k);
+    try target-name = pop-head(k);
     try args = _consume-all(Nil)(k);
     try _ = end-of-input(k);
     Right(Internal(log-config, Build(Build-Config(
@@ -122,9 +123,9 @@ inline _parse-build-command(): argot(command) {
 inline _parse-get-command(): argot(command) {
   function (k) {
     try _ = _parse-argument("get")(k);
+    try log-config = _parse-log-config-opt()(k);
     try module-alias-text = pop-head(k);
     try module-URL-text = pop-head(k);
-    try log-config = _parse-log-config-opt()(k);
     Right(Internal(log-config, Get(Get-Config of {module-alias-text, module-URL-text})))
   }
 }
@@ -132,9 +133,9 @@ inline _parse-get-command(): argot(command) {
 inline _parse-zen-command(): argot(command) {
   function (k) {
     try _ = _parse-argument("zen")(k);
-    try file-path-string = pop-head(k);
     try log-config = _parse-log-config-opt()(k);
     try build-mode-string = _parse-build-mode()(k);
+    try file-path-string = pop-head(k);
     try args = _consume-all(Nil)(k);
     Right(Internal(log-config, Zen(Zen-Config of {file-path-string, build-mode-string, args})))
   }
@@ -151,9 +152,9 @@ inline _parse-lsp-command(): argot(command) {
 inline _parse-create-command(): argot(command) {
   function (k) {
     try _ = _parse-argument("create")(k);
-    try module-name = pop-head(k);
     try target-name = optional(text-required("--target"))(k);
     try log-config = _parse-log-config-opt()(k);
+    try module-name = pop-head(k);
     Right(External(log-config, Create(Create-Config of {target-name, module-name})))
   }
 }
@@ -178,14 +179,29 @@ inline _parse-check-command(): argot(command) {
 inline _parse-archive-command(): argot(command) {
   function (k) {
     try _ = _parse-argument("archive")(k);
-    try archive-name = optional(pop-head)(k);
     try log-config = _parse-log-config-opt()(k);
+    try archive-name = optional(pop-head)(k);
     Right(Internal(log-config, Archive(Archive-Config of {archive-name})))
+  }
+}
+
+inline _parse-format-source-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("format-source")(k);
+    try should-minimize-imports = flag("--minimize-imports")(k);
+    try must-update-in-place = flag("--in-place")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try file-path-string = pop-head(k);
+    Right(Internal(log-config, Format-Source(Format-Source-Config of {
+      should-minimize-imports,
+      must-update-in-place,
+      file-path-string,
+    })))
   }
 }
 
 define zen(): unit {
   pin k = make-argot-kit-from-argv();
-  pin result = _parse-build-command()(k);
+  pin result = _parse-format-source-command()(k);
   vet(result)
 }
