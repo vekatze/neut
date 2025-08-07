@@ -1,0 +1,3 @@
+data clean-config {
+| Clean-Config()
+}
