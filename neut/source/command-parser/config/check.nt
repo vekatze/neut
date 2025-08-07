@@ -1,0 +1,5 @@
+data check-config {
+| Check-Config(
+    should-check-all-dependencies: bool,
+  )
+}
