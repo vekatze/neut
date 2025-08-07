@@ -36,5 +36,11 @@
         "https://github.com/vekatze/zonk/raw/main/archive/0-2-0.tar.zst",
       ],
     },
+    argot {
+      digest "xa1JmSdmEEf30rE2h0YBBf2o97een6NgAqT5gGt7Mz0",
+      mirror [
+        "https://github.com/vekatze/argot/raw/main/archive/0-1-35.tar.zst",
+      ],
+    },
   },
 }

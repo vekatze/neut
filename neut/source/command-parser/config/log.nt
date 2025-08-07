@@ -1,0 +1,15 @@
+data log-config {
+| Log-Config(
+    should-colorize: bool,
+    enable-debug-mode: bool,
+    enable-silent-mode: bool,
+  )
+}
+
+define lsp-log-config: log-config {
+  Log-Config of {
+    should-colorize := False,
+    enable-debug-mode := False,
+    enable-silent-mode := False,
+  }
+}

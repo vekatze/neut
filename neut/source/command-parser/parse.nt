@@ -1,0 +1,279 @@
+import {
+  argot.argot {argot},
+  argot.error {Key-Missing, Unexpected-End-Of-Input},
+  argot.make-argot-kit {make-argot-kit-from-argv},
+  argot.parse {attempt, branch, end-of-input, optional},
+  argot.preset {flag, text-required},
+  argot.state {pop-head},
+  core.external {exit},
+  core.text.io {print-line},
+  this.command-parser.command {
+    Archive,
+    Build,
+    Check,
+    Clean,
+    Create,
+    External,
+    Format-Ens,
+    Format-Source,
+    Get,
+    Internal,
+    LSP,
+    Show-Version,
+    Zen,
+    command,
+  },
+  this.command-parser.config.archive {Archive-Config},
+  this.command-parser.config.build {Build-Config},
+  this.command-parser.config.check {Check-Config},
+  this.command-parser.config.clean {Clean-Config},
+  this.command-parser.config.create {Create-Config},
+  this.command-parser.config.format-ens {Format-Ens-Config},
+  this.command-parser.config.format-source {Format-Source-Config},
+  this.command-parser.config.get {Get-Config},
+  this.command-parser.config.log {Log-Config, log-config},
+  this.command-parser.config.version {Version-Config},
+  this.command-parser.config.zen {Zen-Config},
+}
+
+inline _parse-argument(arg: &text): argot(unit) {
+  attempt(function (k) {
+    try head = pop-head(k);
+    let b on head = eq-text(head, arg);
+    let _ = head;
+    if b {
+      Right(Unit)
+    } else {
+      Left(Key-Missing(*arg))
+    }
+  })
+}
+
+define _consume-all(xs: list(text)): argot(list(text)) {
+  function (k) {
+    match pop-head(k) {
+    | Right(v) =>
+      _consume-all(Cons(v, xs))(k)
+    | Left(_) =>
+      Right(core.list.reverse(xs))
+    }
+  }
+}
+
+inline _parse-text-or-fallback(key: &text, fallback: &text): argot(text) {
+  function (k) {
+    try mode-or-none = optional(text-required(key))(k);
+    match mode-or-none {
+    | Right(mode) =>
+      Right(mode)
+    | Left(_) =>
+      Right(*fallback)
+    }
+  }
+}
+
+inline _parse-log-config-opt(): argot(log-config) {
+  function (k) {
+    try no-color = flag("--no-color")(k);
+    try enable-debug-mode = flag("--enable-debug-output")(k);
+    try enable-silent-mode = flag("--silent")(k);
+    let should-colorize = not(no-color);
+    Right(Log-Config of {should-colorize, enable-debug-mode, enable-silent-mode})
+  }
+}
+
+inline _parse-build-mode(): argot(text) {
+  function (k) {
+    _parse-text-or-fallback("--mode", "develop")(k)
+  }
+}
+
+inline _parse-output-kind-list(): argot(list(text)) {
+  function (k) {
+    try tmp = _parse-text-or-fallback("--emit", "object")(k);
+    let result on tmp = core.text.split(tmp, ",");
+    let _ = tmp;
+    Right(result)
+  }
+}
+
+define _parse-should-skip-link(): argot(bool) {
+  flag("--skip-link")
+}
+
+define _parse-should-execute(): argot(bool) {
+  flag("--execute")
+}
+
+inline _parse-clean-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("clean")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try _ = end-of-input(k);
+    Right(Internal(log-config, Clean(Clean-Config())))
+  }
+}
+
+inline _parse-build-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("build")(k);
+    try install-dir = optional(text-required("--install"))(k);
+    try build-mode-string = _parse-build-mode()(k);
+    try log-config = _parse-log-config-opt()(k);
+    try output-kind-text-list = _parse-output-kind-list()(k);
+    try should-skip-link = _parse-should-skip-link()(k);
+    try should-execute = _parse-should-execute()(k);
+    try target-name = pop-head(k);
+    try args = _consume-all(Nil)(k);
+    try _ = end-of-input(k);
+    Right(Internal(log-config, Build(Build-Config(
+      target-name,
+      output-kind-text-list,
+      should-skip-link,
+      should-execute,
+      install-dir,
+      build-mode-string,
+      args,
+    ))))
+  }
+}
+
+inline _parse-get-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("get")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try module-alias-text = pop-head(k);
+    try module-URL-text = pop-head(k);
+    Right(Internal(log-config, Get(Get-Config of {module-alias-text, module-URL-text})))
+  }
+}
+
+inline _parse-zen-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("zen")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try build-mode-string = _parse-build-mode()(k);
+    try file-path-string = pop-head(k);
+    try args = _consume-all(Nil)(k);
+    Right(Internal(log-config, Zen(Zen-Config of {file-path-string, build-mode-string, args})))
+  }
+}
+
+inline _parse-lsp-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("lsp")(k);
+    try log-config = _parse-log-config-opt()(k);
+    Right(Internal(log-config, LSP))
+  }
+}
+
+inline _parse-create-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("create")(k);
+    try target-name = optional(text-required("--target"))(k);
+    try log-config = _parse-log-config-opt()(k);
+    try module-name = pop-head(k);
+    Right(External(log-config, Create(Create-Config of {target-name, module-name})))
+  }
+}
+
+inline _parse-version-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("version")(k);
+    try log-config = _parse-log-config-opt()(k);
+    Right(External(log-config, Show-Version(Version-Config())))
+  }
+}
+
+inline _parse-check-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("check")(k);
+    try should-check-all-dependencies = flag("--full")(k);
+    try log-config = _parse-log-config-opt()(k);
+    Right(Internal(log-config, Check(Check-Config of {should-check-all-dependencies})))
+  }
+}
+
+inline _parse-archive-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("archive")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try archive-name = optional(pop-head)(k);
+    Right(Internal(log-config, Archive(Archive-Config of {archive-name})))
+  }
+}
+
+inline _parse-format-source-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("format-source")(k);
+    try should-minimize-imports = flag("--minimize-imports")(k);
+    try must-update-in-place = flag("--in-place")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try file-path-string = pop-head(k);
+    Right(Internal(log-config, Format-Source(Format-Source-Config of {
+      should-minimize-imports,
+      must-update-in-place,
+      file-path-string,
+    })))
+  }
+}
+
+inline _parse-format-ens-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("format-ens")(k);
+    try must-update-in-place = flag("--in-place")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try file-path-string = pop-head(k);
+    Right(Internal(log-config, Format-Ens(Format-Ens-Config of {
+      must-update-in-place,
+      file-path-string,
+    })))
+  }
+}
+
+rule-right _branch {
+  function leaf(_: int): argot(command) {
+    function (_) {
+      Left(Unexpected-End-Of-Input) // fixme
+    }
+  },
+  function node(p: argot(command), acc: argot(command)): argot(command) {
+    branch(p, acc)
+  },
+  function root(x: argot(command)): argot(command) {
+    x
+  },
+}
+
+inline _parse-command(): argot(command) {
+  _branch[
+    _parse-archive-command(),
+    _parse-build-command(),
+    _parse-check-command(),
+    _parse-clean-command(),
+    _parse-format-source-command(),
+    _parse-format-ens-command(),
+    _parse-get-command(),
+    _parse-lsp-command(),
+    _parse-zen-command(),
+    _parse-create-command(),
+    _parse-version-command(),
+  ]
+}
+
+define parse-command-or-exit(): command {
+  pin k = make-argot-kit-from-argv();
+  match _parse-command()(k) {
+  | Right(c) =>
+    c
+  | Left(_) =>
+    // fixme
+    print-line("Failed to parse the input");
+    exit(1)
+  }
+}
+
+define zen(): unit {
+  pin result = parse-command-or-exit();
+  vet(result)
+}

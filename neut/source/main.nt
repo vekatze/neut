@@ -1,11 +1,8 @@
 import {
-  this.color.color-kit,
-  this.color.print,
-  this.logger.print,
+  this.command-parser.parse {parse-command-or-exit},
 }
 
 define main(): unit {
-  this.color.color-kit.zen();
-  this.color.print.zen();
-  this.logger.print.zen();
+  pin c = parse-command-or-exit();
+  vet(c);
 }

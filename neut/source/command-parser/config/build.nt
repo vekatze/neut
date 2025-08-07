@@ -1,0 +1,11 @@
+data build-config {
+| Build-Config(
+    target-name: text,
+    output-kind-text-list: list(text),
+    should-skip-link: bool,
+    should-execute: bool,
+    install-dir: ?text,
+    build-mode-string: text,
+    args: list(text),
+  )
+}
