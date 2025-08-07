@@ -1,0 +1,6 @@
+data create-config {
+| Create-Config(
+    module-name: text,
+    target-name: ?text,
+  )
+}
