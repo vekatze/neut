@@ -5,9 +5,10 @@ import {
   argot.parse {attempt, end-of-input, optional},
   argot.preset {flag, text-required},
   argot.state {pop-head},
-  this.command-parser.command {Build, Clean, Get, Internal, LSP, Zen, command},
+  this.command-parser.command {Build, Clean, Create, External, Get, Internal, LSP, Zen, command},
   this.command-parser.config.build {Build-Config},
   this.command-parser.config.clean {Clean-Config},
+  this.command-parser.config.create {Create-Config},
   this.command-parser.config.get {Get-Config},
   this.command-parser.config.log {Log-Config, log-config},
   this.command-parser.config.zen {Zen-Config},
@@ -141,6 +142,16 @@ inline _parse-lsp-command(): argot(command) {
     try _ = _parse-argument("lsp")(k);
     try log-config = _parse-log-config-opt()(k);
     Right(Internal(log-config, LSP))
+  }
+}
+
+inline _parse-create-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("create")(k);
+    try module-name = pop-head(k);
+    try target-name = optional(text-required("--target"))(k);
+    try log-config = _parse-log-config-opt()(k);
+    Right(External(log-config, Create(Create-Config of {target-name, module-name})))
   }
 }
 
