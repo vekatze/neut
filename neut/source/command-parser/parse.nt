@@ -5,7 +5,7 @@ import {
   argot.parse {attempt, end-of-input, optional},
   argot.preset {flag, text-required},
   argot.state {pop-head},
-  this.command-parser.command {Build, Clean, Get, Internal, Zen, command},
+  this.command-parser.command {Build, Clean, Get, Internal, LSP, Zen, command},
   this.command-parser.config.build {Build-Config},
   this.command-parser.config.clean {Clean-Config},
   this.command-parser.config.get {Get-Config},
@@ -133,6 +133,14 @@ inline _parse-zen-command(): argot(command) {
     try build-mode-string = _parse-build-mode()(k);
     try args = _consume-all(Nil)(k);
     Right(Internal(log-config, Zen(Zen-Config of {file-path-string, build-mode-string, args})))
+  }
+}
+
+inline _parse-lsp-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("lsp")(k);
+    try log-config = _parse-log-config-opt()(k);
+    Right(Internal(log-config, LSP))
   }
 }
 
