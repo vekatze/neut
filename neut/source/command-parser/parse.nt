@@ -23,6 +23,18 @@ inline _parse-argument(arg: &text): argot(unit) {
   })
 }
 
+inline _parse-text-or-fallback(key: &text, fallback: &text): argot(text) {
+  function (k) {
+    try mode-or-none = optional(text-required(key))(k);
+    match mode-or-none {
+    | Right(mode) =>
+      Right(mode)
+    | Left(_) =>
+      Right(*fallback)
+    }
+  }
+}
+
 inline _parse-log-config-opt(): argot(log-config) {
   function (k) {
     try no-color = flag("--no-color")(k);
@@ -35,13 +47,16 @@ inline _parse-log-config-opt(): argot(log-config) {
 
 inline _parse-build-mode(): argot(text) {
   function (k) {
-    try mode-or-none = optional(text-required("--mode"))(k);
-    match mode-or-none {
-    | Right(mode) =>
-      Right(mode)
-    | Left(_) =>
-      Right(*"develop")
-    }
+    _parse-text-or-fallback("--mode", "develop")(k)
+  }
+}
+
+inline _parse-output-kind-list(): argot(list(text)) {
+  function (k) {
+    try tmp = _parse-text-or-fallback("--emit", "object")(k);
+    let result on tmp = core.text.split(tmp, ",");
+    let _ = tmp;
+    Right(result)
   }
 }
 
