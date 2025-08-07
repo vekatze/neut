@@ -5,8 +5,9 @@ import {
   argot.parse {attempt, end-of-input, optional},
   argot.preset {flag, text-required},
   argot.state {pop-head},
-  this.command-parser.command {Build, Clean, Create, External, Get, Internal, LSP, Show-Version, Zen, command},
+  this.command-parser.command {Build, Check, Clean, Create, External, Get, Internal, LSP, Show-Version, Zen, command},
   this.command-parser.config.build {Build-Config},
+  this.command-parser.config.check {Check-Config},
   this.command-parser.config.clean {Clean-Config},
   this.command-parser.config.create {Create-Config},
   this.command-parser.config.get {Get-Config},
@@ -161,6 +162,15 @@ inline _parse-version-command(): argot(command) {
     try _ = _parse-argument("version")(k);
     try log-config = _parse-log-config-opt()(k);
     Right(External(log-config, Show-Version(Version-Config())))
+  }
+}
+
+inline _parse-check-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("check")(k);
+    try should-check-all-dependencies = flag("--full")(k);
+    try log-config = _parse-log-config-opt()(k);
+    Right(Internal(log-config, Check(Check-Config of {should-check-all-dependencies})))
   }
 }
 
