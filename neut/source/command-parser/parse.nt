@@ -2,15 +2,15 @@ import {
   argot.argot {argot},
   argot.error {Key-Missing},
   argot.make-argot-kit {make-argot-kit-from-argv},
-  argot.parse {attempt, end-of-input},
-  argot.preset {flag},
+  argot.parse {attempt, end-of-input, optional},
+  argot.preset {flag, text-required},
   argot.state {pop-head},
   this.command-parser.command {Clean, Internal, command},
   this.command-parser.config.clean {Clean-Config},
   this.command-parser.config.log {Log-Config, log-config},
 }
 
-define _parse-argument(arg: &text): argot(unit) {
+inline _parse-argument(arg: &text): argot(unit) {
   attempt(function (k) {
     try head = pop-head(k);
     let b on head = eq-text(head, arg);
@@ -23,7 +23,7 @@ define _parse-argument(arg: &text): argot(unit) {
   })
 }
 
-define _parse-log-config-opt(): argot(log-config) {
+inline _parse-log-config-opt(): argot(log-config) {
   function (k) {
     try no-color = flag("--no-color")(k);
     try enable-debug-mode = flag("--enable-debug-output")(k);
@@ -33,7 +33,19 @@ define _parse-log-config-opt(): argot(log-config) {
   }
 }
 
-define _parse-clean-command(): argot(command) {
+inline _parse-build-mode(): argot(text) {
+  function (k) {
+    try mode-or-none = optional(text-required("--mode"))(k);
+    match mode-or-none {
+    | Right(mode) =>
+      Right(mode)
+    | Left(_) =>
+      Right(*"develop")
+    }
+  }
+}
+
+inline _parse-clean-command(): argot(command) {
   function (k) {
     try _ = _parse-argument("clean")(k);
     try log-config = _parse-log-config-opt()(k);
