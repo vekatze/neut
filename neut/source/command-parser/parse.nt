@@ -4,13 +4,29 @@ import {
   argot.make-argot-kit {make-argot-kit-from-argv},
   argot.parse {attempt, end-of-input, optional},
   argot.preset {flag, text-required},
-  argot.state {pop-head, pop-key},
-  this.command-parser.command {Archive, Build, Check, Clean, Create, External, Format-Source, Get, Internal, LSP, Show-Version, Zen, command},
+  argot.state {pop-head},
+  this.command-parser.command {
+    Archive,
+    Build,
+    Check,
+    Clean,
+    Create,
+    External,
+    Format-Ens,
+    Format-Source,
+    Get,
+    Internal,
+    LSP,
+    Show-Version,
+    Zen,
+    command,
+  },
   this.command-parser.config.archive {Archive-Config},
   this.command-parser.config.build {Build-Config},
   this.command-parser.config.check {Check-Config},
   this.command-parser.config.clean {Clean-Config},
   this.command-parser.config.create {Create-Config},
+  this.command-parser.config.format-ens {Format-Ens-Config},
   this.command-parser.config.format-source {Format-Source-Config},
   this.command-parser.config.get {Get-Config},
   this.command-parser.config.log {Log-Config, log-config},
@@ -194,6 +210,19 @@ inline _parse-format-source-command(): argot(command) {
     try file-path-string = pop-head(k);
     Right(Internal(log-config, Format-Source(Format-Source-Config of {
       should-minimize-imports,
+      must-update-in-place,
+      file-path-string,
+    })))
+  }
+}
+
+inline _parse-format-ens-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("format-ens")(k);
+    try must-update-in-place = flag("--in-place")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try file-path-string = pop-head(k);
+    Right(Internal(log-config, Format-Ens(Format-Ens-Config of {
       must-update-in-place,
       file-path-string,
     })))
