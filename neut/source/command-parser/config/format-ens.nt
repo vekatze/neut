@@ -1,0 +1,6 @@
+data format-ens-config {
+| Format-Ens-Config(
+    file-path-string: text,
+    must-update-in-place: bool,
+  )
+}
