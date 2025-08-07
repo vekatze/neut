@@ -61,10 +61,11 @@ inline _parse-output-kind-list(): argot(list(text)) {
 }
 
 define _parse-should-skip-link(): argot(bool) {
-  function (k) {
-    try b = flag("--skip-link")(k);
-    Right(b)
-  }
+  flag("--skip-link")
+}
+
+define _parse-should-execute(): argot(bool) {
+  flag("--execute")
 }
 
 inline _parse-clean-command(): argot(command) {
