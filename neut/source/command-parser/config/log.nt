@@ -1,0 +1,7 @@
+data log-config {
+| Log-Config(
+    should-colorize: bool,
+    enable-debug-mode: bool,
+    enable-silent-mode: bool,
+  )
+}
