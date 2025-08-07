@@ -1,0 +1,7 @@
+data format-source-config {
+| Format-Source-Config(
+    file-path-string: text,
+    must-update-in-place: bool,
+    should-minimize-imports: bool,
+  )
+}
