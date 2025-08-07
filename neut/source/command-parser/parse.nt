@@ -5,6 +5,8 @@ import {
   argot.parse {attempt, branch, end-of-input, optional},
   argot.preset {flag, text-required},
   argot.state {pop-head},
+  core.external {exit},
+  core.text.io {print-line},
   this.command-parser.command {
     Archive,
     Build,
@@ -259,8 +261,19 @@ inline _parse-command(): argot(command) {
   ]
 }
 
-define zen(): unit {
+define parse-command-or-exit(): command {
   pin k = make-argot-kit-from-argv();
-  pin result = _parse-command()(k);
+  match _parse-command()(k) {
+  | Right(c) =>
+    c
+  | Left(_) =>
+    // fixme
+    print-line("Failed to parse the input");
+    exit(1)
+  }
+}
+
+define zen(): unit {
+  pin result = parse-command-or-exit();
   vet(result)
 }
