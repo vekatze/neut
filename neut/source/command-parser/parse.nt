@@ -1,0 +1,22 @@
+import {
+  argot.argot {argot},
+  argot.make-argot-kit {make-argot-kit-from-argv},
+  argot.preset {flag},
+  this.command-parser.config.log {Log-Config, log-config},
+}
+
+define _parse-log-config-opt(): argot(log-config) {
+  function (k) {
+    try no-color = flag("--no-color")(k);
+    try enable-debug-mode = flag("--enable-debug-output")(k);
+    try enable-silent-mode = flag("--silent")(k);
+    let should-colorize = not(no-color);
+    Right(Log-Config of {should-colorize, enable-debug-mode, enable-silent-mode})
+  }
+}
+
+define zen(): unit {
+  pin k = make-argot-kit-from-argv();
+  pin result = _parse-log-config-opt()(k);
+  vet(result)
+}
