@@ -7,6 +7,7 @@ import {
   this.command-parser.config.format-ens {format-ens-config},
   this.command-parser.config.format-source {format-source-config},
   this.command-parser.config.get {get-config},
+  this.command-parser.config.log {log-config},
   this.command-parser.config.version {version-config},
   this.command-parser.config.zen {zen-config},
 }
@@ -26,4 +27,9 @@ data internal-command {
 data external-command {
 | Create(create-config)
 | Show-Version(version-config)
+}
+
+data command {
+| Internal(log-config, internal-command)
+| External(log-config, external-command)
 }
