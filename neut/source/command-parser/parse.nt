@@ -1,8 +1,26 @@
 import {
   argot.argot {argot},
+  argot.error {Key-Missing},
   argot.make-argot-kit {make-argot-kit-from-argv},
+  argot.parse {attempt, end-of-input},
   argot.preset {flag},
+  argot.state {pop-head},
+  this.command-parser.command {Clean, Internal, command},
+  this.command-parser.config.clean {Clean-Config},
   this.command-parser.config.log {Log-Config, log-config},
+}
+
+define _parse-argument(arg: &text): argot(unit) {
+  attempt(function (k) {
+    try head = pop-head(k);
+    let b on head = eq-text(head, arg);
+    let _ = head;
+    if b {
+      Right(Unit)
+    } else {
+      Left(Key-Missing(*arg))
+    }
+  })
 }
 
 define _parse-log-config-opt(): argot(log-config) {
@@ -15,8 +33,17 @@ define _parse-log-config-opt(): argot(log-config) {
   }
 }
 
+define _parse-clean-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("clean")(k);
+    try log-config = _parse-log-config-opt()(k);
+    try _ = end-of-input(k);
+    Right(Internal(log-config, Clean(Clean-Config())))
+  }
+}
+
 define zen(): unit {
   pin k = make-argot-kit-from-argv();
-  pin result = _parse-log-config-opt()(k);
+  pin result = _parse-clean-command()(k);
   vet(result)
 }
