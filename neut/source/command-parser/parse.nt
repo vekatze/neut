@@ -60,6 +60,13 @@ inline _parse-output-kind-list(): argot(list(text)) {
   }
 }
 
+define _parse-should-skip-link(): argot(bool) {
+  function (k) {
+    try b = flag("--skip-link")(k);
+    Right(b)
+  }
+}
+
 inline _parse-clean-command(): argot(command) {
   function (k) {
     try _ = _parse-argument("clean")(k);
@@ -71,6 +78,6 @@ inline _parse-clean-command(): argot(command) {
 
 define zen(): unit {
   pin k = make-argot-kit-from-argv();
-  pin result = _parse-clean-command()(k);
+  pin result = _parse-should-skip-link()(k);
   vet(result)
 }
