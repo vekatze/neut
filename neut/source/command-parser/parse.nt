@@ -5,7 +5,8 @@ import {
   argot.parse {attempt, end-of-input, optional},
   argot.preset {flag, text-required},
   argot.state {pop-head},
-  this.command-parser.command {Clean, Internal, command},
+  this.command-parser.command {Build, Clean, Internal, command},
+  this.command-parser.config.build {Build-Config},
   this.command-parser.config.clean {Clean-Config},
   this.command-parser.config.log {Log-Config, log-config},
 }
@@ -21,6 +22,17 @@ inline _parse-argument(arg: &text): argot(unit) {
       Left(Key-Missing(*arg))
     }
   })
+}
+
+define _consume-all(xs: list(text)): argot(list(text)) {
+  function (k) {
+    match pop-head(k) {
+    | Right(v) =>
+      _consume-all(Cons(v, xs))(k)
+    | Left(_) =>
+      Right(core.list.reverse(xs))
+    }
+  }
 }
 
 inline _parse-text-or-fallback(key: &text, fallback: &text): argot(text) {
@@ -77,8 +89,32 @@ inline _parse-clean-command(): argot(command) {
   }
 }
 
+inline _parse-build-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("build")(k);
+    try target-name = pop-head(k);
+    try install-dir = optional(text-required("--install"))(k);
+    try build-mode-string = _parse-build-mode()(k);
+    try log-config = _parse-log-config-opt()(k);
+    try output-kind-text-list = _parse-output-kind-list()(k);
+    try should-skip-link = _parse-should-skip-link()(k);
+    try should-execute = _parse-should-execute()(k);
+    try args = _consume-all(Nil)(k);
+    try _ = end-of-input(k);
+    Right(Internal(log-config, Build(Build-Config(
+      target-name,
+      output-kind-text-list,
+      should-skip-link,
+      should-execute,
+      install-dir,
+      build-mode-string,
+      args,
+    ))))
+  }
+}
+
 define zen(): unit {
   pin k = make-argot-kit-from-argv();
-  pin result = _parse-should-skip-link()(k);
+  pin result = _parse-build-command()(k);
   vet(result)
 }
