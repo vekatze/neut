@@ -5,11 +5,12 @@ import {
   argot.parse {attempt, end-of-input, optional},
   argot.preset {flag, text-required},
   argot.state {pop-head},
-  this.command-parser.command {Build, Clean, Get, Internal, command},
+  this.command-parser.command {Build, Clean, Get, Internal, Zen, command},
   this.command-parser.config.build {Build-Config},
   this.command-parser.config.clean {Clean-Config},
   this.command-parser.config.get {Get-Config},
   this.command-parser.config.log {Log-Config, log-config},
+  this.command-parser.config.zen {Zen-Config},
 }
 
 inline _parse-argument(arg: &text): argot(unit) {
@@ -121,6 +122,17 @@ inline _parse-get-command(): argot(command) {
     try module-URL-text = pop-head(k);
     try log-config = _parse-log-config-opt()(k);
     Right(Internal(log-config, Get(Get-Config of {module-alias-text, module-URL-text})))
+  }
+}
+
+inline _parse-zen-command(): argot(command) {
+  function (k) {
+    try _ = _parse-argument("zen")(k);
+    try file-path-string = pop-head(k);
+    try log-config = _parse-log-config-opt()(k);
+    try build-mode-string = _parse-build-mode()(k);
+    try args = _consume-all(Nil)(k);
+    Right(Internal(log-config, Zen(Zen-Config of {file-path-string, build-mode-string, args})))
   }
 }
 
