@@ -1,0 +1,6 @@
+data get-config {
+| Get-Config(
+    module-alias-text: text,
+    module-URL-text: text,
+  )
+}
