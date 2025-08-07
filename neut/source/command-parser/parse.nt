@@ -1,8 +1,8 @@
 import {
   argot.argot {argot},
-  argot.error {Key-Missing},
+  argot.error {Key-Missing, Unexpected-End-Of-Input},
   argot.make-argot-kit {make-argot-kit-from-argv},
-  argot.parse {attempt, end-of-input, optional},
+  argot.parse {attempt, branch, end-of-input, optional},
   argot.preset {flag, text-required},
   argot.state {pop-head},
   this.command-parser.command {
@@ -229,8 +229,38 @@ inline _parse-format-ens-command(): argot(command) {
   }
 }
 
+rule-right _branch {
+  function leaf(_: int): argot(command) {
+    function (_) {
+      Left(Unexpected-End-Of-Input) // fixme
+    }
+  },
+  function node(p: argot(command), acc: argot(command)): argot(command) {
+    branch(p, acc)
+  },
+  function root(x: argot(command)): argot(command) {
+    x
+  },
+}
+
+inline _parse-command(): argot(command) {
+  _branch[
+    _parse-archive-command(),
+    _parse-build-command(),
+    _parse-check-command(),
+    _parse-clean-command(),
+    _parse-format-source-command(),
+    _parse-format-ens-command(),
+    _parse-get-command(),
+    _parse-lsp-command(),
+    _parse-zen-command(),
+    _parse-create-command(),
+    _parse-version-command(),
+  ]
+}
+
 define zen(): unit {
   pin k = make-argot-kit-from-argv();
-  pin result = _parse-format-source-command()(k);
+  pin result = _parse-command()(k);
   vet(result)
 }

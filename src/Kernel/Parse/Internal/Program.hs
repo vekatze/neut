@@ -219,4 +219,4 @@ parseVariadic h vk = do
       let r = (cRoot, root, rootType)
       return (RawStmtVariadic vk c1 m (name, c2) l n r (SE.trailingComment handlers) loc, c)
     _ -> do
-      lift $ raiseError m $ "`" <> k <> "` must have 2 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
+      lift $ raiseError m $ "`" <> k <> "` must have 3 elements, but found: " <> T.pack (show $ length $ SE.elems handlers)
