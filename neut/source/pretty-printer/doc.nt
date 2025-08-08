@@ -1,0 +1,6 @@
+data doc {
+| Empty
+| Text(text, doc)
+| Line(int, doc)
+| Inline-Comment(text, doc)
+}
