@@ -4,3 +4,7 @@ data doc {
 | Line(int, doc)
 | Inline-Comment(text, doc)
 }
+
+inline indent: int {
+  2
+}
