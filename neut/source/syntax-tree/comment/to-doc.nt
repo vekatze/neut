@@ -48,3 +48,17 @@ define as-stmt-prefix(cs: comment): doc {
     Comment-Item(Line-Comment, x)
   }))
 }
+
+define has-leading-inline-comment(cs: &comment): bool {
+  case cs {
+  | Nil =>
+    False
+  | Cons(Comment-Item(t, _), _) =>
+    case t {
+    | Inline-Comment =>
+      True
+    | _ =>
+      False
+    }
+  }
+}
