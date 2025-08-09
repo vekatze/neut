@@ -81,8 +81,7 @@ define as-suffix(cs: comment): doc {
   match cs {
   | Nil =>
     Empty
-  | Cons(c, rest) =>
-    let cs = Cons(c, rest);
+  | cs =>
     let b on cs = has-leading-inline-comment(cs);
     let prefix =
       if b {
@@ -92,5 +91,14 @@ define as-suffix(cs: comment): doc {
       };
     let cs = for-each(cs, _decode);
     join[prefix, intercalate(line, cs)]
+  }
+}
+
+define as-clause-header(cs: comment): doc {
+  match cs {
+  | Nil =>
+    Empty
+  | cs =>
+    nest(indent, join[line, decode(cs)])
   }
 }
