@@ -1,0 +1,27 @@
+import {
+  core.list {is-empty},
+  this.pretty-printer.doc {Empty, doc, join, line, make-text},
+  this.syntax-tree.comment.to-doc,
+  this.syntax-tree.series {Series, series},
+}
+
+define _decode-prefix<a>(s: &series(a)): doc {
+  tie Series of {prefix} = s;
+  case prefix {
+  | Left(_) =>
+    Empty
+  | Right(Pair(p, c)) =>
+    pin p = core.text.append(" ", p);
+    let p = make-text(core.text.append(p, " "));
+    if is-empty(c) {
+      p
+    } else {
+      join[
+        p,
+        line,
+        this.syntax-tree.comment.to-doc.decode(*c),
+        line,
+      ]
+    }
+  }
+}
