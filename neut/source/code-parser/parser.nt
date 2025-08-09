@@ -1,6 +1,6 @@
 import {
   core.vector {push-back, to-list},
-  this.syntax-tree.comment {Comment-item, Inline-Comment, Line-Comment, comment, comment-item, comment-type},
+  this.syntax-tree.comment {Comment-Item, Inline-Comment, Line-Comment, comment, comment-item, comment-type},
   zonk.parse {any-rune, chunk, many, optional, parsed, zonk},
   zonk.zonk-kit {zonk-kit},
 }
@@ -100,7 +100,7 @@ define parse-comment-item<r := rho>(k: &parser-kit, comment-type: comment-type):
     zonk.parse.take-while(function (r) {
       ne-rune(r, `\n`)
     })(k);
-  Right(Comment-item of {comment-text, comment-type})
+  Right(Comment-Item of {comment-text, comment-type})
 }
 
 define parse-line-comment<r := rho>(k: &parser-kit): parsed(comment-item) {

@@ -1,0 +1,16 @@
+import {
+  this.pretty-printer.doc {doc, inline-comment, make-text},
+  this.syntax-tree.comment {Comment-Item, Inline-Comment, Line-Comment, comment-item},
+}
+
+define _decode(x: comment-item): doc {
+  let Comment-Item(t, s) = x;
+  match t {
+  | Line-Comment =>
+    pin s = s;
+    make-text(core.text.append("//", s))
+  | Inline-Comment =>
+    pin s = s;
+    inline-comment(core.text.append("//", s))
+  }
+}

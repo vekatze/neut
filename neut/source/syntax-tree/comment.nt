@@ -4,7 +4,7 @@ data comment-type {
 }
 
 data comment-item {
-| Comment-item(
+| Comment-Item(
     comment-type: comment-type,
     comment-text: text,
   )
