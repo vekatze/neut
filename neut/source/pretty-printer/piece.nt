@@ -57,6 +57,18 @@ define arrange(ps: list(piece)): doc {
   }
 }
 
+define _id(d: doc): doc {
+  d
+}
+
 define _append-newline(d: doc): doc {
   join[d, line]
+}
+
+define container(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := _append-newline,
+  }
 }
