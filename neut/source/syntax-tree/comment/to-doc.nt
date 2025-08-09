@@ -1,6 +1,7 @@
 import {
-  this.pretty-printer.doc {doc, inline-comment, make-text},
-  this.syntax-tree.comment {Comment-Item, Inline-Comment, Line-Comment, comment-item},
+  core.list {for-each, uncons},
+  this.pretty-printer.doc {Empty, doc, inline-comment, intercalate, join, line, make-text},
+  this.syntax-tree.comment {Comment-Item, Inline-Comment, Line-Comment, comment, comment-item},
 }
 
 define _decode(x: comment-item): doc {
@@ -12,5 +13,21 @@ define _decode(x: comment-item): doc {
   | Inline-Comment =>
     pin s = s;
     inline-comment(core.text.append("//", s))
+  }
+}
+
+define decode(cs: comment): doc {
+  match uncons(cs) {
+  | Left(_) =>
+    Empty
+  | Right(Pair(Comment-Item(t, x), rest)) =>
+    match t {
+    | Line-Comment =>
+      let tmp = Cons(Comment-Item(t, x), rest);
+      intercalate(line, for-each(tmp, _decode))
+    | Inline-Comment =>
+      let rest = intercalate(line, for-each(rest, _decode));
+      join[_decode(Comment-Item(t, x)), rest]
+    }
   }
 }
