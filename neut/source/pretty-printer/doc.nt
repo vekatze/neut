@@ -20,3 +20,16 @@ inline make-text(t: text): doc {
 inline inline-comment(t: text): doc {
   Inline-Comment(t, Empty)
 }
+
+define _join(d1: doc, d2: doc): doc {
+  match d1 {
+  | Empty =>
+    d2
+  | Text(t, x) =>
+    Text(t, _join(x, d2))
+  | Line(i, x) =>
+    Line(i, _join(x, d2))
+  | Inline-Comment(t, x) =>
+    Inline-Comment(t, _join(x, d2))
+  }
+}
