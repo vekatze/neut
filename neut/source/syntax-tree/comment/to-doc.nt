@@ -1,6 +1,7 @@
 import {
   core.list {for-each, uncons},
-  this.pretty-printer.doc {Empty, doc, inline-comment, intercalate, join, line, make-text},
+  core.text {replicate},
+  this.pretty-printer.doc {Empty, doc, indent, inline-comment, intercalate, join, line, make-text, nest},
   this.syntax-tree.comment {Comment-Item, Inline-Comment, Line-Comment, comment, comment-item},
 }
 
@@ -39,6 +40,19 @@ define as-prefix(cs: comment): doc {
   | Right(Pair(x, xs)) =>
     let cs = for-each(Cons(x, xs), _decode);
     join[intercalate(line, cs), line]
+  }
+}
+
+define as-prefix-indented(cs: comment): doc {
+  match cs {
+  | Nil =>
+    Empty
+  | Cons(c, rest) =>
+    join[
+      make-text(replicate(" ", indent)),
+      nest(indent, decode(Cons(c, rest))),
+      line,
+    ]
   }
 }
 
