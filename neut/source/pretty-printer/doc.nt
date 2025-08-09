@@ -1,3 +1,8 @@
+import {
+  core.control {loop},
+  core.text-builder {append-text, text-builder},
+}
+
 data doc {
 | Empty
 | Text(text, doc)
@@ -56,5 +61,24 @@ define nest(i: int, d: doc): doc {
     Line(add-int(i, j), nest(i, x))
   | Inline-Comment(t, x) =>
     Inline-Comment(t, nest(i, x))
+  }
+}
+
+define _layout-direct(b: &text-builder, d: &doc): unit {
+  case d {
+  | Empty =>
+    Unit
+  | Text(t, x) =>
+    append-text(b, t);
+    _layout-direct(b, x)
+  | Line(i, x) =>
+    append-text(b, "\n");
+    loop(*i, function (_) {
+      append-text(b, " ");
+    });
+    _layout-direct(b, x)
+  | Inline-Comment(t, x) =>
+    append-text(b, t);
+    _layout-direct(b, x)
   }
 }
