@@ -132,3 +132,11 @@ define delimiter(content: doc): piece {
     multi-modifier := _append-newline,
   }
 }
+
+define clause-delimiter(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _wrap-by-space,
+    multi-modifier := _space-newline,
+  }
+}
