@@ -36,6 +36,10 @@ define _apply-multi(p: piece): doc {
   g(c)
 }
 
+define arrange-vertical(ps: list(piece)): doc {
+  join-doc-list(for-each(ps, _apply-multi))
+}
+
 define arrange(ps: list(piece)): doc {
   let b on ps =
     fold-left-N(False, ps, function (acc, p) {
@@ -47,7 +51,7 @@ define arrange(ps: list(piece)): doc {
       }
     });
   if b {
-    join-doc-list(for-each(ps, _apply-multi))
+    arrange-vertical(ps)
   } else {
     join-doc-list(for-each(ps, _apply-single))
   }
