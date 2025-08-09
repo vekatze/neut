@@ -220,3 +220,15 @@ define vertical(content: doc): piece {
     multi-modifier := _append-newline,
   }
 }
+
+define append-comma-if-vertical(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := {
+      function (d) {
+        join[d, make-text(*",")]
+      }
+    },
+  }
+}
