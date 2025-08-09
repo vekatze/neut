@@ -82,3 +82,22 @@ define _layout-direct(b: &text-builder, d: &doc): unit {
     _layout-direct(b, x)
   }
 }
+
+define _slide-inline-comments(d: doc): doc {
+  match d {
+  | Empty =>
+    Empty
+  | Text(t, x) =>
+    Text(t, _slide-inline-comments(x))
+  | Line(i, x) =>
+    match x {
+    | Inline-Comment(t, cont) =>
+      pin t = t;
+      Text(core.text.append(" ", t), _slide-inline-comments(cont))
+    | x =>
+      Line(i, _slide-inline-comments(x))
+    }
+  | Inline-Comment(t, x) =>
+    Inline-Comment(t, _slide-inline-comments(x))
+  }
+}
