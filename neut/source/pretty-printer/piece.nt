@@ -61,6 +61,10 @@ define _id(d: doc): doc {
   d
 }
 
+define _append-space(d: doc): doc {
+  join[d, make-text(*" ")]
+}
+
 define _append-newline(d: doc): doc {
   join[d, line]
 }
