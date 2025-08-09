@@ -1,6 +1,6 @@
 import {
   core.list {fold-left-N, for-each},
-  this.pretty-printer.doc {Empty, _is-multi, doc, join-doc-list},
+  this.pretty-printer.doc {Empty, _is-multi, doc, join, join-doc-list, line},
 }
 
 data piece {
@@ -55,4 +55,8 @@ define arrange(ps: list(piece)): doc {
   } else {
     join-doc-list(for-each(ps, _apply-single))
   }
+}
+
+define _append-newline(d: doc): doc {
+  join[d, line]
 }
