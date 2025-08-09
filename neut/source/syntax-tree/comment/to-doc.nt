@@ -41,3 +41,10 @@ define as-prefix(cs: comment): doc {
     join[intercalate(line, cs), line]
   }
 }
+
+define as-stmt-prefix(cs: comment): doc {
+  as-prefix(for-each(cs, function (c) {
+    let Comment-Item(_, x) = c;
+    Comment-Item(Line-Comment, x)
+  }))
+}
