@@ -152,3 +152,15 @@ define parameter(content: doc): piece {
     multi-modifier := _id,
   }
 }
+
+define bare-series(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-space,
+    multi-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d]), line]
+      }
+    },
+  }
+}
