@@ -184,3 +184,11 @@ define before-bare-series(content: doc): piece {
     multi-modifier := _id,
   }
 }
+
+define delimiter-left-aligned(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-space,
+    multi-modifier := _append-newline,
+  }
+}
