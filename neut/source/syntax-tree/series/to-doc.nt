@@ -1,5 +1,5 @@
 import {
-  core.list {is-empty},
+  core.list {for-each, is-empty},
   core.text {replicate},
   this.pretty-printer.doc {Empty, doc, indent, join, line, make-text, nest},
   this.pretty-printer.piece {append-comma-if-vertical, delimiter-bar, delimiter-left-aligned, inject, piece},
@@ -114,4 +114,13 @@ define _comma-seq-cont(elems: list(doc), is-vertical: bool, trailing-comment: co
       _comma-seq-cont(rest, is-vertical, trailing-comment),
     )
   }
+}
+
+define _comma-seq(elems: list(pair(comment, doc)), is-vertical: bool, trailing-comment: comment): list(piece) {
+  let elems =
+    for-each(elems, function (e) {
+      let Pair(c, d) = e;
+      _attach-comment(c, d)
+    });
+  _comma-seq-cont(elems, is-vertical, trailing-comment)
 }
