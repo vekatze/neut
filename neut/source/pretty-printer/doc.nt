@@ -1,0 +1,160 @@
+import {
+  core.control {loop},
+  core.list {fold-left-N},
+  core.text-builder {append-text, extract, make-text-builder, text-builder},
+}
+
+data doc {
+| Empty
+| Text(text, doc)
+| Line(int, doc)
+| Inline-Comment(text, doc)
+}
+
+inline indent: int {
+  2
+}
+
+inline line: doc {
+  Line(0, Empty)
+}
+
+inline make-text(t: text): doc {
+  Text(t, Empty)
+}
+
+inline inline-comment(t: text): doc {
+  Inline-Comment(t, Empty)
+}
+
+define _join(d1: doc, d2: doc): doc {
+  match d1 {
+  | Empty =>
+    d2
+  | Text(t, x) =>
+    Text(t, _join(x, d2))
+  | Line(i, x) =>
+    Line(i, _join(x, d2))
+  | Inline-Comment(t, x) =>
+    Inline-Comment(t, _join(x, d2))
+  }
+}
+
+rule-right join {
+  function leaf(_: int): doc {
+    Empty
+  },
+  function node-left(d: doc, acc: doc): doc {
+    _join(d, acc)
+  },
+  function root<a>(x: a): a {
+    x
+  },
+}
+
+define join-doc-list(ds: list(doc)): doc {
+  match ds {
+  | Nil =>
+    Empty
+  | Cons(d, rest) =>
+    _join(d, join-doc-list(rest))
+  }
+}
+
+define nest(i: int, d: doc): doc {
+  match d {
+  | Empty =>
+    Empty
+  | Text(t, x) =>
+    Text(t, nest(i, x))
+  | Line(j, x) =>
+    Line(add-int(i, j), nest(i, x))
+  | Inline-Comment(t, x) =>
+    Inline-Comment(t, nest(i, x))
+  }
+}
+
+define _layout-direct(b: &text-builder, d: &doc): unit {
+  case d {
+  | Empty =>
+    Unit
+  | Text(t, x) =>
+    append-text(b, t);
+    _layout-direct(b, x)
+  | Line(i, x) =>
+    append-text(b, "\n");
+    loop(*i, function (_) {
+      append-text(b, " ");
+    });
+    _layout-direct(b, x)
+  | Inline-Comment(t, x) =>
+    append-text(b, t);
+    _layout-direct(b, x)
+  }
+}
+
+define _slide-inline-comments(d: doc): doc {
+  match d {
+  | Empty =>
+    Empty
+  | Text(t, x) =>
+    Text(t, _slide-inline-comments(x))
+  | Line(i, x) =>
+    match x {
+    | Inline-Comment(t, cont) =>
+      pin t = t;
+      Text(core.text.append(" ", t), _slide-inline-comments(cont))
+    | x =>
+      Line(i, _slide-inline-comments(x))
+    }
+  | Inline-Comment(t, x) =>
+    Inline-Comment(t, _slide-inline-comments(x))
+  }
+}
+
+define layout(d: doc): text {
+  let b = make-text-builder(256);
+  pin d = _slide-inline-comments(d);
+  let _ on b = _layout-direct(b, d);
+  extract(b)
+}
+
+define _is-multi(d: &doc): bool {
+  case d {
+  | Empty =>
+    False
+  | Text(_, rest) =>
+    _is-multi(rest)
+  | Line of {} =>
+    True
+  | Inline-Comment(_, rest) =>
+    _is-multi(rest)
+  }
+}
+
+define is-multi(ds: &list(doc)): bool {
+  fold-left-N(False, ds, function (acc, d) {
+    if acc {
+      True
+    } else {
+      _is-multi(d)
+    }
+  })
+}
+
+define intercalate(!sep: doc, ds: list(doc)): doc {
+  match ds {
+  | Nil =>
+    Empty
+  | Cons(d, Nil) =>
+    d
+  | Cons(d, rest) =>
+    join[d, !sep, intercalate(!sep, rest)]
+  }
+}
+
+define zen(): unit {
+  pin d = List[Empty, Line(3, Empty)];
+  pin b = is-multi(d);
+  vet(b);
+}

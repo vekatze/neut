@@ -1,0 +1,242 @@
+import {
+  core.list {fold-left-N, for-each},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, join-doc-list, line, make-text, nest},
+}
+
+data piece {
+| Piece(
+    content: doc,
+    single-modifier: (doc) -> doc,
+    multi-modifier: (doc) -> doc,
+  )
+}
+
+define _remove-nil(ps: list(piece)): list(piece) {
+  match ps {
+  | Nil =>
+    Nil
+  | Cons(p, rest) =>
+    let Piece(c, f, g) = p;
+    match c {
+    | Empty =>
+      _remove-nil(rest)
+    | c =>
+      Cons(Piece(c, f, g), _remove-nil(rest))
+    }
+  }
+}
+
+define _apply-single(p: piece): doc {
+  let Piece(c, f, _) = p;
+  f(c)
+}
+
+define _apply-multi(p: piece): doc {
+  let Piece(c, _, g) = p;
+  g(c)
+}
+
+define arrange-vertical(ps: list(piece)): doc {
+  join-doc-list(for-each(ps, _apply-multi))
+}
+
+define arrange(ps: list(piece)): doc {
+  let b on ps =
+    fold-left-N(False, ps, function (acc, p) {
+      if acc {
+        acc
+      } else {
+        tie Piece(c, _, _) = p;
+        _is-multi(c)
+      }
+    });
+  if b {
+    arrange-vertical(ps)
+  } else {
+    join-doc-list(for-each(ps, _apply-single))
+  }
+}
+
+define _id(d: doc): doc {
+  d
+}
+
+define _append-space(d: doc): doc {
+  join[d, make-text(*" ")]
+}
+
+define _append-newline(d: doc): doc {
+  join[d, line]
+}
+
+define _space-newline(d: doc): doc {
+  join[make-text(*" "), d, line]
+}
+
+define _wrap-by-space(d: doc): doc {
+  join[make-text(*" "), d, make-text(*" ")]
+}
+
+define container(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := _append-newline,
+  }
+}
+
+define nested(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d]), line]
+      }
+    },
+    multi-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d]), line]
+      }
+    },
+  }
+}
+
+define block(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := {
+      function (d) {
+        join[line, d, line]
+      }
+    },
+    multi-modifier := {
+      function (d) {
+        join[line, d, line]
+      }
+    },
+  }
+}
+
+define id-or-nest(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d]), line]
+      }
+    },
+  }
+}
+
+define delimiter(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _wrap-by-space,
+    multi-modifier := _append-newline,
+  }
+}
+
+define clause-delimiter(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _wrap-by-space,
+    multi-modifier := _space-newline,
+  }
+}
+
+define parameter(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := _id,
+  }
+}
+
+define bare-series(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-space,
+    multi-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d]), line]
+      }
+    },
+  }
+}
+
+define let-body(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d])]
+      }
+    },
+  }
+}
+
+define before-bare-series(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-space,
+    multi-modifier := _id,
+  }
+}
+
+define delimiter-left-aligned(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-space,
+    multi-modifier := _append-newline,
+  }
+}
+
+define delimiter-bar(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _wrap-by-space,
+    multi-modifier := {
+      function (d) {
+        join[line, d, make-text(*" ")]
+      }
+    },
+  }
+}
+
+define horizontal(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-space,
+    multi-modifier := _append-space,
+  }
+}
+
+define vertical(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-newline,
+    multi-modifier := _append-newline,
+  }
+}
+
+define append-comma-if-vertical(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := {
+      function (d) {
+        join[d, make-text(*",")]
+      }
+    },
+  }
+}
+
+define inject(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := _id,
+  }
+}
