@@ -33,3 +33,15 @@ define _join(d1: doc, d2: doc): doc {
     Inline-Comment(t, _join(x, d2))
   }
 }
+
+rule-right join {
+  function leaf(_: int): doc {
+    Empty
+  },
+  function node-left(d: doc, acc: doc): doc {
+    _join(d, acc)
+  },
+  function root<a>(x: a): a {
+    x
+  },
+}
