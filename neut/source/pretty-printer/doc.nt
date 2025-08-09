@@ -45,3 +45,16 @@ rule-right join {
     x
   },
 }
+
+define nest(i: int, d: doc): doc {
+  match d {
+  | Empty =>
+    Empty
+  | Text(t, x) =>
+    Text(t, nest(i, x))
+  | Line(j, x) =>
+    Line(add-int(i, j), nest(i, x))
+  | Inline-Comment(t, x) =>
+    Inline-Comment(t, nest(i, x))
+  }
+}
