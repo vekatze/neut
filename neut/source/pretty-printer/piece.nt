@@ -65,6 +65,10 @@ define _append-newline(d: doc): doc {
   join[d, line]
 }
 
+define _space-newline(d: doc): doc {
+  join[make-text(*" "), d, line]
+}
+
 define _wrap-by-space(d: doc): doc {
   join[make-text(*" "), d, make-text(*" ")]
 }
