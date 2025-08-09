@@ -212,3 +212,11 @@ define horizontal(content: doc): piece {
     multi-modifier := _append-space,
   }
 }
+
+define vertical(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-newline,
+    multi-modifier := _append-newline,
+  }
+}
