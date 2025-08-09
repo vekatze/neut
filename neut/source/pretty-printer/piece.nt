@@ -140,3 +140,11 @@ define clause-delimiter(content: doc): piece {
     multi-modifier := _space-newline,
   }
 }
+
+define parameter(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := _id,
+  }
+}
