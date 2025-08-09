@@ -1,5 +1,5 @@
 import {
-  this.pretty-printer.doc {doc},
+  this.pretty-printer.doc {Empty, doc},
 }
 
 data piece {
@@ -8,4 +8,19 @@ data piece {
     single-modifier: (doc) -> doc,
     multi-modifier: (doc) -> doc,
   )
+}
+
+define _remove-nil(ps: list(piece)): list(piece) {
+  match ps {
+  | Nil =>
+    Nil
+  | Cons(p, rest) =>
+    let Piece(c, f, g) = p;
+    match c {
+    | Empty =>
+      _remove-nil(rest)
+    | c =>
+      Cons(Piece(c, f, g), _remove-nil(rest))
+    }
+  }
 }
