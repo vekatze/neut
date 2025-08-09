@@ -120,3 +120,11 @@ define id-or-nest(content: doc): piece {
     },
   }
 }
+
+define delimiter(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _wrap-by-space,
+    multi-modifier := _append-newline,
+  }
+}
