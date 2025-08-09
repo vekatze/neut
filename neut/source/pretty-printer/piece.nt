@@ -104,3 +104,15 @@ define block(content: doc): piece {
     },
   }
 }
+
+define id-or-nest(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d]), line]
+      }
+    },
+  }
+}
