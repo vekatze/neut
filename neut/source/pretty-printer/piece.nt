@@ -88,3 +88,19 @@ define nested(content: doc): piece {
     },
   }
 }
+
+define block(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := {
+      function (d) {
+        join[line, d, line]
+      }
+    },
+    multi-modifier := {
+      function (d) {
+        join[line, d, line]
+      }
+    },
+  }
+}
