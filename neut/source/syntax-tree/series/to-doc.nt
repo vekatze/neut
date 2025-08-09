@@ -2,10 +2,10 @@ import {
   core.list {is-empty},
   core.text {replicate},
   this.pretty-printer.doc {Empty, doc, indent, join, line, make-text, nest},
-  this.pretty-printer.piece {delimiter-bar, inject, piece},
+  this.pretty-printer.piece {append-comma-if-vertical, delimiter-bar, delimiter-left-aligned, inject, piece},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-clause-header, as-prefix-indented, as-suffix},
-  this.syntax-tree.series {Bar, Series, get-separator-text, series},
+  this.syntax-tree.series {Bar, Comma, Series, get-separator-text, series},
 }
 
 inline _c-decode {
@@ -80,5 +80,34 @@ define _bar-seq(
     let head-elem = List[inject(as-prefix-indented(c)), prefix, inject(nest(indent, d))];
     let rest = _bar-seq-cont(rest, trailing-comment);
     core.list.append(head-elem, rest)
+  }
+}
+
+define _comma-seq-cont(elems: list(doc), is-vertical: bool, trailing-comment: comment): list(piece) {
+  let sep = get-separator-text(Comma);
+  match elems {
+  | Nil =>
+    List[inject(_c-decode(trailing-comment))]
+  | Cons(d, Nil) =>
+    if is-vertical {
+      List[
+        inject(d),
+        inject(make-text(*sep)),
+        inject(as-suffix(trailing-comment)),
+      ]
+    } else {
+      List[
+        append-comma-if-vertical(d),
+        inject(as-suffix(trailing-comment)),
+      ]
+    }
+  | Cons(d, rest) =>
+    core.list.append(
+      List[
+        inject(d),
+        delimiter-left-aligned(make-text(*sep)),
+      ],
+      _comma-seq-cont(rest, is-vertical, trailing-comment),
+    )
   }
 }
