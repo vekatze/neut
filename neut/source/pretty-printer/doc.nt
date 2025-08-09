@@ -1,5 +1,6 @@
 import {
   core.control {loop},
+  core.list {fold-left-N},
   core.text-builder {append-text, extract, make-text-builder, text-builder},
 }
 
@@ -107,4 +108,33 @@ define layout(d: doc): text {
   pin d = _slide-inline-comments(d);
   let _ on b = _layout-direct(b, d);
   extract(b)
+}
+
+define _is-multi(d: &doc): bool {
+  case d {
+  | Empty =>
+    False
+  | Text(_, rest) =>
+    _is-multi(rest)
+  | Line of {} =>
+    True
+  | Inline-Comment(_, rest) =>
+    _is-multi(rest)
+  }
+}
+
+define is-multi(ds: &list(doc)): bool {
+  fold-left-N(False, ds, function (acc, d) {
+    if acc {
+      True
+    } else {
+      _is-multi(d)
+    }
+  })
+}
+
+define zen(): unit {
+  pin d = List[Empty, Line(3, Empty)];
+  pin b = is-multi(d);
+  vet(b);
 }
