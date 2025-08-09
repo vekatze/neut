@@ -52,3 +52,33 @@ define _bar-seq-cont(
     )
   }
 }
+
+define _bar-seq(
+  elems: list(pair(comment, doc)),
+  is-vertical: bool,
+  trailing-comment: comment,
+): list(piece) {
+  match elems {
+  | Nil =>
+    let b on trailing-comment = is-empty(trailing-comment);
+    if b {
+      List[inject(Empty)]
+    } else {
+      List[inject(join[
+        make-text(replicate(" ", indent)),
+        _c-decode(trailing-comment),
+      ])]
+    }
+  | Cons(Pair(c, d), rest) =>
+    let prefix =
+      if is-vertical {
+        let sep = get-separator-text(Bar);
+        inject(make-text(core.text.append(sep, " ")))
+      } else {
+        inject(Empty)
+      };
+    let head-elem = List[inject(as-prefix-indented(c)), prefix, inject(nest(indent, d))];
+    let rest = _bar-seq-cont(rest, trailing-comment);
+    core.list.append(head-elem, rest)
+  }
+}
