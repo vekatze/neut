@@ -24,3 +24,8 @@ define _remove-nil(ps: list(piece)): list(piece) {
     }
   }
 }
+
+define _apply-single(p: piece): doc {
+  let Piece(c, f, _) = p;
+  f(c)
+}
