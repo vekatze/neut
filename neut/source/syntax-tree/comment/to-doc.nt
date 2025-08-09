@@ -76,3 +76,21 @@ define has-leading-inline-comment(cs: &comment): bool {
     }
   }
 }
+
+define as-suffix(cs: comment): doc {
+  match cs {
+  | Nil =>
+    Empty
+  | Cons(c, rest) =>
+    let cs = Cons(c, rest);
+    let b on cs = has-leading-inline-comment(cs);
+    let prefix =
+      if b {
+        make-text(*" ")
+      } else {
+        line
+      };
+    let cs = for-each(cs, _decode);
+    join[prefix, intercalate(line, cs)]
+  }
+}
