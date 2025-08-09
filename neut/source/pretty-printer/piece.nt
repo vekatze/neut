@@ -232,3 +232,11 @@ define append-comma-if-vertical(content: doc): piece {
     },
   }
 }
+
+define inject(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _id,
+    multi-modifier := _id,
+  }
+}
