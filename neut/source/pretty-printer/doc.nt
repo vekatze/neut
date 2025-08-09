@@ -1,6 +1,6 @@
 import {
   core.control {loop},
-  core.text-builder {append-text, text-builder},
+  core.text-builder {append-text, extract, make-text-builder, text-builder},
 }
 
 data doc {
@@ -100,4 +100,11 @@ define _slide-inline-comments(d: doc): doc {
   | Inline-Comment(t, x) =>
     Inline-Comment(t, _slide-inline-comments(x))
   }
+}
+
+define layout(d: doc): text {
+  let b = make-text-builder(256);
+  pin d = _slide-inline-comments(d);
+  let _ on b = _layout-direct(b, d);
+  extract(b)
 }
