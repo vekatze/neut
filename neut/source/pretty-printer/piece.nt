@@ -29,3 +29,8 @@ define _apply-single(p: piece): doc {
   let Piece(c, f, _) = p;
   f(c)
 }
+
+define _apply-multi(p: piece): doc {
+  let Piece(c, _, g) = p;
+  g(c)
+}
