@@ -4,7 +4,7 @@ import {
   this.pretty-printer.doc {Empty, doc, indent, join, line, make-text, nest},
   this.pretty-printer.piece {append-comma-if-vertical, delimiter-bar, delimiter-left-aligned, inject, piece},
   this.syntax-tree.comment {comment},
-  this.syntax-tree.comment.to-doc {as-clause-header, as-prefix-indented, as-suffix},
+  this.syntax-tree.comment.to-doc {as-clause-header, as-prefix, as-prefix-indented, as-suffix},
   this.syntax-tree.series {Bar, Comma, Series, get-separator-text, series},
 }
 
@@ -31,6 +31,10 @@ define _decode-prefix<a>(s: &series(a)): doc {
       ]
     }
   }
+}
+
+define _attach-comment(c: comment, d: doc): doc {
+  join[as-prefix(c), d]
 }
 
 define _bar-seq-cont(
