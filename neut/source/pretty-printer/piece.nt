@@ -204,3 +204,11 @@ define delimiter-bar(content: doc): piece {
     },
   }
 }
+
+define horizontal(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _append-space,
+    multi-modifier := _append-space,
+  }
+}
