@@ -1,6 +1,6 @@
 import {
   core.list {fold-left-N, for-each},
-  this.pretty-printer.doc {Empty, _is-multi, doc, join, join-doc-list, line},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, join-doc-list, line, nest},
 }
 
 data piece {
@@ -70,5 +70,21 @@ define container(content: doc): piece {
     content,
     single-modifier := _id,
     multi-modifier := _append-newline,
+  }
+}
+
+define nested(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d]), line]
+      }
+    },
+    multi-modifier := {
+      function (d) {
+        join[nest(indent, join[line, d]), line]
+      }
+    },
   }
 }
