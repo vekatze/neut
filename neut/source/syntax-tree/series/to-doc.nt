@@ -1,8 +1,15 @@
 import {
   core.list {is-empty},
-  this.pretty-printer.doc {Empty, doc, join, line, make-text},
-  this.syntax-tree.comment.to-doc,
-  this.syntax-tree.series {Series, series},
+  core.text {replicate},
+  this.pretty-printer.doc {Empty, doc, indent, join, line, make-text, nest},
+  this.pretty-printer.piece {delimiter-bar, inject, piece},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.comment.to-doc {as-clause-header, as-prefix-indented, as-suffix},
+  this.syntax-tree.series {Bar, Series, get-separator-text, series},
+}
+
+inline _c-decode {
+  this.syntax-tree.comment.to-doc.decode
 }
 
 define _decode-prefix<a>(s: &series(a)): doc {
@@ -19,9 +26,29 @@ define _decode-prefix<a>(s: &series(a)): doc {
       join[
         p,
         line,
-        this.syntax-tree.comment.to-doc.decode(*c),
+        _c-decode(*c),
         line,
       ]
     }
+  }
+}
+
+define _bar-seq-cont(
+  elems: list(pair(comment, doc)),
+  trailing-comment: comment,
+): list(piece) {
+  let sep = get-separator-text(Bar);
+  match elems {
+  | Nil =>
+    List[inject(nest(indent, as-suffix(trailing-comment)))]
+  | Cons(Pair(c, d), rest) =>
+    core.list.append(
+      List[
+        inject(as-clause-header(c)),
+        delimiter-bar(make-text(*sep)),
+        inject(nest(indent, d)),
+      ],
+      _bar-seq-cont(rest, trailing-comment),
+    )
   }
 }
