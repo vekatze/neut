@@ -8,3 +8,7 @@ data doc {
 inline indent: int {
   2
 }
+
+inline line: doc {
+  Line(0, Empty)
+}
