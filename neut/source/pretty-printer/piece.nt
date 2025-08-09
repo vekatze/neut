@@ -1,5 +1,6 @@
 import {
-  this.pretty-printer.doc {Empty, doc},
+  core.list {fold-left-N, for-each},
+  this.pretty-printer.doc {Empty, _is-multi, doc, join-doc-list},
 }
 
 data piece {
@@ -33,4 +34,21 @@ define _apply-single(p: piece): doc {
 define _apply-multi(p: piece): doc {
   let Piece(c, _, g) = p;
   g(c)
+}
+
+define arrange(ps: list(piece)): doc {
+  let b on ps =
+    fold-left-N(False, ps, function (acc, p) {
+      if acc {
+        acc
+      } else {
+        tie Piece(c, _, _) = p;
+        _is-multi(c)
+      }
+    });
+  if b {
+    join-doc-list(for-each(ps, _apply-multi))
+  } else {
+    join-doc-list(for-each(ps, _apply-single))
+  }
 }

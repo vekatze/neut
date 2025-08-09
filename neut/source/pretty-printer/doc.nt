@@ -52,6 +52,15 @@ rule-right join {
   },
 }
 
+define join-doc-list(ds: list(doc)): doc {
+  match ds {
+  | Nil =>
+    Empty
+  | Cons(d, rest) =>
+    _join(d, join-doc-list(rest))
+  }
+}
+
 define nest(i: int, d: doc): doc {
   match d {
   | Empty =>
