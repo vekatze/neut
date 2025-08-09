@@ -133,6 +133,17 @@ define is-multi(ds: &list(doc)): bool {
   })
 }
 
+define intercalate(!sep: doc, ds: list(doc)): doc {
+  match ds {
+  | Nil =>
+    Empty
+  | Cons(d, Nil) =>
+    d
+  | Cons(d, rest) =>
+    join[d, !sep, intercalate(!sep, rest)]
+  }
+}
+
 define zen(): unit {
   pin d = List[Empty, Line(3, Empty)];
   pin b = is-multi(d);
