@@ -192,3 +192,15 @@ define delimiter-left-aligned(content: doc): piece {
     multi-modifier := _append-newline,
   }
 }
+
+define delimiter-bar(content: doc): piece {
+  Piece of {
+    content,
+    single-modifier := _wrap-by-space,
+    multi-modifier := {
+      function (d) {
+        join[line, d, make-text(*" ")]
+      }
+    },
+  }
+}
