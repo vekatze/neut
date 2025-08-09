@@ -1,6 +1,6 @@
 import {
   core.list {fold-left-N, for-each},
-  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, join-doc-list, line, nest},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, join-doc-list, line, make-text, nest},
 }
 
 data piece {
@@ -63,6 +63,10 @@ define _id(d: doc): doc {
 
 define _append-newline(d: doc): doc {
   join[d, line]
+}
+
+define _wrap-by-space(d: doc): doc {
+  join[make-text(*" "), d, make-text(*" ")]
 }
 
 define container(content: doc): piece {
