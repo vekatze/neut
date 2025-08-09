@@ -31,3 +31,13 @@ define decode(cs: comment): doc {
     }
   }
 }
+
+define as-prefix(cs: comment): doc {
+  match uncons(cs) {
+  | Left(_) =>
+    Empty
+  | Right(Pair(x, xs)) =>
+    let cs = for-each(Cons(x, xs), _decode);
+    join[intercalate(line, cs), line]
+  }
+}
