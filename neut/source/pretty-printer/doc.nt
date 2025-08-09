@@ -16,3 +16,7 @@ inline line: doc {
 inline make-text(t: text): doc {
   Text(t, Empty)
 }
+
+inline inline-comment(t: text): doc {
+  Inline-Comment(t, Empty)
+}
