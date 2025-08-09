@@ -1,0 +1,11 @@
+import {
+  this.pretty-printer.doc {doc},
+}
+
+data piece {
+| Piece(
+    content: doc,
+    single-modifier: (doc) -> doc,
+    multi-modifier: (doc) -> doc,
+  )
+}
