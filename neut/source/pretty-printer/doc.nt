@@ -12,3 +12,7 @@ inline indent: int {
 inline line: doc {
   Line(0, Empty)
 }
+
+inline make-text(t: text): doc {
+  Text(t, Empty)
+}
