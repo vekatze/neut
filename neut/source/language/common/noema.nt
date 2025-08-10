@@ -1,0 +1,3 @@
+inline is-noetic: type {
+  bool
+}
