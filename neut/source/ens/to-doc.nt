@@ -1,0 +1,15 @@
+import {
+  core.list {fold-right},
+  this.pretty-printer.doc {doc, line, make-text},
+  this.syntax-tree.comment {Comment-Item, comment},
+}
+
+define _comment-to-doc(cs: comment): list(doc) {
+  fold-right(cs, Nil, function (c, acc) {
+    let Comment-Item of {comment-text} = c;
+    core.list.append(
+      List[line, make-text(*"//"), make-text(comment-text)],
+      acc,
+    )
+  })
+}
