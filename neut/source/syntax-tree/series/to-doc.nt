@@ -3,10 +3,31 @@ import {
   core.list {fold-left-N, for-each, is-empty},
   core.text {replicate},
   this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
-  this.pretty-printer.piece {append-comma-if-vertical, arrange, arrange-vertical, block, delimiter-bar, delimiter-left-aligned, horizontal, id-or-nest, inject, nested, piece},
+  this.pretty-printer.piece {
+    append-comma-if-vertical,
+    arrange,
+    arrange-vertical,
+    block,
+    delimiter-bar,
+    delimiter-left-aligned,
+    horizontal,
+    id-or-nest,
+    inject,
+    nested,
+    piece,
+  },
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-clause-header, as-prefix, as-prefix-indented, as-suffix},
-  this.syntax-tree.series {Bar, Comma, Series, _get-separator, get-container-pair, get-separator-text, has-comment, series},
+  this.syntax-tree.series {
+    Bar,
+    Comma,
+    Series,
+    _get-separator,
+    get-container-pair,
+    get-separator-text,
+    has-comment,
+    series,
+  },
 }
 
 inline _c-decode {
@@ -193,22 +214,34 @@ define _is-vertical-series(s: &series(clause)): bool {
   ]
 }
 
-define _decode-clause-item-vertical(c: &clause): doc {
-  tie Clause(dom, delim, cod) = c;
+define _decode-clause-item-vertical(c: clause): doc {
+  let Clause(dom, delim, cod) = c;
+  pin dom = dom;
   let dom-layout = match _is-multi(dom) {True => inject | False => horizontal};
   arrange(List[
     dom-layout(*dom),
-    inject(make-text(**delim)),
+    inject(make-text(*delim)),
     inject(line),
-    inject(*cod),
+    inject(cod),
   ])
 }
 
-define _decode-clause-item-horizontal(c: &clause): doc {
-  tie Clause(dom, delim, cod) = c;
+define _decode-clause-item-horizontal(c: clause): doc {
+  let Clause(dom, delim, cod) = c;
   arrange(List[
-    horizontal(*dom),
-    horizontal(make-text(**delim)),
-    inject(*cod),
+    horizontal(dom),
+    horizontal(make-text(*delim)),
+    inject(cod),
   ])
+}
+
+define decode-clause-series(s: series(clause)): doc {
+  let b on s = _is-vertical-series(s);
+  if b {
+    pin s = this.syntax-tree.series.for-each(s, _decode-clause-item-vertical);
+    _decode(True, s)
+  } else {
+    pin s = this.syntax-tree.series.for-each(s, _decode-clause-item-horizontal);
+    _decode(False, s)
+  }
 }
