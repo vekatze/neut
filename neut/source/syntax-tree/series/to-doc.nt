@@ -1,8 +1,8 @@
 import {
   core.bool {any},
-  core.list {for-each, is-empty},
+  core.list {fold-left-N, for-each, is-empty},
   core.text {replicate},
-  this.pretty-printer.doc {Empty, doc, indent, join, line, make-text, nest},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
   this.pretty-printer.piece {append-comma-if-vertical, arrange, arrange-vertical, block, delimiter-bar, delimiter-left-aligned, id-or-nest, inject, nested, piece},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-clause-header, as-prefix, as-prefix-indented, as-suffix},
@@ -165,4 +165,30 @@ define _decode(force-vertical: bool, s: &series(doc)): doc {
 
 define decode(s: &series(doc)): doc {
   _decode(False, s)
+}
+
+data clause {
+| Clause(
+    dom: doc,
+    arrow: &text,
+    cod: doc,
+  )
+}
+
+define _is-vertical-series(s: &series(clause)): bool {
+  tie Series of {has-optional-separator, elems} = s;
+  let has-vertical-content =
+    fold-left-N(False, elems, function (acc, elem) {
+      if acc {
+        acc
+      } else {
+        tie Pair(_, Clause(dom, _, cod)) = elem;
+        or(_is-multi(dom), _is-multi(cod))
+      }
+    });
+  any[
+    *has-optional-separator,
+    has-comment(s),
+    has-vertical-content,
+  ]
 }
