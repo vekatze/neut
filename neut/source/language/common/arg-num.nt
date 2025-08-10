@@ -1,3 +1,7 @@
 data arg-num {
 | Arg-Num(int)
 }
+
+define arg-num-from-int(x: int): arg-num {
+  Arg-Num(x)
+}
