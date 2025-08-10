@@ -1,3 +1,7 @@
+import {
+  core.text-builder {append-text, text-builder},
+}
+
 data external-name {
 | External-Name(text)
 }
@@ -8,4 +12,9 @@ define malloc-name(): external-name {
 
 define free-name(): external-name {
   External-Name(*"free")
+}
+
+define append-external-name(b: &text-builder, v: &external-name): unit {
+  tie External-Name(t) = v;
+  append-text(b, t)
 }
