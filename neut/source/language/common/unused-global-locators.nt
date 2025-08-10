@@ -1,0 +1,7 @@
+import {
+  this.logger.hint {hint},
+}
+
+inline unused-global-locators: type {
+  list(pair(text, list(pair(hint, text))))
+}
