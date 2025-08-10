@@ -19,3 +19,7 @@ define add-arg-num(x: arg-num, y: arg-num): arg-num {
   let Arg-Num(y) = y;
   Arg-Num(add-int(x, y))
 }
+
+define succ-arg-num(x: arg-num): arg-num {
+  add-arg-num(x, Arg-Num(1))
+}
