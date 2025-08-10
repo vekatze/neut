@@ -1,0 +1,5 @@
+data imp-args(a) {
+| Unspecified
+| PartiallySpecified(list(?a))
+| FullySpecified(list(a))
+}
