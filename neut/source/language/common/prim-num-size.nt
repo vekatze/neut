@@ -56,3 +56,20 @@ define int-size-from-int(d: data-size, size: int): ?int-size {
     }
   }
 }
+
+define float-size-from-int(d: data-size, size: int): ?float-size {
+  if lt-int(int-from-data-size(d), size) {
+    none
+  } else {
+    match size {
+    | 16 =>
+      Right(Float-Size-16)
+    | 32 =>
+      Right(Float-Size-32)
+    | 64 =>
+      Right(Float-Size-64)
+    | _ =>
+      none
+    }
+  }
+}
