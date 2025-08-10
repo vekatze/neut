@@ -1,3 +1,10 @@
 data data-size {
 | Data-Size-64
 }
+
+define int-from-data-size(x: data-size): int {
+  match x {
+  | Data-Size-64 =>
+    64
+  }
+}
