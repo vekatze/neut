@@ -1,0 +1,3 @@
+data arg-num {
+| Arg-Num(int)
+}
