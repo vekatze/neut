@@ -1,0 +1,3 @@
+data annotation(a) {
+| Annotation-Type(a)
+}
