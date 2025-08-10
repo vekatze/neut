@@ -132,3 +132,27 @@ inline int-size-sero: sero(int-size) {
     },
   }
 }
+
+inline float-size-sero: sero(float-size) {
+  Sero of {
+    put := {
+      function (k: &put-kit, v: &float-size) {
+        let Sero of {put} = int64-sero;
+        pin v = int-from-float-size(*v);
+        put(k, v)
+      }
+    },
+    get := {
+      function (k: &get-kit) {
+        let Sero of {get} = int64-sero;
+        try v = get(k);
+        match float-size-from-int(data-size-max, axiom-T(v)) {
+        | Right(s) =>
+          Right(quote {s})
+        | Left(_) =>
+          none
+        }
+      }
+    },
+  }
+}
