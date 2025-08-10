@@ -1,6 +1,7 @@
 import {
   core.list {fold-right},
-  this.pretty-printer.doc {doc, line, make-text},
+  this.ens.ens {ens},
+  this.pretty-printer.doc {doc, join, line, make-text},
   this.syntax-tree.comment {Comment-Item, comment},
 }
 
@@ -12,4 +13,21 @@ define _comment-to-doc(cs: comment): list(doc) {
       acc,
     )
   })
+}
+
+nominal {
+  to-doc(e: ens): doc,
+}
+
+define _dict-item-to-doc(kv: pair(text, ens)): doc {
+  let Pair(k, v) = kv;
+  join[
+    make-text(k),
+    make-text(*" "),
+    to-doc(v),
+  ]
+}
+
+define to-doc(e: ens): doc {
+  admit
 }
