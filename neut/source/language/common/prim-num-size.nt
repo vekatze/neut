@@ -24,3 +24,10 @@ define int-size-from-data-size(x: data-size): int-size {
     Int-Size-64
   }
 }
+
+define float-size-from-data-size(x: data-size): float-size {
+  match x {
+  | Data-Size-64 =>
+    Float-Size-64
+  }
+}
