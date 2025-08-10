@@ -5,3 +5,7 @@ data arg-num {
 define arg-num-from-int(x: int): arg-num {
   Arg-Num(x)
 }
+
+define zero: arg-num {
+  Arg-Num(0)
+}
