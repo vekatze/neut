@@ -1,5 +1,5 @@
 import {
-  this.language.common.data-size {Data-Size-64, data-size},
+  this.language.common.data-size {Data-Size-64, data-size, int-from-data-size},
 }
 
 data int-size {
@@ -29,5 +29,30 @@ define float-size-from-data-size(x: data-size): float-size {
   match x {
   | Data-Size-64 =>
     Float-Size-64
+  }
+}
+
+define int-size-from-int(d: data-size, size: int): ?int-size {
+  if lt-int(int-from-data-size(d), size) {
+    none
+  } else {
+    match size {
+    | 1 =>
+      Right(Int-Size-1)
+    | 2 =>
+      Right(Int-Size-2)
+    | 4 =>
+      Right(Int-Size-4)
+    | 8 =>
+      Right(Int-Size-8)
+    | 16 =>
+      Right(Int-Size-16)
+    | 32 =>
+      Right(Int-Size-32)
+    | 64 =>
+      Right(Int-Size-64)
+    | _ =>
+      none
+    }
   }
 }
