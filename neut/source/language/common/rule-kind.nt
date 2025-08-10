@@ -2,3 +2,12 @@ data rule-kind {
 | Fold-Left
 | Fold-Right
 }
+
+define keyword-from-rule-kind(k: rule-kind): &text {
+  match k {
+  | Fold-Left =>
+    "rule-left"
+  | Fold-Right =>
+    "rule-right"
+  }
+}
