@@ -13,3 +13,9 @@ define zero: arg-num {
 define arg-num-S4: arg-num {
   Arg-Num(2)
 }
+
+define add-arg-num(x: arg-num, y: arg-num): arg-num {
+  let Arg-Num(x) = x;
+  let Arg-Num(y) = y;
+  Arg-Num(add-int(x, y))
+}
