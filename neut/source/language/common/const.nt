@@ -1,3 +1,7 @@
 inline ns-sep-char: rune {
   `.`
 }
+
+define ns-sep: &text {
+  "."
+}
