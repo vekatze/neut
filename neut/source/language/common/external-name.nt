@@ -1,0 +1,3 @@
+data external-name {
+| External-Name(text)
+}
