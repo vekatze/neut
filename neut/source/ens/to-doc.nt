@@ -1,0 +1,95 @@
+import {
+  core.bool {any},
+  core.float.show {show-float},
+  core.int.show {show-int},
+  core.list {fold-right},
+  core.text {drop-while},
+  core.text.io {print-line},
+  core.text.show {show-text},
+  this.ens.ens {E-Bool, E-Dictionary, E-Float, E-Int, E-List, E-String, ens, ens-key, full-ens},
+  this.ens.parse {_parse-ens},
+  this.pretty-printer.doc {doc, join, join-doc-list, layout, line, make-text},
+  this.syntax-tree.block {Block},
+  this.syntax-tree.comment {Comment-Item, comment},
+  this.syntax-tree.series {for-each},
+  this.syntax-tree.series.to-doc,
+  zonk.error {report},
+  zonk.make-parse-error {make-parse-error},
+  zonk.make-zonk-kit {make-zonk-kit},
+}
+
+define _comment-to-doc(cs: comment): list(doc) {
+  fold-right(cs, Nil, function (c, acc) {
+    let Comment-Item of {comment-text} = c;
+    core.list.append(
+      List[line, make-text(*"//"), make-text(comment-text)],
+      acc,
+    )
+  })
+}
+
+nominal {
+  _to-doc(e: ens): doc,
+}
+
+define _dict-item-to-doc(kv: pair(ens-key, ens)): doc {
+  let Pair(Pair(_, k), v) = kv;
+  join[
+    make-text(k),
+    make-text(*" "),
+    _to-doc(v),
+  ]
+}
+
+define _to-doc(e: ens): doc {
+  match e {
+  | E-Int(_, x) =>
+    make-text(show-int(x))
+  | E-Float(_, x) =>
+    make-text(show-float(x, 8))
+  | E-Bool(_, x) =>
+    if x {
+      make-text(*"true")
+    } else {
+      make-text(*"false")
+    }
+  | E-String(_, x) =>
+    make-text(show-text(x))
+  | E-List(_, xs) =>
+    pin xs = for-each(xs, _to-doc);
+    this.syntax-tree.series.to-doc.decode(xs)
+  | E-Dictionary(_, kvs) =>
+    pin kvs = for-each(kvs, _dict-item-to-doc);
+    this.syntax-tree.series.to-doc.decode(kvs)
+  }
+}
+
+define pp(e: full-ens): text {
+  let Block(leading-comments, ens, trailing-comments) = e;
+  let header = core.list.append(_comment-to-doc(leading-comments), List[line]);
+  let body = List[_to-doc(ens)];
+  let footer = core.list.append(_comment-to-doc(trailing-comments), List[line]);
+  let tmp = layout(join-doc-list(core.list.append(header, core.list.append(body, footer))));
+  drop-while(tmp, function (r) {
+    any[
+      eq-rune(r, ` `),
+      eq-rune(r, `\n`),
+    ]
+  })
+}
+
+define zen(): unit {
+  pin k =
+    make-zonk-kit(
+      *"{some-key \"hello\", other-key 123, foo {a true, b false,}, bar [true, false], buz [1, 2, 3,]} // test",
+      *"test",
+    );
+  match _parse-ens(k) {
+  | Left(e) =>
+    pin err = report(make-parse-error(k, e));
+    print-line(err)
+  | Right(Pair(e, c)) =>
+    pin t = pp(Block(Nil, e, c));
+    print(t)
+  }
+}
