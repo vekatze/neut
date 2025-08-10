@@ -418,3 +418,8 @@ define has-comment<a>(xs: &series(a)): bool {
     })
   }
 }
+
+define _get-separator<a>(xs: &series(a)): separator {
+  tie Series of {separator} = xs;
+  *separator
+}
