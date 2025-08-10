@@ -1,6 +1,6 @@
 import {
   core.bool {all, any},
-  core.list {fold-left-N, for-each, is-empty},
+  core.list {fold-left-N, for-each, for-each-N, is-empty},
   core.text {replicate},
   this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
   this.pretty-printer.piece {
@@ -291,5 +291,28 @@ define _comma-seq-horizontal(elems: list(doc)): list(piece) {
       List[inject(d), horizontal(make-text(*","))],
       _comma-seq-horizontal(rest),
     )
+  }
+}
+
+define decode-horizontally-if-possible(s: &series(doc)): doc {
+  tie Series of {separator, container, elems} = s;
+  pin b = _is-horizontal-series(s);
+  case separator, container, b {
+  | Comma, Right(k), True =>
+    let prefix = _decode-prefix(s);
+    let Pair(open, close) = get-container-pair(*k);
+    let elems =
+      for-each-N(elems, function (p) {
+        tie Pair(_, y) = p;
+        *y
+      });
+    arrange(List[
+      inject(prefix),
+      inject(make-text(*open)),
+      inject(arrange(_comma-seq-horizontal(elems))),
+      inject(make-text(*close)),
+    ])
+  | _, _, _ =>
+    decode(s)
   }
 }
