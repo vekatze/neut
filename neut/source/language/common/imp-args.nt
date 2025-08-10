@@ -1,5 +1,20 @@
+import {
+  core.list {filter-some},
+}
+
 data imp-args(a) {
 | Unspecified
 | PartiallySpecified(list(?a))
 | FullySpecified(list(a))
+}
+
+define extract<a>(args: imp-args(a)): list(a) {
+  match args {
+  | Unspecified =>
+    Nil
+  | PartiallySpecified(xs) =>
+    filter-some(xs)
+  | FullySpecified(xs) =>
+    xs
+  }
 }
