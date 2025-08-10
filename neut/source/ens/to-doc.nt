@@ -1,8 +1,13 @@
 import {
+  core.float.show {show-float},
+  core.int.show {show-int},
   core.list {fold-right},
-  this.ens.ens {ens},
+  core.text.show {show-text},
+  this.ens.ens {E-Bool, E-Dictionary, E-Float, E-Int, E-List, E-String, ens, ens-key},
   this.pretty-printer.doc {doc, join, line, make-text},
   this.syntax-tree.comment {Comment-Item, comment},
+  this.syntax-tree.series {for-each},
+  this.syntax-tree.series.to-doc,
 }
 
 define _comment-to-doc(cs: comment): list(doc) {
@@ -16,18 +21,37 @@ define _comment-to-doc(cs: comment): list(doc) {
 }
 
 nominal {
-  to-doc(e: ens): doc,
+  _to-doc(e: ens): doc,
 }
 
-define _dict-item-to-doc(kv: pair(text, ens)): doc {
-  let Pair(k, v) = kv;
+define _dict-item-to-doc(kv: pair(ens-key, ens)): doc {
+  let Pair(Pair(_, k), v) = kv;
   join[
     make-text(k),
     make-text(*" "),
-    to-doc(v),
+    _to-doc(v),
   ]
 }
 
-define to-doc(e: ens): doc {
-  admit
+define _to-doc(e: ens): doc {
+  match e {
+  | E-Int(_, x) =>
+    make-text(show-int(x))
+  | E-Float(_, x) =>
+    make-text(show-float(x, 8))
+  | E-Bool(_, x) =>
+    if x {
+      make-text(*"true")
+    } else {
+      make-text(*"false")
+    }
+  | E-String(_, x) =>
+    make-text(show-text(x))
+  | E-List(_, xs) =>
+    pin xs = for-each(xs, _to-doc);
+    this.syntax-tree.series.to-doc.decode(xs)
+  | E-Dictionary(_, kvs) =>
+    pin kvs = for-each(kvs, _dict-item-to-doc);
+    this.syntax-tree.series.to-doc.decode(kvs)
+  }
 }
