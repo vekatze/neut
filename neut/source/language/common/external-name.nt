@@ -5,3 +5,7 @@ data external-name {
 define malloc-name(): external-name {
   External-Name(*"malloc")
 }
+
+define free-name(): external-name {
+  External-Name(*"free")
+}
