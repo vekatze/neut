@@ -1,0 +1,4 @@
+data rule-kind {
+| Fold-Left
+| Fold-Right
+}
