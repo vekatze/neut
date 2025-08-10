@@ -2,3 +2,12 @@ data opacity {
 | Opaque
 | Clear
 }
+
+define is-opaque(o: opacity): bool {
+  match o {
+  | Opaque =>
+    True
+  | Clear =>
+    False
+  }
+}
