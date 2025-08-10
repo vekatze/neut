@@ -1,0 +1,104 @@
+import {
+  core.list {for-each, uncons},
+  core.text {replicate},
+  this.pretty-printer.doc {Empty, doc, indent, inline-comment, intercalate, join, line, make-text, nest},
+  this.syntax-tree.comment {Comment-Item, Inline-Comment, Line-Comment, comment, comment-item},
+}
+
+define _decode(x: comment-item): doc {
+  let Comment-Item(t, s) = x;
+  match t {
+  | Line-Comment =>
+    pin s = s;
+    make-text(core.text.append("//", s))
+  | Inline-Comment =>
+    pin s = s;
+    inline-comment(core.text.append("//", s))
+  }
+}
+
+define decode(cs: comment): doc {
+  match uncons(cs) {
+  | Left(_) =>
+    Empty
+  | Right(Pair(Comment-Item(t, x), rest)) =>
+    match t {
+    | Line-Comment =>
+      let tmp = Cons(Comment-Item(t, x), rest);
+      intercalate(line, for-each(tmp, _decode))
+    | Inline-Comment =>
+      let rest = intercalate(line, for-each(rest, _decode));
+      join[_decode(Comment-Item(t, x)), rest]
+    }
+  }
+}
+
+define as-prefix(cs: comment): doc {
+  match uncons(cs) {
+  | Left(_) =>
+    Empty
+  | Right(Pair(x, xs)) =>
+    let cs = for-each(Cons(x, xs), _decode);
+    join[intercalate(line, cs), line]
+  }
+}
+
+define as-prefix-indented(cs: comment): doc {
+  match cs {
+  | Nil =>
+    Empty
+  | Cons(c, rest) =>
+    join[
+      make-text(replicate(" ", indent)),
+      nest(indent, decode(Cons(c, rest))),
+      line,
+    ]
+  }
+}
+
+define as-stmt-prefix(cs: comment): doc {
+  as-prefix(for-each(cs, function (c) {
+    let Comment-Item(_, x) = c;
+    Comment-Item(Line-Comment, x)
+  }))
+}
+
+define has-leading-inline-comment(cs: &comment): bool {
+  case cs {
+  | Nil =>
+    False
+  | Cons(Comment-Item(t, _), _) =>
+    case t {
+    | Inline-Comment =>
+      True
+    | _ =>
+      False
+    }
+  }
+}
+
+define as-suffix(cs: comment): doc {
+  match cs {
+  | Nil =>
+    Empty
+  | cs =>
+    let b on cs = has-leading-inline-comment(cs);
+    let prefix =
+      if b {
+        make-text(*" ")
+      } else {
+        line
+      };
+    let cs = for-each(cs, _decode);
+    join[prefix, intercalate(line, cs)]
+  }
+}
+
+define as-clause-header(cs: comment): doc {
+  match cs {
+  | Nil =>
+    Empty
+  | cs =>
+    nest(indent, join[line, decode(cs)])
+  }
+}

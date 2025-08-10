@@ -1,0 +1,318 @@
+import {
+  core.bool {all, any},
+  core.list {fold-left-N, for-each, for-each-N, is-empty},
+  core.text {replicate},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
+  this.pretty-printer.piece {
+    append-comma-if-vertical,
+    arrange,
+    arrange-vertical,
+    block,
+    delimiter-bar,
+    delimiter-left-aligned,
+    horizontal,
+    id-or-nest,
+    inject,
+    nested,
+    piece,
+  },
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.comment.to-doc {as-clause-header, as-prefix, as-prefix-indented, as-suffix},
+  this.syntax-tree.series {
+    Bar,
+    Comma,
+    Series,
+    _get-separator,
+    get-container-pair,
+    get-separator-text,
+    has-comment,
+    series,
+  },
+}
+
+inline _c-decode {
+  this.syntax-tree.comment.to-doc.decode
+}
+
+define _decode-prefix<a>(s: &series(a)): doc {
+  tie Series of {prefix} = s;
+  case prefix {
+  | Left(_) =>
+    Empty
+  | Right(Pair(p, c)) =>
+    pin p = core.text.append(" ", p);
+    let p = make-text(core.text.append(p, " "));
+    if is-empty(c) {
+      p
+    } else {
+      join[
+        p,
+        line,
+        _c-decode(*c),
+        line,
+      ]
+    }
+  }
+}
+
+define _attach-comment(c: comment, d: doc): doc {
+  join[as-prefix(c), d]
+}
+
+define _bar-seq-cont(
+  elems: list(pair(comment, doc)),
+  trailing-comment: comment,
+): list(piece) {
+  let sep = get-separator-text(Bar);
+  match elems {
+  | Nil =>
+    List[inject(nest(indent, as-suffix(trailing-comment)))]
+  | Cons(Pair(c, d), rest) =>
+    core.list.append(
+      List[
+        inject(as-clause-header(c)),
+        delimiter-bar(make-text(*sep)),
+        inject(nest(indent, d)),
+      ],
+      _bar-seq-cont(rest, trailing-comment),
+    )
+  }
+}
+
+define _bar-seq(
+  elems: list(pair(comment, doc)),
+  is-vertical: bool,
+  trailing-comment: comment,
+): list(piece) {
+  match elems {
+  | Nil =>
+    let b on trailing-comment = is-empty(trailing-comment);
+    if b {
+      List[inject(Empty)]
+    } else {
+      List[inject(join[
+        make-text(replicate(" ", indent)),
+        _c-decode(trailing-comment),
+      ])]
+    }
+  | Cons(Pair(c, d), rest) =>
+    let prefix =
+      if is-vertical {
+        let sep = get-separator-text(Bar);
+        inject(make-text(core.text.append(sep, " ")))
+      } else {
+        inject(Empty)
+      };
+    let head-elem = List[inject(as-prefix-indented(c)), prefix, inject(nest(indent, d))];
+    let rest = _bar-seq-cont(rest, trailing-comment);
+    core.list.append(head-elem, rest)
+  }
+}
+
+define _comma-seq-cont(elems: list(doc), is-vertical: bool, trailing-comment: comment): list(piece) {
+  let sep = get-separator-text(Comma);
+  match elems {
+  | Nil =>
+    List[inject(_c-decode(trailing-comment))]
+  | Cons(d, Nil) =>
+    if is-vertical {
+      List[
+        inject(d),
+        inject(make-text(*sep)),
+        inject(as-suffix(trailing-comment)),
+      ]
+    } else {
+      List[
+        append-comma-if-vertical(d),
+        inject(as-suffix(trailing-comment)),
+      ]
+    }
+  | Cons(d, rest) =>
+    core.list.append(
+      List[
+        inject(d),
+        delimiter-left-aligned(make-text(*sep)),
+      ],
+      _comma-seq-cont(rest, is-vertical, trailing-comment),
+    )
+  }
+}
+
+define _comma-seq(elems: list(pair(comment, doc)), is-vertical: bool, trailing-comment: comment): list(piece) {
+  let elems =
+    for-each(elems, function (e) {
+      let Pair(c, d) = e;
+      _attach-comment(c, d)
+    });
+  _comma-seq-cont(elems, is-vertical, trailing-comment)
+}
+
+define _decode(force-vertical: bool, s: &series(doc)): doc {
+  let prefix = _decode-prefix(s);
+  let sep = _get-separator(s);
+  tie Series of {container, has-optional-separator, elems, trailing-comment} = s;
+  pin b = this.syntax-tree.series.is-empty(s);
+  case container, b {
+  | Left(_), True =>
+    Empty
+  | Left(_), False =>
+    let is-vertical = any[force-vertical, *has-optional-separator, has-comment(s)];
+    let intercalate-f = match sep {Bar => _bar-seq | Comma => _comma-seq};
+    arrange(List[inject(prefix), inject(arrange(intercalate-f(*elems, is-vertical, *trailing-comment)))])
+  | Right(k), _ =>
+    let Pair(open, close) = get-container-pair(*k);
+    let is-vertical = any[force-vertical, *has-optional-separator, has-comment(s)];
+    let arranger = match is-vertical {True => arrange-vertical | False => arrange};
+    match sep {
+    | Bar =>
+      let layout = match is-vertical {True => block | False => id-or-nest};
+      arrange(List[
+        inject(prefix),
+        inject(make-text(*open)),
+        layout(arranger(_bar-seq(*elems, is-vertical, *trailing-comment))),
+        inject(make-text(*close)),
+      ])
+    | Comma =>
+      let layout = match is-vertical {True => nested | False => id-or-nest};
+      arrange(List[
+        inject(prefix),
+        inject(make-text(*open)),
+        layout(arranger(_comma-seq(*elems, is-vertical, *trailing-comment))),
+        inject(make-text(*close)),
+      ])
+    }
+  }
+}
+
+define decode(s: &series(doc)): doc {
+  _decode(False, s)
+}
+
+data clause {
+| Clause(
+    dom: doc,
+    arrow: &text,
+    cod: doc,
+  )
+}
+
+define _is-vertical-series(s: &series(clause)): bool {
+  tie Series of {has-optional-separator, elems} = s;
+  let has-vertical-content =
+    fold-left-N(False, elems, function (acc, elem) {
+      if acc {
+        acc
+      } else {
+        tie Pair(_, Clause(dom, _, cod)) = elem;
+        or(_is-multi(dom), _is-multi(cod))
+      }
+    });
+  any[
+    *has-optional-separator,
+    has-comment(s),
+    has-vertical-content,
+  ]
+}
+
+define __is-horizontal-elems(elems: &list(pair(comment, doc))): bool {
+  case elems {
+  | Nil =>
+    True
+  | Cons(Pair(c, d), rest) =>
+    let is-multi = or(not(is-empty(c)), _is-multi(d));
+    and(is-multi, __is-horizontal-elems(rest))
+  }
+}
+
+define _is-horizontal-elems(elems: &list(pair(comment, doc))): bool {
+  case elems {
+  | Nil =>
+    True
+  | Cons(Pair(c, d), rest) =>
+    let is-multi = or(not(is-empty(c)), _is-multi(d));
+    if is-multi {
+      __is-horizontal-elems(rest)
+    } else {
+      _is-horizontal-elems(rest)
+    }
+  }
+}
+
+// [single, ..., single, multi, .., multi] <=> True
+define _is-horizontal-series(s: &series(doc)): bool {
+  tie Series of {trailing-comment, elems, has-optional-separator} = s;
+  all[
+    is-empty(trailing-comment),
+    _is-horizontal-elems(elems),
+    not(*has-optional-separator),
+  ]
+}
+
+define _decode-clause-item-vertical(c: clause): doc {
+  let Clause(dom, delim, cod) = c;
+  pin dom = dom;
+  let dom-layout = match _is-multi(dom) {True => inject | False => horizontal};
+  arrange(List[
+    dom-layout(*dom),
+    inject(make-text(*delim)),
+    inject(line),
+    inject(cod),
+  ])
+}
+
+define _decode-clause-item-horizontal(c: clause): doc {
+  let Clause(dom, delim, cod) = c;
+  arrange(List[
+    horizontal(dom),
+    horizontal(make-text(*delim)),
+    inject(cod),
+  ])
+}
+
+define decode-clause-series(s: series(clause)): doc {
+  let b on s = _is-vertical-series(s);
+  if b {
+    pin s = this.syntax-tree.series.for-each(s, _decode-clause-item-vertical);
+    _decode(True, s)
+  } else {
+    pin s = this.syntax-tree.series.for-each(s, _decode-clause-item-horizontal);
+    _decode(False, s)
+  }
+}
+
+define _comma-seq-horizontal(elems: list(doc)): list(piece) {
+  match elems {
+  | Nil =>
+    Nil
+  | Cons(d, Nil) =>
+    Cons(inject(d), Nil)
+  | Cons(d, rest) =>
+    core.list.append(
+      List[inject(d), horizontal(make-text(*","))],
+      _comma-seq-horizontal(rest),
+    )
+  }
+}
+
+define decode-horizontally-if-possible(s: &series(doc)): doc {
+  tie Series of {separator, container, elems} = s;
+  pin b = _is-horizontal-series(s);
+  case separator, container, b {
+  | Comma, Right(k), True =>
+    let prefix = _decode-prefix(s);
+    let Pair(open, close) = get-container-pair(*k);
+    let elems =
+      for-each-N(elems, function (p) {
+        tie Pair(_, y) = p;
+        *y
+      });
+    arrange(List[
+      inject(prefix),
+      inject(make-text(*open)),
+      inject(arrange(_comma-seq-horizontal(elems))),
+      inject(make-text(*close)),
+    ])
+  | _, _, _ =>
+    decode(s)
+  }
+}
