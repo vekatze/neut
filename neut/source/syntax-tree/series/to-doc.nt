@@ -214,6 +214,16 @@ define _is-vertical-series(s: &series(clause)): bool {
   ]
 }
 
+define __is-horizontal-series(elems: &list(pair(comment, doc))): bool {
+  case elems {
+  | Nil =>
+    True
+  | Cons(Pair(c, d), rest) =>
+    let is-multi = or(not(is-empty(c)), _is-multi(d));
+    and(is-multi, __is-horizontal-series(rest))
+  }
+}
+
 define _decode-clause-item-vertical(c: clause): doc {
   let Clause(dom, delim, cod) = c;
   pin dom = dom;
