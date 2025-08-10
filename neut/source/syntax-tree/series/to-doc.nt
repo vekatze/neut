@@ -1,5 +1,5 @@
 import {
-  core.bool {any},
+  core.bool {all, any},
   core.list {fold-left-N, for-each, is-empty},
   core.text {replicate},
   this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
@@ -236,6 +236,16 @@ define _is-horizontal-elems(elems: &list(pair(comment, doc))): bool {
       _is-horizontal-elems(rest)
     }
   }
+}
+
+// [single, ..., single, multi, .., multi] <=> True
+define _is-horizontal-series(s: &series(doc)): bool {
+  tie Series of {trailing-comment, elems, has-optional-separator} = s;
+  all[
+    is-empty(trailing-comment),
+    _is-horizontal-elems(elems),
+    not(*has-optional-separator),
+  ]
 }
 
 define _decode-clause-item-vertical(c: clause): doc {
