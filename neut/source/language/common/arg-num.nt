@@ -9,3 +9,7 @@ define arg-num-from-int(x: int): arg-num {
 define zero: arg-num {
   Arg-Num(0)
 }
+
+define arg-num-S4: arg-num {
+  Arg-Num(2)
+}
