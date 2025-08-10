@@ -1,3 +1,11 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.get-kit {get-kit},
+  sero.put-kit {put-kit},
+  sero.sero {Sero, sero},
+}
+
 data opacity {
 | Opaque
 | Clear
@@ -9,5 +17,33 @@ define is-opaque(o: opacity): bool {
     True
   | Clear =>
     False
+  }
+}
+
+define opacity-sero: sero(opacity) {
+  Sero of {
+    put := {
+      function (k: &put-kit, v: &opacity) {
+        case v {
+        | Opaque =>
+          put-int64(k, 0)
+        | Clear =>
+          put-int64(k, 1)
+        }
+      }
+    },
+    get := {
+      function (k: &get-kit) {
+        try v = get-int64(k);
+        match v {
+        | 0 =>
+          Right(quote {Opaque})
+        | 1 =>
+          Right(quote {Clear})
+        | _ =>
+          none
+        }
+      }
+    },
   }
 }
