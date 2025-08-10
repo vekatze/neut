@@ -203,3 +203,12 @@ define _decode-clause-item-vertical(c: &clause): doc {
     inject(*cod),
   ])
 }
+
+define _decode-clause-item-horizontal(c: &clause): doc {
+  tie Clause(dom, delim, cod) = c;
+  arrange(List[
+    horizontal(*dom),
+    horizontal(make-text(**delim)),
+    inject(*cod),
+  ])
+}
