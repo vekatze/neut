@@ -1,7 +1,33 @@
 import {
+  core.bool {all},
   this.logger.hint {hint},
 }
 
 inline unused-global-locators: type {
   list(pair(text, list(pair(hint, text))))
+}
+
+define _find(haystack: &list(pair(hint, text)), needle: &text): bool {
+  case haystack {
+  | Nil =>
+    False
+  | Cons(Pair(_, x), rest) =>
+    if eq-text(x, needle) {
+      True
+    } else {
+      _find(rest, needle)
+    }
+  }
+}
+
+define is-used-GL(unused: &unused-global-locators, cand: &text): bool {
+  case unused {
+  | Nil =>
+    True
+  | Cons(Pair(_, gls), rest) =>
+    all[
+      not(_find(gls, cand)),
+      is-used-GL(rest, cand),
+    ]
+  }
 }
