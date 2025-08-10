@@ -8,3 +8,7 @@ define int-from-data-size(x: data-size): int {
     64
   }
 }
+
+define data-size-max: data-size {
+  Data-Size-64
+}
