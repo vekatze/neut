@@ -279,3 +279,17 @@ define decode-clause-series(s: series(clause)): doc {
     _decode(False, s)
   }
 }
+
+define _comma-seq-horizontal(elems: list(doc)): list(piece) {
+  match elems {
+  | Nil =>
+    Nil
+  | Cons(d, Nil) =>
+    Cons(inject(d), Nil)
+  | Cons(d, rest) =>
+    core.list.append(
+      List[inject(d), horizontal(make-text(*","))],
+      _comma-seq-horizontal(rest),
+    )
+  }
+}
