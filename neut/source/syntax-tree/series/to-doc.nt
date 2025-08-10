@@ -3,7 +3,7 @@ import {
   core.list {fold-left-N, for-each, is-empty},
   core.text {replicate},
   this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
-  this.pretty-printer.piece {append-comma-if-vertical, arrange, arrange-vertical, block, delimiter-bar, delimiter-left-aligned, id-or-nest, inject, nested, piece},
+  this.pretty-printer.piece {append-comma-if-vertical, arrange, arrange-vertical, block, delimiter-bar, delimiter-left-aligned, horizontal, id-or-nest, inject, nested, piece},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-clause-header, as-prefix, as-prefix-indented, as-suffix},
   this.syntax-tree.series {Bar, Comma, Series, _get-separator, get-container-pair, get-separator-text, has-comment, series},
@@ -191,4 +191,15 @@ define _is-vertical-series(s: &series(clause)): bool {
     has-comment(s),
     has-vertical-content,
   ]
+}
+
+define _decode-clause-item-vertical(c: &clause): doc {
+  tie Clause(dom, delim, cod) = c;
+  let dom-layout = match _is-multi(dom) {True => inject | False => horizontal};
+  arrange(List[
+    dom-layout(*dom),
+    inject(make-text(**delim)),
+    inject(line),
+    inject(*cod),
+  ])
 }
