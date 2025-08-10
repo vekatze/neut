@@ -9,3 +9,7 @@ define ns-sep: &text {
 define hole-var-prefix: &text {
   "{}"
 }
+
+define exp-var-prefix: &text {
+  "!"
+}
