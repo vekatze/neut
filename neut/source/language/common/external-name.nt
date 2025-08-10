@@ -1,3 +1,7 @@
 data external-name {
 | External-Name(text)
 }
+
+define malloc-name(): external-name {
+  External-Name(*"malloc")
+}
