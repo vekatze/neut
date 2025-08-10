@@ -1,0 +1,9 @@
+data int-size {
+| IntSize1
+| IntSize2
+| IntSize4
+| IntSize8
+| IntSize16
+| IntSize32
+| IntSize64
+}
