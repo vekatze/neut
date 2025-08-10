@@ -11,7 +11,7 @@ import {
   this.syntax-tree.parse-series {parse-series-brace, parse-series-bracket},
   this.syntax-tree.series {extract-N},
   zonk.make-zonk-kit {make-zonk-kit},
-  zonk.parse {get-point, parsed, report-unexpected-input, zonk},
+  zonk.parse {attempt, get-point, parsed, report-unexpected-input, zonk},
   zonk.point {Point},
   zonk.zonk-kit {get-context},
 }
@@ -24,7 +24,6 @@ define _make-hint(k: &parser-kit, line: int, column: int): hint {
 define _parse-int<r := rho>(k: &parser-kit): parsed(pair(int, comment)) {
   try _ = r;
   try Pair(s, c) = symbol(k);
-  let _ on s = vet(s);
   let int-or-none on s = core.int.parse.parse-int(s);
   let _ = s;
   match int-or-none {
@@ -38,7 +37,6 @@ define _parse-int<r := rho>(k: &parser-kit): parsed(pair(int, comment)) {
 define _parse-float<r := rho>(k: &parser-kit): parsed(pair(float, comment)) {
   try _ = r;
   try Pair(s, c) = symbol(k);
-  let _ on s = vet(s);
   let float-or-none on s = core.float.parse.parse-float(s);
   let _ = s;
   match float-or-none {
@@ -156,7 +154,7 @@ rule-right _branch-ens {
       report-unexpected-input("ens")
     }
   },
-  function node-left<c, a>(d: zonk(c, a), acc: zonk(c, a)): zonk(c, a) {
+  function node-right<c, a>(d: zonk(c, a), acc: zonk(c, a)): zonk(c, a) {
     function (k) {
       match d(k) {
       | Right(v) =>
@@ -179,9 +177,9 @@ define _parse-ens<r := rho>(k: &parser-kit): parsed(pair(ens, comment)) {
       _parse-dictionary(line, column),
       _parse-list(line, column),
       _parse-string-ens(line, column),
-      _parse-bool-ens(line, column),
+      attempt(_parse-bool-ens(line, column)),
+      attempt(_parse-int-ens(line, column)),
       _parse-float-ens(line, column),
-      _parse-int-ens(line, column),
     ];
   parser(k)
 }
