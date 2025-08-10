@@ -7,3 +7,9 @@ data int-size {
 | IntSize32
 | IntSize64
 }
+
+data float-size {
+| FloatSize16
+| FloatSize32
+| FloatSize64
+}
