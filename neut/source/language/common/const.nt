@@ -1,0 +1,3 @@
+inline ns-sep-char: rune {
+  `.`
+}
