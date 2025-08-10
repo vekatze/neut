@@ -5,3 +5,8 @@ data discriminant {
 define zero-discriminant: discriminant {
   Discriminant(0)
 }
+
+define increment-discriminant(d: discriminant): discriminant {
+  let Discriminant(x) = d;
+  Discriminant(add-int(x, 1))
+}
