@@ -1,15 +1,26 @@
+import {
+  this.language.common.data-size {Data-Size-64, data-size},
+}
+
 data int-size {
-| IntSize1
-| IntSize2
-| IntSize4
-| IntSize8
-| IntSize16
-| IntSize32
-| IntSize64
+| Int-Size-1
+| Int-Size-2
+| Int-Size-4
+| Int-Size-8
+| Int-Size-16
+| Int-Size-32
+| Int-Size-64
 }
 
 data float-size {
-| FloatSize16
-| FloatSize32
-| FloatSize64
+| Float-Size-16
+| Float-Size-32
+| Float-Size-64
+}
+
+define int-size-from-data-size(x: data-size): int-size {
+  match x {
+  | Data-Size-64 =>
+    Int-Size-64
+  }
 }
