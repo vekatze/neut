@@ -18,3 +18,25 @@ define extract<a>(args: imp-args(a)): list(a) {
     xs
   }
 }
+
+define for-each-E<e, a, b>(args: imp-args(a), !f: (a) -> either(e, b)): either(e, imp-args(b)) {
+  match args {
+  | Unspecified =>
+    Right(Unspecified)
+  | PartiallySpecified(mxs) =>
+    let mxs =
+      core.list.for-each(mxs, function (mx) {
+        try x = mx;
+        match !f(x) {
+        | Left(_) =>
+          none
+        | Right(x) =>
+          Right(x)
+        }
+      });
+    Right(PartiallySpecified(mxs))
+  | FullySpecified(xs) =>
+    try xs = core.list.for-each-E(xs, !f);
+    Right(FullySpecified(xs))
+  }
+}
