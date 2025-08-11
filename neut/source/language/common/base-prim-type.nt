@@ -1,4 +1,13 @@
+import {
+  this.language.common.prim-num-size {float-size, int-size},
+}
+
 data base-prim-type-size(a) {
 | Explicit(a)
 | Implicit(a)
+}
+
+data base-prim-type {
+| Int(base-prim-type-size(int-size))
+| Float(base-prim-type-size(float-size))
 }
