@@ -41,3 +41,7 @@ inline pi-kind-sero: sero(pi-kind) {
     },
   }
 }
+
+define normal: pi-kind {
+  Normal(False)
+}
