@@ -26,3 +26,7 @@ data cmp-op {
 | FTrue
 | FFalse
 }
+
+define icmp(x: &text): text {
+  core.text.append("icmp ", x)
+}
