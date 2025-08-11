@@ -59,3 +59,35 @@ define show-binary-op(op: binary-op): &text {
     "frem"
   }
 }
+
+define binary-int-op-from-text(name: &text): ?binary-op {
+  if eq-text(name, "add") {
+    Right(Add)
+  } else-if eq-text(name, "sub") {
+    Right(Sub)
+  } else-if eq-text(name, "mul") {
+    Right(Mul)
+  } else-if eq-text(name, "div") {
+    Right(SDiv)
+  } else-if eq-text(name, "rem") {
+    Right(SRem)
+  } else-if eq-text(name, "udiv") {
+    Right(UDiv)
+  } else-if eq-text(name, "urem") {
+    Right(URem)
+  } else-if eq-text(name, "and") {
+    Right(And)
+  } else-if eq-text(name, "or") {
+    Right(Or)
+  } else-if eq-text(name, "xor") {
+    Right(Xor)
+  } else-if eq-text(name, "shl") {
+    Right(Shl)
+  } else-if eq-text(name, "lshr") {
+    Right(Lshr)
+  } else-if eq-text(name, "ashr") {
+    Right(Ashr)
+  } else {
+    none
+  }
+}
