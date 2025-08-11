@@ -117,3 +117,41 @@ define int-cmp-op-from-text(name: &text): ?cmp-op {
     none
   }
 }
+
+define float-cmp-op-from-text(name: &text): ?cmp-op {
+  if eq-text(name, "eq") {
+    Right(FOEq)
+  } else-if eq-text(name, "ne") {
+    Right(FONe)
+  } else-if eq-text(name, "gt") {
+    Right(FOGt)
+  } else-if eq-text(name, "ge") {
+    Right(FOGe)
+  } else-if eq-text(name, "lt") {
+    Right(FOLt)
+  } else-if eq-text(name, "le") {
+    Right(FOLe)
+  } else-if eq-text(name, "ueq") {
+    Right(FUEq)
+  } else-if eq-text(name, "une") {
+    Right(FUNe)
+  } else-if eq-text(name, "ugt") {
+    Right(FUGt)
+  } else-if eq-text(name, "uge") {
+    Right(FUGe)
+  } else-if eq-text(name, "ult") {
+    Right(FULt)
+  } else-if eq-text(name, "ule") {
+    Right(FULe)
+  } else-if eq-text(name, "ord") {
+    Right(FOrd)
+  } else-if eq-text(name, "uno") {
+    Right(FUno)
+  } else-if eq-text(name, "true") {
+    Right(FTrue)
+  } else-if eq-text(name, "false") {
+    Right(FFalse)
+  } else {
+    none
+  }
+}
