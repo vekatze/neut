@@ -8,3 +8,11 @@ define show-unary-op(x: &unary-op): &text {
     "fneg"
   }
 }
+
+define unary-op-from-text(name: &text): ?unary-op {
+  if eq-text(name, "fneg") {
+    Right(FNeg)
+  } else {
+    none
+  }
+}
