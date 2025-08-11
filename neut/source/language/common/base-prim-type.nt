@@ -1,8 +1,9 @@
 import {
+  core.box {axiom-T},
   sero.common.get {get-int64},
   sero.common.put {put-int64},
   sero.sero {Sero, sero},
-  this.language.common.prim-num-size {float-size, int-size},
+  this.language.common.prim-num-size {float-size, float-size-sero, int-size, int-size-sero},
 }
 
 data base-prim-type-size(a) {
@@ -54,6 +55,42 @@ inline base-prim-type-size-sero<a>(x: sero(a)): sero(base-prim-type-size(a)) {
             letbox v = v;
             Implicit(v)
           })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}
+
+inline base-prim-type-sero: sero(base-prim-type) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Int(s) =>
+          let Sero of {put} = base-prim-type-size-sero(int-size-sero);
+          put-int64(k, 0);
+          put(k, s)
+        | Float(s) =>
+          let Sero of {put} = base-prim-type-size-sero(float-size-sero);
+          put-int64(k, 1);
+          put(k, s)
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          let Sero of {get} = base-prim-type-size-sero(int-size-sero);
+          try v = get(k);
+          Right(quote {Int(axiom-T(v))})
+        | 1 =>
+          let Sero of {get} = base-prim-type-size-sero(float-size-sero);
+          try v = get(k);
+          Right(quote {Float(axiom-T(v))})
         | _ =>
           none
         }
