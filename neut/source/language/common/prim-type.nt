@@ -1,0 +1,10 @@
+import {
+  this.language.common.prim-num-size {float-size, int-size},
+}
+
+data prim-type {
+| Int(int-size)
+| Float(float-size)
+| Rune
+| Pointer
+}
