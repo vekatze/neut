@@ -1,0 +1,3 @@
+data ident {
+| I(text, int)
+}
