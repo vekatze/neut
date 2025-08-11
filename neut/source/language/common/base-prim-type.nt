@@ -1,0 +1,4 @@
+data base-prim-type-size(a) {
+| Explicit(a)
+| Implicit(a)
+}
