@@ -18,3 +18,44 @@ data binary-op {
 | FDiv
 | FRem
 }
+
+define show-binary-op(op: binary-op): &text {
+  match op {
+  | Add =>
+    "add"
+  | Sub =>
+    "sub"
+  | Mul =>
+    "mul"
+  | SDiv =>
+    "sdiv"
+  | SRem =>
+    "srem"
+  | UDiv =>
+    "udiv"
+  | URem =>
+    "urem"
+  | And =>
+    "and"
+  | Or =>
+    "or"
+  | Xor =>
+    "xor"
+  | Shl =>
+    "shl"
+  | Lshr =>
+    "lshr"
+  | Ashr =>
+    "ashr"
+  | FAdd =>
+    "fadd"
+  | FSub =>
+    "fsub"
+  | FMul =>
+    "fmul"
+  | FDiv =>
+    "fdiv"
+  | FRem =>
+    "frem"
+  }
+}
