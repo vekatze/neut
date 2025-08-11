@@ -1,0 +1,8 @@
+import {
+  this.language.common.is-const-like {is-const-like},
+}
+
+data pi-kind {
+| Normal(is-const-like)
+| Data-Intro(is-const-like)
+}
