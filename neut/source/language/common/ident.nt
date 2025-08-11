@@ -1,4 +1,5 @@
 import {
+  core.int.show {show-int},
   this.language.common.const {exp-var-prefix, hole-var-prefix},
 }
 
@@ -24,6 +25,13 @@ define cmp-ident(x: &ident, y: &ident): ordering {
   }
 }
 
+define show-ident(x: &ident): text {
+  tie I(s, i) = x;
+  pin i = show-int(*i);
+  pin tmp = core.text.append("-", i);
+  core.text.append(s, tmp)
+}
+
 define is-hole(x: &ident): bool {
   tie I(name, _) = x;
   core.text.eq.eq-prefix(name, hole-var-prefix)
@@ -37,5 +45,9 @@ define is-cartesian(x: &ident): bool {
 define zen(): unit {
   pin x = I(*"{}test", 3);
   pin b = is-hole(x);
-  vet(b)
+  vet(b);
+  pin b = is-cartesian(x);
+  vet(b);
+  pin x = show-ident(x);
+  vet(x);
 }
