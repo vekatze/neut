@@ -1,3 +1,9 @@
 data ident {
 | I(text, int)
 }
+
+define eq-ident(x: &ident, y: &ident): bool {
+  tie I(_, x) = x;
+  tie I(_, y) = y;
+  eq-int(*x, *y)
+}
