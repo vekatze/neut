@@ -1,5 +1,5 @@
 import {
-  this.language.common.const {hole-var-prefix},
+  this.language.common.const {exp-var-prefix, hole-var-prefix},
 }
 
 data ident {
@@ -15,6 +15,11 @@ define eq-ident(x: &ident, y: &ident): bool {
 define is-hole(x: &ident): bool {
   tie I(name, _) = x;
   core.text.eq.eq-prefix(name, hole-var-prefix)
+}
+
+define is-cartesian(x: &ident): bool {
+  tie I(name, _) = x;
+  core.text.eq.eq-prefix(name, exp-var-prefix)
 }
 
 define zen(): unit {
