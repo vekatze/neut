@@ -30,3 +30,7 @@ data cmp-op {
 define icmp(x: &text): text {
   core.text.append("icmp ", x)
 }
+
+define fcmp(x: &text): text {
+  core.text.append("fcmp ", x)
+}
