@@ -1,6 +1,6 @@
 data cmp-op {
-| Eq
-| Ne
+| Eql
+| Neq
 | SGt
 | SGe
 | SLt
@@ -33,4 +33,61 @@ define icmp(x: &text): text {
 
 define fcmp(x: &text): text {
   core.text.append("fcmp ", x)
+}
+
+define show-cmp-op(op: &cmp-op): text {
+  case op {
+  | Eql =>
+    icmp("eq")
+  | Neq =>
+    icmp("ne")
+  | SGt =>
+    icmp("sgt")
+  | SGe =>
+    icmp("sge")
+  | SLt =>
+    icmp("slt")
+  | SLe =>
+    icmp("sle")
+  | UGt =>
+    icmp("ugt")
+  | UGe =>
+    icmp("uge")
+  | ULt =>
+    icmp("ult")
+  | ULe =>
+    icmp("ule")
+  | FOEq =>
+    fcmp("oeq")
+  | FONe =>
+    fcmp("one")
+  | FOGt =>
+    fcmp("ogt")
+  | FOGe =>
+    fcmp("oge")
+  | FOLt =>
+    fcmp("olt")
+  | FOLe =>
+    fcmp("ole")
+  | FUEq =>
+    fcmp("ueq")
+  | FUGt =>
+    fcmp("ugt")
+  | FUGe =>
+    fcmp("uge")
+  | FULt =>
+    fcmp("ult")
+  | FULe =>
+    fcmp("ule")
+  | FUNe =>
+    fcmp("une")
+  | FOrd =>
+    fcmp("ord")
+  | FUno =>
+    fcmp("uno")
+  | FTrue =>
+    fcmp("true")
+  | FFalse =>
+    fcmp("false")
+  }
 }
