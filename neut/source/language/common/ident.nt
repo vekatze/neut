@@ -1,3 +1,7 @@
+import {
+  this.language.common.const {hole-var-prefix},
+}
+
 data ident {
 | I(text, int)
 }
@@ -6,4 +10,15 @@ define eq-ident(x: &ident, y: &ident): bool {
   tie I(_, x) = x;
   tie I(_, y) = y;
   eq-int(*x, *y)
+}
+
+define is-hole(x: &ident): bool {
+  tie I(name, _) = x;
+  core.text.eq.eq-prefix(name, hole-var-prefix)
+}
+
+define zen(): unit {
+  pin x = I(*"{}test", 3);
+  pin b = is-hole(x);
+  vet(b)
 }
