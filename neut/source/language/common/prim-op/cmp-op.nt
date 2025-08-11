@@ -91,3 +91,29 @@ define show-cmp-op(op: &cmp-op): text {
     fcmp("false")
   }
 }
+
+define int-cmp-op-from-text(name: &text): ?cmp-op {
+  if eq-text(name, "eq") {
+    Right(Eql)
+  } else-if eq-text(name, "ne") {
+    Right(Neq)
+  } else-if eq-text(name, "gt") {
+    Right(SGt)
+  } else-if eq-text(name, "ge") {
+    Right(SGe)
+  } else-if eq-text(name, "lt") {
+    Right(SLt)
+  } else-if eq-text(name, "le") {
+    Right(SLe)
+  } else-if eq-text(name, "ugt") {
+    Right(UGt)
+  } else-if eq-text(name, "uge") {
+    Right(UGe)
+  } else-if eq-text(name, "ult") {
+    Right(ULt)
+  } else-if eq-text(name, "ule") {
+    Right(ULe)
+  } else {
+    none
+  }
+}
