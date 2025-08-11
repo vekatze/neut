@@ -11,3 +11,12 @@ data base-prim-type {
 | Int(base-prim-type-size(int-size))
 | Float(base-prim-type-size(float-size))
 }
+
+define extract-size<a>(size: base-prim-type-size(a)): a {
+  match size {
+  | Explicit(s) =>
+    s
+  | Implicit(s) =>
+    s
+  }
+}
