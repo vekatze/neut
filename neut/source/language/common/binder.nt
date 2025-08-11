@@ -1,0 +1,8 @@
+import {
+  this.language.common.ident {ident},
+  this.logger.hint {hint},
+}
+
+data binder-f(a) {
+| Binder-F(hint, ident, a)
+}
