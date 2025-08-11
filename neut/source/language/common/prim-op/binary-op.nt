@@ -91,3 +91,19 @@ define binary-int-op-from-text(name: &text): ?binary-op {
     none
   }
 }
+
+define binary-float-op-from-text(name: &text): ?binary-op {
+  if eq-text(name, "add") {
+    Right(FAdd)
+  } else-if eq-text(name, "sub") {
+    Right(FSub)
+  } else-if eq-text(name, "mul") {
+    Right(FMul)
+  } else-if eq-text(name, "div") {
+    Right(FDiv)
+  } else-if eq-text(name, "rem") {
+    Right(FRem)
+  } else {
+    none
+  }
+}
