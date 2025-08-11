@@ -12,6 +12,18 @@ define eq-ident(x: &ident, y: &ident): bool {
   eq-int(*x, *y)
 }
 
+define cmp-ident(x: &ident, y: &ident): ordering {
+  tie I(_, x) = x;
+  tie I(_, y) = y;
+  if lt-int(*x, *y) {
+    LT
+  } else-if gt-int(*x, *y) {
+    GT
+  } else {
+    EQ
+  }
+}
+
 define is-hole(x: &ident): bool {
   tie I(name, _) = x;
   core.text.eq.eq-prefix(name, hole-var-prefix)
