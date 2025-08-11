@@ -1,3 +1,10 @@
 data unary-op {
 | FNeg
 }
+
+define show-unary-op(x: &unary-op): &text {
+  case x {
+  | FNeg =>
+    "fneg"
+  }
+}
