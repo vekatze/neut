@@ -1,0 +1,20 @@
+data binary-op {
+| Add
+| Sub
+| Mul
+| SDiv
+| SRem
+| UDiv
+| URem
+| And
+| Or
+| Xor
+| Shl
+| Lshr
+| Ashr
+| FAdd
+| FSub
+| FMul
+| FDiv
+| FRem
+}
