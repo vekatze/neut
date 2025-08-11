@@ -1,0 +1,28 @@
+data cmp-op {
+| Eq
+| Ne
+| SGt
+| SGe
+| SLt
+| SLe
+| UGt
+| UGe
+| ULt
+| ULe
+| FOEq
+| FONe
+| FOGt
+| FOGe
+| FOLt
+| FOLe
+| FUEq
+| FUGt
+| FUGe
+| FULt
+| FULe
+| FUNe
+| FOrd
+| FUno
+| FTrue
+| FFalse
+}
