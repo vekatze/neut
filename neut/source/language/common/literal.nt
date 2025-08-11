@@ -1,0 +1,4 @@
+data literal {
+| Int(int)
+| Rune(rune)
+}
