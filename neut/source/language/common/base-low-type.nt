@@ -1,8 +1,17 @@
 import {
+  core.control {grow},
+  this.language.common.arg-num {Arg-Num, arg-num},
   this.language.common.base-prim-type {base-prim-type},
 }
 
 data base-low-type {
 | Prim-Num(base-prim-type)
 | Pointer
+}
+
+define void-ptr-seq-from-arg-num(an: arg-num): list(base-low-type) {
+  let Arg-Num(x) = an;
+  grow(Nil, x, function (acc, _) {
+    Cons(Pointer, acc)
+  })
 }
