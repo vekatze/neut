@@ -1,5 +1,7 @@
 import {
-  this.language.common.prim-type {prim-type},
+  this.language.common.data-size {data-size},
+  this.language.common.prim-num-size {Int-Size-8, int-size-from-data-size},
+  this.language.common.prim-type {Int, prim-type},
 }
 
 data low-type {
@@ -10,4 +12,8 @@ data low-type {
 | Function(list(low-type), low-type)
 | Void
 | VarArgs
+}
+
+define _text-type(len: int): low-type {
+  Array(len, Prim-Num(Int(Int-Size-8)))
 }
