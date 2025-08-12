@@ -17,3 +17,11 @@ data low-type {
 define _text-type(len: int): low-type {
   Array(len, Prim-Num(Int(Int-Size-8)))
 }
+
+define text-type(base-size: data-size, len: int): low-type {
+  Struct(List[
+    Prim-Num(Int(int-size-from-data-size(base-size))),
+    Prim-Num(Int(int-size-from-data-size(base-size))),
+    _text-type(len),
+  ])
+}
