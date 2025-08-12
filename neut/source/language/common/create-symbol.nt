@@ -17,6 +17,10 @@ inline new-ident-from-text(k: &gensym-kit, s: text): ident {
   I(s, i)
 }
 
+inline new-text(k: &gensym-kit): text {
+  new-text-for-hole(k)
+}
+
 define zen(): unit {
   pin k = make-gensym-kit();
   pin v = new-text-for-hole(k);
