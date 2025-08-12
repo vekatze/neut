@@ -1,0 +1,18 @@
+import {
+  core.int.show {show-int},
+  this.gensym.gensym {gensym-kit, make-gensym-kit, new-count},
+  this.language.common.const {hole-var-prefix},
+}
+
+define new-text-for-hole(k: &gensym-kit): text {
+  let i = new-count(k);
+  pin i = show-int(i);
+  pin tmp = core.text.append(hole-var-prefix, ";");
+  core.text.append(tmp, i)
+}
+
+define zen(): unit {
+  pin k = make-gensym-kit();
+  pin v = new-text-for-hole(k);
+  vet(v)
+}
