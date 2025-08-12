@@ -26,6 +26,13 @@ inline new-ident-from-ident(k: &gensym-kit, x: &ident): ident {
   new-ident-from-text(k, *s)
 }
 
+inline new-text-from-text(k, base: &text): text {
+  let i = new-count(k);
+  pin tmp = core.text.append(";", base);
+  pin i = show-int(i);
+  core.text.append(tmp, i)
+}
+
 define zen(): unit {
   pin k = make-gensym-kit();
   pin v = new-text-for-hole(k);
