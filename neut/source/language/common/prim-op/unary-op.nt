@@ -1,3 +1,7 @@
+import {
+  sero.sero {Sero, sero},
+}
+
 data unary-op {
 | FNeg
 }
@@ -14,5 +18,20 @@ define unary-op-from-text(name: &text): ?unary-op {
     Right(FNeg)
   } else {
     none
+  }
+}
+
+define unary-op-sero: sero(unary-op) {
+  Sero of {
+    put := {
+      function (_, _) {
+        Unit
+      }
+    },
+    get := {
+      function (_) {
+        Right(box {FNeg})
+      }
+    },
   }
 }
