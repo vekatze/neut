@@ -1,0 +1,8 @@
+import {
+  this.language.common.base-prim-type {base-prim-type},
+}
+
+data base-low-type {
+| Prim-Num(base-prim-type)
+| Pointer
+}
