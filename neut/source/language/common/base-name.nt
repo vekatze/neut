@@ -1,7 +1,7 @@
 import {
   core.list {for-each-E},
   core.text {is-empty},
-  this.app.error {error, new-error},
+  this.app.error {error, new-error, new-error'},
   this.language.common.const {ns-sep},
   this.logger.hint {hint, internal-hint},
 }
@@ -28,6 +28,16 @@ define base-name-from-text(m: hint, name: &text): either(error, base-name) {
     Right(Base-Name(b))
   | _ =>
     Left(new-error(m, core.text.append("No dots are allowed here: ", name)))
+  }
+}
+
+define base-name-from-text-without-hint(name: &text): either(error, base-name) {
+  let tmp = core.text.split(name, ns-sep);
+  match tmp {
+  | Cons(b, Nil) =>
+    Right(Base-Name(b))
+  | _ =>
+    Left(new-error'(core.text.append("No dots are allowed here: ", name)))
   }
 }
 
