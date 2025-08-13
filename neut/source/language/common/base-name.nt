@@ -104,6 +104,10 @@ define imm-noema: base-name {
   Base-Name-N("imm-noema")
 }
 
+define imm-int1: base-name {
+  Base-Name-N("imm-int1")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
