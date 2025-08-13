@@ -168,6 +168,23 @@ define sigma-name(i: int): base-name {
   Base-Name(name)
 }
 
+define lambda-name(name-or-none: ?text, i: int): base-name {
+  let ti = show-int(i);
+  match name-or-none {
+  | Right(lam-name) =>
+    let tmp on lam-name = core.text.append("lambda;", lam-name);
+    let _ = lam-name;
+    let name on tmp, ti = core.text.append(tmp, ti);
+    let _ = tmp;
+    let _ = ti;
+    Base-Name(name)
+  | Left(_) =>
+    let name on ti = core.text.append("lambda;anon;", ti);
+    let _ = ti;
+    Base-Name(name)
+  }
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
