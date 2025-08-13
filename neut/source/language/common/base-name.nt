@@ -132,6 +132,10 @@ define imm-int64: base-name {
   Base-Name-N("imm-int64")
 }
 
+define imm-float16: base-name {
+  Base-Name-N("imm-float16")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
