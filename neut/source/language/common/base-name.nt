@@ -1,6 +1,7 @@
 import {
+  core.bool {all},
   core.list {for-each-E},
-  core.text {is-empty},
+  core.text {is-empty, text-byte-length},
   this.app.error {error, new-error, new-error'},
   this.language.common.const {ns-sep},
   this.logger.hint {hint, internal-hint},
@@ -41,9 +42,37 @@ define base-name-from-text-without-hint(name: &text): either(error, base-name) {
   }
 }
 
+define _get-first-rune<r := rho>(t: &text): ?rune {
+  try _ = r;
+  if gt-int(text-byte-length(t), 0) {
+    Right(core.text._get-rune(t, 0))
+  } else {
+    none
+  }
+}
+
+define is-capitalized(bn: &base-name): bool {
+  tie Base-Name(t) = bn;
+  if gt-int(text-byte-length(t), 0) {
+    let r = core.text._get-rune(t, 0);
+    all[le-rune(`A`, r), le-rune(r, `Z`)]
+  } else {
+    False
+  }
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
   pin v = base-name-by-split(internal-hint, "foo.bar");
+  vet(v);
+  pin bn = Base-Name(*"Foo");
+  pin v = is-capitalized(bn);
+  vet(v);
+  pin bn = Base-Name(*"foo");
+  pin v = is-capitalized(bn);
+  vet(v);
+  pin bn = Base-Name(*"");
+  pin v = is-capitalized(bn);
   vet(v);
 }
