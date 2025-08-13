@@ -120,6 +120,10 @@ define imm-int8: base-name {
   Base-Name-N("imm-int8")
 }
 
+define imm-int16: base-name {
+  Base-Name-N("imm-int16")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
