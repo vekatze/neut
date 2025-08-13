@@ -3,7 +3,7 @@ import {
   core.text {is-empty},
   this.app.error {error, new-error},
   this.language.common.const {ns-sep},
-  this.logger.hint {hint},
+  this.logger.hint {hint, internal-hint},
 }
 
 data base-name {
@@ -19,4 +19,21 @@ define base-name-by-split(m: hint, name: &text): either(error, list(base-name)) 
       Right(Base-Name(t))
     }
   })
+}
+
+define base-name-from-text(m: hint, name: &text): either(error, base-name) {
+  let tmp = core.text.split(name, ns-sep);
+  match tmp {
+  | Cons(b, Nil) =>
+    Right(Base-Name(b))
+  | _ =>
+    Left(new-error(m, core.text.append("No dots are allowed here: ", name)))
+  }
+}
+
+define zen(): unit {
+  pin v = base-name-from-text(internal-hint, "foo.bar");
+  vet(v);
+  pin v = base-name-by-split(internal-hint, "foo.bar");
+  vet(v);
 }
