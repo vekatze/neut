@@ -61,6 +61,11 @@ define is-capitalized(bn: &base-name): bool {
   }
 }
 
+define length(bn: &base-name): int {
+  tie Base-Name(t) = bn;
+  core.text.length(t)
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
