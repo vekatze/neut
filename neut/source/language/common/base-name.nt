@@ -1,3 +1,22 @@
+import {
+  core.list {for-each-E},
+  core.text {is-empty},
+  this.app.error {error, new-error},
+  this.language.common.const {ns-sep},
+  this.logger.hint {hint},
+}
+
 data base-name {
 | Base-Name(text)
+}
+
+define base-name-by-split(m: hint, name: &text): either(error, list(base-name)) {
+  for-each-E(core.text.split(name, ns-sep), function (t) {
+    let b on t = is-empty(t);
+    if b {
+      Left(new-error(m, core.text.append("No succeeding dots are allowed here: ", name)))
+    } else {
+      Right(Base-Name(t))
+    }
+  })
 }
