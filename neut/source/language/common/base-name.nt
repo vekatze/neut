@@ -92,6 +92,10 @@ define main-name: base-name {
   Base-Name-N("main")
 }
 
+define zen-name: base-name {
+  Base-Name-N("zen")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
