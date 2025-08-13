@@ -1,5 +1,6 @@
 import {
   core.bool {all},
+  core.int.show {show-int},
   core.list {for-each-E},
   core.text {is-empty, text-byte-length},
   this.app.error {error, new-error, new-error'},
@@ -158,6 +159,13 @@ define imm-null: base-name {
 
 define cls: base-name {
   Base-Name-N("cls")
+}
+
+define sigma-name(i: int): base-name {
+  let ti = show-int(i);
+  let name on ti = core.text.append("sigma;", ti);
+  let _ = ti;
+  Base-Name(name)
 }
 
 define zen(): unit {
