@@ -84,6 +84,10 @@ define base: base-name {
   Base-Name-N("base")
 }
 
+define core: base-name {
+  Base-Name-N("core")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
