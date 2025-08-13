@@ -9,6 +9,7 @@ import {
 
 data base-name {
 | Base-Name(text)
+| Base-Name-N(&text)
 }
 
 define base-name-by-split(m: hint, name: &text): either(error, list(base-name)) {
@@ -51,8 +52,17 @@ define _get-first-rune<r := rho>(t: &text): ?rune {
   }
 }
 
+define _get-text(bn: &base-name): &text {
+  case bn {
+  | Base-Name(t) =>
+    t
+  | Base-Name-N(t) =>
+    *t
+  }
+}
+
 define is-capitalized(bn: &base-name): bool {
-  tie Base-Name(t) = bn;
+  let t = _get-text(bn);
   if gt-int(text-byte-length(t), 0) {
     let r = core.text._get-rune(t, 0);
     all[le-rune(`A`, r), le-rune(r, `Z`)]
@@ -62,8 +72,12 @@ define is-capitalized(bn: &base-name): bool {
 }
 
 define length(bn: &base-name): int {
-  tie Base-Name(t) = bn;
+  let t = _get-text(bn);
   core.text.length(t)
+}
+
+define this: base-name {
+  Base-Name-N("this")
 }
 
 define zen(): unit {
