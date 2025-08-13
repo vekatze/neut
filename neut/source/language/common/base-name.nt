@@ -152,6 +152,10 @@ define imm-pointer: base-name {
   Base-Name-N("imm-pointer")
 }
 
+define imm-null: base-name {
+  Base-Name-N("imm-null")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
