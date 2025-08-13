@@ -156,6 +156,10 @@ define imm-null: base-name {
   Base-Name-N("imm-null")
 }
 
+define cls: base-name {
+  Base-Name-N("cls")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
