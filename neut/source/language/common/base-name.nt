@@ -203,6 +203,13 @@ define resource-name(i: int): base-name {
   Base-Name(name)
 }
 
+define text-name(i: int): base-name {
+  let ti = show-int(i);
+  let name on ti = core.text.append("text;", ti);
+  let _ = ti;
+  Base-Name(name)
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
