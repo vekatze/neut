@@ -35,6 +35,10 @@ define base-name-from-text(m: hint, name: &text): either(error, base-name) {
   }
 }
 
+define base-name-from-text-unsafe(name: text): base-name {
+  Base-Name(name)
+}
+
 define base-name-from-text-without-hint(name: &text): either(error, base-name) {
   let tmp = core.text.split(name, ns-sep);
   match tmp {
