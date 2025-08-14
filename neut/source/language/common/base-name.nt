@@ -263,7 +263,7 @@ define extend(x: &base-name, y: &base-name): base-name {
   _Base-Name(name)
 }
 
-define base-name-sero: sero(base-name) {
+inline base-name-sero: sero(base-name) {
   Sero of {
     put := {
       function (k, v) {

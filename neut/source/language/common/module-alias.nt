@@ -1,5 +1,6 @@
 import {
-  this.language.common.base-name {base, base-name, core, text-from-base-name, this},
+  sero.sero {Sero, sero},
+  this.language.common.base-name {base, base-name, base-name-sero, core, text-from-base-name, this},
 }
 
 data module-alias {
@@ -21,4 +22,26 @@ define base-module-alias: module-alias {
 define text-from-module-alias(alias: module-alias): text {
   let Module-Alias(bn) = alias;
   text-from-base-name(bn)
+}
+
+inline module-alias-sero: sero(module-alias) {
+  Sero of {
+    put := {
+      function (k, v) {
+        let Sero of {put} = base-name-sero;
+        tie Module-Alias(base-name) = v;
+        put(k, base-name)
+      }
+    },
+    get := {
+      function (k) {
+        let Sero of {get} = base-name-sero;
+        try bn = get(k);
+        Right(box {
+          letbox bn = bn;
+          Module-Alias(bn)
+        })
+      }
+    },
+  }
 }
