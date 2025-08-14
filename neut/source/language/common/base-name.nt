@@ -210,6 +210,10 @@ define text-name(i: int): base-name {
   Base-Name(name)
 }
 
+define form: base-name {
+  Base-Name-N("form")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
