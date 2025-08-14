@@ -5,13 +5,12 @@ import {
   core.text {is-empty, text-byte-length},
   this.app.error {error, new-error, new-error'},
   this.language.common.const {ns-sep},
-  this.language.common.ident {ident},
   this.logger.hint {hint, internal-hint},
 }
 
 data base-name {
-| Base-Name(text)
-| Base-Name-N(&text)
+| _Base-Name(text)
+| _Base-Name-N(&text)
 }
 
 define base-name-by-split(m: hint, name: &text): either(error, list(base-name)) {
@@ -20,7 +19,7 @@ define base-name-by-split(m: hint, name: &text): either(error, list(base-name)) 
     if b {
       Left(new-error(m, core.text.append("No succeeding dots are allowed here: ", name)))
     } else {
-      Right(Base-Name(t))
+      Right(_Base-Name(t))
     }
   })
 }
@@ -29,21 +28,21 @@ define base-name-from-text(m: hint, name: &text): either(error, base-name) {
   let tmp = core.text.split(name, ns-sep);
   match tmp {
   | Cons(b, Nil) =>
-    Right(Base-Name(b))
+    Right(_Base-Name(b))
   | _ =>
     Left(new-error(m, core.text.append("No dots are allowed here: ", name)))
   }
 }
 
 define base-name-from-text-unsafe(name: text): base-name {
-  Base-Name(name)
+  _Base-Name(name)
 }
 
 define base-name-from-text-without-hint(name: &text): either(error, base-name) {
   let tmp = core.text.split(name, ns-sep);
   match tmp {
   | Cons(b, Nil) =>
-    Right(Base-Name(b))
+    Right(_Base-Name(b))
   | _ =>
     Left(new-error'(core.text.append("No dots are allowed here: ", name)))
   }
@@ -60,9 +59,9 @@ define _get-first-rune<r := rho>(t: &text): ?rune {
 
 define _get-text(bn: &base-name): &text {
   case bn {
-  | Base-Name(t) =>
+  | _Base-Name(t) =>
     t
-  | Base-Name-N(t) =>
+  | _Base-Name-N(t) =>
     *t
   }
 }
@@ -83,94 +82,94 @@ define length(bn: &base-name): int {
 }
 
 define this: base-name {
-  Base-Name-N("this")
+  _Base-Name-N("this")
 }
 
 define base: base-name {
-  Base-Name-N("base")
+  _Base-Name-N("base")
 }
 
 define core: base-name {
-  Base-Name-N("core")
+  _Base-Name-N("core")
 }
 
 define main-name: base-name {
-  Base-Name-N("main")
+  _Base-Name-N("main")
 }
 
 define zen-name: base-name {
-  Base-Name-N("zen")
+  _Base-Name-N("zen")
 }
 
 define imm-type: base-name {
-  Base-Name-N("imm-type")
+  _Base-Name-N("imm-type")
 }
 
 define imm-noema: base-name {
-  Base-Name-N("imm-noema")
+  _Base-Name-N("imm-noema")
 }
 
 define imm-int1: base-name {
-  Base-Name-N("imm-int1")
+  _Base-Name-N("imm-int1")
 }
 
 define imm-int2: base-name {
-  Base-Name-N("imm-int2")
+  _Base-Name-N("imm-int2")
 }
 
 define imm-int4: base-name {
-  Base-Name-N("imm-int4")
+  _Base-Name-N("imm-int4")
 }
 
 define imm-int8: base-name {
-  Base-Name-N("imm-int8")
+  _Base-Name-N("imm-int8")
 }
 
 define imm-int16: base-name {
-  Base-Name-N("imm-int16")
+  _Base-Name-N("imm-int16")
 }
 
 define imm-int32: base-name {
-  Base-Name-N("imm-int32")
+  _Base-Name-N("imm-int32")
 }
 
 define imm-int64: base-name {
-  Base-Name-N("imm-int64")
+  _Base-Name-N("imm-int64")
 }
 
 define imm-float16: base-name {
-  Base-Name-N("imm-float16")
+  _Base-Name-N("imm-float16")
 }
 
 define imm-float32: base-name {
-  Base-Name-N("imm-float32")
+  _Base-Name-N("imm-float32")
 }
 
 define imm-float64: base-name {
-  Base-Name-N("imm-float64")
+  _Base-Name-N("imm-float64")
 }
 
 define imm-rune: base-name {
-  Base-Name-N("imm-rune")
+  _Base-Name-N("imm-rune")
 }
 
 define imm-pointer: base-name {
-  Base-Name-N("imm-pointer")
+  _Base-Name-N("imm-pointer")
 }
 
 define imm-null: base-name {
-  Base-Name-N("imm-null")
+  _Base-Name-N("imm-null")
 }
 
 define cls: base-name {
-  Base-Name-N("cls")
+  _Base-Name-N("cls")
 }
 
 define sigma-name(i: int): base-name {
   let ti = show-int(i);
   let name on ti = core.text.append("sigma;", ti);
   let _ = ti;
-  Base-Name(name)
+  _Base-Name(name)
 }
 
 define lambda-name(name-or-none: ?text, i: int): base-name {
@@ -182,11 +181,11 @@ define lambda-name(name-or-none: ?text, i: int): base-name {
     let name on tmp, ti = core.text.append(tmp, ti);
     let _ = tmp;
     let _ = ti;
-    Base-Name(name)
+    _Base-Name(name)
   | Left(_) =>
     let name on ti = core.text.append("lambda;anon;", ti);
     let _ = ti;
-    Base-Name(name)
+    _Base-Name(name)
   }
 }
 
@@ -197,37 +196,37 @@ define mu-name(name: text, i: int): base-name {
   let name on tmp, ti = core.text.append(tmp, ti);
   let _ = tmp;
   let _ = ti;
-  Base-Name(name)
+  _Base-Name(name)
 }
 
 define resource-name(i: int): base-name {
   let ti = show-int(i);
   let name on ti = core.text.append("resource;", ti);
   let _ = ti;
-  Base-Name(name)
+  _Base-Name(name)
 }
 
 define text-name(i: int): base-name {
   let ti = show-int(i);
   let name on ti = core.text.append("text;", ti);
   let _ = ti;
-  Base-Name(name)
+  _Base-Name(name)
 }
 
 define form: base-name {
-  Base-Name-N("form")
+  _Base-Name-N("form")
 }
 
 define node: base-name {
-  Base-Name-N("node")
+  _Base-Name-N("node")
 }
 
 define leaf: base-name {
-  Base-Name-N("leaf")
+  _Base-Name-N("leaf")
 }
 
 define root: base-name {
-  Base-Name-N("root")
+  _Base-Name-N("root")
 }
 
 define is-reserved-alias(k: &base-name): bool {
@@ -243,18 +242,27 @@ define is-reserved-alias(k: &base-name): bool {
   }
 }
 
+define extend(x: &base-name, y: &base-name): base-name {
+  let t1 = _get-text(x);
+  let t2 = _get-text(y);
+  let tmp = core.text.append(t1, "#");
+  let name on tmp = core.text.append(tmp, t2);
+  let _ = tmp;
+  _Base-Name(name)
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
   pin v = base-name-by-split(internal-hint, "foo.bar");
   vet(v);
-  pin bn = Base-Name(*"Foo");
+  pin bn = _Base-Name(*"Foo");
   pin v = is-capitalized(bn);
   vet(v);
-  pin bn = Base-Name(*"foo");
+  pin bn = _Base-Name(*"foo");
   pin v = is-capitalized(bn);
   vet(v);
-  pin bn = Base-Name(*"");
+  pin bn = _Base-Name(*"");
   pin v = is-capitalized(bn);
   vet(v);
 }
