@@ -1,0 +1,3 @@
+inline _int-type-name: &text {
+  "int"
+}
