@@ -1,7 +1,14 @@
 import {
   core.int.parse {parse-int},
   core.text.eq {strip-prefix},
-  this.language.common.base-prim-type {Explicit, Implicit, base-prim-type-size},
+  this.language.common.base-prim-type {
+    Explicit,
+    Float,
+    Implicit,
+    Int,
+    base-prim-type,
+    base-prim-type-size,
+  },
   this.language.common.data-size {data-size},
   this.language.common.prim-num-size {
     float-size,
@@ -42,5 +49,19 @@ define _as-low-float(ds: data-size, s: &text): ?base-prim-type-size(float-size) 
     try size = parse-int(rest);
     try isize = float-size-from-int(ds, size);
     Right(Explicit(isize))
+  }
+}
+
+define base-prim-type-from-text(ds: data-size, name: &text): ?base-prim-type {
+  match _as-low-int(ds, name) {
+  | Right(int-size) =>
+    Right(Int(int-size))
+  | Left(_) =>
+    match _as-low-float(ds, name) {
+    | Right(float-size) =>
+      Right(Float(float-size))
+    | Left(_) =>
+      none
+    }
   }
 }
