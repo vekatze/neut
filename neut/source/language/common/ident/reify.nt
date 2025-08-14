@@ -15,3 +15,8 @@ define text-from-ident-debug(x: ident): text {
   pin tmp = core.text.append(t, "-");
   core.text.append(tmp, i)
 }
+
+define int-from-ident(x: &ident): int {
+  tie I(_, i) = x;
+  *i
+}
