@@ -1,0 +1,11 @@
+data conv-op {
+| Trunc
+| Zext
+| Sext
+| Fptrunc
+| Fpext
+| Fptoui
+| Fptosi
+| Uitofp
+| Sitofp
+}
