@@ -1,5 +1,5 @@
 import {
-  this.language.common.base-name {base-name, core, this},
+  this.language.common.base-name {base, base-name, core, this},
 }
 
 data module-alias {
@@ -12,4 +12,8 @@ define default-module-alias: module-alias {
 
 define core-module-alias: module-alias {
   Module-Alias(core)
+}
+
+define base-module-alias: module-alias {
+  Module-Alias(base)
 }
