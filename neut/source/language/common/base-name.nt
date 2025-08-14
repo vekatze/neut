@@ -84,11 +84,11 @@ define length(bn: &base-name): int {
   core.text.length(t)
 }
 
-define this: base-name {
+inline this: base-name {
   _Base-Name-N("this")
 }
 
-define base: base-name {
+inline base: base-name {
   _Base-Name-N("base")
 }
 
