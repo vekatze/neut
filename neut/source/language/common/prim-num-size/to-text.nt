@@ -1,0 +1,9 @@
+import {
+  core.int.show {show-int},
+  this.language.common.prim-num-size {int-from-int-size, int-size},
+}
+
+define text-from-int-size(x: int-size): text {
+  pin t = show-int(int-from-int-size(x));
+  core.text.append("int", t)
+}
