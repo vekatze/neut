@@ -92,7 +92,7 @@ inline base: base-name {
   _Base-Name-N("base")
 }
 
-define core: base-name {
+inline core: base-name {
   _Base-Name-N("core")
 }
 
