@@ -1,0 +1,17 @@
+import {
+  this.language.common.prim-num-size.to-text {text-from-float-size, text-from-int-size},
+  this.language.common.prim-type {Float, Int, Pointer, Rune, prim-type},
+}
+
+define text-from-prim-type(pt: &prim-type): text {
+  case pt {
+  | Int(int-size) =>
+    text-from-int-size(*int-size)
+  | Float(float-size) =>
+    text-from-float-size(*float-size)
+  | Rune =>
+    *"rune"
+  | Pointer =>
+    *"pointer"
+  }
+}
