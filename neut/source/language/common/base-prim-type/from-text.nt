@@ -1,3 +1,7 @@
 inline _int-type-name: &text {
   "int"
 }
+
+inline _float-type-name: &text {
+  "float"
+}
