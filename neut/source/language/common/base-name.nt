@@ -51,6 +51,15 @@ define base-name-from-text-without-hint(name: &text): either(error, base-name) {
   }
 }
 
+define text-from-base-name(bn: base-name): text {
+  match bn {
+  | _Base-Name(t) =>
+    t
+  | _Base-Name-N(t) =>
+    *t
+  }
+}
+
 define _get-first-rune<r := rho>(t: &text): ?rune {
   try _ = r;
   if gt-int(text-byte-length(t), 0) {
