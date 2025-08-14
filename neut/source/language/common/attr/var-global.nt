@@ -1,0 +1,8 @@
+import {
+  this.language.common.arg-num {arg-num},
+  this.language.common.is-const-like {is-const-like},
+}
+
+data attr-var-global {
+| Attr-Var-Global(arg-num, is-const-like)
+}
