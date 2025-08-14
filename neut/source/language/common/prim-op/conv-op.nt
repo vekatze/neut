@@ -1,4 +1,7 @@
 import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
   this.language.common.prim-num-size {int-from-float-size, int-from-int-size},
   this.language.common.prim-type {Float, Int, prim-type},
 }
@@ -80,5 +83,25 @@ define as-conv-op(name: &text, dom-type: &prim-type, cod-type: &prim-type): ?con
     }
   | _, _ =>
     none
+  }
+}
+
+inline conv-op-sero: sero(conv-op) {
+  Sero of {
+    put := {
+      function (k, v) {
+        put-int64(k, magic cast(&conv-op, int, v));
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        if and(le-int(0, tag), le-int(tag, 8)) {
+          Right(quote {magic cast(int, conv-op, tag)})
+        } else {
+          none
+        }
+      }
+    },
   }
 }
