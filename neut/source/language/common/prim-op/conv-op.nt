@@ -9,3 +9,26 @@ data conv-op {
 | Uitofp
 | Sitofp
 }
+
+define show-conv-op(op: conv-op): &text {
+  match op {
+  | Trunc =>
+    "trunc"
+  | Zext =>
+    "zext"
+  | Sext =>
+    "sext"
+  | Fptrunc =>
+    "fptrunc"
+  | Fpext =>
+    "fpext"
+  | Fptoui =>
+    "fptoui"
+  | Fptosi =>
+    "fptosi"
+  | Uitofp =>
+    "uitofp"
+  | Sitofp =>
+    "sitofp"
+  }
+}
