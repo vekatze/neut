@@ -230,6 +230,19 @@ define root: base-name {
   Base-Name-N("root")
 }
 
+define is-reserved-alias(k: &base-name): bool {
+  let t = _get-text(k);
+  pin this = this;
+  pin base = base;
+  if eq-text(t, _get-text(this)) {
+    True
+  } else-if eq-text(t, _get-text(base)) {
+    True
+  } else {
+    False
+  }
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
