@@ -218,6 +218,10 @@ define node: base-name {
   Base-Name-N("node")
 }
 
+define leaf: base-name {
+  Base-Name-N("leaf")
+}
+
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
