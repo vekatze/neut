@@ -1,7 +1,27 @@
+import {
+  core.int.parse {parse-int},
+  core.text.eq {strip-prefix},
+  this.language.common.base-prim-type {Explicit, Implicit, base-prim-type-size},
+  this.language.common.data-size {data-size},
+  this.language.common.prim-num-size {int-size, int-size-from-data-size, int-size-from-int},
+}
+
 inline _int-type-name: &text {
   "int"
 }
 
 inline _float-type-name: &text {
   "float"
+}
+
+define _as-low-int(ds: data-size, s: &text): ?base-prim-type-size(int-size) {
+  try rest = strip-prefix(_int-type-name, s);
+  pin rest = rest;
+  if core.text.is-empty(rest) {
+    Right(Implicit(int-size-from-data-size(ds)))
+  } else {
+    try size = parse-int(rest);
+    try isize = int-size-from-int(ds, size);
+    Right(Explicit(isize))
+  }
 }
