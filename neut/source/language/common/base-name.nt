@@ -5,6 +5,7 @@ import {
   core.text {is-empty, text-byte-length},
   this.app.error {error, new-error, new-error'},
   this.language.common.const {ns-sep},
+  this.language.common.ident {ident},
   this.logger.hint {hint, internal-hint},
 }
 
@@ -183,6 +184,16 @@ define lambda-name(name-or-none: ?text, i: int): base-name {
     let _ = ti;
     Base-Name(name)
   }
+}
+
+define mu-name(name: text, i: int): base-name {
+  let ti = show-int(i);
+  let tmp on name = core.text.append("mu;", name);
+  let _ = name;
+  let name on tmp, ti = core.text.append(tmp, ti);
+  let _ = tmp;
+  let _ = ti;
+  Base-Name(name)
 }
 
 define zen(): unit {
