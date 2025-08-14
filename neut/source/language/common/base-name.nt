@@ -3,6 +3,9 @@ import {
   core.int.show {show-int},
   core.list {for-each-E},
   core.text {is-empty, text-byte-length},
+  sero.common.get {get-text},
+  sero.common.put {put-int64, put-text},
+  sero.sero {Sero, sero},
   this.app.error {error, new-error, new-error'},
   this.language.common.const {ns-sep},
   this.logger.hint {hint, internal-hint},
@@ -249,6 +252,30 @@ define extend(x: &base-name, y: &base-name): base-name {
   let name on tmp = core.text.append(tmp, t2);
   let _ = tmp;
   _Base-Name(name)
+}
+
+define base-name-sero: sero(base-name) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | _Base-Name(t) =>
+          put-text(k, t);
+        | _Base-Name-N(t) =>
+          put-text(k, *t);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try t = get-text(k);
+        Right(box {
+          letbox t = quote {t};
+          _Base-Name(t)
+        })
+      }
+    },
+  }
 }
 
 define zen(): unit {
