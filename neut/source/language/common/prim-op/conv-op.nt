@@ -1,3 +1,8 @@
+import {
+  this.language.common.prim-num-size {int-from-float-size, int-from-int-size},
+  this.language.common.prim-type {Float, Int, prim-type},
+}
+
 data conv-op {
 | Trunc
 | Zext
@@ -30,5 +35,50 @@ define show-conv-op(op: conv-op): &text {
     "uitofp"
   | Sitofp =>
     "sitofp"
+  }
+}
+
+define as-conv-op(name: &text, dom-type: &prim-type, cod-type: &prim-type): ?conv-op {
+  case dom-type, cod-type {
+  | Int(s1), Int(s2) =>
+    let s1 = int-from-int-size(*s1);
+    let s2 = int-from-int-size(*s2);
+    if and(eq-text(name, "trunc"), gt-int(s1, s2)) {
+      Right(Trunc)
+    } else-if and(eq-text(name, "zext"), lt-int(s1, s2)) {
+      Right(Zext)
+    } else-if and(eq-text(name, "sext"), lt-int(s1, s2)) {
+      Right(Sext)
+    } else {
+      none
+    }
+  | Int(_), Float(_) =>
+    if eq-text(name, "uitofp") {
+      Right(Trunc)
+    } else-if eq-text(name, "sitofp") {
+      Right(Zext)
+    } else {
+      none
+    }
+  | Float(_), Int(_) =>
+    if eq-text(name, "fptoui") {
+      Right(Trunc)
+    } else-if eq-text(name, "fptosi") {
+      Right(Zext)
+    } else {
+      none
+    }
+  | Float(s1), Float(s2) =>
+    let s1 = int-from-float-size(*s1);
+    let s2 = int-from-float-size(*s2);
+    if and(eq-text(name, "fptrunc"), gt-int(s1, s2)) {
+      Right(Fptrunc)
+    } else-if and(eq-text(name, "fpext"), lt-int(s1, s2)) {
+      Right(Fpext)
+    } else {
+      none
+    }
+  | _, _ =>
+    none
   }
 }
