@@ -4,5 +4,9 @@ import {
 }
 
 data attr-var-global {
-| Attr-Var-Global(arg-num, is-const-like)
+| Attr-Var-Global(arg-num: arg-num, is-const-like: is-const-like)
+}
+
+define make-attr-var-global(an: arg-num): attr-var-global {
+  Attr-Var-Global of {arg-num := an, is-const-like := False}
 }
