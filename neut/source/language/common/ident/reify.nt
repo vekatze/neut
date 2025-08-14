@@ -1,0 +1,8 @@
+import {
+  this.language.common.ident {I, ident},
+}
+
+define text-from-ident(x: ident): text {
+  let I(t, _) = x;
+  t
+}
