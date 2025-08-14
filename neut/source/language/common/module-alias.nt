@@ -1,0 +1,7 @@
+import {
+  this.language.common.base-name {base-name},
+}
+
+data module-alias {
+| Module-Alias(base-name)
+}
