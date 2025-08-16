@@ -1,0 +1,13 @@
+import {
+  this.language.common.discriminant {discriminant},
+  this.language.common.is-const-like {is-const-like},
+}
+
+data attr-data-intro(name) {
+| Attr-Data-Intro(
+    data-name: name,
+    cons-name-list: list(pair(name, is-const-like)),
+    discriminant: discriminant,
+    is-const-like: is-const-like,
+  )
+}
