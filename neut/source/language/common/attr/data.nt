@@ -1,0 +1,10 @@
+import {
+  this.language.common.is-const-like {is-const-like},
+}
+
+data attr-data(name) {
+| Attr-Data(
+    cons-name-list: list(pair(name, is-const-like)),
+    is-const-like: is-const-like,
+  )
+}
