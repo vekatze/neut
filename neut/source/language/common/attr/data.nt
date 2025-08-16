@@ -1,4 +1,8 @@
 import {
+  sero.instance.bool {bool-sero},
+  sero.instance.list {list-sero},
+  sero.instance.pair {pair-sero},
+  sero.sero {Sero, sero},
   this.language.common.is-const-like {is-const-like},
 }
 
@@ -7,4 +11,31 @@ data attr-data(name) {
     cons-name-list: list(pair(name, is-const-like)),
     is-const-like: is-const-like,
   )
+}
+
+inline attr-data-sero<name>(name-sero: sero(name)): sero(attr-data(name)) {
+  let foo = list-sero(pair-sero(name-sero, bool-sero));
+  let Sero of {put := put-cons-names, get := get-cons-names} = foo;
+  Sero of {
+    put := {
+      function (k, v) {
+        let Sero of {put := put-bool} = bool-sero;
+        tie Attr-Data(cons-name-list, is-const-like) = v;
+        put-cons-names(k, cons-name-list);
+        put-bool(k, is-const-like);
+      }
+    },
+    get := {
+      function (k) {
+        let Sero of {get := get-bool} = bool-sero;
+        try cons-name-list = get-cons-names(k);
+        try is-const-like = get-bool(k);
+        Right(box {
+          letbox cons-name-list = cons-name-list;
+          letbox is-const-like = is-const-like;
+          Attr-Data(cons-name-list, is-const-like)
+        })
+      }
+    },
+  }
 }
