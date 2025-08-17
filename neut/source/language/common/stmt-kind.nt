@@ -1,0 +1,32 @@
+import {
+  this.language.common.discriminant {discriminant},
+  this.language.common.is-const-like {is-const-like},
+  this.language.common.opacity {opacity},
+  this.logger.hint {hint},
+}
+
+data cons-info(name, binder) {
+| Cons-Info(
+    loc: hint,
+    name: name,
+    is-const-like: is-const-like,
+    cons-params: list(binder),
+    tag: discriminant,
+  )
+}
+
+data base-stmt-kind(name, binder, t) {
+| Normal(opacity)
+| Main(opacity, t)
+| Data(
+    variant-type: name,
+    variant-params: list(binder),
+    constructors: list(cons-info(name, binder)),
+  )
+| Data-Intro(
+    cons-name: name,
+    data-params: list(binder),
+    cons-params: list(binder),
+    tag: discriminant,
+  )
+}
