@@ -1,0 +1,8 @@
+import {
+  this.language.common.binder {binder-f},
+}
+
+data lam-kind-f(a) {
+| Normal(?text, a)
+| Fix(binder-f(a))
+}
