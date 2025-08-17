@@ -1,0 +1,7 @@
+import {
+  this.language.common.base-name {base-name},
+}
+
+data local-locator {
+| Local-Locator(base-name)
+}
