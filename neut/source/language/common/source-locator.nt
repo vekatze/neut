@@ -1,3 +1,12 @@
+import {
+  core.text {replace},
+}
+
 data source-locator {
 | Source-Locator(text)
+}
+
+define text-from-source-locator(sl: &source-locator): text {
+  tie Source-Locator(x) = sl;
+  replace(x, "/", *".")
 }
