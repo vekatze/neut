@@ -1,7 +1,12 @@
 import {
-  this.language.common.base-name {base-name},
+  this.language.common.base-name {base-name, text-from-base-name},
 }
 
 data local-locator {
 | Local-Locator(base-name)
+}
+
+define text-from-local-locator(ll: local-locator): text {
+  let Local-Locator(bn) = ll;
+  text-from-base-name(bn)
 }
