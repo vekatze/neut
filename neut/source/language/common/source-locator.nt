@@ -25,3 +25,8 @@ define llvm-locator(): source-locator {
 define internal-locator(): source-locator {
   Source-Locator(*"#")
 }
+
+define get-rel-path-text(sl: source-locator): text {
+  let Source-Locator(x) = sl;
+  x
+}
