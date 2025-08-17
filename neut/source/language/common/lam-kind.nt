@@ -6,3 +6,12 @@ data lam-kind-f(a) {
 | Normal(?text, a)
 | Fix(binder-f(a))
 }
+
+define from-lam-kind<a>(k: &lam-kind-f(a)): ?&binder-f(a) {
+  case k {
+  | Fix(x) =>
+    Right(x)
+  | _ =>
+    none
+  }
+}
