@@ -21,3 +21,7 @@ define from-base-name-list(bns: list(base-name)): source-locator {
 define llvm-locator(): source-locator {
   Source-Locator(*"llvm")
 }
+
+define internal-locator(): source-locator {
+  Source-Locator(*"#")
+}
