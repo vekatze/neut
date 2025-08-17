@@ -1,5 +1,7 @@
 import {
-  this.language.common.base-name {base-name, text-from-base-name},
+  this.app.app {app},
+  this.language.common.base-name {base-name, base-name-from-text, text-from-base-name},
+  this.logger.hint {hint},
 }
 
 data local-locator {
@@ -9,4 +11,9 @@ data local-locator {
 define text-from-local-locator(ll: local-locator): text {
   let Local-Locator(bn) = ll;
   text-from-base-name(bn)
+}
+
+define local-locator-from-text(m: hint, input: &text): app(local-locator) {
+  try bn = base-name-from-text(m, input);
+  Right(Local-Locator(bn))
 }
