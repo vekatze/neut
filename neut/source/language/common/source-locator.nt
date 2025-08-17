@@ -1,6 +1,9 @@
 import {
   core.list {for-each},
   core.text {replace},
+  sero.common.get {get-text},
+  sero.common.put {put-text},
+  sero.sero {Sero, sero},
   this.language.common.base-name {base-name, text-from-base-name},
   this.language.common.const {ns-sep},
 }
@@ -29,4 +32,24 @@ define internal-locator(): source-locator {
 define get-rel-path-text(sl: source-locator): text {
   let Source-Locator(x) = sl;
   x
+}
+
+inline source-locator-sero: sero(source-locator) {
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Source-Locator(x) = v;
+        put-text(k, x);
+      }
+    },
+    get := {
+      function (k) {
+        try t = get-text(k);
+        Right(box {
+          letbox t = quote {t};
+          Source-Locator(t)
+        })
+      }
+    },
+  }
 }
