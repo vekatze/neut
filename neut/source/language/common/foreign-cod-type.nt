@@ -1,0 +1,4 @@
+data foreign-cod-type(a) {
+| Void
+| Cod(a)
+}
