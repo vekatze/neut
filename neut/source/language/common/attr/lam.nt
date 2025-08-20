@@ -1,5 +1,5 @@
 import {
-  this.language.common.lam-kind {lam-kind-f},
+  this.language.common.lam-kind {Normal, lam-kind-f},
 }
 
 inline _ID: type {
@@ -11,4 +11,11 @@ data attr-lam(a) {
     lam-kind: lam-kind-f(a),
     identity: _ID,
   )
+}
+
+define normal<a>(i: _ID, cod-type: a): attr-lam(a) {
+  Attr-Lam of {
+    lam-kind := Normal(none, cod-type),
+    identity := i,
+  }
 }
