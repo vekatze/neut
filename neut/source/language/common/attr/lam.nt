@@ -1,5 +1,6 @@
 import {
-  this.language.common.lam-kind {Normal, lam-kind-f},
+  this.language.common.binder {binder-f},
+  this.language.common.lam-kind {Normal, from-lam-kind, lam-kind-f},
 }
 
 inline _ID: type {
@@ -25,4 +26,9 @@ define normal-with-name<a>(name: ?text, i: _ID, cod-type: a): attr-lam(a) {
     lam-kind := Normal(name, cod-type),
     identity := i,
   }
+}
+
+define binder-from-attr-lam<a>(attr: &attr-lam(a)): ?&binder-f(a) {
+  tie Attr-Lam of {lam-kind} = attr;
+  from-lam-kind(lam-kind)
 }
