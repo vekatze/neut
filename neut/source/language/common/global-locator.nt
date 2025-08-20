@@ -1,0 +1,11 @@
+import {
+  this.language.common.module-alias {module-alias},
+  this.language.common.source-locator {source-locator},
+}
+
+data global-locator {
+| Global-Locator(
+    module-alias: module-alias,
+    source-locator: source-locator,
+  )
+}

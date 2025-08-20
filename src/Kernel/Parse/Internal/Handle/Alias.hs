@@ -53,7 +53,7 @@ resolveAlias ::
   App SGL.StrictGlobalLocator
 resolveAlias h m gl = do
   case gl of
-    GL.GlobalLocator (GL.IdentifiedGlobalLocator {moduleAlias, sourceLocator}) -> do
+    GL.GlobalLocator {moduleAlias, sourceLocator} -> do
       moduleID <- resolveModuleAlias h m moduleAlias
       return
         SGL.StrictGlobalLocator
