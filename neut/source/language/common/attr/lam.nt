@@ -19,3 +19,10 @@ define normal<a>(i: _ID, cod-type: a): attr-lam(a) {
     identity := i,
   }
 }
+
+define normal-with-name<a>(name: ?text, i: _ID, cod-type: a): attr-lam(a) {
+  Attr-Lam of {
+    lam-kind := Normal(name, cod-type),
+    identity := i,
+  }
+}
