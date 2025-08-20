@@ -1,3 +1,14 @@
-inline ID: type {
+import {
+  this.language.common.lam-kind {lam-kind-f},
+}
+
+inline _ID: type {
   int
+}
+
+data attr-lam(a) {
+| Attr-Lam(
+    lam-kind: lam-kind-f(a),
+    identity: _ID,
+  )
 }
