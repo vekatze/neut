@@ -1,4 +1,19 @@
+import {
+  this.language.common.base-low-type {base-low-type},
+  this.language.common.low-type {low-type},
+  this.language.common.low-type.from-base-low-type {from-base-low-type},
+}
+
 data foreign-cod-type(a) {
 | Void
 | Cod(a)
+}
+
+define low-type-from-foreign-cod-type(cod: foreign-cod-type(base-low-type)): low-type {
+  match cod {
+  | Void =>
+    this.language.common.low-type.Void
+  | Cod(t) =>
+    from-base-low-type(t)
+  }
 }
