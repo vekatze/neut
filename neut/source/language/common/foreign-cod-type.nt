@@ -1,4 +1,7 @@
 import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
   this.language.common.base-low-type {base-low-type},
   this.language.common.low-type {low-type},
   this.language.common.low-type.from-base-low-type {from-base-low-type},
@@ -15,5 +18,39 @@ define low-type-from-foreign-cod-type(cod: foreign-cod-type(base-low-type)): low
     this.language.common.low-type.Void
   | Cod(t) =>
     from-base-low-type(t)
+  }
+}
+
+inline foreign-cod-type-sero<a>(s: sero(a)): sero(foreign-cod-type(a)) {
+  let Sero of {put := put-a, get := get-a} = s;
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Void =>
+          put-int64(k, 0);
+        | Cod(t) =>
+          put-int64(k, 1);
+          put-a(k, t);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          Right(box {Void})
+        | 1 =>
+          try t = get-a(k);
+          Right(box {
+            letbox t = t;
+            Cod(t)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
   }
 }
