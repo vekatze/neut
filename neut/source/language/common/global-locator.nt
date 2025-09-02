@@ -1,6 +1,7 @@
 import {
-  this.language.common.module-alias {module-alias},
-  this.language.common.source-locator {source-locator},
+  this.language.common.const {ns-sep},
+  this.language.common.module-alias {module-alias, text-from-module-alias},
+  this.language.common.source-locator {source-locator, text-from-source-locator},
 }
 
 data global-locator {
@@ -8,4 +9,12 @@ data global-locator {
     module-alias: module-alias,
     source-locator: source-locator,
   )
+}
+
+define text-from-global-locator(gl: &global-locator): text {
+  tie Global-Locator of {module-alias, source-locator} = gl;
+  pin t1 = text-from-module-alias(*module-alias);
+  pin t2 = text-from-source-locator(source-locator);
+  pin tmp = core.text.append(t1, ns-sep);
+  core.text.append(tmp, t2)
 }
