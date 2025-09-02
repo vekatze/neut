@@ -17,7 +17,7 @@ define text-from-source-locator(sl: &source-locator): text {
   replace(x, "/", *ns-sep)
 }
 
-define from-base-name-list(bns: list(base-name)): source-locator {
+define source-locator-from-base-name-list(bns: list(base-name)): source-locator {
   Source-Locator(core.text.intercalate(for-each(bns, text-from-base-name), *"/"))
 }
 

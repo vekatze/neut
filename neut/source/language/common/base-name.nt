@@ -16,11 +16,11 @@ data base-name {
 | _Base-Name-N(&text)
 }
 
-define base-name-by-split(m: hint, name: &text): either(error, list(base-name)) {
+define base-name-by-split(m: &hint, name: &text): either(error, list(base-name)) {
   for-each-E(core.text.split(name, ns-sep), function (t) {
     let b on t = is-empty(t);
     if b {
-      Left(new-error(m, core.text.append("No succeeding dots are allowed here: ", name)))
+      Left(new-error(*m, core.text.append("No succeeding dots are allowed here: ", name)))
     } else {
       Right(_Base-Name(t))
     }
@@ -290,7 +290,8 @@ inline base-name-sero: sero(base-name) {
 define zen(): unit {
   pin v = base-name-from-text(internal-hint, "foo.bar");
   vet(v);
-  pin v = base-name-by-split(internal-hint, "foo.bar");
+  pin m = internal-hint;
+  pin v = base-name-by-split(m, "foo.bar");
   vet(v);
   pin bn = _Base-Name(*"Foo");
   pin v = is-capitalized(bn);
