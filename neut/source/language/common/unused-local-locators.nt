@@ -1,0 +1,8 @@
+import {
+  this.language.common.local-locator {local-locator},
+  this.logger.hint {hint},
+}
+
+inline unused-local-locators: type {
+  list(pair(local-locator, hint))
+}
