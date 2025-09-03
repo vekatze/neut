@@ -1,4 +1,5 @@
 import {
+  this.language.common.base-low-type {base-low-type},
   this.language.common.external-name {external-name},
   this.language.common.foreign-cod-type {foreign-cod-type},
   this.logger.hint {hint},
@@ -6,4 +7,8 @@ import {
 
 data base-foreign(a) {
 | Foreign(hint, external-name, list(a), foreign-cod-type(a))
+}
+
+inline foreign: type {
+  base-foreign(base-low-type)
 }
