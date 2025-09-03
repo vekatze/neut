@@ -21,7 +21,7 @@ define unary-op-from-text(name: &text): ?unary-op {
   }
 }
 
-define unary-op-sero: sero(unary-op) {
+inline unary-op-sero: sero(unary-op) {
   Sero of {
     put := {
       function (_, _) {
