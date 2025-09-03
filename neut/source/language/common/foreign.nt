@@ -1,8 +1,11 @@
 import {
+  sero.instance.list {list-sero},
+  sero.sero {Sero, sero},
   this.language.common.base-low-type {base-low-type},
-  this.language.common.external-name {external-name},
-  this.language.common.foreign-cod-type {foreign-cod-type},
+  this.language.common.external-name {external-name, external-name-sero},
+  this.language.common.foreign-cod-type {foreign-cod-type, foreign-cod-type-sero},
   this.logger.hint {hint},
+  this.logger.sero.hint {hint-sero},
 }
 
 data base-foreign(a) {
@@ -11,4 +14,40 @@ data base-foreign(a) {
 
 inline foreign: type {
   base-foreign(base-low-type)
+}
+
+inline base-foreign-sero<a>(!s: sero(a)): sero(base-foreign(a)) {
+  let Sero of {put := put-xs, get := get-xs} = list-sero(!s);
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Foreign(m, n, xs, fct) = v;
+        let Sero of {put := put-hint} = hint-sero;
+        let Sero of {put := put-external-name} = external-name-sero;
+        let Sero of {put := put-fct} = foreign-cod-type-sero(!s);
+        put-hint(k, m);
+        put-external-name(k, n);
+        put-xs(k, xs);
+        put-fct(k, fct);
+      }
+    },
+    get := {
+      function (k) {
+        let Sero of {get := get-hint} = hint-sero;
+        let Sero of {get := get-external-name} = external-name-sero;
+        let Sero of {get := get-fct} = foreign-cod-type-sero(!s);
+        try m = get-hint(k);
+        try n = get-external-name(k);
+        try xs = get-xs(k);
+        try fct = get-fct(k);
+        Right(box {
+          letbox m = m;
+          letbox n = n;
+          letbox xs = xs;
+          letbox fct = fct;
+          Foreign(m, n, xs, fct)
+        })
+      }
+    },
+  }
 }
