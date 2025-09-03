@@ -1,0 +1,9 @@
+import {
+  this.language.common.external-name {external-name},
+  this.language.common.foreign-cod-type {foreign-cod-type},
+  this.logger.hint {hint},
+}
+
+data base-foreign(a) {
+| Foreign(hint, external-name, list(a), foreign-cod-type(a))
+}
