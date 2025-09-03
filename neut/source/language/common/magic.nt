@@ -1,0 +1,15 @@
+import {
+  this.language.common.external-name {external-name},
+  this.language.common.foreign-cod-type {foreign-cod-type},
+}
+
+data magic(t, a) {
+| Cast(a, a, a)
+| Store(t, a, a, a)
+| Load(t, a)
+| Alloca(t, a)
+| External(list(t), foreign-cod-type(t), external-name, list(a), list(pair(a, t)))
+| Global(external-name, t)
+| Opaque-Value(a)
+| Call-Type(a, a, a)
+}
