@@ -1,0 +1,14 @@
+import {
+  this.language.common.prim-op.binary-op {binary-op},
+  this.language.common.prim-op.cmp-op {cmp-op},
+  this.language.common.prim-op.conv-op {conv-op},
+  this.language.common.prim-op.unary-op {unary-op},
+  this.language.common.prim-type {prim-type},
+}
+
+data prim-op {
+| Prim-Unary-Op(unary-op, prim-type, prim-type)
+| Prim-Binary-Op(binary-op, prim-type, prim-type)
+| Prim-Cmp-Op(cmp-op, prim-type, prim-type)
+| Prim-Conv-Op(conv-op, prim-type, prim-type)
+}
