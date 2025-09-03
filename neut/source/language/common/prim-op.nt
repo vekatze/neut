@@ -12,3 +12,16 @@ data prim-op {
 | Prim-Cmp-Op(cmp-op, prim-type, prim-type)
 | Prim-Conv-Op(conv-op, prim-type, prim-type)
 }
+
+define get-type-info(op: &prim-op): pair(list(&prim-type), &prim-type) {
+  case op {
+  | Prim-Unary-Op(_, dom, cod) =>
+    Pair(List[dom], cod)
+  | Prim-Binary-Op(_, dom, cod) =>
+    Pair(List[dom, dom], cod)
+  | Prim-Cmp-Op(_, dom, cod) =>
+    Pair(List[dom, dom], cod)
+  | Prim-Conv-Op(_, dom, cod) =>
+    Pair(List[dom], cod)
+  }
+}
