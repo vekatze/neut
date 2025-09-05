@@ -1,5 +1,5 @@
 import {
-  this.language.common.base-name {base-name},
+  this.language.common.base-name {base-name, form, text-from-base-name},
   this.language.common.const {ns-sep},
   this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
   this.language.common.strict-global-locator {strict-global-locator, text-from-strict-global-locator},
@@ -29,4 +29,12 @@ define _wrap-with-quote(x: &text): text {
 define _to-low-name(dd: &definite-description): text {
   tie _Definite-Description(t) = dd;
   _wrap-with-quote(t)
+}
+
+define _get-form-dd(dd: &definite-description): definite-description {
+  tie _Definite-Description(t) = dd;
+  pin tmp = core.text.append(t, "#");
+  pin form = text-from-base-name(form);
+  let tmp = core.text.append(tmp, form);
+  _Definite-Description(tmp)
 }
