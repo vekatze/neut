@@ -1,3 +1,8 @@
+import {
+  core.binary {binary},
+  this.language.common.digest {hash-and-encode},
+}
+
 data module-digest {
 | Module-Digest(text)
 }
@@ -5,4 +10,8 @@ data module-digest {
 define text-from-module-digest(m: module-digest): text {
   let Module-Digest(t) = m;
   t
+}
+
+define module-digest-from-binary(b: &binary): module-digest {
+  Module-Digest(hash-and-encode(b))
 }
