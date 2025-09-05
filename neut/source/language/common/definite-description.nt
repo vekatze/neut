@@ -1,3 +1,17 @@
+import {
+  this.language.common.const {ns-sep},
+  this.language.common.local-locator {local-locator, text-from-local-locator},
+  this.language.common.strict-global-locator {strict-global-locator, text-from-strict-global-locator},
+}
+
 data definite-description {
-| Definite-Description(text)
+| _Definite-Description(text)
+}
+
+define new-dd(gl: &strict-global-locator, ll: local-locator): definite-description {
+  pin tmp = text-from-strict-global-locator(gl);
+  pin tmp = core.text.append(tmp, ns-sep);
+  pin ll = text-from-local-locator(ll);
+  let tmp = core.text.append(tmp, ll);
+  _Definite-Description(tmp)
 }
