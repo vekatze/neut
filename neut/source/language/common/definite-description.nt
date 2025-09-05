@@ -25,3 +25,8 @@ define _wrap-with-quote(x: &text): text {
   pin tmp = core.text.append("\"", x);
   core.text.append(tmp, "\"")
 }
+
+define _to-low-name(dd: &definite-description): text {
+  tie _Definite-Description(t) = dd;
+  _wrap-with-quote(t)
+}
