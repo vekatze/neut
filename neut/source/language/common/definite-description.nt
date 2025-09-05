@@ -1,5 +1,5 @@
 import {
-  this.language.common.base-name {base-name, form, node, text-from-base-name},
+  this.language.common.base-name {base-name, form, leaf, node, text-from-base-name},
   this.language.common.const {ns-sep},
   this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
   this.language.common.strict-global-locator {strict-global-locator, text-from-strict-global-locator},
@@ -44,5 +44,13 @@ define _get-node-dd(dd: &definite-description): definite-description {
   pin tmp = core.text.append(t, "#");
   pin node = text-from-base-name(node);
   let tmp = core.text.append(tmp, node);
+  _Definite-Description(tmp)
+}
+
+define _get-leaf-dd(dd: &definite-description): definite-description {
+  tie _Definite-Description(t) = dd;
+  pin tmp = core.text.append(t, "#");
+  pin leaf = text-from-base-name(leaf);
+  let tmp = core.text.append(tmp, leaf);
   _Definite-Description(tmp)
 }
