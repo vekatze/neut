@@ -10,8 +10,8 @@ data module-digest {
 | Module-Digest(text)
 }
 
-define text-from-module-digest(m: module-digest): text {
-  let Module-Digest(t) = m;
+define text-from-module-digest(m: &module-digest): &text {
+  tie Module-Digest(t) = m;
   t
 }
 

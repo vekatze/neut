@@ -4,7 +4,7 @@ import {
   core.list {for-each-E},
   core.text {is-empty, text-byte-length},
   sero.common.get {get-text},
-  sero.common.put {put-int64, put-text},
+  sero.common.put {put-text},
   sero.sero {Sero, sero},
   this.app.error {error, new-error, new-error'},
   this.language.common.const {ns-sep},

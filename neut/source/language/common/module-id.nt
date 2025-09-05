@@ -1,9 +1,20 @@
 import {
-  this.language.common.module-digest {module-digest},
+  this.language.common.module-digest {module-digest, text-from-module-digest},
 }
 
 data module-id {
 | Main
 | Library(module-digest)
 | Base
+}
+
+define text-from-module-id(i: &module-id): &text {
+  case i {
+  | Main =>
+    "this"
+  | Library(digest) =>
+    text-from-module-digest(digest)
+  | Base =>
+    "base"
+  }
 }
