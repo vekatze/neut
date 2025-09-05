@@ -1,0 +1,11 @@
+import {
+  this.language.common.module-id {module-id},
+  this.language.common.source-locator {source-locator},
+}
+
+data strict-global-locator {
+| Strict-Global-Locator(
+    module-id: module-id,
+    source-locator: source-locator,
+  )
+}
