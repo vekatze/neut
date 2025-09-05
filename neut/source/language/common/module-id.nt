@@ -1,5 +1,8 @@
 import {
-  this.language.common.module-digest {module-digest, text-from-module-digest},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+  this.language.common.module-digest {module-digest, module-digest-sero, text-from-module-digest},
 }
 
 data module-id {
@@ -16,5 +19,44 @@ define text-from-module-id(i: &module-id): &text {
     text-from-module-digest(digest)
   | Base =>
     "base"
+  }
+}
+
+inline module-id-sero: sero(module-id) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Main =>
+          put-int64(k, 0);
+        | Library(digest) =>
+          let Sero of {put} = module-digest-sero;
+          put-int64(k, 1);
+          put(k, digest);
+        | Base =>
+          put-int64(k, 2)
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          Right(box {Main})
+        | 1 =>
+          let Sero of {get} = module-digest-sero;
+          try digest = get(k);
+          Right(box {
+            letbox digest = digest;
+            Library(digest)
+          })
+        | 2 =>
+          Right(box {Base})
+        | _ =>
+          none
+        }
+      }
+    },
   }
 }
