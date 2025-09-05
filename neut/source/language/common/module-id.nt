@@ -1,0 +1,9 @@
+import {
+  this.language.common.module-digest {module-digest},
+}
+
+data module-id {
+| Main
+| Library(module-digest)
+| Base
+}
