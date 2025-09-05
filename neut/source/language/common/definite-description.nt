@@ -20,3 +20,8 @@ define new-dd(gl: &strict-global-locator, ll: local-locator): definite-descripti
 define _new-by-global-locator(gl: &strict-global-locator, name: base-name): definite-description {
   new-dd(gl, make-local-locator(name))
 }
+
+define _wrap-with-quote(x: &text): text {
+  pin tmp = core.text.append("\"", x);
+  core.text.append(tmp, "\"")
+}
