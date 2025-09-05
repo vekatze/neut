@@ -22,3 +22,10 @@ define text-from-strict-global-locator(gl: &strict-global-locator): text {
 inline llvm-global-locator(): strict-global-locator {
   Strict-Global-Locator(Base, llvm-locator())
 }
+
+define sgl-from-source-locator(sl: source-locator): strict-global-locator {
+  Strict-Global-Locator of {
+    module-id := Base,
+    source-locator := sl,
+  }
+}
