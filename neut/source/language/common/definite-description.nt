@@ -1,7 +1,11 @@
 import {
+  core.text {break, split},
+  core.trick {panic},
   this.language.common.base-name {base-name, form, leaf, node, root, text-from-base-name},
   this.language.common.const {ns-sep},
   this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
+  this.language.common.module-digest {Module-Digest},
+  this.language.common.module-id {Base, Library, Main, module-id},
   this.language.common.strict-global-locator {strict-global-locator, text-from-strict-global-locator},
 }
 
@@ -61,4 +65,23 @@ define _get-root-dd(dd: &definite-description): definite-description {
   pin root = text-from-base-name(root);
   let tmp = core.text.append(tmp, root);
   _Definite-Description(tmp)
+}
+
+define uncons-dd(dd: &definite-description): pair(module-id, text) {
+  tie _Definite-Description(t) = dd;
+  let names = split(t, ns-sep);
+  match names {
+  | Cons(head-elem, rest) =>
+    let b1 on head-elem = eq-text(head-elem, "this");
+    let b2 on head-elem = eq-text(head-elem, "base");
+    if b1 {
+      Pair(Main, core.text.intercalate(rest, *ns-sep))
+    } else-if b2 {
+      Pair(Base, core.text.intercalate(rest, *ns-sep))
+    } else {
+      Pair(Library(Module-Digest(head-elem)), core.text.intercalate(rest, *ns-sep))
+    }
+  | _ =>
+    panic("language.common.definite-description.uncons-dd")
+  }
 }
