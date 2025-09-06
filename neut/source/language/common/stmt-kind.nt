@@ -3,7 +3,7 @@ import {
   this.language.common.definite-description {definite-description},
   this.language.common.discriminant {discriminant},
   this.language.common.is-const-like {is-const-like},
-  this.language.common.opacity {Clear, opacity},
+  this.language.common.opacity {Clear, Opaque, opacity},
   this.logger.hint {hint},
 }
 
@@ -44,6 +44,19 @@ define to-opacity<n, b, t>(k: &base-stmt-kind(n, b, t)): opacity {
   | Main(o, _) =>
     *o
   | _ =>
+    Clear
+  }
+}
+
+define to-low-opacity<n, b, t>(k: &base-stmt-kind(n, b, t)): opacity {
+  case k {
+  | Normal(o) =>
+    *o
+  | Main(o, _) =>
+    *o
+  | Data of {} =>
+    Opaque // so as not to reduce recursive terms
+  | Data-Intro of {} =>
     Clear
   }
 }
