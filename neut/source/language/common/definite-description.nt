@@ -9,6 +9,7 @@ import {
     imm-int2,
     imm-int32,
     imm-int4,
+    imm-int64,
     imm-int8,
     imm-noema,
     imm-type,
@@ -162,4 +163,9 @@ define imm-int16-dd(): definite-description {
 define imm-int32-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int32)
+}
+
+define imm-int64-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int64)
 }
