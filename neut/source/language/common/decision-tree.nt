@@ -1,0 +1,36 @@
+import {
+  this.language.common.binder {binder-f},
+  this.language.common.definite-description {definite-description},
+  this.language.common.discriminant {discriminant},
+  this.language.common.ident {ident},
+  this.language.common.is-const-like {is-const-like},
+  this.language.common.literal {literal},
+  this.logger.hint {hint},
+}
+
+nominal {
+  case-list(a: type): type,
+}
+
+data decision-tree(a) {
+| Leaf(list(ident), list(pair(binder-f(a), a)), a)
+| Unreachable
+| Switch(pair(ident, a), case-list(a))
+}
+
+data tree-case(a) {
+| Cons-Case(
+    m-cons: hint,
+    cons-dd: definite-description,
+    is-const-like: is-const-like,
+    disc: discriminant,
+    data-args: list(pair(a, a)),
+    cons-params: list(binder-f(a)),
+    cont: decision-tree(a),
+  )
+| Literal-Case(hint, literal, decision-tree(a))
+}
+
+inline case-list(a: type): type {
+  pair(decision-tree(a), list(tree-case(a)))
+}
