@@ -7,6 +7,7 @@ import {
     imm-int1,
     imm-int16,
     imm-int2,
+    imm-int32,
     imm-int4,
     imm-int8,
     imm-noema,
@@ -156,4 +157,9 @@ define imm-int8-dd(): definite-description {
 define imm-int16-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int16)
+}
+
+define imm-int32-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int32)
 }
