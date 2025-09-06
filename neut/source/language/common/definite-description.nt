@@ -1,12 +1,13 @@
 import {
   core.text {split},
   core.trick {panic},
-  this.language.common.base-name {base-name, form, leaf, node, root, text-from-base-name},
+  this.language.common.base-name {base-name, form, imm-type, leaf, node, root, text-from-base-name},
   this.language.common.const {ns-sep},
   this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
   this.language.common.module-digest {Module-Digest},
   this.language.common.module-id {Base, Library, Main, module-id},
-  this.language.common.strict-global-locator {strict-global-locator, text-from-strict-global-locator},
+  this.language.common.source-locator {internal-locator},
+  this.language.common.strict-global-locator {sgl-from-source-locator, strict-global-locator, text-from-strict-global-locator},
 }
 
 data definite-description {
@@ -106,4 +107,9 @@ define local-locator-from-dd(dd: &definite-description): text {
   | _ =>
     panic("language.common.definite-description.local-locator-from-dd")
   }
+}
+
+define imm-type-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-type)
 }
