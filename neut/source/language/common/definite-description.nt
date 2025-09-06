@@ -15,6 +15,7 @@ import {
     imm-int64,
     imm-int8,
     imm-noema,
+    imm-pointer,
     imm-rune,
     imm-type,
     leaf,
@@ -192,4 +193,9 @@ define imm-float64-dd(): definite-description {
 define imm-rune-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-rune)
+}
+
+define imm-pointer-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-pointer)
 }
