@@ -46,3 +46,12 @@ define get-constructors<a>(cs: &list(tree-case(a))): list(pair(&definite-descrip
     }
   }))
 }
+
+define is-unreachable<a>(tree: &decision-tree(a)): bool {
+  case tree {
+  | Unreachable =>
+    True
+  | _ =>
+    False
+  }
+}
