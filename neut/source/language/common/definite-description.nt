@@ -1,7 +1,7 @@
 import {
   core.text {split},
   core.trick {panic},
-  this.language.common.base-name {base-name, form, imm-noema, imm-type, leaf, node, root, text-from-base-name},
+  this.language.common.base-name {base-name, form, imm-int1, imm-noema, imm-type, leaf, node, root, text-from-base-name},
   this.language.common.const {ns-sep},
   this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
   this.language.common.module-digest {Module-Digest},
@@ -117,4 +117,9 @@ define imm-type-dd(): definite-description {
 define imm-noema-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-noema)
+}
+
+define imm-int1-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int1)
 }
