@@ -55,3 +55,16 @@ define is-unreachable<a>(tree: &decision-tree(a)): bool {
     False
   }
 }
+
+define find-case<a>(cons-disc: &discriminant, c: &tree-case(a)): ?pair(&list(binder-f(a)), &decision-tree(a)) {
+  case c {
+  | Literal-Case of {} =>
+    none
+  | Cons-Case of {disc, cons-params, cont} =>
+    if eq-data(cons-disc, disc) {
+      Right(Pair(cons-params, cont))
+    } else {
+      none
+    }
+  }
+}
