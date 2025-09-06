@@ -2,6 +2,9 @@ import {
   core.text {split},
   core.text-builder {append-text, make-text-builder, text-builder},
   core.trick {panic},
+  sero.common.get {get-text},
+  sero.common.put {put-text},
+  sero.sero {Sero, sero},
   this.app.app {app},
   this.app.run {raise-error},
   this.language.common.base-name {
@@ -241,6 +244,26 @@ define get-locator-pair(m: &hint, var-text: &text): app(pair(global-locator, loc
 
 inline llvm-global-locator-text: &text {
   "base.llvm"
+}
+
+inline definite-description-sero: sero(definite-description) {
+  Sero of {
+    put := {
+      function (k, v) {
+        tie _Definite-Description(t) = v;
+        put-text(k, t);
+      }
+    },
+    get := {
+      function (k) {
+        try t = get-text(k);
+        Right(box {
+          letbox t = quote {t};
+          _Definite-Description(t)
+        })
+      }
+    },
+  }
 }
 
 define zen(): unit {
