@@ -6,6 +6,7 @@ import {
     form,
     imm-float16,
     imm-float32,
+    imm-float64,
     imm-int1,
     imm-int16,
     imm-int2,
@@ -180,4 +181,9 @@ define imm-float16-dd(): definite-description {
 define imm-float32-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-float32)
+}
+
+define imm-float64-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-float64)
 }
