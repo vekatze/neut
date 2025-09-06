@@ -1,5 +1,6 @@
 import {
   core.text {split},
+  core.text-builder {append-text, text-builder},
   core.trick {panic},
   this.language.common.base-name {
     base-name,
@@ -47,16 +48,6 @@ define new-dd(gl: &strict-global-locator, ll: local-locator): definite-descripti
 
 define _new-by-global-locator(gl: &strict-global-locator, name: base-name): definite-description {
   new-dd(gl, make-local-locator(name))
-}
-
-define _wrap-with-quote(x: &text): text {
-  pin tmp = core.text.append("\"", x);
-  core.text.append(tmp, "\"")
-}
-
-define _to-low-name(dd: &definite-description): text {
-  tie _Definite-Description(t) = dd;
-  _wrap-with-quote(t)
 }
 
 define _get-form-dd(dd: &definite-description): definite-description {
@@ -210,4 +201,11 @@ define imm-null-dd(): definite-description {
 define cls-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, cls)
+}
+
+define append-dd(buf: &text-builder, dd: &definite-description): unit {
+  tie _Definite-Description(t) = dd;
+  append-text(buf, "\"");
+  append-text(buf, t);
+  append-text(buf, "\"");
 }
