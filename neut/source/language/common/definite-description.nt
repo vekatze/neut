@@ -239,6 +239,10 @@ define get-locator-pair(m: &hint, var-text: &text): app(pair(global-locator, loc
   }
 }
 
+inline llvm-global-locator-text: &text {
+  "base.llvm"
+}
+
 define zen(): unit {
   pin m = internal-hint;
   pin v = get-locator-pair(m, "core.either.Left");
