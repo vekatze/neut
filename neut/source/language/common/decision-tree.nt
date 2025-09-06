@@ -1,4 +1,5 @@
 import {
+  core.list {filter-some, for-each-N},
   this.language.common.binder {binder-f},
   this.language.common.definite-description {definite-description},
   this.language.common.discriminant {discriminant},
@@ -33,4 +34,15 @@ data tree-case(a) {
 
 inline case-list(a: type): type {
   pair(decision-tree(a), list(tree-case(a)))
+}
+
+define get-constructors<a>(cs: &list(tree-case(a))): list(pair(&definite-description, &is-const-like)) {
+  filter-some(for-each-N(cs, function (c) {
+    case c {
+    | Cons-Case of {cons-dd, is-const-like} =>
+      Right(Pair(cons-dd, is-const-like))
+    | Literal-Case of {} =>
+      none
+    }
+  }))
 }
