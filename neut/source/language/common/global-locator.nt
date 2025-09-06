@@ -1,7 +1,7 @@
 import {
   this.app.app {app},
   this.app.run {raise-error},
-  this.language.common.base-name {base-name-by-split},
+  this.language.common.base-name {base-name, base-name-by-split},
   this.language.common.const {ns-sep},
   this.language.common.module-alias {Module-Alias, module-alias, text-from-module-alias},
   this.language.common.source-locator {source-locator, source-locator-from-base-name-list, text-from-source-locator},
@@ -31,9 +31,19 @@ define global-locator-from-text(m: &hint, t: &text): app(global-locator) {
     Right(Global-Locator(Module-Alias(prefix), locator))
   | Nil =>
     let error-message = {
-      pin t1 = core.text.append("Invalid global locator: ", t);
+      pin t1 = core.text.append("Invalid global locator: `", t);
       core.text.append(t1, "`")
     };
     raise-error(*m, error-message)
+  }
+}
+
+define _global-locator-from-base-name-list(m: &hint, xs: list(base-name)): app(global-locator) {
+  match xs {
+  | Nil =>
+    raise-error(*m, *"Empty string cannot be converted into a global locator")
+  | Cons(prefix, rest) =>
+    let locator = source-locator-from-base-name-list(rest);
+    Right(Global-Locator(Module-Alias(prefix), locator))
   }
 }

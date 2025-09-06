@@ -1,9 +1,12 @@
 import {
   core.text {split},
-  core.text-builder {append-text, text-builder},
+  core.text-builder {append-text, make-text-builder, text-builder},
   core.trick {panic},
+  this.app.app {app},
+  this.app.run {raise-error},
   this.language.common.base-name {
     base-name,
+    base-name-by-split,
     cls,
     form,
     imm-float16,
@@ -27,11 +30,17 @@ import {
     text-from-base-name,
   },
   this.language.common.const {ns-sep},
+  this.language.common.global-locator {_global-locator-from-base-name-list, global-locator},
   this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
   this.language.common.module-digest {Module-Digest},
   this.language.common.module-id {Base, Library, Main, module-id},
   this.language.common.source-locator {internal-locator},
-  this.language.common.strict-global-locator {sgl-from-source-locator, strict-global-locator, text-from-strict-global-locator},
+  this.language.common.strict-global-locator {
+    sgl-from-source-locator,
+    strict-global-locator,
+    text-from-strict-global-locator,
+  },
+  this.logger.hint {hint, internal-hint},
 }
 
 data definite-description {
@@ -208,4 +217,30 @@ define append-dd(buf: &text-builder, dd: &definite-description): unit {
   append-text(buf, "\"");
   append-text(buf, t);
   append-text(buf, "\"");
+}
+
+define get-locator-pair(m: &hint, var-text: &text): app(pair(global-locator, local-locator)) {
+  try names = base-name-by-split(m, var-text);
+  match core.list.unsnoc(names) {
+  | Left(_) =>
+    raise-error(*m, *"lanugage.common.definite-description.get-locator-pair: empty variable name")
+  | Right(Pair(Nil, _)) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "The symbol `");
+      append-text(buf, var-text);
+      append-text(buf, "` does not contain a global locator");
+    };
+    raise-error(*m, core.text-builder.extract(buf))
+  | Right(Pair(init-elems, last-elem)) =>
+    try gl = _global-locator-from-base-name-list(m, init-elems);
+    let ll = make-local-locator(last-elem);
+    Right(Pair(gl, ll))
+  }
+}
+
+define zen(): unit {
+  pin m = internal-hint;
+  pin v = get-locator-pair(m, "core.either.Left");
+  vet(v);
 }
