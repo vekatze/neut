@@ -3,6 +3,7 @@ import {
   core.trick {panic},
   this.language.common.base-name {
     base-name,
+    cls,
     form,
     imm-float16,
     imm-float32,
@@ -204,4 +205,9 @@ define imm-pointer-dd(): definite-description {
 define imm-null-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-null)
+}
+
+define cls-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, cls)
 }
