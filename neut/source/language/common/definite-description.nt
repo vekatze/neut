@@ -96,3 +96,14 @@ define global-locator-from-dd(dd: &definite-description): text {
     panic("language.common.definite-description.global-locator-from-dd")
   }
 }
+
+define local-locator-from-dd(dd: &definite-description): text {
+  tie _Definite-Description(t) = dd;
+  let names = split(t, ns-sep);
+  match core.list.unsnoc(names) {
+  | Right(Pair(_, last)) =>
+    last
+  | _ =>
+    panic("language.common.definite-description.local-locator-from-dd")
+  }
+}
