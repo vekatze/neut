@@ -15,6 +15,7 @@ import {
     imm-int64,
     imm-int8,
     imm-noema,
+    imm-null,
     imm-pointer,
     imm-rune,
     imm-type,
@@ -198,4 +199,9 @@ define imm-rune-dd(): definite-description {
 define imm-pointer-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-pointer)
+}
+
+define imm-null-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-null)
 }
