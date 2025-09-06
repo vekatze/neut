@@ -3,7 +3,7 @@ import {
   this.language.common.definite-description {definite-description},
   this.language.common.discriminant {discriminant},
   this.language.common.is-const-like {is-const-like},
-  this.language.common.opacity {opacity},
+  this.language.common.opacity {Clear, opacity},
   this.logger.hint {hint},
 }
 
@@ -35,4 +35,15 @@ data base-stmt-kind(name, binder, t) {
 
 inline stmt-kind(a: type): type {
   base-stmt-kind(definite-description, binder-f(a), a)
+}
+
+define to-opacity<n, b, t>(k: &base-stmt-kind(n, b, t)): opacity {
+  case k {
+  | Normal(o) =>
+    *o
+  | Main(o, _) =>
+    *o
+  | _ =>
+    Clear
+  }
 }
