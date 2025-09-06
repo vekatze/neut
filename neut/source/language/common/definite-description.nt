@@ -4,6 +4,7 @@ import {
   this.language.common.base-name {
     base-name,
     form,
+    imm-float16,
     imm-int1,
     imm-int16,
     imm-int2,
@@ -168,4 +169,9 @@ define imm-int32-dd(): definite-description {
 define imm-int64-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
   _new-by-global-locator(tmp, imm-int64)
+}
+
+define imm-float16-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-float16)
 }
