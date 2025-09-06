@@ -1,5 +1,5 @@
 import {
-  core.text {break, split},
+  core.text {split},
   core.trick {panic},
   this.language.common.base-name {base-name, form, leaf, node, root, text-from-base-name},
   this.language.common.const {ns-sep},
@@ -83,5 +83,16 @@ define uncons-dd(dd: &definite-description): pair(module-id, text) {
     }
   | _ =>
     panic("language.common.definite-description.uncons-dd")
+  }
+}
+
+define global-locator-from-dd(dd: &definite-description): text {
+  tie _Definite-Description(t) = dd;
+  let names = split(t, ns-sep);
+  match core.list.unsnoc(names) {
+  | Right(Pair(xs, _)) =>
+    core.text.intercalate(xs, *ns-sep)
+  | _ =>
+    panic("language.common.definite-description.global-locator-from-dd")
   }
 }
