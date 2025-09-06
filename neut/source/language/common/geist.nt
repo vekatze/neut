@@ -1,0 +1,17 @@
+import {
+  this.language.common.binder {binder-f},
+  this.language.common.definite-description {definite-description},
+  this.language.common.is-const-like {is-const-like},
+  this.logger.hint {hint},
+}
+
+data geist(a) {
+| Geist(
+    loc: hint,
+    name: definite-description,
+    is-const-like: is-const-like,
+    imp-params: list(pair(binder-f(a), ?a)),
+    exp-params: list(binder-f(a)),
+    cod: a,
+  )
+}
