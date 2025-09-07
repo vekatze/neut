@@ -1,6 +1,12 @@
 import {
   core.text {break, drop, is-empty},
   this.language.common.data-size {Data-Size-64, data-size},
+  this.language.common.definite-description {
+    definite-description,
+    global-locator-from-dd,
+    llvm-global-locator-text,
+    local-locator-from-dd,
+  },
   this.language.common.prim-op {Prim-Binary-Op, Prim-Cmp-Op, Prim-Conv-Op, Prim-Unary-Op, prim-op},
   this.language.common.prim-op.binary-op {binary-float-op-from-text, binary-int-op-from-text},
   this.language.common.prim-op.cmp-op {float-cmp-op-from-text, int-cmp-op-from-text},
@@ -63,6 +69,17 @@ define prim-op-from-text(ds: data-size, name: &text): ?prim-op {
     | _ =>
       none
     }
+  }
+}
+
+define prim-op-from-definite-description(ds: data-size, dd: &definite-description): ?prim-op {
+  pin sgl = global-locator-from-dd(dd);
+  let b = eq-text(llvm-global-locator-text, sgl);
+  if b {
+    pin ll = local-locator-from-dd(dd);
+    prim-op-from-text(ds, ll)
+  } else {
+    none
   }
 }
 
