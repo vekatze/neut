@@ -1,0 +1,9 @@
+import {
+  this.language.raw-term.locator {locator},
+  this.language.raw-term.raw-ident {raw-ident},
+}
+
+data name {
+| Var(raw-ident)
+| Locator(locator)
+}
