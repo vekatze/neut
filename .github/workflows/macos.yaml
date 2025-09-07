@@ -44,6 +44,6 @@ jobs:
             ${{ runner.os }}-stack-
       - uses: tecolicom/actions-use-homebrew-tools@v1
         with:
-          tools: llvm
+          tools: llvm@20
       - run: just build-compiler-arm64-darwin
       - run: just test-arm64-darwin
