@@ -3,6 +3,7 @@ import {
   core.text {length},
   core.text.eq {eq-prefix},
   this.language.common.data-size {Data-Size-64, data-size},
+  this.language.common.definite-description {definite-description, global-locator-from-dd, llvm-global-locator-text, local-locator-from-dd},
   this.language.common.prim-num-size {
     float-size,
     float-size-from-data-size,
@@ -57,6 +58,17 @@ define prim-type-from-text(ds: data-size, name: &text): ?prim-type {
     | Left(_) =>
       none
     }
+  }
+}
+
+define prim-type-from-definite-description(ds: data-size, dd: &definite-description): ?prim-type {
+  pin sgl = global-locator-from-dd(dd);
+  let b = eq-text(llvm-global-locator-text, sgl);
+  if b {
+    pin ll = local-locator-from-dd(dd);
+    prim-type-from-text(ds, ll)
+  } else {
+    none
   }
 }
 
