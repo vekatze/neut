@@ -1,0 +1,55 @@
+import {
+  core.control {grow},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+  this.language.common.arg-num {Arg-Num, arg-num},
+  this.language.common.base-prim-type {base-prim-type, base-prim-type-sero},
+}
+
+data base-low-type {
+| Prim-Num(base-prim-type)
+| Pointer
+}
+
+define void-ptr-seq-from-arg-num(an: arg-num): list(base-low-type) {
+  let Arg-Num(x) = an;
+  grow(Nil, x, function (acc, _) {
+    Cons(Pointer, acc)
+  })
+}
+
+inline base-low-type-sero: sero(base-low-type) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Prim-Num(t) =>
+          let Sero of {put} = base-prim-type-sero;
+          put-int64(k, 0);
+          put(k, t);
+        | Pointer =>
+          put-int64(k, 1);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          let Sero of {get} = base-prim-type-sero;
+          try t = get(k);
+          Right(box {
+            letbox t = t;
+            Prim-Num(t)
+          })
+        | 1 =>
+          Right(box {Pointer})
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}

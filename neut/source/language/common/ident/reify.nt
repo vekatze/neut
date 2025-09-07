@@ -1,0 +1,22 @@
+import {
+  core.int.show {show-int},
+  this.language.common.ident {I, ident},
+}
+
+define text-from-ident(x: ident): text {
+  let I(t, _) = x;
+  t
+}
+
+define text-from-ident-debug(x: ident): text {
+  let I(t, i) = x;
+  pin t = t;
+  pin i = show-int(i);
+  pin tmp = core.text.append(t, "-");
+  core.text.append(tmp, i)
+}
+
+define int-from-ident(x: &ident): int {
+  tie I(_, i) = x;
+  *i
+}

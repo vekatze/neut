@@ -1,6 +1,5 @@
 module Language.Common.GlobalLocator
   ( GlobalLocator (..),
-    IdentifiedGlobalLocator (..),
     reify,
     reflect,
     reflectLocator,
@@ -18,18 +17,10 @@ import Language.Common.ModuleAlias hiding (reify)
 import Language.Common.SourceLocator qualified as SL
 import Logger.Hint qualified as H
 
-data IdentifiedGlobalLocator = IdentifiedGlobalLocator
+data GlobalLocator = GlobalLocator
   { moduleAlias :: ModuleAlias,
     sourceLocator :: SL.SourceLocator
   }
-  deriving (Generic, Show, Eq)
-
-instance Binary IdentifiedGlobalLocator
-
-instance Hashable IdentifiedGlobalLocator
-
-newtype GlobalLocator
-  = GlobalLocator IdentifiedGlobalLocator
   deriving (Generic, Show, Eq)
 
 instance Binary GlobalLocator
@@ -39,7 +30,7 @@ instance Hashable GlobalLocator
 reify :: GlobalLocator -> T.Text
 reify gl =
   case gl of
-    GlobalLocator (IdentifiedGlobalLocator {moduleAlias, sourceLocator}) -> do
+    GlobalLocator {moduleAlias, sourceLocator} -> do
       BN.reify (extract moduleAlias) <> nsSep <> SL.toText sourceLocator
 
 reflect :: H.Hint -> T.Text -> Either Error GlobalLocator
@@ -48,7 +39,7 @@ reflect m rawTxt = do
   case baseNameList of
     prefix : rest
       | Just locator <- SL.fromBaseNameList rest ->
-          return (GlobalLocator (IdentifiedGlobalLocator (ModuleAlias prefix) locator))
+          return (GlobalLocator (ModuleAlias prefix) locator)
     _ ->
       Left $ newError m $ "Invalid global locator: `" <> rawTxt <> "`"
 

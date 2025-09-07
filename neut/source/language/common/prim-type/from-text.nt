@@ -1,0 +1,90 @@
+import {
+  core.int.parse {parse-int},
+  core.text {length},
+  core.text.eq {eq-prefix},
+  this.language.common.data-size {Data-Size-64, data-size},
+  this.language.common.definite-description {definite-description, global-locator-from-dd, llvm-global-locator-text, local-locator-from-dd},
+  this.language.common.prim-num-size {
+    float-size,
+    float-size-from-data-size,
+    float-size-from-int,
+    int-size,
+    int-size-from-data-size,
+    int-size-from-int,
+  },
+  this.language.common.prim-type {Float, Int, prim-type},
+}
+
+inline _int-type-name: &text {
+  "int"
+}
+
+inline _float-type-name: &text {
+  "float"
+}
+
+define _as-low-int(ds: data-size, s: &text): ?int-size {
+  if eq-text(s, _int-type-name) {
+    Right(int-size-from-data-size(ds))
+  } else-if eq-prefix(s, _int-type-name) {
+    pin rest = core.text.drop-N(s, length(_int-type-name));
+    try size-value = parse-int(rest);
+    int-size-from-int(ds, size-value)
+  } else {
+    none
+  }
+}
+
+define _as-low-float(ds: data-size, s: &text): ?float-size {
+  if eq-text(s, _float-type-name) {
+    Right(float-size-from-data-size(ds))
+  } else-if eq-prefix(s, _float-type-name) {
+    pin rest = core.text.drop-N(s, length(_float-type-name));
+    try size-value = parse-int(rest);
+    float-size-from-int(ds, size-value)
+  } else {
+    none
+  }
+}
+
+define prim-type-from-text(ds: data-size, name: &text): ?prim-type {
+  match _as-low-int(ds, name) {
+  | Right(int-size) =>
+    Right(Int(int-size))
+  | Left(_) =>
+    match _as-low-float(ds, name) {
+    | Right(float-size) =>
+      Right(Float(float-size))
+    | Left(_) =>
+      none
+    }
+  }
+}
+
+define prim-type-from-definite-description(ds: data-size, dd: &definite-description): ?prim-type {
+  pin sgl = global-locator-from-dd(dd);
+  let b = eq-text(llvm-global-locator-text, sgl);
+  if b {
+    pin ll = local-locator-from-dd(dd);
+    prim-type-from-text(ds, ll)
+  } else {
+    none
+  }
+}
+
+define zen(): unit {
+  pin v = _as-low-int(Data-Size-64, "int");
+  vet(v);
+  pin v = _as-low-int(Data-Size-64, "int8");
+  vet(v);
+  pin v = _as-low-int(Data-Size-64, "sample");
+  vet(v);
+  pin v = _as-low-float(Data-Size-64, "float");
+  vet(v);
+  pin v = _as-low-float(Data-Size-64, "float32");
+  vet(v);
+  pin v = _as-low-float(Data-Size-64, "sample");
+  vet(v);
+  pin v = prim-type-from-text(Data-Size-64, "int8");
+  vet(v);
+}

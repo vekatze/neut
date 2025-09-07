@@ -1,0 +1,40 @@
+import {
+  core.binary {binary},
+  sero.common.get {get-text},
+  sero.common.put {put-text},
+  sero.sero {Sero, sero},
+  this.language.common.digest {hash-and-encode},
+}
+
+data module-digest {
+| Module-Digest(text)
+}
+
+define text-from-module-digest(m: &module-digest): &text {
+  tie Module-Digest(t) = m;
+  t
+}
+
+define module-digest-from-binary(b: &binary): module-digest {
+  Module-Digest(hash-and-encode(b))
+}
+
+inline module-digest-sero: sero(module-digest) {
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Module-Digest(t) = v;
+        put-text(k, t);
+      }
+    },
+    get := {
+      function (k) {
+        try t = get-text(k);
+        Right(box {
+          letbox t = quote {t};
+          Module-Digest(t)
+        })
+      }
+    },
+  }
+}

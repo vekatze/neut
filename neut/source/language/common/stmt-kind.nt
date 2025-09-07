@@ -1,0 +1,209 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.instance.bool {bool-sero},
+  sero.instance.list {list-sero},
+  sero.put-kit {put-kit},
+  sero.sero {Sero, sero},
+  this.language.common.binder {binder-f},
+  this.language.common.definite-description {definite-description},
+  this.language.common.discriminant {discriminant, discriminant-sero},
+  this.language.common.is-const-like {is-const-like},
+  this.language.common.opacity {Clear, Opaque, opacity, opacity-sero},
+  this.logger.hint {hint},
+  this.logger.sero.hint {hint-sero},
+}
+
+data cons-info(name, binder) {
+| Cons-Info(
+    loc: hint,
+    cons-name: name,
+    is-const-like: is-const-like,
+    cons-params: list(binder),
+    tag: discriminant,
+  )
+}
+
+data base-stmt-kind(name, binder, t) {
+| Normal(opacity)
+| Main(opacity, t)
+| Data(
+    variant-type: name,
+    variant-params: list(binder),
+    constructors: list(cons-info(name, binder)),
+  )
+| Data-Intro(
+    cons-name: name,
+    data-params: list(binder),
+    cons-params: list(binder),
+    tag: discriminant,
+  )
+}
+
+inline stmt-kind(a: type): type {
+  base-stmt-kind(definite-description, binder-f(a), a)
+}
+
+define to-opacity<n, b, t>(k: &base-stmt-kind(n, b, t)): opacity {
+  case k {
+  | Normal(o) =>
+    *o
+  | Main(o, _) =>
+    *o
+  | _ =>
+    Clear
+  }
+}
+
+define to-low-opacity<n, b, t>(k: &base-stmt-kind(n, b, t)): opacity {
+  case k {
+  | Normal(o) =>
+    *o
+  | Main(o, _) =>
+    *o
+  | Data of {} =>
+    Opaque // so as not to reduce recursive terms
+  | Data-Intro of {} =>
+    Clear
+  }
+}
+
+define cons-info-sero<n, b>(!name-sero: sero(n), !binder-sero: sero(b)): sero(cons-info(n, b)) {
+  Sero of {
+    put := {
+      function (k: &put-kit, v: &cons-info(n, b)) {
+        tie Cons-Info(loc, name, is-const-like, cons-params, tag) = v;
+        let Sero of {put := put-hint} = hint-sero;
+        let Sero of {put := put-name} = !name-sero;
+        let Sero of {put := put-bool} = bool-sero;
+        let Sero of {put := put-list} = list-sero(!binder-sero);
+        let Sero of {put := put-discriminant} = discriminant-sero;
+        put-hint(k, loc);
+        put-name(k, name);
+        put-bool(k, is-const-like);
+        put-list(k, cons-params);
+        put-discriminant(k, tag);
+      }
+    },
+    get := {
+      function (k) {
+        let Sero of {get := get-hint} = hint-sero;
+        let Sero of {get := get-name} = !name-sero;
+        let Sero of {get := get-bool} = bool-sero;
+        let Sero of {get := get-list} = list-sero(!binder-sero);
+        let Sero of {get := get-discriminant} = discriminant-sero;
+        try loc = get-hint(k);
+        try cons-name = get-name(k);
+        try is-const-like = get-bool(k);
+        try cons-params = get-list(k);
+        try tag = get-discriminant(k);
+        Right(box {
+          letbox loc = loc;
+          letbox cons-name = cons-name;
+          letbox is-const-like = is-const-like;
+          letbox cons-params = cons-params;
+          letbox tag = tag;
+          Cons-Info of {loc, cons-name, is-const-like, cons-params, tag}
+        })
+      }
+    },
+  }
+}
+
+define base-stmt-kind-sero<name, binder, t>(
+  !name-sero: sero(name),
+  !binder-sero: sero(binder),
+  !t-sero: sero(t),
+): sero(base-stmt-kind(name, binder, t)) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Normal(o) =>
+          let Sero of {put := put-opacity} = opacity-sero;
+          put-int64(k, 0);
+          put-opacity(k, o);
+        | Main(o, t) =>
+          let Sero of {put := put-opacity} = opacity-sero;
+          let Sero of {put := put-t} = !t-sero;
+          put-int64(k, 1);
+          put-opacity(k, o);
+          put-t(k, t);
+        | Data of {variant-type, variant-params, constructors} =>
+          let Sero of {put := put-name} = !name-sero;
+          let Sero of {put := put-list-binder} = list-sero(!binder-sero);
+          let Sero of {put := put-list-cons-info} = list-sero(cons-info-sero(!name-sero, !binder-sero));
+          put-int64(k, 2);
+          put-name(k, variant-type);
+          put-list-binder(k, variant-params);
+          put-list-cons-info(k, constructors);
+        | Data-Intro of {cons-name, data-params, cons-params, tag} =>
+          let Sero of {put := put-name} = !name-sero;
+          let Sero of {put := put-list-binder1} = list-sero(!binder-sero);
+          let Sero of {put := put-list-binder2} = list-sero(!binder-sero);
+          let Sero of {put := put-discriminant} = discriminant-sero;
+          put-int64(k, 3);
+          put-name(k, cons-name);
+          put-list-binder1(k, data-params);
+          put-list-binder2(k, cons-params);
+          put-discriminant(k, tag);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          let Sero of {get := get-opacity} = opacity-sero;
+          try o = get-opacity(k);
+          Right(box {
+            letbox o = o;
+            Normal(o)
+          })
+        | 1 =>
+          let Sero of {get := get-opacity} = opacity-sero;
+          let Sero of {get := get-t} = !t-sero;
+          try o = get-opacity(k);
+          try t = get-t(k);
+          Right(box {
+            letbox o = o;
+            letbox t = t;
+            Main(o, t)
+          })
+        | 2 =>
+          let Sero of {get := get-name} = !name-sero;
+          let Sero of {get := get-list-binder} = list-sero(!binder-sero);
+          let Sero of {get := get-list-cons-info} = list-sero(cons-info-sero(!name-sero, !binder-sero));
+          try variant-type = get-name(k);
+          try variant-params = get-list-binder(k);
+          try constructors = get-list-cons-info(k);
+          Right(box {
+            letbox variant-type = variant-type;
+            letbox variant-params = variant-params;
+            letbox constructors = constructors;
+            Data of {variant-type, variant-params, constructors}
+          })
+        | 3 =>
+          let Sero of {get := get-name} = !name-sero;
+          let Sero of {get := get-list-binder1} = list-sero(!binder-sero);
+          let Sero of {get := get-list-binder2} = list-sero(!binder-sero);
+          let Sero of {get := get-discriminant} = discriminant-sero;
+          try cons-name = get-name(k);
+          try data-params = get-list-binder1(k);
+          try cons-params = get-list-binder2(k);
+          try tag = get-discriminant(k);
+          Right(box {
+            letbox cons-name = cons-name;
+            letbox data-params = data-params;
+            letbox cons-params = cons-params;
+            letbox tag = tag;
+            Data-Intro of {cons-name, data-params, cons-params, tag}
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}

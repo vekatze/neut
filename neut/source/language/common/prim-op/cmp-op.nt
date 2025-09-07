@@ -1,0 +1,196 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.decode {decode},
+  sero.encode {encode},
+  sero.sero {Sero, sero},
+}
+
+data cmp-op {
+| Eql
+| Neq
+| SGt
+| SGe
+| SLt
+| SLe
+| UGt
+| UGe
+| ULt
+| ULe
+| FOEq
+| FONe
+| FOGt
+| FOGe
+| FOLt
+| FOLe
+| FUEq
+| FUGt
+| FUGe
+| FULt
+| FULe
+| FUNe
+| FOrd
+| FUno
+| FTrue
+| FFalse
+}
+
+define icmp(x: &text): text {
+  core.text.append("icmp ", x)
+}
+
+define fcmp(x: &text): text {
+  core.text.append("fcmp ", x)
+}
+
+define show-cmp-op(op: &cmp-op): text {
+  case op {
+  | Eql =>
+    icmp("eq")
+  | Neq =>
+    icmp("ne")
+  | SGt =>
+    icmp("sgt")
+  | SGe =>
+    icmp("sge")
+  | SLt =>
+    icmp("slt")
+  | SLe =>
+    icmp("sle")
+  | UGt =>
+    icmp("ugt")
+  | UGe =>
+    icmp("uge")
+  | ULt =>
+    icmp("ult")
+  | ULe =>
+    icmp("ule")
+  | FOEq =>
+    fcmp("oeq")
+  | FONe =>
+    fcmp("one")
+  | FOGt =>
+    fcmp("ogt")
+  | FOGe =>
+    fcmp("oge")
+  | FOLt =>
+    fcmp("olt")
+  | FOLe =>
+    fcmp("ole")
+  | FUEq =>
+    fcmp("ueq")
+  | FUGt =>
+    fcmp("ugt")
+  | FUGe =>
+    fcmp("uge")
+  | FULt =>
+    fcmp("ult")
+  | FULe =>
+    fcmp("ule")
+  | FUNe =>
+    fcmp("une")
+  | FOrd =>
+    fcmp("ord")
+  | FUno =>
+    fcmp("uno")
+  | FTrue =>
+    fcmp("true")
+  | FFalse =>
+    fcmp("false")
+  }
+}
+
+define int-cmp-op-from-text(name: &text): ?cmp-op {
+  if eq-text(name, "eq") {
+    Right(Eql)
+  } else-if eq-text(name, "ne") {
+    Right(Neq)
+  } else-if eq-text(name, "gt") {
+    Right(SGt)
+  } else-if eq-text(name, "ge") {
+    Right(SGe)
+  } else-if eq-text(name, "lt") {
+    Right(SLt)
+  } else-if eq-text(name, "le") {
+    Right(SLe)
+  } else-if eq-text(name, "ugt") {
+    Right(UGt)
+  } else-if eq-text(name, "uge") {
+    Right(UGe)
+  } else-if eq-text(name, "ult") {
+    Right(ULt)
+  } else-if eq-text(name, "ule") {
+    Right(ULe)
+  } else {
+    none
+  }
+}
+
+define float-cmp-op-from-text(name: &text): ?cmp-op {
+  if eq-text(name, "eq") {
+    Right(FOEq)
+  } else-if eq-text(name, "ne") {
+    Right(FONe)
+  } else-if eq-text(name, "gt") {
+    Right(FOGt)
+  } else-if eq-text(name, "ge") {
+    Right(FOGe)
+  } else-if eq-text(name, "lt") {
+    Right(FOLt)
+  } else-if eq-text(name, "le") {
+    Right(FOLe)
+  } else-if eq-text(name, "ueq") {
+    Right(FUEq)
+  } else-if eq-text(name, "une") {
+    Right(FUNe)
+  } else-if eq-text(name, "ugt") {
+    Right(FUGt)
+  } else-if eq-text(name, "uge") {
+    Right(FUGe)
+  } else-if eq-text(name, "ult") {
+    Right(FULt)
+  } else-if eq-text(name, "ule") {
+    Right(FULe)
+  } else-if eq-text(name, "ord") {
+    Right(FOrd)
+  } else-if eq-text(name, "uno") {
+    Right(FUno)
+  } else-if eq-text(name, "true") {
+    Right(FTrue)
+  } else-if eq-text(name, "false") {
+    Right(FFalse)
+  } else {
+    none
+  }
+}
+
+inline cmp-op-sero: sero(cmp-op) {
+  Sero of {
+    put := {
+      function (k, v) {
+        put-int64(k, magic cast(&cmp-op, int, v));
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        if and(le-int(0, tag), le-int(tag, 25)) {
+          Right(quote {magic cast(int, cmp-op, tag)})
+        } else {
+          none
+        }
+      }
+    },
+  }
+}
+
+define zen(): unit {
+  pin val = Eql;
+  let k = encode(cmp-op-sero, val, 123);
+  pin result = decode(cmp-op-sero, k);
+  vet(result);
+  pin val = FFalse;
+  let k = encode(cmp-op-sero, val, 123);
+  pin result = decode(cmp-op-sero, k);
+  vet(result);
+}

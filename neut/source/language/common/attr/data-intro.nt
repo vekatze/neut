@@ -1,0 +1,53 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.instance.bool {bool-sero},
+  sero.instance.list {list-sero},
+  sero.instance.pair {pair-sero},
+  sero.sero {Sero, sero},
+  this.language.common.discriminant {Discriminant, discriminant},
+  this.language.common.is-const-like {is-const-like},
+}
+
+data attr-data-intro(name) {
+| Attr-Data-Intro(
+    data-name: name,
+    cons-name-list: list(pair(name, is-const-like)),
+    discriminant: discriminant,
+    is-const-like: is-const-like,
+  )
+}
+
+inline attr-data-intro-sero<name>(!name-sero: sero(name)): sero(attr-data-intro(name)) {
+  let Sero of {put := put-cons-names, get := get-cons-names} = list-sero(pair-sero(!name-sero, bool-sero));
+  let Sero of {put := put-name, get := get-name} = !name-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        let Sero of {put := put-bool} = bool-sero;
+        tie Attr-Data-Intro(data-name, cons-name-list, Discriminant(discriminant), is-const-like) = v;
+        put-name(k, data-name);
+        put-cons-names(k, cons-name-list);
+        put-int64(k, *discriminant);
+        put-bool(k, is-const-like);
+      }
+    },
+    get := {
+      function (k) {
+        let Sero of {get := get-bool} = bool-sero;
+        try data-name = get-name(k);
+        try cons-name-list = get-cons-names(k);
+        try discriminant = get-int64(k);
+        try is-const-like = get-bool(k);
+        Right(box {
+          letbox data-name = data-name;
+          letbox cons-name-list = cons-name-list;
+          letbox discriminant = quote {discriminant};
+          letbox is-const-like = is-const-like;
+          let discriminant = Discriminant(discriminant);
+          Attr-Data-Intro(data-name, cons-name-list, discriminant, is-const-like)
+        })
+      }
+    },
+  }
+}

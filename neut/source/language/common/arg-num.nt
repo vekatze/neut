@@ -1,0 +1,54 @@
+import {
+  sero.get-kit {get-kit},
+  sero.instance.int64 {int64-sero},
+  sero.put-kit {put-kit},
+  sero.sero {Sero, sero},
+}
+
+data arg-num {
+| Arg-Num(int)
+}
+
+define arg-num-from-int(x: int): arg-num {
+  Arg-Num(x)
+}
+
+define zero: arg-num {
+  Arg-Num(0)
+}
+
+define arg-num-S4: arg-num {
+  Arg-Num(2)
+}
+
+define add-arg-num(x: arg-num, y: arg-num): arg-num {
+  let Arg-Num(x) = x;
+  let Arg-Num(y) = y;
+  Arg-Num(add-int(x, y))
+}
+
+define succ-arg-num(x: arg-num): arg-num {
+  add-arg-num(x, Arg-Num(1))
+}
+
+define _put(k: &put-kit, v: &arg-num): unit {
+  tie Arg-Num(x) = v;
+  let Sero of {put} = int64-sero;
+  put(k, x);
+}
+
+define _get(k: &get-kit): ?meta arg-num {
+  let Sero of {get} = int64-sero;
+  try v = get(k);
+  Right(box {
+    letbox v = v;
+    Arg-Num(v)
+  })
+}
+
+inline arg-num-sero: sero(arg-num) {
+  Sero of {
+    put := _put,
+    get := _get,
+  }
+}

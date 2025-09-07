@@ -1,0 +1,35 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+}
+
+data discriminant {
+| Discriminant(int)
+}
+
+define zero-discriminant: discriminant {
+  Discriminant(0)
+}
+
+define increment-discriminant(d: discriminant): discriminant {
+  let Discriminant(x) = d;
+  Discriminant(add-int(x, 1))
+}
+
+inline discriminant-sero: sero(discriminant) {
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Discriminant(x) = v;
+        put-int64(k, *x);
+      }
+    },
+    get := {
+      function (k) {
+        try x = get-int64(k);
+        Right(quote {Discriminant(x)})
+      }
+    },
+  }
+}

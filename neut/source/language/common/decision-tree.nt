@@ -1,0 +1,227 @@
+import {
+  core.list {filter-some, for-each-N},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.instance.bool {bool-sero},
+  sero.instance.list {list-sero},
+  sero.instance.pair {pair-sero},
+  sero.sero {Sero, sero},
+  this.language.common.binder {binder-f, binder-sero},
+  this.language.common.definite-description {definite-description, definite-description-sero},
+  this.language.common.discriminant {discriminant, discriminant-sero},
+  this.language.common.ident {ident, ident-sero},
+  this.language.common.is-const-like {is-const-like},
+  this.language.common.literal {literal, literal-sero},
+  this.logger.hint {hint},
+  this.logger.sero.hint {hint-sero},
+}
+
+nominal {
+  case-list(a: type): type,
+}
+
+data decision-tree(a) {
+| Leaf(list(ident), list(pair(binder-f(a), a)), a)
+| Unreachable
+| Switch(pair(ident, a), case-list(a))
+}
+
+data tree-case(a) {
+| Cons-Case(
+    m-cons: hint,
+    cons-dd: definite-description,
+    is-const-like: is-const-like,
+    disc: discriminant,
+    data-args: list(pair(a, a)),
+    cons-params: list(binder-f(a)),
+    cont: decision-tree(a),
+  )
+| Literal-Case(hint, literal, decision-tree(a))
+}
+
+inline case-list(a: type): type {
+  pair(decision-tree(a), list(tree-case(a)))
+}
+
+define get-constructors<a>(cs: &list(tree-case(a))): list(pair(&definite-description, &is-const-like)) {
+  filter-some(for-each-N(cs, function (c) {
+    case c {
+    | Cons-Case of {cons-dd, is-const-like} =>
+      Right(Pair(cons-dd, is-const-like))
+    | Literal-Case of {} =>
+      none
+    }
+  }))
+}
+
+define is-unreachable<a>(tree: &decision-tree(a)): bool {
+  case tree {
+  | Unreachable =>
+    True
+  | _ =>
+    False
+  }
+}
+
+define find-case<a>(cons-disc: &discriminant, c: &tree-case(a)): ?pair(&list(binder-f(a)), &decision-tree(a)) {
+  case c {
+  | Literal-Case of {} =>
+    none
+  | Cons-Case of {disc, cons-params, cont} =>
+    if eq-data(cons-disc, disc) {
+      Right(Pair(cons-params, cont))
+    } else {
+      none
+    }
+  }
+}
+
+nominal {
+  case-list-sero<a>(!a-sero: sero(a)): sero(case-list(a)),
+}
+
+inline decision-tree-sero<a>(!a-sero: sero(a)): sero(decision-tree(a)) {
+  let Sero of {put, get} = !a-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Leaf(idents, binder-pairs, result) =>
+          let Sero of {put := put-list-ident} = list-sero(ident-sero);
+          let Sero of {put := put-list-binder-pair} = list-sero(pair-sero(binder-sero(!a-sero), !a-sero));
+          put-int64(k, 0);
+          put-list-ident(k, idents);
+          put-list-binder-pair(k, binder-pairs);
+          put(k, result);
+        | Unreachable =>
+          put-int64(k, 1);
+        | Switch(ident-pair, case-list) =>
+          let Sero of {put := put-pair} = pair-sero(ident-sero, !a-sero);
+          let Sero of {put := put-case-list} = case-list-sero(!a-sero);
+          put-int64(k, 2);
+          put-pair(k, ident-pair);
+          put-case-list(k, case-list);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          let Sero of {get := get-list-ident} = list-sero(ident-sero);
+          let Sero of {get := get-list-binder-pair} = list-sero(pair-sero(binder-sero(!a-sero), !a-sero));
+          try idents = get-list-ident(k);
+          try binder-pairs = get-list-binder-pair(k);
+          try result = get(k);
+          Right(box {
+            letbox idents = idents;
+            letbox binder-pairs = binder-pairs;
+            letbox result = result;
+            Leaf(idents, binder-pairs, result)
+          })
+        | 1 =>
+          Right(box {Unreachable})
+        | 2 =>
+          let Sero of {get := get-pair} = pair-sero(ident-sero, !a-sero);
+          let Sero of {get := get-case-list} = case-list-sero(!a-sero);
+          try ident-pair = get-pair(k);
+          try case-list = get-case-list(k);
+          Right(box {
+            letbox ident-pair = ident-pair;
+            letbox case-list = case-list;
+            Switch(ident-pair, case-list)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}
+
+inline tree-case-sero<a>(!a-sero: sero(a)): sero(tree-case(a)) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Cons-Case of {m-cons, cons-dd, is-const-like, disc, data-args, cons-params, cont} =>
+          let Sero of {put := put-hint} = hint-sero;
+          let Sero of {put := put-definite-description} = definite-description-sero;
+          let Sero of {put := put-bool} = bool-sero;
+          let Sero of {put := put-discriminant} = discriminant-sero;
+          let Sero of {put := put-list-pair} = list-sero(pair-sero(!a-sero, !a-sero));
+          let Sero of {put := put-list-binder} = list-sero(binder-sero(!a-sero));
+          let Sero of {put := put-decision-tree} = decision-tree-sero(!a-sero);
+          put-int64(k, 0);
+          put-hint(k, m-cons);
+          put-definite-description(k, cons-dd);
+          put-bool(k, is-const-like);
+          put-discriminant(k, disc);
+          put-list-pair(k, data-args);
+          put-list-binder(k, cons-params);
+          put-decision-tree(k, cont);
+        | Literal-Case(m, lit, tree) =>
+          let Sero of {put := put-hint} = hint-sero;
+          let Sero of {put := put-literal} = literal-sero;
+          let Sero of {put := put-decision-tree} = decision-tree-sero(!a-sero);
+          put-int64(k, 1);
+          put-hint(k, m);
+          put-literal(k, lit);
+          put-decision-tree(k, tree);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          let Sero of {get := get-hint} = hint-sero;
+          let Sero of {get := get-definite-description} = definite-description-sero;
+          let Sero of {get := get-bool} = bool-sero;
+          let Sero of {get := get-discriminant} = discriminant-sero;
+          let Sero of {get := get-list-pair} = list-sero(pair-sero(!a-sero, !a-sero));
+          let Sero of {get := get-list-binder} = list-sero(binder-sero(!a-sero));
+          let Sero of {get := get-decision-tree} = decision-tree-sero(!a-sero);
+          try m-cons = get-hint(k);
+          try cons-dd = get-definite-description(k);
+          try is-const-like = get-bool(k);
+          try disc = get-discriminant(k);
+          try data-args = get-list-pair(k);
+          try cons-params = get-list-binder(k);
+          try cont = get-decision-tree(k);
+          Right(box {
+            letbox m-cons = m-cons;
+            letbox cons-dd = cons-dd;
+            letbox is-const-like = is-const-like;
+            letbox disc = disc;
+            letbox data-args = data-args;
+            letbox cons-params = cons-params;
+            letbox cont = cont;
+            Cons-Case of {m-cons, cons-dd, is-const-like, disc, data-args, cons-params, cont}
+          })
+        | 1 =>
+          let Sero of {get := get-hint} = hint-sero;
+          let Sero of {get := get-literal} = literal-sero;
+          let Sero of {get := get-decision-tree} = decision-tree-sero(!a-sero);
+          try m = get-hint(k);
+          try lit = get-literal(k);
+          try tree = get-decision-tree(k);
+          Right(box {
+            letbox m = m;
+            letbox lit = lit;
+            letbox tree = tree;
+            Literal-Case(m, lit, tree)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}
+
+inline case-list-sero<a>(!a-sero: sero(a)): sero(case-list(a)) {
+  pair-sero(decision-tree-sero(!a-sero), list-sero(tree-case-sero(!a-sero)))
+}

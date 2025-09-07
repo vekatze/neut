@@ -1,0 +1,41 @@
+import {
+  sero.sero {Sero, sero},
+  this.language.common.ident {ident, ident-sero},
+  this.logger.hint {hint},
+  this.logger.sero.hint {hint-sero},
+}
+
+data binder-f(a) {
+| Binder-F(hint, ident, a)
+}
+
+inline binder-sero<a>(s: sero(a)): sero(binder-f(a)) {
+  let Sero of {put, get} = s;
+  Sero of {
+    put := {
+      function (k, v) {
+        let Sero of {put := put-hint} = hint-sero;
+        let Sero of {put := put-ident} = ident-sero;
+        tie Binder-F(m, x, val) = v;
+        put-hint(k, m);
+        put-ident(k, x);
+        put(k, val);
+      }
+    },
+    get := {
+      function (k) {
+        let Sero of {get := get-hint} = hint-sero;
+        let Sero of {get := get-ident} = ident-sero;
+        try m = get-hint(k);
+        try x = get-ident(k);
+        try val = get(k);
+        Right(box {
+          letbox m = m;
+          letbox x = x;
+          letbox val = val;
+          Binder-F(m, x, val)
+        })
+      }
+    },
+  }
+}

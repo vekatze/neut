@@ -1,0 +1,58 @@
+import {
+  core.box {axiom-T},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+  this.language.common.prim-num-size {float-size, float-size-sero, int-size, int-size-sero},
+}
+
+data prim-type {
+| Int(int-size)
+| Float(float-size)
+| Rune
+| Pointer
+}
+
+inline prim-type-sero: sero(prim-type) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Int(s) =>
+          let Sero of {put} = int-size-sero;
+          put-int64(k, 0);
+          put(k, s)
+        | Float(s) =>
+          let Sero of {put} = float-size-sero;
+          put-int64(k, 1);
+          put(k, s)
+        | Rune =>
+          put-int64(k, 2);
+        | Pointer =>
+          put-int64(k, 3);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          let Sero of {get} = int-size-sero;
+          try v = get(k);
+          Right(quote {Int(axiom-T(v))})
+        | 1 =>
+          let Sero of {get} = float-size-sero;
+          try v = get(k);
+          Right(quote {Float(axiom-T(v))})
+        | 2 =>
+          Right(quote {Rune})
+        | 3 =>
+          Right(quote {Pointer})
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}

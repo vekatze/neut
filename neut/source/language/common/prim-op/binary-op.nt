@@ -1,0 +1,135 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+}
+
+data binary-op {
+| Add
+| Sub
+| Mul
+| SDiv
+| SRem
+| UDiv
+| URem
+| And
+| Or
+| Xor
+| Shl
+| Lshr
+| Ashr
+| FAdd
+| FSub
+| FMul
+| FDiv
+| FRem
+}
+
+define show-binary-op(op: binary-op): &text {
+  match op {
+  | Add =>
+    "add"
+  | Sub =>
+    "sub"
+  | Mul =>
+    "mul"
+  | SDiv =>
+    "sdiv"
+  | SRem =>
+    "srem"
+  | UDiv =>
+    "udiv"
+  | URem =>
+    "urem"
+  | And =>
+    "and"
+  | Or =>
+    "or"
+  | Xor =>
+    "xor"
+  | Shl =>
+    "shl"
+  | Lshr =>
+    "lshr"
+  | Ashr =>
+    "ashr"
+  | FAdd =>
+    "fadd"
+  | FSub =>
+    "fsub"
+  | FMul =>
+    "fmul"
+  | FDiv =>
+    "fdiv"
+  | FRem =>
+    "frem"
+  }
+}
+
+define binary-int-op-from-text(name: &text): ?binary-op {
+  if eq-text(name, "add") {
+    Right(Add)
+  } else-if eq-text(name, "sub") {
+    Right(Sub)
+  } else-if eq-text(name, "mul") {
+    Right(Mul)
+  } else-if eq-text(name, "div") {
+    Right(SDiv)
+  } else-if eq-text(name, "rem") {
+    Right(SRem)
+  } else-if eq-text(name, "udiv") {
+    Right(UDiv)
+  } else-if eq-text(name, "urem") {
+    Right(URem)
+  } else-if eq-text(name, "and") {
+    Right(And)
+  } else-if eq-text(name, "or") {
+    Right(Or)
+  } else-if eq-text(name, "xor") {
+    Right(Xor)
+  } else-if eq-text(name, "shl") {
+    Right(Shl)
+  } else-if eq-text(name, "lshr") {
+    Right(Lshr)
+  } else-if eq-text(name, "ashr") {
+    Right(Ashr)
+  } else {
+    none
+  }
+}
+
+define binary-float-op-from-text(name: &text): ?binary-op {
+  if eq-text(name, "add") {
+    Right(FAdd)
+  } else-if eq-text(name, "sub") {
+    Right(FSub)
+  } else-if eq-text(name, "mul") {
+    Right(FMul)
+  } else-if eq-text(name, "div") {
+    Right(FDiv)
+  } else-if eq-text(name, "rem") {
+    Right(FRem)
+  } else {
+    none
+  }
+}
+
+inline binary-op-sero: sero(binary-op) {
+  Sero of {
+    put := {
+      function (k, v) {
+        put-int64(k, magic cast(&binary-op, int, v));
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        if and(le-int(0, tag), le-int(tag, 17)) {
+          Right(quote {magic cast(int, binary-op, tag)})
+        } else {
+          none
+        }
+      }
+    },
+  }
+}

@@ -1,0 +1,21 @@
+import {
+  this.language.common.local-locator {eq-local-locator, local-locator},
+  this.logger.hint {hint},
+}
+
+inline unused-local-locators: type {
+  list(pair(local-locator, hint))
+}
+
+define is-used-LL(haystack: &unused-local-locators, needle: &local-locator): bool {
+  case haystack {
+  | Nil =>
+    True
+  | Cons(Pair(ll, _), rest) =>
+    if eq-local-locator(ll, needle) {
+      False
+    } else {
+      is-used-LL(rest, needle)
+    }
+  }
+}

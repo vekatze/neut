@@ -1,0 +1,158 @@
+import {
+  core.box {axiom-T},
+  sero.get-kit {get-kit},
+  sero.instance.int64 {int64-sero},
+  sero.put-kit {put-kit},
+  sero.sero {Sero, sero},
+  this.language.common.data-size {Data-Size-64, data-size, data-size-max, int-from-data-size},
+}
+
+data int-size {
+| Int-Size-1
+| Int-Size-2
+| Int-Size-4
+| Int-Size-8
+| Int-Size-16
+| Int-Size-32
+| Int-Size-64
+}
+
+data float-size {
+| Float-Size-16
+| Float-Size-32
+| Float-Size-64
+}
+
+define int-size-from-data-size(x: data-size): int-size {
+  match x {
+  | Data-Size-64 =>
+    Int-Size-64
+  }
+}
+
+define float-size-from-data-size(x: data-size): float-size {
+  match x {
+  | Data-Size-64 =>
+    Float-Size-64
+  }
+}
+
+define int-size-from-int(d: data-size, size: int): ?int-size {
+  if lt-int(int-from-data-size(d), size) {
+    none
+  } else {
+    match size {
+    | 1 =>
+      Right(Int-Size-1)
+    | 2 =>
+      Right(Int-Size-2)
+    | 4 =>
+      Right(Int-Size-4)
+    | 8 =>
+      Right(Int-Size-8)
+    | 16 =>
+      Right(Int-Size-16)
+    | 32 =>
+      Right(Int-Size-32)
+    | 64 =>
+      Right(Int-Size-64)
+    | _ =>
+      none
+    }
+  }
+}
+
+define float-size-from-int(d: data-size, size: int): ?float-size {
+  if lt-int(int-from-data-size(d), size) {
+    none
+  } else {
+    match size {
+    | 16 =>
+      Right(Float-Size-16)
+    | 32 =>
+      Right(Float-Size-32)
+    | 64 =>
+      Right(Float-Size-64)
+    | _ =>
+      none
+    }
+  }
+}
+
+define int-from-int-size(x: int-size): int {
+  match x {
+  | Int-Size-1 =>
+    1
+  | Int-Size-2 =>
+    2
+  | Int-Size-4 =>
+    4
+  | Int-Size-8 =>
+    8
+  | Int-Size-16 =>
+    16
+  | Int-Size-32 =>
+    32
+  | Int-Size-64 =>
+    64
+  }
+}
+
+define int-from-float-size(x: float-size): int {
+  match x {
+  | Float-Size-16 =>
+    16
+  | Float-Size-32 =>
+    32
+  | Float-Size-64 =>
+    64
+  }
+}
+
+inline int-size-sero: sero(int-size) {
+  Sero of {
+    put := {
+      function (k: &put-kit, v: &int-size) {
+        let Sero of {put} = int64-sero;
+        pin v = int-from-int-size(*v);
+        put(k, v)
+      }
+    },
+    get := {
+      function (k: &get-kit) {
+        let Sero of {get} = int64-sero;
+        try v = get(k);
+        match int-size-from-int(data-size-max, axiom-T(v)) {
+        | Right(s) =>
+          Right(quote {s})
+        | Left(_) =>
+          none
+        }
+      }
+    },
+  }
+}
+
+inline float-size-sero: sero(float-size) {
+  Sero of {
+    put := {
+      function (k: &put-kit, v: &float-size) {
+        let Sero of {put} = int64-sero;
+        pin v = int-from-float-size(*v);
+        put(k, v)
+      }
+    },
+    get := {
+      function (k: &get-kit) {
+        let Sero of {get} = int64-sero;
+        try v = get(k);
+        match float-size-from-int(data-size-max, axiom-T(v)) {
+        | Right(s) =>
+          Right(quote {s})
+        | Left(_) =>
+          none
+        }
+      }
+    },
+  }
+}

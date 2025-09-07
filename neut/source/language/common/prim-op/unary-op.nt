@@ -1,0 +1,37 @@
+import {
+  sero.sero {Sero, sero},
+}
+
+data unary-op {
+| FNeg
+}
+
+define show-unary-op(x: &unary-op): &text {
+  case x {
+  | FNeg =>
+    "fneg"
+  }
+}
+
+define unary-op-from-text(name: &text): ?unary-op {
+  if eq-text(name, "fneg") {
+    Right(FNeg)
+  } else {
+    none
+  }
+}
+
+inline unary-op-sero: sero(unary-op) {
+  Sero of {
+    put := {
+      function (_, _) {
+        Unit
+      }
+    },
+    get := {
+      function (_) {
+        Right(box {FNeg})
+      }
+    },
+  }
+}

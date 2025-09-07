@@ -1,0 +1,115 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+  this.language.common.prim-op.binary-op {binary-op, binary-op-sero},
+  this.language.common.prim-op.cmp-op {cmp-op, cmp-op-sero},
+  this.language.common.prim-op.conv-op {conv-op, conv-op-sero},
+  this.language.common.prim-op.unary-op {unary-op, unary-op-sero},
+  this.language.common.prim-type {prim-type, prim-type-sero},
+}
+
+data prim-op {
+| Prim-Unary-Op(unary-op, prim-type, prim-type)
+| Prim-Binary-Op(binary-op, prim-type, prim-type)
+| Prim-Cmp-Op(cmp-op, prim-type, prim-type)
+| Prim-Conv-Op(conv-op, prim-type, prim-type)
+}
+
+define get-type-info(op: &prim-op): pair(list(&prim-type), &prim-type) {
+  case op {
+  | Prim-Unary-Op(_, dom, cod) =>
+    Pair(List[dom], cod)
+  | Prim-Binary-Op(_, dom, cod) =>
+    Pair(List[dom, dom], cod)
+  | Prim-Cmp-Op(_, dom, cod) =>
+    Pair(List[dom, dom], cod)
+  | Prim-Conv-Op(_, dom, cod) =>
+    Pair(List[dom], cod)
+  }
+}
+
+inline prim-op-sero: sero(prim-op) {
+  let Sero of {put := !put-unary, get := !get-unary} = unary-op-sero;
+  let Sero of {put := !put-binary, get := !get-binary} = binary-op-sero;
+  let Sero of {put := !put-cmp, get := !get-cmp} = cmp-op-sero;
+  let Sero of {put := !put-conv, get := !get-conv} = conv-op-sero;
+  let Sero of {put := !put-pt, get := !get-pt} = prim-type-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Prim-Unary-Op(op, dom, cod) =>
+          put-int64(k, 0);
+          !put-unary(k, op);
+          !put-pt(k, dom);
+          !put-pt(k, cod);
+        | Prim-Binary-Op(op, dom, cod) =>
+          put-int64(k, 1);
+          !put-binary(k, op);
+          !put-pt(k, dom);
+          !put-pt(k, cod);
+        | Prim-Cmp-Op(op, dom, cod) =>
+          put-int64(k, 2);
+          !put-cmp(k, op);
+          !put-pt(k, dom);
+          !put-pt(k, cod);
+        | Prim-Conv-Op(op, dom, cod) =>
+          put-int64(k, 3);
+          !put-conv(k, op);
+          !put-pt(k, dom);
+          !put-pt(k, cod);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          try op = !get-unary(k);
+          try dom = !get-pt(k);
+          try cod = !get-pt(k);
+          Right(box {
+            letbox op = op;
+            letbox dom = dom;
+            letbox cod = cod;
+            Prim-Unary-Op(op, dom, cod)
+          })
+        | 1 =>
+          try op = !get-binary(k);
+          try dom = !get-pt(k);
+          try cod = !get-pt(k);
+          Right(box {
+            letbox op = op;
+            letbox dom = dom;
+            letbox cod = cod;
+            Prim-Binary-Op(op, dom, cod)
+          })
+        | 2 =>
+          try op = !get-cmp(k);
+          try dom = !get-pt(k);
+          try cod = !get-pt(k);
+          Right(box {
+            letbox op = op;
+            letbox dom = dom;
+            letbox cod = cod;
+            Prim-Cmp-Op(op, dom, cod)
+          })
+        | 3 =>
+          try op = !get-conv(k);
+          try dom = !get-pt(k);
+          try cod = !get-pt(k);
+          Right(box {
+            letbox op = op;
+            letbox dom = dom;
+            letbox cod = cod;
+            Prim-Conv-Op(op, dom, cod)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}

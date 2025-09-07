@@ -1,0 +1,57 @@
+import {
+  sero.sero {Sero, sero},
+  this.language.common.const {ns-sep},
+  this.language.common.module-id {Base, module-id, module-id-sero, text-from-module-id},
+  this.language.common.source-locator {llvm-locator, source-locator, source-locator-sero, text-from-source-locator},
+}
+
+data strict-global-locator {
+| Strict-Global-Locator(
+    module-id: module-id,
+    source-locator: source-locator,
+  )
+}
+
+define text-from-strict-global-locator(gl: &strict-global-locator): text {
+  tie Strict-Global-Locator(module-id, source-locator) = gl;
+  let tmp = text-from-module-id(module-id);
+  pin tmp = core.text.append(tmp, ns-sep);
+  pin sl-text = text-from-source-locator(source-locator);
+  core.text.append(tmp, sl-text)
+}
+
+inline llvm-global-locator(): strict-global-locator {
+  Strict-Global-Locator(Base, llvm-locator())
+}
+
+define sgl-from-source-locator(sl: source-locator): strict-global-locator {
+  Strict-Global-Locator of {
+    module-id := Base,
+    source-locator := sl,
+  }
+}
+
+inline strict-global-locator-sero: sero(strict-global-locator) {
+  let Sero of {put := put-mid, get := get-mid} = module-id-sero;
+  let Sero of {put := put-sl, get := get-sl} = source-locator-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Strict-Global-Locator(mid, sl) = v;
+        put-mid(k, mid);
+        put-sl(k, sl);
+      }
+    },
+    get := {
+      function (k) {
+        try mid = get-mid(k);
+        try sl = get-sl(k);
+        Right(box {
+          letbox mid = mid;
+          letbox sl = sl;
+          Strict-Global-Locator(mid, sl)
+        })
+      }
+    },
+  }
+}

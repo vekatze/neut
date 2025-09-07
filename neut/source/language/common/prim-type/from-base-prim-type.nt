@@ -1,0 +1,42 @@
+import {
+  this.language.common.base-prim-type {Explicit, Float, Implicit, Int, base-prim-type},
+  this.language.common.prim-type {prim-type},
+}
+
+define prim-type-from-base-prim-type(bpt: base-prim-type): prim-type {
+  match bpt {
+  | Int(size) =>
+    match size {
+    | Explicit(s) =>
+      this.language.common.prim-type.Int(s)
+    | Implicit(s) =>
+      this.language.common.prim-type.Int(s)
+    }
+  | Float(size) =>
+    match size {
+    | Explicit(s) =>
+      this.language.common.prim-type.Float(s)
+    | Implicit(s) =>
+      this.language.common.prim-type.Float(s)
+    }
+  }
+}
+
+define prim-type-from-base-prim-type-N(bpt: &base-prim-type): prim-type {
+  case bpt {
+  | Int(size) =>
+    case size {
+    | Explicit(s) =>
+      this.language.common.prim-type.Int(*s)
+    | Implicit(s) =>
+      this.language.common.prim-type.Int(*s)
+    }
+  | Float(size) =>
+    case size {
+    | Explicit(s) =>
+      this.language.common.prim-type.Float(*s)
+    | Implicit(s) =>
+      this.language.common.prim-type.Float(*s)
+    }
+  }
+}

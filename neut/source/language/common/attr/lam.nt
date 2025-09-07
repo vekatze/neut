@@ -1,0 +1,61 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+  this.language.common.binder {binder-f},
+  this.language.common.lam-kind {Normal, from-lam-kind, lam-kind-f, lam-kind-sero},
+}
+
+inline _ID: type {
+  int
+}
+
+data attr-lam(a) {
+| Attr-Lam(
+    lam-kind: lam-kind-f(a),
+    identity: _ID,
+  )
+}
+
+define normal<a>(i: _ID, cod-type: a): attr-lam(a) {
+  Attr-Lam of {
+    lam-kind := Normal(none, cod-type),
+    identity := i,
+  }
+}
+
+define normal-with-name<a>(name: ?text, i: _ID, cod-type: a): attr-lam(a) {
+  Attr-Lam of {
+    lam-kind := Normal(name, cod-type),
+    identity := i,
+  }
+}
+
+define binder-from-attr-lam<a>(attr: &attr-lam(a)): ?&binder-f(a) {
+  tie Attr-Lam of {lam-kind} = attr;
+  from-lam-kind(lam-kind)
+}
+
+inline attr-lam-sero<a>(a-sero: sero(a)): sero(attr-lam(a)) {
+  let Sero of {put := put-lam-kind, get := get-lam-kind} = lam-kind-sero(a-sero);
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Attr-Lam(lam-kind, i) = v;
+        put-lam-kind(k, lam-kind);
+        put-int64(k, *i);
+      }
+    },
+    get := {
+      function (k) {
+        try lam-kind = get-lam-kind(k);
+        try i = get-int64(k);
+        Right(box {
+          letbox lam-kind = lam-kind;
+          letbox i = quote {i};
+          Attr-Lam(lam-kind, i)
+        })
+      }
+    },
+  }
+}

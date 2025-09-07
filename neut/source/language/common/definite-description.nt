@@ -1,0 +1,273 @@
+import {
+  core.text {split},
+  core.text-builder {append-text, make-text-builder, text-builder},
+  core.trick {panic},
+  sero.common.get {get-text},
+  sero.common.put {put-text},
+  sero.sero {Sero, sero},
+  this.app.app {app},
+  this.app.run {raise-error},
+  this.language.common.base-name {
+    base-name,
+    base-name-by-split,
+    cls,
+    form,
+    imm-float16,
+    imm-float32,
+    imm-float64,
+    imm-int1,
+    imm-int16,
+    imm-int2,
+    imm-int32,
+    imm-int4,
+    imm-int64,
+    imm-int8,
+    imm-noema,
+    imm-null,
+    imm-pointer,
+    imm-rune,
+    imm-type,
+    leaf,
+    node,
+    root,
+    text-from-base-name,
+  },
+  this.language.common.const {ns-sep},
+  this.language.common.global-locator {_global-locator-from-base-name-list, global-locator},
+  this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
+  this.language.common.module-digest {Module-Digest},
+  this.language.common.module-id {Base, Library, Main, module-id},
+  this.language.common.source-locator {internal-locator},
+  this.language.common.strict-global-locator {
+    sgl-from-source-locator,
+    strict-global-locator,
+    text-from-strict-global-locator,
+  },
+  this.logger.hint {hint, internal-hint},
+}
+
+data definite-description {
+| _Definite-Description(text)
+}
+
+define new-dd(gl: &strict-global-locator, ll: local-locator): definite-description {
+  pin tmp = text-from-strict-global-locator(gl);
+  pin tmp = core.text.append(tmp, ns-sep);
+  pin ll = text-from-local-locator(ll);
+  let tmp = core.text.append(tmp, ll);
+  _Definite-Description(tmp)
+}
+
+define _new-by-global-locator(gl: &strict-global-locator, name: base-name): definite-description {
+  new-dd(gl, make-local-locator(name))
+}
+
+define _get-form-dd(dd: &definite-description): definite-description {
+  tie _Definite-Description(t) = dd;
+  pin tmp = core.text.append(t, "#");
+  pin form = text-from-base-name(form);
+  let tmp = core.text.append(tmp, form);
+  _Definite-Description(tmp)
+}
+
+define _get-node-dd(dd: &definite-description): definite-description {
+  tie _Definite-Description(t) = dd;
+  pin tmp = core.text.append(t, "#");
+  pin node = text-from-base-name(node);
+  let tmp = core.text.append(tmp, node);
+  _Definite-Description(tmp)
+}
+
+define _get-leaf-dd(dd: &definite-description): definite-description {
+  tie _Definite-Description(t) = dd;
+  pin tmp = core.text.append(t, "#");
+  pin leaf = text-from-base-name(leaf);
+  let tmp = core.text.append(tmp, leaf);
+  _Definite-Description(tmp)
+}
+
+define _get-root-dd(dd: &definite-description): definite-description {
+  tie _Definite-Description(t) = dd;
+  pin tmp = core.text.append(t, "#");
+  pin root = text-from-base-name(root);
+  let tmp = core.text.append(tmp, root);
+  _Definite-Description(tmp)
+}
+
+define uncons-dd(dd: &definite-description): pair(module-id, text) {
+  tie _Definite-Description(t) = dd;
+  let names = split(t, ns-sep);
+  match names {
+  | Cons(head-elem, rest) =>
+    let b1 on head-elem = eq-text(head-elem, "this");
+    let b2 on head-elem = eq-text(head-elem, "base");
+    if b1 {
+      Pair(Main, core.text.intercalate(rest, *ns-sep))
+    } else-if b2 {
+      Pair(Base, core.text.intercalate(rest, *ns-sep))
+    } else {
+      Pair(Library(Module-Digest(head-elem)), core.text.intercalate(rest, *ns-sep))
+    }
+  | _ =>
+    panic("language.common.definite-description.uncons-dd")
+  }
+}
+
+define global-locator-from-dd(dd: &definite-description): text {
+  tie _Definite-Description(t) = dd;
+  let names = split(t, ns-sep);
+  match core.list.unsnoc(names) {
+  | Right(Pair(xs, _)) =>
+    core.text.intercalate(xs, *ns-sep)
+  | _ =>
+    panic("language.common.definite-description.global-locator-from-dd")
+  }
+}
+
+define local-locator-from-dd(dd: &definite-description): text {
+  tie _Definite-Description(t) = dd;
+  let names = split(t, ns-sep);
+  match core.list.unsnoc(names) {
+  | Right(Pair(_, last)) =>
+    last
+  | _ =>
+    panic("language.common.definite-description.local-locator-from-dd")
+  }
+}
+
+define imm-type-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-type)
+}
+
+define imm-noema-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-noema)
+}
+
+define imm-int1-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int1)
+}
+
+define imm-int2-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int2)
+}
+
+define imm-int4-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int4)
+}
+
+define imm-int8-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int8)
+}
+
+define imm-int16-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int16)
+}
+
+define imm-int32-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int32)
+}
+
+define imm-int64-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-int64)
+}
+
+define imm-float16-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-float16)
+}
+
+define imm-float32-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-float32)
+}
+
+define imm-float64-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-float64)
+}
+
+define imm-rune-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-rune)
+}
+
+define imm-pointer-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-pointer)
+}
+
+define imm-null-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, imm-null)
+}
+
+define cls-dd(): definite-description {
+  pin tmp = sgl-from-source-locator(internal-locator());
+  _new-by-global-locator(tmp, cls)
+}
+
+define append-dd(buf: &text-builder, dd: &definite-description): unit {
+  tie _Definite-Description(t) = dd;
+  append-text(buf, "\"");
+  append-text(buf, t);
+  append-text(buf, "\"");
+}
+
+define get-locator-pair(m: &hint, var-text: &text): app(pair(global-locator, local-locator)) {
+  try names = base-name-by-split(m, var-text);
+  match core.list.unsnoc(names) {
+  | Left(_) =>
+    raise-error(*m, *"lanugage.common.definite-description.get-locator-pair: empty variable name")
+  | Right(Pair(Nil, _)) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "The symbol `");
+      append-text(buf, var-text);
+      append-text(buf, "` does not contain a global locator");
+    };
+    raise-error(*m, core.text-builder.extract(buf))
+  | Right(Pair(init-elems, last-elem)) =>
+    try gl = _global-locator-from-base-name-list(m, init-elems);
+    let ll = make-local-locator(last-elem);
+    Right(Pair(gl, ll))
+  }
+}
+
+inline llvm-global-locator-text: &text {
+  "base.llvm"
+}
+
+inline definite-description-sero: sero(definite-description) {
+  Sero of {
+    put := {
+      function (k, v) {
+        tie _Definite-Description(t) = v;
+        put-text(k, t);
+      }
+    },
+    get := {
+      function (k) {
+        try t = get-text(k);
+        Right(box {
+          letbox t = quote {t};
+          _Definite-Description(t)
+        })
+      }
+    },
+  }
+}
+
+define zen(): unit {
+  pin m = internal-hint;
+  pin v = get-locator-pair(m, "core.either.Left");
+  vet(v);
+}

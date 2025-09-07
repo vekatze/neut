@@ -1,0 +1,41 @@
+import {
+  sero.instance.bool {bool-sero},
+  sero.sero {Sero, sero},
+  this.language.common.arg-num {arg-num, arg-num-sero},
+  this.language.common.is-const-like {is-const-like},
+}
+
+data attr-var-global {
+| Attr-Var-Global(arg-num: arg-num, is-const-like: is-const-like)
+}
+
+define make-attr-var-global(an: arg-num): attr-var-global {
+  Attr-Var-Global of {arg-num := an, is-const-like := False}
+}
+
+inline attr-var-global-sero: sero(attr-var-global) {
+  Sero of {
+    put := {
+      function (k, v) {
+        let Sero of {put := put-arg-num} = arg-num-sero;
+        let Sero of {put := put-bool} = bool-sero;
+        tie Attr-Var-Global(arg-num, is-const-like) = v;
+        put-arg-num(k, arg-num);
+        put-bool(k, is-const-like);
+      }
+    },
+    get := {
+      function (k) {
+        let Sero of {get := get-arg-num} = arg-num-sero;
+        let Sero of {get := get-bool} = bool-sero;
+        try arg-num = get-arg-num(k);
+        try is-const-like = get-bool(k);
+        Right(box {
+          letbox arg-num = arg-num;
+          letbox is-const-like = is-const-like;
+          Attr-Var-Global(arg-num, is-const-like)
+        })
+      }
+    },
+  }
+}

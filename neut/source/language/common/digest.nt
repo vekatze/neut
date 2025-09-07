@@ -1,0 +1,391 @@
+import {
+  core.binary {binary, binary-access, binary-length},
+  core.binary-builder {binary-builder, extract, make-binary-builder},
+  core.control {loop},
+  core.text {to-binary},
+  core.text-builder {append-rune-UTF8, make-text-builder, text-builder},
+}
+
+inline _sha256-k(): vector(int32) {
+  Vector[
+    0x428a2f98,
+    0x71374491,
+    0xb5c0fbcf,
+    0xe9b5dba5,
+    0x3956c25b,
+    0x59f111f1,
+    0x923f82a4,
+    0xab1c5ed5,
+    0xd807aa98,
+    0x12835b01,
+    0x243185be,
+    0x550c7dc3,
+    0x72be5d74,
+    0x80deb1fe,
+    0x9bdc06a7,
+    0xc19bf174,
+    0xe49b69c1,
+    0xefbe4786,
+    0x0fc19dc6,
+    0x240ca1cc,
+    0x2de92c6f,
+    0x4a7484aa,
+    0x5cb0a9dc,
+    0x76f988da,
+    0x983e5152,
+    0xa831c66d,
+    0xb00327c8,
+    0xbf597fc7,
+    0xc6e00bf3,
+    0xd5a79147,
+    0x06ca6351,
+    0x14292967,
+    0x27b70a85,
+    0x2e1b2138,
+    0x4d2c6dfc,
+    0x53380d13,
+    0x650a7354,
+    0x766a0abb,
+    0x81c2c92e,
+    0x92722c85,
+    0xa2bfe8a1,
+    0xa81a664b,
+    0xc24b8b70,
+    0xc76c51a3,
+    0xd192e819,
+    0xd6990624,
+    0xf40e3585,
+    0x106aa070,
+    0x19a4c116,
+    0x1e376c08,
+    0x2748774c,
+    0x34b0bcb5,
+    0x391c0cb3,
+    0x4ed8aa4a,
+    0x5b9cca4f,
+    0x682e6ff3,
+    0x748f82ee,
+    0x78a5636f,
+    0x84c87814,
+    0x8cc70208,
+    0x90befffa,
+    0xa4506ceb,
+    0xbef9a3f7,
+    0xc67178f2,
+  ]
+}
+
+data _pack {
+| _Pack(int32, int32, int32, int32, int32, int32, int32, int32)
+}
+
+inline _add-pack(x: _pack, y: _pack): _pack {
+  let _Pack(a1, b1, c1, d1, e1, f1, g1, h1) = x;
+  let _Pack(a2, b2, c2, d2, e2, f2, g2, h2) = y;
+  _Pack(
+    add-int32(a1, a2),
+    add-int32(b1, b2),
+    add-int32(c1, c2),
+    add-int32(d1, d2),
+    add-int32(e1, e2),
+    add-int32(f1, f2),
+    add-int32(g1, g2),
+    add-int32(h1, h2),
+  )
+}
+
+inline _sha256-h0: _pack {
+  _Pack(
+    0x6a09e667,
+    0xbb67ae85,
+    0x3c6ef372,
+    0xa54ff53a,
+    0x510e527f,
+    0x9b05688c,
+    0x1f83d9ab,
+    0x5be0cd19,
+  )
+}
+
+define _get-base64url-char(index: int): rune {
+  if lt-int(index, 26) {
+    magic cast(int32, rune, add-int32(65, trunc-int-int32(index)))
+  } else-if lt-int(index, 52) {
+    magic cast(int32, rune, add-int32(97, trunc-int-int32(sub-int(index, 26))))
+  } else-if lt-int(index, 62) {
+    magic cast(int32, rune, add-int32(48, trunc-int-int32(sub-int(index, 52))))
+  } else-if eq-int(index, 62) {
+    magic cast(int32, rune, 45)
+  } else {
+    magic cast(int32, rune, 95)
+  }
+}
+
+define _append-3-bytes(buf: &text-builder, b1: int8, b2: int8, b3: int8): unit {
+  let n = or-int(or-int(shl-int(zext-int8-int(b1), 16), shl-int(zext-int8-int(b2), 8)), zext-int8-int(b3));
+  let c1 = _get-base64url-char(and-int(lshr-int(n, 18), 63));
+  let c2 = _get-base64url-char(and-int(lshr-int(n, 12), 63));
+  let c3 = _get-base64url-char(and-int(lshr-int(n, 6), 63));
+  let c4 = _get-base64url-char(and-int(n, 63));
+  core.text-builder.append-rune-UTF8(buf, c1);
+  core.text-builder.append-rune-UTF8(buf, c2);
+  core.text-builder.append-rune-UTF8(buf, c3);
+  core.text-builder.append-rune-UTF8(buf, c4);
+}
+
+define base64url-encode(input: &binary): text {
+  let input-len = binary-length(input);
+  let f =
+    define loop(buf: text-builder, offset: int): text {
+      if ge-int(offset, input-len) {
+        core.text-builder.extract(buf)
+      } else {
+        let remaining = sub-int(input-len, offset);
+        if ge-int(remaining, 3) {
+          let b1 = binary-access(input, offset);
+          let b2 = binary-access(input, add-int(offset, 1));
+          let b3 = binary-access(input, add-int(offset, 2));
+          let _ on buf = _append-3-bytes(buf, b1, b2, b3);
+          loop(buf, add-int(offset, 3))
+        } else-if eq-int(remaining, 2) {
+          let b1 = binary-access(input, offset);
+          let b2 = binary-access(input, add-int(offset, 1));
+          let n = or-int(shl-int(zext-int8-int(b1), 16), shl-int(zext-int8-int(b2), 8));
+          let c1 = _get-base64url-char(and-int(lshr-int(n, 18), 63));
+          let c2 = _get-base64url-char(and-int(lshr-int(n, 12), 63));
+          let c3 = _get-base64url-char(and-int(lshr-int(n, 6), 63));
+          let _ on buf = {
+            append-rune-UTF8(buf, c1);
+            append-rune-UTF8(buf, c2);
+            append-rune-UTF8(buf, c3);
+          };
+          core.text-builder.extract(buf)
+        } else {
+          let b1 = binary-access(input, offset);
+          let n = shl-int(zext-int8-int(b1), 16);
+          let c1 = _get-base64url-char(and-int(lshr-int(n, 18), 63));
+          let c2 = _get-base64url-char(and-int(lshr-int(n, 12), 63));
+          let _ on buf = {
+            append-rune-UTF8(buf, c1);
+            append-rune-UTF8(buf, c2);
+          };
+          core.text-builder.extract(buf)
+        }
+      }
+    };
+  let buf = make-text-builder(32);
+  f(buf, 0)
+}
+
+define _rotr32(x: int32, n: int32): int32 {
+  or-int32(lshr-int32(x, n), shl-int32(x, sub-int32(32, n)))
+}
+
+define _sha256-ch(x: int32, y: int32, z: int32): int32 {
+  xor-int32(and-int32(x, y), and-int32(xor-int32(x, 0xffffffff), z))
+}
+
+define _sha256-maj(x: int32, y: int32, z: int32): int32 {
+  xor-int32(xor-int32(and-int32(x, y), and-int32(x, z)), and-int32(y, z))
+}
+
+define _sha256-sigma0(x: int32): int32 {
+  xor-int32(xor-int32(_rotr32(x, 2), _rotr32(x, 13)), _rotr32(x, 22))
+}
+
+define _sha256-sigma1(x: int32): int32 {
+  xor-int32(xor-int32(_rotr32(x, 6), _rotr32(x, 11)), _rotr32(x, 25))
+}
+
+define _sha256-s0(x: int32): int32 {
+  xor-int32(xor-int32(_rotr32(x, 7), _rotr32(x, 18)), lshr-int32(x, 3))
+}
+
+define _sha256-s1(x: int32): int32 {
+  xor-int32(xor-int32(_rotr32(x, 17), _rotr32(x, 19)), lshr-int32(x, 10))
+}
+
+rule-left _sum-int32 {
+  function leaf(_: int): int32 {
+    0
+  },
+  function node-left(acc: int32, b: int32): int32 {
+    add-int32(acc, b)
+  },
+  function root<a>(x: a): a {
+    x
+  },
+}
+
+define _sha256-pad(message: &binary): binary {
+  let msg-len = binary-length(message);
+  let msg-len-bits = mul-int(msg-len, 8);
+  let total-len = add-int(add-int(msg-len, 1), 8); // +1 for 0x80, +8 for length
+  let padded-len = mul-int(div-int(add-int(total-len, 63), 64), 64);
+  let padding-zeros = sub-int(sub-int(padded-len, msg-len), 9); // -1 for 0x80, -8 for length
+  let buf = make-binary-builder(64);
+  let _ on buf = {
+    core.binary-builder.append-binary(buf, message);
+    core.binary-builder.append-int8(buf, 0x80);
+    loop(padding-zeros, function (_) {
+      core.binary-builder.append-int8(buf, 0);
+    });
+    core.binary-builder.append-int8(buf, trunc-int-int8(and-int(lshr-int(msg-len-bits, 56), 255)));
+    core.binary-builder.append-int8(buf, trunc-int-int8(and-int(lshr-int(msg-len-bits, 48), 255)));
+    core.binary-builder.append-int8(buf, trunc-int-int8(and-int(lshr-int(msg-len-bits, 40), 255)));
+    core.binary-builder.append-int8(buf, trunc-int-int8(and-int(lshr-int(msg-len-bits, 32), 255)));
+    core.binary-builder.append-int8(buf, trunc-int-int8(and-int(lshr-int(msg-len-bits, 24), 255)));
+    core.binary-builder.append-int8(buf, trunc-int-int8(and-int(lshr-int(msg-len-bits, 16), 255)));
+    core.binary-builder.append-int8(buf, trunc-int-int8(and-int(lshr-int(msg-len-bits, 8), 255)));
+    core.binary-builder.append-int8(buf, trunc-int-int8(and-int(msg-len-bits, 255)));
+  };
+  extract(buf)
+}
+
+define _extract-block-words(block: &binary, offset: int): vector(int32) {
+  let f =
+    define loop(acc: vector(int32), i: int): vector(int32) {
+      if ge-int(i, 16) {
+        acc
+      } else {
+        let word-offset = add-int(offset, mul-int(i, 4));
+        let b0 = zext-int8-int32(binary-access(block, word-offset));
+        let b1 = zext-int8-int32(binary-access(block, add-int(word-offset, 1)));
+        let b2 = zext-int8-int32(binary-access(block, add-int(word-offset, 2)));
+        let b3 = zext-int8-int32(binary-access(block, add-int(word-offset, 3)));
+        let word = or-int32(or-int32(or-int32(shl-int32(b0, 24), shl-int32(b1, 16)), shl-int32(b2, 8)), b3);
+        let acc = core.vector.push-back(acc, word);
+        loop(acc, add-int(i, 1))
+      }
+    };
+  f(core.vector.make(16), 0)
+}
+
+define _compute-message-schedule(w: vector(int32)): vector(int32) {
+  let extend-words =
+    define loop(current-w: vector(int32), i: int): vector(int32) {
+      if ge-int(i, 64) {
+        current-w
+      } else {
+        let w-i-2 on current-w = *core.vector._access(current-w, sub-int(i, 2));
+        let w-i-7 on current-w = *core.vector._access(current-w, sub-int(i, 7));
+        let w-i-15 on current-w = *core.vector._access(current-w, sub-int(i, 15));
+        let w-i-16 on current-w = *core.vector._access(current-w, sub-int(i, 16));
+        let new-word = _sum-int32[_sha256-s1(w-i-2), w-i-7, _sha256-s0(w-i-15), w-i-16];
+        let updated-w = core.vector.push-back(current-w, new-word);
+        loop(updated-w, add-int(i, 1))
+      }
+    };
+  extend-words(w, 16)
+}
+
+define _step(table: &vector(int32), p: _pack, round: int, w: &vector(int32)): _pack {
+  let _Pack(a, b, c, d, e, f, g, h) = p;
+  let k-round = *core.vector._access(table, round);
+  let w-round = *core.vector._access(w, round);
+  let s1 = _sha256-sigma1(e);
+  let ch = _sha256-ch(e, f, g);
+  let temp1 = _sum-int32[h, s1, ch, k-round, w-round];
+  let s0 = _sha256-sigma0(a);
+  let maj = _sha256-maj(a, b, c);
+  let temp2 = add-int32(s0, maj);
+  _Pack(add-int32(temp1, temp2), a, b, c, add-int32(d, temp1), e, f, g)
+}
+
+define _process-block(table: &vector(int32), h: _pack, w: &vector(int32)): _pack {
+  let compress-64-rounds =
+    define loop(h: _pack, round: int): _pack {
+      if ge-int(round, 64) {
+        _add-pack(_sha256-h0, h)
+      } else {
+        loop(_step(table, h, round, w), add-int(round, 1))
+      }
+    };
+  compress-64-rounds(h, 0)
+}
+
+define _process-all-blocks(table: &vector(int32), h: _pack, padded: &binary, block-count: int): _pack {
+  let process-blocks =
+    define loop(current-h: _pack, block-index: int): _pack {
+      if ge-int(block-index, block-count) {
+        current-h
+      } else {
+        let w = _extract-block-words(padded, mul-int(block-index, 64));
+        pin extended-w = _compute-message-schedule(w);
+        let updated-h = _process-block(table, current-h, extended-w);
+        loop(updated-h, add-int(block-index, 1))
+      }
+    };
+  process-blocks(h, 0)
+}
+
+define _append-int-be(b: &binary-builder, value: int32): unit {
+  core.binary-builder.append-int8(b, trunc-int32-int8(lshr-int32(value, 24)));
+  core.binary-builder.append-int8(b, trunc-int32-int8(lshr-int32(value, 16)));
+  core.binary-builder.append-int8(b, trunc-int32-int8(lshr-int32(value, 8)));
+  core.binary-builder.append-int8(b, trunc-int32-int8(value));
+}
+
+define _pack-to-binary(x: &_pack): binary {
+  let buf = core.binary-builder.make-binary-builder(32);
+  tie _Pack(a, b, c, d, e, f, g, h) = x;
+  let _ on buf = {
+    _append-int-be(buf, *a);
+    _append-int-be(buf, *b);
+    _append-int-be(buf, *c);
+    _append-int-be(buf, *d);
+    _append-int-be(buf, *e);
+    _append-int-be(buf, *f);
+    _append-int-be(buf, *g);
+    _append-int-be(buf, *h);
+  };
+  extract(buf)
+}
+
+define sha256(message: &binary): binary {
+  pin padded = _sha256-pad(message);
+  let h = _sha256-h0;
+  let padded-len = binary-length(padded);
+  let block-count = div-int(padded-len, 64);
+  pin table = _sha256-k();
+  pin final-h = _process-all-blocks(table, h, padded, block-count);
+  _pack-to-binary(final-h)
+}
+
+define hash-and-encode(x: &binary): text {
+  pin hash = sha256(x);
+  base64url-encode(hash)
+}
+
+define zen(): unit {
+  pin v1 = hash-and-encode(to-binary("hello"));
+  print("hello: ");
+  vet(v1);
+  pin v2 = hash-and-encode(to-binary(""));
+  print("empty: ");
+  vet(v2);
+  pin v3 = hash-and-encode(to-binary("abc"));
+  print("abc: ");
+  vet(v3);
+  pin v4 = hash-and-encode(to-binary("a"));
+  print("single char: ");
+  vet(v4);
+  pin v5 = hash-and-encode(to-binary("1234567890123456789012345678901234567890123456789012345"));
+  print("55 bytes: ");
+  vet(v5);
+  pin v6 = hash-and-encode(to-binary("12345678901234567890123456789012345678901234567890123456"));
+  print("56 bytes: ");
+  vet(v6);
+  pin v7 = hash-and-encode(to-binary("1234567890123456789012345678901234567890123456789012345678901234"));
+  print("64 bytes: ");
+  vet(v7);
+  pin v8 = hash-and-encode(to-binary("12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678"));
+  print("128 bytes: ");
+  vet(v8);
+  pin v9 = hash-and-encode(to-binary("Hello, 世界! 🌍"));
+  print("unicode: ");
+  vet(v9);
+  pin v10 = hash-and-encode(to-binary("0123456789"));
+  print("digits: ");
+  vet(v10);
+}
