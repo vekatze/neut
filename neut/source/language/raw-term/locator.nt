@@ -1,0 +1,8 @@
+import {
+  this.language.common.global-locator {global-locator},
+  this.language.common.local-locator {local-locator},
+}
+
+inline locator: type {
+  pair(global-locator, local-locator)
+}
