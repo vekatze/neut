@@ -1,5 +1,13 @@
 import {
   core.text {break, drop, is-empty},
+  this.language.common.data-size {Data-Size-64, data-size},
+  this.language.common.prim-op {Prim-Binary-Op, Prim-Cmp-Op, Prim-Conv-Op, Prim-Unary-Op, prim-op},
+  this.language.common.prim-op.binary-op {binary-float-op-from-text, binary-int-op-from-text},
+  this.language.common.prim-op.cmp-op {float-cmp-op-from-text, int-cmp-op-from-text},
+  this.language.common.prim-op.conv-op {as-conv-op},
+  this.language.common.prim-op.unary-op {unary-op-from-text},
+  this.language.common.prim-type {Float, Int},
+  this.language.common.prim-type.from-text {prim-type-from-text},
 }
 
 define _break-hyphen(haystack: &text): ?pair(text, text) {
@@ -7,7 +15,7 @@ define _break-hyphen(haystack: &text): ?pair(text, text) {
     none
   } else {
     let Pair(h, t) = break(haystack, "-");
-    let b on h = is-empty(h);
+    let b on t = is-empty(t);
     if b {
       none
     } else {
@@ -16,7 +24,59 @@ define _break-hyphen(haystack: &text): ?pair(text, text) {
   }
 }
 
+define prim-op-from-text(ds: data-size, name: &text): ?prim-op {
+  try Pair(op-str, type-str) = _break-hyphen(name);
+  pin op-str = op-str;
+  pin type-str = type-str;
+  match _break-hyphen(type-str) {
+  | Right(Pair(dom-type-str, cod-type-str)) =>
+    pin dom-type-str = dom-type-str;
+    pin cod-type-str = cod-type-str;
+    try dom-type = prim-type-from-text(ds, dom-type-str);
+    try cod-type = prim-type-from-text(ds, cod-type-str);
+    try conv-op on dom-type, cod-type = as-conv-op(op-str, dom-type, cod-type);
+    Right(Prim-Conv-Op(conv-op, dom-type, cod-type))
+  | _ =>
+    try prim-type = prim-type-from-text(ds, type-str);
+    match prim-type {
+    | Int(size) =>
+      match binary-int-op-from-text(op-str) {
+      | Right(op) =>
+        Right(Prim-Binary-Op(op, Int(size), Int(size)))
+      | _ =>
+        try op = int-cmp-op-from-text(op-str);
+        Right(Prim-Cmp-Op(op, Int(size), Int(size)))
+      }
+    | Float(size) =>
+      match binary-float-op-from-text(op-str) {
+      | Right(op) =>
+        Right(Prim-Binary-Op(op, Float(size), Float(size)))
+      | _ =>
+        match unary-op-from-text(op-str) {
+        | Right(op) =>
+          Right(Prim-Unary-Op(op, Float(size), Float(size)))
+        | _ =>
+          try op = float-cmp-op-from-text(op-str);
+          Right(Prim-Cmp-Op(op, Float(size), Float(size)))
+        }
+      }
+    | _ =>
+      none
+    }
+  }
+}
+
 define zen(): unit {
-  pin result = _break-hyphen("foo-buz");
-  vet(result)
+  pin result = _break-hyphen("add-int");
+  vet(result);
+  pin result = _break-hyphen("int");
+  vet(result);
+  pin v = prim-op-from-text(Data-Size-64, "add-int");
+  vet(v);
+  pin v = prim-op-from-text(Data-Size-64, "sub-int32");
+  vet(v);
+  pin v = prim-op-from-text(Data-Size-64, "shl-int8");
+  vet(v);
+  pin v = prim-op-from-text(Data-Size-64, "fptosi-float-int");
+  vet(v);
 }
