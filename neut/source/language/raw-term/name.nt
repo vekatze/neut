@@ -16,3 +16,31 @@ define text-from-name(n: &name): text {
     text-from-locator(l)
   }
 }
+
+define _is-upper(r: rune): bool {
+  and(le-rune(`A`, r), le-rune(r, `Z`))
+}
+
+define is-cons-name(x: &text): bool {
+  let tmp =
+    core.text.drop-while-N(x, function (r) {
+      eq-rune(r, `_`)
+    });
+  match core.text.uncons(tmp) {
+  | Right(Pair(c, _)) =>
+    _is-upper(c)
+  | _ =>
+    False
+  }
+}
+
+define zen(): unit {
+  pin a = _is-upper(`A`);
+  pin x = _is-upper(`X`);
+  pin z = _is-upper(`Z`);
+  pin w = _is-upper(`w`);
+  vet(a);
+  vet(x);
+  vet(z);
+  vet(w);
+}
