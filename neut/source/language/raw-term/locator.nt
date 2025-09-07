@@ -1,8 +1,17 @@
 import {
-  this.language.common.global-locator {global-locator},
-  this.language.common.local-locator {local-locator},
+  this.language.common.const {ns-sep},
+  this.language.common.global-locator {global-locator, text-from-global-locator},
+  this.language.common.local-locator {local-locator, text-from-local-locator-N},
 }
 
 inline locator: type {
   pair(global-locator, local-locator)
+}
+
+define text-from-locator(l: &locator): text {
+  tie Pair(gl, ll) = l;
+  pin gl = text-from-global-locator(gl);
+  pin ll = text-from-local-locator-N(ll);
+  pin tmp = core.text.append(gl, ns-sep);
+  core.text.append(tmp, ll)
 }
