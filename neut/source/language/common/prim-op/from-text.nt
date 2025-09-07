@@ -1,0 +1,22 @@
+import {
+  core.text {break, drop, is-empty},
+}
+
+define _break-hyphen(haystack: &text): ?pair(text, text) {
+  if is-empty(haystack) {
+    none
+  } else {
+    let Pair(h, t) = break(haystack, "-");
+    let b on h = is-empty(h);
+    if b {
+      none
+    } else {
+      Right(Pair(h, drop(t, 1)))
+    }
+  }
+}
+
+define zen(): unit {
+  pin result = _break-hyphen("foo-buz");
+  vet(result)
+}
