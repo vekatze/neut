@@ -11,6 +11,7 @@ import {
     int-size-from-data-size,
     int-size-from-int,
   },
+  this.language.common.prim-type {Float, Int, prim-type},
 }
 
 inline _int-type-name: &text {
@@ -45,6 +46,20 @@ define _as-low-float(ds: data-size, s: &text): ?float-size {
   }
 }
 
+define prim-type-from-text(ds: data-size, name: &text): ?prim-type {
+  match _as-low-int(ds, name) {
+  | Right(int-size) =>
+    Right(Int(int-size))
+  | Left(_) =>
+    match _as-low-float(ds, name) {
+    | Right(float-size) =>
+      Right(Float(float-size))
+    | Left(_) =>
+      none
+    }
+  }
+}
+
 define zen(): unit {
   pin v = _as-low-int(Data-Size-64, "int");
   vet(v);
@@ -57,5 +72,7 @@ define zen(): unit {
   pin v = _as-low-float(Data-Size-64, "float32");
   vet(v);
   pin v = _as-low-float(Data-Size-64, "sample");
+  vet(v);
+  pin v = prim-type-from-text(Data-Size-64, "int8");
   vet(v);
 }
