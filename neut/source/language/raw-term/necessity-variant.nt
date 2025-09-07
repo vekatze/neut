@@ -2,3 +2,12 @@ data necessity-variant {
 | Variant-K
 | Variant-T
 }
+
+define text-from-necessity-variant(nv: necessity-variant): &text {
+  match nv {
+  | Variant-K =>
+    "letbox"
+  | Variant-T =>
+    "letbox-T"
+  }
+}
