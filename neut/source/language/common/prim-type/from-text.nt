@@ -3,7 +3,14 @@ import {
   core.text {length},
   core.text.eq {eq-prefix},
   this.language.common.data-size {Data-Size-64, data-size},
-  this.language.common.prim-num-size {int-size, int-size-from-data-size, int-size-from-int},
+  this.language.common.prim-num-size {
+    float-size,
+    float-size-from-data-size,
+    float-size-from-int,
+    int-size,
+    int-size-from-data-size,
+    int-size-from-int,
+  },
 }
 
 inline _int-type-name: &text {
@@ -26,9 +33,29 @@ define _as-low-int(ds: data-size, s: &text): ?int-size {
   }
 }
 
+define _as-low-float(ds: data-size, s: &text): ?float-size {
+  if eq-text(s, _float-type-name) {
+    Right(float-size-from-data-size(ds))
+  } else-if eq-prefix(s, _float-type-name) {
+    pin rest = core.text.drop-N(s, length(_float-type-name));
+    try size-value = parse-int(rest);
+    float-size-from-int(ds, size-value)
+  } else {
+    none
+  }
+}
+
 define zen(): unit {
   pin v = _as-low-int(Data-Size-64, "int");
   vet(v);
+  pin v = _as-low-int(Data-Size-64, "int8");
+  vet(v);
   pin v = _as-low-int(Data-Size-64, "sample");
+  vet(v);
+  pin v = _as-low-float(Data-Size-64, "float");
+  vet(v);
+  pin v = _as-low-float(Data-Size-64, "float32");
+  vet(v);
+  pin v = _as-low-float(Data-Size-64, "sample");
   vet(v);
 }
