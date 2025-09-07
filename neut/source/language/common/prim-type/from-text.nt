@@ -1,7 +1,34 @@
+import {
+  core.int.parse {parse-int},
+  core.text {length},
+  core.text.eq {eq-prefix},
+  this.language.common.data-size {Data-Size-64, data-size},
+  this.language.common.prim-num-size {int-size, int-size-from-data-size, int-size-from-int},
+}
+
 inline _int-type-name: &text {
   "int"
 }
 
 inline _float-type-name: &text {
   "float"
+}
+
+define _as-low-int(ds: data-size, s: &text): ?int-size {
+  if eq-text(s, _int-type-name) {
+    Right(int-size-from-data-size(ds))
+  } else-if eq-prefix(s, _int-type-name) {
+    pin rest = core.text.drop-N(s, length(_int-type-name));
+    try size-value = parse-int(rest);
+    int-size-from-int(ds, size-value)
+  } else {
+    none
+  }
+}
+
+define zen(): unit {
+  pin v = _as-low-int(Data-Size-64, "int");
+  vet(v);
+  pin v = _as-low-int(Data-Size-64, "sample");
+  vet(v);
 }
