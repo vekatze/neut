@@ -1,9 +1,18 @@
 import {
-  this.language.raw-term.locator {locator},
+  this.language.raw-term.locator {locator, text-from-locator},
   this.language.raw-term.raw-ident {raw-ident},
 }
 
 data name {
 | Var(raw-ident)
 | Locator(locator)
+}
+
+define text-from-name(n: &name): text {
+  case n {
+  | Var(x) =>
+    *x
+  | Locator(l) =>
+    text-from-locator(l)
+  }
 }
