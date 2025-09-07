@@ -1,0 +1,4 @@
+data necessity-variant {
+| Variant-K
+| Variant-T
+}
