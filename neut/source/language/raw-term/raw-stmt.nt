@@ -1,5 +1,6 @@
 import {
   this.language.common.base-name {base-name},
+  this.language.common.definite-description {definite-description},
   this.language.common.stmt-kind {base-stmt-kind},
   this.language.raw-term.raw-binder {raw-binder},
   this.language.raw-term.raw-term {raw-def, raw-term},
@@ -31,4 +32,12 @@ data base-raw-program(a) {
 
 inline raw-program: type {
   base-raw-program(base-name)
+}
+
+data post-raw-stmt {
+| Post-Raw-Stmt-Define(
+    comment,
+    raw-stmt-kind(definite-description),
+    raw-def(definite-description),
+  )
 }
