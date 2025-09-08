@@ -21,3 +21,12 @@ define necessity-variant-from-text(t: &text): ?necessity-variant {
     none
   }
 }
+
+define layer-offset(nv: necessity-variant): int {
+  match nv {
+  | Variant-K =>
+    1
+  | Variant-T =>
+    0
+  }
+}
