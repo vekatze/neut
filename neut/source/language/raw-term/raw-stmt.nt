@@ -21,6 +21,10 @@ data base-raw-stmt(name) {
   )
 }
 
+inline raw-stmt: type {
+  base-raw-stmt(base-name)
+}
+
 data base-raw-program(a) {
 | Raw-Program(hint, list(pair(raw-import, comment)), list(pair(base-raw-stmt(a), comment)))
 }
