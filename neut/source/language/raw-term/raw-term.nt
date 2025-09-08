@@ -1,7 +1,13 @@
 import {
+  this.language.raw-term.raw-pattern {raw-pattern},
   this.logger.hint {hint},
+  this.syntax-tree.comment {comment},
 }
 
 data raw-term {
 | Tau(hint)
+}
+
+data pat-param(a) {
+| Pat-Param(hint, raw-pattern, comment, comment, a)
 }
