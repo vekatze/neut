@@ -1,0 +1,7 @@
+import {
+  this.logger.hint {hint},
+}
+
+data raw-term {
+| Tau(hint)
+}
