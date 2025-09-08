@@ -1,1 +1,11 @@
+import {
+  this.language.common.stmt-kind {base-stmt-kind},
+  this.language.raw-term.raw-binder {raw-binder},
+  this.language.raw-term.raw-term {raw-term},
+}
+
 data raw-import {}
+
+inline raw-stmt-kind(a) {
+  base-stmt-kind(a, raw-binder(raw-term), unit)
+}
