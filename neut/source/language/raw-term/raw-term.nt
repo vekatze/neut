@@ -46,3 +46,7 @@ define extract-imp-args-with-defaults<a>(x: imp-args(a)): list(pair(raw-binder(a
   let Pair(series, _) = x;
   this.syntax-tree.series.extract(series)
 }
+
+data elem(a) {
+| Elem(comment, a, comment)
+}
