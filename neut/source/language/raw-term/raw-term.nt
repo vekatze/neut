@@ -50,3 +50,7 @@ define extract-imp-args-with-defaults<a>(x: imp-args(a)): list(pair(raw-binder(a
 data elem(a) {
 | Elem(comment, a, comment)
 }
+
+data keyword-clause(a) {
+| Keyword-Clause(elem(a), elem(a))
+}
