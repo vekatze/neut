@@ -21,3 +21,7 @@ inline args(a) {
 define empty-args<a>(): args(a) {
   Pair(empty-series-paren-comma(), Nil)
 }
+
+define empty-imp-args<a>(): pair(series(pair(raw-binder(a), ?a)), comment) {
+  Pair(empty-series-paren-comma(), Nil)
+}
