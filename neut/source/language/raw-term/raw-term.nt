@@ -175,3 +175,5 @@ data variadic-arg {
     raw-term,
   )
 }
+
+data raw-magic {}
