@@ -64,3 +64,8 @@ inline map-keyword-clause<a, b>(kc: keyword-clause(a), !f: (a) -> b): keyword-cl
   let Keyword-Clause(x, y) = kc;
   Keyword-Clause(map-elem(x, !f), map-elem(y, !f))
 }
+
+define push-comment-to-keyword-clause<a>(c: comment, kc: keyword-clause(a)): keyword-clause(a) {
+  let Keyword-Clause(Elem(c1, x, c2), y) = kc;
+  Keyword-Clause(Elem(core.list.append(c, c1), x, c2), y)
+}
