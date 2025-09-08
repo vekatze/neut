@@ -41,3 +41,8 @@ define extract-imp-args<a>(x: imp-args(a)): list(raw-binder(a)) {
   let Pair(series, _) = x;
   for-each(this.syntax-tree.series.extract(series), exact first)
 }
+
+define extract-imp-args-with-defaults<a>(x: imp-args(a)): list(pair(raw-binder(a), ?a)) {
+  let Pair(series, _) = x;
+  this.syntax-tree.series.extract(series)
+}
