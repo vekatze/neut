@@ -11,3 +11,13 @@ define text-from-necessity-variant(nv: necessity-variant): &text {
     "letbox-T"
   }
 }
+
+define necessity-variant-from-text(t: &text): ?necessity-variant {
+  if eq-text(t, "letbox") {
+    Right(Variant-K)
+  } else-if eq-text(t, "letbox-T") {
+    Right(Variant-T)
+  } else {
+    none
+  }
+}
