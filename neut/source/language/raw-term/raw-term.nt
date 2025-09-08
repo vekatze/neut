@@ -1,7 +1,9 @@
 import {
+  this.language.raw-term.raw-binder {raw-binder},
   this.language.raw-term.raw-pattern {raw-pattern},
   this.logger.hint {hint},
   this.syntax-tree.comment {comment},
+  this.syntax-tree.series {series},
 }
 
 data raw-term {
@@ -10,4 +12,8 @@ data raw-term {
 
 data pat-param(a) {
 | Pat-Param(hint, raw-pattern, comment, comment, a)
+}
+
+inline args(a) {
+  pair(series(raw-binder(a)), comment)
 }
