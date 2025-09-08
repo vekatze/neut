@@ -124,3 +124,7 @@ inline func-info: type {
 inline top-geist: type {
   raw-geist(base-name)
 }
+
+inline top-def: type {
+  raw-def(base-name)
+}
