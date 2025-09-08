@@ -1,4 +1,6 @@
 import {
+  core.list {for-each},
+  core.pair {first},
   this.language.raw-term.raw-binder {raw-binder},
   this.language.raw-term.raw-pattern {raw-pattern},
   this.logger.hint {hint},
@@ -18,15 +20,24 @@ inline args(a) {
   pair(series(raw-binder(a)), comment)
 }
 
+inline imp-args(a) {
+  pair(series(pair(raw-binder(a), ?a)), comment)
+}
+
 define empty-args<a>(): args(a) {
   Pair(empty-series-paren-comma(), Nil)
 }
 
-define empty-imp-args<a>(): pair(series(pair(raw-binder(a), ?a)), comment) {
+define empty-imp-args<a>(): imp-args(a) {
   Pair(empty-series-paren-comma(), Nil)
 }
 
 define extract-args<a>(x: args(a)): list(raw-binder(a)) {
   let Pair(series, _) = x;
   this.syntax-tree.series.extract(series)
+}
+
+define extract-imp-args<a>(x: imp-args(a)): list(raw-binder(a)) {
+  let Pair(series, _) = x;
+  for-each(this.syntax-tree.series.extract(series), exact first)
 }
