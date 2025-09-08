@@ -133,3 +133,7 @@ define get-def-name<a>(def: &raw-def(a)): &a {
   tie Raw-Def of {geist := Raw-Geist of {name := Pair(v, _)}} = def;
   v
 }
+
+inline must-ignore-relayed-vars: type {
+  bool
+}
