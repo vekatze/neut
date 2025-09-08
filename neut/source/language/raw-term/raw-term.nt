@@ -1,6 +1,7 @@
 import {
   core.list {for-each},
   core.pair {first},
+  this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-binder {raw-binder},
   this.language.raw-term.raw-pattern {raw-pattern},
   this.logger.hint {hint},
@@ -73,4 +74,15 @@ define push-comment-to-keyword-clause<a>(c: comment, kc: keyword-clause(a)): key
 define extract-from-keyword-clause<a>(kc: keyword-clause(a)): pair(a, a) {
   let Keyword-Clause(Elem(_, x, _), Elem(_, y, _)) = kc;
   Pair(x, y)
+}
+
+data raw-geist(a) {
+| Raw-Geist(
+    loc: hint,
+    name: pair(a, comment),
+    is-const-like: is-const-like,
+    imp-args: imp-args(raw-term),
+    exp-args: args(raw-term),
+    cod: pair(comment, raw-term),
+  )
 }
