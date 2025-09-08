@@ -143,3 +143,14 @@ data let-kind {
 | Noetic
 | Try
 }
+
+inline text-from-let-kind(lk: &let-kind): &text {
+  case lk {
+  | Plain(_) =>
+    "let"
+  | Noetic =>
+    "tie"
+  | Try =>
+    "try"
+  }
+}
