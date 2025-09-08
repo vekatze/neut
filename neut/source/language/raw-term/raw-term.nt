@@ -97,10 +97,16 @@ data loc {
 
 data raw-def(a) {
 | Raw-Def(
-    geist: geist(a),
+    geist: raw-geist(a),
     leading-comment: comment,
     body: raw-term,
     trailing-comment: comment,
     end-loc: loc,
   )
+}
+
+define for-each-raw-def<a, b>(x: raw-def(a), f: (a) -> b): raw-def(b) {
+  let Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-args, exp-args, cod), c1, body, c2, l2) = x;
+  let v = f(v);
+  Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-args, exp-args, cod), c1, body, c2, l2)
 }
