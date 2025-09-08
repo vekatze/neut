@@ -3,7 +3,7 @@ import {
   this.language.raw-term.raw-pattern {raw-pattern},
   this.logger.hint {hint},
   this.syntax-tree.comment {comment},
-  this.syntax-tree.series {series},
+  this.syntax-tree.series {empty-series-paren-comma, series},
 }
 
 data raw-term {
@@ -16,4 +16,8 @@ data pat-param(a) {
 
 inline args(a) {
   pair(series(raw-binder(a)), comment)
+}
+
+define empty-args<a>(): args(a) {
+  Pair(empty-series-paren-comma(), Nil)
 }
