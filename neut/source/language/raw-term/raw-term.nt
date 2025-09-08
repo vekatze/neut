@@ -128,3 +128,8 @@ inline top-geist: type {
 inline top-def: type {
   raw-def(base-name)
 }
+
+define get-def-name<a>(def: &raw-def(a)): &a {
+  tie Raw-Def of {geist := Raw-Geist of {name := Pair(v, _)}} = def;
+  v
+}
