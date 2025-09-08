@@ -115,3 +115,7 @@ define for-each-raw-def<a, b>(x: raw-def(a), f: (a) -> b): raw-def(b) {
 inline def-info: type {
   raw-def(raw-ident)
 }
+
+inline func-info: type {
+  raw-def(?text)
+}
