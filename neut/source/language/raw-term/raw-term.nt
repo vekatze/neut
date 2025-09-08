@@ -2,7 +2,6 @@ import {
   core.list {for-each},
   core.pair {first},
   this.language.common.base-name {base-name},
-  this.language.common.geist {geist},
   this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-binder {raw-binder},
   this.language.raw-term.raw-ident {raw-ident},
@@ -152,5 +151,17 @@ inline text-from-let-kind(lk: &let-kind): &text {
     "tie"
   | Try =>
     "try"
+  }
+}
+
+define let-kind-from-text(t: &text): ?let-kind {
+  if eq-text(t, "let") {
+    Right(Plain(False))
+  } else-if eq-text(t, "tie") {
+    Right(Noetic)
+  } else-if eq-text(t, "try") {
+    Right(Try)
+  } else {
+    none
   }
 }
