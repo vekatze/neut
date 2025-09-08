@@ -137,3 +137,9 @@ define get-def-name<a>(def: &raw-def(a)): &a {
 inline must-ignore-relayed-vars: type {
   bool
 }
+
+data let-kind {
+| Plain(must-ignore-relayed-vars)
+| Noetic
+| Try
+}
