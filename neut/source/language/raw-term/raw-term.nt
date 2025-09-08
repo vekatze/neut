@@ -51,6 +51,11 @@ data elem(a) {
 | Elem(comment, a, comment)
 }
 
+inline map-elem<a, b>(e: elem(a), f: (a) -> b): elem(b) {
+  let Elem(c1, x, c2) = e;
+  Elem(c1, f(x), c2)
+}
+
 data keyword-clause(a) {
 | Keyword-Clause(elem(a), elem(a))
 }
