@@ -69,3 +69,8 @@ define push-comment-to-keyword-clause<a>(c: comment, kc: keyword-clause(a)): key
   let Keyword-Clause(Elem(c1, x, c2), y) = kc;
   Keyword-Clause(Elem(core.list.append(c, c1), x, c2), y)
 }
+
+define extract-from-keyword-clause<a>(kc: keyword-clause(a)): pair(a, a) {
+  let Keyword-Clause(Elem(_, x, _), Elem(_, y, _)) = kc;
+  Pair(x, y)
+}
