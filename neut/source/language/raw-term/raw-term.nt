@@ -4,6 +4,7 @@ import {
   this.language.common.geist {geist},
   this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-binder {raw-binder},
+  this.language.raw-term.raw-ident {raw-ident},
   this.language.raw-term.raw-pattern {raw-pattern},
   this.logger.hint {hint},
   this.syntax-tree.comment {comment},
@@ -109,4 +110,8 @@ define for-each-raw-def<a, b>(x: raw-def(a), f: (a) -> b): raw-def(b) {
   let Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-args, exp-args, cod), c1, body, c2, l2) = x;
   let v = f(v);
   Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-args, exp-args, cod), c1, body, c2, l2)
+}
+
+inline def-info: type {
+  raw-def(raw-ident)
 }
