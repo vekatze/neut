@@ -2,6 +2,7 @@ import {
   this.language.common.stmt-kind {base-stmt-kind},
   this.language.raw-term.raw-binder {raw-binder},
   this.language.raw-term.raw-term {raw-def, raw-term},
+  this.logger.hint {hint},
   this.syntax-tree.comment {comment},
 }
 
@@ -17,4 +18,8 @@ data base-raw-stmt(name) {
     raw-stmt-kind(name),
     raw-def(name),
   )
+}
+
+data base-raw-program(a) {
+| Raw-Program(hint, list(pair(raw-import, comment)), list(pair(base-raw-stmt(a), comment)))
 }
