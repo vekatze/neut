@@ -1,6 +1,7 @@
 import {
   core.list {for-each},
   core.pair {first},
+  this.language.common.base-name {base-name},
   this.language.common.geist {geist},
   this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-binder {raw-binder},
@@ -118,4 +119,8 @@ inline def-info: type {
 
 inline func-info: type {
   raw-def(?text)
+}
+
+inline top-geist: type {
+  raw-geist(base-name)
 }
