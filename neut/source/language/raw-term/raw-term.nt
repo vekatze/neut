@@ -165,3 +165,13 @@ define let-kind-from-text(t: &text): ?let-kind {
     none
   }
 }
+
+data variadic-arg {
+| Variadic-Arg(
+    hint,
+    raw-term,
+    comment,
+    comment,
+    raw-term,
+  )
+}
