@@ -25,3 +25,8 @@ define empty-args<a>(): args(a) {
 define empty-imp-args<a>(): pair(series(pair(raw-binder(a), ?a)), comment) {
   Pair(empty-series-paren-comma(), Nil)
 }
+
+define extract-args<a>(x: args(a)): list(raw-binder(a)) {
+  let Pair(series, _) = x;
+  this.syntax-tree.series.extract(series)
+}
