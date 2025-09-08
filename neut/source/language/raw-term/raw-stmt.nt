@@ -41,3 +41,7 @@ data post-raw-stmt {
     raw-def(definite-description),
   )
 }
+
+data post-raw-program {
+| Post-Raw-Program(hint, list(pair(raw-import, comment)), list(post-raw-stmt))
+}
