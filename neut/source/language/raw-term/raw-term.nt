@@ -59,3 +59,8 @@ inline map-elem<a, b>(e: elem(a), f: (a) -> b): elem(b) {
 data keyword-clause(a) {
 | Keyword-Clause(elem(a), elem(a))
 }
+
+inline map-keyword-clause<a, b>(kc: keyword-clause(a), !f: (a) -> b): keyword-clause(b) {
+  let Keyword-Clause(x, y) = kc;
+  Keyword-Clause(map-elem(x, !f), map-elem(y, !f))
+}
