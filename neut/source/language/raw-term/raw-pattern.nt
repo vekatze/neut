@@ -19,13 +19,21 @@ data raw-pattern {
 data raw-key-value {
 | Raw-Key-Value(
     k: key,
-    v: raw-pattern,
     location: hint,
     body-comment: comment,
+    v: raw-pattern,
   )
 }
 
 data cons-args {
 | Paren(series(pair(hint, raw-pattern)))
 | Of(series(raw-key-value))
+}
+
+data raw-pattern-row(a) {
+| Raw-Pattern-Row(
+    patterns: series(pair(hint, raw-pattern)),
+    body-comment: comment,
+    body: a,
+  )
 }
