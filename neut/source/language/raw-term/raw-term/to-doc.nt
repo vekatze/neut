@@ -116,6 +116,16 @@ define _decode-imp-params(ips: series(pair(raw-binder(raw-term), ?raw-term))): d
   }
 }
 
+define _decode-exp-params(icl: is-const-like, eps: series(raw-binder(raw-term))): doc {
+  let ie on eps = is-empty(eps);
+  if and(icl, ie) {
+    Empty
+  } else {
+    pin foo = for-each(eps, _exp-param-to-doc);
+    this.syntax-tree.series.to-doc.decode(foo)
+  }
+}
+
 define to-doc(t: &raw-term): doc {
   admit
 }
