@@ -4,7 +4,7 @@ import {
   this.language.raw-term.name {Locator, Var, name},
   this.language.raw-term.raw-binder {Raw-Binder, raw-binder},
   this.language.raw-term.raw-ident {is-hole},
-  this.language.raw-term.raw-term {Elem, Hole, Raw-Geist, Tau, elem, raw-geist, raw-term},
+  this.language.raw-term.raw-term {Elem, Hole, Raw-Def, Raw-Geist, Tau, elem, raw-def, raw-geist, raw-term},
   this.logger.hint {hint},
   this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
   this.pretty-printer.piece {arrange, horizontal, inject, parameter},
@@ -149,4 +149,16 @@ define doc-from-geist<a>(name-decoder: (a) -> doc, g: raw-geist(a)): doc {
       inject(attach-comment(c3, doc-from-raw-term(cod))),
     ])
   }
+}
+
+define doc-from-def<a>(name-decoder: (a) -> doc, keyword: text, c: comment, def: raw-def(a)): doc {
+  let Raw-Def of {geist, body, leading-comment, trailing-comment} = def;
+  pin body = body;
+  attach-comment(c, join[
+    make-text(keyword),
+    make-text(*" "),
+    doc-from-geist(name-decoder, geist),
+    make-text(*" "),
+    _decode-block(Elem(leading-comment, doc-from-raw-term(body), trailing-comment)),
+  ])
 }
