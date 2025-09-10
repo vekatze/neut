@@ -1,0 +1,30 @@
+import {
+  this.language.common.base-name {text-from-base-name},
+  this.language.common.opacity {Clear},
+  this.language.common.stmt-kind {Main, Normal},
+  this.language.raw-term.name {Var},
+  this.language.raw-term.raw-stmt {Raw-Stmt-Define, raw-stmt},
+  this.language.raw-term.raw-term {for-each-raw-def},
+  this.language.raw-term.raw-term.to-doc {_doc-from-name, doc-from-def},
+  this.pretty-printer.doc {doc},
+}
+
+define _text-name-to-doc(t: text): doc {
+  pin tmp = Var(t);
+  _doc-from-name(tmp)
+}
+
+define _doc-from-stmt(s: raw-stmt): doc {
+  match s {
+  | Raw-Stmt-Define(c, stmt-kind, def) =>
+    let tmp = for-each-raw-def(def, text-from-base-name);
+    match stmt-kind {
+    | Normal(Clear) =>
+      doc-from-def(_text-name-to-doc, *"inline", c, tmp)
+    | Main(Clear, _) =>
+      doc-from-def(_text-name-to-doc, *"inline", c, tmp)
+    | _ =>
+      doc-from-def(_text-name-to-doc, *"define", c, tmp)
+    }
+  }
+}
