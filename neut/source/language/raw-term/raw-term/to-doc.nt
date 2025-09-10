@@ -56,3 +56,30 @@ define type-annot(t: doc): doc {
     join[make-text(*": "), t]
   }
 }
+
+nominal {
+  to-doc(t: &raw-term): doc,
+}
+
+data _param {
+| _Param(hint, doc, comment, comment, raw-term)
+}
+
+define _param-to-doc(p: _param): doc {
+  let _Param(_, x, c1, c2, t) = p;
+  match t {
+  | Hole of {} =>
+    attach-comment(core.list.append(c1, c2), x)
+  | t =>
+    let d on t = to-doc(t);
+    let _ = t;
+    arrange(List[
+      parameter(x),
+      inject(attach-comment(core.list.append(c1, c2), type-annot(d))),
+    ])
+  }
+}
+
+define to-doc(t: &raw-term): doc {
+  admit
+}
