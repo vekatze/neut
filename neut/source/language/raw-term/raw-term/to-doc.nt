@@ -1,0 +1,13 @@
+import {
+  this.language.raw-term.raw-term {Hole, Tau, raw-term},
+  this.pretty-printer.doc {doc, make-text},
+}
+
+define doc-from-raw-term(e: &raw-term): doc {
+  case e {
+  | Tau(_) =>
+    make-text(*"tau")
+  | Hole(_, _) =>
+    make-text(*"_")
+  }
+}
