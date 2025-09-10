@@ -1,7 +1,9 @@
 import {
-  this.language.common.base-name {text-from-base-name},
+  this.language.common.base-name {base-name, text-from-base-name},
   this.language.common.opacity {Clear},
   this.language.common.stmt-kind {Main, Normal},
+  this.language.common.unused-global-locators {unused-global-locators},
+  this.language.common.unused-local-locators {unused-local-locators},
   this.language.raw-term.name {Var},
   this.language.raw-term.raw-stmt {Raw-Stmt-Define, raw-stmt},
   this.language.raw-term.raw-term {for-each-raw-def},
@@ -27,4 +29,12 @@ define _doc-from-stmt(s: raw-stmt): doc {
       doc-from-def(_text-name-to-doc, *"define", c, tmp)
     }
   }
+}
+
+data import-info {
+| Import-Info(
+    preset-names: list(pair(text, list(base-name))),
+    unused-global-locators: unused-global-locators,
+    unused-local-locators: unused-local-locators,
+  )
 }
