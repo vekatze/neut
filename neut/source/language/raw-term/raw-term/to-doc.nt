@@ -1,6 +1,8 @@
 import {
-  this.language.raw-term.raw-term {Hole, Tau, raw-term},
-  this.pretty-printer.doc {doc, make-text},
+  this.language.raw-term.raw-term {Elem, Hole, Tau, elem, raw-term},
+  this.pretty-printer.doc {doc, indent, join, line, make-text, nest},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.comment.to-doc {as-prefix},
 }
 
 define doc-from-raw-term(e: &raw-term): doc {
@@ -10,4 +12,8 @@ define doc-from-raw-term(e: &raw-term): doc {
   | Hole(_, _) =>
     make-text(*"_")
   }
+}
+
+define attach-comment(c: comment, d: doc): doc {
+  join[as-prefix(c), d]
 }
