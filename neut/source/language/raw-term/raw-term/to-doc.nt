@@ -2,7 +2,7 @@ import {
   this.language.raw-term.raw-term {Elem, Hole, Tau, elem, raw-term},
   this.pretty-printer.doc {doc, indent, join, line, make-text, nest},
   this.syntax-tree.comment {comment},
-  this.syntax-tree.comment.to-doc {as-prefix},
+  this.syntax-tree.comment.to-doc {as-prefix, as-suffix},
 }
 
 define doc-from-raw-term(e: &raw-term): doc {
@@ -16,4 +16,13 @@ define doc-from-raw-term(e: &raw-term): doc {
 
 define attach-comment(c: comment, d: doc): doc {
   join[as-prefix(c), d]
+}
+
+define _decode-block(x: elem(doc)): doc {
+  let Elem(c1, body, c2) = x;
+  join[
+    make-text(*"{"),
+    nest(indent, join[line, attach-comment(c1, body), as-suffix(c2)]),
+    make-text(*"}"),
+  ]
 }
