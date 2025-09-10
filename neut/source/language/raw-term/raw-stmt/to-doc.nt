@@ -63,3 +63,11 @@ define _doc-from-top-def-list(c1: comment, ds: list(pair(?doc, comment))): doc {
     }
   }
 }
+
+data import-info {
+| Import-Info(
+    preset-names: list(pair(text, list(base-name))),
+    unused-global-locators: unused-global-locators,
+    unused-local-locators: unused-local-locators,
+  )
+}
