@@ -1,7 +1,7 @@
 import {
   this.language.raw-term.locator {text-from-locator},
   this.language.raw-term.name {Locator, Var, name},
-  this.language.raw-term.raw-binder {raw-binder},
+  this.language.raw-term.raw-binder {Raw-Binder, raw-binder},
   this.language.raw-term.raw-ident {is-hole},
   this.language.raw-term.raw-term {Elem, Hole, Tau, elem, imp-params, raw-term},
   this.logger.hint {hint},
@@ -9,7 +9,7 @@ import {
   this.pretty-printer.piece {arrange, inject, parameter},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-prefix, as-suffix},
-  this.syntax-tree.series {series},
+  this.syntax-tree.series {for-each, series},
   this.syntax-tree.series.to-doc,
 }
 
@@ -77,6 +77,24 @@ define _param-to-doc(p: _param): doc {
       parameter(x),
       inject(attach-comment(core.list.append(c1, c2), type-annot(d))),
     ])
+  }
+}
+
+define _imp-param-to-doc(x: pair(raw-binder(raw-term), ?raw-term)): doc {
+  let Pair(Raw-Binder(m, x, c1, c2, t), maybe-default) = x;
+  pin tmp = Var(x);
+  let x = _doc-from-name(tmp);
+  let base-param = _param-to-doc(_Param(m, x, c1, c2, t));
+  match maybe-default {
+  | Left(_) =>
+    base-param
+  | Right(default-value) =>
+    pin default-value = default-value;
+    join[
+      base-param,
+      make-text(*" := "),
+      to-doc(default-value),
+    ]
   }
 }
 
