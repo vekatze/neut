@@ -1,4 +1,5 @@
 import {
+  this.language.common.is-const-like {is-const-like},
   this.language.raw-term.locator {text-from-locator},
   this.language.raw-term.name {Locator, Var, name},
   this.language.raw-term.raw-binder {Raw-Binder, raw-binder},
@@ -9,7 +10,7 @@ import {
   this.pretty-printer.piece {arrange, inject, parameter},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-prefix, as-suffix},
-  this.syntax-tree.series {for-each, series},
+  this.syntax-tree.series {for-each, is-empty, series},
   this.syntax-tree.series.to-doc,
 }
 
@@ -96,6 +97,13 @@ define _imp-param-to-doc(x: pair(raw-binder(raw-term), ?raw-term)): doc {
       to-doc(default-value),
     ]
   }
+}
+
+define _exp-param-to-doc(x: raw-binder(raw-term)): doc {
+  let Raw-Binder(m, x, c1, c2, t) = x;
+  pin tmp = Var(x);
+  let x = _doc-from-name(tmp);
+  _param-to-doc(_Param(m, x, c1, c2, t))
 }
 
 define _decode-imp-params(ips: series(pair(raw-binder(raw-term), ?raw-term))): doc {
