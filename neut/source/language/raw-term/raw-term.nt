@@ -2,6 +2,7 @@ import {
   core.list {for-each},
   core.pair {first},
   this.language.common.base-name {base-name},
+  this.language.common.hole-id {hole-ID},
   this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-binder {raw-binder},
   this.language.raw-term.raw-ident {raw-ident},
@@ -13,6 +14,7 @@ import {
 
 data raw-term {
 | Tau(hint)
+| Hole(hint, hole-ID)
 }
 
 data pat-param(a) {

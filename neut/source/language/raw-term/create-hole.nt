@@ -1,0 +1,11 @@
+import {
+  this.gensym.gensym {gensym-kit, new-count},
+  this.language.common.hole-id {Hole-ID},
+  this.language.raw-term.raw-term {Hole, raw-term},
+  this.logger.hint {hint},
+}
+
+define create-hole(h: &gensym-kit, m: hint): raw-term {
+  let i = new-count(h);
+  Hole(m, Hole-ID(i))
+}
