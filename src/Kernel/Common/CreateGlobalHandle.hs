@@ -7,6 +7,8 @@ where
 import Color.CreateHandle qualified as Color
 import Color.Handle qualified as Color
 import CommandParser.Config.Remark qualified as Remark
+import Data.HashMap.Strict qualified as Map
+import Data.IORef (IORef, newIORef)
 import Gensym.CreateHandle qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Kernel.Clarify.Internal.Handle.CompDef qualified as CompDef
@@ -20,9 +22,11 @@ import Kernel.Common.Handle.Global.OptimizableData qualified as OptimizableData
 import Kernel.Common.Handle.Global.Path qualified as Path
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Global.Type qualified as Type
+import Kernel.Common.Import
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
 import Kernel.Parse.Internal.Handle.GlobalNameMap qualified as GlobalNameMap
+import Language.Common.ModuleID qualified as MID
 import Logger.CreateHandle qualified as Logger
 import Logger.Handle qualified as Logger
 import Path
@@ -44,7 +48,8 @@ data Handle = Handle
     typeHandle :: Type.Handle,
     weakDefHandle :: WeakDef.Handle,
     compDefHandle :: CompDef.Handle,
-    globalNameMapHandle :: GlobalNameMap.Handle
+    globalNameMapHandle :: GlobalNameMap.Handle,
+    presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem])
   }
 
 new :: Remark.Config -> Maybe (Path Abs File) -> IO Handle
@@ -67,4 +72,5 @@ new cfg moduleFilePathOrNone = do
   antecedentHandle <- Antecedent.new
   compDefHandle <- CompDef.new
   globalNameMapHandle <- GlobalNameMap.new
+  presetCacheRef <- newIORef Map.empty
   return $ Handle {..}

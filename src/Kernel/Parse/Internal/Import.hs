@@ -11,6 +11,7 @@ import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
+import Data.IORef (IORef, modifyIORef', readIORef)
 import Data.Text qualified as T
 import Gensym.Handle qualified as Gensym
 import Kernel.Common.AliasInfo qualified as AI
@@ -34,6 +35,7 @@ import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Language.Common.BaseName qualified as BN
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.ModuleAlias (ModuleAlias (ModuleAlias))
+import Language.Common.ModuleID (ModuleID)
 import Language.Common.SourceLocator qualified as SL
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.RawTerm.RawStmt
@@ -56,7 +58,8 @@ data Handle = Handle
     rawImportSummaryHandle :: RawImportSummary.Handle,
     moduleHandle :: Module.Handle,
     globalNameMapHandle :: GlobalNameMap.Handle,
-    tagHandle :: Tag.Handle
+    tagHandle :: Tag.Handle,
+    presetCacheRef :: IORef (Map.HashMap ModuleID [ImportItem])
   }
 
 new ::
@@ -151,7 +154,14 @@ getSource h mustUpdateTag m sgl locatorText = do
 
 interpretPreset :: Handle -> Hint -> Module -> App [ImportItem]
 interpretPreset h m currentModule = do
-  presetInfo <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
-  fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do
-    let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
-    interpretImportItem h False m locatorText presetLocalLocatorList'
+  ref <- liftIO $ readIORef (presetCacheRef h)
+  case Map.lookup (moduleID currentModule) ref of
+    Just items ->
+      return items
+    Nothing -> do
+      presetInfo <- GetEnabledPreset.getEnabledPreset (getEnabledPresetHandle h) currentModule
+      items <- fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do
+        let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
+        interpretImportItem h False m locatorText presetLocalLocatorList'
+      liftIO $ modifyIORef' (presetCacheRef h) $ Map.insert (moduleID currentModule) items
+      return items
