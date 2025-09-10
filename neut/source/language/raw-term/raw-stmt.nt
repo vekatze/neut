@@ -3,7 +3,7 @@ import {
   this.language.common.definite-description {definite-description},
   this.language.common.stmt-kind {base-stmt-kind},
   this.language.raw-term.raw-binder {raw-binder},
-  this.language.raw-term.raw-term {loc, raw-def, raw-term},
+  this.language.raw-term.raw-term {Raw-Def, Raw-Geist, loc, raw-def, raw-term},
   this.logger.hint {hint},
   this.syntax-tree.comment {comment},
   this.syntax-tree.series {series},
@@ -54,4 +54,11 @@ data post-raw-stmt {
 
 data post-raw-program {
 | Post-Raw-Program(hint, list(pair(raw-import, comment)), list(post-raw-stmt))
+}
+
+define get-post-raw-stmt-name(stmt: &post-raw-stmt): list(pair(&hint, &definite-description)) {
+  case stmt {
+  | Post-Raw-Stmt-Define(_, _, Raw-Def of {geist := Raw-Geist of {loc, name := Pair(n, _)}}) =>
+    List[Pair(loc, n)]
+  }
 }
