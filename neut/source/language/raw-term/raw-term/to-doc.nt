@@ -98,6 +98,16 @@ define _imp-param-to-doc(x: pair(raw-binder(raw-term), ?raw-term)): doc {
   }
 }
 
+define _decode-imp-params(ips: series(pair(raw-binder(raw-term), ?raw-term))): doc {
+  let b on ips = this.syntax-tree.series.is-empty(ips);
+  if b {
+    Empty
+  } else {
+    pin foo = for-each(ips, _imp-param-to-doc);
+    this.syntax-tree.series.to-doc.decode(foo)
+  }
+}
+
 define to-doc(t: &raw-term): doc {
   admit
 }
