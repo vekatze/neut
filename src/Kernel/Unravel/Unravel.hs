@@ -59,7 +59,8 @@ data Handle = Handle
   { globalHandle :: Global.Handle,
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VI.VisitInfo),
     traceSourceListRef :: IORef [Source.Source],
-    sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem])
+    sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [ImportItem]),
+    presetCacheRef :: IORef (Map.HashMap MID.ModuleID [ImportItem])
   }
 
 new :: Global.Handle -> IO Handle
@@ -67,6 +68,7 @@ new globalHandle = do
   visitEnvRef <- newIORef Map.empty
   traceSourceListRef <- newIORef []
   sourceChildrenMapRef <- newIORef Map.empty
+  presetCacheRef <- newIORef Map.empty
   return $ Handle {..}
 
 unravel :: Handle -> Module -> Target -> App (A.ArtifactTime, [Source.Source])
