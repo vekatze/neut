@@ -1,5 +1,5 @@
 import {
-  core.list {for-each},
+  core.list {append, for-each, is-empty},
   this.language.common.base-name {base-name, text-from-base-name},
   this.language.common.opacity {Clear},
   this.language.common.stmt-kind {Main, Normal},
@@ -9,7 +9,7 @@ import {
   this.language.raw-term.raw-stmt {Raw-Program, Raw-Stmt-Define, raw-program, raw-stmt},
   this.language.raw-term.raw-term {for-each-raw-def},
   this.language.raw-term.raw-term.to-doc {_doc-from-name, doc-from-def},
-  this.pretty-printer.doc {doc, join, layout},
+  this.pretty-printer.doc {Empty, doc, join, layout, line},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-stmt-prefix},
 }
@@ -36,4 +36,30 @@ define _doc-from-stmt(s: raw-stmt): doc {
 
 define _attach-stmt-comment(c: comment, d: doc): doc {
   join[as-stmt-prefix(c), d]
+}
+
+define _doc-from-top-def-list(c1: comment, ds: list(pair(?doc, comment))): doc {
+  match ds {
+  | Nil =>
+    _attach-stmt-comment(c1, Empty)
+  | Cons(Pair(m, c2), Nil) =>
+    match m {
+    | Left(_) =>
+      _attach-stmt-comment(append(c1, c2), Empty)
+    | Right(d) =>
+      let b on c2 = is-empty(c2);
+      if b {
+        _attach-stmt-comment(c1, join[d, line])
+      } else {
+        _attach-stmt-comment(c1, join[d, line, line, _doc-from-top-def-list(c2, Nil)])
+      }
+    }
+  | Cons(Pair(m, c2), rest) =>
+    match m {
+    | Left(_) =>
+      _doc-from-top-def-list(append(c1, c2), rest)
+    | Right(d) =>
+      _attach-stmt-comment(c1, join[d, line, line, _doc-from-top-def-list(c2, rest)])
+    }
+  }
 }
