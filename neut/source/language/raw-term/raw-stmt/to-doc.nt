@@ -1,14 +1,17 @@
 import {
+  core.list {for-each},
   this.language.common.base-name {base-name, text-from-base-name},
   this.language.common.opacity {Clear},
   this.language.common.stmt-kind {Main, Normal},
   this.language.common.unused-global-locators {unused-global-locators},
   this.language.common.unused-local-locators {unused-local-locators},
   this.language.raw-term.name {Var},
-  this.language.raw-term.raw-stmt {Raw-Stmt-Define, raw-stmt},
+  this.language.raw-term.raw-stmt {Raw-Program, Raw-Stmt-Define, raw-program, raw-stmt},
   this.language.raw-term.raw-term {for-each-raw-def},
   this.language.raw-term.raw-term.to-doc {_doc-from-name, doc-from-def},
-  this.pretty-printer.doc {doc},
+  this.pretty-printer.doc {doc, join, layout},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.comment.to-doc {as-stmt-prefix},
 }
 
 define _text-name-to-doc(t: text): doc {
@@ -31,10 +34,6 @@ define _doc-from-stmt(s: raw-stmt): doc {
   }
 }
 
-data import-info {
-| Import-Info(
-    preset-names: list(pair(text, list(base-name))),
-    unused-global-locators: unused-global-locators,
-    unused-local-locators: unused-local-locators,
-  )
+define _attach-stmt-comment(c: comment, d: doc): doc {
+  join[as-stmt-prefix(c), d]
 }
