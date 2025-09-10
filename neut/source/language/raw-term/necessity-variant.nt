@@ -1,0 +1,32 @@
+data necessity-variant {
+| Variant-K
+| Variant-T
+}
+
+define text-from-necessity-variant(nv: necessity-variant): &text {
+  match nv {
+  | Variant-K =>
+    "letbox"
+  | Variant-T =>
+    "letbox-T"
+  }
+}
+
+define necessity-variant-from-text(t: &text): ?necessity-variant {
+  if eq-text(t, "letbox") {
+    Right(Variant-K)
+  } else-if eq-text(t, "letbox-T") {
+    Right(Variant-T)
+  } else {
+    none
+  }
+}
+
+define layer-offset(nv: necessity-variant): int {
+  match nv {
+  | Variant-K =>
+    1
+  | Variant-T =>
+    0
+  }
+}

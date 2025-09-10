@@ -1,0 +1,68 @@
+import {
+  this.language.common.base-name {base-name},
+  this.language.common.definite-description {definite-description},
+  this.language.common.stmt-kind {base-stmt-kind},
+  this.language.raw-term.raw-binder {raw-binder},
+  this.language.raw-term.raw-term {Raw-Def, Raw-Geist, loc, raw-def, raw-term},
+  this.logger.hint {hint},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.series {series},
+}
+
+data raw-import {}
+
+inline raw-stmt-kind(a) {
+  base-stmt-kind(a, raw-binder(raw-term), unit)
+}
+
+data raw-cons-info(a) {
+| Raw-Cons-Info(
+    hint: hint,
+    name: a,
+    exp-args: ?series(raw-binder(raw-term)),
+    end-loc: loc,
+  )
+}
+
+data base-raw-stmt(name) {
+| Raw-Stmt-Define(
+    comment,
+    raw-stmt-kind(name),
+    raw-def(name),
+  )
+}
+
+inline raw-stmt: type {
+  base-raw-stmt(base-name)
+}
+
+data base-raw-program(a) {
+| Raw-Program(hint, list(pair(raw-import, comment)), list(pair(base-raw-stmt(a), comment)))
+}
+
+inline raw-program: type {
+  base-raw-program(base-name)
+}
+
+data post-raw-stmt {
+| Post-Raw-Stmt-Define(
+    comment,
+    raw-stmt-kind(definite-description),
+    raw-def(definite-description),
+  )
+}
+
+data post-raw-program {
+| Post-Raw-Program(hint, list(pair(raw-import, comment)), list(post-raw-stmt))
+}
+
+define get-post-raw-stmt-name(stmt: &post-raw-stmt): list(pair(&hint, &definite-description)) {
+  case stmt {
+  | Post-Raw-Stmt-Define(_, _, Raw-Def of {geist := Raw-Geist of {loc, name := Pair(n, _)}}) =>
+    List[Pair(loc, n)]
+  }
+}
+
+define is-import-empty(ri: raw-import): bool {
+  match ri {}
+}

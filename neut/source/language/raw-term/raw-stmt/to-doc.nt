@@ -1,0 +1,85 @@
+import {
+  core.list {append, for-each, is-empty},
+  this.language.common.base-name {base-name, text-from-base-name},
+  this.language.common.opacity {Clear},
+  this.language.common.stmt-kind {Main, Normal},
+  this.language.common.unused-global-locators {unused-global-locators},
+  this.language.common.unused-local-locators {unused-local-locators},
+  this.language.raw-term.name {Var},
+  this.language.raw-term.raw-stmt {Raw-Program, Raw-Stmt-Define, raw-program, raw-stmt},
+  this.language.raw-term.raw-term {for-each-raw-def},
+  this.language.raw-term.raw-term.to-doc {_doc-from-name, doc-from-def},
+  this.pretty-printer.doc {Empty, doc, join, layout, line},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.comment.to-doc {as-stmt-prefix},
+}
+
+define _text-name-to-doc(t: text): doc {
+  pin tmp = Var(t);
+  _doc-from-name(tmp)
+}
+
+define _doc-from-stmt(s: raw-stmt): doc {
+  match s {
+  | Raw-Stmt-Define(c, stmt-kind, def) =>
+    let tmp = for-each-raw-def(def, text-from-base-name);
+    match stmt-kind {
+    | Normal(Clear) =>
+      doc-from-def(_text-name-to-doc, *"inline", c, tmp)
+    | Main(Clear, _) =>
+      doc-from-def(_text-name-to-doc, *"inline", c, tmp)
+    | _ =>
+      doc-from-def(_text-name-to-doc, *"define", c, tmp)
+    }
+  }
+}
+
+define _attach-stmt-comment(c: comment, d: doc): doc {
+  join[as-stmt-prefix(c), d]
+}
+
+define _doc-from-top-def-list(c1: comment, ds: list(pair(?doc, comment))): doc {
+  match ds {
+  | Nil =>
+    _attach-stmt-comment(c1, Empty)
+  | Cons(Pair(m, c2), Nil) =>
+    match m {
+    | Left(_) =>
+      _attach-stmt-comment(append(c1, c2), Empty)
+    | Right(d) =>
+      let b on c2 = is-empty(c2);
+      if b {
+        _attach-stmt-comment(c1, join[d, line])
+      } else {
+        _attach-stmt-comment(c1, join[d, line, line, _doc-from-top-def-list(c2, Nil)])
+      }
+    }
+  | Cons(Pair(m, c2), rest) =>
+    match m {
+    | Left(_) =>
+      _doc-from-top-def-list(append(c1, c2), rest)
+    | Right(d) =>
+      _attach-stmt-comment(c1, join[d, line, line, _doc-from-top-def-list(c2, rest)])
+    }
+  }
+}
+
+data import-info {
+| Import-Info(
+    preset-names: list(pair(text, list(base-name))),
+    unused-global-locators: unused-global-locators,
+    unused-local-locators: unused-local-locators,
+  )
+}
+
+define pp(ii: import-info, p: pair(comment, raw-program)): text {
+  let Pair(c, Raw-Program(_, _, stmt-list)) = p;
+  let _ = ii;
+  let stmt-list =
+    for-each(stmt-list, function (p) {
+      let Pair(stmt, c) = p;
+      Pair(Right(_doc-from-stmt(stmt)), c)
+    });
+  let program = stmt-list;
+  layout(_doc-from-top-def-list(c, program))
+}

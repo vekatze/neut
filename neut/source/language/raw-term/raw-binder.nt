@@ -1,0 +1,9 @@
+import {
+  this.language.raw-term.raw-ident {raw-ident},
+  this.logger.hint {hint},
+  this.syntax-tree.comment {comment},
+}
+
+data raw-binder(a) {
+| Raw-Binder(hint, raw-ident, comment, comment, a)
+}

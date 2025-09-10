@@ -1,0 +1,164 @@
+import {
+  this.language.common.is-const-like {is-const-like},
+  this.language.raw-term.locator {text-from-locator},
+  this.language.raw-term.name {Locator, Var, name},
+  this.language.raw-term.raw-binder {Raw-Binder, raw-binder},
+  this.language.raw-term.raw-ident {is-hole},
+  this.language.raw-term.raw-term {Elem, Hole, Raw-Def, Raw-Geist, Tau, elem, raw-def, raw-geist, raw-term},
+  this.logger.hint {hint},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
+  this.pretty-printer.piece {arrange, horizontal, inject, parameter},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.comment.to-doc {as-prefix, as-suffix},
+  this.syntax-tree.series {for-each, is-empty, series},
+  this.syntax-tree.series.to-doc,
+}
+
+define doc-from-raw-term(e: &raw-term): doc {
+  case e {
+  | Tau(_) =>
+    make-text(*"tau")
+  | Hole(_, _) =>
+    make-text(*"_")
+  }
+}
+
+define attach-comment(c: comment, d: doc): doc {
+  join[as-prefix(c), d]
+}
+
+define _decode-block(x: elem(doc)): doc {
+  let Elem(c1, body, c2) = x;
+  join[
+    make-text(*"{"),
+    nest(indent, join[line, attach-comment(c1, body), as-suffix(c2)]),
+    make-text(*"}"),
+  ]
+}
+
+define _doc-from-name(n: &name): doc {
+  case n {
+  | Var(var) =>
+    if is-hole(var) {
+      make-text(*"_")
+    } else {
+      make-text(*var)
+    }
+  | Locator(locator) =>
+    make-text(text-from-locator(locator))
+  }
+}
+
+define type-annot(t: doc): doc {
+  let b on t = _is-multi(t);
+  if b {
+    join[make-text(*":"), line, t]
+  } else {
+    join[make-text(*": "), t]
+  }
+}
+
+data _param {
+| _Param(hint, doc, comment, comment, raw-term)
+}
+
+define _param-to-doc(p: _param): doc {
+  let _Param(_, x, c1, c2, t) = p;
+  match t {
+  | Hole of {} =>
+    attach-comment(core.list.append(c1, c2), x)
+  | t =>
+    let d on t = doc-from-raw-term(t);
+    let _ = t;
+    arrange(List[
+      parameter(x),
+      inject(attach-comment(core.list.append(c1, c2), type-annot(d))),
+    ])
+  }
+}
+
+define _imp-param-to-doc(x: pair(raw-binder(raw-term), ?raw-term)): doc {
+  let Pair(Raw-Binder(m, x, c1, c2, t), maybe-default) = x;
+  pin tmp = Var(x);
+  let x = _doc-from-name(tmp);
+  let base-param = _param-to-doc(_Param(m, x, c1, c2, t));
+  match maybe-default {
+  | Left(_) =>
+    base-param
+  | Right(default-value) =>
+    pin default-value = default-value;
+    join[
+      base-param,
+      make-text(*" := "),
+      doc-from-raw-term(default-value),
+    ]
+  }
+}
+
+define _exp-param-to-doc(x: raw-binder(raw-term)): doc {
+  let Raw-Binder(m, x, c1, c2, t) = x;
+  pin tmp = Var(x);
+  let x = _doc-from-name(tmp);
+  _param-to-doc(_Param(m, x, c1, c2, t))
+}
+
+define _decode-imp-params(ips: series(pair(raw-binder(raw-term), ?raw-term))): doc {
+  let b on ips = this.syntax-tree.series.is-empty(ips);
+  if b {
+    Empty
+  } else {
+    pin foo = for-each(ips, _imp-param-to-doc);
+    this.syntax-tree.series.to-doc.decode(foo)
+  }
+}
+
+define _decode-exp-params(icl: is-const-like, eps: series(raw-binder(raw-term))): doc {
+  let ie on eps = is-empty(eps);
+  if and(icl, ie) {
+    Empty
+  } else {
+    pin foo = for-each(eps, _exp-param-to-doc);
+    this.syntax-tree.series.to-doc.decode(foo)
+  }
+}
+
+define doc-from-geist<a>(name-decoder: (a) -> doc, g: raw-geist(a)): doc {
+  let
+    Raw-Geist of {
+      name := Pair(name, c0),
+      imp-params := Pair(imp-params, c1),
+      exp-params := Pair(exp-params, c2),
+      cod := Pair(c3, cod),
+      is-const-like,
+    }
+  = g;
+  match cod {
+  | Hole of {} =>
+    arrange(List[
+      inject(attach-comment(c0, name-decoder(name))),
+      inject(_decode-imp-params(imp-params)),
+      inject(attach-comment(c1, _decode-exp-params(is-const-like, exp-params))),
+    ])
+  | cod =>
+    pin cod = cod;
+    arrange(List[
+      inject(attach-comment(c0, name-decoder(name))),
+      inject(_decode-imp-params(imp-params)),
+      inject(attach-comment(c1, _decode-exp-params(is-const-like, exp-params))),
+      horizontal(attach-comment(c2, make-text(*":"))),
+      inject(attach-comment(c3, doc-from-raw-term(cod))),
+    ])
+  }
+}
+
+define doc-from-def<a>(name-decoder: (a) -> doc, keyword: text, c: comment, def: raw-def(a)): doc {
+  let Raw-Def of {geist, body, leading-comment, trailing-comment} = def;
+  pin body = body;
+  attach-comment(c, join[
+    make-text(keyword),
+    make-text(*" "),
+    doc-from-geist(name-decoder, geist),
+    make-text(*" "),
+    _decode-block(Elem(leading-comment, doc-from-raw-term(body), trailing-comment)),
+  ])
+}

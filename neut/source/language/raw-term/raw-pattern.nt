@@ -1,0 +1,39 @@
+import {
+  this.language.raw-term.key {key},
+  this.language.raw-term.name {name},
+  this.logger.hint {hint},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.series {series},
+}
+
+nominal {
+  cons-args: type,
+}
+
+data raw-pattern {
+| Var(name)
+| Cons(name, cons-args)
+| Rune-Intro(rune)
+}
+
+data raw-key-value {
+| Raw-Key-Value(
+    k: key,
+    location: hint,
+    body-comment: comment,
+    v: raw-pattern,
+  )
+}
+
+data cons-args {
+| Paren(series(pair(hint, raw-pattern)))
+| Of(series(raw-key-value))
+}
+
+data raw-pattern-row(a) {
+| Raw-Pattern-Row(
+    patterns: series(pair(hint, raw-pattern)),
+    body-comment: comment,
+    body: a,
+  )
+}

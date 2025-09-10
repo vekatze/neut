@@ -1,0 +1,181 @@
+import {
+  core.list {for-each},
+  core.pair {first},
+  this.language.common.base-name {base-name},
+  this.language.common.hole-id {hole-ID},
+  this.language.common.is-const-like {is-const-like},
+  this.language.raw-term.raw-binder {raw-binder},
+  this.language.raw-term.raw-ident {raw-ident},
+  this.language.raw-term.raw-pattern {raw-pattern},
+  this.logger.hint {hint},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.series {empty-series-paren-comma, series},
+}
+
+data raw-term {
+| Tau(hint)
+| Hole(hint, hole-ID)
+}
+
+data pat-param(a) {
+| Pat-Param(hint, raw-pattern, comment, comment, a)
+}
+
+inline args(a) {
+  pair(series(raw-binder(a)), comment)
+}
+
+inline imp-params(a) {
+  pair(series(pair(raw-binder(a), ?a)), comment)
+}
+
+define empty-args<a>(): args(a) {
+  Pair(empty-series-paren-comma(), Nil)
+}
+
+define empty-imp-params<a>(): imp-params(a) {
+  Pair(empty-series-paren-comma(), Nil)
+}
+
+define extract-args<a>(x: args(a)): list(raw-binder(a)) {
+  let Pair(series, _) = x;
+  this.syntax-tree.series.extract(series)
+}
+
+define extract-imp-params<a>(x: imp-params(a)): list(raw-binder(a)) {
+  let Pair(series, _) = x;
+  for-each(this.syntax-tree.series.extract(series), exact first)
+}
+
+define extract-imp-params-with-defaults<a>(x: imp-params(a)): list(pair(raw-binder(a), ?a)) {
+  let Pair(series, _) = x;
+  this.syntax-tree.series.extract(series)
+}
+
+data elem(a) {
+| Elem(comment, a, comment)
+}
+
+inline map-elem<a, b>(e: elem(a), f: (a) -> b): elem(b) {
+  let Elem(c1, x, c2) = e;
+  Elem(c1, f(x), c2)
+}
+
+data keyword-clause(a) {
+| Keyword-Clause(elem(a), elem(a))
+}
+
+inline map-keyword-clause<a, b>(kc: keyword-clause(a), !f: (a) -> b): keyword-clause(b) {
+  let Keyword-Clause(x, y) = kc;
+  Keyword-Clause(map-elem(x, !f), map-elem(y, !f))
+}
+
+define push-comment-to-keyword-clause<a>(c: comment, kc: keyword-clause(a)): keyword-clause(a) {
+  let Keyword-Clause(Elem(c1, x, c2), y) = kc;
+  Keyword-Clause(Elem(core.list.append(c, c1), x, c2), y)
+}
+
+define extract-from-keyword-clause<a>(kc: keyword-clause(a)): pair(a, a) {
+  let Keyword-Clause(Elem(_, x, _), Elem(_, y, _)) = kc;
+  Pair(x, y)
+}
+
+data raw-geist(a) {
+| Raw-Geist(
+    loc: hint,
+    name: pair(a, comment),
+    is-const-like: is-const-like,
+    imp-params: imp-params(raw-term),
+    exp-params: args(raw-term),
+    cod: pair(comment, raw-term),
+  )
+}
+
+data loc {
+| Loc(
+    line: int,
+    column: int,
+  )
+}
+
+data raw-def(a) {
+| Raw-Def(
+    geist: raw-geist(a),
+    leading-comment: comment,
+    body: raw-term,
+    trailing-comment: comment,
+    end-loc: loc,
+  )
+}
+
+define for-each-raw-def<a, b>(x: raw-def(a), f: (a) -> b): raw-def(b) {
+  let Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-params, exp-args, cod), c1, body, c2, l2) = x;
+  let v = f(v);
+  Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-params, exp-args, cod), c1, body, c2, l2)
+}
+
+inline def-info: type {
+  raw-def(raw-ident)
+}
+
+inline func-info: type {
+  raw-def(?text)
+}
+
+inline top-geist: type {
+  raw-geist(base-name)
+}
+
+inline top-def: type {
+  raw-def(base-name)
+}
+
+define get-def-name<a>(def: &raw-def(a)): &a {
+  tie Raw-Def of {geist := Raw-Geist of {name := Pair(v, _)}} = def;
+  v
+}
+
+inline must-ignore-relayed-vars: type {
+  bool
+}
+
+data let-kind {
+| Plain(must-ignore-relayed-vars)
+| Noetic
+| Try
+}
+
+inline text-from-let-kind(lk: &let-kind): &text {
+  case lk {
+  | Plain(_) =>
+    "let"
+  | Noetic =>
+    "tie"
+  | Try =>
+    "try"
+  }
+}
+
+define let-kind-from-text(t: &text): ?let-kind {
+  if eq-text(t, "let") {
+    Right(Plain(False))
+  } else-if eq-text(t, "tie") {
+    Right(Noetic)
+  } else-if eq-text(t, "try") {
+    Right(Try)
+  } else {
+    none
+  }
+}
+
+data variadic-arg {
+| Variadic-Arg(
+    hint,
+    raw-term,
+    comment,
+    comment,
+    raw-term,
+  )
+}
+
+data raw-magic {}
