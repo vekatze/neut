@@ -86,7 +86,7 @@ data raw-geist(a) {
     name: pair(a, comment),
     is-const-like: is-const-like,
     imp-params: imp-params(raw-term),
-    exp-args: args(raw-term),
+    exp-params: args(raw-term),
     cod: pair(comment, raw-term),
   )
 }

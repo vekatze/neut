@@ -4,10 +4,10 @@ import {
   this.language.raw-term.name {Locator, Var, name},
   this.language.raw-term.raw-binder {Raw-Binder, raw-binder},
   this.language.raw-term.raw-ident {is-hole},
-  this.language.raw-term.raw-term {Elem, Hole, Tau, elem, imp-params, raw-term},
+  this.language.raw-term.raw-term {Elem, Hole, Raw-Geist, Tau, elem, raw-geist, raw-term},
   this.logger.hint {hint},
-  this.pretty-printer.doc {Empty, Inline-Comment, Line, Text, _is-multi, doc, indent, is-multi, join, line, make-text, nest},
-  this.pretty-printer.piece {arrange, inject, parameter},
+  this.pretty-printer.doc {Empty, _is-multi, doc, indent, join, line, make-text, nest},
+  this.pretty-printer.piece {arrange, horizontal, inject, parameter},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-prefix, as-suffix},
   this.syntax-tree.series {for-each, is-empty, series},
@@ -58,10 +58,6 @@ define type-annot(t: doc): doc {
   }
 }
 
-nominal {
-  to-doc(t: &raw-term): doc,
-}
-
 data _param {
 | _Param(hint, doc, comment, comment, raw-term)
 }
@@ -72,7 +68,7 @@ define _param-to-doc(p: _param): doc {
   | Hole of {} =>
     attach-comment(core.list.append(c1, c2), x)
   | t =>
-    let d on t = to-doc(t);
+    let d on t = doc-from-raw-term(t);
     let _ = t;
     arrange(List[
       parameter(x),
@@ -94,7 +90,7 @@ define _imp-param-to-doc(x: pair(raw-binder(raw-term), ?raw-term)): doc {
     join[
       base-param,
       make-text(*" := "),
-      to-doc(default-value),
+      doc-from-raw-term(default-value),
     ]
   }
 }
@@ -126,6 +122,31 @@ define _decode-exp-params(icl: is-const-like, eps: series(raw-binder(raw-term)))
   }
 }
 
-define to-doc(t: &raw-term): doc {
-  admit
+define doc-from-geist<a>(name-decoder: (a) -> doc, g: raw-geist(a)): doc {
+  let
+    Raw-Geist of {
+      name := Pair(name, c0),
+      imp-params := Pair(imp-params, c1),
+      exp-params := Pair(exp-params, c2),
+      cod := Pair(c3, cod),
+      is-const-like,
+    }
+  = g;
+  match cod {
+  | Hole of {} =>
+    arrange(List[
+      inject(attach-comment(c0, name-decoder(name))),
+      inject(_decode-imp-params(imp-params)),
+      inject(attach-comment(c1, _decode-exp-params(is-const-like, exp-params))),
+    ])
+  | cod =>
+    pin cod = cod;
+    arrange(List[
+      inject(attach-comment(c0, name-decoder(name))),
+      inject(_decode-imp-params(imp-params)),
+      inject(attach-comment(c1, _decode-exp-params(is-const-like, exp-params))),
+      horizontal(attach-comment(c2, make-text(*":"))),
+      inject(attach-comment(c3, doc-from-raw-term(cod))),
+    ])
+  }
 }
