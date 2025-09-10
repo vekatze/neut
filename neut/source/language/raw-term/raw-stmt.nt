@@ -62,3 +62,7 @@ define get-post-raw-stmt-name(stmt: &post-raw-stmt): list(pair(&hint, &definite-
     List[Pair(loc, n)]
   }
 }
+
+define is-import-empty(ri: raw-import): bool {
+  match ri {}
+}
