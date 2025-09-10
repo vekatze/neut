@@ -71,3 +71,15 @@ data import-info {
     unused-local-locators: unused-local-locators,
   )
 }
+
+define pp(ii: import-info, p: pair(comment, raw-program)): text {
+  let Pair(c, Raw-Program(_, _, stmt-list)) = p;
+  let _ = ii;
+  let stmt-list =
+    for-each(stmt-list, function (p) {
+      let Pair(stmt, c) = p;
+      Pair(Right(_doc-from-stmt(stmt)), c)
+    });
+  let program = stmt-list;
+  layout(_doc-from-top-def-list(c, program))
+}
