@@ -4,7 +4,9 @@ import {
   this.language.raw-term.raw-binder {raw-binder},
   this.language.raw-term.raw-ident {is-hole},
   this.language.raw-term.raw-term {Elem, Hole, Tau, elem, imp-params, raw-term},
-  this.pretty-printer.doc {Empty, doc, indent, join, line, make-text, nest},
+  this.logger.hint {hint},
+  this.pretty-printer.doc {Empty, Inline-Comment, Line, Text, _is-multi, doc, indent, is-multi, join, line, make-text, nest},
+  this.pretty-printer.piece {arrange, inject, parameter},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-prefix, as-suffix},
   this.syntax-tree.series {series},
@@ -43,5 +45,14 @@ define _doc-from-name(n: &name): doc {
     }
   | Locator(locator) =>
     make-text(text-from-locator(locator))
+  }
+}
+
+define type-annot(t: doc): doc {
+  let b on t = _is-multi(t);
+  if b {
+    join[make-text(*":"), line, t]
+  } else {
+    join[make-text(*": "), t]
   }
 }
