@@ -25,7 +25,7 @@ inline args(a) {
   pair(series(raw-binder(a)), comment)
 }
 
-inline imp-args(a) {
+inline imp-params(a) {
   pair(series(pair(raw-binder(a), ?a)), comment)
 }
 
@@ -33,7 +33,7 @@ define empty-args<a>(): args(a) {
   Pair(empty-series-paren-comma(), Nil)
 }
 
-define empty-imp-args<a>(): imp-args(a) {
+define empty-imp-params<a>(): imp-params(a) {
   Pair(empty-series-paren-comma(), Nil)
 }
 
@@ -42,12 +42,12 @@ define extract-args<a>(x: args(a)): list(raw-binder(a)) {
   this.syntax-tree.series.extract(series)
 }
 
-define extract-imp-args<a>(x: imp-args(a)): list(raw-binder(a)) {
+define extract-imp-params<a>(x: imp-params(a)): list(raw-binder(a)) {
   let Pair(series, _) = x;
   for-each(this.syntax-tree.series.extract(series), exact first)
 }
 
-define extract-imp-args-with-defaults<a>(x: imp-args(a)): list(pair(raw-binder(a), ?a)) {
+define extract-imp-params-with-defaults<a>(x: imp-params(a)): list(pair(raw-binder(a), ?a)) {
   let Pair(series, _) = x;
   this.syntax-tree.series.extract(series)
 }
@@ -85,7 +85,7 @@ data raw-geist(a) {
     loc: hint,
     name: pair(a, comment),
     is-const-like: is-const-like,
-    imp-args: imp-args(raw-term),
+    imp-params: imp-params(raw-term),
     exp-args: args(raw-term),
     cod: pair(comment, raw-term),
   )
@@ -109,9 +109,9 @@ data raw-def(a) {
 }
 
 define for-each-raw-def<a, b>(x: raw-def(a), f: (a) -> b): raw-def(b) {
-  let Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-args, exp-args, cod), c1, body, c2, l2) = x;
+  let Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-params, exp-args, cod), c1, body, c2, l2) = x;
   let v = f(v);
-  Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-args, exp-args, cod), c1, body, c2, l2)
+  Raw-Def(Raw-Geist(l1, Pair(v, c), is-const-like, imp-params, exp-args, cod), c1, body, c2, l2)
 }
 
 inline def-info: type {

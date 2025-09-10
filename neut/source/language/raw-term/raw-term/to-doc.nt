@@ -1,8 +1,14 @@
 import {
-  this.language.raw-term.raw-term {Elem, Hole, Tau, elem, raw-term},
-  this.pretty-printer.doc {doc, indent, join, line, make-text, nest},
+  this.language.raw-term.locator {text-from-locator},
+  this.language.raw-term.name {Locator, Var, name},
+  this.language.raw-term.raw-binder {raw-binder},
+  this.language.raw-term.raw-ident {is-hole},
+  this.language.raw-term.raw-term {Elem, Hole, Tau, elem, imp-params, raw-term},
+  this.pretty-printer.doc {Empty, doc, indent, join, line, make-text, nest},
   this.syntax-tree.comment {comment},
   this.syntax-tree.comment.to-doc {as-prefix, as-suffix},
+  this.syntax-tree.series {series},
+  this.syntax-tree.series.to-doc,
 }
 
 define doc-from-raw-term(e: &raw-term): doc {
@@ -25,4 +31,17 @@ define _decode-block(x: elem(doc)): doc {
     nest(indent, join[line, attach-comment(c1, body), as-suffix(c2)]),
     make-text(*"}"),
   ]
+}
+
+define _doc-from-name(n: &name): doc {
+  case n {
+  | Var(var) =>
+    if is-hole(var) {
+      make-text(*"_")
+    } else {
+      make-text(*var)
+    }
+  | Locator(locator) =>
+    make-text(text-from-locator(locator))
+  }
 }
