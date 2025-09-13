@@ -129,3 +129,7 @@ inline core-thread-attach: &text {
 inline core-box-embody: &text {
   "core.box.embody"
 }
+
+inline hole-literal: &text {
+  "_"
+}
