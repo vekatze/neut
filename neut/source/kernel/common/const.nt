@@ -29,3 +29,7 @@ inline env-var-clang: &text {
 inline module-file: &text {
   "module.ens"
 }
+
+inline source-rel-dir: &text {
+  "source"
+}
