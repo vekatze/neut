@@ -2,3 +2,12 @@ data build-mode {
 | Develop
 | Release
 }
+
+define text-from-build-mode(bm: build-mode): &text {
+  match bm {
+  | Develop =>
+    "develop"
+  | Release =>
+    "release"
+  }
+}
