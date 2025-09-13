@@ -85,3 +85,7 @@ inline core-bool-True: &text {
 inline core-bool-False: &text {
   "core.bool.False"
 }
+
+inline core-either: &text {
+  "core.either.either"
+}
