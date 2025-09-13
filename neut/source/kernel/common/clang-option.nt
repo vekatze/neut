@@ -14,3 +14,7 @@ define make-clang-option(
   let link-option = core.list.append(!build-option, link-option);
   Clang-Option of {compile-option, link-option}
 }
+
+inline empty-clang-option: clang-option {
+  Clang-Option of {compile-option := Nil, link-option := Nil}
+}
