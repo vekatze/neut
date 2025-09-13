@@ -49,3 +49,7 @@ inline artifact-rel-dir: &text {
 inline entry-rel-dir: &text {
   "entry"
 }
+
+inline foreign-rel-dir: &text {
+  "foreign"
+}
