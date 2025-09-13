@@ -101,3 +101,7 @@ inline core-either-Right: &text {
 inline core-text: &text {
   "core.text.text"
 }
+
+inline core-rune: &text {
+  "core.rune.rune"
+}
