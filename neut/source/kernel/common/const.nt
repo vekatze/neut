@@ -133,3 +133,7 @@ inline core-box-embody: &text {
 inline hole-literal: &text {
   "_"
 }
+
+inline hole-var-prefix: &text {
+  "{}"
+}
