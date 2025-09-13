@@ -113,3 +113,7 @@ inline core-rune-Rune: &text {
 inline core-trick-panic: &text {
   "core.trick.panic"
 }
+
+inline core-trick-assert: &text {
+  "core.trick._assert"
+}
