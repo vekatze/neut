@@ -65,3 +65,7 @@ inline default-inline-limit: int {
 inline core: &text {
   "core"
 }
+
+inline core-unit: &text {
+  "core.unit.unit"
+}
