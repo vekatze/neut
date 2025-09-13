@@ -1,0 +1,4 @@
+data output-kind {
+| Object
+| LLVM
+}
