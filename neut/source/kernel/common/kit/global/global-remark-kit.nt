@@ -1,8 +1,13 @@
 import {
-  core.ref {ref},
+  core.ref {make-ref, ref},
   this.logger.log {log},
 }
 
 data global-remark-kit {
 | _Global-Remark-Kit(remark-list: ref(list(log)))
+}
+
+define make-global-remark-kit(): global-remark-kit {
+  let ref = make-ref(box {Nil});
+  _Global-Remark-Kit(ref)
 }
