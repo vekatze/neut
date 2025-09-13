@@ -1,0 +1,6 @@
+data clang-option {
+| Clang-Option(
+    compile-option: list(text),
+    link-option: list(text),
+  )
+}
