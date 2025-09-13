@@ -81,3 +81,7 @@ inline core-bool: &text {
 inline core-bool-True: &text {
   "core.bool.True"
 }
+
+inline core-bool-False: &text {
+  "core.bool.False"
+}
