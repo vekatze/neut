@@ -77,3 +77,7 @@ inline core-unit-Unit: &text {
 inline core-bool: &text {
   "core.bool.bool"
 }
+
+inline core-bool-True: &text {
+  "core.bool.True"
+}
