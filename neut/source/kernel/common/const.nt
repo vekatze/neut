@@ -141,3 +141,7 @@ inline hole-var-prefix: &text {
 inline exp-var-prefix: &text {
   "!"
 }
+
+inline unsafe-argc-name: &text {
+  "neut-unsafe-argc"
+}
