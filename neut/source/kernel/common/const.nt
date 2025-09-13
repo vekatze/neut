@@ -9,3 +9,7 @@ inline package-file-extension: &text {
 inline ens-file-extension: &text {
   ".ens"
 }
+
+inline ver-sep: &text {
+  "-"
+}
