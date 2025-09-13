@@ -73,3 +73,7 @@ inline core-unit: &text {
 inline core-unit-Unit: &text {
   "core.unit.Unit"
 }
+
+inline core-bool: &text {
+  "core.bool.bool"
+}
