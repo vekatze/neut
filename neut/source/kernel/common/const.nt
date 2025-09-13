@@ -41,3 +41,7 @@ inline cache-rel-dir: &text {
 inline archive-rel-dir: &text {
   "archive"
 }
+
+inline artifact-rel-dir: &text {
+  "artifact"
+}
