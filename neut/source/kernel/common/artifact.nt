@@ -1,0 +1,11 @@
+import {
+  time.time {time},
+}
+
+data artifact-time {
+| Artifact-Time(
+    cache-time: ?time,
+    llvm-time: ?time,
+    object-time: ?time,
+  )
+}
