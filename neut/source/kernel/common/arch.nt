@@ -2,3 +2,12 @@ data arch {
 | Amd64
 | Arm64
 }
+
+define text-from-arch(a: arch): &text {
+  match a {
+  | Amd64 =>
+    "amd64"
+  | Arm64 =>
+    "arm64"
+  }
+}
