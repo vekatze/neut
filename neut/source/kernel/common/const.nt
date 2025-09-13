@@ -137,3 +137,7 @@ inline hole-literal: &text {
 inline hole-var-prefix: &text {
   "{}"
 }
+
+inline exp-var-prefix: &text {
+  "!"
+}
