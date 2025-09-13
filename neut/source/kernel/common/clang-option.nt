@@ -4,3 +4,13 @@ data clang-option {
     link-option: list(text),
   )
 }
+
+define make-clang-option(
+  !build-option: list(text),
+  compile-option: list(text),
+  link-option: list(text),
+): clang-option {
+  let compile-option = core.list.append(!build-option, compile-option);
+  let link-option = core.list.append(!build-option, link-option);
+  Clang-Option of {compile-option, link-option}
+}
