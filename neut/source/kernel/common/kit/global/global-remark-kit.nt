@@ -1,5 +1,5 @@
 import {
-  core.ref {make-ref, ref},
+  core.ref {make-ref, mutate, ref},
   this.logger.log {log},
 }
 
@@ -10,4 +10,15 @@ data global-remark-kit {
 define make-global-remark-kit(): global-remark-kit {
   let ref = make-ref(box {Nil});
   _Global-Remark-Kit(ref)
+}
+
+define insert-remark(k: &global-remark-kit, items: meta list(log)): unit {
+  tie _Global-Remark-Kit(ref) = k;
+  mutate(ref, function (xs) {
+    box {
+      letbox xs = xs;
+      letbox items = items;
+      core.list.append(xs, items)
+    }
+  })
 }
