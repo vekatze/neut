@@ -25,3 +25,7 @@ inline env-var-core-module-digest: &text {
 inline env-var-clang: &text {
   "NEUT_CLANG"
 }
+
+inline module-file: &text {
+  "module.ens"
+}
