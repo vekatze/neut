@@ -27,3 +27,8 @@ data command-error {
     err-str: text,
   )
 }
+
+data process-error {
+| Command-Execution-Error(command-error)
+| Setup-Error(text)
+}
