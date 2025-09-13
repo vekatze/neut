@@ -2,3 +2,12 @@ data operating-system {
 | Linux
 | Darwin
 }
+
+define text-from-operating-system(os: operating-system): &text {
+  match os {
+  | Linux =>
+    "linux"
+  | Darwin =>
+    "darwin"
+  }
+}
