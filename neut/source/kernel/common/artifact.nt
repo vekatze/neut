@@ -9,3 +9,7 @@ data artifact-time {
     object-time: ?time,
   )
 }
+
+define empty-artifact-time: artifact-time {
+  Artifact-Time(none, none, none)
+}
