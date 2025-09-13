@@ -117,3 +117,7 @@ inline core-trick-panic: &text {
 inline core-trick-assert: &text {
   "core.trick._assert"
 }
+
+inline core-thread-detach: &text {
+  "core.thread.detach"
+}
