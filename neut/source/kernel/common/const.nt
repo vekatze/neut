@@ -89,3 +89,7 @@ inline core-bool-False: &text {
 inline core-either: &text {
   "core.either.either"
 }
+
+inline core-either-Left: &text {
+  "core.either.Left"
+}
