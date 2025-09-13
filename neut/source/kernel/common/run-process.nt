@@ -7,3 +7,7 @@ data run-process-kit {
     logger-kit: logger-kit,
   )
 }
+
+define make-run-process-kit(logger-kit: logger-kit) {
+  _Run-Process-Kit(logger-kit)
+}
