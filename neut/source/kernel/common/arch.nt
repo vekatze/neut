@@ -1,3 +1,7 @@
+import {
+  this.language.common.data-size {Data-Size-64, data-size},
+}
+
 data arch {
 | Amd64
 | Arm64
@@ -9,5 +13,14 @@ define text-from-arch(a: arch): &text {
     "amd64"
   | Arm64 =>
     "arm64"
+  }
+}
+
+define data-size-from-arch(a: arch): data-size {
+  match a {
+  | Amd64 =>
+    Data-Size-64
+  | Arm64 =>
+    Data-Size-64
   }
 }
