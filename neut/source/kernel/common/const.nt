@@ -121,3 +121,7 @@ inline core-trick-assert: &text {
 inline core-thread-detach: &text {
   "core.thread.detach"
 }
+
+inline core-thread-attach: &text {
+  "core.thread.attach"
+}
