@@ -69,3 +69,7 @@ inline core: &text {
 inline core-unit: &text {
   "core.unit.unit"
 }
+
+inline core-unit-Unit: &text {
+  "core.unit.Unit"
+}
