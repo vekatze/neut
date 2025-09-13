@@ -1,0 +1,4 @@
+data arch {
+| Amd64
+| Arm64
+}
