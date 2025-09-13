@@ -125,3 +125,7 @@ inline core-thread-detach: &text {
 inline core-thread-attach: &text {
   "core.thread.attach"
 }
+
+inline core-box-embody: &text {
+  "core.box.embody"
+}
