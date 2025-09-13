@@ -57,3 +57,7 @@ inline foreign-rel-dir: &text {
 inline zen-rel-dir: &text {
   "zen"
 }
+
+inline default-inline-limit: int {
+  1000000
+}
