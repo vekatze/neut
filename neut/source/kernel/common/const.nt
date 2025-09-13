@@ -5,3 +5,7 @@ inline source-file-extension: &text {
 inline package-file-extension: &text {
   ".tar.zst"
 }
+
+inline ens-file-extension: &text {
+  ".ens"
+}
