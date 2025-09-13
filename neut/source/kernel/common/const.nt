@@ -109,3 +109,7 @@ inline core-rune: &text {
 inline core-rune-Rune: &text {
   "core.rune._Rune"
 }
+
+inline core-trick-panic: &text {
+  "core.trick.panic"
+}
