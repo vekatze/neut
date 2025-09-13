@@ -1,0 +1,3 @@
+data module-URL {
+| Module-URL(text)
+}
