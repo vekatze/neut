@@ -13,3 +13,7 @@ data artifact-time {
 define empty-artifact-time: artifact-time {
   Artifact-Time(none, none, none)
 }
+
+define artifact-time-from-time(!t: time): artifact-time {
+  Artifact-Time(Right(!t), Right(!t), Right(!t))
+}
