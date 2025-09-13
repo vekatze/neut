@@ -1,0 +1,151 @@
+inline source-file-extension: &text {
+  ".nt"
+}
+
+inline package-file-extension: &text {
+  ".tar.zst"
+}
+
+inline ens-file-extension: &text {
+  ".ens"
+}
+
+inline ver-sep: &text {
+  "-"
+}
+
+inline env-var-core-module-URL: &text {
+  "NEUT_CORE_MODULE_URL"
+}
+
+inline env-var-core-module-digest: &text {
+  "NEUT_CORE_MODULE_DIGEST"
+}
+
+inline env-var-clang: &text {
+  "NEUT_CLANG"
+}
+
+inline module-file: &text {
+  "module.ens"
+}
+
+inline source-rel-dir: &text {
+  "source"
+}
+
+inline cache-rel-dir: &text {
+  "cache"
+}
+
+inline archive-rel-dir: &text {
+  "archive"
+}
+
+inline artifact-rel-dir: &text {
+  "artifact"
+}
+
+inline entry-rel-dir: &text {
+  "entry"
+}
+
+inline foreign-rel-dir: &text {
+  "foreign"
+}
+
+inline zen-rel-dir: &text {
+  "zen"
+}
+
+inline default-inline-limit: int {
+  1000000
+}
+
+inline core: &text {
+  "core"
+}
+
+inline core-unit: &text {
+  "core.unit.unit"
+}
+
+inline core-unit-Unit: &text {
+  "core.unit.Unit"
+}
+
+inline core-bool: &text {
+  "core.bool.bool"
+}
+
+inline core-bool-True: &text {
+  "core.bool.True"
+}
+
+inline core-bool-False: &text {
+  "core.bool.False"
+}
+
+inline core-either: &text {
+  "core.either.either"
+}
+
+inline core-either-Left: &text {
+  "core.either.Left"
+}
+
+inline core-either-Right: &text {
+  "core.either.Right"
+}
+
+inline core-text: &text {
+  "core.text.text"
+}
+
+inline core-rune: &text {
+  "core.rune.rune"
+}
+
+inline core-rune-Rune: &text {
+  "core.rune._Rune"
+}
+
+inline core-trick-panic: &text {
+  "core.trick.panic"
+}
+
+inline core-trick-assert: &text {
+  "core.trick._assert"
+}
+
+inline core-thread-detach: &text {
+  "core.thread.detach"
+}
+
+inline core-thread-attach: &text {
+  "core.thread.attach"
+}
+
+inline core-box-embody: &text {
+  "core.box.embody"
+}
+
+inline hole-literal: &text {
+  "_"
+}
+
+inline hole-var-prefix: &text {
+  "{}"
+}
+
+inline exp-var-prefix: &text {
+  "!"
+}
+
+inline unsafe-argc-name: &text {
+  "neut-unsafe-argc"
+}
+
+inline unsafe-argv-name: &text {
+  "neut-unsafe-argv"
+}

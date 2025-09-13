@@ -1,0 +1,34 @@
+import {
+  core.ref {make-ref, mutate, ref},
+  this.logger.log {log},
+}
+
+data global-remark-kit {
+| _Global-Remark-Kit(remark-list: ref(list(log)))
+}
+
+define make-global-remark-kit(): global-remark-kit {
+  let ref = make-ref(box {Nil});
+  _Global-Remark-Kit(ref)
+}
+
+define insert-remark(k: &global-remark-kit, items: meta list(log)): unit {
+  tie _Global-Remark-Kit(ref) = k;
+  mutate(ref, function (xs) {
+    box {
+      letbox xs = xs;
+      letbox items = items;
+      core.list.append(xs, items)
+    }
+  })
+}
+
+define clone-logs(k: &global-remark-kit): list(log) {
+  tie _Global-Remark-Kit(ref) = k;
+  core.ref.clone(ref)
+}
+
+define extract-logs(k: global-remark-kit): meta list(log) {
+  let _Global-Remark-Kit(ref) = k;
+  core.ref.extract(ref)
+}

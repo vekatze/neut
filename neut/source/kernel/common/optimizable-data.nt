@@ -1,0 +1,4 @@
+data optimizable-data {
+| Enum
+| Unary
+}

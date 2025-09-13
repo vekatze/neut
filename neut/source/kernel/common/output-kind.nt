@@ -1,0 +1,20 @@
+import {
+  this.app.app {app},
+  this.app.error {new-error'},
+}
+
+data output-kind {
+| Object
+| LLVM
+}
+
+define output-kind-from-text(t: &text): app(output-kind) {
+  if eq-text(t, "object") {
+    Right(Object)
+  } else-if eq-text(t, "llvm") {
+    Right(LLVM)
+  } else {
+    let t = core.text.append("Invalid output kind: ", t);
+    Left(new-error'(t))
+  }
+}
