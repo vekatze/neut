@@ -17,3 +17,7 @@ inline ver-sep: &text {
 inline env-var-core-module-URL: &text {
   "NEUT_CORE_MODULE_URL"
 }
+
+inline env-var-core-module-digest: &text {
+  "NEUT_CORE_MODULE_DIGEST"
+}
