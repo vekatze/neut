@@ -1,3 +1,8 @@
+import {
+  this.app.app {app},
+  this.app.error {new-error'},
+}
+
 data build-mode {
 | Develop
 | Release
@@ -9,5 +14,16 @@ define text-from-build-mode(bm: build-mode): &text {
     "develop"
   | Release =>
     "release"
+  }
+}
+
+define build-mode-from-text(t: &text): app(build-mode) {
+  if eq-text(t, "develop") {
+    Right(Develop)
+  } else-if eq-text(t, "release") {
+    Right(Release)
+  } else {
+    let t = core.text.append("No such build mode exists: ", t);
+    Left(new-error'(t))
   }
 }
