@@ -1,0 +1,3 @@
+inline source-file-extension: &text {
+  ".nt"
+}
