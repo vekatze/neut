@@ -22,3 +22,13 @@ define insert-remark(k: &global-remark-kit, items: meta list(log)): unit {
     }
   })
 }
+
+define clone-logs(k: &global-remark-kit): list(log) {
+  tie _Global-Remark-Kit(ref) = k;
+  core.ref.clone(ref)
+}
+
+define extract-logs(k: global-remark-kit): meta list(log) {
+  let _Global-Remark-Kit(ref) = k;
+  core.ref.extract(ref)
+}
