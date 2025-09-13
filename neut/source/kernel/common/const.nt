@@ -37,3 +37,7 @@ inline source-rel-dir: &text {
 inline cache-rel-dir: &text {
   "cache"
 }
+
+inline archive-rel-dir: &text {
+  "archive"
+}
