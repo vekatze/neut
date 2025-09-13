@@ -21,3 +21,7 @@ inline env-var-core-module-URL: &text {
 inline env-var-core-module-digest: &text {
   "NEUT_CORE_MODULE_DIGEST"
 }
+
+inline env-var-clang: &text {
+  "NEUT_CLANG"
+}
