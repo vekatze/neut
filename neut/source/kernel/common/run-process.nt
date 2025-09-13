@@ -19,3 +19,11 @@ data spec {
     cwd: ?text,
   )
 }
+
+data command-error {
+| Command-Error(
+    spec: spec,
+    exit-code: int,
+    err-str: text,
+  )
+}
