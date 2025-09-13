@@ -1,0 +1,8 @@
+import {
+  core.ref {ref},
+  this.logger.log {log},
+}
+
+data global-remark-kit {
+| _Global-Remark-Kit(remark-list: ref(list(log)))
+}
