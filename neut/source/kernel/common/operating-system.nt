@@ -1,0 +1,4 @@
+data operating-system {
+| Linux
+| Darwin
+}
