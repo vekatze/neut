@@ -93,3 +93,7 @@ inline core-either: &text {
 inline core-either-Left: &text {
   "core.either.Left"
 }
+
+inline core-either-Right: &text {
+  "core.either.Right"
+}
