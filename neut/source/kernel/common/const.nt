@@ -1,3 +1,7 @@
 inline source-file-extension: &text {
   ".nt"
 }
+
+inline package-file-extension: &text {
+  ".tar.zst"
+}
