@@ -33,3 +33,7 @@ inline module-file: &text {
 inline source-rel-dir: &text {
   "source"
 }
+
+inline cache-rel-dir: &text {
+  "cache"
+}
