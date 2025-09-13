@@ -45,3 +45,7 @@ inline archive-rel-dir: &text {
 inline artifact-rel-dir: &text {
   "artifact"
 }
+
+inline entry-rel-dir: &text {
+  "entry"
+}
