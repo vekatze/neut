@@ -61,3 +61,7 @@ inline zen-rel-dir: &text {
 inline default-inline-limit: int {
   1000000
 }
+
+inline core: &text {
+  "core"
+}
