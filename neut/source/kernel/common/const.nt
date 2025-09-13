@@ -145,3 +145,7 @@ inline exp-var-prefix: &text {
 inline unsafe-argc-name: &text {
   "neut-unsafe-argc"
 }
+
+inline unsafe-argv-name: &text {
+  "neut-unsafe-argv"
+}
