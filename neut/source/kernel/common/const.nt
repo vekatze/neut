@@ -53,3 +53,7 @@ inline entry-rel-dir: &text {
 inline foreign-rel-dir: &text {
   "foreign"
 }
+
+inline zen-rel-dir: &text {
+  "zen"
+}
