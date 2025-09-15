@@ -1,9 +1,13 @@
 import {
+  core.debug {vet-doc},
+  core.doc.show {show-doc},
   core.list {for-each},
   core.process {Process-Spec, process-spec},
   core.text {intercalate, split},
   core.text-builder {append-int64-UTF8, append-text, make-text-builder},
-  this.logger.logger-kit {logger-kit},
+  this.color.color-kit {make-color-kit},
+  this.logger.logger-kit {logger-kit, make-logger-kit},
+  this.logger.print {report},
 }
 
 data run-process-kit {
@@ -36,7 +40,6 @@ data process-error {
 | Setup-Error(text)
 }
 
-// T.intercalate "\n" $ map ("  " <>) $ T.splitOn "\n" t
 define _indent(t: &text): text {
   let ts = split(t, "\n");
   let ts =
@@ -53,6 +56,7 @@ define _text-from-process-error(pe: process-error): text {
     let Process-Spec of {process} = cmd-spec;
     let buf = make-text-builder(64);
     pin err-str = err-str;
+    pin process = process;
     let _ on buf = {
       append-text(buf, "The child process `");
       append-text(buf, process);
@@ -66,4 +70,20 @@ define _text-from-process-error(pe: process-error): text {
   | Setup-Error(t) =>
     t
   }
+}
+
+define _report-command(k: &run-process-kit, s: &spec): unit {
+  tie _Run-Process-Kit of {logger-kit} = k;
+  let message = {
+    pin tmp = vet-doc(s);
+    pin tmp = show-doc(tmp, 65535);
+    core.text.append("Executing: ", tmp)
+  };
+  report(logger-kit, message);
+}
+
+define zen(): unit {
+  pin k = make-run-process-kit(make-logger-kit(make-color-kit(True, True), True));
+  pin s = Spec(Process-Spec(*"foo", List[*"bar", *"buz"], *"some-input"), none);
+  _report-command(k, s)
 }
