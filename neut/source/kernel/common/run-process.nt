@@ -46,3 +46,24 @@ define _indent(t: &text): text {
     });
   intercalate(ts, *"\n")
 }
+
+define _text-from-process-error(pe: process-error): text {
+  match pe {
+  | Command-Execution-Error(Command-Error(Spec of {cmd-spec}, exit-code, err-str)) =>
+    let Process-Spec of {process} = cmd-spec;
+    let buf = make-text-builder(64);
+    pin err-str = err-str;
+    let _ on buf = {
+      append-text(buf, "The child process `");
+      append-text(buf, process);
+      append-text(buf, "` failed with the following message (exit-code = ");
+      append-int64-UTF8(buf, exit-code);
+      append-text(buf, "):\n");
+      pin v = _indent(err-str);
+      append-text(buf, v);
+    };
+    core.text-builder.extract(buf)
+  | Setup-Error(t) =>
+    t
+  }
+}
