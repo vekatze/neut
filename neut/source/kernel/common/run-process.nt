@@ -1,5 +1,8 @@
 import {
-  core.process {process-spec},
+  core.list {for-each},
+  core.process {Process-Spec, process-spec},
+  core.text {intercalate, split},
+  core.text-builder {append-int64-UTF8, append-text, make-text-builder},
   this.logger.logger-kit {logger-kit},
 }
 
@@ -31,4 +34,15 @@ data command-error {
 data process-error {
 | Command-Execution-Error(command-error)
 | Setup-Error(text)
+}
+
+// T.intercalate "\n" $ map ("  " <>) $ T.splitOn "\n" t
+define _indent(t: &text): text {
+  let ts = split(t, "\n");
+  let ts =
+    for-each(ts, function (t) {
+      pin t = t;
+      core.text.append("  ", t)
+    });
+  intercalate(ts, *"\n")
 }
