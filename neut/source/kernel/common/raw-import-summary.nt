@@ -1,0 +1,10 @@
+import {
+  this.language.raw-term.raw-term {loc},
+}
+
+data raw-import-summary {
+| Raw-Import-Summary(
+    items: list(pair(text, list(text))),
+    loc: loc,
+  )
+}
