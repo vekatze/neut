@@ -1,4 +1,5 @@
 import {
+  core.int.ord,
   core.list {for-each},
   core.pair {first},
   this.language.common.base-name {base-name},
@@ -96,6 +97,18 @@ data loc {
     line: int,
     column: int,
   )
+}
+
+define cmp-loc(p1: &loc, p2: &loc): ordering {
+  let Ord of {compare := !cmp} = core.int.ord.as-ord;
+  tie Loc(l1, c1) = p1;
+  tie Loc(l2, c2) = p2;
+  match !cmp(l1, l2) {
+  | EQ =>
+    !cmp(c1, c2)
+  | c =>
+    c
+  }
 }
 
 data raw-def(a) {

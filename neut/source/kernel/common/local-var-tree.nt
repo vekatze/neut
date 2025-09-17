@@ -1,6 +1,6 @@
 import {
   this.language.common.ident {ident},
-  this.language.raw-term.raw-term {loc},
+  this.language.raw-term.raw-term {cmp-loc, loc},
 }
 
 data local-var-tree {
@@ -10,4 +10,21 @@ data local-var-tree {
 
 inline empty-local-var-tree: local-var-tree {
   Leaf
+}
+
+define insert(start: loc, end: loc, x: ident, t: local-var-tree): local-var-tree {
+  match t {
+  | Leaf =>
+    Node(start, end, x, Leaf, Leaf)
+  | Node(start-t, end-t, x-t, left, right) =>
+    let c on start-t, end-t = cmp-loc(start-t, end-t);
+    match c {
+    | LT =>
+      Node(start-t, end-t, x-t, insert(start, end, x, left), right)
+    | GT =>
+      Node(start-t, end-t, x-t, left, insert(start, end, x, right))
+    | EQ =>
+      Node(start-t, end-t, x, left, right)
+    }
+  }
 }
