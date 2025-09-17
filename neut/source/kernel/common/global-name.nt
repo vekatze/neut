@@ -17,3 +17,16 @@ data global-name {
 | Data-Intro(arg-num, arg-num, discriminant, is-const-like)
 | Rule(rule-kind)
 }
+
+define get-is-const-like(gn: &global-name): is-const-like {
+  case gn {
+  | Top-Level-Func(_, is-const-like) =>
+    *is-const-like
+  | Data(_, _, is-const-like) =>
+    *is-const-like
+  | Data-Intro(_, _, _, is-const-like) =>
+    *is-const-like
+  | _ =>
+    False
+  }
+}
