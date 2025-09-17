@@ -7,3 +7,7 @@ data local-var-tree {
 | Leaf
 | Node(loc, loc, ident, local-var-tree, local-var-tree)
 }
+
+inline empty-local-var-tree: local-var-tree {
+  Leaf
+}
