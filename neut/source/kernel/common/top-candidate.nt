@@ -1,0 +1,5 @@
+data candidate-kind {
+| Constant
+| Constructor
+| Function
+}
