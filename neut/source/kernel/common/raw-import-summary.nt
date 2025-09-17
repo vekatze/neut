@@ -1,4 +1,5 @@
 import {
+  this.language.raw-term.raw-stmt {raw-import},
   this.language.raw-term.raw-term {loc},
 }
 
@@ -7,4 +8,8 @@ data raw-import-summary {
     items: list(pair(text, list(text))),
     loc: loc,
   )
+}
+
+define from-raw-import(ri: raw-import): raw-import-summary {
+  match ri {}
 }
