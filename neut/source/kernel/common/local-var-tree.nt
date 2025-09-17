@@ -1,0 +1,9 @@
+import {
+  this.language.common.ident {ident},
+  this.language.raw-term.raw-term {loc},
+}
+
+data local-var-tree {
+| Leaf
+| Node(loc, loc, ident, local-var-tree, local-var-tree)
+}
