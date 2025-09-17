@@ -28,3 +28,25 @@ define insert(start: loc, end: loc, x: ident, t: local-var-tree): local-var-tree
     }
   }
 }
+
+define collect(l: &loc, t: &local-var-tree): list(&ident) {
+  case t {
+  | Leaf =>
+    List[]
+  | Node(start, end, x, left, right) =>
+    match cmp-loc(l, start) {
+    | LT =>
+      collect(l, left)
+    | _ =>
+      let xs = collect(l, left);
+      let ys = collect(l, right);
+      let zs = core.list.append(xs, ys);
+      match cmp-loc(l, end) {
+      | LT =>
+        Cons(x, zs)
+      | _ =>
+        zs
+      }
+    }
+  }
+}
