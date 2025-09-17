@@ -1,5 +1,5 @@
 import {
-  core.c-int {C-Int, eq-c-int},
+  core.c-int {eq-c-int},
   core.debug {vet-doc},
   core.doc.show {show-doc},
   core.list {for-each},
@@ -22,15 +22,9 @@ define make-run-process-kit(logger-kit: logger-kit) {
   _Run-Process-Kit(logger-kit)
 }
 
-data spec {
-| Spec(
-    cmd-spec: process-spec,
-  )
-}
-
 data command-error {
 | Command-Error(
-    spec: spec,
+    spec: process-spec,
     exit-code: int,
     err-str: text,
   )
@@ -53,7 +47,7 @@ define _indent(t: &text): text {
 
 define _text-from-process-error(pe: process-error): text {
   match pe {
-  | Command-Execution-Error(Command-Error(Spec of {cmd-spec}, exit-code, err-str)) =>
+  | Command-Execution-Error(Command-Error(cmd-spec, exit-code, err-str)) =>
     let Process-Spec of {process} = cmd-spec;
     let buf = make-text-builder(64);
     pin err-str = err-str;
@@ -73,7 +67,7 @@ define _text-from-process-error(pe: process-error): text {
   }
 }
 
-define _report-command(k: &run-process-kit, s: &spec): unit {
+define _report-command(k: &run-process-kit, s: &process-spec): unit {
   tie _Run-Process-Kit of {logger-kit} = k;
   let message = {
     pin tmp = vet-doc(s);
@@ -83,10 +77,9 @@ define _report-command(k: &run-process-kit, s: &spec): unit {
   report(logger-kit, message);
 }
 
-define run-01(k: &run-process-kit, s: spec): either(text, text) {
+define run-process(k: &run-process-kit, s: process-spec): either(text, text) {
   let _ on s = _report-command(k, s);
-  let Spec(process-spec) = s;
-  match spawn(process-spec, 1024, 1024) {
+  match spawn(s, 1024, 1024) {
   | Left(e) =>
     Left(get-error-message(e))
   | Right(Process-Result of {status, stdout-text, stderr-text}) =>
@@ -103,13 +96,17 @@ define run-01(k: &run-process-kit, s: spec): either(text, text) {
   }
 }
 
-define run-00(k: &run-process-kit, s: spec): either(text, unit) {
-  try _ = run-00(k, s);
-  Right(Unit)
+define run-simple-process(k: &run-process-kit, proc-name: text, args: list(text)): either(text, text) {
+  let spec = Process-Spec(proc-name, args, none, *"");
+  run-process(k, spec)
 }
 
 define zen(): unit {
   pin k = make-run-process-kit(make-logger-kit(make-color-kit(True, True), True));
-  pin s = Spec(Process-Spec(*"foo", List[*"bar", *"buz"], none, *"some-input"));
-  _report-command(k, s)
+  pin s = Process-Spec(*"foo", List[*"bar", *"buz"], none, *"some-input");
+  _report-command(k, s);
+  pin result = run-simple-process(k, *"ls", Nil);
+  vet(result);
+  pin result = run-process(k, Process-Spec(*"ls", Nil, Right(*"/etc"), *""));
+  vet(result);
 }
