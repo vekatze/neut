@@ -1,0 +1,19 @@
+import {
+  this.language.common.arg-num {arg-num},
+  this.language.common.definite-description {definite-description},
+  this.language.common.discriminant {discriminant},
+  this.language.common.is-const-like {is-const-like},
+  this.language.common.prim-op {prim-op},
+  this.language.common.prim-type {prim-type},
+  this.language.common.rule-kind {rule-kind},
+  this.logger.hint {hint},
+}
+
+data global-name {
+| Top-Level-Func(arg-num, is-const-like)
+| Prim-Type(prim-type)
+| Prim-Op(prim-op)
+| Data(arg-num, list(pair(definite-description, pair(hint, global-name))), is-const-like)
+| Data-Intro(arg-num, arg-num, discriminant, is-const-like)
+| Rule(rule-kind)
+}
