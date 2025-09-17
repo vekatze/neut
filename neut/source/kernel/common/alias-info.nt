@@ -1,0 +1,3 @@
+inline must-update-tag: type {
+  bool
+}
