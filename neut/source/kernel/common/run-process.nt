@@ -103,6 +103,11 @@ define run-01(k: &run-process-kit, s: spec): either(text, text) {
   }
 }
 
+define run-00(k: &run-process-kit, s: spec): either(text, unit) {
+  try _ = run-00(k, s);
+  Right(Unit)
+}
+
 define zen(): unit {
   pin k = make-run-process-kit(make-logger-kit(make-color-kit(True, True), True));
   pin s = Spec(Process-Spec(*"foo", List[*"bar", *"buz"], none, *"some-input"));
