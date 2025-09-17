@@ -58,3 +58,7 @@ define imm-type-tag-map(): vector(pair(definite-description, type-tag)) {
     Pair(imm-rune-dd(), Rune),
   ]
 }
+
+define base-type-tag-map(): vector(pair(definite-description, type-tag)) {
+  core.vector.push-back(imm-type-tag-map(), Pair(cls-dd(), Function))
+}
