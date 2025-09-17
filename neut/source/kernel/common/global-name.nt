@@ -1,5 +1,5 @@
 import {
-  this.language.common.arg-num {arg-num},
+  this.language.common.arg-num {Arg-Num, arg-num},
   this.language.common.definite-description {definite-description},
   this.language.common.discriminant {discriminant},
   this.language.common.is-const-like {is-const-like},
@@ -27,6 +27,27 @@ define get-is-const-like(gn: &global-name): is-const-like {
   | Data-Intro(_, _, _, is-const-like) =>
     *is-const-like
   | _ =>
+    False
+  }
+}
+
+define has-no-args(gn: &global-name): bool {
+  case gn {
+  | Top-Level-Func(arg-num, _) =>
+    tie Arg-Num(i) = arg-num;
+    eq-int(*i, 0)
+  | Data(arg-num, _, _) =>
+    tie Arg-Num(i) = arg-num;
+    eq-int(*i, 0)
+  | Data-Intro(data-arg-num, cons-arg-num, _, _) =>
+    tie Arg-Num(i) = data-arg-num;
+    tie Arg-Num(j) = cons-arg-num;
+    and(eq-int(*i, 0), eq-int(*j, 0))
+  | Rule(_) =>
+    False
+  | Prim-Type(_) =>
+    True
+  | Prim-Op(_) =>
     False
   }
 }
