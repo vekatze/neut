@@ -51,3 +51,16 @@ define has-no-args(gn: &global-name): bool {
     False
   }
 }
+
+define disable-const-like-flag(gn: global-name): global-name {
+  match gn {
+  | Top-Level-Func(arg-num, _) =>
+    Top-Level-Func(arg-num, False)
+  | Data(arg-num, cons-info, _) =>
+    Data(arg-num, cons-info, False)
+  | Data-Intro(data-arg-num, cons-arg-num, discriminant, _) =>
+    Data-Intro(data-arg-num, cons-arg-num, discriminant, False)
+  | gn =>
+    gn
+  }
+}
