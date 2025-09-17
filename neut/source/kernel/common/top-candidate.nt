@@ -1,5 +1,18 @@
+import {
+  this.language.common.definite-description {definite-description},
+  this.language.raw-term.raw-term {loc},
+}
+
 data candidate-kind {
 | Constant
 | Constructor
 | Function
+}
+
+data top-candidate {
+| Top-Candidate(
+    loc: loc,
+    dd: definite-description,
+    kind: candidate-kind,
+  )
 }
