@@ -1,8 +1,10 @@
 import {
+  core.c-int {C-Int, eq-c-int},
   core.debug {vet-doc},
   core.doc.show {show-doc},
   core.list {for-each},
-  core.process {Process-Spec, process-spec},
+  core.process {Exited, Process-Result, Process-Spec, process-spec, spawn},
+  core.system {get-error-message},
   core.text {intercalate, split},
   core.text-builder {append-int64-UTF8, append-text, make-text-builder},
   this.color.color-kit {make-color-kit},
@@ -23,7 +25,6 @@ define make-run-process-kit(logger-kit: logger-kit) {
 data spec {
 | Spec(
     cmd-spec: process-spec,
-    cwd: ?text,
   )
 }
 
@@ -82,8 +83,28 @@ define _report-command(k: &run-process-kit, s: &spec): unit {
   report(logger-kit, message);
 }
 
+define run-01(k: &run-process-kit, s: spec): either(text, text) {
+  let _ on s = _report-command(k, s);
+  let Spec(process-spec) = s;
+  match spawn(process-spec, 1024, 1024) {
+  | Left(e) =>
+    Left(get-error-message(e))
+  | Right(Process-Result of {status, stdout-text, stderr-text}) =>
+    match status {
+    | Exited(status-code) =>
+      if eq-c-int(status-code, 0) {
+        Right(stdout-text)
+      } else {
+        Left(stderr-text)
+      }
+    | _ =>
+      Left(stderr-text)
+    }
+  }
+}
+
 define zen(): unit {
   pin k = make-run-process-kit(make-logger-kit(make-color-kit(True, True), True));
-  pin s = Spec(Process-Spec(*"foo", List[*"bar", *"buz"], *"some-input"), none);
+  pin s = Spec(Process-Spec(*"foo", List[*"bar", *"buz"], none, *"some-input"));
   _report-command(k, s)
 }
