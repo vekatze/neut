@@ -1,3 +1,13 @@
+import {
+  this.language.common.local-locator {local-locator},
+  this.language.common.strict-global-locator {strict-global-locator},
+  this.logger.hint {hint},
+}
+
 inline must-update-tag: type {
   bool
+}
+
+data alias-info {
+| Use(must-update-tag, strict-global-locator, list(pair(hint, local-locator)))
 }
