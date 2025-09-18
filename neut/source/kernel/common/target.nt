@@ -1,5 +1,5 @@
 import {
-  this.kernel.common.clang-option {clang-option},
+  this.kernel.common.clang-option {Clang-Option, clang-option},
   this.language.common.source-locator {source-locator},
 }
 
@@ -19,4 +19,8 @@ data target {
 | Main(main-target)
 | Peripheral
 | Peripheral-Single(file-path: text)
+}
+
+define empty-zen(path: text): main-target {
+  Zen(path, Clang-Option of {compile-option := List[], link-option := List[]})
 }
