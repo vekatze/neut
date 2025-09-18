@@ -24,3 +24,8 @@ define set(k: &raw-import-summary-kit, ri: raw-import): unit {
     }
   })
 }
+
+define get(k: raw-import-summary-kit): meta ?raw-import-summary {
+  let _Raw-Import-Summary-Kit(ref) = k;
+  core.ref.extract(ref)
+}
