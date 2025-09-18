@@ -28,10 +28,9 @@ define insert(k: &optimizable-data-kit, dd: definite-description, od: optimizabl
   })
 }
 
-define lookup(k: &optimizable-data-kit, dd: definite-description): ?optimizable-data {
+define lookup(k: &optimizable-data-kit, dd: &definite-description): ?optimizable-data {
   tie _Optimizable-Data-Kit(ref) = k;
   core.cell.borrow(ref, function (dict) {
-    pin dd = dd;
     match core.dictionary.make-lookup(ord-dd)(dict, dd) {
     | Left(_) =>
       quote {none}

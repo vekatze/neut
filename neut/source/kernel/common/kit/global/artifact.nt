@@ -26,3 +26,15 @@ define insert(k: &artifact-kit, path: text, t: artifact-time): unit {
     }
   })
 }
+
+define lookup(k: &artifact-kit, path: &text): ?artifact-time {
+  tie _Artifact-Kit(ref) = k;
+  core.cell.borrow(ref, function (dict) {
+    match core.dictionary.make-lookup(core.text.ord.as-ord)(dict, path) {
+    | Left(_) =>
+      quote {none}
+    | Right(v) =>
+      quote {Right(*v)} // for now
+    }
+  })
+}
