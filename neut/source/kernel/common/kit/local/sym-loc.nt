@@ -1,9 +1,15 @@
 import {
-  this.kernel.common.local-var-tree {local-var-tree},
+  core.cell {make-cell},
+  this.kernel.common.local-var-tree {empty-local-var-tree, local-var-tree},
 }
 
 data sym-loc-kit {
 | Sym-Loc(
     local-var-map-ref: cell(local-var-tree),
   )
+}
+
+define make-sym-loc-kit(): sym-loc-kit {
+  let local-var-map-ref = make-cell(box {empty-local-var-tree});
+  Sym-Loc of {local-var-map-ref}
 }
