@@ -1,8 +1,9 @@
 import {
   core.ref {make-ref, mutate, ref},
   this.kernel.common.location-tree {File-Loc, Local, Symbol-Loc, empty-location-tree, insert, loc-type, location-tree},
+  this.language.common.binder {Binder-F, binder-f},
   this.language.common.ident {I, ident, is-hole, length-ident},
-  this.logger.hint {get-column, get-line, get-should-save-location, hint},
+  this.logger.hint {get-column, get-line, get-should-save-location, hint, quote-hint},
 }
 
 data tag-kit {
@@ -65,4 +66,9 @@ define insert-local-var(k: &tag-kit, m-use: &hint, x: &ident, m-def: meta hint):
     let symbol-loc = Symbol-Loc(Local(*var-ID, name-length));
     _insert(k, m-use, symbol-loc, name-length, m-def)
   }
+}
+
+define insert-binder<a>(k: &tag-kit, b: &binder-f(a)): unit {
+  tie Binder-F(m, x, _) = b;
+  insert-local-var(k, m, x, quote-hint(*m))
 }
