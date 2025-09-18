@@ -34,3 +34,20 @@ define get-entry-point-name(t: &main-target): base-name {
     zen-name
   }
 }
+
+define get-compile-option(t: &target): list(text) {
+  case t {
+  | Peripheral =>
+    List[]
+  | Peripheral-Single of {} =>
+    List[]
+  | Main(c) =>
+    case c {
+    | Named(_, target-summary) =>
+      tie Target-Summary(_, Clang-Option of {compile-option}) = target-summary;
+      *compile-option
+    | Zen(_, Clang-Option of {compile-option}) =>
+      *compile-option
+    }
+  }
+}
