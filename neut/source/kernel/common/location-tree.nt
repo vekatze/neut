@@ -3,8 +3,12 @@ import {
   core.dictionary {dictionary, to-list},
   core.int.ord,
   core.list {filter-some, for-each},
-  this.language.common.definite-description {definite-description, local-locator-from-dd},
-  this.language.common.external-name {External-Name, external-name},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.instance.bool {bool-sero},
+  sero.sero {Sero, sero},
+  this.language.common.definite-description {definite-description, definite-description-sero, local-locator-from-dd},
+  this.language.common.external-name {External-Name, external-name, external-name-sero},
   this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-term {Loc, loc},
   this.logger.hint {get-column, get-file-path, get-line, hint},
@@ -35,7 +39,7 @@ inline col-interval: type {
 }
 
 data symbol-name {
-| Local(int, def-symbol-len)
+| Local(symbol-name: int, symbol-len: def-symbol-len)
 | Global(definite-description, is-const-like)
 | Foreign(external-name)
 }
@@ -134,4 +138,59 @@ define find-ref(l: &loc, t: location-tree): list(pair(text, pair(line, col-inter
       none
     }
   }))
+}
+
+inline symbol-name-sero: sero(symbol-name) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Local(name, def-symbol-len) =>
+          put-int64(k, 0);
+          put-int64(k, *name);
+          put-int64(k, *def-symbol-len);
+        | Global(dd, is-const-like) =>
+          let Sero of {put := put-dd} = definite-description-sero;
+          let Sero of {put := put-bool} = bool-sero;
+          put-int64(k, 1);
+          put-dd(k, dd);
+          put-bool(k, is-const-like);
+        | Foreign(ext-name) =>
+          let Sero of {put := put-en} = external-name-sero;
+          put-int64(k, 2);
+          put-en(k, ext-name);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          try name = get-int64(k);
+          try len = get-int64(k);
+          Right(quote {Local(name, len)})
+        | 1 =>
+          let Sero of {get := get-dd} = definite-description-sero;
+          let Sero of {get := get-bool} = bool-sero;
+          try dd = get-dd(k);
+          try b = get-bool(k);
+          Right(box {
+            letbox dd = dd;
+            letbox b = b;
+            Global(dd, b)
+          })
+        | 2 =>
+          let Sero of {get := get-en} = external-name-sero;
+          try ext-name = get-en(k);
+          Right(box {
+            letbox ext-name = ext-name;
+            Foreign(ext-name)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
 }
