@@ -1,0 +1,10 @@
+import {
+  core.ref {ref},
+  this.kernel.common.location-tree {location-tree},
+}
+
+data tag-kit {
+| _Tag-Kit(
+    tag-map-ref: ref(location-tree),
+  )
+}
