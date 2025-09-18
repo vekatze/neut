@@ -1,14 +1,18 @@
 import {
   core.dictionary {dictionary},
   core.int.ord,
-  this.language.common.definite-description {definite-description},
-  this.language.common.external-name {external-name},
+  this.language.common.definite-description {definite-description, local-locator-from-dd},
+  this.language.common.external-name {External-Name, external-name},
   this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-term {Loc, loc},
   this.logger.hint {hint},
 }
 
 inline line: type {
+  int
+}
+
+inline column: type {
   int
 }
 
@@ -68,4 +72,16 @@ inline ord-loc: ord(loc) {
 define insert(k: &ord(loc), lt: loc-type, p: pair(line, col-interval), m: hint, t: location-tree): location-tree {
   let Pair(l, Pair(from, to)) = p;
   core.dictionary.insert(k, t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
+}
+
+define _get-length(s: &symbol-name): def-symbol-len {
+  case s {
+  | Local(_, len) =>
+    *len
+  | Global(dd, _) =>
+    pin tmp = local-locator-from-dd(dd);
+    core.text.length(tmp)
+  | Foreign(External-Name(t)) =>
+    core.text.length(t)
+  }
 }
