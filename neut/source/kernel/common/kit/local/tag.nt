@@ -1,8 +1,19 @@
 import {
   core.ref {make-ref, mutate, ref},
-  this.kernel.common.location-tree {File-Loc, Global, Local, Symbol-Loc, empty-location-tree, insert, loc-type, location-tree},
+  this.kernel.common.location-tree {
+    File-Loc,
+    Foreign,
+    Global,
+    Local,
+    Symbol-Loc,
+    empty-location-tree,
+    insert,
+    loc-type,
+    location-tree,
+  },
   this.language.common.binder {Binder-F, binder-f},
   this.language.common.definite-description {definite-description, local-locator-from-dd},
+  this.language.common.external-name {External-Name, external-name},
   this.language.common.ident {I, ident, is-hole, length-ident},
   this.language.common.is-const-like {is-const-like},
   this.logger.hint {get-column, get-line, get-should-save-location, hint, quote-hint},
@@ -97,5 +108,19 @@ define insert-locator(
   m-def: meta hint,
 ): unit {
   let symbol-loc = Symbol-Loc(Global(dd, b));
+  _insert(k, m-use, symbol-loc, name-length, m-def)
+}
+
+define insert-external-name(
+  k: &tag-kit,
+  m-use: &hint,
+  ext-name: external-name,
+  m-def: meta hint,
+): unit {
+  let name-length on ext-name = {
+    tie External-Name(tmp) = ext-name;
+    core.text.length(tmp)
+  };
+  let symbol-loc = Symbol-Loc(Foreign(ext-name));
   _insert(k, m-use, symbol-loc, name-length, m-def)
 }
