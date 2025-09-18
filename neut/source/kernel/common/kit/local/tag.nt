@@ -13,3 +13,8 @@ define make-tag-kit(): tag-kit {
   let tag-map-ref = make-ref(box {empty-location-tree});
   _Tag-Kit of {tag-map-ref}
 }
+
+define get-location-tree(k: tag-kit): meta location-tree {
+  let _Tag-Kit(ref) = k;
+  core.ref.extract(ref)
+}
