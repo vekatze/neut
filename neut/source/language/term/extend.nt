@@ -1,0 +1,15 @@
+import {
+  this.language.term.term {Tau, term, term-f},
+  this.logger.hint {hint, internal-hint},
+}
+
+inline _m: hint {
+  internal-hint
+}
+
+define extend(e: term-f(unit)): term {
+  match e {
+  | Tau(_) =>
+    Tau(_m)
+  }
+}
