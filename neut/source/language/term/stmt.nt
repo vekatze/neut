@@ -1,0 +1,20 @@
+import {
+  this.language.common.binder {binder-f},
+  this.language.common.definite-description {definite-description},
+  this.language.common.is-const-like {is-const-like},
+  this.language.common.stmt-kind {stmt-kind},
+  this.logger.hint {hint},
+}
+
+data stmt-f(a) {
+| Stmt-Define(
+    b: is-const-like,
+    sk: stmt-kind(a),
+    m: hint,
+    name: definite-description,
+    imp-params: list(pair(binder-f(a), ?a)),
+    exp-params: list(binder-f(a)),
+    cod: a,
+    body: a,
+  )
+}
