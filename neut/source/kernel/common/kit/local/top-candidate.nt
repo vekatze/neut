@@ -1,0 +1,10 @@
+import {
+  core.ref {ref},
+  this.kernel.common.top-candidate {top-candidate},
+}
+
+data top-candidate-kit {
+| _Top-Candidate-Kit(
+    top-candidate-env-ref: ref(list(top-candidate)),
+  )
+}
