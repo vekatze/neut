@@ -5,3 +5,7 @@ inline _col-from: type {
 inline _col-to: type {
   int
 }
+
+inline _def-symbol-len: type {
+  int
+}
