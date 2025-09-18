@@ -1,0 +1,31 @@
+import {
+  core.text-builder {append-text, extract, make-text-builder},
+  path.io {is-regular-file},
+  path.path {drop-last},
+  this.app.app {app},
+  this.app.run {raise-error'},
+  this.kernel.common.const {module-file},
+}
+
+define _find-module-file(base-dir: &text, dir-candidate: text): app(text) {
+  let module-file-candidate on dir-candidate = path.path.append(dir-candidate, module-file);
+  let next-dir on dir-candidate = drop-last(dir-candidate);
+  let is-root on dir-candidate, next-dir = ne-text(dir-candidate, next-dir);
+  let _ = dir-candidate;
+  let file-found on module-file-candidate = is-regular-file(module-file-candidate);
+  match file-found, is-root {
+  | True, _ =>
+    Right(module-file-candidate)
+  | _, True =>
+    _find-module-file(base-dir, next-dir)
+  | _, _ =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "Could not find a module file (Context: ");
+      append-text(buf, base-dir);
+      append-text(buf, ")");
+    };
+    let _ = base-dir;
+    raise-error'(extract(buf))
+  }
+}
