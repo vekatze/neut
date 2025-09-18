@@ -1,5 +1,5 @@
 import {
-  core.ref {ref},
+  core.ref {make-ref, ref},
   this.kernel.common.raw-import-summary {raw-import-summary},
 }
 
@@ -7,4 +7,9 @@ data raw-import-summary-kit {
 | _Raw-Import-Summary-Kit(
     import-env-ref: ref(?raw-import-summary),
   )
+}
+
+define make-raw-import-summary-kit(): raw-import-summary-kit {
+  let import-env-ref = make-ref(box {none});
+  _Raw-Import-Summary-Kit of {import-env-ref}
 }
