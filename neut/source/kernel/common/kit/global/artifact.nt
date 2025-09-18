@@ -1,4 +1,5 @@
 import {
+  core.cell {make-cell},
   core.dictionary {dictionary},
   this.kernel.common.artifact {artifact-time},
 }
@@ -7,4 +8,9 @@ data artifact-kit {
 | _Artifact-Kit(
     artifact-map-ref: cell(dictionary(text, artifact-time)),
   )
+}
+
+define make-artifact-kit(): artifact-kit {
+  let artifact-map-ref = make-cell(box {core.dictionary.empty});
+  _Artifact-Kit of {artifact-map-ref}
 }
