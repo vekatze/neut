@@ -1,0 +1,9 @@
+import {
+  this.kernel.common.local-var-tree {local-var-tree},
+}
+
+data sym-loc-kit {
+| Sym-Loc(
+    local-var-map-ref: cell(local-var-tree),
+  )
+}
