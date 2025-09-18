@@ -19,3 +19,8 @@ define insert(k: &top-candidate-kit, cand: top-candidate): unit {
     }
   })
 }
+
+define get(k: top-candidate-kit): meta list(top-candidate) {
+  let _Top-Candidate-Kit(ref) = k;
+  core.ref.extract(ref)
+}
