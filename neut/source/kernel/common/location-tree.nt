@@ -1,10 +1,15 @@
 import {
   core.dictionary {dictionary},
+  core.int.ord,
   this.language.common.definite-description {definite-description},
   this.language.common.external-name {external-name},
   this.language.common.is-const-like {is-const-like},
-  this.language.raw-term.raw-term {loc},
+  this.language.raw-term.raw-term {Loc, loc},
   this.logger.hint {hint},
+}
+
+inline line: type {
+  int
 }
 
 inline col-from: type {
@@ -40,4 +45,27 @@ data loc-item {
 
 inline location-tree: type {
   dictionary(loc, loc-item)
+}
+
+inline ord-loc: ord(loc) {
+  let Ord of {compare := !cmp-int} = core.int.ord.as-ord;
+  Ord of {
+    compare := {
+      function (l1, l2) {
+        tie Loc(x1, y1) = l1;
+        tie Loc(x2, y2) = l2;
+        match !cmp-int(x1, x2) {
+        | EQ =>
+          !cmp-int(y1, y2)
+        | c =>
+          c
+        }
+      }
+    },
+  }
+}
+
+define insert(k: &ord(loc), lt: loc-type, p: pair(line, col-interval), m: hint, t: location-tree): location-tree {
+  let Pair(l, Pair(from, to)) = p;
+  core.dictionary.insert(k, t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
 }
