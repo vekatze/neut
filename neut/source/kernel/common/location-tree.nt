@@ -1,11 +1,13 @@
 import {
-  core.dictionary {dictionary},
+  core.bool {all},
+  core.dictionary {dictionary, to-list},
   core.int.ord,
+  core.list {filter-some, for-each},
   this.language.common.definite-description {definite-description, local-locator-from-dd},
   this.language.common.external-name {External-Name, external-name},
   this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-term {Loc, loc},
-  this.logger.hint {hint},
+  this.logger.hint {get-column, get-file-path, get-line, hint},
 }
 
 inline line: type {
@@ -114,4 +116,22 @@ define _is-sym-loc(lt: &loc-type): bool {
   | Symbol-Loc(_) =>
     True
   }
+}
+
+define find-ref(l: &loc, t: location-tree): list(pair(text, pair(line, col-interval))) {
+  let kvs = to-list(t);
+  filter-some(for-each(kvs, function (p) {
+    let Pair(Loc(line, _), Loc-Item(_, col-interval, lt, m)) = p;
+    pin lt = lt;
+    tie Loc(l1, c1) = l;
+    let l2 on m = get-line(m);
+    let c2 on m = get-column(m);
+    if all[_is-sym-loc(lt), eq-int(*l1, l2), eq-int(*c1, c2)] {
+      pin m = m;
+      let file-path = *get-file-path(m);
+      Right(Pair(file-path, Pair(line, col-interval)))
+    } else {
+      none
+    }
+  }))
 }
