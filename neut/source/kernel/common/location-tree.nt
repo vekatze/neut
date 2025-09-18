@@ -1,3 +1,7 @@
 inline _col-from: type {
   int
 }
+
+inline _col-to: type {
+  int
+}
