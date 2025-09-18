@@ -29,3 +29,7 @@ define _find-module-file(base-dir: &text, dir-candidate: text): app(text) {
     raise-error'(extract(buf))
   }
 }
+
+define find-module-file(base-dir: &text): app(text) {
+  _find-module-file(base-dir, *base-dir)
+}
