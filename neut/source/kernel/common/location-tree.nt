@@ -1,3 +1,9 @@
+import {
+  this.language.common.definite-description {definite-description},
+  this.language.common.external-name {external-name},
+  this.language.common.is-const-like {is-const-like},
+}
+
 inline _col-from: type {
   int
 }
@@ -6,10 +12,16 @@ inline _col-to: type {
   int
 }
 
-inline _def-symbol-len: type {
+inline def-symbol-len: type {
   int
 }
 
 inline _col-interval: type {
   pair(_col-from, _col-to)
+}
+
+data symbol-name {
+| Local(int, def-symbol-len)
+| Global(definite-description, is-const-like)
+| Foreign(external-name)
 }
