@@ -1,0 +1,8 @@
+import {
+  this.kernel.common.arch {arch},
+  this.kernel.common.operating-system {operating-system},
+}
+
+data platform {
+| Platform(operating-system, arch)
+}
