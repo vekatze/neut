@@ -51,3 +51,20 @@ define get-compile-option(t: &target): list(text) {
     }
   }
 }
+
+define get-link-option(t: &target): list(text) {
+  case t {
+  | Peripheral =>
+    List[]
+  | Peripheral-Single of {} =>
+    List[]
+  | Main(c) =>
+    case c {
+    | Named(_, target-summary) =>
+      tie Target-Summary(_, Clang-Option of {link-option}) = target-summary;
+      *link-option
+    | Zen(_, Clang-Option of {link-option}) =>
+      *link-option
+    }
+  }
+}
