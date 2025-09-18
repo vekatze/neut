@@ -1,0 +1,10 @@
+import {
+  core.ref {ref},
+  this.kernel.common.raw-import-summary {raw-import-summary},
+}
+
+data raw-import-summary-kit {
+| _Raw-Import-Summary-Kit(
+    import-env-ref: ref(?raw-import-summary),
+  )
+}
