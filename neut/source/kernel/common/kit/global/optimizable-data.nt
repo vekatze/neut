@@ -1,6 +1,6 @@
 import {
   core.dictionary {dictionary},
-  core.ref {ref},
+  core.ref {make-ref, ref},
   this.kernel.common.optimizable-data {optimizable-data},
   this.language.common.definite-description {definite-description},
 }
@@ -9,4 +9,9 @@ data optimizable-data-kit {
 | _Optimizable-Data-Kit(
     opt-data-map-ref: ref(dictionary(definite-description, optimizable-data)),
   )
+}
+
+define make-optimizable-data-kit(): optimizable-data-kit {
+  let opt-data-map-ref = make-ref(box {core.dictionary.empty});
+  _Optimizable-Data-Kit of {opt-data-map-ref}
 }
