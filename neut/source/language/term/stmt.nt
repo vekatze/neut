@@ -27,3 +27,10 @@ inline stmt: type {
 inline stripped-stmt: type {
   stmt-f(term-f(unit))
 }
+
+define get-stmt-name(s: &stmt): ?pair(&hint, &definite-description) {
+  case s {
+  | Stmt-Define of {m, name} =>
+    Right(Pair(m, name))
+  }
+}
