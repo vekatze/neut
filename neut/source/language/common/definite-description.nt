@@ -50,6 +50,19 @@ data definite-description {
 | _Definite-Description(text)
 }
 
+inline ord-dd: ord(definite-description) {
+  let Ord of {compare} = core.text.ord.as-ord;
+  Ord of {
+    compare := {
+      function (x, y) {
+        tie _Definite-Description(x) = x;
+        tie _Definite-Description(y) = y;
+        compare(x, y)
+      }
+    },
+  }
+}
+
 define new-dd(gl: &strict-global-locator, ll: local-locator): definite-description {
   pin tmp = text-from-strict-global-locator(gl);
   pin tmp = core.text.append(tmp, ns-sep);

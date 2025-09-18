@@ -1,17 +1,30 @@
 import {
+  core.cell {make-cell},
   core.dictionary {dictionary},
-  core.ref {make-ref, ref},
   this.kernel.common.optimizable-data {optimizable-data},
-  this.language.common.definite-description {definite-description},
+  this.language.common.definite-description {definite-description, ord-dd},
 }
 
 data optimizable-data-kit {
 | _Optimizable-Data-Kit(
-    opt-data-map-ref: ref(dictionary(definite-description, optimizable-data)),
+    opt-data-map-ref: cell(dictionary(definite-description, optimizable-data)),
   )
 }
 
 define make-optimizable-data-kit(): optimizable-data-kit {
-  let opt-data-map-ref = make-ref(box {core.dictionary.empty});
+  let opt-data-map-ref = make-cell(box {core.dictionary.empty});
   _Optimizable-Data-Kit of {opt-data-map-ref}
+}
+
+define insert(k: &optimizable-data-kit, dd: definite-description, od: optimizable-data): unit {
+  tie _Optimizable-Data-Kit(ref) = k;
+  core.cell.mutate(ref, function (dict) {
+    box {
+      letbox dict = dict;
+      letbox dd = quote {dd};
+      letbox od = quote {od};
+      pin o = ord-dd;
+      core.dictionary.insert(o, dict, dd, od)
+    }
+  })
 }
