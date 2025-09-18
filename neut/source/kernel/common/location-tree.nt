@@ -1,14 +1,17 @@
 import {
+  core.dictionary {dictionary},
   this.language.common.definite-description {definite-description},
   this.language.common.external-name {external-name},
   this.language.common.is-const-like {is-const-like},
+  this.language.raw-term.raw-term {loc},
+  this.logger.hint {hint},
 }
 
-inline _col-from: type {
+inline col-from: type {
   int
 }
 
-inline _col-to: type {
+inline col-to: type {
   int
 }
 
@@ -16,8 +19,8 @@ inline def-symbol-len: type {
   int
 }
 
-inline _col-interval: type {
-  pair(_col-from, _col-to)
+inline col-interval: type {
+  pair(col-from, col-to)
 }
 
 data symbol-name {
@@ -29,4 +32,12 @@ data symbol-name {
 data loc-type {
 | File-Loc
 | Symbol-Loc(symbol-name)
+}
+
+data loc-item {
+| Loc-Item(int, col-interval, loc-type, hint)
+}
+
+inline location-tree: type {
+  dictionary(loc, loc-item)
 }
