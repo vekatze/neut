@@ -3,7 +3,7 @@ import {
   this.language.common.definite-description {definite-description},
   this.language.common.is-const-like {is-const-like},
   this.language.common.stmt-kind {stmt-kind},
-  this.language.term.term {term},
+  this.language.term.term {term, term-f},
   this.logger.hint {hint},
 }
 
@@ -22,4 +22,8 @@ data stmt-f(a) {
 
 inline stmt: type {
   stmt-f(term)
+}
+
+inline stripped-stmt: type {
+  stmt-f(term-f(unit))
 }
