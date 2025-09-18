@@ -1,5 +1,6 @@
 import {
   this.kernel.common.clang-option {Clang-Option, clang-option},
+  this.language.common.base-name {base-name, main-name, zen-name},
   this.language.common.source-locator {source-locator},
 }
 
@@ -23,4 +24,13 @@ data target {
 
 define empty-zen(path: text): main-target {
   Zen(path, Clang-Option of {compile-option := List[], link-option := List[]})
+}
+
+define get-entry-point-name(t: &main-target): base-name {
+  case t {
+  | Named of {} =>
+    main-name
+  | Zen of {} =>
+    zen-name
+  }
 }
