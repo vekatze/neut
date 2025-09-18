@@ -1,0 +1,12 @@
+import {
+  core.dictionary {dictionary},
+  core.ref {ref},
+  this.kernel.common.optimizable-data {optimizable-data},
+  this.language.common.definite-description {definite-description},
+}
+
+data optimizable-data-kit {
+| _Optimizable-Data-Kit(
+    opt-data-map-ref: ref(dictionary(definite-description, optimizable-data)),
+  )
+}
