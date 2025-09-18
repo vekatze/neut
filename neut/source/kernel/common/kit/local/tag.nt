@@ -1,10 +1,15 @@
 import {
-  core.ref {ref},
-  this.kernel.common.location-tree {location-tree},
+  core.ref {make-ref, ref},
+  this.kernel.common.location-tree {empty-location-tree, location-tree},
 }
 
 data tag-kit {
 | _Tag-Kit(
     tag-map-ref: ref(location-tree),
   )
+}
+
+define make-tag-kit(): tag-kit {
+  let tag-map-ref = make-ref(box {empty-location-tree});
+  _Tag-Kit of {tag-map-ref}
 }
