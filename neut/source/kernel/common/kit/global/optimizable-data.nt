@@ -23,8 +23,20 @@ define insert(k: &optimizable-data-kit, dd: definite-description, od: optimizabl
       letbox dict = dict;
       letbox dd = quote {dd};
       letbox od = quote {od};
-      pin o = ord-dd;
-      core.dictionary.insert(o, dict, dd, od)
+      core.dictionary.make-insert(ord-dd)(dict, dd, od)
+    }
+  })
+}
+
+define lookup(k: &optimizable-data-kit, dd: definite-description): ?optimizable-data {
+  tie _Optimizable-Data-Kit(ref) = k;
+  core.cell.borrow(ref, function (dict) {
+    pin dd = dd;
+    match core.dictionary.make-lookup(ord-dd)(dict, dd) {
+    | Left(_) =>
+      quote {none}
+    | Right(v) =>
+      quote {Right(*v)}
     }
   })
 }

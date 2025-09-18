@@ -75,9 +75,9 @@ inline ord-loc: ord(loc) {
   }
 }
 
-define insert(k: &ord(loc), lt: loc-type, p: pair(line, col-interval), m: hint, t: location-tree): location-tree {
+define insert(lt: loc-type, p: pair(line, col-interval), m: hint, t: location-tree): location-tree {
   let Pair(l, Pair(from, to)) = p;
-  core.dictionary.insert(k, t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
+  core.dictionary.make-insert(ord-loc)(t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
 }
 
 define _get-length(s: &symbol-name): def-symbol-len {
@@ -96,8 +96,9 @@ data found-loc {
 | Found-Loc(loc-type, &hint, &col-interval, def-symbol-len)
 }
 
-define find(k: &ord(loc), loc: &loc, t: &location-tree): ?found-loc {
-  try Pair(_, li) = core.dictionary.lookup-LE(k, t, loc);
+define find(loc: &loc, t: &location-tree): ?found-loc {
+  let lookup-LE = core.dictionary.make-lookup-LE(ord-loc);
+  try Pair(_, li) = lookup-LE(t, loc);
   tie Loc-Item(line, col-interval, lt, m) = li;
   tie Loc(l, c) = loc;
   tie Pair(col-from, col-to) = col-interval;
