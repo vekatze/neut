@@ -44,6 +44,15 @@ define get-file-path(m: &hint): &text {
   }
 }
 
+define get-should-save-location(m: &hint): bool {
+  case m {
+  | Hint of {should-save-location} =>
+    *should-save-location
+  | Saved-Hint of {should-save-location} =>
+    *should-save-location
+  }
+}
+
 define new-hint(line: int, column: int, file-path: &text): hint {
   Hint of {
     file-path,
