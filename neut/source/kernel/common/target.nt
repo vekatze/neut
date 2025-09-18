@@ -1,0 +1,11 @@
+import {
+  this.kernel.common.clang-option {clang-option},
+  this.language.common.source-locator {source-locator},
+}
+
+data target-summary {
+| Target-Summary(
+    entry-point: source-locator,
+    clang-option: clang-option,
+  )
+}
