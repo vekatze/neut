@@ -1,0 +1,231 @@
+import {
+  core.bool {all},
+  core.dictionary {dictionary, to-list},
+  core.int.ord,
+  core.list {filter-some, for-each},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.instance.bool {bool-sero},
+  sero.sero {Sero, sero},
+  this.language.common.definite-description {definite-description, definite-description-sero, local-locator-from-dd},
+  this.language.common.external-name {External-Name, external-name, external-name-sero},
+  this.language.common.is-const-like {is-const-like},
+  this.language.raw-term.raw-term {Loc, loc},
+  this.logger.hint {get-column, get-file-path, get-line, hint},
+}
+
+inline line: type {
+  int
+}
+
+inline column: type {
+  int
+}
+
+inline col-from: type {
+  int
+}
+
+inline col-to: type {
+  int
+}
+
+inline def-symbol-len: type {
+  int
+}
+
+inline col-interval: type {
+  pair(col-from, col-to)
+}
+
+data symbol-name {
+| Local(symbol-name: int, symbol-len: def-symbol-len)
+| Global(definite-description, is-const-like)
+| Foreign(external-name)
+}
+
+data loc-type {
+| File-Loc
+| Symbol-Loc(symbol-name)
+}
+
+data loc-item {
+| Loc-Item(int, col-interval, loc-type, hint)
+}
+
+inline location-tree: type {
+  dictionary(loc, loc-item)
+}
+
+inline ord-loc: ord(loc) {
+  let Ord of {compare := !cmp-int} = core.int.ord.as-ord;
+  Ord of {
+    compare := {
+      function (l1, l2) {
+        tie Loc(x1, y1) = l1;
+        tie Loc(x2, y2) = l2;
+        match !cmp-int(x1, x2) {
+        | EQ =>
+          !cmp-int(y1, y2)
+        | c =>
+          c
+        }
+      }
+    },
+  }
+}
+
+define insert(k: &ord(loc), lt: loc-type, p: pair(line, col-interval), m: hint, t: location-tree): location-tree {
+  let Pair(l, Pair(from, to)) = p;
+  core.dictionary.insert(k, t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
+}
+
+define _get-length(s: &symbol-name): def-symbol-len {
+  case s {
+  | Local(_, len) =>
+    *len
+  | Global(dd, _) =>
+    pin tmp = local-locator-from-dd(dd);
+    core.text.length(tmp)
+  | Foreign(External-Name(t)) =>
+    core.text.length(t)
+  }
+}
+
+data found-loc {
+| Found-Loc(loc-type, &hint, &col-interval, def-symbol-len)
+}
+
+define find(k: &ord(loc), loc: &loc, t: &location-tree): ?found-loc {
+  try Pair(_, li) = core.dictionary.lookup-LE(k, t, loc);
+  tie Loc-Item(line, col-interval, lt, m) = li;
+  tie Loc(l, c) = loc;
+  tie Pair(col-from, col-to) = col-interval;
+  if or(lt-int(*col-to, *c), ne-int(*line, *l)) {
+    none
+  } else {
+    case lt {
+    | File-Loc =>
+      Right(Found-Loc(File-Loc, m, col-interval, sub-int(*col-from, *col-to)))
+    | Symbol-Loc(sym) =>
+      Right(Found-Loc(File-Loc, m, col-interval, _get-length(sym)))
+    }
+  }
+}
+
+define _is-sym-loc(lt: &loc-type): bool {
+  case lt {
+  | File-Loc =>
+    False
+  | Symbol-Loc(_) =>
+    True
+  }
+}
+
+define find-ref(l: &loc, t: location-tree): list(pair(text, pair(line, col-interval))) {
+  let kvs = to-list(t);
+  filter-some(for-each(kvs, function (p) {
+    let Pair(Loc(line, _), Loc-Item(_, col-interval, lt, m)) = p;
+    pin lt = lt;
+    tie Loc(l1, c1) = l;
+    let l2 on m = get-line(m);
+    let c2 on m = get-column(m);
+    if all[_is-sym-loc(lt), eq-int(*l1, l2), eq-int(*c1, c2)] {
+      pin m = m;
+      let file-path = *get-file-path(m);
+      Right(Pair(file-path, Pair(line, col-interval)))
+    } else {
+      none
+    }
+  }))
+}
+
+inline symbol-name-sero: sero(symbol-name) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Local(name, def-symbol-len) =>
+          put-int64(k, 0);
+          put-int64(k, *name);
+          put-int64(k, *def-symbol-len);
+        | Global(dd, is-const-like) =>
+          let Sero of {put := put-dd} = definite-description-sero;
+          let Sero of {put := put-bool} = bool-sero;
+          put-int64(k, 1);
+          put-dd(k, dd);
+          put-bool(k, is-const-like);
+        | Foreign(ext-name) =>
+          let Sero of {put := put-en} = external-name-sero;
+          put-int64(k, 2);
+          put-en(k, ext-name);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          try name = get-int64(k);
+          try len = get-int64(k);
+          Right(quote {Local(name, len)})
+        | 1 =>
+          let Sero of {get := get-dd} = definite-description-sero;
+          let Sero of {get := get-bool} = bool-sero;
+          try dd = get-dd(k);
+          try b = get-bool(k);
+          Right(box {
+            letbox dd = dd;
+            letbox b = b;
+            Global(dd, b)
+          })
+        | 2 =>
+          let Sero of {get := get-en} = external-name-sero;
+          try ext-name = get-en(k);
+          Right(box {
+            letbox ext-name = ext-name;
+            Foreign(ext-name)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}
+
+inline loc-type-sero: sero(loc-type) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | File-Loc =>
+          put-int64(k, 0);
+        | Symbol-Loc(sym) =>
+          let Sero of {put := put-sym} = symbol-name-sero;
+          put-int64(k, 1);
+          put-sym(k, sym);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          Right(box {File-Loc})
+        | 1 =>
+          let Sero of {get := get-sym} = symbol-name-sero;
+          try sym = get-sym(k);
+          Right(box {
+            letbox sym = sym;
+            Symbol-Loc(sym)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}

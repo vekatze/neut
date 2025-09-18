@@ -11,6 +11,8 @@ import {
 
 data raw-import {}
 
+data raw-import-item {}
+
 inline raw-stmt-kind(a) {
   base-stmt-kind(a, raw-binder(raw-term), unit)
 }

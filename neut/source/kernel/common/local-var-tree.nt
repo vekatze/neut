@@ -1,0 +1,107 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+  this.language.common.ident {ident, ident-sero},
+  this.language.raw-term.raw-term {Loc, cmp-loc, loc},
+}
+
+data local-var-tree {
+| Leaf
+| Node(loc, loc, ident, local-var-tree, local-var-tree)
+}
+
+inline empty-local-var-tree: local-var-tree {
+  Leaf
+}
+
+define insert(start: loc, end: loc, x: ident, t: local-var-tree): local-var-tree {
+  match t {
+  | Leaf =>
+    Node(start, end, x, Leaf, Leaf)
+  | Node(start-t, end-t, x-t, left, right) =>
+    let c on start-t, end-t = cmp-loc(start-t, end-t);
+    match c {
+    | LT =>
+      Node(start-t, end-t, x-t, insert(start, end, x, left), right)
+    | GT =>
+      Node(start-t, end-t, x-t, left, insert(start, end, x, right))
+    | EQ =>
+      Node(start-t, end-t, x, left, right)
+    }
+  }
+}
+
+define collect(l: &loc, t: &local-var-tree): list(&ident) {
+  case t {
+  | Leaf =>
+    List[]
+  | Node(start, end, x, left, right) =>
+    match cmp-loc(l, start) {
+    | LT =>
+      collect(l, left)
+    | _ =>
+      let xs = collect(l, left);
+      let ys = collect(l, right);
+      let zs = core.list.append(xs, ys);
+      match cmp-loc(l, end) {
+      | LT =>
+        Cons(x, zs)
+      | _ =>
+        zs
+      }
+    }
+  }
+}
+
+inline local-var-tree-sero: sero(local-var-tree) {
+  let Sero of {put := !put-ident, get := !get-ident} = ident-sero;
+  Sero of {
+    put := {
+      define loop(k, v) {
+        case v {
+        | Leaf =>
+          put-int64(k, 0);
+        | Node(Loc(sl, sc), Loc(el, ec), x, left, right) =>
+          put-int64(k, 1);
+          put-int64(k, *sl);
+          put-int64(k, *sc);
+          put-int64(k, *el);
+          put-int64(k, *ec);
+          !put-ident(k, x);
+          loop(k, left);
+          loop(k, right);
+        }
+      }
+    },
+    get := {
+      define loop(k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          Right(box {Leaf})
+        | 1 =>
+          try sl = get-int64(k);
+          try sc = get-int64(k);
+          try el = get-int64(k);
+          try ec = get-int64(k);
+          try x = !get-ident(k);
+          try left = loop(k);
+          try right = loop(k);
+          Right(box {
+            letbox sl = quote {sl};
+            letbox sc = quote {sc};
+            letbox el = quote {el};
+            letbox ec = quote {ec};
+            letbox x = x;
+            letbox left = left;
+            letbox right = right;
+            Node(Loc(sl, sc), Loc(el, ec), x, left, right)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}

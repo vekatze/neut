@@ -1,0 +1,112 @@
+import {
+  core.c-int {eq-c-int},
+  core.debug {vet-doc},
+  core.doc.show {show-doc},
+  core.list {for-each},
+  core.process {Exited, Process-Result, Process-Spec, process-spec, spawn},
+  core.system {get-error-message},
+  core.text {intercalate, split},
+  core.text-builder {append-int64-UTF8, append-text, make-text-builder},
+  this.color.color-kit {make-color-kit},
+  this.logger.logger-kit {logger-kit, make-logger-kit},
+  this.logger.print {report},
+}
+
+data run-process-kit {
+| _Run-Process-Kit(
+    logger-kit: logger-kit,
+  )
+}
+
+define make-run-process-kit(logger-kit: logger-kit) {
+  _Run-Process-Kit(logger-kit)
+}
+
+data command-error {
+| Command-Error(
+    spec: process-spec,
+    exit-code: int,
+    err-str: text,
+  )
+}
+
+data process-error {
+| Command-Execution-Error(command-error)
+| Setup-Error(text)
+}
+
+define _indent(t: &text): text {
+  let ts = split(t, "\n");
+  let ts =
+    for-each(ts, function (t) {
+      pin t = t;
+      core.text.append("  ", t)
+    });
+  intercalate(ts, *"\n")
+}
+
+define _text-from-process-error(pe: process-error): text {
+  match pe {
+  | Command-Execution-Error(Command-Error(cmd-spec, exit-code, err-str)) =>
+    let Process-Spec of {process} = cmd-spec;
+    let buf = make-text-builder(64);
+    pin err-str = err-str;
+    pin process = process;
+    let _ on buf = {
+      append-text(buf, "The child process `");
+      append-text(buf, process);
+      append-text(buf, "` failed with the following message (exit-code = ");
+      append-int64-UTF8(buf, exit-code);
+      append-text(buf, "):\n");
+      pin v = _indent(err-str);
+      append-text(buf, v);
+    };
+    core.text-builder.extract(buf)
+  | Setup-Error(t) =>
+    t
+  }
+}
+
+define _report-command(k: &run-process-kit, s: &process-spec): unit {
+  tie _Run-Process-Kit of {logger-kit} = k;
+  let message = {
+    pin tmp = vet-doc(s);
+    pin tmp = show-doc(tmp, 65535);
+    core.text.append("Executing: ", tmp)
+  };
+  report(logger-kit, message);
+}
+
+define run-process(k: &run-process-kit, s: process-spec): either(text, text) {
+  let _ on s = _report-command(k, s);
+  match spawn(s, 1024, 1024) {
+  | Left(e) =>
+    Left(get-error-message(e))
+  | Right(Process-Result of {status, stdout-text, stderr-text}) =>
+    match status {
+    | Exited(status-code) =>
+      if eq-c-int(status-code, 0) {
+        Right(stdout-text)
+      } else {
+        Left(stderr-text)
+      }
+    | _ =>
+      Left(stderr-text)
+    }
+  }
+}
+
+define run-simple-process(k: &run-process-kit, proc-name: text, args: list(text)): either(text, text) {
+  let spec = Process-Spec(proc-name, args, none, *"");
+  run-process(k, spec)
+}
+
+define zen(): unit {
+  pin k = make-run-process-kit(make-logger-kit(make-color-kit(True, True), True));
+  pin s = Process-Spec(*"foo", List[*"bar", *"buz"], none, *"some-input");
+  _report-command(k, s);
+  pin result = run-simple-process(k, *"ls", Nil);
+  vet(result);
+  pin result = run-process(k, Process-Spec(*"ls", Nil, Right(*"/etc"), *""));
+  vet(result);
+}

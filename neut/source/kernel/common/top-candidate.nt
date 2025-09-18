@@ -1,0 +1,86 @@
+import {
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
+  this.language.common.definite-description {definite-description, definite-description-sero},
+  this.language.raw-term.raw-term {Loc, loc},
+}
+
+data candidate-kind {
+| Constant
+| Constructor
+| Function
+}
+
+data top-candidate {
+| Top-Candidate(
+    loc: loc,
+    dd: definite-description,
+    kind: candidate-kind,
+  )
+}
+
+inline candidate-kind-sero: sero(candidate-kind) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Constant =>
+          put-int64(k, 0);
+        | Constructor =>
+          put-int64(k, 1);
+        | Function =>
+          put-int64(k, 2);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          Right(box {Constant})
+        | 1 =>
+          Right(box {Constructor})
+        | 2 =>
+          Right(box {Function})
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}
+
+inline top-candidate-sero: sero(top-candidate) {
+  Sero of {
+    put := {
+      function (k, v) {
+        let Sero of {put := put-dd} = definite-description-sero;
+        let Sero of {put := put-candidate-kind} = candidate-kind-sero;
+        tie Top-Candidate(Loc(line, column), dd, kind) = v;
+        put-int64(k, *line);
+        put-int64(k, *column);
+        put-dd(k, dd);
+        put-candidate-kind(k, kind);
+      }
+    },
+    get := {
+      function (k) {
+        let Sero of {get := get-dd} = definite-description-sero;
+        let Sero of {get := get-candidate-kind} = candidate-kind-sero;
+        try line = get-int64(k);
+        try column = get-int64(k);
+        try dd = get-dd(k);
+        try kind = get-candidate-kind(k);
+        Right(box {
+          letbox line = quote {line};
+          letbox column = quote {column};
+          letbox dd = dd;
+          letbox kind = kind;
+          Top-Candidate(Loc(line, column), dd, kind)
+        })
+      }
+    },
+  }
+}
