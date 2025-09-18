@@ -1,4 +1,5 @@
 import {
+  core.list {filter-some, for-each-N},
   this.language.common.binder {binder-f},
   this.language.common.definite-description {definite-description},
   this.language.common.is-const-like {is-const-like},
@@ -33,4 +34,8 @@ define get-stmt-name(s: &stmt): ?pair(&hint, &definite-description) {
   | Stmt-Define of {m, name} =>
     Right(Pair(m, name))
   }
+}
+
+define get-stmt-names(s: &list(stmt)): list(pair(&hint, &definite-description)) {
+  filter-some(for-each-N(s, get-stmt-name))
 }
