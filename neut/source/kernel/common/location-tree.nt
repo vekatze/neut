@@ -106,3 +106,12 @@ define find(k: &ord(loc), loc: &loc, t: &location-tree): ?found-loc {
     }
   }
 }
+
+define _is-sym-loc(lt: &loc-type): bool {
+  case lt {
+  | File-Loc =>
+    False
+  | Symbol-Loc(_) =>
+    True
+  }
+}
