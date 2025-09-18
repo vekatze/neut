@@ -1,0 +1,11 @@
+import {
+  this.logger.hint {hint},
+}
+
+data term-f(a) {
+| Tau(a)
+}
+
+inline term: type {
+  term-f(hint)
+}
