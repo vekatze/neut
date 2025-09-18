@@ -9,3 +9,8 @@ data target-summary {
     clang-option: clang-option,
   )
 }
+
+data main-target {
+| Named(target-name: text, target-info: target-summary)
+| Zen(file-path: text, option: clang-option)
+}
