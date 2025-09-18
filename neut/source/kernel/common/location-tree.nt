@@ -9,3 +9,7 @@ inline _col-to: type {
 inline _def-symbol-len: type {
   int
 }
+
+inline _col-interval: type {
+  pair(_col-from, _col-to)
+}
