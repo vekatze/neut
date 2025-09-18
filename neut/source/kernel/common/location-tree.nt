@@ -57,6 +57,10 @@ inline location-tree: type {
   dictionary(loc, loc-item)
 }
 
+inline empty-location-tree: location-tree {
+  core.dictionary.empty
+}
+
 inline ord-loc: ord(loc) {
   let Ord of {compare := !cmp-int} = core.int.ord.as-ord;
   Ord of {
