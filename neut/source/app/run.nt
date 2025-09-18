@@ -1,6 +1,7 @@
 import {
   core.external {exit},
   core.foreign {get-cpu-count, sleep},
+  core.system {get-error-message, system},
   core.text-builder {text-builder},
   core.thread.pool,
   this.app.app {app},
@@ -58,6 +59,15 @@ define raise-critical<a>(m: hint, t: text): app(a) {
 
 define raise-critical'<a>(t: text): app(a) {
   Left(new-critical'(t))
+}
+
+define app-from-system<a>(x: system(a)): app(a) {
+  match x {
+  | Right(v) =>
+    Right(v)
+  | Left(err) =>
+    Left(new-error'(get-error-message(err)))
+  }
 }
 
 rule-left text-join {
