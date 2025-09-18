@@ -1,6 +1,6 @@
 import {
   core.ref {make-ref, mutate, ref},
-  this.kernel.common.location-tree {File-Loc, empty-location-tree, insert, location-tree},
+  this.kernel.common.location-tree {File-Loc, empty-location-tree, insert, loc-type, location-tree},
   this.logger.hint {get-column, get-line, get-should-save-location, hint},
 }
 
@@ -33,6 +33,25 @@ define insert-file-loc(k: &tag-kit, m-use: &hint, name-length: int, m-def: meta 
         letbox name-length = quote {name-length};
         letbox m-def = m-def;
         insert(File-Loc, Pair(l, Pair(c, add-int(c, name-length))), m-def, map)
+      }
+    })
+  }
+}
+
+define _insert(k: &tag-kit, m-use: &hint, lt: loc-type, name-length: int, m-def: meta hint): unit {
+  when get-should-save-location(m-use) {
+    let l = get-line(m-use);
+    let c = get-column(m-use);
+    tie _Tag-Kit(ref) = k;
+    mutate(ref, function (map) {
+      box {
+        letbox map = map;
+        letbox l = quote {l};
+        letbox c = quote {c};
+        letbox name-length = quote {name-length};
+        letbox m-def = m-def;
+        letbox lt = quote {lt};
+        insert(lt, Pair(l, Pair(c, add-int(c, name-length))), m-def, map)
       }
     })
   }
