@@ -85,3 +85,24 @@ define _get-length(s: &symbol-name): def-symbol-len {
     core.text.length(t)
   }
 }
+
+data found-loc {
+| Found-Loc(loc-type, &hint, &col-interval, def-symbol-len)
+}
+
+define find(k: &ord(loc), loc: &loc, t: &location-tree): ?found-loc {
+  try Pair(_, li) = core.dictionary.lookup-LE(k, t, loc);
+  tie Loc-Item(line, col-interval, lt, m) = li;
+  tie Loc(l, c) = loc;
+  tie Pair(col-from, col-to) = col-interval;
+  if or(lt-int(*col-to, *c), ne-int(*line, *l)) {
+    none
+  } else {
+    case lt {
+    | File-Loc =>
+      Right(Found-Loc(File-Loc, m, col-interval, sub-int(*col-from, *col-to)))
+    | Symbol-Loc(sym) =>
+      Right(Found-Loc(File-Loc, m, col-interval, _get-length(sym)))
+    }
+  }
+}
