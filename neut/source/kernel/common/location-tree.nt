@@ -194,3 +194,38 @@ inline symbol-name-sero: sero(symbol-name) {
     },
   }
 }
+
+inline loc-type-sero: sero(loc-type) {
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | File-Loc =>
+          put-int64(k, 0);
+        | Symbol-Loc(sym) =>
+          let Sero of {put := put-sym} = symbol-name-sero;
+          put-int64(k, 1);
+          put-sym(k, sym);
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          Right(box {File-Loc})
+        | 1 =>
+          let Sero of {get := get-sym} = symbol-name-sero;
+          try sym = get-sym(k);
+          Right(box {
+            letbox sym = sym;
+            Symbol-Loc(sym)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}
