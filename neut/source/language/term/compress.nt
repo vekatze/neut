@@ -1,0 +1,10 @@
+import {
+  this.language.term.term {Tau, term, term-f},
+}
+
+define compress(e: term): term-f(unit) {
+  match e {
+  | Tau(_) =>
+    Tau(Unit)
+  }
+}
