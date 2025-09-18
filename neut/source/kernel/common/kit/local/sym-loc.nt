@@ -33,3 +33,8 @@ define insert(k: &sym-loc-kit, x: ident, start: loc, end: loc): unit {
     })
   }
 }
+
+define get(k: sym-loc-kit): meta local-var-tree {
+  let Sym-Loc(ref) = k;
+  core.cell.extract(ref)
+}
