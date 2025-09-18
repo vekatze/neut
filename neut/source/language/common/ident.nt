@@ -28,6 +28,11 @@ define cmp-ident(x: &ident, y: &ident): ordering {
   }
 }
 
+define length-ident(x: &ident): int {
+  tie I(x, _) = x;
+  core.text.length(x)
+}
+
 define show-ident(x: &ident): text {
   tie I(s, i) = x;
   pin i = show-int(*i);
