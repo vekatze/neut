@@ -1,0 +1,16 @@
+import {
+  this.kernel.common.arch {arch, text-from-arch},
+  this.kernel.common.operating-system {operating-system, text-from-operating-system},
+}
+
+data platform {
+| Platform(operating-system, arch)
+}
+
+define text-from-platform(p: &platform): text {
+  tie Platform(os, arch) = p;
+  let arch-text = text-from-arch(*arch);
+  let os-text = text-from-operating-system(*os);
+  pin tmp = core.text.append(arch-text, "-");
+  core.text.append(tmp, os-text)
+}

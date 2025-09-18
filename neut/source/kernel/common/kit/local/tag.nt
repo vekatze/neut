@@ -1,0 +1,126 @@
+import {
+  core.ref {make-ref, mutate, ref},
+  this.kernel.common.location-tree {
+    File-Loc,
+    Foreign,
+    Global,
+    Local,
+    Symbol-Loc,
+    empty-location-tree,
+    insert,
+    loc-type,
+    location-tree,
+  },
+  this.language.common.binder {Binder-F, binder-f},
+  this.language.common.definite-description {definite-description, local-locator-from-dd},
+  this.language.common.external-name {External-Name, external-name},
+  this.language.common.ident {I, ident, is-hole, length-ident},
+  this.language.common.is-const-like {is-const-like},
+  this.logger.hint {get-column, get-line, get-should-save-location, hint, quote-hint},
+}
+
+data tag-kit {
+| _Tag-Kit(
+    tag-map-ref: ref(location-tree),
+  )
+}
+
+define make-tag-kit(): tag-kit {
+  let tag-map-ref = make-ref(box {empty-location-tree});
+  _Tag-Kit of {tag-map-ref}
+}
+
+define get-location-tree(k: tag-kit): meta location-tree {
+  let _Tag-Kit(ref) = k;
+  core.ref.extract(ref)
+}
+
+define insert-file-loc(k: &tag-kit, m-use: &hint, name-length: int, m-def: meta hint): unit {
+  when get-should-save-location(m-use) {
+    let l = get-line(m-use);
+    let c = get-column(m-use);
+    tie _Tag-Kit(ref) = k;
+    mutate(ref, function (map) {
+      box {
+        letbox map = map;
+        letbox l = quote {l};
+        letbox c = quote {c};
+        letbox name-length = quote {name-length};
+        letbox m-def = m-def;
+        insert(File-Loc, Pair(l, Pair(c, add-int(c, name-length))), m-def, map)
+      }
+    })
+  }
+}
+
+define _insert(k: &tag-kit, m-use: &hint, lt: loc-type, name-length: int, m-def: meta hint): unit {
+  when get-should-save-location(m-use) {
+    let l = get-line(m-use);
+    let c = get-column(m-use);
+    tie _Tag-Kit(ref) = k;
+    mutate(ref, function (map) {
+      box {
+        letbox map = map;
+        letbox l = quote {l};
+        letbox c = quote {c};
+        letbox name-length = quote {name-length};
+        letbox m-def = m-def;
+        letbox lt = quote {lt};
+        insert(lt, Pair(l, Pair(c, add-int(c, name-length))), m-def, map)
+      }
+    })
+  }
+}
+
+define insert-local-var(k: &tag-kit, m-use: &hint, x: &ident, m-def: meta hint): unit {
+  when not(is-hole(x)) {
+    let name-length = length-ident(x);
+    tie I(_, var-ID) = x;
+    let symbol-loc = Symbol-Loc(Local(*var-ID, name-length));
+    _insert(k, m-use, symbol-loc, name-length, m-def)
+  }
+}
+
+define insert-binder<a>(k: &tag-kit, b: &binder-f(a)): unit {
+  tie Binder-F(m, x, _) = b;
+  insert-local-var(k, m, x, quote-hint(*m))
+}
+
+define insert-global-var(
+  k: &tag-kit,
+  m-use: &hint,
+  dd: definite-description,
+  b: is-const-like,
+  m-def: meta hint,
+): unit {
+  pin tmp on dd = local-locator-from-dd(dd);
+  let name-length = core.text.length(tmp);
+  let symbol-loc = Symbol-Loc(Global(dd, b));
+  _insert(k, m-use, symbol-loc, name-length, m-def)
+}
+
+define insert-locator(
+  k: &tag-kit,
+  m-use: &hint,
+  dd: definite-description,
+  b: is-const-like,
+  name-length: int,
+  m-def: meta hint,
+): unit {
+  let symbol-loc = Symbol-Loc(Global(dd, b));
+  _insert(k, m-use, symbol-loc, name-length, m-def)
+}
+
+define insert-external-name(
+  k: &tag-kit,
+  m-use: &hint,
+  ext-name: external-name,
+  m-def: meta hint,
+): unit {
+  let name-length on ext-name = {
+    tie External-Name(tmp) = ext-name;
+    core.text.length(tmp)
+  };
+  let symbol-loc = Symbol-Loc(Foreign(ext-name));
+  _insert(k, m-use, symbol-loc, name-length, m-def)
+}

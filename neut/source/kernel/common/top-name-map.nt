@@ -1,0 +1,10 @@
+import {
+  core.dictionary {dictionary},
+  this.kernel.common.global-name {global-name},
+  this.language.common.definite-description {definite-description},
+  this.logger.hint {hint},
+}
+
+inline top-name-map: type {
+  dictionary(definite-description, pair(hint, global-name))
+}

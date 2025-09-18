@@ -17,6 +17,27 @@ data hint {
   )
 }
 
+define quote-hint(m: hint): meta hint {
+  match m {
+  | Hint(path, line, column, should-save-location) =>
+    box {
+      letbox path = box path {path};
+      letbox line = quote {line};
+      letbox column = quote {column};
+      letbox should-save-location = quote {should-save-location};
+      Saved-Hint(path, line, column, should-save-location)
+    }
+  | Saved-Hint(a, b, c, d) =>
+    box {
+      letbox a = quote {a};
+      letbox b = quote {b};
+      letbox c = quote {c};
+      letbox d = quote {d};
+      Saved-Hint(a, b, c, d)
+    }
+  }
+}
+
 define get-line(m: &hint): int {
   case m {
   | Hint of {line} =>
@@ -41,6 +62,15 @@ define get-file-path(m: &hint): &text {
     *file-path
   | Saved-Hint of {file-path} =>
     file-path
+  }
+}
+
+define get-should-save-location(m: &hint): bool {
+  case m {
+  | Hint of {should-save-location} =>
+    *should-save-location
+  | Saved-Hint of {should-save-location} =>
+    *should-save-location
   }
 }
 

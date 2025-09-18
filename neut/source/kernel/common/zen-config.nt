@@ -1,0 +1,7 @@
+import {
+  this.kernel.common.clang-option {clang-option},
+}
+
+data zen-config {
+| Zen-Config(clang-option)
+}

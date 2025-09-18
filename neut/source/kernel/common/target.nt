@@ -1,0 +1,70 @@
+import {
+  this.kernel.common.clang-option {Clang-Option, clang-option},
+  this.language.common.base-name {base-name, main-name, zen-name},
+  this.language.common.source-locator {source-locator},
+}
+
+data target-summary {
+| Target-Summary(
+    entry-point: source-locator,
+    clang-option: clang-option,
+  )
+}
+
+data main-target {
+| Named(target-name: text, target-info: target-summary)
+| Zen(file-path: text, option: clang-option)
+}
+
+data target {
+| Main(main-target)
+| Peripheral
+| Peripheral-Single(file-path: text)
+}
+
+define empty-zen(path: text): main-target {
+  Zen(path, Clang-Option of {compile-option := List[], link-option := List[]})
+}
+
+define get-entry-point-name(t: &main-target): base-name {
+  case t {
+  | Named of {} =>
+    main-name
+  | Zen of {} =>
+    zen-name
+  }
+}
+
+define get-compile-option(t: &target): list(text) {
+  case t {
+  | Peripheral =>
+    List[]
+  | Peripheral-Single of {} =>
+    List[]
+  | Main(c) =>
+    case c {
+    | Named(_, target-summary) =>
+      tie Target-Summary(_, Clang-Option of {compile-option}) = target-summary;
+      *compile-option
+    | Zen(_, Clang-Option of {compile-option}) =>
+      *compile-option
+    }
+  }
+}
+
+define get-link-option(t: &target): list(text) {
+  case t {
+  | Peripheral =>
+    List[]
+  | Peripheral-Single of {} =>
+    List[]
+  | Main(c) =>
+    case c {
+    | Named(_, target-summary) =>
+      tie Target-Summary(_, Clang-Option of {link-option}) = target-summary;
+      *link-option
+    | Zen(_, Clang-Option of {link-option}) =>
+      *link-option
+    }
+  }
+}

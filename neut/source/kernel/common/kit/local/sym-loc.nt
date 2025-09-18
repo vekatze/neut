@@ -1,0 +1,40 @@
+import {
+  core.ref {make-ref, mutate, ref},
+  this.kernel.common.local-var-tree {empty-local-var-tree, local-var-tree},
+  this.language.common.ident {ident, is-hole},
+  this.language.raw-term.raw-term {loc},
+}
+
+data sym-loc-kit {
+| Sym-Loc(
+    local-var-map-ref: ref(local-var-tree),
+  )
+}
+
+define make-sym-loc-kit(): sym-loc-kit {
+  let local-var-map-ref = make-ref(box {empty-local-var-tree});
+  Sym-Loc of {local-var-map-ref}
+}
+
+define insert(k: &sym-loc-kit, x: ident, start: loc, end: loc): unit {
+  let b on x = is-hole(x);
+  if b {
+    Unit
+  } else {
+    tie Sym-Loc(ref) = k;
+    mutate(ref, function (t) {
+      box {
+        letbox t = t;
+        letbox start = quote {start};
+        letbox end = quote {end};
+        letbox x = quote {x};
+        this.kernel.common.local-var-tree.insert(start, end, x, t)
+      }
+    })
+  }
+}
+
+define get(k: sym-loc-kit): meta local-var-tree {
+  let Sym-Loc(ref) = k;
+  core.ref.extract(ref)
+}
