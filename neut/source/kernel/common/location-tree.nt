@@ -25,3 +25,8 @@ data symbol-name {
 | Global(definite-description, is-const-like)
 | Foreign(external-name)
 }
+
+data loc-type {
+| File-Loc
+| Symbol-Loc(symbol-name)
+}
