@@ -14,3 +14,9 @@ data main-target {
 | Named(target-name: text, target-info: target-summary)
 | Zen(file-path: text, option: clang-option)
 }
+
+data target {
+| Main(main-target)
+| Peripheral
+| Peripheral-Single(file-path: text)
+}
