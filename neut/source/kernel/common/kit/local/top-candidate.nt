@@ -1,5 +1,5 @@
 import {
-  core.ref {ref},
+  core.ref {mutate, ref},
   this.kernel.common.top-candidate {top-candidate},
 }
 
@@ -7,4 +7,15 @@ data top-candidate-kit {
 | _Top-Candidate-Kit(
     top-candidate-env-ref: ref(list(top-candidate)),
   )
+}
+
+define insert(k: &top-candidate-kit, cand: top-candidate): unit {
+  tie _Top-Candidate-Kit(ref) = k;
+  mutate(ref, function (xs) {
+    box {
+      letbox xs = xs;
+      letbox cand = quote {cand};
+      Cons(cand, xs)
+    }
+  })
 }
