@@ -1,4 +1,7 @@
 import {
+  this.kernel.common.local-var-tree {local-var-tree},
+  this.kernel.common.raw-import-summary {raw-import-summary},
+  this.kernel.common.top-candidate {top-candidate},
   this.language.term.stmt {stmt, stripped-stmt},
   this.logger.log {log},
 }
@@ -16,5 +19,13 @@ data low-cache {
     stmt-list: list(stripped-stmt),
     remark-list: list(log),
     count-snapshot: int,
+  )
+}
+
+data completion-cache {
+| Completion-Cache(
+    local-var-tree: local-var-tree,
+    top-candidates: list(top-candidate),
+    raw-import-summary: ?raw-import-summary,
   )
 }
