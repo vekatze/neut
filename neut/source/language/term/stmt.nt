@@ -1,11 +1,20 @@
 import {
   core.list {filter-some, for-each-N},
-  this.language.common.binder {binder-f},
-  this.language.common.definite-description {definite-description},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.instance.bool {bool-sero},
+  sero.instance.either {either-sero},
+  sero.instance.list {list-sero},
+  sero.instance.pair {pair-sero},
+  sero.instance.unit {unit-sero},
+  sero.sero {Sero, sero},
+  this.language.common.binder {binder-f, binder-sero},
+  this.language.common.definite-description {definite-description, definite-description-sero},
   this.language.common.is-const-like {is-const-like},
-  this.language.common.stmt-kind {stmt-kind},
+  this.language.common.stmt-kind {base-stmt-kind-sero, stmt-kind},
   this.language.term.term {term, term-f},
   this.logger.hint {hint},
+  this.logger.sero.hint {hint-sero},
 }
 
 data stmt-f(a) {
@@ -38,4 +47,64 @@ define get-stmt-name(s: &stmt): ?pair(&hint, &definite-description) {
 
 define get-stmt-names(s: &list(stmt)): list(pair(&hint, &definite-description)) {
   filter-some(for-each-N(s, get-stmt-name))
+}
+
+inline stmt-f-sero<a>(!s: sero(a)): sero(stmt-f(a)) {
+  let stmt-kind-sero = base-stmt-kind-sero(definite-description-sero, binder-sero(!s), !s);
+  let imp-params-sero = list-sero(pair-sero(binder-sero(!s), either-sero(unit-sero, !s)));
+  let exp-params-sero = list-sero(binder-sero(!s));
+  let Sero of {put := !put-a, get := !get-a} = !s;
+  let Sero of {put := !put-bool, get := !get-bool} = bool-sero;
+  let Sero of {put := !put-hint, get := !get-hint} = hint-sero;
+  let Sero of {put := !put-dd, get := !get-dd} = definite-description-sero;
+  let Sero of {put := !put-sk, get := !get-sk} = stmt-kind-sero;
+  let Sero of {put := !put-ip, get := !get-ip} = imp-params-sero;
+  let Sero of {put := !put-ep, get := !get-ep} = exp-params-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        case v {
+        | Stmt-Define of {b, sk, m, name, imp-params, exp-params, cod, body} =>
+          put-int64(k, 0);
+          !put-bool(k, b);
+          !put-sk(k, sk);
+          !put-hint(k, m);
+          !put-dd(k, name);
+          !put-ip(k, imp-params);
+          !put-ep(k, exp-params);
+          !put-a(k, cod);
+          !put-a(k, body)
+        }
+      }
+    },
+    get := {
+      function (k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          try b = !get-bool(k);
+          try sk = !get-sk(k);
+          try m = !get-hint(k);
+          try name = !get-dd(k);
+          try ip = !get-ip(k);
+          try ep = !get-ep(k);
+          try cod = !get-a(k);
+          try body = !get-a(k);
+          Right(box {
+            letbox b = b;
+            letbox sk = sk;
+            letbox m = m;
+            letbox name = name;
+            letbox ip = ip;
+            letbox ep = ep;
+            letbox cod = cod;
+            letbox body = body;
+            Stmt-Define(b, sk, m, name, ip, ep, cod, body)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
 }
