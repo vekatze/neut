@@ -10,6 +10,7 @@ import {
   sero.sero {Sero, sero},
   this.language.common.binder {binder-f, binder-sero},
   this.language.common.definite-description {definite-description, definite-description-sero},
+  this.language.common.discriminant {discriminant},
   this.language.common.is-const-like {is-const-like},
   this.language.common.stmt-kind {base-stmt-kind-sero, stmt-kind},
   this.language.term.term {term, term-f},
@@ -47,6 +48,14 @@ define get-stmt-name(s: &stmt): ?pair(&hint, &definite-description) {
 
 define get-stmt-names(s: &list(stmt)): list(pair(&hint, &definite-description)) {
   filter-some(for-each-N(s, get-stmt-name))
+}
+
+data cons-info {
+| Cons-Info(
+    name: definite-description,
+    params: list(binder-f(term)),
+    tag: discriminant,
+  )
 }
 
 inline stmt-f-sero<a>(!s: sero(a)): sero(stmt-f(a)) {
