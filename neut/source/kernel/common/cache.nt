@@ -1,11 +1,19 @@
 import {
-  this.language.term.stmt {stmt},
+  this.language.term.stmt {stmt, stripped-stmt},
   this.logger.log {log},
 }
 
 data cache {
 | Cache(
     stmt-list: list(stmt),
+    remark-list: list(log),
+    count-snapshot: int,
+  )
+}
+
+data low-cache {
+| Low-Cache(
+    stmt-list: list(stripped-stmt),
     remark-list: list(log),
     count-snapshot: int,
   )
