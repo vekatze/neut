@@ -1,0 +1,12 @@
+import {
+  this.language.term.stmt {stmt},
+  this.logger.log {log},
+}
+
+data cache {
+| Cache(
+    stmt-list: list(stmt),
+    remark-list: list(log),
+    count-snapshot: int,
+  )
+}
