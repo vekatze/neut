@@ -1,5 +1,6 @@
 import {
   this.kernel.common.local-var-tree {local-var-tree},
+  this.kernel.common.location-tree {location-tree},
   this.kernel.common.raw-import-summary {raw-import-summary},
   this.kernel.common.top-candidate {top-candidate},
   this.language.term.stmt {stmt, stripped-stmt},
@@ -27,5 +28,11 @@ data completion-cache {
     local-var-tree: local-var-tree,
     top-candidates: list(top-candidate),
     raw-import-summary: ?raw-import-summary,
+  )
+}
+
+data location-cache {
+| Location-Cache(
+    location-tree: location-tree,
   )
 }
