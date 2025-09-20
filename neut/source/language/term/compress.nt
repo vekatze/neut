@@ -1,4 +1,5 @@
 import {
+  this.language.common.binder {Binder-F, binder-f},
   this.language.term.term {Tau, term, term-f},
 }
 
@@ -7,4 +8,9 @@ define compress(e: term): term-f(unit) {
   | Tau(_) =>
     Tau(Unit)
   }
+}
+
+define compress-binder(b: binder-f(term)): binder-f(term-f(unit)) {
+  let Binder-F(m, x, t) = b;
+  Binder-F(m, x, compress(t))
 }
