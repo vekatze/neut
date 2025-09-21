@@ -2,6 +2,9 @@ import {
   core.int.ord,
   core.list {for-each},
   core.pair {first},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.sero {Sero, sero},
   this.language.common.base-name {base-name},
   this.language.common.hole-id {hole-ID},
   this.language.common.is-const-like {is-const-like},
@@ -108,6 +111,25 @@ define cmp-loc(p1: &loc, p2: &loc): ordering {
     !cmp(c1, c2)
   | c =>
     c
+  }
+}
+
+inline loc-sero: sero(loc) {
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Loc(l, c) = v;
+        put-int64(k, *l);
+        put-int64(k, *c);
+      }
+    },
+    get := {
+      function (k) {
+        try l = get-int64(k);
+        try c = get-int64(k);
+        Right(quote {Loc(l, c)})
+      }
+    },
   }
 }
 
