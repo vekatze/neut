@@ -7,15 +7,17 @@ where
 
 import App.App (App)
 import App.Run (forP, liftMaybe, runApp)
+import CodeParser.Parser (nonSymbolCharSet)
 import Command.LSP.Internal.GetAllCachesInModule qualified as GAC
 import Command.LSP.Internal.Source.Reflect qualified as SourceReflect
+import Control.Lens ((^.))
 import Control.Monad
 import Control.Monad.Except (liftEither)
 import Control.Monad.Trans
 import Data.Bifunctor (second)
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
-import Data.List (sort)
+import Data.List (sort, (!?))
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -39,7 +41,9 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ModuleAlias qualified as MA
 import Language.Common.ModuleID qualified as MID
+import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
+import Language.LSP.VFS (VirtualFile (..), virtualFileText)
 import Logger.Hint
 
 data Handle = Handle
@@ -60,13 +64,14 @@ new globalHandle@(Global.Handle {..}) = do
   let gacHandle = GAC.new globalHandle
   return $ Handle {..}
 
-complete :: Handle -> Uri -> Position -> App [CompletionItem]
-complete h uri pos = do
+complete :: Handle -> Uri -> Position -> Maybe VirtualFile -> App [CompletionItem]
+complete h uri pos fileOrNone = do
   Unravel.registerShiftMap (unravelHandle h)
   pathString <- liftMaybe $ uriToFilePath uri
   currentSource <- SourceReflect.reflect (sourceReflectHandle h) pathString >>= liftMaybe
   let loc = positionToLoc pos
-  lift (runApp $ collectCompletionItems h currentSource loc) >>= liftEither
+  allItems <- lift (runApp $ collectCompletionItems h currentSource loc) >>= liftEither
+  return $ filterCompletionItems fileOrNone pos allItems
 
 collectCompletionItems :: Handle -> Source -> Loc -> App [CompletionItem]
 collectCompletionItems h currentSource loc = do
@@ -378,3 +383,35 @@ _getHumanReadableLocator' revMap baseModule midList baseReadableLocator = do
           Just locator
         Nothing ->
           _getHumanReadableLocator' revMap baseModule rest baseReadableLocator
+
+filterCompletionItems :: Maybe VirtualFile -> Position -> [CompletionItem] -> [CompletionItem]
+filterCompletionItems fileOrNone pos items =
+  case fileOrNone of
+    Nothing ->
+      items
+    Just vfile -> do
+      case extractSymbolAtPosition vfile pos of
+        Nothing ->
+          items
+        Just prefix ->
+          filter (\item -> prefix `T.isPrefixOf` (item ^. J.label)) items
+
+extractSymbolAtPosition :: VirtualFile -> Position -> Maybe T.Text
+extractSymbolAtPosition vfile pos = do
+  let content = virtualFileText vfile
+  let lines' = T.lines content
+  let lineNum = fromIntegral $ pos ^. J.line
+  let charNum = fromIntegral $ pos ^. J.character
+  line <- lines' !? lineNum
+  Just $ extractIdentifierAt line charNum
+
+extractIdentifierAt :: T.Text -> Int -> T.Text
+extractIdentifierAt line pos = do
+  let (before, after) = T.splitAt pos line
+  let beforeIdent = T.reverse $ T.takeWhile (not . isBoundaryChar) $ T.reverse before
+  let afterIdent = T.takeWhile (not . isBoundaryChar) after
+  beforeIdent <> afterIdent
+
+isBoundaryChar :: Char -> Bool
+isBoundaryChar c =
+  S.member c nonSymbolCharSet

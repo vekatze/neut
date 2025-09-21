@@ -90,9 +90,10 @@ handlers =
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         let pos = req ^. (J.params . J.position)
+        fileOrNone <- getVirtualFile (toNormalizedUri uri)
         globalHandle <- liftIO $ Global.new lspConfig Nothing
         completeHandle <- liftIO $ Complete.new globalHandle
-        itemListOrNone <- run globalHandle $ Complete.complete completeHandle uri pos
+        itemListOrNone <- run globalHandle $ Complete.complete completeHandle uri pos fileOrNone
         case itemListOrNone of
           Nothing ->
             responder $ Right $ InL $ List []
