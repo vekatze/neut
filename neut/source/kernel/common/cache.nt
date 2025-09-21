@@ -1,5 +1,6 @@
 import {
   core.either {map-right},
+  core.list {for-each},
   this.kernel.common.local-var-tree {local-var-tree},
   this.kernel.common.location-tree {location-tree},
   this.kernel.common.raw-import-summary {raw-import-summary},
@@ -52,5 +53,14 @@ define _compress-stmt(s: stmt): stripped-stmt {
     let cod = compress(cod);
     let e = compress(e);
     Stmt-Define(is-const-like, stmt-kind, m, name, imp-params, exp-params, cod, e)
+  }
+}
+
+define compress(c: cache): low-cache {
+  let Cache of {stmt-list, remark-list, count-snapshot} = c;
+  Low-Cache of {
+    stmt-list := for-each(stmt-list, _compress-stmt),
+    remark-list,
+    count-snapshot,
   }
 }
