@@ -63,3 +63,8 @@ data module {
 data main-module {
 | Main-Module(module)
 }
+
+define extract-module(m: main-module): module {
+  let Main-Module(m) = m;
+  m
+}
