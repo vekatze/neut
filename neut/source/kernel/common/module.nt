@@ -112,3 +112,7 @@ inline key-dependency: &text {
 inline key-digest: &text {
   "digest"
 }
+
+inline key-mirror: &text {
+  "mirror"
+}
