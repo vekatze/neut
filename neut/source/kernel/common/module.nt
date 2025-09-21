@@ -32,3 +32,7 @@ data foreign {
     script: list(text),
   )
 }
+
+inline target-name: type {
+  text
+}
