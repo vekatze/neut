@@ -110,7 +110,7 @@ define cons-info-sero<n, b>(!name-sero: sero(n), !binder-sero: sero(b)): sero(co
   }
 }
 
-define base-stmt-kind-sero<name, binder, t>(
+inline base-stmt-kind-sero<name, binder, t>(
   !name-sero: sero(name),
   !binder-sero: sero(binder),
   !t-sero: sero(t),

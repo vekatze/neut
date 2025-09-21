@@ -1,14 +1,21 @@
 import {
   core.either {map-right},
   core.list {for-each},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.instance.list {list-sero},
+  sero.instance.unit {unit-sero},
+  sero.sero {Sero, sero},
   this.kernel.common.local-var-tree {local-var-tree},
   this.kernel.common.location-tree {location-tree},
   this.kernel.common.raw-import-summary {raw-import-summary},
   this.kernel.common.top-candidate {top-candidate},
   this.language.term.compress {compress, compress-binder, compress-stmt-kind},
   this.language.term.extend {extend, extend-binder, extend-stmt-kind},
-  this.language.term.stmt {Stmt-Define, stmt, stripped-stmt},
+  this.language.term.stmt {Stmt-Define, stmt, stmt-f-sero, stripped-stmt},
+  this.language.term.term {term-f-sero},
   this.logger.log {log},
+  this.logger.sero.log {log-sero},
 }
 
 data cache {
@@ -88,5 +95,33 @@ define extend(c: low-cache): cache {
     stmt-list := for-each(stmt-list, _extend-stmt),
     remark-list,
     count-snapshot,
+  }
+}
+
+inline low-cache-sero: sero(low-cache) {
+  let Sero of {put := put-stmts, get := get-stmts} = list-sero(stmt-f-sero(term-f-sero(unit-sero)));
+  let Sero of {put := put-remarks, get := get-remarks} = list-sero(log-sero);
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Low-Cache of {stmt-list, remark-list, count-snapshot} = v;
+        put-stmts(k, stmt-list);
+        put-remarks(k, remark-list);
+        put-int64(k, *count-snapshot);
+      }
+    },
+    get := {
+      function (k) {
+        try stmt-list = get-stmts(k);
+        try remark-list = get-remarks(k);
+        try count-snapshot = get-int64(k);
+        Right(box {
+          letbox stmt-list = stmt-list;
+          letbox remark-list = remark-list;
+          letbox count-snapshot = quote {count-snapshot};
+          Low-Cache of {stmt-list, remark-list, count-snapshot}
+        })
+      }
+    },
   }
 }
