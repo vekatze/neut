@@ -72,3 +72,7 @@ define extract-module(m: main-module): module {
 inline key-archive: &text {
   "archive"
 }
+
+inline key-cache: &text {
+  "cache"
+}
