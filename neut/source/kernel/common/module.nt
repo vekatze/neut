@@ -1,6 +1,8 @@
 import {
   core.dictionary {dictionary},
+  this.kernel.common.module-URL {module-URL},
   this.language.common.base-name {base-name},
+  this.language.common.module-digest {module-digest},
 }
 
 inline locator-name: type {
@@ -13,4 +15,12 @@ inline preset-map: type {
 
 inline alias-preset-map: type {
   dictionary(text, preset-map)
+}
+
+data dependency {
+| Dependency(
+    mirror-list: list(module-URL),
+    digest: module-digest,
+    preset-enabled: bool,
+  )
 }
