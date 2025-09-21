@@ -148,3 +148,7 @@ inline key-foreign-output: &text {
 inline key-foreign-script: &text {
   "script"
 }
+
+inline key-prefix: &text {
+  "prefix"
+}
