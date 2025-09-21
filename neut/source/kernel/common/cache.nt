@@ -6,6 +6,7 @@ import {
   this.kernel.common.raw-import-summary {raw-import-summary},
   this.kernel.common.top-candidate {top-candidate},
   this.language.term.compress {compress, compress-binder, compress-stmt-kind},
+  this.language.term.extend {extend, extend-binder, extend-stmt-kind},
   this.language.term.stmt {Stmt-Define, stmt, stripped-stmt},
   this.logger.log {log},
 }
@@ -62,5 +63,21 @@ define compress(c: cache): low-cache {
     stmt-list := for-each(stmt-list, _compress-stmt),
     remark-list,
     count-snapshot,
+  }
+}
+
+define _extend-stmt(s: stripped-stmt): stmt {
+  match s {
+  | Stmt-Define(is-const-like, stmt-kind, m, name, imp-params, exp-params, cod, e) =>
+    let stmt-kind = extend-stmt-kind(stmt-kind);
+    let imp-params =
+      core.list.for-each(imp-params, function (p) {
+        let Pair(param, none-or-default) = p;
+        Pair(extend-binder(param), map-right(none-or-default, extend))
+      });
+    let exp-params = core.list.for-each(exp-params, extend-binder);
+    let cod = extend(cod);
+    let e = extend(e);
+    Stmt-Define(is-const-like, stmt-kind, m, name, imp-params, exp-params, cod, e)
   }
 }
