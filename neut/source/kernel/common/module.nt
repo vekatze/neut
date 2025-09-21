@@ -1,13 +1,15 @@
 import {
   core.dictionary {dictionary},
-  path.path {clean, drop-last},
+  core.list {for-each},
+  path.path {drop-last},
   this.kernel.common.module-URL {module-URL},
-  this.kernel.common.target {target-summary},
+  this.kernel.common.target {Target-Summary, target-summary},
   this.kernel.common.zen-config {zen-config},
   this.language.common.base-name {base-name},
   this.language.common.module-alias {module-alias},
   this.language.common.module-digest {module-digest},
   this.language.common.module-id {module-id},
+  this.language.common.source-locator {text-from-source-locator},
 }
 
 inline locator-name: type {
@@ -177,4 +179,26 @@ define get-archive-dir(m: &module): text {
   tie Module of {archive-dir} = m;
   pin tmp = get-module-root-dir(m);
   path.path.append(tmp, archive-dir)
+}
+
+define _values<k, v>(d: &dictionary(k, v)): list(&v) {
+  case d {
+  | core.dictionary.Tip =>
+    Nil
+  | core.dictionary.Bin(_, _, v, d1, d2) =>
+    let xs = _values(d1);
+    let ys = _values(d2);
+    core.list.append(xs, Cons(v, ys))
+  }
+}
+
+define get-target-path-list(m: &module): list(text) {
+  tie Module of {source-dir, target} = m;
+  for-each(_values(target), function (v) {
+    tie Target-Summary of {entry-point} = v;
+    let tmp = text-from-source-locator(entry-point);
+    let result on tmp = path.path.append(source-dir, tmp);
+    let _ = tmp;
+    result
+  })
 }
