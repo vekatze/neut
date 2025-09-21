@@ -1,3 +1,12 @@
+import {
+  core.dictionary {dictionary},
+  this.language.common.base-name {base-name},
+}
+
 inline locator-name: type {
   text
+}
+
+inline preset-map: type {
+  dictionary(locator-name, list(base-name))
 }
