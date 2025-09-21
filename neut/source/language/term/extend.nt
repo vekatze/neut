@@ -30,3 +30,20 @@ define _extend-cons-info(
   let cons-params = for-each(cons-params, extend-binder);
   Cons-Info(loc, cons-name, is-const-like, cons-params, tag)
 }
+
+define extend-stmt-kind(sk: stmt-kind(term-f(unit))): stmt-kind(term) {
+  match sk {
+  | Normal(o) =>
+    Normal(o)
+  | Main(o, t) =>
+    Main(o, extend(t))
+  | Data(data-name, data-params, cons-info-list) =>
+    let data-params = for-each(data-params, extend-binder);
+    let cons-info-list = for-each(cons-info-list, _extend-cons-info);
+    Data(data-name, data-params, cons-info-list)
+  | Data-Intro(data-name, data-params, exp-cons-params, discriminant) =>
+    let data-params = for-each(data-params, extend-binder);
+    let exp-cons-params = for-each(exp-cons-params, extend-binder);
+    Data-Intro(data-name, data-params, exp-cons-params, discriminant)
+  }
+}
