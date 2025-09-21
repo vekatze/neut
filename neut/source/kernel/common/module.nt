@@ -1,5 +1,6 @@
 import {
   core.dictionary {dictionary},
+  path.path {clean, drop-last},
   this.kernel.common.module-URL {module-URL},
   this.kernel.common.target {target-summary},
   this.kernel.common.zen-config {zen-config},
@@ -159,4 +160,9 @@ inline key-inline-limit: &text {
 
 inline key-preset: &text {
   "preset"
+}
+
+define get-module-root-dir(m: &module): text {
+  tie Module of {location} = m;
+  drop-last(location)
 }
