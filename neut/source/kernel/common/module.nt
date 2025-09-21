@@ -138,9 +138,13 @@ inline key-foreign: &text {
 }
 
 inline key-foreign-input: &text {
-  "foreign-input"
+  "input"
 }
 
 inline key-foreign-output: &text {
-  "foreign-output"
+  "output"
+}
+
+inline key-foreign-script: &text {
+  "script"
 }
