@@ -172,3 +172,9 @@ define get-source-dir(m: &module): text {
   pin tmp = get-module-root-dir(m);
   path.path.append(tmp, source-dir)
 }
+
+define get-archive-dir(m: &module): text {
+  tie Module of {archive-dir} = m;
+  pin tmp = get-module-root-dir(m);
+  path.path.append(tmp, archive-dir)
+}
