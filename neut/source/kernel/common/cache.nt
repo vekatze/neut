@@ -7,7 +7,7 @@ import {
   sero.instance.unit {unit-sero},
   sero.sero {Sero, sero},
   this.kernel.common.local-var-tree {local-var-tree},
-  this.kernel.common.location-tree {location-tree},
+  this.kernel.common.location-tree {location-tree, location-tree-sero},
   this.kernel.common.raw-import-summary {raw-import-summary},
   this.kernel.common.top-candidate {top-candidate},
   this.language.term.compress {compress, compress-binder, compress-stmt-kind},
@@ -120,6 +120,27 @@ inline low-cache-sero: sero(low-cache) {
           letbox remark-list = remark-list;
           letbox count-snapshot = quote {count-snapshot};
           Low-Cache of {stmt-list, remark-list, count-snapshot}
+        })
+      }
+    },
+  }
+}
+
+inline location-cache-sero: sero(location-cache) {
+  let Sero of {put, get} = location-tree-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Location-Cache(t) = v;
+        put(k, t);
+      }
+    },
+    get := {
+      function (k) {
+        try t = get(k);
+        Right(box {
+          letbox t = t;
+          Location-Cache(t)
         })
       }
     },
