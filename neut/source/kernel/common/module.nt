@@ -100,3 +100,7 @@ inline key-build-option: &text {
 inline key-compile-option: &text {
   "compile-option"
 }
+
+inline key-link-option: &text {
+  "link-option"
+}
