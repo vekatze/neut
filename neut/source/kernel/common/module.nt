@@ -116,3 +116,7 @@ inline key-digest: &text {
 inline key-mirror: &text {
   "mirror"
 }
+
+inline key-enable-preset: &text {
+  "enable-preset"
+}
