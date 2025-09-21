@@ -152,3 +152,7 @@ inline key-foreign-script: &text {
 inline key-prefix: &text {
   "prefix"
 }
+
+inline key-inline-limit: &text {
+  "inline-limit"
+}
