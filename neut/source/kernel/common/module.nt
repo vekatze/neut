@@ -104,3 +104,7 @@ inline key-compile-option: &text {
 inline key-link-option: &text {
   "link-option"
 }
+
+inline key-dependency: &text {
+  "dependency"
+}
