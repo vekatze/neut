@@ -1,5 +1,8 @@
 import {
+  core.list {for-each},
   this.language.common.binder {Binder-F, binder-f},
+  this.language.common.definite-description {definite-description},
+  this.language.common.stmt-kind {Cons-Info, Data, Data-Intro, Main, Normal, cons-info, stmt-kind},
   this.language.term.term {Tau, term, term-f},
   this.logger.hint {hint, internal-hint},
 }
@@ -18,4 +21,12 @@ define extend(e: term-f(unit)): term {
 define extend-binder(b: binder-f(term-f(unit))): binder-f(term) {
   let Binder-F(m, x, t) = b;
   Binder-F(m, x, extend(t))
+}
+
+define _extend-cons-info(
+  c: cons-info(definite-description, binder-f(term-f(unit))),
+): cons-info(definite-description, binder-f(term)) {
+  let Cons-Info(loc, cons-name, is-const-like, cons-params, tag) = c;
+  let cons-params = for-each(cons-params, extend-binder);
+  Cons-Info(loc, cons-name, is-const-like, cons-params, tag)
 }
