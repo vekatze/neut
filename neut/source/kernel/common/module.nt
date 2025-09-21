@@ -96,3 +96,7 @@ inline key-main: &text {
 inline key-build-option: &text {
   "build-option"
 }
+
+inline key-compile-option: &text {
+  "compile-option"
+}
