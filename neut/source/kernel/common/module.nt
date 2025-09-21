@@ -124,3 +124,7 @@ inline key-enable-preset: &text {
 inline key-extra-content: &text {
   "extra-content"
 }
+
+inline key-antecedent: &text {
+  "antecedent"
+}
