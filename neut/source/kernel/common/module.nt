@@ -166,3 +166,9 @@ define get-module-root-dir(m: &module): text {
   tie Module of {location} = m;
   drop-last(location)
 }
+
+define get-source-dir(m: &module): text {
+  tie Module of {source-dir} = m;
+  pin tmp = get-module-root-dir(m);
+  path.path.append(tmp, source-dir)
+}
