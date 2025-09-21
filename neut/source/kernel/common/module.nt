@@ -88,3 +88,7 @@ inline key-target: &text {
 inline key-zen: &text {
   "zen"
 }
+
+inline key-main: &text {
+  "main"
+}
