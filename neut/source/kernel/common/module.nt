@@ -92,3 +92,7 @@ inline key-zen: &text {
 inline key-main: &text {
   "main"
 }
+
+inline key-build-option: &text {
+  "build-option"
+}
