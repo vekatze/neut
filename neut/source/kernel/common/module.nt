@@ -120,3 +120,7 @@ inline key-mirror: &text {
 inline key-enable-preset: &text {
   "enable-preset"
 }
+
+inline key-extra-content: &text {
+  "extra-content"
+}
