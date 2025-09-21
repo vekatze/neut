@@ -81,3 +81,12 @@ define _extend-stmt(s: stripped-stmt): stmt {
     Stmt-Define(is-const-like, stmt-kind, m, name, imp-params, exp-params, cod, e)
   }
 }
+
+define extend(c: low-cache): cache {
+  let Low-Cache of {stmt-list, remark-list, count-snapshot} = c;
+  Cache of {
+    stmt-list := for-each(stmt-list, _extend-stmt),
+    remark-list,
+    count-snapshot,
+  }
+}
