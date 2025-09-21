@@ -132,3 +132,7 @@ inline key-antecedent: &text {
 inline key-static: &text {
   "static"
 }
+
+inline key-foreign: &text {
+  "foreign"
+}
