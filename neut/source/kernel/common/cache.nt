@@ -3,13 +3,14 @@ import {
   core.list {for-each},
   sero.common.get {get-int64},
   sero.common.put {put-int64},
+  sero.instance.either {either-sero},
   sero.instance.list {list-sero},
   sero.instance.unit {unit-sero},
   sero.sero {Sero, sero},
-  this.kernel.common.local-var-tree {local-var-tree},
+  this.kernel.common.local-var-tree {local-var-tree, local-var-tree-sero},
   this.kernel.common.location-tree {location-tree, location-tree-sero},
-  this.kernel.common.raw-import-summary {raw-import-summary},
-  this.kernel.common.top-candidate {top-candidate},
+  this.kernel.common.raw-import-summary {raw-import-summary, raw-import-summary-sero},
+  this.kernel.common.top-candidate {top-candidate, top-candidate-sero},
   this.language.term.compress {compress, compress-binder, compress-stmt-kind},
   this.language.term.extend {extend, extend-binder, extend-stmt-kind},
   this.language.term.stmt {Stmt-Define, stmt, stmt-f-sero, stripped-stmt},
@@ -141,6 +142,35 @@ inline location-cache-sero: sero(location-cache) {
         Right(box {
           letbox t = t;
           Location-Cache(t)
+        })
+      }
+    },
+  }
+}
+
+inline completion-cache-sero: sero(completion-cache) {
+  let Sero of {put := put-lvt, get := get-lvt} = local-var-tree-sero;
+  let Sero of {put := put-cands, get := get-cands} = list-sero(top-candidate-sero);
+  let Sero of {put := put-ris, get := get-ris} = either-sero(unit-sero, raw-import-summary-sero);
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Completion-Cache(t, cands, ris) = v;
+        put-lvt(k, t);
+        put-cands(k, cands);
+        put-ris(k, ris);
+      }
+    },
+    get := {
+      function (k) {
+        try t = get-lvt(k);
+        try cands = get-cands(k);
+        try ris = get-ris(k);
+        Right(box {
+          letbox t = t;
+          letbox cands = cands;
+          letbox ris = ris;
+          Completion-Cache(t, cands, ris)
         })
       }
     },

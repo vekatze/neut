@@ -1,6 +1,10 @@
 import {
+  sero.instance.list {list-sero},
+  sero.instance.pair {pair-sero},
+  sero.instance.text {text-sero},
+  sero.sero {Sero, sero},
   this.language.raw-term.raw-stmt {raw-import},
-  this.language.raw-term.raw-term {loc},
+  this.language.raw-term.raw-term {loc, loc-sero},
 }
 
 data raw-import-summary {
@@ -12,4 +16,29 @@ data raw-import-summary {
 
 define from-raw-import(ri: raw-import): raw-import-summary {
   match ri {}
+}
+
+inline raw-import-summary-sero: sero(raw-import-summary) {
+  let Sero of {put := put-items, get := get-items} = list-sero(pair-sero(text-sero, list-sero(text-sero)));
+  let Sero of {put := put-loc, get := get-loc} = loc-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Raw-Import-Summary(items, loc) = v;
+        put-items(k, items);
+        put-loc(k, loc);
+      }
+    },
+    get := {
+      function (k) {
+        try items = get-items(k);
+        try loc = get-loc(k);
+        Right(box {
+          letbox items = items;
+          letbox loc = loc;
+          Raw-Import-Summary(items, loc)
+        })
+      }
+    },
+  }
 }
