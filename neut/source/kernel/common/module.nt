@@ -140,3 +140,7 @@ inline key-foreign: &text {
 inline key-foreign-input: &text {
   "foreign-input"
 }
+
+inline key-foreign-output: &text {
+  "foreign-output"
+}
