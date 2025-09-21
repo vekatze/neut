@@ -108,3 +108,7 @@ inline key-link-option: &text {
 inline key-dependency: &text {
   "dependency"
 }
+
+inline key-digest: &text {
+  "digest"
+}
