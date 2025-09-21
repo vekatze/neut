@@ -136,3 +136,7 @@ inline key-static: &text {
 inline key-foreign: &text {
   "foreign"
 }
+
+inline key-foreign-input: &text {
+  "foreign-input"
+}
