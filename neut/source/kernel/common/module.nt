@@ -59,3 +59,7 @@ data module {
     preset-map: preset-map,
   )
 }
+
+data main-module {
+| Main-Module(module)
+}
