@@ -128,3 +128,7 @@ inline key-extra-content: &text {
 inline key-antecedent: &text {
   "antecedent"
 }
+
+inline key-static: &text {
+  "static"
+}
