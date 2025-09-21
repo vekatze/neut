@@ -68,3 +68,7 @@ define extract-module(m: main-module): module {
   let Main-Module(m) = m;
   m
 }
+
+inline key-archive: &text {
+  "archive"
+}
