@@ -24,3 +24,11 @@ data dependency {
     preset-enabled: bool,
   )
 }
+
+data foreign {
+| Foreign(
+    input: list(text),
+    output: list(text),
+    script: list(text),
+  )
+}
