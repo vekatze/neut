@@ -80,3 +80,7 @@ inline key-cache: &text {
 inline key-source: &text {
   "source"
 }
+
+inline key-target: &text {
+  "target"
+}
