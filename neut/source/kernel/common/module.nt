@@ -76,3 +76,7 @@ inline key-archive: &text {
 inline key-cache: &text {
   "cache"
 }
+
+inline key-source: &text {
+  "source"
+}
