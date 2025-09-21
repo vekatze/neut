@@ -156,3 +156,7 @@ inline key-prefix: &text {
 inline key-inline-limit: &text {
   "inline-limit"
 }
+
+inline key-preset: &text {
+  "preset"
+}
