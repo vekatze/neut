@@ -10,3 +10,7 @@ inline locator-name: type {
 inline preset-map: type {
   dictionary(locator-name, list(base-name))
 }
+
+inline alias-preset-map: type {
+  dictionary(text, preset-map)
+}
