@@ -1,8 +1,12 @@
 import {
   core.dictionary {dictionary},
   this.kernel.common.module-URL {module-URL},
+  this.kernel.common.target {target-summary},
+  this.kernel.common.zen-config {zen-config},
   this.language.common.base-name {base-name},
+  this.language.common.module-alias {module-alias},
   this.language.common.module-digest {module-digest},
+  this.language.common.module-id {module-id},
 }
 
 inline locator-name: type {
@@ -35,4 +39,23 @@ data foreign {
 
 inline target-name: type {
   text
+}
+
+data module {
+| Module(
+    id: module-id,
+    source-dir: text,
+    target: dictionary(target-name, target-summary),
+    zenconfig: zen-config,
+    archive-dir: text,
+    cache-dir: text,
+    dependency: dictionary(module-alias, dependency),
+    extra-contents: list(text),
+    antecedents: list(module-digest),
+    location: text,
+    foreign: foreign,
+    static-files: dictionary(text, text),
+    inline-limit: ?int,
+    preset-map: preset-map,
+  )
 }
