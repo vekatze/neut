@@ -1,0 +1,49 @@
+import {
+  core.list {for-each},
+  this.language.common.binder {Binder-F, binder-f},
+  this.language.common.definite-description {definite-description},
+  this.language.common.stmt-kind {Cons-Info, Data, Data-Intro, Main, Normal, cons-info, stmt-kind},
+  this.language.term.term {Tau, term, term-f},
+  this.logger.hint {hint, internal-hint},
+}
+
+inline _m: hint {
+  internal-hint
+}
+
+define extend(e: term-f(unit)): term {
+  match e {
+  | Tau(_) =>
+    Tau(_m)
+  }
+}
+
+define extend-binder(b: binder-f(term-f(unit))): binder-f(term) {
+  let Binder-F(m, x, t) = b;
+  Binder-F(m, x, extend(t))
+}
+
+define _extend-cons-info(
+  c: cons-info(definite-description, binder-f(term-f(unit))),
+): cons-info(definite-description, binder-f(term)) {
+  let Cons-Info(loc, cons-name, is-const-like, cons-params, tag) = c;
+  let cons-params = for-each(cons-params, extend-binder);
+  Cons-Info(loc, cons-name, is-const-like, cons-params, tag)
+}
+
+define extend-stmt-kind(sk: stmt-kind(term-f(unit))): stmt-kind(term) {
+  match sk {
+  | Normal(o) =>
+    Normal(o)
+  | Main(o, t) =>
+    Main(o, extend(t))
+  | Data(data-name, data-params, cons-info-list) =>
+    let data-params = for-each(data-params, extend-binder);
+    let cons-info-list = for-each(cons-info-list, _extend-cons-info);
+    Data(data-name, data-params, cons-info-list)
+  | Data-Intro(data-name, data-params, exp-cons-params, discriminant) =>
+    let data-params = for-each(data-params, extend-binder);
+    let exp-cons-params = for-each(exp-cons-params, extend-binder);
+    Data-Intro(data-name, data-params, exp-cons-params, discriminant)
+  }
+}

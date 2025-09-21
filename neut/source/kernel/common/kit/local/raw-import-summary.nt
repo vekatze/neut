@@ -1,0 +1,31 @@
+import {
+  core.ref {make-ref, mutate, ref},
+  this.kernel.common.raw-import-summary {from-raw-import, raw-import-summary},
+  this.language.raw-term.raw-stmt {raw-import},
+}
+
+data raw-import-summary-kit {
+| _Raw-Import-Summary-Kit(
+    import-env-ref: ref(?raw-import-summary),
+  )
+}
+
+define make-raw-import-summary-kit(): raw-import-summary-kit {
+  let import-env-ref = make-ref(box {none});
+  _Raw-Import-Summary-Kit of {import-env-ref}
+}
+
+define set(k: &raw-import-summary-kit, ri: raw-import): unit {
+  tie _Raw-Import-Summary-Kit(ref) = k;
+  mutate(ref, function (_) {
+    box {
+      letbox ri = quote {ri};
+      Right(from-raw-import(ri))
+    }
+  })
+}
+
+define get(k: raw-import-summary-kit): meta ?raw-import-summary {
+  let _Raw-Import-Summary-Kit(ref) = k;
+  core.ref.extract(ref)
+}

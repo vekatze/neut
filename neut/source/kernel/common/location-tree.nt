@@ -10,8 +10,9 @@ import {
   this.language.common.definite-description {definite-description, definite-description-sero, local-locator-from-dd},
   this.language.common.external-name {External-Name, external-name, external-name-sero},
   this.language.common.is-const-like {is-const-like},
-  this.language.raw-term.raw-term {Loc, loc},
+  this.language.raw-term.raw-term {Loc, loc, loc-sero},
   this.logger.hint {get-column, get-file-path, get-line, hint},
+  this.logger.sero.hint {hint-sero},
 }
 
 inline line: type {
@@ -233,4 +234,89 @@ inline loc-type-sero: sero(loc-type) {
       }
     },
   }
+}
+
+inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)): sero(dictionary(k, v)) {
+  let Sero of {put := !put-k, get := !get-k} = sk;
+  let Sero of {put := !put-v, get := !get-v} = sv;
+  Sero of {
+    put := {
+      define loop(k, v) {
+        case v {
+        | core.dictionary.Tip =>
+          put-int64(k, 0);
+        | core.dictionary.Bin(size, key, value, left, right) =>
+          put-int64(k, 1);
+          put-int64(k, *size);
+          !put-k(k, key);
+          !put-v(k, value);
+          loop(k, left);
+          loop(k, right);
+        }
+      }
+    },
+    get := {
+      define loop(k) {
+        try tag = get-int64(k);
+        match tag {
+        | 0 =>
+          Right(box {core.dictionary.Tip})
+        | 1 =>
+          try size = get-int64(k);
+          try key = !get-k(k);
+          try value = !get-v(k);
+          try left = loop(k);
+          try right = loop(k);
+          Right(box {
+            letbox size = quote {size};
+            letbox key = key;
+            letbox value = value;
+            letbox left = left;
+            letbox right = right;
+            core.dictionary.Bin(size, key, value, left, right)
+          })
+        | _ =>
+          none
+        }
+      }
+    },
+  }
+}
+
+inline loc-item-sero: sero(loc-item) {
+  let Sero of {put, get} = loc-type-sero;
+  let Sero of {put := put-hint, get := get-hint} = hint-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Loc-Item(l, Pair(from, to), lt, m) = v;
+        put-int64(k, *l);
+        put-int64(k, *from);
+        put-int64(k, *to);
+        put(k, lt);
+        put-hint(k, m);
+      }
+    },
+    get := {
+      function (k) {
+        try l = get-int64(k);
+        try from = get-int64(k);
+        try to = get-int64(k);
+        try lt = get(k);
+        try m = get-hint(k);
+        Right(box {
+          letbox l = quote {l};
+          letbox from = quote {from};
+          letbox to = quote {to};
+          letbox lt = lt;
+          letbox m = m;
+          Loc-Item(l, Pair(from, to), lt, m)
+        })
+      }
+    },
+  }
+}
+
+inline location-tree-sero: sero(location-tree) {
+  dictionary-sero(loc-sero, loc-item-sero)
 }

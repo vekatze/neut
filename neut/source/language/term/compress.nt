@@ -1,0 +1,44 @@
+import {
+  core.list {for-each},
+  this.language.common.binder {Binder-F, binder-f},
+  this.language.common.definite-description {definite-description},
+  this.language.common.stmt-kind {Cons-Info, Data, Data-Intro, Main, Normal, cons-info, stmt-kind},
+  this.language.term.term {Tau, term, term-f},
+}
+
+define compress(e: term): term-f(unit) {
+  match e {
+  | Tau(_) =>
+    Tau(Unit)
+  }
+}
+
+define compress-binder(b: binder-f(term)): binder-f(term-f(unit)) {
+  let Binder-F(m, x, t) = b;
+  Binder-F(m, x, compress(t))
+}
+
+define _compress-cons-info(
+  c: cons-info(definite-description, binder-f(term)),
+): cons-info(definite-description, binder-f(term-f(unit))) {
+  let Cons-Info(loc, cons-name, is-const-like, cons-params, tag) = c;
+  let cons-params = for-each(cons-params, compress-binder);
+  Cons-Info(loc, cons-name, is-const-like, cons-params, tag)
+}
+
+define compress-stmt-kind(sk: stmt-kind(term)): stmt-kind(term-f(unit)) {
+  match sk {
+  | Normal(o) =>
+    Normal(o)
+  | Main(o, t) =>
+    Main(o, compress(t))
+  | Data(data-name, data-params, cons-info-list) =>
+    let data-params = for-each(data-params, compress-binder);
+    let cons-info-list = for-each(cons-info-list, _compress-cons-info);
+    Data(data-name, data-params, cons-info-list)
+  | Data-Intro(data-name, data-params, exp-cons-params, discriminant) =>
+    let data-params = for-each(data-params, compress-binder);
+    let exp-cons-params = for-each(exp-cons-params, compress-binder);
+    Data-Intro(data-name, data-params, exp-cons-params, discriminant)
+  }
+}

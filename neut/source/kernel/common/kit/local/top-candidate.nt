@@ -1,0 +1,31 @@
+import {
+  core.ref {make-ref, mutate, ref},
+  this.kernel.common.top-candidate {top-candidate},
+}
+
+data top-candidate-kit {
+| _Top-Candidate-Kit(
+    top-candidate-env-ref: ref(list(top-candidate)),
+  )
+}
+
+define make-top-candidate-kit(): top-candidate-kit {
+  let top-candidate-env-ref = make-ref(box {Nil});
+  _Top-Candidate-Kit of {top-candidate-env-ref}
+}
+
+define insert(k: &top-candidate-kit, cand: top-candidate): unit {
+  tie _Top-Candidate-Kit(ref) = k;
+  mutate(ref, function (xs) {
+    box {
+      letbox xs = xs;
+      letbox cand = quote {cand};
+      Cons(cand, xs)
+    }
+  })
+}
+
+define get(k: top-candidate-kit): meta list(top-candidate) {
+  let _Top-Candidate-Kit(ref) = k;
+  core.ref.extract(ref)
+}

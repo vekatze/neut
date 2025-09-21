@@ -1,0 +1,178 @@
+import {
+  core.either {map-right},
+  core.list {for-each},
+  sero.common.get {get-int64},
+  sero.common.put {put-int64},
+  sero.instance.either {either-sero},
+  sero.instance.list {list-sero},
+  sero.instance.unit {unit-sero},
+  sero.sero {Sero, sero},
+  this.kernel.common.local-var-tree {local-var-tree, local-var-tree-sero},
+  this.kernel.common.location-tree {location-tree, location-tree-sero},
+  this.kernel.common.raw-import-summary {raw-import-summary, raw-import-summary-sero},
+  this.kernel.common.top-candidate {top-candidate, top-candidate-sero},
+  this.language.term.compress {compress, compress-binder, compress-stmt-kind},
+  this.language.term.extend {extend, extend-binder, extend-stmt-kind},
+  this.language.term.stmt {Stmt-Define, stmt, stmt-f-sero, stripped-stmt},
+  this.language.term.term {term-f-sero},
+  this.logger.log {log},
+  this.logger.sero.log {log-sero},
+}
+
+data cache {
+| Cache(
+    stmt-list: list(stmt),
+    remark-list: list(log),
+    count-snapshot: int,
+  )
+}
+
+data low-cache {
+| Low-Cache(
+    stmt-list: list(stripped-stmt),
+    remark-list: list(log),
+    count-snapshot: int,
+  )
+}
+
+data completion-cache {
+| Completion-Cache(
+    local-var-tree: local-var-tree,
+    top-candidates: list(top-candidate),
+    raw-import-summary: ?raw-import-summary,
+  )
+}
+
+data location-cache {
+| Location-Cache(
+    location-tree: location-tree,
+  )
+}
+
+define _compress-stmt(s: stmt): stripped-stmt {
+  match s {
+  | Stmt-Define(is-const-like, stmt-kind, m, name, imp-params, exp-params, cod, e) =>
+    let stmt-kind = compress-stmt-kind(stmt-kind);
+    let imp-params =
+      core.list.for-each(imp-params, function (p) {
+        let Pair(param, none-or-default) = p;
+        Pair(compress-binder(param), map-right(none-or-default, compress))
+      });
+    let exp-params = core.list.for-each(exp-params, compress-binder);
+    let cod = compress(cod);
+    let e = compress(e);
+    Stmt-Define(is-const-like, stmt-kind, m, name, imp-params, exp-params, cod, e)
+  }
+}
+
+define compress(c: cache): low-cache {
+  let Cache of {stmt-list, remark-list, count-snapshot} = c;
+  Low-Cache of {
+    stmt-list := for-each(stmt-list, _compress-stmt),
+    remark-list,
+    count-snapshot,
+  }
+}
+
+define _extend-stmt(s: stripped-stmt): stmt {
+  match s {
+  | Stmt-Define(is-const-like, stmt-kind, m, name, imp-params, exp-params, cod, e) =>
+    let stmt-kind = extend-stmt-kind(stmt-kind);
+    let imp-params =
+      core.list.for-each(imp-params, function (p) {
+        let Pair(param, none-or-default) = p;
+        Pair(extend-binder(param), map-right(none-or-default, extend))
+      });
+    let exp-params = core.list.for-each(exp-params, extend-binder);
+    let cod = extend(cod);
+    let e = extend(e);
+    Stmt-Define(is-const-like, stmt-kind, m, name, imp-params, exp-params, cod, e)
+  }
+}
+
+define extend(c: low-cache): cache {
+  let Low-Cache of {stmt-list, remark-list, count-snapshot} = c;
+  Cache of {
+    stmt-list := for-each(stmt-list, _extend-stmt),
+    remark-list,
+    count-snapshot,
+  }
+}
+
+inline low-cache-sero: sero(low-cache) {
+  let Sero of {put := put-stmts, get := get-stmts} = list-sero(stmt-f-sero(term-f-sero(unit-sero)));
+  let Sero of {put := put-remarks, get := get-remarks} = list-sero(log-sero);
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Low-Cache of {stmt-list, remark-list, count-snapshot} = v;
+        put-stmts(k, stmt-list);
+        put-remarks(k, remark-list);
+        put-int64(k, *count-snapshot);
+      }
+    },
+    get := {
+      function (k) {
+        try stmt-list = get-stmts(k);
+        try remark-list = get-remarks(k);
+        try count-snapshot = get-int64(k);
+        Right(box {
+          letbox stmt-list = stmt-list;
+          letbox remark-list = remark-list;
+          letbox count-snapshot = quote {count-snapshot};
+          Low-Cache of {stmt-list, remark-list, count-snapshot}
+        })
+      }
+    },
+  }
+}
+
+inline location-cache-sero: sero(location-cache) {
+  let Sero of {put, get} = location-tree-sero;
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Location-Cache(t) = v;
+        put(k, t);
+      }
+    },
+    get := {
+      function (k) {
+        try t = get(k);
+        Right(box {
+          letbox t = t;
+          Location-Cache(t)
+        })
+      }
+    },
+  }
+}
+
+inline completion-cache-sero: sero(completion-cache) {
+  let Sero of {put := put-lvt, get := get-lvt} = local-var-tree-sero;
+  let Sero of {put := put-cands, get := get-cands} = list-sero(top-candidate-sero);
+  let Sero of {put := put-ris, get := get-ris} = either-sero(unit-sero, raw-import-summary-sero);
+  Sero of {
+    put := {
+      function (k, v) {
+        tie Completion-Cache(t, cands, ris) = v;
+        put-lvt(k, t);
+        put-cands(k, cands);
+        put-ris(k, ris);
+      }
+    },
+    get := {
+      function (k) {
+        try t = get-lvt(k);
+        try cands = get-cands(k);
+        try ris = get-ris(k);
+        Right(box {
+          letbox t = t;
+          letbox cands = cands;
+          letbox ris = ris;
+          Completion-Cache(t, cands, ris)
+        })
+      }
+    },
+  }
+}
