@@ -1,6 +1,7 @@
 import {
   core.dictionary {dictionary, to-list},
-  core.list {filter-some, for-each, for-each-N, is-empty},
+  core.list {filter, filter-some, for-each, for-each-N, is-empty},
+  core.pair {first},
   path.path {drop-last, take-last},
   this.app.app {app},
   this.ens.ens {
@@ -463,4 +464,16 @@ define stylize(eq: &eq(pair(comment, ens)), e: ens): app(ens) {
   } else {
     Right(e)
   }
+}
+
+define get-alias-list-with-enabled-presets(m: &module): list(module-alias) {
+  tie Module of {dependency} = m;
+  for-each(
+    filter(to-list(*dependency), function (p) {
+      tie Pair(_, v) = p;
+      tie Dependency of {preset-enabled} = v;
+      *preset-enabled
+    }),
+    exact first,
+  )
 }
