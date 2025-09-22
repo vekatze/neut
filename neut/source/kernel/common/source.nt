@@ -1,0 +1,12 @@
+import {
+  this.kernel.common.module {module},
+  this.logger.hint {hint},
+}
+
+data source {
+| Source(
+    file-path: text,
+    source-module: module,
+    source-hint: ?hint,
+  )
+}
