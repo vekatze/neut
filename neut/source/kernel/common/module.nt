@@ -1,8 +1,8 @@
 import {
   core.dictionary {dictionary, to-list},
-  core.list {for-each, for-each-N, is-empty},
+  core.list {filter-some, for-each, for-each-N, is-empty},
   path.path {drop-last},
-  this.ens.ens {E-Int, E-List, E-String, dict-from-list, dict-from-list-vertical, ens, ens-path},
+  this.ens.ens {E-Int, E-List, E-String, dict-from-list, dict-from-list-vertical, ens, ens-key, ens-path},
   this.kernel.common.clang-option {Clang-Option},
   this.kernel.common.const {archive-rel-dir, cache-rel-dir, source-rel-dir},
   this.kernel.common.module-URL {Module-URL, module-URL},
@@ -230,7 +230,7 @@ define _series-from-list<a>(xs: list(a)): series(a) {
   from-list(Bracket, Comma, xs)
 }
 
-define _get-target-info(m: &module): pair(&text, ens) {
+define _get-target-info(m: &module): pair(ens-key, ens) {
   tie Module of {target} = m;
   let tmp =
     for-each(to-list(*target), function (p) {
@@ -262,37 +262,37 @@ define _get-target-info(m: &module): pair(&text, ens) {
       let items = Cons(Pair(Pair(_m, *key-main), E-String(_m, get-rel-path-text(entry-point))), items);
       Pair(Pair(_m, target-name), dict-from-list-vertical(_m, items))
     });
-  Pair(key-target, dict-from-list-vertical(_m, tmp))
+  Pair(Pair(_m, *key-target), dict-from-list-vertical(_m, tmp))
 }
 
-define _get-source-dir-info(m: &module): ?pair(&text, ens) {
+define _get-source-dir-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {source-dir} = m;
   if eq-text(source-dir, source-rel-dir) {
     none
   } else {
-    Right(Pair(key-source, ens-path(_m, *source-dir)))
+    Right(Pair(Pair(_m, *key-source), ens-path(_m, *source-dir)))
   }
 }
 
-define _get-cache-dir-info(m: &module): ?pair(&text, ens) {
+define _get-cache-dir-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {cache-dir} = m;
   if eq-text(cache-dir, cache-rel-dir) {
     none
   } else {
-    Right(Pair(key-cache, ens-path(_m, *cache-dir)))
+    Right(Pair(Pair(_m, *key-cache), ens-path(_m, *cache-dir)))
   }
 }
 
-define _get-archive-dir-info(m: &module): ?pair(&text, ens) {
+define _get-archive-dir-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {archive-dir} = m;
   if eq-text(archive-dir, archive-rel-dir) {
     none
   } else {
-    Right(Pair(key-archive, ens-path(_m, *archive-dir)))
+    Right(Pair(Pair(_m, *key-archive), ens-path(_m, *archive-dir)))
   }
 }
 
-define _get-extra-content-info(m: &module): ?pair(&text, ens) {
+define _get-extra-content-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {extra-contents} = m;
   let extra-content-list =
     for-each-N(extra-contents, function (v) {
@@ -302,11 +302,11 @@ define _get-extra-content-info(m: &module): ?pair(&text, ens) {
   if b {
     none
   } else {
-    Right(Pair(key-extra-content, E-List(_m, _series-from-list(extra-content-list))))
+    Right(Pair(Pair(_m, *key-extra-content), E-List(_m, _series-from-list(extra-content-list))))
   }
 }
 
-define _get-foreign-info(m: &module): ?pair(&text, ens) {
+define _get-foreign-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {foreign := Foreign of {input, output, script}} = m;
   let input-list =
     for-each-N(input, function (x) {
@@ -324,7 +324,7 @@ define _get-foreign-info(m: &module): ?pair(&text, ens) {
     none
   } else {
     Right(Pair(
-      key-foreign,
+      Pair(_m, *key-foreign),
       dict-from-list-vertical(_m, List[
         Pair(Pair(_m, *key-foreign-input), E-List(_m, _series-from-list(input-list))),
         Pair(Pair(_m, *key-foreign-output), E-List(_m, _series-from-list(output-list))),
@@ -334,13 +334,13 @@ define _get-foreign-info(m: &module): ?pair(&text, ens) {
   }
 }
 
-define _get-inline-limit-info(m: &module): ?pair(&text, ens) {
+define _get-inline-limit-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {inline-limit} = m;
   try inline-limit = *inline-limit;
-  Right(Pair(key-inline-limit, E-Int(_m, inline-limit)))
+  Right(Pair(Pair(_m, *key-inline-limit), E-Int(_m, inline-limit)))
 }
 
-define _get-preset-map-info(m: &module): ?pair(&text, ens) {
+define _get-preset-map-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {preset-map} = m;
   if eq-int(core.dictionary.size(preset-map), 0) {
     none
@@ -354,11 +354,11 @@ define _get-preset-map-info(m: &module): ?pair(&text, ens) {
           });
         Pair(Pair(_m, k), E-List(_m, _series-from-list(vs)))
       });
-    Right(Pair(key-preset, dict-from-list(_m, tmp)))
+    Right(Pair(Pair(_m, *key-preset), dict-from-list(_m, tmp)))
   }
 }
 
-define _get-antecedent-info(m: &module): ?pair(&text, ens) {
+define _get-antecedent-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {antecedents} = m;
   if is-empty(antecedents) {
     none
@@ -367,11 +367,11 @@ define _get-antecedent-info(m: &module): ?pair(&text, ens) {
       for-each-N(antecedents, function (x) {
         E-String(_m, *text-from-module-digest(x))
       });
-    Right(Pair(key-antecedent, E-List(_m, _series-from-list(antecedent-list))))
+    Right(Pair(Pair(_m, *key-antecedent), E-List(_m, _series-from-list(antecedent-list))))
   }
 }
 
-define _get-dependency-info(m: &module): ?pair(&text, ens) {
+define _get-dependency-info(m: &module): ?pair(ens-key, ens) {
   tie Module of {dependency} = m;
   if eq-int(core.dictionary.size(dependency), 0) {
     none
@@ -397,6 +397,24 @@ define _get-dependency-info(m: &module): ?pair(&text, ens) {
           ),
         )
       });
-    Right(Pair(key-dependency, dict-from-list-vertical(_m, tmp)))
+    Right(Pair(Pair(_m, *key-dependency), dict-from-list-vertical(_m, tmp)))
   }
+}
+
+define to-default-ens(m: &module): ens {
+  dict-from-list(
+    _m,
+    filter-some(List[
+      Right(_get-target-info(m)),
+      _get-source-dir-info(m),
+      _get-cache-dir-info(m),
+      _get-archive-dir-info(m),
+      _get-extra-content-info(m),
+      _get-foreign-info(m),
+      _get-inline-limit-info(m),
+      _get-preset-map-info(m),
+      _get-antecedent-info(m),
+      _get-dependency-info(m),
+    ]),
+  )
 }
