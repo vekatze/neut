@@ -1,7 +1,7 @@
 import {
   core.dictionary {dictionary, to-list},
   core.list {filter-some, for-each, for-each-N, is-empty},
-  path.path {drop-last},
+  path.path {drop-last, take-last},
   this.ens.ens {E-Int, E-List, E-String, dict-from-list, dict-from-list-vertical, ens, ens-key, ens-path},
   this.kernel.common.clang-option {Clang-Option},
   this.kernel.common.const {archive-rel-dir, cache-rel-dir, source-rel-dir},
@@ -11,7 +11,7 @@ import {
   this.language.common.base-name {base-name, text-from-base-name},
   this.language.common.module-alias {module-alias, text-from-module-alias},
   this.language.common.module-digest {Module-Digest, module-digest, text-from-module-digest},
-  this.language.common.module-id {module-id},
+  this.language.common.module-id {Library, module-id},
   this.language.common.source-locator {get-rel-path-text, text-from-source-locator},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.series {Bracket, Comma, from-list, series},
@@ -417,4 +417,10 @@ define to-default-ens(m: &module): ens {
       _get-dependency-info(m),
     ]),
   )
+}
+
+define get-module-id-from-module-path(module-file-path: &text): module-id {
+  pin tmp = drop-last(module-file-path);
+  let dir-name = take-last(tmp);
+  Library(Module-Digest(dir-name))
 }
