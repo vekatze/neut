@@ -2,7 +2,7 @@ import {
   core.dictionary {to-list},
   core.list {find},
   core.text-builder {append-text, extract, make-text-builder},
-  this.kernel.common.module {Dependency, Module, module},
+  this.kernel.common.module {Dependency, Module, extract-module, main-module, module},
   this.language.common.base-name {text-from-base-name-N},
   this.language.common.const {ns-sep},
   this.language.common.definite-description {definite-description, uncons-dd},
@@ -64,4 +64,8 @@ define _readable-dd(m: &module, dd: &definite-description): text {
       extract(buf)
     }
   }
+}
+
+define readable-dd(m: &main-module, dd: &definite-description): text {
+  _readable-dd(extract-module(m), dd)
 }

@@ -36,7 +36,7 @@ import {
   this.language.common.global-locator {_global-locator-from-base-name-list, global-locator},
   this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
   this.language.common.module-digest {Module-Digest},
-  this.language.common.module-id {Base, Library, Main, module-id, text-from-module-id},
+  this.language.common.module-id {Base, Library, Main, module-id},
   this.language.common.source-locator {internal-locator},
   this.language.common.strict-global-locator {
     sgl-from-source-locator,
