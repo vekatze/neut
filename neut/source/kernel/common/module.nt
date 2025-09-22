@@ -6,7 +6,7 @@ import {
   this.kernel.common.clang-option {Clang-Option},
   this.kernel.common.const {archive-rel-dir, cache-rel-dir, source-rel-dir},
   this.kernel.common.module-URL {Module-URL, module-URL},
-  this.kernel.common.target {Target-Summary, target-summary},
+  this.kernel.common.target {Named, Target-Summary, main-target, target-summary},
   this.kernel.common.zen-config {zen-config},
   this.language.common.base-name {base-name, text-from-base-name},
   this.language.common.module-alias {module-alias, text-from-module-alias},
@@ -208,10 +208,14 @@ define get-target-path-list(m: &module): list(text) {
   })
 }
 
+define _lookup-text-dict<v>(d: &dictionary(text, v), k: &text): ?&v {
+  let lookup = core.dictionary.make-lookup(core.text.ord.as-ord);
+  lookup(d, k)
+}
+
 define get-target-path(m: &module, target-key: &text): ?text {
   tie Module of {source-dir, target} = m;
-  let lookup = core.dictionary.make-lookup(core.text.ord.as-ord);
-  try v = lookup(target, target-key);
+  try v = _lookup-text-dict(target, target-key);
   tie Target-Summary of {entry-point} = v;
   pin tmp = text-from-source-locator(entry-point);
   Right(path.path.append(source-dir, tmp))
@@ -423,4 +427,10 @@ define get-module-id-from-module-path(module-file-path: &text): module-id {
   pin tmp = drop-last(module-file-path);
   let dir-name = take-last(tmp);
   Library(Module-Digest(dir-name))
+}
+
+define get-target(m: &module, target-name: &text): ?main-target {
+  tie Module of {target} = m;
+  try target = _lookup-text-dict(target, target-name);
+  Right(Named(*target-name, *target))
 }
