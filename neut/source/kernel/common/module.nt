@@ -2,8 +2,9 @@ import {
   core.dictionary {dictionary, to-list},
   core.list {for-each, is-empty},
   path.path {drop-last},
-  this.ens.ens {E-List, E-String, dict-from-list-vertical, ens},
+  this.ens.ens {E-List, E-String, dict-from-list-vertical, ens, ens-path},
   this.kernel.common.clang-option {Clang-Option},
+  this.kernel.common.const {source-rel-dir},
   this.kernel.common.module-URL {module-URL},
   this.kernel.common.target {Target-Summary, target-summary},
   this.kernel.common.zen-config {zen-config},
@@ -262,4 +263,13 @@ define _get-target-info(m: &module): pair(&text, ens) {
       Pair(Pair(_m, target-name), dict-from-list-vertical(_m, items))
     });
   Pair(key-target, dict-from-list-vertical(_m, tmp))
+}
+
+define _get-source-dir-info(m: &module): ?pair(&text, ens) {
+  tie Module of {source-dir} = m;
+  if eq-text(source-dir, source-rel-dir) {
+    none
+  } else {
+    Right(Pair(key-source, ens-path(_m, *source-dir)))
+  }
 }
