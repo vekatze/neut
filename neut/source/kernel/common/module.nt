@@ -305,3 +305,31 @@ define _get-extra-content-info(m: &module): ?pair(&text, ens) {
     Right(Pair(key-extra-content, E-List(_m, _series-from-list(extra-content-list))))
   }
 }
+
+define _get-foreign-info(m: &module): ?pair(&text, ens) {
+  tie Module of {foreign := Foreign of {input, output, script}} = m;
+  let input-list =
+    for-each-N(input, function (x) {
+      E-String(_m, *x)
+    });
+  let output-list =
+    for-each-N(output, function (x) {
+      E-String(_m, *x)
+    });
+  let command-list =
+    for-each-N(script, function (x) {
+      E-String(_m, *x)
+    });
+  if and(is-empty(input), is-empty(script)) {
+    none
+  } else {
+    Right(Pair(
+      key-foreign,
+      dict-from-list-vertical(_m, List[
+        Pair(Pair(_m, *key-foreign-input), E-List(_m, _series-from-list(input-list))),
+        Pair(Pair(_m, *key-foreign-output), E-List(_m, _series-from-list(output-list))),
+        Pair(Pair(_m, *key-foreign-script), E-List(_m, _series-from-list(command-list))),
+      ]),
+    ))
+  }
+}
