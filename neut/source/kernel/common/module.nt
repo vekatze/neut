@@ -2,7 +2,19 @@ import {
   core.dictionary {dictionary, to-list},
   core.list {filter-some, for-each, for-each-N, is-empty},
   path.path {drop-last, take-last},
-  this.ens.ens {E-Int, E-List, E-String, dict-from-list, dict-from-list-vertical, ens, ens-key, ens-path},
+  this.app.app {app},
+  this.ens.ens {
+    E-Int,
+    E-List,
+    E-String,
+    dict-from-list,
+    dict-from-list-vertical,
+    ens,
+    ens-key,
+    ens-path,
+    has-key,
+    modify-E,
+  },
   this.kernel.common.clang-option {Clang-Option},
   this.kernel.common.const {archive-rel-dir, cache-rel-dir, source-rel-dir},
   this.kernel.common.module-URL {Module-URL, module-URL},
@@ -14,7 +26,8 @@ import {
   this.language.common.module-id {Library, module-id},
   this.language.common.source-locator {get-rel-path-text, text-from-source-locator},
   this.logger.hint {hint, internal-hint},
-  this.syntax-tree.series {Bracket, Comma, from-list, series},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.series {Bracket, Comma, from-list, nub-series, series},
 }
 
 inline locator-name: type {
@@ -433,4 +446,21 @@ define get-target(m: &module, target-name: &text): ?main-target {
   tie Module of {target} = m;
   try target = _lookup-text-dict(target, target-name);
   Right(Named(*target-name, *target))
+}
+
+define stylize(eq: &eq(pair(comment, ens)), e: ens): app(ens) {
+  let has-dependency-key on e = has-key(key-dependency, e);
+  if has-dependency-key {
+    try tmp =
+      modify-E(e, key-dependency, function (foo) {
+        modify-E(foo, key-mirror, function (mirrors) {
+          try Pair(m-dep, mirror-list) = this.ens.ens.to-list(mirrors);
+          let mirror-list = nub-series(eq, mirror-list);
+          Right(E-List(m-dep, mirror-list))
+        })
+      });
+    Right(tmp)
+  } else {
+    Right(e)
+  }
 }

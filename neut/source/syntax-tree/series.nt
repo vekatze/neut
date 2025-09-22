@@ -94,6 +94,23 @@ inline replace<a, b>(xs: series(pair(a, b)), !new-value: b, predicate: (&a) -> b
   })
 }
 
+inline modify-E<e, a, b>(
+  xs: series(pair(a, b)),
+  !modifier: (b) -> either(e, b),
+  predicate: (&a) -> bool,
+): either(e, series(pair(a, b))) {
+  for-each-E(xs, function (p) {
+    let Pair(k, v) = p;
+    let b on k = predicate(k);
+    if b {
+      try v = !modifier(v);
+      Right(Pair(k, v))
+    } else {
+      Right(Pair(k, v))
+    }
+  })
+}
+
 define uncons<a>(xs: series(a)): ?pair(pair(comment, a), series(a)) {
   let Series of {elems, trailing-comment, prefix, container, separator, has-optional-separator} = xs;
   match elems {
