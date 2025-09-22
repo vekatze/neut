@@ -10,6 +10,7 @@ import {
   this.language.common.module-digest {module-digest},
   this.language.common.module-id {module-id},
   this.language.common.source-locator {text-from-source-locator},
+  this.logger.hint {hint, internal-hint},
 }
 
 inline locator-name: type {
@@ -215,4 +216,8 @@ define get-target-path(m: &module, target-key: &text): ?text {
 define get-extra-contents(m: &module): &list(text) {
   tie Module of {extra-contents} = m;
   extra-contents
+}
+
+inline _m: hint {
+  internal-hint
 }
