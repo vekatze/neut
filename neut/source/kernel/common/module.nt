@@ -5,12 +5,12 @@ import {
   this.ens.ens {E-Int, E-List, E-String, dict-from-list, dict-from-list-vertical, ens, ens-path},
   this.kernel.common.clang-option {Clang-Option},
   this.kernel.common.const {archive-rel-dir, cache-rel-dir, source-rel-dir},
-  this.kernel.common.module-URL {module-URL},
+  this.kernel.common.module-URL {Module-URL, module-URL},
   this.kernel.common.target {Target-Summary, target-summary},
   this.kernel.common.zen-config {zen-config},
   this.language.common.base-name {base-name, text-from-base-name},
-  this.language.common.module-alias {module-alias},
-  this.language.common.module-digest {module-digest, text-from-module-digest},
+  this.language.common.module-alias {module-alias, text-from-module-alias},
+  this.language.common.module-digest {Module-Digest, module-digest, text-from-module-digest},
   this.language.common.module-id {module-id},
   this.language.common.source-locator {get-rel-path-text, text-from-source-locator},
   this.logger.hint {hint, internal-hint},
@@ -368,5 +368,35 @@ define _get-antecedent-info(m: &module): ?pair(&text, ens) {
         E-String(_m, *text-from-module-digest(x))
       });
     Right(Pair(key-antecedent, E-List(_m, _series-from-list(antecedent-list))))
+  }
+}
+
+define _get-dependency-info(m: &module): ?pair(&text, ens) {
+  tie Module of {dependency} = m;
+  if eq-int(core.dictionary.size(dependency), 0) {
+    none
+  } else {
+    let tmp =
+      for-each(to-list(*dependency), function (p) {
+        let Pair(k, Dependency of {mirror-list, digest := Module-Digest(d)}) = p;
+        let url-ens-list =
+          for-each(mirror-list, function (x) {
+            let Module-URL(x) = x;
+            E-String(_m, x)
+          });
+        let digest-ens = E-String(_m, d);
+        let mirror-ens = E-List(_m, _series-from-list(url-ens-list));
+        Pair(
+          Pair(_m, text-from-module-alias(k)),
+          dict-from-list-vertical(
+            _m,
+            List[
+              Pair(Pair(_m, *key-digest), digest-ens),
+              Pair(Pair(_m, *key-mirror), mirror-ens),
+            ],
+          ),
+        )
+      });
+    Right(Pair(key-dependency, dict-from-list-vertical(_m, tmp)))
   }
 }
