@@ -2,7 +2,7 @@ import {
   core.dictionary {dictionary, to-list},
   core.list {for-each, for-each-N, is-empty},
   path.path {drop-last},
-  this.ens.ens {E-List, E-String, dict-from-list-vertical, ens, ens-path},
+  this.ens.ens {E-Int, E-List, E-String, dict-from-list-vertical, ens, ens-path},
   this.kernel.common.clang-option {Clang-Option},
   this.kernel.common.const {archive-rel-dir, cache-rel-dir, source-rel-dir},
   this.kernel.common.module-URL {module-URL},
@@ -332,4 +332,10 @@ define _get-foreign-info(m: &module): ?pair(&text, ens) {
       ]),
     ))
   }
+}
+
+define _get-inline-limit-info(m: &module): ?pair(&text, ens) {
+  tie Module of {inline-limit} = m;
+  try inline-limit = *inline-limit;
+  Right(Pair(key-inline-limit, E-Int(_m, inline-limit)))
 }
