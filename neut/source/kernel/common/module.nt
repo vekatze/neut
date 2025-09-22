@@ -2,13 +2,13 @@ import {
   core.dictionary {dictionary, to-list},
   core.list {for-each, for-each-N, is-empty},
   path.path {drop-last},
-  this.ens.ens {E-Int, E-List, E-String, dict-from-list-vertical, ens, ens-path},
+  this.ens.ens {E-Int, E-List, E-String, dict-from-list, dict-from-list-vertical, ens, ens-path},
   this.kernel.common.clang-option {Clang-Option},
   this.kernel.common.const {archive-rel-dir, cache-rel-dir, source-rel-dir},
   this.kernel.common.module-URL {module-URL},
   this.kernel.common.target {Target-Summary, target-summary},
   this.kernel.common.zen-config {zen-config},
-  this.language.common.base-name {base-name},
+  this.language.common.base-name {base-name, text-from-base-name},
   this.language.common.module-alias {module-alias},
   this.language.common.module-digest {module-digest},
   this.language.common.module-id {module-id},
@@ -338,4 +338,22 @@ define _get-inline-limit-info(m: &module): ?pair(&text, ens) {
   tie Module of {inline-limit} = m;
   try inline-limit = *inline-limit;
   Right(Pair(key-inline-limit, E-Int(_m, inline-limit)))
+}
+
+define _get-preset-map-info(m: &module): ?pair(&text, ens) {
+  tie Module of {preset-map} = m;
+  if eq-int(core.dictionary.size(preset-map), 0) {
+    none
+  } else {
+    let tmp =
+      for-each(to-list(*preset-map), function (x) {
+        let Pair(k, vs) = x;
+        let vs =
+          for-each(vs, function (bn) {
+            E-String(_m, text-from-base-name(bn))
+          });
+        Pair(Pair(_m, k), E-List(_m, _series-from-list(vs)))
+      });
+    Right(Pair(key-preset, dict-from-list(_m, tmp)))
+  }
 }
