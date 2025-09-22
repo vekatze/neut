@@ -22,6 +22,7 @@ import {
   this.kernel.common.target {Named, Target-Summary, main-target, target-summary},
   this.kernel.common.zen-config {zen-config},
   this.language.common.base-name {base-name, text-from-base-name},
+  this.language.common.const {ns-sep},
   this.language.common.module-alias {module-alias, text-from-module-alias},
   this.language.common.module-digest {Module-Digest, module-digest, text-from-module-digest},
   this.language.common.module-id {Library, module-id},
@@ -480,4 +481,16 @@ define get-alias-list-with-enabled-presets(m: &module): list(module-alias) {
 
 inline preset-summary: type {
   list(pair(text, list(base-name)))
+}
+
+define get-preset-summary(preset-map: preset-map, module-name: &text): preset-summary {
+  let preset-list = to-list(preset-map);
+  for-each(preset-list, function (p) {
+    let Pair(loc, lls) = p;
+    let tmp = core.text.append(module-name, ns-sep);
+    let tmp2 on tmp, loc = core.text.append(tmp, loc);
+    let _ = tmp;
+    let _ = loc;
+    Pair(tmp2, lls)
+  })
 }
