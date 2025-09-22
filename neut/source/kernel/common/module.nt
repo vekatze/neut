@@ -1,7 +1,9 @@
 import {
-  core.dictionary {dictionary},
-  core.list {for-each},
+  core.dictionary {dictionary, to-list},
+  core.list {for-each, is-empty},
   path.path {drop-last},
+  this.ens.ens {E-List, E-String, dict-from-list-vertical, ens},
+  this.kernel.common.clang-option {Clang-Option},
   this.kernel.common.module-URL {module-URL},
   this.kernel.common.target {Target-Summary, target-summary},
   this.kernel.common.zen-config {zen-config},
@@ -11,6 +13,7 @@ import {
   this.language.common.module-id {module-id},
   this.language.common.source-locator {text-from-source-locator},
   this.logger.hint {hint, internal-hint},
+  this.syntax-tree.series {Bracket, Comma, from-list, series},
 }
 
 inline locator-name: type {
@@ -220,4 +223,8 @@ define get-extra-contents(m: &module): &list(text) {
 
 inline _m: hint {
   internal-hint
+}
+
+define _series-from-list<a>(xs: list(a)): series(a) {
+  from-list(Bracket, Comma, xs)
 }
