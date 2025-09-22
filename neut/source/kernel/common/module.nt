@@ -11,7 +11,7 @@ import {
   this.language.common.module-alias {module-alias},
   this.language.common.module-digest {module-digest},
   this.language.common.module-id {module-id},
-  this.language.common.source-locator {text-from-source-locator},
+  this.language.common.source-locator {get-rel-path-text, text-from-source-locator},
   this.logger.hint {hint, internal-hint},
   this.syntax-tree.series {Bracket, Comma, from-list, series},
 }
@@ -227,4 +227,39 @@ inline _m: hint {
 
 define _series-from-list<a>(xs: list(a)): series(a) {
   from-list(Bracket, Comma, xs)
+}
+
+define _get-target-info(m: &module): pair(&text, ens) {
+  tie Module of {target} = m;
+  let tmp =
+    for-each(to-list(*target), function (p) {
+      let Pair(target-name, target-summary) = p;
+      let Target-Summary(entry-point, Clang-Option(compile-option, link-option)) = target-summary;
+      let compile-option =
+        for-each(compile-option, function (x) {
+          E-String(_m, x)
+        });
+      let b on compile-option = is-empty(compile-option);
+      let compile-option =
+        if b {
+          List[]
+        } else {
+          List[Pair(Pair(_m, *key-compile-option), E-List(_m, _series-from-list(compile-option)))]
+        };
+      let link-option =
+        for-each(link-option, function (x) {
+          E-String(_m, x)
+        });
+      let b on link-option = is-empty(link-option);
+      let link-option =
+        if b {
+          List[]
+        } else {
+          List[Pair(Pair(_m, *key-link-option), E-List(_m, _series-from-list(link-option)))]
+        };
+      let items = core.list.append(compile-option, link-option);
+      let items = Cons(Pair(Pair(_m, *key-main), E-String(_m, get-rel-path-text(entry-point))), items);
+      Pair(Pair(_m, target-name), dict-from-list-vertical(_m, items))
+    });
+  Pair(key-target, dict-from-list-vertical(_m, tmp))
 }
