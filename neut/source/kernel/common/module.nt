@@ -1,6 +1,6 @@
 import {
   core.dictionary {dictionary, to-list},
-  core.list {for-each, is-empty},
+  core.list {for-each, for-each-N, is-empty},
   path.path {drop-last},
   this.ens.ens {E-List, E-String, dict-from-list-vertical, ens, ens-path},
   this.kernel.common.clang-option {Clang-Option},
@@ -289,5 +289,19 @@ define _get-archive-dir-info(m: &module): ?pair(&text, ens) {
     none
   } else {
     Right(Pair(key-archive, ens-path(_m, *archive-dir)))
+  }
+}
+
+define _get-extra-content-info(m: &module): ?pair(&text, ens) {
+  tie Module of {extra-contents} = m;
+  let extra-content-list =
+    for-each-N(extra-contents, function (v) {
+      E-String(_m, *v)
+    });
+  let b on extra-content-list = is-empty(extra-content-list);
+  if b {
+    none
+  } else {
+    Right(Pair(key-extra-content, E-List(_m, _series-from-list(extra-content-list))))
   }
 }
