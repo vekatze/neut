@@ -202,3 +202,12 @@ define get-target-path-list(m: &module): list(text) {
     result
   })
 }
+
+define get-target-path(m: &module, target-key: &text): ?text {
+  tie Module of {source-dir, target} = m;
+  let lookup = core.dictionary.make-lookup(core.text.ord.as-ord);
+  try v = lookup(target, target-key);
+  tie Target-Summary of {entry-point} = v;
+  pin tmp = text-from-source-locator(entry-point);
+  Right(path.path.append(source-dir, tmp))
+}
