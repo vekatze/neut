@@ -10,3 +10,8 @@ data source {
     source-hint: ?hint,
   )
 }
+
+define get-rel-path-from-source-dir(s: &source): ?text {
+  tie Source of {source-module, file-path} = s;
+  this.kernel.common.module.get-rel-path-from-source-dir(source-module, file-path)
+}
