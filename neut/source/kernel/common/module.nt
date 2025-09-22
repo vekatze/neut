@@ -10,7 +10,7 @@ import {
   this.kernel.common.zen-config {zen-config},
   this.language.common.base-name {base-name, text-from-base-name},
   this.language.common.module-alias {module-alias},
-  this.language.common.module-digest {module-digest},
+  this.language.common.module-digest {module-digest, text-from-module-digest},
   this.language.common.module-id {module-id},
   this.language.common.source-locator {get-rel-path-text, text-from-source-locator},
   this.logger.hint {hint, internal-hint},
@@ -355,5 +355,18 @@ define _get-preset-map-info(m: &module): ?pair(&text, ens) {
         Pair(Pair(_m, k), E-List(_m, _series-from-list(vs)))
       });
     Right(Pair(key-preset, dict-from-list(_m, tmp)))
+  }
+}
+
+define _get-antecedent-info(m: &module): ?pair(&text, ens) {
+  tie Module of {antecedents} = m;
+  if is-empty(antecedents) {
+    none
+  } else {
+    let antecedent-list =
+      for-each-N(antecedents, function (x) {
+        E-String(_m, *text-from-module-digest(x))
+      });
+    Right(Pair(key-antecedent, E-List(_m, _series-from-list(antecedent-list))))
   }
 }
