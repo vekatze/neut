@@ -2,6 +2,7 @@ import {
   core.dictionary {dictionary, to-list},
   core.list {filter, filter-some, for-each, for-each-N, is-empty},
   core.pair {first},
+  core.text {drop-N, length, text-byte-length},
   path.path {drop-last, take-last},
   this.app.app {app},
   this.ens.ens {
@@ -493,4 +494,38 @@ define get-preset-summary(preset-map: preset-map, module-name: &text): preset-su
     let _ = loc;
     Pair(tmp2, lls)
   })
+}
+
+define _strip-prefix(haystack: &text, prefix: &text): ?text {
+  let b1 = core.text.eq.eq-prefix(haystack, prefix);
+  let b2 = ge-int(text-byte-length(haystack), text-byte-length(prefix));
+  if and(b1, b2) {
+    Right(drop-N(haystack, length(prefix)))
+  } else {
+    none
+  }
+}
+
+define get-rel-path-from-source-dir(m: &module, path: &text): ?text {
+  pin source-dir = get-source-dir(m);
+  _strip-prefix(source-dir, path)
+}
+
+define zen(): unit {
+  pin result = _strip-prefix("abcd", "");
+  vet(result);
+  pin result = _strip-prefix("abcd", "a");
+  vet(result);
+  pin result = _strip-prefix("abcd", "ab");
+  vet(result);
+  pin result = _strip-prefix("abcd", "bc");
+  vet(result);
+  pin result = _strip-prefix("abcd", "cd");
+  vet(result);
+  pin result = _strip-prefix("abcd", "abc");
+  vet(result);
+  pin result = _strip-prefix("abcd", "bcd");
+  vet(result);
+  pin result = _strip-prefix("abcd", "abcd");
+  vet(result);
 }
