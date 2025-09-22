@@ -11,7 +11,7 @@ inline locator: type {
 define text-from-locator(l: &locator): text {
   tie Pair(gl, ll) = l;
   pin gl = text-from-global-locator(gl);
-  pin ll = text-from-local-locator-N(ll);
+  let ll = text-from-local-locator-N(ll);
   pin tmp = core.text.append(gl, ns-sep);
   core.text.append(tmp, ll)
 }
