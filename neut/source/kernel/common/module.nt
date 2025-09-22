@@ -211,3 +211,8 @@ define get-target-path(m: &module, target-key: &text): ?text {
   pin tmp = text-from-source-locator(entry-point);
   Right(path.path.append(source-dir, tmp))
 }
+
+define get-extra-contents(m: &module): &list(text) {
+  tie Module of {extra-contents} = m;
+  extra-contents
+}
