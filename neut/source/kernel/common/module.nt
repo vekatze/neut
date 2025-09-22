@@ -477,3 +477,7 @@ define get-alias-list-with-enabled-presets(m: &module): list(module-alias) {
     exact first,
   )
 }
+
+inline preset-summary: type {
+  list(pair(text, list(base-name)))
+}
