@@ -1,0 +1,10 @@
+import {
+  this.kernel.common.alias-info {alias-info},
+  this.kernel.common.source {source},
+  this.logger.hint {hint},
+}
+
+data import-item {
+| Import-Item(source, list(alias-info))
+| Static-Key(list(pair(text, pair(hint, text))))
+}
