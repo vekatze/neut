@@ -1,8 +1,13 @@
 import {
-  this.kernel.common.arch {arch},
+  core.text-builder {append-text, make-text-builder},
+  this.app.app {app},
+  this.app.run {raise-error', run},
+  this.kernel.common.arch {Amd64, Arm64, arch},
   this.kernel.common.operating-system {operating-system},
   this.kernel.common.platform {Platform, platform},
   this.language.common.data-size {data-size},
+  this.logger.hint {hint},
+  this.logger.logger-kit {logger-kit},
 }
 
 data platform-kit {
@@ -38,4 +43,13 @@ define get-data-size(k: &platform-kit): data-size {
 define get-clang-digest(k: &platform-kit): &text {
   tie _Platform-Kit of {clang-digest} = k;
   clang-digest
+}
+
+define _get-current-arch(): arch {
+  introspect architecture {
+  | amd64 =>
+    this.kernel.common.arch.Amd64
+  | arm64 =>
+    this.kernel.common.arch.Arm64
+  }
 }
