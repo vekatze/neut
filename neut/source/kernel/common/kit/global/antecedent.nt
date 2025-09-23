@@ -1,5 +1,5 @@
 import {
-  core.cell {borrow, make-cell, mutate},
+  core.cell {borrow, extract, make-cell, mutate},
   core.dictionary {dictionary, empty, make-insert-with, make-lookup, to-list},
   core.list {fold-left},
   core.magic {cast},
@@ -64,4 +64,9 @@ define set(k: &antecedent-kit, !mp: meta dictionary(module-id, module)): unit {
       _rev-insert(d, m, mid)
     })
   });
+}
+
+define get-reverse-map(k: antecedent-kit): meta rev-map {
+  let _Antecedent-Kit of {rev-map-cell} = k;
+  extract(rev-map-cell)
 }
