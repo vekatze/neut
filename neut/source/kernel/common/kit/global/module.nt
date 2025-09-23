@@ -2,13 +2,15 @@ import {
   core.cell {make-cell},
   core.control {discard},
   core.dictionary {dictionary, empty},
+  core.environment {get-env},
   core.system {get-error-message, system, system-error},
   path.io {create-directory, is-directory},
   path.path {drop-last, split-extension},
   this.app.app {app},
   this.app.run {app-from-system, raise-error, raise-error'},
-  this.kernel.common.const {source-file-extension},
+  this.kernel.common.const {env-var-core-module-URL, source-file-extension},
   this.kernel.common.module {Module, extract-module, get-module-root-dir, main-module, module},
+  this.kernel.common.module-URL {Module-URL, module-URL},
   this.language.common.module-digest {Module-Digest},
   this.language.common.module-id {Base, Library, Main, module-id},
   this.logger.hint {hint},
@@ -86,6 +88,16 @@ define get-module-dir-by-id(m: &main-module, hint-or-none: ?&hint, mid: &module-
   }
 }
 
+define get-core-module-URL(): app(module-URL) {
+  match get-env(env-var-core-module-URL) {
+  | Right(core-module-URL) =>
+    Right(Module-URL(core-module-URL))
+  | Left(_) =>
+    let tmp = core.text.append("The URL of the core module is not specified; set it via ", env-var-core-module-URL);
+    raise-error'(tmp)
+  }
+}
+
 define zen(): unit {
   pin result = _has-source-extension("foo.nt");
   vet(result);
@@ -93,4 +105,6 @@ define zen(): unit {
   vet(result);
   pin result = _has-source-extension("nt");
   vet(result);
+  pin result = get-core-module-URL();
+  vet(result)
 }
