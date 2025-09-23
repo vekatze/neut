@@ -1,0 +1,10 @@
+import {
+  core.dictionary {dictionary},
+  this.kernel.common.module {module},
+}
+
+data module-kit {
+| _Module-Kit(
+    cache-map-cell: cell(dictionary(text, module)),
+  )
+}
