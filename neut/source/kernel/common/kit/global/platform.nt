@@ -8,7 +8,7 @@ import {
   this.kernel.common.arch {arch, data-size-from-arch},
   this.kernel.common.const {env-var-clang},
   this.kernel.common.operating-system {operating-system},
-  this.kernel.common.platform {Platform, platform},
+  this.kernel.common.platform {Platform, platform, text-from-platform},
   this.kernel.common.run-process {get-logger-kit, run-process, run-process-kit},
   this.language.common.data-size {data-size},
   this.language.common.digest {hash-and-encode},
@@ -105,4 +105,9 @@ define make-platform-kit(k: &run-process-kit): platform-kit {
       clang-digest,
     })
   })
+}
+
+define _get-platform-prefix(k: &platform-kit): text {
+  pin p = get-platform(k);
+  text-from-platform(p)
 }
