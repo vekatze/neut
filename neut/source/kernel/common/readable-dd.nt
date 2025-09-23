@@ -1,0 +1,71 @@
+import {
+  core.dictionary {to-list},
+  core.list {find},
+  core.text-builder {append-text, extract, make-text-builder},
+  this.kernel.common.module {Dependency, Module, extract-module, main-module, module},
+  this.language.common.base-name {text-from-base-name-N},
+  this.language.common.const {ns-sep},
+  this.language.common.definite-description {definite-description, uncons-dd},
+  this.language.common.module-alias {Module-Alias},
+  this.language.common.module-digest {Module-Digest},
+  this.language.common.module-id {Base, Library, Main},
+}
+
+define _readable-dd(m: &module, dd: &definite-description): text {
+  match uncons-dd(dd) {
+  | Pair(Main, rest) =>
+    pin rest = rest;
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "this");
+      append-text(buf, ns-sep);
+      append-text(buf, rest);
+    };
+    extract(buf)
+  | Pair(Base, rest) =>
+    pin rest = rest;
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "buf");
+      append-text(buf, ns-sep);
+      append-text(buf, rest);
+    };
+    extract(buf)
+  | Pair(Library(digest), rest) =>
+    tie Module of {dependency} = m;
+    pin dep-map = to-list(*dependency);
+    pin digest = digest;
+    pin rest = rest;
+    pin finder =
+      function (p) {
+        tie Pair(_, v) = p;
+        tie Dependency of {digest := digest-cand} = v;
+        eq-data(digest, digest-cand)
+      };
+    match find(dep-map, finder) {
+    | Left(_) =>
+      tie Module-Digest(d) = digest;
+      let buf = make-text-builder(64);
+      let _ on buf = {
+        append-text(buf, d);
+        append-text(buf, ns-sep);
+        append-text(buf, rest);
+      };
+      extract(buf)
+    | Right(p) =>
+      tie Pair(Module-Alias(alias), _) = p;
+      let alias = text-from-base-name-N(alias);
+      let buf = make-text-builder(64);
+      let _ on buf = {
+        append-text(buf, alias);
+        append-text(buf, ns-sep);
+        append-text(buf, rest);
+      };
+      extract(buf)
+    }
+  }
+}
+
+define readable-dd(m: &main-module, dd: &definite-description): text {
+  _readable-dd(extract-module(m), dd)
+}

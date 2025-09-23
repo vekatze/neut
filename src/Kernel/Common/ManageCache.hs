@@ -16,6 +16,7 @@ where
 import App.App (App)
 import Control.Monad.IO.Class
 import Data.Binary
+import Data.Maybe
 import Kernel.Common.Artifact qualified as A
 import Kernel.Common.Cache qualified as Cache
 import Kernel.Common.CreateGlobalHandle qualified as Global
@@ -106,7 +107,7 @@ loadLocationCache h t source = do
 needsCompilation :: Handle -> [OK.OutputKind] -> Source.Source -> App Bool
 needsCompilation h outputKindList source = do
   artifactTime <- Artifact.lookup (artifactHandle h) (Source.sourceFilePath source)
-  return $ not $ Source.isCompilationSkippable artifactTime outputKindList
+  return $ not $ isCompilationSkippable artifactTime outputKindList
 
 isEntryPointCompilationSkippable :: Path.Handle -> MainTarget -> [OK.OutputKind] -> App Bool
 isEntryPointCompilationSkippable h target outputKindList = do
@@ -127,3 +128,22 @@ invalidate h t source = do
   if not hasCache
     then return ()
     else removeFile cachePath
+
+isCompilationSkippable ::
+  A.ArtifactTime ->
+  [OK.OutputKind] ->
+  Bool
+isCompilationSkippable artifactTime outputKindList =
+  case outputKindList of
+    [] ->
+      True
+    kind : rest -> do
+      case kind of
+        OK.LLVM -> do
+          let b1 = isJust $ A.llvmTime artifactTime
+          let b2 = isCompilationSkippable artifactTime rest
+          b1 && b2
+        OK.Object -> do
+          let b1 = isJust $ A.objectTime artifactTime
+          let b2 = isCompilationSkippable artifactTime rest
+          b1 && b2

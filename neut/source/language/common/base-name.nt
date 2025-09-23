@@ -60,12 +60,12 @@ define text-from-base-name(bn: base-name): text {
   }
 }
 
-define text-from-base-name-N(bn: &base-name): text {
+define text-from-base-name-N(bn: &base-name): &text {
   case bn {
   | _Base-Name(t) =>
-    *t
+    t
   | _Base-Name-N(t) =>
-    **t
+    *t
   }
 }
 

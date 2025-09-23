@@ -273,6 +273,16 @@ define to-dictionary-N(e: &ens): app(pair(&hint, &series(pair(pair(hint, text), 
   }
 }
 
+define to-list(e: ens): app(pair(hint, series(ens))) {
+  match e {
+  | E-List(m, xs) =>
+    Right(Pair(m, xs))
+  | e =>
+    let t on e = type-of(e);
+    raise-type-error(_get-hint(e), ET-List, t)
+  }
+}
+
 define to-list-N(e: &ens): app(pair(&hint, &series(ens))) {
   case e {
   | E-List(m, xs) =>
@@ -312,6 +322,16 @@ define put(k: &text, v: ens, base: ens): app(ens) {
   try Pair(m, dict) = to-dictionary(base);
   let new-dict =
     this.syntax-tree.series.replace(dict, v, function (existing-key) {
+      tie Pair(_, existing-key) = existing-key;
+      eq-text(k, existing-key)
+    });
+  Right(E-Dictionary(m, new-dict))
+}
+
+inline modify-E(base: ens, k: &text, modifier: (ens) -> app(ens)): app(ens) {
+  try Pair(m, dict) = to-dictionary(base);
+  try new-dict =
+    this.syntax-tree.series.modify-E(dict, modifier, function (existing-key) {
       tie Pair(_, existing-key) = existing-key;
       eq-text(k, existing-key)
     });

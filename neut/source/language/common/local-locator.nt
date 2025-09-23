@@ -13,7 +13,7 @@ define text-from-local-locator(ll: local-locator): text {
   text-from-base-name(bn)
 }
 
-define text-from-local-locator-N(ll: &local-locator): text {
+define text-from-local-locator-N(ll: &local-locator): &text {
   tie _Local-Locator(bn) = ll;
   text-from-base-name-N(bn)
 }

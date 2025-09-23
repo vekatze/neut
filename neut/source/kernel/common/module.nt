@@ -1,0 +1,531 @@
+import {
+  core.dictionary {dictionary, to-list},
+  core.list {filter, filter-some, for-each, for-each-N, is-empty},
+  core.pair {first},
+  core.text {drop-N, length, text-byte-length},
+  path.path {drop-last, take-last},
+  this.app.app {app},
+  this.ens.ens {
+    E-Int,
+    E-List,
+    E-String,
+    dict-from-list,
+    dict-from-list-vertical,
+    ens,
+    ens-key,
+    ens-path,
+    has-key,
+    modify-E,
+  },
+  this.kernel.common.clang-option {Clang-Option},
+  this.kernel.common.const {archive-rel-dir, cache-rel-dir, source-rel-dir},
+  this.kernel.common.module-URL {Module-URL, module-URL},
+  this.kernel.common.target {Named, Target-Summary, main-target, target-summary},
+  this.kernel.common.zen-config {zen-config},
+  this.language.common.base-name {base-name, text-from-base-name},
+  this.language.common.const {ns-sep},
+  this.language.common.module-alias {module-alias, text-from-module-alias},
+  this.language.common.module-digest {Module-Digest, module-digest, text-from-module-digest},
+  this.language.common.module-id {Library, module-id},
+  this.language.common.source-locator {get-rel-path-text, text-from-source-locator},
+  this.logger.hint {hint, internal-hint},
+  this.syntax-tree.comment {comment},
+  this.syntax-tree.series {Bracket, Comma, from-list, nub-series, series},
+}
+
+inline locator-name: type {
+  text
+}
+
+inline preset-map: type {
+  dictionary(locator-name, list(base-name))
+}
+
+inline alias-preset-map: type {
+  dictionary(text, preset-map)
+}
+
+data dependency {
+| Dependency(
+    mirror-list: list(module-URL),
+    digest: module-digest,
+    preset-enabled: bool,
+  )
+}
+
+data foreign {
+| Foreign(
+    input: list(text),
+    output: list(text),
+    script: list(text),
+  )
+}
+
+inline target-name: type {
+  text
+}
+
+data module {
+| Module(
+    id: module-id,
+    source-dir: text,
+    target: dictionary(target-name, target-summary),
+    zenconfig: zen-config,
+    archive-dir: text,
+    cache-dir: text,
+    dependency: dictionary(module-alias, dependency),
+    extra-contents: list(text),
+    antecedents: list(module-digest),
+    location: text,
+    foreign: foreign,
+    static-files: dictionary(text, text),
+    inline-limit: ?int,
+    preset-map: preset-map,
+  )
+}
+
+data main-module {
+| Main-Module(module)
+}
+
+define extract-module(m: &main-module): &module {
+  tie Main-Module(m) = m;
+  m
+}
+
+inline key-archive: &text {
+  "archive"
+}
+
+inline key-cache: &text {
+  "cache"
+}
+
+inline key-source: &text {
+  "source"
+}
+
+inline key-target: &text {
+  "target"
+}
+
+inline key-zen: &text {
+  "zen"
+}
+
+inline key-main: &text {
+  "main"
+}
+
+inline key-build-option: &text {
+  "build-option"
+}
+
+inline key-compile-option: &text {
+  "compile-option"
+}
+
+inline key-link-option: &text {
+  "link-option"
+}
+
+inline key-dependency: &text {
+  "dependency"
+}
+
+inline key-digest: &text {
+  "digest"
+}
+
+inline key-mirror: &text {
+  "mirror"
+}
+
+inline key-enable-preset: &text {
+  "enable-preset"
+}
+
+inline key-extra-content: &text {
+  "extra-content"
+}
+
+inline key-antecedent: &text {
+  "antecedent"
+}
+
+inline key-static: &text {
+  "static"
+}
+
+inline key-foreign: &text {
+  "foreign"
+}
+
+inline key-foreign-input: &text {
+  "input"
+}
+
+inline key-foreign-output: &text {
+  "output"
+}
+
+inline key-foreign-script: &text {
+  "script"
+}
+
+inline key-prefix: &text {
+  "prefix"
+}
+
+inline key-inline-limit: &text {
+  "inline-limit"
+}
+
+inline key-preset: &text {
+  "preset"
+}
+
+define get-module-root-dir(m: &module): text {
+  tie Module of {location} = m;
+  drop-last(location)
+}
+
+define get-source-dir(m: &module): text {
+  tie Module of {source-dir} = m;
+  pin tmp = get-module-root-dir(m);
+  path.path.append(tmp, source-dir)
+}
+
+define get-archive-dir(m: &module): text {
+  tie Module of {archive-dir} = m;
+  pin tmp = get-module-root-dir(m);
+  path.path.append(tmp, archive-dir)
+}
+
+define _values<k, v>(d: &dictionary(k, v)): list(&v) {
+  case d {
+  | core.dictionary.Tip =>
+    Nil
+  | core.dictionary.Bin(_, _, v, d1, d2) =>
+    let xs = _values(d1);
+    let ys = _values(d2);
+    core.list.append(xs, Cons(v, ys))
+  }
+}
+
+define get-target-path-list(m: &module): list(text) {
+  tie Module of {source-dir, target} = m;
+  for-each(_values(target), function (v) {
+    tie Target-Summary of {entry-point} = v;
+    let tmp = text-from-source-locator(entry-point);
+    let result on tmp = path.path.append(source-dir, tmp);
+    let _ = tmp;
+    result
+  })
+}
+
+define _lookup-text-dict<v>(d: &dictionary(text, v), k: &text): ?&v {
+  let lookup = core.dictionary.make-lookup(core.text.ord.as-ord);
+  lookup(d, k)
+}
+
+define get-target-path(m: &module, target-key: &text): ?text {
+  tie Module of {source-dir, target} = m;
+  try v = _lookup-text-dict(target, target-key);
+  tie Target-Summary of {entry-point} = v;
+  pin tmp = text-from-source-locator(entry-point);
+  Right(path.path.append(source-dir, tmp))
+}
+
+define get-extra-contents(m: &module): &list(text) {
+  tie Module of {extra-contents} = m;
+  extra-contents
+}
+
+inline _m: hint {
+  internal-hint
+}
+
+define _series-from-list<a>(xs: list(a)): series(a) {
+  from-list(Bracket, Comma, xs)
+}
+
+define _get-target-info(m: &module): pair(ens-key, ens) {
+  tie Module of {target} = m;
+  let tmp =
+    for-each(to-list(*target), function (p) {
+      let Pair(target-name, target-summary) = p;
+      let Target-Summary(entry-point, Clang-Option(compile-option, link-option)) = target-summary;
+      let compile-option =
+        for-each(compile-option, function (x) {
+          E-String(_m, x)
+        });
+      let b on compile-option = is-empty(compile-option);
+      let compile-option =
+        if b {
+          List[]
+        } else {
+          List[Pair(Pair(_m, *key-compile-option), E-List(_m, _series-from-list(compile-option)))]
+        };
+      let link-option =
+        for-each(link-option, function (x) {
+          E-String(_m, x)
+        });
+      let b on link-option = is-empty(link-option);
+      let link-option =
+        if b {
+          List[]
+        } else {
+          List[Pair(Pair(_m, *key-link-option), E-List(_m, _series-from-list(link-option)))]
+        };
+      let items = core.list.append(compile-option, link-option);
+      let items = Cons(Pair(Pair(_m, *key-main), E-String(_m, get-rel-path-text(entry-point))), items);
+      Pair(Pair(_m, target-name), dict-from-list-vertical(_m, items))
+    });
+  Pair(Pair(_m, *key-target), dict-from-list-vertical(_m, tmp))
+}
+
+define _get-source-dir-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {source-dir} = m;
+  if eq-text(source-dir, source-rel-dir) {
+    none
+  } else {
+    Right(Pair(Pair(_m, *key-source), ens-path(_m, *source-dir)))
+  }
+}
+
+define _get-cache-dir-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {cache-dir} = m;
+  if eq-text(cache-dir, cache-rel-dir) {
+    none
+  } else {
+    Right(Pair(Pair(_m, *key-cache), ens-path(_m, *cache-dir)))
+  }
+}
+
+define _get-archive-dir-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {archive-dir} = m;
+  if eq-text(archive-dir, archive-rel-dir) {
+    none
+  } else {
+    Right(Pair(Pair(_m, *key-archive), ens-path(_m, *archive-dir)))
+  }
+}
+
+define _get-extra-content-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {extra-contents} = m;
+  let extra-content-list =
+    for-each-N(extra-contents, function (v) {
+      E-String(_m, *v)
+    });
+  let b on extra-content-list = is-empty(extra-content-list);
+  if b {
+    none
+  } else {
+    Right(Pair(Pair(_m, *key-extra-content), E-List(_m, _series-from-list(extra-content-list))))
+  }
+}
+
+define _get-foreign-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {foreign := Foreign of {input, output, script}} = m;
+  let input-list =
+    for-each-N(input, function (x) {
+      E-String(_m, *x)
+    });
+  let output-list =
+    for-each-N(output, function (x) {
+      E-String(_m, *x)
+    });
+  let command-list =
+    for-each-N(script, function (x) {
+      E-String(_m, *x)
+    });
+  if and(is-empty(input), is-empty(script)) {
+    none
+  } else {
+    Right(Pair(
+      Pair(_m, *key-foreign),
+      dict-from-list-vertical(_m, List[
+        Pair(Pair(_m, *key-foreign-input), E-List(_m, _series-from-list(input-list))),
+        Pair(Pair(_m, *key-foreign-output), E-List(_m, _series-from-list(output-list))),
+        Pair(Pair(_m, *key-foreign-script), E-List(_m, _series-from-list(command-list))),
+      ]),
+    ))
+  }
+}
+
+define _get-inline-limit-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {inline-limit} = m;
+  try inline-limit = *inline-limit;
+  Right(Pair(Pair(_m, *key-inline-limit), E-Int(_m, inline-limit)))
+}
+
+define _get-preset-map-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {preset-map} = m;
+  if eq-int(core.dictionary.size(preset-map), 0) {
+    none
+  } else {
+    let tmp =
+      for-each(to-list(*preset-map), function (x) {
+        let Pair(k, vs) = x;
+        let vs =
+          for-each(vs, function (bn) {
+            E-String(_m, text-from-base-name(bn))
+          });
+        Pair(Pair(_m, k), E-List(_m, _series-from-list(vs)))
+      });
+    Right(Pair(Pair(_m, *key-preset), dict-from-list(_m, tmp)))
+  }
+}
+
+define _get-antecedent-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {antecedents} = m;
+  if is-empty(antecedents) {
+    none
+  } else {
+    let antecedent-list =
+      for-each-N(antecedents, function (x) {
+        E-String(_m, *text-from-module-digest(x))
+      });
+    Right(Pair(Pair(_m, *key-antecedent), E-List(_m, _series-from-list(antecedent-list))))
+  }
+}
+
+define _get-dependency-info(m: &module): ?pair(ens-key, ens) {
+  tie Module of {dependency} = m;
+  if eq-int(core.dictionary.size(dependency), 0) {
+    none
+  } else {
+    let tmp =
+      for-each(to-list(*dependency), function (p) {
+        let Pair(k, Dependency of {mirror-list, digest := Module-Digest(d)}) = p;
+        let url-ens-list =
+          for-each(mirror-list, function (x) {
+            let Module-URL(x) = x;
+            E-String(_m, x)
+          });
+        let digest-ens = E-String(_m, d);
+        let mirror-ens = E-List(_m, _series-from-list(url-ens-list));
+        Pair(
+          Pair(_m, text-from-module-alias(k)),
+          dict-from-list-vertical(
+            _m,
+            List[
+              Pair(Pair(_m, *key-digest), digest-ens),
+              Pair(Pair(_m, *key-mirror), mirror-ens),
+            ],
+          ),
+        )
+      });
+    Right(Pair(Pair(_m, *key-dependency), dict-from-list-vertical(_m, tmp)))
+  }
+}
+
+define to-default-ens(m: &module): ens {
+  dict-from-list(
+    _m,
+    filter-some(List[
+      Right(_get-target-info(m)),
+      _get-source-dir-info(m),
+      _get-cache-dir-info(m),
+      _get-archive-dir-info(m),
+      _get-extra-content-info(m),
+      _get-foreign-info(m),
+      _get-inline-limit-info(m),
+      _get-preset-map-info(m),
+      _get-antecedent-info(m),
+      _get-dependency-info(m),
+    ]),
+  )
+}
+
+define get-module-id-from-module-path(module-file-path: &text): module-id {
+  pin tmp = drop-last(module-file-path);
+  let dir-name = take-last(tmp);
+  Library(Module-Digest(dir-name))
+}
+
+define get-target(m: &module, target-name: &text): ?main-target {
+  tie Module of {target} = m;
+  try target = _lookup-text-dict(target, target-name);
+  Right(Named(*target-name, *target))
+}
+
+define stylize(eq: &eq(pair(comment, ens)), e: ens): app(ens) {
+  let has-dependency-key on e = has-key(key-dependency, e);
+  if has-dependency-key {
+    try tmp =
+      modify-E(e, key-dependency, function (foo) {
+        modify-E(foo, key-mirror, function (mirrors) {
+          try Pair(m-dep, mirror-list) = this.ens.ens.to-list(mirrors);
+          let mirror-list = nub-series(eq, mirror-list);
+          Right(E-List(m-dep, mirror-list))
+        })
+      });
+    Right(tmp)
+  } else {
+    Right(e)
+  }
+}
+
+define get-alias-list-with-enabled-presets(m: &module): list(module-alias) {
+  tie Module of {dependency} = m;
+  for-each(
+    filter(to-list(*dependency), function (p) {
+      tie Pair(_, v) = p;
+      tie Dependency of {preset-enabled} = v;
+      *preset-enabled
+    }),
+    exact first,
+  )
+}
+
+inline preset-summary: type {
+  list(pair(text, list(base-name)))
+}
+
+define get-preset-summary(preset-map: preset-map, module-name: &text): preset-summary {
+  let preset-list = to-list(preset-map);
+  for-each(preset-list, function (p) {
+    let Pair(loc, lls) = p;
+    let tmp = core.text.append(module-name, ns-sep);
+    let tmp2 on tmp, loc = core.text.append(tmp, loc);
+    let _ = tmp;
+    let _ = loc;
+    Pair(tmp2, lls)
+  })
+}
+
+define _strip-prefix(haystack: &text, prefix: &text): ?text {
+  let b1 = core.text.eq.eq-prefix(haystack, prefix);
+  let b2 = ge-int(text-byte-length(haystack), text-byte-length(prefix));
+  if and(b1, b2) {
+    Right(drop-N(haystack, length(prefix)))
+  } else {
+    none
+  }
+}
+
+define get-rel-path-from-source-dir(m: &module, path: &text): ?text {
+  pin source-dir = get-source-dir(m);
+  _strip-prefix(source-dir, path)
+}
+
+define zen(): unit {
+  pin result = _strip-prefix("abcd", "");
+  vet(result);
+  pin result = _strip-prefix("abcd", "a");
+  vet(result);
+  pin result = _strip-prefix("abcd", "ab");
+  vet(result);
+  pin result = _strip-prefix("abcd", "bc");
+  vet(result);
+  pin result = _strip-prefix("abcd", "cd");
+  vet(result);
+  pin result = _strip-prefix("abcd", "abc");
+  vet(result);
+  pin result = _strip-prefix("abcd", "bcd");
+  vet(result);
+  pin result = _strip-prefix("abcd", "abcd");
+  vet(result);
+}

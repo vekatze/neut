@@ -170,7 +170,7 @@ sourceToOutputPath h t kind source = do
   artifactDir <- getArtifactDir h t $ Src.sourceModule source
   relPath <- Src.getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- P.splitExtension relPath
-  Src.attachExtension (artifactDir </> relPathWithoutExtension) kind
+  attachExtension (artifactDir </> relPathWithoutExtension) kind
 
 getSourceCachePath :: Handle -> Target.Target -> Src.Source -> App (Path Abs File)
 getSourceCachePath h t =
@@ -207,13 +207,13 @@ getOutputPathForEntryPoint h kind mainTarget = do
     Target.Named target _ -> do
       entryDir <- getEntryDir h (Target.Main mainTarget) baseModule
       relPath <- P.parseRelFile $ T.unpack target
-      outputPath <- Src.attachExtension (entryDir </> relPath) kind
+      outputPath <- attachExtension (entryDir </> relPath) kind
       return (kind, outputPath)
     Target.Zen path _ -> do
       zenEntryDir <- getZenEntryDir h (Target.Main mainTarget) baseModule
       relPath <- getRelPathFromSourceDir baseModule path
       (relPathWithoutExtension, _) <- P.splitExtension relPath
-      outputPath <- Src.attachExtension (zenEntryDir </> relPathWithoutExtension) kind
+      outputPath <- attachExtension (zenEntryDir </> relPathWithoutExtension) kind
       return (kind, outputPath)
 
 getInstallDir :: FilePath -> App (Path Abs Dir)
@@ -274,3 +274,11 @@ unrollPath path = do
       return filePathList
     Right filePath ->
       return [filePath]
+
+attachExtension :: Path Abs File -> OK.OutputKind -> App (Path Abs File)
+attachExtension file kind =
+  case kind of
+    OK.LLVM -> do
+      P.addExtension ".ll" file
+    OK.Object -> do
+      P.addExtension ".o" file

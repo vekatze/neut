@@ -1,0 +1,27 @@
+import {
+  path.path {split-extension},
+  this.kernel.common.module {module},
+  this.language.common.const {ns-sep},
+  this.logger.hint {hint},
+}
+
+data source {
+| Source(
+    file-path: text,
+    source-module: module,
+    source-hint: ?hint,
+  )
+}
+
+define get-rel-path-from-source-dir(s: &source): ?text {
+  tie Source of {source-module, file-path} = s;
+  this.kernel.common.module.get-rel-path-from-source-dir(source-module, file-path)
+}
+
+define get-base-readable-locator(s: &source): ?text {
+  try rel-path = get-rel-path-from-source-dir(s);
+  pin rel-path = rel-path;
+  let Pair(rel-path-without-extension, _) = split-extension(rel-path);
+  pin rel-path-without-extension = rel-path-without-extension;
+  Right(core.text.replace(rel-path-without-extension, "/", *ns-sep))
+}
