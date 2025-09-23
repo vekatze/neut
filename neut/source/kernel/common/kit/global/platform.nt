@@ -34,3 +34,8 @@ define get-data-size(k: &platform-kit): data-size {
   tie _Platform-Kit of {base-size} = k;
   *base-size
 }
+
+define get-clang-digest(k: &platform-kit): &text {
+  tie _Platform-Kit of {clang-digest} = k;
+  clang-digest
+}
