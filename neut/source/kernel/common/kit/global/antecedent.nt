@@ -1,5 +1,6 @@
 import {
-  core.dictionary {dictionary},
+  core.cell {make-cell},
+  core.dictionary {dictionary, empty},
   this.kernel.common.module {module},
   this.language.common.module-id {module-id},
 }
@@ -13,4 +14,10 @@ data antecedent-kit {
     map-cell: cell(dictionary(module-id, module)),
     rev-map-cell: cell(dictionary(module-id, list(module-id))),
   )
+}
+
+define make-antecedent-kit(): antecedent-kit {
+  let map-cell = make-cell(box {empty});
+  let rev-map-cell = make-cell(box {empty});
+  _Antecedent-Kit of {map-cell, rev-map-cell}
 }
