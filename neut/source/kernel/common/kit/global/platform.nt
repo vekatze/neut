@@ -3,10 +3,12 @@ import {
   core.environment {get-env},
   core.process {Process-Spec},
   core.text {to-binary},
+  path.path,
   this.app.app {app},
   this.app.run {raise-error', run},
   this.kernel.common.arch {arch, data-size-from-arch},
   this.kernel.common.const {env-var-clang},
+  this.kernel.common.module {Module, get-module-root-dir, module},
   this.kernel.common.operating-system {operating-system},
   this.kernel.common.platform {Platform, platform, text-from-platform},
   this.kernel.common.run-process {get-logger-kit, run-process, run-process-kit},
@@ -110,4 +112,15 @@ define make-platform-kit(k: &run-process-kit): platform-kit {
 define _get-platform-prefix(k: &platform-kit): text {
   pin p = get-platform(k);
   text-from-platform(p)
+}
+
+define get-base-build-dir(k: &platform-kit, m: &module): text {
+  pin prefix = _get-platform-prefix(k);
+  pin version-dir = core.text.append("compiler-", "0.17.22"); // todo
+  pin module-root-dir = get-module-root-dir(m);
+  tie Module of {cache-dir} = m;
+  pin tmp = path.path.append(module-root-dir, cache-dir);
+  pin tmp = path.path.append(tmp, "build");
+  pin tmp = path.path.append(tmp, prefix);
+  path.path.append(tmp, version-dir)
 }
