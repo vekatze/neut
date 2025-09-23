@@ -1,6 +1,7 @@
 import {
   this.kernel.common.arch {arch},
   this.kernel.common.operating-system {operating-system},
+  this.kernel.common.platform {Platform, platform},
   this.language.common.data-size {data-size},
 }
 
@@ -21,4 +22,10 @@ define get-arch(k: &platform-kit): arch {
 define get-operating-system(k: &platform-kit): operating-system {
   tie _Platform-Kit of {operating-system} = k;
   *operating-system
+}
+
+define get-platform(k: &platform-kit): platform {
+  let arch = get-arch(k);
+  let operating-system = get-operating-system(k);
+  Platform(operating-system, arch)
 }
