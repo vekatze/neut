@@ -2,13 +2,13 @@ import {
   sero.common.get {get-int64},
   sero.common.put {put-int64},
   sero.sero {Sero, sero},
-  this.language.common.module-digest {module-digest, module-digest-sero, text-from-module-digest},
+  this.language.common.module-digest {Module-Digest, module-digest, module-digest-sero, text-from-module-digest},
 }
 
 data module-id {
 | Main
-| Library(module-digest)
 | Base
+| Library(module-digest)
 }
 
 define text-from-module-id(i: &module-id): &text {
@@ -19,6 +19,36 @@ define text-from-module-id(i: &module-id): &text {
     text-from-module-digest(digest)
   | Base =>
     "base"
+  }
+}
+
+inline module-id-ord: ord(module-id) {
+  Ord of {
+    compare := {
+      function (x, y) {
+        case x, y {
+        | Main, Main =>
+          EQ
+        | Main, Base =>
+          LT
+        | Main, Library(_) =>
+          LT
+        | Base, Main =>
+          GT
+        | Base, Base =>
+          EQ
+        | Base, Library(_) =>
+          LT
+        | Library(_), Main =>
+          GT
+        | Library(_), Base =>
+          GT
+        | Library(Module-Digest(d1)), Library(Module-Digest(d2)) =>
+          let Ord of {compare} = core.text.ord.as-ord;
+          compare(d1, d2)
+        }
+      }
+    },
   }
 }
 

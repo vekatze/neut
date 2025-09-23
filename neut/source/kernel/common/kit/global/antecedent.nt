@@ -1,8 +1,8 @@
 import {
-  core.cell {make-cell},
-  core.dictionary {dictionary, empty},
+  core.cell {borrow, make-cell},
+  core.dictionary {dictionary, empty, make-lookup},
   this.kernel.common.module {module},
-  this.language.common.module-id {module-id},
+  this.language.common.module-id {module-id, module-id-ord},
 }
 
 inline rev-map: type {
@@ -20,4 +20,17 @@ define make-antecedent-kit(): antecedent-kit {
   let map-cell = make-cell(box {empty});
   let rev-map-cell = make-cell(box {empty});
   _Antecedent-Kit of {map-cell, rev-map-cell}
+}
+
+define lookup-module(k: &antecedent-kit, x: &module-id): ?module {
+  tie _Antecedent-Kit of {map-cell} = k;
+  let lookup = make-lookup(module-id-ord);
+  borrow(map-cell, function (dict) {
+    match lookup(dict, x) {
+    | Left(_) =>
+      box {none}
+    | Right(v) =>
+      box v {Right(v)}
+    }
+  })
 }
