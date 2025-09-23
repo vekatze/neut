@@ -1,8 +1,10 @@
 import {
+  core.environment {get-env},
   core.text-builder {append-text, make-text-builder},
   this.app.app {app},
   this.app.run {raise-error', run},
   this.kernel.common.arch {Amd64, Arm64, arch},
+  this.kernel.common.const {env-var-clang},
   this.kernel.common.operating-system {operating-system},
   this.kernel.common.platform {Platform, platform},
   this.language.common.data-size {data-size},
@@ -60,5 +62,14 @@ define _get-current-operating-system(): operating-system {
     this.kernel.common.operating-system.Linux
   | darwin =>
     this.kernel.common.operating-system.Darwin
+  }
+}
+
+define _get-clang(): text {
+  match get-env(env-var-clang) {
+  | Left(_) =>
+    *"clang"
+  | Right(clang) =>
+    clang
   }
 }
