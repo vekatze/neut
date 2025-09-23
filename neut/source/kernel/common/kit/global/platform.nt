@@ -2,7 +2,8 @@ import {
   core.control {discard},
   core.environment {get-env},
   core.process {Process-Spec},
-  core.text {to-binary},
+  core.text {split, to-binary},
+  path.io {is-regular-file},
   path.path,
   this.app.app {app},
   this.app.run {raise-error', run},
@@ -123,4 +124,59 @@ define get-base-build-dir(k: &platform-kit, m: &module): text {
   pin tmp = path.path.append(tmp, "build");
   pin tmp = path.path.append(tmp, prefix);
   path.path.append(tmp, version-dir)
+}
+
+define _ensure-executable-in-path-list(name: &text, path-list: &list(text)): either(text, unit) {
+  case path-list {
+  | Nil =>
+    Left(core.text.append("Command not found: ", name))
+  | Cons(path, rest) =>
+    pin cand = path.path.append(path, name);
+    let b = is-regular-file(cand);
+    if b {
+      Right(Unit)
+    } else {
+      _ensure-executable-in-path-list(name, rest)
+    }
+  }
+}
+
+define _ensure-executables-in-path-list(names: &list(text), path-list: &list(text)): either(text, unit) {
+  case names {
+  | Nil =>
+    Right(Unit)
+  | Cons(name, rest) =>
+    try _ = _ensure-executable-in-path-list(name, path-list);
+    _ensure-executables-in-path-list(rest, path-list)
+  }
+}
+
+define _get-path-list(): list(text) {
+  match get-env("PATH") {
+  | Right(path-string) =>
+    pin path-string = path-string;
+    split(path-string, ":")
+  | Left(_) =>
+    List[]
+  }
+}
+
+define ensure-executables(): app(unit) {
+  let clang = _get-clang();
+  let error-or-unit = {
+    pin items = List[clang, *"curl", *"tar", *"zstd"];
+    pin path-list = _get-path-list();
+    _ensure-executables-in-path-list(items, path-list)
+  };
+  match error-or-unit {
+  | Left(e) =>
+    raise-error'(e)
+  | Right(_) =>
+    Right(Unit)
+  }
+}
+
+define zen(): unit {
+  pin result = ensure-executables();
+  vet(result);
 }
