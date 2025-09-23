@@ -1,5 +1,6 @@
 import {
   core.cell {make-cell},
+  core.control {discard},
   core.dictionary {dictionary, empty},
   core.system {get-error-message, system, system-error},
   path.io {create-directory, is-directory},
@@ -8,6 +9,7 @@ import {
   this.app.run {app-from-system, raise-error, raise-error'},
   this.kernel.common.const {source-file-extension},
   this.kernel.common.module {Module, extract-module, get-module-root-dir, main-module, module},
+  this.language.common.module-digest {Module-Digest},
   this.language.common.module-id {Base, Library, Main, module-id},
   this.logger.hint {hint},
 }
@@ -60,6 +62,26 @@ define _get-dependency-dir-path(m: &module): app(text) {
     let result on tmp = path.path.append(tmp, "dependency");
     let _ = module-root-dir;
     let _ = tmp;
+    Right(result)
+  }
+}
+
+define get-module-dir-by-id(m: &main-module, hint-or-none: ?&hint, mid: &module-id): app(text) {
+  case mid {
+  | Base =>
+    let message = "The base module cannot be used here";
+    match hint-or-none {
+    | Left(_) =>
+      raise-error'(*message)
+    | Right(hint) =>
+      raise-error(*hint, *message)
+    }
+  | Main =>
+    Right(get-module-root-dir(extract-module(m)))
+  | Library(Module-Digest(digest)) =>
+    try dep-dir = _get-dependency-dir-path(extract-module(m));
+    let result on dep-dir = path.path.append(dep-dir, digest);
+    discard(dep-dir);
     Right(result)
   }
 }
