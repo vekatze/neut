@@ -1,6 +1,8 @@
 import {
   core.cell {make-cell},
   core.dictionary {dictionary, empty},
+  path.path {split-extension},
+  this.kernel.common.const {source-file-extension},
   this.kernel.common.module {module},
 }
 
@@ -13,4 +15,19 @@ data module-kit {
 define make-module-kit(): module-kit {
   let cache-map-cell = make-cell(box {empty});
   _Module-Kit of {cache-map-cell}
+}
+
+define _has-source-extension(path: &text): bool {
+  let Pair(_, ext) = split-extension(path);
+  pin ext = ext;
+  eq-text(ext, source-file-extension)
+}
+
+define zen(): unit {
+  pin result = _has-source-extension("foo.nt");
+  vet(result);
+  pin result = _has-source-extension("foo.txt");
+  vet(result);
+  pin result = _has-source-extension("nt");
+  vet(result);
 }
