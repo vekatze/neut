@@ -12,3 +12,8 @@ data platform-kit {
     base-size: data-size,
   )
 }
+
+define get-arch(k: &platform-kit): arch {
+  tie _Platform-Kit of {arch} = k;
+  *arch
+}
