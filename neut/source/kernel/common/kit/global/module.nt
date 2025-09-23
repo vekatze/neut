@@ -1,5 +1,6 @@
 import {
-  core.dictionary {dictionary},
+  core.cell {make-cell},
+  core.dictionary {dictionary, empty},
   this.kernel.common.module {module},
 }
 
@@ -7,4 +8,9 @@ data module-kit {
 | _Module-Kit(
     cache-map-cell: cell(dictionary(text, module)),
   )
+}
+
+define make-module-kit(): module-kit {
+  let cache-map-cell = make-cell(box {empty});
+  _Module-Kit of {cache-map-cell}
 }
