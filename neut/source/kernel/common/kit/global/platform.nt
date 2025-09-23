@@ -1,0 +1,14 @@
+import {
+  this.kernel.common.arch {arch},
+  this.kernel.common.operating-system {operating-system},
+  this.language.common.data-size {data-size},
+}
+
+data platform-kit {
+| _Platform-Kit(
+    arch: arch,
+    operating-system: operating-system,
+    clang-digest: text,
+    base-size: data-size,
+  )
+}
