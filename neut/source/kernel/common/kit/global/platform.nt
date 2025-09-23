@@ -4,8 +4,8 @@ import {
   core.process {Process-Spec},
   core.text {to-binary},
   this.app.app {app},
-  this.app.run {raise-error'},
-  this.kernel.common.arch {arch},
+  this.app.run {raise-error', run},
+  this.kernel.common.arch {arch, data-size-from-arch},
   this.kernel.common.const {env-var-clang},
   this.kernel.common.operating-system {operating-system},
   this.kernel.common.platform {Platform, platform},
@@ -90,4 +90,19 @@ define _calculate-clang-digest(k: &run-process-kit): app(text) {
   | Left(err) =>
     raise-error'(err)
   }
+}
+
+define make-platform-kit(k: &run-process-kit): platform-kit {
+  run(get-logger-kit(k), {
+    let arch = _get-current-arch();
+    let base-size = data-size-from-arch(arch);
+    let operating-system = _get-current-operating-system();
+    try clang-digest = _calculate-clang-digest(k);
+    Right(_Platform-Kit of {
+      arch,
+      operating-system,
+      base-size,
+      clang-digest,
+    })
+  })
 }
