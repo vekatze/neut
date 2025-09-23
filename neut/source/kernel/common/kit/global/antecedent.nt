@@ -1,7 +1,9 @@
 import {
-  core.cell {borrow, make-cell},
-  core.dictionary {dictionary, empty, make-lookup},
-  this.kernel.common.module {module},
+  core.cell {borrow, make-cell, mutate},
+  core.dictionary {dictionary, empty, make-insert-with, make-lookup, to-list},
+  core.list {fold-left},
+  core.magic {cast},
+  this.kernel.common.module {Module, module},
   this.language.common.module-id {module-id, module-id-ord},
 }
 
@@ -33,4 +35,33 @@ define lookup-module(k: &antecedent-kit, x: &module-id): ?module {
       box v {Right(v)}
     }
   })
+}
+
+inline _dictionary-meta-in<k, v>(dict: meta dictionary(k, v)): dictionary(meta k, meta v) {
+  cast(_, _, dict)
+}
+
+define _rev-insert(mp: meta rev-map, v: meta module, k: meta module-id): meta rev-map {
+  box {
+    letbox mp = mp;
+    letbox k = k;
+    letbox v = v;
+    let Module of {id} = v;
+    let insert = make-insert-with(module-id-ord, exact core.list.append);
+    insert(mp, id, List[k])
+  }
+}
+
+define set(k: &antecedent-kit, !mp: meta dictionary(module-id, module)): unit {
+  tie _Antecedent-Kit of {map-cell, rev-map-cell} = k;
+  mutate(map-cell, function (_) {
+    !mp
+  });
+  mutate(rev-map-cell, function (dict) {
+    let other-mp = to-list(_dictionary-meta-in(!mp));
+    fold-left(dict, other-mp, function (d, p) {
+      let Pair(mid, m) = p;
+      _rev-insert(d, m, mid)
+    })
+  });
 }
