@@ -29,3 +29,8 @@ define get-platform(k: &platform-kit): platform {
   let operating-system = get-operating-system(k);
   Platform(operating-system, arch)
 }
+
+define get-data-size(k: &platform-kit): data-size {
+  tie _Platform-Kit of {base-size} = k;
+  *base-size
+}
