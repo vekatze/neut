@@ -1,0 +1,8 @@
+import {
+  core.dictionary {dictionary},
+  this.language.common.module-id {module-id},
+}
+
+inline rev-map: type {
+  dictionary(module-id, list(module-id))
+}
