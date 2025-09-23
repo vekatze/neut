@@ -3,7 +3,7 @@ import {
   core.dictionary {dictionary, empty},
   core.system {get-error-message, system, system-error},
   path.io {create-directory, is-directory},
-  path.path {split-extension},
+  path.path {drop-last, split-extension},
   this.app.app {app},
   this.app.run {app-from-system, raise-error, raise-error'},
   this.kernel.common.const {source-file-extension},
@@ -44,6 +44,23 @@ define _return-directory(path: text): app(text) {
     raise-error'(get-error-message(e))
   | Right(_) =>
     Right(path)
+  }
+}
+
+define _get-dependency-dir-path(m: &module): app(text) {
+  tie Module of {id, cache-dir} = m;
+  let module-root-dir = get-module-root-dir(m);
+  case id {
+  | Library(_) =>
+    let lib-dir on module-root-dir = drop-last(module-root-dir);
+    let _ = module-root-dir;
+    _return-directory(lib-dir)
+  | _ =>
+    let tmp on module-root-dir = path.path.append(module-root-dir, cache-dir);
+    let result on tmp = path.path.append(tmp, "dependency");
+    let _ = module-root-dir;
+    let _ = tmp;
+    Right(result)
   }
 }
 
