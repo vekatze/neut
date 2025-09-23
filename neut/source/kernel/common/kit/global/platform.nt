@@ -1,15 +1,18 @@
 import {
+  core.control {discard},
   core.environment {get-env},
-  core.text-builder {append-text, make-text-builder},
+  core.process {Process-Spec},
+  core.text {to-binary},
   this.app.app {app},
-  this.app.run {raise-error', run},
-  this.kernel.common.arch {Amd64, Arm64, arch},
+  this.app.run {raise-error'},
+  this.kernel.common.arch {arch},
   this.kernel.common.const {env-var-clang},
   this.kernel.common.operating-system {operating-system},
   this.kernel.common.platform {Platform, platform},
+  this.kernel.common.run-process {get-logger-kit, run-process, run-process-kit},
   this.language.common.data-size {data-size},
-  this.logger.hint {hint},
-  this.logger.logger-kit {logger-kit},
+  this.language.common.digest {hash-and-encode},
+  this.logger.print {report},
 }
 
 data platform-kit {
@@ -71,5 +74,20 @@ define _get-clang(): text {
     *"clang"
   | Right(clang) =>
     clang
+  }
+}
+
+define _calculate-clang-digest(k: &run-process-kit): app(text) {
+  let clang = _get-clang();
+  let spec = Process-Spec of {process := clang, args := List[*"--version"], cwd := none, input := *""};
+  match run-process(k, spec) {
+  | Right(v) =>
+    let result on v = hash-and-encode(to-binary(v));
+    let message on v = core.text.append("Clang info:\n", v);
+    report(get-logger-kit(k), message);
+    discard(v);
+    Right(result)
+  | Left(err) =>
+    raise-error'(err)
   }
 }

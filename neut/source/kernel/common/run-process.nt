@@ -18,8 +18,13 @@ data run-process-kit {
   )
 }
 
-define make-run-process-kit(logger-kit: logger-kit) {
+define make-run-process-kit(logger-kit: logger-kit): run-process-kit {
   _Run-Process-Kit(logger-kit)
+}
+
+define get-logger-kit(k: &run-process-kit): &logger-kit {
+  tie _Run-Process-Kit of {logger-kit} = k;
+  logger-kit
 }
 
 data command-error {
