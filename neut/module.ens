@@ -25,9 +25,9 @@
       ],
     },
     path {
-      digest "r55gS01B18Gaeb1RppdoP0yFe4f1JU5Q6qArN5FYTwo",
+      digest "sLMhtp3mQivtE5-2gcbQe4S4YaV6xNDXAa0mtqiJ4oc",
       mirror [
-        "https://github.com/vekatze/path-nt/raw/main/archive/0-1-36.tar.zst",
+        "https://github.com/vekatze/path-nt/raw/main/archive/0-1-37.tar.zst",
       ],
     },
     zonk {
