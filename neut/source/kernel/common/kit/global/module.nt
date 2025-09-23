@@ -4,16 +4,19 @@ import {
   core.dictionary {dictionary, empty},
   core.environment {get-env},
   core.system {get-error-message, system, system-error},
+  core.text-builder {append-text, extract, make-text-builder},
+  core.text.eq {strip-prefix},
   path.io {create-directory, is-directory},
   path.path {drop-last, split-extension},
   this.app.app {app},
-  this.app.run {app-from-system, raise-error, raise-error'},
+  this.app.run {raise-error, raise-error'},
   this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, source-file-extension},
-  this.kernel.common.module {Module, extract-module, get-module-root-dir, main-module, module},
+  this.kernel.common.module {Module, extract-module, get-module-root-dir, get-source-dir, main-module, module},
   this.kernel.common.module-URL {Module-URL, module-URL},
+  this.language.common.const {ns-sep},
   this.language.common.module-digest {Module-Digest, module-digest},
   this.language.common.module-id {Base, Library, Main, module-id},
-  this.logger.hint {hint},
+  this.logger.hint {hint, new-source-hint},
 }
 
 data module-kit {
@@ -113,6 +116,40 @@ define get-core-module-digest(): app(module-digest) {
         env-var-core-module-digest,
       );
     raise-error'(tmp)
+  }
+}
+
+define _ensure-file-module-sanity(m: &module, source-abs-path: &text): app(unit) {
+  let source-dir = get-source-dir(m);
+  let source-rel-path on source-dir = strip-prefix(source-dir, source-abs-path);
+  match source-rel-path {
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "The file`");
+      append-text(buf, source-abs-path);
+      append-text(buf, "` is not in the source directory of current module")
+    };
+    raise-error'(extract(buf))
+  | Right(source-rel-path) =>
+    let rel-dir on source-rel-path = drop-last(source-rel-path);
+    let _ = source-rel-path;
+    let has-sep on rel-dir = core.text.find-text(rel-dir, ns-sep);
+    if has-sep {
+      let source-hint = new-source-hint(source-abs-path);
+      let buf = make-text-builder(64);
+      let _ on buf = {
+        pin source-dir = source-dir;
+        pin rel-dir = rel-dir;
+        append-text(buf, "Directory names in ");
+        append-text(buf, source-dir);
+        append-text(buf, " must not contain dots, but found: ");
+        append-text(buf, rel-dir);
+      };
+      raise-error(source-hint, extract(buf))
+    } else {
+      Right(Unit)
+    }
   }
 }
 
