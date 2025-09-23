@@ -1,8 +1,16 @@
 import {
   core.dictionary {dictionary},
+  this.kernel.common.module {module},
   this.language.common.module-id {module-id},
 }
 
 inline rev-map: type {
   dictionary(module-id, list(module-id))
+}
+
+data antecedent-kit {
+| _Antecedent-Kit(
+    map-cell: cell(dictionary(module-id, module)),
+    rev-map-cell: cell(dictionary(module-id, list(module-id))),
+  )
 }
