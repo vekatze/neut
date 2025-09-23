@@ -53,3 +53,12 @@ define _get-current-arch(): arch {
     this.kernel.common.arch.Arm64
   }
 }
+
+define _get-current-operating-system(): operating-system {
+  introspect operating-system {
+  | linux =>
+    this.kernel.common.operating-system.Linux
+  | darwin =>
+    this.kernel.common.operating-system.Darwin
+  }
+}
