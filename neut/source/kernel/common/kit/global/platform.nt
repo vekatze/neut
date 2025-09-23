@@ -17,3 +17,8 @@ define get-arch(k: &platform-kit): arch {
   tie _Platform-Kit of {arch} = k;
   *arch
 }
+
+define get-operating-system(k: &platform-kit): operating-system {
+  tie _Platform-Kit of {operating-system} = k;
+  *operating-system
+}
