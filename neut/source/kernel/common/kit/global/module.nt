@@ -8,10 +8,10 @@ import {
   path.path {drop-last, split-extension},
   this.app.app {app},
   this.app.run {app-from-system, raise-error, raise-error'},
-  this.kernel.common.const {env-var-core-module-URL, source-file-extension},
+  this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, source-file-extension},
   this.kernel.common.module {Module, extract-module, get-module-root-dir, main-module, module},
   this.kernel.common.module-URL {Module-URL, module-URL},
-  this.language.common.module-digest {Module-Digest},
+  this.language.common.module-digest {Module-Digest, module-digest},
   this.language.common.module-id {Base, Library, Main, module-id},
   this.logger.hint {hint},
 }
@@ -93,7 +93,25 @@ define get-core-module-URL(): app(module-URL) {
   | Right(core-module-URL) =>
     Right(Module-URL(core-module-URL))
   | Left(_) =>
-    let tmp = core.text.append("The URL of the core module is not specified; set it via ", env-var-core-module-URL);
+    let tmp =
+      core.text.append(
+        "The URL of the core module is not specified; set it via ",
+        env-var-core-module-URL,
+      );
+    raise-error'(tmp)
+  }
+}
+
+define get-core-module-digest(): app(module-digest) {
+  match get-env(env-var-core-module-digest) {
+  | Right(core-module-digest) =>
+    Right(Module-Digest(core-module-digest))
+  | Left(_) =>
+    let tmp =
+      core.text.append(
+        "The digest of the core module is not specified; set it via ",
+        env-var-core-module-digest,
+      );
     raise-error'(tmp)
   }
 }
