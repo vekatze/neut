@@ -5,3 +5,7 @@ import {
 inline exp-key: type {
   key
 }
+
+inline imp-key: type {
+  key
+}
