@@ -111,8 +111,17 @@ inline internal-hint: hint {
   }
 }
 
-define new-source-hint(file-path: &text): hint {
+define new-source-hint-N(file-path: &text): hint {
   new-hint(1, 1, file-path)
+}
+
+define new-source-hint(file-path: text): hint {
+  Saved-Hint of {
+    file-path,
+    line := 1,
+    column := 1,
+    should-save-location := True,
+  }
 }
 
 define show-file-pos(m: &hint): text {

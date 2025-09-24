@@ -13,6 +13,7 @@ import {
   this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, source-file-extension},
   this.kernel.common.module {Module, extract-module, get-module-root-dir, get-source-dir, main-module, module},
   this.kernel.common.module-URL {Module-URL, module-URL},
+  this.kernel.common.source {Source, source},
   this.language.common.const {ns-sep},
   this.language.common.module-digest {Module-Digest, module-digest},
   this.language.common.module-id {Base, Library, Main, module-id},
@@ -119,7 +120,12 @@ define get-core-module-digest(): app(module-digest) {
   }
 }
 
-define _ensure-file-module-sanity(m: &module, source-abs-path: &text): app(unit) {
+data _error-info {
+| _Message(message: text)
+| _Located-Message(message: text)
+}
+
+define _ensure-file-module-sanity(m: &module, source-abs-path: &text): either(_error-info, unit) {
   let source-dir = get-source-dir(m);
   let source-rel-path on source-dir = strip-prefix(source-dir, source-abs-path);
   match source-rel-path {
@@ -130,13 +136,12 @@ define _ensure-file-module-sanity(m: &module, source-abs-path: &text): app(unit)
       append-text(buf, source-abs-path);
       append-text(buf, "` is not in the source directory of current module")
     };
-    raise-error'(extract(buf))
+    Left(_Message(extract(buf)))
   | Right(source-rel-path) =>
     let rel-dir on source-rel-path = drop-last(source-rel-path);
     let _ = source-rel-path;
     let has-sep on rel-dir = core.text.find-text(rel-dir, ns-sep);
     if has-sep {
-      let source-hint = new-source-hint(source-abs-path);
       let buf = make-text-builder(64);
       let _ on buf = {
         pin source-dir = source-dir;
@@ -146,11 +151,33 @@ define _ensure-file-module-sanity(m: &module, source-abs-path: &text): app(unit)
         append-text(buf, " must not contain dots, but found: ");
         append-text(buf, rel-dir);
       };
-      raise-error(source-hint, extract(buf))
+      Left(_Located-Message(extract(buf)))
     } else {
       Right(Unit)
     }
   }
+}
+
+define source-from-path(m: &module, source-abs-path: text): app(source) {
+  let x on source-abs-path = _ensure-file-module-sanity(m, source-abs-path);
+  try source-abs-path =
+    match x {
+    | Left(e) =>
+      match e {
+      | _Message(message) =>
+        raise-error'(message)
+      | _Located-Message(message) =>
+        let source-hint = new-source-hint(source-abs-path);
+        raise-error(source-hint, message)
+      }
+    | Right(_) =>
+      Right(source-abs-path)
+    };
+  Right(Source of {
+    source-module := *m,
+    file-path := source-abs-path,
+    source-hint := none,
+  })
 }
 
 define zen(): unit {
