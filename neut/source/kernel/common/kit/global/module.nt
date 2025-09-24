@@ -3,7 +3,7 @@ import {
   core.control {discard},
   core.dictionary {dictionary, empty},
   core.environment {get-env},
-  core.list {filter, for-each},
+  core.list {filter, for-each, for-each-E},
   core.system {get-error-message, system, system-error},
   core.text-builder {append-text, extract, make-text-builder},
   core.text.eq {eq-suffix, strip-prefix},
@@ -200,6 +200,13 @@ define get-all-source-path-in-module(m: &module): app(list(text)) {
   discard(source-dir);
   try items = app-from-system(items);
   Right(filter(items, _has-source-extension))
+}
+
+define get-all-source-in-module(m: &module): app(list(source)) {
+  try source-path-list = get-all-source-path-in-module(m);
+  for-each-E(source-path-list, function (source-path) {
+    source-from-path(m, source-path)
+  })
 }
 
 define zen(): unit {
