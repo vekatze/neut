@@ -1,0 +1,7 @@
+import {
+  this.language.raw-term.key {key},
+}
+
+inline exp-key: type {
+  key
+}
