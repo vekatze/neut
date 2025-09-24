@@ -1,4 +1,8 @@
 import {
+  core.dictionary {dictionary},
+  this.kernel.common.module {main-module},
+  this.language.common.definite-description {definite-description},
+  this.language.common.is-const-like {is-const-like},
   this.language.raw-term.key {key},
 }
 
@@ -8,4 +12,15 @@ inline exp-key: type {
 
 inline imp-key: type {
   key
+}
+
+data _key-arg-value {
+| _Key-Arg-Value(is-const-like, list(imp-key), list(exp-key))
+}
+
+data key-arg-kit {
+| _Key-Arg-Kit(
+    main-module: main-module,
+    key-arg-map-cell: cell(dictionary(definite-description, _key-arg-value)),
+  )
 }
