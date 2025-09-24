@@ -1,5 +1,7 @@
 import {
   core.dictionary {dictionary},
+  core.text.eq {eq-prefix},
+  this.kernel.common.const {hole-var-prefix},
   this.kernel.common.module {main-module},
   this.language.common.definite-description {definite-description},
   this.language.common.is-const-like {is-const-like},
@@ -23,4 +25,8 @@ data key-arg-kit {
     main-module: main-module,
     key-arg-map-cell: cell(dictionary(definite-description, _key-arg-value)),
   )
+}
+
+define _is-hole(k: &key): bool {
+  eq-prefix(k, hole-var-prefix)
 }
