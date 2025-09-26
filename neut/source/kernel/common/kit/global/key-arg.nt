@@ -107,6 +107,11 @@ define show-key-list(ks: &list(key)): text {
   core.text.intercalate(tmp, *"\n")
 }
 
+define _lookup(dict: &dictionary(definite-description, _key-arg-value), dd: &definite-description): ?&_key-arg-value {
+  let lookup = make-lookup(ord-dd);
+  lookup(dict, dd)
+}
+
 define insert(
   k: &key-arg-kit,
   m: hint,
@@ -116,10 +121,9 @@ define insert(
   exp-keys: list(exp-key),
 ): app(unit) {
   tie _Key-Arg-Kit of {key-arg-map-cell, main-module} = k;
-  let lookup = make-lookup(ord-dd);
   let error-or-unit: either(text, unit) on func-name, imp-keys, exp-keys =
     borrow(key-arg-map-cell, function (dict) {
-      match lookup(dict, func-name) {
+      match _lookup(dict, func-name) {
       | Left(_) =>
         box {Right(Unit)}
       | Right(v) =>
@@ -195,6 +199,30 @@ define insert(
       }
     });
     Right(Unit)
+  }
+}
+
+define lookup(k: &key-arg-kit, m: hint, data-name: &definite-description): app(pair(list(imp-key), list(exp-key))) {
+  tie _Key-Arg-Kit of {key-arg-map-cell, main-module} = k;
+  let tmp =
+    borrow(key-arg-map-cell, function (dict) {
+      match _lookup(dict, data-name) {
+      | Left(_) =>
+        quote {Left(Unit)}
+      | Right(v) =>
+        tie _Key-Arg-Value(_, imp-keys, exp-keys) = v;
+        box imp-keys, exp-keys {Right(Pair(imp-keys, exp-keys))}
+      }
+    });
+  match tmp {
+  | Left(Unit) =>
+    let message = {
+      pin data-name = readable-dd(main-module, data-name);
+      core.text.append("No such function is defined: ", data-name)
+    };
+    raise-error(m, message)
+  | Right(v) =>
+    Right(v)
   }
 }
 
