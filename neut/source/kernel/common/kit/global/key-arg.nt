@@ -1,5 +1,6 @@
 import {
   core.dictionary {dictionary},
+  core.text-builder {append-text, extract, make-text-builder, text-builder},
   core.text.eq {eq-prefix},
   this.kernel.common.const {hole-var-prefix},
   this.kernel.common.module {main-module},
@@ -31,7 +32,7 @@ define _is-hole(k: &key): bool {
   eq-prefix(k, hole-var-prefix)
 }
 
-define eq-keys(ks1: &list(key), ks2: &list(key)): bool {
+define _eq-keys(ks1: &list(key), ks2: &list(key)): bool {
   case ks1, ks2 {
   | Nil, Nil =>
     True
@@ -42,17 +43,32 @@ define eq-keys(ks1: &list(key), ks2: &list(key)): bool {
   | Cons(k1, rest1), Cons(k2, rest2) =>
     match _is-hole(k1), _is-hole(k2) {
     | True, True =>
-      eq-keys(rest1, rest2)
+      _eq-keys(rest1, rest2)
     | True, False =>
       False
     | False, True =>
       False
     | False, False =>
       if eq-text(k1, k2) {
-        eq-keys(rest1, rest2)
+        _eq-keys(rest1, rest2)
       } else {
         False
       }
     }
   }
+}
+
+define _text-from-keys(ks: &list(key)): text {
+  let buf = make-text-builder(64);
+  let f =
+    define loop(buf: text-builder, ks: &list(key)): text {
+      case ks {
+      | Nil =>
+        extract(buf)
+      | Cons(k, rest) =>
+        let _ on buf = append-text(buf, k);
+        loop(buf, rest)
+      }
+    };
+  f(buf, ks)
 }
