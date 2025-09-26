@@ -1,5 +1,6 @@
 import {
-  core.dictionary {dictionary},
+  core.cell {make-cell},
+  core.dictionary {dictionary, empty},
   core.list {for-each-N},
   core.text-builder {append-text, extract, make-text-builder, text-builder},
   core.text.eq {eq-prefix},
@@ -27,6 +28,11 @@ data key-arg-kit {
     main-module: main-module,
     key-arg-map-cell: cell(dictionary(definite-description, _key-arg-value)),
   )
+}
+
+define make-key-arg-kit(main-module: main-module): key-arg-kit {
+  let key-arg-map-cell = make-cell(box {empty});
+  _Key-Arg-Kit of {main-module, key-arg-map-cell}
 }
 
 define _is-hole(k: &key): bool {
