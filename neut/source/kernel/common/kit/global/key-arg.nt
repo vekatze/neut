@@ -58,17 +58,10 @@ define _eq-keys(ks1: &list(key), ks2: &list(key)): bool {
   }
 }
 
-define _text-from-keys(ks: &list(key)): text {
-  let buf = make-text-builder(64);
-  let f =
-    define loop(buf: text-builder, ks: &list(key)): text {
-      case ks {
-      | Nil =>
-        extract(buf)
-      | Cons(k, rest) =>
-        let _ on buf = append-text(buf, k);
-        loop(buf, rest)
-      }
-    };
-  f(buf, ks)
+define _text-from-key(k: &key): &text {
+  if _is-hole(k) {
+    "_"
+  } else {
+    k
+  }
 }
