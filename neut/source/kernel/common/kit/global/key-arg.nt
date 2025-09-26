@@ -1,5 +1,6 @@
 import {
   core.dictionary {dictionary},
+  core.list {for-each-N},
   core.text-builder {append-text, extract, make-text-builder, text-builder},
   core.text.eq {eq-prefix},
   this.kernel.common.const {hole-var-prefix},
@@ -85,4 +86,18 @@ define _text-from-keys(ks: &list(key)): text {
       }
     };
   f(buf, ks)
+}
+
+define show-key-list(ks: &list(key)): text {
+  let tmp =
+    for-each-N(ks, function (k) {
+      core.text.append("- ", k)
+    });
+  core.text.intercalate(tmp, *"\n")
+}
+
+define zen(): unit {
+  pin tmp = List[*"foo", *"bar"];
+  pin tmp = show-key-list(tmp);
+  vet(tmp)
 }
