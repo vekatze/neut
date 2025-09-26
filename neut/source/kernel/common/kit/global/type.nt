@@ -1,0 +1,9 @@
+import {
+  core.dictionary {dictionary},
+  this.language.common.definite-description {definite-description},
+  this.language.weak-term.weak-term {weak-term},
+}
+
+data type-kit {
+| _Type-Kit(type-env-cell: cell(dictionary(definite-description, weak-term)))
+}
