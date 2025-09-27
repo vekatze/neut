@@ -1,16 +1,22 @@
 import {
-  core.cell {clone, make-cell},
+  core.cell {clone, make-cell, mutate},
   core.dictionary {make-lookup},
+  core.text {to-binary},
   core.text-builder {append-text, extract, make-text-builder},
   path.path {split-extension, take-last},
   this.app.app {app},
   this.app.run {raise-error'},
-  this.kernel.common.clang-option {clang-option},
+  this.ens.ens {E-String, dict-from-list, inject},
+  this.ens.to-doc,
+  this.kernel.common.clang-option {Clang-Option, clang-option},
   this.kernel.common.kit.global.platform {get-clang-digest, platform-kit},
   this.kernel.common.module {Module, extract-module, main-module, module},
   this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, target},
+  this.language.common.digest {hash-and-encode},
   this.language.common.module-id {Library},
+  this.logger.hint {hint, internal-hint},
   this.logger.logger-kit {logger-kit},
+  this.path.read {read-text-from-path},
 }
 
 data path-kit {
@@ -43,7 +49,7 @@ define ensure-not-in-dependency-dir(m: &main-module): app(unit) {
   }
 }
 
-define get-clang-option(t: &target, m: &module): app(clang-option) {
+define _get-clang-option(t: &target, m: &module): app(clang-option) {
   case t {
   | Main(main-module) =>
     case main-module {
@@ -70,6 +76,40 @@ define get-clang-option(t: &target, m: &module): app(clang-option) {
     Right(this.kernel.common.clang-option.empty-clang-option)
   | Peripheral-Single(_) =>
     Right(this.kernel.common.clang-option.empty-clang-option)
+  }
+}
+
+inline _m: hint {
+  internal-hint
+}
+
+define _get-build-signature(k: &path-kit, t: &target): app(text) {
+  tie _Path-Kit of {cache-cell, platform-kit, main-module} = k;
+  match clone(cache-cell) {
+  | Right(sig) =>
+    Right(sig)
+  | Left(_) =>
+    let m = extract-module(*main-module);
+    tie Module of {location} = m;
+    let clang-digest = get-clang-digest(*platform-kit);
+    try Clang-Option of {compile-option, link-option} = _get-clang-option(t, m);
+    let compile-option-text = core.text.intercalate(compile-option, *" ");
+    let link-option-text = core.text.intercalate(link-option, *" ");
+    try module-ens = read-text-from-path(location);
+    let ens =
+      dict-from-list(_m, List[
+        Pair(Pair(_m, *"clang-digest"), E-String(_m, *clang-digest)),
+        Pair(Pair(_m, *"compile-option"), E-String(_m, compile-option-text)),
+        Pair(Pair(_m, *"link-option"), E-String(_m, link-option-text)),
+        Pair(Pair(_m, *"module-configuration"), E-String(_m, module-ens)),
+      ]);
+    let ens-text = this.ens.to-doc.pp(inject(ens));
+    let !sig on ens-text = hash-and-encode(to-binary(ens-text));
+    let _ = ens-text;
+    mutate(cache-cell, function (_) {
+      quote {Right(!sig)}
+    });
+    Right(!sig)
   }
 }
 
