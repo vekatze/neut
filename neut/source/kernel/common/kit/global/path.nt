@@ -5,15 +5,15 @@ import {
   core.text-builder {append-text, extract, make-text-builder},
   path.path {split-extension, take-last},
   this.app.app {app},
-  this.app.run {app-from-system, raise-error'},
+  this.app.run {app-from-system, raise-critical', raise-error'},
   this.ens.ens {E-String, dict-from-list, inject},
   this.ens.to-doc,
   this.kernel.common.clang-option {Clang-Option, clang-option},
   this.kernel.common.const {artifact-rel-dir, entry-rel-dir, executable-rel-dir, foreign-rel-dir, zen-rel-dir},
   this.kernel.common.kit.global.module {_ensure-directory},
   this.kernel.common.kit.global.platform {get-base-build-dir, get-clang-digest, platform-kit},
-  this.kernel.common.module {Module, extract-module, main-module, module},
-  this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, target},
+  this.kernel.common.module {Module, extract-module, get-rel-path-from-source-dir, main-module, module},
+  this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, main-target, target},
   this.language.common.digest {hash-and-encode},
   this.language.common.module-id {Library},
   this.logger.hint {hint, internal-hint},
@@ -51,29 +51,33 @@ define ensure-not-in-dependency-dir(m: &main-module): app(unit) {
   }
 }
 
+define _get-clang-option-base(t: &main-target, m: &module): app(clang-option) {
+  case t {
+  | Named(name, _) =>
+    tie Module of {target} = m;
+    let lookup = make-lookup(core.text.ord.as-ord);
+    match lookup(target, name) {
+    | Left(_) =>
+      let buf = make-text-builder(64);
+      let _ on buf = {
+        append-text(buf, "No such target is defined: `");
+        append-text(buf, name);
+        append-text(buf, "`");
+      };
+      raise-error'(extract(buf))
+    | Right(v) =>
+      tie Target-Summary of {clang-option} = v;
+      Right(*clang-option)
+    }
+  | Zen(_, clang-option) =>
+    Right(*clang-option)
+  }
+}
+
 define _get-clang-option(t: &target, m: &module): app(clang-option) {
   case t {
   | Main(main-module) =>
-    case main-module {
-    | Named(name, _) =>
-      tie Module of {target} = m;
-      let lookup = make-lookup(core.text.ord.as-ord);
-      match lookup(target, name) {
-      | Left(_) =>
-        let buf = make-text-builder(64);
-        let _ on buf = {
-          append-text(buf, "No such target is defined: `");
-          append-text(buf, name);
-          append-text(buf, "`");
-        };
-        raise-error'(extract(buf))
-      | Right(v) =>
-        tie Target-Summary of {clang-option} = v;
-        Right(*clang-option)
-      }
-    | Zen(_, clang-option) =>
-      Right(*clang-option)
-    }
+    _get-clang-option-base(main-module, m)
   | Peripheral =>
     Right(this.kernel.common.clang-option.empty-clang-option)
   | Peripheral-Single(_) =>
@@ -85,33 +89,52 @@ inline _m: hint {
   internal-hint
 }
 
-define _get-build-signature(k: &path-kit, t: &target): app(text) {
+define _register-build-signature(k: &path-kit, clang-option: clang-option): app(text) {
   tie _Path-Kit of {cache-cell, platform-kit, main-module} = k;
+  let m = extract-module(*main-module);
+  tie Module of {location} = m;
+  let clang-digest = get-clang-digest(*platform-kit);
+  let Clang-Option of {compile-option, link-option} = clang-option;
+  let compile-option-text = core.text.intercalate(compile-option, *" ");
+  let link-option-text = core.text.intercalate(link-option, *" ");
+  try module-ens = read-text-from-path(location);
+  let ens =
+    dict-from-list(_m, List[
+      Pair(Pair(_m, *"clang-digest"), E-String(_m, *clang-digest)),
+      Pair(Pair(_m, *"compile-option"), E-String(_m, compile-option-text)),
+      Pair(Pair(_m, *"link-option"), E-String(_m, link-option-text)),
+      Pair(Pair(_m, *"module-configuration"), E-String(_m, module-ens)),
+    ]);
+  let ens-text = this.ens.to-doc.pp(inject(ens));
+  let !sig on ens-text = hash-and-encode(to-binary(ens-text));
+  let _ = ens-text;
+  mutate(cache-cell, function (_) {
+    quote {Right(!sig)}
+  });
+  Right(!sig)
+}
+
+define _get-build-signature-base(k: &path-kit, t: &main-target): app(text) {
+  tie _Path-Kit of {cache-cell, main-module} = k;
   match clone(cache-cell) {
   | Right(sig) =>
     Right(sig)
   | Left(_) =>
     let m = extract-module(*main-module);
-    tie Module of {location} = m;
-    let clang-digest = get-clang-digest(*platform-kit);
-    try Clang-Option of {compile-option, link-option} = _get-clang-option(t, m);
-    let compile-option-text = core.text.intercalate(compile-option, *" ");
-    let link-option-text = core.text.intercalate(link-option, *" ");
-    try module-ens = read-text-from-path(location);
-    let ens =
-      dict-from-list(_m, List[
-        Pair(Pair(_m, *"clang-digest"), E-String(_m, *clang-digest)),
-        Pair(Pair(_m, *"compile-option"), E-String(_m, compile-option-text)),
-        Pair(Pair(_m, *"link-option"), E-String(_m, link-option-text)),
-        Pair(Pair(_m, *"module-configuration"), E-String(_m, module-ens)),
-      ]);
-    let ens-text = this.ens.to-doc.pp(inject(ens));
-    let !sig on ens-text = hash-and-encode(to-binary(ens-text));
-    let _ = ens-text;
-    mutate(cache-cell, function (_) {
-      quote {Right(!sig)}
-    });
-    Right(!sig)
+    try clang-option = _get-clang-option-base(t, m);
+    _register-build-signature(k, clang-option)
+  }
+}
+
+define _get-build-signature(k: &path-kit, t: &target): app(text) {
+  tie _Path-Kit of {cache-cell, main-module} = k;
+  match clone(cache-cell) {
+  | Right(sig) =>
+    Right(sig)
+  | Left(_) =>
+    let m = extract-module(*main-module);
+    try clang-option = _get-clang-option(t, m);
+    _register-build-signature(k, clang-option)
   }
 }
 
@@ -119,6 +142,18 @@ define _get-build-dir(k: &path-kit, t: &target, m: &module): app(text) {
   tie _Path-Kit of {platform-kit} = k;
   let base-build-dir = get-base-build-dir(*platform-kit, m);
   try build-signature = _get-build-signature(k, t);
+  let build-prefix on build-signature = core.text.append("build-", build-signature);
+  let result on base-build-dir, build-prefix = core.text.append(base-build-dir, build-prefix);
+  let _ = build-signature;
+  let _ = base-build-dir;
+  let _ = build-prefix;
+  Right(result)
+}
+
+define _get-build-dir-base(k: &path-kit, t: &main-target, m: &module): app(text) {
+  tie _Path-Kit of {platform-kit} = k;
+  let base-build-dir = get-base-build-dir(*platform-kit, m);
+  try build-signature = _get-build-signature-base(k, t);
   let build-prefix on build-signature = core.text.append("build-", build-signature);
   let result on base-build-dir, build-prefix = core.text.append(base-build-dir, build-prefix);
   let _ = build-signature;
@@ -150,15 +185,15 @@ define _get-entry-dir(k: &path-kit, t: &target, m: &module): app(text) {
   Right(result)
 }
 
-define _get-executable-dir(k: &path-kit, t: &target, m: &module): app(text) {
-  try build-dir = _get-build-dir(k, t, m);
+define _get-executable-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+  try build-dir = _get-build-dir-base(k, t, m);
   let result on build-dir = path.path.append(build-dir, executable-rel-dir);
   let _ = build-dir;
   Right(result)
 }
 
-define _get-zen-executable-dir(k: &path-kit, t: &target, m: &module): app(text) {
-  try build-dir = _get-build-dir(k, t, m);
+define _get-zen-executable-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+  try build-dir = _get-build-dir-base(k, t, m);
   let tmp on build-dir = path.path.append(build-dir, zen-rel-dir);
   let result on tmp = path.path.append(tmp, executable-rel-dir);
   let _ = build-dir;
@@ -173,6 +208,33 @@ define _get-zen-entry-dir(k: &path-kit, t: &target, m: &module): app(text) {
   let _ = build-dir;
   let _ = tmp;
   Right(result)
+}
+
+define get-executable-output-path(k: &path-kit, mt: &main-target): app(text) {
+  tie _Path-Kit of {main-module} = k;
+  let m = extract-module(*main-module);
+  case mt {
+  | Named(target, _) =>
+    try executable-dir = _get-executable-dir(k, mt, m);
+    let result on executable-dir = path.path.append(executable-dir, target);
+    let _ = executable-dir;
+    Right(result)
+  | Zen(path, _) =>
+    try zen-executable-dir = _get-zen-executable-dir(k, mt, m);
+    match get-rel-path-from-source-dir(m, path) {
+    | Left(_) =>
+      raise-critical'(*"")
+    | Right(rel-path) =>
+      let Pair(rel-path-without-ext, _) on rel-path = split-extension(rel-path);
+      let zen-path on rel-path-without-ext = core.text.append(rel-path-without-ext, ".zen");
+      let result on zen-executable-dir, zen-path = path.path.append(zen-executable-dir, zen-path);
+      let _ = rel-path;
+      let _ = rel-path-without-ext;
+      let _ = zen-executable-dir;
+      let _ = zen-path;
+      Right(result)
+    }
+  }
 }
 
 define zen(): unit {
