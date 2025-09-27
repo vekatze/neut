@@ -9,7 +9,7 @@ import {
   this.ens.ens {E-String, dict-from-list, inject},
   this.ens.to-doc,
   this.kernel.common.clang-option {Clang-Option, clang-option},
-  this.kernel.common.const {artifact-rel-dir, entry-rel-dir, foreign-rel-dir},
+  this.kernel.common.const {artifact-rel-dir, entry-rel-dir, executable-rel-dir, foreign-rel-dir},
   this.kernel.common.kit.global.module {_ensure-directory},
   this.kernel.common.kit.global.platform {get-base-build-dir, get-clang-digest, platform-kit},
   this.kernel.common.module {Module, extract-module, main-module, module},
@@ -146,6 +146,13 @@ define _get-foreign-dir(k: &path-kit, t: &target, m: &module): app(text) {
 define _get-entry-dir(k: &path-kit, t: &target, m: &module): app(text) {
   try build-dir = _get-build-dir(k, t, m);
   let result on build-dir = core.text.append(build-dir, entry-rel-dir);
+  let _ = build-dir;
+  Right(result)
+}
+
+define _get-executable-dir(k: &path-kit, t: &target, m: &module): app(text) {
+  try build-dir = _get-build-dir(k, t, m);
+  let result on build-dir = core.text.append(build-dir, executable-rel-dir);
   let _ = build-dir;
   Right(result)
 }
