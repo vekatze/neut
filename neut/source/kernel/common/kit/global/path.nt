@@ -1,8 +1,11 @@
 import {
   core.cell {make-cell},
   path.path {split-extension, take-last},
+  this.app.app {app},
+  this.app.run {raise-error'},
   this.kernel.common.kit.global.platform {platform-kit},
-  this.kernel.common.module {main-module},
+  this.kernel.common.module {Module, extract-module, main-module},
+  this.language.common.module-id {Library},
   this.logger.logger-kit {logger-kit},
 }
 
@@ -24,6 +27,16 @@ define get-base-name(path: &text): text {
   pin bar = take-last(path);
   let Pair(buz, _) = split-extension(bar);
   buz
+}
+
+define ensure-not-in-dependency-dir(m: &main-module): app(unit) {
+  tie Module of {id} = extract-module(m);
+  case id {
+  | Library(_) =>
+    raise-error'(*"This command cannot be used under a dependency directory")
+  | _ =>
+    Right(Unit)
+  }
 }
 
 define zen(): unit {
