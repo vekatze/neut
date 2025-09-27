@@ -1,5 +1,6 @@
 import {
   core.cell {make-cell},
+  path.path {split-extension, take-last},
   this.kernel.common.kit.global.platform {platform-kit},
   this.kernel.common.module {main-module},
   this.logger.logger-kit {logger-kit},
@@ -17,4 +18,15 @@ data path-kit {
 define make-path-kit(mm: &main-module, lk: &logger-kit, pk: &platform-kit): path-kit {
   let cache-cell = make-cell(box {none});
   _Path-Kit(mm, cache-cell, lk, pk)
+}
+
+define get-base-name(path: &text): text {
+  pin bar = take-last(path);
+  let Pair(buz, _) = split-extension(bar);
+  buz
+}
+
+define zen(): unit {
+  pin x = get-base-name("foo/bar/buz.nt");
+  vet(x);
 }
