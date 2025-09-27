@@ -9,6 +9,7 @@ import {
   this.ens.ens {E-String, dict-from-list, inject},
   this.ens.to-doc,
   this.kernel.common.clang-option {Clang-Option, clang-option},
+  this.kernel.common.const {artifact-rel-dir},
   this.kernel.common.kit.global.platform {get-base-build-dir, get-clang-digest, platform-kit},
   this.kernel.common.module {Module, extract-module, main-module, module},
   this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, target},
@@ -122,6 +123,13 @@ define _get-build-dir(k: &path-kit, t: &target, m: &module): app(text) {
   let _ = build-signature;
   let _ = base-build-dir;
   let _ = build-prefix;
+  Right(result)
+}
+
+define _get-artifact-dir(k: &path-kit, t: &target, m: &module): app(text) {
+  try build-dir = _get-build-dir(k, t, m);
+  let result on build-dir = core.text.append(build-dir, artifact-rel-dir);
+  let _ = build-dir;
   Right(result)
 }
 
