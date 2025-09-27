@@ -1,8 +1,12 @@
 import {
-  core.cell {make-cell, mutate},
-  core.dictionary {dictionary, empty, make-insert},
-  this.language.common.definite-description {definite-description, ord-dd},
+  core.cell {borrow, make-cell, mutate},
+  core.dictionary {dictionary, empty, make-insert, make-lookup},
+  core.text-builder {append-text, extract, make-text-builder},
+  this.app.app {app},
+  this.app.run {raise-critical},
+  this.language.common.definite-description {definite-description, ord-dd, text-from-dd},
   this.language.weak-term.weak-term {weak-term},
+  this.logger.hint {hint},
 }
 
 data type-kit {
@@ -23,6 +27,19 @@ define insert(k: &type-kit, dd: meta definite-description, v: meta weak-term): u
       letbox dd = dd;
       letbox v = v;
       insert(dict, dd, v)
+    }
+  })
+}
+
+define lookup-maybe(k: &type-kit, dd: &definite-description): ?weak-term {
+  tie _Type-Kit of {type-env-cell} = k;
+  let lookup = make-lookup(ord-dd);
+  borrow(type-env-cell, function (dict) {
+    match lookup(dict, dd) {
+    | Left(_) =>
+      box {none}
+    | Right(v) =>
+      box v {Right(v)}
     }
   })
 }
