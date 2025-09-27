@@ -1,0 +1,14 @@
+import {
+  this.kernel.common.kit.global.platform {platform-kit},
+  this.kernel.common.module {main-module},
+  this.logger.logger-kit {logger-kit},
+}
+
+data path-kit {
+| _Path-Kit(
+    main-module: main-module,
+    cache-cell: cell(?text),
+    logger-kit: &logger-kit,
+    platform-kit: &platform-kit,
+  )
+}
