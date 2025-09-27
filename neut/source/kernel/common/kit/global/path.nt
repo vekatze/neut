@@ -1,10 +1,14 @@
 import {
-  core.cell {make-cell},
+  core.cell {clone, make-cell},
+  core.dictionary {make-lookup},
+  core.text-builder {append-text, extract, make-text-builder},
   path.path {split-extension, take-last},
   this.app.app {app},
   this.app.run {raise-error'},
-  this.kernel.common.kit.global.platform {platform-kit},
-  this.kernel.common.module {Module, extract-module, main-module},
+  this.kernel.common.clang-option {clang-option},
+  this.kernel.common.kit.global.platform {get-clang-digest, platform-kit},
+  this.kernel.common.module {Module, extract-module, main-module, module},
+  this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, target},
   this.language.common.module-id {Library},
   this.logger.logger-kit {logger-kit},
 }
@@ -36,6 +40,36 @@ define ensure-not-in-dependency-dir(m: &main-module): app(unit) {
     raise-error'(*"This command cannot be used under a dependency directory")
   | _ =>
     Right(Unit)
+  }
+}
+
+define get-clang-option(t: &target, m: &module): app(clang-option) {
+  case t {
+  | Main(main-module) =>
+    case main-module {
+    | Named(name, _) =>
+      tie Module of {target} = m;
+      let lookup = make-lookup(core.text.ord.as-ord);
+      match lookup(target, name) {
+      | Left(_) =>
+        let buf = make-text-builder(64);
+        let _ on buf = {
+          append-text(buf, "No such target is defined: `");
+          append-text(buf, name);
+          append-text(buf, "`");
+        };
+        raise-error'(extract(buf))
+      | Right(v) =>
+        tie Target-Summary of {clang-option} = v;
+        Right(*clang-option)
+      }
+    | Zen(_, clang-option) =>
+      Right(*clang-option)
+    }
+  | Peripheral =>
+    Right(this.kernel.common.clang-option.empty-clang-option)
+  | Peripheral-Single(_) =>
+    Right(this.kernel.common.clang-option.empty-clang-option)
   }
 }
 
