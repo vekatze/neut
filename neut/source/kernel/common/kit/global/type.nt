@@ -1,9 +1,15 @@
 import {
-  core.dictionary {dictionary},
+  core.cell {make-cell},
+  core.dictionary {dictionary, empty},
   this.language.common.definite-description {definite-description},
   this.language.weak-term.weak-term {weak-term},
 }
 
 data type-kit {
 | _Type-Kit(type-env-cell: cell(dictionary(definite-description, weak-term)))
+}
+
+define make-type-kit(): type-kit {
+  let type-env-cell = make-cell(box {empty});
+  _Type-Kit of {type-env-cell}
 }

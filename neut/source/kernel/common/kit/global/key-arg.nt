@@ -1,6 +1,5 @@
 import {
   core.cell {borrow, make-cell, mutate},
-  core.control {discard},
   core.dictionary {dictionary, empty, make-insert, make-lookup},
   core.list {for-each-N, length},
   core.text-builder {append-int64-UTF8, append-text, extract, make-text-builder, text-builder},
