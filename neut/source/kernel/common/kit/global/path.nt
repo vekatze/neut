@@ -1,4 +1,5 @@
 import {
+  core.cell {make-cell},
   this.kernel.common.kit.global.platform {platform-kit},
   this.kernel.common.module {main-module},
   this.logger.logger-kit {logger-kit},
@@ -6,9 +7,14 @@ import {
 
 data path-kit {
 | _Path-Kit(
-    main-module: main-module,
+    main-module: &main-module,
     cache-cell: cell(?text),
     logger-kit: &logger-kit,
     platform-kit: &platform-kit,
   )
+}
+
+define make-path-kit(mm: &main-module, lk: &logger-kit, pk: &platform-kit): path-kit {
+  let cache-cell = make-cell(box {none});
+  _Path-Kit(mm, cache-cell, lk, pk)
 }
