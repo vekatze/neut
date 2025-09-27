@@ -9,7 +9,7 @@ import {
   this.ens.ens {E-String, dict-from-list, inject},
   this.ens.to-doc,
   this.kernel.common.clang-option {Clang-Option, clang-option},
-  this.kernel.common.kit.global.platform {get-clang-digest, platform-kit},
+  this.kernel.common.kit.global.platform {get-base-build-dir, get-clang-digest, platform-kit},
   this.kernel.common.module {Module, extract-module, main-module, module},
   this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, target},
   this.language.common.digest {hash-and-encode},
@@ -111,6 +111,18 @@ define _get-build-signature(k: &path-kit, t: &target): app(text) {
     });
     Right(!sig)
   }
+}
+
+define _get-build-dir(k: &path-kit, t: &target, m: &module): app(text) {
+  tie _Path-Kit of {platform-kit} = k;
+  let base-build-dir = get-base-build-dir(*platform-kit, m);
+  try build-signature = _get-build-signature(k, t);
+  let build-prefix on build-signature = core.text.append("build-", build-signature);
+  let result on base-build-dir, build-prefix = core.text.append(base-build-dir, build-prefix);
+  let _ = build-signature;
+  let _ = base-build-dir;
+  let _ = build-prefix;
+  Right(result)
 }
 
 define zen(): unit {
