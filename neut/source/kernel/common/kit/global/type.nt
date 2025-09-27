@@ -43,3 +43,18 @@ define lookup-maybe(k: &type-kit, dd: &definite-description): ?weak-term {
     }
   })
 }
+
+define lookup(k: &type-kit, m: hint, dd: &definite-description): app(weak-term) {
+  match lookup-maybe(k, dd) {
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "`");
+      append-text(buf, text-from-dd(dd));
+      append-text(buf, "` is not found in the term type environment.");
+    };
+    raise-critical(m, extract(buf))
+  | Right(v) =>
+    Right(v)
+  }
+}
