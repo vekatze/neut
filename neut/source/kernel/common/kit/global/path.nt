@@ -166,6 +166,15 @@ define _get-zen-executable-dir(k: &path-kit, t: &target, m: &module): app(text) 
   Right(result)
 }
 
+define _get-zen-entry-dir(k: &path-kit, t: &target, m: &module): app(text) {
+  try build-dir = _get-build-dir(k, t, m);
+  let tmp on build-dir = path.path.append(build-dir, zen-rel-dir);
+  let result on tmp = path.path.append(tmp, entry-rel-dir);
+  let _ = build-dir;
+  let _ = tmp;
+  Right(result)
+}
+
 define zen(): unit {
   pin x = get-base-name("foo/bar/buz.nt");
   vet(x);
