@@ -1,7 +1,7 @@
 import {
-  core.cell {make-cell},
-  core.dictionary {dictionary, empty},
-  this.language.common.definite-description {definite-description},
+  core.cell {make-cell, mutate},
+  core.dictionary {dictionary, empty, make-insert},
+  this.language.common.definite-description {definite-description, ord-dd},
   this.language.weak-term.weak-term {weak-term},
 }
 
@@ -12,4 +12,17 @@ data type-kit {
 define make-type-kit(): type-kit {
   let type-env-cell = make-cell(box {empty});
   _Type-Kit of {type-env-cell}
+}
+
+define insert(k: &type-kit, dd: meta definite-description, v: meta weak-term): unit {
+  tie _Type-Kit of {type-env-cell} = k;
+  mutate(type-env-cell, function (dict) {
+    box {
+      letbox dict = dict;
+      let insert = make-insert(ord-dd);
+      letbox dd = dd;
+      letbox v = v;
+      insert(dict, dd, v)
+    }
+  })
 }
