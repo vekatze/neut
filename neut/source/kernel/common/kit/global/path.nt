@@ -22,7 +22,7 @@ import {
   this.logger.hint {hint, internal-hint},
   this.logger.logger-kit {logger-kit},
   this.path.read {read-text-from-path},
-  time.time {gt-time, time},
+  time.time {gt-time, lt-time, time},
 }
 
 data path-kit {
@@ -352,6 +352,38 @@ define get-last-modified-sup(path-list: &list(text)): app(?time) {
         Right(Right(t1))
       | Right(t2) =>
         let b on t1, t2 = gt-time(t1, t2);
+        if b {
+          Right(Right(t1))
+        } else {
+          Right(Right(t2))
+        }
+      }
+    } else {
+      Right(none)
+    }
+  }
+}
+
+define get-last-modified-inf(path-list: &list(text)): app(?time) {
+  case path-list {
+  | Nil =>
+    Right(none)
+  | Cons(path, Nil) =>
+    if is-regular-file(path) {
+      try v = app-from-system(get-modification-time(path));
+      Right(Right(v))
+    } else {
+      Right(none)
+    }
+  | Cons(path, rest) =>
+    if is-regular-file(path) {
+      try t1 = app-from-system(get-modification-time(path));
+      try t2-or-none = get-last-modified-inf(rest);
+      match t2-or-none {
+      | Left(_) =>
+        Right(none)
+      | Right(t2) =>
+        let b on t1, t2 = lt-time(t1, t2);
         if b {
           Right(Right(t1))
         } else {
