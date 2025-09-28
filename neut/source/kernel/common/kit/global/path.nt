@@ -325,6 +325,11 @@ define get-output-path-for-entry-point(
   }
 }
 
+define get-install-dir(path: &text): app(&text) {
+  try _ = app-from-system(_ensure-directory(path));
+  Right(path)
+}
+
 define zen(): unit {
   pin x = get-base-name("foo/bar/buz.nt");
   vet(x);
