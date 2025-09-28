@@ -12,7 +12,7 @@ import {
   this.kernel.common.const {artifact-rel-dir, entry-rel-dir, executable-rel-dir, foreign-rel-dir, zen-rel-dir},
   this.kernel.common.kit.global.module {_ensure-directory},
   this.kernel.common.kit.global.platform {get-base-build-dir, get-clang-digest, platform-kit},
-  this.kernel.common.module {Module, extract-module, get-rel-path-from-source-dir, main-module, module},
+  this.kernel.common.module {Module, extract-module, get-rel-path-from-source-dir, get-source-dir, main-module, module},
   this.kernel.common.output-kind {LLVM, Object, output-kind},
   this.kernel.common.source {Source, source},
   this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, main-target, target},
@@ -225,7 +225,15 @@ define get-executable-output-path(k: &path-kit, mt: &main-target): app(text) {
     try zen-executable-dir = _get-zen-executable-dir(k, mt, m);
     match get-rel-path-from-source-dir(m, path) {
     | Left(_) =>
-      raise-critical'(*"")
+      let buf = make-text-builder(64);
+      let _ on buf = {
+        pin source-dir = get-source-dir(m);
+        append-text(buf, "The file\n  ");
+        append-text(buf, path);
+        append-text(buf, "\nis not an element of\n  ");
+        append-text(buf, source-dir);
+      };
+      raise-critical'(extract(buf))
     | Right(rel-path) =>
       let Pair(rel-path-without-ext, _) on rel-path = split-extension(rel-path);
       let zen-path on rel-path-without-ext = core.text.append(rel-path-without-ext, ".zen");
@@ -245,6 +253,33 @@ define _attach-extension(file: &text, kind: output-kind): text {
     core.text.append(file, ".ll")
   | Object =>
     core.text.append(file, ".o")
+  }
+}
+
+define output-path-from-source(k: &path-kit, t: &target, kind: output-kind, src: &source): app(text) {
+  tie Source of {source-module, file-path} = src;
+  try artifact-dir = _get-artifact-dir(k, t, source-module);
+  match this.kernel.common.source.get-rel-path-from-source-dir(src) {
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      pin source-dir = get-source-dir(source-module);
+      append-text(buf, "The file\n  ");
+      append-text(buf, file-path);
+      append-text(buf, "\nis not an element of\n  ");
+      append-text(buf, source-dir);
+    };
+    raise-critical'(extract(buf))
+  | Right(rel-path) =>
+    let result on artifact-dir, rel-path = {
+      let Pair(rel-path, _) = split-extension(rel-path);
+      pin rel-path = rel-path;
+      pin tmp = path.path.append(artifact-dir, rel-path);
+      _attach-extension(tmp, kind)
+    };
+    let _ = artifact-dir;
+    let _ = rel-path;
+    Right(result)
   }
 }
 
