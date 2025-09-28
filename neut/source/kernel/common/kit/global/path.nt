@@ -3,16 +3,17 @@ import {
   core.dictionary {make-lookup},
   core.text {to-binary},
   core.text-builder {append-text, extract, make-text-builder},
+  path.io {get-modification-time, is-regular-file},
   path.path {split-extension, take-last},
   this.app.app {app},
-  this.app.run {app-from-system, raise-critical', raise-error'},
+  this.app.run {app-from-system, raise-error'},
   this.ens.ens {E-String, dict-from-list, inject},
   this.ens.to-doc,
   this.kernel.common.clang-option {Clang-Option, clang-option},
   this.kernel.common.const {artifact-rel-dir, entry-rel-dir, executable-rel-dir, foreign-rel-dir, zen-rel-dir},
   this.kernel.common.kit.global.module {_ensure-directory},
   this.kernel.common.kit.global.platform {get-base-build-dir, get-clang-digest, platform-kit},
-  this.kernel.common.module {Module, extract-module, get-rel-path-from-source-dir, get-source-dir, main-module, module},
+  this.kernel.common.module {Module, extract-module, get-rel-path-from-source-dir, main-module, module},
   this.kernel.common.output-kind {LLVM, Object, output-kind},
   this.kernel.common.source {Source, source},
   this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, main-target, target},
@@ -21,6 +22,7 @@ import {
   this.logger.hint {hint, internal-hint},
   this.logger.logger-kit {logger-kit},
   this.path.read {read-text-from-path},
+  time.time {gt-time, time},
 }
 
 data path-kit {
@@ -328,6 +330,38 @@ define get-output-path-for-entry-point(
 define get-install-dir(path: &text): app(&text) {
   try _ = app-from-system(_ensure-directory(path));
   Right(path)
+}
+
+define get-last-modified-sup(path-list: &list(text)): app(?time) {
+  case path-list {
+  | Nil =>
+    Right(none)
+  | Cons(path, Nil) =>
+    if is-regular-file(path) {
+      try v = app-from-system(get-modification-time(path));
+      Right(Right(v))
+    } else {
+      Right(none)
+    }
+  | Cons(path, rest) =>
+    if is-regular-file(path) {
+      try t1 = app-from-system(get-modification-time(path));
+      try t2-or-none = get-last-modified-sup(rest);
+      match t2-or-none {
+      | Left(_) =>
+        Right(Right(t1))
+      | Right(t2) =>
+        let b on t1, t2 = gt-time(t1, t2);
+        if b {
+          Right(Right(t1))
+        } else {
+          Right(Right(t2))
+        }
+      }
+    } else {
+      Right(none)
+    }
+  }
 }
 
 define zen(): unit {
