@@ -13,9 +13,9 @@
       enable-preset true,
     },
     time {
-      digest "8hl90H6PO9i83wOAKlPSrCPnzfYxDuFekw6O_iR5jA4",
+      digest "KvWScpggZi7W0rryv8hEhbwCoGjzTUQXT2k6W233is0",
       mirror [
-        "https://github.com/vekatze/time-nt/raw/main/archive/0-4-43.tar.zst",
+        "https://github.com/vekatze/time-nt/raw/main/archive/0-4-44.tar.zst",
       ],
     },
     sero {
@@ -25,9 +25,9 @@
       ],
     },
     path {
-      digest "r55gS01B18Gaeb1RppdoP0yFe4f1JU5Q6qArN5FYTwo",
+      digest "xTd6wJziMtXdhUtGyuUnwJ4Ztv_9_phU4Bs7Kk4hHYY",
       mirror [
-        "https://github.com/vekatze/path-nt/raw/main/archive/0-1-36.tar.zst",
+        "https://github.com/vekatze/path-nt/raw/main/archive/0-1-39.tar.zst",
       ],
     },
     zonk {

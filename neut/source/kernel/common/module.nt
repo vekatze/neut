@@ -3,8 +3,10 @@ import {
   core.list {filter, filter-some, for-each, for-each-N, is-empty},
   core.pair {first},
   core.text {drop-N, length, text-byte-length},
+  core.text-builder {append-text, extract, make-text-builder},
   path.path {drop-last, take-last},
   this.app.app {app},
+  this.app.run {raise-critical'},
   this.ens.ens {
     E-Int,
     E-List,
@@ -506,9 +508,24 @@ define _strip-prefix(haystack: &text, prefix: &text): ?text {
   }
 }
 
-define get-rel-path-from-source-dir(m: &module, path: &text): ?text {
-  pin source-dir = get-source-dir(m);
-  _strip-prefix(source-dir, path)
+define get-rel-path-from-source-dir(m: &module, path: &text): app(text) {
+  let source-dir = get-source-dir(m);
+  let tmp on source-dir = _strip-prefix(source-dir, path);
+  let _ = source-dir;
+  match tmp {
+  | Right(path) =>
+    Right(path)
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      pin source-dir = get-source-dir(m);
+      append-text(buf, "The file\n  ");
+      append-text(buf, path);
+      append-text(buf, "\nis not an element of\n  ");
+      append-text(buf, source-dir);
+    };
+    raise-critical'(extract(buf))
+  }
 }
 
 define zen(): unit {

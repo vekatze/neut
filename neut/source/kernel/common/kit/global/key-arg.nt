@@ -1,0 +1,232 @@
+import {
+  core.cell {borrow, make-cell, mutate},
+  core.dictionary {dictionary, empty, make-insert, make-lookup},
+  core.list {for-each-N, length},
+  core.text-builder {append-int64-UTF8, append-text, extract, make-text-builder, text-builder},
+  core.text.eq {eq-prefix},
+  this.app.app {app},
+  this.app.run {raise-error},
+  this.kernel.common.const {hole-var-prefix},
+  this.kernel.common.module {main-module},
+  this.kernel.common.readable-dd {readable-dd},
+  this.language.common.definite-description {definite-description, ord-dd},
+  this.language.common.is-const-like {is-const-like},
+  this.language.raw-term.key {key},
+  this.logger.hint {hint},
+}
+
+inline exp-key: type {
+  key
+}
+
+inline imp-key: type {
+  key
+}
+
+data _key-arg-value {
+| _Key-Arg-Value(is-const-like, list(imp-key), list(exp-key))
+}
+
+data key-arg-kit {
+| _Key-Arg-Kit(
+    main-module: main-module,
+    key-arg-map-cell: cell(dictionary(definite-description, _key-arg-value)),
+  )
+}
+
+define make-key-arg-kit(main-module: main-module): key-arg-kit {
+  let key-arg-map-cell = make-cell(box {empty});
+  _Key-Arg-Kit of {main-module, key-arg-map-cell}
+}
+
+define _is-hole(k: &key): bool {
+  eq-prefix(k, hole-var-prefix)
+}
+
+define _eq-keys(ks1: &list(key), ks2: &list(key)): bool {
+  case ks1, ks2 {
+  | Nil, Nil =>
+    True
+  | Cons(_, _), Nil =>
+    False
+  | Nil, Cons(_, _) =>
+    False
+  | Cons(k1, rest1), Cons(k2, rest2) =>
+    match _is-hole(k1), _is-hole(k2) {
+    | True, True =>
+      _eq-keys(rest1, rest2)
+    | True, False =>
+      False
+    | False, True =>
+      False
+    | False, False =>
+      if eq-text(k1, k2) {
+        _eq-keys(rest1, rest2)
+      } else {
+        False
+      }
+    }
+  }
+}
+
+define _text-from-key(k: &key): &text {
+  if _is-hole(k) {
+    "_"
+  } else {
+    k
+  }
+}
+
+define _text-from-keys(ks: &list(key)): text {
+  let buf = make-text-builder(64);
+  let f =
+    define loop(buf: text-builder, ks: &list(key)): text {
+      case ks {
+      | Nil =>
+        *"(empty)"
+      | Cons(k, Nil) =>
+        let _ on buf = append-text(buf, _text-from-key(k));
+        extract(buf)
+      | Cons(k, rest) =>
+        let _ on buf = {
+          append-text(buf, _text-from-key(k));
+          append-text(buf, ", ");
+        };
+        loop(buf, rest)
+      }
+    };
+  f(buf, ks)
+}
+
+define show-key-list(ks: &list(key)): text {
+  let tmp =
+    for-each-N(ks, function (k) {
+      core.text.append("- ", k)
+    });
+  core.text.intercalate(tmp, *"\n")
+}
+
+define _lookup(dict: &dictionary(definite-description, _key-arg-value), dd: &definite-description): ?&_key-arg-value {
+  let lookup = make-lookup(ord-dd);
+  lookup(dict, dd)
+}
+
+define insert(
+  k: &key-arg-kit,
+  m: hint,
+  func-name: definite-description,
+  is-const-like: is-const-like,
+  imp-keys: list(imp-key),
+  exp-keys: list(exp-key),
+): app(unit) {
+  tie _Key-Arg-Kit of {key-arg-map-cell, main-module} = k;
+  let error-or-unit: either(text, unit) on func-name, imp-keys, exp-keys =
+    borrow(key-arg-map-cell, function (dict) {
+      match _lookup(dict, func-name) {
+      | Left(_) =>
+        box {Right(Unit)}
+      | Right(v) =>
+        tie _Key-Arg-Value(is-const-like-v, imp-keys-v, exp-keys-v) = v;
+        if and(is-const-like, not(*is-const-like-v)) {
+          let func-name = readable-dd(main-module, func-name);
+          let buf = make-text-builder(64);
+          let _ on buf, func-name = {
+            append-text(buf, "`");
+            append-text(buf, func-name);
+            append-text(buf, "` is declared as a function, but defined as a constant-like term.");
+          };
+          let _ = func-name;
+          quote {Left(extract(buf))}
+        } else-if and(not(is-const-like), *is-const-like-v) {
+          let func-name = readable-dd(main-module, func-name);
+          let buf = make-text-builder(64);
+          let _ on buf, func-name = {
+            append-text(buf, "`");
+            append-text(buf, func-name);
+            append-text(buf, "` is declared as a constant-like term, but defined as a function.");
+          };
+          let _ = func-name;
+          quote {Left(extract(buf))}
+        } else-if ne-int(length(imp-keys), length(imp-keys-v)) {
+          let func-name = readable-dd(main-module, func-name);
+          let buf = make-text-builder(64);
+          let _ on buf, func-name = {
+            append-text(buf, "The arity of `");
+            append-text(buf, func-name);
+            append-text(buf, "` is declared as ");
+            append-int64-UTF8(buf, length(imp-keys-v));
+            append-text(buf, ", but defined as");
+            append-int64-UTF8(buf, length(imp-keys));
+            append-text(buf, ".");
+          };
+          let _ = func-name;
+          quote {Left(extract(buf))}
+        } else-if ne-int(length(exp-keys), length(exp-keys-v)) {
+          let func-name = readable-dd(main-module, func-name);
+          let buf = make-text-builder(64);
+          let _ on buf, func-name = {
+            pin exp-keys-list = _text-from-keys(exp-keys);
+            pin exp-keys-v-list = _text-from-keys(exp-keys);
+            append-text(buf, "The explicit key sequence of `");
+            append-text(buf, func-name);
+            append-text(buf, "` is declared as ");
+            append-text(buf, exp-keys-v-list);
+            append-text(buf, ", but defined as");
+            append-text(buf, exp-keys-list);
+            append-text(buf, ".");
+          };
+          let _ = func-name;
+          quote {Left(extract(buf))}
+        } else {
+          box {Right(Unit)}
+        }
+      }
+    });
+  match error-or-unit {
+  | Left(message) =>
+    raise-error(m, message)
+  | Right(_) =>
+    mutate(key-arg-map-cell, function (dict) {
+      box {
+        letbox dict = dict;
+        let insert = make-insert(ord-dd);
+        letbox func-name = quote {func-name};
+        letbox is-const-like = quote {is-const-like};
+        letbox imp-keys = quote {imp-keys};
+        letbox exp-keys = quote {exp-keys};
+        insert(dict, func-name, _Key-Arg-Value(is-const-like, imp-keys, exp-keys))
+      }
+    });
+    Right(Unit)
+  }
+}
+
+define lookup(k: &key-arg-kit, m: hint, data-name: &definite-description): app(pair(list(imp-key), list(exp-key))) {
+  tie _Key-Arg-Kit of {key-arg-map-cell, main-module} = k;
+  let tmp =
+    borrow(key-arg-map-cell, function (dict) {
+      match _lookup(dict, data-name) {
+      | Left(_) =>
+        quote {Left(Unit)}
+      | Right(v) =>
+        tie _Key-Arg-Value(_, imp-keys, exp-keys) = v;
+        box imp-keys, exp-keys {Right(Pair(imp-keys, exp-keys))}
+      }
+    });
+  match tmp {
+  | Left(Unit) =>
+    let message = {
+      pin data-name = readable-dd(main-module, data-name);
+      core.text.append("No such function is defined: ", data-name)
+    };
+    raise-error(m, message)
+  | Right(v) =>
+    Right(v)
+  }
+}
+
+define zen(): unit {
+  pin tmp = List[*"foo", *"bar"];
+  pin tmp = show-key-list(tmp);
+  vet(tmp)
+}

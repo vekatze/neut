@@ -1,0 +1,221 @@
+import {
+  core.cell {make-cell},
+  core.control {discard},
+  core.dictionary {dictionary, empty},
+  core.environment {get-env},
+  core.list {filter, for-each, for-each-E},
+  core.system {get-error-message, system, system-error},
+  core.text-builder {append-text, extract, make-text-builder},
+  core.text.eq {eq-suffix, strip-prefix},
+  path.entity.dirent {Dirent},
+  path.io {create-directory, is-directory, read-directory},
+  path.path {drop-last},
+  this.app.app {app},
+  this.app.run {app-from-system, raise-error, raise-error'},
+  this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, source-file-extension},
+  this.kernel.common.module {Module, extract-module, get-module-root-dir, get-source-dir, main-module, module},
+  this.kernel.common.module-URL {Module-URL, module-URL},
+  this.kernel.common.source {Source, source},
+  this.language.common.const {ns-sep},
+  this.language.common.module-digest {Module-Digest, module-digest},
+  this.language.common.module-id {Base, Library, Main, module-id},
+  this.logger.hint {hint, new-source-hint},
+}
+
+data module-kit {
+| _Module-Kit(
+    cache-map-cell: cell(dictionary(text, module)),
+  )
+}
+
+define make-module-kit(): module-kit {
+  let cache-map-cell = make-cell(box {empty});
+  _Module-Kit of {cache-map-cell}
+}
+
+define _has-source-extension(path: &text): bool {
+  eq-suffix(path, source-file-extension)
+}
+
+define _ensure-directory(path: &text): system(unit) {
+  if is-directory(path) {
+    Right(Unit)
+  } else {
+    create-directory(path)
+  }
+}
+
+define _return-directory(path: text): app(text) {
+  let result: either(system-error, unit) on path = _ensure-directory(path);
+  match result {
+  | Left(e) =>
+    raise-error'(get-error-message(e))
+  | Right(_) =>
+    Right(path)
+  }
+}
+
+define _get-dependency-dir-path(m: &module): app(text) {
+  tie Module of {id, cache-dir} = m;
+  let module-root-dir = get-module-root-dir(m);
+  case id {
+  | Library(_) =>
+    let lib-dir on module-root-dir = drop-last(module-root-dir);
+    let _ = module-root-dir;
+    _return-directory(lib-dir)
+  | _ =>
+    let tmp on module-root-dir = path.path.append(module-root-dir, cache-dir);
+    let result on tmp = path.path.append(tmp, "dependency");
+    let _ = module-root-dir;
+    let _ = tmp;
+    Right(result)
+  }
+}
+
+define get-module-dir-by-id(m: &main-module, hint-or-none: ?&hint, mid: &module-id): app(text) {
+  case mid {
+  | Base =>
+    let message = "The base module cannot be used here";
+    match hint-or-none {
+    | Left(_) =>
+      raise-error'(*message)
+    | Right(hint) =>
+      raise-error(*hint, *message)
+    }
+  | Main =>
+    Right(get-module-root-dir(extract-module(m)))
+  | Library(Module-Digest(digest)) =>
+    try dep-dir = _get-dependency-dir-path(extract-module(m));
+    let result on dep-dir = path.path.append(dep-dir, digest);
+    discard(dep-dir);
+    Right(result)
+  }
+}
+
+define get-core-module-URL(): app(module-URL) {
+  match get-env(env-var-core-module-URL) {
+  | Right(core-module-URL) =>
+    Right(Module-URL(core-module-URL))
+  | Left(_) =>
+    let tmp =
+      core.text.append(
+        "The URL of the core module is not specified; set it via ",
+        env-var-core-module-URL,
+      );
+    raise-error'(tmp)
+  }
+}
+
+define get-core-module-digest(): app(module-digest) {
+  match get-env(env-var-core-module-digest) {
+  | Right(core-module-digest) =>
+    Right(Module-Digest(core-module-digest))
+  | Left(_) =>
+    let tmp =
+      core.text.append(
+        "The digest of the core module is not specified; set it via ",
+        env-var-core-module-digest,
+      );
+    raise-error'(tmp)
+  }
+}
+
+data _error-info {
+| _Message(message: text)
+| _Located-Message(message: text)
+}
+
+define _ensure-file-module-sanity(m: &module, source-abs-path: &text): either(_error-info, unit) {
+  let source-dir = get-source-dir(m);
+  let source-rel-path on source-dir = strip-prefix(source-dir, source-abs-path);
+  match source-rel-path {
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "The file`");
+      append-text(buf, source-abs-path);
+      append-text(buf, "` is not in the source directory of current module")
+    };
+    Left(_Message(extract(buf)))
+  | Right(source-rel-path) =>
+    let rel-dir on source-rel-path = drop-last(source-rel-path);
+    let _ = source-rel-path;
+    let has-sep on rel-dir = core.text.find-text(rel-dir, ns-sep);
+    if has-sep {
+      let buf = make-text-builder(64);
+      let _ on buf = {
+        pin source-dir = source-dir;
+        pin rel-dir = rel-dir;
+        append-text(buf, "Directory names in ");
+        append-text(buf, source-dir);
+        append-text(buf, " must not contain dots, but found: ");
+        append-text(buf, rel-dir);
+      };
+      Left(_Located-Message(extract(buf)))
+    } else {
+      Right(Unit)
+    }
+  }
+}
+
+define source-from-path(m: &module, source-abs-path: text): app(source) {
+  let x on source-abs-path = _ensure-file-module-sanity(m, source-abs-path);
+  try source-abs-path =
+    match x {
+    | Left(e) =>
+      match e {
+      | _Message(message) =>
+        raise-error'(message)
+      | _Located-Message(message) =>
+        let source-hint = new-source-hint(source-abs-path);
+        raise-error(source-hint, message)
+      }
+    | Right(_) =>
+      Right(source-abs-path)
+    };
+  Right(Source of {
+    source-module := *m,
+    file-path := source-abs-path,
+    source-hint := none,
+  })
+}
+
+define _get-directory-contents(dir-path: &text): system(list(text)) {
+  try items = read-directory(dir-path);
+  let items =
+    filter(items, function (i) {
+      tie Dirent of {name} = i;
+      and(ne-text(name, "."), ne-text(name, ".."))
+    });
+  Right(for-each(items, function (i) {
+    let Dirent of {name} = i;
+    pin name = name;
+    path.path.append(dir-path, name)
+  }))
+}
+
+define get-all-source-path-in-module(m: &module): app(list(text)) {
+  let source-dir = get-source-dir(m);
+  let items on source-dir = _get-directory-contents(source-dir);
+  discard(source-dir);
+  try items = app-from-system(items);
+  Right(filter(items, _has-source-extension))
+}
+
+define get-all-source-in-module(m: &module): app(list(source)) {
+  try source-path-list = get-all-source-path-in-module(m);
+  for-each-E(source-path-list, function (source-path) {
+    source-from-path(m, source-path)
+  })
+}
+
+define zen(): unit {
+  pin result = _has-source-extension("foo.nt");
+  vet(result);
+  pin result = _has-source-extension("foo.txt");
+  vet(result);
+  pin result = _has-source-extension("nt");
+  vet(result);
+  pin result = get-core-module-URL();
+  vet(result)
+}

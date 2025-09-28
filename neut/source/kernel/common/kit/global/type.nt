@@ -1,0 +1,60 @@
+import {
+  core.cell {borrow, make-cell, mutate},
+  core.dictionary {dictionary, empty, make-insert, make-lookup},
+  core.text-builder {append-text, extract, make-text-builder},
+  this.app.app {app},
+  this.app.run {raise-critical},
+  this.language.common.definite-description {definite-description, ord-dd, text-from-dd},
+  this.language.weak-term.weak-term {weak-term},
+  this.logger.hint {hint},
+}
+
+data type-kit {
+| _Type-Kit(type-env-cell: cell(dictionary(definite-description, weak-term)))
+}
+
+define make-type-kit(): type-kit {
+  let type-env-cell = make-cell(box {empty});
+  _Type-Kit of {type-env-cell}
+}
+
+define insert(k: &type-kit, dd: meta definite-description, v: meta weak-term): unit {
+  tie _Type-Kit of {type-env-cell} = k;
+  mutate(type-env-cell, function (dict) {
+    box {
+      letbox dict = dict;
+      let insert = make-insert(ord-dd);
+      letbox dd = dd;
+      letbox v = v;
+      insert(dict, dd, v)
+    }
+  })
+}
+
+define lookup-maybe(k: &type-kit, dd: &definite-description): ?weak-term {
+  tie _Type-Kit of {type-env-cell} = k;
+  let lookup = make-lookup(ord-dd);
+  borrow(type-env-cell, function (dict) {
+    match lookup(dict, dd) {
+    | Left(_) =>
+      box {none}
+    | Right(v) =>
+      box v {Right(v)}
+    }
+  })
+}
+
+define lookup(k: &type-kit, m: hint, dd: &definite-description): app(weak-term) {
+  match lookup-maybe(k, dd) {
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "`");
+      append-text(buf, text-from-dd(dd));
+      append-text(buf, "` is not found in the term type environment.");
+    };
+    raise-critical(m, extract(buf))
+  | Right(v) =>
+    Right(v)
+  }
+}

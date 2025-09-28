@@ -1,0 +1,402 @@
+import {
+  core.cell {clone, make-cell, mutate},
+  core.dictionary {make-lookup},
+  core.text {to-binary},
+  core.text-builder {append-text, extract, make-text-builder},
+  path.io {get-modification-time, is-regular-file},
+  path.path {split-extension, take-last},
+  this.app.app {app},
+  this.app.run {app-from-system, raise-error'},
+  this.ens.ens {E-String, dict-from-list, inject},
+  this.ens.to-doc,
+  this.kernel.common.clang-option {Clang-Option, clang-option},
+  this.kernel.common.const {artifact-rel-dir, entry-rel-dir, executable-rel-dir, foreign-rel-dir, zen-rel-dir},
+  this.kernel.common.kit.global.module {_ensure-directory},
+  this.kernel.common.kit.global.platform {get-base-build-dir, get-clang-digest, platform-kit},
+  this.kernel.common.module {Module, extract-module, get-rel-path-from-source-dir, main-module, module},
+  this.kernel.common.output-kind {LLVM, Object, output-kind},
+  this.kernel.common.source {Source, source},
+  this.kernel.common.target {Main, Named, Peripheral, Peripheral-Single, Target-Summary, Zen, main-target, target},
+  this.language.common.digest {hash-and-encode},
+  this.language.common.module-id {Library},
+  this.logger.hint {hint, internal-hint},
+  this.logger.logger-kit {logger-kit},
+  this.path.read {read-text-from-path},
+  time.time {gt-time, lt-time, time},
+}
+
+data path-kit {
+| _Path-Kit(
+    main-module: &main-module,
+    cache-cell: cell(?text),
+    logger-kit: &logger-kit,
+    platform-kit: &platform-kit,
+  )
+}
+
+define make-path-kit(mm: &main-module, lk: &logger-kit, pk: &platform-kit): path-kit {
+  let cache-cell = make-cell(box {none});
+  _Path-Kit(mm, cache-cell, lk, pk)
+}
+
+define get-base-name(path: &text): text {
+  pin bar = take-last(path);
+  let Pair(buz, _) = split-extension(bar);
+  buz
+}
+
+define ensure-not-in-dependency-dir(m: &main-module): app(unit) {
+  tie Module of {id} = extract-module(m);
+  case id {
+  | Library(_) =>
+    raise-error'(*"This command cannot be used under a dependency directory")
+  | _ =>
+    Right(Unit)
+  }
+}
+
+define _get-clang-option-base(t: &main-target, m: &module): app(clang-option) {
+  case t {
+  | Named(name, _) =>
+    tie Module of {target} = m;
+    let lookup = make-lookup(core.text.ord.as-ord);
+    match lookup(target, name) {
+    | Left(_) =>
+      let buf = make-text-builder(64);
+      let _ on buf = {
+        append-text(buf, "No such target is defined: `");
+        append-text(buf, name);
+        append-text(buf, "`");
+      };
+      raise-error'(extract(buf))
+    | Right(v) =>
+      tie Target-Summary of {clang-option} = v;
+      Right(*clang-option)
+    }
+  | Zen(_, clang-option) =>
+    Right(*clang-option)
+  }
+}
+
+define _get-clang-option(t: &target, m: &module): app(clang-option) {
+  case t {
+  | Main(main-module) =>
+    _get-clang-option-base(main-module, m)
+  | Peripheral =>
+    Right(this.kernel.common.clang-option.empty-clang-option)
+  | Peripheral-Single(_) =>
+    Right(this.kernel.common.clang-option.empty-clang-option)
+  }
+}
+
+inline _m: hint {
+  internal-hint
+}
+
+define _register-build-signature(k: &path-kit, clang-option: clang-option): app(text) {
+  tie _Path-Kit of {cache-cell, platform-kit, main-module} = k;
+  let m = extract-module(*main-module);
+  tie Module of {location} = m;
+  let clang-digest = get-clang-digest(*platform-kit);
+  let Clang-Option of {compile-option, link-option} = clang-option;
+  let compile-option-text = core.text.intercalate(compile-option, *" ");
+  let link-option-text = core.text.intercalate(link-option, *" ");
+  try module-ens = read-text-from-path(location);
+  let ens =
+    dict-from-list(_m, List[
+      Pair(Pair(_m, *"clang-digest"), E-String(_m, *clang-digest)),
+      Pair(Pair(_m, *"compile-option"), E-String(_m, compile-option-text)),
+      Pair(Pair(_m, *"link-option"), E-String(_m, link-option-text)),
+      Pair(Pair(_m, *"module-configuration"), E-String(_m, module-ens)),
+    ]);
+  let ens-text = this.ens.to-doc.pp(inject(ens));
+  let !sig on ens-text = hash-and-encode(to-binary(ens-text));
+  let _ = ens-text;
+  mutate(cache-cell, function (_) {
+    quote {Right(!sig)}
+  });
+  Right(!sig)
+}
+
+define _get-build-signature-base(k: &path-kit, t: &main-target): app(text) {
+  tie _Path-Kit of {cache-cell, main-module} = k;
+  match clone(cache-cell) {
+  | Right(sig) =>
+    Right(sig)
+  | Left(_) =>
+    let m = extract-module(*main-module);
+    try clang-option = _get-clang-option-base(t, m);
+    _register-build-signature(k, clang-option)
+  }
+}
+
+define _get-build-signature(k: &path-kit, t: &target): app(text) {
+  tie _Path-Kit of {cache-cell, main-module} = k;
+  match clone(cache-cell) {
+  | Right(sig) =>
+    Right(sig)
+  | Left(_) =>
+    let m = extract-module(*main-module);
+    try clang-option = _get-clang-option(t, m);
+    _register-build-signature(k, clang-option)
+  }
+}
+
+define _get-build-dir(k: &path-kit, t: &target, m: &module): app(text) {
+  tie _Path-Kit of {platform-kit} = k;
+  let base-build-dir = get-base-build-dir(*platform-kit, m);
+  try build-signature = _get-build-signature(k, t);
+  let build-prefix on build-signature = core.text.append("build-", build-signature);
+  let result on base-build-dir, build-prefix = core.text.append(base-build-dir, build-prefix);
+  let _ = build-signature;
+  let _ = base-build-dir;
+  let _ = build-prefix;
+  Right(result)
+}
+
+define _get-build-dir-base(k: &path-kit, t: &main-target, m: &module): app(text) {
+  tie _Path-Kit of {platform-kit} = k;
+  let base-build-dir = get-base-build-dir(*platform-kit, m);
+  try build-signature = _get-build-signature-base(k, t);
+  let build-prefix on build-signature = core.text.append("build-", build-signature);
+  let result on base-build-dir, build-prefix = core.text.append(base-build-dir, build-prefix);
+  let _ = build-signature;
+  let _ = base-build-dir;
+  let _ = build-prefix;
+  Right(result)
+}
+
+define _get-artifact-dir(k: &path-kit, t: &target, m: &module): app(text) {
+  try build-dir = _get-build-dir(k, t, m);
+  let result on build-dir = path.path.append(build-dir, artifact-rel-dir);
+  let _ = build-dir;
+  Right(result)
+}
+
+define _get-foreign-dir(k: &path-kit, t: &target, m: &module): app(text) {
+  try build-dir = _get-build-dir(k, t, m);
+  let result on build-dir = path.path.append(build-dir, foreign-rel-dir);
+  let _ = build-dir;
+  let app-result on result = _ensure-directory(result);
+  try _ = app-from-system(app-result);
+  Right(result)
+}
+
+define _get-entry-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+  try build-dir = _get-build-dir-base(k, t, m);
+  let result on build-dir = path.path.append(build-dir, entry-rel-dir);
+  let _ = build-dir;
+  Right(result)
+}
+
+define _get-executable-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+  try build-dir = _get-build-dir-base(k, t, m);
+  let result on build-dir = path.path.append(build-dir, executable-rel-dir);
+  let _ = build-dir;
+  Right(result)
+}
+
+define _get-zen-executable-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+  try build-dir = _get-build-dir-base(k, t, m);
+  let tmp on build-dir = path.path.append(build-dir, zen-rel-dir);
+  let result on tmp = path.path.append(tmp, executable-rel-dir);
+  let _ = build-dir;
+  let _ = tmp;
+  Right(result)
+}
+
+define _get-zen-entry-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+  try build-dir = _get-build-dir-base(k, t, m);
+  let tmp on build-dir = path.path.append(build-dir, zen-rel-dir);
+  let result on tmp = path.path.append(tmp, entry-rel-dir);
+  let _ = build-dir;
+  let _ = tmp;
+  Right(result)
+}
+
+define get-executable-output-path(k: &path-kit, mt: &main-target): app(text) {
+  tie _Path-Kit of {main-module} = k;
+  let m = extract-module(*main-module);
+  case mt {
+  | Named(target, _) =>
+    try executable-dir = _get-executable-dir(k, mt, m);
+    let result on executable-dir = path.path.append(executable-dir, target);
+    let _ = executable-dir;
+    Right(result)
+  | Zen(path, _) =>
+    try zen-executable-dir = _get-zen-executable-dir(k, mt, m);
+    try rel-path = get-rel-path-from-source-dir(m, path);
+    let Pair(rel-path-without-ext, _) on rel-path = split-extension(rel-path);
+    let zen-path on rel-path-without-ext = core.text.append(rel-path-without-ext, ".zen");
+    let result on zen-executable-dir, zen-path = path.path.append(zen-executable-dir, zen-path);
+    let _ = rel-path;
+    let _ = rel-path-without-ext;
+    let _ = zen-executable-dir;
+    let _ = zen-path;
+    Right(result)
+  }
+}
+
+define _attach-extension(file: &text, kind: output-kind): text {
+  match kind {
+  | LLVM =>
+    core.text.append(file, ".ll")
+  | Object =>
+    core.text.append(file, ".o")
+  }
+}
+
+define output-path-from-source(k: &path-kit, t: &target, kind: output-kind, src: &source): app(text) {
+  tie Source of {source-module} = src;
+  try artifact-dir = _get-artifact-dir(k, t, source-module);
+  try rel-path = this.kernel.common.source.get-rel-path-from-source-dir(src);
+  let result on artifact-dir, rel-path = {
+    let Pair(rel-path, _) = split-extension(rel-path);
+    pin rel-path = rel-path;
+    pin tmp = path.path.append(artifact-dir, rel-path);
+    _attach-extension(tmp, kind)
+  };
+  let _ = artifact-dir;
+  let _ = rel-path;
+  Right(result)
+}
+
+define _get-cache-path(k: &path-kit, t: &target, extension: &text, src: &source): app(text) {
+  tie Source of {source-module} = src;
+  try artifact-dir = _get-artifact-dir(k, t, source-module);
+  try rel-path = this.kernel.common.source.get-rel-path-from-source-dir(src);
+  let result on artifact-dir, rel-path = {
+    let Pair(rel-path, _) = split-extension(rel-path);
+    pin rel-path = rel-path;
+    pin tmp = path.path.append(artifact-dir, rel-path);
+    core.text.append(tmp, extension)
+  };
+  let _ = artifact-dir;
+  let _ = rel-path;
+  Right(result)
+}
+
+define get-source-cache-path(k: &path-kit, t: &target, src: &source): app(text) {
+  _get-cache-path(k, t, ".def", src)
+}
+
+define get-source-completion-cache-path(k: &path-kit, t: &target, src: &source): app(text) {
+  _get-cache-path(k, t, ".cmp", src)
+}
+
+define get-source-location-cache-path(k: &path-kit, t: &target, src: &source): app(text) {
+  _get-cache-path(k, t, ".loc", src)
+}
+
+define attach-output-path(
+  k: &path-kit,
+  t: &target,
+  kind: output-kind,
+  src: &source,
+): app(pair(output-kind, text)) {
+  try output-path = output-path-from-source(k, t, kind, src);
+  Right(Pair(kind, output-path))
+}
+
+define get-output-path-for-entry-point(
+  k: &path-kit,
+  kind: output-kind,
+  t: &main-target,
+): app(pair(output-kind, text)) {
+  tie _Path-Kit of {main-module} = k;
+  let m = extract-module(*main-module);
+  case t {
+  | Named(target, _) =>
+    try entry-dir = _get-entry-dir(k, t, m);
+    let tmp on entry-dir = path.path.append(entry-dir, target);
+    let result on tmp = _attach-extension(tmp, kind);
+    let _ = entry-dir;
+    let _ = tmp;
+    Right(Pair(kind, result))
+  | Zen(path, _) =>
+    try zen-entry-dir = _get-zen-entry-dir(k, t, m);
+    try rel-path = get-rel-path-from-source-dir(m, path);
+    let Pair(rel-path-without-ext, _) on rel-path = split-extension(rel-path);
+    let _ = rel-path;
+    let tmp on zen-entry-dir, rel-path-without-ext = path.path.append(zen-entry-dir, rel-path-without-ext);
+    let result on tmp = _attach-extension(tmp, kind);
+    let _ = rel-path-without-ext;
+    let _ = tmp;
+    let _ = zen-entry-dir;
+    Right(Pair(kind, result))
+  }
+}
+
+define get-install-dir(path: &text): app(&text) {
+  try _ = app-from-system(_ensure-directory(path));
+  Right(path)
+}
+
+define get-last-modified-sup(path-list: &list(text)): app(?time) {
+  case path-list {
+  | Nil =>
+    Right(none)
+  | Cons(path, Nil) =>
+    if is-regular-file(path) {
+      try v = app-from-system(get-modification-time(path));
+      Right(Right(v))
+    } else {
+      Right(none)
+    }
+  | Cons(path, rest) =>
+    if is-regular-file(path) {
+      try t1 = app-from-system(get-modification-time(path));
+      try t2-or-none = get-last-modified-sup(rest);
+      match t2-or-none {
+      | Left(_) =>
+        Right(Right(t1))
+      | Right(t2) =>
+        let b on t1, t2 = gt-time(t1, t2);
+        if b {
+          Right(Right(t1))
+        } else {
+          Right(Right(t2))
+        }
+      }
+    } else {
+      Right(none)
+    }
+  }
+}
+
+define get-last-modified-inf(path-list: &list(text)): app(?time) {
+  case path-list {
+  | Nil =>
+    Right(none)
+  | Cons(path, Nil) =>
+    if is-regular-file(path) {
+      try v = app-from-system(get-modification-time(path));
+      Right(Right(v))
+    } else {
+      Right(none)
+    }
+  | Cons(path, rest) =>
+    if is-regular-file(path) {
+      try t1 = app-from-system(get-modification-time(path));
+      try t2-or-none = get-last-modified-inf(rest);
+      match t2-or-none {
+      | Left(_) =>
+        Right(none)
+      | Right(t2) =>
+        let b on t1, t2 = lt-time(t1, t2);
+        if b {
+          Right(Right(t1))
+        } else {
+          Right(Right(t2))
+        }
+      }
+    } else {
+      Right(none)
+    }
+  }
+}
+
+define zen(): unit {
+  pin x = get-base-name("foo/bar/buz.nt");
+  vet(x);
+}

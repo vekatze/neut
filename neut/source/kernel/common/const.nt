@@ -50,6 +50,10 @@ inline entry-rel-dir: &text {
   "entry"
 }
 
+inline executable-rel-dir: &text {
+  "executable"
+}
+
 inline foreign-rel-dir: &text {
   "foreign"
 }

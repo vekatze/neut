@@ -1,0 +1,182 @@
+import {
+  core.control {discard},
+  core.environment {get-env},
+  core.process {Process-Spec},
+  core.text {split, to-binary},
+  path.io {is-regular-file},
+  path.path,
+  this.app.app {app},
+  this.app.run {raise-error', run},
+  this.kernel.common.arch {arch, data-size-from-arch},
+  this.kernel.common.const {env-var-clang},
+  this.kernel.common.module {Module, get-module-root-dir, module},
+  this.kernel.common.operating-system {operating-system},
+  this.kernel.common.platform {Platform, platform, text-from-platform},
+  this.kernel.common.run-process {get-logger-kit, run-process, run-process-kit},
+  this.language.common.data-size {data-size},
+  this.language.common.digest {hash-and-encode},
+  this.logger.print {report},
+}
+
+data platform-kit {
+| _Platform-Kit(
+    arch: arch,
+    operating-system: operating-system,
+    clang-digest: text,
+    base-size: data-size,
+  )
+}
+
+define get-arch(k: &platform-kit): arch {
+  tie _Platform-Kit of {arch} = k;
+  *arch
+}
+
+define get-operating-system(k: &platform-kit): operating-system {
+  tie _Platform-Kit of {operating-system} = k;
+  *operating-system
+}
+
+define get-platform(k: &platform-kit): platform {
+  let arch = get-arch(k);
+  let operating-system = get-operating-system(k);
+  Platform(operating-system, arch)
+}
+
+define get-data-size(k: &platform-kit): data-size {
+  tie _Platform-Kit of {base-size} = k;
+  *base-size
+}
+
+define get-clang-digest(k: &platform-kit): &text {
+  tie _Platform-Kit of {clang-digest} = k;
+  clang-digest
+}
+
+define _get-current-arch(): arch {
+  introspect architecture {
+  | amd64 =>
+    this.kernel.common.arch.Amd64
+  | arm64 =>
+    this.kernel.common.arch.Arm64
+  }
+}
+
+define _get-current-operating-system(): operating-system {
+  introspect operating-system {
+  | linux =>
+    this.kernel.common.operating-system.Linux
+  | darwin =>
+    this.kernel.common.operating-system.Darwin
+  }
+}
+
+define _get-clang(): text {
+  match get-env(env-var-clang) {
+  | Left(_) =>
+    *"clang"
+  | Right(clang) =>
+    clang
+  }
+}
+
+define _calculate-clang-digest(k: &run-process-kit): app(text) {
+  let clang = _get-clang();
+  let spec = Process-Spec of {process := clang, args := List[*"--version"], cwd := none, input := *""};
+  match run-process(k, spec) {
+  | Right(v) =>
+    let result on v = hash-and-encode(to-binary(v));
+    let message on v = core.text.append("Clang info:\n", v);
+    report(get-logger-kit(k), message);
+    discard(v);
+    Right(result)
+  | Left(err) =>
+    raise-error'(err)
+  }
+}
+
+define make-platform-kit(k: &run-process-kit): platform-kit {
+  run(get-logger-kit(k), {
+    let arch = _get-current-arch();
+    let base-size = data-size-from-arch(arch);
+    let operating-system = _get-current-operating-system();
+    try clang-digest = _calculate-clang-digest(k);
+    Right(_Platform-Kit of {
+      arch,
+      operating-system,
+      base-size,
+      clang-digest,
+    })
+  })
+}
+
+define _get-platform-prefix(k: &platform-kit): text {
+  pin p = get-platform(k);
+  text-from-platform(p)
+}
+
+define get-base-build-dir(k: &platform-kit, m: &module): text {
+  pin prefix = _get-platform-prefix(k);
+  pin version-dir = core.text.append("compiler-", "0.17.22"); // todo
+  pin module-root-dir = get-module-root-dir(m);
+  tie Module of {cache-dir} = m;
+  pin tmp = path.path.append(module-root-dir, cache-dir);
+  pin tmp = path.path.append(tmp, "build");
+  pin tmp = path.path.append(tmp, prefix);
+  path.path.append(tmp, version-dir)
+}
+
+define _ensure-executable-in-path-list(name: &text, path-list: &list(text)): either(text, unit) {
+  case path-list {
+  | Nil =>
+    Left(core.text.append("Command not found: ", name))
+  | Cons(path, rest) =>
+    pin cand = path.path.append(path, name);
+    let b = is-regular-file(cand);
+    if b {
+      Right(Unit)
+    } else {
+      _ensure-executable-in-path-list(name, rest)
+    }
+  }
+}
+
+define _ensure-executables-in-path-list(names: &list(text), path-list: &list(text)): either(text, unit) {
+  case names {
+  | Nil =>
+    Right(Unit)
+  | Cons(name, rest) =>
+    try _ = _ensure-executable-in-path-list(name, path-list);
+    _ensure-executables-in-path-list(rest, path-list)
+  }
+}
+
+define _get-path-list(): list(text) {
+  match get-env("PATH") {
+  | Right(path-string) =>
+    pin path-string = path-string;
+    split(path-string, ":")
+  | Left(_) =>
+    List[]
+  }
+}
+
+define ensure-executables(): app(unit) {
+  let clang = _get-clang();
+  let error-or-unit = {
+    pin items = List[clang, *"curl", *"tar", *"zstd"];
+    pin path-list = _get-path-list();
+    _ensure-executables-in-path-list(items, path-list)
+  };
+  match error-or-unit {
+  | Left(e) =>
+    raise-error'(e)
+  | Right(_) =>
+    Right(Unit)
+  }
+}
+
+define zen(): unit {
+  pin result = ensure-executables();
+  vet(result);
+}

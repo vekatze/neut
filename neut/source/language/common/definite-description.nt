@@ -71,6 +71,11 @@ define new-dd(gl: &strict-global-locator, ll: local-locator): definite-descripti
   _Definite-Description(tmp)
 }
 
+define text-from-dd(dd: &definite-description): &text {
+  tie _Definite-Description(t) = dd;
+  t
+}
+
 define _new-by-global-locator(gl: &strict-global-locator, name: base-name): definite-description {
   new-dd(gl, make-local-locator(name))
 }

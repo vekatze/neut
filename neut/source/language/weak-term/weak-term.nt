@@ -1,0 +1,9 @@
+import {
+  this.language.common.hole-id {hole-ID},
+  this.logger.hint {hint},
+}
+
+data weak-term {
+| Tau(hint)
+| Hole(hint, hole-ID, vector(weak-term))
+}
