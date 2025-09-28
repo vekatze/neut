@@ -257,30 +257,33 @@ define _attach-extension(file: &text, kind: output-kind): text {
 }
 
 define output-path-from-source(k: &path-kit, t: &target, kind: output-kind, src: &source): app(text) {
-  tie Source of {source-module, file-path} = src;
+  tie Source of {source-module} = src;
   try artifact-dir = _get-artifact-dir(k, t, source-module);
-  match this.kernel.common.source.get-rel-path-from-source-dir(src) {
-  | Left(_) =>
-    let buf = make-text-builder(64);
-    let _ on buf = {
-      pin source-dir = get-source-dir(source-module);
-      append-text(buf, "The file\n  ");
-      append-text(buf, file-path);
-      append-text(buf, "\nis not an element of\n  ");
-      append-text(buf, source-dir);
-    };
-    raise-critical'(extract(buf))
-  | Right(rel-path) =>
-    let result on artifact-dir, rel-path = {
-      let Pair(rel-path, _) = split-extension(rel-path);
-      pin rel-path = rel-path;
-      pin tmp = path.path.append(artifact-dir, rel-path);
-      _attach-extension(tmp, kind)
-    };
-    let _ = artifact-dir;
-    let _ = rel-path;
-    Right(result)
-  }
+  try rel-path = this.kernel.common.source.get-rel-path-from-source-dir(src);
+  let result on artifact-dir, rel-path = {
+    let Pair(rel-path, _) = split-extension(rel-path);
+    pin rel-path = rel-path;
+    pin tmp = path.path.append(artifact-dir, rel-path);
+    _attach-extension(tmp, kind)
+  };
+  let _ = artifact-dir;
+  let _ = rel-path;
+  Right(result)
+}
+
+define _get-cache-path(k: &path-kit, t: &target, extension: &text, src: &source): app(text) {
+  tie Source of {source-module} = src;
+  try artifact-dir = _get-artifact-dir(k, t, source-module);
+  try rel-path = this.kernel.common.source.get-rel-path-from-source-dir(src);
+  let result on artifact-dir, rel-path = {
+    let Pair(rel-path, _) = split-extension(rel-path);
+    pin rel-path = rel-path;
+    pin tmp = path.path.append(artifact-dir, rel-path);
+    core.text.append(tmp, extension)
+  };
+  let _ = artifact-dir;
+  let _ = rel-path;
+  Right(result)
 }
 
 define zen(): unit {
