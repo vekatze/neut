@@ -294,6 +294,10 @@ define get-source-completion-cache-path(k: &path-kit, t: &target, src: &source):
   _get-cache-path(k, t, ".cmp", src)
 }
 
+define get-source-location-cache-path(k: &path-kit, t: &target, src: &source): app(text) {
+  _get-cache-path(k, t, ".loc", src)
+}
+
 define zen(): unit {
   pin x = get-base-name("foo/bar/buz.nt");
   vet(x);
