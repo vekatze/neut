@@ -180,8 +180,8 @@ define _get-foreign-dir(k: &path-kit, t: &target, m: &module): app(text) {
   Right(result)
 }
 
-define _get-entry-dir(k: &path-kit, t: &target, m: &module): app(text) {
-  try build-dir = _get-build-dir(k, t, m);
+define _get-entry-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+  try build-dir = _get-build-dir-base(k, t, m);
   let result on build-dir = path.path.append(build-dir, entry-rel-dir);
   let _ = build-dir;
   Right(result)
@@ -203,8 +203,8 @@ define _get-zen-executable-dir(k: &path-kit, t: &main-target, m: &module): app(t
   Right(result)
 }
 
-define _get-zen-entry-dir(k: &path-kit, t: &target, m: &module): app(text) {
-  try build-dir = _get-build-dir(k, t, m);
+define _get-zen-entry-dir(k: &path-kit, t: &main-target, m: &module): app(text) {
+  try build-dir = _get-build-dir-base(k, t, m);
   let tmp on build-dir = path.path.append(build-dir, zen-rel-dir);
   let result on tmp = path.path.append(tmp, entry-rel-dir);
   let _ = build-dir;
@@ -223,27 +223,15 @@ define get-executable-output-path(k: &path-kit, mt: &main-target): app(text) {
     Right(result)
   | Zen(path, _) =>
     try zen-executable-dir = _get-zen-executable-dir(k, mt, m);
-    match get-rel-path-from-source-dir(m, path) {
-    | Left(_) =>
-      let buf = make-text-builder(64);
-      let _ on buf = {
-        pin source-dir = get-source-dir(m);
-        append-text(buf, "The file\n  ");
-        append-text(buf, path);
-        append-text(buf, "\nis not an element of\n  ");
-        append-text(buf, source-dir);
-      };
-      raise-critical'(extract(buf))
-    | Right(rel-path) =>
-      let Pair(rel-path-without-ext, _) on rel-path = split-extension(rel-path);
-      let zen-path on rel-path-without-ext = core.text.append(rel-path-without-ext, ".zen");
-      let result on zen-executable-dir, zen-path = path.path.append(zen-executable-dir, zen-path);
-      let _ = rel-path;
-      let _ = rel-path-without-ext;
-      let _ = zen-executable-dir;
-      let _ = zen-path;
-      Right(result)
-    }
+    try rel-path = get-rel-path-from-source-dir(m, path);
+    let Pair(rel-path-without-ext, _) on rel-path = split-extension(rel-path);
+    let zen-path on rel-path-without-ext = core.text.append(rel-path-without-ext, ".zen");
+    let result on zen-executable-dir, zen-path = path.path.append(zen-executable-dir, zen-path);
+    let _ = rel-path;
+    let _ = rel-path-without-ext;
+    let _ = zen-executable-dir;
+    let _ = zen-path;
+    Right(result)
   }
 }
 
@@ -298,9 +286,43 @@ define get-source-location-cache-path(k: &path-kit, t: &target, src: &source): a
   _get-cache-path(k, t, ".loc", src)
 }
 
-define attach-output-path(k: &path-kit, t: &target, kind: output-kind, src: &source): app(pair(output-kind, text)) {
+define attach-output-path(
+  k: &path-kit,
+  t: &target,
+  kind: output-kind,
+  src: &source,
+): app(pair(output-kind, text)) {
   try output-path = output-path-from-source(k, t, kind, src);
   Right(Pair(kind, output-path))
+}
+
+define get-output-path-for-entry-point(
+  k: &path-kit,
+  kind: output-kind,
+  t: &main-target,
+): app(pair(output-kind, text)) {
+  tie _Path-Kit of {main-module} = k;
+  let m = extract-module(*main-module);
+  case t {
+  | Named(target, _) =>
+    try entry-dir = _get-entry-dir(k, t, m);
+    let tmp on entry-dir = path.path.append(entry-dir, target);
+    let result on tmp = _attach-extension(tmp, kind);
+    let _ = entry-dir;
+    let _ = tmp;
+    Right(Pair(kind, result))
+  | Zen(path, _) =>
+    try zen-entry-dir = _get-zen-entry-dir(k, t, m);
+    try rel-path = get-rel-path-from-source-dir(m, path);
+    let Pair(rel-path-without-ext, _) on rel-path = split-extension(rel-path);
+    let _ = rel-path;
+    let tmp on zen-entry-dir, rel-path-without-ext = path.path.append(zen-entry-dir, rel-path-without-ext);
+    let result on tmp = _attach-extension(tmp, kind);
+    let _ = rel-path-without-ext;
+    let _ = tmp;
+    let _ = zen-entry-dir;
+    Right(Pair(kind, result))
+  }
 }
 
 define zen(): unit {

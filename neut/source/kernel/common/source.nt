@@ -1,9 +1,7 @@
 import {
-  core.text-builder {append-text, extract, make-text-builder},
   path.path {split-extension},
   this.app.app {app},
-  this.app.run {raise-critical'},
-  this.kernel.common.module {get-source-dir, module},
+  this.kernel.common.module {module},
   this.language.common.const {ns-sep},
   this.logger.hint {hint},
 }
@@ -18,20 +16,7 @@ data source {
 
 define get-rel-path-from-source-dir(s: &source): app(text) {
   tie Source of {source-module, file-path} = s;
-  match this.kernel.common.module.get-rel-path-from-source-dir(source-module, file-path) {
-  | Left(_) =>
-    let buf = make-text-builder(64);
-    let _ on buf = {
-      pin source-dir = get-source-dir(source-module);
-      append-text(buf, "The file\n  ");
-      append-text(buf, file-path);
-      append-text(buf, "\nis not an element of\n  ");
-      append-text(buf, source-dir);
-    };
-    raise-critical'(extract(buf))
-  | Right(rel-path) =>
-    Right(rel-path)
-  }
+  this.kernel.common.module.get-rel-path-from-source-dir(source-module, file-path)
 }
 
 define get-base-readable-locator(s: &source): app(text) {
