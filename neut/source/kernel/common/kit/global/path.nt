@@ -298,6 +298,11 @@ define get-source-location-cache-path(k: &path-kit, t: &target, src: &source): a
   _get-cache-path(k, t, ".loc", src)
 }
 
+define attach-output-path(k: &path-kit, t: &target, kind: output-kind, src: &source): app(pair(output-kind, text)) {
+  try output-path = output-path-from-source(k, t, kind, src);
+  Right(Pair(kind, output-path))
+}
+
 define zen(): unit {
   pin x = get-base-name("foo/bar/buz.nt");
   vet(x);
