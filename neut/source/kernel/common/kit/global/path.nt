@@ -286,6 +286,10 @@ define _get-cache-path(k: &path-kit, t: &target, extension: &text, src: &source)
   Right(result)
 }
 
+define get-source-cache-path(k: &path-kit, t: &target, src: &source): app(text) {
+  _get-cache-path(k, t, ".def", src)
+}
+
 define zen(): unit {
   pin x = get-base-name("foo/bar/buz.nt");
   vet(x);
