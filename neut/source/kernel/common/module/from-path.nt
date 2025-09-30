@@ -1,0 +1,26 @@
+import {
+  core.dictionary {dictionary},
+  core.list {for-each-E},
+  this.app.app {app},
+  this.ens.ens {ens, to-string},
+  this.kernel.common.module {locator-name},
+  this.language.common.base-name {base-name, base-name-from-text-meta},
+  this.syntax-tree.series {extract, series},
+}
+
+define _interpret-preset-map(s: series(pair(text, ens))): app(dictionary(locator-name, list(base-name))) {
+  try items =
+    for-each-E(this.syntax-tree.series.extract(s), function (p) {
+      let Pair(k, v) = p;
+      try Pair(_, preset-series) = this.ens.ens.to-list(v);
+      try v =
+        for-each-E(extract(preset-series), function (x) {
+          try Pair(m, t) = to-string(x);
+          letbox-T result on t = base-name-from-text-meta(m, t);
+          let _ = t;
+          result
+        });
+      Right(Pair(k, v))
+    });
+  Right(core.dictionary.from-list(core.text.ord.as-ord, items))
+}

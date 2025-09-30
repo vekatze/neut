@@ -245,6 +245,16 @@ define to-bool-N(e: &ens): app(pair(&hint, bool)) {
   }
 }
 
+define to-string(e: ens): app(pair(hint, text)) {
+  match e {
+  | E-String(m, x) =>
+    Right(Pair(m, x))
+  | e =>
+    let t on e = type-of(e);
+    raise-type-error(_get-hint(e), ET-String, t)
+  }
+}
+
 define to-string-N(e: &ens): app(pair(&hint, &text)) {
   case e {
   | E-String(m, x) =>
