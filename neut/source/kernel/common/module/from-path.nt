@@ -2,10 +2,17 @@ import {
   core.dictionary {dictionary},
   core.list {for-each-E, for-each-EN},
   this.app.app {app},
-  this.ens.ens {access, access-or-default, empty-list, ens, get-hint-N, to-list, to-list-N, to-string, to-string-N},
+  this.ens.ens {access, access-or-default, empty-list, ens, get-hint-N, to-list-N, to-string, to-string-N},
   this.kernel.common.clang-option {clang-option, make-clang-option},
-  this.kernel.common.module {key-build-option, key-compile-option, key-link-option, key-main, locator-name, target-name},
-  this.kernel.common.target {target-summary},
+  this.kernel.common.module {
+    key-build-option,
+    key-compile-option,
+    key-link-option,
+    key-main,
+    locator-name,
+    target-name,
+  },
+  this.kernel.common.target {Target-Summary, target-summary},
   this.language.common.base-name {base-name, base-name-from-text-meta},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.logger.hint {hint},
@@ -68,4 +75,20 @@ define _interpret-clang-option(e: &ens): app(clang-option) {
       Right(*c)
     });
   Right(make-clang-option(build-options, compile-options, link-options))
+}
+
+define _interpret-target(p: pair(hint, series(pair(text, ens)))): app(dictionary(target-name, target-summary)) {
+  let Pair(_, target-dict) = p;
+  try kvs =
+    for-each-E(extract(target-dict), function (p) {
+      let Pair(k, v) = p;
+      try entry-point on v = {
+        try tmp = access(key-main, v);
+        _interpret-source-locator(tmp)
+      };
+      try clang-option on v = _interpret-clang-option(v);
+      let _ = v;
+      Right(Pair(k, Target-Summary of {entry-point, clang-option}))
+    });
+  Right(core.dictionary.from-list(core.text.ord.as-ord, kvs))
 }
