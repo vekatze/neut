@@ -1,14 +1,15 @@
 import {
   core.dictionary {dictionary},
-  core.list {for-each-E},
+  core.list {for-each-E, for-each-EN},
   this.app.app {app},
-  this.ens.ens {access, ens, to-string, to-string-N},
-  this.kernel.common.module {key-main, locator-name, target-name},
+  this.ens.ens {access, access-or-default, empty-list, ens, get-hint-N, to-list, to-list-N, to-string, to-string-N},
+  this.kernel.common.clang-option {clang-option, make-clang-option},
+  this.kernel.common.module {key-build-option, key-compile-option, key-link-option, key-main, locator-name, target-name},
   this.kernel.common.target {target-summary},
   this.language.common.base-name {base-name, base-name-from-text-meta},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.logger.hint {hint},
-  this.syntax-tree.series {extract, series},
+  this.syntax-tree.series {extract, extract-N, series},
 }
 
 define _interpret-preset-map(s: series(pair(text, ens))): app(dictionary(locator-name, list(base-name))) {
@@ -31,4 +32,40 @@ define _interpret-preset-map(s: series(pair(text, ens))): app(dictionary(locator
 define _interpret-source-locator(e: &ens): app(source-locator) {
   try Pair(_, path-string) = to-string-N(e);
   Right(Source-Locator(*path-string))
+}
+
+define _interpret-clang-option(e: &ens): app(clang-option) {
+  let m = get-hint-N(e);
+  pin fallback = empty-list(m);
+  try Pair(_, build-opt-ens-series) = {
+    try tmp = access-or-default(key-build-option, fallback, e);
+    to-list-N(tmp)
+  };
+  try Pair(_, compile-opt-ens-series) = {
+    try tmp = access-or-default(key-compile-option, fallback, e);
+    to-list-N(tmp)
+  };
+  try Pair(_, link-opt-ens-series) = {
+    try tmp = access-or-default(key-link-option, fallback, e);
+    to-list-N(tmp)
+  };
+  try build-options =
+    for-each-EN(extract-N(build-opt-ens-series), function (p) {
+      tie Pair(_, y) = p;
+      try Pair(_, c) = to-string-N(y);
+      Right(*c)
+    });
+  try compile-options =
+    for-each-EN(extract-N(compile-opt-ens-series), function (p) {
+      tie Pair(_, y) = p;
+      try Pair(_, c) = to-string-N(y);
+      Right(*c)
+    });
+  try link-options =
+    for-each-EN(extract-N(link-opt-ens-series), function (p) {
+      tie Pair(_, y) = p;
+      try Pair(_, c) = to-string-N(y);
+      Right(*c)
+    });
+  Right(make-clang-option(build-options, compile-options, link-options))
 }

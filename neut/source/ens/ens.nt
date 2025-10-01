@@ -184,7 +184,7 @@ define type-of(e: &ens): ens-type {
   }
 }
 
-define _get-hint(e: ens): hint {
+define get-hint(e: ens): hint {
   match e {
   | E-Int(m, _) =>
     m
@@ -201,7 +201,7 @@ define _get-hint(e: ens): hint {
   }
 }
 
-define _get-hint-N(e: &ens): hint {
+define get-hint-N(e: &ens): hint {
   case e {
   | E-Int(m, _) =>
     *m
@@ -223,7 +223,7 @@ define to-int-N(e: &ens): app(pair(&hint, int)) {
   | E-Int(m, x) =>
     Right(Pair(m, *x))
   | _ =>
-    raise-type-error(_get-hint-N(e), ET-Int, type-of(e))
+    raise-type-error(get-hint-N(e), ET-Int, type-of(e))
   }
 }
 
@@ -232,7 +232,7 @@ define to-float-N(e: &ens): app(pair(&hint, float)) {
   | E-Float(m, x) =>
     Right(Pair(m, *x))
   | _ =>
-    raise-type-error(_get-hint-N(e), ET-Float, type-of(e))
+    raise-type-error(get-hint-N(e), ET-Float, type-of(e))
   }
 }
 
@@ -241,7 +241,7 @@ define to-bool-N(e: &ens): app(pair(&hint, bool)) {
   | E-Bool(m, x) =>
     Right(Pair(m, *x))
   | _ =>
-    raise-type-error(_get-hint-N(e), ET-Bool, type-of(e))
+    raise-type-error(get-hint-N(e), ET-Bool, type-of(e))
   }
 }
 
@@ -251,7 +251,7 @@ define to-string(e: ens): app(pair(hint, text)) {
     Right(Pair(m, x))
   | e =>
     let t on e = type-of(e);
-    raise-type-error(_get-hint(e), ET-String, t)
+    raise-type-error(get-hint(e), ET-String, t)
   }
 }
 
@@ -260,7 +260,7 @@ define to-string-N(e: &ens): app(pair(&hint, &text)) {
   | E-String(m, x) =>
     Right(Pair(m, x))
   | _ =>
-    raise-type-error(_get-hint-N(e), ET-String, type-of(e))
+    raise-type-error(get-hint-N(e), ET-String, type-of(e))
   }
 }
 
@@ -270,7 +270,7 @@ define to-dictionary(e: ens): app(pair(hint, series(pair(pair(hint, text), ens))
     Right(Pair(m, kvs))
   | e =>
     let t on e = type-of(e);
-    raise-type-error(_get-hint(e), ET-Dictionary, t)
+    raise-type-error(get-hint(e), ET-Dictionary, t)
   }
 }
 
@@ -279,7 +279,7 @@ define to-dictionary-N(e: &ens): app(pair(&hint, &series(pair(pair(hint, text), 
   | E-Dictionary(m, kvs) =>
     Right(Pair(m, kvs))
   | _ =>
-    raise-type-error(_get-hint-N(e), ET-Dictionary, type-of(e))
+    raise-type-error(get-hint-N(e), ET-Dictionary, type-of(e))
   }
 }
 
@@ -289,7 +289,7 @@ define to-list(e: ens): app(pair(hint, series(ens))) {
     Right(Pair(m, xs))
   | e =>
     let t on e = type-of(e);
-    raise-type-error(_get-hint(e), ET-List, t)
+    raise-type-error(get-hint(e), ET-List, t)
   }
 }
 
@@ -298,7 +298,7 @@ define to-list-N(e: &ens): app(pair(&hint, &series(ens))) {
   | E-List(m, xs) =>
     Right(Pair(m, xs))
   | _ =>
-    raise-type-error(_get-hint-N(e), ET-List, type-of(e))
+    raise-type-error(get-hint-N(e), ET-List, type-of(e))
   }
 }
 
@@ -309,7 +309,7 @@ define access(k: &text, e: &ens): app(&ens) {
   | Right(v) =>
     Right(v)
   | Left(_) =>
-    raise-key-not-found-error(_get-hint-N(e), k)
+    raise-key-not-found-error(get-hint-N(e), k)
   }
 }
 
@@ -446,7 +446,7 @@ define merge(e1: ens, e2: ens): app(ens) {
     let t1 on e1 = type-of(e1);
     let t2 on e2 = type-of(e2);
     let _ = e2;
-    let m1 = _get-hint(e1);
+    let m1 = get-hint(e1);
     raise-type-error(m1, t1, t2)
   }
 }
