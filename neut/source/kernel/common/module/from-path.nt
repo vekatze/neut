@@ -13,6 +13,7 @@ import {
     target-name,
   },
   this.kernel.common.target {Target-Summary, target-summary},
+  this.kernel.common.zen-config {Zen-Config, zen-config},
   this.language.common.base-name {base-name, base-name-from-text-meta},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.logger.hint {hint},
@@ -91,4 +92,9 @@ define _interpret-target(p: pair(hint, series(pair(text, ens)))): app(dictionary
       Right(Pair(k, Target-Summary of {entry-point, clang-option}))
     });
   Right(core.dictionary.from-list(core.text.ord.as-ord, kvs))
+}
+
+define _interpret-zen-config(e: &ens): app(zen-config) {
+  try clang-option = _interpret-clang-option(e);
+  Right(Zen-Config(clang-option))
 }
