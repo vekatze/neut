@@ -1,0 +1,60 @@
+import {
+  sero.decode {decode},
+  sero.encode {encode},
+  sero.get-kit {get-kit},
+  sero.instance.int64 {int64-sero},
+  sero.instance.text {text-sero},
+  sero.put-kit {put-kit},
+  sero.sero {Sero, sero},
+  this.logger.hint {Hint},
+  this.logger.log {Log-Position, log-position, log-position-from-hint},
+}
+
+define _put(k: &put-kit, v: &log-position): unit {
+  let Sero of {put := !put-text} = text-sero;
+  let Sero of {put := !put-int} = int64-sero;
+  case v {
+  | Log-Position of {file-path, line, column} =>
+    !put-text(k, file-path);
+    !put-int(k, line);
+    !put-int(k, column);
+  }
+}
+
+define _get(k: &get-kit): ?meta log-position {
+  let Sero of {get := !get-text} = text-sero;
+  let Sero of {get := !get-int} = int64-sero;
+  try file-path = !get-text(k);
+  try line = !get-int(k);
+  try column = !get-int(k);
+  Right(box {
+    letbox file-path = file-path;
+    letbox line = line;
+    letbox column = column;
+    Log-Position of {file-path, line, column}
+  })
+}
+
+inline log-position-sero: sero(log-position) {
+  Sero of {
+    put := _put,
+    get := _get,
+  }
+}
+
+define zen(): unit {
+  pin val =
+    log-position-from-hint(Hint of {
+      file-path := "/path/to/file.txt",
+      line := 123,
+      column := 42,
+      should-save-location := True,
+    });
+  match decode(log-position-sero, encode(log-position-sero, val, 8)) {
+  | Left(_) =>
+    print("error\n")
+  | Right(h) =>
+    pin h = h;
+    vet(h)
+  }
+}

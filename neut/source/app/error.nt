@@ -1,6 +1,6 @@
 import {
   this.logger.hint {hint},
-  this.logger.log {Log, log},
+  this.logger.log {Log, log, log-position-from-hint},
   this.logger.log-level {Critical, Error},
 }
 
@@ -16,6 +16,7 @@ define join(es: vector(error)): error {
 }
 
 define new-error(m: hint, content: text): error {
+  let m = log-position-from-hint(m);
   Make-Error(Vector[Log of {content, level := Error, position := Right(m)}])
 }
 
@@ -24,6 +25,7 @@ define new-error'(content: text): error {
 }
 
 define new-critical(m: hint, content: text): error {
+  let m = log-position-from-hint(m);
   Make-Error(Vector[Log of {content, level := Critical, position := Right(m)}])
 }
 

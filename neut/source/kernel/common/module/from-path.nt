@@ -2,9 +2,12 @@ import {
   core.dictionary {dictionary},
   core.list {for-each-E},
   this.app.app {app},
-  this.ens.ens {ens, to-string},
-  this.kernel.common.module {locator-name},
+  this.ens.ens {access, ens, to-string, to-string-N},
+  this.kernel.common.module {key-main, locator-name, target-name},
+  this.kernel.common.target {target-summary},
   this.language.common.base-name {base-name, base-name-from-text-meta},
+  this.language.common.source-locator {Source-Locator, source-locator},
+  this.logger.hint {hint},
   this.syntax-tree.series {extract, series},
 }
 
@@ -23,4 +26,9 @@ define _interpret-preset-map(s: series(pair(text, ens))): app(dictionary(locator
       Right(Pair(k, v))
     });
   Right(core.dictionary.from-list(core.text.ord.as-ord, items))
+}
+
+define _interpret-source-locator(e: &ens): app(source-locator) {
+  try Pair(_, path-string) = to-string-N(e);
+  Right(Source-Locator(*path-string))
 }
