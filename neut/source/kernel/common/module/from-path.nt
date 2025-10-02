@@ -1,5 +1,5 @@
 import {
-  core.dictionary {dictionary},
+  core.dictionary {dictionary, from-list},
   core.list {for-each-E, for-each-EN},
   this.app.app {app},
   this.ens.ens {access, access-or-default, empty-list, ens, get-hint-N, to-list-N, to-string, to-string-N},
@@ -97,4 +97,15 @@ define _interpret-target(p: pair(hint, series(pair(text, ens)))): app(dictionary
 define _interpret-zen-config(e: &ens): app(zen-config) {
   try clang-option = _interpret-clang-option(e);
   Right(Zen-Config(clang-option))
+}
+
+define _interpret-static-files(static-file-dict: series(pair(text, ens))): app(dictionary(text, text)) {
+  try kvs =
+    for-each-E(extract(static-file-dict), function (kv) {
+      let Pair(k, v) = kv;
+      try Pair(_, tmp) = to-string(v);
+      try static-file-path-text = Right(tmp);
+      Right(Pair(k, static-file-path-text))
+    });
+  Right(from-list(core.text.ord.as-ord, kvs))
 }
