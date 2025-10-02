@@ -83,7 +83,7 @@ define _new-by-global-locator(gl: &strict-global-locator, name: base-name): defi
 define _get-form-dd(dd: &definite-description): definite-description {
   tie _Definite-Description(t) = dd;
   pin tmp = core.text.append(t, "#");
-  pin form = text-from-base-name(form);
+  pin form = text-from-base-name(form());
   let tmp = core.text.append(tmp, form);
   _Definite-Description(tmp)
 }
@@ -91,7 +91,7 @@ define _get-form-dd(dd: &definite-description): definite-description {
 define _get-node-dd(dd: &definite-description): definite-description {
   tie _Definite-Description(t) = dd;
   pin tmp = core.text.append(t, "#");
-  pin node = text-from-base-name(node);
+  pin node = text-from-base-name(node());
   let tmp = core.text.append(tmp, node);
   _Definite-Description(tmp)
 }
@@ -99,7 +99,7 @@ define _get-node-dd(dd: &definite-description): definite-description {
 define _get-leaf-dd(dd: &definite-description): definite-description {
   tie _Definite-Description(t) = dd;
   pin tmp = core.text.append(t, "#");
-  pin leaf = text-from-base-name(leaf);
+  pin leaf = text-from-base-name(leaf());
   let tmp = core.text.append(tmp, leaf);
   _Definite-Description(tmp)
 }
@@ -107,7 +107,7 @@ define _get-leaf-dd(dd: &definite-description): definite-description {
 define _get-root-dd(dd: &definite-description): definite-description {
   tie _Definite-Description(t) = dd;
   pin tmp = core.text.append(t, "#");
-  pin root = text-from-base-name(root);
+  pin root = text-from-base-name(root());
   let tmp = core.text.append(tmp, root);
   _Definite-Description(tmp)
 }
@@ -155,82 +155,82 @@ define local-locator-from-dd(dd: &definite-description): text {
 
 define imm-type-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-type)
+  _new-by-global-locator(tmp, imm-type())
 }
 
 define imm-noema-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-noema)
+  _new-by-global-locator(tmp, imm-noema())
 }
 
 define imm-int1-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-int1)
+  _new-by-global-locator(tmp, imm-int1())
 }
 
 define imm-int2-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-int2)
+  _new-by-global-locator(tmp, imm-int2())
 }
 
 define imm-int4-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-int4)
+  _new-by-global-locator(tmp, imm-int4())
 }
 
 define imm-int8-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-int8)
+  _new-by-global-locator(tmp, imm-int8())
 }
 
 define imm-int16-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-int16)
+  _new-by-global-locator(tmp, imm-int16())
 }
 
 define imm-int32-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-int32)
+  _new-by-global-locator(tmp, imm-int32())
 }
 
 define imm-int64-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-int64)
+  _new-by-global-locator(tmp, imm-int64())
 }
 
 define imm-float16-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-float16)
+  _new-by-global-locator(tmp, imm-float16())
 }
 
 define imm-float32-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-float32)
+  _new-by-global-locator(tmp, imm-float32())
 }
 
 define imm-float64-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-float64)
+  _new-by-global-locator(tmp, imm-float64())
 }
 
 define imm-rune-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-rune)
+  _new-by-global-locator(tmp, imm-rune())
 }
 
 define imm-pointer-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-pointer)
+  _new-by-global-locator(tmp, imm-pointer())
 }
 
 define imm-null-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, imm-null)
+  _new-by-global-locator(tmp, imm-null())
 }
 
 define cls-dd(): definite-description {
   pin tmp = sgl-from-source-locator(internal-locator());
-  _new-by-global-locator(tmp, cls)
+  _new-by-global-locator(tmp, cls())
 }
 
 define append-dd(buf: &text-builder, dd: &definite-description): unit {

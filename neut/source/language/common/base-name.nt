@@ -13,7 +13,27 @@ import {
 
 data base-name {
 | _Base-Name(text)
-| _Base-Name-N(&text)
+| _Base-Name-N(text)
+}
+
+define _get-text(bn: &base-name): &text {
+  case bn {
+  | _Base-Name(t) =>
+    t
+  | _Base-Name-N(t) =>
+    t
+  }
+}
+
+inline ord-base-name: ord(base-name) {
+  Ord of {
+    compare := {
+      function (x, y) {
+        let Ord of {compare} = core.text.ord.as-ord;
+        compare(_get-text(x), _get-text(y))
+      }
+    },
+  }
 }
 
 define base-name-by-split(m: &hint, name: &text): either(error, list(base-name)) {
@@ -37,7 +57,7 @@ define base-name-from-text(m: hint, name: &text): either(error, base-name) {
   }
 }
 
-define base-name-from-text-meta(m: hint, name: &text): meta either(error, base-name) {
+define base-name-from-text-meta(m: &hint, name: &text): meta either(error, base-name) {
   let tmp = core.text.split(name, ns-sep);
   match tmp {
   | Cons(b, Nil) =>
@@ -47,7 +67,7 @@ define base-name-from-text-meta(m: hint, name: &text): meta either(error, base-n
     }
   | _ =>
     box {
-      letbox m = quote-hint(m);
+      letbox m = quote-hint(*m);
       letbox name = box name {name};
       let message on name = core.text.append("No dots are allowed here: ", name);
       let _ = name;
@@ -75,7 +95,7 @@ define text-from-base-name(bn: base-name): text {
   | _Base-Name(t) =>
     t
   | _Base-Name-N(t) =>
-    *t
+    t
   }
 }
 
@@ -84,7 +104,7 @@ define text-from-base-name-N(bn: &base-name): &text {
   | _Base-Name(t) =>
     t
   | _Base-Name-N(t) =>
-    *t
+    t
   }
 }
 
@@ -94,15 +114,6 @@ define _get-first-rune<r := rho>(t: &text): ?rune {
     Right(core.text._get-rune(t, 0))
   } else {
     none
-  }
-}
-
-define _get-text(bn: &base-name): &text {
-  case bn {
-  | _Base-Name(t) =>
-    t
-  | _Base-Name-N(t) =>
-    *t
   }
 }
 
@@ -121,88 +132,88 @@ define length(bn: &base-name): int {
   core.text.length(t)
 }
 
-inline this: base-name {
-  _Base-Name-N("this")
+inline this(): base-name {
+  _Base-Name-N(*"this")
 }
 
-inline base: base-name {
-  _Base-Name-N("base")
+inline base(): base-name {
+  _Base-Name-N(*"base")
 }
 
-inline core: base-name {
-  _Base-Name-N("core")
+inline core(): base-name {
+  _Base-Name-N(*"core")
 }
 
-define main-name: base-name {
-  _Base-Name-N("main")
+define main-name(): base-name {
+  _Base-Name-N(*"main")
 }
 
-define zen-name: base-name {
-  _Base-Name-N("zen")
+define zen-name(): base-name {
+  _Base-Name-N(*"zen")
 }
 
-define imm-type: base-name {
-  _Base-Name-N("imm-type")
+define imm-type(): base-name {
+  _Base-Name-N(*"imm-type")
 }
 
-define imm-noema: base-name {
-  _Base-Name-N("imm-noema")
+define imm-noema(): base-name {
+  _Base-Name-N(*"imm-noema")
 }
 
-define imm-int1: base-name {
-  _Base-Name-N("imm-int1")
+define imm-int1(): base-name {
+  _Base-Name-N(*"imm-int1")
 }
 
-define imm-int2: base-name {
-  _Base-Name-N("imm-int2")
+define imm-int2(): base-name {
+  _Base-Name-N(*"imm-int2")
 }
 
-define imm-int4: base-name {
-  _Base-Name-N("imm-int4")
+define imm-int4(): base-name {
+  _Base-Name-N(*"imm-int4")
 }
 
-define imm-int8: base-name {
-  _Base-Name-N("imm-int8")
+define imm-int8(): base-name {
+  _Base-Name-N(*"imm-int8")
 }
 
-define imm-int16: base-name {
-  _Base-Name-N("imm-int16")
+define imm-int16(): base-name {
+  _Base-Name-N(*"imm-int16")
 }
 
-define imm-int32: base-name {
-  _Base-Name-N("imm-int32")
+define imm-int32(): base-name {
+  _Base-Name-N(*"imm-int32")
 }
 
-define imm-int64: base-name {
-  _Base-Name-N("imm-int64")
+define imm-int64(): base-name {
+  _Base-Name-N(*"imm-int64")
 }
 
-define imm-float16: base-name {
-  _Base-Name-N("imm-float16")
+define imm-float16(): base-name {
+  _Base-Name-N(*"imm-float16")
 }
 
-define imm-float32: base-name {
-  _Base-Name-N("imm-float32")
+define imm-float32(): base-name {
+  _Base-Name-N(*"imm-float32")
 }
 
-define imm-float64: base-name {
-  _Base-Name-N("imm-float64")
+define imm-float64(): base-name {
+  _Base-Name-N(*"imm-float64")
 }
 
-define imm-rune: base-name {
-  _Base-Name-N("imm-rune")
+define imm-rune(): base-name {
+  _Base-Name-N(*"imm-rune")
 }
 
-define imm-pointer: base-name {
-  _Base-Name-N("imm-pointer")
+define imm-pointer(): base-name {
+  _Base-Name-N(*"imm-pointer")
 }
 
-define imm-null: base-name {
-  _Base-Name-N("imm-null")
+define imm-null(): base-name {
+  _Base-Name-N(*"imm-null")
 }
 
-define cls: base-name {
-  _Base-Name-N("cls")
+define cls(): base-name {
+  _Base-Name-N(*"cls")
 }
 
 define sigma-name(i: int): base-name {
@@ -253,26 +264,26 @@ define text-name(i: int): base-name {
   _Base-Name(name)
 }
 
-define form: base-name {
-  _Base-Name-N("form")
+define form(): base-name {
+  _Base-Name-N(*"form")
 }
 
-define node: base-name {
-  _Base-Name-N("node")
+define node(): base-name {
+  _Base-Name-N(*"node")
 }
 
-define leaf: base-name {
-  _Base-Name-N("leaf")
+define leaf(): base-name {
+  _Base-Name-N(*"leaf")
 }
 
-define root: base-name {
-  _Base-Name-N("root")
+define root(): base-name {
+  _Base-Name-N(*"root")
 }
 
 define is-reserved-alias(k: &base-name): bool {
   let t = _get-text(k);
-  pin this = this;
-  pin base = base;
+  pin this = this();
+  pin base = base();
   if eq-text(t, _get-text(this)) {
     True
   } else-if eq-text(t, _get-text(base)) {
@@ -299,7 +310,7 @@ inline base-name-sero: sero(base-name) {
         | _Base-Name(t) =>
           put-text(k, t);
         | _Base-Name-N(t) =>
-          put-text(k, *t);
+          put-text(k, t);
         }
       }
     },

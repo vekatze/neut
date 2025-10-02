@@ -264,7 +264,7 @@ define to-string-N(e: &ens): app(pair(&hint, &text)) {
   }
 }
 
-define to-dictionary(e: ens): app(pair(hint, series(pair(pair(hint, text), ens)))) {
+define to-dictionary(e: ens): app(pair(hint, series(pair(ens-key, ens)))) {
   match e {
   | E-Dictionary(m, kvs) =>
     Right(Pair(m, kvs))
@@ -274,7 +274,7 @@ define to-dictionary(e: ens): app(pair(hint, series(pair(pair(hint, text), ens))
   }
 }
 
-define to-dictionary-N(e: &ens): app(pair(&hint, &series(pair(pair(hint, text), ens)))) {
+define to-dictionary-N(e: &ens): app(pair(&hint, &series(pair(ens-key, ens)))) {
   case e {
   | E-Dictionary(m, kvs) =>
     Right(Pair(m, kvs))

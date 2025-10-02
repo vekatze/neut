@@ -29,9 +29,9 @@ define empty-zen(path: text): main-target {
 define get-entry-point-name(t: &main-target): base-name {
   case t {
   | Named of {} =>
-    main-name
+    main-name()
   | Zen of {} =>
-    zen-name
+    zen-name()
   }
 }
 

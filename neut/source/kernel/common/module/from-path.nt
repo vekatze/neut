@@ -1,20 +1,48 @@
 import {
   core.dictionary {dictionary, from-list},
-  core.list {for-each-E, for-each-EN},
+  core.list {for-each, for-each-E, for-each-EN},
+  core.text-builder {append-text, make-text-builder},
   this.app.app {app},
-  this.ens.ens {access, access-or-default, empty-list, ens, get-hint-N, to-list-N, to-string, to-string-N},
+  this.app.run {raise-error},
+  this.ens.ens {
+    E-Bool,
+    access,
+    access-or-default,
+    empty-list,
+    ens,
+    ens-key,
+    get-hint-N,
+    to-bool-N,
+    to-list-N,
+    to-string,
+    to-string-N,
+  },
   this.kernel.common.clang-option {clang-option, make-clang-option},
   this.kernel.common.module {
+    Dependency,
+    dependency,
     key-build-option,
     key-compile-option,
+    key-digest,
+    key-enable-preset,
     key-link-option,
     key-main,
+    key-mirror,
     locator-name,
     target-name,
   },
+  this.kernel.common.module-URL {Module-URL},
   this.kernel.common.target {Target-Summary, target-summary},
   this.kernel.common.zen-config {Zen-Config, zen-config},
-  this.language.common.base-name {base-name, base-name-from-text-meta},
+  this.language.common.base-name {
+    base-name,
+    base-name-from-text-meta,
+    is-capitalized,
+    is-reserved-alias,
+    text-from-base-name-N,
+  },
+  this.language.common.module-alias {Module-Alias, module-alias, ord-module-alias},
+  this.language.common.module-digest {Module-Digest},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.logger.hint {hint},
   this.syntax-tree.series {extract, extract-N, series},
@@ -28,7 +56,8 @@ define _interpret-preset-map(s: series(pair(text, ens))): app(dictionary(locator
       try v =
         for-each-E(extract(preset-series), function (x) {
           try Pair(m, t) = to-string(x);
-          letbox-T result on t = base-name-from-text-meta(m, t);
+          letbox-T result on t, m = base-name-from-text-meta(m, t);
+          let _ = m;
           let _ = t;
           result
         });
@@ -113,4 +142,76 @@ define _interpret-static-files(static-file-dict: series(pair(text, ens))): app(d
 define _interpret-rel-file-path(e: &ens): app(&text) {
   try Pair(_, path-string) = to-string-N(e);
   Right(path-string)
+}
+
+define _interpret-dependency-dict(
+  p: pair(hint, series(pair(ens-key, ens))),
+): app(dictionary(module-alias, dependency)) {
+  let Pair(m, dep) = p;
+  pin m = m;
+  try kvs =
+    for-each-E(extract(dep), function (kv) {
+      let Pair(Pair(_, k), ens) = kv;
+      pin ens = ens;
+      pin k = k;
+      letbox-T bk-or-err = base-name-from-text-meta(m, k);
+      try bk = bk-or-err;
+      let b on bk = is-capitalized(bk);
+      try _ on bk =
+        if b {
+          let message =
+            core.text.append(
+              "Module aliases cannot be capitalized, but found: ",
+              text-from-base-name-N(bk),
+            );
+          raise-error(*m, message)
+        } else {
+          Right(Unit)
+        };
+      let b on bk = is-reserved-alias(bk);
+      try _ on bk =
+        if b {
+          let buf = make-text-builder(64);
+          let _ on buf = {
+            append-text(buf, "The reserved name `");
+            append-text(buf, text-from-base-name-N(bk));
+            append-text(buf, "` cannot be used as an alias of a module");
+          };
+          raise-error(*m, core.text-builder.extract(buf))
+        } else {
+          Right(Unit)
+        };
+      try url-list = {
+        try tmp = access(key-mirror, ens);
+        try Pair(_, xs) = to-list-N(tmp);
+        for-each-EN(extract-N(xs), function (p) {
+          tie Pair(_, x) = p;
+          try Pair(_, str) = to-string-N(x);
+          Right(*str)
+        })
+      };
+      try digest = {
+        try tmp = access(key-digest, ens);
+        try Pair(_, str) = to-string-N(tmp);
+        Right(*str)
+      };
+      try enable-preset = {
+        pin false = E-Bool(*m, False);
+        match access-or-default(key-enable-preset, false, ens) {
+        | Right(tmp) =>
+          try Pair(_, b) = to-bool-N(tmp);
+          Right(b)
+        | Left(_) =>
+          Right(False)
+        }
+      };
+      let _ = ens;
+      let mirror-list = for-each(url-list, Module-URL);
+      let digest = Module-Digest(digest);
+      Right(Pair(
+        Module-Alias(bk),
+        Dependency(mirror-list, digest, enable-preset),
+      ))
+    });
+  Right(from-list(ord-module-alias, kvs))
 }
