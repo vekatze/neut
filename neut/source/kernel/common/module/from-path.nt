@@ -109,3 +109,8 @@ define _interpret-static-files(static-file-dict: series(pair(text, ens))): app(d
     });
   Right(from-list(core.text.ord.as-ord, kvs))
 }
+
+define _interpret-rel-file-path(e: &ens): app(&text) {
+  try Pair(_, path-string) = to-string-N(e);
+  Right(path-string)
+}
