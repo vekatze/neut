@@ -48,7 +48,7 @@ import {
     text-from-base-name-N,
   },
   this.language.common.module-alias {Module-Alias, module-alias, ord-module-alias},
-  this.language.common.module-digest {Module-Digest},
+  this.language.common.module-digest {Module-Digest, module-digest},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.logger.hint {hint},
   this.path.ensure-file-existence {ensure-directory-existence, ensure-file-existence},
@@ -268,4 +268,9 @@ define _interpret-foreign-dict(module-root-dir: &text, e: &ens): app(foreign) {
       Right(*x)
     });
   Right(Foreign of {input, output, script})
+}
+
+define _interpret-antecedent(e: &ens): app(module-digest) {
+  try Pair(_, t) = to-string-N(e);
+  Right(Module-Digest(*t))
 }
