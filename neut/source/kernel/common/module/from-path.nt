@@ -2,6 +2,7 @@ import {
   core.dictionary {dictionary, from-list},
   core.list {for-each, for-each-E, for-each-EN},
   core.text-builder {append-text, make-text-builder},
+  path.path,
   this.app.app {app},
   this.app.run {raise-error},
   this.ens.ens {
@@ -45,6 +46,7 @@ import {
   this.language.common.module-digest {Module-Digest},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.logger.hint {hint},
+  this.path.ensure-file-existence {ensure-directory-existence, ensure-file-existence},
   this.syntax-tree.series {extract, extract-N, series},
 }
 
@@ -214,4 +216,18 @@ define _interpret-dependency-dict(
       ))
     });
   Right(from-list(ord-module-alias, kvs))
+}
+
+define _interpret-extra-path(module-root-dir: &text, e: &ens): app(text) {
+  try Pair(m, item-path-text) = to-string-N(e);
+  pin k = core.text.take-end-N(item-path-text, 1);
+  let is-directory-path = eq-text(k, "/");
+  let path = path.path.append(module-root-dir, item-path-text);
+  if is-directory-path {
+    try _ on path = ensure-directory-existence(path, *m);
+    Right(path)
+  } else {
+    try _ on path = ensure-file-existence(path, *m);
+    Right(path)
+  }
 }
