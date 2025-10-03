@@ -21,11 +21,16 @@ import {
   this.kernel.common.clang-option {clang-option, make-clang-option},
   this.kernel.common.module {
     Dependency,
+    Foreign,
     dependency,
+    foreign,
     key-build-option,
     key-compile-option,
     key-digest,
     key-enable-preset,
+    key-foreign-input,
+    key-foreign-output,
+    key-foreign-script,
     key-link-option,
     key-main,
     key-mirror,
@@ -230,4 +235,37 @@ define _interpret-extra-path(module-root-dir: &text, e: &ens): app(text) {
     try _ on path = ensure-file-existence(path, *m);
     Right(path)
   }
+}
+
+define _interpret-foreign-dict(module-root-dir: &text, e: &ens): app(foreign) {
+  try Pair(_, input) = {
+    try tmp = access(key-foreign-input, e);
+    to-list-N(tmp)
+  };
+  try Pair(_, output) = {
+    try tmp = access(key-foreign-output, e);
+    to-list-N(tmp)
+  };
+  try Pair(_, script) = {
+    try tmp = access(key-foreign-script, e);
+    to-list-N(tmp)
+  };
+  try input =
+    for-each-EN(extract-N(input), function (p) {
+      tie Pair(_, x) = p;
+      _interpret-extra-path(module-root-dir, x)
+    });
+  try output =
+    for-each-EN(extract-N(output), function (p) {
+      tie Pair(_, x) = p;
+      try x = _interpret-rel-file-path(x);
+      Right(*x)
+    });
+  try script =
+    for-each-EN(extract-N(script), function (p) {
+      tie Pair(_, x) = p;
+      try Pair(_, x) = to-string-N(x);
+      Right(*x)
+    });
+  Right(Foreign of {input, output, script})
 }
