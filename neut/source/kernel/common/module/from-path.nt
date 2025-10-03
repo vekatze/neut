@@ -14,6 +14,7 @@ import {
     ens-key,
     get-hint-N,
     to-bool-N,
+    to-int-N,
     to-list-N,
     to-string,
     to-string-N,
@@ -31,6 +32,7 @@ import {
     key-foreign-input,
     key-foreign-output,
     key-foreign-script,
+    key-inline-limit,
     key-link-option,
     key-main,
     key-mirror,
@@ -278,4 +280,14 @@ define _interpret-antecedent(e: &ens): app(module-digest) {
 define _interpret-dir-path(e: &ens): app(text) {
   try Pair(_, t) = to-string-N(e);
   Right(*t)
+}
+
+define _interpret-inline-limit(e: &ens): app(?int) {
+  match access(key-inline-limit, e) {
+  | Left(_) =>
+    Right(none)
+  | Right(v) =>
+    try Pair(_, v) = to-int-N(v);
+    Right(Right(v))
+  }
 }
