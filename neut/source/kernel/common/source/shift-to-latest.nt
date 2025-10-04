@@ -14,3 +14,7 @@ data shift-kit {
     antecedent-kit: &antecedent-kit,
   )
 }
+
+define make-shift-kit(k: &antecedent-kit): shift-kit {
+  _Shift-Kit(k)
+}
