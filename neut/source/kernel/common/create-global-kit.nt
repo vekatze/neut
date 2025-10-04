@@ -1,0 +1,37 @@
+import {
+  core.dictionary {dictionary},
+  this.color.color-kit {color-kit},
+  this.gensym.gensym {gensym-kit},
+  this.kernel.common.import {import-item},
+  this.kernel.common.kit.global.antecedent {antecedent-kit},
+  this.kernel.common.kit.global.artifact {artifact-kit},
+  this.kernel.common.kit.global.env {env-kit},
+  this.kernel.common.kit.global.global-remark-kit {global-remark-kit},
+  this.kernel.common.kit.global.key-arg {key-arg-kit},
+  this.kernel.common.kit.global.module {module-kit},
+  this.kernel.common.kit.global.optimizable-data {optimizable-data-kit},
+  this.kernel.common.kit.global.path {path-kit},
+  this.kernel.common.kit.global.platform {platform-kit},
+  this.kernel.common.kit.global.type {type-kit},
+  this.language.common.module-id {module-id},
+  this.logger.logger-kit {logger-kit},
+}
+
+data global-kit {
+| _Global-Kit(
+    artifact-kit: &artifact-kit,
+    antecedent-kit: &antecedent-kit,
+    color-kit: &color-kit,
+    platform-kit: &platform-kit,
+    env-kit: &env-kit,
+    gensym-kit: &gensym-kit,
+    global-remark-kit: &global-remark-kit,
+    key-arg-kit: &key-arg-kit,
+    module-kit: &module-kit,
+    optimizable-data-kit: &optimizable-data-kit,
+    path-kit: &path-kit,
+    logger-kit: &logger-kit,
+    type-kit: &type-kit,
+    presetCacheRef: cell(dictionary(module-id, list(import-item))),
+  )
+}
