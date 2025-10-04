@@ -7,8 +7,10 @@ import {
   this.app.run {raise-error},
   this.ens.ens {
     E-Bool,
+    E-List,
     access,
     access-or-default,
+    dict-from-list-vertical,
     empty-list,
     ens,
     ens-key,
@@ -54,7 +56,7 @@ import {
   this.language.common.source-locator {Source-Locator, source-locator},
   this.logger.hint {hint},
   this.path.ensure-file-existence {ensure-directory-existence, ensure-file-existence},
-  this.syntax-tree.series {extract, extract-N, series},
+  this.syntax-tree.series {Brace, Comma, empty-series, extract, extract-N, series},
 }
 
 define _interpret-preset-map(s: series(pair(text, ens))): app(dictionary(locator-name, list(base-name))) {
@@ -290,4 +292,15 @@ define _interpret-inline-limit(e: &ens): app(?int) {
     try Pair(_, v) = to-int-N(v);
     Right(Right(v))
   }
+}
+
+define _empty-foreign(!m: hint): ens {
+  dict-from-list-vertical(
+    !m,
+    List[
+      Pair(Pair(!m, *key-foreign-input), E-List(!m, empty-series(Right(Brace), Comma))),
+      Pair(Pair(!m, *key-foreign-output), E-List(!m, empty-series(Right(Brace), Comma))),
+      Pair(Pair(!m, *key-foreign-script), E-List(!m, empty-series(Right(Brace), Comma))),
+    ],
+  )
 }
