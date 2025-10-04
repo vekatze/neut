@@ -60,6 +60,7 @@ import {
     target-name,
   },
   this.kernel.common.module-URL {Module-URL},
+  this.kernel.common.module.find-module-file {get-current-module-file-path},
   this.kernel.common.target {Target-Summary, target-summary},
   this.kernel.common.zen-config {Zen-Config, zen-config},
   this.language.common.base-name {
@@ -413,4 +414,17 @@ define from-file-path(module-file-path: &text): app(module) {
     inline-limit,
     preset-map,
   })
+}
+
+define from-current-path(): app(module) {
+  try path = get-current-module-file-path();
+  pin path = path;
+  from-file-path(path)
+}
+
+define zen(): unit {
+  pin tmp = get-current-module-file-path();
+  vet(tmp);
+  pin tmp = from-current-path();
+  vet(tmp);
 }
