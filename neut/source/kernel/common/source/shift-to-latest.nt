@@ -1,0 +1,9 @@
+import {
+  core.dictionary {dictionary},
+  this.kernel.common.module {module},
+  this.language.common.module-id {module-id},
+}
+
+inline shift-map: type {
+  dictionary(module-id, module)
+}
