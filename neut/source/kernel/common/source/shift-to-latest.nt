@@ -1,9 +1,16 @@
 import {
   core.dictionary {dictionary},
+  this.kernel.common.kit.global.antecedent {antecedent-kit},
   this.kernel.common.module {module},
   this.language.common.module-id {module-id},
 }
 
 inline shift-map: type {
   dictionary(module-id, module)
+}
+
+data shift-kit {
+| _Shift-Kit(
+    antecedent-kit: &antecedent-kit,
+  )
 }
