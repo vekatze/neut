@@ -5,7 +5,7 @@ import {
   path.path,
   this.app.app {app},
   this.app.run {raise-error, raise-error'},
-  this.kernel.common.kit.global.antecedent {antecedent-kit},
+  this.kernel.common.kit.global.antecedent {antecedent-kit, lookup-module},
   this.kernel.common.module {Module, get-source-dir, module},
   this.kernel.common.source {Source, get-rel-path-from-source-dir, source},
   this.language.common.module-id {module-id, text-from-module-id},
@@ -25,38 +25,56 @@ define make-shift-kit(k: &antecedent-kit): shift-kit {
   _Shift-Kit(k)
 }
 
-define _get-newer-source(s: &source, m: &module): app(source) {
-  try rel-source-file-path = get-rel-path-from-source-dir(s);
-  let new-source-file-path on rel-source-file-path = {
-    pin source-dir = get-source-dir(m);
+define _get-newer-source(s: source, m: module): app(source) {
+  try rel-source-file-path on s = get-rel-path-from-source-dir(s);
+  let source-dir on m = get-source-dir(m);
+  let new-source-file-path on rel-source-file-path, source-dir = {
     path.path.append(source-dir, rel-source-file-path)
   };
-  tie Source of {source-hint := orig-source-hint} = s;
+  let _ = source-dir;
+  let Source of {source-hint := orig-source-hint} = s;
   let b on new-source-file-path = is-regular-file(new-source-file-path);
-  if b {
-    Right(Source of {
-      source-hint := *orig-source-hint,
-      source-module := *m,
+  let new-source =
+    Source of {
+      source-hint := orig-source-hint,
+      source-module := m,
       file-path := new-source-file-path,
-    })
+    };
+  if b {
+    Right(new-source)
   } else {
     let buf = make-text-builder(64);
-    tie Module of {id} = m;
-    let mid-text = text-from-module-id(id);
-    let _ on buf = {
+    let Source of {source-hint, source-module} = new-source;
+    let Module of {id} = source-module;
+    let _ on buf, id = {
       pin rel-source-file-path = rel-source-file-path;
       append-text(buf, "The file `");
       append-text(buf, rel-source-file-path);
       append-text(buf, "` is missing in the module `");
-      append-text(buf, mid-text);
+      append-text(buf, text-from-module-id(id));
       append-text(buf, "``");
     };
+    let _ = id;
     let message = core.text-builder.extract(buf);
-    case orig-source-hint {
+    match source-hint {
     | Left(_) =>
       raise-error'(message)
     | Right(m) =>
-      raise-error(*m, message)
+      raise-error(m, message)
     }
+  }
+}
+
+define shift-to-latest(k: &shift-kit, s: source): app(source) {
+  tie _Shift-Kit of {antecedent-kit} = k;
+  let mv on s = {
+    tie Source of {source-module := Module of {id}} = s;
+    lookup-module(*antecedent-kit, id)
+  };
+  match mv {
+  | Left(_) =>
+    Right(s)
+  | Right(m) =>
+    _get-newer-source(s, m)
   }
 }
