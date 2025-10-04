@@ -72,7 +72,7 @@ data module {
     id: module-id,
     source-dir: text,
     target: dictionary(target-name, target-summary),
-    zenconfig: zen-config,
+    zen-config: zen-config,
     archive-dir: text,
     cache-dir: text,
     dependency: dictionary(module-alias, dependency),

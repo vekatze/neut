@@ -1,4 +1,5 @@
 import {
+  path.path {drop-last, take-last},
   sero.common.get {get-int64},
   sero.common.put {put-int64},
   sero.sero {Sero, sero},
@@ -89,4 +90,15 @@ inline module-id-sero: sero(module-id) {
       }
     },
   }
+}
+
+define get-library-id(module-file-path: &text): module-id {
+  pin module-dir-path = drop-last(module-file-path);
+  let name = take-last(module-dir-path);
+  Library(Module-Digest(name))
+}
+
+define zen(): unit {
+  pin result = get-library-id("/path/to/file.ens");
+  vet(result)
 }
