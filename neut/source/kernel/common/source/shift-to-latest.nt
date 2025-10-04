@@ -78,3 +78,17 @@ define shift-to-latest(k: &shift-kit, s: source): app(source) {
     _get-newer-source(s, m)
   }
 }
+
+define shift-to-latest-module(k: &shift-kit, m: module): module {
+  tie _Shift-Kit of {antecedent-kit} = k;
+  let mv on m = {
+    tie Module of {id} = m;
+    lookup-module(*antecedent-kit, id)
+  };
+  match mv {
+  | Left(_) =>
+    m
+  | Right(new-m) =>
+    new-m
+  }
+}
