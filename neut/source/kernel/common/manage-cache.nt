@@ -2,11 +2,24 @@ import {
   sero.encode {encode-file},
   this.app.app {app},
   this.app.run {app-from-system},
-  this.kernel.common.cache {cache, completion-cache, completion-cache-sero, compress, low-cache-sero},
+  this.kernel.common.cache {
+    cache,
+    completion-cache,
+    completion-cache-sero,
+    compress,
+    location-cache,
+    location-cache-sero,
+    low-cache-sero,
+  },
   this.kernel.common.create-global-kit {Global-Kit, global-kit},
   this.kernel.common.kit.global.artifact {artifact-kit},
   this.kernel.common.kit.global.module {ensure-directory},
-  this.kernel.common.kit.global.path {get-source-cache-path, get-source-completion-cache-path, path-kit},
+  this.kernel.common.kit.global.path {
+    get-source-cache-path,
+    get-source-completion-cache-path,
+    get-source-location-cache-path,
+    path-kit,
+  },
   this.kernel.common.source {source},
   this.kernel.common.target {target},
 }
@@ -36,4 +49,11 @@ define save-completion-cache(k: &path-kit, t: &target, s: &source, c: &completio
   pin cache-path = cache-path;
   try _ = app-from-system(ensure-directory(cache-path));
   app-from-system(encode-file(completion-cache-sero, c, 1024, cache-path))
+}
+
+define save-location-cache(k: &path-kit, t: &target, s: &source, c: &location-cache): app(unit) {
+  try cache-path = get-source-location-cache-path(k, t, s);
+  pin cache-path = cache-path;
+  try _ = app-from-system(ensure-directory(cache-path));
+  app-from-system(encode-file(location-cache-sero, c, 1024, cache-path))
 }
