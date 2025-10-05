@@ -1,11 +1,12 @@
 import {
   core.control {discard},
+  core.either {is-right},
   path.io {is-regular-file, unlink},
   sero.decode {decode-file},
   sero.encode {encode-file},
   this.app.app {app},
   this.app.run {app-from-system},
-  this.kernel.common.artifact {Artifact-Time},
+  this.kernel.common.artifact {Artifact-Time, artifact-time},
   this.kernel.common.cache {
     cache,
     completion-cache,
@@ -25,6 +26,7 @@ import {
     get-source-location-cache-path,
     path-kit,
   },
+  this.kernel.common.output-kind {LLVM, Object, output-kind},
   this.kernel.common.source {Source, source},
   this.kernel.common.target {target},
 }
@@ -119,6 +121,25 @@ define load-location-cache(k: &path-kit, t: &target, s: &source): app(?location-
       Right(none)
     | Right(v) =>
       Right(Right(v))
+    }
+  }
+}
+
+define _is-compilation-skippable(t: &artifact-time, ks: &list(output-kind)): bool {
+  tie Artifact-Time of {llvm-time, object-time} = t;
+  case ks {
+  | Nil =>
+    True
+  | Cons(k, rest) =>
+    case k {
+    | LLVM =>
+      let b1 = is-right(llvm-time);
+      let b2 = _is-compilation-skippable(t, rest);
+      and(b1, b2)
+    | Object =>
+      let b1 = is-right(object-time);
+      let b2 = _is-compilation-skippable(t, rest);
+      and(b1, b2)
     }
   }
 }
