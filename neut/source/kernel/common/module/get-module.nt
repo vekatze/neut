@@ -1,0 +1,12 @@
+import {
+  this.gensym.gensym {gensym-kit},
+  this.kernel.common.create-global-kit {Global-Kit, global-kit},
+  this.kernel.common.kit.global.module {module-kit},
+}
+
+data get-module-kit {
+| _Get-Module-Kit(
+    gensym-kit: &gensym-kit,
+    module-kit: &module-kit,
+  )
+}
