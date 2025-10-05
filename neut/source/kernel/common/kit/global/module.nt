@@ -1,5 +1,5 @@
 import {
-  core.cell {make-cell},
+  core.cell {borrow, make-cell},
   core.control {discard},
   core.dictionary {dictionary, empty},
   core.environment {get-env},
@@ -13,7 +13,7 @@ import {
   this.app.app {app},
   this.app.run {app-from-system, raise-error, raise-error'},
   this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, module-file, source-file-extension},
-  this.kernel.common.module {Module, extract-module, get-module-root-dir, get-source-dir, main-module, module},
+  this.kernel.common.module {Module, _lookup-text-dict, extract-module, get-module-root-dir, get-source-dir, main-module, module},
   this.kernel.common.module-URL {Module-URL, module-URL},
   this.kernel.common.source {Source, source},
   this.language.common.const {ns-sep},
@@ -31,6 +31,18 @@ data module-kit {
 define make-module-kit(): module-kit {
   let cache-map-cell = make-cell(box {empty});
   _Module-Kit of {cache-map-cell}
+}
+
+define lookup-module(k: &module-kit, path: &text): ?module {
+  tie _Module-Kit of {cache-map-cell} = k;
+  borrow(cache-map-cell, function (dict) {
+    match _lookup-text-dict(dict, path) {
+    | Left(_) =>
+      box {none}
+    | Right(v) =>
+      box v {Right(v)}
+    }
+  })
 }
 
 define _has-source-extension(path: &text): bool {
