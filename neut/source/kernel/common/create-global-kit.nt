@@ -19,7 +19,7 @@ import {
 }
 
 data global-kit {
-| _Global-Kit(
+| Global-Kit(
     logger-kit: &logger-kit,
     color-kit: &color-kit,
     platform-kit: &platform-kit,
@@ -53,7 +53,7 @@ define make-global-kit(
   let antecedent-kit = make-antecedent-kit();
   let preset-cache-cell = make-cell(box {empty});
   let type-kit = make-type-kit();
-  _Global-Kit of {
+  Global-Kit of {
     artifact-kit,
     antecedent-kit,
     color-kit := get-color-kit(logger-kit),

@@ -10,3 +10,8 @@ data get-module-kit {
     module-kit: &module-kit,
   )
 }
+
+define make-get-module-kit(k: &global-kit): get-module-kit {
+  tie Global-Kit of {gensym-kit, module-kit} = k;
+  _Get-Module-Kit of {gensym-kit, module-kit}
+}
