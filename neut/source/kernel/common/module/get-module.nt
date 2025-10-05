@@ -1,4 +1,6 @@
 import {
+  core.dictionary {to-list},
+  core.list {for-each-E},
   core.text-builder {append-text, make-text-builder},
   path.io {is-regular-file},
   this.app.app {app},
@@ -6,10 +8,11 @@ import {
   this.gensym.gensym {gensym-kit},
   this.kernel.common.create-global-kit {Global-Kit, global-kit},
   this.kernel.common.kit.global.module {get-module-file-path, insert-to-module-cache-map, lookup-module, module-kit},
-  this.kernel.common.module {main-module, module},
+  this.kernel.common.module {Dependency, Module, main-module, module},
   this.kernel.common.module.from-path {from-file-path},
-  this.language.common.module-id {module-id},
-  this.logger.hint {hint},
+  this.language.common.module-alias {module-alias},
+  this.language.common.module-id {Library, module-id, text-from-module-id},
+  this.logger.hint {hint, new-source-hint},
 }
 
 data get-module-kit {
@@ -54,4 +57,21 @@ define get-module(
     insert-to-module-cache-map(*module-kit, next-module-file-path, !next-module);
     Right(!next-module)
   }
+}
+
+define get-all-dependencies(
+  k: &get-module-kit,
+  main-module: &main-module,
+  m: &module,
+): app(list(pair(module-alias, module))) {
+  tie Module of {dependency} = m;
+  for-each-E(to-list(*dependency), function (p) {
+    let Pair(alias, Dependency of {digest}) = p;
+    pin module-id = Library(digest);
+    try module-file-path = get-module-file-path(main-module, none, module-id);
+    pin m = new-source-hint(module-file-path);
+    let module-id-text = text-from-module-id(module-id);
+    try dep = get-module(k, main-module, m, module-id, module-id-text);
+    Right(Pair(alias, dep))
+  })
 }

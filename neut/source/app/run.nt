@@ -45,19 +45,19 @@ inline for-parallel<a>(xs: vector(a), f: (a) -> app(unit)): app(unit) {
   }
 }
 
-define raise-error<a>(m: hint, t: text): app(a) {
+inline raise-error<a>(m: hint, t: text): app(a) {
   Left(new-error(m, t))
 }
 
-define raise-error'<a>(t: text): app(a) {
+inline raise-error'<a>(t: text): app(a) {
   Left(new-error'(t))
 }
 
-define raise-critical<a>(m: hint, t: text): app(a) {
+inline raise-critical<a>(m: hint, t: text): app(a) {
   Left(new-critical(m, t))
 }
 
-define raise-critical'<a>(t: text): app(a) {
+inline raise-critical'<a>(t: text): app(a) {
   Left(new-critical'(t))
 }
 
