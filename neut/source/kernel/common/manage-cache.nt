@@ -1,7 +1,14 @@
 import {
+  sero.encode {encode-file},
+  this.app.app {app},
+  this.app.run {app-from-system},
+  this.kernel.common.cache {cache, compress, low-cache-sero},
   this.kernel.common.create-global-kit {Global-Kit, global-kit},
   this.kernel.common.kit.global.artifact {artifact-kit},
-  this.kernel.common.kit.global.path {path-kit},
+  this.kernel.common.kit.global.module {ensure-directory},
+  this.kernel.common.kit.global.path {get-source-cache-path, path-kit},
+  this.kernel.common.source {source},
+  this.kernel.common.target {target},
 }
 
 data manage-cache-kit {
@@ -14,4 +21,12 @@ data manage-cache-kit {
 define make-manage-cache-kit(k: &global-kit): manage-cache-kit {
   tie Global-Kit of {path-kit, artifact-kit} = k;
   _Manage-Cache-Kit of {path-kit, artifact-kit}
+}
+
+define save-cache(k: &path-kit, t: &target, s: &source, c: cache): app(unit) {
+  try cache-path = get-source-cache-path(k, t, s);
+  pin cache-path = cache-path;
+  try _ = app-from-system(ensure-directory(cache-path));
+  pin c = compress(c);
+  app-from-system(encode-file(low-cache-sero, c, 1024, cache-path))
 }
