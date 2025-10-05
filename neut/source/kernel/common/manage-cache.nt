@@ -1,4 +1,5 @@
 import {
+  this.kernel.common.create-global-kit {Global-Kit, global-kit},
   this.kernel.common.kit.global.artifact {artifact-kit},
   this.kernel.common.kit.global.path {path-kit},
 }
@@ -8,4 +9,9 @@ data manage-cache-kit {
     path-kit: &path-kit,
     artifact-kit: &artifact-kit,
   )
+}
+
+define make-manage-cache-kit(k: &global-kit): manage-cache-kit {
+  tie Global-Kit of {path-kit, artifact-kit} = k;
+  _Manage-Cache-Kit of {path-kit, artifact-kit}
 }
