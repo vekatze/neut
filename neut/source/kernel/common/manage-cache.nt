@@ -21,6 +21,7 @@ import {
   this.kernel.common.kit.global.artifact {artifact-kit, lookup},
   this.kernel.common.kit.global.module {ensure-directory},
   this.kernel.common.kit.global.path {
+    get-output-path-for-entry-point,
     get-source-cache-path,
     get-source-completion-cache-path,
     get-source-location-cache-path,
@@ -28,7 +29,7 @@ import {
   },
   this.kernel.common.output-kind {LLVM, Object, output-kind},
   this.kernel.common.source {Source, source},
-  this.kernel.common.target {target},
+  this.kernel.common.target {main-target, target},
 }
 
 data manage-cache-kit {
@@ -150,4 +151,20 @@ define needs-compilation(k: &manage-cache-kit, ks: &list(output-kind), s: &sourc
   try t = lookup(*artifact-kit, file-path);
   pin t = t;
   Right(not(_is-compilation-skippable(t, ks)))
+}
+
+define is-entry-point-compilation-skippable(k: &path-kit, t: &main-target, ks: &list(output-kind)): app(bool) {
+  case ks {
+  | Nil =>
+    Right(True)
+  | Cons(kind, rest) =>
+    try Pair(_, output-path) = get-output-path-for-entry-point(k, *kind, t);
+    let b on output-path = is-regular-file(output-path);
+    let _ = output-path;
+    if b {
+      is-entry-point-compilation-skippable(k, t, rest)
+    } else {
+      Right(False)
+    }
+  }
 }
