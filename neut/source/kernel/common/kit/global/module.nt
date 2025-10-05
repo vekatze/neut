@@ -12,7 +12,7 @@ import {
   path.path {drop-last},
   this.app.app {app},
   this.app.run {app-from-system, raise-error, raise-error'},
-  this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, source-file-extension},
+  this.kernel.common.const {env-var-core-module-URL, env-var-core-module-digest, module-file, source-file-extension},
   this.kernel.common.module {Module, extract-module, get-module-root-dir, get-source-dir, main-module, module},
   this.kernel.common.module-URL {Module-URL, module-URL},
   this.kernel.common.source {Source, source},
@@ -90,6 +90,12 @@ define get-module-dir-by-id(m: &main-module, hint-or-none: ?&hint, mid: &module-
     discard(dep-dir);
     Right(result)
   }
+}
+
+define get-module-file-path(m: &main-module, hint-or-none: ?&hint, mid: &module-id): app(text) {
+  try module-dir = get-module-dir-by-id(m, hint-or-none, mid);
+  pin module-dir = module-dir;
+  Right(path.path.append(module-dir, module-file))
 }
 
 define get-core-module-URL(): app(module-URL) {
