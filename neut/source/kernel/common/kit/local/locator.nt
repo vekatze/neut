@@ -1,9 +1,8 @@
 import {
-  core.dictionary {dictionary},
-  core.ref {ref},
+  core.dictionary {dictionary, empty},
+  core.ref {make-ref, ref},
   core.text-builder {append-text, extract, make-text-builder},
   core.text.eq {strip-prefix},
-  path.path {split-extension},
   this.app.app {app},
   this.app.run {raise-critical'},
   this.kernel.common.kit.global.env {env-kit},
@@ -13,7 +12,7 @@ import {
   this.language.common.definite-description {definite-description},
   this.language.common.local-locator {local-locator},
   this.language.common.source-locator {Source-Locator, source-locator},
-  this.language.common.strict-global-locator {Strict-Global-Locator, strict-global-locator},
+  this.language.common.strict-global-locator {Strict-Global-Locator, llvm-global-locator, strict-global-locator},
   this.path.util {remove-extension},
 }
 
@@ -56,5 +55,20 @@ define _construct-global-locator(s: &source): app(strict-global-locator) {
   Right(Strict-Global-Locator of {
     module-id := *id,
     source-locator := sl,
+  })
+}
+
+define make-locator-kit(env-kit: &env-kit, tag-kit: &tag-kit, s: &source): app(locator-kit) {
+  try !cgl = _construct-global-locator(s);
+  let active-definite-description-list-ref = make-ref(box {empty});
+  let active-static-file-list-ref = make-ref(box {empty});
+  let active-global-locator-list = List[!cgl, llvm-global-locator()];
+  Right(_Locator-Kit of {
+    tag-kit,
+    env-kit,
+    active-definite-description-list-ref,
+    active-static-file-list-ref,
+    active-global-locator-list,
+    current-global-locator := !cgl,
   })
 }
