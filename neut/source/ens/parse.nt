@@ -3,6 +3,8 @@ import {
   core.int.parse,
   core.list {for-each-EN},
   core.pair {second},
+  this.app.app {app},
+  this.app.run {raise-error'},
   this.code-parser.get-info {get-current-hint},
   this.code-parser.parser {parser-kit, string, symbol},
   this.ens.ens {E-Bool, E-Dictionary, E-Float, E-Int, E-List, E-String, ens, ens-key},
@@ -10,6 +12,8 @@ import {
   this.syntax-tree.comment {comment},
   this.syntax-tree.parse-series {parse-series-brace, parse-series-bracket},
   this.syntax-tree.series {extract-N},
+  zonk.error {report},
+  zonk.make-parse-error,
   zonk.make-zonk-kit {make-zonk-kit},
   zonk.parse {attempt, get-point, parsed, report-unexpected-input, zonk},
   zonk.point {Point},
@@ -234,6 +238,17 @@ define _validate(e: &ens): either(meta pair(hint, text), unit) {
     }
   | _ =>
     Right(Unit)
+  }
+}
+
+define parse-ens<r := rho>(k: &parser-kit): app(pair(ens, comment)) {
+  try _ = r;
+  match this.ens.parse._parse-ens(k) {
+  | Right(v) =>
+    Right(v)
+  | Left(e) =>
+    let message = report(zonk.make-parse-error.make-parse-error(k, e));
+    raise-error'(message)
   }
 }
 

@@ -1,0 +1,72 @@
+import {
+  core.cell {make-cell},
+  core.dictionary {dictionary, empty},
+  this.color.color-kit {color-kit},
+  this.gensym.gensym {gensym-kit, make-gensym-kit},
+  this.kernel.common.import {import-item},
+  this.kernel.common.kit.global.antecedent {antecedent-kit, make-antecedent-kit},
+  this.kernel.common.kit.global.artifact {artifact-kit, make-artifact-kit},
+  this.kernel.common.kit.global.env {env-kit, get-main-module},
+  this.kernel.common.kit.global.global-remark-kit {global-remark-kit, make-global-remark-kit},
+  this.kernel.common.kit.global.key-arg {key-arg-kit, make-key-arg-kit},
+  this.kernel.common.kit.global.module {make-module-kit, module-kit},
+  this.kernel.common.kit.global.optimizable-data {make-optimizable-data-kit, optimizable-data-kit},
+  this.kernel.common.kit.global.path {make-path-kit, path-kit},
+  this.kernel.common.kit.global.platform {platform-kit},
+  this.kernel.common.kit.global.type {make-type-kit, type-kit},
+  this.language.common.module-id {module-id},
+  this.logger.logger-kit {get-color-kit, logger-kit},
+}
+
+data global-kit {
+| Global-Kit(
+    logger-kit: &logger-kit,
+    color-kit: &color-kit,
+    platform-kit: &platform-kit,
+    env-kit: &env-kit,
+    artifact-kit: artifact-kit,
+    antecedent-kit: antecedent-kit,
+    gensym-kit: gensym-kit,
+    global-remark-kit: global-remark-kit,
+    key-arg-kit: key-arg-kit,
+    module-kit: module-kit,
+    optimizable-data-kit: optimizable-data-kit,
+    path-kit: path-kit,
+    type-kit: type-kit,
+    preset-cache-cell: cell(dictionary(module-id, list(import-item))),
+  )
+}
+
+define make-global-kit(
+  logger-kit: &logger-kit,
+  platform-kit: &platform-kit,
+  env-kit: &env-kit,
+): global-kit {
+  let gensym-kit = make-gensym-kit();
+  let main-module = get-main-module(env-kit);
+  let key-arg-kit = make-key-arg-kit(main-module);
+  let optimizable-data-kit = make-optimizable-data-kit();
+  let path-kit = make-path-kit(main-module, logger-kit, platform-kit);
+  let global-remark-kit = make-global-remark-kit();
+  let artifact-kit = make-artifact-kit();
+  let module-kit = make-module-kit();
+  let antecedent-kit = make-antecedent-kit();
+  let preset-cache-cell = make-cell(box {empty});
+  let type-kit = make-type-kit();
+  Global-Kit of {
+    artifact-kit,
+    antecedent-kit,
+    color-kit := get-color-kit(logger-kit),
+    platform-kit,
+    env-kit,
+    gensym-kit,
+    global-remark-kit,
+    key-arg-kit,
+    module-kit,
+    optimizable-data-kit,
+    path-kit,
+    logger-kit,
+    type-kit,
+    preset-cache-cell,
+  }
+}

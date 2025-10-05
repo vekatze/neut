@@ -22,3 +22,8 @@ define make-logger-kit(color-kit: color-kit, enable-debug-mode: bool): logger-ki
   let base-time = get-time();
   _Logger-Kit of {color-kit, enable-debug-mode, base-time}
 }
+
+define get-color-kit(k: &logger-kit): &color-kit {
+  tie _Logger-Kit of {color-kit} = k;
+  color-kit
+}

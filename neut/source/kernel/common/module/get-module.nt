@@ -1,0 +1,77 @@
+import {
+  core.dictionary {to-list},
+  core.list {for-each-E},
+  core.text-builder {append-text, make-text-builder},
+  path.io {is-regular-file},
+  this.app.app {app},
+  this.app.run {raise-error},
+  this.gensym.gensym {gensym-kit},
+  this.kernel.common.create-global-kit {Global-Kit, global-kit},
+  this.kernel.common.kit.global.module {get-module-file-path, insert-to-module-cache-map, lookup-module, module-kit},
+  this.kernel.common.module {Dependency, Module, main-module, module},
+  this.kernel.common.module.from-path {from-file-path},
+  this.language.common.module-alias {module-alias},
+  this.language.common.module-id {Library, module-id, text-from-module-id},
+  this.logger.hint {hint, new-source-hint},
+}
+
+data get-module-kit {
+| _Get-Module-Kit(
+    gensym-kit: &gensym-kit,
+    module-kit: &module-kit,
+  )
+}
+
+define make-get-module-kit(k: &global-kit): get-module-kit {
+  tie Global-Kit of {gensym-kit, module-kit} = k;
+  _Get-Module-Kit of {gensym-kit, module-kit}
+}
+
+define get-module(
+  k: &get-module-kit,
+  m: &main-module,
+  h: &hint,
+  mid: &module-id,
+  locator-text: &text,
+): app(module) {
+  tie _Get-Module-Kit of {module-kit} = k;
+  try next-module-file-path = get-module-file-path(m, Right(h), mid);
+  pin next-module-file-path = next-module-file-path;
+  match lookup-module(*module-kit, next-module-file-path) {
+  | Right(nextModule) =>
+    Right(nextModule)
+  | Left(_) =>
+    try _ =
+      if is-regular-file(next-module-file-path) {
+        Right(Unit)
+      } else {
+        let buf = make-text-builder(64);
+        let _ on buf = {
+          append-text(buf, "Could not find the module file for `");
+          append-text(buf, locator-text);
+          append-text(buf, "`");
+        };
+        raise-error(*h, core.text-builder.extract(buf))
+      };
+    try !next-module = from-file-path(next-module-file-path);
+    insert-to-module-cache-map(*module-kit, next-module-file-path, !next-module);
+    Right(!next-module)
+  }
+}
+
+define get-all-dependencies(
+  k: &get-module-kit,
+  main-module: &main-module,
+  m: &module,
+): app(list(pair(module-alias, module))) {
+  tie Module of {dependency} = m;
+  for-each-E(to-list(*dependency), function (p) {
+    let Pair(alias, Dependency of {digest}) = p;
+    pin module-id = Library(digest);
+    try module-file-path = get-module-file-path(main-module, none, module-id);
+    pin m = new-source-hint(module-file-path);
+    let module-id-text = text-from-module-id(module-id);
+    try dep = get-module(k, main-module, m, module-id, module-id-text);
+    Right(Pair(alias, dep))
+  })
+}

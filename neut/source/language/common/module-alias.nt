@@ -1,22 +1,35 @@
 import {
   sero.sero {Sero, sero},
-  this.language.common.base-name {base, base-name, base-name-sero, core, text-from-base-name, this},
+  this.language.common.base-name {base, base-name, base-name-sero, core, ord-base-name, text-from-base-name, this},
 }
 
 data module-alias {
 | Module-Alias(base-name)
 }
 
-define default-module-alias: module-alias {
-  Module-Alias(this)
+inline ord-module-alias: ord(module-alias) {
+  Ord of {
+    compare := {
+      function (x, y) {
+        let Ord of {compare} = ord-base-name;
+        tie Module-Alias(x) = x;
+        tie Module-Alias(y) = y;
+        compare(x, y)
+      }
+    },
+  }
 }
 
-define core-module-alias: module-alias {
-  Module-Alias(core)
+define default-module-alias(): module-alias {
+  Module-Alias(this())
 }
 
-define base-module-alias: module-alias {
-  Module-Alias(base)
+define core-module-alias(): module-alias {
+  Module-Alias(core())
+}
+
+define base-module-alias(): module-alias {
+  Module-Alias(base())
 }
 
 define text-from-module-alias(alias: module-alias): text {

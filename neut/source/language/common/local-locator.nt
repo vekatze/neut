@@ -34,11 +34,11 @@ define eq-local-locator(x: &local-locator, y: &local-locator): bool {
   | _Base-Name(x), _Base-Name(y) =>
     eq-text(x, y)
   | _Base-Name(x), _Base-Name-N(y) =>
-    eq-text(x, *y)
+    eq-text(x, y)
   | _Base-Name-N(x), _Base-Name(y) =>
-    eq-text(*x, y)
+    eq-text(x, y)
   | _Base-Name-N(x), _Base-Name-N(y) =>
-    eq-text(*x, *y)
+    eq-text(x, y)
   | _, _ =>
     False
   }

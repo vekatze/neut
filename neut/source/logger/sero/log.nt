@@ -8,8 +8,8 @@ import {
   sero.sero {Sero, sero},
   this.logger.log {Log, log},
   this.logger.log-level {Note},
-  this.logger.sero.hint {hint-sero},
   this.logger.sero.log-level {log-level-sero},
+  this.logger.sero.log-position {log-position-sero},
 }
 
 inline _unit-sero: sero(unit) {
@@ -28,7 +28,7 @@ inline _unit-sero: sero(unit) {
 }
 
 define _put(k: &put-kit, v: &log): unit {
-  let Sero of {put := !put-option-hint} = either-sero(_unit-sero, hint-sero);
+  let Sero of {put := !put-option-hint} = either-sero(_unit-sero, log-position-sero);
   let Sero of {put := !put-log-level} = log-level-sero;
   let Sero of {put := !put-text} = text-sero;
   tie Log of {position, level, content} = v;
@@ -38,7 +38,7 @@ define _put(k: &put-kit, v: &log): unit {
 }
 
 define _get(k: &get-kit): ?meta log {
-  let Sero of {get := !get-option-hint} = either-sero(_unit-sero, hint-sero);
+  let Sero of {get := !get-option-hint} = either-sero(_unit-sero, log-position-sero);
   let Sero of {get := !get-log-level} = log-level-sero;
   let Sero of {get := !get-text} = text-sero;
   try position = !get-option-hint(k);

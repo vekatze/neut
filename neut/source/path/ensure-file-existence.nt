@@ -1,5 +1,5 @@
 import {
-  path.io {is-regular-file},
+  path.io {is-directory, is-regular-file},
   this.app.app {app},
   this.app.error {new-error, new-error'},
   this.logger.hint {hint},
@@ -20,6 +20,15 @@ define ensure-file-existence'(path: &text): app(unit) {
   } else {
     let message = core.text.append("No such file exists: ", path);
     Left(new-error'(message))
+  }
+}
+
+define ensure-directory-existence(path: &text, m: hint): app(unit) {
+  if is-directory(path) {
+    Right(Unit)
+  } else {
+    let message = core.text.append("No such directory exists: ", path);
+    Left(new-error(m, message))
   }
 }
 

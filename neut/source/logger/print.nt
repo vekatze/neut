@@ -5,7 +5,7 @@ import {
   this.color.print {print-stderr, print-stdout},
   this.color.text {join, packed, packed'},
   this.logger.hint {new-hint},
-  this.logger.log {Log, _show-content, _show-level, _show-position, log},
+  this.logger.log {Log, _show-content, _show-level, _show-position, log, log-position-from-hint},
   this.logger.log-level {Note, Warning, log-level},
   this.logger.logger-kit {_Logger-Kit, _show-time, logger-kit, make-logger-kit},
   time.time {get-time, sub-time},
@@ -70,7 +70,7 @@ define report(k: &logger-kit, message: text): unit {
 define zen(): unit {
   let color-kit = make-color-kit(True, True);
   pin k = make-logger-kit(color-kit, True);
-  let m = new-hint(12, 3456, "/Users/foo/path/to/file.nt");
+  let m = log-position-from-hint(new-hint(12, 3456, "/Users/foo/path/to/file.nt"));
   pin l =
     Log of {
       position := Right(m),
