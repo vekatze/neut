@@ -14,17 +14,17 @@ import {
 
 data run-process-kit {
 | _Run-Process-Kit(
-    logger-kit: logger-kit,
+    logger-kit: &logger-kit,
   )
 }
 
-define make-run-process-kit(logger-kit: logger-kit): run-process-kit {
+define make-run-process-kit(logger-kit: &logger-kit): run-process-kit {
   _Run-Process-Kit(logger-kit)
 }
 
 define get-logger-kit(k: &run-process-kit): &logger-kit {
   tie _Run-Process-Kit of {logger-kit} = k;
-  logger-kit
+  *logger-kit
 }
 
 data command-error {
@@ -79,7 +79,7 @@ define _report-command(k: &run-process-kit, s: &process-spec): unit {
     pin tmp = show-doc(tmp, 65535);
     core.text.append("Executing: ", tmp)
   };
-  report(logger-kit, message);
+  report(*logger-kit, message);
 }
 
 define run-process(k: &run-process-kit, s: process-spec): either(text, text) {
@@ -107,7 +107,8 @@ define run-simple-process(k: &run-process-kit, proc-name: text, args: list(text)
 }
 
 define zen(): unit {
-  pin k = make-run-process-kit(make-logger-kit(make-color-kit(True, True), True));
+  pin lk = make-logger-kit(make-color-kit(True, True), True);
+  pin k = make-run-process-kit(lk);
   pin s = Process-Spec(*"foo", List[*"bar", *"buz"], none, *"some-input");
   _report-command(k, s);
   pin result = run-simple-process(k, *"ls", Nil);

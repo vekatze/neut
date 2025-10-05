@@ -29,12 +29,12 @@ data _key-arg-value {
 
 data key-arg-kit {
 | _Key-Arg-Kit(
-    main-module: main-module,
+    main-module: &main-module,
     key-arg-map-cell: cell(dictionary(definite-description, _key-arg-value)),
   )
 }
 
-define make-key-arg-kit(main-module: main-module): key-arg-kit {
+define make-key-arg-kit(main-module: &main-module): key-arg-kit {
   let key-arg-map-cell = make-cell(box {empty});
   _Key-Arg-Kit of {main-module, key-arg-map-cell}
 }
@@ -128,7 +128,7 @@ define insert(
       | Right(v) =>
         tie _Key-Arg-Value(is-const-like-v, imp-keys-v, exp-keys-v) = v;
         if and(is-const-like, not(*is-const-like-v)) {
-          let func-name = readable-dd(main-module, func-name);
+          let func-name = readable-dd(*main-module, func-name);
           let buf = make-text-builder(64);
           let _ on buf, func-name = {
             append-text(buf, "`");
@@ -138,7 +138,7 @@ define insert(
           let _ = func-name;
           quote {Left(extract(buf))}
         } else-if and(not(is-const-like), *is-const-like-v) {
-          let func-name = readable-dd(main-module, func-name);
+          let func-name = readable-dd(*main-module, func-name);
           let buf = make-text-builder(64);
           let _ on buf, func-name = {
             append-text(buf, "`");
@@ -148,7 +148,7 @@ define insert(
           let _ = func-name;
           quote {Left(extract(buf))}
         } else-if ne-int(length(imp-keys), length(imp-keys-v)) {
-          let func-name = readable-dd(main-module, func-name);
+          let func-name = readable-dd(*main-module, func-name);
           let buf = make-text-builder(64);
           let _ on buf, func-name = {
             append-text(buf, "The arity of `");
@@ -162,7 +162,7 @@ define insert(
           let _ = func-name;
           quote {Left(extract(buf))}
         } else-if ne-int(length(exp-keys), length(exp-keys-v)) {
-          let func-name = readable-dd(main-module, func-name);
+          let func-name = readable-dd(*main-module, func-name);
           let buf = make-text-builder(64);
           let _ on buf, func-name = {
             pin exp-keys-list = _text-from-keys(exp-keys);
@@ -216,7 +216,7 @@ define lookup(k: &key-arg-kit, m: hint, data-name: &definite-description): app(p
   match tmp {
   | Left(Unit) =>
     let message = {
-      pin data-name = readable-dd(main-module, data-name);
+      pin data-name = readable-dd(*main-module, data-name);
       core.text.append("No such function is defined: ", data-name)
     };
     raise-error(m, message)
