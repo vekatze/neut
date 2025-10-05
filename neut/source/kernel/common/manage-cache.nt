@@ -143,3 +143,11 @@ define _is-compilation-skippable(t: &artifact-time, ks: &list(output-kind)): boo
     }
   }
 }
+
+define needs-compilation(k: &manage-cache-kit, ks: &list(output-kind), s: &source): app(bool) {
+  tie _Manage-Cache-Kit of {artifact-kit} = k;
+  tie Source of {file-path} = s;
+  try t = lookup(*artifact-kit, file-path);
+  pin t = t;
+  Right(not(_is-compilation-skippable(t, ks)))
+}
