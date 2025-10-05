@@ -1,0 +1,11 @@
+import {
+  this.kernel.common.kit.global.artifact {artifact-kit},
+  this.kernel.common.kit.global.path {path-kit},
+}
+
+data manage-cache-kit {
+| _Manage-Cache-Kit(
+    path-kit: &path-kit,
+    artifact-kit: &artifact-kit,
+  )
+}
