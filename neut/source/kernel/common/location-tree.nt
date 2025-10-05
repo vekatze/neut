@@ -11,8 +11,8 @@ import {
   this.language.common.external-name {External-Name, external-name, external-name-sero},
   this.language.common.is-const-like {is-const-like},
   this.language.raw-term.raw-term {Loc, loc, loc-sero},
-  this.logger.hint {get-column, get-file-path, get-line, hint},
-  this.logger.sero.hint {hint-sero},
+  this.logger.log {get-column, get-file-path, get-line, log-position},
+  this.logger.sero.log-position {log-position-sero},
 }
 
 inline line: type {
@@ -51,7 +51,7 @@ data loc-type {
 }
 
 data loc-item {
-| Loc-Item(int, col-interval, loc-type, hint)
+| Loc-Item(int, col-interval, loc-type, log-position)
 }
 
 inline location-tree: type {
@@ -80,7 +80,7 @@ inline ord-loc: ord(loc) {
   }
 }
 
-define insert(lt: loc-type, p: pair(line, col-interval), m: hint, t: location-tree): location-tree {
+define insert(lt: loc-type, p: pair(line, col-interval), m: log-position, t: location-tree): location-tree {
   let Pair(l, Pair(from, to)) = p;
   core.dictionary.make-insert(ord-loc)(t, Loc(l, from), Loc-Item(l, Pair(from, to), lt, m))
 }
@@ -98,7 +98,7 @@ define _get-length(s: &symbol-name): def-symbol-len {
 }
 
 data found-loc {
-| Found-Loc(loc-type, &hint, &col-interval, def-symbol-len)
+| Found-Loc(loc-type, &log-position, &col-interval, def-symbol-len)
 }
 
 define find(loc: &loc, t: &location-tree): ?found-loc {
@@ -285,7 +285,7 @@ inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)): sero(dictionary(k, v)) {
 
 inline loc-item-sero: sero(loc-item) {
   let Sero of {put, get} = loc-type-sero;
-  let Sero of {put := put-hint, get := get-hint} = hint-sero;
+  let Sero of {put := put-log-position, get := get-log-position} = log-position-sero;
   Sero of {
     put := {
       function (k, v) {
@@ -294,7 +294,7 @@ inline loc-item-sero: sero(loc-item) {
         put-int64(k, *from);
         put-int64(k, *to);
         put(k, lt);
-        put-hint(k, m);
+        put-log-position(k, m);
       }
     },
     get := {
@@ -303,7 +303,7 @@ inline loc-item-sero: sero(loc-item) {
         try from = get-int64(k);
         try to = get-int64(k);
         try lt = get(k);
-        try m = get-hint(k);
+        try m = get-log-position(k);
         Right(box {
           letbox l = quote {l};
           letbox from = quote {from};

@@ -104,3 +104,21 @@ define load-completion-cache-optimistically(cache-path: &text): app(?completion-
     }
   }
 }
+
+define load-location-cache(k: &path-kit, t: &target, s: &source): app(?location-cache) {
+  try cache-path = get-source-location-cache-path(k, t, s);
+  let has-cache on cache-path = is-regular-file(cache-path);
+  if not(has-cache) {
+    Right(none)
+  } else {
+    try error-or-data on cache-path = app-from-system(decode-file(location-cache-sero, cache-path));
+    match error-or-data {
+    | Left(_) =>
+      try _ on cache-path = app-from-system(unlink(cache-path));
+      discard(cache-path);
+      Right(none)
+    | Right(v) =>
+      Right(Right(v))
+    }
+  }
+}
