@@ -1,10 +1,17 @@
 import {
   core.dictionary {dictionary},
   core.ref {ref},
+  core.text-builder {append-text, extract, make-text-builder},
+  core.text.eq {strip-prefix},
+  this.app.app {app},
+  this.app.run {raise-critical'},
   this.kernel.common.kit.global.env {env-kit},
   this.kernel.common.kit.local.tag {tag-kit},
+  this.kernel.common.module {get-source-dir},
+  this.kernel.common.source {Source, source},
   this.language.common.definite-description {definite-description},
   this.language.common.local-locator {local-locator},
+  this.language.common.source-locator {Source-Locator, source-locator},
   this.language.common.strict-global-locator {strict-global-locator},
 }
 
@@ -17,4 +24,24 @@ data locator-kit {
     active-global-locator-list: list(strict-global-locator),
     current-global-locator: strict-global-locator,
   )
+}
+
+define _get-source-locator(s: &source): app(source-locator) {
+  tie Source of {source-module, file-path} = s;
+  pin source-dir = get-source-dir(source-module);
+  let rel-file-path = strip-prefix(file-path, source-dir);
+  match rel-file-path {
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "Failed to strip prefix `");
+      append-text(buf, source-dir);
+      append-text(buf, "` from `");
+      append-text(buf, file-path);
+      append-text(buf, "`");
+    };
+    raise-critical'(extract(buf))
+  | Right(rel-file-path) =>
+    Right(Source-Locator(rel-file-path))
+  }
 }
