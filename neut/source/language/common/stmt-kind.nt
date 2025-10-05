@@ -10,13 +10,13 @@ import {
   this.language.common.discriminant {discriminant, discriminant-sero},
   this.language.common.is-const-like {is-const-like},
   this.language.common.opacity {Clear, Opaque, opacity, opacity-sero},
-  this.logger.hint {hint},
-  this.logger.sero.hint {hint-sero},
+  this.logger.log {log-position},
+  this.logger.sero.log-position {log-position-sero},
 }
 
 data cons-info(name, binder) {
 | Cons-Info(
-    loc: hint,
+    loc: log-position,
     cons-name: name,
     is-const-like: is-const-like,
     cons-params: list(binder),
@@ -40,8 +40,8 @@ data base-stmt-kind(name, binder, t) {
   )
 }
 
-inline stmt-kind(a: type): type {
-  base-stmt-kind(definite-description, binder-f(a), a)
+inline stmt-kind(m: type, a: type): type {
+  base-stmt-kind(definite-description, binder-f(m, a), a)
 }
 
 define to-opacity<n, b, t>(k: &base-stmt-kind(n, b, t)): opacity {
@@ -73,12 +73,12 @@ define cons-info-sero<n, b>(!name-sero: sero(n), !binder-sero: sero(b)): sero(co
     put := {
       function (k: &put-kit, v: &cons-info(n, b)) {
         tie Cons-Info(loc, name, is-const-like, cons-params, tag) = v;
-        let Sero of {put := put-hint} = hint-sero;
+        let Sero of {put := put-log-position} = log-position-sero;
         let Sero of {put := put-name} = !name-sero;
         let Sero of {put := put-bool} = bool-sero;
         let Sero of {put := put-list} = list-sero(!binder-sero);
         let Sero of {put := put-discriminant} = discriminant-sero;
-        put-hint(k, loc);
+        put-log-position(k, loc);
         put-name(k, name);
         put-bool(k, is-const-like);
         put-list(k, cons-params);
@@ -87,12 +87,12 @@ define cons-info-sero<n, b>(!name-sero: sero(n), !binder-sero: sero(b)): sero(co
     },
     get := {
       function (k) {
-        let Sero of {get := get-hint} = hint-sero;
+        let Sero of {get := get-log-position} = log-position-sero;
         let Sero of {get := get-name} = !name-sero;
         let Sero of {get := get-bool} = bool-sero;
         let Sero of {get := get-list} = list-sero(!binder-sero);
         let Sero of {get := get-discriminant} = discriminant-sero;
-        try loc = get-hint(k);
+        try loc = get-log-position(k);
         try cons-name = get-name(k);
         try is-const-like = get-bool(k);
         try cons-params = get-list(k);

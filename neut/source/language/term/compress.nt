@@ -4,6 +4,7 @@ import {
   this.language.common.definite-description {definite-description},
   this.language.common.stmt-kind {Cons-Info, Data, Data-Intro, Main, Normal, cons-info, stmt-kind},
   this.language.term.term {Tau, term, term-f},
+  this.logger.hint {hint},
 }
 
 define compress(e: term): term-f(unit) {
@@ -13,20 +14,20 @@ define compress(e: term): term-f(unit) {
   }
 }
 
-define compress-binder(b: binder-f(term)): binder-f(term-f(unit)) {
-  let Binder-F(m, x, t) = b;
-  Binder-F(m, x, compress(t))
+define compress-binder(b: binder-f(hint, term)): binder-f(unit, term-f(unit)) {
+  let Binder-F(_, x, t) = b;
+  Binder-F(Unit, x, compress(t))
 }
 
 define _compress-cons-info(
-  c: cons-info(definite-description, binder-f(term)),
-): cons-info(definite-description, binder-f(term-f(unit))) {
+  c: cons-info(definite-description, binder-f(hint, term)),
+): cons-info(definite-description, binder-f(unit, term-f(unit))) {
   let Cons-Info(loc, cons-name, is-const-like, cons-params, tag) = c;
   let cons-params = for-each(cons-params, compress-binder);
   Cons-Info(loc, cons-name, is-const-like, cons-params, tag)
 }
 
-define compress-stmt-kind(sk: stmt-kind(term)): stmt-kind(term-f(unit)) {
+define compress-stmt-kind(sk: stmt-kind(hint, term)): stmt-kind(unit, term-f(unit)) {
   match sk {
   | Normal(o) =>
     Normal(o)
