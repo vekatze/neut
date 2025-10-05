@@ -89,3 +89,18 @@ define load-cache(k: &manage-cache-kit, t: &target, s: &source): app(?cache) {
     }
   }
 }
+
+define load-completion-cache-optimistically(cache-path: &text): app(?completion-cache) {
+  if not(is-regular-file(cache-path)) {
+    Right(none)
+  } else {
+    try error-or-data = app-from-system(decode-file(completion-cache-sero, cache-path));
+    match error-or-data {
+    | Left(_) =>
+      try _ = app-from-system(unlink(cache-path));
+      Right(none)
+    | Right(content) =>
+      Right(Right(content))
+    }
+  }
+}
