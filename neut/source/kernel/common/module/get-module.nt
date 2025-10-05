@@ -1,7 +1,15 @@
 import {
+  core.text-builder {append-text, make-text-builder},
+  path.io {is-regular-file},
+  this.app.app {app},
+  this.app.run {raise-error},
   this.gensym.gensym {gensym-kit},
   this.kernel.common.create-global-kit {Global-Kit, global-kit},
-  this.kernel.common.kit.global.module {module-kit},
+  this.kernel.common.kit.global.module {get-module-file-path, insert-to-module-cache-map, lookup-module, module-kit},
+  this.kernel.common.module {main-module, module},
+  this.kernel.common.module.from-path {from-file-path},
+  this.language.common.module-id {module-id},
+  this.logger.hint {hint},
 }
 
 data get-module-kit {
@@ -14,4 +22,36 @@ data get-module-kit {
 define make-get-module-kit(k: &global-kit): get-module-kit {
   tie Global-Kit of {gensym-kit, module-kit} = k;
   _Get-Module-Kit of {gensym-kit, module-kit}
+}
+
+define get-module(
+  k: &get-module-kit,
+  m: &main-module,
+  h: &hint,
+  mid: &module-id,
+  locator-text: &text,
+): app(module) {
+  tie _Get-Module-Kit of {module-kit} = k;
+  try next-module-file-path = get-module-file-path(m, Right(h), mid);
+  pin next-module-file-path = next-module-file-path;
+  match lookup-module(*module-kit, next-module-file-path) {
+  | Right(nextModule) =>
+    Right(nextModule)
+  | Left(_) =>
+    try _ =
+      if is-regular-file(next-module-file-path) {
+        Right(Unit)
+      } else {
+        let buf = make-text-builder(64);
+        let _ on buf = {
+          append-text(buf, "Could not find the module file for `");
+          append-text(buf, locator-text);
+          append-text(buf, "`");
+        };
+        raise-error(*h, core.text-builder.extract(buf))
+      };
+    try !next-module = from-file-path(next-module-file-path);
+    insert-to-module-cache-map(*module-kit, next-module-file-path, !next-module);
+    Right(!next-module)
+  }
 }
