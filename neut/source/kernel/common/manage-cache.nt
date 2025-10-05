@@ -168,3 +168,14 @@ define is-entry-point-compilation-skippable(k: &path-kit, t: &main-target, ks: &
     }
   }
 }
+
+define invalidate(k: &path-kit, t: &target, s: &source): app(unit) {
+  try cache-path = get-source-cache-path(k, t, s);
+  pin cache-path = cache-path;
+  let has-cache = is-regular-file(cache-path);
+  if not(has-cache) {
+    Right(Unit)
+  } else {
+    app-from-system(unlink(cache-path))
+  }
+}
