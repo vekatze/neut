@@ -1,0 +1,20 @@
+import {
+  core.dictionary {dictionary},
+  core.ref {ref},
+  this.kernel.common.kit.global.env {env-kit},
+  this.kernel.common.kit.local.tag {tag-kit},
+  this.language.common.definite-description {definite-description},
+  this.language.common.local-locator {local-locator},
+  this.language.common.strict-global-locator {strict-global-locator},
+}
+
+data locator-kit {
+| _Locator-Kit(
+    tag-kit: &tag-kit,
+    env-kit: &env-kit,
+    active-definite-description-list-ref: ref(dictionary(local-locator, definite-description)),
+    active-static-file-list-ref: ref(dictionary(text, pair(text, text))),
+    active-global-locator-list: list(strict-global-locator),
+    current-global-locator: strict-global-locator,
+  )
+}
