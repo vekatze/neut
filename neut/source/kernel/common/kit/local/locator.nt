@@ -1,18 +1,25 @@
 import {
-  core.dictionary {dictionary, empty},
-  core.ref {make-ref, ref},
+  core.dictionary {dictionary, empty, make-insert, make-lookup},
+  core.list {for-each-E},
+  core.ref {borrow, make-ref, mutate, ref},
   core.text-builder {append-text, extract, make-text-builder},
   core.text.eq {strip-prefix},
   this.app.app {app},
-  this.app.run {raise-critical'},
+  this.app.run {raise-critical', raise-error},
+  this.kernel.common.alias-info {must-update-tag},
+  this.kernel.common.global-name {get-is-const-like},
   this.kernel.common.kit.global.env {env-kit},
-  this.kernel.common.kit.local.tag {tag-kit},
+  this.kernel.common.kit.local.tag {insert-global-var, tag-kit},
   this.kernel.common.module {Module, get-source-dir},
+  this.kernel.common.readable-dd {readable-dd-by-module},
   this.kernel.common.source {Source, source},
-  this.language.common.definite-description {definite-description},
-  this.language.common.local-locator {local-locator},
+  this.kernel.common.top-name-map {top-name-map},
+  this.language.common.definite-description {definite-description, new-dd-N, ord-dd},
+  this.language.common.local-locator {local-locator, ord-local-locator, text-from-local-locator-N},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.language.common.strict-global-locator {Strict-Global-Locator, llvm-global-locator, strict-global-locator},
+  this.logger.hint {hint},
+  this.logger.log {log-position-from-hint},
   this.path.util {remove-extension},
 }
 
@@ -71,4 +78,74 @@ define make-locator-kit(env-kit: &env-kit, tag-kit: &tag-kit, s: &source): app(l
     active-global-locator-list,
     current-global-locator := !cgl,
   })
+}
+
+define activate-specified-names(
+  k: &locator-kit,
+  current-source: &source,
+  tnm: &top-name-map,
+  must-update-tag: must-update-tag,
+  sgl: &strict-global-locator,
+  lls: list(pair(hint, local-locator)),
+): app(unit) {
+  tie _Locator-Kit of {tag-kit, active-definite-description-list-ref} = k;
+  let lookup = make-lookup(ord-dd);
+  try _: list(unit) =
+    for-each-E(lls, function (p) {
+      let Pair(m, ll) = p;
+      pin ll = ll;
+      pin dd = new-dd-N(sgl, ll);
+      match lookup(tnm, dd) {
+      | Left(_) =>
+        let buf = make-text-builder(64);
+        let _ on buf = {
+          append-text(buf, "The name `");
+          append-text(buf, text-from-local-locator-N(ll));
+          append-text(buf, "` is not defined in the module");
+        };
+        raise-error(m, extract(buf))
+      | Right(v) =>
+        tie Pair(m-def, gn) = v;
+        when must-update-tag {
+          let log-position = box m-def {log-position-from-hint(m-def)};
+          insert-global-var(*tag-kit, m-def, *dd, get-is-const-like(gn), log-position)
+        };
+        let unit-or-message: ?text =
+          borrow(active-definite-description-list-ref, function (xs) {
+            match make-lookup(ord-local-locator)(xs, ll) {
+            | Left(_) =>
+              box {none}
+            | Right(existing-dd) =>
+              let buf = make-text-builder(64);
+              tie Source of {source-module} = current-source;
+              pin dd-text = readable-dd-by-module(source-module, dd);
+              pin existing-dd-text = readable-dd-by-module(source-module, existing-dd);
+              let _ on buf = {
+                append-text(buf, "This `");
+                append-text(buf, text-from-local-locator-N(ll));
+                append-text(buf, "` is ambiguous since it could refer to:\n- ");
+                append-text(buf, dd-text);
+                append-text(buf, "\n- ");
+                append-text(buf, existing-dd-text);
+              };
+              quote {Right(extract(buf))}
+            }
+          });
+        match unit-or-message {
+        | Left(_) =>
+          mutate(active-definite-description-list-ref, function (xs) {
+            box {
+              letbox xs = xs;
+              letbox ll = quote {*ll};
+              letbox dd = quote {*dd};
+              make-insert(ord-local-locator)(xs, ll, dd)
+            }
+          });
+          Right(Unit)
+        | Right(message) =>
+          raise-error(m, message)
+        }
+      }
+    });
+  Right(Unit)
 }
