@@ -15,8 +15,9 @@ import {
   this.kernel.common.readable-dd {readable-dd-by-module},
   this.kernel.common.source {Source, source},
   this.kernel.common.top-name-map {top-name-map},
-  this.language.common.definite-description {definite-description, new-dd-N, ord-dd},
-  this.language.common.local-locator {local-locator, ord-local-locator, text-from-local-locator-N},
+  this.language.common.base-name {base-name},
+  this.language.common.definite-description {definite-description, new-dd, new-dd-N, ord-dd},
+  this.language.common.local-locator {local-locator, make-local-locator, ord-local-locator, text-from-local-locator-N},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.language.common.strict-global-locator {Strict-Global-Locator, llvm-global-locator, strict-global-locator},
   this.logger.hint {hint},
@@ -188,4 +189,9 @@ define get-static-file-content(k: &locator-kit, key: &text): ?pair(text, text) {
       box v {Right(v)}
     }
   })
+}
+
+define attach-current-locator(k: &locator-kit, bn: &base-name): definite-description {
+  tie _Locator-Kit of {current-global-locator} = k;
+  new-dd(current-global-locator, make-local-locator(*bn))
 }
