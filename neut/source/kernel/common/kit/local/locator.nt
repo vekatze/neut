@@ -4,6 +4,7 @@ import {
   core.ref {borrow, make-ref, mutate, ref},
   core.text-builder {append-text, extract, make-text-builder},
   core.text.eq {strip-prefix},
+  path.io {is-regular-file},
   this.app.app {app},
   this.app.run {raise-critical', raise-error},
   this.kernel.common.alias-info {must-update-tag},
@@ -20,6 +21,7 @@ import {
   this.language.common.strict-global-locator {Strict-Global-Locator, llvm-global-locator, strict-global-locator},
   this.logger.hint {hint},
   this.logger.log {log-position-from-hint},
+  this.path.read {read-text-from-path},
   this.path.util {remove-extension},
 }
 
@@ -148,4 +150,30 @@ define activate-specified-names(
       }
     });
   Right(Unit)
+}
+
+define activate-static-files(k: &locator-kit, m: hint, key: &text, path: &text): app(unit) {
+  if is-regular-file(path) {
+    tie _Locator-Kit of {active-static-file-list-ref} = k;
+    try content = read-text-from-path(path);
+    mutate(active-static-file-list-ref, function (xs) {
+      box {
+        letbox xs = xs;
+        letbox content = quote {content};
+        letbox key = box key {key};
+        letbox path = box path {path};
+        make-insert(core.text.ord.as-ord)(xs, key, Pair(path, content))
+      }
+    });
+    Right(Unit)
+  } else {
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "The static file `");
+      append-text(buf, key);
+      append-text(buf, "` does not exist at: ");
+      append-text(buf, path)
+    };
+    raise-error(m, extract(buf))
+  }
 }
