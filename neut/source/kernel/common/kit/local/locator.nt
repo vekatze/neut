@@ -177,3 +177,15 @@ define activate-static-files(k: &locator-kit, m: hint, key: &text, path: &text):
     raise-error(m, extract(buf))
   }
 }
+
+define get-static-file-content(k: &locator-kit, key: &text): ?pair(text, text) {
+  tie _Locator-Kit of {active-static-file-list-ref} = k;
+  borrow(active-static-file-list-ref, function (dict) {
+    match make-lookup(core.text.ord.as-ord)(dict, key) {
+    | Left(_) =>
+      box {none}
+    | Right(v) =>
+      box v {Right(v)}
+    }
+  })
+}
