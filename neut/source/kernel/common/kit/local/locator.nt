@@ -30,7 +30,7 @@ data locator-kit {
 | _Locator-Kit(
     tag-kit: &tag-kit,
     env-kit: &env-kit,
-    active-definite-description-list-ref: ref(dictionary(local-locator, definite-description)),
+    active-definite-description-dict-ref: ref(dictionary(local-locator, definite-description)),
     active-static-file-list-ref: ref(dictionary(text, pair(text, text))),
     active-global-locator-list: list(strict-global-locator),
     current-global-locator: strict-global-locator,
@@ -70,17 +70,25 @@ define _construct-global-locator(s: &source): app(strict-global-locator) {
 
 define make-locator-kit(env-kit: &env-kit, tag-kit: &tag-kit, s: &source): app(locator-kit) {
   try !cgl = _construct-global-locator(s);
-  let active-definite-description-list-ref = make-ref(box {empty});
+  let active-definite-description-dict-ref = make-ref(box {empty});
   let active-static-file-list-ref = make-ref(box {empty});
   let active-global-locator-list = List[!cgl, llvm-global-locator()];
   Right(_Locator-Kit of {
     tag-kit,
     env-kit,
-    active-definite-description-list-ref,
+    active-definite-description-dict-ref,
     active-static-file-list-ref,
     active-global-locator-list,
     current-global-locator := !cgl,
   })
+}
+
+define _lookup-ll<r := rho>(
+  d: &dictionary(local-locator, definite-description),
+  needle: &local-locator,
+): ?&definite-description {
+  try _ = r;
+  make-lookup(ord-local-locator)(d, needle)
 }
 
 define activate-specified-names(
@@ -91,7 +99,7 @@ define activate-specified-names(
   sgl: &strict-global-locator,
   lls: list(pair(hint, local-locator)),
 ): app(unit) {
-  tie _Locator-Kit of {tag-kit, active-definite-description-list-ref} = k;
+  tie _Locator-Kit of {tag-kit, active-definite-description-dict-ref} = k;
   let lookup = make-lookup(ord-dd);
   try _: list(unit) =
     for-each-E(lls, function (p) {
@@ -114,8 +122,8 @@ define activate-specified-names(
           insert-global-var(*tag-kit, m-def, *dd, get-is-const-like(gn), log-position)
         };
         let unit-or-message: ?text =
-          borrow(active-definite-description-list-ref, function (xs) {
-            match make-lookup(ord-local-locator)(xs, ll) {
+          borrow(active-definite-description-dict-ref, function (xs) {
+            match _lookup-ll(xs, ll) {
             | Left(_) =>
               box {none}
             | Right(existing-dd) =>
@@ -136,7 +144,7 @@ define activate-specified-names(
           });
         match unit-or-message {
         | Left(_) =>
-          mutate(active-definite-description-list-ref, function (xs) {
+          mutate(active-definite-description-dict-ref, function (xs) {
             box {
               letbox xs = xs;
               letbox ll = quote {*ll};
@@ -194,4 +202,16 @@ define get-static-file-content(k: &locator-kit, key: &text): ?pair(text, text) {
 define attach-current-locator(k: &locator-kit, bn: &base-name): definite-description {
   tie _Locator-Kit of {current-global-locator} = k;
   new-dd(current-global-locator, make-local-locator(*bn))
+}
+
+define _get-imported-referents(k: &locator-kit, ll: &local-locator): list(definite-description) {
+  tie _Locator-Kit of {active-definite-description-dict-ref} = k;
+  borrow(active-definite-description-dict-ref, function (dict) {
+    match _lookup-ll(dict, ll) {
+    | Left(_) =>
+      quote {Nil}
+    | Right(dd) =>
+      box dd {List[dd]}
+    }
+  })
 }
