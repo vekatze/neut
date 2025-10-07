@@ -1,6 +1,7 @@
 import {
   core.dictionary {dictionary, empty, make-insert, make-lookup},
-  core.list {for-each-E},
+  core.list {append, for-each-E, for-each-N},
+  core.list.eq {nub},
   core.ref {borrow, make-ref, mutate, ref},
   core.text-builder {append-text, extract, make-text-builder},
   core.text.eq {strip-prefix},
@@ -16,7 +17,7 @@ import {
   this.kernel.common.source {Source, source},
   this.kernel.common.top-name-map {top-name-map},
   this.language.common.base-name {base-name},
-  this.language.common.definite-description {definite-description, new-dd, new-dd-N, ord-dd},
+  this.language.common.definite-description {definite-description, eq-dd, new-dd, new-dd-N, ord-dd},
   this.language.common.local-locator {local-locator, make-local-locator, ord-local-locator, text-from-local-locator-N},
   this.language.common.source-locator {Source-Locator, source-locator},
   this.language.common.strict-global-locator {Strict-Global-Locator, llvm-global-locator, strict-global-locator},
@@ -214,4 +215,17 @@ define _get-imported-referents(k: &locator-kit, ll: &local-locator): list(defini
       box dd {List[dd]}
     }
   })
+}
+
+define get-possible-referents(k: &locator-kit, ll: &local-locator): list(definite-description) {
+  tie _Locator-Kit of {current-global-locator, active-global-locator-list} = k;
+  let imported-dds = _get-imported-referents(k, ll);
+  let dds =
+    for-each-N(active-global-locator-list, function (dd) {
+      new-dd-N(dd, ll)
+    });
+  let dd = new-dd-N(current-global-locator, ll);
+  let referents = Cons(dd, append(dds, imported-dds));
+  pin eq = eq-dd;
+  nub(eq, referents)
 }
