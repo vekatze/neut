@@ -10,8 +10,8 @@ data geist(a) {
     loc: hint,
     name: definite-description,
     is-const-like: is-const-like,
-    imp-params: list(pair(binder-f(a), ?a)),
-    exp-params: list(binder-f(a)),
+    imp-params: list(pair(binder-f(hint, a), ?a)),
+    exp-params: list(binder-f(hint, a)),
     cod: a,
   )
 }

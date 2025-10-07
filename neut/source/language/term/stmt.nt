@@ -15,56 +15,57 @@ import {
   this.language.common.stmt-kind {base-stmt-kind-sero, stmt-kind},
   this.language.term.term {term, term-f},
   this.logger.hint {hint},
-  this.logger.sero.hint {hint-sero},
+  this.logger.log {log-position},
+  this.logger.sero.log-position {log-position-sero},
 }
 
-data stmt-f(a) {
+data stmt-f(mt, a) {
 | Stmt-Define(
     b: is-const-like,
-    sk: stmt-kind(a),
-    m: hint,
+    sk: stmt-kind(mt, a),
+    m: log-position,
     name: definite-description,
-    imp-params: list(pair(binder-f(a), ?a)),
-    exp-params: list(binder-f(a)),
+    imp-params: list(pair(binder-f(mt, a), ?a)),
+    exp-params: list(binder-f(mt, a)),
     cod: a,
     body: a,
   )
 }
 
 inline stmt: type {
-  stmt-f(term)
+  stmt-f(hint, term)
 }
 
 inline stripped-stmt: type {
-  stmt-f(term-f(unit))
+  stmt-f(unit, term-f(unit))
 }
 
-define get-stmt-name(s: &stmt): ?pair(&hint, &definite-description) {
+define get-stmt-name(s: &stmt): ?pair(&log-position, &definite-description) {
   case s {
   | Stmt-Define of {m, name} =>
     Right(Pair(m, name))
   }
 }
 
-define get-stmt-names(s: &list(stmt)): list(pair(&hint, &definite-description)) {
+define get-stmt-names(s: &list(stmt)): list(pair(&log-position, &definite-description)) {
   filter-some(for-each-N(s, get-stmt-name))
 }
 
 data cons-info {
 | Cons-Info(
     name: definite-description,
-    params: list(binder-f(term)),
+    params: list(binder-f(hint, term)),
     tag: discriminant,
   )
 }
 
-inline stmt-f-sero<a>(!s: sero(a)): sero(stmt-f(a)) {
-  let stmt-kind-sero = base-stmt-kind-sero(definite-description-sero, binder-sero(!s), !s);
-  let imp-params-sero = list-sero(pair-sero(binder-sero(!s), either-sero(unit-sero, !s)));
-  let exp-params-sero = list-sero(binder-sero(!s));
+inline stmt-f-sero<m, a>(!sm: sero(m), !s: sero(a)): sero(stmt-f(m, a)) {
+  let stmt-kind-sero = base-stmt-kind-sero(definite-description-sero, binder-sero(!sm, !s), !s);
+  let imp-params-sero = list-sero(pair-sero(binder-sero(!sm, !s), either-sero(unit-sero, !s)));
+  let exp-params-sero = list-sero(binder-sero(!sm, !s));
   let Sero of {put := !put-a, get := !get-a} = !s;
   let Sero of {put := !put-bool, get := !get-bool} = bool-sero;
-  let Sero of {put := !put-hint, get := !get-hint} = hint-sero;
+  let Sero of {put := !put-log-position, get := !get-log-position} = log-position-sero;
   let Sero of {put := !put-dd, get := !get-dd} = definite-description-sero;
   let Sero of {put := !put-sk, get := !get-sk} = stmt-kind-sero;
   let Sero of {put := !put-ip, get := !get-ip} = imp-params-sero;
@@ -77,7 +78,7 @@ inline stmt-f-sero<a>(!s: sero(a)): sero(stmt-f(a)) {
           put-int64(k, 0);
           !put-bool(k, b);
           !put-sk(k, sk);
-          !put-hint(k, m);
+          !put-log-position(k, m);
           !put-dd(k, name);
           !put-ip(k, imp-params);
           !put-ep(k, exp-params);
@@ -93,7 +94,7 @@ inline stmt-f-sero<a>(!s: sero(a)): sero(stmt-f(a)) {
         | 0 =>
           try b = !get-bool(k);
           try sk = !get-sk(k);
-          try m = !get-hint(k);
+          try m = !get-log-position(k);
           try name = !get-dd(k);
           try ip = !get-ip(k);
           try ep = !get-ep(k);

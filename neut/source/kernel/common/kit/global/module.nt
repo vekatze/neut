@@ -70,7 +70,7 @@ define _has-source-extension(path: &text): bool {
   eq-suffix(path, source-file-extension)
 }
 
-define _ensure-directory(path: &text): system(unit) {
+define ensure-directory(path: &text): system(unit) {
   if is-directory(path) {
     Right(Unit)
   } else {
@@ -79,7 +79,7 @@ define _ensure-directory(path: &text): system(unit) {
 }
 
 define _return-directory(path: text): app(text) {
-  let result: either(system-error, unit) on path = _ensure-directory(path);
+  let result: either(system-error, unit) on path = ensure-directory(path);
   match result {
   | Left(e) =>
     raise-error'(get-error-message(e))

@@ -34,7 +34,12 @@ import {
   },
   this.language.common.const {ns-sep},
   this.language.common.global-locator {_global-locator-from-base-name-list, global-locator},
-  this.language.common.local-locator {local-locator, make-local-locator, text-from-local-locator},
+  this.language.common.local-locator {
+    local-locator,
+    make-local-locator,
+    text-from-local-locator,
+    text-from-local-locator-N,
+  },
   this.language.common.module-digest {Module-Digest},
   this.language.common.module-id {Base, Library, Main, module-id},
   this.language.common.source-locator {internal-locator},
@@ -48,6 +53,18 @@ import {
 
 data definite-description {
 | _Definite-Description(text)
+}
+
+inline eq-dd: eq(definite-description) {
+  Eq of {
+    equal := {
+      function (x, y) {
+        tie _Definite-Description(x) = x;
+        tie _Definite-Description(y) = y;
+        eq-text(x, y)
+      }
+    },
+  }
 }
 
 inline ord-dd: ord(definite-description) {
@@ -67,6 +84,14 @@ define new-dd(gl: &strict-global-locator, ll: local-locator): definite-descripti
   pin tmp = text-from-strict-global-locator(gl);
   pin tmp = core.text.append(tmp, ns-sep);
   pin ll = text-from-local-locator(ll);
+  let tmp = core.text.append(tmp, ll);
+  _Definite-Description(tmp)
+}
+
+define new-dd-N(gl: &strict-global-locator, ll: &local-locator): definite-description {
+  pin tmp = text-from-strict-global-locator(gl);
+  pin tmp = core.text.append(tmp, ns-sep);
+  let ll = text-from-local-locator-N(ll);
   let tmp = core.text.append(tmp, ll);
   _Definite-Description(tmp)
 }

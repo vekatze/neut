@@ -1,6 +1,6 @@
 import {
   this.app.app {app},
-  this.language.common.base-name {_Base-Name, _Base-Name-N, base-name, base-name-from-text, text-from-base-name, text-from-base-name-N},
+  this.language.common.base-name {_Base-Name, _Base-Name-N, base-name, base-name-from-text, ord-base-name, text-from-base-name, text-from-base-name-N},
   this.logger.hint {hint},
 }
 
@@ -41,5 +41,18 @@ define eq-local-locator(x: &local-locator, y: &local-locator): bool {
     eq-text(x, y)
   | _, _ =>
     False
+  }
+}
+
+inline ord-local-locator: ord(local-locator) {
+  Ord of {
+    compare := {
+      function (x, y) {
+        let Ord of {compare} = ord-base-name;
+        tie _Local-Locator(x) = x;
+        tie _Local-Locator(y) = y;
+        compare(x, y)
+      }
+    },
   }
 }

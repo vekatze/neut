@@ -11,7 +11,7 @@ import {
   this.ens.to-doc,
   this.kernel.common.clang-option {Clang-Option, clang-option},
   this.kernel.common.const {artifact-rel-dir, entry-rel-dir, executable-rel-dir, foreign-rel-dir, zen-rel-dir},
-  this.kernel.common.kit.global.module {_ensure-directory},
+  this.kernel.common.kit.global.module {ensure-directory},
   this.kernel.common.kit.global.platform {get-base-build-dir, get-clang-digest, platform-kit},
   this.kernel.common.module {Module, extract-module, get-rel-path-from-source-dir, main-module, module},
   this.kernel.common.output-kind {LLVM, Object, output-kind},
@@ -177,7 +177,7 @@ define _get-foreign-dir(k: &path-kit, t: &target, m: &module): app(text) {
   try build-dir = _get-build-dir(k, t, m);
   let result on build-dir = path.path.append(build-dir, foreign-rel-dir);
   let _ = build-dir;
-  let app-result on result = _ensure-directory(result);
+  let app-result on result = ensure-directory(result);
   try _ = app-from-system(app-result);
   Right(result)
 }
@@ -328,7 +328,7 @@ define get-output-path-for-entry-point(
 }
 
 define get-install-dir(path: &text): app(&text) {
-  try _ = app-from-system(_ensure-directory(path));
+  try _ = app-from-system(ensure-directory(path));
   Right(path)
 }
 

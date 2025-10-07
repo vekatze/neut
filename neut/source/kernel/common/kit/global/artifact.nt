@@ -1,6 +1,9 @@
 import {
   core.cell {make-cell},
   core.dictionary {dictionary},
+  core.text-builder {append-text, extract, make-text-builder},
+  this.app.app {app},
+  this.app.run {raise-critical'},
   this.kernel.common.artifact {artifact-time},
 }
 
@@ -27,14 +30,26 @@ define insert(k: &artifact-kit, path: text, t: artifact-time): unit {
   })
 }
 
-define lookup(k: &artifact-kit, path: &text): ?artifact-time {
+define lookup(k: &artifact-kit, path: &text): app(artifact-time) {
   tie _Artifact-Kit(ref) = k;
-  core.cell.borrow(ref, function (dict) {
-    match core.dictionary.make-lookup(core.text.ord.as-ord)(dict, path) {
-    | Left(_) =>
-      quote {none}
-    | Right(v) =>
-      quote {Right(*v)} // for now
-    }
-  })
+  let tmp: ?artifact-time =
+    core.cell.borrow(ref, function (dict) {
+      match core.dictionary.make-lookup(core.text.ord.as-ord)(dict, path) {
+      | Left(_) =>
+        box {none}
+      | Right(v) =>
+        box v {Right(v)}
+      }
+    });
+  match tmp {
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "No artifact time is registered for the source: ");
+      append-text(buf, path);
+    };
+    raise-critical'(extract(buf))
+  | Right(v) =>
+    Right(v)
+  }
 }

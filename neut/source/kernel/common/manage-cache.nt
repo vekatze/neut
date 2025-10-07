@@ -1,0 +1,181 @@
+import {
+  core.control {discard},
+  core.either {is-right},
+  path.io {is-regular-file, unlink},
+  sero.decode {decode-file},
+  sero.encode {encode-file},
+  this.app.app {app},
+  this.app.run {app-from-system},
+  this.kernel.common.artifact {Artifact-Time, artifact-time},
+  this.kernel.common.cache {
+    cache,
+    completion-cache,
+    completion-cache-sero,
+    compress,
+    extend,
+    location-cache,
+    location-cache-sero,
+    low-cache-sero,
+  },
+  this.kernel.common.create-global-kit {Global-Kit, global-kit},
+  this.kernel.common.kit.global.artifact {artifact-kit, lookup},
+  this.kernel.common.kit.global.module {ensure-directory},
+  this.kernel.common.kit.global.path {
+    get-output-path-for-entry-point,
+    get-source-cache-path,
+    get-source-completion-cache-path,
+    get-source-location-cache-path,
+    path-kit,
+  },
+  this.kernel.common.output-kind {LLVM, Object, output-kind},
+  this.kernel.common.source {Source, source},
+  this.kernel.common.target {main-target, target},
+}
+
+data manage-cache-kit {
+| _Manage-Cache-Kit(
+    path-kit: &path-kit,
+    artifact-kit: &artifact-kit,
+  )
+}
+
+define make-manage-cache-kit(k: &global-kit): manage-cache-kit {
+  tie Global-Kit of {path-kit, artifact-kit} = k;
+  _Manage-Cache-Kit of {path-kit, artifact-kit}
+}
+
+define save-cache(k: &path-kit, t: &target, s: &source, c: cache): app(unit) {
+  try cache-path = get-source-cache-path(k, t, s);
+  pin cache-path = cache-path;
+  try _ = app-from-system(ensure-directory(cache-path));
+  pin c = compress(c);
+  app-from-system(encode-file(low-cache-sero, c, 1024, cache-path))
+}
+
+define save-completion-cache(k: &path-kit, t: &target, s: &source, c: &completion-cache): app(unit) {
+  try cache-path = get-source-completion-cache-path(k, t, s);
+  pin cache-path = cache-path;
+  try _ = app-from-system(ensure-directory(cache-path));
+  app-from-system(encode-file(completion-cache-sero, c, 1024, cache-path))
+}
+
+define save-location-cache(k: &path-kit, t: &target, s: &source, c: &location-cache): app(unit) {
+  try cache-path = get-source-location-cache-path(k, t, s);
+  pin cache-path = cache-path;
+  try _ = app-from-system(ensure-directory(cache-path));
+  app-from-system(encode-file(location-cache-sero, c, 1024, cache-path))
+}
+
+define load-cache(k: &manage-cache-kit, t: &target, s: &source): app(?cache) {
+  tie _Manage-Cache-Kit of {path-kit, artifact-kit} = k;
+  try cache-path = get-source-cache-path(*path-kit, t, s);
+  let has-cache on cache-path = is-regular-file(cache-path);
+  if not(has-cache) {
+    Right(none)
+  } else {
+    tie Source of {file-path} = s;
+    try artifact-time = lookup(*artifact-kit, file-path);
+    let Artifact-Time of {cache-time} = artifact-time;
+    match cache-time {
+    | Left(_) =>
+      Right(none)
+    | Right(_) =>
+      try error-or-data on cache-path = app-from-system(decode-file(low-cache-sero, cache-path));
+      match error-or-data {
+      | Left(_) =>
+        try _ on cache-path = app-from-system(unlink(cache-path));
+        discard(cache-path);
+        Right(none)
+      | Right(content) =>
+        Right(Right(extend(content)))
+      }
+    }
+  }
+}
+
+define load-completion-cache-optimistically(cache-path: &text): app(?completion-cache) {
+  if not(is-regular-file(cache-path)) {
+    Right(none)
+  } else {
+    try error-or-data = app-from-system(decode-file(completion-cache-sero, cache-path));
+    match error-or-data {
+    | Left(_) =>
+      try _ = app-from-system(unlink(cache-path));
+      Right(none)
+    | Right(content) =>
+      Right(Right(content))
+    }
+  }
+}
+
+define load-location-cache(k: &path-kit, t: &target, s: &source): app(?location-cache) {
+  try cache-path = get-source-location-cache-path(k, t, s);
+  let has-cache on cache-path = is-regular-file(cache-path);
+  if not(has-cache) {
+    Right(none)
+  } else {
+    try error-or-data on cache-path = app-from-system(decode-file(location-cache-sero, cache-path));
+    match error-or-data {
+    | Left(_) =>
+      try _ on cache-path = app-from-system(unlink(cache-path));
+      discard(cache-path);
+      Right(none)
+    | Right(v) =>
+      Right(Right(v))
+    }
+  }
+}
+
+define _is-compilation-skippable(t: &artifact-time, ks: &list(output-kind)): bool {
+  tie Artifact-Time of {llvm-time, object-time} = t;
+  case ks {
+  | Nil =>
+    True
+  | Cons(k, rest) =>
+    case k {
+    | LLVM =>
+      let b1 = is-right(llvm-time);
+      let b2 = _is-compilation-skippable(t, rest);
+      and(b1, b2)
+    | Object =>
+      let b1 = is-right(object-time);
+      let b2 = _is-compilation-skippable(t, rest);
+      and(b1, b2)
+    }
+  }
+}
+
+define needs-compilation(k: &manage-cache-kit, ks: &list(output-kind), s: &source): app(bool) {
+  tie _Manage-Cache-Kit of {artifact-kit} = k;
+  tie Source of {file-path} = s;
+  try t = lookup(*artifact-kit, file-path);
+  pin t = t;
+  Right(not(_is-compilation-skippable(t, ks)))
+}
+
+define is-entry-point-compilation-skippable(k: &path-kit, t: &main-target, ks: &list(output-kind)): app(bool) {
+  case ks {
+  | Nil =>
+    Right(True)
+  | Cons(kind, rest) =>
+    try Pair(_, output-path) = get-output-path-for-entry-point(k, *kind, t);
+    let b on output-path = is-regular-file(output-path);
+    let _ = output-path;
+    if b {
+      is-entry-point-compilation-skippable(k, t, rest)
+    } else {
+      Right(False)
+    }
+  }
+}
+
+define invalidate(k: &path-kit, t: &target, s: &source): app(unit) {
+  try cache-path = get-source-cache-path(k, t, s);
+  pin cache-path = cache-path;
+  let has-cache = is-regular-file(cache-path);
+  if not(has-cache) {
+    Right(Unit)
+  } else {
+    app-from-system(unlink(cache-path))
+  }
+}

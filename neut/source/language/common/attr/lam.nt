@@ -10,34 +10,34 @@ inline _ID: type {
   int
 }
 
-data attr-lam(a) {
+data attr-lam(m, a) {
 | Attr-Lam(
-    lam-kind: lam-kind-f(a),
+    lam-kind: lam-kind-f(m, a),
     identity: _ID,
   )
 }
 
-define normal<a>(i: _ID, cod-type: a): attr-lam(a) {
+define normal<m, a>(i: _ID, cod-type: a): attr-lam(m, a) {
   Attr-Lam of {
     lam-kind := Normal(none, cod-type),
     identity := i,
   }
 }
 
-define normal-with-name<a>(name: ?text, i: _ID, cod-type: a): attr-lam(a) {
+define normal-with-name<m, a>(name: ?text, i: _ID, cod-type: a): attr-lam(m, a) {
   Attr-Lam of {
     lam-kind := Normal(name, cod-type),
     identity := i,
   }
 }
 
-define binder-from-attr-lam<a>(attr: &attr-lam(a)): ?&binder-f(a) {
+define binder-from-attr-lam<m, a>(attr: &attr-lam(m, a)): ?&binder-f(m, a) {
   tie Attr-Lam of {lam-kind} = attr;
   from-lam-kind(lam-kind)
 }
 
-inline attr-lam-sero<a>(a-sero: sero(a)): sero(attr-lam(a)) {
-  let Sero of {put := put-lam-kind, get := get-lam-kind} = lam-kind-sero(a-sero);
+inline attr-lam-sero<m, a>(!sm: sero(m), a-sero: sero(a)): sero(attr-lam(m, a)) {
+  let Sero of {put := put-lam-kind, get := get-lam-kind} = lam-kind-sero(!sm, a-sero);
   Sero of {
     put := {
       function (k, v) {

@@ -1,0 +1,231 @@
+import {
+  core.dictionary {dictionary, empty, make-insert, make-lookup},
+  core.list {append, for-each-E, for-each-N},
+  core.list.eq {nub},
+  core.ref {borrow, make-ref, mutate, ref},
+  core.text-builder {append-text, extract, make-text-builder},
+  core.text.eq {strip-prefix},
+  path.io {is-regular-file},
+  this.app.app {app},
+  this.app.run {raise-critical', raise-error},
+  this.kernel.common.alias-info {must-update-tag},
+  this.kernel.common.global-name {get-is-const-like},
+  this.kernel.common.kit.global.env {env-kit},
+  this.kernel.common.kit.local.tag {insert-global-var, tag-kit},
+  this.kernel.common.module {Module, get-source-dir},
+  this.kernel.common.readable-dd {readable-dd-by-module},
+  this.kernel.common.source {Source, source},
+  this.kernel.common.top-name-map {top-name-map},
+  this.language.common.base-name {base-name},
+  this.language.common.definite-description {definite-description, eq-dd, new-dd, new-dd-N, ord-dd},
+  this.language.common.local-locator {local-locator, make-local-locator, ord-local-locator, text-from-local-locator-N},
+  this.language.common.source-locator {Source-Locator, source-locator},
+  this.language.common.strict-global-locator {Strict-Global-Locator, llvm-global-locator, strict-global-locator},
+  this.logger.hint {hint},
+  this.logger.log {log-position-from-hint},
+  this.path.read {read-text-from-path},
+  this.path.util {remove-extension},
+}
+
+data locator-kit {
+| _Locator-Kit(
+    tag-kit: &tag-kit,
+    env-kit: &env-kit,
+    active-definite-description-dict-ref: ref(dictionary(local-locator, definite-description)),
+    active-static-file-list-ref: ref(dictionary(text, pair(text, text))),
+    active-global-locator-list: list(strict-global-locator),
+    current-global-locator: strict-global-locator,
+  )
+}
+
+define _get-source-locator(s: &source): app(source-locator) {
+  tie Source of {source-module, file-path} = s;
+  pin source-dir = get-source-dir(source-module);
+  let rel-file-path = strip-prefix(file-path, source-dir);
+  match rel-file-path {
+  | Left(_) =>
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "Failed to strip prefix `");
+      append-text(buf, source-dir);
+      append-text(buf, "` from `");
+      append-text(buf, file-path);
+      append-text(buf, "`");
+    };
+    raise-critical'(extract(buf))
+  | Right(rel-file-path) =>
+    pin rel-file-path = rel-file-path;
+    try sl = remove-extension(rel-file-path);
+    Right(Source-Locator(sl))
+  }
+}
+
+define _construct-global-locator(s: &source): app(strict-global-locator) {
+  tie Source of {source-module := Module of {id}} = s;
+  try sl = _get-source-locator(s);
+  Right(Strict-Global-Locator of {
+    module-id := *id,
+    source-locator := sl,
+  })
+}
+
+define make-locator-kit(env-kit: &env-kit, tag-kit: &tag-kit, s: &source): app(locator-kit) {
+  try !cgl = _construct-global-locator(s);
+  let active-definite-description-dict-ref = make-ref(box {empty});
+  let active-static-file-list-ref = make-ref(box {empty});
+  let active-global-locator-list = List[!cgl, llvm-global-locator()];
+  Right(_Locator-Kit of {
+    tag-kit,
+    env-kit,
+    active-definite-description-dict-ref,
+    active-static-file-list-ref,
+    active-global-locator-list,
+    current-global-locator := !cgl,
+  })
+}
+
+define _lookup-ll<r := rho>(
+  d: &dictionary(local-locator, definite-description),
+  needle: &local-locator,
+): ?&definite-description {
+  try _ = r;
+  make-lookup(ord-local-locator)(d, needle)
+}
+
+define activate-specified-names(
+  k: &locator-kit,
+  current-source: &source,
+  tnm: &top-name-map,
+  must-update-tag: must-update-tag,
+  sgl: &strict-global-locator,
+  lls: list(pair(hint, local-locator)),
+): app(unit) {
+  tie _Locator-Kit of {tag-kit, active-definite-description-dict-ref} = k;
+  let lookup = make-lookup(ord-dd);
+  try _: list(unit) =
+    for-each-E(lls, function (p) {
+      let Pair(m, ll) = p;
+      pin ll = ll;
+      pin dd = new-dd-N(sgl, ll);
+      match lookup(tnm, dd) {
+      | Left(_) =>
+        let buf = make-text-builder(64);
+        let _ on buf = {
+          append-text(buf, "The name `");
+          append-text(buf, text-from-local-locator-N(ll));
+          append-text(buf, "` is not defined in the module");
+        };
+        raise-error(m, extract(buf))
+      | Right(v) =>
+        tie Pair(m-def, gn) = v;
+        when must-update-tag {
+          let log-position = box m-def {log-position-from-hint(m-def)};
+          insert-global-var(*tag-kit, m-def, *dd, get-is-const-like(gn), log-position)
+        };
+        let unit-or-message: ?text =
+          borrow(active-definite-description-dict-ref, function (xs) {
+            match _lookup-ll(xs, ll) {
+            | Left(_) =>
+              box {none}
+            | Right(existing-dd) =>
+              let buf = make-text-builder(64);
+              tie Source of {source-module} = current-source;
+              pin dd-text = readable-dd-by-module(source-module, dd);
+              pin existing-dd-text = readable-dd-by-module(source-module, existing-dd);
+              let _ on buf = {
+                append-text(buf, "This `");
+                append-text(buf, text-from-local-locator-N(ll));
+                append-text(buf, "` is ambiguous since it could refer to:\n- ");
+                append-text(buf, dd-text);
+                append-text(buf, "\n- ");
+                append-text(buf, existing-dd-text);
+              };
+              quote {Right(extract(buf))}
+            }
+          });
+        match unit-or-message {
+        | Left(_) =>
+          mutate(active-definite-description-dict-ref, function (xs) {
+            box {
+              letbox xs = xs;
+              letbox ll = quote {*ll};
+              letbox dd = quote {*dd};
+              make-insert(ord-local-locator)(xs, ll, dd)
+            }
+          });
+          Right(Unit)
+        | Right(message) =>
+          raise-error(m, message)
+        }
+      }
+    });
+  Right(Unit)
+}
+
+define activate-static-files(k: &locator-kit, m: hint, key: &text, path: &text): app(unit) {
+  if is-regular-file(path) {
+    tie _Locator-Kit of {active-static-file-list-ref} = k;
+    try content = read-text-from-path(path);
+    mutate(active-static-file-list-ref, function (xs) {
+      box {
+        letbox xs = xs;
+        letbox content = quote {content};
+        letbox key = box key {key};
+        letbox path = box path {path};
+        make-insert(core.text.ord.as-ord)(xs, key, Pair(path, content))
+      }
+    });
+    Right(Unit)
+  } else {
+    let buf = make-text-builder(64);
+    let _ on buf = {
+      append-text(buf, "The static file `");
+      append-text(buf, key);
+      append-text(buf, "` does not exist at: ");
+      append-text(buf, path)
+    };
+    raise-error(m, extract(buf))
+  }
+}
+
+define get-static-file-content(k: &locator-kit, key: &text): ?pair(text, text) {
+  tie _Locator-Kit of {active-static-file-list-ref} = k;
+  borrow(active-static-file-list-ref, function (dict) {
+    match make-lookup(core.text.ord.as-ord)(dict, key) {
+    | Left(_) =>
+      box {none}
+    | Right(v) =>
+      box v {Right(v)}
+    }
+  })
+}
+
+define attach-current-locator(k: &locator-kit, bn: &base-name): definite-description {
+  tie _Locator-Kit of {current-global-locator} = k;
+  new-dd(current-global-locator, make-local-locator(*bn))
+}
+
+define _get-imported-referents(k: &locator-kit, ll: &local-locator): list(definite-description) {
+  tie _Locator-Kit of {active-definite-description-dict-ref} = k;
+  borrow(active-definite-description-dict-ref, function (dict) {
+    match _lookup-ll(dict, ll) {
+    | Left(_) =>
+      quote {Nil}
+    | Right(dd) =>
+      box dd {List[dd]}
+    }
+  })
+}
+
+define get-possible-referents(k: &locator-kit, ll: &local-locator): list(definite-description) {
+  tie _Locator-Kit of {current-global-locator, active-global-locator-list} = k;
+  let imported-dds = _get-imported-referents(k, ll);
+  let dds =
+    for-each-N(active-global-locator-list, function (dd) {
+      new-dd-N(dd, ll)
+    });
+  let dd = new-dd-N(current-global-locator, ll);
+  let referents = Cons(dd, append(dds, imported-dds));
+  pin eq = eq-dd;
+  nub(eq, referents)
+}

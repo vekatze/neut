@@ -100,7 +100,7 @@ define extend(c: low-cache): cache {
 }
 
 inline low-cache-sero: sero(low-cache) {
-  let Sero of {put := put-stmts, get := get-stmts} = list-sero(stmt-f-sero(term-f-sero(unit-sero)));
+  let Sero of {put := put-stmts, get := get-stmts} = list-sero(stmt-f-sero(unit-sero, term-f-sero(unit-sero)));
   let Sero of {put := put-remarks, get := get-remarks} = list-sero(log-sero);
   Sero of {
     put := {

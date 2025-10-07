@@ -33,6 +33,21 @@ define log-position-from-hint(m: hint): log-position {
   }
 }
 
+define get-line(m: &log-position): int {
+  tie Log-Position of {line} = m;
+  *line
+}
+
+define get-column(m: &log-position): int {
+  tie Log-Position of {column} = m;
+  *column
+}
+
+define get-file-path(m: &log-position): &text {
+  tie Log-Position of {file-path} = m;
+  file-path
+}
+
 define show-file-pos(m: &log-position): text {
   case m {
   | Log-Position of {file-path, line, column} =>

@@ -11,7 +11,7 @@ import {
   this.language.common.module-id {Base, Library, Main},
 }
 
-define _readable-dd(m: &module, dd: &definite-description): text {
+define readable-dd-by-module(m: &module, dd: &definite-description): text {
   match uncons-dd(dd) {
   | Pair(Main, rest) =>
     pin rest = rest;
@@ -67,5 +67,5 @@ define _readable-dd(m: &module, dd: &definite-description): text {
 }
 
 define readable-dd(m: &main-module, dd: &definite-description): text {
-  _readable-dd(extract-module(m), dd)
+  readable-dd-by-module(extract-module(m), dd)
 }

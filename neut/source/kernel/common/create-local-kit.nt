@@ -1,0 +1,33 @@
+import {
+  this.app.app {app},
+  this.kernel.common.create-global-kit {Global-Kit, global-kit},
+  this.kernel.common.kit.local.locator {locator-kit, make-locator-kit},
+  this.kernel.common.kit.local.raw-import-summary {make-raw-import-summary-kit, raw-import-summary-kit},
+  this.kernel.common.kit.local.sym-loc {make-sym-loc-kit, sym-loc-kit},
+  this.kernel.common.kit.local.tag {tag-kit},
+  this.kernel.common.kit.local.top-candidate {make-top-candidate-kit, top-candidate-kit},
+  this.kernel.common.source {source},
+}
+
+data local-kit {
+| _Local-Kit(
+    tag-kit: &tag-kit,
+    locator-kit: locator-kit,
+    raw-import-summary-kit: raw-import-summary-kit,
+    sym-loc-kit: sym-loc-kit,
+    top-candidate-kit: top-candidate-kit,
+  )
+}
+
+define make-local-kit(
+  k: &global-kit,
+  tk: &tag-kit,
+  s: &source,
+): app(local-kit) {
+  tie Global-Kit of {env-kit} = k;
+  try locator-kit = make-locator-kit(*env-kit, tk, s);
+  let raw-import-summary-kit = make-raw-import-summary-kit();
+  let sym-loc-kit = make-sym-loc-kit();
+  let top-candidate-kit = make-top-candidate-kit();
+  Right(_Local-Kit of {locator-kit, tag-kit := tk, raw-import-summary-kit, sym-loc-kit, top-candidate-kit})
+}
