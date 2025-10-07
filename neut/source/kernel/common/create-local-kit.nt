@@ -1,0 +1,17 @@
+import {
+  this.kernel.common.kit.local.locator {locator-kit},
+  this.kernel.common.kit.local.raw-import-summary {raw-import-summary-kit},
+  this.kernel.common.kit.local.sym-loc {sym-loc-kit},
+  this.kernel.common.kit.local.tag {tag-kit},
+  this.kernel.common.kit.local.top-candidate {top-candidate-kit},
+}
+
+data local-kit {
+| _Local-Kit(
+    locator-kit: &locator-kit,
+    tag-kit: &tag-kit,
+    raw-import-summary-kit: &raw-import-summary-kit,
+    sym-loc-kit: &sym-loc-kit,
+    top-candidate-kit: &top-candidate-kit,
+  )
+}
