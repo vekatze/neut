@@ -1,5 +1,6 @@
 import {
   this.gensym.gensym {gensym-kit},
+  this.kernel.common.create-global-kit {Global-Kit, global-kit},
   this.kernel.common.kit.global.env {env-kit},
   this.kernel.common.kit.global.module {module-kit},
 }
@@ -10,4 +11,10 @@ data get-enabled-preset-kit {
     module-kit: &module-kit,
     env-kit: &env-kit,
   )
+}
+
+define make-get-enabled-preset-kit(k: &global-kit): get-enabled-preset-kit {
+  tie Global-Kit of {gensym-kit, module-kit, env-kit} = k;
+  let env-kit = *env-kit;
+  _Get-Enabled-Preset-Kit of {gensym-kit, module-kit, env-kit}
 }
