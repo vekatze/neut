@@ -6,6 +6,7 @@ import {
   this.kernel.common.kit.global.env {env-kit},
   this.kernel.common.kit.global.module {module-kit},
   this.kernel.common.module {Module, alias-preset-map, module},
+  this.language.common.module-alias {module-alias, text-from-module-alias},
 }
 
 data get-enabled-preset-kit {
@@ -30,4 +31,9 @@ define _construct-alias-preset-map(kms: list(pair(text, module))): alias-preset-
       Pair(k, preset-map)
     });
   core.dictionary.from-list(core.text.ord.as-ord, kms)
+}
+
+define _adjust-key(p: pair(module-alias, module)): pair(text, module) {
+  let Pair(k, m) = p;
+  Pair(text-from-module-alias(k), m)
 }
