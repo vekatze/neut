@@ -1,8 +1,11 @@
 import {
+  core.dictionary,
+  core.list {for-each},
   this.gensym.gensym {gensym-kit},
   this.kernel.common.create-global-kit {Global-Kit, global-kit},
   this.kernel.common.kit.global.env {env-kit},
   this.kernel.common.kit.global.module {module-kit},
+  this.kernel.common.module {Module, alias-preset-map, module},
 }
 
 data get-enabled-preset-kit {
@@ -17,4 +20,14 @@ define make-get-enabled-preset-kit(k: &global-kit): get-enabled-preset-kit {
   tie Global-Kit of {gensym-kit, module-kit, env-kit} = k;
   let env-kit = *env-kit;
   _Get-Enabled-Preset-Kit of {gensym-kit, module-kit, env-kit}
+}
+
+define _construct-alias-preset-map(kms: list(pair(text, module))): alias-preset-map {
+  let kms =
+    for-each(kms, function (km) {
+      let Pair(k, m) = km;
+      let Module of {preset-map} = m;
+      Pair(k, preset-map)
+    });
+  core.dictionary.from-list(core.text.ord.as-ord, kms)
 }
