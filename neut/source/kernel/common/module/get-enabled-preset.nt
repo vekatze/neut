@@ -1,12 +1,21 @@
 import {
-  core.dictionary,
-  core.list {for-each},
+  core.dictionary {make-lookup},
+  core.list {concat, for-each},
+  this.app.app {app},
   this.gensym.gensym {gensym-kit},
   this.kernel.common.create-global-kit {Global-Kit, global-kit},
-  this.kernel.common.kit.global.env {env-kit},
+  this.kernel.common.kit.global.env {env-kit, get-main-module},
   this.kernel.common.kit.global.module {module-kit},
-  this.kernel.common.module {Module, alias-preset-map, module},
-  this.language.common.module-alias {module-alias, text-from-module-alias},
+  this.kernel.common.module {
+    Module,
+    alias-preset-map,
+    get-alias-list-with-enabled-presets,
+    get-preset-summary,
+    module,
+  },
+  this.kernel.common.module.get-module {Get-Module-Kit, get-all-dependencies},
+  this.language.common.base-name {base-name},
+  this.language.common.module-alias {default-module-alias, module-alias, text-from-module-alias},
 }
 
 data get-enabled-preset-kit {
@@ -36,4 +45,24 @@ define _construct-alias-preset-map(kms: list(pair(text, module))): alias-preset-
 define _adjust-key(p: pair(module-alias, module)): pair(text, module) {
   let Pair(k, m) = p;
   Pair(text-from-module-alias(k), m)
+}
+
+define get-enabled-preset(k: &get-enabled-preset-kit, m: &module): app(list(pair(text, list(base-name)))) {
+  tie _Get-Enabled-Preset-Kit of {gensym-kit, module-kit, env-kit} = k;
+  pin k2 = Get-Module-Kit of {gensym-kit := *gensym-kit, module-kit := *module-kit};
+  let main-module = get-main-module(*env-kit);
+  try depenedencies = get-all-dependencies(k2, main-module, m);
+  let visible-module-list = Cons(Pair(default-module-alias(), *m), depenedencies);
+  let alias-preset-info = for-each(visible-module-list, _adjust-key);
+  let alias-list = get-alias-list-with-enabled-presets(m);
+  pin alias-preset-map = _construct-alias-preset-map(alias-preset-info);
+  Right(concat(for-each(alias-list, function (a) {
+    pin a = text-from-module-alias(a);
+    match make-lookup(core.text.ord.as-ord)(alias-preset-map, a) {
+    | Left(_) =>
+      List[]
+    | Right(preset-map) =>
+      get-preset-summary(*preset-map, a)
+    }
+  })))
 }

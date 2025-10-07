@@ -16,7 +16,7 @@ import {
 }
 
 data get-module-kit {
-| _Get-Module-Kit(
+| Get-Module-Kit(
     gensym-kit: &gensym-kit,
     module-kit: &module-kit,
   )
@@ -24,7 +24,7 @@ data get-module-kit {
 
 define make-get-module-kit(k: &global-kit): get-module-kit {
   tie Global-Kit of {gensym-kit, module-kit} = k;
-  _Get-Module-Kit of {gensym-kit, module-kit}
+  Get-Module-Kit of {gensym-kit, module-kit}
 }
 
 define get-module(
@@ -34,7 +34,7 @@ define get-module(
   mid: &module-id,
   locator-text: &text,
 ): app(module) {
-  tie _Get-Module-Kit of {module-kit} = k;
+  tie Get-Module-Kit of {module-kit} = k;
   try next-module-file-path = get-module-file-path(m, Right(h), mid);
   pin next-module-file-path = next-module-file-path;
   match lookup-module(*module-kit, next-module-file-path) {
