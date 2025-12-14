@@ -43,11 +43,11 @@ toOpacity stmtKind =
 toLowOpacity :: BaseStmtKind name x t -> O.Opacity
 toLowOpacity stmtKind =
   case stmtKind of
-    Normal opacity ->
-      opacity
-    Main opacity _ ->
-      opacity
+    Normal _ ->
+      O.Opaque
+    Main _ _ ->
+      O.Opaque
     Data {} ->
-      O.Opaque -- so as not to reduce recursive terms
+      O.Opaque
     DataIntro {} ->
       O.Clear
