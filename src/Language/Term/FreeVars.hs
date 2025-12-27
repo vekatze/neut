@@ -3,6 +3,7 @@ module Language.Term.FreeVars (freeVars) where
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -30,8 +31,10 @@ freeVars term =
       let ys1 = S.unions $ map freeVars impArgs
       let ys2 = S.unions $ map freeVars expArgs
       S.unions [xs, ys1, ys2]
-    _ :< TM.Data _ _ es ->
-      S.unions $ map freeVars es
+    _ :< TM.Data attr _ es -> do
+      let xs1 = S.unions $ map freeVars es
+      let xs2 = freeVarsAttrData attr
+      S.union xs1 xs2
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       S.unions $ map freeVars $ dataArgs ++ consArgs
     m :< TM.DataElim _ oets decisionTree -> do
@@ -105,3 +108,8 @@ freeVarsCase decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       S.unions $ freeVars' consArgs (freeVarsDecisionTree cont) : map freeVars dataTerms ++ map freeVars dataTypes
+
+freeVarsAttrData :: AttrD.Attr name (BinderF TM.Term) -> S.Set Ident
+freeVarsAttrData attr = do
+  let consNameList = AttrD.consNameList attr
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVars t) binders) consNameList

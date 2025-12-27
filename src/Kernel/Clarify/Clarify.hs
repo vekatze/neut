@@ -49,6 +49,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as L
 import Language.Common.Magic qualified as M
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity (isOpaque)
 import Language.Common.Opacity qualified as O
@@ -68,7 +69,7 @@ import Language.Term.Chain qualified as TM
 import Language.Term.FromPrimNum
 import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
-import Language.Term.Stmt
+import Language.Term.Stmt (Stmt, StmtF (..), isTemplateStmt)
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -105,8 +106,10 @@ clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   baseAuxEnv <- AuxEnv.toCompStmtList <$> liftIO (getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h))
   liftIO $ AuxEnv.clear (auxEnvHandle h)
+  -- Filter out Template statements
+  let stmtListWithoutTemplate = filter (not . isTemplateStmt) stmtList
   stmtList' <- do
-    stmtList' <- mapM (clarifyStmt h) stmtList
+    stmtList' <- mapM (clarifyStmt h) stmtListWithoutTemplate
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return $ stmtList' ++ auxEnv
   forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
@@ -436,7 +439,7 @@ clarifyDecisionTree h tenv isNoetic dataArgsMap tree =
           (disc, discVar) <- liftIO $ Gensym.createVar (gensymHandle h) "disc"
           enumElim <- liftIO $ Utility.getEnumElim (utilityHandle h) idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return
-            ( C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal cursor)))) enumElim,
+            ( C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.Pointer (C.VarLocal cursor)))) enumElim,
               newChain
             )
 
@@ -544,48 +547,58 @@ alignFreeVariable h tenv fvs e = do
 clarifyMagic :: Handle -> TM.TypeEnv -> M.Magic BLT.BaseLowType TM.Term -> App C.Comp
 clarifyMagic h tenv der = do
   case der of
-    M.Cast from to value -> do
-      (fromVarName, from', fromVar) <- clarifyPlus h tenv from
-      (toVarName, to', toVar) <- clarifyPlus h tenv to
-      (valueVarName, value', valueVar) <- clarifyPlus h tenv value
-      return $
-        Utility.bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
-          C.Primitive (C.Magic (M.Cast fromVar toVar valueVar))
-    M.Store lt _ value pointer -> do
-      let doNotCare = C.SigmaIntro []
-      (valueVarName, value', valueVar) <- clarifyPlus h tenv value
-      (pointerVarName, pointer', pointerVar) <- clarifyPlus h tenv pointer
-      return $
-        Utility.bindLet [(valueVarName, value'), (pointerVarName, pointer')] $
-          C.Primitive (C.Magic (M.Store lt doNotCare valueVar pointerVar))
-    M.Load lt pointer -> do
-      (pointerVarName, pointer', pointerVar) <- clarifyPlus h tenv pointer
-      return $
-        Utility.bindLet [(pointerVarName, pointer')] $
-          C.Primitive (C.Magic (M.Load lt pointerVar))
-    M.Alloca lt size -> do
-      (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
-      return $
-        Utility.bindLet [(sizeVarName, size')] $
-          C.Primitive (C.Magic (M.Alloca lt sizeVar))
-    M.External domList cod extFunName args varArgAndTypeList -> do
-      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus h tenv) args
-      let (varArgs, varTypes) = unzip varArgAndTypeList
-      (ys, varArgs', ysAsVarArgs) <- unzip3 <$> mapM (clarifyPlus h tenv) varArgs
-      return $
-        Utility.bindLet (zip xs args' ++ zip ys varArgs') $
-          C.Primitive (C.Magic (M.External domList cod extFunName xsAsVars (zip ysAsVarArgs varTypes)))
-    M.Global name lt -> do
-      return $ C.Primitive (C.Magic (M.Global name lt))
-    M.OpaqueValue e ->
-      clarifyTerm h tenv e
-    M.CallType func arg1 arg2 -> do
-      (funcVarName, func', funcVar) <- clarifyPlus h tenv func
-      (arg1VarName, arg1', arg1Var) <- clarifyPlus h tenv arg1
-      (arg2VarName, arg2', arg2Var) <- clarifyPlus h tenv arg2
-      return $
-        Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
-          C.Primitive (C.Magic (M.CallType funcVar arg1Var arg2Var))
+    M.LowMagic magic -> do
+      case magic of
+        LM.Cast from to value -> do
+          (fromVarName, from', fromVar) <- clarifyPlus h tenv from
+          (toVarName, to', toVar) <- clarifyPlus h tenv to
+          (valueVarName, value', valueVar) <- clarifyPlus h tenv value
+          return $
+            Utility.bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
+              C.Primitive (C.Magic (LM.Cast fromVar toVar valueVar))
+        LM.Store lt _ value pointer -> do
+          let doNotCare = C.SigmaIntro []
+          (valueVarName, value', valueVar) <- clarifyPlus h tenv value
+          (pointerVarName, pointer', pointerVar) <- clarifyPlus h tenv pointer
+          return $
+            Utility.bindLet [(valueVarName, value'), (pointerVarName, pointer')] $
+              C.Primitive (C.Magic (LM.Store lt doNotCare valueVar pointerVar))
+        LM.Load lt pointer -> do
+          (pointerVarName, pointer', pointerVar) <- clarifyPlus h tenv pointer
+          return $
+            Utility.bindLet [(pointerVarName, pointer')] $
+              C.Primitive (C.Magic (LM.Load lt pointerVar))
+        LM.Alloca lt size -> do
+          (sizeVarName, size', sizeVar) <- clarifyPlus h tenv size
+          return $
+            Utility.bindLet [(sizeVarName, size')] $
+              C.Primitive (C.Magic (LM.Alloca lt sizeVar))
+        LM.External domList cod extFunName args varArgAndTypeList -> do
+          (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus h tenv) args
+          let (varArgs, varTypes) = unzip varArgAndTypeList
+          (ys, varArgs', ysAsVarArgs) <- unzip3 <$> mapM (clarifyPlus h tenv) varArgs
+          return $
+            Utility.bindLet (zip xs args' ++ zip ys varArgs') $
+              C.Primitive (C.Magic (LM.External domList cod extFunName xsAsVars (zip ysAsVarArgs varTypes)))
+        LM.Global name lt -> do
+          return $ C.Primitive (C.Magic (LM.Global name lt))
+        LM.OpaqueValue e ->
+          clarifyTerm h tenv e
+        LM.CallType func arg1 arg2 -> do
+          (funcVarName, func', funcVar) <- clarifyPlus h tenv func
+          (arg1VarName, arg1', arg1Var) <- clarifyPlus h tenv arg1
+          (arg2VarName, arg2', arg2Var) <- clarifyPlus h tenv arg2
+          return $
+            Utility.bindLet [(funcVarName, func'), (arg1VarName, arg1'), (arg2VarName, arg2')] $
+              C.Primitive (C.Magic (LM.CallType funcVar arg1Var arg2Var))
+    M.GetTypeTag {} ->
+      error "GetTypeTag should be evaluated during inline expansion"
+    M.GetConsSize _ ->
+      error "GetConsSize should be evaluated during inline expansion"
+    M.GetConstructorArgTypes _ _ _ _ ->
+      error "GetConstructorArgTypes should be evaluated during inline expansion"
+    M.CompileError {} ->
+      error "CompileError should be evaluated during inline expansion"
 
 clarifyLambda ::
   Handle ->

@@ -30,6 +30,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
 import Language.Common.Ident.Reify
 import Language.Common.LamKind qualified as LK
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Term.FreeVarsWithHints (freeVarsWithHints)
@@ -199,32 +200,45 @@ analyze h term = do
       return []
     _ :< TM.Magic magic -> do
       case magic of
-        M.Cast from to value -> do
-          cs0 <- analyze h from
-          cs1 <- analyze h to
-          cs2 <- analyze h value
+        M.LowMagic lowMagic ->
+          case lowMagic of
+            LM.Cast from to value -> do
+              cs0 <- analyze h from
+              cs1 <- analyze h to
+              cs2 <- analyze h value
+              return $ cs0 ++ cs1 ++ cs2
+            LM.Store _ unit e1 e2 -> do
+              cs1 <- analyze h unit
+              cs2 <- analyze h e1
+              cs3 <- analyze h e2
+              return $ cs1 ++ cs2 ++ cs3
+            LM.Load _ e -> do
+              analyze h e
+            LM.Alloca _ size -> do
+              analyze h size
+            LM.External _ _ _ es ets -> do
+              let args = es ++ map fst ets
+              concat <$> mapM (analyze h) args
+            LM.Global _ _ ->
+              return []
+            LM.OpaqueValue e ->
+              analyze h e
+            LM.CallType func arg1 arg2 -> do
+              cs1 <- analyze h func
+              cs2 <- analyze h arg1
+              cs3 <- analyze h arg2
+              return $ cs1 ++ cs2 ++ cs3
+        M.GetTypeTag typeExpr -> do
+          analyze h typeExpr
+        M.GetConsSize typeExpr -> do
+          analyze h typeExpr
+        M.GetConstructorArgTypes _ listExpr typeExpr index -> do
+          cs0 <- analyze h listExpr
+          cs1 <- analyze h typeExpr
+          cs2 <- analyze h index
           return $ cs0 ++ cs1 ++ cs2
-        M.Store _ unit e1 e2 -> do
-          cs1 <- analyze h unit
-          cs2 <- analyze h e1
-          cs3 <- analyze h e2
-          return $ cs1 ++ cs2 ++ cs3
-        M.Load _ e -> do
-          analyze h e
-        M.Alloca _ size -> do
-          analyze h size
-        M.External _ _ _ es ets -> do
-          let args = es ++ map fst ets
-          concat <$> mapM (analyze h) args
-        M.Global _ _ ->
+        M.CompileError _ ->
           return []
-        M.OpaqueValue e ->
-          analyze h e
-        M.CallType func arg1 arg2 -> do
-          cs1 <- analyze h func
-          cs2 <- analyze h arg1
-          cs3 <- analyze h arg2
-          return $ cs1 ++ cs2 ++ cs3
     _ :< TM.Resource _ _ unitType discarder copier typeTag -> do
       cs1 <- analyze h unitType
       cs2 <- analyze h discarder
@@ -357,7 +371,7 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
           dataConsArgsList <-
             if S.member dataName dataNameSet
               then return []
-              else mapM (getConsArgTypes h m . fst) consNameList
+              else mapM (getConsArgTypes h m . (\(name, _, _) -> name)) consNameList
           constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
             dataConsArgs' <- substConsArgs h IntMap.empty dataConsArgs
             fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do

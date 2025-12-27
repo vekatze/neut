@@ -62,6 +62,7 @@ parseStmt h = do
     [ parseDefine h,
       parseData h,
       parseInline h,
+      parseTemplate h,
       parseNominal h,
       parseResource h,
       parseVariadic h FoldLeft,
@@ -122,6 +123,12 @@ parseDefine h =
 parseInline :: Handle -> Parser (RawStmt, C)
 parseInline h =
   parseDefine' h O.Clear
+
+parseTemplate :: Handle -> Parser (RawStmt, C)
+parseTemplate h = do
+  c1 <- keyword "template"
+  (def, c) <- parseDef h baseName
+  return (RawStmtDefine c1 SK.Template def, c)
 
 parseDefine' :: Handle -> O.Opacity -> Parser (RawStmt, C)
 parseDefine' h opacity = do

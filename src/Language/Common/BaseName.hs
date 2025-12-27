@@ -47,6 +47,9 @@ module Language.Common.BaseName
     node,
     leaf,
     root,
+    list,
+    nil,
+    consName,
   )
 where
 
@@ -250,6 +253,18 @@ leaf =
 root :: BaseName
 root =
   MakeBaseName "root"
+
+list :: BaseName
+list =
+  MakeBaseName "list"
+
+nil :: BaseName
+nil =
+  MakeBaseName "Nil"
+
+consName :: BaseName
+consName =
+  MakeBaseName "Cons"
 
 malloc :: BaseName
 malloc =

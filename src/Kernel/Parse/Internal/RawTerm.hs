@@ -426,7 +426,11 @@ rawTermMagic h m c = do
       rawTermMagicExternal h m c,
       rawTermMagicOpaqueValue h m c,
       rawTermMagicGlobal h m c,
-      rawTermMagicCallType h m c
+      rawTermMagicCallType h m c,
+      rawTermMagicGetTypeTag h m c,
+      rawTermMagicGetConsSize h m c,
+      rawTermMagicGetConstructorArgTypes h m c,
+      rawTermMagicCompileError h m c
     ]
 
 rawTermMagicBase :: T.Text -> Parser (C -> C -> a) -> Parser (a, C)
@@ -521,6 +525,32 @@ rawTermMagicCallType h m c = do
     c4 <- delimiter ","
     arg2 <- rawTerm h
     return $ \c1 c2 -> m :< RT.Magic c (RT.CallType c1 (c2, func) (c3, arg1) (c4, arg2))
+
+rawTermMagicGetTypeTag :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetTypeTag h m c = do
+  rawTermMagicBase "get-type-tag" $ do
+    typeExpr <- rawTerm h
+    return $ \_ c2 -> m :< RT.Magic c (RT.GetTypeTag (c2, typeExpr))
+
+rawTermMagicGetConsSize :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetConsSize h m c = do
+  rawTermMagicBase "get-cons-size" $ do
+    typeExpr <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConsSize c1 (c2, typeExpr))
+
+rawTermMagicGetConstructorArgTypes :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGetConstructorArgTypes h m c = do
+  rawTermMagicBase "get-constructor-arg-types" $ do
+    typeExpr <- rawTerm h
+    c3 <- delimiter ","
+    index <- rawTerm h
+    return $ \c1 c2 -> m :< RT.Magic c (RT.GetConstructorArgTypes c1 (c2, typeExpr) c3 (c3, index))
+
+rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicCompileError _h m c = do
+  _ <- keyword "compile-error"
+  (msg, c2) <- string
+  return (m :< RT.Magic c (RT.CompileError msg), c2)
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do

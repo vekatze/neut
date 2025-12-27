@@ -36,6 +36,7 @@ import Kernel.Parse.Internal.Discern.Name
 import Kernel.Parse.Internal.Discern.Noema
 import Kernel.Parse.Internal.Discern.PatternMatrix
 import Kernel.Parse.Internal.Discern.Struct
+import Kernel.Parse.Internal.Handle.Alias qualified as Alias
 import Kernel.Parse.Internal.Handle.NameMap qualified as NameMap
 import Kernel.Parse.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
@@ -46,6 +47,7 @@ import Kernel.Parse.Pattern qualified as PAT
 import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
 import Language.Common.ArgNum qualified as AN
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Binder
@@ -59,6 +61,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as LI
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
@@ -178,6 +181,8 @@ discernStmtKind h stmtKind m =
     SK.Main opacity _ -> do
       unitType <- getUnitType h m
       return $ SK.Main opacity unitType
+    SK.Template ->
+      return SK.Template
     SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', h') <- discernBinder' h dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
@@ -207,6 +212,8 @@ toCandidateKind stmtKind =
     SK.Normal {} ->
       Function
     SK.Main {} ->
+      Function
+    SK.Template ->
       Function
     SK.Data {} ->
       Function
@@ -326,7 +333,11 @@ discern h term =
       return $ m :< WT.PiElimExact e'
     m :< RT.Data attr dataName es -> do
       es' <- mapM (discern h) es
-      return $ m :< WT.Data attr dataName es'
+      let allowedVars = S.unions $ map freeVars es'
+      let nameEnv' = filter (\(_, (_, x, _)) -> S.member x allowedVars) (H.nameEnv h)
+      let hAttr = h {H.nameEnv = nameEnv'}
+      attr' <- discernAttrData hAttr attr
+      return $ m :< WT.Data attr' dataName es'
     m :< RT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (discern h) dataArgs
       consArgs' <- mapM (discern h) consArgs
@@ -568,21 +579,21 @@ discernMagic h m magic =
       from' <- discern h from
       to' <- discern h to
       e' <- discern h e
-      return $ M.WeakMagic $ M.Cast from' to' e'
+      return $ M.WeakMagic $ M.LowMagic $ LM.Cast from' to' e'
     RT.Store _ (_, (t, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
       t' <- discern h t
       unit <- liftEither (locatorToVarGlobal m coreUnit) >>= discern h
       value' <- discern h value
       pointer' <- discern h pointer
-      return $ M.WeakMagic $ M.Store t' unit value' pointer'
+      return $ M.WeakMagic $ M.LowMagic $ LM.Store t' unit value' pointer'
     RT.Load _ (_, (t, _)) (_, (pointer, _)) _ -> do
       t' <- discern h t
       pointer' <- discern h pointer
-      return $ M.WeakMagic $ M.Load t' pointer'
+      return $ M.WeakMagic $ M.LowMagic $ LM.Load t' pointer'
     RT.Alloca _ (_, (t, _)) (_, (size, _)) _ -> do
       t' <- discern h t
       size' <- discern h size
-      return $ M.WeakMagic $ M.Alloca t' size'
+      return $ M.WeakMagic $ M.LowMagic $ LM.Alloca t' size'
     RT.External _ mUse funcName _ args varArgsOrNone -> do
       mDef <- PreDecl.lookup (H.preDeclHandle h) m funcName
       liftIO $ Tag.insertExternalName (H.tagHandle h) mUse funcName mDef
@@ -597,18 +608,34 @@ discernMagic h m magic =
             arg' <- discern h arg
             t' <- discern h t
             return (arg', t')
-      return $ M.WeakMagic $ M.External domList cod funcName args' varArgs'
+      return $ M.WeakMagic $ M.LowMagic $ LM.External domList cod funcName args' varArgs'
     RT.Global _ (_, (name, _)) (_, (t, _)) _ -> do
       t' <- discern h t
-      return $ M.WeakMagic $ M.Global name t'
+      return $ M.WeakMagic $ M.LowMagic $ LM.Global name t'
     RT.OpaqueValue _ (_, (e, _)) -> do
       e' <- discern h e
-      return $ M.WeakMagic $ M.OpaqueValue e'
+      return $ M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'
     RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) -> do
       func' <- discern h func
       arg1' <- discern h arg1
       arg2' <- discern h arg2
-      return $ M.WeakMagic $ M.CallType func' arg1' arg2'
+      return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'
+    RT.GetTypeTag (_, (typeExpr, _)) -> do
+      typeExpr' <- discern h typeExpr
+      return $ M.WeakMagic $ M.GetTypeTag typeExpr'
+    RT.GetConsSize _ (_, (typeExpr, _)) -> do
+      typeExpr' <- discern h typeExpr
+      return $ M.WeakMagic $ M.GetConsSize typeExpr'
+    RT.GetConstructorArgTypes _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
+      typeExpr' <- discern h typeExpr
+      index' <- discern h index
+      listVar <- liftEither $ locatorToVarGlobal m coreList
+      listExpr <- discern h listVar
+      (gl, _) <- liftEither $ DD.getLocatorPair m coreList
+      sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
+      return $ M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr typeExpr' index'
+    RT.CompileError msg ->
+      return $ M.WeakMagic $ M.CompileError msg
 
 modifyLetContinuation ::
   H.Handle ->
@@ -888,6 +915,20 @@ discernBinderWithBody' h (mx, x, _, _, codType) startLoc endLoc e = do
   e' <- discern h'' e
   liftIO $ SymLoc.insert (H.symLocHandle h'') x' startLoc endLoc
   return ((mx, x', codType'), e')
+
+-- Helper to convert Attr with RawBinder to Attr with BinderF
+discernAttrData ::
+  H.Handle ->
+  AttrD.Attr DD.DefiniteDescription (RawBinder RT.RawTerm) ->
+  App (AttrD.Attr DD.DefiniteDescription (BinderF WT.WeakTerm))
+discernAttrData h attr = do
+  let consNameList = AttrD.consNameList attr
+  consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
+    (binders', _) <- discernBinder' h binders
+    forM_ binders' $ \(_, x, _) -> do
+      liftIO $ Unused.deleteVariable (H.unusedHandle h) x
+    return (name, binders', isConstLike)
+  return $ attr {AttrD.consNameList = consNameList'}
 
 discernPatternMatrix ::
   H.Handle ->

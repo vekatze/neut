@@ -123,6 +123,10 @@ coreText :: T.Text
 coreText =
   core <> nsSep <> "text" <> nsSep <> "text"
 
+coreList :: T.Text
+coreList =
+  core <> nsSep <> "list"
+
 coreRune :: T.Text
 coreRune =
   core <> nsSep <> "rune" <> nsSep <> "rune"

@@ -14,6 +14,7 @@ import Data.Bitraversable (bimapM)
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
@@ -148,7 +149,8 @@ reduce' h term = do
       return $ m :< WT.PiElimExact e'
     m :< WT.Data attr name es -> do
       es' <- mapM (reduce' h) es
-      return $ m :< WT.Data attr name es'
+      attr' <- reduceAttrData h attr
+      return $ m :< WT.Data attr' name es'
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (reduce' h) dataArgs
       consArgs' <- mapM (reduce' h) consArgs
@@ -327,3 +329,13 @@ incrementStep :: Handle -> IO ()
 incrementStep h = do
   let Handle {currentStepRef} = h
   modifyIORef' currentStepRef (+ 1)
+
+reduceAttrData :: Handle -> AttrD.Attr name (BinderF WT.WeakTerm) -> App (AttrD.Attr name (BinderF WT.WeakTerm))
+reduceAttrData h attr = do
+  let consNameList = AttrD.consNameList attr
+  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
+    binders' <- forM binders $ \(mx, x, t) -> do
+      t' <- reduce' h t
+      return (mx, x, t')
+    return (cn, binders', cl)
+  return $ attr {AttrD.consNameList = consNameList'}

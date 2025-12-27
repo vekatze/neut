@@ -16,6 +16,7 @@ import Data.Set qualified as S
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Language.Common.Annotation qualified as AN
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
@@ -86,9 +87,10 @@ subst h sub term =
     m :< WT.PiElimExact e -> do
       e' <- subst h sub e
       return $ m :< WT.PiElimExact e'
-    m :< WT.Data name consNameList es -> do
+    m :< WT.Data attr name es -> do
       es' <- mapM (subst h sub) es
-      return $ m :< WT.Data name consNameList es'
+      attr' <- substAttrData h sub attr
+      return $ m :< WT.Data attr' name es'
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (subst h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs
@@ -346,3 +348,13 @@ substVar sub x =
       x'
     _ ->
       x
+
+substAttrData :: Handle -> WT.SubstWeakTerm -> AttrD.Attr name (BinderF WT.WeakTerm) -> IO (AttrD.Attr name (BinderF WT.WeakTerm))
+substAttrData h sub attr = do
+  let consNameList = AttrD.consNameList attr
+  consNameList' <- mapM (\(cn, binders, cl) -> do
+    binders' <- mapM (\(mx, x, t) -> do
+      t' <- subst h sub t
+      return (mx, x, t')) binders
+    return (cn, binders', cl)) consNameList
+  return $ attr {AttrD.consNameList = consNameList'}

@@ -35,7 +35,7 @@ import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
-import Language.Common.Magic qualified as M
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Opacity qualified as O
 import Language.Common.PrimNumSize (FloatSize (..), IntSize (..))
 import Language.Comp.Comp qualified as C
@@ -226,7 +226,7 @@ storeAtOffset h argVar size index comp = do
       C.UpElim True tmpVarName comp $
         C.Primitive $
           C.Magic $
-            M.Store BLT.Pointer (C.SigmaIntro []) tmpVar pointerVar
+            LM.Store BLT.Pointer (C.SigmaIntro []) tmpVar pointerVar
 
 -- lam z.
 --   let-without-free (x1, ..., xn) := z;
@@ -369,7 +369,7 @@ sigmaData h resourceHandler dataInfo arg = do
       enumElim <- Utility.getEnumElim (utilityHandle h) [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $
-          C.UpElim True disc (C.Primitive (C.Magic (M.Load BLT.Pointer (C.VarLocal localName)))) enumElim
+          C.UpElim True disc (C.Primitive (C.Magic (LM.Load BLT.Pointer (C.VarLocal localName)))) enumElim
 
 sigmaDataConsSize ::
   Handle ->

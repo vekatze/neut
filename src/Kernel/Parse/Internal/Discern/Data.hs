@@ -26,7 +26,7 @@ defineData ::
 defineData m dataName dataArgsOrNone consInfoList loc = do
   let dataArgs = modifyDataArgs dataArgsOrNone
   let dataArgs' = fromMaybe RT.emptyArgs dataArgsOrNone
-  let consNameList = map (\consInfo -> (name consInfo, isConstLikeConsInfo consInfo)) consInfoList
+  let consNameList = map (\consInfo -> (name consInfo, maybe [] SE.extract (expArgs consInfo), isConstLikeConsInfo consInfo)) consInfoList
   let consInfoList' = modifyConsInfo D.zero consInfoList
   let stmtKind = SK.Data dataName dataArgs consInfoList'
   let isConstLike = isNothing dataArgsOrNone
@@ -133,7 +133,7 @@ constructDataType ::
   Hint ->
   DD.DefiniteDescription ->
   IsConstLike ->
-  [(DD.DefiniteDescription, IsConstLike)] ->
+  [(DD.DefiniteDescription, [RawBinder RT.RawTerm], IsConstLike)] ->
   [RawBinder RT.RawTerm] ->
   RT.RawTerm
 constructDataType m dataName isConstLike consNameList dataArgs = do

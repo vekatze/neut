@@ -36,6 +36,7 @@ import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike
 import Language.Common.LocalLocator qualified as LL
 import Language.Common.Magic qualified as M
+import Language.Common.LowMagic qualified as LM
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp qualified as PO
@@ -199,7 +200,7 @@ castFromIntToBool h e@(m :< _) = do
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, x1, t), (m, x2, t)] cod
-  return $ m :< WT.Magic (M.WeakMagic $ M.Cast (cmpOpType i1) (cmpOpType bool) e)
+  return $ m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Cast (cmpOpType i1) (cmpOpType bool) e)
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)
 candFilter (from, mTo) =

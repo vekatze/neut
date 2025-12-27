@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
 import Language.Common.Annotation qualified as AN
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -31,8 +32,10 @@ freeVars term =
       S.union xs ys
     _ :< WT.PiElimExact e -> do
       freeVars e
-    _ :< WT.Data _ _ es ->
-      S.unions $ map freeVars es
+    _ :< WT.Data attr _ es -> do
+      let xs1 = S.unions $ map freeVars es
+      let xs2 = freeVarsAttrData attr
+      S.union xs1 xs2
     _ :< WT.DataIntro _ _ dataArgs consArgs -> do
       S.unions $ map freeVars $ dataArgs ++ consArgs
     m :< WT.DataElim _ oets decisionTree -> do
@@ -114,3 +117,8 @@ freeVarsCase decisionCase = do
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       S.unions $ freeVars' consArgs (freeVarsDecisionTree cont) : map freeVars dataTerms ++ map freeVars dataTypes
+
+freeVarsAttrData :: AttrD.Attr name (BinderF WT.WeakTerm) -> S.Set Ident
+freeVarsAttrData attr = do
+  let consNameList = AttrD.consNameList attr
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVars t) binders) consNameList

@@ -9,6 +9,7 @@ import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -61,7 +62,8 @@ refresh h term =
       return (m :< TM.PiElim b e' impArgs' expArgs')
     m :< TM.Data attr name es -> do
       es' <- mapM (refresh h) es
-      return $ m :< TM.Data attr name es'
+      attr' <- refreshAttrData h attr
+      return $ m :< TM.Data attr' name es'
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (refresh h) dataArgs
       consArgs' <- mapM (refresh h) consArgs
@@ -242,3 +244,13 @@ refreshBinderWithMaybeType h binderList =
       maybeType' <- traverse (refresh h) maybeType
       rest' <- refreshBinderWithMaybeType h rest
       return ((binder', maybeType') : rest')
+
+refreshAttrData :: Handle -> AttrD.Attr name (BinderF TM.Term) -> IO (AttrD.Attr name (BinderF TM.Term))
+refreshAttrData h attr = do
+  let consNameList = AttrD.consNameList attr
+  consNameList' <- mapM (\(cn, binders, cl) -> do
+    binders' <- mapM (\(mx, x, t) -> do
+      t' <- refresh h t
+      return (mx, x, t')) binders
+    return (cn, binders', cl)) consNameList
+  return $ attr {AttrD.consNameList = consNameList'}

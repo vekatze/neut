@@ -11,6 +11,7 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Data.Text qualified as T
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -42,9 +43,11 @@ chainOf' tenv term =
       let xs2 = concatMap (chainOf' tenv) impArgs
       let xs3 = concatMap (chainOf' tenv) expArgs
       xs1 ++ xs2 ++ xs3
-    _ :< TM.Data _ _ es ->
-      concatMap (chainOf' tenv) es
-    _ :< TM.DataIntro _ _ dataArgs consArgs ->
+    _ :< TM.Data attr _ es -> do
+      let xs1 = concatMap (chainOf' tenv) es
+      let xs2 = chainOfAttrData tenv attr
+      xs1 ++ xs2
+    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       concatMap (chainOf' tenv) $ dataArgs ++ consArgs
     m :< TM.DataElim _ xets tree -> do
       let (xs, es, ts) = unzip3 xets
@@ -149,3 +152,8 @@ chainOfVar tenv m x = do
       xts ++ [(m, x, t)]
     _ ->
       error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (toString m)
+
+chainOfAttrData :: TM.TypeEnv -> AttrD.Attr name (BinderF TM.Term) -> [BinderF TM.Term]
+chainOfAttrData tenv attr = do
+  let consNameList = AttrD.consNameList attr
+  concatMap (\(_, binders, _) -> concatMap (\(_, _, t) -> chainOf' tenv t) binders) consNameList

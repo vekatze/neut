@@ -38,7 +38,8 @@ compress term =
       () :< TM.PiElim b e' impArgs' expArgs'
     _ :< TM.Data attr name es -> do
       let es' = map compress es
-      () :< TM.Data attr name es'
+      let attr' = fmap compressBinder attr
+      () :< TM.Data attr' name es'
     _ :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map compress dataArgs
       let consArgs' = map compress consArgs
@@ -152,6 +153,8 @@ compressStmtKind stmtKind =
       Normal opacity
     Main opacity t ->
       Main opacity (compress t)
+    Template ->
+      Template
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map compressBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList

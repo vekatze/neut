@@ -18,6 +18,7 @@ import Logger.Hint
 data BaseStmtKind name binder t
   = Normal O.Opacity
   | Main O.Opacity t
+  | Template
   | Data
       name -- the name of the variant type
       [binder] -- variant args
@@ -37,6 +38,8 @@ toOpacity stmtKind =
       opacity
     Main opacity _ ->
       opacity
+    Template ->
+      O.Clear
     _ ->
       O.Clear
 
@@ -46,6 +49,8 @@ toLowOpacity stmtKind =
     Normal _ ->
       O.Opaque
     Main _ _ ->
+      O.Opaque
+    Template ->
       O.Opaque
     Data {} ->
       O.Opaque

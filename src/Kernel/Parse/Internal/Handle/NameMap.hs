@@ -177,6 +177,8 @@ _getGlobalNames stmt = do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
         SK.Main {} ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+        SK.Template ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
         SK.Data dataName dataArgs consInfoList -> do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
@@ -206,6 +208,8 @@ _getGlobalNames' stmt = do
         SK.Normal _ -> do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
         SK.Main {} ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+        SK.Template ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
         SK.Data dataName dataArgs consInfoList -> do
           let dataArgNum = AN.fromInt $ length dataArgs

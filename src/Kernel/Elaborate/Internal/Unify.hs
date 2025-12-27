@@ -388,7 +388,7 @@ simplifyActual h m dataNameSet t orig = do
       dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
-          else mapM (getConsArgTypes h m . fst) consNameList
+          else mapM (getConsArgTypes h m . (\(name, _, _) -> name)) consNameList
       constraintsFromDataConsArgs <- fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
         dataConsArgs' <- liftIO $ substConsArgs h IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do

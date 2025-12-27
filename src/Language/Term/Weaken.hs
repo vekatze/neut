@@ -18,6 +18,7 @@ import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.Magic qualified as M
+import Language.Common.LowMagic qualified as LM
 import Language.Common.StmtKind
 import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
@@ -69,7 +70,8 @@ weaken term =
       m :< WT.PiElim b e' impArgs' expArgs'
     m :< TM.Data attr name es -> do
       let es' = map weaken es
-      m :< WT.Data attr name es'
+      let attr' = fmap weakenBinder attr
+      m :< WT.Data attr' name es'
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weaken dataArgs
       let consArgs' = map weaken consArgs
@@ -106,25 +108,37 @@ weaken term =
 weakenMagic :: Hint -> M.Magic BLT.BaseLowType TM.Term -> M.WeakMagic WT.WeakTerm
 weakenMagic m magic = do
   case magic of
-    M.Cast from to value ->
-      M.WeakMagic $ M.Cast (weaken from) (weaken to) (weaken value)
-    M.Store t unit value pointer ->
-      M.WeakMagic $ M.Store (WT.fromBaseLowType m t) (weaken unit) (weaken value) (weaken pointer)
-    M.Load t pointer ->
-      M.WeakMagic $ M.Load (WT.fromBaseLowType m t) (weaken pointer)
-    M.Alloca t size ->
-      M.WeakMagic $ M.Alloca (WT.fromBaseLowType m t) (weaken size)
-    M.External domList cod extFunName args varArgs -> do
-      let domList' = map (WT.fromBaseLowType m) domList
-      let cod' = fmap (WT.fromBaseLowType m) cod
-      let varArgs' = map (bimap weaken (WT.fromBaseLowType m)) varArgs
-      M.WeakMagic $ M.External domList' cod' extFunName (fmap weaken args) varArgs'
-    M.Global name t ->
-      M.WeakMagic $ M.Global name (WT.fromBaseLowType m t)
-    M.OpaqueValue e ->
-      M.WeakMagic $ M.OpaqueValue (weaken e)
-    M.CallType func arg1 arg2 ->
-      M.WeakMagic $ M.CallType (weaken func) (weaken arg1) (weaken arg2)
+    M.LowMagic lowMagic ->
+      M.WeakMagic $
+        M.LowMagic $
+          case lowMagic of
+            LM.Cast from to value ->
+              LM.Cast (weaken from) (weaken to) (weaken value)
+            LM.Store t unit value pointer ->
+              LM.Store (WT.fromBaseLowType m t) (weaken unit) (weaken value) (weaken pointer)
+            LM.Load t pointer ->
+              LM.Load (WT.fromBaseLowType m t) (weaken pointer)
+            LM.Alloca t size ->
+              LM.Alloca (WT.fromBaseLowType m t) (weaken size)
+            LM.External domList cod extFunName args varArgs -> do
+              let domList' = map (WT.fromBaseLowType m) domList
+              let cod' = fmap (WT.fromBaseLowType m) cod
+              let varArgs' = map (bimap weaken (WT.fromBaseLowType m)) varArgs
+              LM.External domList' cod' extFunName (fmap weaken args) varArgs'
+            LM.Global name t ->
+              LM.Global name (WT.fromBaseLowType m t)
+            LM.OpaqueValue e ->
+              LM.OpaqueValue (weaken e)
+            LM.CallType func arg1 arg2 ->
+              LM.CallType (weaken func) (weaken arg1) (weaken arg2)
+    M.GetTypeTag e ->
+      M.WeakMagic $ M.GetTypeTag (weaken e)
+    M.GetConsSize typeExpr ->
+      M.WeakMagic $ M.GetConsSize (weaken typeExpr)
+    M.GetConstructorArgTypes sgl listExpr typeExpr index ->
+      M.WeakMagic $ M.GetConstructorArgTypes sgl (weaken listExpr) (weaken typeExpr) (weaken index)
+    M.CompileError msg ->
+      M.WeakMagic $ M.CompileError msg
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
@@ -205,6 +219,8 @@ weakenStmtKind stmtKind =
       Normal opacity
     Main opacity t ->
       Main opacity (weaken t)
+    Template ->
+      Template
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList

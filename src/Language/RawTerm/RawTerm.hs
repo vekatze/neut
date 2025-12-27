@@ -69,7 +69,7 @@ data RawTermF a
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
   | PiElimExact C a
-  | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
+  | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | Box a
@@ -256,6 +256,10 @@ data RawMagic
   | Global C (EL EN.ExternalName) (EL RawTerm) (Maybe C)
   | OpaqueValue C (EL RawTerm)
   | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm)
+  | GetTypeTag (EL RawTerm)
+  | GetConsSize C (EL RawTerm)
+  | GetConstructorArgTypes C (EL RawTerm) C (EL RawTerm)
+  | CompileError T.Text
 
 -- elem
 type EL a =

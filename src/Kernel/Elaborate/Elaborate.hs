@@ -28,6 +28,7 @@ import Kernel.Common.ManageCache qualified as Cache
 import Kernel.Common.Target hiding (Main)
 import Kernel.Elaborate.HoleSubst qualified as HS
 import Kernel.Elaborate.Internal.EnsureAffinity qualified as EnsureAffinity
+import Kernel.Elaborate.Internal.EnsureTemplateResolved qualified as EnsureTemplateResolved
 import Kernel.Elaborate.Internal.Handle.Constraint qualified as Constraint
 import Kernel.Elaborate.Internal.Handle.Def qualified as Definition
 import Kernel.Elaborate.Internal.Handle.Elaborate
@@ -55,6 +56,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
@@ -139,6 +141,11 @@ elaborateStmt h stmt = do
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
+      case stmtKind' of
+        Template ->
+          return ()
+        _ ->
+          EnsureTemplateResolved.ensureTemplateResolved h m e''
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
@@ -177,7 +184,10 @@ insertStmt h stmt = do
           liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.DataIntro isConstLike) impArgsWithDefaults expArgs t
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgsWithDefaults expArgs t
-      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e
+      let isTemplateFlag = case stmtKind of
+            SK.Template -> True
+            _ -> False
+      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e t isTemplateFlag
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -207,6 +217,8 @@ elaborateStmtKind h stmtKind =
     Main opacity t -> do
       t' <- elaborate' h t
       return $ Main opacity t'
+    Template ->
+      return Template
     Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       let (ms, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList
@@ -251,7 +263,8 @@ elaborate' h term =
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.Data attr name es -> do
       es' <- mapM (elaborate' h) es
-      return $ m :< TM.Data attr name es'
+      attr' <- elaborateAttrData h attr
+      return $ m :< TM.Data attr' name es'
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (elaborate' h) dataArgs
       consArgs' <- mapM (elaborate' h) consArgs
@@ -327,44 +340,59 @@ elaborate' h term =
               return $ m :< TM.Prim (P.Value (PV.Rune r))
     m :< WT.Magic (M.WeakMagic magic) -> do
       case magic of
-        M.External domList cod name args varArgs -> do
-          domList' <- mapM (strictify h) domList
-          cod' <- mapM (strictify h) cod
-          args' <- mapM (elaborate' h) args
-          let (vArgs, vTypes) = unzip varArgs
-          vArgs' <- mapM (elaborate' h) vArgs
-          vTypes' <- mapM (strictify h) vTypes
-          return $ m :< TM.Magic (M.External domList' cod' name args' (zip vArgs' vTypes'))
-        M.Cast from to value -> do
-          from' <- elaborate' h from
-          to' <- elaborate' h to
-          value' <- elaborate' h value
-          return $ m :< TM.Magic (M.Cast from' to' value')
-        M.Store t unit value pointer -> do
-          t' <- strictify h t
-          unit' <- elaborate' h unit
-          value' <- elaborate' h value
-          pointer' <- elaborate' h pointer
-          return $ m :< TM.Magic (M.Store t' unit' value' pointer')
-        M.Load t pointer -> do
-          t' <- strictify h t
-          pointer' <- elaborate' h pointer
-          return $ m :< TM.Magic (M.Load t' pointer')
-        M.Alloca t size -> do
-          t' <- strictify h t
-          size' <- elaborate' h size
-          return $ m :< TM.Magic (M.Alloca t' size')
-        M.Global name t -> do
-          t' <- strictify h t
-          return $ m :< TM.Magic (M.Global name t')
-        M.OpaqueValue e -> do
-          e' <- elaborate' h e
-          return $ m :< TM.Magic (M.OpaqueValue e')
-        M.CallType func arg1 arg2 -> do
-          func' <- elaborate' h func
-          arg1' <- elaborate' h arg1
-          arg2' <- elaborate' h arg2
-          return $ m :< TM.Magic (M.CallType func' arg1' arg2')
+        M.LowMagic lowMagic ->
+          case lowMagic of
+            LM.External domList cod name args varArgs -> do
+              domList' <- mapM (strictify h) domList
+              cod' <- mapM (strictify h) cod
+              args' <- mapM (elaborate' h) args
+              let (vArgs, vTypes) = unzip varArgs
+              vArgs' <- mapM (elaborate' h) vArgs
+              vTypes' <- mapM (strictify h) vTypes
+              return $ m :< TM.Magic (M.LowMagic $ LM.External domList' cod' name args' (zip vArgs' vTypes'))
+            LM.Cast from to value -> do
+              from' <- elaborate' h from
+              to' <- elaborate' h to
+              value' <- elaborate' h value
+              return $ m :< TM.Magic (M.LowMagic $ LM.Cast from' to' value')
+            LM.Store t unit value pointer -> do
+              t' <- strictify h t
+              unit' <- elaborate' h unit
+              value' <- elaborate' h value
+              pointer' <- elaborate' h pointer
+              return $ m :< TM.Magic (M.LowMagic $ LM.Store t' unit' value' pointer')
+            LM.Load t pointer -> do
+              t' <- strictify h t
+              pointer' <- elaborate' h pointer
+              return $ m :< TM.Magic (M.LowMagic $ LM.Load t' pointer')
+            LM.Alloca t size -> do
+              t' <- strictify h t
+              size' <- elaborate' h size
+              return $ m :< TM.Magic (M.LowMagic $ LM.Alloca t' size')
+            LM.Global name t -> do
+              t' <- strictify h t
+              return $ m :< TM.Magic (M.LowMagic $ LM.Global name t')
+            LM.OpaqueValue e -> do
+              e' <- elaborate' h e
+              return $ m :< TM.Magic (M.LowMagic $ LM.OpaqueValue e')
+            LM.CallType func arg1 arg2 -> do
+              func' <- elaborate' h func
+              arg1' <- elaborate' h arg1
+              arg2' <- elaborate' h arg2
+              return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')
+        M.GetTypeTag typeExpr -> do
+          typeExpr' <- elaborate' h typeExpr
+          return $ m :< TM.Magic (M.GetTypeTag typeExpr')
+        M.GetConsSize typeExpr -> do
+          typeExpr' <- elaborate' h typeExpr
+          return $ m :< TM.Magic (M.GetConsSize typeExpr')
+        M.GetConstructorArgTypes sgl listExpr typeExpr index -> do
+          listExpr' <- elaborate' h listExpr
+          typeExpr' <- elaborate' h typeExpr
+          index' <- elaborate' h index
+          return $ m :< TM.Magic (M.GetConstructorArgTypes sgl listExpr' typeExpr' index')
+        M.CompileError msg ->
+          return $ m :< TM.Magic (M.CompileError msg)
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' h e
       case annot of
@@ -397,7 +425,7 @@ strictify' h m t = do
       return $ BLT.PrimNum $ BPT.Float $ BPT.Explicit size
     _ :< TM.Prim (P.Type PT.Pointer) ->
       return BLT.Pointer
-    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
+    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
@@ -416,7 +444,7 @@ strictifyDecimalType h m x t = do
       return (Right size, t')
     _ :< TM.Prim (P.Type (PT.Float size)) ->
       return (Left size, t')
-    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
+    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
@@ -433,7 +461,7 @@ strictifyFloatType h m x t = do
   case t' of
     _ :< TM.Prim (P.Type (PT.Float size)) ->
       return (size, t')
-    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _)]}) _ [] -> do
+    _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
         _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
@@ -652,7 +680,7 @@ getSwitchSpec :: Hint -> TM.Term -> App SwitchSpec
 getSwitchSpec m cursorType = do
   case cursorType of
     _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
-      return $ ConsSwitch consNameList
+      return $ ConsSwitch $ map (\(name, _, cl) -> (name, cl)) consNameList
     _ :< TM.Prim (P.Type (PT.Int _)) -> do
       return LiteralSwitch
     _ :< TM.Prim (P.Type PT.Rune) -> do
@@ -695,6 +723,19 @@ fillHole h m holeID es = do
           liftIO $ Subst.subst (substHandle h) s e
       | otherwise ->
           raiseError m "Arity mismatch"
+
+elaborateAttrData ::
+  Handle ->
+  AttrD.Attr DD.DefiniteDescription (BinderF WT.WeakTerm) ->
+  App (AttrD.Attr DD.DefiniteDescription (BinderF TM.Term))
+elaborateAttrData h attr = do
+  let consNameList = AttrD.consNameList attr
+  consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
+    binders' <- forM binders $ \(mx, x, t) -> do
+      t' <- elaborate' h t
+      return (mx, x, t')
+    return (name, binders', isConstLike)
+  return $ attr {AttrD.consNameList = consNameList'}
 
 -- viewStmt :: WeakStmt -> IO ()
 -- viewStmt stmt = do

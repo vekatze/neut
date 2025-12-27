@@ -26,7 +26,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
 import Language.Common.Ident
 import Language.Common.Ident.Reify
-import Language.Common.Magic
+import Language.Common.LowMagic
 import Language.Common.Opacity
 import Language.Common.PrimNumSize
 import Language.Common.PrimOp
@@ -105,7 +105,7 @@ type ShouldDeallocate = Bool
 data Primitive
   = PrimOp PrimOp [Value]
   | ShiftPointer Value Integer Integer -- (ptr, num-of-elems, index)
-  | Magic (Magic BaseLowType Value)
+  | Magic (LowMagic BaseLowType Value)
   deriving (Show)
 
 type SubstValue =

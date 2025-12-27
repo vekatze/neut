@@ -13,7 +13,7 @@ import Kernel.Clarify.Internal.Utility qualified as Utility
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.Ident
 import Language.Common.Ident.Reify
-import Language.Common.Magic qualified as M
+import Language.Common.LowMagic qualified as LM
 import Language.Comp.Comp qualified as C
 
 type Occurrence = Ident
@@ -168,33 +168,33 @@ distinguishPrimitive h z term =
       return (vs, C.ShiftPointer v' size index)
     C.Magic magic -> do
       case magic of
-        M.Cast from to value -> do
+        LM.Cast from to value -> do
           (vs1, from') <- distinguishValue h z from
           (vs2, to') <- distinguishValue h z to
           (vs3, value') <- distinguishValue h z value
-          return (vs1 <> vs2 <> vs3, C.Magic (M.Cast from' to' value'))
-        M.Store lt unit value pointer -> do
+          return (vs1 <> vs2 <> vs3, C.Magic (LM.Cast from' to' value'))
+        LM.Store lt unit value pointer -> do
           (vs1, unit') <- distinguishValue h z unit
           (vs2, value') <- distinguishValue h z value
           (vs3, pointer') <- distinguishValue h z pointer
-          return (vs1 <> vs2 <> vs3, C.Magic (M.Store lt unit' value' pointer'))
-        M.Load lt pointer -> do
+          return (vs1 <> vs2 <> vs3, C.Magic (LM.Store lt unit' value' pointer'))
+        LM.Load lt pointer -> do
           (vs, pointer') <- distinguishValue h z pointer
-          return (vs, C.Magic (M.Load lt pointer'))
-        M.Alloca lt num -> do
-          return ([], C.Magic (M.Alloca lt num))
-        M.External domList cod extFunName args varArgAndTypeList -> do
+          return (vs, C.Magic (LM.Load lt pointer'))
+        LM.Alloca lt num -> do
+          return ([], C.Magic (LM.Alloca lt num))
+        LM.External domList cod extFunName args varArgAndTypeList -> do
           (vss, args') <- mapAndUnzipM (distinguishValue h z) args
           let (varArgs, varTypes) = unzip varArgAndTypeList
           (vss2, varArgs') <- mapAndUnzipM (distinguishValue h z) varArgs
-          return (concat vss ++ concat vss2, C.Magic (M.External domList cod extFunName args' (zip varArgs' varTypes)))
-        M.Global name lt -> do
-          return ([], C.Magic (M.Global name lt))
-        M.OpaqueValue e -> do
+          return (concat vss ++ concat vss2, C.Magic (LM.External domList cod extFunName args' (zip varArgs' varTypes)))
+        LM.Global name lt -> do
+          return ([], C.Magic (LM.Global name lt))
+        LM.OpaqueValue e -> do
           (vs, e') <- distinguishValue h z e
-          return (vs, C.Magic (M.OpaqueValue e'))
-        M.CallType func arg1 arg2 -> do
+          return (vs, C.Magic (LM.OpaqueValue e'))
+        LM.CallType func arg1 arg2 -> do
           (vs1, func') <- distinguishValue h z func
           (vs2, arg1') <- distinguishValue h z arg1
           (vs3, arg2') <- distinguishValue h z arg2
-          return (vs1 <> vs2 <> vs3, C.Magic (M.CallType func' arg1' arg2'))
+          return (vs1 <> vs2 <> vs3, C.Magic (LM.CallType func' arg1' arg2'))

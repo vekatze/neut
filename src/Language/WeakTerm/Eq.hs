@@ -1,6 +1,8 @@
 module Language.WeakTerm.Eq (eq) where
 
 import Control.Comonad.Cofree
+import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder (BinderF)
 import Language.Common.DecisionTree qualified as DT
@@ -8,6 +10,7 @@ import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.Magic qualified as M
+import Language.Common.LowMagic qualified as LM
 import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -69,19 +72,21 @@ eq (_ :< term1) (_ :< term2)
   | WT.PiElimExact f1 <- term1,
     WT.PiElimExact f2 <- term2 =
       eq f1 f2
-  | WT.Data _ name1 es1 <- term1,
-    WT.Data _ name2 es2 <- term2 = do
+  | WT.Data attr1 name1 es1 <- term1,
+    WT.Data attr2 name2 es2 <- term2 = do
       let b1 = name1 == name2
       let b2 = all (uncurry eq) $ zip es1 es2
-      b1 && b2
-  | WT.DataIntro _ consName1 dataArgs1 consArgs1 <- term1,
-    WT.DataIntro _ consName2 dataArgs2 consArgs2 <- term2,
+      let b3 = eqAttrData attr1 attr2
+      b1 && b2 && b3
+  | WT.DataIntro attr1 consName1 dataArgs1 consArgs1 <- term1,
+    WT.DataIntro attr2 consName2 dataArgs2 consArgs2 <- term2,
     length dataArgs1 == length dataArgs2,
     length consArgs1 == length consArgs2 = do
       let b1 = consName1 == consName2
       let b2 = all (uncurry eq) $ zip dataArgs1 dataArgs2
       let b3 = all (uncurry eq) $ zip consArgs1 consArgs2
-      b1 && b2 && b3
+      let b4 = eqAttrDataIntro attr1 attr2
+      b1 && b2 && b3 && b4
   | WT.DataElim isNoetic1 oets1 tree1 <- term1,
     WT.DataElim isNoetic2 oets2 tree2 <- term2 = do
       let (os1, es1, ts1) = unzip3 oets1
@@ -254,57 +259,54 @@ eqWP prim1 prim2
 
 eqM :: M.WeakMagic WT.WeakTerm -> M.WeakMagic WT.WeakTerm -> Bool
 eqM (M.WeakMagic m1) (M.WeakMagic m2)
-  | M.Cast from1 to1 e1 <- m1,
-    M.Cast from2 to2 e2 <- m2 = do
-      let b1 = eq from1 from2
-      let b2 = eq to1 to2
-      let b3 = eq e1 e2
-      b1 && b2 && b3
-  | M.Store t1 unit1 value1 pointer1 <- m1,
-    M.Store t2 unit2 value2 pointer2 <- m2 = do
-      let b1 = eq t1 t2
-      let b2 = eq unit1 unit2
-      let b3 = eq value1 value2
-      let b4 = eq pointer1 pointer2
-      b1 && b2 && b3 && b4
-  | M.Load t1 pointer1 <- m1,
-    M.Load t2 pointer2 <- m2 = do
-      let b1 = eq t1 t2
-      let b2 = eq pointer1 pointer2
-      b1 && b2
-  | M.Alloca t1 size1 <- m1,
-    M.Alloca t2 size2 <- m2 = do
-      let b1 = eq t1 t2
-      let b2 = eq size1 size2
-      b1 && b2
-  | M.External domList1 cod1 funcName1 args1 varArgs1 <- m1,
-    M.External domList2 cod2 funcName2 args2 varArgs2 <- m2,
-    length domList1 == length domList2,
-    length args1 == length args2,
-    length varArgs1 == length varArgs2 = do
-      let b1 = all (uncurry eq) $ zip domList1 domList2
-      let b2 = eqCod cod1 cod2
-      let b3 = funcName1 == funcName2
-      let b4 = all (uncurry eq) $ zip args1 args2
-      let (es1, ts1) = unzip varArgs1
-      let (es2, ts2) = unzip varArgs2
-      let b5 = all (uncurry eq) $ zip es1 es2
-      let b6 = all (uncurry eq) $ zip ts1 ts2
-      b1 && b2 && b3 && b4 && b5 && b6
-  | M.Global name1 t1 <- m1,
-    M.Global name2 t2 <- m2 = do
-      let b1 = name1 == name2
-      let b2 = eq t1 t2
-      b1 && b2
-  | M.OpaqueValue e1 <- m1,
-    M.OpaqueValue e2 <- m2 = do
-      eq e1 e2
-  | M.CallType func1 switch1 arg1 <- m1,
-    M.CallType func2 switch2 arg2 <- m2 = do
-      let b1 = eq func1 func2
-      let b2 = eq switch1 switch2
-      let b3 = eq arg1 arg2
-      b1 && b2 && b3
+  | M.LowMagic lowMagic1 <- m1,
+    M.LowMagic lowMagic2 <- m2 = do
+      case (lowMagic1, lowMagic2) of
+        (LM.Cast from1 to1 e1, LM.Cast from2 to2 e2) -> do
+          let b1 = eq from1 from2
+          let b2 = eq to1 to2
+          let b3 = eq e1 e2
+          b1 && b2 && b3
+        (LM.Store t1 unit1 value1 pointer1, LM.Store t2 unit2 value2 pointer2) -> do
+          let b1 = eq t1 t2
+          let b2 = eq unit1 unit2
+          let b3 = eq value1 value2
+          let b4 = eq pointer1 pointer2
+          b1 && b2 && b3 && b4
+        (LM.Load t1 pointer1, LM.Load t2 pointer2) -> do
+          let b1 = eq t1 t2
+          let b2 = eq pointer1 pointer2
+          b1 && b2
+        (LM.Alloca t1 size1, LM.Alloca t2 size2) -> do
+          let b1 = eq t1 t2
+          let b2 = eq size1 size2
+          b1 && b2
+        (LM.External domList1 cod1 funcName1 args1 varArgs1, LM.External domList2 cod2 funcName2 args2 varArgs2)
+          | length domList1 == length domList2,
+            length args1 == length args2,
+            length varArgs1 == length varArgs2 -> do
+              let b1 = all (uncurry eq) $ zip domList1 domList2
+              let b2 = eqCod cod1 cod2
+              let b3 = funcName1 == funcName2
+              let b4 = all (uncurry eq) $ zip args1 args2
+              let (es1, ts1) = unzip varArgs1
+              let (es2, ts2) = unzip varArgs2
+              let b5 = all (uncurry eq) $ zip es1 es2
+              let b6 = all (uncurry eq) $ zip ts1 ts2
+              b1 && b2 && b3 && b4 && b5 && b6
+        (LM.Global name1 t1, LM.Global name2 t2) -> do
+          let b1 = name1 == name2
+          let b2 = eq t1 t2
+          b1 && b2
+        (LM.OpaqueValue e1, LM.OpaqueValue e2) -> do
+          eq e1 e2
+        (LM.CallType func1 switch1 arg1, LM.CallType func2 switch2 arg2) -> do
+          let b1 = eq func1 func2
+          let b2 = eq switch1 switch2
+          let b3 = eq arg1 arg2
+          b1 && b2 && b3
+        _ ->
+          False
   | otherwise =
       False
 
@@ -318,3 +320,29 @@ eqCod cod1 cod2
       eq t1 t2
   | otherwise =
       False
+
+eqAttrData :: (Eq name) => AttrD.Attr name (BinderF WT.WeakTerm) -> AttrD.Attr name (BinderF WT.WeakTerm) -> Bool
+eqAttrData attr1 attr2 = do
+  let consNameList1 = AttrD.consNameList attr1
+  let consNameList2 = AttrD.consNameList attr2
+  let isConstLike1 = AttrD.isConstLike attr1
+  let isConstLike2 = AttrD.isConstLike attr2
+  length consNameList1 == length consNameList2
+    && isConstLike1 == isConstLike2
+    && all (uncurry eqConsInfo) (zip consNameList1 consNameList2)
+  where
+    eqConsInfo (cn1, binders1, cl1) (cn2, binders2, cl2) =
+      cn1 == cn2 && cl1 == cl2 && eqBinder binders1 binders2
+
+eqAttrDataIntro :: (Eq name) => AttrDI.Attr name -> AttrDI.Attr name -> Bool
+eqAttrDataIntro attr1 attr2 = do
+  let consNameList1 = AttrDI.consNameList attr1
+  let consNameList2 = AttrDI.consNameList attr2
+  let isConstLike1 = AttrDI.isConstLike attr1
+  let isConstLike2 = AttrDI.isConstLike attr2
+  length consNameList1 == length consNameList2
+    && isConstLike1 == isConstLike2
+    && all (uncurry eqConsInfo) (zip consNameList1 consNameList2)
+  where
+    eqConsInfo (cn1, cl1) (cn2, cl2) =
+      cn1 == cn2 && cl1 == cl2

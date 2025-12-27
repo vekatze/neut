@@ -43,7 +43,8 @@ extend term =
       _m :< TM.PiElim b e' impArgs' expArgs'
     _ :< TM.Data attr name es -> do
       let es' = map extend es
-      _m :< TM.Data attr name es'
+      let attr' = fmap extendBinder attr
+      _m :< TM.Data attr' name es'
     _ :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map extend dataArgs
       let consArgs' = map extend consArgs
@@ -159,6 +160,8 @@ extendStmtKind stmtKind =
       Normal opacity
     Main opacity t ->
       Main opacity (extend t)
+    Template ->
+      Template
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map extendBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList

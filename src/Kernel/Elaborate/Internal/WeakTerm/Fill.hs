@@ -14,6 +14,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Kernel.Elaborate.HoleSubst
 import Language.Common.Annotation qualified as AN
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -68,9 +69,10 @@ fill h holeSubst term =
     m :< WT.PiElimExact e -> do
       e' <- fill h holeSubst e
       return $ m :< WT.PiElimExact e'
-    m :< WT.Data name consNameList es -> do
+    m :< WT.Data attr name es -> do
       es' <- mapM (fill h holeSubst) es
-      return $ m :< WT.Data name consNameList es'
+      attr' <- fillAttrData h holeSubst attr
+      return $ m :< WT.Data attr' name es'
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (fill h holeSubst) dataArgs
       consArgs' <- mapM (fill h holeSubst) consArgs
@@ -299,3 +301,13 @@ fillCase h holeSubst decisionCase = do
               DT.consArgs = consArgs',
               DT.cont = cont'
             }
+
+fillAttrData :: Handle -> HoleSubst -> AttrD.Attr name (BinderF WT.WeakTerm) -> App (AttrD.Attr name (BinderF WT.WeakTerm))
+fillAttrData h holeSubst attr = do
+  let consNameList = AttrD.consNameList attr
+  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
+    binders' <- forM binders $ \(mx, x, t) -> do
+      t' <- fill h holeSubst t
+      return (mx, x, t')
+    return (cn, binders', cl)
+  return $ attr {AttrD.consNameList = consNameList'}

@@ -2,6 +2,7 @@ module Language.Term.Inline
   ( Handle,
     new,
     inline,
+    DefInfo (..),
   )
 where
 
@@ -14,19 +15,32 @@ import Data.Bitraversable (bimapM)
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
+import Data.List (find)
+import Data.Set qualified as S
 import Data.Text qualified as T
-import Gensym.Handle qualified as Gensym
+import Gensym.Gensym qualified as Gensym
+import Gensym.Handle qualified as GensymHandle
+import Kernel.Common.TypeTag qualified as TypeTag
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
+import Language.Common.BaseName qualified as BN
 import Language.Common.Binder
+import Language.Common.CreateSymbol qualified as CreateSymbol
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.Discriminant
+import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.Opacity qualified as O
+import Language.Common.PrimNumSize qualified as PNS
+import Language.Common.PrimType qualified as PT
+import Language.Common.StrictGlobalLocator qualified as SGL
+import Language.Term.Eq qualified as TermEq
+import Language.Term.FreeVars qualified as FreeVars
 import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Refresh qualified as Refresh
@@ -34,8 +48,21 @@ import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
+data DefInfo = DefInfo
+  { defBinders :: [BinderF TM.Term],
+    defBody :: TM.Term,
+    codType :: TM.Term,
+    isTemplate :: Bool
+  }
+
 type DefMap =
-  Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)
+  Map.HashMap DD.DefiniteDescription DefInfo
+
+data GuardEntry = GuardEntry
+  { guardFunction :: DD.DefiniteDescription,
+    guardTypeArgs :: [TM.Term],
+    guardSelf :: TM.Term
+  }
 
 data Handle = Handle
   { substHandle :: Subst.Handle,
@@ -43,14 +70,17 @@ data Handle = Handle
     dmap :: DefMap,
     inlineLimit :: Int,
     currentStepRef :: IORef Int,
-    location :: Hint
+    location :: Hint,
+    guardStack :: IORef [GuardEntry],
+    gensymHandle :: GensymHandle.Handle
   }
 
-new :: Gensym.Handle -> DefMap -> Hint -> Int -> IO Handle
+new :: GensymHandle.Handle -> DefMap -> Hint -> Int -> IO Handle
 new gensymHandle dmap location inlineLimit = do
   let substHandle = Subst.new gensymHandle
   let refreshHandle = Refresh.new gensymHandle
   currentStepRef <- liftIO $ newIORef 0
+  guardStack <- liftIO $ newIORef []
   return $ Handle {..}
 
 inline :: Handle -> TM.Term -> App TM.Term
@@ -125,19 +155,40 @@ inline' h term = do
                       (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
                       inline' h $ bind (zip xts' allArgs) (m :< body')
             (_ :< TM.VarGlobal _ dd)
-              | Just (xts, body) <- Map.lookup dd dmap -> do
+              | Just defInfo <- Map.lookup dd dmap -> do
+                  let DefInfo {defBinders = xts, defBody = body, codType, isTemplate} = defInfo
                   let allArgs = impArgs' ++ expArgs'
-                  if all TM.isValue allArgs
+                  if isTemplate
                     then do
-                      let (_, xs, _) = unzip3 xts
-                      let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
-                      _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
-                      body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                      inline' h body''
+                      mSelf <- lookupGuard h dd allArgs
+                      case mSelf of
+                        Just selfTerm ->
+                          return selfTerm
+                        Nothing -> do
+                          selfIdent <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) "knot"
+                          let (_, xs, _) = unzip3 xts
+                          let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
+                          _ :< codType' <- liftIO $ Subst.subst (substHandle h) sub codType
+                          pushGuard h dd allArgs (m :< TM.PiElim False (m :< TM.Var selfIdent) [] [])
+                          (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
+                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                          body''' <- inline' h $ bind (zip xts' allArgs) body''
+                          popGuard h
+                          identity <- liftIO $ Gensym.newCount (gensymHandle h)
+                          let attr = AttrL.Attr {lamKind = LK.Fix (m, selfIdent, m :< codType'), identity}
+                          return $ m :< TM.PiElim False (m :< TM.PiIntro attr [] [] body''') [] []
                     else do
-                      (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
-                      body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                      inline' h $ bind (zip xts' allArgs) body''
+                      if all TM.isValue allArgs
+                        then do
+                          let (_, xs, _) = unzip3 xts
+                          let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
+                          _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                          inline' h body''
+                        else do
+                          (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
+                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
+                          inline' h $ bind (zip xts' allArgs) body''
             _ ->
               return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
     m :< TM.Data attr name es -> do
@@ -221,11 +272,25 @@ inline' h term = do
               return term
     (m :< TM.Magic magic) -> do
       case magic of
-        M.Cast _ _ e ->
-          inline' h e
-        _ -> do
-          magic' <- traverse (inline' h) magic
-          return (m :< TM.Magic magic')
+        M.LowMagic lowMagic ->
+          case lowMagic of
+            LM.Cast _ _ e ->
+              inline' h e
+            _ -> do
+              magic' <- traverse (inline' h) magic
+              return (m :< TM.Magic magic')
+        M.GetTypeTag typeExpr -> do
+          typeExpr' <- inline' h typeExpr
+          evaluateGetTypeTag h m typeExpr'
+        M.GetConsSize typeExpr -> do
+          typeExpr' <- inline' h typeExpr
+          evaluateGetConsSize h m typeExpr'
+        M.GetConstructorArgTypes sgl _ typeExpr indexExpr -> do
+          typeExpr' <- inline' h typeExpr
+          indexExpr' <- inline' h indexExpr
+          evaluateGetConstructorArgTypes h m sgl typeExpr' indexExpr'
+        M.CompileError msg -> do
+          raiseError (location h) $ "compile-error: " <> msg
     _ :< TM.Void ->
       return term
     m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
@@ -234,6 +299,120 @@ inline' h term = do
       copier' <- inline' h copier
       typeTag' <- inline' h typeTag
       return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
+
+evaluateGetTypeTag :: Handle -> Hint -> TM.Term -> App TM.Term
+evaluateGetTypeTag _h m typeExpr =
+  case typeExpr of
+    _ :< TM.Tau ->
+      returnTypeTagIntValue m TypeTag.Type
+    _ :< TM.Pi {} ->
+      returnTypeTagIntValue m TypeTag.Function
+    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) name _ -> do
+      case lookup name TypeTag.baseTypeTagMap of
+        Just tag ->
+          returnTypeTagIntValue m tag
+        Nothing -> do
+          let isEnum = all (\(_, _, isConstLike) -> isConstLike) consNameList
+          if isEnum && not (null consNameList)
+            then returnTypeTagIntValue m TypeTag.Enum
+            else returnTypeTagIntValue m TypeTag.Algebraic
+    _ :< TM.BoxNoema _ ->
+      returnTypeTagIntValue m TypeTag.Noema
+    _ :< TM.Box _ ->
+      returnTypeTagIntValue m TypeTag.Opaque
+    _ :< TM.Prim (P.Type _) ->
+      returnTypeTagIntValue m TypeTag.Type
+    _ ->
+      raiseError m "get-type-tag: unable to determine type tag for this type expression"
+
+returnTypeTagIntValue :: Hint -> TypeTag.TypeTag -> App TM.Term
+returnTypeTagIntValue m' tag = do
+  let tagInt = TypeTag.typeTagToInteger tag
+  let intType = m' :< TM.Prim (P.Type (PT.Int PNS.IntSize64))
+  return $ m' :< TM.Prim (P.Value (PV.Int intType PNS.IntSize64 tagInt))
+
+evaluateGetConsSize :: Handle -> Hint -> TM.Term -> App TM.Term
+evaluateGetConsSize _h m typeExpr = do
+  case typeExpr of
+    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _ -> do
+      let consCount = length consNameList
+      let intType = m :< TM.Prim (P.Type (PT.Int PNS.IntSize64))
+      return $ m :< TM.Prim (P.Value (PV.Int intType PNS.IntSize64 (fromIntegral consCount)))
+    _ ->
+      raiseError m "get-cons-size: type expression must be a data type"
+
+evaluateGetConstructorArgTypes :: Handle -> Hint -> SGL.StrictGlobalLocator -> TM.Term -> TM.Term -> App TM.Term
+evaluateGetConstructorArgTypes _h m sgl typeExpr indexExpr = do
+  -- Returns a list of types for the (index)th constructor
+  case (typeExpr, indexExpr) of
+    (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (P.Value (PV.Int _ _ indexInt))) -> do
+      let index = fromIntegral indexInt
+      if index < 0 || index >= length consNameList
+        then
+          raiseError m $
+            "get-constructor-arg-types: index "
+              <> T.pack (show index)
+              <> " is out of bounds (valid range: 0-"
+              <> T.pack (show (length consNameList - 1))
+              <> ")"
+        else do
+          let (_, binders, _) = consNameList !! index
+          checkConstructorArgNoDependencies m binders
+          let types = map (\(_, _, t) -> t) binders
+          return $ constructListTerm m sgl types
+    (_ :< TM.Data {}, _) ->
+      raiseError m "get-constructor-arg-types: index must be an integer literal"
+    _ ->
+      raiseError m "get-constructor-arg-types: type expression must be a data type"
+
+checkConstructorArgNoDependencies :: Hint -> [BinderF TM.Term] -> App ()
+checkConstructorArgNoDependencies hint binders = do
+  foldM_ (checkConstructorArgBinder hint) [] binders
+
+checkConstructorArgBinder :: Hint -> [Ident] -> BinderF TM.Term -> App [Ident]
+checkConstructorArgBinder hint boundVars (_, x, t) = do
+  let fvs = FreeVars.freeVars t
+  let illegalDeps = S.intersection (S.fromList boundVars) fvs
+  if S.null illegalDeps
+    then return (x : boundVars)
+    else
+      raiseError hint $
+        "get-constructor-arg-types: constructor argument types must not depend on previous arguments. "
+          <> "Variable(s) "
+          <> T.pack (show (S.toList illegalDeps))
+          <> " in type of '"
+          <> Ident.toText x
+          <> "' depend on previous arguments"
+
+constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Term] -> TM.Term
+constructListTerm hint listSgl =
+  foldr (constructListCons hint listSgl) (constructListNil hint listSgl)
+
+constructListNil :: Hint -> SGL.StrictGlobalLocator -> TM.Term
+constructListNil hint listSgl = do
+  let dataName = coreListType listSgl
+  let consNameList = [(coreListNil listSgl, True), (coreListCons listSgl, False)]
+  let attr = AttrDI.Attr {dataName, consNameList, discriminant = D.zero, isConstLike = True}
+  hint :< TM.DataIntro attr (coreListNil listSgl) [hint :< TM.Tau] []
+
+constructListCons :: Hint -> SGL.StrictGlobalLocator -> TM.Term -> TM.Term -> TM.Term
+constructListCons hint listSgl headType tailList = do
+  let dataName = coreListType listSgl
+  let consNameList = [(coreListNil listSgl, True), (coreListCons listSgl, False)]
+  let attr = AttrDI.Attr {dataName, consNameList, discriminant = D.increment D.zero, isConstLike = False}
+  hint :< TM.DataIntro attr (coreListCons listSgl) [hint :< TM.Tau] [headType, tailList]
+
+coreListType :: SGL.StrictGlobalLocator -> DD.DefiniteDescription
+coreListType sglList =
+  DD.newByGlobalLocator sglList BN.list
+
+coreListNil :: SGL.StrictGlobalLocator -> DD.DefiniteDescription
+coreListNil sglList =
+  DD.newByGlobalLocator sglList BN.nil
+
+coreListCons :: SGL.StrictGlobalLocator -> DD.DefiniteDescription
+coreListCons sglList =
+  DD.newByGlobalLocator sglList BN.consName
 
 inlineBinder :: Handle -> BinderF TM.Term -> App (BinderF TM.Term)
 inlineBinder h (m, x, t) = do
@@ -291,7 +470,7 @@ inlineCase h decisionCase = do
             }
 
 findClause ::
-  Discriminant ->
+  D.Discriminant ->
   DT.DecisionTree TM.Term ->
   [DT.Case TM.Term] ->
   ([(Ident, TM.Term)], DT.DecisionTree TM.Term)
@@ -327,3 +506,25 @@ bind binder cont =
       cont
     ((m, x, t), e1) : rest -> do
       m :< TM.Let O.Clear (m, x, t) e1 (bind rest cont)
+
+-- Guard stack operations
+pushGuard :: Handle -> DD.DefiniteDescription -> [TM.Term] -> TM.Term -> App ()
+pushGuard h dd typeArgs selfVar = do
+  let entry = GuardEntry dd typeArgs selfVar
+  let Handle {guardStack} = h
+  liftIO $ modifyIORef' guardStack (entry :)
+
+popGuard :: Handle -> App ()
+popGuard h = do
+  let Handle {guardStack} = h
+  liftIO $ modifyIORef' guardStack (drop 1)
+
+lookupGuard :: Handle -> DD.DefiniteDescription -> [TM.Term] -> App (Maybe TM.Term)
+lookupGuard h dd typeArgs = do
+  let Handle {guardStack} = h
+  stack <- liftIO $ readIORef guardStack
+  return $ guardSelf <$> find (matchesGuardEntry dd typeArgs) stack
+
+matchesGuardEntry :: DD.DefiniteDescription -> [TM.Term] -> GuardEntry -> Bool
+matchesGuardEntry dd' args entry =
+  guardFunction entry == dd' && TermEq.eqTerms (guardTypeArgs entry) args

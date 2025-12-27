@@ -23,6 +23,7 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Ident
 import Language.Common.Ident.Reify
+import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
@@ -41,7 +42,7 @@ data TermF a
   | Pi PiKind [(BinderF a, Maybe a)] [BinderF a] a
   | PiIntro (AttrL.Attr a) [(BinderF a, Maybe a)] [BinderF a] a
   | PiElim N.IsNoetic a [a] [a]
-  | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
+  | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Box a
@@ -99,7 +100,7 @@ isValue term =
       True
     _ :< Void ->
       True
-    _ :< Magic (OpaqueValue _) ->
+    _ :< Magic (LowMagic (LM.OpaqueValue _)) ->
       True
     _ ->
       False
