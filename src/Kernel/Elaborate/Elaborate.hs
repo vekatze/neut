@@ -135,7 +135,11 @@ elaborateStmt h stmt = do
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
-      e'' <- inline h m e'
+      e'' <- case stmtKind' of
+        Template ->
+          return e'
+        _ ->
+          inline h m e'
       impArgs'' <- mapM (inlineBinderWithMaybeType h) impArgs'
       expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inline h m codType'
@@ -382,9 +386,10 @@ elaborate' h term =
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
               return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')
-        M.GetTypeTag typeExpr -> do
+        M.GetTypeTag mid typeTagExpr typeExpr -> do
+          typeTagExpr' <- elaborate' h typeTagExpr
           typeExpr' <- elaborate' h typeExpr
-          return $ m :< TM.Magic (M.GetTypeTag typeExpr')
+          return $ m :< TM.Magic (M.GetTypeTag mid typeTagExpr' typeExpr')
         M.GetConsSize typeExpr -> do
           typeExpr' <- elaborate' h typeExpr
           return $ m :< TM.Magic (M.GetConsSize typeExpr')
@@ -752,11 +757,11 @@ elaborateAttrDataIntro h attr = do
     return (name, binders', isConstLike)
   return $ attr {AttrDI.consNameList = consNameList'}
 
-viewStmt :: WeakStmt -> IO ()
-viewStmt stmt = do
-  case stmt of
-    WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
-      let attr = AttrL.Attr {lamKind = LK.Normal Nothing codType, identity = 0}
-      putStrLn $ T.unpack $ DD.reify x <> "\n" <> toText (m :< WT.Pi (PK.Normal False) impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
-    _ ->
-      return ()
+-- viewStmt :: WeakStmt -> IO ()
+-- viewStmt stmt = do
+--   case stmt of
+--     WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
+--       let attr = AttrL.Attr {lamKind = LK.Normal Nothing codType, identity = 0}
+--       putStrLn $ T.unpack $ DD.reify x <> "\n" <> toText (m :< WT.Pi (PK.Normal False) impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
+--     _ ->
+--       return ()

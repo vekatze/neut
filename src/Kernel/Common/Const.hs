@@ -127,6 +127,10 @@ coreList :: T.Text
 coreList =
   core <> nsSep <> "list"
 
+coreListList :: T.Text
+coreListList =
+  core <> nsSep <> "list" <> nsSep <> "list"
+
 coreRune :: T.Text
 coreRune =
   core <> nsSep <> "rune" <> nsSep <> "rune"
@@ -154,6 +158,10 @@ coreThreadAttach =
 coreBoxEmbody :: T.Text
 coreBoxEmbody =
   core <> nsSep <> "box" <> nsSep <> "embody"
+
+coreTypeTagTypeTag :: T.Text
+coreTypeTagTypeTag =
+  core <> nsSep <> "type-tag" <> nsSep <> "type-tag"
 
 holeLiteral :: T.Text
 holeLiteral =

@@ -57,6 +57,7 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
+import Language.Common.GlobalLocator qualified as GL
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.ImpArgs qualified as ImpArgs
@@ -64,6 +65,7 @@ import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as LI
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.ModuleAlias (coreModuleAlias)
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity qualified as O
 import Language.Common.PiKind qualified as PK
@@ -342,7 +344,7 @@ discern h term =
     m :< RT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (discern h) dataArgs
       consArgs' <- mapM (discern h) consArgs
-      let allowedVars = S.unions $ map freeVars (dataArgs' ++ consArgs')
+      let allowedVars = S.unions $ map freeVars dataArgs'
       let nameEnv' = filter (\(_, (_, x, _)) -> S.member x allowedVars) (H.nameEnv h)
       let hAttr = h {H.nameEnv = nameEnv'}
       attr' <- discernAttrDataIntro hAttr attr
@@ -626,17 +628,20 @@ discernMagic h m magic =
       arg2' <- discern h arg2
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'
     RT.GetTypeTag (_, (typeExpr, _)) -> do
+      coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
+      typeTagVar <- liftEither $ locatorToVarGlobal m coreTypeTagTypeTag
+      typeTagExpr <- discern h typeTagVar
       typeExpr' <- discern h typeExpr
-      return $ M.WeakMagic $ M.GetTypeTag typeExpr'
+      return $ M.WeakMagic $ M.GetTypeTag coreModuleID typeTagExpr typeExpr'
     RT.GetConsSize _ (_, (typeExpr, _)) -> do
       typeExpr' <- discern h typeExpr
       return $ M.WeakMagic $ M.GetConsSize typeExpr'
     RT.GetConstructorArgTypes _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
       typeExpr' <- discern h typeExpr
       index' <- discern h index
-      listVar <- liftEither $ locatorToVarGlobal m coreList
+      listVar <- liftEither $ locatorToVarGlobal m coreListList
       listExpr <- discern h listVar
-      (gl, _) <- liftEither $ DD.getLocatorPair m coreList
+      gl <- liftEither $ GL.reflect m coreList
       sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
       return $ M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr typeExpr' index'
     RT.CompileError msg ->

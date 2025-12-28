@@ -87,7 +87,7 @@ ensureTemplateResolved h m term =
       case magic of
         M.LowMagic lowMagic ->
           traverse_ (ensureTemplateResolved h m') lowMagic
-        M.GetTypeTag _ ->
+        M.GetTypeTag _ _ _ ->
           raiseError m' "get-type-tag can only be used in template"
         M.GetConsSize _ ->
           raiseError m' "get-cons-size can only be used in template"

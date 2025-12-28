@@ -48,8 +48,8 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as L
-import Language.Common.Magic qualified as M
 import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic qualified as M
 import Language.Common.Noema qualified as N
 import Language.Common.Opacity (isOpaque)
 import Language.Common.Opacity qualified as O

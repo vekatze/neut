@@ -32,12 +32,15 @@ import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.ModuleID qualified as MID
 import Language.Common.Opacity qualified as O
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimType qualified as PT
+import Language.Common.SourceLocator (binaryLocator, typeTagLocator, vectorLocator)
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Term.Eq qualified as TermEq
 import Language.Term.FreeVars qualified as FreeVars
@@ -46,6 +49,8 @@ import Language.Term.PrimValue qualified as PV
 import Language.Term.Refresh qualified as Refresh
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
+import Language.Term.Weaken (weaken)
+import Language.WeakTerm.ToText
 import Logger.Hint
 
 data DefInfo = DefInfo
@@ -279,9 +284,9 @@ inline' h term = do
             _ -> do
               magic' <- traverse (inline' h) magic
               return (m :< TM.Magic magic')
-        M.GetTypeTag typeExpr -> do
+        M.GetTypeTag mid typeTagExpr typeExpr -> do
           typeExpr' <- inline' h typeExpr
-          evaluateGetTypeTag h m typeExpr'
+          evaluateGetTypeTag m mid typeTagExpr typeExpr'
         M.GetConsSize typeExpr -> do
           typeExpr' <- inline' h typeExpr
           evaluateGetConsSize h m typeExpr'
@@ -300,36 +305,74 @@ inline' h term = do
       typeTag' <- inline' h typeTag
       return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
 
-evaluateGetTypeTag :: Handle -> Hint -> TM.Term -> App TM.Term
-evaluateGetTypeTag _h m typeExpr =
+evaluateGetTypeTag :: Hint -> MID.ModuleID -> TM.Term -> TM.Term -> App TM.Term
+evaluateGetTypeTag m moduleID typeTagExpr typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
-      returnTypeTagIntValue m TypeTag.Type
+      returnTypeTagIntValue m moduleID TypeTag.Type
     _ :< TM.Pi {} ->
-      returnTypeTagIntValue m TypeTag.Function
-    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) name _ -> do
-      case lookup name TypeTag.baseTypeTagMap of
-        Just tag ->
-          returnTypeTagIntValue m tag
-        Nothing -> do
+      returnTypeTagIntValue m moduleID TypeTag.Function
+    _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _ -> do
+      case consNameList of
+        [(_, [(_, _, t)], _)] -> do
+          evaluateGetTypeTag m moduleID typeTagExpr t -- newtype
+        _ -> do
           let isEnum = all (\(_, _, isConstLike) -> isConstLike) consNameList
           if isEnum && not (null consNameList)
-            then returnTypeTagIntValue m TypeTag.Enum
-            else returnTypeTagIntValue m TypeTag.Algebraic
+            then returnTypeTagIntValue m moduleID TypeTag.Enum
+            else returnTypeTagIntValue m moduleID TypeTag.Algebraic
     _ :< TM.BoxNoema _ ->
-      returnTypeTagIntValue m TypeTag.Noema
+      returnTypeTagIntValue m moduleID TypeTag.Noema
     _ :< TM.Box _ ->
-      returnTypeTagIntValue m TypeTag.Opaque
-    _ :< TM.Prim (P.Type _) ->
-      returnTypeTagIntValue m TypeTag.Type
-    _ ->
-      raiseError m "get-type-tag: unable to determine type tag for this type expression"
+      returnTypeTagIntValue m moduleID TypeTag.Opaque
+    _ :< TM.Prim (P.Type (PT.Int size)) ->
+      returnTypeTagIntValue m moduleID (TypeTag.fromIntSize size)
+    _ :< TM.Prim (P.Type (PT.Float size)) ->
+      returnTypeTagIntValue m moduleID (TypeTag.fromFloatSize size)
+    _ :< TM.Prim (P.Type PT.Pointer) ->
+      returnTypeTagIntValue m moduleID TypeTag.Pointer
+    _ :< TM.Prim (P.Type PT.Rune) ->
+      returnTypeTagIntValue m moduleID TypeTag.Rune
+    _ :< TM.Resource name _ _ _ _ _ -> do
+      let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = binaryLocator}
+      let binaryDD = DD.newByGlobalLocator binarySGL BN.binary
+      if name == binaryDD
+        then returnTypeTagIntValue m moduleID TypeTag.Binary
+        else returnTypeTagIntValue m moduleID TypeTag.Opaque
+    _ :< TM.PiElim False (_ :< TM.VarGlobal _ name) [] [] -> do
+      let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = vectorLocator}
+      let vectorDD = DD.newByGlobalLocator vectorSGL BN.vectorInternal
+      if name == vectorDD
+        then returnTypeTagIntValue m moduleID TypeTag.Vector
+        else returnTypeTagIntValue m moduleID TypeTag.Opaque
+    _ -> do
+      raiseError m $
+        "get-type-tag: unable to determine type tag for this type expression. Got: "
+          <> toText (weaken typeExpr)
 
-returnTypeTagIntValue :: Hint -> TypeTag.TypeTag -> App TM.Term
-returnTypeTagIntValue m' tag = do
+makeConsNameList :: SGL.StrictGlobalLocator -> [(DD.DefiniteDescription, [BinderF TM.Term], IsConstLike)]
+makeConsNameList typeTagSGL = do
+  flip map BN.typeTagList $ \tag -> (DD.newByGlobalLocator typeTagSGL tag, [], True)
+
+makeAttrDI :: SGL.StrictGlobalLocator -> TypeTag.TypeTag -> AttrDI.Attr DD.DefiniteDescription (BinderF TM.Term)
+makeAttrDI typeTagSGL typeTag = do
+  let dataName = DD.newByGlobalLocator typeTagSGL BN.typeTag
+  let discriminant = D.MakeDiscriminant $ TypeTag.typeTagToInteger typeTag
+  let consNameList = makeConsNameList typeTagSGL
+  AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = True}
+
+returnTypeTagIntValue :: Hint -> MID.ModuleID -> TypeTag.TypeTag -> App TM.Term
+returnTypeTagIntValue m' moduleID tag = do
+  let typeTagSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = typeTagLocator}
+  let attr = makeAttrDI typeTagSGL tag
   let tagInt = TypeTag.typeTagToInteger tag
-  let intType = m' :< TM.Prim (P.Type (PT.Int PNS.IntSize64))
-  return $ m' :< TM.Prim (P.Value (PV.Int intType PNS.IntSize64 tagInt))
+  let index = fromIntegral tagInt
+  case drop index BN.typeTagList of
+    consBaseName : _ -> do
+      let consName = DD.newByGlobalLocator typeTagSGL consBaseName
+      return $ m' :< TM.DataIntro attr consName [] []
+    [] -> do
+      raiseError m' $ "get-type-tag: unknown type-tag discriminant " <> T.pack (show tagInt)
 
 evaluateGetConsSize :: Handle -> Hint -> TM.Term -> App TM.Term
 evaluateGetConsSize _h m typeExpr = do

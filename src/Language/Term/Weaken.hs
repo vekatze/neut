@@ -132,8 +132,8 @@ weakenMagic m magic = do
               LM.OpaqueValue (weaken e)
             LM.CallType func arg1 arg2 ->
               LM.CallType (weaken func) (weaken arg1) (weaken arg2)
-    M.GetTypeTag e ->
-      M.WeakMagic $ M.GetTypeTag (weaken e)
+    M.GetTypeTag mid typeTagExpr e ->
+      M.WeakMagic $ M.GetTypeTag mid (weaken typeTagExpr) (weaken e)
     M.GetConsSize typeExpr ->
       M.WeakMagic $ M.GetConsSize (weaken typeExpr)
     M.GetConstructorArgTypes sgl listExpr typeExpr index ->

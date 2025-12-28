@@ -11,11 +11,12 @@ import GHC.Generics qualified as G
 import Language.Common.BaseLowType
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.LowMagic qualified as LM
+import Language.Common.ModuleID qualified as MID
 import Language.Common.StrictGlobalLocator qualified as SGL
 
 data Magic t a
   = LowMagic (LM.LowMagic t a)
-  | GetTypeTag a
+  | GetTypeTag MID.ModuleID a a
   | GetConsSize a
   | GetConstructorArgTypes SGL.StrictGlobalLocator a a a
   | CompileError T.Text
@@ -28,8 +29,8 @@ instance Functor (Magic BaseLowType) where
     case der of
       LowMagic magic ->
         LowMagic (fmap f magic)
-      GetTypeTag e ->
-        GetTypeTag (f e)
+      GetTypeTag mid typeTagExpr e ->
+        GetTypeTag mid (f typeTagExpr) (f e)
       GetConsSize typeExpr ->
         GetConsSize (f typeExpr)
       GetConstructorArgTypes sgl listExpr typeExpr index ->
@@ -42,8 +43,8 @@ instance Foldable (Magic BaseLowType) where
     case der of
       LowMagic magic ->
         foldMap f magic
-      GetTypeTag e ->
-        f e
+      GetTypeTag _ typeTagExpr e ->
+        f typeTagExpr <> f e
       GetConsSize typeExpr ->
         f typeExpr
       GetConstructorArgTypes _ listExpr typeExpr index ->
@@ -56,8 +57,8 @@ instance Traversable (Magic BaseLowType) where
     case der of
       LowMagic magic ->
         LowMagic <$> traverse f magic
-      GetTypeTag e ->
-        GetTypeTag <$> f e
+      GetTypeTag mid typeTagExpr e ->
+        GetTypeTag mid <$> f typeTagExpr <*> f e
       GetConsSize typeExpr ->
         GetConsSize <$> f typeExpr
       GetConstructorArgTypes sgl listExpr typeExpr index ->
@@ -93,8 +94,8 @@ instance Functor WeakMagic where
                 LM.OpaqueValue (f e)
               LM.CallType func arg1 arg2 ->
                 LM.CallType (f func) (f arg1) (f arg2)
-      GetTypeTag e ->
-        WeakMagic (GetTypeTag (f e))
+      GetTypeTag mid typeTagExpr e ->
+        WeakMagic (GetTypeTag mid (f typeTagExpr) (f e))
       GetConsSize typeExpr ->
         WeakMagic (GetConsSize (f typeExpr))
       GetConstructorArgTypes sgl listExpr typeExpr index ->
@@ -128,8 +129,8 @@ instance Foldable WeakMagic where
             f e
           LM.CallType func arg1 arg2 ->
             f func <> f arg1 <> f arg2
-      GetTypeTag e ->
-        f e
+      GetTypeTag _ typeTagExpr e ->
+        f typeTagExpr <> f e
       GetConsSize typeExpr ->
         f typeExpr
       GetConstructorArgTypes _ listExpr typeExpr index ->
@@ -180,9 +181,10 @@ instance Traversable WeakMagic where
             arg1' <- f arg1
             arg2' <- f arg2
             return $ WeakMagic $ LowMagic $ LM.CallType func' arg1' arg2'
-      GetTypeTag e -> do
+      GetTypeTag mid typeTagExpr e -> do
+        typeTagExpr' <- f typeTagExpr
         e' <- f e
-        return $ WeakMagic $ GetTypeTag e'
+        return $ WeakMagic $ GetTypeTag mid typeTagExpr' e'
       GetConsSize typeExpr -> do
         typeExpr' <- f typeExpr
         return $ WeakMagic $ GetConsSize typeExpr'

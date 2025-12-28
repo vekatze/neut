@@ -548,9 +548,9 @@ rawTermMagicGetConstructorArgTypes h m c = do
 
 rawTermMagicCompileError :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCompileError _h m c = do
-  _ <- keyword "compile-error"
-  (msg, c2) <- string
-  return (m :< RT.Magic c (RT.CompileError msg), c2)
+  rawTermMagicBase "compile-error" $ do
+    (msg, c3) <- string
+    return $ \c1 c2 -> m :< RT.Magic (c ++ c1 ++ c2 ++ c3) (RT.CompileError msg)
 
 rawTermMatch :: Handle -> Hint -> C -> Bool -> Parser (RT.RawTerm, C)
 rawTermMatch h m c1 isNoetic = do

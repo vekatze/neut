@@ -41,7 +41,7 @@ reflect m rawTxt = do
       | Just locator <- SL.fromBaseNameList rest ->
           return (GlobalLocator (ModuleAlias prefix) locator)
     _ ->
-      Left $ newError m $ "Invalid global locator: `" <> rawTxt <> "`"
+      Left $ newError m $ "Invalid global locator (A): `" <> rawTxt <> "`"
 
 reflectLocator :: H.Hint -> T.Text -> Either Error (ModuleAlias, SL.SourceLocator)
 reflectLocator m rawTxt = do
@@ -53,4 +53,4 @@ reflectLocator m rawTxt = do
       | Just locator <- SL.fromBaseNameList rest ->
           return (ModuleAlias prefix, locator)
     _ ->
-      Left $ newError m $ "Invalid global locator: `" <> rawTxt <> "`"
+      Left $ newError m $ "Invalid global locator (B): `" <> rawTxt <> "`"

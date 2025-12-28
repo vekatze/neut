@@ -374,10 +374,10 @@ infer h term =
               liftIO $ Constraint.insert (constraintHandle h) intType t1
               resultType <- liftIO $ newHole h m (varEnv h)
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'), resultType)
-        M.GetTypeTag typeExpr -> do
+        M.GetTypeTag mid typeTagExpr typeExpr -> do
+          typeTagExpr' <- inferType h typeTagExpr
           typeExpr' <- inferType h typeExpr
-          intType <- getIntType (platformHandle h) m
-          return (m :< WT.Magic (M.WeakMagic $ M.GetTypeTag typeExpr'), intType)
+          return (m :< WT.Magic (M.WeakMagic $ M.GetTypeTag mid typeTagExpr' typeExpr'), typeTagExpr')
         M.GetConsSize typeExpr -> do
           typeExpr' <- inferType h typeExpr
           intType <- getIntType (platformHandle h) m

@@ -258,18 +258,13 @@ toDoc term =
             ]
         GetTypeTag (c1, (e, c2)) -> do
           D.join
-            [ attachComment (c ++ c1) $ D.text "magic get-type-tag ",
-              decodeBrace True c1 e c2
+            [ attachComment c $ D.text "magic get-type-tag",
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c1, (toDoc e, c2))]
             ]
         GetConsSize c1 (c2, (typeExpr, c3)) -> do
           D.join
             [ attachComment (c ++ c1) $ D.text "magic get-cons-size",
-              SE.decode $
-                SE.fromListWithComment
-                  (Just SE.Paren)
-                  SE.Comma
-                  [ (c2, (toDoc typeExpr, c3))
-                  ]
+              SE.decode $ SE.fromListWithComment (Just SE.Paren) SE.Comma [(c2, (toDoc typeExpr, c3))]
             ]
         GetConstructorArgTypes c1 (c2, (typeExpr, c3)) _c4 (c5, (index, c6)) -> do
           D.join
@@ -283,7 +278,7 @@ toDoc term =
                   ]
             ]
         CompileError msg -> do
-          D.text $ "magic compile-error " <> T.pack (show msg)
+          D.text $ "magic compile-error(\"" <> msg <> "\")"
     _ :< Hole {} ->
       D.text "_"
     _ :< Annotation {} -> do

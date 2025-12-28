@@ -50,6 +50,10 @@ module Language.Common.BaseName
     list,
     nil,
     consName,
+    typeTag,
+    typeTagList,
+    binary,
+    vectorInternal,
   )
 where
 
@@ -273,6 +277,43 @@ malloc =
 free :: BaseName
 free =
   MakeBaseName "free"
+
+typeTag :: BaseName
+typeTag =
+  MakeBaseName "type-tag"
+
+binary :: BaseName
+binary =
+  MakeBaseName "binary"
+
+vectorInternal :: BaseName
+vectorInternal =
+  MakeBaseName "_vector-internal"
+
+typeTagList :: [BaseName]
+typeTagList =
+  [ MakeBaseName "Opaque",
+    MakeBaseName "Type",
+    MakeBaseName "Function",
+    MakeBaseName "Algebraic",
+    MakeBaseName "Noema",
+    MakeBaseName "Enum",
+    MakeBaseName "Int1",
+    MakeBaseName "Int2",
+    MakeBaseName "Int4",
+    MakeBaseName "Int8",
+    MakeBaseName "Int16",
+    MakeBaseName "Int32",
+    MakeBaseName "Int64",
+    MakeBaseName "Float16",
+    MakeBaseName "Float32",
+    MakeBaseName "Float64",
+    MakeBaseName "Pointer",
+    MakeBaseName "Null",
+    MakeBaseName "Rune",
+    MakeBaseName "Binary",
+    MakeBaseName "Vector"
+  ]
 
 arrayType :: PT.PrimType -> BaseName
 arrayType elemType =
