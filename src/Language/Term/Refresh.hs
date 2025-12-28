@@ -10,6 +10,7 @@ import Control.Monad.IO.Class
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -67,7 +68,8 @@ refresh h term =
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (refresh h) dataArgs
       consArgs' <- mapM (refresh h) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
+      attr' <- refreshAttrDataIntro h attr
+      return $ m :< TM.DataIntro attr' consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (refresh h) es
@@ -254,3 +256,13 @@ refreshAttrData h attr = do
       return (mx, x, t')) binders
     return (cn, binders', cl)) consNameList
   return $ attr {AttrD.consNameList = consNameList'}
+
+refreshAttrDataIntro :: Handle -> AttrDI.Attr name (BinderF TM.Term) -> IO (AttrDI.Attr name (BinderF TM.Term))
+refreshAttrDataIntro h attr = do
+  let consNameList = AttrDI.consNameList attr
+  consNameList' <- mapM (\(cn, binders, cl) -> do
+    binders' <- mapM (\(mx, x, t) -> do
+      t' <- refresh h t
+      return (mx, x, t')) binders
+    return (cn, binders', cl)) consNameList
+  return $ attr {AttrDI.consNameList = consNameList'}

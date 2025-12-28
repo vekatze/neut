@@ -75,7 +75,8 @@ weaken term =
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weaken dataArgs
       let consArgs' = map weaken consArgs
-      m :< WT.DataIntro attr consName dataArgs' consArgs'
+      let attr' = fmap weakenBinder attr
+      m :< WT.DataIntro attr' consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map weaken es

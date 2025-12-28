@@ -154,7 +154,8 @@ reduce' h term = do
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (reduce' h) dataArgs
       consArgs' <- mapM (reduce' h) consArgs
-      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
+      attr' <- reduceAttrDataIntro h attr
+      return $ m :< WT.DataIntro attr' consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       detectPossibleInfiniteLoop h
       let (os, es, ts) = unzip3 oets
@@ -339,3 +340,13 @@ reduceAttrData h attr = do
       return (mx, x, t')
     return (cn, binders', cl)
   return $ attr {AttrD.consNameList = consNameList'}
+
+reduceAttrDataIntro :: Handle -> AttrDI.Attr name (BinderF WT.WeakTerm) -> App (AttrDI.Attr name (BinderF WT.WeakTerm))
+reduceAttrDataIntro h attr = do
+  let consNameList = AttrDI.consNameList attr
+  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
+    binders' <- forM binders $ \(mx, x, t) -> do
+      t' <- reduce' h t
+      return (mx, x, t')
+    return (cn, binders', cl)
+  return $ attr {AttrDI.consNameList = consNameList'}

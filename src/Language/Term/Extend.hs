@@ -48,7 +48,8 @@ extend term =
     _ :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map extend dataArgs
       let consArgs' = map extend consArgs
-      _m :< TM.DataIntro attr consName dataArgs' consArgs'
+      let attr' = fmap extendBinder attr
+      _m :< TM.DataIntro attr' consName dataArgs' consArgs'
     _ :< TM.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map extend es

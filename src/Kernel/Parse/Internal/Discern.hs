@@ -48,6 +48,7 @@ import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.Binder
@@ -341,7 +342,11 @@ discern h term =
     m :< RT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (discern h) dataArgs
       consArgs' <- mapM (discern h) consArgs
-      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
+      let allowedVars = S.unions $ map freeVars (dataArgs' ++ consArgs')
+      let nameEnv' = filter (\(_, (_, x, _)) -> S.member x allowedVars) (H.nameEnv h)
+      let hAttr = h {H.nameEnv = nameEnv'}
+      attr' <- discernAttrDataIntro hAttr attr
+      return $ m :< WT.DataIntro attr' consName dataArgs' consArgs'
     m :< RT.DataElim _ isNoetic es patternMatrix -> do
       let es' = SE.extract es
       let ms = map (\(me :< _) -> me) es'
@@ -929,6 +934,19 @@ discernAttrData h attr = do
       liftIO $ Unused.deleteVariable (H.unusedHandle h) x
     return (name, binders', isConstLike)
   return $ attr {AttrD.consNameList = consNameList'}
+
+discernAttrDataIntro ::
+  H.Handle ->
+  AttrDI.Attr DD.DefiniteDescription (RawBinder RT.RawTerm) ->
+  App (AttrDI.Attr DD.DefiniteDescription (BinderF WT.WeakTerm))
+discernAttrDataIntro h attr = do
+  let consNameList = AttrDI.consNameList attr
+  consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
+    (binders', _) <- discernBinder' h binders
+    forM_ binders' $ \(_, x, _) -> do
+      liftIO $ Unused.deleteVariable (H.unusedHandle h) x
+    return (name, binders', isConstLike)
+  return $ attr {AttrDI.consNameList = consNameList'}
 
 discernPatternMatrix ::
   H.Handle ->

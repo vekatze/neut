@@ -87,7 +87,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let dataArgs'' = map identPlusToVar dataArgs'
       let expConsArgs = maybe [] SE.extract (expArgs consInfo)
       let expConsArgs' = map adjustExpConsArg expConsArgs
-      let consNameList = map (\ci -> (name ci, isConstLikeConsInfo ci)) consInfoList
+      let consNameList = map (\ci -> (name ci, maybe [] SE.extract (expArgs ci), isConstLikeConsInfo ci)) consInfoList
       let m = loc consInfo
       let attr = AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = isConstLikeConsInfo consInfo}
       let dataImpArgs = do

@@ -334,7 +334,7 @@ eqAttrData attr1 attr2 = do
     eqConsInfo (cn1, binders1, cl1) (cn2, binders2, cl2) =
       cn1 == cn2 && cl1 == cl2 && eqBinder binders1 binders2
 
-eqAttrDataIntro :: (Eq name) => AttrDI.Attr name -> AttrDI.Attr name -> Bool
+eqAttrDataIntro :: (Eq name) => AttrDI.Attr name (BinderF WT.WeakTerm) -> AttrDI.Attr name (BinderF WT.WeakTerm) -> Bool
 eqAttrDataIntro attr1 attr2 = do
   let consNameList1 = AttrDI.consNameList attr1
   let consNameList2 = AttrDI.consNameList attr2
@@ -344,5 +344,5 @@ eqAttrDataIntro attr1 attr2 = do
     && isConstLike1 == isConstLike2
     && all (uncurry eqConsInfo) (zip consNameList1 consNameList2)
   where
-    eqConsInfo (cn1, cl1) (cn2, cl2) =
-      cn1 == cn2 && cl1 == cl2
+    eqConsInfo (cn1, binders1, cl1) (cn2, binders2, cl2) =
+      cn1 == cn2 && cl1 == cl2 && eqBinder binders1 binders2

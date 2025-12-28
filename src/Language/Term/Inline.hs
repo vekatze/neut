@@ -391,14 +391,14 @@ constructListTerm hint listSgl =
 constructListNil :: Hint -> SGL.StrictGlobalLocator -> TM.Term
 constructListNil hint listSgl = do
   let dataName = coreListType listSgl
-  let consNameList = [(coreListNil listSgl, True), (coreListCons listSgl, False)]
+  let consNameList = [(coreListNil listSgl, [], True), (coreListCons listSgl, [], False)]
   let attr = AttrDI.Attr {dataName, consNameList, discriminant = D.zero, isConstLike = True}
   hint :< TM.DataIntro attr (coreListNil listSgl) [hint :< TM.Tau] []
 
 constructListCons :: Hint -> SGL.StrictGlobalLocator -> TM.Term -> TM.Term -> TM.Term
 constructListCons hint listSgl headType tailList = do
   let dataName = coreListType listSgl
-  let consNameList = [(coreListNil listSgl, True), (coreListCons listSgl, False)]
+  let consNameList = [(coreListNil listSgl, [], True), (coreListCons listSgl, [], False)]
   let attr = AttrDI.Attr {dataName, consNameList, discriminant = D.increment D.zero, isConstLike = False}
   hint :< TM.DataIntro attr (coreListCons listSgl) [hint :< TM.Tau] [headType, tailList]
 

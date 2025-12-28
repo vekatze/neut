@@ -51,7 +51,7 @@ data WeakTermF a
   | PiElim N.IsNoetic a (ImpArgs.ImpArgs a) [a]
   | PiElimExact a
   | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Box a
   | BoxNoema a

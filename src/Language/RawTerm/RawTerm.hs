@@ -70,7 +70,7 @@ data RawTermF a
   | PiElimRule Name C (SE.Series a)
   | PiElimExact C a
   | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | Box a
   | BoxNoema a

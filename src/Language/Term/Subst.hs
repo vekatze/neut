@@ -16,6 +16,7 @@ import Data.Set qualified as S
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as Gensym
 import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
@@ -92,7 +93,8 @@ subst h sub term =
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (subst h sub) dataArgs
       consArgs' <- mapM (subst h sub) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
+      attr' <- substAttrDataIntro h sub attr
+      return $ m :< TM.DataIntro attr' consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst h sub) es
@@ -309,3 +311,13 @@ substAttrData h sub attr = do
       return (mx, x, t')) binders
     return (cn, binders', cl)) consNameList
   return $ attr {AttrD.consNameList = consNameList'}
+
+substAttrDataIntro :: Handle -> SubstTerm -> AttrDI.Attr name (BinderF TM.Term) -> IO (AttrDI.Attr name (BinderF TM.Term))
+substAttrDataIntro h sub attr = do
+  let consNameList = AttrDI.consNameList attr
+  consNameList' <- mapM (\(cn, binders, cl) -> do
+    binders' <- mapM (\(mx, x, t) -> do
+      t' <- subst h sub t
+      return (mx, x, t')) binders
+    return (cn, binders', cl)) consNameList
+  return $ attr {AttrDI.consNameList = consNameList'}

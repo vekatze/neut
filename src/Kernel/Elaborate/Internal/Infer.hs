@@ -234,9 +234,12 @@ infer h term =
     m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
       (dataArgs', _) <- mapAndUnzipM (infer h) dataArgs
       (consArgs', _) <- mapAndUnzipM (infer h) consArgs
-      let consNameList' = map (\(cn, cl) -> (cn, [], cl)) consNameList
+      consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
+        binders' <- inferBinder'' h binders
+        return (cn, binders', cl)
+      let attr' = attr {AttrDI.consNameList = consNameList'}
       let dataType = m :< WT.Data (AttrD.Attr {consNameList = consNameList', isConstLike}) dataName dataArgs'
-      return (m :< WT.DataIntro attr consName dataArgs' consArgs', dataType)
+      return (m :< WT.DataIntro attr' consName dataArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer h) es

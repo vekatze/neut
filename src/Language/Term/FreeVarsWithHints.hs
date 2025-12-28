@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
 import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -36,8 +37,10 @@ freeVarsWithHints term =
       let xs1 = S.unions $ map freeVarsWithHints es
       let xs2 = freeVarsWithHintsAttrData attr
       S.union xs1 xs2
-    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      S.unions $ map freeVarsWithHints $ dataArgs ++ consArgs
+    _ :< TM.DataIntro attr _ dataArgs consArgs -> do
+      let xs1 = S.unions $ map freeVarsWithHints $ dataArgs ++ consArgs
+      let xs2 = freeVarsWithHintsAttrDataIntro attr
+      S.union xs1 xs2
     m :< TM.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVarsWithHints es
@@ -113,4 +116,9 @@ freeVarsWithHintsCase decisionCase = do
 freeVarsWithHintsAttrData :: AttrD.Attr name (BinderF TM.Term) -> S.Set (Hint, Ident)
 freeVarsWithHintsAttrData attr = do
   let consNameList = AttrD.consNameList attr
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsWithHints t) binders) consNameList
+
+freeVarsWithHintsAttrDataIntro :: AttrDI.Attr name (BinderF TM.Term) -> S.Set (Hint, Ident)
+freeVarsWithHintsAttrDataIntro attr = do
+  let consNameList = AttrDI.consNameList attr
   S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> freeVarsWithHints t) binders) consNameList

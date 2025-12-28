@@ -41,6 +41,7 @@ import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.BaseLowType qualified as BLT
 import Language.Common.BasePrimType qualified as BPT
@@ -268,7 +269,8 @@ elaborate' h term =
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (elaborate' h) dataArgs
       consArgs' <- mapM (elaborate' h) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
+      attr' <- elaborateAttrDataIntro h attr
+      return $ m :< TM.DataIntro attr' consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (elaborate' h) es
@@ -737,11 +739,24 @@ elaborateAttrData h attr = do
     return (name, binders', isConstLike)
   return $ attr {AttrD.consNameList = consNameList'}
 
--- viewStmt :: WeakStmt -> IO ()
--- viewStmt stmt = do
---   case stmt of
---     WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
---       let attr = AttrL.Attr {lamKind = LK.Normal Nothing codType, identity = 0}
---       putStrLn $ T.unpack $ DD.reify x <> "\n" <> toText (m :< WT.Pi impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
---     _ ->
---       return ()
+elaborateAttrDataIntro ::
+  Handle ->
+  AttrDI.Attr DD.DefiniteDescription (BinderF WT.WeakTerm) ->
+  App (AttrDI.Attr DD.DefiniteDescription (BinderF TM.Term))
+elaborateAttrDataIntro h attr = do
+  let consNameList = AttrDI.consNameList attr
+  consNameList' <- forM consNameList $ \(name, binders, isConstLike) -> do
+    binders' <- forM binders $ \(mx, x, t) -> do
+      t' <- elaborate' h t
+      return (mx, x, t')
+    return (name, binders', isConstLike)
+  return $ attr {AttrDI.consNameList = consNameList'}
+
+viewStmt :: WeakStmt -> IO ()
+viewStmt stmt = do
+  case stmt of
+    WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
+      let attr = AttrL.Attr {lamKind = LK.Normal Nothing codType, identity = 0}
+      putStrLn $ T.unpack $ DD.reify x <> "\n" <> toText (m :< WT.Pi (PK.Normal False) impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
+    _ ->
+      return ()

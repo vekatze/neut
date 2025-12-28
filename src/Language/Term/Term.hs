@@ -43,7 +43,7 @@ data TermF a
   | PiIntro (AttrL.Attr a) [(BinderF a, Maybe a)] [BinderF a] a
   | PiElim N.IsNoetic a [a] [a]
   | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Box a
   | BoxNoema a

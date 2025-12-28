@@ -5,6 +5,7 @@ import Data.Maybe
 import Data.Set qualified as S
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
+import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
@@ -34,8 +35,10 @@ holes term =
       let xs1 = S.unions $ map holes es
       let xs2 = holesAttrData attr
       S.union xs1 xs2
-    _ :< WT.DataIntro _ _ dataArgs consArgs -> do
-      S.unions $ map holes $ dataArgs ++ consArgs
+    _ :< WT.DataIntro attr _ dataArgs consArgs -> do
+      let xs1 = S.unions $ map holes $ dataArgs ++ consArgs
+      let xs2 = holesAttrDataIntro attr
+      S.union xs1 xs2
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map holes es
@@ -115,4 +118,9 @@ holesCase decisionCase = do
 holesAttrData :: AttrD.Attr name (BinderF WT.WeakTerm) -> S.Set HoleID
 holesAttrData attr = do
   let consNameList = AttrD.consNameList attr
+  S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> holes t) binders) consNameList
+
+holesAttrDataIntro :: AttrDI.Attr name (BinderF WT.WeakTerm) -> S.Set HoleID
+holesAttrDataIntro attr = do
+  let consNameList = AttrDI.consNameList attr
   S.unions $ map (\(_, binders, _) -> S.unions $ map (\(_, _, t) -> holes t) binders) consNameList

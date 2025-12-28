@@ -43,7 +43,8 @@ compress term =
     _ :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map compress dataArgs
       let consArgs' = map compress consArgs
-      () :< TM.DataIntro attr consName dataArgs' consArgs'
+      let attr' = fmap compressBinder attr
+      () :< TM.DataIntro attr' consName dataArgs' consArgs'
     _ :< TM.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map compress es
