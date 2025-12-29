@@ -45,6 +45,7 @@ import Language.Common.SourceLocator (binaryLocator, typeTagLocator, vectorLocat
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Term.Eq qualified as TermEq
 import Language.Term.FreeVars qualified as FreeVars
+import Language.Term.Inline.ConstantFold qualified as ConstantFold
 import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Refresh qualified as Refresh
@@ -195,6 +196,12 @@ inline' h term = do
                           (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                           inline' h $ bind (zip xts' allArgs) body''
+            (_ :< TM.Prim (P.Value (PV.Op op))) -> do
+              case ConstantFold.evaluatePrimOp m op expArgs' of
+                Just result ->
+                  return result
+                Nothing ->
+                  return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
             _ ->
               return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
     m :< TM.Data attr name es -> do
