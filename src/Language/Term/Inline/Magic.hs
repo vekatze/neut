@@ -115,7 +115,6 @@ evaluateGetConsSize m typeExpr = do
 
 evaluateGetConstructorArgTypes :: Hint -> SGL.StrictGlobalLocator -> TM.Term -> TM.Term -> App TM.Term
 evaluateGetConstructorArgTypes m sgl typeExpr indexExpr = do
-  -- Returns a list of types for the (index)th constructor
   case (typeExpr, indexExpr) of
     (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (P.Value (PV.Int _ _ indexInt))) -> do
       let index = fromIntegral indexInt

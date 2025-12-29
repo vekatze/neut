@@ -186,7 +186,7 @@ inline' h term = do
                           inline' h $ bind (zip xts' allArgs) body''
             (_ :< TM.Prim (P.Value (PV.Op op))) -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
-                Just result ->
+                Just result -> do
                   return result
                 Nothing ->
                   return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
@@ -220,15 +220,21 @@ inline' h term = do
                 Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'') -> do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
-                  let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                  dataElim' <- liftIO $ Subst.subst (substHandle h) sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
-                  inline' h dataElim'
+                  let subst = Subst.subst (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Right e))
+                  liftIO (subst $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont) >>= inline' h
                 Just (e, oets'')
                   | Just literal <- asLiteralTerm e -> do
-                      let cont = findLiteralClause literal fallbackTree caseList
-                      let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                      dataElim' <- liftIO $ Subst.subst (substHandle h) sub $ m :< TM.DataElim isNoetic oets'' cont
-                      inline' h dataElim'
+                      let subst = Subst.subst (substHandle h) (IntMap.singleton (Ident.toInt cursor) (Right e))
+                      case findLiteralClause literal caseList of
+                        Just cont -> do
+                          liftIO (subst $ m :< TM.DataElim isNoetic oets'' cont) >>= inline' h
+                        Nothing
+                          | L.Int value <- literal,
+                            Just ([], cont) <- findConsCaseByDisc (D.MakeDiscriminant value) caseList -> do
+                              liftIO (subst $ m :< TM.DataElim isNoetic oets'' cont) >>= inline' h
+                          | otherwise -> do
+                              decisionTree' <- inlineDecisionTree h decisionTree
+                              return $ m :< TM.DataElim isNoetic oets' decisionTree'
                 _ -> do
                   decisionTree' <- inlineDecisionTree h decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -380,20 +386,35 @@ findClause consDisc fallbackTree clauseList =
 
 findLiteralClause ::
   L.Literal ->
-  DT.DecisionTree TM.Term ->
   [DT.Case TM.Term] ->
-  DT.DecisionTree TM.Term
-findLiteralClause literal fallbackTree clauseList =
+  Maybe (DT.DecisionTree TM.Term)
+findLiteralClause literal clauseList =
   case clauseList of
     [] ->
-      fallbackTree
+      Nothing
     clause : rest ->
       case clause of
         DT.LiteralCase _ literal' cont
           | literal == literal' ->
-              cont
+              Just cont
         _ ->
-          findLiteralClause literal fallbackTree rest
+          findLiteralClause literal rest
+
+findConsCaseByDisc ::
+  D.Discriminant ->
+  [DT.Case TM.Term] ->
+  Maybe ([BinderF TM.Term], DT.DecisionTree TM.Term)
+findConsCaseByDisc disc clauseList =
+  case clauseList of
+    [] ->
+      Nothing
+    clause : rest ->
+      case clause of
+        DT.ConsCase (DT.ConsCaseRecord {disc = clauseDisc, consArgs, cont})
+          | disc == clauseDisc ->
+              Just (consArgs, cont)
+        _ ->
+          findConsCaseByDisc disc rest
 
 asLiteralTerm :: TM.Term -> Maybe L.Literal
 asLiteralTerm term =
