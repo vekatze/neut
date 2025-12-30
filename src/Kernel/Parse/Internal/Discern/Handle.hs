@@ -24,6 +24,7 @@ import Kernel.Parse.Internal.Handle.PreDecl qualified as PreDecl
 import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Layer
 import Kernel.Parse.NominalEnv
+import Kernel.Parse.Stage
 import Kernel.Parse.VarDefKind
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
@@ -44,7 +45,8 @@ data Handle = Handle
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
     nameEnv :: NominalEnv,
-    currentLayer :: Layer
+    currentLayer :: Layer,
+    currentStage :: Stage
   }
 
 new ::
@@ -55,26 +57,27 @@ new ::
 new (Global.Handle {..}) (Local.Handle {..}) nameMapHandle = do
   let nameEnv = empty
   let currentLayer = 0
+  let currentStage = 0
   Handle {..}
 
-extend :: Handle -> Hint -> Ident -> Layer -> VarDefKind -> IO Handle
-extend h m newVar l k = do
+extend :: Handle -> Hint -> Ident -> Layer -> Stage -> VarDefKind -> IO Handle
+extend h m newVar l s k = do
   Unused.insertVariable (unusedHandle h) m newVar k
-  return $ h {nameEnv = (Ident.toText newVar, (m, newVar, l)) : nameEnv h}
+  return $ h {nameEnv = (Ident.toText newVar, (m, newVar, l, s)) : nameEnv h}
 
 extend' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle
 extend' h m newVar k = do
-  extend h m newVar (currentLayer h) k
+  extend h m newVar (currentLayer h) (currentStage h) k
 
 extendWithoutInsert :: Handle -> Hint -> Ident -> Handle
 extendWithoutInsert h m newVar = do
-  h {nameEnv = (Ident.toText newVar, (m, newVar, currentLayer h)) : nameEnv h}
+  h {nameEnv = (Ident.toText newVar, (m, newVar, currentLayer h, currentStage h)) : nameEnv h}
 
 extendByNominalEnv :: Handle -> VarDefKind -> NominalEnv -> IO Handle
 extendByNominalEnv h k newNominalEnv = do
   case newNominalEnv of
     [] ->
       return h
-    (_, (m, x, l)) : rest -> do
-      h' <- extend h m x l k
+    (_, (m, x, l, s)) : rest -> do
+      h' <- extend h m x l s k
       extendByNominalEnv h' k rest

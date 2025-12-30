@@ -43,6 +43,7 @@ import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Util
 import Kernel.Parse.Layer
 import Kernel.Parse.NominalEnv
+import Kernel.Parse.Stage
 import Kernel.Parse.Pattern qualified as PAT
 import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
@@ -190,7 +191,7 @@ discernStmtKind h stmtKind m =
       (dataArgs', h') <- discernBinder' h dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
       (consArgsList', hList) <- mapAndUnzipM (discernBinder' h') consArgsList
-      forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _)) -> do
+      forM_ (concatMap H.nameEnv hList) $ \(_, (_, newVar, _, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h') newVar
       let consNameList' = consNameList
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
@@ -198,7 +199,7 @@ discernStmtKind h stmtKind m =
     SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
       (dataArgs', h') <- discernBinder' h dataArgs
       (expConsArgs', h'') <- discernBinder' h' expConsArgs
-      forM_ (H.nameEnv h'') $ \(_, (_, newVar, _)) -> do
+      forM_ (H.nameEnv h'') $ \(_, (_, newVar, _, _)) -> do
         liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
       return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
 
@@ -246,13 +247,16 @@ discern h term =
           | Just x <- R.readMaybe (T.unpack s) -> do
               hole <- liftIO $ WT.createHole (H.gensymHandle h) m []
               return $ m :< WT.Prim (WP.Value $ WPV.Float hole x)
-          | Just (mDef, name', layer) <- lookup s (H.nameEnv h) -> do
-              if layer == H.currentLayer h
-                then do
+          | Just (mDef, name', layer, stage) <- lookup s (H.nameEnv h) -> do
+              case (layer == H.currentLayer h, stage == H.currentStage h) of
+                (True, True) -> do
                   liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
                   liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
                   return $ m :< WT.Var name'
-                else raiseLayerError m (H.currentLayer h) layer
+                (False, _) ->
+                  raiseLayerError m (H.currentLayer h) layer
+                (_, False) ->
+                  raiseStageError m (H.currentStage h) stage
         _ -> do
           (dd, (_, gn)) <- resolveName h m name
           interpretGlobalName h m dd gn
@@ -337,7 +341,7 @@ discern h term =
     m :< RT.Data attr dataName es -> do
       es' <- mapM (discern h) es
       let allowedVars = S.unions $ map freeVars es'
-      let nameEnv' = filter (\(_, (_, x, _)) -> S.member x allowedVars) (H.nameEnv h)
+      let nameEnv' = filter (\(_, (_, x, _, _)) -> S.member x allowedVars) (H.nameEnv h)
       let hAttr = h {H.nameEnv = nameEnv'}
       attr' <- discernAttrData hAttr attr
       return $ m :< WT.Data attr' dataName es'
@@ -345,7 +349,7 @@ discern h term =
       dataArgs' <- mapM (discern h) dataArgs
       consArgs' <- mapM (discern h) consArgs
       let allowedVars = S.unions $ map freeVars dataArgs'
-      let nameEnv' = filter (\(_, (_, x, _)) -> S.member x allowedVars) (H.nameEnv h)
+      let nameEnv' = filter (\(_, (_, x, _, _)) -> S.member x allowedVars) (H.nameEnv h)
       let hAttr = h {H.nameEnv = nameEnv'}
       attr' <- discernAttrDataIntro hAttr attr
       return $ m :< WT.DataIntro attr' consName dataArgs' consArgs'
@@ -370,8 +374,9 @@ discern h term =
       xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx h x
       xets <- liftIO $ discernNoeticVarList h True xsOuter
       let innerLayer = H.currentLayer h - 1
+      let innerStage = H.currentStage h
       let xsInner = map (\((mx, x, _), _) -> (mx, x)) xets
-      let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer))) xsInner
+      let innerAddition = map (\(mx, x) -> (Ident.toText x, (mx, x, innerLayer, innerStage))) xsInner
       hInner <- liftIO $ H.extendByNominalEnv (h {H.currentLayer = innerLayer}) VDK.Borrowed innerAddition
       body' <- discern hInner body
       return $ m :< WT.BoxIntro xets body'
@@ -393,14 +398,15 @@ discern h term =
       ysOuter <- forM (SE.extract mys) $ \(my, y) -> discernIdent my h y
       yetsInner <- liftIO $ discernNoeticVarList h True ysOuter
       let innerLayer = H.currentLayer h + layerOffset nv
+      let innerStage = H.currentStage h
       let ysInner = map (\((myUse, y, myDef :< _), _) -> (myDef, (myUse, y))) yetsInner
-      let innerAddition = map (\(_, (myUse, y)) -> (Ident.toText y, (myUse, y, innerLayer))) ysInner
+      let innerAddition = map (\(_, (myUse, y)) -> (Ident.toText y, (myUse, y, innerLayer, innerStage))) ysInner
       hInner <- liftIO $ H.extendByNominalEnv (h {H.currentLayer = innerLayer}) VDK.Borrowed innerAddition
       e1' <- discern hInner e1
       -- cont
       yetsCont <- liftIO $ discernNoeticVarList h False ysInner
       let ysCont = map (\((myUse, y, _), _) -> (myUse, y)) yetsCont
-      let contAddition = map (\(myUse, y) -> (Ident.toText y, (myUse, y, H.currentLayer h))) ysCont
+      let contAddition = map (\(myUse, y) -> (Ident.toText y, (myUse, y, H.currentLayer h, H.currentStage h))) ysCont
       hCont <- liftIO $ H.extendByNominalEnv h VDK.Relayed contAddition
       (mxt', e2'') <- discernBinderWithBody' hCont mxt startLoc endLoc e2'
       when mustIgnoreRelayedVars $ do
@@ -410,10 +416,14 @@ discern h term =
       t' <- discern h t
       return $ m :< WT.Code t'
     m :< RT.CodeIntro _ _ (body, _) -> do
-      body' <- discern h body
+      let innerStage = H.currentStage h - 1
+      let hInner = h {H.currentStage = innerStage}
+      body' <- discern hInner body
       return $ m :< WT.CodeIntro body'
     m :< RT.CodeElim _ _ (body, _) -> do
-      body' <- discern h body
+      let innerStage = H.currentStage h + 1
+      let hInner = h {H.currentStage = innerStage}
+      body' <- discern hInner body
       return $ m :< WT.CodeElim body'
     m :< RT.Embody e -> do
       embodyVar <- liftEither $ locatorToVarGlobal m coreBoxEmbody
@@ -863,9 +873,12 @@ discernIdent mUse h x =
   case lookup x (H.nameEnv h) of
     Nothing ->
       raiseError mUse $ "Undefined variable: " <> x
-    Just (mDef, x', _) -> do
-      liftIO $ Unused.deleteVariable (H.unusedHandle h) x'
-      return (mDef, (mUse, x'))
+    Just (mDef, x', _, stage) -> do
+      if stage == H.currentStage h
+        then do
+          liftIO $ Unused.deleteVariable (H.unusedHandle h) x'
+          return (mDef, (mUse, x'))
+        else raiseStageError mUse (H.currentStage h) stage
 
 discernBinder ::
   H.Handle ->
@@ -997,7 +1010,7 @@ discernPatternRow' h patList newVarList body = do
       body' <- discern h' body
       return ([], ([], [], body'))
     pat : rest -> do
-      (pat', varsInPat) <- discernPattern h (H.currentLayer h) pat
+      (pat', varsInPat) <- discernPattern h (H.currentLayer h) (H.currentStage h) pat
       (rest', body') <- discernPatternRow' h rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
 
@@ -1016,7 +1029,7 @@ getNonLinearOccurrences vars found nonLinear =
           "the pattern variable `"
             <> x
             <> "` is used non-linearly"
-    (from, (m, _, _)) : rest
+    (from, (m, _, _, _)) : rest
       | S.member from found ->
           getNonLinearOccurrences rest found ((m, from) : nonLinear)
       | otherwise ->
@@ -1025,9 +1038,10 @@ getNonLinearOccurrences vars found nonLinear =
 discernPattern ::
   H.Handle ->
   Layer ->
+  Stage ->
   (Hint, RP.RawPattern) ->
   App ((Hint, PAT.Pattern), NominalEnv)
-discernPattern h layer (m, pat) = do
+discernPattern h layer stage (m, pat) = do
   case pat of
     RP.Var name -> do
       case name of
@@ -1044,7 +1058,7 @@ discernPattern h layer (m, pat) = do
               return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
           | otherwise -> do
               x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-              return ((m, PAT.Var x'), [(x, (m, x', layer))])
+              return ((m, PAT.Var x'), [(x, (m, x', layer, stage))])
         Locator l -> do
           (dd, gn) <- resolveName h m $ Locator l
           case gn of
@@ -1071,7 +1085,7 @@ discernPattern h layer (m, pat) = do
           "The constructor `" <> showName cons <> "` cannot have any arguments"
       case mArgs of
         RP.Paren args -> do
-          (args', hList) <- mapAndUnzipM (discernPattern h layer) $ SE.extract args
+          (args', hList) <- mapAndUnzipM (discernPattern h layer stage) $ SE.extract args
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -1092,7 +1106,7 @@ discernPattern h layer (m, pat) = do
           let kvs' = Map.union specifiedKeyMap defaultKeyMap
           expArgs <- resolveExpKeys h m expKeys kvs'
           checkRedundancy m [] expKeys kvs'
-          (patList', hList) <- mapAndUnzipM (discernPattern h layer) expArgs
+          (patList', hList) <- mapAndUnzipM (discernPattern h layer stage) expArgs
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -1126,7 +1140,7 @@ getLayer m h x =
   case lookup (Ident.toText x) (H.nameEnv h) of
     Nothing ->
       raiseCritical m $ "Scene.Parse.Discern.getLayer: Undefined variable: " <> Ident.toText x
-    Just (_, _, l) -> do
+    Just (_, _, l, _) -> do
       return l
 
 findExternalVariable :: Hint -> H.Handle -> WT.WeakTerm -> App (Maybe (Ident, Layer))
@@ -1159,6 +1173,14 @@ raiseLayerError m expected found = do
     "Expected layer:\n  "
       <> T.pack (show expected)
       <> "\nFound layer:\n  "
+      <> T.pack (show found)
+
+raiseStageError :: Hint -> Stage -> Stage -> App a
+raiseStageError m expected found = do
+  raiseError m $
+    "Expected stage:\n  "
+      <> T.pack (show expected)
+      <> "\nFound stage:\n  "
       <> T.pack (show found)
 
 asOpaqueValue :: RT.RawTerm -> RT.RawTerm
