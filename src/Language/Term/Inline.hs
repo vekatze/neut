@@ -171,7 +171,7 @@ inline' h term = do
                         Just selfTerm ->
                           return selfTerm
                         Nothing -> do
-                          selfIdent <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) "knot"
+                          selfIdent <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
                           let (_, xs, _) = unzip3 xts
                           let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
                           _ :< codType' <- liftIO $ Subst.subst (substHandle h) sub codType
@@ -282,7 +282,7 @@ inline' h term = do
               return term
             PV.Rune {} ->
               return term
-    (m :< TM.Magic magic) -> do
+    m :< TM.Magic magic -> do
       case magic of
         M.LowMagic lowMagic ->
           case lowMagic of
@@ -411,7 +411,7 @@ evaluateGetConstructorArgTypes _h m sgl typeExpr indexExpr = do
           let types = map (\(_, _, t) -> t) binders
           return $ constructListTerm m sgl types
     (_ :< TM.Data {}, _) ->
-      raiseError m "get-constructor-arg-types: index must be an integer literal"
+      raiseError m $ "get-constructor-arg-types: index must be an integer literal, but got: " <> toText (weaken indexExpr)
     _ ->
       raiseError m "get-constructor-arg-types: type expression must be a data type"
 
