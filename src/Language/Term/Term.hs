@@ -49,6 +49,9 @@ data TermF a
   | BoxNoema a
   | BoxIntro [(BinderF a, a)] a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
+  | Code a
+  | CodeIntro a
+  | CodeElim a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
   | Magic (Magic BaseLowType a)
@@ -93,6 +96,8 @@ isValue term =
     _ :< Box {} ->
       True
     _ :< BoxNoema {} ->
+      True
+    _ :< Code {} ->
       True
     _ :< Prim {} ->
       True

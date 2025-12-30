@@ -112,6 +112,15 @@ eq (_ :< term1) (_ :< term2)
       let b2 = all (uncurry eq) $ zip es1 es2
       let b3 = eq e1 e2
       b1 && b2 && b3
+  | WT.Code t1 <- term1,
+    WT.Code t2 <- term2 =
+      eq t1 t2
+  | WT.CodeIntro e1 <- term1,
+    WT.CodeIntro e2 <- term2 =
+      eq e1 e2
+  | WT.CodeElim e1 <- term1,
+    WT.CodeElim e2 <- term2 =
+      eq e1 e2
   | WT.Actual e1 <- term1,
     WT.Actual e2 <- term2 = do
       eq e1 e2

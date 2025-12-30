@@ -51,6 +51,12 @@ eqTerm (_ :< term1) (_ :< term2) =
         && eqTerm e1 e2
         && eqTermLetSeq uncastSeq1 uncastSeq2
         && eqTerm e1' e2'
+    (TM.Code t1, TM.Code t2) ->
+      eqTerm t1 t2
+    (TM.CodeIntro e1, TM.CodeIntro e2) ->
+      eqTerm e1 e2
+    (TM.CodeElim e1, TM.CodeElim e2) ->
+      eqTerm e1 e2
     (TM.Let opacity1 _ e1 e1', TM.Let opacity2 _ e2 e2') ->
       opacity1 == opacity2 && eqTerm e1 e2 && eqTerm e1' e2'
     (TM.Prim prim1, TM.Prim prim2) -> eqTermPrim prim1 prim2

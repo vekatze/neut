@@ -118,6 +118,15 @@ subst h sub term =
       (uncastSeq', sub3) <- substLetSeq h sub2 uncastSeq
       e2' <- subst h sub3 e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    m :< TM.Code t -> do
+      t' <- subst h sub t
+      return $ m :< TM.Code t'
+    m :< TM.CodeIntro e -> do
+      e' <- subst h sub e
+      return $ m :< TM.CodeIntro e'
+    m :< TM.CodeElim e -> do
+      e' <- subst h sub e
+      return $ m :< TM.CodeElim e'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- subst h sub e1
       ([mxt'], e2') <- subst' h sub [mxt] e2

@@ -268,6 +268,18 @@ infer h term =
       uncastSeq' <- inferQuoteSeq h uncastSeq FromNoema
       (e2', t2) <- infer h e2
       return (m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2', t2)
+    m :< WT.Code t -> do
+      t' <- inferType h t
+      return (m :< WT.Code t', m :< WT.Tau)
+    m :< WT.CodeIntro e -> do
+      (e', t) <- infer h e
+      return (m :< WT.CodeIntro e', m :< WT.Code t)
+    m :< WT.CodeElim e -> do
+      (e', t1) <- infer h e
+      let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) (varEnv h)
+      tInner <- liftIO $ WT.createHole (gensymHandle h) m holeArgs
+      liftIO $ Constraint.insert (constraintHandle h) (m :< WT.Code tInner) t1
+      return (m :< WT.CodeElim e', tInner)
     _ :< WT.Actual e -> do
       (e', t') <- infer h e
       liftIO $ Constraint.insertActualityConstraint (constraintHandle h) t'

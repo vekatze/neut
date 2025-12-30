@@ -196,6 +196,15 @@ reduce' h term = do
       es' <- mapM (reduce' h) es
       e' <- reduce' h e
       return $ m :< WT.BoxIntro (zip xts' es') e'
+    m :< WT.Code t -> do
+      t' <- reduce' h t
+      return $ m :< WT.Code t'
+    m :< WT.CodeIntro e -> do
+      e' <- reduce' h e
+      return $ m :< WT.CodeIntro e'
+    m :< WT.CodeElim e -> do
+      e' <- reduce' h e
+      return $ m :< WT.CodeElim e'
     m :< WT.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- reduce' h e1
       case opacity of

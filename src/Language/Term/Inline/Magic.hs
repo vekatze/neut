@@ -54,6 +54,8 @@ evaluateGetTypeTag m moduleID typeTagExpr typeExpr = do
       returnTypeTagIntValue m moduleID TypeTag.Noema
     _ :< TM.Box _ ->
       returnTypeTagIntValue m moduleID TypeTag.Opaque
+    _ :< TM.Code _ ->
+      returnTypeTagIntValue m moduleID TypeTag.Opaque
     _ :< TM.Prim (P.Type (PT.Int size)) ->
       returnTypeTagIntValue m moduleID (TypeTag.fromIntSize size)
     _ :< TM.Prim (P.Type (PT.Float size)) ->

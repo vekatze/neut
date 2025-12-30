@@ -312,6 +312,15 @@ elaborate' h term =
       uncastSeq' <- mapM (elaborateLet h) uncastSeq
       e2' <- elaborate' h e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    m :< WT.Code t -> do
+      t' <- elaborate' h t
+      return $ m :< TM.Code t'
+    m :< WT.CodeIntro e -> do
+      e' <- elaborate' h e
+      return $ m :< TM.CodeIntro e'
+    m :< WT.CodeElim e -> do
+      e' <- elaborate' h e
+      return $ m :< TM.CodeElim e'
     _ :< WT.Actual e -> do
       elaborate' h e
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do

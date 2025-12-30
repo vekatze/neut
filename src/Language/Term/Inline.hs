@@ -254,6 +254,15 @@ inline' h term = do
       e2' <- inline' h e2
       uncastSeq' <- mapM (bimapM (inlineBinder h) (inline' h)) uncastSeq
       return $ m :< TM.BoxElim castSeq' mxt e1' uncastSeq' e2'
+    m :< TM.Code t -> do
+      t' <- inline' h t
+      return $ m :< TM.Code t'
+    m :< TM.CodeIntro e -> do
+      e' <- inline' h e
+      return $ m :< TM.CodeIntro e'
+    m :< TM.CodeElim e -> do
+      e' <- inline' h e
+      return $ m :< TM.CodeElim e'
     m :< TM.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- inline' h e1
       case opacity of

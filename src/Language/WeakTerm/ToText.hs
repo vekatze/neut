@@ -106,6 +106,12 @@ toText term =
         <> toText e1
         <> "; "
         <> toText e2
+    _ :< WT.Code t ->
+      "code " <> toText t
+    _ :< WT.CodeIntro e ->
+      "code-intro " <> inBrace (toText e)
+    _ :< WT.CodeElim e ->
+      "code-elim " <> inBrace (toText e)
     _ :< WT.Actual e ->
       "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do

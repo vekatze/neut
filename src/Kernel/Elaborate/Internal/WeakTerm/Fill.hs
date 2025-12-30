@@ -105,6 +105,15 @@ fill h holeSubst term =
       uncastSeq' <- fillLetSeq h holeSubst uncastSeq
       e2' <- fill h holeSubst e2
       return $ m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    m :< WT.Code t -> do
+      t' <- fill h holeSubst t
+      return $ m :< WT.Code t'
+    m :< WT.CodeIntro e -> do
+      e' <- fill h holeSubst e
+      return $ m :< WT.CodeIntro e'
+    m :< WT.CodeElim e -> do
+      e' <- fill h holeSubst e
+      return $ m :< WT.CodeElim e'
     m :< WT.Actual e -> do
       e' <- fill h holeSubst e
       return $ m :< WT.Actual e'

@@ -63,6 +63,12 @@ compress term =
       let uncastSeq' = map compressLet uncastSeq
       let e2' = compress e2
       () :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    _ :< TM.Code t ->
+      () :< TM.Code (compress t)
+    _ :< TM.CodeIntro e ->
+      () :< TM.CodeIntro (compress e)
+    _ :< TM.CodeElim e ->
+      () :< TM.CodeElim (compress e)
     _ :< TM.Let opacity mxt e1 e2 ->
       () :< TM.Let opacity (compressBinder mxt) (compress e1) (compress e2)
     _ :< TM.Prim prim ->

@@ -192,6 +192,12 @@ analyze h term = do
       (cs, h') <- analyzeLet h $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       cs' <- analyze h' e2
       return $ cs ++ cs'
+    _ :< TM.Code t -> do
+      analyze h t
+    _ :< TM.CodeIntro e -> do
+      analyze h e
+    _ :< TM.CodeElim e -> do
+      analyze h e
     _ :< TM.Let _ mxt e1 e2 -> do
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2

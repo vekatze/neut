@@ -93,6 +93,15 @@ refresh h term =
       uncastSeq' <- mapM (refreshLet h) uncastSeq
       e2' <- refresh h e2
       return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    m :< TM.Code t -> do
+      t' <- refresh h t
+      return $ m :< TM.Code t'
+    m :< TM.CodeIntro e -> do
+      e' <- refresh h e
+      return $ m :< TM.CodeIntro e'
+    m :< TM.CodeElim e -> do
+      e' <- refresh h e
+      return $ m :< TM.CodeElim e'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- refresh h e1
       ([mxt'], e2') <- refresh' h [mxt] e2

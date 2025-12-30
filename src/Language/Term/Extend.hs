@@ -70,6 +70,12 @@ extend term =
       let uncastSeq' = map extendLet uncastSeq
       let e2' = extend e2
       _m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    _ :< TM.Code t ->
+      _m :< TM.Code (extend t)
+    _ :< TM.CodeIntro e ->
+      _m :< TM.CodeIntro (extend e)
+    _ :< TM.CodeElim e ->
+      _m :< TM.CodeElim (extend e)
     _ :< TM.Let opacity mxt e1 e2 ->
       _m :< TM.Let opacity (extendBinder mxt) (extend e1) (extend e2)
     _ :< TM.Prim prim ->

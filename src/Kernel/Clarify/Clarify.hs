@@ -312,6 +312,16 @@ clarifyTerm h tenv term =
       clarifyTerm h tenv $
         TM.fromLetSeqOpaque castSeq $
           TM.fromLetSeq ((mxt, e1) : uncastSeq) e2
+    _ :< TM.Code {} -> do
+      return Sigma.returnClosureS4
+    _ :< TM.CodeIntro e -> do
+      let fvs = TM.chainOf tenv [e]
+      lamID <- liftIO $ Gensym.newCount (gensymHandle h)
+      e' <- clarifyTerm h tenv e
+      returnClosure h tenv lamID (Just "code") O.Clear fvs [] e'
+    _ :< TM.CodeElim e -> do
+      e' <- clarifyTerm h tenv e
+      liftIO $ callClosure h False e' []
     _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e2' <- clarifyTerm h (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder h tenv [mxt]

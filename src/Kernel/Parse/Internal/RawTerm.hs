@@ -113,10 +113,16 @@ rawTerm' h m headSymbol c = do
       rawTermPiIntro h m c
     "meta" -> do
       rawTermBox h m c
+    "code" -> do
+      rawTermCode h m c
     "box" -> do
       rawTermBoxIntro h m c
     "quote" -> do
       rawTermBoxIntroQuote h m c
+    "code-intro" -> do
+      rawTermCodeIntro h m c
+    "code-elim" -> do
+      rawTermCodeElim h m c
     "assert" -> do
       rawTermAssert h m c
     "detach" -> do
@@ -689,6 +695,11 @@ rawTermBox h m c1 = do
   (t, c) <- rawTerm h
   return (m :< RT.Box t, c1 ++ c)
 
+rawTermCode :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermCode h m c1 = do
+  (t, c) <- rawTerm h
+  return (m :< RT.Code t, c1 ++ c)
+
 rawTermBoxIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermBoxIntro h m c1 = do
   vs <- bareSeries Nothing SE.Comma $ rawTermNoeticVar h
@@ -699,6 +710,16 @@ rawTermBoxIntroQuote :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermBoxIntroQuote h m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.BoxIntroQuote c1 c2 e, c)
+
+rawTermCodeIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermCodeIntro h m c1 = do
+  (c2, (e, c)) <- betweenBrace $ rawExpr h
+  return (m :< RT.CodeIntro c1 c2 e, c)
+
+rawTermCodeElim :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermCodeElim h m c1 = do
+  (c2, (e, c)) <- betweenBrace $ rawExpr h
+  return (m :< RT.CodeElim c1 c2 e, c)
 
 rawTermBoxNoema :: Handle -> Parser (RT.RawTerm, C)
 rawTermBoxNoema h = do

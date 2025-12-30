@@ -212,6 +212,12 @@ simplify h susList constraintList =
                   cs' <- liftIO $ simplifyBinder h orig xts1 xts2
                   let cs'' = map (orig,) $ zipWith C.Eq es1 es2
                   simplify h susList $ (C.Eq e1 e2, orig) : cs' ++ cs'' ++ cs
+            (_ :< WT.Code t1, _ :< WT.Code t2) ->
+              simplify h susList $ (C.Eq t1 t2, orig) : cs
+            (_ :< WT.CodeIntro e1, _ :< WT.CodeIntro e2) ->
+              simplify h susList $ (C.Eq e1 e2, orig) : cs
+            (_ :< WT.CodeElim e1, _ :< WT.CodeElim e2) ->
+              simplify h susList $ (C.Eq e1 e2, orig) : cs
             (_ :< WT.Annotation _ _ e1, e2) ->
               simplify h susList $ (C.Eq e1 e2, orig) : cs
             (e1, _ :< WT.Annotation _ _ e2) ->

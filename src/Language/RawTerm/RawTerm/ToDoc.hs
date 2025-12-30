@@ -119,6 +119,21 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc cont
         ]
+    _ :< Code t -> do
+      PI.arrange
+        [ PI.horizontal $ D.text "code",
+          PI.inject $ toDoc t
+        ]
+    m :< CodeIntro c1 c2 (e, c3) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "code-intro",
+          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        ]
+    m :< CodeElim c1 c2 (e, c3) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "code-elim",
+          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        ]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
     _ :< Let letKind c1 mxt c2 c3 e c4 _ c5 cont _ -> do

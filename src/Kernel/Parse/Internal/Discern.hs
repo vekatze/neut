@@ -406,6 +406,15 @@ discern h term =
       when mustIgnoreRelayedVars $ do
         forM_ ysCont $ \(_, y) -> liftIO (Unused.deleteVariable (H.unusedHandle h) y)
       return $ m :< WT.BoxElim yetsInner mxt' e1' yetsCont e2''
+    m :< RT.Code t -> do
+      t' <- discern h t
+      return $ m :< WT.Code t'
+    m :< RT.CodeIntro _ _ (body, _) -> do
+      body' <- discern h body
+      return $ m :< WT.CodeIntro body'
+    m :< RT.CodeElim _ _ (body, _) -> do
+      body' <- discern h body
+      return $ m :< WT.CodeElim body'
     m :< RT.Embody e -> do
       embodyVar <- liftEither $ locatorToVarGlobal m coreBoxEmbody
       discern h $ m :< RT.piElim embodyVar [e]

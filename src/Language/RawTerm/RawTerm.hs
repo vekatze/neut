@@ -77,6 +77,9 @@ data RawTermF a
   | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
   | BoxIntroQuote C C (a, C)
   | BoxElim NecessityVariant Bool C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | Code a
+  | CodeIntro C C (a, C)
+  | CodeElim C C (a, C)
   | Embody a
   | Let LetKind C (PatParam a) C C a C Loc C a Loc
   | LetOn LetKind C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc

@@ -77,6 +77,12 @@ ensureTemplateResolved h m term =
         ensureTemplateResolvedInBinder h binder
         ensureTemplateResolved h m term'
       ensureTemplateResolved h m e2
+    _ :< TM.Code t ->
+      ensureTemplateResolved h m t
+    _ :< TM.CodeIntro e ->
+      ensureTemplateResolved h m e
+    _ :< TM.CodeElim e ->
+      ensureTemplateResolved h m e
     _ :< TM.Let _ (_, _, t) e1 e2 -> do
       ensureTemplateResolved h m t
       ensureTemplateResolved h m e1

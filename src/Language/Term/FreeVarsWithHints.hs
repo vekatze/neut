@@ -57,6 +57,12 @@ freeVarsWithHints term =
     _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       let (xts, es) = unzip $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       freeVarsWithHints' xts (S.unions $ map freeVarsWithHints $ es ++ [e2])
+    _ :< TM.Code t ->
+      freeVarsWithHints t
+    _ :< TM.CodeIntro e ->
+      freeVarsWithHints e
+    _ :< TM.CodeElim e ->
+      freeVarsWithHints e
     _ :< TM.Let _ mxt e1 e2 -> do
       let set1 = freeVarsWithHints e1
       let set2 = freeVarsWithHints' [mxt] (freeVarsWithHints e2)

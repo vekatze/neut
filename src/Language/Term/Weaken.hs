@@ -95,6 +95,12 @@ weaken term =
       let uncastSeq' = map weakenLet uncastSeq
       let e2' = weaken e2
       m :< WT.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    m :< TM.Code t ->
+      m :< WT.Code (weaken t)
+    m :< TM.CodeIntro e ->
+      m :< WT.CodeIntro (weaken e)
+    m :< TM.CodeElim e ->
+      m :< WT.CodeElim (weaken e)
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
