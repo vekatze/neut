@@ -34,6 +34,7 @@ import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.LamKind qualified as LK
+import Language.Common.Literal qualified as L
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
@@ -227,6 +228,12 @@ inline' h term = do
                   let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
                   dataElim' <- liftIO $ Subst.subst (substHandle h) sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
                   inline' h dataElim'
+                Just (e, oets'')
+                  | Just literal <- asLiteralTerm e -> do
+                      let cont = findLiteralClause literal fallbackTree caseList
+                      let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
+                      dataElim' <- liftIO $ Subst.subst (substHandle h) sub $ m :< TM.DataElim isNoetic oets'' cont
+                      inline' h dataElim'
                 _ -> do
                   decisionTree' <- inlineDecisionTree h decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -527,6 +534,33 @@ findClause consDisc fallbackTree clauseList =
           (consArgs, clauseTree)
         Nothing ->
           findClause consDisc fallbackTree rest
+
+findLiteralClause ::
+  L.Literal ->
+  DT.DecisionTree TM.Term ->
+  [DT.Case TM.Term] ->
+  DT.DecisionTree TM.Term
+findLiteralClause literal fallbackTree clauseList =
+  case clauseList of
+    [] ->
+      fallbackTree
+    clause : rest ->
+      case clause of
+        DT.LiteralCase _ literal' cont
+          | literal == literal' ->
+              cont
+        _ ->
+          findLiteralClause literal fallbackTree rest
+
+asLiteralTerm :: TM.Term -> Maybe L.Literal
+asLiteralTerm term =
+  case term of
+    _ :< TM.Prim (P.Value (PV.Int _ _ value)) ->
+      Just (L.Int value)
+    _ :< TM.Prim (P.Value (PV.Rune rune)) ->
+      Just (L.Rune rune)
+    _ ->
+      Nothing
 
 lookupSplit :: Ident -> [(Ident, b, c)] -> Maybe (b, [(Ident, b, c)])
 lookupSplit cursor =
