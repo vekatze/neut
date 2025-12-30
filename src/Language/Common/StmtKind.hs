@@ -3,6 +3,7 @@ module Language.Common.StmtKind
     StmtKind,
     toOpacity,
     toLowOpacity,
+    isInlineStmtKind,
   )
 where
 
@@ -61,3 +62,15 @@ toLowOpacity stmtKind =
       O.Opaque
     DataIntro {} ->
       O.Clear
+
+isInlineStmtKind :: BaseStmtKind name binder t -> Bool
+isInlineStmtKind stmtKind =
+  case stmtKind of
+    Normal opacity ->
+      opacity == O.Clear
+    Main opacity _ ->
+      opacity == O.Clear
+    Template ->
+      True
+    _ ->
+      False

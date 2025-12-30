@@ -75,6 +75,9 @@ inferStmt h stmt =
       (impArgs', h') <- inferImpBinder h impArgs
       (expArgs', h'') <- inferBinder' h' expArgs
       codType' <- inferType h'' codType
+      when (SK.isInlineStmtKind stmtKind) $
+        forM_ (map fst impArgs') $ \(mx, _, t) ->
+          checkIsTypeType h'' mx t
       case stmtKind of
         SK.Template -> do
           forM_ (map fst impArgs') $ \(mx, _, t) ->
