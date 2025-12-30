@@ -52,7 +52,7 @@ inline attr-lam-sero<m, a>(!sm: sero(m), a-sero: sero(a)): sero(attr-lam(m, a)) 
         try i = get-int64(k);
         Right(box {
           letbox lam-kind = lam-kind;
-          letbox i = quote {i};
+          letbox i = lift {i};
           Attr-Lam(lam-kind, i)
         })
       }

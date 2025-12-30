@@ -21,8 +21,8 @@ define insert(k: &optimizable-data-kit, dd: definite-description, od: optimizabl
   core.cell.mutate(ref, function (dict) {
     box {
       letbox dict = dict;
-      letbox dd = quote {dd};
-      letbox od = quote {od};
+      letbox dd = lift {dd};
+      letbox od = lift {od};
       core.dictionary.make-insert(ord-dd)(dict, dd, od)
     }
   })
@@ -33,9 +33,9 @@ define lookup(k: &optimizable-data-kit, dd: &definite-description): ?optimizable
   core.cell.borrow(ref, function (dict) {
     match core.dictionary.make-lookup(ord-dd)(dict, dd) {
     | Left(_) =>
-      quote {none}
+      lift {none}
     | Right(v) =>
-      quote {Right(*v)}
+      lift {Right(*v)}
     }
   })
 }

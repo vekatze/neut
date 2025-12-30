@@ -256,10 +256,10 @@ infer h term =
       letSeq' <- inferQuoteSeq h letSeq FromNoema
       (e', t) <- infer h e
       return (m :< WT.BoxIntro letSeq' e', m :< WT.Box t)
-    m :< WT.BoxIntroQuote e -> do
+    m :< WT.BoxIntroLift e -> do
       (e', t) <- infer h e
       liftIO $ Constraint.insertActualityConstraint (constraintHandle h) t
-      return (m :< WT.BoxIntroQuote e', m :< WT.Box t)
+      return (m :< WT.BoxIntroLift e', m :< WT.Box t)
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- inferQuoteSeq h castSeq ToNoema
       (e1', t1) <- infer h e1

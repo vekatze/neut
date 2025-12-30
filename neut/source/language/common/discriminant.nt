@@ -28,7 +28,7 @@ inline discriminant-sero: sero(discriminant) {
     get := {
       function (k) {
         try x = get-int64(k);
-        Right(quote {Discriminant(x)})
+        Right(lift {Discriminant(x)})
       }
     },
   }

@@ -124,7 +124,7 @@ inline int-size-sero: sero(int-size) {
         try v = get(k);
         match int-size-from-int(data-size-max, axiom-T(v)) {
         | Right(s) =>
-          Right(quote {s})
+          Right(lift {s})
         | Left(_) =>
           none
         }
@@ -148,7 +148,7 @@ inline float-size-sero: sero(float-size) {
         try v = get(k);
         match float-size-from-int(data-size-max, axiom-T(v)) {
         | Right(s) =>
-          Right(quote {s})
+          Right(lift {s})
         | Left(_) =>
           none
         }

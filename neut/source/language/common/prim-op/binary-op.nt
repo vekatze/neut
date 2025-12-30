@@ -125,7 +125,7 @@ inline binary-op-sero: sero(binary-op) {
       function (k) {
         try tag = get-int64(k);
         if and(le-int(0, tag), le-int(tag, 17)) {
-          Right(quote {magic cast(int, binary-op, tag)})
+          Right(lift {magic cast(int, binary-op, tag)})
         } else {
           none
         }

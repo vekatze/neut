@@ -40,15 +40,15 @@ inline prim-type-sero: sero(prim-type) {
         | 0 =>
           let Sero of {get} = int-size-sero;
           try v = get(k);
-          Right(quote {Int(axiom-T(v))})
+          Right(lift {Int(axiom-T(v))})
         | 1 =>
           let Sero of {get} = float-size-sero;
           try v = get(k);
-          Right(quote {Float(axiom-T(v))})
+          Right(lift {Float(axiom-T(v))})
         | 2 =>
-          Right(quote {Rune})
+          Right(lift {Rune})
         | 3 =>
-          Right(quote {Pointer})
+          Right(lift {Pointer})
         | _ =>
           none
         }

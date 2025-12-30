@@ -21,7 +21,7 @@ inline _unit-sero: sero(unit) {
     },
     get := {
       function (_) {
-        Right(quote {Unit})
+        Right(lift {Unit})
       }
     },
   }

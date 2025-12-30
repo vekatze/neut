@@ -58,8 +58,8 @@ define insert-to-module-cache-map(k: &module-kit, path: &text, m: module): unit 
   mutate(cache-map-cell, function (dict) {
     box {
       letbox dict = dict;
-      letbox path = quote {*path};
-      letbox m = quote {m};
+      letbox path = lift {*path};
+      letbox m = lift {m};
       let insert = make-insert(core.text.ord.as-ord);
       insert(dict, path, m)
     }

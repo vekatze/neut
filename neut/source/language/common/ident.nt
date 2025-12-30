@@ -64,8 +64,8 @@ inline ident-sero: sero(ident) {
         try t = get-text(k);
         try i = get-int64(k);
         Right(box {
-          letbox t = quote {t};
-          letbox i = quote {i};
+          letbox t = lift {t};
+          letbox i = lift {i};
           I(t, i)
         })
       }

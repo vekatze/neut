@@ -13,22 +13,22 @@ data hint {
   )
 }
 
-define quote-hint(m: hint): meta hint {
+define lift-hint(m: hint): meta hint {
   match m {
   | Hint(path, line, column, should-save-location) =>
     box {
       letbox path = box path {path};
-      letbox line = quote {line};
-      letbox column = quote {column};
-      letbox should-save-location = quote {should-save-location};
+      letbox line = lift {line};
+      letbox column = lift {column};
+      letbox should-save-location = lift {should-save-location};
       Saved-Hint(path, line, column, should-save-location)
     }
   | Saved-Hint(a, b, c, d) =>
     box {
-      letbox a = quote {a};
-      letbox b = quote {b};
-      letbox c = quote {c};
-      letbox d = quote {d};
+      letbox a = lift {a};
+      letbox b = lift {b};
+      letbox c = lift {c};
+      letbox d = lift {d};
       Saved-Hint(a, b, c, d)
     }
   }

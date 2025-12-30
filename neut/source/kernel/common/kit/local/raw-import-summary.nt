@@ -19,7 +19,7 @@ define set(k: &raw-import-summary-kit, ri: raw-import): unit {
   tie _Raw-Import-Summary-Kit(ref) = k;
   mutate(ref, function (_) {
     box {
-      letbox ri = quote {ri};
+      letbox ri = lift {ri};
       Right(from-raw-import(ri))
     }
   })

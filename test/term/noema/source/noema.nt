@@ -176,7 +176,7 @@ define with-ctx(c: &ctx): unit {
   } else {
     print("loop\n");
     mutate(counter, function (x) {
-      quote {sub-int(axiom-T(x), 1)}
+      lift {sub-int(axiom-T(x), 1)}
     });
     with-ctx(c)
   }
@@ -199,7 +199,7 @@ define test-resource(): unit {
   let _ = t2;
   let _ = t3;
   let _ = t4;
-  let c = Ctx(make-cell(quote {5}));
+  let c = Ctx(make-cell(lift {5}));
   let _ on c = with-ctx(c);
   let _ = c;
   Unit

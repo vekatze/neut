@@ -56,7 +56,7 @@ data WeakTermF a
   | Box a
   | BoxNoema a
   | BoxIntro [(BinderF a, a)] a
-  | BoxIntroQuote a
+  | BoxIntroLift a
   | BoxElim [(BinderF a, a)] (BinderF a) a [(BinderF a, a)] a
   | Code a
   | CodeIntro a

@@ -96,9 +96,9 @@ fill h holeSubst term =
       es' <- mapM (fill h holeSubst) es
       e' <- fill h holeSubst e
       return $ m :< WT.BoxIntro (zip xts' es') e'
-    m :< WT.BoxIntroQuote e -> do
+    m :< WT.BoxIntroLift e -> do
       e' <- fill h holeSubst e
-      return $ m :< WT.BoxIntroQuote e'
+      return $ m :< WT.BoxIntroLift e'
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- fillLetSeq h holeSubst castSeq
       (mxt', e1') <- fillLet h holeSubst (mxt, e1)

@@ -19,7 +19,7 @@ define insert(k: &top-candidate-kit, cand: top-candidate): unit {
   mutate(ref, function (xs) {
     box {
       letbox xs = xs;
-      letbox cand = quote {cand};
+      letbox cand = lift {cand};
       Cons(cand, xs)
     }
   })

@@ -293,7 +293,7 @@ elaborate' h term =
       letSeq' <- mapM (elaborateLet h) letSeq
       e' <- elaborate' h e
       return $ m :< TM.BoxIntro letSeq' e'
-    _ :< WT.BoxIntroQuote e -> do
+    _ :< WT.BoxIntroLift e -> do
       elaborate' h e
     m :< WT.BoxElim castSeq mxt e1 uncastSeq e2 -> do
       castSeq' <- mapM (elaborateLet h) castSeq

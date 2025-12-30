@@ -35,7 +35,7 @@ define external-name-sero: sero(external-name) {
     get := {
       function (k: &get-kit) {
         try v = get-text(k);
-        Right(quote {External-Name(v)})
+        Right(lift {External-Name(v)})
       }
     },
   }

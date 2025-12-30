@@ -118,8 +118,8 @@ rawTerm' h m headSymbol c = do
       rawTermCode h m c
     "box" -> do
       rawTermBoxIntro h m c
-    "quote" -> do
-      rawTermBoxIntroQuote h m c
+    "lift" -> do
+      rawTermBoxIntroLift h m c
     "code-intro" -> do
       rawTermCodeIntro h m c
     "code-elim" -> do
@@ -739,10 +739,10 @@ rawTermBoxIntro h m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
   return (m :< RT.BoxIntro c1 c2 vs e, c)
 
-rawTermBoxIntroQuote :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermBoxIntroQuote h m c1 = do
+rawTermBoxIntroLift :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermBoxIntroLift h m c1 = do
   (c2, (e, c)) <- betweenBrace $ rawExpr h
-  return (m :< RT.BoxIntroQuote c1 c2 e, c)
+  return (m :< RT.BoxIntroLift c1 c2 e, c)
 
 rawTermCodeIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermCodeIntro h m c1 = do

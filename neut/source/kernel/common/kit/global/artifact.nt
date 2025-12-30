@@ -23,8 +23,8 @@ define insert(k: &artifact-kit, path: text, t: artifact-time): unit {
   core.cell.mutate(ref, function (dict) {
     box {
       letbox dict = dict;
-      letbox path = quote {path};
-      letbox t = quote {t};
+      letbox path = lift {path};
+      letbox t = lift {t};
       core.dictionary.make-insert(core.text.ord.as-ord)(dict, path, t)
     }
   })

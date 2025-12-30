@@ -25,9 +25,9 @@ define insert(k: &sym-loc-kit, x: ident, start: loc, end: loc): unit {
     mutate(ref, function (t) {
       box {
         letbox t = t;
-        letbox start = quote {start};
-        letbox end = quote {end};
-        letbox x = quote {x};
+        letbox start = lift {start};
+        letbox end = lift {end};
+        letbox x = lift {x};
         this.kernel.common.local-var-tree.insert(start, end, x, t)
       }
     })

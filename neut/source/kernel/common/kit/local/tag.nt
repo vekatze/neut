@@ -44,9 +44,9 @@ define insert-file-loc(k: &tag-kit, m-use: &hint, name-length: int, m-def: meta 
     mutate(ref, function (map) {
       box {
         letbox map = map;
-        letbox l = quote {l};
-        letbox c = quote {c};
-        letbox name-length = quote {name-length};
+        letbox l = lift {l};
+        letbox c = lift {c};
+        letbox name-length = lift {name-length};
         letbox m-def = m-def;
         insert(File-Loc, Pair(l, Pair(c, add-int(c, name-length))), m-def, map)
       }
@@ -62,11 +62,11 @@ define _insert(k: &tag-kit, m-use: &hint, lt: loc-type, name-length: int, m-def:
     mutate(ref, function (map) {
       box {
         letbox map = map;
-        letbox l = quote {l};
-        letbox c = quote {c};
-        letbox name-length = quote {name-length};
+        letbox l = lift {l};
+        letbox c = lift {c};
+        letbox name-length = lift {name-length};
         letbox m-def = m-def;
-        letbox lt = quote {lt};
+        letbox lt = lift {lt};
         insert(lt, Pair(l, Pair(c, add-int(c, name-length))), m-def, map)
       }
     })
@@ -84,7 +84,7 @@ define insert-local-var(k: &tag-kit, m-use: &hint, x: &ident, m-def: meta log-po
 
 define insert-binder<a>(k: &tag-kit, b: &binder-f(hint, a)): unit {
   tie Binder-F(m, x, _) = b;
-  insert-local-var(k, m, x, quote {log-position-from-hint(*m)})
+  insert-local-var(k, m, x, lift {log-position-from-hint(*m)})
 }
 
 define insert-global-var(

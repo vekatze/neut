@@ -33,9 +33,9 @@ inline pi-kind-sero: sero(pi-kind) {
         try tag = get-int64(k);
         try b = get(k);
         if eq-int(tag, 0) {
-          Right(quote {Normal(axiom-T(b))})
+          Right(lift {Normal(axiom-T(b))})
         } else {
-          Right(quote {Data-Intro(axiom-T(b))})
+          Right(lift {Data-Intro(axiom-T(b))})
         }
       }
     },

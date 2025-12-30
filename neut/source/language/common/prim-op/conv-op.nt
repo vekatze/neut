@@ -97,7 +97,7 @@ inline conv-op-sero: sero(conv-op) {
       function (k) {
         try tag = get-int64(k);
         if and(le-int(0, tag), le-int(tag, 8)) {
-          Right(quote {magic cast(int, conv-op, tag)})
+          Right(lift {magic cast(int, conv-op, tag)})
         } else {
           none
         }

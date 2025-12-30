@@ -8,7 +8,7 @@ import {
   sero.sero {Sero, sero},
   this.app.error {error, new-error, new-error'},
   this.language.common.const {ns-sep},
-  this.logger.hint {hint, internal-hint, quote-hint},
+  this.logger.hint {hint, internal-hint, lift-hint},
 }
 
 data base-name {
@@ -62,12 +62,12 @@ define base-name-from-text-meta(m: &hint, name: &text): meta either(error, base-
   match tmp {
   | Cons(b, Nil) =>
     box {
-      letbox b = quote {b};
+      letbox b = lift {b};
       Right(_Base-Name(b))
     }
   | _ =>
     box {
-      letbox m = quote-hint(*m);
+      letbox m = lift-hint(*m);
       letbox name = box name {name};
       let message on name = core.text.append("No dots are allowed here: ", name);
       let _ = name;
@@ -318,7 +318,7 @@ inline base-name-sero: sero(base-name) {
       function (k) {
         try t = get-text(k);
         Right(box {
-          letbox t = quote {t};
+          letbox t = lift {t};
           _Base-Name(t)
         })
       }

@@ -74,7 +74,7 @@ import {
   this.language.common.module-digest {Module-Digest, module-digest},
   this.language.common.module-id {get-library-id},
   this.language.common.source-locator {Source-Locator, source-locator},
-  this.logger.hint {hint, quote-hint},
+  this.logger.hint {hint, lift-hint},
   this.path.ensure-file-existence {ensure-directory-existence, ensure-file-existence},
   this.path.read {read-text-from-path},
   this.syntax-tree.series {Brace, Comma, empty-series, extract-N, series},
@@ -327,7 +327,7 @@ define from-file-path(module-file-path: &text): app(module) {
   pin k = make-zonk-kit(c, *module-file-path);
   try Pair(ens, _) = this.ens.parse.parse-ens(k);
   pin ens = ens;
-  letbox-T !m = quote-hint(get-hint-N(ens));
+  letbox-T !m = lift-hint(get-hint-N(ens));
   pin empty-dict = empty-dict(!m);
   pin empty-list = empty-list(!m);
   try target = {

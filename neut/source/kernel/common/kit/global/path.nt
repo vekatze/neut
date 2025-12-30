@@ -113,7 +113,7 @@ define _register-build-signature(k: &path-kit, clang-option: clang-option): app(
   let !sig on ens-text = hash-and-encode(to-binary(ens-text));
   let _ = ens-text;
   mutate(cache-cell, function (_) {
-    quote {Right(!sig)}
+    lift {Right(!sig)}
   });
   Right(!sig)
 }

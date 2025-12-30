@@ -175,7 +175,7 @@ inline symbol-name-sero: sero(symbol-name) {
         | 0 =>
           try name = get-int64(k);
           try len = get-int64(k);
-          Right(quote {Local(name, len)})
+          Right(lift {Local(name, len)})
         | 1 =>
           let Sero of {get := get-dd} = definite-description-sero;
           let Sero of {get := get-bool} = bool-sero;
@@ -268,7 +268,7 @@ inline dictionary-sero<k, v>(sk: sero(k), sv: sero(v)): sero(dictionary(k, v)) {
           try left = loop(k);
           try right = loop(k);
           Right(box {
-            letbox size = quote {size};
+            letbox size = lift {size};
             letbox key = key;
             letbox value = value;
             letbox left = left;
@@ -305,9 +305,9 @@ inline loc-item-sero: sero(loc-item) {
         try lt = get(k);
         try m = get-log-position(k);
         Right(box {
-          letbox l = quote {l};
-          letbox from = quote {from};
-          letbox to = quote {to};
+          letbox l = lift {l};
+          letbox from = lift {from};
+          letbox to = lift {to};
           letbox lt = lt;
           letbox m = m;
           Loc-Item(l, Pair(from, to), lt, m)

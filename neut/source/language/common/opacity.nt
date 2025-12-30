@@ -37,9 +37,9 @@ define opacity-sero: sero(opacity) {
         try v = get-int64(k);
         match v {
         | 0 =>
-          Right(quote {Opaque})
+          Right(lift {Opaque})
         | 1 =>
-          Right(quote {Clear})
+          Right(lift {Clear})
         | _ =>
           none
         }
