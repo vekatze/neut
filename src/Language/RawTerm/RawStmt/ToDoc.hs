@@ -188,8 +188,6 @@ decStmt stmt =
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         SK.Main O.Clear _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
-        SK.Template ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "template" c (fmap BN.reify def)
         SK.Alias ->
           RT.decodeDef (RT.nameToDoc . N.Var) "alias" c (fmap BN.reify def)
         _ ->

@@ -5,7 +5,6 @@ module Language.Term.Stmt
     StrippedStmt,
     getStmtName,
     getStmtName',
-    isTemplateStmt,
   )
 where
 
@@ -60,11 +59,3 @@ getStmtName' stmt =
       return (m, name)
     StmtForeign _ ->
       Nothing
-
-isTemplateStmt :: Stmt -> Bool
-isTemplateStmt stmt =
-  case stmt of
-    StmtDefine _ SK.Template _ _ _ _ _ _ ->
-      True
-    _ ->
-      False

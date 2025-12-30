@@ -48,7 +48,6 @@ data DefInfo = DefInfo
   { defBinders :: [BinderF TM.Term],
     defBody :: TM.Term,
     codType :: TM.Term,
-    isTemplate :: Bool,
     isInline :: Bool
   }
 
@@ -153,58 +152,38 @@ inline' h term = do
                       inline' h $ bind (zip xts' allArgs) (m :< body')
             (_ :< TM.VarGlobal _ dd)
               | Just defInfo <- Map.lookup dd dmap -> do
-                  let DefInfo {defBinders = xts, defBody = body, codType, isTemplate, isInline} = defInfo
+                  let DefInfo {defBinders = xts, defBody = body, codType, isInline} = defInfo
                   let allArgs = impArgs' ++ expArgs'
-                  if isTemplate
+                  if isInline
                     then do
-                      mSelf <- lookupGuard h dd allArgs
+                      let impArgNum = length impArgs'
+                      let (impBinders, expBinders) = splitAt impArgNum xts
+                      let typeArgs = impArgs'
+                      mSelf <- lookupGuard h dd typeArgs
                       case mSelf of
                         Just selfTerm ->
-                          return selfTerm
+                          return $ m :< TM.PiElim False selfTerm [] expArgs'
                         Nothing -> do
                           selfIdent <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
-                          let (_, xs, _) = unzip3 xts
-                          let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
-                          _ :< codType' <- liftIO $ Subst.subst (substHandle h) sub codType
-                          pushGuard h dd allArgs (m :< TM.PiElim False (m :< TM.Var selfIdent) [] [])
-                          (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
-                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                          body''' <- inline' h $ bind (zip xts' allArgs) body''
+                          let impIds = map (\(_, x, _) -> x) impBinders
+                          let subImp = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
+                          (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subImp expBinders body
+                          codTypeSub <- liftIO $ Subst.subst (substHandle h) subImp codType
+                          let expIdPairs = zip expBinders expBinders'
+                          let subRename =
+                                IntMap.fromList $
+                                  map (\((_, x, _), (_, x', _)) -> (Ident.toInt x, Left x')) expIdPairs
+                          codType' <- liftIO $ Subst.subst (substHandle h) subRename codTypeSub
+                          let selfType = m :< TM.Pi PK.normal [] expBinders' codType'
+                          pushGuard h dd typeArgs (m :< TM.Var selfIdent)
+                          body'' <- liftIO $ Refresh.refresh (refreshHandle h) body'
+                          body''' <- inline' h body''
                           popGuard h
                           identity <- liftIO $ Gensym.newCount (gensymHandle h)
-                          let attr = AttrL.Attr {lamKind = LK.Fix (m, selfIdent, m :< codType'), identity}
-                          return $ m :< TM.PiElim False (m :< TM.PiIntro attr [] [] body''') [] []
-                    else
-                      if isInline
-                        then do
-                          let impArgNum = length impArgs'
-                          let (impBinders, expBinders) = splitAt impArgNum xts
-                          let typeArgs = impArgs'
-                          mSelf <- lookupGuard h dd typeArgs
-                          case mSelf of
-                            Just selfTerm ->
-                              return $ m :< TM.PiElim False selfTerm [] expArgs'
-                            Nothing -> do
-                              selfIdent <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
-                              let impIds = map (\(_, x, _) -> x) impBinders
-                              let subImp = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
-                              (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subImp expBinders body
-                              codTypeSub <- liftIO $ Subst.subst (substHandle h) subImp codType
-                              let expIdPairs = zip expBinders expBinders'
-                              let subRename =
-                                    IntMap.fromList $
-                                      map (\((_, x, _), (_, x', _)) -> (Ident.toInt x, Left x')) expIdPairs
-                              codType' <- liftIO $ Subst.subst (substHandle h) subRename codTypeSub
-                              let selfType = m :< TM.Pi PK.normal [] expBinders' codType'
-                              pushGuard h dd typeArgs (m :< TM.Var selfIdent)
-                              body'' <- liftIO $ Refresh.refresh (refreshHandle h) body'
-                              body''' <- inline' h body''
-                              popGuard h
-                              identity <- liftIO $ Gensym.newCount (gensymHandle h)
-                              let attr = AttrL.Attr {lamKind = LK.Fix (m, selfIdent, selfType), identity}
-                              let fun = m :< TM.PiIntro attr [] expBinders' body'''
-                              let fixVal = m :< TM.PiElim False fun [] []
-                              return $ m :< TM.PiElim False fixVal [] expArgs'
+                          let attr = AttrL.Attr {lamKind = LK.Fix (m, selfIdent, selfType), identity}
+                          let fun = m :< TM.PiIntro attr [] expBinders' body'''
+                          let fixVal = m :< TM.PiElim False fun [] []
+                          return $ m :< TM.PiElim False fixVal [] expArgs'
                     else do
                       if all TM.isValue allArgs
                         then do

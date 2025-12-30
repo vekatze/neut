@@ -226,8 +226,6 @@ weakenStmtKind stmtKind =
       Normal opacity
     Main opacity t ->
       Main opacity (weaken t)
-    Template ->
-      Template
     Alias ->
       Alias
     Data dataName dataArgs consInfoList -> do

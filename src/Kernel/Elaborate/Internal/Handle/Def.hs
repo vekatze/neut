@@ -26,15 +26,14 @@ new = do
   defMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Term] -> TM.Term -> TM.Term -> Bool -> Bool -> IO ()
-insert' h opacity name xts e typ isTemplateFlag isInlineFlag =
+insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Term] -> TM.Term -> TM.Term -> Bool -> IO ()
+insert' h opacity name xts e typ isInlineFlag =
   when (opacity == O.Clear) $ do
     let defInfo =
           Inline.DefInfo
             { Inline.defBinders = xts,
               Inline.defBody = e,
               Inline.codType = typ,
-              Inline.isTemplate = isTemplateFlag,
               Inline.isInline = isInlineFlag
             }
     modifyIORef' (defMapRef h) $
@@ -45,8 +44,5 @@ get' h =
   readIORef (defMapRef h)
 
 isTemplate' :: Handle -> DD.DefiniteDescription -> IO Bool
-isTemplate' h name = do
-  defMap <- readIORef (defMapRef h)
-  case Map.lookup name defMap of
-    Just defInfo -> return $ Inline.isTemplate defInfo
-    Nothing -> return False
+isTemplate' _ _ =
+  return False

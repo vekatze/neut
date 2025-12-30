@@ -79,12 +79,6 @@ inferStmt h stmt =
         forM_ (map fst impArgs') $ \(mx, _, t) ->
           checkIsTypeType h'' mx t
       case stmtKind of
-        SK.Template -> do
-          forM_ (map fst impArgs') $ \(mx, _, t) ->
-            checkIsTypeType h'' mx t
-          forM_ expArgs' $ \(mx, _, t) ->
-            checkIsTypeType h'' mx t
-          liftIO $ insertType h'' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' codType'
         SK.Alias -> do
           checkIsTypeType h'' m codType'
           liftIO $ insertType h'' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' codType'
@@ -137,8 +131,6 @@ inferStmtKind h stmtKind =
     Main opacity t -> do
       t' <- inferType h t
       return $ Main opacity t'
-    Template ->
-      return Template
     Alias ->
       return Alias
     Data dataName dataArgs consInfoList -> do

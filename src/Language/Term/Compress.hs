@@ -160,8 +160,6 @@ compressStmtKind stmtKind =
       Normal opacity
     Main opacity t ->
       Main opacity (compress t)
-    Template ->
-      Template
     Alias ->
       Alias
     Data dataName dataArgs consInfoList -> do

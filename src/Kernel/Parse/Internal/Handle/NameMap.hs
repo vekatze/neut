@@ -178,8 +178,6 @@ _getGlobalNames stmt = do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
         SK.Main opacity _ ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
-        SK.Template ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Alias ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Data dataName dataArgs consInfoList -> do
@@ -212,8 +210,6 @@ _getGlobalNames' stmt = do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
         SK.Main opacity _ ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
-        SK.Template ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Alias ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Data dataName dataArgs consInfoList -> do

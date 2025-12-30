@@ -187,8 +187,6 @@ discernStmtKind h stmtKind m =
     SK.Main opacity _ -> do
       unitType <- getUnitType h m
       return $ SK.Main opacity unitType
-    SK.Template ->
-      return SK.Template
     SK.Alias ->
       return SK.Alias
     SK.Data dataName dataArgs consInfoList -> do
@@ -220,8 +218,6 @@ toCandidateKind stmtKind =
     SK.Normal {} ->
       Function
     SK.Main {} ->
-      Function
-    SK.Template ->
       Function
     SK.Alias ->
       Function

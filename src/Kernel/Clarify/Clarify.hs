@@ -69,7 +69,7 @@ import Language.Term.Chain qualified as TM
 import Language.Term.FromPrimNum
 import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
-import Language.Term.Stmt (Stmt, StmtF (..), isTemplateStmt)
+import Language.Term.Stmt (Stmt, StmtF (..))
 import Language.Term.Subst qualified as Subst
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -106,10 +106,8 @@ clarify h stmtList = do
   liftIO $ AuxEnv.clear (auxEnvHandle h)
   baseAuxEnv <- AuxEnv.toCompStmtList <$> liftIO (getBaseAuxEnv (auxEnvHandle h) (sigmaHandle h))
   liftIO $ AuxEnv.clear (auxEnvHandle h)
-  -- Filter out Template statements
-  let stmtListWithoutTemplate = filter (not . isTemplateStmt) stmtList
   stmtList' <- do
-    stmtList' <- mapM (clarifyStmt h) stmtListWithoutTemplate
+    stmtList' <- mapM (clarifyStmt h) stmtList
     auxEnv <- liftIO $ AuxEnv.toCompStmtList <$> AuxEnv.get (auxEnvHandle h)
     return $ stmtList' ++ auxEnv
   forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do

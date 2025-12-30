@@ -133,8 +133,6 @@ liftStmtKind h stmtKind = do
       SK.Normal o
     SK.Main o t ->
       SK.Main o t
-    SK.Template ->
-      SK.Template
     SK.Alias ->
       SK.Alias
     SK.Data name dataArgs consInfo -> do

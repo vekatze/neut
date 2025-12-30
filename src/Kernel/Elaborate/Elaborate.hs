@@ -135,22 +135,14 @@ elaborateStmt h stmt = do
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
         EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
-      e'' <- case stmtKind' of
-        Template ->
-          return e'
-        _ ->
-          inline h m e'
+      e'' <- inline h m e'
       impArgs'' <- mapM (inlineBinderWithMaybeType h) impArgs'
       expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inline h m codType'
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
-      case stmtKind' of
-        Template ->
-          return ()
-        _ ->
-          EnsureTemplateResolved.ensureTemplateResolved h m e''
+      EnsureTemplateResolved.ensureTemplateResolved h m e''
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
@@ -189,11 +181,8 @@ insertStmt h stmt = do
           liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.DataIntro isConstLike) impArgsWithDefaults expArgs t
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgsWithDefaults expArgs t
-      let isTemplateFlag = case stmtKind of
-            SK.Template -> True
-            _ -> False
       let isInlineFlag = SK.isInlineStmtKind stmtKind
-      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e t isTemplateFlag isInlineFlag
+      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e t isInlineFlag
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -223,8 +212,6 @@ elaborateStmtKind h stmtKind =
     Main opacity t -> do
       t' <- elaborate' h t
       return $ Main opacity t'
-    Template ->
-      return Template
     Alias ->
       return Alias
     Data dataName dataArgs consInfoList -> do

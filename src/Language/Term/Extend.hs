@@ -167,8 +167,6 @@ extendStmtKind stmtKind =
       Normal opacity
     Main opacity t ->
       Main opacity (extend t)
-    Template ->
-      Template
     Alias ->
       Alias
     Data dataName dataArgs consInfoList -> do
