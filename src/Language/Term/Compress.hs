@@ -162,6 +162,8 @@ compressStmtKind stmtKind =
       Main opacity (compress t)
     Template ->
       Template
+    Alias ->
+      Alias
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map compressBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList

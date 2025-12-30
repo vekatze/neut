@@ -62,6 +62,7 @@ parseStmt h = do
     [ parseDefine h,
       parseData h,
       parseInline h,
+      parseAlias h,
       parseTemplate h,
       parseNominal h,
       parseResource h,
@@ -123,6 +124,12 @@ parseDefine h =
 parseInline :: Handle -> Parser (RawStmt, C)
 parseInline h =
   parseDefine' h O.Clear
+
+parseAlias :: Handle -> Parser (RawStmt, C)
+parseAlias h = do
+  c1 <- keyword "alias"
+  (def, c) <- parseAliasDef h baseName
+  return (RawStmtDefine c1 SK.Alias def, c)
 
 parseTemplate :: Handle -> Parser (RawStmt, C)
 parseTemplate h = do

@@ -189,6 +189,8 @@ discernStmtKind h stmtKind m =
       return $ SK.Main opacity unitType
     SK.Template ->
       return SK.Template
+    SK.Alias ->
+      return SK.Alias
     SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', h') <- discernBinder' h dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList
@@ -221,6 +223,8 @@ toCandidateKind stmtKind =
       Function
     SK.Template ->
       Function
+    SK.Alias ->
+      Function
     SK.Data {} ->
       Function
     SK.DataIntro {} ->
@@ -235,6 +239,8 @@ isInlineStmtKind stmtKind =
       opacity == O.Clear
     SK.Template ->
       True
+    SK.Alias ->
+      False
     _ ->
       False
 

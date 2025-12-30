@@ -135,6 +135,8 @@ liftStmtKind h stmtKind = do
       SK.Main o t
     SK.Template ->
       SK.Template
+    SK.Alias ->
+      SK.Alias
     SK.Data name dataArgs consInfo -> do
       let name' = Locator.attachCurrentLocator h name
       let f (m, consName, isConstLike, consArgs, loc) = do

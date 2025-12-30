@@ -228,6 +228,8 @@ weakenStmtKind stmtKind =
       Main opacity (weaken t)
     Template ->
       Template
+    Alias ->
+      Alias
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenBinder dataArgs
       let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = List.unzip5 consInfoList

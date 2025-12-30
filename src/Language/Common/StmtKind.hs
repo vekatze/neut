@@ -19,6 +19,7 @@ data BaseStmtKind name binder t
   = Normal O.Opacity
   | Main O.Opacity t
   | Template
+  | Alias
   | Data
       name -- the name of the variant type
       [binder] -- variant args
@@ -40,6 +41,8 @@ toOpacity stmtKind =
       opacity
     Template ->
       O.Clear
+    Alias ->
+      O.Clear
     _ ->
       O.Clear
 
@@ -51,6 +54,8 @@ toLowOpacity stmtKind =
     Main _ _ ->
       O.Opaque
     Template ->
+      O.Opaque
+    Alias ->
       O.Opaque
     Data {} ->
       O.Opaque

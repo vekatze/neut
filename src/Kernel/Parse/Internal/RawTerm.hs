@@ -7,6 +7,7 @@ module Kernel.Parse.Internal.RawTerm
     preAscription,
     preBinder,
     parseDef,
+    parseAliasDef,
     parseGeist,
     parseDefInfoCod,
     typeWithoutIdent,
@@ -349,6 +350,21 @@ parseDef h nameParser = do
       c
     )
 
+parseAliasDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
+parseAliasDef h nameParser = do
+  (geist, c1) <- parseAliasGeist h nameParser
+  (c2, ((e, c3), loc, c)) <- betweenBrace' $ rawExpr h
+  return
+    ( RT.RawDef
+        { geist,
+          leadingComment = c1 ++ c2,
+          body = e,
+          trailingComment = c3,
+          endLoc = loc
+        },
+      c
+    )
+
 parseGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseGeist h nameParser = do
   loc <- getCurrentHint
@@ -365,6 +381,23 @@ parseGeist h nameParser = do
   m <- getCurrentHint
   (c2, (cod, c)) <- parseDefInfoCod h m
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = (c2, cod)}, c)
+
+parseAliasGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
+parseAliasGeist h nameParser = do
+  loc <- getCurrentHint
+  (name', c1) <- nameParser
+  impArgs <- parseImplicitParams h
+  (isConstLike, expArgs@(expSeries, _)) <- do
+    choice
+      [ do
+          expDomArgList <- seriesParen $ preBinder h
+          return (False, expDomArgList),
+        return (True, (SE.emptySeries (Just SE.Paren) SE.Comma, []))
+      ]
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
+  m <- getCurrentHint
+  let cod = m :< RT.Tau
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = ([], cod)}, [])
 
 parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm, Maybe RT.RawTerm), C)
 parseImplicitParams h =

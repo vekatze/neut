@@ -224,6 +224,8 @@ elaborateStmtKind h stmtKind =
       return $ Main opacity t'
     Template ->
       return Template
+    Alias ->
+      return Alias
     Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       let (ms, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList

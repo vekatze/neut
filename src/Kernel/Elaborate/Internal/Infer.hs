@@ -82,6 +82,9 @@ inferStmt h stmt =
           forM_ expArgs' $ \(mx, _, t) ->
             checkIsTypeType h'' mx t
           liftIO $ insertType h'' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' codType'
+        SK.Alias -> do
+          checkIsTypeType h'' m codType'
+          liftIO $ insertType h'' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' codType'
         SK.DataIntro {} -> do
           liftIO $ insertType h'' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' expArgs' codType'
         _ ->
@@ -133,6 +136,8 @@ inferStmtKind h stmtKind =
       return $ Main opacity t'
     Template ->
       return Template
+    Alias ->
+      return Alias
     Data dataName dataArgs consInfoList -> do
       (dataArgs', varEnv) <- inferBinder' h dataArgs
       consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
