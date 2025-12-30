@@ -257,9 +257,8 @@ inline' h term = do
     m :< TM.Code t -> do
       t' <- inline' h t
       return $ m :< TM.Code t'
-    m :< TM.CodeIntro e -> do
-      e' <- inline' h e
-      return $ m :< TM.CodeIntro e'
+    _ :< TM.CodeIntro {} ->
+      return term
     m :< TM.CodeElim e -> do
       e' <- inline' h e
       return $ m :< TM.CodeElim e'

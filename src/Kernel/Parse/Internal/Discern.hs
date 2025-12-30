@@ -107,13 +107,15 @@ discernStmt h stmt = do
   case stmt of
     PostRawStmtDefine _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
       registerTopLevelName h stmt
+      let baseStage = if isInlineStmtKind stmtKind then 1 else 0
+      let hStage = h {H.currentStage = baseStage}
       let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let (_, codType) = RT.cod geist
       let m = RT.loc geist
       let functionName = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      (impArgs', nenv) <- discernBinderWithDefaults h impArgsWithDefaults endLoc
+      (impArgs', nenv) <- discernBinderWithDefaults hStage impArgsWithDefaults endLoc
       (expArgs', nenv') <- discernBinder nenv expArgs endLoc
       codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind h stmtKind m
@@ -223,6 +225,18 @@ toCandidateKind stmtKind =
       Function
     SK.DataIntro {} ->
       Constructor
+
+isInlineStmtKind :: SK.BaseStmtKind name binder t -> Bool
+isInlineStmtKind stmtKind =
+  case stmtKind of
+    SK.Normal opacity ->
+      opacity == O.Clear
+    SK.Main opacity _ ->
+      opacity == O.Clear
+    SK.Template ->
+      True
+    _ ->
+      False
 
 discern :: H.Handle -> RT.RawTerm -> App WT.WeakTerm
 discern h term =

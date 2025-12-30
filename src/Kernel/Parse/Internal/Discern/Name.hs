@@ -151,7 +151,8 @@ resolveConstructorMaybe dd gn = do
 interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName h m dd gn = do
   case gn of
-    GN.TopLevelFunc argNum isConstLike ->
+    GN.TopLevelFunc argNum isConstLike isInline -> do
+      ensureTopLevelStage m h dd isInline
       return $ interpretTopLevelFunc m dd argNum isConstLike
     GN.Data argNum _ isConstLike ->
       return $ interpretTopLevelFunc m dd argNum isConstLike
@@ -189,6 +190,28 @@ interpretTopLevelFunc m dd argNum isConstLike = do
   if isConstLike
     then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
     else m :< WT.VarGlobal attr dd
+
+ensureTopLevelStage :: Hint -> H.Handle -> DD.DefiniteDescription -> Bool -> App ()
+ensureTopLevelStage m h dd isInline =
+  if isInline
+    then do
+      let stage = H.currentStage h
+      when (stage < 1) $ do
+        raiseError m $
+          "`"
+            <> DD.reify dd
+            <> "` is an inline definition and can only be used at stage >= 1 (current stage: "
+            <> T.pack (show stage)
+            <> ")"
+    else do
+      let stage = H.currentStage h
+      when (stage > 0) $ do
+        raiseError m $
+          "`"
+            <> DD.reify dd
+            <> "` is a runtime definition and can only be used at stage <= 0 (current stage: "
+            <> T.pack (show stage)
+            <> ")"
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool h e@(m :< _) = do

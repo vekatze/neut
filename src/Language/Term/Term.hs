@@ -99,6 +99,8 @@ isValue term =
       True
     _ :< Code {} ->
       True
+    _ :< CodeIntro {} ->
+      True
     _ :< Prim {} ->
       True
     _ :< Resource {} ->

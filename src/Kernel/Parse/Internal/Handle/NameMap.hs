@@ -32,6 +32,7 @@ import Language.Common.ArgNum qualified as AN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.IsConstLike
+import Language.Common.Opacity qualified as O
 import Language.Common.PrimOp.FromText qualified as PrimOp
 import Language.Common.PrimType.FromText qualified as PT
 import Language.Common.StmtKind qualified as SK
@@ -74,7 +75,7 @@ registerGeist h RT.RawGeist {..} = do
   ensureGeistFreshness h loc name'
   ensureDefFreshness h loc name' isConstLike
   liftIO $ insertToGeistMap h name' loc isConstLike
-  liftIO $ insertToNameMap h name' loc $ GN.TopLevelFunc argNum isConstLike
+  liftIO $ insertToNameMap h name' loc $ GN.TopLevelFunc argNum isConstLike False
 
 lookup :: Handle -> Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GN.GlobalName))
 lookup h m name = do
@@ -173,12 +174,12 @@ _getGlobalNames stmt = do
       let m = RT.loc geist
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
       case stmtKind of
-        SK.Normal _ -> do
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
-        SK.Main {} ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+        SK.Normal opacity -> do
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Main opacity _ ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
         SK.Template ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Data dataName dataArgs consInfoList -> do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
@@ -190,7 +191,7 @@ _getGlobalNames stmt = do
     PostRawStmtNominal {} -> do
       []
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
-      [(name, (m, GN.TopLevelFunc AN.zero True))]
+      [(name, (m, GN.TopLevelFunc AN.zero True False))]
     PostRawStmtForeign {} ->
       []
 
@@ -205,12 +206,12 @@ _getGlobalNames' stmt = do
       let impBinders = map fst impArgs
       let allArgNum = AN.fromInt $ length $ impBinders ++ expArgs
       case stmtKind of
-        SK.Normal _ -> do
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
-        SK.Main {} ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+        SK.Normal opacity -> do
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Main opacity _ ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
         SK.Template ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike))]
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Data dataName dataArgs consInfoList -> do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
