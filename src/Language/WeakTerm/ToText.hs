@@ -11,10 +11,13 @@ import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
+import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
+import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp qualified as PO
 import Language.Common.PrimType.ToText qualified as PT
@@ -93,7 +96,7 @@ toText term =
       "quote " <> inBrace (toText e)
     _ :< WT.BoxElim castSeq (_, x, t) e1 _ e2 -> do
       let ks = map (\((_, y, _), _) -> y) castSeq
-      let ks' = if null ks then "" else "on " <> T.intercalate ", " (map Ident.toText ks)
+      let ks' = if null ks then "" else " on " <> T.intercalate ", " (map Ident.toText ks)
       "letbox "
         <> showVariable x
         <> ": "
@@ -101,22 +104,22 @@ toText term =
         <> ks'
         <> " = "
         <> toText e1
-        <> " in "
+        <> "; "
         <> toText e2
     _ :< WT.Actual e ->
       "ACTUAL(" <> toText e <> ")"
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do
       case opacity of
         WT.Noetic ->
-          "tie " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> " in " <> toText e2
+          "tie " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> "; " <> toText e2
         _ ->
-          "let " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> " in " <> toText e2
+          "let " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> "; " <> toText e2
     _ :< WT.Prim prim ->
       showPrim prim
     _ :< WT.Hole i es ->
       "?" <> T.pack (show (HID.reify i)) <> "(" <> T.intercalate "," (map toText es) <> ")"
-    _ :< WT.Magic _ -> do
-      "<magic>"
+    _ :< WT.Magic magic -> do
+      showMagic magic
     _ :< WT.Annotation _ _ e ->
       toText e
     _ :< WT.Resource dd _ _ _ _ _ -> do
@@ -281,3 +284,71 @@ showClauseList decisionCase = do
           inParen $ showTypeArgs consArgs,
           showDecisionTree cont
         ]
+
+showMagic :: M.WeakMagic WT.WeakTerm -> T.Text
+showMagic (M.WeakMagic magic) =
+  case magic of
+    M.LowMagic lowMagic ->
+      showLowMagic lowMagic
+    M.GetTypeTag _ typeTagExpr e ->
+      "magic get-type-tag" <> inParen (toText typeTagExpr <> ", " <> toText e)
+    M.GetConsSize typeExpr ->
+      "magic get-cons-size" <> inParen (toText typeExpr)
+    M.GetConstructorArgTypes sgl listExpr typeExpr index ->
+      "magic get-constructor-arg-types"
+        <> inParen
+          ( T.pack (show sgl)
+              <> ", "
+              <> toText listExpr
+              <> ", "
+              <> toText typeExpr
+              <> ", "
+              <> toText index
+          )
+    M.CompileError msg ->
+      "magic compile-error" <> inParen (T.pack $ show msg)
+
+showLowMagic :: LM.LowMagic WT.WeakTerm WT.WeakTerm -> T.Text
+showLowMagic lowMagic =
+  case lowMagic of
+    LM.Cast from to value ->
+      "magic cast" <> inParen (toText from <> ", " <> toText to <> ", " <> toText value)
+    LM.Store t unit value pointer ->
+      "magic store"
+        <> inParen
+          ( toText t
+              <> ", "
+              <> toText unit
+              <> ", "
+              <> toText value
+              <> ", "
+              <> toText pointer
+          )
+    LM.Load t pointer ->
+      "magic load" <> inParen (toText t <> ", " <> toText pointer)
+    LM.Alloca t size ->
+      "magic alloca" <> inParen (toText t <> ", " <> toText size)
+    LM.External domList cod extFunName args varArgs ->
+      let domStr = T.intercalate ", " (map toText domList)
+          codStr = showForeignCodType cod
+          argsStr = T.intercalate ", " (map toText args)
+          varArgsStr = T.intercalate ", " (map (\(a, t) -> toText a <> ": " <> toText t) varArgs)
+          allArgs = if null varArgs then argsStr else argsStr <> ", " <> varArgsStr
+       in "magic external "
+            <> T.pack (show extFunName)
+            <> inAngleBracket domStr
+            <> ": "
+            <> codStr
+            <> inParen allArgs
+    LM.Global name t ->
+      "magic global " <> T.pack (show name) <> ": " <> toText t
+    LM.OpaqueValue e ->
+      "magic opaque" <> inParen (toText e)
+    LM.CallType func arg1 arg2 ->
+      "magic call-type" <> inParen (toText func <> ", " <> toText arg1 <> ", " <> toText arg2)
+
+showForeignCodType :: FCT.ForeignCodType WT.WeakTerm -> T.Text
+showForeignCodType cod =
+  case cod of
+    FCT.Cod t -> toText t
+    FCT.Void -> "void"
