@@ -365,12 +365,15 @@ discern h term =
       decisionTree <- compilePatternMatrix h isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
     m :< RT.Box t -> do
+      ensureRuntimeStage m h "meta operation (`meta`)"
       t' <- discern h t
       return $ m :< WT.Box t'
     m :< RT.BoxNoema t -> do
+      ensureRuntimeStage m h "meta operation (`&`)"
       t' <- discern h t
       return $ m :< WT.BoxNoema t'
     m :< RT.BoxIntro _ _ mxs (body, _) -> do
+      ensureRuntimeStage m h "meta operation (`box`)"
       xsOuter <- forM (SE.extract mxs) $ \(mx, x) -> discernIdent mx h x
       xets <- liftIO $ discernNoeticVarList h True xsOuter
       let innerLayer = H.currentLayer h - 1
@@ -381,9 +384,11 @@ discern h term =
       body' <- discern hInner body
       return $ m :< WT.BoxIntro xets body'
     m :< RT.BoxIntroQuote _ _ (body, _) -> do
+      ensureRuntimeStage m h "meta operation (`quote`)"
       body' <- discern h body
       return $ m :< WT.BoxIntroQuote body'
     m :< RT.BoxElim nv mustIgnoreRelayedVars _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2 endLoc -> do
+      ensureRuntimeStage m h "meta operation (`letbox`)"
       case nv of
         VariantK ->
           unless (SE.isEmpty mys) $ raiseError m "`on` cannot be used with: `letbox`"
@@ -426,11 +431,13 @@ discern h term =
       body' <- discern hInner body
       return $ m :< WT.CodeElim body'
     m :< RT.Embody e -> do
+      ensureRuntimeStage m h "meta operation (`*`)"
       embodyVar <- liftEither $ locatorToVarGlobal m coreBoxEmbody
       discern h $ m :< RT.piElim embodyVar [e]
     m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ _ e1 _ startLoc _ e2 endLoc -> do
       discernLet h m letKind (mx, pat, c1, c2, t) e1 e2 startLoc endLoc
     m :< RT.LetOn letKind _ pat _ mys _ e1@(m1 :< _) _ startLoc _ e2 endLoc -> do
+      ensureRuntimeStage m h "meta operation (`on`)"
       case letKind of
         RT.Plain mustIgnoreRelayedVars -> do
           let e1' = m :< RT.BoxIntroQuote [] [] (e1, [])
@@ -602,25 +609,30 @@ discernMagic :: H.Handle -> Hint -> RT.RawMagic -> App (M.WeakMagic WT.WeakTerm)
 discernMagic h m magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) _ -> do
+      ensureRuntimeStage m h "runtime magic (`cast`)"
       from' <- discern h from
       to' <- discern h to
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.Cast from' to' e'
     RT.Store _ (_, (t, _)) (_, (value, _)) (_, (pointer, _)) _ -> do
+      ensureRuntimeStage m h "runtime magic (`store`)"
       t' <- discern h t
       unit <- liftEither (locatorToVarGlobal m coreUnit) >>= discern h
       value' <- discern h value
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.LowMagic $ LM.Store t' unit value' pointer'
     RT.Load _ (_, (t, _)) (_, (pointer, _)) _ -> do
+      ensureRuntimeStage m h "runtime magic (`load`)"
       t' <- discern h t
       pointer' <- discern h pointer
       return $ M.WeakMagic $ M.LowMagic $ LM.Load t' pointer'
     RT.Alloca _ (_, (t, _)) (_, (size, _)) _ -> do
+      ensureRuntimeStage m h "runtime magic (`alloca`)"
       t' <- discern h t
       size' <- discern h size
       return $ M.WeakMagic $ M.LowMagic $ LM.Alloca t' size'
     RT.External _ mUse funcName _ args varArgsOrNone -> do
+      ensureRuntimeStage m h "runtime magic (`external`)"
       mDef <- PreDecl.lookup (H.preDeclHandle h) m funcName
       liftIO $ Tag.insertExternalName (H.tagHandle h) mUse funcName mDef
       let domList = []
@@ -636,26 +648,32 @@ discernMagic h m magic =
             return (arg', t')
       return $ M.WeakMagic $ M.LowMagic $ LM.External domList cod funcName args' varArgs'
     RT.Global _ (_, (name, _)) (_, (t, _)) _ -> do
+      ensureRuntimeStage m h "runtime magic (`global`)"
       t' <- discern h t
       return $ M.WeakMagic $ M.LowMagic $ LM.Global name t'
     RT.OpaqueValue _ (_, (e, _)) -> do
+      ensureRuntimeStage m h "runtime magic (`opaque-value`)"
       e' <- discern h e
       return $ M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'
     RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) -> do
+      ensureRuntimeStage m h "runtime magic (`call-type`)"
       func' <- discern h func
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'
     RT.GetTypeTag (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`get-type-tag`)"
       coreModuleID <- Alias.resolveModuleAlias (H.aliasHandle h) m coreModuleAlias
       typeTagVar <- liftEither $ locatorToVarGlobal m coreTypeTagTypeTag
       typeTagExpr <- discern h typeTagVar
       typeExpr' <- discern h typeExpr
       return $ M.WeakMagic $ M.GetTypeTag coreModuleID typeTagExpr typeExpr'
     RT.GetConsSize _ (_, (typeExpr, _)) -> do
+      ensureCompileStage m h "inline magic (`get-cons-size`)"
       typeExpr' <- discern h typeExpr
       return $ M.WeakMagic $ M.GetConsSize typeExpr'
     RT.GetConstructorArgTypes _ (_, (typeExpr, _)) _ (_, (index, _)) -> do
+      ensureCompileStage m h "inline magic (`get-constructor-arg-types`)"
       typeExpr' <- discern h typeExpr
       index' <- discern h index
       listVar <- liftEither $ locatorToVarGlobal m coreListList
@@ -663,7 +681,8 @@ discernMagic h m magic =
       gl <- liftEither $ GL.reflect m coreList
       sgl <- Alias.resolveAlias (H.aliasHandle h) m gl
       return $ M.WeakMagic $ M.GetConstructorArgTypes sgl listExpr typeExpr' index'
-    RT.CompileError msg ->
+    RT.CompileError msg -> do
+      ensureCompileStage m h "inline magic (`compile-error`)"
       return $ M.WeakMagic $ M.CompileError msg
 
 modifyLetContinuation ::
@@ -1182,6 +1201,24 @@ raiseStageError m expected found = do
       <> T.pack (show expected)
       <> "\nFound stage:\n  "
       <> T.pack (show found)
+
+ensureRuntimeStage :: Hint -> H.Handle -> T.Text -> App ()
+ensureRuntimeStage m h target = do
+  let stage = H.currentStage h
+  when (stage >= 1) $ do
+    raiseError m $
+      target
+        <> " is only allowed at stage <= 0, but found stage "
+        <> T.pack (show stage)
+
+ensureCompileStage :: Hint -> H.Handle -> T.Text -> App ()
+ensureCompileStage m h target = do
+  let stage = H.currentStage h
+  when (stage <= 0) $ do
+    raiseError m $
+      target
+        <> " is only allowed at stage >= 1, but found stage "
+        <> T.pack (show stage)
 
 asOpaqueValue :: RT.RawTerm -> RT.RawTerm
 asOpaqueValue e@(m :< _) =
