@@ -192,7 +192,8 @@ insertStmt h stmt = do
       let isTemplateFlag = case stmtKind of
             SK.Template -> True
             _ -> False
-      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e t isTemplateFlag
+      let isInlineFlag = SK.isInlineStmtKind stmtKind
+      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e t isTemplateFlag isInlineFlag
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
