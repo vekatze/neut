@@ -1,4 +1,4 @@
-module Language.RawTerm.CreateHole (createHole) where
+module Language.RawTerm.CreateHole (createTypeHole) where
 
 import Control.Comonad.Cofree
 import Gensym.Gensym qualified as Gensym
@@ -7,8 +7,8 @@ import Language.Common.HoleID (HoleID (HoleID))
 import Language.RawTerm.RawTerm
 import Logger.Hint
 
-{-# INLINE createHole #-}
-createHole :: Gensym.Handle -> Hint -> IO RawTerm
-createHole h m = do
+{-# INLINE createTypeHole #-}
+createTypeHole :: Gensym.Handle -> Hint -> IO RawType
+createTypeHole h m = do
   i <- HoleID <$> Gensym.newCount h
-  return $ m :< Hole i
+  return $ m :< TypeHole i

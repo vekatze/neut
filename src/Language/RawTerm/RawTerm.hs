@@ -1,6 +1,8 @@
 module Language.RawTerm.RawTerm
   ( RawTerm,
     RawTermF (..),
+    RawType,
+    RawTypeF (..),
     DefInfo,
     TopDef,
     TopGeist,
@@ -12,6 +14,7 @@ module Language.RawTerm.RawTerm
     Args,
     RawGeist (..),
     RawDef (..),
+    RawTypeDef (..),
     VarArg,
     getDefName,
     emptyArgs,
@@ -56,41 +59,50 @@ import Logger.LogLevel
 import SyntaxTree.C
 import SyntaxTree.Series qualified as SE
 
+data RawTypeF a
+  = Tau
+  | TypeHole HoleID
+  | TyVar RawIdent
+  | TyApp a C (SE.Series a)
+  | Pi (SE.Series (RawBinder a), C) (SE.Series (RawBinder a, RawTerm), C) (Args a) C a Loc
+  | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
+  | Box a
+  | BoxNoema a
+  | Code a
+  | Rune
+  | Pointer
+  | Void
+  | Resource DD.DefiniteDescription C (RawTerm, C) (RawTerm, C) (RawTerm, C) -- DD is only for printing
+  | Option a
+
+type RawType = Cofree RawTypeF Hint
+
 type RawTerm = Cofree RawTermF Hint
 
 data RawTermF a
-  = Tau
-  | Var Name
+  = Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
-  | Pi (SE.Series (RawBinder a), C) (SE.Series (RawBinder a, a), C) (Args a) C a Loc
   | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
   | PiElim a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
   | PiElimExact C a
-  | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
-  | DataIntro (AttrDI.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription (RawBinder RawType)) DD.DefiniteDescription [RawType] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
-  | Box a
-  | BoxNoema a
   | BoxIntro C C (SE.Series (Hint, RawIdent)) (a, C)
   | BoxIntroLift C C (a, C)
-  | BoxElim NecessityVariant Bool C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | Code a
+  | BoxElim NecessityVariant Bool C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | CodeIntro C C (a, C)
   | CodeElim C C (a, C)
   | Embody a
-  | Let LetKind C (PatParam a) C C a C Loc C a Loc
-  | LetOn LetKind C (PatParam a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | Pin C (RawBinder a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
-  | StaticText a T.Text
-  | Rune
+  | Let LetKind C (PatParam RawType) C C a C Loc C a Loc
+  | LetOn LetKind C (PatParam RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | Pin C (RawBinder RawType) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
+  | StaticText RawType T.Text
   | RuneIntro a R.Rune
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
-  | Hole HoleID
   | Annotation LogLevel (Annot.Annotation ()) a
-  | Resource DD.DefiniteDescription C (a, C) (a, C) (a, C) -- DD is only for printing
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)
   | Seq (a, C) C a
@@ -98,14 +110,11 @@ data RawTermF a
   | Admit
   | Detach C C (a, C)
   | Attach C C (a, C)
-  | Option a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | IncludeText C C Hint (T.Text, C)
   | Brace C (a, C)
   | Int Integer
-  | Pointer
-  | Void
 
 type PatParam a =
   (Hint, RP.RawPattern, C, C, a)
@@ -121,7 +130,7 @@ emptyImpArgs :: (SE.Series (RawBinder a), C)
 emptyImpArgs =
   (SE.emptySeries (Just SE.Angle) SE.Comma, [])
 
-emptyDefaultArgs :: (SE.Series (RawBinder a, a), C)
+emptyDefaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C)
 emptyDefaultArgs =
   (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
 
@@ -152,10 +161,10 @@ data RawGeist a = RawGeist
   { loc :: Hint,
     name :: (a, C),
     isConstLike :: IsConstLike,
-    impArgs :: (SE.Series (RawBinder RawTerm), C),
-    defaultArgs :: (SE.Series (RawBinder RawTerm, RawTerm), C),
-    expArgs :: Args RawTerm,
-    cod :: (C, RawTerm)
+    impArgs :: (SE.Series (RawBinder RawType), C),
+    defaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C),
+    expArgs :: Args RawType,
+    cod :: (C, RawType)
   }
 
 instance Functor RawGeist where
@@ -173,6 +182,18 @@ data RawDef a = RawDef
 instance Functor RawDef where
   fmap f def =
     def {geist = fmap f (geist def)}
+
+data RawTypeDef a = RawTypeDef
+  { typeGeist :: RawGeist a,
+    typeLeadingComment :: C,
+    typeBody :: RawType,
+    typeTrailingComment :: C,
+    typeEndLoc :: Loc
+  }
+
+instance Functor RawTypeDef where
+  fmap f def =
+    def {typeGeist = fmap f (typeGeist def)}
 
 type DefInfo =
   RawDef RawIdent
@@ -198,7 +219,7 @@ piElim :: a -> [a] -> RawTermF a
 piElim e es =
   PiElim e [] (SE.fromList' es)
 
-lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm -> RawTerm
+lam :: Loc -> Hint -> [(RawBinder RawType, C)] -> RawType -> RawTerm -> RawTerm
 lam loc m varList codType e =
   m
     :< PiIntro
@@ -250,20 +271,20 @@ letKindFromText t =
       Nothing
 
 type VarArg =
-  (Hint, RawTerm, C, C, RawTerm)
+  (Hint, RawTerm, C, C, RawType)
 
 data RawMagic
-  = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Store C (EL RawTerm) (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Load C (EL RawTerm) (EL RawTerm) (Maybe C)
-  | Alloca C (EL RawTerm) (EL RawTerm) (Maybe C)
+  = Cast C (EL RawType) (EL RawType) (EL RawTerm) (Maybe C)
+  | Store C (EL RawType) (EL RawTerm) (EL RawTerm) (Maybe C)
+  | Load C (EL RawType) (EL RawTerm) (Maybe C)
+  | Alloca C (EL RawType) (EL RawTerm) (Maybe C)
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
-  | Global C (EL EN.ExternalName) (EL RawTerm) (Maybe C)
+  | Global C (EL EN.ExternalName) (EL RawType) (Maybe C)
   | OpaqueValue C (EL RawTerm)
-  | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm)
-  | GetTypeTag (EL RawTerm)
-  | GetConsSize C (EL RawTerm)
-  | GetConstructorArgTypes C (EL RawTerm) C (EL RawTerm)
+  | CallType C (EL RawType) (EL RawTerm) (EL RawTerm)
+  | GetTypeTag (EL RawType)
+  | GetConsSize C (EL RawType)
+  | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
   | CompileError T.Text
 
 -- elem

@@ -41,23 +41,27 @@ type RawProgram =
 data RawConsInfo a = RawConsInfo
   { loc :: Hint,
     name :: a,
-    expArgs :: Maybe (SE.Series (RawBinder RT.RawTerm)),
+    expArgs :: Maybe (SE.Series (RawBinder RT.RawType)),
     endLoc :: Loc
   }
 
 type RawStmtKind a =
-  SK.BaseStmtKind a (RawBinder RT.RawTerm) ()
+  SK.BaseStmtKind a (RawBinder RT.RawType) ()
 
 data BaseRawStmt name
-  = RawStmtDefine
+  = RawStmtDefineTerm
       C
       (RawStmtKind name)
       (RT.RawDef name)
+  | RawStmtDefineType
+      C
+      (RawStmtKind name)
+      (RT.RawTypeDef name)
   | RawStmtDefineData
       C
       Hint
       (name, C)
-      (Maybe (RT.Args RT.RawTerm))
+      (Maybe (RT.Args RT.RawType))
       (SE.Series (RawConsInfo name))
       Loc
   | RawStmtDefineResource
@@ -73,9 +77,9 @@ data BaseRawStmt name
       C
       Hint
       (name, C)
-      (C, RT.RawTerm, RT.RawTerm)
-      (C, RT.RawTerm, RT.RawTerm)
-      (C, RT.RawTerm, RT.RawTerm)
+      (C, RT.RawTerm, RT.RawType)
+      (C, RT.RawTerm, RT.RawType)
+      (C, RT.RawTerm, RT.RawType)
       C
       Loc
   | RawStmtNominal C Hint (SE.Series (RT.RawGeist name, Loc))
@@ -91,10 +95,14 @@ data PostRawProgram
   = PostRawProgram Hint [(RawImport, C)] [PostRawStmt]
 
 data PostRawStmt
-  = PostRawStmtDefine
+  = PostRawStmtDefineTerm
       C
       (RawStmtKind DD.DefiniteDescription)
       (RT.RawDef DD.DefiniteDescription)
+  | PostRawStmtDefineType
+      C
+      (RawStmtKind DD.DefiniteDescription)
+      (RT.RawTypeDef DD.DefiniteDescription)
   | PostRawStmtDefineResource
       C
       Hint
@@ -113,9 +121,13 @@ data PostRawStmt
 getPostRawStmtName :: PostRawStmt -> [(Hint, DD.DefiniteDescription)]
 getPostRawStmtName stmt =
   case stmt of
-    PostRawStmtDefine _ _ def -> do
+    PostRawStmtDefineTerm _ _ def -> do
       let m = RT.loc $ RT.geist def
       let name = fst $ RT.name $ RT.geist def
+      [(m, name)]
+    PostRawStmtDefineType _ _ def -> do
+      let m = RT.loc $ RT.typeGeist def
+      let name = fst $ RT.name $ RT.typeGeist def
       [(m, name)]
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ ->
       [(m, name)]
@@ -147,7 +159,7 @@ data RawForeignItemF a
   deriving (Functor, Foldable, Traversable)
 
 type RawForeignItem =
-  RawForeignItemF RT.RawTerm
+  RawForeignItemF RT.RawType
 
 isImportEmpty :: RawImport -> Bool
 isImportEmpty rawImport =

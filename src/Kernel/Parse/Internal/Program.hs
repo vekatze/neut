@@ -103,7 +103,7 @@ parseForeignItem :: Handle -> Parser (RawForeignItem, C)
 parseForeignItem h = do
   m <- getCurrentHint
   (funcName, c1) <- symbol
-  (domList, c2) <- seriesParen $ rawTerm h
+  (domList, c2) <- seriesParen $ rawType h
   c3 <- delimiter ":"
   (cod, c) <-
     choice
@@ -111,7 +111,7 @@ parseForeignItem h = do
           c <- keyword "void"
           return (F.Void, c),
         do
-          (lt, c) <- rawTerm h
+          (lt, c) <- rawType h
           return (F.Cod lt, c)
       ]
   return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
@@ -128,7 +128,7 @@ parseAlias :: Handle -> Parser (RawStmt, C)
 parseAlias h = do
   c1 <- keyword "alias"
   (def, c) <- parseAliasDef h baseName
-  return (RawStmtDefine c1 SK.Alias def, c)
+  return (RawStmtDefineType c1 SK.Alias def, c)
 
 parseDefine' :: Handle -> O.Opacity -> Parser (RawStmt, C)
 parseDefine' h opacity = do
@@ -141,8 +141,8 @@ parseDefine' h opacity = do
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
   if defName == BN.mainName || defName == BN.zenName
-    then return (RawStmtDefine c1 (SK.Main opacity ()) def, c)
-    else return (RawStmtDefine c1 (SK.Normal opacity) def, c)
+    then return (RawStmtDefineTerm c1 (SK.Main opacity ()) def, c)
+    else return (RawStmtDefineTerm c1 (SK.Normal opacity) def, c)
 
 parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do
@@ -163,7 +163,7 @@ parseNominal h = do
     return ((geist, loc), c)
   return (RawStmtNominal c1 m geists, c)
 
-parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawTerm))
+parseDataArgs :: Handle -> Parser (Maybe (RT.Args RT.RawType))
 parseDataArgs h = do
   choice
     [ Just <$> try (seriesParen $ preBinder h),
@@ -179,7 +179,7 @@ parseDefineDataClause h = do
   (expArgs, endLoc, c2) <- parseConsArgs h
   return (RawConsInfo {loc, name, expArgs, endLoc}, c1 ++ c2)
 
-parseConsArgs :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
+parseConsArgs :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawType)), Loc, C)
 parseConsArgs h = do
   choice
     [ do
@@ -190,7 +190,7 @@ parseConsArgs h = do
         return (Nothing, loc, [])
     ]
 
-parseDefineDataClauseArg :: Handle -> Parser (RawBinder RT.RawTerm, C)
+parseDefineDataClauseArg :: Handle -> Parser (RawBinder RT.RawType, C)
 parseDefineDataClauseArg h = do
   choice
     [ try $ var h >>= preAscription h,
@@ -218,9 +218,9 @@ parseVariadic h vk = do
   (handlers, loc, c) <- seriesBrace' $ rawExpr h
   case SE.elems handlers of
     [(cLeaf, leaf), (cNode, node), (cRoot, root)] -> do
-      nodeType <- liftIO $ RT.createHole (gensymHandle h) m
-      leafType <- liftIO $ RT.createHole (gensymHandle h) m
-      rootType <- liftIO $ RT.createHole (gensymHandle h) m
+      nodeType <- liftIO $ RT.createTypeHole (gensymHandle h) m
+      leafType <- liftIO $ RT.createTypeHole (gensymHandle h) m
+      rootType <- liftIO $ RT.createTypeHole (gensymHandle h) m
       let l = (cLeaf, leaf, leafType)
       let n = (cNode, node, nodeType)
       let r = (cRoot, root, rootType)

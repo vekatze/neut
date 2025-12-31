@@ -182,16 +182,20 @@ decImportItemLocator (_, l) =
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
-    RawStmtDefine c stmtKind def -> do
+    RawStmtDefineTerm c stmtKind def -> do
       case stmtKind of
         SK.Normal O.Clear ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         SK.Main O.Clear _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
-        SK.Alias ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "alias" c (fmap BN.reify def)
         _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+    RawStmtDefineType c stmtKind def -> do
+      case stmtKind of
+        SK.Alias ->
+          RT.decodeTypeDef (RT.nameToDoc . N.Var) "alias" c (fmap BN.reify def)
+        _ ->
+          RT.decodeTypeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
       attachStmtComment (c1 ++ c2) $
         D.join
@@ -250,16 +254,16 @@ decStmt stmt =
 
 decForeignItem :: RawForeignItem -> D.Doc
 decForeignItem (RawForeignItemF _ funcName _ args _ _ cod) = do
-  let args' = SE.decode $ fmap RT.toDoc args
+  let args' = SE.decode $ fmap RT.typeToDoc args
   let cod' =
         case cod of
           FCT.Cod c ->
-            RT.toDoc c
+            RT.typeToDoc c
           FCT.Void ->
             D.text "void"
   D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
 
-decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc
+decDataArgs :: Maybe (RT.Args RT.RawType) -> D.Doc
 decDataArgs argsOrNone =
   case argsOrNone of
     Nothing ->

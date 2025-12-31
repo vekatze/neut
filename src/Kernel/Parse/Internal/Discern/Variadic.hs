@@ -13,9 +13,9 @@ defineVariadic ::
   RuleKind ->
   Hint ->
   DD.DefiniteDescription ->
-  (RT.RawTerm, RT.RawTerm) ->
-  (RT.RawTerm, RT.RawTerm) ->
-  (RT.RawTerm, RT.RawTerm) ->
+  (RT.RawTerm, RT.RawType) ->
+  (RT.RawTerm, RT.RawType) ->
+  (RT.RawTerm, RT.RawType) ->
   Loc ->
   [PostRawStmt]
 defineVariadic kind m name (leaf, leafType) (node, nodeType) (root, rootType) loc = do
@@ -24,7 +24,7 @@ defineVariadic kind m name (leaf, leafType) (node, nodeType) (root, rootType) lo
   let rootDef = makeDef m (DD.getRootDD name) root rootType loc
   [PostRawStmtVariadic kind m name, leafDef, nodeDef, rootDef]
 
-makeDef :: Hint -> DD.DefiniteDescription -> RT.RawTerm -> RT.RawTerm -> Loc -> PostRawStmt
+makeDef :: Hint -> DD.DefiniteDescription -> RT.RawTerm -> RT.RawType -> Loc -> PostRawStmt
 makeDef m name e t loc = do
   let m' = blur m
   let rawDef =
@@ -44,4 +44,4 @@ makeDef m name e t loc = do
             trailingComment = [],
             endLoc = loc
           }
-  PostRawStmtDefine [] (SK.Normal O.Clear) rawDef
+  PostRawStmtDefineTerm [] (SK.Normal O.Clear) rawDef

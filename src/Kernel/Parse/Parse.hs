@@ -102,10 +102,14 @@ postprocess h (RawProgram m importList stmtList) = do
 postprocess' :: Locator.Handle -> RawStmt -> [PostRawStmt]
 postprocess' h stmt = do
   case stmt of
-    RawStmtDefine c stmtKind rawDef@(RT.RawDef {geist}) -> do
+    RawStmtDefineTerm c stmtKind rawDef@(RT.RawDef {geist}) -> do
       let geist' = liftGeist h geist
       let stmtKind' = liftStmtKind h stmtKind
-      [PostRawStmtDefine c stmtKind' (rawDef {RT.geist = geist'})]
+      [PostRawStmtDefineTerm c stmtKind' (rawDef {RT.geist = geist'})]
+    RawStmtDefineType c stmtKind rawDef@(RT.RawTypeDef {typeGeist}) -> do
+      let geist' = liftGeist h typeGeist
+      let stmtKind' = liftStmtKind h stmtKind
+      [PostRawStmtDefineType c stmtKind' (rawDef {RT.typeGeist = geist'})]
     RawStmtDefineData _ m (name, _) args consInfo loc -> do
       let name' = Locator.attachCurrentLocator h name
       let consInfo' = fmap (liftRawCons h) consInfo
@@ -176,7 +180,7 @@ saveTopLevelNames h source nameArrowList = do
 registerKeyArg :: Handle -> PostRawStmt -> App ()
 registerKeyArg h stmt = do
   case stmt of
-    PostRawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
+    PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist}) -> do
       let name = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
       let m = RT.loc geist
@@ -191,6 +195,8 @@ registerKeyArg h stmt = do
           let impKeys = map (\(_, x, _, _, _) -> x) (impArgs ++ defaultArgs)
           let expKeys = map (\(_, x, _, _, _) -> x) expArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
+    PostRawStmtDefineType {} -> do
+      return ()
     PostRawStmtNominal {} -> do
       return ()
     PostRawStmtDefineResource {} -> do

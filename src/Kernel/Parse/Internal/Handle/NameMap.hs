@@ -168,27 +168,10 @@ getGlobalNames stmtList = do
 _getGlobalNames :: PostRawStmt -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
 _getGlobalNames stmt = do
   case stmt of
-    PostRawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
-      let name = fst $ RT.name geist
-      let impArgs = RT.extractImpArgs $ RT.impArgs geist
-      let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
-      let expArgs = RT.extractArgs $ RT.expArgs geist
-      let isConstLike = RT.isConstLike geist
-      let m = RT.loc geist
-      let allArgNum = AN.fromInt $ length $ impArgs ++ defaultArgs ++ expArgs
-      case stmtKind of
-        SK.Normal opacity -> do
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
-        SK.Main opacity _ ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
-        SK.Alias ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
-        SK.Data dataName dataArgs consInfoList -> do
-          let dataArgNum = AN.fromInt $ length dataArgs
-          let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
-          (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
-        SK.DataIntro {} ->
-          []
+    PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist}) ->
+      getGlobalNamesFromDef stmtKind geist
+    PostRawStmtDefineType _ stmtKind (RT.RawTypeDef {typeGeist}) ->
+      getGlobalNamesFromDef stmtKind typeGeist
     PostRawStmtVariadic kind m name -> do
       [(name, (m, GN.Rule kind))]
     PostRawStmtNominal {} -> do
@@ -196,6 +179,32 @@ _getGlobalNames stmt = do
     PostRawStmtDefineResource _ m (name, _) _ _ _ _ -> do
       [(name, (m, GN.TopLevelFunc AN.zero True False))]
     PostRawStmtForeign {} ->
+      []
+
+getGlobalNamesFromDef ::
+  RawStmtKind DD.DefiniteDescription ->
+  RT.RawGeist DD.DefiniteDescription ->
+  [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
+getGlobalNamesFromDef stmtKind geist = do
+  let name = fst $ RT.name geist
+  let impArgs = RT.extractImpArgs $ RT.impArgs geist
+  let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
+  let expArgs = RT.extractArgs $ RT.expArgs geist
+  let isConstLike = RT.isConstLike geist
+  let m = RT.loc geist
+  let allArgNum = AN.fromInt $ length $ impArgs ++ defaultArgs ++ expArgs
+  case stmtKind of
+    SK.Normal opacity -> do
+      [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+    SK.Main opacity _ ->
+      [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+    SK.Alias ->
+      [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
+    SK.Data dataName dataArgs consInfoList -> do
+      let dataArgNum = AN.fromInt $ length dataArgs
+      let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
+      (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
+    SK.DataIntro {} ->
       []
 
 getGlobalNames' :: [Stmt] -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
