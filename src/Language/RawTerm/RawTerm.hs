@@ -15,6 +15,7 @@ module Language.RawTerm.RawTerm
     RawGeist (..),
     RawDef (..),
     RawTypeDef (..),
+    RawImpVar,
     VarArg,
     getDefName,
     emptyArgs,
@@ -59,12 +60,15 @@ import Logger.LogLevel
 import SyntaxTree.C
 import SyntaxTree.Series qualified as SE
 
+type RawImpVar =
+  (Hint, RawIdent, C)
+
 data RawTypeF a
   = Tau
   | TypeHole HoleID
   | TyVar RawIdent
   | TyApp a C (SE.Series a)
-  | Pi (SE.Series (RawBinder a), C) (SE.Series (RawBinder a, RawTerm), C) (Args a) C a Loc
+  | Pi (SE.Series RawImpVar, C) (SE.Series (RawBinder a, RawTerm), C) (Args a) C a Loc
   | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]
   | Box a
   | BoxNoema a
@@ -126,7 +130,7 @@ emptyArgs :: Args a
 emptyArgs =
   (SE.emptySeriesPC, [])
 
-emptyImpArgs :: (SE.Series (RawBinder a), C)
+emptyImpArgs :: (SE.Series RawImpVar, C)
 emptyImpArgs =
   (SE.emptySeries (Just SE.Angle) SE.Comma, [])
 
@@ -138,7 +142,7 @@ extractArgs :: Args a -> [RawBinder a]
 extractArgs (series, _) =
   SE.extract series
 
-extractImpArgs :: (SE.Series (RawBinder a), C) -> [RawBinder a]
+extractImpArgs :: (SE.Series RawImpVar, C) -> [RawImpVar]
 extractImpArgs (series, _) =
   SE.extract series
 
@@ -161,7 +165,7 @@ data RawGeist a = RawGeist
   { loc :: Hint,
     name :: (a, C),
     isConstLike :: IsConstLike,
-    impArgs :: (SE.Series (RawBinder RawType), C),
+    impArgs :: (SE.Series RawImpVar, C),
     defaultArgs :: (SE.Series (RawBinder RawType, RawTerm), C),
     expArgs :: Args RawType,
     cod :: (C, RawType)

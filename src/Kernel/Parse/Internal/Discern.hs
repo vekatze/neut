@@ -116,7 +116,7 @@ discernStmt h stmt = do
       let m = RT.loc geist
       let functionName = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      (impArgs', nenv) <- discernBinder hStage impArgs endLoc
+      (impArgs', nenv) <- discernImpArgs hStage impArgs endLoc
       (defaultArgs', nenv') <- discernBinderWithDefaultArgs nenv defaultArgs endLoc
       (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
       codType' <- discernType nenv'' codType
@@ -140,7 +140,7 @@ discernStmt h stmt = do
       let m = RT.loc typeGeist
       let functionName = fst $ RT.name typeGeist
       let isConstLike = RT.isConstLike typeGeist
-      (impArgs', nenv) <- discernBinder hStage impArgs typeEndLoc
+      (impArgs', nenv) <- discernImpArgs hStage impArgs typeEndLoc
       (defaultArgs', nenv') <- discernBinderWithDefaultArgs nenv defaultArgs typeEndLoc
       (expArgs', nenv'') <- discernBinder nenv' expArgs typeEndLoc
       codType' <- discernType nenv'' codType
@@ -183,7 +183,7 @@ discernGeist h endLoc geist = do
   let impArgs = RT.extractImpArgs $ RT.impArgs geist
   let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
-  (impArgs', h') <- discernBinder h impArgs endLoc
+  (impArgs', h') <- discernImpArgs h impArgs endLoc
   (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgs endLoc
   (expArgs', h''') <- discernBinder h'' expArgs endLoc
   forM_ (impArgs' ++ map fst defaultArgs' ++ expArgs') $ \(_, x, _) ->
@@ -298,7 +298,7 @@ discern h term =
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
-      (impArgs', h') <- discernBinder h impArgs endLoc
+      (impArgs', h') <- discernImpArgs h impArgs endLoc
       (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgs endLoc
       (expArgs', h''') <- discernBinder h'' expArgs endLoc
       codType' <- discernType h''' $ snd $ RT.cod geist
@@ -311,7 +311,7 @@ discern h term =
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let mx = RT.loc geist
       let (x, _) = RT.name geist
-      (impArgs', h') <- discernBinder h impArgs endLoc
+      (impArgs', h') <- discernImpArgs h impArgs endLoc
       (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgs endLoc
       (expArgs', h''') <- discernBinder h'' expArgs endLoc
       codType' <- discernType h''' $ snd $ RT.cod geist
@@ -608,7 +608,7 @@ discernType h ty =
     m :< RT.Pi impArgs defaultArgs expArgs _ t endLoc -> do
       let impArgsBase = RT.extractImpArgs impArgs
       let defaultArgsBase = SE.extract $ fst defaultArgs
-      (impArgs', h') <- discernBinder h impArgsBase endLoc
+      (impArgs', h') <- discernImpArgs h impArgsBase endLoc
       (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgsBase endLoc
       (expArgs', h''') <- discernBinder h'' (RT.extractArgs expArgs) endLoc
       t' <- discernType h''' t
@@ -963,6 +963,24 @@ discernIdent mUse h x =
           liftIO $ Unused.deleteVariable (H.unusedHandle h) x'
           return (mDef, (mUse, x'))
         else raiseStageError mUse (H.currentStage h) stage
+
+discernImpArgs ::
+  H.Handle ->
+  [RT.RawImpVar] ->
+  Loc ->
+  App ([BinderF WT.WeakTerm], H.Handle)
+discernImpArgs h binder endLoc =
+  case binder of
+    [] -> do
+      return ([], h)
+    (mx, x, _) : xts -> do
+      t <- liftIO $ WT.createHole (H.gensymHandle h) mx []
+      x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+      h' <- liftIO $ H.extend' h mx x' VDK.Normal
+      (xts', h'') <- discernImpArgs h' xts endLoc
+      liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t)
+      liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
+      return ((mx, x', t) : xts', h'')
 
 discernBinder ::
   H.Handle ->

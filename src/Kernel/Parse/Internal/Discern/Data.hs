@@ -14,6 +14,7 @@ import Language.RawTerm.RawIdent
 import Language.RawTerm.RawStmt
 import Language.RawTerm.RawTerm qualified as RT
 import Logger.Hint
+import SyntaxTree.C (C)
 import SyntaxTree.Series qualified as SE
 
 defineData ::
@@ -115,7 +116,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                         { loc = loc consInfo,
                           name = (name consInfo, []),
                           isConstLike = isConstLikeConsInfo consInfo,
-                          impArgs = dataArgs,
+                          impArgs = dataArgsToImpArgs dataArgs,
                           defaultArgs = RT.emptyDefaultArgs,
                           expArgs = (SE.emptySeriesPC, []),
                           cod = ([], consType)
@@ -128,6 +129,10 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
               )
       let introRuleList = parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
       introRule : introRuleList
+
+dataArgsToImpArgs :: RT.Args RT.RawType -> (SE.Series RT.RawImpVar, C)
+dataArgsToImpArgs (series, c) =
+  (fmap (\(m, x, c1, c2, _) -> (m, x, c1 ++ c2)) series, c)
 
 constructDataType ::
   Hint ->

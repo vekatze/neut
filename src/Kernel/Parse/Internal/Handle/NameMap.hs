@@ -72,7 +72,7 @@ registerGeist h RT.RawGeist {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractImpArgs impArgs
   let defaultArgs' = map fst $ SE.extract $ fst defaultArgs
-  let argNum = AN.fromInt $ length $ impArgs' ++ defaultArgs' ++ expArgs'
+  let argNum = AN.fromInt $ length impArgs' + length defaultArgs' + length expArgs'
   let name' = fst name
   ensureGeistFreshness h loc name'
   ensureDefFreshness h loc name' isConstLike
@@ -192,7 +192,7 @@ getGlobalNamesFromDef stmtKind geist = do
   let expArgs = RT.extractArgs $ RT.expArgs geist
   let isConstLike = RT.isConstLike geist
   let m = RT.loc geist
-  let allArgNum = AN.fromInt $ length $ impArgs ++ defaultArgs ++ expArgs
+  let allArgNum = AN.fromInt $ length impArgs + length defaultArgs + length expArgs
   case stmtKind of
     SK.Normal opacity -> do
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]

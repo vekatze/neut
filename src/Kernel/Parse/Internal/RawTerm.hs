@@ -426,11 +426,11 @@ parseAliasGeist h nameParser = do
   let cod = m :< RT.Tau
   return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
-parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawType), C)
+parseImplicitParams :: Handle -> Parser (SE.Series RT.RawImpVar, C)
 parseImplicitParams h =
   choice
     [ do
-        (s, c) <- seriesAngle $ preBinder h
+        (s, c) <- seriesAngle $ parseImplicitParam h
         return (s, c),
       return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
     ]
@@ -444,14 +444,19 @@ parseDefaultParams h =
       return (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
     ]
 
-parseImplicitParamsMaybe :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawType)), C)
+parseImplicitParamsMaybe :: Handle -> Parser (Maybe (SE.Series RT.RawImpVar), C)
 parseImplicitParamsMaybe h =
   choice
     [ do
-        (s, c) <- seriesAngle $ preBinder h
+        (s, c) <- seriesAngle $ parseImplicitParam h
         return (Just s, c),
       return (Nothing, [])
     ]
+
+parseImplicitParam :: Handle -> Parser (RT.RawImpVar, C)
+parseImplicitParam h = do
+  ((m, x), c) <- var h
+  return ((m, x, c), [])
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =

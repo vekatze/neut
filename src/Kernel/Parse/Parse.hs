@@ -192,7 +192,7 @@ registerKeyArg h stmt = do
           let impArgs = RT.extractImpArgs $ RT.impArgs geist
           let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
           let expArgs = RT.extractArgs $ RT.expArgs geist
-          let impKeys = map (\(_, x, _, _, _) -> x) (impArgs ++ defaultArgs)
+          let impKeys = map (\(_, x, _) -> x) impArgs ++ map (\(_, x, _, _, _) -> x) defaultArgs
           let expKeys = map (\(_, x, _, _, _) -> x) expArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
     PostRawStmtDefineType {} -> do

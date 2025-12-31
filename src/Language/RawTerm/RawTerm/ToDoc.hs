@@ -563,28 +563,32 @@ decGeist
         expParams =
           attachComment (cExp ++ c2) $ decodeExpParams isConstLike expArgs
      in case cod of
-      _ :< RT.TypeHole {} ->
-        PI.arrange
-          [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams impArgs,
-            PI.inject defaultParams,
-            PI.inject expParams
-          ]
-      _ ->
-        PI.arrange
-          [ PI.inject $ attachComment c0 $ nameDecoder name,
-            PI.inject $ decodeImpParams impArgs,
-            PI.inject defaultParams,
-            PI.inject expParams,
-            PI.horizontal $ attachComment c3 $ D.text ":",
-            PI.inject $ attachComment c4 $ typeToDoc cod
-          ]
+          _ :< RT.TypeHole {} ->
+            PI.arrange
+              [ PI.inject $ attachComment c0 $ nameDecoder name,
+                PI.inject $ decodeImpParams impArgs,
+                PI.inject defaultParams,
+                PI.inject expParams
+              ]
+          _ ->
+            PI.arrange
+              [ PI.inject $ attachComment c0 $ nameDecoder name,
+                PI.inject $ decodeImpParams impArgs,
+                PI.inject defaultParams,
+                PI.inject expParams,
+                PI.horizontal $ attachComment c3 $ D.text ":",
+                PI.inject $ attachComment c4 $ typeToDoc cod
+              ]
 
-decodeImpParams :: SE.Series (RawBinder RawType) -> D.Doc
+decodeImpParams :: SE.Series RT.RawImpVar -> D.Doc
 decodeImpParams impParams =
   if SE.isEmpty impParams
     then D.Nil
-    else SE.decode $ fmap piIntroArgToDoc impParams
+    else SE.decode $ fmap decodeImpVar impParams
+
+decodeImpVar :: RT.RawImpVar -> D.Doc
+decodeImpVar (_, x, c) = do
+  attachComment c $ D.text x
 
 decodeDefaultParams :: SE.Series (RawBinder RawType, RawTerm) -> D.Doc
 decodeDefaultParams defaultParams =
