@@ -106,28 +106,24 @@ inline' h term = do
       return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi piKind impArgs expArgs cod -> do
-      impArgs' <- forM impArgs $ \(binder, maybeType) -> do
-        binder' <- inlineBinder h binder
-        maybeType' <- traverse (inline' h) maybeType
-        return (binder', maybeType')
+    m :< TM.Pi piKind impArgs defaultArgs expArgs cod -> do
+      impArgs' <- mapM (inlineBinder h) impArgs
+      defaultArgs' <- mapM (bimapM (inlineBinder h) (inline' h)) defaultArgs
       expArgs' <- mapM (inlineBinder h) expArgs
       cod' <- inline' h cod
-      return (m :< TM.Pi piKind impArgs' expArgs' cod')
-    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      impArgs' <- forM impArgs $ \(binder, maybeType) -> do
-        binder' <- inlineBinder h binder
-        maybeType' <- traverse (inline' h) maybeType
-        return (binder', maybeType')
+      return (m :< TM.Pi piKind impArgs' defaultArgs' expArgs' cod')
+    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+      impArgs' <- mapM (inlineBinder h) impArgs
+      defaultArgs' <- mapM (bimapM (inlineBinder h) (inline' h)) defaultArgs
       expArgs' <- mapM (inlineBinder h) expArgs
       e' <- inline' h e
       case lamKind of
         LK.Fix (mx, x, codType) -> do
           codType' <- inline' h codType
-          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e')
+          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' defaultArgs' expArgs' e')
         LK.Normal mName codType -> do
           codType' <- inline' h codType
-          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Normal mName codType'}) impArgs' expArgs' e')
+          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Normal mName codType'}) impArgs' defaultArgs' expArgs' e')
     m :< TM.PiElim isNoetic e impArgs expArgs -> do
       e' <- inline' h e
       impArgs' <- mapM (inline' h) impArgs
@@ -137,8 +133,8 @@ inline' h term = do
         else do
           let Handle {dmap} = h
           case e' of
-            (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgsBinder expArgsBinder body)
-              | xts <- map fst impArgsBinder ++ expArgsBinder,
+            (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgsBinder defaultArgsBinder expArgsBinder body)
+              | xts <- impArgsBinder ++ map fst defaultArgsBinder ++ expArgsBinder,
                 length xts == length (impArgs' ++ expArgs') -> do
                   let allArgs = impArgs' ++ expArgs'
                   if all TM.isValue allArgs
@@ -174,14 +170,14 @@ inline' h term = do
                                 IntMap.fromList $
                                   map (\((_, x, _), (_, x', _)) -> (Ident.toInt x, Left x')) expIdPairs
                           codType' <- liftIO $ Subst.subst (substHandle h) subRename codTypeSub
-                          let selfType = m :< TM.Pi PK.normal [] expBinders' codType'
+                          let selfType = m :< TM.Pi PK.normal [] [] expBinders' codType'
                           pushGuard h dd typeArgs (m :< TM.Var selfIdent)
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) body'
                           body''' <- inline' h body''
                           popGuard h
                           identity <- liftIO $ Gensym.newCount (gensymHandle h)
                           let attr = AttrL.Attr {lamKind = LK.Fix (m, selfIdent, selfType), identity}
-                          let fun = m :< TM.PiIntro attr [] expBinders' body'''
+                          let fun = m :< TM.PiIntro attr [] [] expBinders' body'''
                           let fixVal = m :< TM.PiElim False fun [] []
                           return $ m :< TM.PiElim False fixVal [] expArgs'
                     else do

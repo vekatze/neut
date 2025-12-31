@@ -72,32 +72,33 @@ type BoundVarEnv = [BinderF WT.WeakTerm]
 inferStmt :: Handle -> WeakStmt -> App WeakStmt
 inferStmt h stmt =
   case stmt of
-    WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
+    WeakStmtDefine isConstLike stmtKind m x impArgs defaultArgs expArgs codType e -> do
       (impArgs', h') <- inferImpBinder h impArgs
-      (expArgs', h'') <- inferBinder' h' expArgs
-      codType' <- inferType h'' codType
+      (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
+      (expArgs', h''') <- inferBinder' h'' expArgs
+      codType' <- inferType h''' codType
       when (SK.isInlineStmtKind stmtKind) $
-        forM_ (map fst impArgs') $ \(mx, _, t) ->
-          checkIsTypeType h'' mx t
+        forM_ (impArgs' ++ map fst defaultArgs') $ \(mx, _, t) ->
+          checkIsTypeType h''' mx t
       case stmtKind of
         SK.Alias -> do
-          checkIsTypeType h'' m codType'
-          liftIO $ insertType h'' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' codType'
+          checkIsTypeType h''' m codType'
+          liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
         SK.DataIntro {} -> do
-          liftIO $ insertType h'' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' expArgs' codType'
+          liftIO $ insertType h''' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' defaultArgs' expArgs' codType'
         _ ->
-          liftIO $ insertType h'' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' expArgs' codType'
-      stmtKind' <- inferStmtKind h'' stmtKind
-      (e', te) <- infer h'' e
-      liftIO $ Constraint.insert (constraintHandle h'') codType' te
+          liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
+      stmtKind' <- inferStmtKind h''' stmtKind
+      (e', te) <- infer h''' e
+      liftIO $ Constraint.insert (constraintHandle h''') codType' te
       case getMainUnitType stmtKind of
         Just unitType -> do
-          let expected = m :< WT.Pi PK.normal [] [] unitType
-          let actual = m :< WT.Pi PK.normal impArgs' expArgs' codType'
-          liftIO $ Constraint.insert (constraintHandle h'') expected actual
+          let expected = m :< WT.Pi PK.normal [] [] [] unitType
+          let actual = m :< WT.Pi PK.normal impArgs' defaultArgs' expArgs' codType'
+          liftIO $ Constraint.insert (constraintHandle h''') expected actual
         Nothing ->
           return ()
-      return $ WeakStmtDefine isConstLike stmtKind' m x impArgs' expArgs' codType' e'
+      return $ WeakStmtDefine isConstLike stmtKind' m x impArgs' defaultArgs' expArgs' codType' e'
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
     WeakStmtNominal m geistList -> do
@@ -108,13 +109,12 @@ inferStmt h stmt =
 
 inferGeist :: Handle -> G.Geist WT.WeakTerm -> App (G.Geist WT.WeakTerm)
 inferGeist h (G.Geist {..}) = do
-  (impArgs', h') <- inferImpBinder h $ map (,Nothing) impArgs
+  (impArgs', h') <- inferImpBinder h impArgs
   (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
-  let impArgsWithDefaults = map ((,Nothing) . fst) impArgs' ++ map (second Just) defaultArgs'
   (expArgs', h''') <- inferBinder' h'' expArgs
   cod' <- inferType h''' cod
-  liftIO $ insertType h''' name $ loc :< WT.Pi PK.normal impArgsWithDefaults expArgs' cod'
-  return $ G.Geist {impArgs = map fst impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
+  liftIO $ insertType h''' name $ loc :< WT.Pi PK.normal impArgs' defaultArgs' expArgs' cod'
+  return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
 
 insertType :: Handle -> DD.DefiniteDescription -> WT.WeakTerm -> IO ()
 insertType h dd t = do
@@ -179,33 +179,34 @@ infer h term =
     m :< WT.VarGlobal _ name -> do
       _ :< t <- Type.lookup' (typeHandle h) m name
       return (term, m :< t)
-    m :< WT.Pi piKind impArgs expArgs t -> do
+    m :< WT.Pi piKind impArgs defaultArgs expArgs t -> do
       (impArgs', h') <- inferImpBinder h impArgs
-      (expArgs', h'') <- inferPiBinder h' expArgs
-      t' <- inferType h'' t
-      return (m :< WT.Pi piKind impArgs' expArgs' t', m :< WT.Tau)
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
+      (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
+      (expArgs', h''') <- inferPiBinder h'' expArgs
+      t' <- inferType h''' t
+      return (m :< WT.Pi piKind impArgs' defaultArgs' expArgs' t', m :< WT.Tau)
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
           (impArgs', h') <- inferImpBinder h impArgs
-          (expArgs', h'') <- inferBinder' h' expArgs
-          codType' <- inferType h'' codType
-          let impArgsWithDefaults = impArgs'
-          let piType = m :< WT.Pi PK.normal impArgsWithDefaults expArgs' codType'
+          (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
+          (expArgs', h''') <- inferBinder' h'' expArgs
+          codType' <- inferType h''' codType
+          let piType = m :< WT.Pi PK.normal impArgs' defaultArgs' expArgs' codType'
           liftIO $ WeakType.insert (weakTypeHandle h) x piType
-          (e', tBody) <- infer h'' e
-          liftIO $ Constraint.insert (constraintHandle h'') codType' tBody
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e'
+          (e', tBody) <- infer h''' e
+          liftIO $ Constraint.insert (constraintHandle h''') codType' tBody
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' defaultArgs' expArgs' e'
           return (term', piType)
         LK.Normal name codType -> do
           (impArgs', h') <- inferImpBinder h impArgs
-          (expArgs', h'') <- inferBinder' h' expArgs
-          codType' <- inferType h'' codType
-          (e', t') <- infer h'' e
-          liftIO $ Constraint.insert (constraintHandle h'') codType' t'
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' expArgs' e'
-          let impArgsWithDefaults = impArgs'
-          return (term', m :< WT.Pi PK.normal impArgsWithDefaults expArgs' t')
+          (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
+          (expArgs', h''') <- inferBinder' h'' expArgs
+          codType' <- inferType h''' codType
+          (e', t') <- infer h''' e
+          liftIO $ Constraint.insert (constraintHandle h''') codType' t'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' defaultArgs' expArgs' e'
+          return (term', m :< WT.Pi PK.normal impArgs' defaultArgs' expArgs' t')
     m :< WT.PiElim _ e impArgs expArgs -> do
       etl <- infer h e
       impArgs' <- ImpArgs.traverseImpArgs (infer h) impArgs
@@ -215,15 +216,16 @@ infer h term =
       (e', t) <- infer h e
       t' <- resolveType h t
       case t' of
-        _ :< WT.Pi _ impArgs expArgs codType -> do
-          let impBinders = map fst impArgs
-          impValues <- mapM (createImpArgValue h m) impArgs
+        _ :< WT.Pi _ impArgs defaultArgs expArgs codType -> do
+          let impParams = map (,Nothing) impArgs ++ map (second Just) defaultArgs
+          let impBinders = map fst impParams
+          impValues <- mapM (createImpArgValue h m) impParams
           let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impBinders) (map Right impValues)
           (expArgs', sub') <- liftIO $ Subst.subst' (substHandle h) sub expArgs
           let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
           codType' <- liftIO $ Subst.subst (substHandle h) sub' codType
           lamID <- liftIO $ Gensym.newCount (gensymHandle h)
-          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] expArgs' (m :< WT.PiElim False e' ImpArgs.Unspecified expArgs'')
+          infer h $ m :< WT.PiIntro (AttrL.normal lamID codType') [] [] expArgs' (m :< WT.PiElim False e' ImpArgs.Unspecified expArgs'')
         _ ->
           raiseError m $ "Expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
@@ -420,8 +422,8 @@ infer h term =
       (typeTag', tt) <- infer (h {varEnv = []}) typeTag
       x <- liftIO $ Gensym.newIdentFromText (gensymHandle h) "_"
       resourceType <- liftIO $ newHole h m []
-      let tDiscard = m :< WT.Pi PK.normal [] [(m, x, resourceType)] unitType'
-      let tCopy = m :< WT.Pi PK.normal [] [(m, x, resourceType)] resourceType
+      let tDiscard = m :< WT.Pi PK.normal [] [] [(m, x, resourceType)] unitType'
+      let tCopy = m :< WT.Pi PK.normal [] [] [(m, x, resourceType)] resourceType
       intType <- getIntType (platformHandle h) m
       liftIO $ Constraint.insert (constraintHandle h) tDiscard td
       liftIO $ Constraint.insert (constraintHandle h) tCopy tc
@@ -492,25 +494,17 @@ inferPiBinder h binder =
 
 inferImpBinder ::
   Handle ->
-  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
-  App ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], Handle)
+  [BinderF WT.WeakTerm] ->
+  App ([BinderF WT.WeakTerm], Handle)
 inferImpBinder h binderList =
   case binderList of
     [] -> do
       return ([], h)
-    (((mx, x, t), mDefaultValue) : rest) -> do
+    ((mx, x, t) : rest) -> do
       t' <- inferType h t
-      mDefaultValue' <-
-        case mDefaultValue of
-          Nothing ->
-            return Nothing
-          Just defaultValue -> do
-            (defaultValue', defaultType) <- infer h defaultValue
-            liftIO $ Constraint.insert (constraintHandle h) t' defaultType
-            return (Just defaultValue')
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       (rest', h') <- inferImpBinder (extendHandle (mx, x, t') h) rest
-      return (((mx, x, t'), mDefaultValue') : rest', h')
+      return ((mx, x, t') : rest', h')
 
 inferImpBinderWithDefaults ::
   Handle ->
@@ -596,7 +590,8 @@ inferPiElim ::
 inferPiElim h m (e, t) impArgs expArgs = do
   t' <- resolveType h t
   case t' of
-    _ :< WT.Pi _ impParams expParams cod -> do
+    _ :< WT.Pi _ impArgsParam defaultArgs expParams cod -> do
+      let impParams = map (,Nothing) impArgsParam ++ map (second Just) defaultArgs
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgs' <- do
         case impArgs of
@@ -611,7 +606,8 @@ inferPiElim h m (e, t) impArgs expArgs = do
       let piArgs = impBinders ++ expParams
       _ :< cod' <- inferArgs h IntMap.empty m (impArgs' ++ expArgs) piArgs cod
       return (m :< WT.PiElim False e (ImpArgs.FullySpecified (map fst impArgs')) (map fst expArgs), m :< cod')
-    _ :< WT.BoxNoema (_ :< WT.Pi _ impParams expParams cod) -> do
+    _ :< WT.BoxNoema (_ :< WT.Pi _ impArgsParam defaultArgs expParams cod) -> do
+      let impParams = map (,Nothing) impArgsParam ++ map (second Just) defaultArgs
       ensureArityCorrectness h e (length expParams) (length expArgs)
       impArgs' <- do
         case impArgs of
@@ -692,7 +688,7 @@ primOpToType h m op = do
   xs <- mapM (const (Gensym.newIdentFromText (gensymHandle h) "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   let cod' = Term.fromPrimNum m cod
-  return $ m :< TM.Pi PK.normal [] xts cod'
+  return $ m :< TM.Pi PK.normal [] [] xts cod'
 
 inferLet ::
   Handle ->

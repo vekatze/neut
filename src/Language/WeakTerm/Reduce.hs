@@ -57,41 +57,23 @@ reduce' h term = do
   detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
   case term of
-    m :< WT.Pi piKind impArgs expArgs cod -> do
-      impArgs' <- do
-        let binders = map fst impArgs
-        let maybeTypes = map snd impArgs
-        let (ms, xs, ts) = unzip3 binders
-        ts' <- mapM (reduce' h) ts
-        maybeTypes' <- mapM (traverse (reduce' h)) maybeTypes
-        let binders' = zip3 ms xs ts'
-        return $ zip binders' maybeTypes'
-      expArgs' <- do
-        let (ms, xs, ts) = unzip3 expArgs
-        ts' <- mapM (reduce' h) ts
-        return $ zip3 ms xs ts'
+    m :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
+      impArgs' <- mapM (reduceBinder h) impArgs
+      defaultArgs' <- mapM (bimapM (reduceBinder h) (reduce' h)) defaultArgs
+      expArgs' <- mapM (reduceBinder h) expArgs
       cod' <- reduce' h cod
-      return $ m :< WT.Pi piKind impArgs' expArgs' cod'
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      impArgs' <- do
-        let binders = map fst impArgs
-        let maybeTypes = map snd impArgs
-        let (ms, xs, ts) = unzip3 binders
-        ts' <- mapM (reduce' h) ts
-        maybeTypes' <- mapM (traverse (reduce' h)) maybeTypes
-        let binders' = zip3 ms xs ts'
-        return $ zip binders' maybeTypes'
-      expArgs' <- do
-        let (ms, xs, ts) = unzip3 expArgs
-        ts' <- mapM (reduce' h) ts
-        return $ zip3 ms xs ts'
+      return $ m :< WT.Pi piKind impArgs' defaultArgs' expArgs' cod'
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+      impArgs' <- mapM (reduceBinder h) impArgs
+      defaultArgs' <- mapM (bimapM (reduceBinder h) (reduce' h)) defaultArgs
+      expArgs' <- mapM (reduceBinder h) expArgs
       e' <- reduce' h e
       case lamKind of
         LK.Fix (mx, x, t) -> do
           t' <- reduce' h t
-          return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' expArgs' e')
+          return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' defaultArgs' expArgs' e')
         _ ->
-          return (m :< WT.PiIntro attr impArgs' expArgs' e')
+          return (m :< WT.PiIntro attr impArgs' defaultArgs' expArgs' e')
     m :< WT.PiElim isNoetic e impArgs expArgs -> do
       e' <- reduce' h e
       impArgs' <- ImpArgs.traverseImpArgs (reduce h) impArgs
@@ -100,18 +82,18 @@ reduce' h term = do
         then return $ m :< WT.PiElim isNoetic e' impArgs' expArgs'
         else do
           case e' of
-            (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams expParams body)
-              | xts <- map fst impParams ++ expParams,
+            (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams defaultParams expParams body)
+              | xts <- impParams ++ map fst defaultParams ++ expParams,
                 ImpArgs.Unspecified <- impArgs',
                 length xts == length expArgs' -> do
                   let xs = map (\(_, x, _) -> Ident.toInt x) xts
                   let sub = IntMap.fromList $ zip xs (map Right expArgs')
                   liftIO (Subst.subst (substHandle h) sub body) >>= reduce' h
-            (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams expParams body)
-              | xts <- map fst impParams ++ expParams,
+            (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams defaultParams expParams body)
+              | xts <- impParams ++ map fst defaultParams ++ expParams,
                 ImpArgs.FullySpecified impArgs'' <- impArgs',
                 args <- impArgs'' ++ expArgs',
-                length impArgs'' == length (map fst impParams),
+                length impArgs'' == length (impParams ++ map fst defaultParams),
                 length xts == length args -> do
                   let xs = map (\(_, x, _) -> Ident.toInt x) xts
                   let sub = IntMap.fromList $ zip xs (map Right args)

@@ -36,8 +36,8 @@ chainOf' tenv term =
       []
     _ :< TM.Pi {} ->
       []
-    _ :< TM.PiIntro attr impArgs expArgs e ->
-      chainOfBinder tenv (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr attr]) [e]
+    _ :< TM.PiIntro attr impArgs defaultArgs expArgs e ->
+      chainOfBinder tenv (impArgs ++ map fst defaultArgs ++ expArgs ++ catMaybes [AttrL.fromAttr attr]) [e]
     _ :< TM.PiElim _ e impArgs expArgs -> do
       let xs1 = chainOf' tenv e
       let xs2 = concatMap (chainOf' tenv) impArgs

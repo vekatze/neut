@@ -54,12 +54,13 @@ subst h sub term =
           return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi piKind impArgs expArgs t -> do
-      (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
-      (expArgs', sub'') <- substBinder h sub' expArgs
-      t' <- subst h sub'' t
-      return (m :< TM.Pi piKind impArgs' expArgs' t')
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
+    m :< TM.Pi piKind impArgs defaultArgs expArgs t -> do
+      (impArgs', sub') <- substBinder h sub impArgs
+      (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
+      (expArgs', sub''') <- substBinder h sub'' expArgs
+      t' <- subst h sub''' t
+      return (m :< TM.Pi piKind impArgs' defaultArgs' expArgs' t')
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
       let fvs = S.map Ident.toInt $ TM.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
       if S.intersection fvs subDomSet == S.empty
@@ -68,19 +69,21 @@ subst h sub term =
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
             LK.Fix xt -> do
-              (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
-              (expArgs', sub'') <- substBinder h sub' expArgs
-              ([xt'], sub''') <- substBinder h sub'' [xt]
-              e' <- subst h sub''' e
+              (impArgs', sub') <- substBinder h sub impArgs
+              (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
+              (expArgs', sub''') <- substBinder h sub'' expArgs
+              ([xt'], sub'''') <- substBinder h sub''' [xt]
+              e' <- subst h sub'''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
-              return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
+              return (m :< TM.PiIntro fixAttr impArgs' defaultArgs' expArgs' e')
             LK.Normal name codType -> do
-              (impArgs', sub') <- substBinderWithMaybeType h sub impArgs
-              (expArgs', sub'') <- substBinder h sub' expArgs
-              codType' <- subst h sub'' codType
-              e' <- subst h sub'' e
+              (impArgs', sub') <- substBinder h sub impArgs
+              (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
+              (expArgs', sub''') <- substBinder h sub'' expArgs
+              codType' <- subst h sub''' codType
+              e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
-              return (m :< TM.PiIntro lamAttr impArgs' expArgs' e')
+              return (m :< TM.PiIntro lamAttr impArgs' defaultArgs' expArgs' e')
     m :< TM.PiElim b e impArgs expArgs -> do
       e' <- subst h sub e
       impArgs' <- mapM (subst h sub) impArgs
@@ -161,22 +164,22 @@ substBinder h sub binder =
       (xts', sub'') <- substBinder h sub' xts
       return ((m, x', t') : xts', sub'')
 
-substBinderWithMaybeType ::
+substDefaultArgs ::
   Handle ->
   SubstTerm ->
-  [(BinderF TM.Term, Maybe TM.Term)] ->
-  IO ([(BinderF TM.Term, Maybe TM.Term)], SubstTerm)
-substBinderWithMaybeType h sub binderList =
+  [(BinderF TM.Term, TM.Term)] ->
+  IO ([(BinderF TM.Term, TM.Term)], SubstTerm)
+substDefaultArgs h sub binderList =
   case binderList of
     [] -> do
       return ([], sub)
-    (((m, x, t), maybeType) : xts) -> do
+    ((m, x, t), defaultValue) : xts -> do
       t' <- subst h sub t
-      maybeType' <- traverse (subst h sub) maybeType
+      defaultValue' <- subst h sub defaultValue
       x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
-      (xts', sub'') <- substBinderWithMaybeType h sub' xts
-      return (((m, x', t'), maybeType') : xts', sub'')
+      (xts', sub'') <- substDefaultArgs h sub' xts
+      return (((m, x', t'), defaultValue') : xts', sub'')
 
 subst' ::
   Handle ->

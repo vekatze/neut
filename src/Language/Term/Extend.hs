@@ -28,14 +28,15 @@ extend term =
       _m :< TM.Var x
     _ :< TM.VarGlobal g argNum ->
       _m :< TM.VarGlobal g argNum
-    _ :< TM.Pi piKind impArgs expArgs t ->
-      _m :< TM.Pi piKind (map (bimap extendBinder (fmap extend)) impArgs) (map extendBinder expArgs) (extend t)
-    _ :< TM.PiIntro attr impArgs expArgs e -> do
+    _ :< TM.Pi piKind impArgs defaultArgs expArgs t ->
+      _m :< TM.Pi piKind (map extendBinder impArgs) (map (bimap extendBinder extend) defaultArgs) (map extendBinder expArgs) (extend t)
+    _ :< TM.PiIntro attr impArgs defaultArgs expArgs e -> do
       let attr' = extendAttr attr
-      let impArgs' = map (bimap extendBinder (fmap extend)) impArgs
+      let impArgs' = map extendBinder impArgs
+      let defaultArgs' = map (bimap extendBinder extend) defaultArgs
       let expArgs' = map extendBinder expArgs
       let e' = extend e
-      _m :< TM.PiIntro attr' impArgs' expArgs' e'
+      _m :< TM.PiIntro attr' impArgs' defaultArgs' expArgs' e'
     _ :< TM.PiElim b e impArgs expArgs -> do
       let e' = extend e
       let impArgs' = map extend impArgs

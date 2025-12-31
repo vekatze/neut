@@ -11,7 +11,6 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
-import Data.Maybe
 import Kernel.Elaborate.HoleSubst
 import Language.Common.Annotation qualified as AN
 import Language.Common.Attr.Data qualified as AttrD
@@ -45,22 +44,24 @@ fill h holeSubst term =
       return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.Pi piKind impArgs expArgs t -> do
-      impArgs' <- fillBinderWithMaybeType h holeSubst impArgs
+    m :< WT.Pi piKind impArgs defaultArgs expArgs t -> do
+      impArgs' <- fillBinder h holeSubst impArgs
+      defaultArgs' <- fillDefaultArgs h holeSubst defaultArgs
       expArgs' <- fillBinder h holeSubst expArgs
       t' <- fill h holeSubst t
-      return $ m :< WT.Pi piKind impArgs' expArgs' t'
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
-      impArgs' <- fillBinderWithMaybeType h holeSubst impArgs
+      return $ m :< WT.Pi piKind impArgs' defaultArgs' expArgs' t'
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
+      impArgs' <- fillBinder h holeSubst impArgs
+      defaultArgs' <- fillDefaultArgs h holeSubst defaultArgs
       expArgs' <- fillBinder h holeSubst expArgs
       case lamKind of
         LK.Fix xt -> do
           [xt'] <- fillBinder h holeSubst [xt]
           e' <- fill h holeSubst e
-          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) impArgs' expArgs' e'
+          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) impArgs' defaultArgs' expArgs' e'
         _ -> do
           e' <- fill h holeSubst e
-          return $ m :< WT.PiIntro attr impArgs' expArgs' e'
+          return $ m :< WT.PiIntro attr impArgs' defaultArgs' expArgs' e'
     m :< WT.PiElim b e impArgs expArgs -> do
       e' <- fill h holeSubst e
       impArgs' <- ImpArgs.traverseImpArgs (fill h holeSubst) impArgs
@@ -168,20 +169,20 @@ fillBinder h holeSubst binder =
       xts' <- fillBinder h holeSubst xts
       return $ (m, x, t') : xts'
 
-fillBinderWithMaybeType ::
+fillDefaultArgs ::
   Handle ->
   HoleSubst ->
-  [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
-  App [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)]
-fillBinderWithMaybeType h holeSubst binderList =
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  App [(BinderF WT.WeakTerm, WT.WeakTerm)]
+fillDefaultArgs h holeSubst binderList =
   case binderList of
     [] -> do
       return []
-    ((m, x, t), maybeType) : rest -> do
-      t' <- fill h holeSubst t
-      maybeType' <- traverse (fill h holeSubst) maybeType
-      rest' <- fillBinderWithMaybeType h holeSubst rest
-      return $ ((m, x, t'), maybeType') : rest'
+    (binder, value) : rest -> do
+      binder' <- fillSingleBinder h holeSubst binder
+      value' <- fill h holeSubst value
+      rest' <- fillDefaultArgs h holeSubst rest
+      return $ (binder', value') : rest'
 
 fillLet ::
   Handle ->

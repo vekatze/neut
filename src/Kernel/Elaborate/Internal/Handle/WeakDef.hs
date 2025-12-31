@@ -42,15 +42,16 @@ insert' ::
   Hint ->
   DD.DefiniteDescription ->
   [BinderF WeakTerm] ->
+  [(BinderF WeakTerm, WeakTerm)] ->
   [BinderF WeakTerm] ->
   WeakTerm ->
   WeakTerm ->
   IO ()
-insert' h opacity m name impArgs expArgs codType e =
+insert' h opacity m name impArgs defaultArgs expArgs codType e =
   when (opacity == O.Clear) $ do
     i <- Gensym.newCount (gensymHandle h)
     modifyIORef' (weakDefMapRef h) $
-      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) (map (,Nothing) impArgs) expArgs e)
+      Map.insert name (m :< WT.PiIntro (AttrL.normal' (Just $ DD.localLocator name) i codType) impArgs defaultArgs expArgs e)
 
 read' :: Handle -> IO DefMap
 read' h =

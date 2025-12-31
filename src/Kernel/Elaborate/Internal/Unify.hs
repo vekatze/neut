@@ -11,6 +11,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class
+import Data.Bifunctor (second)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List (partition)
@@ -155,8 +156,8 @@ simplify h susList constraintList =
         then simplify h susList cs
         else do
           case (expected', actual') of
-            (m1 :< WT.Pi _ impArgs1 expArgs1 cod1, m2 :< WT.Pi _ impArgs2 expArgs2 cod2)
-              | Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 impArgs2,
+            (m1 :< WT.Pi _ impArgs1 defaultArgs1 expArgs1 cod1, m2 :< WT.Pi _ impArgs2 defaultArgs2 expArgs2 cod2)
+              | Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
                   xt1 <- liftIO $ asWeakBinder h m1 cod1
                   xt2 <- liftIO $ asWeakBinder h m2 cod2
@@ -164,11 +165,11 @@ simplify h susList constraintList =
                   let impEqs' = map (,orig) impConstraints
                   cs' <- liftIO $ simplifyBinder h orig (impBinders1 ++ expArgs1 ++ [xt1]) (impBinders2 ++ expArgs2 ++ [xt2])
                   simplify h susList $ cs' ++ impEqs' ++ cs
-            (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
+            (m1 :< WT.PiIntro kind1 impArgs1 defaultArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 defaultArgs2 expArgs2 e2)
               | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
                 AttrL.Attr {lamKind = LK.Fix xt2@(_, x2, _)} <- kind2,
                 x1 == x2,
-                Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 impArgs2,
+                Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
                   yt1 <- liftIO $ asWeakBinder h m1 e1
                   yt2 <- liftIO $ asWeakBinder h m2 e2
@@ -178,7 +179,7 @@ simplify h susList constraintList =
                   simplify h susList $ cs' ++ impEqs' ++ cs
               | AttrL.Attr {lamKind = LK.Normal _ codType1} <- kind1,
                 AttrL.Attr {lamKind = LK.Normal _ codType2} <- kind2,
-                Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 impArgs2,
+                Just (impBinders, impConstraints) <- createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2,
                 length expArgs1 == length expArgs2 -> do
                   cod1 <- liftIO $ asWeakBinder h m1 codType1
                   xt1 <- liftIO $ asWeakBinder h m1 e1
@@ -445,10 +446,10 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (typeHandle h) m consName
   case t of
-    _ :< WT.Pi (PK.DataIntro False) impArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' _dataType) -> do
-      return $ map fst impArgs ++ expArgs ++ map fst impArgs' ++ expArgs'
-    _ :< WT.Pi (PK.DataIntro True) impArgs expArgs _dataType -> do
-      return $ map fst impArgs ++ expArgs
+    _ :< WT.Pi (PK.DataIntro False) impArgs defaultArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' defaultArgs' expArgs' _dataType) -> do
+      return $ impArgs ++ map fst defaultArgs ++ expArgs ++ impArgs' ++ map fst defaultArgs' ++ expArgs'
+    _ :< WT.Pi (PK.DataIntro True) impArgs defaultArgs expArgs _dataType -> do
+      return $ impArgs ++ map fst defaultArgs ++ expArgs
     _ ->
       raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toText t
 
@@ -481,10 +482,21 @@ simplifyInteger h m t orig = do
               return [C.SuspendedConstraint (fmvs, (C.Integer t', orig))]
 
 createDefaultConstraints ::
+  [BinderF WT.WeakTerm] ->
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  [BinderF WT.WeakTerm] ->
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  Maybe ([(BinderF WT.WeakTerm, BinderF WT.WeakTerm)], [C.Constraint])
+createDefaultConstraints impArgs1 defaultArgs1 impArgs2 defaultArgs2 = do
+  let params1 = map (,Nothing) impArgs1 ++ map (second Just) defaultArgs1
+  let params2 = map (,Nothing) impArgs2 ++ map (second Just) defaultArgs2
+  createDefaultConstraints' params1 params2
+
+createDefaultConstraints' ::
   [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
   [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] ->
   Maybe ([(BinderF WT.WeakTerm, BinderF WT.WeakTerm)], [C.Constraint])
-createDefaultConstraints impArgs1 impArgs2 = do
+createDefaultConstraints' impArgs1 impArgs2 = do
   case (impArgs1, impArgs2) of
     ([], []) ->
       Just ([], [])
@@ -495,12 +507,12 @@ createDefaultConstraints impArgs1 impArgs2 = do
     ((binder1, me1) : rest1, (binder2, me2) : rest2) -> do
       case (me1, me2) of
         (Nothing, Nothing) -> do
-          (binders, cs) <- createDefaultConstraints rest1 rest2
+          (binders, cs) <- createDefaultConstraints' rest1 rest2
           return ((binder1, binder2) : binders, cs)
         (Just _, Nothing) ->
           Nothing
         (Nothing, Just _) ->
           Nothing
         (Just e1, Just e2) -> do
-          (binders, cs) <- createDefaultConstraints rest1 rest2
+          (binders, cs) <- createDefaultConstraints' rest1 rest2
           return ((binder1, binder2) : binders, C.Eq e1 e2 : cs)

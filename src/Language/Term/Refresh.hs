@@ -34,28 +34,31 @@ refresh h term =
       return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi piKind impArgs expArgs t -> do
-      impArgs' <- refreshBinderWithMaybeType h impArgs
+    m :< TM.Pi piKind impArgs defaultArgs expArgs t -> do
+      impArgs' <- refreshBinder h impArgs
+      defaultArgs' <- refreshDefaultArgs h defaultArgs
       expArgs' <- refreshBinder h expArgs
       t' <- refresh h t
-      return (m :< TM.Pi piKind impArgs' expArgs' t')
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
+      return (m :< TM.Pi piKind impArgs' defaultArgs' expArgs' t')
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
       newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
       case lamKind of
         LK.Fix xt -> do
-          impArgs' <- refreshBinderWithMaybeType h impArgs
+          impArgs' <- refreshBinder h impArgs
+          defaultArgs' <- refreshDefaultArgs h defaultArgs
           expArgs' <- refreshBinder h expArgs
           [xt'] <- refreshBinder h [xt]
           e' <- refresh h e
           let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
-          return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
+          return (m :< TM.PiIntro fixAttr impArgs' defaultArgs' expArgs' e')
         LK.Normal name codType -> do
-          impArgs' <- refreshBinderWithMaybeType h impArgs
+          impArgs' <- refreshBinder h impArgs
+          defaultArgs' <- refreshDefaultArgs h defaultArgs
           expArgs' <- refreshBinder h expArgs
           codType' <- refresh h codType
           e' <- refresh h e
           let lamAttr = AttrL.Attr {lamKind = LK.Normal name codType', identity = newLamID}
-          return (m :< TM.PiIntro lamAttr impArgs' expArgs' e')
+          return (m :< TM.PiIntro lamAttr impArgs' defaultArgs' expArgs' e')
     m :< TM.PiElim b e impArgs expArgs -> do
       e' <- refresh h e
       impArgs' <- mapM (refresh h) impArgs
@@ -242,19 +245,19 @@ refreshCase h decisionCase = do
               DT.cont = cont'
             }
 
-refreshBinderWithMaybeType ::
+refreshDefaultArgs ::
   Handle ->
-  [(BinderF TM.Term, Maybe TM.Term)] ->
-  IO [(BinderF TM.Term, Maybe TM.Term)]
-refreshBinderWithMaybeType h binderList =
+  [(BinderF TM.Term, TM.Term)] ->
+  IO [(BinderF TM.Term, TM.Term)]
+refreshDefaultArgs h binderList =
   case binderList of
     [] -> do
       return []
-    ((binder, maybeType) : rest) -> do
+    ((binder, defaultValue) : rest) -> do
       [binder'] <- refreshBinder h [binder]
-      maybeType' <- traverse (refresh h) maybeType
-      rest' <- refreshBinderWithMaybeType h rest
-      return ((binder', maybeType') : rest')
+      defaultValue' <- refresh h defaultValue
+      rest' <- refreshDefaultArgs h rest
+      return ((binder', defaultValue') : rest')
 
 refreshAttrData :: Handle -> AttrD.Attr name (BinderF TM.Term) -> IO (AttrD.Attr name (BinderF TM.Term))
 refreshAttrData h attr = do

@@ -27,7 +27,8 @@ data WeakStmt
       WeakStmtKind
       Hint
       DD.DefiniteDescription
-      [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)]
+      [BinderF WT.WeakTerm]
+      [(BinderF WT.WeakTerm, WT.WeakTerm)]
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
@@ -42,7 +43,7 @@ getWeakStmtName =
 getWeakStmtName' :: WeakStmt -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName' stmt =
   case stmt of
-    WeakStmtDefine _ _ m name _ _ _ _ ->
+    WeakStmtDefine _ _ m name _ _ _ _ _ ->
       [(m, name)]
     WeakStmtVariadic _ m name ->
       [(m, name)]

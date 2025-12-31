@@ -22,11 +22,14 @@ freeVars term =
       S.singleton x
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.Pi _ impArgs expArgs t -> do
-      let impBinders = map fst impArgs
-      freeVars' (impBinders ++ expArgs) (freeVars t)
-    _ :< WT.PiIntro k impArgs expArgs e ->
-      freeVars' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e)
+    _ :< WT.Pi _ impArgs defaultArgs expArgs t -> do
+      let impBinders = impArgs ++ map fst defaultArgs
+      let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
+      S.union defaultVars (freeVars' (impBinders ++ expArgs) (freeVars t))
+    _ :< WT.PiIntro k impArgs defaultArgs expArgs e -> do
+      let impBinders = impArgs ++ map fst defaultArgs
+      let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
+      S.union defaultVars (freeVars' (impBinders ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
     _ :< WT.PiElim _ e impArgs expArgs -> do
       let xs = freeVars e
       let ys = S.unions $ map freeVars (ImpArgs.extract impArgs ++ expArgs)

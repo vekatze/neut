@@ -125,25 +125,33 @@ synthesizeStmtList h t logs stmtList = do
 elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [L.Log])
 elaborateStmt h stmt = do
   case stmt of
-    WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
+    WeakStmtDefine isConstLike stmtKind m x impArgs defaultArgs expArgs codType e -> do
       stmtKind' <- elaborateStmtKind h stmtKind
       e' <- elaborate' h e
-      impArgs' <- mapM (elaborateWeakBinderWithMaybeType h) impArgs
+      impArgs' <- mapM (elaborateWeakBinder h) impArgs
+      defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
+        binder' <- elaborateWeakBinder h binder
+        value' <- elaborate' h value
+        return (binder', value')
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       codType' <- elaborate' h codType
       let dummyAttr = AttrL.Attr {lamKind = LK.Normal Nothing codType', identity = 0}
       remarks <- do
         affHandle <- liftIO $ EnsureAffinity.new h
-        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' expArgs' e'
+        EnsureAffinity.ensureAffinity affHandle $ m :< TM.PiIntro dummyAttr impArgs' defaultArgs' expArgs' e'
       e'' <- inline h m e'
-      impArgs'' <- mapM (inlineBinderWithMaybeType h) impArgs'
+      impArgs'' <- mapM (inlineBinder h) impArgs'
+      defaultArgs'' <- forM defaultArgs' $ \(binder, value) -> do
+        binder' <- inlineBinder h binder
+        value' <- inline h m value
+        return (binder', value')
       expArgs'' <- mapM (inlineBinder h) expArgs'
       codType'' <- inline h m codType'
       when isConstLike $ do
         unless (TM.isValue e'') $ do
           raiseError m "Could not reduce the body of this definition into a constant"
       EnsureTemplateResolved.ensureTemplateResolved h m e''
-      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' expArgs'' codType'' e''
+      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs'' defaultArgs'' expArgs'' codType'' e''
       insertStmt h result
       return ([result], remarks)
     WeakStmtVariadic kind m dd -> do
@@ -172,15 +180,14 @@ elaborateGeist h (G.Geist {..}) = do
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) f impArgs expArgs t e -> do
-      let impArgsWithDefaults = impArgs
+    StmtDefine isConstLike stmtKind (SavedHint m) f impArgs defaultArgs expArgs t e -> do
       case stmtKind of
         SK.DataIntro {} ->
-          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.DataIntro isConstLike) impArgsWithDefaults expArgs t
+          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs defaultArgs expArgs t
         _ ->
-          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgsWithDefaults expArgs t
+          liftIO $ Type.insert' (typeHandle h) f $ weaken $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
       let isInlineFlag = SK.isInlineStmtKind stmtKind
-      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (map fst impArgs ++ expArgs) e t isInlineFlag
+      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (impArgs ++ map fst defaultArgs ++ expArgs) e t isInlineFlag
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -190,8 +197,8 @@ insertStmt h stmt = do
 insertWeakStmt :: Handle -> WeakStmt -> App ()
 insertWeakStmt h stmt = do
   case stmt of
-    WeakStmtDefine _ stmtKind m f impArgs expArgs codType e -> do
-      liftIO $ WeakDef.insert' (weakDefHandle h) (toOpacity stmtKind) m f (map fst impArgs) expArgs codType e
+    WeakStmtDefine _ stmtKind m f impArgs defaultArgs expArgs codType e -> do
+      liftIO $ WeakDef.insert' (weakDefHandle h) (toOpacity stmtKind) m f impArgs defaultArgs expArgs codType e
     WeakStmtNominal {} -> do
       return ()
     WeakStmtVariadic {} -> do
@@ -232,20 +239,25 @@ elaborate' h term =
       return $ m :< TM.Var x
     m :< WT.VarGlobal name argNum ->
       return $ m :< TM.VarGlobal name argNum
-    m :< WT.Pi piKind impArgs expArgs t -> do
-      impArgs' <- forM impArgs $ \(binder, maybeType) -> do
+    m :< WT.Pi piKind impArgs defaultArgs expArgs t -> do
+      impArgs' <- mapM (elaborateWeakBinder h) impArgs
+      defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
         binder' <- elaborateWeakBinder h binder
-        maybeType' <- traverse (elaborate' h) maybeType
-        return (binder', maybeType')
+        value' <- elaborate' h value
+        return (binder', value')
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       t' <- elaborate' h t
-      return $ m :< TM.Pi piKind impArgs' expArgs' t'
-    m :< WT.PiIntro kind impArgs expArgs e -> do
+      return $ m :< TM.Pi piKind impArgs' defaultArgs' expArgs' t'
+    m :< WT.PiIntro kind impArgs defaultArgs expArgs e -> do
       kind' <- elaborateLamAttr h kind
-      impArgs' <- mapM (elaborateWeakBinderWithMaybeType h) impArgs
+      impArgs' <- mapM (elaborateWeakBinder h) impArgs
+      defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
+        binder' <- elaborateWeakBinder h binder
+        value' <- elaborate' h value
+        return (binder', value')
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       e' <- elaborate' h e
-      return $ m :< TM.PiIntro kind' impArgs' expArgs' e'
+      return $ m :< TM.PiIntro kind' impArgs' defaultArgs' expArgs' e'
     m :< WT.PiElim b e impArgs expArgs -> do
       e' <- elaborate' h e
       let impArgs' = ImpArgs.extract impArgs
@@ -432,8 +444,8 @@ strictify' h m t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
-          | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
+        _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs defaultArgs expArgs _)
+          | [(_, _, arg)] <- impArgs ++ map fst defaultArgs ++ expArgs -> do
               strictify' h m arg
         _ ->
           raiseNonStrictType m consType
@@ -451,8 +463,8 @@ strictifyDecimalType h m x t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
-          | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
+        _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs defaultArgs expArgs _)
+          | [(_, _, arg)] <- impArgs ++ map fst defaultArgs ++ expArgs -> do
               strictifyDecimalType h m x arg
         _ ->
           raiseNonDecimalType m x (weaken t')
@@ -468,8 +480,8 @@ strictifyFloatType h m x t = do
     _ :< TM.Data (AttrD.Attr {consNameList = [(consName, _, _)]}) _ [] -> do
       consType <- Type.lookup' (typeHandle h) m consName
       case consType of
-        _ :< WT.Pi (PK.DataIntro False) _ [] (_ :< WT.Pi _ impArgs expArgs _)
-          | [(_, _, arg)] <- map fst impArgs ++ expArgs -> do
+        _ :< WT.Pi (PK.DataIntro False) _ [] [] (_ :< WT.Pi _ impArgs defaultArgs expArgs _)
+          | [(_, _, arg)] <- impArgs ++ map fst defaultArgs ++ expArgs -> do
               strictifyFloatType h m x arg
         _ ->
           raiseNonFloatType m x (weaken t')
@@ -480,18 +492,6 @@ elaborateWeakBinder :: Handle -> BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder h (m, x, t) = do
   t' <- elaborate' h t
   return (m, x, t')
-
-elaborateWeakBinderWithMaybeType :: Handle -> (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> App (BinderF TM.Term, Maybe TM.Term)
-elaborateWeakBinderWithMaybeType h ((m, x, t), maybeType) = do
-  t' <- elaborate' h t
-  maybeType' <- traverse (elaborate' h) maybeType
-  return ((m, x, t'), maybeType')
-
-inlineBinderWithMaybeType :: Handle -> (BinderF TM.Term, Maybe TM.Term) -> App (BinderF TM.Term, Maybe TM.Term)
-inlineBinderWithMaybeType h ((m, x, t), maybeType) = do
-  t' <- inline h m t
-  maybeType' <- traverse (inline h m) maybeType
-  return ((m, x, t'), maybeType')
 
 elaborateLet :: Handle -> (BinderF WT.WeakTerm, WT.WeakTerm) -> App (BinderF TM.Term, TM.Term)
 elaborateLet h (xt, e) = do

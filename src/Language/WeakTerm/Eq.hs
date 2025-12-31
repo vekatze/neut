@@ -27,30 +27,32 @@ eq (_ :< term1) (_ :< term2)
   | WT.VarGlobal _ dd1 <- term1,
     WT.VarGlobal _ dd2 <- term2 =
       dd1 == dd2
-  | WT.Pi _ impArgs1 expArgs1 cod1 <- term1,
-    WT.Pi _ impArgs2 expArgs2 cod2 <- term2 = do
+  | WT.Pi _ impArgs1 defaultArgs1 expArgs1 cod1 <- term1,
+    WT.Pi _ impArgs2 defaultArgs2 expArgs2 cod2 <- term2 = do
       let b1 = eqImpArgs impArgs1 impArgs2
-      let impBinders1 = map fst impArgs1
-      let impBinders2 = map fst impArgs2
-      let b2 = eqBinder (impBinders1 ++ expArgs1) (impBinders2 ++ expArgs2)
-      let b3 = eq cod1 cod2
-      b1 && b2 && b3
-  | WT.PiIntro kind1 impArgs1 expArgs1 body1 <- term1,
-    WT.PiIntro kind2 impArgs2 expArgs2 body2 <- term2,
+      let b2 = eqDefaultArgs defaultArgs1 defaultArgs2
+      let b3 = eqBinder (impArgs1 ++ map fst defaultArgs1 ++ expArgs1) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2)
+      let b4 = eq cod1 cod2
+      b1 && b2 && b3 && b4
+  | WT.PiIntro kind1 impArgs1 defaultArgs1 expArgs1 body1 <- term1,
+    WT.PiIntro kind2 impArgs2 defaultArgs2 expArgs2 body2 <- term2,
     length impArgs1 == length impArgs2,
+    length defaultArgs1 == length defaultArgs2,
     length expArgs1 == length expArgs2 =
       case (kind1, kind2) of
         (AttrL.Attr {lamKind = LK.Normal _ codType1}, AttrL.Attr {lamKind = LK.Normal _ codType2}) -> do
           let b1 = eqImpArgs impArgs1 impArgs2
-          let b2 = eqBinder (map fst impArgs1 ++ expArgs1) (map fst impArgs2 ++ expArgs2)
-          let b3 = eq body1 body2
-          let b4 = eq codType1 codType2
-          b1 && b2 && b3 && b4
+          let b2 = eqDefaultArgs defaultArgs1 defaultArgs2
+          let b3 = eqBinder (impArgs1 ++ map fst defaultArgs1 ++ expArgs1) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2)
+          let b4 = eq body1 body2
+          let b5 = eq codType1 codType2
+          b1 && b2 && b3 && b4 && b5
         (AttrL.Attr {lamKind = LK.Fix mxt1}, AttrL.Attr {lamKind = LK.Fix mxt2}) -> do
           let b1 = eqImpArgs impArgs1 impArgs2
-          let b2 = eqBinder (map fst impArgs1 ++ expArgs1 ++ [mxt1]) (map fst impArgs2 ++ expArgs2 ++ [mxt2])
-          let b3 = eq body1 body2
-          b1 && b2 && b3
+          let b2 = eqDefaultArgs defaultArgs1 defaultArgs2
+          let b3 = eqBinder (impArgs1 ++ map fst defaultArgs1 ++ expArgs1 ++ [mxt1]) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2 ++ [mxt2])
+          let b4 = eq body1 body2
+          b1 && b2 && b3 && b4
         _ ->
           False
   | WT.PiElim isNoetic1 f1 ImpArgs.Unspecified expArgs1 <- term1,
@@ -154,29 +156,21 @@ eq (_ :< term1) (_ :< term2)
   | otherwise =
       False
 
-eqImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> Bool
-eqImpArgs impArgs1 impArgs2
-  | [] <- impArgs1,
-    [] <- impArgs2 =
-      True
-  | ((_, x1, t1), maybeType1) : rest1 <- impArgs1,
-    ((_, x2, t2), maybeType2) : rest2 <- impArgs2 = do
-      let b1 = x1 == x2
-      let b2 = eq t1 t2
-      let b3 = eqMaybeType maybeType1 maybeType2
-      let b4 = eqImpArgs rest1 rest2
-      b1 && b2 && b3 && b4
-  | otherwise =
-      False
+eqImpArgs :: [BinderF WT.WeakTerm] -> [BinderF WT.WeakTerm] -> Bool
+eqImpArgs =
+  eqBinder
 
-eqMaybeType :: Maybe WT.WeakTerm -> Maybe WT.WeakTerm -> Bool
-eqMaybeType maybeType1 maybeType2
-  | Nothing <- maybeType1,
-    Nothing <- maybeType2 =
+eqDefaultArgs :: [(BinderF WT.WeakTerm, WT.WeakTerm)] -> [(BinderF WT.WeakTerm, WT.WeakTerm)] -> Bool
+eqDefaultArgs defaultArgs1 defaultArgs2
+  | [] <- defaultArgs1,
+    [] <- defaultArgs2 =
       True
-  | Just t1 <- maybeType1,
-    Just t2 <- maybeType2 =
-      eq t1 t2
+  | (binder1, value1) : rest1 <- defaultArgs1,
+    (binder2, value2) : rest2 <- defaultArgs2 = do
+      let b1 = eqBinder [binder1] [binder2]
+      let b2 = eq value1 value2
+      let b3 = eqDefaultArgs rest1 rest2
+      b1 && b2 && b3
   | otherwise =
       False
 

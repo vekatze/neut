@@ -1,8 +1,8 @@
 module Language.WeakTerm.ToText (toText) where
 
 import Control.Comonad.Cofree
-import Data.List (partition)
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Bifunctor (second)
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -36,20 +36,20 @@ toText term =
       showVariable x
     _ :< WT.VarGlobal _ x ->
       showGlobalVariable x
-    _ :< WT.Pi piKind impArgs expArgs cod -> do
+    _ :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
       case piKind of
         PK.Normal isConstLike ->
           if isConstLike
-            then showImpArgsForAll impArgs <> toText cod
-            else showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+            then showImpArgsForAll impArgs defaultArgs <> toText cod
+            else showImpArgs impArgs defaultArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
         PK.DataIntro _ -> do
-          showImpArgsForAll impArgs <> toText cod
-    _ :< WT.PiIntro attr impArgs expArgs e -> do
+          showImpArgsForAll impArgs defaultArgs <> toText cod
+    _ :< WT.PiIntro attr impArgs defaultArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
           "define "
             <> showVariable x
-            <> showImpArgs impArgs
+            <> showImpArgs impArgs defaultArgs
             <> inParen (showDomArgList expArgs)
             <> ": "
             <> toText codType
@@ -59,7 +59,7 @@ toText term =
           let name = fromMaybe "" mName
           "function "
             <> name
-            <> showImpArgs impArgs
+            <> showImpArgs impArgs defaultArgs
             <> inParen (showDomArgList expArgs)
             <> ": "
             <> toText codType
@@ -134,37 +134,40 @@ toText term =
     _ :< WT.Void ->
       "void"
 
-showImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
-showImpArgs impArgs = do
-  let (nonDefault, withDefault) = partition (isNothing . snd) impArgs
+showImpArgs :: [BinderF WT.WeakTerm] -> [(BinderF WT.WeakTerm, WT.WeakTerm)] -> T.Text
+showImpArgs impArgs defaultArgs = do
   let nonDefaultDoc =
-        if null nonDefault
+        if null impArgs
           then ""
-          else inAngleBracket $ showImpDomArgList nonDefault
+          else inAngleBracket $ showImpDomArgList impArgs
   let defaultDoc =
-        if null withDefault
+        if null defaultArgs
           then ""
-          else inBracket $ showImpDomArgList withDefault
+          else inBracket $ showDefaultDomArgList defaultArgs
   nonDefaultDoc <> defaultDoc
 
-showImpArgsForAll :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
-showImpArgsForAll impArgs =
-  if null impArgs
+showImpArgsForAll :: [BinderF WT.WeakTerm] -> [(BinderF WT.WeakTerm, WT.WeakTerm)] -> T.Text
+showImpArgsForAll impArgs defaultArgs = do
+  let impArgsWithDefaults = map (,Nothing) impArgs ++ map (second Just) defaultArgs
+  if null impArgsWithDefaults
     then ""
-    else "∀ " <> T.intercalate " " (map showDataImpArgWithDefault impArgs) <> ". "
+    else "∀ " <> T.intercalate " " (map showDataImpArgWithDefault impArgsWithDefaults) <> ". "
 
-showImpDomArgList :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
+showImpDomArgList :: [BinderF WT.WeakTerm] -> T.Text
 showImpDomArgList mxts =
-  T.intercalate ", " $ map showImpDomArgWithDefault mxts
+  T.intercalate ", " $ map showImpDomArg mxts
 
-showImpDomArgWithDefault :: (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> T.Text
-showImpDomArgWithDefault ((_, x, _), maybeDefault) = do
-  let baseArg = showVariable x
-  case maybeDefault of
-    Nothing ->
-      baseArg
-    Just defaultValue ->
-      baseArg <> " := " <> toText defaultValue
+showDefaultDomArgList :: [(BinderF WT.WeakTerm, WT.WeakTerm)] -> T.Text
+showDefaultDomArgList mxts =
+  T.intercalate ", " $ map showDefaultDomArg mxts
+
+showImpDomArg :: BinderF WT.WeakTerm -> T.Text
+showImpDomArg (_, x, _) =
+  showVariable x
+
+showDefaultDomArg :: (BinderF WT.WeakTerm, WT.WeakTerm) -> T.Text
+showDefaultDomArg ((_, x, _), defaultValue) =
+  showVariable x <> " := " <> toText defaultValue
 
 showDataImpArgWithDefault :: (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> T.Text
 showDataImpArgWithDefault ((_, x, t), maybeDefault) = do

@@ -7,7 +7,6 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Bifunctor (Bifunctor (second))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
@@ -119,7 +118,6 @@ discernStmt h stmt = do
       let isConstLike = RT.isConstLike geist
       (impArgs', nenv) <- discernBinder hStage impArgs endLoc
       (defaultArgs', nenv') <- discernBinderWithDefaultArgs nenv defaultArgs endLoc
-      let impArgsWithDefaults = map (,Nothing) impArgs' ++ map (second Just) defaultArgs'
       (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
       codType' <- discern nenv'' codType
       stmtKind' <- discernStmtKind h stmtKind m
@@ -130,7 +128,7 @@ discernStmt h stmt = do
           TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
       liftIO $ forM_ (impArgs' ++ map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h)
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
-      return [WeakStmtDefine isConstLike stmtKind' m functionName impArgsWithDefaults expArgs' codType' body']
+      return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' body']
     PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) (_, typeTag) _ -> do
       registerTopLevelName h stmt
       t' <- discern h $ m :< RT.Tau
@@ -138,7 +136,7 @@ discernStmt h stmt = do
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] t' e']
+      return [WeakStmtDefine True (SK.Normal O.Clear) m dd [] [] [] t' e']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
@@ -277,11 +275,11 @@ discern h term =
       let defaultArgsBase = SE.extract $ fst defaultArgs
       (impArgs', h') <- discernBinder h impArgsBase endLoc
       (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgsBase endLoc
-      let impArgsWithDefaults = map (,Nothing) impArgs' ++ map (second Just) defaultArgs'
       (expArgs', h''') <- discernBinder h'' (RT.extractArgs expArgs) endLoc
       t' <- discern h''' t
-      forM_ (map fst impArgsWithDefaults ++ expArgs') $ \(_, x, _) -> liftIO (Unused.deleteVariable (H.unusedHandle h''') x)
-      return $ m :< WT.Pi PK.normal impArgsWithDefaults expArgs' t'
+      forM_ (impArgs' ++ map fst defaultArgs' ++ expArgs') $ \(_, x, _) ->
+        liftIO (Unused.deleteVariable (H.unusedHandle h''') x)
+      return $ m :< WT.Pi PK.normal impArgs' defaultArgs' expArgs' t'
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       let (name, _) = RT.name geist
@@ -290,12 +288,11 @@ discern h term =
       let expArgs = RT.extractArgs $ RT.expArgs geist
       (impArgs', h') <- discernBinder h impArgs endLoc
       (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgs endLoc
-      let impArgsWithDefaults = map (,Nothing) impArgs' ++ map (second Just) defaultArgs'
       (expArgs', h''') <- discernBinder h'' expArgs endLoc
       codType' <- discern h''' $ snd $ RT.cod geist
       body' <- discern h''' body
       ensureLayerClosedness m h''' body'
-      return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgsWithDefaults expArgs' body'
+      return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' defaultArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
@@ -304,7 +301,6 @@ discern h term =
       let (x, _) = RT.name geist
       (impArgs', h') <- discernBinder h impArgs endLoc
       (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgs endLoc
-      let impArgsWithDefaults = map (,Nothing) impArgs' ++ map (second Just) defaultArgs'
       (expArgs', h''') <- discernBinder h'' expArgs endLoc
       codType' <- discern h''' $ snd $ RT.cod geist
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
@@ -314,7 +310,7 @@ discern h term =
       liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h'''' body'
-      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgsWithDefaults expArgs' body'
+      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' defaultArgs' expArgs' body'
     m :< RT.PiElim e _ expArgs -> do
       let isNoetic = False -- overwritten later in `infer`
       e' <- discern h e

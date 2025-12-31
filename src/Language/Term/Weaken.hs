@@ -34,13 +34,14 @@ import Logger.Hint
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs codType e -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs codType e -> do
       let stmtKind' = weakenStmtKind stmtKind
-      let impArgs' = map (bimap weakenBinder (fmap weaken)) impArgs
+      let impArgs' = map weakenBinder impArgs
+      let defaultArgs' = map (bimap weakenBinder weaken) defaultArgs
       let expArgs' = map weakenBinder expArgs
       let codType' = weaken codType
       let e' = weaken e
-      WeakStmtDefine isConstLike stmtKind' m name impArgs' expArgs' codType' e'
+      WeakStmtDefine isConstLike stmtKind' m name impArgs' defaultArgs' expArgs' codType' e'
     StmtVariadic kind (SavedHint m) name -> do
       WeakStmtVariadic kind m name
     StmtForeign foreignList ->
@@ -55,14 +56,15 @@ weaken term =
       m :< WT.Var x
     m :< TM.VarGlobal g argNum ->
       m :< WT.VarGlobal g argNum
-    m :< TM.Pi piKind impArgs expArgs t ->
-      m :< WT.Pi piKind (map (bimap weakenBinder (fmap weaken)) impArgs) (map weakenBinder expArgs) (weaken t)
-    m :< TM.PiIntro attr impArgs expArgs e -> do
+    m :< TM.Pi piKind impArgs defaultArgs expArgs t ->
+      m :< WT.Pi piKind (map weakenBinder impArgs) (map (bimap weakenBinder weaken) defaultArgs) (map weakenBinder expArgs) (weaken t)
+    m :< TM.PiIntro attr impArgs defaultArgs expArgs e -> do
       let attr' = weakenAttr attr
-      let impArgs' = map (bimap weakenBinder (fmap weaken)) impArgs
+      let impArgs' = map weakenBinder impArgs
+      let defaultArgs' = map (bimap weakenBinder weaken) defaultArgs
       let expArgs' = map weakenBinder expArgs
       let e' = weaken e
-      m :< WT.PiIntro attr' impArgs' expArgs' e'
+      m :< WT.PiIntro attr' impArgs' defaultArgs' expArgs' e'
     m :< TM.PiElim b e impArgs expArgs -> do
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weaken impArgs

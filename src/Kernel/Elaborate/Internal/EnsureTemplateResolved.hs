@@ -33,16 +33,18 @@ ensureTemplateResolved h m term =
       isTemplate <- liftIO $ Definition.isTemplate' (defHandle h) dd
       when isTemplate $ do
         raiseError m' $ "template function `" <> DD.reify dd <> "` cannot be called from non-template code"
-    _ :< TM.Pi _ impArgs expArgs cod -> do
-      forM_ impArgs $ \(binder, maybeType) -> do
+    _ :< TM.Pi _ impArgs defaultArgs expArgs cod -> do
+      mapM_ (ensureTemplateResolvedInBinder h) impArgs
+      forM_ defaultArgs $ \(binder, value) -> do
         ensureTemplateResolvedInBinder h binder
-        mapM_ (ensureTemplateResolved h m) maybeType
+        ensureTemplateResolved h m value
       mapM_ (ensureTemplateResolvedInBinder h) expArgs
       ensureTemplateResolved h m cod
-    _ :< TM.PiIntro _ impArgs expArgs e -> do
-      forM_ impArgs $ \(binder, maybeType) -> do
+    _ :< TM.PiIntro _ impArgs defaultArgs expArgs e -> do
+      mapM_ (ensureTemplateResolvedInBinder h) impArgs
+      forM_ defaultArgs $ \(binder, value) -> do
         ensureTemplateResolvedInBinder h binder
-        mapM_ (ensureTemplateResolved h m) maybeType
+        ensureTemplateResolved h m value
       mapM_ (ensureTemplateResolvedInBinder h) expArgs
       ensureTemplateResolved h m e
     _ :< TM.PiElim _ e impArgs expArgs -> do

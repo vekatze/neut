@@ -22,11 +22,14 @@ holes term =
       S.empty
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.Pi _ impArgs expArgs t -> do
-      let impBinders = map fst impArgs
-      holes' (impBinders ++ expArgs) (holes t)
-    _ :< WT.PiIntro k impArgs expArgs e ->
-      holes' (map fst impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e)
+    _ :< WT.Pi _ impArgs defaultArgs expArgs t -> do
+      let impBinders = impArgs ++ map fst defaultArgs
+      let defaultHoles = S.unions $ map holes $ map snd defaultArgs
+      S.union defaultHoles (holes' (impBinders ++ expArgs) (holes t))
+    _ :< WT.PiIntro k impArgs defaultArgs expArgs e -> do
+      let impBinders = impArgs ++ map fst defaultArgs
+      let defaultHoles = S.unions $ map holes $ map snd defaultArgs
+      S.union defaultHoles (holes' (impBinders ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e))
     _ :< WT.PiElim _ e impArgs expArgs ->
       S.unions $ map holes $ e : (ImpArgs.extract impArgs ++ expArgs)
     _ :< WT.PiElimExact e ->

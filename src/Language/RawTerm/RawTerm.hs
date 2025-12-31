@@ -19,7 +19,6 @@ module Language.RawTerm.RawTerm
     emptyDefaultArgs,
     extractArgs,
     extractImpArgs,
-    extractImpArgsWithDefaults,
     lam,
     piElim,
     pushCommentToKeywordClause,
@@ -133,10 +132,6 @@ extractArgs (series, _) =
 extractImpArgs :: (SE.Series (RawBinder a), C) -> [RawBinder a]
 extractImpArgs (series, _) =
   SE.extract series
-
-extractImpArgsWithDefaults :: (SE.Series (RawBinder a), C) -> (SE.Series (RawBinder a, a), C) -> [(RawBinder a, Maybe a)]
-extractImpArgsWithDefaults (impSeries, _) (defaultSeries, _) =
-  map (,Nothing) (SE.extract impSeries) ++ map (second Just) (SE.extract defaultSeries)
 
 type KeywordClause a =
   (EL a, EL a)

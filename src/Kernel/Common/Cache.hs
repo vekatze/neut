@@ -71,13 +71,14 @@ extend cache =
 compressStmt :: Stmt.Stmt -> Stmt.StrippedStmt
 compressStmt stmt =
   case stmt of
-    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
+    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs defaultArgs expArgs codType e -> do
       let stmtKind' = TM.compressStmtKind stmtKind
-      let impArgs' = map (bimap TM.compressBinder (fmap TM.compress)) impArgs
+      let impArgs' = map TM.compressBinder impArgs
+      let defaultArgs' = map (bimap TM.compressBinder TM.compress) defaultArgs
       let expArgs' = map TM.compressBinder expArgs
       let codType' = TM.compress codType
       let e' = TM.compress e
-      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
+      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' e'
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->
@@ -86,13 +87,14 @@ compressStmt stmt =
 extendStmt :: Stmt.StrippedStmt -> Stmt.Stmt
 extendStmt stmt =
   case stmt of
-    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
+    Stmt.StmtDefine isConstLike stmtKind m functionName impArgs defaultArgs expArgs codType e -> do
       let stmtKind' = TM.extendStmtKind stmtKind
-      let impArgs' = map (bimap TM.extendBinder (fmap TM.extend)) impArgs
+      let impArgs' = map TM.extendBinder impArgs
+      let defaultArgs' = map (bimap TM.extendBinder TM.extend) defaultArgs
       let expArgs' = map TM.extendBinder expArgs
       let codType' = TM.extend codType
       let e' = TM.extend e
-      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
+      Stmt.StmtDefine isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' e'
     Stmt.StmtVariadic kind m name -> do
       Stmt.StmtVariadic kind m name
     Stmt.StmtForeign foreignList ->

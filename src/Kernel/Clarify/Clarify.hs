@@ -162,8 +162,8 @@ getBaseAuxEnv auxEnvHandle sigmaHandle = do
 clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
-    StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs _ e -> do
-      let xts = map fst impArgs ++ expArgs
+    StmtDefine _ stmtKind (SavedHint m) f impArgs defaultArgs expArgs _ e -> do
+      let xts = impArgs ++ map fst defaultArgs ++ expArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h
@@ -260,8 +260,8 @@ clarifyTerm h tenv term =
             ]
     _ :< TM.Pi {} ->
       return Sigma.returnClosureS4
-    _ :< TM.PiIntro attr impArgs expArgs e -> do
-      clarifyLambda h tenv attr (TM.chainOf tenv [term]) (map fst impArgs ++ expArgs) e
+    _ :< TM.PiIntro attr impArgs defaultArgs expArgs e -> do
+      clarifyLambda h tenv attr (TM.chainOf tenv [term]) (impArgs ++ map fst defaultArgs ++ expArgs) e
     _ :< TM.PiElim b e impArgs expArgs -> do
       impArgs' <- mapM (clarifyPlus h tenv) impArgs
       expArgs' <- mapM (clarifyPlus h tenv) expArgs
@@ -627,7 +627,7 @@ clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) 
       lamAttr <- do
         c <- liftIO $ Gensym.newCount (gensymHandle h)
         return $ AttrL.normal' (Just (Ident.toText recFuncName)) c codType
-      let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) [] appArgs')
+      let lamApp = m :< TM.PiIntro lamAttr [] [] mxts (m :< TM.PiElim False (m :< TM.VarGlobal attr liftedName) [] appArgs')
       isAlreadyRegistered <- liftIO $ AuxEnv.checkIfAlreadyRegistered (auxEnvHandle h) liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- liftIO $ Subst.subst (substHandle h) (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e

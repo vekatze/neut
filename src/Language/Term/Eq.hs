@@ -18,14 +18,16 @@ eqTerm (_ :< term1) (_ :< term2) =
     (TM.Tau, TM.Tau) -> True
     (TM.Var x1, TM.Var x2) -> x1 == x2
     (TM.VarGlobal _ dd1, TM.VarGlobal _ dd2) -> dd1 == dd2
-    (TM.Pi pk1 impArgs1 expArgs1 cod1, TM.Pi pk2 impArgs2 expArgs2 cod2) ->
+    (TM.Pi pk1 impArgs1 defaultArgs1 expArgs1 cod1, TM.Pi pk2 impArgs2 defaultArgs2 expArgs2 cod2) ->
       pk1 == pk2
         && eqTermImpArgs impArgs1 impArgs2
-        && eqTermBinders expArgs1 expArgs2
+        && eqTermDefaultArgs defaultArgs1 defaultArgs2
+        && eqTermBinders (impArgs1 ++ map fst defaultArgs1 ++ expArgs1) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2)
         && eqTerm cod1 cod2
-    (TM.PiIntro _ impArgs1 expArgs1 e1, TM.PiIntro _ impArgs2 expArgs2 e2) ->
+    (TM.PiIntro _ impArgs1 defaultArgs1 expArgs1 e1, TM.PiIntro _ impArgs2 defaultArgs2 expArgs2 e2) ->
       eqTermImpArgs impArgs1 impArgs2
-        && eqTermBinders expArgs1 expArgs2
+        && eqTermDefaultArgs defaultArgs1 defaultArgs2
+        && eqTermBinders (impArgs1 ++ map fst defaultArgs1 ++ expArgs1) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2)
         && eqTerm e1 e2
     (TM.PiElim isNoetic1 e1 impArgs1 expArgs1, TM.PiElim isNoetic2 e2 impArgs2 expArgs2) ->
       isNoetic1 == isNoetic2
@@ -70,17 +72,19 @@ eqTerm (_ :< term1) (_ :< term2) =
         && eqTerm typeTag1 typeTag2
     _ -> False
 
-eqTermImpArgs :: [(BinderF TM.Term, Maybe TM.Term)] -> [(BinderF TM.Term, Maybe TM.Term)] -> Bool
-eqTermImpArgs args1 args2 =
-  length args1 == length args2
-    && and (zipWith eqTermImpArg args1 args2)
+eqTermImpArgs :: [BinderF TM.Term] -> [BinderF TM.Term] -> Bool
+eqTermImpArgs =
+  eqTermBinders
 
-eqTermImpArg :: (BinderF TM.Term, Maybe TM.Term) -> (BinderF TM.Term, Maybe TM.Term) -> Bool
-eqTermImpArg (_, mt1) (_, mt2) =
-  case (mt1, mt2) of
-    (Nothing, Nothing) -> True
-    (Just t1, Just t2) -> eqTerm t1 t2
-    _ -> False
+eqTermDefaultArgs :: [(BinderF TM.Term, TM.Term)] -> [(BinderF TM.Term, TM.Term)] -> Bool
+eqTermDefaultArgs args1 args2 =
+  length args1 == length args2
+    && and (zipWith eqTermDefaultArg args1 args2)
+
+eqTermDefaultArg :: (BinderF TM.Term, TM.Term) -> (BinderF TM.Term, TM.Term) -> Bool
+eqTermDefaultArg (binder1, value1) (binder2, value2) =
+  eqTermBinders [binder1] [binder2]
+    && eqTerm value1 value2
 
 eqTermBinders :: [BinderF TM.Term] -> [BinderF TM.Term] -> Bool
 eqTermBinders bs1 bs2 =

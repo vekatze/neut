@@ -222,7 +222,7 @@ castFromIntToBool h e@(m :< _) = do
   t <- liftIO $ WT.createHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
-  let cmpOpType cod = m :< WT.Pi PK.normal [] [(m, x1, t), (m, x2, t)] cod
+  let cmpOpType cod = m :< WT.Pi PK.normal [] [] [(m, x1, t), (m, x2, t)] cod
   return $ m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Cast (cmpOpType i1) (cmpOpType bool) e)
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)

@@ -203,13 +203,13 @@ registerKeyArg h stmt = do
 registerKeyArg' :: Handle -> Stmt -> App ()
 registerKeyArg' h stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
       case stmtKind of
         SK.DataIntro _ _ expConsArgs _ -> do
           let expKeys = map (\(_, x, _) -> toText x) expConsArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike [] expKeys
         _ -> do
-          let impKeys = map (\((_, x, _), _) -> toText x) impArgs
+          let impKeys = map (\(_, x, _) -> toText x) (impArgs ++ map fst defaultArgs)
           let expKeys = map (\(_, x, _) -> toText x) expArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
     StmtVariadic {} ->

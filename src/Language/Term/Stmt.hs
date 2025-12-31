@@ -30,7 +30,8 @@ data StmtF a
       (SK.StmtKind a)
       SavedHint
       DD.DefiniteDescription
-      [(BinderF a, Maybe a)]
+      [BinderF a]
+      [(BinderF a, a)]
       [BinderF a]
       a
       a
@@ -53,7 +54,7 @@ getStmtName =
 getStmtName' :: Stmt -> Maybe (Hint, DD.DefiniteDescription)
 getStmtName' stmt =
   case stmt of
-    StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
+    StmtDefine _ _ (SavedHint m) name _ _ _ _ _ ->
       return (m, name)
     StmtVariadic _ (SavedHint m) name ->
       return (m, name)

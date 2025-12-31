@@ -39,8 +39,8 @@ data TermF a
   = Tau
   | Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
-  | Pi PiKind [(BinderF a, Maybe a)] [BinderF a] a
-  | PiIntro (AttrL.Attr a) [(BinderF a, Maybe a)] [BinderF a] a
+  | Pi PiKind [BinderF a] [(BinderF a, a)] [BinderF a] a
+  | PiIntro (AttrL.Attr a) [BinderF a] [(BinderF a, a)] [BinderF a] a
   | PiElim N.IsNoetic a [a] [a]
   | Data (AttrD.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF a)) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)

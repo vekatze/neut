@@ -137,26 +137,25 @@ analyze h term = do
       analyzeVar h m x
     _ :< TM.VarGlobal {} -> do
       return []
-    _ :< TM.Pi _ impArgs expArgs t -> do
-      let impBinders = map fst impArgs
+    _ :< TM.Pi _ impArgs defaultArgs expArgs t -> do
+      let impBinders = impArgs ++ map fst defaultArgs
       (cs1, h') <- analyzeBinder h impBinders
       (cs2, h'') <- analyzeBinder h' expArgs
       cs3 <- analyze h'' t
       return $ cs1 ++ cs2 ++ cs3
-    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
-          (cs1, h') <- analyzeBinder h (map fst impArgs)
+          (cs1, h') <- analyzeBinder h (impArgs ++ map fst defaultArgs)
           (cs2, h'') <- analyzeBinder h' expArgs
           cs3 <- analyze h'' codType
-          let impArgsWithDefaults = impArgs
-          let piType = m :< TM.Pi PK.normal impArgsWithDefaults expArgs codType
+          let piType = m :< TM.Pi PK.normal impArgs defaultArgs expArgs codType
           liftIO $ insertRelevantVar x h''
           cs4 <- analyze (extendHandle (mx, x, piType) h'') e
           css <- forM (S.toList $ freeVarsWithHints term) $ uncurry (analyzeVar h)
           return $ cs1 ++ cs2 ++ cs3 ++ cs4 ++ concat css
         LK.Normal _ codType -> do
-          (cs1, h') <- analyzeBinder h (map fst impArgs)
+          (cs1, h') <- analyzeBinder h (impArgs ++ map fst defaultArgs)
           (cs2, h'') <- analyzeBinder h' expArgs
           cs3 <- analyze h'' codType
           cs4 <- analyze h'' e
@@ -420,10 +419,10 @@ getConsArgTypes ::
 getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
-    _ :< WT.Pi (PK.DataIntro False) impArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' expArgs' _dataType) -> do
-      return $ map fst impArgs ++ expArgs ++ map fst impArgs' ++ expArgs'
-    _ :< WT.Pi (PK.DataIntro True) impArgs expArgs _dataType -> do
-      return $ map fst impArgs ++ expArgs
+    _ :< WT.Pi (PK.DataIntro False) impArgs defaultArgs expArgs (_ :< WT.Pi (PK.Normal _) impArgs' defaultArgs' expArgs' _dataType) -> do
+      return $ impArgs ++ map fst defaultArgs ++ expArgs ++ impArgs' ++ map fst defaultArgs' ++ expArgs'
+    _ :< WT.Pi (PK.DataIntro True) impArgs defaultArgs expArgs _dataType -> do
+      return $ impArgs ++ map fst defaultArgs ++ expArgs
     _ ->
       raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toText t
 
