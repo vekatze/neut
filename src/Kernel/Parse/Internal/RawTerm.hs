@@ -13,6 +13,7 @@ module Kernel.Parse.Internal.RawTerm
     typeWithoutIdent,
     parseImplicitParams,
     parseImplicitParamsMaybe,
+    parseDefaultParams,
     keyword,
     baseName,
   )
@@ -182,11 +183,12 @@ rawTermPi :: Handle -> Parser (RT.RawTerm, C)
 rawTermPi h = do
   m <- getCurrentHint
   impArgs <- parseImplicitParams h
+  defaultArgs <- parseDefaultParams h
   expArgs <- seriesParen (choice [try $ var h >>= preAscription h, typeWithoutIdent h])
   cArrow <- delimiter "->"
   (cod, c) <- rawTerm h
   loc <- getCurrentLoc
-  return (m :< RT.Pi impArgs expArgs cArrow cod loc, c)
+  return (m :< RT.Pi impArgs defaultArgs expArgs cArrow cod loc, c)
 
 rawTermPiIntro :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermPiIntro h m c0 = do
@@ -370,6 +372,7 @@ parseGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
   impArgs <- parseImplicitParams h
+  defaultArgs <- parseDefaultParams h
   (isConstLike, expArgs@(expSeries, _)) <- do
     choice
       [ do
@@ -380,13 +383,14 @@ parseGeist h nameParser = do
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   (c2, (cod, c)) <- parseDefInfoCod h m
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = (c2, cod)}, c)
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = (c2, cod)}, c)
 
 parseAliasGeist :: Handle -> Parser (a, C) -> Parser (RT.RawGeist a, C)
 parseAliasGeist h nameParser = do
   loc <- getCurrentHint
   (name', c1) <- nameParser
   impArgs <- parseImplicitParams h
+  defaultArgs <- parseDefaultParams h
   (isConstLike, expArgs@(expSeries, _)) <- do
     choice
       [ do
@@ -397,22 +401,31 @@ parseAliasGeist h nameParser = do
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   let cod = m :< RT.Tau
-  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = ([], cod)}, [])
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, defaultArgs, expArgs, cod = ([], cod)}, [])
 
-parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm, Maybe RT.RawTerm), C)
+parseImplicitParams :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm), C)
 parseImplicitParams h =
   choice
     [ do
-        (s, c) <- seriesAngle $ preBinderWithDefault h
+        (s, c) <- seriesAngle $ preBinder h
         return (s, c),
       return (SE.emptySeries (Just SE.Angle) SE.Comma, [])
     ]
 
-parseImplicitParamsMaybe :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawTerm, Maybe RT.RawTerm)), C)
+parseDefaultParams :: Handle -> Parser (SE.Series (RawBinder RT.RawTerm, RT.RawTerm), C)
+parseDefaultParams h =
+  choice
+    [ do
+        (s, c) <- seriesBracket $ preBinderWithDefault h
+        return (s, c),
+      return (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
+    ]
+
+parseImplicitParamsMaybe :: Handle -> Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), C)
 parseImplicitParamsMaybe h =
   choice
     [ do
-        (s, c) <- seriesAngle $ preBinderWithDefault h
+        (s, c) <- seriesAngle $ preBinder h
         return (Just s, c),
       return (Nothing, [])
     ]
@@ -814,7 +827,7 @@ preBinder h = do
       preAscription' h mxc
     ]
 
-preBinderWithDefault :: Handle -> Parser ((RawBinder RT.RawTerm, Maybe RT.RawTerm), C)
+preBinderWithDefault :: Handle -> Parser ((RawBinder RT.RawTerm, RT.RawTerm), C)
 preBinderWithDefault h = do
   ((m, x), varC) <- var h
   choice
@@ -823,24 +836,14 @@ preBinderWithDefault h = do
         (defaultValue, c3) <- rawTerm h
         hole <- liftIO $ RT.createHole (gensymHandle h) m
         let binder = (m, x, varC, [], hole)
-        return ((binder, Just defaultValue), c2 ++ c3),
+        return ((binder, defaultValue), c2 ++ c3),
       do
         c1 <- delimiter ":"
         (a, c2) <- rawTerm h
-        choice
-          [ do
-              c3 <- delimiter ":="
-              (defaultValue, c4) <- rawTerm h
-              let binder = (m, x, varC, c1, a)
-              return ((binder, Just defaultValue), c2 ++ c3 ++ c4),
-            do
-              let binder = (m, x, varC, c1, a)
-              return ((binder, Nothing), c2)
-          ],
-      do
-        hole <- liftIO $ RT.createHole (gensymHandle h) m
-        let binder = (m, x, varC, [], hole)
-        return ((binder, Nothing), [])
+        c3 <- delimiter ":="
+        (defaultValue, c4) <- rawTerm h
+        let binder = (m, x, varC, c1, a)
+        return ((binder, defaultValue), c2 ++ c3 ++ c4)
     ]
 
 preAscription :: Handle -> ((Hint, T.Text), C) -> Parser (RawBinder RT.RawTerm, C)

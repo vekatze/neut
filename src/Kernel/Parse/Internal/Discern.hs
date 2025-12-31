@@ -7,6 +7,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Bifunctor (second)
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
@@ -43,8 +44,8 @@ import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Kernel.Parse.Internal.Util
 import Kernel.Parse.Layer
 import Kernel.Parse.NominalEnv
-import Kernel.Parse.Stage
 import Kernel.Parse.Pattern qualified as PAT
+import Kernel.Parse.Stage
 import Kernel.Parse.VarDefKind qualified as VDK
 import Language.Common.Annotation qualified as AN
 import Language.Common.ArgNum qualified as AN
@@ -109,7 +110,9 @@ discernStmt h stmt = do
       registerTopLevelName h stmt
       let baseStage = if SK.isInlineStmtKind stmtKind then 1 else 0
       let hStage = h {H.currentStage = baseStage}
-      let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
+      let impArgs = map (,Nothing) $ RT.extractImpArgs (RT.impArgs geist)
+      let defaultArgs = map (second Just) $ SE.extract $ fst $ RT.defaultArgs geist
+      let impArgsWithDefaults = impArgs ++ defaultArgs
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let (_, codType) = RT.cod geist
       let m = RT.loc geist
@@ -154,7 +157,9 @@ discernStmt h stmt = do
 
 discernGeist :: H.Handle -> Loc -> RT.RawGeist DD.DefiniteDescription -> App (G.Geist WT.WeakTerm)
 discernGeist h endLoc geist = do
-  let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
+  let impArgs = map (,Nothing) $ RT.extractImpArgs (RT.impArgs geist)
+  let defaultArgs = map (second Just) $ SE.extract $ fst $ RT.defaultArgs geist
+  let impArgsWithDefaults = impArgs ++ defaultArgs
   let expArgs = RT.extractArgs $ RT.expArgs geist
   (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
   (expArgs', h'') <- discernBinder h' expArgs endLoc
@@ -264,8 +269,10 @@ discern h term =
           interpretGlobalName h m dd gn
     m :< RT.VarGlobal dd gn -> do
       interpretGlobalName h m dd gn
-    m :< RT.Pi impArgs expArgs _ t endLoc -> do
-      let impArgsWithDefaults = RT.extractImpArgsWithDefaults impArgs
+    m :< RT.Pi impArgs defaultArgs expArgs _ t endLoc -> do
+      let impArgsBase = map (,Nothing) $ RT.extractImpArgs impArgs
+      let defaultArgsBase = map (second Just) $ SE.extract $ fst defaultArgs
+      let impArgsWithDefaults = impArgsBase ++ defaultArgsBase
       (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
       (expArgs', h'') <- discernBinder h' (RT.extractArgs expArgs) endLoc
       t' <- discern h'' t
@@ -274,7 +281,9 @@ discern h term =
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       let (name, _) = RT.name geist
-      let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
+      let impArgs = map (,Nothing) $ RT.extractImpArgs (RT.impArgs geist)
+      let defaultArgs = map (second Just) $ SE.extract $ fst $ RT.defaultArgs geist
+      let impArgsWithDefaults = impArgs ++ defaultArgs
       let expArgs = RT.extractArgs $ RT.expArgs geist
       (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
       (expArgs', h'') <- discernBinder h' expArgs endLoc
@@ -283,7 +292,9 @@ discern h term =
       ensureLayerClosedness m h'' body'
       return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
-      let impArgsWithDefaults = RT.extractImpArgsWithDefaults $ RT.impArgs geist
+      let impArgs = map (,Nothing) $ RT.extractImpArgs (RT.impArgs geist)
+      let defaultArgs = map (second Just) $ SE.extract $ fst $ RT.defaultArgs geist
+      let impArgsWithDefaults = impArgs ++ defaultArgs
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let mx = RT.loc geist
       let (x, _) = RT.name geist

@@ -1,7 +1,8 @@
 module Language.WeakTerm.ToText (toText) where
 
 import Control.Comonad.Cofree
-import Data.Maybe (fromMaybe)
+import Data.List (partition)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
@@ -134,10 +135,17 @@ toText term =
       "void"
 
 showImpArgs :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
-showImpArgs impArgs =
-  if null impArgs
-    then ""
-    else inAngleBracket $ showImpDomArgList impArgs
+showImpArgs impArgs = do
+  let (nonDefault, withDefault) = partition (isNothing . snd) impArgs
+  let nonDefaultDoc =
+        if null nonDefault
+          then ""
+          else inAngleBracket $ showImpDomArgList nonDefault
+  let defaultDoc =
+        if null withDefault
+          then ""
+          else inBracket $ showImpDomArgList withDefault
+  nonDefaultDoc <> defaultDoc
 
 showImpArgsForAll :: [(BinderF WT.WeakTerm, Maybe WT.WeakTerm)] -> T.Text
 showImpArgsForAll impArgs =

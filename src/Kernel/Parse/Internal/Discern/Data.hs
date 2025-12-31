@@ -37,6 +37,7 @@ defineData m dataName dataArgsOrNone consInfoList loc = do
             name = (dataName, []),
             isConstLike = isConstLike,
             impArgs = RT.emptyImpArgs,
+            defaultArgs = RT.emptyDefaultArgs,
             expArgs = dataArgs',
             cod = ([], m :< RT.Tau)
           }
@@ -90,16 +91,14 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let consNameList = map (\ci -> (name ci, maybe [] SE.extract (expArgs ci), isConstLikeConsInfo ci)) consInfoList
       let m = loc consInfo
       let attr = AttrDI.Attr {dataName, consNameList, discriminant, isConstLike = isConstLikeConsInfo consInfo}
-      let dataImpArgs = do
-            let (series, c) = dataArgs
-            (fmap (,Nothing) series, c)
       let consType =
             if isConstLikeConsInfo consInfo
               then dataType
               else do
                 let impArgsWithEmpty = (SE.emptySeriesAC, [])
+                let defaultArgsWithEmpty = RT.emptyDefaultArgs
                 let expArgsWithEmpty = (fromMaybe SE.emptySeriesPC (expArgs consInfo), [])
-                m :< RT.Pi impArgsWithEmpty expArgsWithEmpty [] dataType (endLoc consInfo)
+                m :< RT.Pi impArgsWithEmpty defaultArgsWithEmpty expArgsWithEmpty [] dataType (endLoc consInfo)
       let body =
             if isConstLikeConsInfo consInfo
               then m :< RT.DataIntro attr (name consInfo) dataArgs'' (map fst expConsArgs')
@@ -116,7 +115,8 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                         { loc = loc consInfo,
                           name = (name consInfo, []),
                           isConstLike = isConstLikeConsInfo consInfo,
-                          impArgs = dataImpArgs,
+                          impArgs = dataArgs,
+                          defaultArgs = RT.emptyDefaultArgs,
                           expArgs = (SE.emptySeriesPC, []),
                           cod = ([], consType)
                         },

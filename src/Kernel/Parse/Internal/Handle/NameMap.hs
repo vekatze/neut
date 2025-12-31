@@ -43,6 +43,7 @@ import Logger.Hint
 import Logger.Hint qualified as Hint
 import Logger.Log (Log, newLog)
 import Logger.LogLevel (LogLevel (Error))
+import SyntaxTree.Series qualified as SE
 import Prelude hiding (lookup)
 
 data Handle = Handle
@@ -70,7 +71,8 @@ registerGeist :: Handle -> RT.RawGeist DD.DefiniteDescription -> App ()
 registerGeist h RT.RawGeist {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractImpArgs impArgs
-  let argNum = AN.fromInt $ length $ impArgs' ++ expArgs'
+  let defaultArgs' = map fst $ SE.extract $ fst defaultArgs
+  let argNum = AN.fromInt $ length $ impArgs' ++ defaultArgs' ++ expArgs'
   let name' = fst name
   ensureGeistFreshness h loc name'
   ensureDefFreshness h loc name' isConstLike
@@ -169,10 +171,11 @@ _getGlobalNames stmt = do
     PostRawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
       let name = fst $ RT.name geist
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
+      let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let isConstLike = RT.isConstLike geist
       let m = RT.loc geist
-      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+      let allArgNum = AN.fromInt $ length $ impArgs ++ defaultArgs ++ expArgs
       case stmtKind of
         SK.Normal opacity -> do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]

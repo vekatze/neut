@@ -16,6 +16,7 @@ module Language.RawTerm.RawTerm
     getDefName,
     emptyArgs,
     emptyImpArgs,
+    emptyDefaultArgs,
     extractArgs,
     extractImpArgs,
     extractImpArgsWithDefaults,
@@ -62,7 +63,7 @@ data RawTermF a
   = Tau
   | Var Name
   | VarGlobal DD.DefiniteDescription GN.GlobalName
-  | Pi (SE.Series (RawBinder a, Maybe a), C) (Args a) C a Loc
+  | Pi (SE.Series (RawBinder a), C) (SE.Series (RawBinder a, a), C) (Args a) C a Loc
   | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
   | PiElim a C (SE.Series a)
@@ -117,21 +118,25 @@ emptyArgs :: Args a
 emptyArgs =
   (SE.emptySeriesPC, [])
 
-emptyImpArgs :: (SE.Series (RawBinder a, Maybe a), C)
+emptyImpArgs :: (SE.Series (RawBinder a), C)
 emptyImpArgs =
-  (SE.emptySeriesPC, [])
+  (SE.emptySeries (Just SE.Angle) SE.Comma, [])
+
+emptyDefaultArgs :: (SE.Series (RawBinder a, a), C)
+emptyDefaultArgs =
+  (SE.emptySeries (Just SE.Bracket) SE.Comma, [])
 
 extractArgs :: Args a -> [RawBinder a]
 extractArgs (series, _) =
   SE.extract series
 
-extractImpArgs :: (SE.Series (RawBinder a, Maybe a), C) -> [RawBinder a]
+extractImpArgs :: (SE.Series (RawBinder a), C) -> [RawBinder a]
 extractImpArgs (series, _) =
-  map fst $ SE.extract series
-
-extractImpArgsWithDefaults :: (SE.Series (RawBinder a, Maybe a), C) -> [(RawBinder a, Maybe a)]
-extractImpArgsWithDefaults (series, _) =
   SE.extract series
+
+extractImpArgsWithDefaults :: (SE.Series (RawBinder a), C) -> (SE.Series (RawBinder a, a), C) -> [(RawBinder a, Maybe a)]
+extractImpArgsWithDefaults (impSeries, _) (defaultSeries, _) =
+  map (,Nothing) (SE.extract impSeries) ++ map (second Just) (SE.extract defaultSeries)
 
 type KeywordClause a =
   (EL a, EL a)
@@ -152,7 +157,8 @@ data RawGeist a = RawGeist
   { loc :: Hint,
     name :: (a, C),
     isConstLike :: IsConstLike,
-    impArgs :: (SE.Series (RawBinder RawTerm, Maybe RawTerm), C),
+    impArgs :: (SE.Series (RawBinder RawTerm), C),
+    defaultArgs :: (SE.Series (RawBinder RawTerm, RawTerm), C),
     expArgs :: Args RawTerm,
     cod :: (C, RawTerm)
   }
@@ -209,6 +215,7 @@ lam loc m varList codType e =
                   name = (Nothing, []),
                   isConstLike = False,
                   impArgs = (SE.emptySeries (Just SE.Angle) SE.Comma, []),
+                  defaultArgs = (SE.emptySeries (Just SE.Bracket) SE.Comma, []),
                   expArgs = (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, []),
                   cod = ([], codType)
                 },
