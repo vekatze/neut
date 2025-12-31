@@ -160,16 +160,14 @@ elaborateStmt h stmt = do
 
 elaborateGeist :: Handle -> G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
 elaborateGeist h (G.Geist {..}) = do
-  impArgs' <-
-    mapM
-      ( \(binder, maybeType) -> do
-          (binder', maybeType') <- elaborateWeakBinderWithMaybeType h (binder, maybeType)
-          return (binder', maybeType')
-      )
-      impArgs
+  impArgs' <- mapM (elaborateWeakBinder h) impArgs
+  defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
+    binder' <- elaborateWeakBinder h binder
+    value' <- elaborate' h value
+    return (binder', value')
   expArgs' <- mapM (elaborateWeakBinder h) expArgs
   cod' <- elaborate' h cod
-  return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
+  return $ G.Geist {impArgs = impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
 
 insertStmt :: Handle -> Stmt -> App ()
 insertStmt h stmt = do

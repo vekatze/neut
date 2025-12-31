@@ -7,7 +7,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Except (MonadError (throwError), liftEither)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Bifunctor (second)
+import Data.Bifunctor (Bifunctor (second))
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
@@ -110,26 +110,27 @@ discernStmt h stmt = do
       registerTopLevelName h stmt
       let baseStage = if SK.isInlineStmtKind stmtKind then 1 else 0
       let hStage = h {H.currentStage = baseStage}
-      let impArgs = map (,Nothing) $ RT.extractImpArgs (RT.impArgs geist)
-      let defaultArgs = map (second Just) $ SE.extract $ fst $ RT.defaultArgs geist
-      let impArgsWithDefaults = impArgs ++ defaultArgs
+      let impArgs = RT.extractImpArgs $ RT.impArgs geist
+      let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let (_, codType) = RT.cod geist
       let m = RT.loc geist
       let functionName = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      (impArgs', nenv) <- discernBinderWithDefaults hStage impArgsWithDefaults endLoc
-      (expArgs', nenv') <- discernBinder nenv expArgs endLoc
-      codType' <- discern nenv' codType
+      (impArgs', nenv) <- discernBinder hStage impArgs endLoc
+      (defaultArgs', nenv') <- discernBinderWithDefaultArgs nenv defaultArgs endLoc
+      let impArgsWithDefaults = map (,Nothing) impArgs' ++ map (second Just) defaultArgs'
+      (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
+      codType' <- discern nenv'' codType
       stmtKind' <- discernStmtKind h stmtKind m
-      body' <- discern nenv' body
+      body' <- discern nenv'' body
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m functionName isConstLike m
       when (metaShouldSaveLocation m) $ do
         liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
           TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
-      liftIO $ forM_ (map fst impArgs') $ Tag.insertBinder (H.tagHandle h)
+      liftIO $ forM_ (impArgs' ++ map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h)
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
-      return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
+      return [WeakStmtDefine isConstLike stmtKind' m functionName impArgsWithDefaults expArgs' codType' body']
     PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) (_, typeTag) _ -> do
       registerTopLevelName h stmt
       t' <- discern h $ m :< RT.Tau
@@ -157,14 +158,15 @@ discernStmt h stmt = do
 
 discernGeist :: H.Handle -> Loc -> RT.RawGeist DD.DefiniteDescription -> App (G.Geist WT.WeakTerm)
 discernGeist h endLoc geist = do
-  let impArgs = map (,Nothing) $ RT.extractImpArgs (RT.impArgs geist)
-  let defaultArgs = map (second Just) $ SE.extract $ fst $ RT.defaultArgs geist
-  let impArgsWithDefaults = impArgs ++ defaultArgs
+  let impArgs = RT.extractImpArgs $ RT.impArgs geist
+  let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
-  (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
-  (expArgs', h'') <- discernBinder h' expArgs endLoc
-  forM_ (map fst impArgs' ++ expArgs') $ \(_, x, _) -> liftIO $ Unused.deleteVariable (H.unusedHandle h) x
-  cod' <- discern h'' $ snd $ RT.cod geist
+  (impArgs', h') <- discernBinder h impArgs endLoc
+  (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgs endLoc
+  (expArgs', h''') <- discernBinder h'' expArgs endLoc
+  forM_ (impArgs' ++ map fst defaultArgs' ++ expArgs') $ \(_, x, _) ->
+    liftIO $ Unused.deleteVariable (H.unusedHandle h) x
+  cod' <- discern h''' $ snd $ RT.cod geist
   let m = RT.loc geist
   let dd = fst $ RT.name geist
   let kind = if RT.isConstLike geist then Constant else Function
@@ -175,6 +177,7 @@ discernGeist h endLoc geist = do
         name = dd,
         isConstLike = RT.isConstLike geist,
         impArgs = impArgs',
+        defaultArgs = defaultArgs',
         expArgs = expArgs',
         cod = cod'
       }
@@ -270,45 +273,48 @@ discern h term =
     m :< RT.VarGlobal dd gn -> do
       interpretGlobalName h m dd gn
     m :< RT.Pi impArgs defaultArgs expArgs _ t endLoc -> do
-      let impArgsBase = map (,Nothing) $ RT.extractImpArgs impArgs
-      let defaultArgsBase = map (second Just) $ SE.extract $ fst defaultArgs
-      let impArgsWithDefaults = impArgsBase ++ defaultArgsBase
-      (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
-      (expArgs', h'') <- discernBinder h' (RT.extractArgs expArgs) endLoc
-      t' <- discern h'' t
-      forM_ (map fst impArgs' ++ expArgs') $ \(_, x, _) -> liftIO (Unused.deleteVariable (H.unusedHandle h'') x)
-      return $ m :< WT.Pi PK.normal impArgs' expArgs' t'
+      let impArgsBase = RT.extractImpArgs impArgs
+      let defaultArgsBase = SE.extract $ fst defaultArgs
+      (impArgs', h') <- discernBinder h impArgsBase endLoc
+      (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgsBase endLoc
+      let impArgsWithDefaults = map (,Nothing) impArgs' ++ map (second Just) defaultArgs'
+      (expArgs', h''') <- discernBinder h'' (RT.extractArgs expArgs) endLoc
+      t' <- discern h''' t
+      forM_ (map fst impArgsWithDefaults ++ expArgs') $ \(_, x, _) -> liftIO (Unused.deleteVariable (H.unusedHandle h''') x)
+      return $ m :< WT.Pi PK.normal impArgsWithDefaults expArgs' t'
     m :< RT.PiIntro _ (RT.RawDef {geist, body, endLoc}) -> do
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       let (name, _) = RT.name geist
-      let impArgs = map (,Nothing) $ RT.extractImpArgs (RT.impArgs geist)
-      let defaultArgs = map (second Just) $ SE.extract $ fst $ RT.defaultArgs geist
-      let impArgsWithDefaults = impArgs ++ defaultArgs
+      let impArgs = RT.extractImpArgs $ RT.impArgs geist
+      let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
-      (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
-      (expArgs', h'') <- discernBinder h' expArgs endLoc
-      codType' <- discern h'' $ snd $ RT.cod geist
-      body' <- discern h'' body
-      ensureLayerClosedness m h'' body'
-      return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' expArgs' body'
+      (impArgs', h') <- discernBinder h impArgs endLoc
+      (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgs endLoc
+      let impArgsWithDefaults = map (,Nothing) impArgs' ++ map (second Just) defaultArgs'
+      (expArgs', h''') <- discernBinder h'' expArgs endLoc
+      codType' <- discern h''' $ snd $ RT.cod geist
+      body' <- discern h''' body
+      ensureLayerClosedness m h''' body'
+      return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgsWithDefaults expArgs' body'
     m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
-      let impArgs = map (,Nothing) $ RT.extractImpArgs (RT.impArgs geist)
-      let defaultArgs = map (second Just) $ SE.extract $ fst $ RT.defaultArgs geist
-      let impArgsWithDefaults = impArgs ++ defaultArgs
+      let impArgs = RT.extractImpArgs $ RT.impArgs geist
+      let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let mx = RT.loc geist
       let (x, _) = RT.name geist
-      (impArgs', h') <- discernBinderWithDefaults h impArgsWithDefaults endLoc
-      (expArgs', h'') <- discernBinder h' expArgs endLoc
-      codType' <- discern h'' $ snd $ RT.cod geist
+      (impArgs', h') <- discernBinder h impArgs endLoc
+      (defaultArgs', h'') <- discernBinderWithDefaultArgs h' defaultArgs endLoc
+      let impArgsWithDefaults = map (,Nothing) impArgs' ++ map (second Just) defaultArgs'
+      (expArgs', h''') <- discernBinder h'' expArgs endLoc
+      codType' <- discern h''' $ snd $ RT.cod geist
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
-      h''' <- liftIO $ H.extend' h'' mx x' VDK.Normal
-      body' <- discern h''' body
+      h'''' <- liftIO $ H.extend' h''' mx x' VDK.Normal
+      body' <- discern h'''' body
       let mxt' = (mx, x', codType')
       liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
-      ensureLayerClosedness m h''' body'
-      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
+      ensureLayerClosedness m h'''' body'
+      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgsWithDefaults expArgs' body'
     m :< RT.PiElim e _ expArgs -> do
       let isNoetic = False -- overwritten later in `infer`
       e' <- discern h e
@@ -930,24 +936,24 @@ discernBinder h binder endLoc =
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
       return ((mx, x', t') : xts', h'')
 
-discernBinderWithDefaults ::
+discernBinderWithDefaultArgs ::
   H.Handle ->
-  [(RawBinder RT.RawTerm, Maybe RT.RawTerm)] ->
+  [(RawBinder RT.RawTerm, RT.RawTerm)] ->
   Loc ->
-  App ([(BinderF WT.WeakTerm, Maybe WT.WeakTerm)], H.Handle)
-discernBinderWithDefaults h binder endLoc =
+  App ([(BinderF WT.WeakTerm, WT.WeakTerm)], H.Handle)
+discernBinderWithDefaultArgs h binder endLoc =
   case binder of
     [] -> do
       return ([], h)
-    ((mx, x, _, _, t), maybeDefault) : xts -> do
+    ((mx, x, _, _, t), defaultValue) : xts -> do
       t' <- discern h t
-      maybeDefault' <- traverse (discern h {H.nameEnv = []}) maybeDefault -- default values must be closed
+      defaultValue' <- discern h {H.nameEnv = []} defaultValue -- default values must be closed
       x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
       h' <- liftIO $ H.extend' h mx x' VDK.Normal
-      (xts', h'') <- discernBinderWithDefaults h' xts endLoc
+      (xts', h'') <- discernBinderWithDefaultArgs h' xts endLoc
       liftIO $ Tag.insertBinder (H.tagHandle h'') (mx, x', t')
       liftIO $ SymLoc.insert (H.symLocHandle h'') x' (metaLocation mx) endLoc
-      return (((mx, x', t'), maybeDefault') : xts', h'')
+      return (((mx, x', t'), defaultValue') : xts', h'')
 
 discernBinder' ::
   H.Handle ->

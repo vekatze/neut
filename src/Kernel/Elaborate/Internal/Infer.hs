@@ -13,6 +13,7 @@ import App.Run (raiseCritical, raiseError)
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.Bifunctor (Bifunctor (second))
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
@@ -107,11 +108,13 @@ inferStmt h stmt =
 
 inferGeist :: Handle -> G.Geist WT.WeakTerm -> App (G.Geist WT.WeakTerm)
 inferGeist h (G.Geist {..}) = do
-  (impArgs', h') <- inferImpBinder h impArgs
-  (expArgs', h'') <- inferBinder' h' expArgs
-  cod' <- inferType h'' cod
-  liftIO $ insertType h'' name $ loc :< WT.Pi PK.normal impArgs' expArgs' cod'
-  return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
+  (impArgs', h') <- inferImpBinder h $ map (,Nothing) impArgs
+  (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
+  let impArgsWithDefaults = map ((,Nothing) . fst) impArgs' ++ map (second Just) defaultArgs'
+  (expArgs', h''') <- inferBinder' h'' expArgs
+  cod' <- inferType h''' cod
+  liftIO $ insertType h''' name $ loc :< WT.Pi PK.normal impArgsWithDefaults expArgs' cod'
+  return $ G.Geist {impArgs = map fst impArgs', defaultArgs = defaultArgs', expArgs = expArgs', cod = cod', ..}
 
 insertType :: Handle -> DD.DefiniteDescription -> WT.WeakTerm -> IO ()
 insertType h dd t = do
@@ -508,6 +511,22 @@ inferImpBinder h binderList =
       liftIO $ WeakType.insert (weakTypeHandle h) x t'
       (rest', h') <- inferImpBinder (extendHandle (mx, x, t') h) rest
       return (((mx, x, t'), mDefaultValue') : rest', h')
+
+inferImpBinderWithDefaults ::
+  Handle ->
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  App ([(BinderF WT.WeakTerm, WT.WeakTerm)], Handle)
+inferImpBinderWithDefaults h binderList =
+  case binderList of
+    [] -> do
+      return ([], h)
+    ((mx, x, t), defaultValue) : rest -> do
+      t' <- inferType h t
+      (defaultValue', defaultType) <- infer h defaultValue
+      liftIO $ Constraint.insert (constraintHandle h) t' defaultType
+      liftIO $ WeakType.insert (weakTypeHandle h) x t'
+      (rest', h') <- inferImpBinderWithDefaults (extendHandle (mx, x, t') h) rest
+      return (((mx, x, t'), defaultValue') : rest', h')
 
 inferBinder' ::
   Handle ->

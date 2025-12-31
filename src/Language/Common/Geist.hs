@@ -9,7 +9,8 @@ data Geist a = Geist
   { loc :: Hint,
     name :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
-    impArgs :: [((Hint, Ident, a), Maybe a)],
+    impArgs :: [(Hint, Ident, a)],
+    defaultArgs :: [((Hint, Ident, a), a)],
     expArgs :: [(Hint, Ident, a)],
     cod :: a
   }
