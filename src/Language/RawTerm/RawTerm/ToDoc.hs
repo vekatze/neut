@@ -126,12 +126,12 @@ toDoc term =
         ]
     m :< CodeIntro c1 c2 (e, c3) -> do
       PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text "code-intro",
+        [ PI.horizontal $ attachComment c1 $ D.text "quote",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
     m :< CodeElim c1 c2 (e, c3) -> do
       PI.arrange
-        [ PI.horizontal $ attachComment c1 $ D.text "code-elim",
+        [ PI.horizontal $ attachComment c1 $ D.text "splice",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
     _ :< Embody e ->

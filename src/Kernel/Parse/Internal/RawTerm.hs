@@ -120,9 +120,9 @@ rawTerm' h m headSymbol c = do
       rawTermBoxIntro h m c
     "lift" -> do
       rawTermBoxIntroLift h m c
-    "code-intro" -> do
+    "quote" -> do
       rawTermCodeIntro h m c
-    "code-elim" -> do
+    "splice" -> do
       rawTermCodeElim h m c
     "assert" -> do
       rawTermAssert h m c
