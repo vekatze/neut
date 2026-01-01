@@ -218,6 +218,8 @@ registerKeyArg' h stmt = do
           let impKeys = map (\(_, x, _) -> toText x) (impArgs ++ map fst defaultArgs)
           let expKeys = map (\(_, x, _) -> toText x) expArgs
           KeyArg.insert (keyArgHandle h) m name isConstLike impKeys expKeys
+    StmtDefineType {} ->
+      return ()
     StmtVariadic {} ->
       return ()
     StmtForeign {} ->

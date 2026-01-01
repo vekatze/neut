@@ -19,8 +19,8 @@ getFallbackMatrix ::
   H.Handle ->
   N.IsNoetic ->
   Ident ->
-  PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  App (PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
+  PatternMatrix ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm) ->
+  App (PatternMatrix ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm))
 getFallbackMatrix h isNoetic cursor mat = do
   mapMaybeRowM (fallbackRow h isNoetic cursor) mat
 
@@ -28,8 +28,8 @@ fallbackRow ::
   H.Handle ->
   N.IsNoetic ->
   Ident ->
-  PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm)))
+  PatternRow ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm) ->
+  App (Maybe (PatternRow ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm)))
 fallbackRow h isNoetic cursor (patternVector, (freedVars, baseSeq, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
@@ -37,7 +37,7 @@ fallbackRow h isNoetic cursor (patternVector, (freedVars, baseSeq, body@(mBody :
     Just ((_, WildcardVar), rest) ->
       return $ Just (rest, (freedVars, baseSeq, body))
     Just ((_, Var x), rest) -> do
-      hole <- liftIO $ WT.createHole (H.gensymHandle h) mBody []
+      hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) mBody []
       adjustedCursor <- liftIO $ castToNoemaIfNecessary h isNoetic (mBody :< WT.Var cursor)
       return $ Just (rest, (freedVars, ((mBody, x, hole), adjustedCursor) : baseSeq, body))
     Just ((_, Cons {}), _) ->

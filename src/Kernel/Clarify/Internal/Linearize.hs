@@ -169,15 +169,12 @@ distinguishPrimitive h z term =
     C.Magic magic -> do
       case magic of
         LM.Cast from to value -> do
-          (vs1, from') <- distinguishValue h z from
-          (vs2, to') <- distinguishValue h z to
-          (vs3, value') <- distinguishValue h z value
-          return (vs1 <> vs2 <> vs3, C.Magic (LM.Cast from' to' value'))
+          (vs, value') <- distinguishValue h z value
+          return (vs, C.Magic (LM.Cast from to value'))
         LM.Store lt unit value pointer -> do
-          (vs1, unit') <- distinguishValue h z unit
-          (vs2, value') <- distinguishValue h z value
-          (vs3, pointer') <- distinguishValue h z pointer
-          return (vs1 <> vs2 <> vs3, C.Magic (LM.Store lt unit' value' pointer'))
+          (vs1, value') <- distinguishValue h z value
+          (vs2, pointer') <- distinguishValue h z pointer
+          return (vs1 <> vs2, C.Magic (LM.Store lt unit value' pointer'))
         LM.Load lt pointer -> do
           (vs, pointer') <- distinguishValue h z pointer
           return (vs, C.Magic (LM.Load lt pointer'))
@@ -194,7 +191,8 @@ distinguishPrimitive h z term =
           (vs, e') <- distinguishValue h z e
           return (vs, C.Magic (LM.OpaqueValue e'))
         LM.CallType func arg1 arg2 -> do
-          (vs1, func') <- distinguishValue h z func
-          (vs2, arg1') <- distinguishValue h z arg1
-          (vs3, arg2') <- distinguishValue h z arg2
-          return (vs1 <> vs2 <> vs3, C.Magic (LM.CallType func' arg1' arg2'))
+          (vs1, arg1') <- distinguishValue h z arg1
+          (vs2, arg2') <- distinguishValue h z arg2
+          return (vs1 <> vs2, C.Magic (LM.CallType func arg1' arg2'))
+        LM.TermType ty -> do
+          return ([], C.Magic (LM.TermType ty))

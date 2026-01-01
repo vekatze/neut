@@ -289,6 +289,7 @@ data RawMagic
   | GetTypeTag (EL RawType)
   | GetConsSize C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)
+  | TermType (EL RawType)
   | CompileError T.Text
 
 -- elem

@@ -12,24 +12,22 @@ where
 import Control.Comonad.Cofree
 import Kernel.Elaborate.Constraint qualified as C
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.HoleID qualified as HID
 import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
-import Language.WeakTerm.WeakPrim qualified as WP
+import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
 
 data EvalBase
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription
-  | Hole HID.HoleID [WT.WeakTerm]
-  | Prim (WP.WeakPrim WT.WeakTerm)
+  | Prim (WPV.WeakPrimValue WT.WeakType)
 
 type EvalCtx = Cofree EvalCtxF Hint
 
 data EvalCtxF a
   = Base
-  | PiElim a (ImpArgs.ImpArgs WT.WeakTerm) [WT.WeakTerm]
+  | PiElim a (ImpArgs.ImpArgs WT.WeakType) [WT.WeakTerm]
 
 type Stuck = (EvalBase, EvalCtx)
 
@@ -40,8 +38,6 @@ asStuckedTerm term =
       Just (VarLocal x, m :< Base)
     m :< WT.VarGlobal _ g ->
       Just (VarGlobal g, m :< Base)
-    m :< WT.Hole h es ->
-      Just (Hole h es, m :< Base)
     m :< WT.Prim prim ->
       Just (Prim prim, m :< Base)
     m :< WT.PiElim False e impArgs expArgs -> do
@@ -75,10 +71,10 @@ asPairList ctx1 ctx2 =
       | ImpArgs.FullySpecified impArgs1' <- impArgs1,
         ImpArgs.FullySpecified impArgs2' <- impArgs2 -> do
           pairList <- asPairList ctx1' ctx2'
-          return $ zipWith C.Eq impArgs1' impArgs2' ++ zipWith C.Eq expArgs1 expArgs2 ++ pairList
+          return $ zipWith C.Eq impArgs1' impArgs2' ++ pairList
       | ImpArgs.Unspecified <- impArgs1,
         ImpArgs.Unspecified <- impArgs2 -> do
           pairList <- asPairList ctx1' ctx2'
-          return $ zipWith C.Eq expArgs1 expArgs2 ++ pairList
+          return pairList
     _ ->
       Nothing

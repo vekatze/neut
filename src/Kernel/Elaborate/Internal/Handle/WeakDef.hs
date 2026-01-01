@@ -41,10 +41,10 @@ insert' ::
   O.Opacity ->
   Hint ->
   DD.DefiniteDescription ->
-  [BinderF WeakTerm] ->
-  [(BinderF WeakTerm, WeakTerm)] ->
-  [BinderF WeakTerm] ->
-  WeakTerm ->
+  [BinderF WeakType] ->
+  [(BinderF WeakType, WeakTerm)] ->
+  [BinderF WeakType] ->
+  WeakType ->
   WeakTerm ->
   IO ()
 insert' h opacity m name impArgs defaultArgs expArgs codType e =

@@ -2,6 +2,7 @@ module Kernel.Parse.Internal.Discern.Handle
   ( Handle (..),
     new,
     extend',
+    extendType',
     extendWithoutInsert,
     extendByNominalEnv,
   )
@@ -45,6 +46,7 @@ data Handle = Handle
     envHandle :: Env.Handle,
     platformHandle :: Platform.Handle,
     nameEnv :: NominalEnv,
+    typeNameEnv :: NominalEnv,
     currentLayer :: Layer,
     currentStage :: Stage
   }
@@ -56,6 +58,7 @@ new ::
   Handle
 new (Global.Handle {..}) (Local.Handle {..}) nameMapHandle = do
   let nameEnv = empty
+  let typeNameEnv = empty
   let currentLayer = 0
   let currentStage = 0
   Handle {..}
@@ -68,6 +71,11 @@ extend h m newVar l s k = do
 extend' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle
 extend' h m newVar k = do
   extend h m newVar (currentLayer h) (currentStage h) k
+
+extendType' :: Handle -> Hint -> Ident -> VarDefKind -> IO Handle
+extendType' h m newVar k = do
+  Unused.insertVariable (unusedHandle h) m newVar k
+  return $ h {typeNameEnv = (Ident.toText newVar, (m, newVar, currentLayer h, currentStage h)) : typeNameEnv h}
 
 extendWithoutInsert :: Handle -> Hint -> Ident -> Handle
 extendWithoutInsert h m newVar = do

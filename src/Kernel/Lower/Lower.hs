@@ -277,6 +277,8 @@ lowerCompPrimitive h resultVar codeOp cont =
             =<< lowerValue h arg2Var arg2
             =<< return . LC.Let resultVar (LC.Call resultType funcValue [(arg1Type, arg1Value), (arg2Type, arg2Value)])
             =<< return cont
+        LM.TermType _ ->
+          error "TermType should not appear in lower phase"
 
 lowerCompPrimOp :: Handle -> Ident -> PrimOp -> [C.Value] -> LC.Comp -> App LC.Comp
 lowerCompPrimOp h resultVar op vs cont = do

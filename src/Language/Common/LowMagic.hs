@@ -3,30 +3,31 @@ module Language.Common.LowMagic (LowMagic (..)) where
 import Data.Bifunctor
 import Data.Binary
 import GHC.Generics qualified as G
-import Language.Common.BaseLowType
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
 
-data LowMagic t a
-  = Cast a a a
-  | Store t a a a
-  | Load t a
-  | Alloca t a
-  | External [t] (FCT.ForeignCodType t) EN.ExternalName [a] [(a, t)]
-  | Global EN.ExternalName t
+-- lt: lowtype, ty: type expression, a: term
+data LowMagic lt ty a
+  = Cast ty ty a -- Cast fromType toType value
+  | Store lt lt a a -- Store valueType unitType value pointer
+  | Load lt a -- Load valueType pointer
+  | Alloca lt a -- Alloca elemType size
+  | External [lt] (FCT.ForeignCodType lt) EN.ExternalName [a] [(a, lt)]
+  | Global EN.ExternalName lt
   | OpaqueValue a
-  | CallType a a a
+  | CallType ty a a
+  | TermType ty
   deriving (Show, Eq, G.Generic)
 
-instance (Binary a) => Binary (LowMagic BaseLowType a)
+instance (Binary lt, Binary ty, Binary a) => Binary (LowMagic lt ty a)
 
-instance Functor (LowMagic BaseLowType) where
+instance Functor (LowMagic lt ty) where
   fmap f der =
     case der of
       Cast from to value ->
-        Cast (f from) (f to) (f value)
+        Cast from to (f value)
       Store lt unit value pointer ->
-        Store lt (f unit) (f value) (f pointer)
+        Store lt unit (f value) (f pointer)
       Load lt pointer ->
         Load lt (f pointer)
       Alloca lt size ->
@@ -39,15 +40,17 @@ instance Functor (LowMagic BaseLowType) where
       OpaqueValue e ->
         OpaqueValue (f e)
       CallType func arg1 arg2 ->
-        CallType (f func) (f arg1) (f arg2)
+        CallType func (f arg1) (f arg2)
+      TermType ty ->
+        TermType ty
 
-instance Foldable (LowMagic BaseLowType) where
+instance Foldable (LowMagic lt ty) where
   foldMap f der =
     case der of
-      Cast from to value ->
-        f from <> f to <> f value
-      Store _ unit value pointer ->
-        f unit <> f value <> f pointer
+      Cast _ _ value ->
+        f value
+      Store _ _ value pointer ->
+        f value <> f pointer
       Load _ pointer ->
         f pointer
       Alloca _ size ->
@@ -58,16 +61,18 @@ instance Foldable (LowMagic BaseLowType) where
         mempty
       OpaqueValue e ->
         f e
-      CallType func arg1 arg2 ->
-        f func <> f arg1 <> f arg2
+      CallType _ arg1 arg2 ->
+        f arg1 <> f arg2
+      TermType _ ->
+        mempty
 
-instance Traversable (LowMagic BaseLowType) where
+instance Traversable (LowMagic lt ty) where
   traverse f der =
     case der of
       Cast from to value ->
-        Cast <$> f from <*> f to <*> f value
+        Cast from to <$> f value
       Store lt unit value pointer ->
-        Store lt <$> f unit <*> f value <*> f pointer
+        Store lt unit <$> f value <*> f pointer
       Load lt pointer ->
         Load lt <$> f pointer
       Alloca lt size ->
@@ -81,4 +86,6 @@ instance Traversable (LowMagic BaseLowType) where
       OpaqueValue e ->
         OpaqueValue <$> f e
       CallType func arg1 arg2 ->
-        CallType <$> f func <*> f arg1 <*> f arg2
+        CallType func <$> f arg1 <*> f arg2
+      TermType ty ->
+        pure $ TermType ty

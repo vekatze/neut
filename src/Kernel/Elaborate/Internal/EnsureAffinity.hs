@@ -11,7 +11,6 @@ import Control.Comonad.Cofree
 import Control.Lens (Bifunctor (bimap))
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
@@ -20,8 +19,6 @@ import Kernel.Common.Handle.Global.Type qualified as Type
 import Kernel.Common.OptimizableData
 import Kernel.Common.OptimizableData qualified as OD
 import Kernel.Elaborate.Internal.Handle.Elaborate qualified as Elaborate
-import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
-import Kernel.Elaborate.Stuck qualified as Stuck
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
@@ -35,7 +32,7 @@ import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Term.FreeVarsWithHints (freeVarsWithHints)
 import Language.Term.Term qualified as TM
-import Language.Term.Weaken (weaken)
+import Language.Term.Weaken (weakenType)
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.ToText qualified as WT
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -44,12 +41,12 @@ import Logger.Log qualified as L
 import Logger.LogLevel qualified as L
 
 type AffineConstraint =
-  (TM.Term, TM.Term)
+  (TM.Type, TM.Type)
 
 type WeakAffineConstraint =
-  (WT.WeakTerm, WT.WeakTerm)
+  (WT.WeakType, WT.WeakType)
 
-type VarEnv = IntMap.IntMap TM.Term
+type VarEnv = IntMap.IntMap TM.Type
 
 data Handle = Handle
   { elaborateHandle :: Elaborate.Handle,
@@ -68,13 +65,13 @@ new elaborateHandle = do
 ensureAffinity :: Handle -> TM.Term -> App [L.Log]
 ensureAffinity h e = do
   cs <- analyze h e
-  synthesize h $ map (bimap weaken weaken) cs
+  synthesize h $ map (bimap weakenType weakenType) cs
 
-extendHandle :: BinderF TM.Term -> Handle -> Handle
+extendHandle :: BinderF TM.Type -> Handle -> Handle
 extendHandle (_, x, t) h = do
   h {varEnv = IntMap.insert (toInt x) t (varEnv h)}
 
-extendHandle' :: [BinderF TM.Term] -> Handle -> Handle
+extendHandle' :: [BinderF TM.Type] -> Handle -> Handle
 extendHandle' mxts h = do
   case mxts of
     [] ->
@@ -131,24 +128,16 @@ analyzeVar h m x = do
 analyze :: Handle -> TM.Term -> App [AffineConstraint]
 analyze h term = do
   case term of
-    _ :< TM.Tau ->
-      return []
     m :< TM.Var x -> do
       analyzeVar h m x
     _ :< TM.VarGlobal {} -> do
       return []
-    _ :< TM.Pi _ impArgs defaultArgs expArgs t -> do
-      let impBinders = impArgs ++ map fst defaultArgs
-      (cs1, h') <- analyzeBinder h impBinders
-      (cs2, h'') <- analyzeBinder h' expArgs
-      cs3 <- analyze h'' t
-      return $ cs1 ++ cs2 ++ cs3
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ map fst defaultArgs)
           (cs2, h'') <- analyzeBinder h' expArgs
-          cs3 <- analyze h'' codType
+          cs3 <- analyzeType h'' codType
           let piType = m :< TM.Pi PK.normal impArgs defaultArgs expArgs codType
           liftIO $ insertRelevantVar x h''
           cs4 <- analyze (extendHandle (mx, x, piType) h'') e
@@ -157,32 +146,25 @@ analyze h term = do
         LK.Normal _ codType -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ map fst defaultArgs)
           (cs2, h'') <- analyzeBinder h' expArgs
-          cs3 <- analyze h'' codType
+          cs3 <- analyzeType h'' codType
           cs4 <- analyze h'' e
           return $ cs1 ++ cs2 ++ cs3 ++ cs4
     _ :< TM.PiElim _ e impArgs expArgs -> do
       cs <- analyze h e
-      css1 <- mapM (analyze h) impArgs
+      css1 <- mapM (analyzeType h) impArgs
       css2 <- mapM (analyze h) expArgs
       return $ cs ++ concat css1 ++ concat css2
-    _ :< TM.Data _ _ es -> do
-      css <- mapM (analyze $ deactivateExpCheck h) es
-      return $ concat css
     _ :< TM.DataIntro _ _ dataArgs consArgs -> do
-      css1 <- mapM (analyze $ deactivateExpCheck h) dataArgs
+      css1 <- mapM (analyzeType $ deactivateExpCheck h) dataArgs
       css2 <- mapM (analyze $ deactivateExpCheck h) consArgs
       return $ concat css1 ++ concat css2
     m :< TM.DataElim _ oets tree -> do
       let (os, es, ts) = unzip3 oets
       cs1 <- concat <$> mapM (analyze h) es
-      cs2 <- concat <$> mapM (analyze h) ts
+      cs2 <- concat <$> mapM (analyzeType h) ts
       let mots = zipWith (\o t -> (m, o, t)) os ts
       cs3 <- analyzeDecisionTree (extendHandle' mots h) tree
       return $ cs1 ++ cs2 ++ cs3
-    _ :< TM.Box t -> do
-      analyze h t
-    _ :< TM.BoxNoema t -> do
-      analyze h t
     _ :< TM.BoxIntro letSeq e -> do
       (cs1, h') <- analyzeLet h letSeq
       cs2 <- analyze h' e
@@ -191,8 +173,6 @@ analyze h term = do
       (cs, h') <- analyzeLet h $ castSeq ++ [(mxt, e1)] ++ uncastSeq
       cs' <- analyze h' e2
       return $ cs ++ cs'
-    _ :< TM.Code t -> do
-      analyze h t
     _ :< TM.CodeIntro e -> do
       analyze h e
     _ :< TM.CodeElim e -> do
@@ -208,81 +188,116 @@ analyze h term = do
         M.LowMagic lowMagic ->
           case lowMagic of
             LM.Cast from to value -> do
-              cs0 <- analyze h from
-              cs1 <- analyze h to
+              cs0 <- analyzeType h from
+              cs1 <- analyzeType h to
               cs2 <- analyze h value
               return $ cs0 ++ cs1 ++ cs2
-            LM.Store _ unit e1 e2 -> do
-              cs1 <- analyze h unit
+            LM.Store _ _ e1 e2 -> do
               cs2 <- analyze h e1
               cs3 <- analyze h e2
-              return $ cs1 ++ cs2 ++ cs3
+              return $ cs2 ++ cs3
             LM.Load _ e -> do
-              analyze h e
+              cs1 <- analyze h e
+              return cs1
             LM.Alloca _ size -> do
-              analyze h size
+              cs1 <- analyze h size
+              return cs1
             LM.External _ _ _ es ets -> do
               let args = es ++ map fst ets
-              concat <$> mapM (analyze h) args
-            LM.Global _ _ ->
+              css <- concat <$> mapM (analyze h) args
+              return css
+            LM.Global {} -> do
               return []
             LM.OpaqueValue e ->
               analyze h e
             LM.CallType func arg1 arg2 -> do
-              cs1 <- analyze h func
+              cs1 <- analyzeType h func
               cs2 <- analyze h arg1
               cs3 <- analyze h arg2
               return $ cs1 ++ cs2 ++ cs3
+            LM.TermType ty ->
+              analyzeType h ty
         M.GetTypeTag _ typeTagExpr typeExpr -> do
-          cs1 <- analyze h typeTagExpr
-          cs2 <- analyze h typeExpr
+          cs1 <- analyzeType h typeTagExpr
+          cs2 <- analyzeType h typeExpr
           return $ cs1 ++ cs2
         M.GetConsSize typeExpr -> do
-          analyze h typeExpr
+          analyzeType h typeExpr
         M.GetConstructorArgTypes _ listExpr typeExpr index -> do
-          cs0 <- analyze h listExpr
-          cs1 <- analyze h typeExpr
+          cs0 <- analyzeType h listExpr
+          cs1 <- analyzeType h typeExpr
           cs2 <- analyze h index
           return $ cs0 ++ cs1 ++ cs2
         M.CompileError _ ->
           return []
+
+analyzeType :: Handle -> TM.Type -> App [AffineConstraint]
+analyzeType h ty =
+  case ty of
+    _ :< TM.Tau ->
+      return []
+    _ :< TM.TVar {} ->
+      return []
+    _ :< TM.TVarGlobal {} ->
+      return []
+    _ :< TM.TyApp t args -> do
+      cs0 <- analyzeType h t
+      css <- mapM (analyzeType h) args
+      return $ cs0 ++ concat css
+    _ :< TM.Pi _ impArgs defaultArgs expArgs t -> do
+      let impBinders = impArgs ++ map fst defaultArgs
+      (cs1, h') <- analyzeBinder h impBinders
+      (cs2, h'') <- analyzeBinder h' expArgs
+      cs3 <- analyzeType h'' t
+      return $ cs1 ++ cs2 ++ cs3
+    _ :< TM.Data _ _ es -> do
+      css <- mapM (analyzeType $ deactivateExpCheck h) es
+      return $ concat css
+    _ :< TM.Box t -> do
+      analyzeType h t
+    _ :< TM.BoxNoema t -> do
+      analyzeType h t
+    _ :< TM.Code t -> do
+      analyzeType h t
+    _ :< TM.PrimType {} ->
+      return []
+    _ :< TM.Void ->
+      return []
     _ :< TM.Resource _ _ unitType discarder copier typeTag -> do
-      cs1 <- analyze h unitType
+      cs1 <- analyzeType h unitType
       cs2 <- analyze h discarder
       cs3 <- analyze h copier
       cs4 <- analyze h typeTag
       return $ cs1 ++ cs2 ++ cs3 ++ cs4
-    _ :< TM.Void ->
-      return []
 
 analyzeBinder ::
   Handle ->
-  [BinderF TM.Term] ->
+  [BinderF TM.Type] ->
   App ([AffineConstraint], Handle)
 analyzeBinder h binder =
   case binder of
     [] -> do
       return ([], h)
     ((mx, x, t) : xts) -> do
-      cs <- analyze h t
+      cs <- analyzeType h t
       (cs', h') <- analyzeBinder (extendHandle (mx, x, t) h) xts
       return (cs ++ cs', h')
 
 analyzeLet ::
   Handle ->
-  [(BinderF TM.Term, TM.Term)] ->
+  [(BinderF TM.Type, TM.Term)] ->
   App ([AffineConstraint], Handle)
 analyzeLet h xtes =
   case xtes of
     [] ->
       return ([], h)
     ((m, x, t), e) : rest -> do
-      cs0 <- analyze h t
+      cs0 <- analyzeType h t
       cs1 <- analyze h e
       (cs', h') <- analyzeLet (extendHandle (m, x, t) h) rest
       return (cs0 ++ cs1 ++ cs', h')
 
-lookupTypeEnv :: VarEnv -> Hint -> Ident -> App TM.Term
+lookupTypeEnv :: VarEnv -> Hint -> Ident -> App TM.Type
 lookupTypeEnv varEnv m x =
   case IntMap.lookup (toInt x) varEnv of
     Just t ->
@@ -295,7 +310,7 @@ lookupTypeEnv varEnv m x =
 
 analyzeDecisionTree ::
   Handle ->
-  DT.DecisionTree TM.Term ->
+  DT.DecisionTree TM.Type TM.Term ->
   App [AffineConstraint]
 analyzeDecisionTree h tree =
   case tree of
@@ -306,13 +321,13 @@ analyzeDecisionTree h tree =
     DT.Unreachable -> do
       return []
     DT.Switch (_, cursorType) caseList -> do
-      cs1 <- analyze h cursorType
+      cs1 <- analyzeType h cursorType
       cs2 <- analyzeClauseList h caseList
       return $ cs1 ++ cs2
 
 analyzeClauseList ::
   Handle ->
-  DT.CaseList TM.Term ->
+  DT.CaseList TM.Type TM.Term ->
   App [AffineConstraint]
 analyzeClauseList h (fallbackClause, caseList) = do
   newVarSetRef <- liftIO $ newIORef IntMap.empty
@@ -331,7 +346,7 @@ analyzeClauseList h (fallbackClause, caseList) = do
 
 analyzeCase ::
   Handle ->
-  DT.Case TM.Term ->
+  DT.Case TM.Type TM.Term ->
   App [AffineConstraint]
 analyzeCase h decisionCase = do
   case decisionCase of
@@ -339,7 +354,7 @@ analyzeCase h decisionCase = do
       analyzeDecisionTree h cont
     DT.ConsCase (DT.ConsCaseRecord {..}) -> do
       let (es1, ts1) = unzip dataArgs
-      cs1 <- concat <$> mapM (analyze h) (es1 ++ ts1)
+      cs1 <- concat <$> mapM (analyzeType h) (es1 ++ ts1)
       (cs2, h') <- analyzeBinder h consArgs
       cs3 <- analyzeDecisionTree h' cont
       return $ cs1 ++ cs2 ++ cs3
@@ -350,11 +365,11 @@ synthesize h cs = do
   return $ map constructErrorMessageAffine errorList
 
 newtype AffineConstraintError
-  = AffineConstraintError WT.WeakTerm
+  = AffineConstraintError WT.WeakType
 
 constructErrorMessageAffine :: AffineConstraintError -> L.Log
 constructErrorMessageAffine (AffineConstraintError t) =
-  L.newLog (WT.metaOf t) L.Error "Variable name must start with `!` to be copyable"
+  L.newLog (WT.metaOfType t) L.Error "Variable name must start with `!` to be copyable"
 
 simplifyAffine ::
   Handle ->
@@ -362,7 +377,7 @@ simplifyAffine ::
   WeakAffineConstraint ->
   App [AffineConstraintError]
 simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
-  t' <- Elaborate.reduce (elaborateHandle h) t
+  t' <- Elaborate.reduceType (elaborateHandle h) t
   case t' of
     _ :< WT.Tau -> do
       return []
@@ -388,24 +403,18 @@ simplifyAffine h dataNameSet (t, orig@(m :< _)) = do
           return [AffineConstraintError orig]
     _ :< WT.BoxNoema {} ->
       return []
-    _ :< WT.Prim {} -> do
+    _ :< WT.PrimType {} -> do
       return []
     _ -> do
-      defMap <- liftIO $ WeakDef.read' (Elaborate.weakDefHandle (elaborateHandle h))
-      case Stuck.asStuckedTerm t' of
-        Just (Stuck.VarGlobal dd, evalCtx)
-          | Just lam <- Map.lookup dd defMap -> do
-              simplifyAffine h dataNameSet (Stuck.resume lam evalCtx, orig)
-        _ -> do
-          return [AffineConstraintError orig]
+      return [AffineConstraintError orig]
 
-substConsArgs :: Handle -> WT.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
+substConsArgs :: Handle -> Subst.SubstType -> [BinderF WT.WeakType] -> App [BinderF WT.WeakType]
 substConsArgs h sub consArgs =
   case consArgs of
     [] ->
       return []
     (m, x, t) : rest -> do
-      t' <- liftIO $ Subst.subst (Elaborate.substHandle (elaborateHandle h)) sub t
+      t' <- liftIO $ Subst.substTypeWith sub t
       let opaque = m :< WT.Tau -- allow `a` in `Cons(a: type, x: a)`
       let sub' = IntMap.insert (toInt x) (Right opaque) sub
       rest' <- substConsArgs h sub' rest
@@ -415,7 +424,7 @@ getConsArgTypes ::
   Handle ->
   Hint ->
   DD.DefiniteDescription ->
-  App [BinderF WT.WeakTerm]
+  App [BinderF WT.WeakType]
 getConsArgTypes h m consName = do
   t <- Type.lookup' (Elaborate.typeHandle (elaborateHandle h)) m consName
   case t of
@@ -424,7 +433,7 @@ getConsArgTypes h m consName = do
     _ :< WT.Pi (PK.DataIntro True) impArgs defaultArgs expArgs _dataType -> do
       return $ impArgs ++ map fst defaultArgs ++ expArgs
     _ ->
-      raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toText t
+      raiseCritical m $ "Got a malformed constructor type:\n" <> WT.toTextType t
 
 lookupOptimizableData :: Handle -> DD.DefiniteDescription -> IO (Maybe OptimizableData)
 lookupOptimizableData h dd = do

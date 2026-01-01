@@ -20,7 +20,7 @@ import Logger.Hint
 import Prelude hiding (lookup)
 
 type WeakTypeEnv =
-  IntMap.IntMap WT.WeakTerm
+  IntMap.IntMap WT.WeakType
 
 newtype Handle = Handle
   { weakTypeEnvRef :: IORef WeakTypeEnv
@@ -31,11 +31,11 @@ new = do
   weakTypeEnvRef <- newIORef IntMap.empty
   return $ Handle {..}
 
-insert :: Handle -> Ident -> WT.WeakTerm -> IO ()
+insert :: Handle -> Ident -> WT.WeakType -> IO ()
 insert h k v =
   modifyIORef' (weakTypeEnvRef h) $ IntMap.insert (Ident.toInt k) v
 
-lookup :: Handle -> Hint -> Ident -> App WT.WeakTerm
+lookup :: Handle -> Hint -> Ident -> App WT.WeakType
 lookup h m k = do
   weakTypeEnv <- liftIO $ readIORef (weakTypeEnvRef h)
   case IntMap.lookup (Ident.toInt k) weakTypeEnv of

@@ -18,7 +18,7 @@ import Logger.Hint
 import Prelude hiding (lookup)
 
 newtype Handle = Handle
-  { _typeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakTerm)
+  { _typeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakType)
   }
 
 new :: IO Handle
@@ -26,11 +26,11 @@ new = do
   _typeEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert' :: Handle -> DD.DefiniteDescription -> WeakTerm -> IO ()
+insert' :: Handle -> DD.DefiniteDescription -> WeakType -> IO ()
 insert' h k v =
   modifyIORef' (_typeEnvRef h) $ Map.insert k v
 
-lookup' :: Handle -> Hint -> DD.DefiniteDescription -> App WeakTerm
+lookup' :: Handle -> Hint -> DD.DefiniteDescription -> App WeakType
 lookup' h m k = do
   valueOrNone <- liftIO $ lookupMaybe' h k
   case valueOrNone of
@@ -39,7 +39,7 @@ lookup' h m k = do
     Nothing ->
       raiseCritical m $ "`" <> DD.reify k <> "` is not found in the term type environment."
 
-lookupMaybe' :: Handle -> DD.DefiniteDescription -> IO (Maybe WeakTerm)
+lookupMaybe' :: Handle -> DD.DefiniteDescription -> IO (Maybe WeakType)
 lookupMaybe' h k = do
   typeEnv <- readIORef (_typeEnvRef h)
   return $ Map.lookup k typeEnv

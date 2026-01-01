@@ -26,15 +26,15 @@ new = do
   suspendedEnvRef <- newIORef []
   return $ Handle {..}
 
-insert :: Handle -> WT.WeakTerm -> WT.WeakTerm -> IO ()
+insert :: Handle -> WT.WeakType -> WT.WeakType -> IO ()
 insert h expected actual = do
   modifyIORef' (constraintEnvRef h) $ (:) (C.Eq expected actual)
 
-insertActualityConstraint :: Handle -> WT.WeakTerm -> IO ()
+insertActualityConstraint :: Handle -> WT.WeakType -> IO ()
 insertActualityConstraint h t = do
   modifyIORef' (constraintEnvRef h) $ (:) (C.Actual t)
 
-insertIntegerConstraint :: Handle -> WT.WeakTerm -> IO ()
+insertIntegerConstraint :: Handle -> WT.WeakType -> IO ()
 insertIntegerConstraint h t = do
   modifyIORef' (constraintEnvRef h) $ (:) (C.Integer t)
 

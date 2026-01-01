@@ -2,6 +2,7 @@ module Language.Term.Inline
   ( Handle,
     new,
     inline,
+    inlineType,
     DefInfo (..),
   )
 where
@@ -19,9 +20,11 @@ import Data.List (find)
 import Data.Text qualified as T
 import Gensym.Gensym qualified as Gensym
 import Gensym.Handle qualified as GensymHandle
+import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
+import Language.Common.BaseLowType qualified as BLT
 import Language.Common.CreateSymbol qualified as CreateSymbol
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
@@ -37,7 +40,6 @@ import Language.Common.PiKind qualified as PK
 import Language.Term.Eq qualified as TermEq
 import Language.Term.Inline.ConstantFold qualified as ConstantFold
 import Language.Term.Inline.Magic qualified as Magic
-import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Refresh qualified as Refresh
 import Language.Term.Subst qualified as Subst
@@ -45,9 +47,9 @@ import Language.Term.Term qualified as TM
 import Logger.Hint
 
 data DefInfo = DefInfo
-  { defBinders :: [BinderF TM.Term],
+  { defBinders :: [BinderF TM.Type],
     defBody :: TM.Term,
-    codType :: TM.Term,
+    codType :: TM.Type,
     isInline :: Bool
   }
 
@@ -56,7 +58,7 @@ type DefMap =
 
 data GuardEntry = GuardEntry
   { guardFunction :: DD.DefiniteDescription,
-    guardTypeArgs :: [TM.Term],
+    guardTypeArgs :: [TM.Type],
     guardSelf :: TM.Term
   }
 
@@ -83,6 +85,10 @@ inline :: Handle -> TM.Term -> App TM.Term
 inline h e = do
   inline' h e
 
+inlineType :: Handle -> TM.Type -> App TM.Type
+inlineType h t = do
+  inlineType' h t
+
 incrementStep :: Handle -> IO ()
 incrementStep h = do
   let Handle {currentStepRef} = h
@@ -100,33 +106,27 @@ inline' h term = do
   detectPossibleInfiniteLoop h
   liftIO $ incrementStep h
   case term of
-    _ :< TM.Tau {} ->
-      return term
     _ :< TM.Var {} ->
       return term
     _ :< TM.VarGlobal {} ->
       return term
-    m :< TM.Pi piKind impArgs defaultArgs expArgs cod -> do
-      impArgs' <- mapM (inlineBinder h) impArgs
-      defaultArgs' <- mapM (bimapM (inlineBinder h) (inline' h)) defaultArgs
-      expArgs' <- mapM (inlineBinder h) expArgs
-      cod' <- inline' h cod
-      return (m :< TM.Pi piKind impArgs' defaultArgs' expArgs' cod')
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
-      impArgs' <- mapM (inlineBinder h) impArgs
-      defaultArgs' <- mapM (bimapM (inlineBinder h) (inline' h)) defaultArgs
-      expArgs' <- mapM (inlineBinder h) expArgs
+      impArgs' <- mapM (inlineTypeBinder h) impArgs
+      defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
+      expArgs' <- mapM (inlineTypeBinder h) expArgs
       e' <- inline' h e
       case lamKind of
         LK.Fix (mx, x, codType) -> do
-          codType' <- inline' h codType
-          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' defaultArgs' expArgs' e')
+          codType' <- inlineType' h codType
+          let attr' = attr {AttrL.lamKind = LK.Fix (mx, x, codType')}
+          return (m :< TM.PiIntro attr' impArgs' defaultArgs' expArgs' e')
         LK.Normal mName codType -> do
-          codType' <- inline' h codType
-          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Normal mName codType'}) impArgs' defaultArgs' expArgs' e')
+          codType' <- inlineType' h codType
+          let attr' = attr {AttrL.lamKind = LK.Normal mName codType'}
+          return (m :< TM.PiIntro attr' impArgs' defaultArgs' expArgs' e')
     m :< TM.PiElim isNoetic e impArgs expArgs -> do
       e' <- inline' h e
-      impArgs' <- mapM (inline' h) impArgs
+      impArgs' <- mapM (inlineType' h) impArgs
       expArgs' <- mapM (inline' h) expArgs
       if isNoetic
         then return $ m :< TM.PiElim isNoetic e' impArgs' expArgs'
@@ -134,42 +134,51 @@ inline' h term = do
           let Handle {dmap} = h
           case e' of
             (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgsBinder defaultArgsBinder expArgsBinder body)
-              | xts <- impArgsBinder ++ map fst defaultArgsBinder ++ expArgsBinder,
-                length xts == length (impArgs' ++ expArgs') -> do
-                  let allArgs = impArgs' ++ expArgs'
-                  if all TM.isValue allArgs
+              | length impArgsBinder == length impArgs',
+                expBinders <- map fst defaultArgsBinder ++ expArgsBinder,
+                length expBinders == length expArgs' -> do
+                  let impBinders = impArgsBinder
+                  let typeArgs = impArgs'
+                  let termArgs = expArgs'
+                  let typeArgVals = all TM.isTypeValue typeArgs
+                  let termArgVals = all TM.isValue termArgs
+                  let impIds = map (\(_, x, _) -> x) impBinders
+                  let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
+                  if typeArgVals && termArgVals
                     then do
-                      let (_, xs, _) = unzip3 xts
-                      let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
-                      _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                      let expIds = map (\(_, x, _) -> x) expBinders
+                      let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Right termArgs)
+                      _ :< body' <- liftIO $ Subst.substWithType (substHandle h) subTerm subType body
                       inline' h $ m :< body'
                     else do
-                      (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
-                      inline' h $ bind (zip xts' allArgs) (m :< body')
+                      bodyTypeSub <- liftIO $ Subst.substWithType (substHandle h) IntMap.empty subType body
+                      (expBinders', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
+                      inline' h $ bind (zip expBinders' termArgs) (m :< body')
             (_ :< TM.VarGlobal _ dd)
               | Just defInfo <- Map.lookup dd dmap -> do
                   let DefInfo {defBinders = xts, defBody = body, codType, isInline} = defInfo
-                  let allArgs = impArgs' ++ expArgs'
                   if isInline
                     then do
                       let impArgNum = length impArgs'
                       let (impBinders, expBinders) = splitAt impArgNum xts
                       let typeArgs = impArgs'
+                      let termArgs = expArgs'
                       mSelf <- lookupGuard h dd typeArgs
                       case mSelf of
                         Just selfTerm ->
-                          return $ m :< TM.PiElim False selfTerm [] expArgs'
+                          return $ m :< TM.PiElim False selfTerm [] termArgs
                         Nothing -> do
                           selfIdent <- liftIO $ CreateSymbol.newIdentFromText (gensymHandle h) $ "knot-" <> DD.localLocator dd
                           let impIds = map (\(_, x, _) -> x) impBinders
-                          let subImp = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
-                          (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) subImp expBinders body
-                          codTypeSub <- liftIO $ Subst.subst (substHandle h) subImp codType
+                          let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
+                          bodyTypeSub <- liftIO $ Subst.substWithType (substHandle h) IntMap.empty subType body
+                          (expBinders', body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
+                          codTypeSub <- liftIO $ Subst.substTypeWith subType codType
                           let expIdPairs = zip expBinders expBinders'
                           let subRename =
                                 IntMap.fromList $
                                   map (\((_, x, _), (_, x', _)) -> (Ident.toInt x, Left x')) expIdPairs
-                          codType' <- liftIO $ Subst.subst (substHandle h) subRename codTypeSub
+                          codType' <- liftIO $ Subst.substType (substHandle h) subRename codTypeSub
                           let selfType = m :< TM.Pi PK.normal [] [] expBinders' codType'
                           pushGuard h dd typeArgs (m :< TM.Var selfIdent)
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) body'
@@ -179,20 +188,29 @@ inline' h term = do
                           let attr = AttrL.Attr {lamKind = LK.Fix (m, selfIdent, selfType), identity}
                           let fun = m :< TM.PiIntro attr [] [] expBinders' body'''
                           let fixVal = m :< TM.PiElim False fun [] []
-                          return $ m :< TM.PiElim False fixVal [] expArgs'
+                          return $ m :< TM.PiElim False fixVal [] termArgs
                     else do
-                      if all TM.isValue allArgs
+                      let impArgNum = length impArgs'
+                      let (impBinders, expBinders) = splitAt impArgNum xts
+                      let typeArgs = impArgs'
+                      let termArgs = expArgs'
+                      let typeArgVals = all TM.isTypeValue typeArgs
+                      let termArgVals = all TM.isValue termArgs
+                      let impIds = map (\(_, x, _) -> x) impBinders
+                      let subType = IntMap.fromList $ zip (map Ident.toInt impIds) (map Right typeArgs)
+                      if typeArgVals && termArgVals
                         then do
-                          let (_, xs, _) = unzip3 xts
-                          let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right allArgs)
-                          _ :< body' <- liftIO $ Subst.subst (substHandle h) sub body
+                          let expIds = map (\(_, x, _) -> x) expBinders
+                          let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Right termArgs)
+                          _ :< body' <- liftIO $ Subst.substWithType (substHandle h) subTerm subType body
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
                           inline' h body''
                         else do
-                          (xts', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty xts body
+                          bodyTypeSub <- liftIO $ Subst.substWithType (substHandle h) IntMap.empty subType body
+                          (expBinders', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
                           body'' <- liftIO $ Refresh.refresh (refreshHandle h) $ m :< body'
-                          inline' h $ bind (zip xts' allArgs) body''
-            (_ :< TM.Prim (P.Value (PV.Op op))) -> do
+                          inline' h $ bind (zip expBinders' termArgs) body''
+            (_ :< TM.Prim (PV.Op op)) -> do
               case ConstantFold.evaluatePrimOp m op expArgs' of
                 Just result -> do
                   return result
@@ -200,17 +218,15 @@ inline' h term = do
                   return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
             _ ->
               return (m :< TM.PiElim isNoetic e' impArgs' expArgs')
-    m :< TM.Data attr name es -> do
-      es' <- mapM (inline' h) es
-      return $ m :< TM.Data attr name es'
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
-      dataArgs' <- mapM (inline' h) dataArgs
+      dataArgs' <- mapM (inlineType' h) dataArgs
       consArgs' <- mapM (inline' h) consArgs
-      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
+      attr' <- inlineAttrDataIntro h attr
+      return $ m :< TM.DataIntro attr' consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (inline' h) es
-      ts' <- mapM (inline' h) ts
+      ts' <- mapM (inlineType' h) ts
       let oets' = zip3 os es' ts'
       if isNoetic
         then do
@@ -246,31 +262,25 @@ inline' h term = do
                 _ -> do
                   decisionTree' <- inlineDecisionTree h decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
-    m :< TM.Box t -> do
-      t' <- inline' h t
-      return $ m :< TM.Box t'
-    m :< TM.BoxNoema t -> do
-      t' <- inline' h t
-      return $ m :< TM.BoxNoema t'
     m :< TM.BoxIntro letSeq e -> do
-      letSeq' <- mapM (bimapM (inlineBinder h) (inline' h)) letSeq
+      let (xts, es) = unzip letSeq
+      xts' <- mapM (inlineTypeBinder h) xts
+      es' <- mapM (inline' h) es
       e' <- inline' h e
-      return $ m :< TM.BoxIntro letSeq' e'
+      return $ m :< TM.BoxIntro (zip xts' es') e'
     m :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
-      castSeq' <- mapM (bimapM (inlineBinder h) (inline' h)) castSeq
-      e1' <- inline' h e1
+      castSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) castSeq
+      (mxt', e1') <- bimapM (inlineTypeBinder h) (inline' h) (mxt, e1)
+      uncastSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) uncastSeq
       e2' <- inline' h e2
-      uncastSeq' <- mapM (bimapM (inlineBinder h) (inline' h)) uncastSeq
-      return $ m :< TM.BoxElim castSeq' mxt e1' uncastSeq' e2'
-    m :< TM.Code t -> do
-      t' <- inline' h t
-      return $ m :< TM.Code t'
-    _ :< TM.CodeIntro {} ->
-      return term
+      return $ m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
+    m :< TM.CodeIntro e -> do
+      e' <- inline' h e
+      return $ m :< TM.CodeIntro e'
     m :< TM.CodeElim e -> do
       e' <- inline' h e
       return $ m :< TM.CodeElim e'
-    m :< TM.Let opacity (mx, x, t) e1 e2 -> do
+    m :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- inline' h e1
       case opacity of
         O.Clear
@@ -278,83 +288,165 @@ inline' h term = do
               let sub = IntMap.singleton (Ident.toInt x) (Right e1')
               liftIO (Subst.subst (substHandle h) sub e2) >>= inline' h
         _ -> do
-          t' <- inline' h t
+          mxt' <- inlineTypeBinder h mxt
           e2' <- inline' h e2
-          return $ m :< TM.Let opacity (mx, x, t') e1' e2'
+          return $ m :< TM.Let opacity mxt' e1' e2'
     m :< TM.Prim prim -> do
       case prim of
-        P.Type _ ->
+        PV.Int intType size value -> do
+          intType' <- inlineType' h intType
+          return $ m :< TM.Prim (PV.Int intType' size value)
+        PV.Float floatType size value -> do
+          floatType' <- inlineType' h floatType
+          return $ m :< TM.Prim (PV.Float floatType' size value)
+        PV.Op {} ->
           return term
-        P.Value pv ->
-          case pv of
-            PV.Int intType size value -> do
-              intType' <- inline h intType
-              return $ m :< TM.Prim (P.Value (PV.Int intType' size value))
-            PV.Float floatType size value -> do
-              floatType' <- inline h floatType
-              return $ m :< TM.Prim (P.Value (PV.Float floatType' size value))
-            PV.Op {} ->
-              return term
-            PV.StaticText {} ->
-              return term
-            PV.Rune {} ->
-              return term
+        PV.StaticText textType text -> do
+          textType' <- inlineType' h textType
+          return $ m :< TM.Prim (PV.StaticText textType' text)
+        PV.Rune {} ->
+          return term
     m :< TM.Magic magic -> do
       case magic of
-        M.LowMagic lowMagic ->
-          case lowMagic of
-            LM.Cast _ _ e ->
-              inline' h e
-            _ -> do
-              magic' <- traverse (inline' h) magic
-              return (m :< TM.Magic magic')
+        M.LowMagic lowMagic -> do
+          lowMagic' <- inlineLowMagic h lowMagic
+          return (m :< TM.Magic (M.LowMagic lowMagic'))
         M.GetTypeTag mid typeTagExpr typeExpr -> do
-          typeExpr' <- inline' h typeExpr
-          Magic.evaluateGetTypeTag m mid typeTagExpr typeExpr'
+          typeTagExpr' <- inlineType' h typeTagExpr
+          typeExpr' <- inlineType' h typeExpr
+          Magic.evaluateGetTypeTag m mid typeTagExpr' typeExpr'
         M.GetConsSize typeExpr -> do
-          typeExpr' <- inline' h typeExpr
+          typeExpr' <- inlineType' h typeExpr
           Magic.evaluateGetConsSize m typeExpr'
-        M.GetConstructorArgTypes sgl _ typeExpr indexExpr -> do
-          typeExpr' <- inline' h typeExpr
+        M.GetConstructorArgTypes sgl listExpr typeExpr indexExpr -> do
+          _ <- inlineType' h listExpr
+          typeExpr' <- inlineType' h typeExpr
           indexExpr' <- inline' h indexExpr
           Magic.evaluateGetConstructorArgTypes m sgl typeExpr' indexExpr'
-        M.CompileError msg -> do
+        M.CompileError msg ->
           raiseError (location h) $ "compile-error: " <> msg
+
+inlineType' :: Handle -> TM.Type -> App TM.Type
+inlineType' h ty =
+  case ty of
+    _ :< TM.Tau ->
+      return ty
+    _ :< TM.TVar {} ->
+      return ty
+    _ :< TM.TVarGlobal {} ->
+      return ty
+    m :< TM.TyApp t args -> do
+      t' <- inlineType' h t
+      args' <- mapM (inlineType' h) args
+      return $ m :< TM.TyApp t' args'
+    m :< TM.Pi piKind impArgs defaultArgs expArgs cod -> do
+      impArgs' <- mapM (inlineTypeBinder h) impArgs
+      defaultArgs' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) defaultArgs
+      expArgs' <- mapM (inlineTypeBinder h) expArgs
+      cod' <- inlineType' h cod
+      return $ m :< TM.Pi piKind impArgs' defaultArgs' expArgs' cod'
+    m :< TM.Data attr name es -> do
+      es' <- mapM (inlineType' h) es
+      attr' <- inlineAttrData h attr
+      return $ m :< TM.Data attr' name es'
+    m :< TM.Box t -> do
+      t' <- inlineType' h t
+      return $ m :< TM.Box t'
+    m :< TM.BoxNoema t -> do
+      t' <- inlineType' h t
+      return $ m :< TM.BoxNoema t'
+    m :< TM.Code t -> do
+      t' <- inlineType' h t
+      return $ m :< TM.Code t'
+    _ :< TM.PrimType {} ->
+      return ty
     _ :< TM.Void ->
-      return term
+      return ty
     m :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
-      unitType' <- inline' h unitType
+      unitType' <- inlineType' h unitType
       discarder' <- inline' h discarder
       copier' <- inline' h copier
       typeTag' <- inline' h typeTag
       return $ m :< TM.Resource dd resourceID unitType' discarder' copier' typeTag'
 
-inlineBinder :: Handle -> BinderF TM.Term -> App (BinderF TM.Term)
-inlineBinder h (m, x, t) = do
-  t' <- inline' h t
+inlineLowMagic :: Handle -> LM.LowMagic BLT.BaseLowType TM.Type TM.Term -> App (LM.LowMagic BLT.BaseLowType TM.Type TM.Term)
+inlineLowMagic h lowMagic =
+  case lowMagic of
+    LM.Cast from to value -> do
+      from' <- inlineType' h from
+      to' <- inlineType' h to
+      value' <- inline' h value
+      return $ LM.Cast from' to' value'
+    LM.Store t unit value pointer -> do
+      value' <- inline' h value
+      pointer' <- inline' h pointer
+      return $ LM.Store t unit value' pointer'
+    LM.Load t pointer -> do
+      pointer' <- inline' h pointer
+      return $ LM.Load t pointer'
+    LM.Alloca t size -> do
+      size' <- inline' h size
+      return $ LM.Alloca t size'
+    LM.External domList cod extFunName args varArgs -> do
+      args' <- mapM (inline' h) args
+      varArgs' <- mapM (bimapM (inline' h) pure) varArgs
+      return $ LM.External domList cod extFunName args' varArgs'
+    LM.Global name t ->
+      return $ LM.Global name t
+    LM.OpaqueValue e -> do
+      e' <- inline' h e
+      return $ LM.OpaqueValue e'
+    LM.CallType func arg1 arg2 -> do
+      func' <- inlineType' h func
+      arg1' <- inline' h arg1
+      arg2' <- inline' h arg2
+      return $ LM.CallType func' arg1' arg2'
+    LM.TermType ty -> do
+      ty' <- inlineType' h ty
+      return $ LM.TermType ty'
+
+inlineTypeBinder :: Handle -> BinderF TM.Type -> App (BinderF TM.Type)
+inlineTypeBinder h (m, x, t) = do
+  t' <- inlineType' h t
   return (m, x, t')
+
+inlineAttrData :: Handle -> AttrD.Attr name (BinderF TM.Type) -> App (AttrD.Attr name (BinderF TM.Type))
+inlineAttrData h attr = do
+  let consNameList = AttrD.consNameList attr
+  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
+    binders' <- mapM (inlineTypeBinder h) binders
+    return (cn, binders', cl)
+  return $ attr {AttrD.consNameList = consNameList'}
+
+inlineAttrDataIntro :: Handle -> AttrDI.Attr name (BinderF TM.Type) -> App (AttrDI.Attr name (BinderF TM.Type))
+inlineAttrDataIntro h attr = do
+  let consNameList = AttrDI.consNameList attr
+  consNameList' <- forM consNameList $ \(cn, binders, cl) -> do
+    binders' <- mapM (inlineTypeBinder h) binders
+    return (cn, binders', cl)
+  return $ attr {AttrDI.consNameList = consNameList'}
 
 inlineDecisionTree ::
   Handle ->
-  DT.DecisionTree TM.Term ->
-  App (DT.DecisionTree TM.Term)
+  DT.DecisionTree TM.Type TM.Term ->
+  App (DT.DecisionTree TM.Type TM.Term)
 inlineDecisionTree h tree =
   case tree of
     DT.Leaf xs letSeq e -> do
-      letSeq' <- mapM (bimapM (inlineBinder h) (inline' h)) letSeq
+      letSeq' <- mapM (bimapM (inlineTypeBinder h) (inline' h)) letSeq
       e' <- inline' h e
       return $ DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do
-      cursor' <- inline' h cursor
+      cursor' <- inlineType' h cursor
       clauseList' <- inlineCaseList h clauseList
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 inlineCaseList ::
   Handle ->
-  DT.CaseList TM.Term ->
-  App (DT.CaseList TM.Term)
+  DT.CaseList TM.Type TM.Term ->
+  App (DT.CaseList TM.Type TM.Term)
 inlineCaseList h (fallbackTree, clauseList) = do
   fallbackTree' <- inlineDecisionTree h fallbackTree
   clauseList' <- mapM (inlineCase h) clauseList
@@ -362,8 +454,8 @@ inlineCaseList h (fallbackTree, clauseList) = do
 
 inlineCase ::
   Handle ->
-  DT.Case TM.Term ->
-  App (DT.Case TM.Term)
+  DT.Case TM.Type TM.Term ->
+  App (DT.Case TM.Type TM.Term)
 inlineCase h decisionCase = do
   case decisionCase of
     DT.LiteralCase mPat i cont -> do
@@ -371,24 +463,23 @@ inlineCase h decisionCase = do
       return $ DT.LiteralCase mPat i cont'
     DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
       let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM (inline' h) dataTerms
-      dataTypes' <- mapM (inline' h) dataTypes
-      let (ms, xs, ts) = unzip3 consArgs
-      ts' <- mapM (inline' h) ts
+      dataTerms' <- mapM (inlineType' h) dataTerms
+      dataTypes' <- mapM (inlineType' h) dataTypes
+      consArgs' <- mapM (inlineTypeBinder h) consArgs
       cont' <- inlineDecisionTree h cont
       return $
         DT.ConsCase
           record
             { DT.dataArgs = zip dataTerms' dataTypes',
-              DT.consArgs = zip3 ms xs ts',
+              DT.consArgs = consArgs',
               DT.cont = cont'
             }
 
 findClause ::
   D.Discriminant ->
-  DT.DecisionTree TM.Term ->
-  [DT.Case TM.Term] ->
-  ([(Ident, TM.Term)], DT.DecisionTree TM.Term)
+  DT.DecisionTree TM.Type TM.Term ->
+  [DT.Case TM.Type TM.Term] ->
+  ([(Ident, TM.Type)], DT.DecisionTree TM.Type TM.Term)
 findClause consDisc fallbackTree clauseList =
   case clauseList of
     [] ->
@@ -402,8 +493,8 @@ findClause consDisc fallbackTree clauseList =
 
 findLiteralClause ::
   L.Literal ->
-  [DT.Case TM.Term] ->
-  Maybe (DT.DecisionTree TM.Term)
+  [DT.Case TM.Type TM.Term] ->
+  Maybe (DT.DecisionTree TM.Type TM.Term)
 findLiteralClause literal clauseList =
   case clauseList of
     [] ->
@@ -418,8 +509,8 @@ findLiteralClause literal clauseList =
 
 findConsCaseByDisc ::
   D.Discriminant ->
-  [DT.Case TM.Term] ->
-  Maybe ([BinderF TM.Term], DT.DecisionTree TM.Term)
+  [DT.Case TM.Type TM.Term] ->
+  Maybe ([BinderF TM.Type], DT.DecisionTree TM.Type TM.Term)
 findConsCaseByDisc disc clauseList =
   case clauseList of
     [] ->
@@ -435,9 +526,9 @@ findConsCaseByDisc disc clauseList =
 asLiteralTerm :: TM.Term -> Maybe L.Literal
 asLiteralTerm term =
   case term of
-    _ :< TM.Prim (P.Value (PV.Int _ _ value)) ->
+    _ :< TM.Prim (PV.Int _ _ value) ->
       Just (L.Int value)
-    _ :< TM.Prim (P.Value (PV.Rune rune)) ->
+    _ :< TM.Prim (PV.Rune rune) ->
       Just (L.Rune rune)
     _ ->
       Nothing
@@ -456,7 +547,7 @@ lookupSplit' cursor acc oets =
         then Just (e, reverse acc ++ rest)
         else lookupSplit' cursor (oet : acc) rest
 
-bind :: [(BinderF TM.Term, TM.Term)] -> TM.Term -> TM.Term
+bind :: [(BinderF TM.Type, TM.Term)] -> TM.Term -> TM.Term
 bind binder cont =
   case binder of
     [] ->
@@ -465,7 +556,7 @@ bind binder cont =
       m :< TM.Let O.Clear (m, x, t) e1 (bind rest cont)
 
 -- Guard stack operations
-pushGuard :: Handle -> DD.DefiniteDescription -> [TM.Term] -> TM.Term -> App ()
+pushGuard :: Handle -> DD.DefiniteDescription -> [TM.Type] -> TM.Term -> App ()
 pushGuard h dd typeArgs selfVar = do
   let entry = GuardEntry dd typeArgs selfVar
   let Handle {guardStack} = h
@@ -476,12 +567,12 @@ popGuard h = do
   let Handle {guardStack} = h
   liftIO $ modifyIORef' guardStack (drop 1)
 
-lookupGuard :: Handle -> DD.DefiniteDescription -> [TM.Term] -> App (Maybe TM.Term)
+lookupGuard :: Handle -> DD.DefiniteDescription -> [TM.Type] -> App (Maybe TM.Term)
 lookupGuard h dd typeArgs = do
   let Handle {guardStack} = h
   stack <- liftIO $ readIORef guardStack
   return $ guardSelf <$> find (matchesGuardEntry dd typeArgs) stack
 
-matchesGuardEntry :: DD.DefiniteDescription -> [TM.Term] -> GuardEntry -> Bool
+matchesGuardEntry :: DD.DefiniteDescription -> [TM.Type] -> GuardEntry -> Bool
 matchesGuardEntry dd' args entry =
-  guardFunction entry == dd' && TermEq.eqTerms (guardTypeArgs entry) args
+  guardFunction entry == dd' && TermEq.eqTypes (guardTypeArgs entry) args

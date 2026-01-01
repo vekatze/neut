@@ -26,10 +26,10 @@ castFromNoemaIfNecessary h isNoetic e =
 
 castToNoema :: H.Handle -> WT.WeakTerm -> IO WT.WeakTerm
 castToNoema h e@(m :< _) = do
-  t <- WT.createHole (H.gensymHandle h) m []
+  t <- WT.createTypeHole (H.gensymHandle h) m []
   return $ m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Cast t (m :< WT.BoxNoema t) e)
 
 castFromNoema :: H.Handle -> WT.WeakTerm -> IO WT.WeakTerm
 castFromNoema h e@(m :< _) = do
-  t <- WT.createHole (H.gensymHandle h) m []
+  t <- WT.createTypeHole (H.gensymHandle h) m []
   return $ m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.Cast (m :< WT.BoxNoema t) t e)

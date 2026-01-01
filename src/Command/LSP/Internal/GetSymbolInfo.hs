@@ -21,8 +21,8 @@ import Kernel.Common.Target (Target (Peripheral))
 import Kernel.Elaborate.Elaborate qualified as Elaborate
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
-import Language.Term.Weaken (weaken)
-import Language.WeakTerm.ToText
+import Language.Term.Weaken (weakenType)
+import Language.WeakTerm.ToText (toTextType)
 
 getSymbolInfo ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
@@ -46,12 +46,12 @@ getSymbolInfo params = do
         LT.Local varID _ -> do
           weakTypeEnv <- liftIO $ Elaborate.getWeakTypeEnv handle
           t <- liftMaybe $ IntMap.lookup varID weakTypeEnv
-          t' <- Elaborate.elaborate' handle t
-          return $ toText $ weaken t'
+          t' <- Elaborate.elaborateType handle t
+          return $ toTextType $ weakenType t'
         LT.Global dd _ -> do
           let typeHandle = Global.typeHandle h
           t <- lift (liftIO $ Type.lookupMaybe' typeHandle dd) >>= liftMaybe
-          return $ toText t
+          return $ toTextType t
         LT.Foreign {} -> do
           liftMaybe Nothing
 

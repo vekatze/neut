@@ -26,7 +26,7 @@ new = do
   defMapRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Term] -> TM.Term -> TM.Term -> Bool -> IO ()
+insert' :: Handle -> O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Type] -> TM.Term -> TM.Type -> Bool -> IO ()
 insert' h opacity name xts e typ isInlineFlag =
   when (opacity == O.Clear) $ do
     let defInfo =

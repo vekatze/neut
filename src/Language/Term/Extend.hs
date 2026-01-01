@@ -1,182 +1,142 @@
-module Language.Term.Extend (extend, extendStmtKind, extendBinder) where
+module Language.Term.Extend
+  ( extend,
+    extendType,
+    extendBinder,
+    extendStmtKind,
+  )
+where
 
 import Control.Comonad.Cofree
-import Data.Bifunctor
-import Data.List (unzip5, zip5)
-import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
-import Language.Common.Ident
-import Language.Common.LamKind qualified as LK
+import Language.Common.Discriminant qualified as D
+import Language.Common.IsConstLike (IsConstLike)
 import Language.Common.StmtKind
-import Language.Term.Prim qualified as P
-import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
-import Logger.Hint
+import Logger.Hint (Hint, SavedHint, internalHint)
 
 {-# INLINE _m #-}
 _m :: Hint
 _m =
   internalHint
 
+-- | Extend a compressed term (with () annotation) to a full term (with Hint annotation)
+-- Note: Types inside TermF are already TM.Type (with Hint), only the term annotation changes
 extend :: Cofree TM.TermF () -> TM.Term
 extend term =
   case term of
-    _ :< TM.Tau ->
-      _m :< TM.Tau
-    _ :< TM.Var x ->
+    () :< TM.Var x ->
       _m :< TM.Var x
-    _ :< TM.VarGlobal g argNum ->
+    () :< TM.VarGlobal g argNum ->
       _m :< TM.VarGlobal g argNum
-    _ :< TM.Pi piKind impArgs defaultArgs expArgs t ->
-      _m :< TM.Pi piKind (map extendBinder impArgs) (map (bimap extendBinder extend) defaultArgs) (map extendBinder expArgs) (extend t)
-    _ :< TM.PiIntro attr impArgs defaultArgs expArgs e -> do
-      let attr' = extendAttr attr
-      let impArgs' = map extendBinder impArgs
-      let defaultArgs' = map (bimap extendBinder extend) defaultArgs
-      let expArgs' = map extendBinder expArgs
-      let e' = extend e
-      _m :< TM.PiIntro attr' impArgs' defaultArgs' expArgs' e'
-    _ :< TM.PiElim b e impArgs expArgs -> do
-      let e' = extend e
-      let impArgs' = map extend impArgs
-      let expArgs' = map extend expArgs
-      _m :< TM.PiElim b e' impArgs' expArgs'
-    _ :< TM.Data attr name es -> do
-      let es' = map extend es
-      let attr' = fmap extendBinder attr
-      _m :< TM.Data attr' name es'
-    _ :< TM.DataIntro attr consName dataArgs consArgs -> do
-      let dataArgs' = map extend dataArgs
-      let consArgs' = map extend consArgs
-      let attr' = fmap extendBinder attr
-      _m :< TM.DataIntro attr' consName dataArgs' consArgs'
-    _ :< TM.DataElim isNoetic oets tree -> do
+    () :< TM.PiIntro attr impArgs defaultArgs expArgs e ->
+      _m :< TM.PiIntro attr impArgs (map extendDefaultArg defaultArgs) expArgs (extend e)
+    () :< TM.PiElim b e impArgs expArgs ->
+      _m :< TM.PiElim b (extend e) impArgs (map extend expArgs)
+    () :< TM.DataIntro attr consName dataArgs consArgs ->
+      _m :< TM.DataIntro attr consName dataArgs (map extend consArgs)
+    () :< TM.DataElim isNoetic oets tree ->
       let (os, es, ts) = unzip3 oets
-      let es' = map extend es
-      let ts' = map extend ts
-      let tree' = extendDecisionTree tree
-      _m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
-    _ :< TM.Box t ->
-      _m :< TM.Box (extend t)
-    _ :< TM.BoxNoema t ->
-      _m :< TM.BoxNoema (extend t)
-    _ :< TM.BoxIntro letSeq e -> do
-      let (xts, es) = unzip letSeq
-      let letSeq' = zip (map extendBinder xts) (map extend es)
-      _m :< TM.BoxIntro letSeq' (extend e)
-    _ :< TM.BoxElim castSeq mxt e1 uncastSeq e2 -> do
-      let castSeq' = map extendLet castSeq
-      let (mxt', e1') = extendLet (mxt, e1)
-      let uncastSeq' = map extendLet uncastSeq
-      let e2' = extend e2
-      _m :< TM.BoxElim castSeq' mxt' e1' uncastSeq' e2'
-    _ :< TM.Code t ->
-      _m :< TM.Code (extend t)
-    _ :< TM.CodeIntro e ->
+          es' = map extend es
+          tree' = extendDecisionTree tree
+       in _m :< TM.DataElim isNoetic (zip3 os es' ts) tree'
+    () :< TM.BoxIntro letSeq e ->
+      _m :< TM.BoxIntro (map extendLet letSeq) (extend e)
+    () :< TM.BoxElim castSeq mxt e1 uncastSeq e2 ->
+      _m :< TM.BoxElim (map extendLet castSeq) mxt (extend e1) (map extendLet uncastSeq) (extend e2)
+    () :< TM.CodeIntro e ->
       _m :< TM.CodeIntro (extend e)
-    _ :< TM.CodeElim e ->
+    () :< TM.CodeElim e ->
       _m :< TM.CodeElim (extend e)
-    _ :< TM.Let opacity mxt e1 e2 ->
-      _m :< TM.Let opacity (extendBinder mxt) (extend e1) (extend e2)
-    _ :< TM.Prim prim ->
-      _m :< TM.Prim (extendPrim prim)
-    _ :< TM.Magic der -> do
+    () :< TM.Let opacity mxt e1 e2 ->
+      _m :< TM.Let opacity mxt (extend e1) (extend e2)
+    () :< TM.Prim prim ->
+      _m :< TM.Prim prim
+    () :< TM.Magic der ->
       _m :< TM.Magic (fmap extend der)
-    _ :< TM.Resource dd resourceID unitType discarder copier typeTag -> do
-      _m :< TM.Resource dd resourceID (extend unitType) (extend discarder) (extend copier) (extend typeTag)
-    _ :< TM.Void ->
+
+extendType :: Cofree TM.TypeF () -> TM.Type
+extendType ty =
+  case ty of
+    () :< TM.Tau ->
+      _m :< TM.Tau
+    () :< TM.TVar x ->
+      _m :< TM.TVar x
+    () :< TM.TVarGlobal attr g ->
+      _m :< TM.TVarGlobal attr g
+    () :< TM.TyApp t args ->
+      _m :< TM.TyApp (extendType t) (map extendType args)
+    () :< TM.Pi piKind impArgs defaultArgs expArgs cod ->
+      _m :< TM.Pi piKind (map extendBinder impArgs) (map extendTypeDefaultArg defaultArgs) (map extendBinder expArgs) (extendType cod)
+    () :< TM.Data attr name es ->
+      _m :< TM.Data (fmap extendBinder attr) name (map extendType es)
+    () :< TM.Box t ->
+      _m :< TM.Box (extendType t)
+    () :< TM.BoxNoema t ->
+      _m :< TM.BoxNoema (extendType t)
+    () :< TM.Code t ->
+      _m :< TM.Code (extendType t)
+    () :< TM.PrimType pt ->
+      _m :< TM.PrimType pt
+    () :< TM.Void ->
       _m :< TM.Void
+    () :< TM.Resource dd resourceID unitType discarder copier typeTag ->
+      _m :< TM.Resource dd resourceID unitType discarder copier typeTag
 
-extendBinder :: (Hint, Ident, Cofree TM.TermF ()) -> (Hint, Ident, TM.Term)
+extendBinder :: BinderF (Cofree TM.TypeF ()) -> BinderF TM.Type
 extendBinder (m, x, t) =
-  (m, x, extend t)
+  (m, x, extendType t)
 
-extendLet :: (BinderF (Cofree TM.TermF ()), Cofree TM.TermF ()) -> (BinderF TM.Term, TM.Term)
-extendLet ((m, x, t), e) =
-  ((m, x, extend t), extend e)
+extendDefaultArg :: (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
+extendDefaultArg (binder, e) = (binder, extend e)
 
-extendAttr :: AttrL.Attr (Cofree TM.TermF ()) -> AttrL.Attr TM.Term
-extendAttr AttrL.Attr {lamKind, identity} =
-  case lamKind of
-    LK.Normal name codType ->
-      AttrL.normal' name identity (extend codType)
-    LK.Fix xt ->
-      AttrL.Attr {lamKind = LK.Fix (extendBinder xt), identity}
+extendTypeDefaultArg :: (BinderF (Cofree TM.TypeF ()), TM.Term) -> (BinderF TM.Type, TM.Term)
+extendTypeDefaultArg (binder, e) = (extendBinder binder, e)
 
-extendPrim :: P.Prim (Cofree TM.TermF ()) -> P.Prim TM.Term
-extendPrim prim =
-  case prim of
-    P.Type t ->
-      P.Type t
-    P.Value v ->
-      P.Value $
-        case v of
-          PV.Int t size integer ->
-            PV.Int (extend t) size integer
-          PV.Float t size float ->
-            PV.Float (extend t) size float
-          PV.Op op ->
-            PV.Op op
-          PV.StaticText t text ->
-            PV.StaticText (extend t) text
-          PV.Rune r ->
-            PV.Rune r
+extendLet :: (BinderF TM.Type, Cofree TM.TermF ()) -> (BinderF TM.Type, TM.Term)
+extendLet (binder, e) = (binder, extend e)
 
-extendDecisionTree :: DT.DecisionTree (Cofree TM.TermF ()) -> DT.DecisionTree TM.Term
+extendDecisionTree :: DT.DecisionTree TM.Type (Cofree TM.TermF ()) -> DT.DecisionTree TM.Type TM.Term
 extendDecisionTree tree =
   case tree of
-    DT.Leaf xs letSeq e -> do
-      let (binderSeq, varSeq) = unzip letSeq
-      let letSeq' = zip (map extendBinder binderSeq) (map extend varSeq)
-      let e' = extend e
-      DT.Leaf xs letSeq' e'
+    DT.Leaf xs letSeq e ->
+      DT.Leaf xs (map extendLet letSeq) (extend e)
     DT.Unreachable ->
       DT.Unreachable
-    DT.Switch (cursorVar, cursor) caseList -> do
-      let cursor' = extend cursor
-      let caseList' = extendCaseList caseList
-      DT.Switch (cursorVar, cursor') caseList'
+    DT.Switch cursor caseList ->
+      DT.Switch cursor (extendCaseList caseList)
 
-extendCaseList :: DT.CaseList (Cofree TM.TermF ()) -> DT.CaseList TM.Term
-extendCaseList (fallbackClause, clauseList) = do
-  let fallbackClause' = extendDecisionTree fallbackClause
-  let clauseList' = map extendCase clauseList
-  (fallbackClause', clauseList')
+extendCaseList :: DT.CaseList TM.Type (Cofree TM.TermF ()) -> DT.CaseList TM.Type TM.Term
+extendCaseList (fallbackClause, clauseList) =
+  (extendDecisionTree fallbackClause, map extendCase clauseList)
 
-extendCase :: DT.Case (Cofree TM.TermF ()) -> DT.Case TM.Term
-extendCase decisionCase = do
+extendCase :: DT.Case TM.Type (Cofree TM.TermF ()) -> DT.Case TM.Type TM.Term
+extendCase decisionCase =
   case decisionCase of
-    DT.LiteralCase mPat i cont -> do
-      let cont' = extendDecisionTree cont
-      DT.LiteralCase mPat i cont'
-    DT.ConsCase record@(DT.ConsCaseRecord {..}) -> do
-      let dataArgs' = map (bimap extend extend) dataArgs
-      let consArgs' = map extendBinder consArgs
-      let cont' = extendDecisionTree cont
+    DT.LiteralCase mPat i cont ->
+      DT.LiteralCase mPat i (extendDecisionTree cont)
+    DT.ConsCase record@(DT.ConsCaseRecord {..}) ->
       DT.ConsCase $
         record
-          { DT.dataArgs = dataArgs',
-            DT.consArgs = consArgs',
-            DT.cont = cont'
+          { DT.cont = extendDecisionTree cont
           }
 
-extendStmtKind :: StmtKind (Cofree TM.TermF ()) -> StmtKind TM.Term
+extendStmtKind :: StmtKind (Cofree TM.TypeF ()) -> StmtKind TM.Type
 extendStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       Normal opacity
     Main opacity t ->
-      Main opacity (extend t)
+      Main opacity (extendType t)
     Alias ->
       Alias
-    Data dataName dataArgs consInfoList -> do
-      let dataArgs' = map extendBinder dataArgs
-      let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList
-      let consArgsList' = map (map extendBinder) consArgsList
-      let consInfoList' = zip5 hintList consNameList constLikeList consArgsList' discriminantList
-      Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs expConsArgs discriminant -> do
-      let dataArgs' = map extendBinder dataArgs
-      let expConsArgs' = map extendBinder expConsArgs
-      DataIntro dataName dataArgs' expConsArgs' discriminant
+    Data name args consInfoList ->
+      Data name (map extendBinder args) (map extendConsInfo consInfoList)
+    DataIntro name dataArgs consArgs disc ->
+      DataIntro name (map extendBinder dataArgs) (map extendBinder consArgs) disc
+
+extendConsInfo ::
+  (SavedHint, name, IsConstLike, [BinderF (Cofree TM.TypeF ())], D.Discriminant) ->
+  (SavedHint, name, IsConstLike, [BinderF TM.Type], D.Discriminant)
+extendConsInfo (hint, name, isConstLike, binders, disc) =
+  (hint, name, isConstLike, map extendBinder binders, disc)

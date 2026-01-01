@@ -21,37 +21,38 @@ import Language.Common.IsConstLike
 import Language.Common.Literal qualified as L
 import Logger.Hint
 
-data DecisionTree a
-  = Leaf [Ident] [(BinderF a, a)] a
+-- t: type parameter, a: term parameter
+data DecisionTree t a
+  = Leaf [Ident] [(BinderF t, a)] a
   | Unreachable
-  | Switch (Ident, a) (CaseList a)
-  deriving (Show, Generic)
+  | Switch (Ident, t) (CaseList t a)
+  deriving (Generic)
 
-type CaseList a = (DecisionTree a, [Case a])
+type CaseList t a = (DecisionTree t a, [Case t a])
 
-data ConsCaseRecord a = ConsCaseRecord
+data ConsCaseRecord t a = ConsCaseRecord
   { mCons :: Hint,
     consDD :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
     disc :: D.Discriminant,
-    dataArgs :: [(a, a)],
-    consArgs :: [BinderF a],
-    cont :: DecisionTree a
+    dataArgs :: [(t, t)],
+    consArgs :: [BinderF t],
+    cont :: DecisionTree t a
   }
-  deriving (Show, Generic)
+  deriving (Generic)
 
-data Case a
-  = ConsCase (ConsCaseRecord a)
-  | LiteralCase Hint L.Literal (DecisionTree a)
-  deriving (Show, Generic)
+data Case t a
+  = ConsCase (ConsCaseRecord t a)
+  | LiteralCase Hint L.Literal (DecisionTree t a)
+  deriving (Generic)
 
-instance (Binary a) => Binary (ConsCaseRecord a)
+instance (Binary t, Binary a) => Binary (ConsCaseRecord t a)
 
-instance (Binary a) => Binary (DecisionTree a)
+instance (Binary t, Binary a) => Binary (DecisionTree t a)
 
-instance (Binary a) => Binary (Case a)
+instance (Binary t, Binary a) => Binary (Case t a)
 
-getConstructors :: [Case a] -> [(DD.DefiniteDescription, IsConstLike)]
+getConstructors :: [Case t a] -> [(DD.DefiniteDescription, IsConstLike)]
 getConstructors clauseList = do
   catMaybes $ flip map clauseList $ \c -> do
     case c of
@@ -60,7 +61,7 @@ getConstructors clauseList = do
       LiteralCase {} ->
         Nothing
 
-isUnreachable :: DecisionTree a -> Bool
+isUnreachable :: DecisionTree t a -> Bool
 isUnreachable tree =
   case tree of
     Unreachable ->
@@ -68,7 +69,7 @@ isUnreachable tree =
     _ ->
       False
 
-findCase :: D.Discriminant -> Case a -> Maybe ([(Ident, a)], DecisionTree a)
+findCase :: D.Discriminant -> Case t a -> Maybe ([(Ident, t)], DecisionTree t a)
 findCase consDisc decisionCase =
   case decisionCase of
     LiteralCase {} ->
@@ -78,7 +79,7 @@ findCase consDisc decisionCase =
         then return (map (\(_, x, t) -> (x, t)) consArgs, cont)
         else Nothing
 
-getCont :: Case a -> DecisionTree a
+getCont :: Case t a -> DecisionTree t a
 getCont c =
   case c of
     ConsCase (ConsCaseRecord {..}) ->

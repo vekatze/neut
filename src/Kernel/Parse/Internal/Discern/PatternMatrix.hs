@@ -37,8 +37,8 @@ compilePatternMatrix ::
   H.Handle ->
   N.IsNoetic ->
   V.Vector (Hint, Ident) ->
-  PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
-  App (DT.DecisionTree WT.WeakTerm)
+  PAT.PatternMatrix ([Ident], [(BinderF WT.WeakType, WT.WeakTerm)], WT.WeakTerm) ->
+  App (DT.DecisionTree WT.WeakType WT.WeakTerm)
 compilePatternMatrix h isNoetic occurrences mat =
   case PAT.unconsRow mat of
     Nothing ->
@@ -68,8 +68,8 @@ compilePatternMatrix h isNoetic occurrences mat =
                     return $ DT.LiteralCase mPat literal cont
                   PAT.ConsSpecializer (PAT.ConsInfo {..}) -> do
                     let hGen = H.gensymHandle h
-                    dataHoles <- liftIO $ mapM (const $ WT.createHole hGen mPat []) [1 .. AN.reify dataArgNum]
-                    dataTypeHoles <- liftIO $ mapM (const $ WT.createHole hGen mPat []) [1 .. AN.reify dataArgNum]
+                    dataHoles <- liftIO $ mapM (const $ WT.createTypeHole hGen mPat []) [1 .. AN.reify dataArgNum]
+                    dataTypeHoles <- liftIO $ mapM (const $ WT.createTypeHole hGen mPat []) [1 .. AN.reify dataArgNum]
                     consVars <- liftIO $ mapM (const $ Gensym.newIdentFromText hGen "cvar") [1 .. AN.reify consArgNum]
                     let ms = map fst args
                     let consVars' = zip ms consVars
@@ -91,19 +91,19 @@ compilePatternMatrix h isNoetic occurrences mat =
                           }
               fallbackMatrix <- PATF.getFallbackMatrix h isNoetic cursor mat
               fallbackClause <- compilePatternMatrix h isNoetic (V.tail occurrences) fallbackMatrix
-              t <- liftIO $ WT.createHole (H.gensymHandle h) mCursor []
+              t <- liftIO $ WT.createTypeHole (H.gensymHandle h) mCursor []
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
 alignConsArgs ::
   H.Handle ->
   [(Hint, Ident)] ->
-  IO ([BinderF WT.WeakTerm], H.Handle)
+  IO ([BinderF WT.WeakType], H.Handle)
 alignConsArgs h binder =
   case binder of
     [] -> do
       return ([], h)
     (mx, x) : xts -> do
-      t <- WT.createHole (H.gensymHandle h) mx []
+      t <- WT.createTypeHole (H.gensymHandle h) mx []
       let h' = H.extendWithoutInsert h mx x
       (xts', h'') <- alignConsArgs h' xts
       return ((mx, x, t) : xts', h'')
@@ -111,7 +111,7 @@ alignConsArgs h binder =
 asLetSeq ::
   H.Handle ->
   [(Maybe (Hint, Ident), WT.WeakTerm)] ->
-  IO [(BinderF WT.WeakTerm, WT.WeakTerm)]
+  IO [(BinderF WT.WeakType, WT.WeakTerm)]
 asLetSeq h binder =
   case binder of
     [] ->
@@ -119,7 +119,7 @@ asLetSeq h binder =
     (Nothing, _) : xes -> do
       asLetSeq h xes
     (Just (m, from), to) : xes -> do
-      hole <- liftIO $ WT.createHole (H.gensymHandle h) m []
+      hole <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
       cont' <- asLetSeq h xes
       return $ ((m, from, hole), to) : cont'
 

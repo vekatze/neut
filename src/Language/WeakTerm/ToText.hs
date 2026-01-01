@@ -1,4 +1,4 @@
-module Language.WeakTerm.ToText (toText) where
+module Language.WeakTerm.ToText (toText, toTextType) where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor (second)
@@ -23,27 +23,16 @@ import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp qualified as PO
 import Language.Common.PrimType.ToText qualified as PT
 import Language.Common.Rune qualified as RU
-import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 
 toText :: WT.WeakTerm -> T.Text
 toText term =
   case term of
-    _ :< WT.Tau ->
-      "type"
     _ :< WT.Var x ->
       showVariable x
     _ :< WT.VarGlobal _ x ->
       showGlobalVariable x
-    _ :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
-      case piKind of
-        PK.Normal isConstLike ->
-          if isConstLike
-            then showImpArgsForAll impArgs defaultArgs <> toText cod
-            else showImpArgs impArgs defaultArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
-        PK.DataIntro _ -> do
-          showImpArgsForAll impArgs defaultArgs <> toText cod
     _ :< WT.PiIntro attr impArgs defaultArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
@@ -52,7 +41,7 @@ toText term =
             <> showImpArgs impArgs defaultArgs
             <> inParen (showDomArgList expArgs)
             <> ": "
-            <> toText codType
+            <> toTextType codType
             <> " "
             <> inBrace (toText e)
         AttrL.Attr {lamKind = LK.Normal mName codType} -> do
@@ -62,7 +51,7 @@ toText term =
             <> showImpArgs impArgs defaultArgs
             <> inParen (showDomArgList expArgs)
             <> ": "
-            <> toText codType
+            <> toTextType codType
             <> " "
             <> inBrace (toText e)
     _ :< WT.PiElim _ e _ expArgs -> do
@@ -74,10 +63,6 @@ toText term =
           showApp (toText e) (map toText expArgs)
     _ :< WT.PiElimExact e -> do
       "exact " <> toText e
-    _ :< WT.Data (AttrD.Attr {..}) name es -> do
-      if isConstLike
-        then showGlobalVariable name
-        else showApp (showGlobalVariable name) (map toText es)
     _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs -> do
       if isConstLike
         then showGlobalVariable consName
@@ -86,10 +71,6 @@ toText term =
       if isNoetic
         then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
-    _ :< WT.Box t ->
-      "meta " <> toText t
-    _ :< WT.BoxNoema t ->
-      "&" <> toText t
     _ :< WT.BoxIntro letSeq t -> do
       let ks = map (\((_, x, _), _) -> x) letSeq
       "box " <> T.intercalate ", " (map Ident.toText ks) <> inBrace (toText t)
@@ -101,14 +82,12 @@ toText term =
       "letbox "
         <> showVariable x
         <> ": "
-        <> toText t
+        <> toTextType t
         <> ks'
         <> " = "
         <> toText e1
         <> "; "
         <> toText e2
-    _ :< WT.Code t ->
-      "code " <> toText t
     _ :< WT.CodeIntro e ->
       "quote " <> inBrace (toText e)
     _ :< WT.CodeElim e ->
@@ -118,23 +97,55 @@ toText term =
     _ :< WT.Let opacity (_, x, t) e1 e2 -> do
       case opacity of
         WT.Noetic ->
-          "tie " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> "; " <> toText e2
+          "tie " <> showVariable x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
         _ ->
-          "let " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> "; " <> toText e2
-    _ :< WT.Prim prim ->
-      showPrim prim
-    _ :< WT.Hole i es ->
-      "?" <> T.pack (show (HID.reify i)) <> "(" <> T.intercalate "," (map toText es) <> ")"
+          "let " <> showVariable x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
+    _ :< WT.Prim primValue ->
+      showPrimValue primValue
     _ :< WT.Magic magic -> do
       showMagic magic
     _ :< WT.Annotation _ _ e ->
       toText e
-    _ :< WT.Resource dd _ _ _ _ _ -> do
-      showGlobalVariable dd
+
+toTextType :: WT.WeakType -> T.Text
+toTextType ty =
+  case ty of
+    _ :< WT.Tau ->
+      "type"
+    _ :< WT.TVar x ->
+      showVariable x
+    _ :< WT.TVarGlobal _ x ->
+      showGlobalVariable x
+    _ :< WT.TyApp t args ->
+      showApp (toTextType t) (map toTextType args)
+    _ :< WT.Pi piKind impArgs defaultArgs expArgs cod -> do
+      case piKind of
+        PK.Normal isConstLike ->
+          if isConstLike
+            then showImpArgsForAll impArgs defaultArgs <> toTextType cod
+            else showImpArgs impArgs defaultArgs <> inParen (showDomArgList expArgs) <> " -> " <> toTextType cod
+        PK.DataIntro _ -> do
+          showImpArgsForAll impArgs defaultArgs <> toTextType cod
+    _ :< WT.Data (AttrD.Attr {..}) name es -> do
+      if isConstLike
+        then showGlobalVariable name
+        else showApp (showGlobalVariable name) (map toTextType es)
+    _ :< WT.Box t ->
+      "meta " <> toTextType t
+    _ :< WT.BoxNoema t ->
+      "&" <> toTextType t
+    _ :< WT.Code t ->
+      "code " <> toTextType t
+    _ :< WT.PrimType pt ->
+      PT.toText pt
     _ :< WT.Void ->
       "void"
+    _ :< WT.Resource dd _ _ _ _ _ -> do
+      showGlobalVariable dd
+    _ :< WT.TypeHole i es ->
+      "?" <> T.pack (show (HID.reify i)) <> "(" <> T.intercalate "," (map toTextType es) <> ")"
 
-showImpArgs :: [BinderF WT.WeakTerm] -> [(BinderF WT.WeakTerm, WT.WeakTerm)] -> T.Text
+showImpArgs :: [BinderF WT.WeakType] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
 showImpArgs impArgs defaultArgs = do
   let nonDefaultDoc =
         if null impArgs
@@ -146,35 +157,35 @@ showImpArgs impArgs defaultArgs = do
           else inBracket $ showDefaultDomArgList defaultArgs
   nonDefaultDoc <> defaultDoc
 
-showImpArgsForAll :: [BinderF WT.WeakTerm] -> [(BinderF WT.WeakTerm, WT.WeakTerm)] -> T.Text
+showImpArgsForAll :: [BinderF WT.WeakType] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
 showImpArgsForAll impArgs defaultArgs = do
   let impArgsWithDefaults = map (,Nothing) impArgs ++ map (second Just) defaultArgs
   if null impArgsWithDefaults
     then ""
     else "∀ " <> T.intercalate " " (map showDataImpArgWithDefault impArgsWithDefaults) <> ". "
 
-showImpDomArgList :: [BinderF WT.WeakTerm] -> T.Text
+showImpDomArgList :: [BinderF WT.WeakType] -> T.Text
 showImpDomArgList mxts =
   T.intercalate ", " $ map showImpDomArg mxts
 
-showDefaultDomArgList :: [(BinderF WT.WeakTerm, WT.WeakTerm)] -> T.Text
+showDefaultDomArgList :: [(BinderF WT.WeakType, WT.WeakTerm)] -> T.Text
 showDefaultDomArgList mxts =
   T.intercalate ", " $ map showDefaultDomArg mxts
 
-showImpDomArg :: BinderF WT.WeakTerm -> T.Text
+showImpDomArg :: BinderF WT.WeakType -> T.Text
 showImpDomArg (_, x, _) =
   showVariable x
 
-showDefaultDomArg :: (BinderF WT.WeakTerm, WT.WeakTerm) -> T.Text
+showDefaultDomArg :: (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
 showDefaultDomArg ((_, x, _), defaultValue) =
   showVariable x <> " := " <> toText defaultValue
 
-showDataImpArgWithDefault :: (BinderF WT.WeakTerm, Maybe WT.WeakTerm) -> T.Text
+showDataImpArgWithDefault :: (BinderF WT.WeakType, Maybe WT.WeakTerm) -> T.Text
 showDataImpArgWithDefault ((_, x, t), maybeDefault) = do
   let baseArg =
         case t of
           _ :< WT.Tau -> showVariable x
-          _ -> "(" <> showVariable x <> ": " <> toText t <> ")"
+          _ -> "(" <> showVariable x <> ": " <> toTextType t <> ")"
   case maybeDefault of
     Nothing -> baseArg
     Just defaultValue -> "(" <> baseArg <> " := " <> toText defaultValue <> ")"
@@ -195,23 +206,23 @@ inAngleBracket :: T.Text -> T.Text
 inAngleBracket s =
   "<" <> s <> ">"
 
-showTypeArgs :: [BinderF WT.WeakTerm] -> T.Text
+showTypeArgs :: [BinderF WT.WeakType] -> T.Text
 showTypeArgs args =
   case args of
     [] ->
       T.empty
     [(_, x, t)] ->
-      inParen $ showVariable x <> " " <> toText t
+      inParen $ showVariable x <> " " <> toTextType t
     (_, x, t) : xts -> do
-      let s1 = inParen $ showVariable x <> " " <> toText t
+      let s1 = inParen $ showVariable x <> " " <> toTextType t
       let s2 = showTypeArgs xts
       s1 <> " " <> s2
 
-showDomArg :: BinderF WT.WeakTerm -> T.Text
+showDomArg :: BinderF WT.WeakType -> T.Text
 showDomArg (_, x, t) =
-  showVariable x <> ": " <> toText t
+  showVariable x <> ": " <> toTextType t
 
-showDomArgList :: [BinderF WT.WeakTerm] -> T.Text
+showDomArgList :: [BinderF WT.WeakType] -> T.Text
 showDomArgList mxts =
   T.intercalate ", " $ map showDomArg mxts
 
@@ -229,45 +240,41 @@ showGlobalVariable :: DD.DefiniteDescription -> T.Text
 showGlobalVariable =
   DD.localLocator
 
-showPrim :: WP.WeakPrim WT.WeakTerm -> T.Text
-showPrim prim =
-  case prim of
-    WP.Type t ->
-      PT.toText t
-    WP.Value primValue ->
-      case primValue of
-        WPV.Int _ v ->
-          T.pack (show v)
-        WPV.Float _ v ->
-          T.pack (show v)
-        WPV.Op op ->
-          case op of
-            PO.PrimUnaryOp name _ _ ->
-              T.pack (show name)
-            PO.PrimBinaryOp name _ _ ->
-              T.pack (show name)
-            PO.PrimCmpOp name _ _ ->
-              T.pack (show name)
-            PO.PrimConvOp name _ _ ->
-              T.pack (show name)
-        WPV.StaticText _ text ->
-          T.pack $ show text
-        WPV.Rune r ->
-          "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
+showPrimValue :: WPV.WeakPrimValue WT.WeakType -> T.Text
+showPrimValue primValue =
+  case primValue of
+    WPV.Int _ v ->
+      T.pack (show v)
+    WPV.Float _ v ->
+      T.pack (show v)
+    WPV.Op op ->
+      case op of
+        PO.PrimUnaryOp name _ _ ->
+          T.pack (show name)
+        PO.PrimBinaryOp name _ _ ->
+          T.pack (show name)
+        PO.PrimCmpOp name _ _ ->
+          T.pack (show name)
+        PO.PrimConvOp name _ _ ->
+          T.pack (show name)
+    WPV.StaticText _ text ->
+      T.pack $ show text
+    WPV.Rune r ->
+      "`" <> T.replace "`" "\\`" (RU.asText r) <> "`"
 
-showMatchArgs :: [(Ident, WT.WeakTerm, WT.WeakTerm)] -> T.Text
+showMatchArgs :: [(Ident, WT.WeakTerm, WT.WeakType)] -> T.Text
 showMatchArgs xets = do
   inParen $ T.intercalate ", " (map showMatchArg xets)
 
-showMatchArg :: (Ident, WT.WeakTerm, WT.WeakTerm) -> T.Text
+showMatchArg :: (Ident, WT.WeakTerm, WT.WeakType) -> T.Text
 showMatchArg (x, e, t) = do
-  showVariable x <> ": " <> toText t <> " = " <> toText e
+  showVariable x <> ": " <> toTextType t <> " = " <> toText e
 
-showLeafLetItem :: (BinderF WT.WeakTerm, WT.WeakTerm) -> T.Text
+showLeafLetItem :: (BinderF WT.WeakType, WT.WeakTerm) -> T.Text
 showLeafLetItem ((_, x, t), e) =
-  showVariable x <> ": " <> toText t <> " = " <> toText e
+  showVariable x <> ": " <> toTextType t <> " = " <> toText e
 
-showDecisionTree :: DT.DecisionTree WT.WeakTerm -> T.Text
+showDecisionTree :: DT.DecisionTree WT.WeakType WT.WeakTerm -> T.Text
 showDecisionTree tree =
   case tree of
     DT.Leaf xs letSeq cont -> do
@@ -284,11 +291,11 @@ showDecisionTree tree =
         <> inParen
           ( showVariable cursor
               <> ": "
-              <> toText cursorType
+              <> toTextType cursorType
           )
         <> inBrace (T.intercalate ", " (map showClauseList clauseList ++ [showDecisionTree fallbackClause]))
 
-showClauseList :: DT.Case WT.WeakTerm -> T.Text
+showClauseList :: DT.Case WT.WeakType WT.WeakTerm -> T.Text
 showClauseList decisionCase = do
   case decisionCase of
     DT.LiteralCase _ i cont -> do
@@ -297,59 +304,59 @@ showClauseList decisionCase = do
       showApp
         (showGlobalVariable consDD)
         [ T.pack (show (D.reify disc)),
-          inParen $ T.intercalate ", " $ map (\(e, t) -> toText e <> ": " <> toText t) dataArgs,
+          inParen $ T.intercalate ", " $ map (\(e, t) -> toTextType e <> ": " <> toTextType t) dataArgs,
           inParen $ showTypeArgs consArgs,
           showDecisionTree cont
         ]
 
-showMagic :: M.WeakMagic WT.WeakTerm -> T.Text
+showMagic :: M.WeakMagic WT.WeakType WT.WeakType WT.WeakTerm -> T.Text
 showMagic (M.WeakMagic magic) =
   case magic of
     M.LowMagic lowMagic ->
       showLowMagic lowMagic
     M.GetTypeTag _ typeTagExpr e ->
-      "magic get-type-tag" <> inParen (toText typeTagExpr <> ", " <> toText e)
+      "magic get-type-tag" <> inParen (toTextType typeTagExpr <> ", " <> toTextType e)
     M.GetConsSize typeExpr ->
-      "magic get-cons-size" <> inParen (toText typeExpr)
+      "magic get-cons-size" <> inParen (toTextType typeExpr)
     M.GetConstructorArgTypes sgl listExpr typeExpr index ->
       "magic get-constructor-arg-types"
         <> inParen
           ( T.pack (show sgl)
               <> ", "
-              <> toText listExpr
+              <> toTextType listExpr
               <> ", "
-              <> toText typeExpr
+              <> toTextType typeExpr
               <> ", "
               <> toText index
           )
     M.CompileError msg ->
       "magic compile-error" <> inParen (T.pack $ show msg)
 
-showLowMagic :: LM.LowMagic WT.WeakTerm WT.WeakTerm -> T.Text
+showLowMagic :: LM.LowMagic WT.WeakType WT.WeakType WT.WeakTerm -> T.Text
 showLowMagic lowMagic =
   case lowMagic of
     LM.Cast from to value ->
-      "magic cast" <> inParen (toText from <> ", " <> toText to <> ", " <> toText value)
+      "magic cast" <> inParen (toTextType from <> ", " <> toTextType to <> ", " <> toText value)
     LM.Store t unit value pointer ->
       "magic store"
         <> inParen
-          ( toText t
+          ( toTextType t
               <> ", "
-              <> toText unit
+              <> toTextType unit
               <> ", "
               <> toText value
               <> ", "
               <> toText pointer
           )
     LM.Load t pointer ->
-      "magic load" <> inParen (toText t <> ", " <> toText pointer)
+      "magic load" <> inParen (toTextType t <> ", " <> toText pointer)
     LM.Alloca t size ->
-      "magic alloca" <> inParen (toText t <> ", " <> toText size)
+      "magic alloca" <> inParen (toTextType t <> ", " <> toText size)
     LM.External domList cod extFunName args varArgs ->
-      let domStr = T.intercalate ", " (map toText domList)
+      let domStr = T.intercalate ", " (map toTextType domList)
           codStr = showForeignCodType cod
           argsStr = T.intercalate ", " (map toText args)
-          varArgsStr = T.intercalate ", " (map (\(a, t) -> toText a <> ": " <> toText t) varArgs)
+          varArgsStr = T.intercalate ", " (map (\(a, t) -> toText a <> ": " <> toTextType t) varArgs)
           allArgs = if null varArgs then argsStr else argsStr <> ", " <> varArgsStr
        in "magic external "
             <> T.pack (show extFunName)
@@ -358,14 +365,16 @@ showLowMagic lowMagic =
             <> codStr
             <> inParen allArgs
     LM.Global name t ->
-      "magic global " <> T.pack (show name) <> ": " <> toText t
+      "magic global " <> T.pack (show name) <> ": " <> toTextType t
     LM.OpaqueValue e ->
       "magic opaque" <> inParen (toText e)
     LM.CallType func arg1 arg2 ->
-      "magic call-type" <> inParen (toText func <> ", " <> toText arg1 <> ", " <> toText arg2)
+      "magic call-type" <> inParen (toTextType func <> ", " <> toText arg1 <> ", " <> toText arg2)
+    LM.TermType ty ->
+      "magic term-type" <> inParen (toTextType ty)
 
-showForeignCodType :: FCT.ForeignCodType WT.WeakTerm -> T.Text
+showForeignCodType :: FCT.ForeignCodType WT.WeakType -> T.Text
 showForeignCodType cod =
   case cod of
-    FCT.Cod t -> toText t
+    FCT.Cod t -> toTextType t
     FCT.Void -> "void"

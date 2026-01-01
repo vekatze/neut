@@ -22,30 +22,38 @@ import Language.Common.StmtKind qualified as SK
 import Language.Term.Term qualified as TM
 import Logger.Hint
 
-type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)
+type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Type], D.Discriminant)
 
-data StmtF a
+data StmtF t a
   = StmtDefine
       IsConstLike
-      (SK.StmtKind a)
+      (SK.StmtKind t)
       SavedHint
       DD.DefiniteDescription
-      [BinderF a]
-      [(BinderF a, a)]
-      [BinderF a]
+      [BinderF t]
+      [(BinderF t, a)]
+      [BinderF t]
+      t
       a
-      a
+  | StmtDefineType
+      IsConstLike
+      (SK.StmtKind t)
+      SavedHint
+      DD.DefiniteDescription
+      [BinderF t]
+      [(BinderF t, a)]
+      [BinderF t]
+      t
+      t
   | StmtVariadic RuleKind SavedHint DD.DefiniteDescription
   | StmtForeign [F.Foreign]
   deriving (Generic)
 
-type Stmt = StmtF TM.Term
+type Stmt = StmtF TM.Type TM.Term
 
-type StrippedStmt = StmtF (Cofree TM.TermF ())
+type StrippedStmt = StmtF (Cofree TM.TypeF ()) (Cofree TM.TermF ())
 
-instance Binary Stmt
-
-instance Binary StrippedStmt
+instance (Binary t, Binary a) => Binary (StmtF t a)
 
 getStmtName :: [Stmt] -> [(Hint, DD.DefiniteDescription)]
 getStmtName =
@@ -55,6 +63,8 @@ getStmtName' :: Stmt -> Maybe (Hint, DD.DefiniteDescription)
 getStmtName' stmt =
   case stmt of
     StmtDefine _ _ (SavedHint m) name _ _ _ _ _ ->
+      return (m, name)
+    StmtDefineType _ _ (SavedHint m) name _ _ _ _ _ ->
       return (m, name)
     StmtVariadic _ (SavedHint m) name ->
       return (m, name)

@@ -3,6 +3,7 @@ module Kernel.Parse.Internal.Discern.Name
     resolveConstructor,
     resolveLocator,
     interpretGlobalName,
+    interpretGlobalTypeName,
     interpretRuleName,
     resolveDefiniteDescription,
   )
@@ -45,7 +46,6 @@ import Language.Common.RuleKind (RuleKind)
 import Language.RawTerm.Locator qualified as L
 import Language.RawTerm.Name
 import Language.WeakTerm.CreateHole qualified as WT
-import Language.WeakTerm.WeakPrim qualified as WP
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
 import Logger.Hint
@@ -160,16 +160,34 @@ interpretGlobalName h m dd gn = do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
       return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
-    GN.PrimType primNum ->
-      return $ m :< WT.Prim (WP.Type primNum)
+    GN.PrimType _ ->
+      raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
       case primOp of
         PO.PrimCmpOp {} ->
-          castFromIntToBool h $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
+          castFromIntToBool h $ m :< WT.Prim (WPV.Op primOp) -- i1 to bool
         _ ->
-          return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
+          return $ m :< WT.Prim (WPV.Op primOp)
     GN.Rule _ ->
       raiseError m $ "`" <> DD.reify dd <> "` must be used with arguments"
+
+interpretGlobalTypeName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakType
+interpretGlobalTypeName m dd gn = do
+  case gn of
+    GN.PrimType primNum ->
+      return $ m :< WT.PrimType primNum
+    GN.TopLevelFunc argNum isConstLike _ -> do
+      let attr = AttrVG.Attr {..}
+      return $ m :< WT.TVarGlobal attr dd
+    GN.Data argNum _ isConstLike -> do
+      let attr = AttrVG.Attr {..}
+      return $ m :< WT.TVarGlobal attr dd
+    GN.DataIntro {} ->
+      raiseError m $ "`" <> DD.reify dd <> "` is a constructor and cannot appear in type position"
+    GN.PrimOp {} ->
+      raiseError m $ "`" <> DD.reify dd <> "` is not a type"
+    GN.Rule {} ->
+      raiseError m $ "`" <> DD.reify dd <> "` is not a type"
 
 interpretRuleName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App RuleKind
 interpretRuleName m dd gn = do
@@ -215,11 +233,11 @@ ensureTopLevelStage m h dd isInline =
 
 castFromIntToBool :: H.Handle -> WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool h e@(m :< _) = do
-  let i1 = m :< WT.Prim (WP.Type (PT.Int PNS.IntSize1))
+  let i1 = m :< WT.PrimType (PT.Int PNS.IntSize1)
   l <- liftEither $ DD.getLocatorPair m C.coreBool
   (dd, (_, gn)) <- resolveLocator h m l False
-  bool <- interpretGlobalName h m dd gn
-  t <- liftIO $ WT.createHole (H.gensymHandle h) m []
+  bool <- interpretGlobalTypeName m dd gn
+  t <- liftIO $ WT.createTypeHole (H.gensymHandle h) m []
   x1 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   x2 <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) "arg"
   let cmpOpType cod = m :< WT.Pi PK.normal [] [] [(m, x1, t), (m, x2, t)] cod

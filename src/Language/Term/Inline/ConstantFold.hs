@@ -12,7 +12,6 @@ import Language.Common.PrimOp.BinaryOp qualified as BinOp
 import Language.Common.PrimOp.CmpOp qualified as CmpOp
 import Language.Common.PrimOp.UnaryOp qualified as UnOp
 import Language.Common.PrimType qualified as PT
-import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
 import Logger.Hint
@@ -74,37 +73,37 @@ evaluatePrimOp m op args =
 evaluateBinaryOp :: Hint -> BinOp.BinaryOp -> PT.PrimType -> TM.Term -> TM.Term -> Maybe TM.Term
 evaluateBinaryOp m binOp dom arg1 arg2 =
   case (dom, arg1, arg2) of
-    (PT.Int size, _ :< TM.Prim (P.Value (PV.Int intType1 _ val1)), _ :< TM.Prim (P.Value (PV.Int _ _ val2))) -> do
+    (PT.Int size, _ :< TM.Prim (PV.Int intType1 _ val1), _ :< TM.Prim (PV.Int _ _ val2)) -> do
       result <- applyIntBinaryOp size binOp val1 val2
-      return $ m :< TM.Prim (P.Value (PV.Int intType1 size result))
-    (PT.Float size, _ :< TM.Prim (P.Value (PV.Float floatType1 _ val1)), _ :< TM.Prim (P.Value (PV.Float _ _ val2))) -> do
+      return $ m :< TM.Prim (PV.Int intType1 size result)
+    (PT.Float size, _ :< TM.Prim (PV.Float floatType1 _ val1), _ :< TM.Prim (PV.Float _ _ val2)) -> do
       result <- applyFloatBinaryOp binOp val1 val2
-      return $ m :< TM.Prim (P.Value (PV.Float floatType1 size result))
+      return $ m :< TM.Prim (PV.Float floatType1 size result)
     _ ->
       Nothing
 
 evaluateUnaryOp :: Hint -> UnOp.UnaryOp -> PT.PrimType -> TM.Term -> Maybe TM.Term
 evaluateUnaryOp m unOp dom arg =
   case (dom, arg) of
-    (PT.Float size, _ :< TM.Prim (P.Value (PV.Float floatType _ val))) -> do
+    (PT.Float size, _ :< TM.Prim (PV.Float floatType _ val)) -> do
       result <- applyFloatUnaryOp unOp val
-      return $ m :< TM.Prim (P.Value (PV.Float floatType size result))
+      return $ m :< TM.Prim (PV.Float floatType size result)
     _ ->
       Nothing
 
 evaluateCmpOp :: Hint -> CmpOp.CmpOp -> PT.PrimType -> TM.Term -> TM.Term -> Maybe TM.Term
 evaluateCmpOp m cmpOp dom arg1 arg2 =
   case (dom, arg1, arg2) of
-    (PT.Int size, _ :< TM.Prim (P.Value (PV.Int _ _ val1)), _ :< TM.Prim (P.Value (PV.Int _ _ val2))) -> do
+    (PT.Int size, _ :< TM.Prim (PV.Int _ _ val1), _ :< TM.Prim (PV.Int _ _ val2)) -> do
       result <- applyIntCmpOp size cmpOp val1 val2
       let resultInt = if result then 1 else 0
-      let i1 = m :< TM.Prim (P.Type (PT.Int PNS.IntSize1))
-      return $ m :< TM.Prim (P.Value (PV.Int i1 PNS.IntSize1 resultInt))
-    (PT.Float _, _ :< TM.Prim (P.Value (PV.Float _ _ val1)), _ :< TM.Prim (P.Value (PV.Float _ _ val2))) -> do
+      let i1 = m :< TM.PrimType (PT.Int PNS.IntSize1)
+      return $ m :< TM.Prim (PV.Int i1 PNS.IntSize1 resultInt)
+    (PT.Float _, _ :< TM.Prim (PV.Float _ _ val1), _ :< TM.Prim (PV.Float _ _ val2)) -> do
       result <- applyFloatCmpOp cmpOp val1 val2
       let resultInt = if result then 1 else 0
-      let i1 = m :< TM.Prim (P.Type (PT.Int PNS.IntSize1))
-      return $ m :< TM.Prim (P.Value (PV.Int i1 PNS.IntSize1 resultInt))
+      let i1 = m :< TM.PrimType (PT.Int PNS.IntSize1)
+      return $ m :< TM.Prim (PV.Int i1 PNS.IntSize1 resultInt)
     _ ->
       Nothing
 

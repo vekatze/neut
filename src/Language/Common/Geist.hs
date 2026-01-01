@@ -5,12 +5,12 @@ import Language.Common.Ident
 import Language.Common.IsConstLike
 import Logger.Hint
 
-data Geist a = Geist
+data Geist t a = Geist
   { loc :: Hint,
     name :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
-    impArgs :: [(Hint, Ident, a)],
-    defaultArgs :: [((Hint, Ident, a), a)],
-    expArgs :: [(Hint, Ident, a)],
-    cod :: a
+    impArgs :: [(Hint, Ident, t)],
+    defaultArgs :: [((Hint, Ident, t), a)],
+    expArgs :: [(Hint, Ident, t)],
+    cod :: t
   }

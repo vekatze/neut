@@ -10,9 +10,9 @@ import Language.Common.HoleID qualified as HID
 import Language.WeakTerm.WeakTerm qualified as WT
 
 data Constraint
-  = Eq WT.WeakTerm WT.WeakTerm -- (expected-type, actual-type)
-  | Actual WT.WeakTerm
-  | Integer WT.WeakTerm
+  = Eq WT.WeakType WT.WeakType -- (expected-type, actual-type)
+  | Actual WT.WeakType
+  | Integer WT.WeakType
 
 type MetaVarSet =
   S.Set HID.HoleID

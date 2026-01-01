@@ -19,7 +19,7 @@ import Logger.Hint
 import Prelude hiding (lookup)
 
 newtype Handle = Handle
-  { weakDeclEnvRef :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm))
+  { weakDeclEnvRef :: IORef (Map.HashMap DN.DeclarationName ([WT.WeakType], F.ForeignCodType WT.WeakType))
   }
 
 new :: IO Handle
@@ -27,11 +27,11 @@ new = do
   weakDeclEnvRef <- newIORef Map.empty
   return $ Handle {..}
 
-insert :: Handle -> DN.DeclarationName -> [WT.WeakTerm] -> F.ForeignCodType WT.WeakTerm -> IO ()
+insert :: Handle -> DN.DeclarationName -> [WT.WeakType] -> F.ForeignCodType WT.WeakType -> IO ()
 insert h k domList cod =
   modifyIORef' (weakDeclEnvRef h) $ Map.insert k (domList, cod)
 
-lookup :: Handle -> Hint -> DN.DeclarationName -> App ([WT.WeakTerm], F.ForeignCodType WT.WeakTerm)
+lookup :: Handle -> Hint -> DN.DeclarationName -> App ([WT.WeakType], F.ForeignCodType WT.WeakType)
 lookup h m name = do
   denv <- liftIO $ readIORef (weakDeclEnvRef h)
   case Map.lookup name denv of

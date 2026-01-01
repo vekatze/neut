@@ -21,20 +21,21 @@ import Language.Common.Discriminant qualified as D
 import Language.Common.Ident (Ident)
 import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.IsConstLike (IsConstLike)
+import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic qualified as M
 import Language.Common.ModuleID qualified as MID
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimType qualified as PT
 import Language.Common.SourceLocator (binaryLocator, typeTagLocator, vectorLocator)
 import Language.Common.StrictGlobalLocator qualified as SGL
 import Language.Term.FreeVars qualified as FreeVars
-import Language.Term.Prim qualified as P
 import Language.Term.PrimValue qualified as PV
 import Language.Term.Term qualified as TM
-import Language.Term.Weaken (weaken)
-import Language.WeakTerm.ToText (toText)
+import Language.Term.Weaken (weakenType)
+import Language.WeakTerm.ToText (toTextType)
 import Logger.Hint (Hint)
 
-evaluateGetTypeTag :: Hint -> MID.ModuleID -> TM.Term -> TM.Term -> App TM.Term
+evaluateGetTypeTag :: Hint -> MID.ModuleID -> TM.Type -> TM.Type -> App TM.Term
 evaluateGetTypeTag m moduleID typeTagExpr typeExpr = do
   case typeExpr of
     _ :< TM.Tau ->
@@ -56,13 +57,13 @@ evaluateGetTypeTag m moduleID typeTagExpr typeExpr = do
       returnTypeTagIntValue m moduleID TypeTag.Opaque
     _ :< TM.Code _ ->
       returnTypeTagIntValue m moduleID TypeTag.Opaque
-    _ :< TM.Prim (P.Type (PT.Int size)) ->
+    _ :< TM.PrimType (PT.Int size) ->
       returnTypeTagIntValue m moduleID (TypeTag.fromIntSize size)
-    _ :< TM.Prim (P.Type (PT.Float size)) ->
+    _ :< TM.PrimType (PT.Float size) ->
       returnTypeTagIntValue m moduleID (TypeTag.fromFloatSize size)
-    _ :< TM.Prim (P.Type PT.Pointer) ->
+    _ :< TM.PrimType PT.Pointer ->
       returnTypeTagIntValue m moduleID TypeTag.Pointer
-    _ :< TM.Prim (P.Type PT.Rune) ->
+    _ :< TM.PrimType PT.Rune ->
       returnTypeTagIntValue m moduleID TypeTag.Rune
     _ :< TM.Resource name _ _ _ _ _ -> do
       let binarySGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = binaryLocator}
@@ -70,7 +71,13 @@ evaluateGetTypeTag m moduleID typeTagExpr typeExpr = do
       if name == binaryDD
         then returnTypeTagIntValue m moduleID TypeTag.Binary
         else returnTypeTagIntValue m moduleID TypeTag.Opaque
-    _ :< TM.PiElim False (_ :< TM.VarGlobal _ name) [] [] -> do
+    _ :< TM.TVarGlobal _ name -> do
+      let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = vectorLocator}
+      let vectorDD = DD.newByGlobalLocator vectorSGL BN.vectorInternal
+      if name == vectorDD
+        then returnTypeTagIntValue m moduleID TypeTag.Vector
+        else returnTypeTagIntValue m moduleID TypeTag.Opaque
+    _ :< TM.TyApp (_ :< TM.TVarGlobal _ name) _ -> do
       let vectorSGL = SGL.StrictGlobalLocator {moduleID, sourceLocator = vectorLocator}
       let vectorDD = DD.newByGlobalLocator vectorSGL BN.vectorInternal
       if name == vectorDD
@@ -79,13 +86,13 @@ evaluateGetTypeTag m moduleID typeTagExpr typeExpr = do
     _ -> do
       raiseError m $
         "get-type-tag: unable to determine type tag for this type expression. Got: "
-          <> toText (weaken typeExpr)
+          <> toTextType (weakenType typeExpr)
 
-makeConsNameList :: SGL.StrictGlobalLocator -> [(DD.DefiniteDescription, [BinderF TM.Term], IsConstLike)]
+makeConsNameList :: SGL.StrictGlobalLocator -> [(DD.DefiniteDescription, [BinderF TM.Type], IsConstLike)]
 makeConsNameList typeTagSGL = do
   flip map BN.typeTagList $ \tag -> (DD.newByGlobalLocator typeTagSGL tag, [], True)
 
-makeAttrDI :: SGL.StrictGlobalLocator -> TypeTag.TypeTag -> AttrDI.Attr DD.DefiniteDescription (BinderF TM.Term)
+makeAttrDI :: SGL.StrictGlobalLocator -> TypeTag.TypeTag -> AttrDI.Attr DD.DefiniteDescription (BinderF TM.Type)
 makeAttrDI typeTagSGL typeTag = do
   let dataName = DD.newByGlobalLocator typeTagSGL BN.typeTag
   let discriminant = D.MakeDiscriminant $ TypeTag.typeTagToInteger typeTag
@@ -105,20 +112,20 @@ returnTypeTagIntValue m' moduleID tag = do
     [] -> do
       raiseError m' $ "get-type-tag: unknown type-tag discriminant " <> T.pack (show tagInt)
 
-evaluateGetConsSize :: Hint -> TM.Term -> App TM.Term
+evaluateGetConsSize :: Hint -> TM.Type -> App TM.Term
 evaluateGetConsSize m typeExpr = do
   case typeExpr of
     _ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _ -> do
       let consCount = length consNameList
-      let intType = m :< TM.Prim (P.Type (PT.Int PNS.IntSize64))
-      return $ m :< TM.Prim (P.Value (PV.Int intType PNS.IntSize64 (fromIntegral consCount)))
+      let intType = m :< TM.PrimType (PT.Int PNS.IntSize64)
+      return $ m :< TM.Prim (PV.Int intType PNS.IntSize64 (fromIntegral consCount))
     _ ->
       raiseError m "get-cons-size: type expression must be a data type"
 
-evaluateGetConstructorArgTypes :: Hint -> SGL.StrictGlobalLocator -> TM.Term -> TM.Term -> App TM.Term
+evaluateGetConstructorArgTypes :: Hint -> SGL.StrictGlobalLocator -> TM.Type -> TM.Term -> App TM.Term
 evaluateGetConstructorArgTypes m sgl typeExpr indexExpr = do
   case (typeExpr, indexExpr) of
-    (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (P.Value (PV.Int _ _ indexInt))) -> do
+    (_ :< TM.Data (AttrD.Attr {AttrD.consNameList}) _ _, _ :< TM.Prim (PV.Int _ _ indexInt)) -> do
       let index = fromIntegral indexInt
       if index < 0 || index >= length consNameList
         then
@@ -134,17 +141,17 @@ evaluateGetConstructorArgTypes m sgl typeExpr indexExpr = do
           let types = map (\(_, _, t) -> t) binders
           return $ constructListTerm m sgl types
     (_ :< TM.Data {}, _) ->
-      raiseError m $ "get-constructor-arg-types: index must be an integer literal, but got: " <> toText (weaken indexExpr)
+      raiseError m "get-constructor-arg-types: index must be an integer literal, but got a different term"
     _ ->
       raiseError m "get-constructor-arg-types: type expression must be a data type"
 
-checkConstructorArgNoDependencies :: Hint -> [BinderF TM.Term] -> App ()
+checkConstructorArgNoDependencies :: Hint -> [BinderF TM.Type] -> App ()
 checkConstructorArgNoDependencies hint binders = do
   foldM_ (checkConstructorArgBinder hint) [] binders
 
-checkConstructorArgBinder :: Hint -> [Ident] -> BinderF TM.Term -> App [Ident]
+checkConstructorArgBinder :: Hint -> [Ident] -> BinderF TM.Type -> App [Ident]
 checkConstructorArgBinder hint boundVars (_, x, t) = do
-  let fvs = FreeVars.freeVars t
+  let fvs = FreeVars.freeVarsType t
   let illegalDeps = S.intersection (S.fromList boundVars) fvs
   if S.null illegalDeps
     then return (x : boundVars)
@@ -157,9 +164,10 @@ checkConstructorArgBinder hint boundVars (_, x, t) = do
           <> Ident.toText x
           <> "' depend on previous arguments"
 
-constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Term] -> TM.Term
-constructListTerm hint listSgl =
-  foldr (constructListCons hint listSgl) (constructListNil hint listSgl)
+constructListTerm :: Hint -> SGL.StrictGlobalLocator -> [TM.Type] -> TM.Term
+constructListTerm hint listSgl types = do
+  let wrappedTypes = map (\ty -> hint :< TM.Magic (M.LowMagic (LM.TermType ty))) types
+  foldr (constructListCons hint listSgl) (constructListNil hint listSgl) wrappedTypes
 
 constructListNil :: Hint -> SGL.StrictGlobalLocator -> TM.Term
 constructListNil hint listSgl = do

@@ -230,6 +230,22 @@ _getGlobalNames' stmt = do
           (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
         SK.DataIntro {} ->
           []
+    StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
+      let defaultBinders = map fst defaultArgs
+      let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
+      case stmtKind of
+        SK.Normal opacity -> do
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Main opacity _ ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Alias ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
+        SK.Data dataName dataArgs consInfoList -> do
+          let dataArgNum = AN.fromInt $ length dataArgs
+          let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
+          (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
+        SK.DataIntro {} ->
+          []
     StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, GN.Rule kind))]
     StmtForeign {} ->
