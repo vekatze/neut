@@ -20,6 +20,7 @@ import Data.Text qualified as T
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
+import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as RU
 import Language.RawTerm.Key
 import Language.RawTerm.Locator qualified as Locator
@@ -47,8 +48,14 @@ toDoc term =
       D.text $ DD.reify dd -- unreachable
     _ :< PiIntro c def -> do
       decodeDef lambdaNameToDoc "function" c def
-    _ :< PiIntroFix c def -> do
-      decodeDef (nameToDoc . N.Var) "define" c def
+    _ :< PiIntroFix opacity c def -> do
+      let keyword =
+            case opacity of
+              O.Opaque ->
+                "define"
+              O.Clear ->
+                "inline"
+      decodeDef (nameToDoc . N.Var) keyword c def
     _ :< PiElim e c1 mImpArgs c2 expArgs -> do
       case mImpArgs of
         Nothing ->

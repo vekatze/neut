@@ -19,6 +19,7 @@ import Language.Common.Ident.Reify qualified as Ident
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
+import Language.Common.Opacity qualified as O
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp qualified as PO
 import Language.Common.PrimType.ToText qualified as PT
@@ -35,8 +36,10 @@ toText term =
       showGlobalVariable x
     _ :< WT.PiIntro attr impArgs defaultArgs expArgs e -> do
       case attr of
-        AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
-          "define "
+        AttrL.Attr {lamKind = LK.Fix opacity (_, x, codType)} ->
+          (case opacity of
+            O.Opaque -> "define "
+            O.Clear -> "inline ")
             <> showVariable x
             <> showImpArgs impArgs defaultArgs
             <> inParen (showDomArgList expArgs)

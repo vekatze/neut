@@ -52,10 +52,10 @@ fill h typeSubst term =
       defaultArgs' <- fillDefaultArgs h typeSubst defaultArgs
       expArgs' <- fillBinder h typeSubst expArgs
       case lamKind of
-        LK.Fix xt -> do
+        LK.Fix opacity xt -> do
           [xt'] <- fillBinder h typeSubst [xt]
           e' <- fill h typeSubst e
-          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) impArgs' defaultArgs' expArgs' e'
+          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity xt'}) impArgs' defaultArgs' expArgs' e'
         LK.Normal name codType -> do
           codType' <- fillType h typeSubst codType
           e' <- fill h typeSubst e

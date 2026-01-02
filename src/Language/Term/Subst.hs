@@ -71,13 +71,13 @@ subst h sub term =
         else do
           newLamID <- liftIO $ Gensym.newCount (gensymHandle h)
           case lamKind of
-            LK.Fix xt -> do
+            LK.Fix opacity xt -> do
               (impArgs', sub') <- substBinder h sub impArgs
               (defaultArgs', sub'') <- substDefaultArgs h sub' defaultArgs
               (expArgs', sub''') <- substBinder h sub'' expArgs
               ([xt'], sub'''') <- substBinder h sub''' [xt]
               e' <- subst h sub'''' e
-              let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix opacity xt', identity = newLamID}
               return (m :< TM.PiIntro fixAttr impArgs' defaultArgs' expArgs' e')
             LK.Normal name codType -> do
               (impArgs', sub') <- substBinder h sub impArgs
@@ -437,9 +437,9 @@ substTypeInTerm sub term =
       expArgs' <- mapM (substTypeBinder sub') expArgs
       e' <- substTypeInTerm sub' e
       case lamKind of
-        LK.Fix xt -> do
+        LK.Fix opacity xt -> do
           xt' <- substTypeBinder sub' xt
-          return $ m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) impArgs' defaultArgs' expArgs' e'
+          return $ m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix opacity xt'}) impArgs' defaultArgs' expArgs' e'
         LK.Normal name codType -> do
           codType' <- substTypeWith sub' codType
           return $ m :< TM.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' defaultArgs' expArgs' e'

@@ -68,9 +68,9 @@ reduce' h term = do
       expArgs' <- mapM (reduceBinder h) expArgs
       e' <- reduce' h e
       case lamKind of
-        LK.Fix (mx, x, t) -> do
+        LK.Fix opacity (mx, x, t) -> do
           t' <- reduceType h t
-          return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' defaultArgs' expArgs' e')
+          return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity (mx, x, t')}) impArgs' defaultArgs' expArgs' e')
         LK.Normal name codType -> do
           codType' <- reduceType h codType
           return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' defaultArgs' expArgs' e')

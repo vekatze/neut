@@ -563,9 +563,9 @@ elaborateLamAttr h (AttrL.Attr {lamKind, identity}) =
     LK.Normal name codType -> do
       codType' <- elaborateType h codType
       return $ AttrL.Attr {lamKind = LK.Normal name codType', identity}
-    LK.Fix xt -> do
+    LK.Fix opacity xt -> do
       xt' <- elaborateWeakBinder h xt
-      return $ AttrL.Attr {lamKind = LK.Fix xt', identity}
+      return $ AttrL.Attr {lamKind = LK.Fix opacity xt', identity}
 
 type ClauseContext =
   [(Ident, (Maybe DD.DefiniteDescription, IsConstLike, [Ident]))]

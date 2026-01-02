@@ -691,7 +691,7 @@ clarifyLambda ::
   App C.Comp
 clarifyLambda h tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
   case lamKind of
-    LK.Fix (_, recFuncName, codType) -> do
+    LK.Fix _ (_, recFuncName, codType) -> do
       let liftedName = Locator.attachCurrentLocator (locatorHandle h) $ BN.muName recFuncName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs

@@ -41,7 +41,7 @@ ensureTemplateResolved h m term =
         ensureTemplateResolved h m value
       mapM_ (ensureTemplateResolvedInBinder h) expArgs
       case lamKind of
-        LK.Fix xt ->
+        LK.Fix _ xt ->
           ensureTemplateResolvedInBinder h xt
         LK.Normal _ codType ->
           ensureTemplateResolvedType h m codType

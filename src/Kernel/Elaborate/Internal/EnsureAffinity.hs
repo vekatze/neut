@@ -134,7 +134,7 @@ analyze h term = do
       return []
     m :< TM.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
       case lamKind of
-        LK.Fix (mx, x, codType) -> do
+        LK.Fix _ (mx, x, codType) -> do
           (cs1, h') <- analyzeBinder h (impArgs ++ map fst defaultArgs)
           (cs2, h'') <- analyzeBinder h' expArgs
           cs3 <- analyzeType h'' codType

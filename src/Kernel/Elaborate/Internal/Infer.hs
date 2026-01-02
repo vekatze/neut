@@ -177,7 +177,7 @@ infer h term =
       return (term, t)
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
       case lamKind of
-        LK.Fix (mx, x, codType) -> do
+        LK.Fix opacity (mx, x, codType) -> do
           (impArgs', h') <- inferImpBinder h impArgs
           (defaultArgs', h'') <- inferImpBinderWithDefaults h' defaultArgs
           (expArgs', h''') <- inferBinder' h'' expArgs
@@ -186,7 +186,7 @@ infer h term =
           liftIO $ WeakType.insert (weakTypeHandle h) x piType
           (e', tBody) <- infer h''' e
           liftIO $ Constraint.insert (constraintHandle h''') codType' tBody
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' defaultArgs' expArgs' e'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix opacity (mx, x, codType')}) impArgs' defaultArgs' expArgs' e'
           return (term', piType)
         LK.Normal name codType -> do
           (impArgs', h') <- inferImpBinder h impArgs

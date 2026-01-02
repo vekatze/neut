@@ -302,7 +302,7 @@ discern h term =
       body' <- discern h''' body
       ensureLayerClosedness m h''' body'
       return $ m :< WT.PiIntro (AttrL.normal' name lamID codType') impArgs' defaultArgs' expArgs' body'
-    m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
+    m :< RT.PiIntroFix opacity _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
@@ -319,7 +319,7 @@ discern h term =
       liftIO $ Tag.insertBinder (H.tagHandle h) mxt'
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h'''' body'
-      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' defaultArgs' expArgs' body'
+      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix opacity mxt', identity = lamID}) impArgs' defaultArgs' expArgs' body'
     m :< RT.PiElim e _ mImpArgs _ expArgs -> do
       let isNoetic = False -- overwritten later in `infer`
       e' <- discern h e

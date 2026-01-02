@@ -37,7 +37,8 @@ eq (_ :< term1) (_ :< term2)
           let b4 = eq body1 body2
           let b5 = eqType codType1 codType2
           b1 && b2 && b3 && b4 && b5
-        (AttrL.Attr {lamKind = LK.Fix mxt1}, AttrL.Attr {lamKind = LK.Fix mxt2}) -> do
+        (AttrL.Attr {lamKind = LK.Fix opacity1 mxt1}, AttrL.Attr {lamKind = LK.Fix opacity2 mxt2})
+          | opacity1 == opacity2 -> do
           let b1 = eqImpArgs impArgs1 impArgs2
           let b2 = eqDefaultArgs defaultArgs1 defaultArgs2
           let b3 = eqBinderType (impArgs1 ++ map fst defaultArgs1 ++ expArgs1 ++ [mxt1]) (impArgs2 ++ map fst defaultArgs2 ++ expArgs2 ++ [mxt2])

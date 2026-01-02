@@ -116,9 +116,9 @@ inline' h term = do
       expArgs' <- mapM (inlineTypeBinder h) expArgs
       e' <- inline' h e
       case lamKind of
-        LK.Fix (mx, x, codType) -> do
+        LK.Fix opacity (mx, x, codType) -> do
           codType' <- inlineType' h codType
-          let attr' = attr {AttrL.lamKind = LK.Fix (mx, x, codType')}
+          let attr' = attr {AttrL.lamKind = LK.Fix opacity (mx, x, codType')}
           return (m :< TM.PiIntro attr' impArgs' defaultArgs' expArgs' e')
         LK.Normal mName codType -> do
           codType' <- inlineType' h codType
@@ -133,10 +133,12 @@ inline' h term = do
         else do
           let Handle {dmap} = h
           case e' of
-            (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal {}}) impArgsBinder defaultArgsBinder expArgsBinder body)
+            (_ :< TM.PiIntro (AttrL.Attr {lamKind}) impArgsBinder defaultArgsBinder expArgsBinder body)
               | length impArgsBinder == length impArgs',
                 expBinders <- map fst defaultArgsBinder ++ expArgsBinder,
-                length expBinders == length expArgs' -> do
+                length expBinders == length expArgs',
+                canReduceByLamKind lamKind -> do
+                  let selfSub = selfSubstForLamKind lamKind e'
                   let impBinders = impArgsBinder
                   let typeArgs = impArgs'
                   let termArgs = expArgs'
@@ -147,11 +149,12 @@ inline' h term = do
                   if typeArgVals && termArgVals
                     then do
                       let expIds = map (\(_, x, _) -> x) expBinders
-                      let subTerm = IntMap.fromList $ zip (map Ident.toInt expIds) (map Right termArgs)
+                      let expSub = IntMap.fromList $ zip (map Ident.toInt expIds) (map Right termArgs)
+                      let subTerm = IntMap.union expSub selfSub
                       _ :< body' <- liftIO $ Subst.substWithType (substHandle h) subTerm subType body
                       inline' h $ m :< body'
                     else do
-                      bodyTypeSub <- liftIO $ Subst.substWithType (substHandle h) IntMap.empty subType body
+                      bodyTypeSub <- liftIO $ Subst.substWithType (substHandle h) selfSub subType body
                       (expBinders', _ :< body') <- liftIO $ Subst.subst' (substHandle h) IntMap.empty expBinders bodyTypeSub
                       inline' h $ bind (zip expBinders' termArgs) (m :< body')
             (_ :< TM.VarGlobal _ dd)
@@ -185,7 +188,7 @@ inline' h term = do
                           body''' <- inline' h body''
                           popGuard h
                           identity <- liftIO $ Gensym.newCount (gensymHandle h)
-                          let attr = AttrL.Attr {lamKind = LK.Fix (m, selfIdent, selfType), identity}
+                          let attr = AttrL.Attr {lamKind = LK.Fix O.Opaque (m, selfIdent, selfType), identity}
                           let fun = m :< TM.PiIntro attr [] [] expBinders' body'''
                           let fixVal = m :< TM.PiElim False fun [] []
                           return $ m :< TM.PiElim False fixVal [] termArgs
@@ -576,3 +579,21 @@ lookupGuard h dd typeArgs = do
 matchesGuardEntry :: DD.DefiniteDescription -> [TM.Type] -> GuardEntry -> Bool
 matchesGuardEntry dd' args entry =
   guardFunction entry == dd' && TermEq.eqTypes (guardTypeArgs entry) args
+
+canReduceByLamKind :: LK.LamKindF a -> Bool
+canReduceByLamKind lamKind =
+  case lamKind of
+    LK.Normal {} ->
+      True
+    LK.Fix O.Clear _ ->
+      True
+    _ ->
+      False
+
+selfSubstForLamKind :: LK.LamKindF a -> TM.Term -> IntMap.IntMap (Either Ident TM.Term)
+selfSubstForLamKind lamKind selfTerm =
+  case lamKind of
+    LK.Fix O.Clear (_, selfIdent, _) ->
+      IntMap.singleton (Ident.toInt selfIdent) (Right selfTerm)
+    _ ->
+      IntMap.empty

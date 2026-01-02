@@ -36,6 +36,7 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.CreateSymbol (newTextForHole)
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.ExternalName qualified as EN
+import Language.Common.Opacity qualified as O
 import Language.Common.Rune qualified as RU
 import Language.RawTerm.CreateHole qualified as RT
 import Language.RawTerm.Key
@@ -135,7 +136,9 @@ rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTerm' h m headSymbol c = do
   case headSymbol of
     "define" -> do
-      rawTermDefine h m c
+      rawTermDefine h O.Opaque m c
+    "inline" -> do
+      rawTermDefine h O.Clear m c
     "introspect" -> do
       rawTermIntrospect h m c
     "include-text" -> do
@@ -496,13 +499,13 @@ parseDefInfoCod h m =
         return ([], (hole, []))
     ]
 
-rawTermDefine :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
-rawTermDefine h m c0 = do
+rawTermDefine :: Handle -> O.Opacity -> Hint -> C -> Parser (RT.RawTerm, C)
+rawTermDefine h opacity m c0 = do
   (defInfo, c) <- parseDef h $ do
     (name, c1) <- baseName
     name' <- liftIO $ adjustHoleVar h name
     return (name', c1)
-  return (m :< RT.PiIntroFix c0 defInfo, c)
+  return (m :< RT.PiIntroFix opacity c0 defInfo, c)
 
 adjustHoleVar :: Handle -> BN.BaseName -> IO T.Text
 adjustHoleVar h bn = do
