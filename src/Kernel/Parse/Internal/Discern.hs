@@ -53,6 +53,7 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
@@ -60,7 +61,6 @@ import Language.Common.Geist qualified as G
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as LI
@@ -629,11 +629,9 @@ discernType h ty =
       attr' <- discernAttrData hAttr attr
       return $ m :< WT.Data attr' dataName es'
     m :< RT.Box t -> do
-      ensureRuntimeStage m h "meta operation (`meta`)"
       t' <- discernType h t
       return $ m :< WT.Box t'
     m :< RT.BoxNoema t -> do
-      ensureRuntimeStage m h "meta operation (`&`)"
       t' <- discernType h t
       return $ m :< WT.BoxNoema t'
     m :< RT.Code t -> do
