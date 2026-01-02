@@ -68,7 +68,6 @@ import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
 import Language.Common.ModuleAlias (coreModuleAlias)
 import Language.Common.Noema qualified as N
-import Language.Common.Opacity qualified as O
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize (IntSize (IntSize64))
 import Language.Common.PrimType qualified as PT
@@ -159,7 +158,7 @@ discernStmt h stmt = do
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefineType True (SK.Normal O.Clear) m dd [] [] [] t' e']
+      return [WeakStmtDefineType True SK.Macro m dd [] [] [] t' e']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
@@ -211,10 +210,12 @@ registerTopLevelName h stmt = do
 discernStmtKind :: H.Handle -> RawStmtKind DD.DefiniteDescription -> Hint -> App (SK.StmtKind WT.WeakType)
 discernStmtKind h stmtKind m =
   case stmtKind of
-    SK.Normal opacity ->
-      return $ SK.Normal opacity
+    SK.Define ->
+      return SK.Define
     SK.Inline ->
       return SK.Inline
+    SK.Macro ->
+      return SK.Macro
     SK.Main opacity _ -> do
       unitType <- getUnitType h m
       return $ SK.Main opacity unitType
@@ -244,9 +245,11 @@ getUnitType h m = do
 toCandidateKind :: SK.StmtKind a -> CandidateKind
 toCandidateKind stmtKind =
   case stmtKind of
-    SK.Normal {} ->
+    SK.Define ->
       Function
     SK.Inline ->
+      Function
+    SK.Macro ->
       Function
     SK.Main {} ->
       Function

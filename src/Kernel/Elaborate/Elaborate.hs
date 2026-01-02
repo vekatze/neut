@@ -239,10 +239,12 @@ insertWeakStmt h stmt = do
 elaborateStmtKind :: Handle -> StmtKind WT.WeakType -> App (StmtKind TM.Type)
 elaborateStmtKind h stmtKind =
   case stmtKind of
-    Normal opacity ->
-      return $ Normal opacity
+    Define ->
+      return Define
     Inline ->
       return Inline
+    Macro ->
+      return Macro
     Main opacity t -> do
       t' <- elaborateType h t
       return $ Main opacity t'

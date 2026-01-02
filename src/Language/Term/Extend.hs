@@ -124,10 +124,12 @@ extendCase decisionCase =
 extendStmtKind :: StmtKind (Cofree TM.TypeF ()) -> StmtKind TM.Type
 extendStmtKind stmtKind =
   case stmtKind of
-    Normal opacity ->
-      Normal opacity
+    Define ->
+      Define
     Inline ->
       Inline
+    Macro ->
+      Macro
     Main opacity t ->
       Main opacity (extendType t)
     Alias ->

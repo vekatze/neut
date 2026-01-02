@@ -131,10 +131,12 @@ insertType h dd t = do
 inferStmtKind :: Handle -> StmtKind WT.WeakType -> App (StmtKind WT.WeakType)
 inferStmtKind h stmtKind =
   case stmtKind of
-    Normal {} ->
-      return stmtKind
+    Define ->
+      return Define
     Inline ->
       return Inline
+    Macro ->
+      return Macro
     Main opacity t -> do
       t' <- inferType h t
       return $ Main opacity t'

@@ -133,10 +133,12 @@ liftGeist h geist = do
 liftStmtKind :: Locator.Handle -> RawStmtKind BN.BaseName -> RawStmtKind DD.DefiniteDescription
 liftStmtKind h stmtKind = do
   case stmtKind of
-    SK.Normal o ->
-      SK.Normal o
+    SK.Define ->
+      SK.Define
     SK.Inline ->
       SK.Inline
+    SK.Macro ->
+      SK.Macro
     SK.Main o t ->
       SK.Main o t
     SK.Alias ->

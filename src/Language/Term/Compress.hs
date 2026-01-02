@@ -119,10 +119,12 @@ compressCase decisionCase =
 compressStmtKind :: StmtKind TM.Type -> StmtKind (Cofree TM.TypeF ())
 compressStmtKind stmtKind =
   case stmtKind of
-    Normal opacity ->
-      Normal opacity
+    Define ->
+      Define
     Inline ->
       Inline
+    Macro ->
+      Macro
     Main opacity t ->
       Main opacity (compressType t)
     Alias ->

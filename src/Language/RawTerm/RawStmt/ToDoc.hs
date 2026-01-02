@@ -184,10 +184,12 @@ decStmt stmt =
   case stmt of
     RawStmtDefineTerm c stmtKind def -> do
       case stmtKind of
-        SK.Normal O.Clear ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "macro" c (fmap BN.reify def)
+        SK.Define ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         SK.Inline ->
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
+        SK.Macro ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "macro" c (fmap BN.reify def)
         SK.Main O.Clear _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "macro" c (fmap BN.reify def)
         _ ->

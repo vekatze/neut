@@ -194,9 +194,11 @@ getGlobalNamesFromDef stmtKind geist = do
   let m = RT.loc geist
   let allArgNum = AN.fromInt $ length impArgs + length defaultArgs + length expArgs
   case stmtKind of
-    SK.Normal opacity -> do
-      [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+    SK.Define ->
+      [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
     SK.Inline ->
+      [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
+    SK.Macro ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
     SK.Main opacity _ ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
@@ -220,9 +222,11 @@ _getGlobalNames' stmt = do
       let defaultBinders = map fst defaultArgs
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
       case stmtKind of
-        SK.Normal opacity -> do
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Define ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Inline ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
+        SK.Macro ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Main opacity _ ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
@@ -238,9 +242,11 @@ _getGlobalNames' stmt = do
       let defaultBinders = map fst defaultArgs
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
       case stmtKind of
-        SK.Normal opacity -> do
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Define ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Inline ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
+        SK.Macro ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Main opacity _ ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]

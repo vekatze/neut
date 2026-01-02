@@ -118,12 +118,22 @@ parseForeignItem h = do
   return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
 
 parseDefine :: Handle -> Parser (RawStmt, C)
-parseDefine h =
-  parseDefine' h O.Opaque
+parseDefine h = do
+  c1 <- keyword "define"
+  (def, c) <- parseDef h baseName
+  let defName = RT.getDefName def
+  if defName == BN.mainName || defName == BN.zenName
+    then return (RawStmtDefineTerm c1 (SK.Main O.Opaque ()) def, c)
+    else return (RawStmtDefineTerm c1 SK.Define def, c)
 
 parseMacro :: Handle -> Parser (RawStmt, C)
-parseMacro h =
-  parseDefine' h O.Clear
+parseMacro h = do
+  c1 <- keyword "macro"
+  (def, c) <- parseDef h baseName
+  let defName = RT.getDefName def
+  if defName == BN.mainName || defName == BN.zenName
+    then return (RawStmtDefineTerm c1 (SK.Main O.Clear ()) def, c)
+    else return (RawStmtDefineTerm c1 SK.Macro def, c)
 
 parseInline :: Handle -> Parser (RawStmt, C)
 parseInline h = do
@@ -136,20 +146,6 @@ parseAlias h = do
   c1 <- keyword "alias"
   (def, c) <- parseAliasDef h baseName
   return (RawStmtDefineType c1 SK.Alias def, c)
-
-parseDefine' :: Handle -> O.Opacity -> Parser (RawStmt, C)
-parseDefine' h opacity = do
-  c1 <-
-    case opacity of
-      O.Opaque ->
-        keyword "define"
-      O.Clear ->
-        keyword "macro"
-  (def, c) <- parseDef h baseName
-  let defName = RT.getDefName def
-  if defName == BN.mainName || defName == BN.zenName
-    then return (RawStmtDefineTerm c1 (SK.Main opacity ()) def, c)
-    else return (RawStmtDefineTerm c1 (SK.Normal opacity) def, c)
 
 parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do

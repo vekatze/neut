@@ -246,10 +246,12 @@ weakenCase decisionCase = do
 weakenStmtKind :: StmtKind TM.Type -> StmtKind WT.WeakType
 weakenStmtKind stmtKind =
   case stmtKind of
-    Normal opacity ->
-      Normal opacity
+    Define ->
+      Define
     Inline ->
       Inline
+    Macro ->
+      Macro
     Main opacity t ->
       Main opacity (weakenType t)
     Alias ->

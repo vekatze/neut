@@ -1,7 +1,6 @@
 module Kernel.Parse.Internal.Discern.Variadic (defineVariadic) where
 
 import Language.Common.DefiniteDescription qualified as DD
-import Language.Common.Opacity qualified as O
 import Language.Common.RuleKind (RuleKind)
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.RawStmt
@@ -44,4 +43,4 @@ makeDef m name e t loc = do
             trailingComment = [],
             endLoc = loc
           }
-  PostRawStmtDefineTerm [] (SK.Normal O.Clear) rawDef
+  PostRawStmtDefineTerm [] SK.Macro rawDef
