@@ -196,6 +196,8 @@ getGlobalNamesFromDef stmtKind geist = do
   case stmtKind of
     SK.Normal opacity -> do
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+    SK.Inline ->
+      [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
     SK.Main opacity _ ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
     SK.Alias ->
@@ -220,6 +222,8 @@ _getGlobalNames' stmt = do
       case stmtKind of
         SK.Normal opacity -> do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Inline ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Main opacity _ ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
         SK.Alias ->
@@ -236,6 +240,8 @@ _getGlobalNames' stmt = do
       case stmtKind of
         SK.Normal opacity -> do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Inline ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Main opacity _ ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
         SK.Alias ->

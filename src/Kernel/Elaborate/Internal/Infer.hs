@@ -133,6 +133,8 @@ inferStmtKind h stmtKind =
   case stmtKind of
     Normal {} ->
       return stmtKind
+    Inline ->
+      return Inline
     Main opacity t -> do
       t' <- inferType h t
       return $ Main opacity t'

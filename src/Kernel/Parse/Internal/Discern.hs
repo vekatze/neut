@@ -213,6 +213,8 @@ discernStmtKind h stmtKind m =
   case stmtKind of
     SK.Normal opacity ->
       return $ SK.Normal opacity
+    SK.Inline ->
+      return SK.Inline
     SK.Main opacity _ -> do
       unitType <- getUnitType h m
       return $ SK.Main opacity unitType
@@ -243,6 +245,8 @@ toCandidateKind :: SK.StmtKind a -> CandidateKind
 toCandidateKind stmtKind =
   case stmtKind of
     SK.Normal {} ->
+      Function
+    SK.Inline ->
       Function
     SK.Main {} ->
       Function

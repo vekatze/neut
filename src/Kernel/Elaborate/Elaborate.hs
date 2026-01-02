@@ -241,6 +241,8 @@ elaborateStmtKind h stmtKind =
   case stmtKind of
     Normal opacity ->
       return $ Normal opacity
+    Inline ->
+      return Inline
     Main opacity t -> do
       t' <- elaborateType h t
       return $ Main opacity t'

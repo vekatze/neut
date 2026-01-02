@@ -121,6 +121,8 @@ compressStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       Normal opacity
+    Inline ->
+      Inline
     Main opacity t ->
       Main opacity (compressType t)
     Alias ->

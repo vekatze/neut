@@ -135,6 +135,8 @@ liftStmtKind h stmtKind = do
   case stmtKind of
     SK.Normal o ->
       SK.Normal o
+    SK.Inline ->
+      SK.Inline
     SK.Main o t ->
       SK.Main o t
     SK.Alias ->

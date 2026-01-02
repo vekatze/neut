@@ -18,6 +18,7 @@ import Logger.Hint
 
 data BaseStmtKind name binder t
   = Normal O.Opacity
+  | Inline
   | Main O.Opacity t
   | Alias
   | Data
@@ -37,6 +38,8 @@ toOpacity stmtKind =
   case stmtKind of
     Normal opacity ->
       opacity
+    Inline ->
+      O.Clear
     Main opacity _ ->
       opacity
     Alias ->
@@ -48,6 +51,8 @@ toLowOpacity :: BaseStmtKind name x t -> O.Opacity
 toLowOpacity stmtKind =
   case stmtKind of
     Normal _ ->
+      O.Opaque
+    Inline ->
       O.Opaque
     Main _ _ ->
       O.Opaque
@@ -63,6 +68,8 @@ isInlineStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       opacity == O.Clear
+    Inline ->
+      False
     Main opacity _ ->
       opacity == O.Clear
     _ ->

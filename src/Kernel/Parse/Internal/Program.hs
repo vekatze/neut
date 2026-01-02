@@ -62,6 +62,7 @@ parseStmt h = do
     [ parseDefine h,
       parseData h,
       parseMacro h,
+      parseInline h,
       parseAlias h,
       parseNominal h,
       parseResource h,
@@ -123,6 +124,12 @@ parseDefine h =
 parseMacro :: Handle -> Parser (RawStmt, C)
 parseMacro h =
   parseDefine' h O.Clear
+
+parseInline :: Handle -> Parser (RawStmt, C)
+parseInline h = do
+  c1 <- keyword "inline"
+  (def, c) <- parseDef h baseName
+  return (RawStmtDefineTerm c1 SK.Inline def, c)
 
 parseAlias :: Handle -> Parser (RawStmt, C)
 parseAlias h = do
