@@ -154,7 +154,7 @@ parseAlias :: Handle -> Parser (RawStmt, C)
 parseAlias h = do
   c1 <- keyword "alias"
   (def, c) <- parseAliasDef h baseName
-  return (RawStmtDefineType c1 SK.Alias def, c)
+  return (RawStmtDefineType c1 def, c)
 
 parseData :: Handle -> Parser (RawStmt, C)
 parseData h = do

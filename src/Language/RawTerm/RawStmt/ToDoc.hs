@@ -193,12 +193,8 @@ decStmt stmt =
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
-    RawStmtDefineType c stmtKind def -> do
-      case stmtKind of
-        SK.Alias ->
-          RT.decodeTypeDef (RT.nameToDoc . N.Var) "alias" c (fmap BN.reify def)
-        _ ->
-          RT.decodeTypeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
+    RawStmtDefineType c def -> do
+      RT.decodeTypeDef (RT.nameToDoc . N.Var) "alias" c (fmap BN.reify def)
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
       attachStmtComment (c1 ++ c2) $
         D.join

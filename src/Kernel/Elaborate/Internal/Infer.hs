@@ -94,12 +94,8 @@ inferStmt h stmt =
       (expArgs', h''') <- inferBinder' h'' expArgs
       codType' <- inferType h''' codType
       body' <- inferType h''' body
-      case stmtKind of
-        SK.Alias -> do
-          checkIsTypeType h''' m codType'
-          liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
-        _ ->
-          liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
+      checkIsTypeType h''' m codType'
+      liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
       stmtKind' <- inferStmtKindType h''' stmtKind
       return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' defaultArgs' expArgs' codType' body'
     WeakStmtVariadic kind m dd -> do

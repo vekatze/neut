@@ -129,8 +129,7 @@ discernStmt h stmt = do
       return [WeakStmtDefineTerm isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' body']
     PostRawStmtDefineType _ stmtKind (RT.RawTypeDef {typeGeist, typeBody, typeEndLoc}) -> do
       registerTopLevelName h stmt
-      let baseStage = 0
-      let h' = h {H.currentStage = baseStage}
+      let h' = h {H.currentStage = 0}
       let impArgs = RT.extractImpArgs $ RT.impArgs typeGeist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs typeGeist
       let expArgs = RT.extractArgs $ RT.expArgs typeGeist

@@ -59,7 +59,6 @@ data BaseRawStmt name
       (RT.RawDef name)
   | RawStmtDefineType
       C
-      (RawStmtKindType name)
       (RT.RawTypeDef name)
   | RawStmtDefineData
       C
