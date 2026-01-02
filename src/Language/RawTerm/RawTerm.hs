@@ -79,6 +79,7 @@ data RawTypeF a
   | Void
   | Resource DD.DefiniteDescription C (RawTerm, C) (RawTerm, C) (RawTerm, C) -- DD is only for printing
   | Option a
+  | TyIntrospect C T.Text C (SE.Series (Maybe T.Text, C, a))
 
 type RawType = Cofree RawTypeF Hint
 

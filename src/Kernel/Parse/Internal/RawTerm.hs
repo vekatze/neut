@@ -119,6 +119,8 @@ rawType' h m headSymbol c =
       rawTypePointer m c
     "void" ->
       rawTypeVoid m c
+    "introspect" ->
+      rawTypeIntrospect h m c
     "_" ->
       rawTypeHole h m c
     _ ->
@@ -368,6 +370,21 @@ rawTypeHole :: Handle -> Hint -> C -> Parser (RT.RawType, C)
 rawTypeHole h m c = do
   hole <- liftIO $ RT.createTypeHole (gensymHandle h) m
   return (hole, c)
+
+rawTypeIntrospect :: Handle -> Hint -> C -> Parser (RT.RawType, C)
+rawTypeIntrospect h m c1 = do
+  (key, c2) <- symbol
+  (clauseList, c) <- seriesBraceList $ rawTypeIntrospectiveClause h
+  return (m :< RT.TyIntrospect c1 key c2 clauseList, c)
+
+rawTypeIntrospectiveClause :: Handle -> Parser ((Maybe T.Text, C, RT.RawType), C)
+rawTypeIntrospectiveClause h = do
+  (s, cKey) <- symbol
+  cArrow <- delimiter "=>"
+  (body, c) <- rawType h
+  if s /= "default"
+    then return ((Just s, cKey ++ cArrow, body), c)
+    else return ((Nothing, cKey ++ cArrow, body), c)
 
 parseDef :: Handle -> Parser (a, C) -> Parser (RT.RawDef a, C)
 parseDef h nameParser = do

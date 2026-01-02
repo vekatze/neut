@@ -664,6 +664,10 @@ discernType h ty =
       unitType' <- discernType h unitType
       t' <- discernType h t
       return $ m :< WT.TyApp eitherType' [unitType', t']
+    m :< RT.TyIntrospect _ key _ clauseList -> do
+      value <- getIntrospectiveValue h m key
+      clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
+      discernType h clause
 
 type ShouldInsertTagInfo =
   Bool
@@ -820,7 +824,7 @@ bind' mustIgnoreRelayedVars loc endLoc (m, x, c1, c2, t) e cont =
       cont
       endLoc
 
-lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, RT.RawTerm)] -> App RT.RawTerm
+lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, C, a)] -> App a
 lookupIntrospectiveClause m value clauseList =
   case clauseList of
     [] ->

@@ -413,6 +413,12 @@ typeToDoc ty =
       D.text $ DD.localLocator dd
     _ :< Option t ->
       D.join [D.text "?", typeToDoc t]
+    _ :< TyIntrospect c1 key c2 clauseList -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "introspect",
+          PI.horizontal $ D.text key,
+          PI.inject $ SE.decode' $ fmap decodeTypeIntrospectClause clauseList
+        ]
 
 decodeDef :: (a -> D.Doc) -> T.Text -> C -> RawDef a -> D.Doc
 decodeDef nameDecoder keyword c def = do
@@ -695,6 +701,11 @@ decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> (D.Doc, T.Text, D.Doc)
 decodeIntrospectClause (mKey, c, body) = do
   let key = D.text $ fromMaybe "default" mKey
   decodeDoubleArrowClause (key, c, body)
+
+decodeTypeIntrospectClause :: (Maybe T.Text, C, RawType) -> (D.Doc, T.Text, D.Doc)
+decodeTypeIntrospectClause (mKey, c, body) = do
+  let key = D.text $ fromMaybe "default" mKey
+  (PI.arrange [PI.container key], "=>", attachComment c $ typeToDoc body)
 
 decodePatternRow :: RP.RawPatternRow RawTerm -> (D.Doc, T.Text, D.Doc)
 decodePatternRow (patArgs, c, body) = do
