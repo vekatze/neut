@@ -61,7 +61,7 @@ parseStmt h = do
   choice
     [ parseDefine h,
       parseData h,
-      parseInline h,
+      parseMacro h,
       parseAlias h,
       parseNominal h,
       parseResource h,
@@ -120,8 +120,8 @@ parseDefine :: Handle -> Parser (RawStmt, C)
 parseDefine h =
   parseDefine' h O.Opaque
 
-parseInline :: Handle -> Parser (RawStmt, C)
-parseInline h =
+parseMacro :: Handle -> Parser (RawStmt, C)
+parseMacro h =
   parseDefine' h O.Clear
 
 parseAlias :: Handle -> Parser (RawStmt, C)
@@ -137,7 +137,7 @@ parseDefine' h opacity = do
       O.Opaque ->
         keyword "define"
       O.Clear ->
-        keyword "inline"
+        keyword "macro"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
   if defName == BN.mainName || defName == BN.zenName

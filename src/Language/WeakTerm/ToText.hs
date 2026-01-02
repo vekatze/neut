@@ -39,7 +39,7 @@ toText term =
         AttrL.Attr {lamKind = LK.Fix opacity (_, x, codType)} ->
           (case opacity of
             O.Opaque -> "define "
-            O.Clear -> "inline ")
+            O.Clear -> "macro ")
             <> showVariable x
             <> showImpArgs impArgs defaultArgs
             <> inParen (showDomArgList expArgs)

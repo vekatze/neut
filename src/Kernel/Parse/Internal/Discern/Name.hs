@@ -219,7 +219,7 @@ ensureTopLevelStage m h dd isInline =
         raiseError m $
           "`"
             <> DD.reify dd
-            <> "` is an inline definition and can only be used at stage >= 1 (current stage: "
+            <> "` is a macro definition and can only be used at stage >= 1 (current stage: "
             <> T.pack (show stage)
             <> ")"
     else do

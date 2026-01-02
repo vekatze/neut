@@ -54,7 +54,7 @@ toDoc term =
               O.Opaque ->
                 "define"
               O.Clear ->
-                "inline"
+                "macro"
       decodeDef (nameToDoc . N.Var) keyword c def
     _ :< PiElim e c1 mImpArgs c2 expArgs -> do
       case mImpArgs of
