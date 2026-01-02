@@ -5,7 +5,8 @@ module Language.RawTerm.RawStmt
     RawStmt,
     PostRawStmt (..),
     PostRawProgram (..),
-    RawStmtKind,
+    RawStmtKindTerm,
+    RawStmtKindType,
     RawConsInfo (..),
     RawImport (..),
     RawImportItem (..),
@@ -45,17 +46,20 @@ data RawConsInfo a = RawConsInfo
     endLoc :: Loc
   }
 
-type RawStmtKind a =
-  SK.BaseStmtKind a (RawBinder RT.RawType) ()
+type RawStmtKindTerm a =
+  SK.BaseStmtKindTerm a (RawBinder RT.RawType) ()
+
+type RawStmtKindType a =
+  SK.BaseStmtKindType a (RawBinder RT.RawType)
 
 data BaseRawStmt name
   = RawStmtDefineTerm
       C
-      (RawStmtKind name)
+      (RawStmtKindTerm name)
       (RT.RawDef name)
   | RawStmtDefineType
       C
-      (RawStmtKind name)
+      (RawStmtKindType name)
       (RT.RawTypeDef name)
   | RawStmtDefineData
       C
@@ -97,11 +101,11 @@ data PostRawProgram
 data PostRawStmt
   = PostRawStmtDefineTerm
       C
-      (RawStmtKind DD.DefiniteDescription)
+      (RawStmtKindTerm DD.DefiniteDescription)
       (RT.RawDef DD.DefiniteDescription)
   | PostRawStmtDefineType
       C
-      (RawStmtKind DD.DefiniteDescription)
+      (RawStmtKindType DD.DefiniteDescription)
       (RT.RawTypeDef DD.DefiniteDescription)
   | PostRawStmtDefineResource
       C

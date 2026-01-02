@@ -168,9 +168,9 @@ _getGlobalNames :: PostRawStmt -> [(DD.DefiniteDescription, (Hint, GN.GlobalName
 _getGlobalNames stmt = do
   case stmt of
     PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist}) ->
-      getGlobalNamesFromDef stmtKind geist
+      getGlobalNamesFromDefTerm stmtKind geist
     PostRawStmtDefineType _ stmtKind (RT.RawTypeDef {typeGeist}) ->
-      getGlobalNamesFromDef stmtKind typeGeist
+      getGlobalNamesFromDefType stmtKind typeGeist
     PostRawStmtVariadic kind m name -> do
       [(name, (m, GN.Rule kind))]
     PostRawStmtNominal {} -> do
@@ -180,11 +180,11 @@ _getGlobalNames stmt = do
     PostRawStmtForeign {} ->
       []
 
-getGlobalNamesFromDef ::
-  RawStmtKind DD.DefiniteDescription ->
+getGlobalNamesFromDefTerm ::
+  RawStmtKindTerm DD.DefiniteDescription ->
   RT.RawGeist DD.DefiniteDescription ->
   [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
-getGlobalNamesFromDef stmtKind geist = do
+getGlobalNamesFromDefTerm stmtKind geist = do
   let name = fst $ RT.name geist
   let impArgs = RT.extractImpArgs $ RT.impArgs geist
   let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
@@ -201,14 +201,28 @@ getGlobalNamesFromDef stmtKind geist = do
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
     SK.Main _ ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
+    SK.DataIntro {} ->
+      []
+
+getGlobalNamesFromDefType ::
+  RawStmtKindType DD.DefiniteDescription ->
+  RT.RawGeist DD.DefiniteDescription ->
+  [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
+getGlobalNamesFromDefType stmtKind geist = do
+  let name = fst $ RT.name geist
+  let impArgs = RT.extractImpArgs $ RT.impArgs geist
+  let defaultArgs = map fst $ SE.extract $ fst $ RT.defaultArgs geist
+  let expArgs = RT.extractArgs $ RT.expArgs geist
+  let isConstLike = RT.isConstLike geist
+  let m = RT.loc geist
+  let allArgNum = AN.fromInt $ length impArgs + length defaultArgs + length expArgs
+  case stmtKind of
     SK.Alias ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
     SK.Data dataName dataArgs consInfoList -> do
       let dataArgNum = AN.fromInt $ length dataArgs
       let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
       (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
-    SK.DataIntro {} ->
-      []
 
 getGlobalNames' :: [Stmt] -> [(DD.DefiniteDescription, (Hint, GN.GlobalName))]
 getGlobalNames' stmtList = do
@@ -229,34 +243,18 @@ _getGlobalNames' stmt = do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Main _ ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
-        SK.Alias ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
-        SK.Data dataName dataArgs consInfoList -> do
-          let dataArgNum = AN.fromInt $ length dataArgs
-          let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
-          (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
         SK.DataIntro {} ->
           []
     StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs _ _ -> do
       let defaultBinders = map fst defaultArgs
       let allArgNum = AN.fromInt $ length $ impArgs ++ defaultBinders ++ expArgs
       case stmtKind of
-        SK.Define ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
-        SK.Inline ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
-        SK.Macro ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
-        SK.Main _ ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Alias ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Data dataName dataArgs consInfoList -> do
           let dataArgNum = AN.fromInt $ length dataArgs
           let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
           (dataName, (m, GN.Data dataArgNum consNameArrowList isConstLike)) : consNameArrowList
-        SK.DataIntro {} ->
-          []
     StmtVariadic kind (SavedHint m) name -> do
       [(name, (m, GN.Rule kind))]
     StmtForeign {} ->

@@ -27,7 +27,7 @@ type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Type], D.Discriminant)
 data StmtF t a
   = StmtDefine
       IsConstLike
-      (SK.StmtKind t)
+      (SK.StmtKindTerm t)
       SavedHint
       DD.DefiniteDescription
       [BinderF t]
@@ -37,7 +37,7 @@ data StmtF t a
       a
   | StmtDefineType
       IsConstLike
-      (SK.StmtKind t)
+      (SK.StmtKindType t)
       SavedHint
       DD.DefiniteDescription
       [BinderF t]

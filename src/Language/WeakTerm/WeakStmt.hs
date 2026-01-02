@@ -1,6 +1,7 @@
 module Language.WeakTerm.WeakStmt
   ( WeakStmt (..),
-    WeakStmtKind,
+    WeakStmtKindTerm,
+    WeakStmtKindType,
     WeakForeign,
     getWeakStmtName,
   )
@@ -19,13 +20,16 @@ import Logger.Hint
 type WeakForeign =
   F.BaseForeign WT.WeakType
 
-type WeakStmtKind =
-  SK.BaseStmtKind DD.DefiniteDescription (BinderF WT.WeakType) WT.WeakType
+type WeakStmtKindTerm =
+  SK.BaseStmtKindTerm DD.DefiniteDescription (BinderF WT.WeakType) WT.WeakType
+
+type WeakStmtKindType =
+  SK.BaseStmtKindType DD.DefiniteDescription (BinderF WT.WeakType)
 
 data WeakStmt
   = WeakStmtDefineTerm
       IsConstLike
-      WeakStmtKind
+      WeakStmtKindTerm
       Hint
       DD.DefiniteDescription
       [BinderF WT.WeakType]
@@ -35,7 +39,7 @@ data WeakStmt
       WT.WeakTerm
   | WeakStmtDefineType
       IsConstLike
-      WeakStmtKind
+      WeakStmtKindType
       Hint
       DD.DefiniteDescription
       [BinderF WT.WeakType]

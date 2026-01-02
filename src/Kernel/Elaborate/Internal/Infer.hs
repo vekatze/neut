@@ -49,7 +49,6 @@ import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
-import Language.Common.StmtKind
 import Language.Common.StmtKind qualified as SK
 import Language.LowComp.DeclarationName qualified as DN
 import Language.WeakTerm.CreateHole qualified as WT
@@ -74,14 +73,11 @@ inferStmt h stmt =
         forM_ (impArgs' ++ map fst defaultArgs') $ \(mx, _, t) ->
           checkIsTypeType h''' mx t
       case stmtKind of
-        SK.Alias -> do
-          checkIsTypeType h''' m codType'
-          liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
         SK.DataIntro {} -> do
           liftIO $ insertType h''' x $ m :< WT.Pi (PK.DataIntro isConstLike) impArgs' defaultArgs' expArgs' codType'
         _ ->
           liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
-      stmtKind' <- inferStmtKind h''' stmtKind
+      stmtKind' <- inferStmtKindTerm h''' stmtKind
       (e', te) <- infer h''' e
       liftIO $ Constraint.insert (constraintHandle h''') codType' te
       case getMainUnitType stmtKind of
@@ -98,8 +94,13 @@ inferStmt h stmt =
       (expArgs', h''') <- inferBinder' h'' expArgs
       codType' <- inferType h''' codType
       body' <- inferType h''' body
-      liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
-      stmtKind' <- inferStmtKind h''' stmtKind
+      case stmtKind of
+        SK.Alias -> do
+          checkIsTypeType h''' m codType'
+          liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
+        _ ->
+          liftIO $ insertType h''' x $ m :< WT.Pi (PK.Normal isConstLike) impArgs' defaultArgs' expArgs' codType'
+      stmtKind' <- inferStmtKindType h''' stmtKind
       return $ WeakStmtDefineType isConstLike stmtKind' m x impArgs' defaultArgs' expArgs' codType' body'
     WeakStmtVariadic kind m dd -> do
       return $ WeakStmtVariadic kind m dd
@@ -128,40 +129,44 @@ insertType h dd t = do
       Constraint.insert (constraintHandle h) declaredType t
   Type.insert' (typeHandle h) dd t
 
-inferStmtKind :: Handle -> StmtKind WT.WeakType -> App (StmtKind WT.WeakType)
-inferStmtKind h stmtKind =
+inferStmtKindTerm :: Handle -> SK.StmtKindTerm WT.WeakType -> App (SK.StmtKindTerm WT.WeakType)
+inferStmtKindTerm h stmtKind =
   case stmtKind of
-    Define ->
-      return Define
-    Inline ->
-      return Inline
-    Macro ->
-      return Macro
-    Main t -> do
+    SK.Define ->
+      return SK.Define
+    SK.Inline ->
+      return SK.Inline
+    SK.Macro ->
+      return SK.Macro
+    SK.Main t -> do
       t' <- inferType h t
-      return $ Main t'
-    Alias ->
-      return Alias
-    Data dataName dataArgs consInfoList -> do
+      return $ SK.Main t'
+    SK.DataIntro consName dataArgs expConsArgs discriminant -> do
+      (dataArgs', varEnv) <- inferBinder' h dataArgs
+      (expConsArgs', _) <- inferBinder' varEnv expConsArgs
+      return $ SK.DataIntro consName dataArgs' expConsArgs' discriminant
+
+inferStmtKindType :: Handle -> SK.StmtKindType WT.WeakType -> App (SK.StmtKindType WT.WeakType)
+inferStmtKindType h stmtKind =
+  case stmtKind of
+    SK.Alias ->
+      return SK.Alias
+    SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', varEnv) <- inferBinder' h dataArgs
       consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
         (consArgs', _) <- inferBinder' varEnv consArgs
         return (m, dd, constLike, consArgs', discriminant)
-      return $ Data dataName dataArgs' consInfoList'
-    DataIntro consName dataArgs expConsArgs discriminant -> do
-      (dataArgs', varEnv) <- inferBinder' h dataArgs
-      (expConsArgs', _) <- inferBinder' varEnv expConsArgs
-      return $ DataIntro consName dataArgs' expConsArgs' discriminant
+      return $ SK.Data dataName dataArgs' consInfoList'
 
 getIntType :: Platform.Handle -> Hint -> App WT.WeakType
 getIntType h m = do
   let baseSize = Platform.getDataSize h
   return $ WT.intTypeBySize m baseSize
 
-getMainUnitType :: StmtKind WT.WeakType -> Maybe WT.WeakType
+getMainUnitType :: SK.StmtKindTerm WT.WeakType -> Maybe WT.WeakType
 getMainUnitType stmtKind =
   case stmtKind of
-    Main unitType ->
+    SK.Main unitType ->
       return unitType
     _ ->
       Nothing

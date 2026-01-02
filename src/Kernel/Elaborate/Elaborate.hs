@@ -35,8 +35,8 @@ import Kernel.Elaborate.Internal.Handle.Hole qualified as Hole
 import Kernel.Elaborate.Internal.Handle.LocalLogs qualified as LocalLogs
 import Kernel.Elaborate.Internal.Handle.WeakDecl qualified as WeakDecl
 import Kernel.Elaborate.Internal.Handle.WeakDef qualified as WeakDef
-import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Handle.WeakType qualified as WeakType
+import Kernel.Elaborate.Internal.Handle.WeakTypeDef qualified as WeakTypeDef
 import Kernel.Elaborate.Internal.Infer qualified as Infer
 import Kernel.Elaborate.Internal.Unify qualified as Unify
 import Language.Common.Annotation qualified as AN
@@ -48,8 +48,8 @@ import Language.Common.BasePrimType qualified as BPT
 import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DecisionTree qualified as DT
-import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.DefaultArgs qualified as DefaultArgs
+import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
@@ -63,7 +63,6 @@ import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize
 import Language.Common.PrimType qualified as PT
-import Language.Common.StmtKind
 import Language.Common.StmtKind qualified as SK
 import Language.LowComp.DeclarationName qualified as DN
 import Language.Term.Inline qualified as Inline
@@ -125,7 +124,7 @@ elaborateStmt :: Handle -> WeakStmt -> App ([Stmt], [L.Log])
 elaborateStmt h stmt = do
   case stmt of
     WeakStmtDefineTerm isConstLike stmtKind m x impArgs defaultArgs expArgs codType e -> do
-      stmtKind' <- elaborateStmtKind h stmtKind
+      stmtKind' <- elaborateStmtKindTerm h stmtKind
       e' <- elaborate' h e
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
       defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
@@ -154,7 +153,7 @@ elaborateStmt h stmt = do
       insertStmt h result
       return ([result], remarks)
     WeakStmtDefineType isConstLike stmtKind m x impArgs defaultArgs expArgs codType body -> do
-      stmtKind' <- elaborateStmtKind h stmtKind
+      stmtKind' <- elaborateStmtKindType h stmtKind
       impArgs' <- mapM (elaborateWeakBinder h) impArgs
       defaultArgs' <- forM defaultArgs $ \(binder, value) -> do
         binder' <- elaborateWeakBinder h binder
@@ -207,13 +206,9 @@ insertStmt h stmt = do
         _ ->
           liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
       let isInlineFlag = SK.isInlineStmtKind stmtKind
-      liftIO $ Definition.insert' (defHandle h) (toOpacity stmtKind) f (impArgs ++ map fst defaultArgs ++ expArgs) e t isInlineFlag
-    StmtDefineType isConstLike stmtKind (SavedHint m) f impArgs defaultArgs expArgs t _body -> do
-      case stmtKind of
-        SK.DataIntro {} ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.DataIntro isConstLike) impArgs defaultArgs expArgs t
-        _ ->
-          liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
+      liftIO $ Definition.insert' (defHandle h) (SK.toOpacityTerm stmtKind) f (impArgs ++ map fst defaultArgs ++ expArgs) e t isInlineFlag
+    StmtDefineType isConstLike _stmtKind (SavedHint m) f impArgs defaultArgs expArgs t _body -> do
+      liftIO $ Type.insert' (typeHandle h) f $ weakenType $ m :< TM.Pi (PK.Normal isConstLike) impArgs defaultArgs expArgs t
     StmtVariadic {} ->
       return ()
     StmtForeign _ -> do
@@ -224,10 +219,10 @@ insertWeakStmt :: Handle -> WeakStmt -> App ()
 insertWeakStmt h stmt = do
   case stmt of
     WeakStmtDefineTerm _ stmtKind m f impArgs defaultArgs expArgs codType e -> do
-      liftIO $ WeakDef.insert' (weakDefHandle h) (toOpacity stmtKind) m f impArgs defaultArgs expArgs codType e
+      liftIO $ WeakDef.insert' (weakDefHandle h) (SK.toOpacityTerm stmtKind) m f impArgs defaultArgs expArgs codType e
     WeakStmtDefineType _ stmtKind _ f impArgs defaultArgs expArgs _ body -> do
       let binders = impArgs ++ map fst defaultArgs ++ expArgs
-      liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (toOpacity stmtKind) f binders body
+      liftIO $ WeakTypeDef.insert' (weakTypeDefHandle h) (SK.toOpacityType stmtKind) f binders body
     WeakStmtNominal {} -> do
       return ()
     WeakStmtVariadic {} -> do
@@ -236,30 +231,34 @@ insertWeakStmt h stmt = do
       forM_ foreignList $ \(F.Foreign _ externalName domList cod) -> do
         liftIO $ WeakDecl.insert (weakDeclHandle h) (DN.Ext externalName) domList cod
 
-elaborateStmtKind :: Handle -> StmtKind WT.WeakType -> App (StmtKind TM.Type)
-elaborateStmtKind h stmtKind =
+elaborateStmtKindTerm :: Handle -> SK.StmtKindTerm WT.WeakType -> App (SK.StmtKindTerm TM.Type)
+elaborateStmtKindTerm h stmtKind =
   case stmtKind of
-    Define ->
-      return Define
-    Inline ->
-      return Inline
-    Macro ->
-      return Macro
-    Main t -> do
+    SK.Define ->
+      return SK.Define
+    SK.Inline ->
+      return SK.Inline
+    SK.Macro ->
+      return SK.Macro
+    SK.Main t -> do
       t' <- elaborateType h t
-      return $ Main t'
-    Alias ->
-      return Alias
-    Data dataName dataArgs consInfoList -> do
+      return $ SK.Main t'
+    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
+      dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
+      expConsArgs' <- mapM (elaborateWeakBinder h) expConsArgs
+      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
+
+elaborateStmtKindType :: Handle -> SK.StmtKindType WT.WeakType -> App (SK.StmtKindType TM.Type)
+elaborateStmtKindType h stmtKind =
+  case stmtKind of
+    SK.Alias ->
+      return SK.Alias
+    SK.Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
       let (ms, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList
       consArgsList' <- mapM (mapM $ elaborateWeakBinder h) consArgsList
       let consInfoList' = zip5 ms consNameList constLikeList consArgsList' discriminantList
-      return $ Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs expConsArgs discriminant -> do
-      dataArgs' <- mapM (elaborateWeakBinder h) dataArgs
-      expConsArgs' <- mapM (elaborateWeakBinder h) expConsArgs
-      return $ DataIntro dataName dataArgs' expConsArgs' discriminant
+      return $ SK.Data dataName dataArgs' consInfoList'
 
 elaborate' :: Handle -> WT.WeakTerm -> App TM.Term
 elaborate' h term =

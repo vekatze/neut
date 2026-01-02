@@ -2,7 +2,8 @@ module Language.Term.Extend
   ( extend,
     extendType,
     extendBinder,
-    extendStmtKind,
+    extendStmtKindTerm,
+    extendStmtKindType,
   )
 where
 
@@ -121,8 +122,8 @@ extendCase decisionCase =
           { DT.cont = extendDecisionTree cont
           }
 
-extendStmtKind :: StmtKind (Cofree TM.TypeF ()) -> StmtKind TM.Type
-extendStmtKind stmtKind =
+extendStmtKindTerm :: StmtKindTerm (Cofree TM.TypeF ()) -> StmtKindTerm TM.Type
+extendStmtKindTerm stmtKind =
   case stmtKind of
     Define ->
       Define
@@ -132,12 +133,16 @@ extendStmtKind stmtKind =
       Macro
     Main t ->
       Main (extendType t)
+    DataIntro name dataArgs consArgs disc ->
+      DataIntro name (map extendBinder dataArgs) (map extendBinder consArgs) disc
+
+extendStmtKindType :: StmtKindType (Cofree TM.TypeF ()) -> StmtKindType TM.Type
+extendStmtKindType stmtKind =
+  case stmtKind of
     Alias ->
       Alias
     Data name args consInfoList ->
       Data name (map extendBinder args) (map extendConsInfo consInfoList)
-    DataIntro name dataArgs consArgs disc ->
-      DataIntro name (map extendBinder dataArgs) (map extendBinder consArgs) disc
 
 extendConsInfo ::
   (SavedHint, name, IsConstLike, [BinderF (Cofree TM.TypeF ())], D.Discriminant) ->

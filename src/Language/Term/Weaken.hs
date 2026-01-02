@@ -36,7 +36,7 @@ weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs codType e -> do
-      let stmtKind' = weakenStmtKind stmtKind
+      let stmtKind' = weakenStmtKindTerm stmtKind
       let impArgs' = map weakenTypeBinder impArgs
       let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let expArgs' = map weakenTypeBinder expArgs
@@ -44,7 +44,7 @@ weakenStmt stmt = do
       let e' = weaken e
       WeakStmtDefineTerm isConstLike stmtKind' m name impArgs' defaultArgs' expArgs' codType' e'
     StmtDefineType isConstLike stmtKind (SavedHint m) name impArgs defaultArgs expArgs codType body -> do
-      let stmtKind' = weakenStmtKind stmtKind
+      let stmtKind' = weakenStmtKindType stmtKind
       let impArgs' = map weakenTypeBinder impArgs
       let defaultArgs' = map (bimap weakenTypeBinder weaken) defaultArgs
       let expArgs' = map weakenTypeBinder expArgs
@@ -243,8 +243,8 @@ weakenCase decisionCase = do
             DT.cont = cont'
           }
 
-weakenStmtKind :: StmtKind TM.Type -> StmtKind WT.WeakType
-weakenStmtKind stmtKind =
+weakenStmtKindTerm :: StmtKindTerm TM.Type -> StmtKindTerm WT.WeakType
+weakenStmtKindTerm stmtKind =
   case stmtKind of
     Define ->
       Define
@@ -254,6 +254,14 @@ weakenStmtKind stmtKind =
       Macro
     Main t ->
       Main (weakenType t)
+    DataIntro dataName dataArgs expConsArgs discriminant -> do
+      let dataArgs' = map weakenTypeBinder dataArgs
+      let expConsArgs' = map weakenTypeBinder expConsArgs
+      DataIntro dataName dataArgs' expConsArgs' discriminant
+
+weakenStmtKindType :: StmtKindType TM.Type -> StmtKindType WT.WeakType
+weakenStmtKindType stmtKind =
+  case stmtKind of
     Alias ->
       Alias
     Data dataName dataArgs consInfoList -> do
@@ -262,10 +270,6 @@ weakenStmtKind stmtKind =
       let consArgsList' = map (map weakenTypeBinder) consArgsList
       let consInfoList' = List.zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
-    DataIntro dataName dataArgs expConsArgs discriminant -> do
-      let dataArgs' = map weakenTypeBinder dataArgs
-      let expConsArgs' = map weakenTypeBinder expConsArgs
-      DataIntro dataName dataArgs' expConsArgs' discriminant
 
 weakenForeign :: F.Foreign -> WT.WeakForeign
 weakenForeign foreignItem@(F.Foreign m _ _ _) =

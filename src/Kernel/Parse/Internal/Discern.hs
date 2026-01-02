@@ -118,18 +118,18 @@ discernStmt h stmt = do
       (defaultArgs', nenv') <- discernBinderWithDefaultArgs nenv defaultArgs endLoc
       (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
       codType' <- discernType nenv'' codType
-      stmtKind' <- discernStmtKind h' stmtKind m
+      stmtKind' <- discernStmtKindTerm h' stmtKind m
       body' <- discern nenv'' body
       liftIO $ Tag.insertGlobalVar (H.tagHandle h') m functionName isConstLike m
       when (metaShouldSaveLocation m) $ do
         liftIO $ TopCandidate.insert (H.topCandidateHandle h') $ do
-          TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
+          TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKindTerm stmtKind'}
       liftIO $ forM_ (impArgs' ++ map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h')
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h')
       return [WeakStmtDefineTerm isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' body']
     PostRawStmtDefineType _ stmtKind (RT.RawTypeDef {typeGeist, typeBody, typeEndLoc}) -> do
       registerTopLevelName h stmt
-      let baseStage = if SK.isMacroStmtKind stmtKind then 1 else 0
+      let baseStage = 0
       let h' = h {H.currentStage = baseStage}
       let impArgs = RT.extractImpArgs $ RT.impArgs typeGeist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs typeGeist
@@ -142,12 +142,12 @@ discernStmt h stmt = do
       (defaultArgs', nenv') <- discernTypeBinderWithDefaultArgs nenv defaultArgs typeEndLoc
       (expArgs', nenv'') <- discernTypeBinder nenv' expArgs typeEndLoc
       codType' <- discernType nenv'' codType
-      stmtKind' <- discernStmtKind h' stmtKind m
+      stmtKind' <- discernStmtKindType h' stmtKind m
       body' <- discernType nenv'' typeBody
       liftIO $ Tag.insertGlobalVar (H.tagHandle h') m functionName isConstLike m
       when (metaShouldSaveLocation m) $ do
         liftIO $ TopCandidate.insert (H.topCandidateHandle h') $ do
-          TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
+          TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKindType stmtKind'}
       liftIO $ forM_ (impArgs' ++ map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h')
       liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h')
       return [WeakStmtDefineType isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' body']
@@ -158,7 +158,7 @@ discernStmt h stmt = do
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
       liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
         TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
-      return [WeakStmtDefineType True SK.Macro m dd [] [] [] t' e']
+      return [WeakStmtDefineType True SK.Alias m dd [] [] [] t' e']
     PostRawStmtVariadic kind m dd -> do
       registerTopLevelName h stmt
       liftIO $ Tag.insertGlobalVar (H.tagHandle h) m dd True m
@@ -207,8 +207,8 @@ registerTopLevelName h stmt = do
   let arrow = NameMap.getGlobalNames [stmt]
   NameMap.insert (H.nameMapHandle h) arrow
 
-discernStmtKind :: H.Handle -> RawStmtKind DD.DefiniteDescription -> Hint -> App (SK.StmtKind WT.WeakType)
-discernStmtKind h stmtKind m =
+discernStmtKindTerm :: H.Handle -> RawStmtKindTerm DD.DefiniteDescription -> Hint -> App (SK.StmtKindTerm WT.WeakType)
+discernStmtKindTerm h stmtKind m =
   case stmtKind of
     SK.Define ->
       return SK.Define
@@ -219,6 +219,16 @@ discernStmtKind h stmtKind m =
     SK.Main _ -> do
       unitType <- getUnitType h m
       return $ SK.Main unitType
+    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
+      (dataArgs', h') <- discernTypeBinder' h dataArgs
+      (expConsArgs', h'') <- discernBinder' h' expConsArgs
+      forM_ (H.nameEnv h'') $ \(_, (_, newVar, _, _)) -> do
+        liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
+      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
+
+discernStmtKindType :: H.Handle -> RawStmtKindType DD.DefiniteDescription -> Hint -> App (SK.StmtKindType WT.WeakType)
+discernStmtKindType h stmtKind _m =
+  case stmtKind of
     SK.Alias ->
       return SK.Alias
     SK.Data dataName dataArgs consInfoList -> do
@@ -230,20 +240,14 @@ discernStmtKind h stmtKind m =
       let consNameList' = consNameList
       let consInfoList' = List.zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
       return $ SK.Data dataName dataArgs' consInfoList'
-    SK.DataIntro dataName dataArgs expConsArgs discriminant -> do
-      (dataArgs', h') <- discernTypeBinder' h dataArgs
-      (expConsArgs', h'') <- discernBinder' h' expConsArgs
-      forM_ (H.nameEnv h'') $ \(_, (_, newVar, _, _)) -> do
-        liftIO $ Unused.deleteVariable (H.unusedHandle h'') newVar
-      return $ SK.DataIntro dataName dataArgs' expConsArgs' discriminant
 
 getUnitType :: H.Handle -> Hint -> App WT.WeakType
 getUnitType h m = do
   unitType <- liftEither $ locatorToTypeVar m coreUnit
   discernType h unitType
 
-toCandidateKind :: SK.StmtKind a -> CandidateKind
-toCandidateKind stmtKind =
+toCandidateKindTerm :: SK.StmtKindTerm a -> CandidateKind
+toCandidateKindTerm stmtKind =
   case stmtKind of
     SK.Define ->
       Function
@@ -253,12 +257,16 @@ toCandidateKind stmtKind =
       Function
     SK.Main {} ->
       Function
+    SK.DataIntro {} ->
+      Constructor
+
+toCandidateKindType :: SK.StmtKindType a -> CandidateKind
+toCandidateKindType stmtKind =
+  case stmtKind of
     SK.Alias ->
       Function
     SK.Data {} ->
       Function
-    SK.DataIntro {} ->
-      Constructor
 
 discern :: H.Handle -> RT.RawTerm -> App WT.WeakTerm
 discern h term =

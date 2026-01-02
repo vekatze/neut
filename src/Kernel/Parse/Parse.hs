@@ -104,11 +104,11 @@ postprocess' h stmt = do
   case stmt of
     RawStmtDefineTerm c stmtKind rawDef@(RT.RawDef {geist}) -> do
       let geist' = liftGeist h geist
-      let stmtKind' = liftStmtKind h stmtKind
+      let stmtKind' = liftStmtKindTerm h stmtKind
       [PostRawStmtDefineTerm c stmtKind' (rawDef {RT.geist = geist'})]
     RawStmtDefineType c stmtKind rawDef@(RT.RawTypeDef {typeGeist}) -> do
       let geist' = liftGeist h typeGeist
-      let stmtKind' = liftStmtKind h stmtKind
+      let stmtKind' = liftStmtKindType h stmtKind
       [PostRawStmtDefineType c stmtKind' (rawDef {RT.typeGeist = geist'})]
     RawStmtDefineData _ m (name, _) args consInfo loc -> do
       let name' = Locator.attachCurrentLocator h name
@@ -130,8 +130,8 @@ liftGeist :: Locator.Handle -> RT.RawGeist BN.BaseName -> RT.RawGeist DD.Definit
 liftGeist h geist = do
   fmap (Locator.attachCurrentLocator h) geist
 
-liftStmtKind :: Locator.Handle -> RawStmtKind BN.BaseName -> RawStmtKind DD.DefiniteDescription
-liftStmtKind h stmtKind = do
+liftStmtKindTerm :: Locator.Handle -> RawStmtKindTerm BN.BaseName -> RawStmtKindTerm DD.DefiniteDescription
+liftStmtKindTerm _h stmtKind = do
   case stmtKind of
     SK.Define ->
       SK.Define
@@ -141,6 +141,13 @@ liftStmtKind h stmtKind = do
       SK.Macro
     SK.Main t ->
       SK.Main t
+    SK.DataIntro name dataArgs expConsArgs discriminant -> do
+      let name' = Locator.attachCurrentLocator _h name
+      SK.DataIntro name' dataArgs expConsArgs discriminant
+
+liftStmtKindType :: Locator.Handle -> RawStmtKindType BN.BaseName -> RawStmtKindType DD.DefiniteDescription
+liftStmtKindType h stmtKind = do
+  case stmtKind of
     SK.Alias ->
       SK.Alias
     SK.Data name dataArgs consInfo -> do
@@ -149,9 +156,6 @@ liftStmtKind h stmtKind = do
             let consName' = Locator.attachCurrentLocator h consName
             (m, consName', isConstLike, consArgs, loc)
       SK.Data name' dataArgs (fmap f consInfo)
-    SK.DataIntro name dataArgs expConsArgs discriminant -> do
-      let name' = Locator.attachCurrentLocator h name
-      SK.DataIntro name' dataArgs expConsArgs discriminant
 
 liftRawCons :: Locator.Handle -> RawConsInfo BN.BaseName -> RawConsInfo DD.DefiniteDescription
 liftRawCons h (RawConsInfo {loc, name, expArgs, endLoc}) = do

@@ -58,7 +58,7 @@ import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp
 import Language.Common.PrimType qualified as PT
 import Language.Common.Rune qualified as RU
-import Language.Common.StmtKind
+import Language.Common.StmtKind qualified as SK
 import Language.Comp.Comp qualified as C
 import Language.Comp.CreateVar qualified as Gensym
 import Language.Comp.EnumCase qualified as EC
@@ -161,35 +161,15 @@ getBaseAuxEnv auxEnvHandle sigmaHandle = do
 clarifyStmt :: Handle -> Stmt -> App C.CompStmt
 clarifyStmt h stmt =
   case stmt of
-    StmtDefine _ stmtKind (SavedHint m) f impArgs defaultArgs expArgs _ e -> do
+    StmtDefine _ stmtKind _ f impArgs defaultArgs expArgs _ e -> do
       let xts = impArgs ++ map fst defaultArgs ++ expArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
       envArg <- liftIO $ makeEnvArg h
       switchArg <- liftIO $ makeSwitchArg h
       let xts'' = xts' ++ [envArg, switchArg]
-      case stmtKind of
-        Data name dataArgs consInfoList -> do
-          od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
-          case od of
-            Just OD.Enum -> do
-              let enumInfo = map (\(_, consName, isConstLike, _, d) -> (consName, isConstLike, d)) consInfoList
-              liftIO (Sigma.returnSigmaEnumS4 (sigmaHandle h) name O.Clear enumInfo)
-                >>= clarifyStmtDefineBody' h name xts''
-            Just OD.Unary
-              | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
-                  (dataArgs', t') <- clarifyTypeBinderBody h IntMap.empty dataArgs t
-                  return $ C.Def f O.Clear (map fst $ dataArgs' ++ [envArg, switchArg]) t'
-              | otherwise ->
-                  raiseCritical m "Found a broken unary data"
-            _ -> do
-              let dataInfo = map (\(_, consName, isConstLike, consArgs, discriminant) -> (consName, isConstLike, discriminant, dataArgs, consArgs)) consInfoList
-              dataInfo' <- mapM (clarifyDataClause h) dataInfo
-              liftIO (Sigma.returnSigmaDataS4 (sigmaHandle h) name O.Opaque dataInfo')
-                >>= clarifyStmtDefineBody' h name xts''
-        _ -> do
-          let tenv = TM.insTypeEnv xts IntMap.empty
-          e' <- clarifyStmtDefineBody h tenv xts'' e
-          return $ C.Def f (toLowOpacity stmtKind) (map fst xts'') e'
+      let tenv = TM.insTypeEnv xts IntMap.empty
+      e' <- clarifyStmtDefineBody h tenv xts'' e
+      return $ C.Def f (SK.toLowOpacityTerm stmtKind) (map fst xts'') e'
     StmtDefineType _ stmtKind (SavedHint m) f impArgs defaultArgs expArgs _ body -> do
       let xts = impArgs ++ map fst defaultArgs ++ expArgs
       xts' <- dropFst <$> clarifyBinder h IntMap.empty xts
@@ -197,7 +177,7 @@ clarifyStmt h stmt =
       switchArg <- liftIO $ makeSwitchArg h
       let xts'' = xts' ++ [envArg, switchArg]
       case stmtKind of
-        Data name dataArgs consInfoList -> do
+        SK.Data name dataArgs consInfoList -> do
           od <- liftIO $ OptimizableData.lookup (optDataHandle h) name
           case od of
             Just OD.Enum -> do
@@ -218,7 +198,7 @@ clarifyStmt h stmt =
         _ -> do
           let tenv = TM.insTypeEnv xts IntMap.empty
           body' <- clarifyStmtDefineTypeBody h tenv xts'' body
-          return $ C.Def f (toLowOpacity stmtKind) (map fst xts'') body'
+          return $ C.Def f (SK.toLowOpacityType stmtKind) (map fst xts'') body'
     StmtVariadic {} -> do
       return $ C.Foreign [] -- nop
     StmtForeign foreignList ->

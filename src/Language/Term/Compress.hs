@@ -2,7 +2,8 @@ module Language.Term.Compress
   ( compress,
     compressType,
     compressBinder,
-    compressStmtKind,
+    compressStmtKindTerm,
+    compressStmtKindType,
   )
 where
 
@@ -116,8 +117,8 @@ compressCase decisionCase =
           { DT.cont = compressDecisionTree cont
           }
 
-compressStmtKind :: StmtKind TM.Type -> StmtKind (Cofree TM.TypeF ())
-compressStmtKind stmtKind =
+compressStmtKindTerm :: StmtKindTerm TM.Type -> StmtKindTerm (Cofree TM.TypeF ())
+compressStmtKindTerm stmtKind =
   case stmtKind of
     Define ->
       Define
@@ -127,12 +128,16 @@ compressStmtKind stmtKind =
       Macro
     Main t ->
       Main (compressType t)
+    DataIntro name dataArgs consArgs disc ->
+      DataIntro name (map compressBinder dataArgs) (map compressBinder consArgs) disc
+
+compressStmtKindType :: StmtKindType TM.Type -> StmtKindType (Cofree TM.TypeF ())
+compressStmtKindType stmtKind =
+  case stmtKind of
     Alias ->
       Alias
     Data name args consInfoList ->
       Data name (map compressBinder args) (map compressConsInfo consInfoList)
-    DataIntro name dataArgs consArgs disc ->
-      DataIntro name (map compressBinder dataArgs) (map compressBinder consArgs) disc
 
 compressConsInfo ::
   (SavedHint, name, IsConstLike, [BinderF TM.Type], D.Discriminant) ->
