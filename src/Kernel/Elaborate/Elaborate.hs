@@ -245,9 +245,9 @@ elaborateStmtKind h stmtKind =
       return Inline
     Macro ->
       return Macro
-    Main opacity t -> do
+    Main t -> do
       t' <- elaborateType h t
-      return $ Main opacity t'
+      return $ Main t'
     Alias ->
       return Alias
     Data dataName dataArgs consInfoList -> do

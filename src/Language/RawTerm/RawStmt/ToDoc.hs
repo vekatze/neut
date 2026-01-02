@@ -7,7 +7,6 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.LocalLocator qualified as LL
-import Language.Common.Opacity qualified as O
 import Language.Common.RuleKind (ruleKindToKeyword)
 import Language.Common.StmtKind qualified as SK
 import Language.Common.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
@@ -190,8 +189,8 @@ decStmt stmt =
           RT.decodeDef (RT.nameToDoc . N.Var) "inline" c (fmap BN.reify def)
         SK.Macro ->
           RT.decodeDef (RT.nameToDoc . N.Var) "macro" c (fmap BN.reify def)
-        SK.Main O.Clear _ ->
-          RT.decodeDef (RT.nameToDoc . N.Var) "macro" c (fmap BN.reify def)
+        SK.Main _ ->
+          RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
         _ ->
           RT.decodeDef (RT.nameToDoc . N.Var) "define" c (fmap BN.reify def)
     RawStmtDefineType c stmtKind def -> do

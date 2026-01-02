@@ -20,7 +20,7 @@ data BaseStmtKind name binder t
   = Define
   | Inline
   | Macro
-  | Main O.Opacity t
+  | Main t
   | Alias
   | Data
       name -- the name of the variant type
@@ -43,8 +43,8 @@ toOpacity stmtKind =
       O.Clear
     Macro ->
       O.Clear
-    Main opacity _ ->
-      opacity
+    Main _ ->
+      O.Opaque
     Alias ->
       O.Clear
     _ ->
@@ -59,7 +59,7 @@ toLowOpacity stmtKind =
       O.Opaque
     Macro ->
       O.Opaque
-    Main _ _ ->
+    Main _ ->
       O.Opaque
     Alias ->
       O.Opaque
@@ -77,7 +77,7 @@ isInlineStmtKind stmtKind =
       False
     Macro ->
       True
-    Main opacity _ ->
-      opacity == O.Clear
+    Main _ ->
+      False
     _ ->
       False

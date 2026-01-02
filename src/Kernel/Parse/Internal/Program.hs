@@ -15,7 +15,6 @@ import Language.Common.BaseName qualified as BN
 import Language.Common.ExternalName qualified as EN
 import Language.Common.ForeignCodType qualified as F
 import Language.Common.LocalLocator qualified as LL
-import Language.Common.Opacity qualified as O
 import Language.Common.RuleKind
 import Language.Common.StmtKind qualified as SK
 import Language.RawTerm.CreateHole qualified as RT
@@ -117,13 +116,20 @@ parseForeignItem h = do
       ]
   return (RawForeignItemF m (EN.ExternalName funcName) c1 domList c2 c3 cod, c)
 
+checkNotMainOrZen :: BN.BaseName -> Hint -> T.Text -> Parser ()
+checkNotMainOrZen defName m keywordName = do
+  when (defName == BN.mainName) $ do
+    lift $ raiseError m $ "`main` must be defined using `define`, not `" <> keywordName <> "`"
+  when (defName == BN.zenName) $ do
+    lift $ raiseError m $ "`zen` must be defined using `define`, not `" <> keywordName <> "`"
+
 parseDefine :: Handle -> Parser (RawStmt, C)
 parseDefine h = do
   c1 <- keyword "define"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
   if defName == BN.mainName || defName == BN.zenName
-    then return (RawStmtDefineTerm c1 (SK.Main O.Opaque ()) def, c)
+    then return (RawStmtDefineTerm c1 (SK.Main ()) def, c)
     else return (RawStmtDefineTerm c1 SK.Define def, c)
 
 parseMacro :: Handle -> Parser (RawStmt, C)
@@ -131,14 +137,17 @@ parseMacro h = do
   c1 <- keyword "macro"
   (def, c) <- parseDef h baseName
   let defName = RT.getDefName def
-  if defName == BN.mainName || defName == BN.zenName
-    then return (RawStmtDefineTerm c1 (SK.Main O.Clear ()) def, c)
-    else return (RawStmtDefineTerm c1 SK.Macro def, c)
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "macro"
+  return (RawStmtDefineTerm c1 SK.Macro def, c)
 
 parseInline :: Handle -> Parser (RawStmt, C)
 parseInline h = do
   c1 <- keyword "inline"
   (def, c) <- parseDef h baseName
+  let defName = RT.getDefName def
+  let m = RT.loc $ RT.geist def
+  checkNotMainOrZen defName m "inline"
   return (RawStmtDefineTerm c1 SK.Inline def, c)
 
 parseAlias :: Handle -> Parser (RawStmt, C)

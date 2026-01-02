@@ -137,9 +137,9 @@ inferStmtKind h stmtKind =
       return Inline
     Macro ->
       return Macro
-    Main opacity t -> do
+    Main t -> do
       t' <- inferType h t
-      return $ Main opacity t'
+      return $ Main t'
     Alias ->
       return Alias
     Data dataName dataArgs consInfoList -> do
@@ -161,7 +161,7 @@ getIntType h m = do
 getMainUnitType :: StmtKind WT.WeakType -> Maybe WT.WeakType
 getMainUnitType stmtKind =
   case stmtKind of
-    Main _ unitType ->
+    Main unitType ->
       return unitType
     _ ->
       Nothing

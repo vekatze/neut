@@ -252,8 +252,8 @@ weakenStmtKind stmtKind =
       Inline
     Macro ->
       Macro
-    Main opacity t ->
-      Main opacity (weakenType t)
+    Main t ->
+      Main (weakenType t)
     Alias ->
       Alias
     Data dataName dataArgs consInfoList -> do

@@ -139,8 +139,8 @@ liftStmtKind h stmtKind = do
       SK.Inline
     SK.Macro ->
       SK.Macro
-    SK.Main o t ->
-      SK.Main o t
+    SK.Main t ->
+      SK.Main t
     SK.Alias ->
       SK.Alias
     SK.Data name dataArgs consInfo -> do

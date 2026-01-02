@@ -125,8 +125,8 @@ compressStmtKind stmtKind =
       Inline
     Macro ->
       Macro
-    Main opacity t ->
-      Main opacity (compressType t)
+    Main t ->
+      Main (compressType t)
     Alias ->
       Alias
     Data name args consInfoList ->

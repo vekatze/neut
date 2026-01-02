@@ -32,7 +32,6 @@ import Language.Common.ArgNum qualified as AN
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.IsConstLike
-import Language.Common.Opacity qualified as O
 import Language.Common.PrimOp.FromText qualified as PrimOp
 import Language.Common.PrimType.FromText qualified as PT
 import Language.Common.StmtKind qualified as SK
@@ -200,8 +199,8 @@ getGlobalNamesFromDef stmtKind geist = do
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
     SK.Macro ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
-    SK.Main opacity _ ->
-      [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+    SK.Main _ ->
+      [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
     SK.Alias ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
     SK.Data dataName dataArgs consInfoList -> do
@@ -228,8 +227,8 @@ _getGlobalNames' stmt = do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Macro ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
-        SK.Main opacity _ ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Main _ ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Alias ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Data dataName dataArgs consInfoList -> do
@@ -248,8 +247,8 @@ _getGlobalNames' stmt = do
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Macro ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
-        SK.Main opacity _ ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike (opacity == O.Clear)))]
+        SK.Main _ ->
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Alias ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Data dataName dataArgs consInfoList -> do

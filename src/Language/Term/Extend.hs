@@ -130,8 +130,8 @@ extendStmtKind stmtKind =
       Inline
     Macro ->
       Macro
-    Main opacity t ->
-      Main opacity (extendType t)
+    Main t ->
+      Main (extendType t)
     Alias ->
       Alias
     Data name args consInfoList ->

@@ -216,9 +216,9 @@ discernStmtKind h stmtKind m =
       return SK.Inline
     SK.Macro ->
       return SK.Macro
-    SK.Main opacity _ -> do
+    SK.Main _ -> do
       unitType <- getUnitType h m
-      return $ SK.Main opacity unitType
+      return $ SK.Main unitType
     SK.Alias ->
       return SK.Alias
     SK.Data dataName dataArgs consInfoList -> do
