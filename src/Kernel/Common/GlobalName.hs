@@ -56,8 +56,8 @@ hasNoArgs gn =
 disableConstLikeFlag :: GlobalName -> GlobalName
 disableConstLikeFlag gn =
   case gn of
-    TopLevelFunc argNum _ isInline ->
-      TopLevelFunc argNum False isInline
+    TopLevelFunc argNum _ isMacro ->
+      TopLevelFunc argNum False isMacro
     Data argNum consInfo _ ->
       Data argNum consInfo False
     DataIntro dataArgNum consArgNum discriminant False ->

@@ -196,7 +196,7 @@ getGlobalNamesFromDef stmtKind geist = do
     SK.Define ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
     SK.Inline ->
-      [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
+      [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
     SK.Macro ->
       [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
     SK.Main _ ->
@@ -224,7 +224,7 @@ _getGlobalNames' stmt = do
         SK.Define ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Inline ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Macro ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Main _ ->
@@ -244,7 +244,7 @@ _getGlobalNames' stmt = do
         SK.Define ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Inline ->
-          [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
+          [(name, (m, GN.TopLevelFunc allArgNum isConstLike False))]
         SK.Macro ->
           [(name, (m, GN.TopLevelFunc allArgNum isConstLike True))]
         SK.Main _ ->

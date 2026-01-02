@@ -3,6 +3,7 @@ module Language.Common.StmtKind
     StmtKind,
     toOpacity,
     toLowOpacity,
+    isMacroStmtKind,
     isInlineStmtKind,
   )
 where
@@ -67,6 +68,14 @@ toLowOpacity stmtKind =
       O.Opaque
     DataIntro {} ->
       O.Clear
+
+isMacroStmtKind :: BaseStmtKind name binder t -> Bool
+isMacroStmtKind stmtKind =
+  case stmtKind of
+    Macro ->
+      True
+    _ ->
+      False
 
 isInlineStmtKind :: BaseStmtKind name binder t -> Bool
 isInlineStmtKind stmtKind =

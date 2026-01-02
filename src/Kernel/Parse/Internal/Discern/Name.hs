@@ -30,15 +30,15 @@ import Kernel.Parse.Internal.Handle.Unused qualified as Unused
 import Language.Common.ArgNum qualified as AN
 import Language.Common.Attr.VarGlobal qualified as AttrVG
 import Language.Common.CreateSymbol qualified as Gensym
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.GlobalLocator qualified as GL
-import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike
 import Language.Common.LocalLocator qualified as LL
-import Language.Common.Magic qualified as M
 import Language.Common.LowMagic qualified as LM
+import Language.Common.Magic qualified as M
 import Language.Common.PiKind qualified as PK
 import Language.Common.PrimNumSize qualified as PNS
 import Language.Common.PrimOp qualified as PO
@@ -152,8 +152,8 @@ resolveConstructorMaybe dd gn = do
 interpretGlobalName :: H.Handle -> Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName h m dd gn = do
   case gn of
-    GN.TopLevelFunc argNum isConstLike isInline -> do
-      ensureTopLevelStage m h dd isInline
+    GN.TopLevelFunc argNum isConstLike isMacro -> do
+      ensureTopLevelStage m h dd isMacro
       return $ interpretTopLevelFunc m dd argNum isConstLike
     GN.Data argNum _ isConstLike ->
       return $ interpretTopLevelFunc m dd argNum isConstLike

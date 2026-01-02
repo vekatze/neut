@@ -60,8 +60,8 @@ parseStmt h = do
   choice
     [ parseDefine h,
       parseData h,
-      parseMacro h,
       parseInline h,
+      parseMacro h,
       parseAlias h,
       parseNominal h,
       parseResource h,

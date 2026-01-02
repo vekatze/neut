@@ -105,7 +105,7 @@ discernStmt h stmt = do
   case stmt of
     PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
       registerTopLevelName h stmt
-      let baseStage = if SK.isInlineStmtKind stmtKind then 1 else 0
+      let baseStage = if SK.isMacroStmtKind stmtKind then 1 else 0
       let hStage = h {H.currentStage = baseStage}
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
@@ -129,7 +129,7 @@ discernStmt h stmt = do
       return [WeakStmtDefineTerm isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' body']
     PostRawStmtDefineType _ stmtKind (RT.RawTypeDef {typeGeist, typeBody, typeEndLoc}) -> do
       registerTopLevelName h stmt
-      let baseStage = if SK.isInlineStmtKind stmtKind then 1 else 0
+      let baseStage = if SK.isMacroStmtKind stmtKind then 1 else 0
       let hStage = h {H.currentStage = baseStage}
       let impArgs = RT.extractImpArgs $ RT.impArgs typeGeist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs typeGeist
