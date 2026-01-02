@@ -43,4 +43,4 @@ makeDef m name e t loc = do
             trailingComment = [],
             endLoc = loc
           }
-  PostRawStmtDefineTerm [] SK.Macro rawDef
+  PostRawStmtDefineTerm [] SK.Inline rawDef

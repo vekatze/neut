@@ -106,7 +106,7 @@ discernStmt h stmt = do
     PostRawStmtDefineTerm _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
       registerTopLevelName h stmt
       let baseStage = if SK.isMacroStmtKind stmtKind then 1 else 0
-      let hStage = h {H.currentStage = baseStage}
+      let h' = h {H.currentStage = baseStage}
       let impArgs = RT.extractImpArgs $ RT.impArgs geist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
@@ -114,23 +114,23 @@ discernStmt h stmt = do
       let m = RT.loc geist
       let functionName = fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      (impArgs', nenv) <- discernImpArgs hStage impArgs endLoc
+      (impArgs', nenv) <- discernImpArgs h' impArgs endLoc
       (defaultArgs', nenv') <- discernBinderWithDefaultArgs nenv defaultArgs endLoc
       (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
       codType' <- discernType nenv'' codType
-      stmtKind' <- discernStmtKind h stmtKind m
+      stmtKind' <- discernStmtKind h' stmtKind m
       body' <- discern nenv'' body
-      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m functionName isConstLike m
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h') m functionName isConstLike m
       when (metaShouldSaveLocation m) $ do
-        liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
+        liftIO $ TopCandidate.insert (H.topCandidateHandle h') $ do
           TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
-      liftIO $ forM_ (impArgs' ++ map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h)
-      liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
+      liftIO $ forM_ (impArgs' ++ map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h')
+      liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h')
       return [WeakStmtDefineTerm isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' body']
     PostRawStmtDefineType _ stmtKind (RT.RawTypeDef {typeGeist, typeBody, typeEndLoc}) -> do
       registerTopLevelName h stmt
       let baseStage = if SK.isMacroStmtKind stmtKind then 1 else 0
-      let hStage = h {H.currentStage = baseStage}
+      let h' = h {H.currentStage = baseStage}
       let impArgs = RT.extractImpArgs $ RT.impArgs typeGeist
       let defaultArgs = SE.extract $ fst $ RT.defaultArgs typeGeist
       let expArgs = RT.extractArgs $ RT.expArgs typeGeist
@@ -138,18 +138,18 @@ discernStmt h stmt = do
       let m = RT.loc typeGeist
       let functionName = fst $ RT.name typeGeist
       let isConstLike = RT.isConstLike typeGeist
-      (impArgs', nenv) <- discernImpArgs hStage impArgs typeEndLoc
+      (impArgs', nenv) <- discernImpArgs h' impArgs typeEndLoc
       (defaultArgs', nenv') <- discernTypeBinderWithDefaultArgs nenv defaultArgs typeEndLoc
       (expArgs', nenv'') <- discernTypeBinder nenv' expArgs typeEndLoc
       codType' <- discernType nenv'' codType
-      stmtKind' <- discernStmtKind h stmtKind m
+      stmtKind' <- discernStmtKind h' stmtKind m
       body' <- discernType nenv'' typeBody
-      liftIO $ Tag.insertGlobalVar (H.tagHandle h) m functionName isConstLike m
+      liftIO $ Tag.insertGlobalVar (H.tagHandle h') m functionName isConstLike m
       when (metaShouldSaveLocation m) $ do
-        liftIO $ TopCandidate.insert (H.topCandidateHandle h) $ do
+        liftIO $ TopCandidate.insert (H.topCandidateHandle h') $ do
           TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
-      liftIO $ forM_ (impArgs' ++ map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h)
-      liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h)
+      liftIO $ forM_ (impArgs' ++ map fst defaultArgs') $ Tag.insertBinder (H.tagHandle h')
+      liftIO $ forM_ expArgs' $ Tag.insertBinder (H.tagHandle h')
       return [WeakStmtDefineType isConstLike stmtKind' m functionName impArgs' defaultArgs' expArgs' codType' body']
     PostRawStmtDefineResource _ m (dd, _) (_, discarder) (_, copier) (_, typeTag) _ -> do
       registerTopLevelName h stmt

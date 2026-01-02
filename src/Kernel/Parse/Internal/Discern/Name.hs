@@ -211,8 +211,8 @@ interpretTopLevelFunc m dd argNum isConstLike = do
     else m :< WT.VarGlobal attr dd
 
 ensureTopLevelStage :: Hint -> H.Handle -> DD.DefiniteDescription -> Bool -> App ()
-ensureTopLevelStage m h dd isInline =
-  if isInline
+ensureTopLevelStage m h dd isMacro =
+  if isMacro
     then do
       let stage = H.currentStage h
       when (stage < 1) $ do
