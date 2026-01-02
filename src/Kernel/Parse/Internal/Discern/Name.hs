@@ -33,6 +33,7 @@ import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DefiniteDescription qualified as DD
 import Language.Common.Discriminant qualified as D
 import Language.Common.GlobalLocator qualified as GL
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.IsConstLike
 import Language.Common.LocalLocator qualified as LL
@@ -159,7 +160,7 @@ interpretGlobalName h m dd gn = do
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
-      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
+      return $ m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified DefaultArgs.Unspecified []
     GN.PrimType _ ->
       raiseError m $ "`" <> DD.reify dd <> "` is a type name and cannot appear in term position"
     GN.PrimOp primOp ->
@@ -206,7 +207,7 @@ interpretTopLevelFunc ::
 interpretTopLevelFunc m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified []
+    then m :< WT.PiElim False (m :< WT.VarGlobal attr dd) ImpArgs.Unspecified DefaultArgs.Unspecified []
     else m :< WT.VarGlobal attr dd
 
 ensureTopLevelStage :: Hint -> H.Handle -> DD.DefiniteDescription -> Bool -> App ()

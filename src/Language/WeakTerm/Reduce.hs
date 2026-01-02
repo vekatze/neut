@@ -24,6 +24,7 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.Discriminant qualified as D
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
@@ -73,12 +74,13 @@ reduce' h term = do
         LK.Normal name codType -> do
           codType' <- reduceType h codType
           return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' defaultArgs' expArgs' e')
-    m :< WT.PiElim isNoetic e impArgs expArgs -> do
+    m :< WT.PiElim isNoetic e impArgs defaultArgs expArgs -> do
       e' <- reduce' h e
       impArgs' <- ImpArgs.traverseImpArgs (reduceType h) impArgs
+      defaultArgs' <- DefaultArgs.traverseDefaultArgs (reduce' h) defaultArgs
       expArgs' <- mapM (reduce' h) expArgs
       if isNoetic
-        then return $ m :< WT.PiElim isNoetic e' impArgs' expArgs'
+        then return $ m :< WT.PiElim isNoetic e' impArgs' defaultArgs' expArgs'
         else do
           case e' of
             (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal {}} impParams defaultParams expParams body)
@@ -128,7 +130,7 @@ reduce' h term = do
                   let intType = m :< WT.PrimType cod
                   return $ m :< WT.Prim (WPV.Int intType (op' value1 value2))
             _ ->
-              return $ m :< WT.PiElim isNoetic e' impArgs' expArgs'
+              return $ m :< WT.PiElim isNoetic e' impArgs' defaultArgs' expArgs'
     m :< WT.PiElimExact e -> do
       e' <- reduce' h e
       return $ m :< WT.PiElimExact e'

@@ -11,6 +11,7 @@ import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
@@ -27,11 +28,12 @@ freeVars term =
       let impBinders = impArgs ++ map fst defaultArgs
       let defaultVars = S.unions $ map freeVars $ map snd defaultArgs
       S.union defaultVars (freeVarsBindersType (impBinders ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e))
-    _ :< WT.PiElim _ e impArgs expArgs -> do
+    _ :< WT.PiElim _ e impArgs defaultArgs expArgs -> do
       let xs = freeVars e
       let ys1 = S.unions $ map freeVarsType (ImpArgs.extract impArgs)
-      let ys2 = S.unions $ map freeVars expArgs
-      S.unions [xs, ys1, ys2]
+      let ys2 = S.unions $ map freeVars (DefaultArgs.extract defaultArgs)
+      let ys3 = S.unions $ map freeVars expArgs
+      S.unions [xs, ys1, ys2, ys3]
     _ :< WT.PiElimExact e -> do
       freeVars e
     _ :< WT.DataIntro attr _ dataArgs consArgs -> do

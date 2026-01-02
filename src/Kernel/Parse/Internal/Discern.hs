@@ -11,6 +11,7 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List ((\\))
 import Data.List qualified as List
+import Data.Maybe (catMaybes, isJust, isNothing)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -20,7 +21,7 @@ import Kernel.Common.BuildMode qualified as BM
 import Kernel.Common.Const
 import Kernel.Common.GlobalName qualified as GN
 import Kernel.Common.Handle.Global.Env qualified as Env
-import Kernel.Common.Handle.Global.KeyArg (ExpKey, ImpKey, _showKeyList)
+import Kernel.Common.Handle.Global.KeyArg (DefaultKey, ExpKey, _showKeyList)
 import Kernel.Common.Handle.Global.KeyArg qualified as KeyArg
 import Kernel.Common.Handle.Global.Platform qualified as Platform
 import Kernel.Common.Handle.Local.Locator qualified as Locator
@@ -59,6 +60,7 @@ import Language.Common.Geist qualified as G
 import Language.Common.GlobalLocator qualified as GL
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.Literal qualified as LI
@@ -322,23 +324,23 @@ discern h term =
       let isNoetic = False -- overwritten later in `infer`
       e' <- discern h e
       expArgs' <- mapM (discern h) $ SE.extract expArgs
-      return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified expArgs'
+      return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified DefaultArgs.Unspecified expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, (_, gn)) <- resolveName h m name
       _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
       ensureFieldLinearity m ks S.empty S.empty
-      (impKeys, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
-      let keyMap = Map.fromList $ zip ks (repeat ())
-      checkRedundancy m impKeys expKeys keyMap
+      (impKeys, defaultKeys, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m dd
       when (any (`elem` impKeys) ks) $ do
         raiseError m "Implicit key arguments must be specified via explicit type arguments"
+      let keyMap = Map.fromList $ zip ks (repeat ())
+      checkRedundancy m (defaultKeys ++ expKeys) keyMap
       vs' <- mapM (discern h) vs
       let expKvs = Map.fromList $ zip ks vs'
-      let impArgs = resolveImpKeys h m impKeys Map.empty
+      let defaultArgs = resolveDefaultKeys defaultKeys expKvs
       expArgs <- resolveExpKeys h m expKeys expKvs
       let isNoetic = False -- overwritten later in `infer`
-      return $ m :< WT.PiElim isNoetic (m :< func) (ImpArgs.PartiallySpecified impArgs) expArgs
+      return $ m :< WT.PiElim isNoetic (m :< func) ImpArgs.Unspecified defaultArgs expArgs
     m :< RT.PiElimRule name _ es -> do
       (dd, (_, gn)) <- resolveName h m name
       kind <- interpretRuleName m dd gn
@@ -545,14 +547,14 @@ discern h term =
       detachVar' <- discern h detachVar
       t' <- discernType h t
       lam' <- discern h $ RT.lam fakeLoc m [] cod e
-      return $ m :< WT.PiElim False detachVar' (ImpArgs.FullySpecified [t']) [lam']
+      return $ m :< WT.PiElim False detachVar' (ImpArgs.FullySpecified [t']) DefaultArgs.Unspecified [lam']
     m :< RT.Attach _ _ (e, _) -> do
       t <- liftIO $ RT.createTypeHole (H.gensymHandle h) (blur m)
       attachVar <- liftEither $ locatorToVarGlobal m coreThreadAttach
       attachVar' <- discern h attachVar
       t' <- discernType h t
       e' <- discern h e
-      return $ m :< WT.PiElim False attachVar' (ImpArgs.FullySpecified [t']) [e']
+      return $ m :< WT.PiElim False attachVar' (ImpArgs.FullySpecified [t']) DefaultArgs.Unspecified [e']
     m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- liftEither $ locatorToVarGlobal m coreTrickAssert
       textType <- liftEither $ locatorToTypeVar m coreText
@@ -561,7 +563,7 @@ discern h term =
       assertVar' <- discern h assert
       textTerm' <- discern h (mText :< RT.StaticText textType fullMessage)
       lam' <- discern h $ RT.lam fakeLoc mCond [] cod e
-      return $ m :< WT.PiElim False assertVar' ImpArgs.Unspecified [textTerm', lam']
+      return $ m :< WT.PiElim False assertVar' ImpArgs.Unspecified DefaultArgs.Unspecified [textTerm', lam']
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue h m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
@@ -1256,12 +1258,12 @@ discernPattern h layer stage (m, pat) = do
           let (ks, mvcs) = unzip $ SE.extract mkvs
           let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
           ensureFieldLinearity m ks S.empty S.empty
-          (_, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m consName
+          (_, _, expKeys) <- KeyArg.lookup (H.keyArgHandle h) m consName
           defaultKeyMap <- liftIO $ constructDefaultKeyMap h m expKeys
           let specifiedKeyMap = Map.fromList $ zip ks mvs
           let kvs' = Map.union specifiedKeyMap defaultKeyMap
           expArgs <- resolveExpKeys h m expKeys kvs'
-          checkRedundancy m [] expKeys kvs'
+          checkRedundancy m expKeys kvs'
           (patList', hList) <- mapAndUnzipM (discernPattern h layer stage) expArgs
           let consInfo =
                 PAT.ConsInfo
@@ -1385,18 +1387,15 @@ interpretForeignItem h (RawForeignItemF m name _ lts _ _ cod) = do
   PreDecl.insert (H.preDeclHandle h) name m
   return $ F.Foreign m name lts' cod
 
-resolveImpKeys :: H.Handle -> Hint -> [ImpKey] -> Map.HashMap Key WT.WeakType -> [Maybe WT.WeakType]
-resolveImpKeys h m impKeys kvs = do
-  case impKeys of
-    [] ->
-      []
-    impKey : rest -> do
-      let args = resolveImpKeys h m rest kvs
-      case Map.lookup impKey kvs of
-        Just value -> do
-          Just value : args
-        Nothing -> do
-          Nothing : args
+resolveDefaultKeys :: [DefaultKey] -> Map.HashMap Key a -> DefaultArgs.DefaultArgs a
+resolveDefaultKeys defaultKeys kvs = do
+  let args = map (`Map.lookup` kvs) defaultKeys
+  if all isNothing args
+    then DefaultArgs.Unspecified
+    else
+      if all isJust args
+        then DefaultArgs.FullySpecified (catMaybes args)
+        else DefaultArgs.PartiallySpecified args
 
 resolveExpKeys :: H.Handle -> Hint -> [ExpKey] -> Map.HashMap Key a -> App [a]
 resolveExpKeys h m expKeys kvs = do
@@ -1411,10 +1410,10 @@ resolveExpKeys h m expKeys kvs = do
         Nothing -> do
           raiseError m $ "The field `" <> expKey <> "` is missing"
 
-checkRedundancy :: Hint -> [ImpKey] -> [ExpKey] -> Map.HashMap Key a -> App ()
-checkRedundancy m impKeys expKeys kvs = do
+checkRedundancy :: Hint -> [Key] -> Map.HashMap Key a -> App ()
+checkRedundancy m allowedKeys kvs = do
   let keys = Map.keys kvs
-  let diff = keys \\ (impKeys ++ expKeys)
+  let diff = keys \\ allowedKeys
   if null diff
     then return ()
     else raiseError m $ "The following field(s) are redundant:\n" <> _showKeyList diff

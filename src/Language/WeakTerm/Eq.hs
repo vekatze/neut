@@ -7,6 +7,7 @@ import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder (BinderF)
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.ForeignCodType qualified as FCT
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
@@ -44,22 +45,24 @@ eq (_ :< term1) (_ :< term2)
           b1 && b2 && b3 && b4
         _ ->
           False
-  | WT.PiElim isNoetic1 f1 ImpArgs.Unspecified expArgs1 <- term1,
-    WT.PiElim isNoetic2 f2 ImpArgs.Unspecified expArgs2 <- term2,
+  | WT.PiElim isNoetic1 f1 ImpArgs.Unspecified defaultArgs1 expArgs1 <- term1,
+    WT.PiElim isNoetic2 f2 ImpArgs.Unspecified defaultArgs2 expArgs2 <- term2,
     length expArgs1 == length expArgs2,
     isNoetic1 == isNoetic2 = do
       let b1 = eq f1 f2
-      let b2 = all (uncurry eq) $ zip expArgs1 expArgs2
-      b1 && b2
-  | WT.PiElim isNoetic1 f1 (ImpArgs.FullySpecified impArgs1) expArgs1 <- term1,
-    WT.PiElim isNoetic2 f2 (ImpArgs.FullySpecified impArgs2) expArgs2 <- term2,
+      let b2 = eqDefaultOverrideArgs defaultArgs1 defaultArgs2
+      let b3 = all (uncurry eq) $ zip expArgs1 expArgs2
+      b1 && b2 && b3
+  | WT.PiElim isNoetic1 f1 (ImpArgs.FullySpecified impArgs1) defaultArgs1 expArgs1 <- term1,
+    WT.PiElim isNoetic2 f2 (ImpArgs.FullySpecified impArgs2) defaultArgs2 expArgs2 <- term2,
     length impArgs1 == length impArgs2,
     length expArgs1 == length expArgs2,
     isNoetic1 == isNoetic2 = do
       let b1 = eq f1 f2
       let b2 = all (uncurry eqType) $ zip impArgs1 impArgs2
-      let b3 = all (uncurry eq) $ zip expArgs1 expArgs2
-      b1 && b2 && b3
+      let b3 = eqDefaultOverrideArgs defaultArgs1 defaultArgs2
+      let b4 = all (uncurry eq) $ zip expArgs1 expArgs2
+      b1 && b2 && b3 && b4
   | WT.PiElimExact f1 <- term1,
     WT.PiElimExact f2 <- term2 =
       eq f1 f2
@@ -198,6 +201,25 @@ eqType (_ :< ty1) (_ :< ty2)
 eqImpArgs :: [BinderF WT.WeakType] -> [BinderF WT.WeakType] -> Bool
 eqImpArgs =
   eqBinderType
+
+eqDefaultOverrideArgs :: DefaultArgs.DefaultArgs WT.WeakTerm -> DefaultArgs.DefaultArgs WT.WeakTerm -> Bool
+eqDefaultOverrideArgs args1 args2 =
+  case (args1, args2) of
+    (DefaultArgs.Unspecified, DefaultArgs.Unspecified) ->
+      True
+    (DefaultArgs.FullySpecified xs, DefaultArgs.FullySpecified ys) ->
+      length xs == length ys && all (uncurry eq) (zip xs ys)
+    (DefaultArgs.PartiallySpecified xs, DefaultArgs.PartiallySpecified ys) ->
+      length xs == length ys && and (zipWith eqMaybe xs ys)
+    _ ->
+      False
+  where
+    eqMaybe Nothing Nothing =
+      True
+    eqMaybe (Just x) (Just y) =
+      eq x y
+    eqMaybe _ _ =
+      False
 
 eqDefaultArgs :: [(BinderF WT.WeakType, WT.WeakTerm)] -> [(BinderF WT.WeakType, WT.WeakTerm)] -> Bool
 eqDefaultArgs defaultArgs1 defaultArgs2

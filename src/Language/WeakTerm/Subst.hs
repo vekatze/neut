@@ -28,6 +28,7 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
@@ -84,11 +85,12 @@ subst h sub term =
               e' <- subst h sub''' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal mName codType', identity = newLamID}
               return (m :< WT.PiIntro lamAttr impArgs' defaultArgs' expArgs' e')
-    m :< WT.PiElim b e impArgs expArgs -> do
+    m :< WT.PiElim b e impArgs defaultArgs expArgs -> do
       e' <- subst h sub e
       impArgs' <- ImpArgs.traverseImpArgs (substType h sub) impArgs
+      defaultArgs' <- DefaultArgs.traverseDefaultArgs (subst h sub) defaultArgs
       expArgs' <- mapM (subst h sub) expArgs
-      return $ m :< WT.PiElim b e' impArgs' expArgs'
+      return $ m :< WT.PiElim b e' impArgs' defaultArgs' expArgs'
     m :< WT.PiElimExact e -> do
       e' <- subst h sub e
       return $ m :< WT.PiElimExact e'
@@ -545,11 +547,12 @@ substTypeInTerm sub term =
         LK.Normal name codType -> do
           codType' <- substTypeWith sub' codType
           return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' defaultArgs' expArgs' e'
-    m :< WT.PiElim b e impArgs expArgs -> do
+    m :< WT.PiElim b e impArgs defaultArgs expArgs -> do
       e' <- substTypeInTerm sub e
       impArgs' <- mapM (substTypeWith sub) impArgs
+      defaultArgs' <- DefaultArgs.traverseDefaultArgs (substTypeInTerm sub) defaultArgs
       expArgs' <- mapM (substTypeInTerm sub) expArgs
-      return $ m :< WT.PiElim b e' impArgs' expArgs'
+      return $ m :< WT.PiElim b e' impArgs' defaultArgs' expArgs'
     m :< WT.PiElimExact e -> do
       e' <- substTypeInTerm sub e
       return $ m :< WT.PiElimExact e'

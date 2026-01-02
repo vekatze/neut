@@ -34,6 +34,7 @@ import Language.Common.Binder
 import Language.Common.DataSize (DataSize)
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.Foreign
 import Language.Common.HoleID
 import Language.Common.Ident
@@ -74,7 +75,7 @@ data WeakTermF a
   = Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | PiIntro (AttrL.Attr WeakType) [BinderF WeakType] [(BinderF WeakType, WeakTerm)] [BinderF WeakType] a
-  | PiElim N.IsNoetic a (ImpArgs.ImpArgs WeakType) [a]
+  | PiElim N.IsNoetic a (ImpArgs.ImpArgs WeakType) (DefaultArgs.DefaultArgs a) [a]
   | PiElimExact a
   | DataIntro (AttrDI.Attr DD.DefiniteDescription (BinderF WeakType)) DD.DefiniteDescription [WeakType] [a]
   | DataElim N.IsNoetic [(Ident, a, WeakType)] (DT.DecisionTree WeakType a)

@@ -12,6 +12,7 @@ where
 import Control.Comonad.Cofree
 import Kernel.Elaborate.Constraint qualified as C
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.WeakTerm.WeakPrimValue qualified as WPV
@@ -27,7 +28,7 @@ type EvalCtx = Cofree EvalCtxF Hint
 
 data EvalCtxF a
   = Base
-  | PiElim a (ImpArgs.ImpArgs WT.WeakType) [WT.WeakTerm]
+  | PiElim a (ImpArgs.ImpArgs WT.WeakType) (DefaultArgs.DefaultArgs WT.WeakTerm) [WT.WeakTerm]
 
 type Stuck = (EvalBase, EvalCtx)
 
@@ -40,9 +41,9 @@ asStuckedTerm term =
       Just (VarGlobal g, m :< Base)
     m :< WT.Prim prim ->
       Just (Prim prim, m :< Base)
-    m :< WT.PiElim False e impArgs expArgs -> do
+    m :< WT.PiElim False e impArgs defaultArgs expArgs -> do
       (base, ctx) <- asStuckedTerm e
-      return (base, m :< PiElim ctx impArgs expArgs)
+      return (base, m :< PiElim ctx impArgs defaultArgs expArgs)
     _ ->
       Nothing
 
@@ -51,15 +52,15 @@ resume e ctx =
   case ctx of
     _ :< Base ->
       e
-    m :< PiElim ctx' impArgs expArgs ->
-      m :< WT.PiElim False (resume e ctx') impArgs expArgs -- inferred pi-elims are explicit
+    m :< PiElim ctx' impArgs defaultArgs expArgs ->
+      m :< WT.PiElim False (resume e ctx') impArgs defaultArgs expArgs -- inferred pi-elims are explicit
 
 asPairList :: EvalCtx -> EvalCtx -> Maybe [C.Constraint]
 asPairList ctx1 ctx2 =
   case (ctx1, ctx2) of
     (_ :< Base, _ :< Base) ->
       Just []
-    (_ :< PiElim ctx1' impArgs1 expArgs1, _ :< PiElim ctx2' impArgs2 expArgs2)
+    (_ :< PiElim ctx1' impArgs1 _ expArgs1, _ :< PiElim ctx2' impArgs2 _ expArgs2)
       | ImpArgs.Unspecified <- impArgs1,
         ImpArgs.FullySpecified _ <- impArgs2 ->
           Nothing

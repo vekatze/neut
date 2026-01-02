@@ -20,6 +20,7 @@ import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.Ident.Reify qualified as Ident
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
@@ -59,11 +60,12 @@ fill h typeSubst term =
           codType' <- fillType h typeSubst codType
           e' <- fill h typeSubst e
           return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Normal name codType'}) impArgs' defaultArgs' expArgs' e'
-    m :< WT.PiElim b e impArgs expArgs -> do
+    m :< WT.PiElim b e impArgs defaultArgs expArgs -> do
       e' <- fill h typeSubst e
       impArgs' <- ImpArgs.traverseImpArgs (fillType h typeSubst) impArgs
+      defaultArgs' <- DefaultArgs.traverseDefaultArgs (fill h typeSubst) defaultArgs
       expArgs' <- mapM (fill h typeSubst) expArgs
-      return $ m :< WT.PiElim b e' impArgs' expArgs'
+      return $ m :< WT.PiElim b e' impArgs' defaultArgs' expArgs'
     m :< WT.PiElimExact e -> do
       e' <- fill h typeSubst e
       return $ m :< WT.PiElimExact e'

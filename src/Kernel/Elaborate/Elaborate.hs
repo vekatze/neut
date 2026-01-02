@@ -49,6 +49,7 @@ import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as Gensym
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.Foreign qualified as F
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Geist qualified as G
@@ -273,12 +274,13 @@ elaborate' h term =
       expArgs' <- mapM (elaborateWeakBinder h) expArgs
       e' <- elaborate' h e
       return $ m :< TM.PiIntro kind' impArgs' defaultArgs' expArgs' e'
-    m :< WT.PiElim b e impArgs expArgs -> do
+    m :< WT.PiElim b e impArgs defaultArgs expArgs -> do
       e' <- elaborate' h e
       let impArgs' = ImpArgs.extract impArgs
       impArgs'' <- mapM (elaborateType h) impArgs'
+      defaultArgs' <- mapM (elaborate' h) (DefaultArgs.extract defaultArgs)
       expArgs' <- mapM (elaborate' h) expArgs
-      return $ m :< TM.PiElim b e' impArgs'' expArgs'
+      return $ m :< TM.PiElim b e' impArgs'' (defaultArgs' ++ expArgs')
     m :< WT.PiElimExact {} -> do
       raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.DataIntro attr consName dataArgs consArgs -> do
@@ -662,7 +664,7 @@ elaborateDecisionTree h ctx mOrig m tree =
                 DT.Unreachable -> do
                   (rootIdent, tBase) <- makeTree mOrig ctx
                   uncoveredPatterns <- forM (S.toList diff) $ \(consDD, isConstLike) -> do
-                    (_, keys) <- KeyArg.lookup (keyArgHandle h) m consDD
+                    (_, _, keys) <- KeyArg.lookup (keyArgHandle h) m consDD
                     let expArgNum = length keys
                     let args = map (const (holeIdent, Node (Just holeLiteral) True [])) [1 .. expArgNum]
                     let tBase' = graft cursor (Node (Just $ DD.localLocator consDD) isConstLike args) tBase

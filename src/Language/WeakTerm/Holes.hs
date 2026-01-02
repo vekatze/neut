@@ -11,6 +11,7 @@ import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.HoleID
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
@@ -27,8 +28,12 @@ holes term =
       let impBinders = impArgs ++ map fst defaultArgs
       let defaultHoles = S.unions $ map holes $ map snd defaultArgs
       S.union defaultHoles (holesBindersType (impBinders ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e))
-    _ :< WT.PiElim _ e impArgs expArgs ->
-      S.unions $ holes e : map holesType (ImpArgs.extract impArgs) ++ map holes expArgs
+    _ :< WT.PiElim _ e impArgs defaultArgs expArgs ->
+      S.unions $
+        holes e
+          : map holesType (ImpArgs.extract impArgs)
+          ++ map holes (DefaultArgs.extract defaultArgs)
+          ++ map holes expArgs
     _ :< WT.PiElimExact e ->
       holes e
     _ :< WT.DataIntro attr _ dataArgs consArgs -> do

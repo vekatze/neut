@@ -54,7 +54,7 @@ toText term =
             <> toTextType codType
             <> " "
             <> inBrace (toText e)
-    _ :< WT.PiElim _ e _ expArgs -> do
+    _ :< WT.PiElim _ e _ _ expArgs -> do
       case e of
         _ :< WT.VarGlobal attr _
           | AttrVG.isConstLike attr ->

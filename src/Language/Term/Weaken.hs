@@ -18,6 +18,7 @@ import Language.Common.DecisionTree qualified as DT
 import Language.Common.Foreign qualified as F
 import Language.Common.Ident
 import Language.Common.ImpArgs qualified as ImpArgs
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
@@ -73,7 +74,7 @@ weaken term =
       let e' = weaken e
       let impArgs' = ImpArgs.FullySpecified $ map weakenType impArgs
       let expArgs' = map weaken expArgs
-      m :< WT.PiElim b e' impArgs' expArgs'
+      m :< WT.PiElim b e' impArgs' DefaultArgs.Unspecified expArgs'
     m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weakenType dataArgs
       let consArgs' = map weaken consArgs
