@@ -88,7 +88,7 @@ data RawTermF a
   | VarGlobal DD.DefiniteDescription GN.GlobalName
   | PiIntro C FuncInfo
   | PiIntroFix C DefInfo
-  | PiElim a C (SE.Series a)
+  | PiElim a C (Maybe (SE.Series RawType)) C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimRule Name C (SE.Series a)
   | PiElimExact C a
@@ -221,7 +221,7 @@ force e@(m :< _) =
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =
-  PiElim e [] (SE.fromList' es)
+  PiElim e [] Nothing [] (SE.fromList' es)
 
 lam :: Loc -> Hint -> [(RawBinder RawType, C)] -> RawType -> RawTerm -> RawTerm
 lam loc m varList codType e =

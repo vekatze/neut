@@ -49,11 +49,19 @@ toDoc term =
       decodeDef lambdaNameToDoc "function" c def
     _ :< PiIntroFix c def -> do
       decodeDef (nameToDoc . N.Var) "define" c def
-    _ :< PiElim e c expArgs -> do
-      PI.arrange
-        [ PI.inject $ toDoc e,
-          PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
-        ]
+    _ :< PiElim e c1 mImpArgs c2 expArgs -> do
+      case mImpArgs of
+        Nothing ->
+          PI.arrange
+            [ PI.inject $ toDoc e,
+              PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
+            ]
+        Just impArgs ->
+          PI.arrange
+            [ PI.inject $ toDoc e,
+              PI.inject $ attachComment c1 $ SE.decodeHorizontallyIfPossible $ fmap typeToDoc impArgs,
+              PI.inject $ attachComment c2 $ SE.decodeHorizontallyIfPossible $ fmap toDoc expArgs
+            ]
     _ :< PiElimByKey name c kvs -> do
       PI.arrange
         [ PI.inject $ nameToDoc name,

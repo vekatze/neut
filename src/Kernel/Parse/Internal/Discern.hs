@@ -320,11 +320,17 @@ discern h term =
       lamID <- liftIO $ Gensym.newCount (H.gensymHandle h)
       ensureLayerClosedness m h'''' body'
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' defaultArgs' expArgs' body'
-    m :< RT.PiElim e _ expArgs -> do
+    m :< RT.PiElim e _ mImpArgs _ expArgs -> do
       let isNoetic = False -- overwritten later in `infer`
       e' <- discern h e
+      impArgs' <- case mImpArgs of
+        Nothing ->
+          return ImpArgs.Unspecified
+        Just impArgs -> do
+          impArgs' <- mapM (discernType h) $ SE.extract impArgs
+          return $ ImpArgs.FullySpecified impArgs'
       expArgs' <- mapM (discern h) $ SE.extract expArgs
-      return $ m :< WT.PiElim isNoetic e' ImpArgs.Unspecified DefaultArgs.Unspecified expArgs'
+      return $ m :< WT.PiElim isNoetic e' impArgs' DefaultArgs.Unspecified expArgs'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, (_, gn)) <- resolveName h m name
       _ :< func <- interpretGlobalName h m dd (GN.disableConstLikeFlag gn)
