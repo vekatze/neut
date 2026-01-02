@@ -62,7 +62,7 @@ subst h sub term =
     _ :< WT.VarGlobal {} ->
       return term
     m :< WT.PiIntro (AttrL.Attr {lamKind}) impArgs defaultArgs expArgs e -> do
-      let fvs = S.map Ident.toInt $ WT.freeVars term
+      let fvs = S.map Ident.toInt $ WT.freeVarsAll term
       let subDomSet = S.fromList $ IntMap.keys sub
       if S.intersection fvs subDomSet == S.empty
         then return term
