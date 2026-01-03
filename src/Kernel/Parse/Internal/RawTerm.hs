@@ -133,7 +133,8 @@ rawType' h m headSymbol c =
               rawTypeOption h
             ]
         else do
-          rawTypeTyAppCont h (m :< RT.TyVar headSymbol, c)
+          name <- interpretTypeName m headSymbol
+          rawTypeTyAppCont h (m :< RT.TyVar name, c)
 
 rawTerm' :: Handle -> Hint -> T.Text -> C -> Parser (RT.RawTerm, C)
 rawTerm' h m headSymbol c = do
@@ -986,6 +987,14 @@ interpretVarName m varText = do
       | otherwise ->
           return (Locator (gl, ll))
 
+interpretTypeName :: Hint -> T.Text -> Parser Name
+interpretTypeName m varText = do
+  case DD.getLocatorPair m varText of
+    Left _ ->
+      return (Var varText)
+    Right (gl, ll) ->
+      return (Locator (gl, ll))
+
 rawTermTextIntro :: Parser (RT.RawTerm, C)
 rawTermTextIntro = do
   m <- getCurrentHint
@@ -1015,8 +1024,8 @@ locatorToVarGlobal m text = do
 
 locatorToTypeVar :: Hint -> T.Text -> App RT.RawType
 locatorToTypeVar m text = do
-  _ <- liftEither $ DD.getLocatorPair (blur m) text
-  return $ blur m :< RT.TyVar text
+  (gl, ll) <- liftEither $ DD.getLocatorPair (blur m) text
+  return $ blur m :< RT.TyVar (Locator (gl, ll))
 
 rawVar :: Hint -> Name -> RT.RawTerm
 rawVar m name =

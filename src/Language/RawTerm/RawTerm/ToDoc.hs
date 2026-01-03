@@ -364,8 +364,8 @@ typeToDoc ty =
       D.text "type"
     _ :< TypeHole {} ->
       D.text "_"
-    _ :< TyVar var ->
-      D.text var
+    _ :< TyVar name ->
+      nameToDoc name
     _ :< TyApp t c args ->
       PI.arrange
         [ PI.inject $ typeToDoc t,

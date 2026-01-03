@@ -616,14 +616,14 @@ discernType h ty =
       return $ m :< WT.Tau
     m :< RT.TypeHole k ->
       return $ m :< WT.TypeHole k []
-    m :< RT.TyVar s -> do
-      case lookup s (H.typeNameEnv h) of
-        Just (mDef, name', _, _) -> do
-          liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
-          liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
-          return $ m :< WT.TVar name'
-        Nothing -> do
-          name <- interpretTypeName m s
+    m :< RT.TyVar name -> do
+      case name of
+        Var s
+          | Just (mDef, name', _, _) <- lookup s (H.typeNameEnv h) -> do
+              liftIO $ Unused.deleteVariable (H.unusedHandle h) name'
+              liftIO $ Tag.insertLocalVar (H.tagHandle h) m name' mDef
+              return $ m :< WT.TVar name'
+        _ -> do
           (dd, (_, gn)) <- resolveName h m name
           interpretGlobalTypeName m dd gn
     m :< RT.TyApp t _ args -> do
@@ -1315,14 +1315,6 @@ locatorToName m text = do
   (gl, ll) <- DD.getLocatorPair m text
   return $ Locator (gl, ll)
 
-interpretTypeName :: Hint -> RawIdent -> App Name
-interpretTypeName m varText = do
-  case DD.getLocatorPair m varText of
-    Left _ ->
-      return (Var varText)
-    Right (gl, ll) ->
-      return (Locator (gl, ll))
-
 locatorToVarGlobal :: Hint -> T.Text -> Either E.Error RT.RawTerm
 locatorToVarGlobal m text = do
   (gl, ll) <- DD.getLocatorPair (blur m) text
@@ -1330,8 +1322,8 @@ locatorToVarGlobal m text = do
 
 locatorToTypeVar :: Hint -> T.Text -> Either E.Error RT.RawType
 locatorToTypeVar m text = do
-  _ <- DD.getLocatorPair (blur m) text
-  return $ blur m :< RT.TyVar text
+  (gl, ll) <- DD.getLocatorPair (blur m) text
+  return $ blur m :< RT.TyVar (Locator (gl, ll))
 
 getLayer :: Hint -> H.Handle -> Ident -> App Layer
 getLayer m h x =

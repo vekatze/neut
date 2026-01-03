@@ -67,7 +67,7 @@ type RawImpVar =
 data RawTypeF a
   = Tau
   | TypeHole HoleID
-  | TyVar RawIdent
+  | TyVar Name
   | TyApp a C (SE.Series a)
   | Pi (SE.Series RawImpVar, C) (SE.Series (RawBinder a, RawTerm), C) (Args a) C a Loc
   | Data (AttrD.Attr DD.DefiniteDescription (RawBinder a)) DD.DefiniteDescription [a]

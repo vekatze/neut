@@ -146,7 +146,7 @@ constructDataType m dataName isConstLike consNameList dataArgs = do
 
 identPlusToVar :: RawBinder a -> RT.RawType
 identPlusToVar (m, x, _, _, _) =
-  m :< RT.TyVar x
+  m :< RT.TyVar (Var x)
 
 adjustExpConsArg :: RawBinder a -> (RT.RawTerm, RawIdent)
 adjustExpConsArg (m, x, _, _, _) =
