@@ -80,6 +80,9 @@ ensureTemplateResolved h m term =
       ensureTemplateResolvedType h m t
       ensureTemplateResolved h m e1
       ensureTemplateResolved h m e2
+    _ :< TM.LetType _ e1 e2 -> do
+      ensureTemplateResolved h m e1
+      ensureTemplateResolved h m e2
     _ :< TM.Prim prim ->
       ensureTemplateResolvedInPrim h prim
     m' :< TM.Magic magic ->

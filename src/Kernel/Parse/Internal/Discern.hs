@@ -510,6 +510,12 @@ discern h term =
           discern h $
             bind startLoc endLoc mxt e1 $
               m :< RT.LetOn (RT.Plain True) [] resultParam [] x' [] e2 [] startLoc [] (m2' :< RT.Var resultVar) endLoc
+    m :< RT.LetType _ (mx, x, _) _ e1 _ _ _ e2 _ -> do
+      e1' <- discern h e1
+      x' <- liftIO $ Gensym.newIdentFromText (H.gensymHandle h) x
+      h' <- liftIO $ H.extendType' h mx x' VDK.Normal
+      e2' <- discern h' e2
+      return $ m :< WT.LetType (mx, x') e1' e2'
     m :< RT.StaticText s str -> do
       s' <- discernType h s
       case parseText str of

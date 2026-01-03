@@ -103,6 +103,8 @@ toText term =
           "tie " <> showVariable x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
         _ ->
           "let " <> showVariable x <> ": " <> toTextType t <> " = " <> toText e1 <> "; " <> toText e2
+    _ :< WT.LetType (_, x) e1 e2 ->
+      "let-type " <> showVariable x <> " = " <> toText e1 <> "; " <> toText e2
     _ :< WT.Prim primValue ->
       showPrimValue primValue
     _ :< WT.Magic magic -> do

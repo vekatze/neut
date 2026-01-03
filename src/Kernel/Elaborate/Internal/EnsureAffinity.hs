@@ -181,6 +181,11 @@ analyze h term = do
       (cs1, h') <- analyzeLet h [(mxt, e1)]
       cs2 <- analyze h' e2
       return $ cs1 ++ cs2
+    _ :< TM.LetType (mx, x) e1 e2 -> do
+      let mxt = (mx, x, mx :< TM.Tau)
+      (cs1, h') <- analyzeLet h [(mxt, e1)]
+      cs2 <- analyze h' e2
+      return $ cs1 ++ cs2
     _ :< TM.Prim {} -> do
       return []
     _ :< TM.Magic magic -> do

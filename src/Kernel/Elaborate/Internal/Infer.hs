@@ -285,6 +285,14 @@ infer h term =
       liftIO $ Constraint.insert (constraintHandle h) t' t1'
       (e2', t2') <- infer h e2
       return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
+    m :< WT.LetType (mx, x) e1 e2 -> do
+      (e1', t1') <- infer h e1
+      let tau = mx :< WT.Tau
+      liftIO $ Constraint.insert (constraintHandle h) tau t1'
+      liftIO $ WeakType.insert (weakTypeHandle h) x tau
+      let h' = extendHandle (mx, x, tau) h
+      (e2', t2') <- infer h' e2
+      return (m :< WT.LetType (mx, x) e1' e2', t2')
     m :< WT.Prim prim ->
       case prim of
         WPV.Int t v -> do

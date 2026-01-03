@@ -347,6 +347,8 @@ clarifyTerm h tenv term =
       e2'' <- liftIO $ Linearize.linearize (linearizeHandle h) mxts' e2'
       e1' <- clarifyTerm h tenv e1
       return $ Utility.bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
+    m :< TM.LetType (mx, x) e1 e2 -> do
+      clarifyTerm h tenv $ m :< TM.Let O.Clear (mx, x, mx :< TM.Tau) e1 e2
     m :< TM.Prim primValue ->
       case primValue of
         PV.Int _ size l ->

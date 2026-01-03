@@ -132,6 +132,12 @@ subst h sub term =
       e1' <- subst h sub e1
       (mxt', _, e2') <- subst'' h sub mxt [] e2
       return $ m :< WT.Let opacity mxt' e1' e2'
+    m :< WT.LetType (mx, x) e1 e2 -> do
+      e1' <- subst h sub e1
+      x' <- liftIO $ Gensym.newIdentFromIdent (gensymHandle h) x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      e2' <- subst h sub' e2
+      return $ m :< WT.LetType (mx, x') e1' e2'
     m :< WT.Prim prim -> do
       prim' <- mapM (substType h sub) prim
       return $ m :< WT.Prim prim'
@@ -593,6 +599,10 @@ substTypeInTerm sub term =
       (mxt', e1') <- substTypeLet sub (mxt, e1)
       e2' <- substTypeInTerm sub e2
       return $ m :< WT.Let opacity mxt' e1' e2'
+    m :< WT.LetType mx e1 e2 -> do
+      e1' <- substTypeInTerm sub e1
+      e2' <- substTypeInTerm sub e2
+      return $ m :< WT.LetType mx e1' e2'
     _ :< WT.Prim _ ->
       return term
     m :< WT.Magic der -> do

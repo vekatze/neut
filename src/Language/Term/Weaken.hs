@@ -100,6 +100,8 @@ weaken term =
       m :< WT.CodeElim (weaken e)
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenTypeBinder mxt) (weaken e1) (weaken e2)
+    m :< TM.LetType mx e1 e2 ->
+      m :< WT.LetType mx (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrimValue prim)
     m :< TM.Magic magic -> do

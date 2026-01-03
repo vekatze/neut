@@ -65,6 +65,8 @@ holes term =
       let set1 = holes e1
       let set2 = holesBindersType [mxt] (holes e2)
       S.union set1 set2
+    _ :< WT.LetType _ e1 e2 ->
+      S.union (holes e1) (holes e2)
     _ :< WT.Prim prim ->
       foldMap holesType prim
     _ :< WT.Magic der ->

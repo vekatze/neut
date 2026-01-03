@@ -51,6 +51,8 @@ extend term =
       _m :< TM.CodeElim (extend e)
     () :< TM.Let opacity mxt e1 e2 ->
       _m :< TM.Let opacity mxt (extend e1) (extend e2)
+    () :< TM.LetType (mx, x) e1 e2 ->
+      _m :< TM.LetType (mx, x) (extend e1) (extend e2)
     () :< TM.Prim prim ->
       _m :< TM.Prim prim
     () :< TM.Magic der ->

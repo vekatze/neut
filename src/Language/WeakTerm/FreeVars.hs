@@ -61,6 +61,8 @@ freeVars term =
       let set1 = freeVars e1
       let set2 = freeVarsBinders [mxt] (freeVars e2)
       S.union set1 set2
+    _ :< WT.LetType (_, x) e1 e2 ->
+      S.union (freeVars e1) (S.delete x (freeVars e2))
     _ :< WT.Prim _ ->
       S.empty
     _ :< WT.Magic der ->
@@ -186,6 +188,8 @@ freeVarsAll term =
       let set1 = freeVarsAll e1
       let set2 = freeVarsBindersType [mxt] (freeVarsAll e2)
       S.union set1 set2
+    _ :< WT.LetType (_, x) e1 e2 ->
+      S.union (freeVarsAll e1) (S.delete x (freeVarsAll e2))
     _ :< WT.Prim prim ->
       foldMap freeVarsType prim
     _ :< WT.Magic der ->

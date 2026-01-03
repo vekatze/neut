@@ -77,6 +77,7 @@ data TermF a
   | CodeIntro a
   | CodeElim a
   | Let O.Opacity (BinderF Type) a a
+  | LetType (Hint, Ident) a a
   | Prim (PV.PrimValue Type)
   | Magic (Magic BLT.BaseLowType Type a)
   deriving (Generic)

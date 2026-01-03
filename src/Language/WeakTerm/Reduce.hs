@@ -21,15 +21,15 @@ import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
 import Language.Common.Binder
 import Language.Common.DecisionTree qualified as DT
+import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.Discriminant qualified as D
+import Language.Common.ForeignCodType qualified as FCT
 import Language.Common.Ident
 import Language.Common.Ident.Reify qualified as Ident
-import Language.Common.DefaultArgs qualified as DefaultArgs
 import Language.Common.ImpArgs qualified as ImpArgs
 import Language.Common.LamKind qualified as LK
 import Language.Common.LowMagic qualified as LM
 import Language.Common.Magic qualified as M
-import Language.Common.ForeignCodType qualified as FCT
 import Language.WeakTerm.Subst qualified as Subst
 import Language.WeakTerm.WeakPrimValue qualified as WPV
 import Language.WeakTerm.WeakTerm qualified as WT
@@ -201,6 +201,10 @@ reduce' h term = do
         _ -> do
           e2' <- reduce' h e2
           return $ m :< WT.Let opacity mxt e1' e2'
+    m :< WT.LetType (mx, x) e1 e2 -> do
+      e1' <- reduce' h e1
+      e2' <- reduce' h e2
+      return $ m :< WT.LetType (mx, x) e1' e2'
     m :< WT.Magic (M.WeakMagic magic) -> do
       magic' <- reduceMagic h magic
       return $ m :< WT.Magic (M.WeakMagic magic')

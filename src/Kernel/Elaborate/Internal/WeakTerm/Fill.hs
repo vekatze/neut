@@ -110,6 +110,10 @@ fill h typeSubst term =
       e1' <- fill h typeSubst e1
       (mxt', _, e2') <- fill'' h typeSubst mxt [] e2
       return $ m :< WT.Let opacity mxt' e1' e2'
+    m :< WT.LetType mx e1 e2 -> do
+      e1' <- fill h typeSubst e1
+      e2' <- fill h typeSubst e2
+      return $ m :< WT.LetType mx e1' e2'
     m :< WT.Prim prim -> do
       prim' <- mapM (fillType h typeSubst) prim
       return $ m :< WT.Prim prim'

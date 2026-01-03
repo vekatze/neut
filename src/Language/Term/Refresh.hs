@@ -92,6 +92,10 @@ refresh h term =
       e1' <- refresh h e1
       ([mxt'], e2') <- refresh' h [mxt] e2
       return $ m :< TM.Let opacity mxt' e1' e2'
+    m :< TM.LetType mx e1 e2 -> do
+      e1' <- refresh h e1
+      e2' <- refresh h e2
+      return $ m :< TM.LetType mx e1' e2'
     _ :< TM.Prim _ ->
       return term
     m :< TM.Magic der -> do

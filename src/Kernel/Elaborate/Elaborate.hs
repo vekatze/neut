@@ -335,6 +335,10 @@ elaborate' h term =
       t' <- reduceType h t >>= elaborateType h
       e2' <- elaborate' h e2
       return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
+    m :< WT.LetType (mx, x) e1 e2 -> do
+      e1' <- elaborate' h e1
+      e2' <- elaborate' h e2
+      return $ m :< TM.LetType (mx, x) e1' e2'
     m :< WT.Prim primValue -> do
       primValue' <- elaboratePrimValue h m primValue
       return $ m :< TM.Prim primValue'

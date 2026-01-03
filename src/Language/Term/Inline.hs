@@ -23,8 +23,8 @@ import Gensym.Handle qualified as GensymHandle
 import Language.Common.Attr.Data qualified as AttrD
 import Language.Common.Attr.DataIntro qualified as AttrDI
 import Language.Common.Attr.Lam qualified as AttrL
-import Language.Common.Binder
 import Language.Common.BaseLowType qualified as BLT
+import Language.Common.Binder
 import Language.Common.CreateSymbol qualified as CreateSymbol
 import Language.Common.DecisionTree qualified as DT
 import Language.Common.DefiniteDescription qualified as DD
@@ -294,6 +294,10 @@ inline' h term = do
           mxt' <- inlineTypeBinder h mxt
           e2' <- inline' h e2
           return $ m :< TM.Let opacity mxt' e1' e2'
+    m :< TM.LetType (mx, x) e1 e2 -> do
+      e1' <- inline' h e1
+      e2' <- inline' h e2
+      return $ m :< TM.LetType (mx, x) e1' e2'
     m :< TM.Prim prim -> do
       case prim of
         PV.Int intType size value -> do

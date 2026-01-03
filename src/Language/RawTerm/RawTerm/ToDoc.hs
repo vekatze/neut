@@ -173,6 +173,19 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc e2
         ]
+    _ :< LetType c1 (_, x, c2) c3 e1 c4 _ c5 e2 _ -> do
+      D.join
+        [ PI.arrange
+            [ PI.beforeBareSeries $ D.text "let-type",
+              PI.bareSeries $ attachComment (c1 ++ c2) $ D.text x
+            ],
+          PI.arrange
+            [ PI.beforeBareSeries $ attachComment [] $ D.text "=",
+              decodeLetBody c3 e1 c4
+            ],
+          D.line,
+          attachComment c5 $ toDoc e2
+        ]
     _ :< StaticText _ txt -> do
       D.text $ "\"" <> txt <> "\""
     _ :< RuneIntro _ r -> do

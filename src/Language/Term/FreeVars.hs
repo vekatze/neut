@@ -56,6 +56,8 @@ freeVars term =
       let set1 = freeVars e1
       let set2 = freeVarsBinderType [mxt] (freeVars e2)
       S.union set1 set2
+    _ :< TM.LetType (_, x) e1 e2 ->
+      S.union (freeVars e1) (S.delete x (freeVars e2))
     _ :< TM.Prim prim ->
       case prim of
         PV.StaticText t _ ->

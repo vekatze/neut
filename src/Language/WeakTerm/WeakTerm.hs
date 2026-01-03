@@ -86,6 +86,7 @@ data WeakTermF a
   | CodeElim a
   | Actual a
   | Let LetOpacity (BinderF WeakType) a a
+  | LetType (Hint, Ident) a a
   | Prim (WPV.WeakPrimValue WeakType)
   | Magic (WeakMagic WeakType WeakType a)
   | Annotation LogLevel (AN.Annotation WeakType) a
