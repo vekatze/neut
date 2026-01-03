@@ -353,7 +353,7 @@ infer h term =
               (e', t) <- infer h e
               return (m :< WT.Magic (M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'), t)
             LM.CallType func arg1 arg2 -> do
-              func' <- inferType h func
+              (func', _) <- infer h func
               (arg1', t1) <- infer h arg1
               (arg2', _) <- infer h arg2
               intType <- getIntType (platformHandle h) m

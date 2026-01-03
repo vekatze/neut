@@ -149,7 +149,7 @@ refreshLowMagic h lowMagic =
       e' <- refresh h e
       return $ LM.OpaqueValue e'
     LM.CallType func arg1 arg2 -> do
-      func' <- refreshType h func
+      func' <- refresh h func
       arg1' <- refresh h arg1
       arg2' <- refresh h arg2
       return $ LM.CallType func' arg1' arg2'

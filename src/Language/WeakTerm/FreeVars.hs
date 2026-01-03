@@ -304,7 +304,7 @@ freeVarsLowMagic lowMagic =
     LM.OpaqueValue e ->
       freeVarsAll e
     LM.CallType func arg1 arg2 ->
-      S.unions [freeVarsType func, freeVarsAll arg1, freeVarsAll arg2]
+      S.unions [freeVarsAll func, freeVarsAll arg1, freeVarsAll arg2]
     LM.TermType ty ->
       freeVarsType ty
 

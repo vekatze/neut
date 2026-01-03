@@ -183,7 +183,7 @@ holesLowMagic lowMagic =
     LM.OpaqueValue e ->
       holes e
     LM.CallType func arg1 arg2 ->
-      S.unions [holesType func, holes arg1, holes arg2]
+      S.unions [holes func, holes arg1, holes arg2]
     LM.TermType ty ->
       holesType ty
 

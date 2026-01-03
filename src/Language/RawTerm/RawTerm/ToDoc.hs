@@ -270,7 +270,7 @@ toDoc term =
                 SE.fromListWithComment
                   (Just SE.Paren)
                   SE.Comma
-                  [ RT.mapEL typeToDoc func,
+                  [ RT.mapEL toDoc func,
                     RT.mapEL toDoc arg1,
                     RT.mapEL toDoc arg2
                   ]

@@ -636,7 +636,7 @@ rawTermMagicOpaqueValue h m c0 = do
 rawTermMagicCallType :: Handle -> Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCallType h m c = do
   rawTermMagicBase "call-type" $ do
-    func <- rawType h
+    func <- rawTerm h
     c3 <- delimiter ","
     arg1 <- rawTerm h
     c4 <- delimiter ","

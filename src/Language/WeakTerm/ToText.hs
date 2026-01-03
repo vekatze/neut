@@ -372,7 +372,7 @@ showLowMagic lowMagic =
     LM.OpaqueValue e ->
       "magic opaque" <> inParen (toText e)
     LM.CallType func arg1 arg2 ->
-      "magic call-type" <> inParen (toTextType func <> ", " <> toText arg1 <> ", " <> toText arg2)
+      "magic call-type" <> inParen (toText func <> ", " <> toText arg1 <> ", " <> toText arg2)
     LM.TermType ty ->
       "magic term-type" <> inParen (toTextType ty)
 

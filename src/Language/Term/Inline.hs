@@ -400,7 +400,7 @@ inlineLowMagic h lowMagic =
       e' <- inline' h e
       return $ LM.OpaqueValue e'
     LM.CallType func arg1 arg2 -> do
-      func' <- inlineType' h func
+      func' <- inline' h func
       arg1' <- inline' h arg1
       arg2' <- inline' h arg2
       return $ LM.CallType func' arg1' arg2'

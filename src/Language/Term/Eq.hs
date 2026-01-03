@@ -196,7 +196,7 @@ eqTermMagic magic1 magic2 =
         (LM.OpaqueValue val1, LM.OpaqueValue val2) ->
           eqTerm val1 val2
         (LM.CallType f1 arg1 ret1, LM.CallType f2 arg2 ret2) ->
-          eqType f1 f2 && eqTerm arg1 arg2 && eqTerm ret1 ret2
+          eqTerm f1 f2 && eqTerm arg1 arg2 && eqTerm ret1 ret2
         (LM.TermType ty1, LM.TermType ty2) ->
           eqType ty1 ty2
         _ ->

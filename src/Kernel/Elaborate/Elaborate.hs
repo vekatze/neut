@@ -381,7 +381,7 @@ elaborate' h term =
               e' <- elaborate' h e
               return $ m :< TM.Magic (M.LowMagic $ LM.OpaqueValue e')
             LM.CallType func arg1 arg2 -> do
-              func' <- elaborateType h func
+              func' <- elaborate' h func
               arg1' <- elaborate' h arg1
               arg2' <- elaborate' h arg2
               return $ m :< TM.Magic (M.LowMagic $ LM.CallType func' arg1' arg2')

@@ -359,7 +359,7 @@ eqM (M.WeakMagic m1) (M.WeakMagic m2)
         (LM.OpaqueValue e1, LM.OpaqueValue e2) -> do
           eq e1 e2
         (LM.CallType func1 switch1 arg1, LM.CallType func2 switch2 arg2) -> do
-          let b1 = eqType func1 func2
+          let b1 = eq func1 func2
           let b2 = eq switch1 switch2
           let b3 = eq arg1 arg2
           b1 && b2 && b3

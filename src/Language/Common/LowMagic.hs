@@ -15,7 +15,7 @@ data LowMagic lt ty a
   | External [lt] (FCT.ForeignCodType lt) EN.ExternalName [a] [(a, lt)]
   | Global EN.ExternalName lt
   | OpaqueValue a
-  | CallType ty a a
+  | CallType a a a
   | TermType ty
   deriving (Show, Eq, G.Generic)
 
@@ -40,7 +40,7 @@ instance Functor (LowMagic lt ty) where
       OpaqueValue e ->
         OpaqueValue (f e)
       CallType func arg1 arg2 ->
-        CallType func (f arg1) (f arg2)
+        CallType (f func) (f arg1) (f arg2)
       TermType ty ->
         TermType ty
 
@@ -61,8 +61,8 @@ instance Foldable (LowMagic lt ty) where
         mempty
       OpaqueValue e ->
         f e
-      CallType _ arg1 arg2 ->
-        f arg1 <> f arg2
+      CallType func arg1 arg2 ->
+        f func <> f arg1 <> f arg2
       TermType _ ->
         mempty
 
@@ -86,6 +86,6 @@ instance Traversable (LowMagic lt ty) where
       OpaqueValue e ->
         OpaqueValue <$> f e
       CallType func arg1 arg2 ->
-        CallType func <$> f arg1 <*> f arg2
+        CallType <$> f func <*> f arg1 <*> f arg2
       TermType ty ->
         pure $ TermType ty

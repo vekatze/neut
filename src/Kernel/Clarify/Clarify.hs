@@ -644,7 +644,7 @@ clarifyMagic h tenv der = do
         LM.OpaqueValue e ->
           clarifyTerm h tenv e
         LM.CallType func arg1 arg2 -> do
-          (funcVarName, func', funcVar) <- clarifyTypePlus h tenv func
+          (funcVarName, func', funcVar) <- clarifyPlus h tenv func
           (arg1VarName, arg1', arg1Var) <- clarifyPlus h tenv arg1
           (arg2VarName, arg2', arg2Var) <- clarifyPlus h tenv arg2
           return $

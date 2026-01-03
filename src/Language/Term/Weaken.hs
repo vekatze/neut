@@ -160,7 +160,7 @@ weakenMagic m magic = do
             LM.OpaqueValue e ->
               LM.OpaqueValue (weaken e)
             LM.CallType func arg1 arg2 ->
-              LM.CallType (weakenType func) (weaken arg1) (weaken arg2)
+              LM.CallType (weaken func) (weaken arg1) (weaken arg2)
             LM.TermType ty ->
               LM.TermType (weakenType ty)
     M.GetTypeTag mid typeTagExpr e ->

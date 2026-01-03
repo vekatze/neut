@@ -464,7 +464,7 @@ reduceLowMagic h lowMagic =
       value' <- reduce' h value
       return $ LM.OpaqueValue value'
     LM.CallType func arg1 arg2 -> do
-      func' <- reduceType h func
+      func' <- reduce' h func
       arg1' <- reduce' h arg1
       arg2' <- reduce' h arg2
       return $ LM.CallType func' arg1' arg2'

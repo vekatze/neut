@@ -745,7 +745,7 @@ discernMagic h m magic =
       return $ M.WeakMagic $ M.LowMagic $ LM.OpaqueValue e'
     RT.CallType _ (_, (func, _)) (_, (arg1, _)) (_, (arg2, _)) -> do
       ensureRuntimeStage m h "runtime magic (`call-type`)"
-      func' <- discernType h func
+      func' <- discern h func
       arg1' <- discern h arg1
       arg2' <- discern h arg2
       return $ M.WeakMagic $ M.LowMagic $ LM.CallType func' arg1' arg2'

@@ -168,7 +168,7 @@ ensureTemplateResolvedInLowMagic h m lowMagic =
     LM.OpaqueValue e ->
       ensureTemplateResolved h m e
     LM.CallType func arg1 arg2 -> do
-      ensureTemplateResolvedType h m func
+      ensureTemplateResolved h m func
       ensureTemplateResolved h m arg1
       ensureTemplateResolved h m arg2
     LM.TermType ty ->

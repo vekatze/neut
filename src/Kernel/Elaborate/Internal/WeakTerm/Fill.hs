@@ -457,7 +457,7 @@ fillLowMagic h holeSubst lowMagic =
       value' <- fill h holeSubst value
       return $ LM.OpaqueValue value'
     LM.CallType func arg1 arg2 -> do
-      func' <- fillType h holeSubst func
+      func' <- fill h holeSubst func
       arg1' <- fill h holeSubst arg1
       arg2' <- fill h holeSubst arg2
       return $ LM.CallType func' arg1' arg2'

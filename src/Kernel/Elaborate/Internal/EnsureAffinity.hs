@@ -211,7 +211,7 @@ analyze h term = do
             LM.OpaqueValue e ->
               analyze h e
             LM.CallType func arg1 arg2 -> do
-              cs1 <- analyzeType h func
+              cs1 <- analyze h func
               cs2 <- analyze h arg1
               cs3 <- analyze h arg2
               return $ cs1 ++ cs2 ++ cs3

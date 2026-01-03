@@ -287,7 +287,7 @@ data RawMagic
   | External C Hint EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
   | Global C (EL EN.ExternalName) (EL RawType) (Maybe C)
   | OpaqueValue C (EL RawTerm)
-  | CallType C (EL RawType) (EL RawTerm) (EL RawTerm)
+  | CallType C (EL RawTerm) (EL RawTerm) (EL RawTerm)
   | GetTypeTag (EL RawType)
   | GetConsSize C (EL RawType)
   | GetConstructorArgTypes C (EL RawType) C (EL RawTerm)

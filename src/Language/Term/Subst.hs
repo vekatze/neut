@@ -614,7 +614,7 @@ substLowMagic h sub lowMagic =
     LM.OpaqueValue e ->
       LM.OpaqueValue <$> subst h sub e
     LM.CallType func arg1 arg2 -> do
-      func' <- substType h sub func
+      func' <- subst h sub func
       arg1' <- subst h sub arg1
       arg2' <- subst h sub arg2
       return $ LM.CallType func' arg1' arg2'
@@ -670,7 +670,7 @@ substTypeLowMagic sub lowMagic =
     LM.OpaqueValue e ->
       LM.OpaqueValue <$> substTypeInTerm sub e
     LM.CallType func arg1 arg2 -> do
-      func' <- substTypeWith sub func
+      func' <- substTypeInTerm sub func
       arg1' <- substTypeInTerm sub arg1
       arg2' <- substTypeInTerm sub arg2
       return $ LM.CallType func' arg1' arg2'
